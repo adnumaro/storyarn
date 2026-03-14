@@ -1,0 +1,234 @@
+/* ===== Landing Page — Minimal CSS =====
+   Only styles that Tailwind utility classes cannot express:
+   - Pseudo-elements for decorative effects
+   - Complex positioned flow-canvas nodes/connections
+   - Discover section data-attribute tab switching
+   - Product window perspective transform
+   - Exploration/version visual decorative backgrounds */
+
+/* ===== Product Window: perspective transform (hero decorative) ===== */
+.lp-hero-product {
+  position: absolute;
+  top: 316px;
+  right: -640px;
+  z-index: 1;
+  width: min(1660px, 124vw);
+  pointer-events: none;
+  opacity: 0.72;
+  transform-origin: 72% 12%;
+  transform: perspective(3200px) rotateX(76deg) rotateY(-12deg) matrix(0.94,-0.16,0.34,0.9,0,0) scale(1.04);
+  filter: saturate(0.95) brightness(0.9);
+  mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.52) 26%, #000 42%, #000 100%);
+}
+
+/* ===== Flow canvas: positioned nodes and connections ===== */
+.lp-connection {
+  position: absolute;
+  height: 2px;
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--color-primary, oklch(78% 0.14 185)), transparent);
+  opacity: 0.5;
+}
+
+.lp-node {
+  position: absolute;
+  padding: 12px 14px;
+  min-width: 144px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 10%, transparent);
+  background: var(--color-base-300, #1e293b);
+  box-shadow: 0 16px 28px rgba(0,0,0,0.12);
+}
+.lp-node em { display: block; color: var(--color-base-content, #94a3b8); opacity: 0.5; font-style: normal; font-size: 0.74rem; letter-spacing: 0.09em; text-transform: uppercase; }
+.lp-node strong { display: block; margin-top: 6px; font-size: 0.94rem; line-height: 1.35; color: var(--color-base-content); }
+.lp-node small { display: block; margin-top: 8px; color: var(--color-base-content, #8da2b6); opacity: 0.5; font-size: 0.78rem; line-height: 1.5; }
+.lp-node.n1 { left: 20px; top: 28px; }
+.lp-node.n2 { left: 210px; top: 118px; }
+.lp-node.n3 { left: 404px; top: 44px; }
+.lp-node.n4 { left: 402px; top: 196px; }
+
+/* ===== Scene map: decorative zones and pins ===== */
+.lp-scene-map {
+  background:
+    radial-gradient(circle at 20% 20%, color-mix(in oklch, var(--color-primary) 8%, transparent), transparent 16%),
+    radial-gradient(circle at 80% 70%, color-mix(in oklch, var(--color-accent) 7%, transparent), transparent 16%);
+}
+
+.lp-zone { position: absolute; border-radius: 22px; border: 1px solid color-mix(in oklch, var(--color-base-content) 10%, transparent); }
+.lp-zone.z1 { left: 24px; top: 24px; width: 34%; height: 52%; background: color-mix(in oklch, var(--color-primary) 10%, transparent); }
+.lp-zone.z2 { left: 41%; top: 18px; width: 22%; height: 34%; background: color-mix(in oklch, var(--color-accent) 10%, transparent); }
+.lp-zone.z3 { right: 20px; top: 30px; width: 29%; height: 56%; background: color-mix(in oklch, var(--color-secondary) 8%, transparent); }
+.lp-zone.z4 { left: 38%; bottom: 22px; width: 18%; height: 24%; background: color-mix(in oklch, var(--color-accent) 9%, transparent); }
+
+.lp-pin { position: absolute; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--color-base-200); }
+.lp-pin.p1 { left: 19%; top: 37%; background: var(--color-primary); box-shadow: 0 0 0 6px color-mix(in oklch, var(--color-primary) 16%, transparent); }
+.lp-pin.p2 { left: 49%; top: 26%; background: var(--color-accent); box-shadow: 0 0 0 6px color-mix(in oklch, var(--color-accent) 14%, transparent); }
+.lp-pin.p3 { right: 18%; top: 43%; background: var(--color-secondary); box-shadow: 0 0 0 6px color-mix(in oklch, var(--color-secondary) 13%, transparent); }
+
+/* ===== Discover section: data-attribute tab switching ===== */
+.lp-discover-scrollbox { max-height: 980px; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding-right: 8px; }
+.lp-discover-scrollbox::-webkit-scrollbar { width: 10px; }
+.lp-discover-scrollbox::-webkit-scrollbar-track { background: color-mix(in oklch, var(--color-base-content) 4%, transparent); border-radius: 999px; }
+.lp-discover-scrollbox::-webkit-scrollbar-thumb { background: color-mix(in oklch, var(--color-primary) 32%, transparent); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+
+.lp-discover-shell { display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(320px, 0.72fr); gap: 22px; align-items: start; }
+.lp-discover-stage { position: sticky; top: 0; }
+
+.lp-discover-tabs { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.lp-discover-tab {
+  padding: 10px 14px; border-radius: 999px;
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 10%, transparent);
+  background: color-mix(in oklch, var(--color-base-content) 3%, transparent);
+  color: var(--color-base-content); opacity: 0.7;
+  font-size: 0.88rem; font-weight: 700; letter-spacing: -0.02em; cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease, opacity 180ms ease, transform 180ms ease;
+}
+.lp-discover-tab:hover { transform: translateY(-1px); opacity: 0.9; }
+
+/* Active tab states via data-attribute */
+.lp-discover-shell[data-active-feature="dashboard"] .lp-discover-tab[data-feature="dashboard"],
+.lp-discover-shell[data-active-feature="sheets"] .lp-discover-tab[data-feature="sheets"],
+.lp-discover-shell[data-active-feature="flows"] .lp-discover-tab[data-feature="flows"],
+.lp-discover-shell[data-active-feature="scenes"] .lp-discover-tab[data-feature="scenes"] {
+  opacity: 1;
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+  border-color: transparent;
+}
+
+.lp-discover-display {
+  position: relative; min-height: 560px; border-radius: 28px;
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 8%, transparent);
+  overflow: hidden;
+  background: var(--color-base-300);
+}
+
+.lp-discover-preview {
+  position: absolute; inset: 0; padding: 28px; opacity: 0;
+  transform: translateY(18px) scale(0.985);
+  transition: opacity 320ms ease, transform 420ms ease;
+  pointer-events: none;
+}
+.lp-discover-shell[data-active-feature="dashboard"] .lp-discover-preview[data-feature="dashboard"],
+.lp-discover-shell[data-active-feature="sheets"] .lp-discover-preview[data-feature="sheets"],
+.lp-discover-shell[data-active-feature="flows"] .lp-discover-preview[data-feature="flows"],
+.lp-discover-shell[data-active-feature="scenes"] .lp-discover-preview[data-feature="scenes"] {
+  opacity: 1; transform: translateY(0) scale(1);
+}
+
+/* Preview content cards */
+.lp-preview-card {
+  min-height: 380px; border-radius: 24px; overflow: hidden;
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 8%, transparent);
+  background: var(--color-base-200);
+  display: flex; align-items: end; padding: 26px;
+}
+.lp-preview-info {
+  max-width: 320px; padding: 16px 18px; border-radius: 18px;
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 8%, transparent);
+  background: color-mix(in oklch, var(--color-base-100) 80%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+/* Discover steps */
+.lp-discover-steps { display: grid; gap: 18px; padding-top: 20px; }
+.lp-discover-step {
+  min-height: 310px; padding: 24px; border-radius: 28px;
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 8%, transparent);
+  background: color-mix(in oklch, var(--color-base-content) 3%, transparent);
+  scroll-margin-top: 40px;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+.lp-discover-step.is-active {
+  border-color: color-mix(in oklch, var(--color-primary) 18%, transparent);
+  background: color-mix(in oklch, var(--color-primary) 6%, transparent);
+  transform: translateY(-2px);
+}
+
+/* Step list items with bullet */
+.lp-step-item {
+  position: relative;
+  padding-left: 16px;
+  color: var(--color-base-content);
+  opacity: 0.7;
+  line-height: 1.62;
+}
+.lp-step-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.7em;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 0 16px color-mix(in oklch, var(--color-primary) 36%, transparent);
+}
+
+.lp-discover-spacer { min-height: 320px; opacity: 0; pointer-events: none; }
+
+/* ===== Exploration visual ===== */
+.lp-exploration-shell {
+  position: relative; min-height: 436px; border-radius: 24px; overflow: hidden;
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 8%, transparent);
+  background: var(--color-base-300);
+}
+.lp-exploration-map {
+  position: absolute; inset: 38px 28px 58px; border-radius: 28px; overflow: hidden;
+  background:
+    radial-gradient(circle at 26% 24%, color-mix(in oklch, var(--color-primary) 12%, transparent), transparent 14%),
+    radial-gradient(circle at 58% 65%, color-mix(in oklch, var(--color-accent) 10%, transparent), transparent 16%),
+    var(--color-base-200);
+}
+.lp-exploration-zone {
+  position: absolute; left: 22%; top: 62%; width: 33%; height: 19%;
+  border: 2px solid color-mix(in oklch, var(--color-primary) 88%, transparent);
+  background: color-mix(in oklch, var(--color-primary) 16%, transparent);
+}
+
+/* ===== Version History visual ===== */
+.lp-version-shot {
+  position: relative; min-height: 436px; border-radius: 24px; overflow: hidden;
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 8%, transparent);
+  background: var(--color-base-200);
+}
+.lp-version-overlay {
+  display: flex; justify-content: end; min-height: 436px; padding: 22px;
+  background: linear-gradient(90deg, transparent, color-mix(in oklch, var(--color-base-300) 58%, transparent));
+}
+
+/* ===== CTA decorative glow ===== */
+.lp-cta-band::after {
+  content: "";
+  position: absolute;
+  width: 22rem; height: 22rem; right: -6rem; bottom: -10rem;
+  border-radius: 50%;
+  background: color-mix(in oklch, var(--color-primary) 14%, transparent);
+  filter: blur(80px);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 1180px) {
+  .lp-discover-scrollbox, .lp-discover-shell { grid-template-columns: 1fr; }
+  .lp-discover-stage { position: relative; top: auto; }
+  .lp-discover-step { min-height: auto; }
+  .lp-discover-scrollbox { max-height: none; overflow: visible; padding-right: 0; }
+  .lp-discover-spacer { display: none; }
+  .lp-hero-product { position: relative; top: auto; right: auto; width: 100%; margin-top: 34px; opacity: 1; pointer-events: auto; transform: none; mask-image: none; }
+}
+
+@media (max-width: 860px) {
+  .lp-discover-display { min-height: 760px; }
+  .lp-discover-preview { padding: 18px; }
+  .lp-discover-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lp-discover-tab { text-align: center; }
+}
+
+@media (max-width: 640px) {
+  .lp-discover-display { min-height: 420px; }
+  .lp-node { min-width: 120px; }
+  .lp-node.n1 { left: 14px; top: 24px; }
+  .lp-node.n2 { left: 130px; top: 120px; }
+  .lp-node.n3 { left: 246px; top: 36px; }
+  .lp-node.n4 { left: 246px; top: 200px; }
+}

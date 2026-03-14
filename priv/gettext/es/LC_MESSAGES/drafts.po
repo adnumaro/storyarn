@@ -1,0 +1,217 @@
+## "msgid"s in this file come from POT (.pot) files.
+###
+### Do not add, change, or remove "msgid"s manually here as
+### they're tied to the ones in the corresponding POT file
+### (with the same domain).
+###
+### Use "mix gettext.extract --merge" or "mix gettext.merge"
+### to merge POT files into PO files.
+msgid ""
+msgstr ""
+"Language: es\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: lib/storyarn_web/components/sidebar/draft_list.ex:166
+#, elixir-autogen, elixir-format
+msgid "%{count}d ago"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/draft_list.ex:165
+#, elixir-autogen, elixir-format
+msgid "%{count}h ago"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/draft_list.ex:164
+#, elixir-autogen, elixir-format
+msgid "%{count}m ago"
+msgstr ""
+
+#: lib/storyarn/drafts/merge_engine.ex:102
+#, elixir-autogen, elixir-format
+msgid "Before merge from draft"
+msgstr ""
+
+#: lib/storyarn_web/components/draft_components.ex:127
+#, elixir-autogen, elixir-format
+msgid "Cancel"
+msgstr ""
+
+#: lib/storyarn_web/components/draft_components.ex:87
+#, elixir-autogen, elixir-format
+msgid "Changes in this draft"
+msgstr ""
+
+#: lib/storyarn_web/live/shared/draft_handlers.ex:34
+#, elixir-autogen, elixir-format
+msgid "Could not create draft."
+msgstr ""
+
+#: lib/storyarn_web/live/shared/draft_handlers.ex:55
+#: lib/storyarn_web/live/shared/draft_handlers.ex:194
+#, elixir-autogen, elixir-format
+msgid "Could not discard draft."
+msgstr ""
+
+#: lib/storyarn_web/live/shared/draft_handlers.ex:122
+#, elixir-autogen, elixir-format
+msgid "Could not load merge summary."
+msgstr ""
+
+#: lib/storyarn_web/live/shared/draft_handlers.ex:97
+#, elixir-autogen, elixir-format
+msgid "Could not merge draft."
+msgstr ""
+
+#: lib/storyarn_web/live/shared/draft_handlers.ex:163
+#, elixir-autogen, elixir-format
+msgid "Could not rename draft."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/flow_header.ex:99
+#: lib/storyarn_web/live/scene_live/components/scene_header.ex:32
+#: lib/storyarn_web/live/sheet_live/show.ex:253
+#, elixir-autogen, elixir-format
+msgid "Create a private draft copy"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/draft_list.ex:58
+#, elixir-autogen, elixir-format
+msgid "Deleted"
+msgstr ""
+
+#: lib/storyarn_web/components/draft_components.ex:33
+#: lib/storyarn_web/components/draft_components.ex:51
+#: lib/storyarn_web/components/sidebar/draft_list.ex:104
+#: lib/storyarn_web/components/sidebar/draft_list.ex:116
+#, elixir-autogen, elixir-format
+msgid "Discard"
+msgstr ""
+
+#: lib/storyarn_web/components/draft_components.ex:49
+#: lib/storyarn_web/components/sidebar/draft_list.ex:114
+#, elixir-autogen, elixir-format
+msgid "Discard draft?"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/flow_header.ex:102
+#: lib/storyarn_web/live/scene_live/components/scene_header.ex:35
+#: lib/storyarn_web/live/sheet_live/show.ex:256
+#, elixir-autogen, elixir-format
+msgid "Draft"
+msgstr ""
+
+#: lib/storyarn_web/live/shared/draft_handlers.ex:50
+#: lib/storyarn_web/live/shared/draft_handlers.ex:186
+#, elixir-autogen, elixir-format
+msgid "Draft discarded."
+msgstr ""
+
+#: lib/storyarn_web/live/shared/draft_handlers.ex:84
+#, elixir-autogen, elixir-format
+msgid "Draft merged successfully."
+msgstr ""
+
+#: lib/storyarn_web/live/shared/draft_handlers.ex:136
+#: lib/storyarn_web/live/shared/draft_handlers.ex:159
+#: lib/storyarn_web/live/shared/draft_handlers.ex:179
+#, elixir-autogen, elixir-format
+msgid "Draft not found."
+msgstr ""
+
+#: lib/storyarn_web/components/draft_components.ex:18
+#, elixir-autogen, elixir-format
+msgid "Editing draft — changes don't affect the original"
+msgstr ""
+
+#: lib/storyarn_web/components/draft_components.ex:26
+#, elixir-autogen, elixir-format
+msgid "Merge"
+msgstr ""
+
+#: lib/storyarn_web/components/draft_components.ex:75
+#, elixir-autogen, elixir-format
+msgid "Merge Draft"
+msgstr ""
+
+#: lib/storyarn_web/components/draft_components.ex:136
+#, elixir-autogen, elixir-format
+msgid "Merge into original"
+msgstr ""
+
+#: lib/storyarn/drafts/merge_engine.ex:116
+#, elixir-autogen, elixir-format
+msgid "Merged from draft"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/draft_list.ex:28
+#, elixir-autogen, elixir-format
+msgid "My Drafts"
+msgstr ""
+
+#: lib/storyarn_web/components/draft_components.ex:94
+#, elixir-autogen, elixir-format
+msgid "No changes detected."
+msgstr ""
+
+#: lib/storyarn_web/components/draft_components.ex:103
+#, elixir-autogen, elixir-format
+msgid "Original has diverged"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/draft_list.ex:96
+#, elixir-autogen, elixir-format
+msgid "Rename"
+msgstr ""
+
+#: lib/storyarn_web/live/sheet_live/components/sheet_title.ex:36
+#, elixir-autogen, elixir-format
+msgid "Shortcut from the original (read-only in draft)"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/draft_list.ex:86
+#, elixir-autogen, elixir-format
+msgid "Stale draft"
+msgstr ""
+
+#: lib/storyarn_web/live/shared/draft_handlers.ex:92
+#, elixir-autogen, elixir-format
+msgid "The original entity no longer exists."
+msgstr ""
+
+#: lib/storyarn_web/components/draft_components.ex:106
+#, elixir-autogen, elixir-format
+msgid "The original has %{count} new version since this draft was created. Merging will overwrite those changes. A safety snapshot will be created first."
+msgid_plural "The original has %{count} new versions since this draft was created. Merging will overwrite those changes. A safety snapshot will be created first."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/components/draft_components.ex:50
+#: lib/storyarn_web/components/sidebar/draft_list.ex:115
+#, elixir-autogen, elixir-format
+msgid "This draft will be permanently deleted. This cannot be undone."
+msgstr ""
+
+#: lib/storyarn_web/components/draft_components.ex:77
+#, elixir-autogen, elixir-format
+msgid "This will replace the original with your draft's content."
+msgstr ""
+
+#: lib/storyarn_web/live/shared/draft_handlers.ex:29
+#, elixir-autogen, elixir-format
+msgid "You've reached the maximum number of active drafts."
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/draft_list.ex:124
+#, elixir-autogen, elixir-format
+msgid "from"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/draft_list.ex:163
+#, elixir-autogen, elixir-format
+msgid "just now"
+msgstr ""
+
+#: lib/storyarn_web/components/sidebar/draft_list.ex:88
+#, elixir-autogen, elixir-format
+msgid "stale"
+msgstr ""

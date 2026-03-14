@@ -220,7 +220,7 @@ msgstr ""
 msgid "Your email is used for login and notifications."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/settings.ex:105
+#: lib/storyarn_web/live/project_live/settings.ex:114
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:110
 #, elixir-autogen, elixir-format
 msgid "Appearance"

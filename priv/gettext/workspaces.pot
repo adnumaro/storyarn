@@ -11,17 +11,17 @@
 msgid ""
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/show.ex:208
+#: lib/storyarn_web/live/workspace_live/show.ex:219
 #, elixir-autogen, elixir-format
 msgid "%{count} days ago"
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/show.ex:207
+#: lib/storyarn_web/live/workspace_live/show.ex:218
 #, elixir-autogen, elixir-format
 msgid "%{count} hours ago"
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/show.ex:206
+#: lib/storyarn_web/live/workspace_live/show.ex:217
 #, elixir-autogen, elixir-format
 msgid "%{count} min ago"
 msgstr ""
@@ -62,7 +62,7 @@ msgstr ""
 msgid "Create a new workspace"
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/show.ex:144
+#: lib/storyarn_web/live/workspace_live/show.ex:147
 #, elixir-autogen, elixir-format
 msgid "Create your first project to get started"
 msgstr ""
@@ -77,17 +77,17 @@ msgstr ""
 msgid "Default source language for new projects in this workspace."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:131
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:136
 #, elixir-autogen, elixir-format
 msgid "Delete"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:123
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:128
 #, elixir-autogen, elixir-format
 msgid "Delete Workspace"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:129
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:134
 #, elixir-autogen, elixir-format
 msgid "Delete workspace?"
 msgstr ""
@@ -103,7 +103,7 @@ msgstr ""
 msgid "Email address"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:180
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:185
 #, elixir-autogen, elixir-format
 msgid "Failed to delete workspace."
 msgstr ""
@@ -165,9 +165,9 @@ msgstr ""
 msgid "My Workspace"
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/show.ex:112
-#: lib/storyarn_web/live/workspace_live/show.ex:121
-#: lib/storyarn_web/live/workspace_live/show.ex:159
+#: lib/storyarn_web/live/workspace_live/show.ex:115
+#: lib/storyarn_web/live/workspace_live/show.ex:124
+#: lib/storyarn_web/live/workspace_live/show.ex:170
 #, elixir-autogen, elixir-format
 msgid "New Project"
 msgstr ""
@@ -177,12 +177,12 @@ msgstr ""
 msgid "New Workspace"
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/show.ex:142
+#: lib/storyarn_web/live/workspace_live/show.ex:145
 #, elixir-autogen, elixir-format
 msgid "No projects yet"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:120
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:121
 #, elixir-autogen, elixir-format
 msgid "Once you delete a workspace, there is no going back. All projects will be deleted."
 msgstr ""
@@ -192,7 +192,7 @@ msgstr ""
 msgid "Only the workspace owner can change member roles."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:187
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:192
 #, elixir-autogen, elixir-format
 msgid "Only the workspace owner can delete the workspace."
 msgstr ""
@@ -202,7 +202,7 @@ msgstr ""
 msgid "Only the workspace owner can remove members."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/show.ex:221
+#: lib/storyarn_web/live/workspace_live/show.ex:244
 #, elixir-autogen, elixir-format
 msgid "Project created successfully."
 msgstr ""
@@ -227,7 +227,7 @@ msgstr ""
 msgid "Saving..."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/show.ex:98
+#: lib/storyarn_web/live/workspace_live/show.ex:100
 #, elixir-autogen, elixir-format
 msgid "Search projects..."
 msgstr ""
@@ -247,7 +247,7 @@ msgstr ""
 msgid "Team Members"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:130
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:135
 #, elixir-autogen, elixir-format
 msgid "This action cannot be undone."
 msgstr ""
@@ -288,7 +288,7 @@ msgstr ""
 msgid "Workspace created successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:175
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:180
 #, elixir-autogen, elixir-format
 msgid "Workspace deleted."
 msgstr ""
@@ -299,14 +299,15 @@ msgstr ""
 msgid "Workspace name"
 msgstr ""
 
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:50
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:40
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:44
-#: lib/storyarn_web/live/workspace_live/show.ex:33
+#: lib/storyarn_web/live/workspace_live/show.ex:35
 #, elixir-autogen, elixir-format
 msgid "Workspace not found."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:159
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:164
 #, elixir-autogen, elixir-format
 msgid "Workspace updated successfully."
 msgstr ""
@@ -316,6 +317,7 @@ msgstr ""
 msgid "Workspaces help you organize projects for different teams or purposes."
 msgstr ""
 
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:42
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:32
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:36
 #, elixir-autogen, elixir-format
@@ -327,7 +329,7 @@ msgstr ""
 msgid "You're already a member of this workspace."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/show.ex:205
+#: lib/storyarn_web/live/workspace_live/show.ex:216
 #, elixir-autogen, elixir-format
 msgid "just now"
 msgstr ""
@@ -363,7 +365,7 @@ msgid "Invalid role."
 msgstr ""
 
 #: lib/storyarn_web/live/project_live/form.ex:99
-#: lib/storyarn_web/live/workspace_live/show.ex:117
+#: lib/storyarn_web/live/workspace_live/show.ex:120
 #, elixir-autogen, elixir-format
 msgid "Project limit reached for your plan"
 msgstr ""
@@ -371,4 +373,14 @@ msgstr ""
 #: lib/storyarn_web/live/workspace_live/new.ex:86
 #, elixir-autogen, elixir-format
 msgid "You have reached the workspace limit for your plan."
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/show.ex:153
+#, elixir-autogen, elixir-format
+msgid "No projects found"
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/show.ex:155
+#, elixir-autogen, elixir-format
+msgid "Try a different search term"
 msgstr ""

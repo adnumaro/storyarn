@@ -1,370 +1,1102 @@
 <Layouts.public flash={@flash} current_scope={@current_scope}>
-  <%!-- Hero --%>
-  <section class="relative overflow-hidden">
-    <%!-- Decorative background — abstract node graph --%>
-    <div class="absolute inset-0 -z-10 overflow-hidden">
-      <svg
-        class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] h-[140%] opacity-[0.04]"
-        viewBox="0 0 800 600"
-        fill="none"
-      >
-        <circle cx="200" cy="150" r="6" fill="currentColor" />
-        <circle cx="400" cy="100" r="6" fill="currentColor" />
-        <circle cx="350" cy="300" r="6" fill="currentColor" />
-        <circle cx="550" cy="200" r="6" fill="currentColor" />
-        <circle cx="600" cy="400" r="6" fill="currentColor" />
-        <circle cx="150" cy="400" r="6" fill="currentColor" />
-        <circle cx="700" cy="150" r="6" fill="currentColor" />
-        <circle cx="250" cy="500" r="6" fill="currentColor" />
-        <line x1="200" y1="150" x2="400" y2="100" stroke="currentColor" stroke-width="1" />
-        <line x1="400" y1="100" x2="550" y2="200" stroke="currentColor" stroke-width="1" />
-        <line x1="200" y1="150" x2="350" y2="300" stroke="currentColor" stroke-width="1" />
-        <line x1="350" y1="300" x2="550" y2="200" stroke="currentColor" stroke-width="1" />
-        <line x1="550" y1="200" x2="600" y2="400" stroke="currentColor" stroke-width="1" />
-        <line x1="350" y1="300" x2="150" y2="400" stroke="currentColor" stroke-width="1" />
-        <line x1="550" y1="200" x2="700" y2="150" stroke="currentColor" stroke-width="1" />
-        <line x1="150" y1="400" x2="250" y2="500" stroke="currentColor" stroke-width="1" />
-        <line x1="600" y1="400" x2="250" y2="500" stroke="currentColor" stroke-width="1" />
-      </svg>
-      <div class="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl"></div>
-      <div class="absolute bottom-0 left-0 w-80 h-80 bg-accent/5 rounded-full blur-3xl"></div>
-    </div>
+  <div class="landing-page">
+    <main>
+      <%!-- Hero --%>
+      <section class="relative overflow-hidden pt-12 pb-8 lg:pt-16 lg:pb-12">
+        <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
+          <div class="relative min-h-[1180px] lg:min-h-[1100px]">
+            <%!-- Hero copy --%>
+            <div class="relative z-3 w-full max-w-[1100px] pt-12 lg:pt-20">
+              <%!-- Eyebrow badge --%>
+              <div class="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-full border border-primary/20 bg-primary/10 text-primary text-xs tracking-widest uppercase">
+                <span class="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_20px_var(--color-primary)]"></span>
+                {gettext("Private beta for studios and narrative teams")}
+              </div>
 
-    <div class="max-w-5xl mx-auto px-6 pt-24 pb-32 sm:pt-32 sm:pb-40">
-      <div class="flex-1 w-full">
-        <div class="inline-flex items-center gap-2 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-medium text-primary mb-6">
-          <span class="relative flex size-2">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75">
-            </span>
-            <span class="relative inline-flex size-2 rounded-full bg-primary"></span>
-          </span>
-          {gettext("Private Beta")}
+              <%!-- Masthead: mascot + title --%>
+              <div class="flex items-start gap-7 mt-7">
+                <img
+                  class="w-52 flex-none mt-10 drop-shadow-2xl hidden sm:block"
+                  src={~p"/images/logo-dark-200.png"}
+                  alt=""
+                />
+                <div>
+                  <h1 class="text-[clamp(4rem,7.2vw,7.2rem)] leading-[0.88] tracking-[-0.07em] font-bold text-base-content">
+                    {gettext("Craft worlds.")}
+                    <span class="block mt-1.5 brand-logotype text-[1em]">
+                      {gettext("Weave stories.")}
+                    </span>
+                  </h1>
+                </div>
+              </div>
+
+              <p class="mt-6 max-w-[46rem] text-base-content/60 text-lg leading-relaxed">
+                {gettext(
+                  "Storyarn brings sheets, flows, scenes, screenplays, and localization into a single platform for interactive narrative. Everything connected: characters, variables, branches, maps, and export for your engine."
+                )}
+              </p>
+
+              <%!-- Feature pills --%>
+              <div class="flex flex-wrap gap-3 mt-7">
+                <span class="px-3.5 py-2.5 rounded-full border border-base-content/10 bg-base-content/5 text-base-content/70 text-sm">
+                  {gettext("Sheets with inheritable variables")}
+                </span>
+                <span class="px-3.5 py-2.5 rounded-full border border-base-content/10 bg-base-content/5 text-base-content/70 text-sm">
+                  {gettext("Flows with debug and story player")}
+                </span>
+                <span class="px-3.5 py-2.5 rounded-full border border-base-content/10 bg-base-content/5 text-base-content/70 text-sm">
+                  {gettext("Explorable scenes")}
+                </span>
+                <span class="px-3.5 py-2.5 rounded-full border border-base-content/10 bg-base-content/5 text-base-content/70 text-sm">
+                  {gettext("Integrated localization and export")}
+                </span>
+              </div>
+
+              <%!-- Hero CTAs --%>
+              <div class="flex flex-wrap gap-3.5 mt-8">
+                <a href="#product" class="btn btn-primary btn-lg rounded-full">
+                  {gettext("Explore Storyarn")}
+                </a>
+                <a href="#workflow" class="btn btn-ghost btn-lg rounded-full border border-base-content/10">
+                  {gettext("See workflow")}
+                </a>
+              </div>
+            </div>
+
+            <%!-- Product Window (decorative app simulation) --%>
+            <section class="lp-hero-product" id="product">
+              <div class="rounded-[2rem] border border-base-content/8 bg-base-200/90 shadow-2xl overflow-hidden">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 border-b border-base-content/7">
+                  <div>
+                    <strong class="block text-base tracking-tight text-base-content">
+                      {gettext("Project: Harbor of Broken Oaths")}
+                    </strong>
+                    <span class="block mt-1 text-base-content/50 text-xs">
+                      {gettext("Narrative RPG - 4 languages - 12 active scenes - 91 flows")}
+                    </span>
+                  </div>
+                  <div class="flex gap-2.5 flex-wrap">
+                    <span class="badge badge-ghost badge-sm">{gettext("Realtime collaboration")}</span>
+                    <span class="badge badge-ghost badge-sm">{gettext("Version snapshots")}</span>
+                    <span class="badge badge-ghost badge-sm">{gettext("Debug mode")}</span>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-[210px_1fr] min-h-[760px]">
+                  <%!-- Sidebar --%>
+                  <aside class="p-4 border-b lg:border-b-0 lg:border-r border-base-content/6 bg-base-content/3">
+                    <div class="flex items-center gap-3 px-2.5 pb-4">
+                      <img src={~p"/images/logo-dark-64.png"} alt="" class="w-10 h-10" />
+                      <div>
+                        <strong class="block text-sm text-base-content">Storyarn</strong>
+                        <span class="block mt-1 text-base-content/50 text-xs">
+                          {gettext("Open narrative design tool")}
+                        </span>
+                      </div>
+                    </div>
+
+                    <nav class="grid gap-2">
+                      <div class="flex items-center gap-3 px-3.5 py-3 rounded-2xl text-base-content/70 border border-transparent">
+                        <em class="w-2.5 h-2.5 rounded bg-current opacity-80 not-italic"></em>
+                        {gettext("Dashboard")}
+                      </div>
+                      <div class="flex items-center gap-3 px-3.5 py-3 rounded-2xl text-base-content bg-primary/10 border border-primary/15">
+                        <em class="w-2.5 h-2.5 rounded bg-current opacity-80 not-italic"></em>
+                        {gettext("Sheets")}
+                      </div>
+                      <div class="flex items-center gap-3 px-3.5 py-3 rounded-2xl text-base-content bg-primary/10 border border-primary/15">
+                        <em class="w-2.5 h-2.5 rounded bg-current opacity-80 not-italic"></em>
+                        {gettext("Flows")}
+                      </div>
+                      <div class="flex items-center gap-3 px-3.5 py-3 rounded-2xl text-base-content/70 border border-transparent">
+                        <em class="w-2.5 h-2.5 rounded bg-current opacity-80 not-italic"></em>
+                        {gettext("Scenes")}
+                      </div>
+                      <div class="flex items-center gap-3 px-3.5 py-3 rounded-2xl text-base-content/70 border border-transparent">
+                        <em class="w-2.5 h-2.5 rounded bg-current opacity-80 not-italic"></em>
+                        {gettext("Screenplays")}
+                      </div>
+                      <div class="flex items-center gap-3 px-3.5 py-3 rounded-2xl text-base-content/70 border border-transparent">
+                        <em class="w-2.5 h-2.5 rounded bg-current opacity-80 not-italic"></em>
+                        {gettext("Localization")}
+                      </div>
+                      <div class="flex items-center gap-3 px-3.5 py-3 rounded-2xl text-base-content/70 border border-transparent">
+                        <em class="w-2.5 h-2.5 rounded bg-current opacity-80 not-italic"></em>
+                        {gettext("Exports")}
+                      </div>
+                    </nav>
+
+                    <div class="mt-4 p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3">
+                      <strong class="block text-sm text-base-content">{gettext("Story Player ready")}</strong>
+                      <span class="block mt-1.5 text-base-content/50 text-xs leading-relaxed">
+                        {gettext(
+                          "Test Act II with variables, checks and scene overlays without leaving the project."
+                        )}
+                      </span>
+                    </div>
+                  </aside>
+
+                  <%!-- Workspace area --%>
+                  <div class="p-4 grid gap-4">
+                    <%!-- Metrics row --%>
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+                      <div class="p-4 rounded-2xl border border-base-content/7 bg-base-content/3">
+                        <strong class="block text-2xl tracking-tight text-base-content">126</strong>
+                        <span class="block mt-1.5 text-base-content/50 text-xs leading-relaxed">
+                          {gettext("connected variables across sheets, flows and scenes")}
+                        </span>
+                      </div>
+                      <div class="p-4 rounded-2xl border border-base-content/7 bg-base-content/3">
+                        <strong class="block text-2xl tracking-tight text-base-content">91</strong>
+                        <span class="block mt-1.5 text-base-content/50 text-xs leading-relaxed">
+                          {gettext("branching flows in the main project")}
+                        </span>
+                      </div>
+                      <div class="p-4 rounded-2xl border border-base-content/7 bg-base-content/3">
+                        <strong class="block text-2xl tracking-tight text-base-content">81%</strong>
+                        <span class="block mt-1.5 text-base-content/50 text-xs leading-relaxed">
+                          {gettext("localization coverage ready for review")}
+                        </span>
+                      </div>
+                      <div class="p-4 rounded-2xl border border-base-content/7 bg-base-content/3">
+                        <strong class="block text-2xl tracking-tight text-base-content">4</strong>
+                        <span class="block mt-1.5 text-base-content/50 text-xs leading-relaxed">
+                          {gettext("target runtimes: Yarn, Ink, Unity and Godot")}
+                        </span>
+                      </div>
+                    </div>
+
+                    <%!-- Flow + Sheet panels --%>
+                    <div class="grid grid-cols-1 lg:grid-cols-[1.08fr_0.92fr] gap-4">
+                      <%!-- Flow editor panel --%>
+                      <section class="rounded-3xl border border-base-content/8 bg-base-200/80 overflow-hidden">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 border-b border-base-content/7">
+                          <div>
+                            <strong class="block text-base tracking-tight text-base-content">
+                              {gettext("Flow editor")}
+                            </strong>
+                            <span class="text-base-content/50 text-xs">
+                              {gettext("Dialogue, checks, instructions and synchronized branches")}
+                            </span>
+                          </div>
+                          <span class="text-base-content/50 text-xs">{gettext("Node graph - live")}</span>
+                        </div>
+                        <div class="lp-flow-canvas relative min-h-[294px]">
+                          <div
+                            class="lp-connection c1"
+                            style="left: 140px; top: 108px; width: 112px; transform: rotate(18deg);"
+                          >
+                          </div>
+                          <div
+                            class="lp-connection c2"
+                            style="left: 325px; top: 118px; width: 108px; transform: rotate(-20deg);"
+                          >
+                          </div>
+                          <div
+                            class="lp-connection c3"
+                            style="left: 322px; top: 174px; width: 116px; transform: rotate(24deg);"
+                          >
+                          </div>
+                          <div class="lp-node n1">
+                            <em>{gettext("Dialogue")}</em>
+                            <strong>{gettext("Captain Ilya")}</strong>
+                            <small>{gettext("\"The harbor is still closed. I need a reason to open it.\"")}</small>
+                          </div>
+                          <div class="lp-node n2">
+                            <em>{gettext("Condition")}</em>
+                            <strong>rep_guardia &gt;= 4</strong>
+                            <small>{gettext("Unlocks the diplomatic route and updates the harbor gate.")}</small>
+                          </div>
+                          <div class="lp-node n3">
+                            <em>{gettext("Choice")}</em>
+                            <strong>{gettext("Show travel permit")}</strong>
+                            <small>{gettext("Consumes item, adds trust and enters the night harbor scene.")}</small>
+                          </div>
+                          <div class="lp-node n4">
+                            <em>{gettext("Subflow")}</em>
+                            <strong>{gettext("Night Harbor")}</strong>
+                            <small>{gettext("Activates overlay, scene pin and global act state.")}</small>
+                          </div>
+                        </div>
+                      </section>
+
+                      <%!-- Sheet panel --%>
+                      <section class="rounded-3xl border border-base-content/8 bg-base-200/80 overflow-hidden">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 border-b border-base-content/7">
+                          <div>
+                            <strong class="block text-base tracking-tight text-base-content">
+                              {gettext("World sheet")}
+                            </strong>
+                            <span class="text-base-content/50 text-xs">
+                              {gettext("Entity connected to dialogue, quest state and export")}
+                            </span>
+                          </div>
+                          <span class="text-base-content/50 text-xs">{gettext("Character profile")}</span>
+                        </div>
+                        <div class="p-4 grid gap-3">
+                          <div class="grid grid-cols-1 sm:grid-cols-[140px_1fr_auto] gap-3 items-center p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3">
+                            <strong class="text-sm text-base-content">{gettext("Character")}</strong>
+                            <span class="text-base-content/50 text-xs leading-relaxed">
+                              {gettext("Captain Ilya - rank, trust, inventory, scene tags")}
+                            </span>
+                            <span class="badge badge-sm bg-primary/10 text-primary border-primary/20">
+                              {gettext("Live")}
+                            </span>
+                          </div>
+                          <div class="grid grid-cols-1 sm:grid-cols-[140px_1fr_auto] gap-3 items-center p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3">
+                            <strong class="text-sm text-base-content">{gettext("Faction")}</strong>
+                            <span class="text-base-content/50 text-xs leading-relaxed">
+                              {gettext("Harbor Guild - resources, favors, reputation and routes")}
+                            </span>
+                            <span class="badge badge-sm bg-primary/10 text-primary border-primary/20">
+                              {gettext("Linked")}
+                            </span>
+                          </div>
+                          <div class="grid grid-cols-1 sm:grid-cols-[140px_1fr_auto] gap-3 items-center p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3">
+                            <strong class="text-sm text-base-content">{gettext("Quest State")}</strong>
+                            <span class="text-base-content/50 text-xs leading-relaxed">
+                              {gettext("Act II - quarantine, forged seal, inner harbor access")}
+                            </span>
+                            <span class="badge badge-sm bg-primary/10 text-primary border-primary/20">
+                              {gettext("Tracked")}
+                            </span>
+                          </div>
+                          <div class="grid grid-cols-1 sm:grid-cols-[140px_1fr_auto] gap-3 items-center p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3">
+                            <strong class="text-sm text-base-content">{gettext("Inherited Blocks")}</strong>
+                            <span class="text-base-content/50 text-xs leading-relaxed">
+                              {gettext("Stats, progress flags and consequence table")}
+                            </span>
+                            <span class="badge badge-sm bg-primary/10 text-primary border-primary/20">
+                              {gettext("Shared")}
+                            </span>
+                          </div>
+                        </div>
+                      </section>
+                    </div>
+
+                    <%!-- Scene + Localization --%>
+                    <div class="grid grid-cols-1 lg:grid-cols-[1fr_0.86fr] gap-4">
+                      <%!-- Scene editor --%>
+                      <section class="rounded-3xl border border-base-content/8 bg-base-200/80 overflow-hidden">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 border-b border-base-content/7">
+                          <div>
+                            <strong class="block text-base tracking-tight text-base-content">
+                              {gettext("Scene editor")}
+                            </strong>
+                            <span class="text-base-content/50 text-xs">
+                              {gettext("Zones, pins, overlays and spatial links")}
+                            </span>
+                          </div>
+                          <span class="text-base-content/50 text-xs">{gettext("Exploration mode")}</span>
+                        </div>
+                        <div class="lp-scene-map relative min-h-[292px]">
+                          <div class="lp-zone z1"></div>
+                          <div class="lp-zone z2"></div>
+                          <div class="lp-zone z3"></div>
+                          <div class="lp-zone z4"></div>
+                          <div class="lp-pin p1"></div>
+                          <div class="lp-pin p2"></div>
+                          <div class="lp-pin p3"></div>
+                        </div>
+                      </section>
+
+                      <%!-- Localization --%>
+                      <section class="rounded-3xl border border-base-content/8 bg-base-200/80 overflow-hidden">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 border-b border-base-content/7">
+                          <div>
+                            <strong class="block text-base tracking-tight text-base-content">
+                              {gettext("Localization")}
+                            </strong>
+                            <span class="text-base-content/50 text-xs">
+                              {gettext("Progress by language, glossary and pending lines")}
+                            </span>
+                          </div>
+                          <span class="text-base-content/50 text-xs">{gettext("DeepL ready")}</span>
+                        </div>
+                        <div class="p-4 grid gap-3">
+                          <div class="grid grid-cols-[64px_1fr_auto] gap-3 items-center p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3">
+                            <strong class="text-sm text-base-content">ES</strong>
+                            <div class="relative h-2.5 rounded-full bg-base-content/8 overflow-hidden">
+                              <span class="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary to-primary/70" style="width: 100%;"></span>
+                            </div>
+                            <em class="not-italic text-xs text-base-content/50">{gettext("Ready")}</em>
+                          </div>
+                          <div class="grid grid-cols-[64px_1fr_auto] gap-3 items-center p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3">
+                            <strong class="text-sm text-base-content">EN</strong>
+                            <div class="relative h-2.5 rounded-full bg-base-content/8 overflow-hidden">
+                              <span class="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary to-primary/70" style="width: 88%;"></span>
+                            </div>
+                            <em class="not-italic text-xs text-base-content/50">{gettext("Review")}</em>
+                          </div>
+                          <div class="grid grid-cols-[64px_1fr_auto] gap-3 items-center p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3">
+                            <strong class="text-sm text-base-content">FR</strong>
+                            <div class="relative h-2.5 rounded-full bg-base-content/8 overflow-hidden">
+                              <span class="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary to-primary/70" style="width: 64%;"></span>
+                            </div>
+                            <em class="not-italic text-xs text-base-content/50">{gettext("In progress")}</em>
+                          </div>
+                          <div class="grid grid-cols-[64px_1fr_auto] gap-3 items-center p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3">
+                            <strong class="text-sm text-base-content">JA</strong>
+                            <div class="relative h-2.5 rounded-full bg-base-content/8 overflow-hidden">
+                              <span class="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary to-primary/70" style="width: 32%;"></span>
+                            </div>
+                            <em class="not-italic text-xs text-base-content/50">{gettext("Blocked")}</em>
+                          </div>
+                        </div>
+                      </section>
+                    </div>
+
+                    <%!-- Screenplay --%>
+                    <section class="rounded-3xl border border-base-content/8 bg-base-200/80 overflow-hidden p-4">
+                      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                        <div>
+                          <strong class="block text-base tracking-tight text-base-content">
+                            {gettext("Screenplay sync")}
+                          </strong>
+                          <span class="text-base-content/50 text-xs">
+                            {gettext("Professional script reading with flow synchronization")}
+                          </span>
+                        </div>
+                        <span class="text-base-content/50 text-xs">Courier Prime</span>
+                      </div>
+                      <div class="rounded-2xl border border-base-content/8 bg-base-content/3 p-5">
+                        <pre class="m-0 text-base-content/70 text-sm leading-relaxed whitespace-pre-wrap font-mono">INT. HARBOR WATCH - NIGHT
+
+CAPTAIN ILYA
+The harbor is still closed.
+
+PROTAGONIST
+I'm not here to break the quarantine. I'm here to avoid it.
+
+IF rep_guardia &gt;= 4
+  ILYA lowers her spear.
+ELSE
+  The watch tightens around the gate.</pre>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
         </div>
-        <div class="flex items-center">
-          <img
-            src={~p"/images/logo-light-200.png"}
-            alt=""
-            class="hidden lg:block dark:hidden drop-shadow-2xl"
-          />
-          <img
-            src={~p"/images/logo-dark-200.png"}
-            alt=""
-            class="hidden lg:dark:block drop-shadow-2xl"
-          />
-          <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] text-balance">
-            {gettext("Craft worlds.")}
-            <br />
-            <span class="brand-logotype text-4xl sm:text-5xl lg:text-6xl">
-              {gettext("Weave stories.")}
-            </span>
-          </h1>
+      </section>
+
+      <%!-- Feature Grid --%>
+      <section class="py-16 lg:py-20" id="features">
+        <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
+          <div class="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-7 mb-8">
+            <h2 class="text-[clamp(2.2rem,3vw,3.8rem)] leading-[0.97] tracking-[-0.06em] font-bold max-w-[12ch] text-base-content">
+              {gettext("One platform for interactive narrative")}
+            </h2>
+            <p class="max-w-[36rem] text-base-content/60 leading-relaxed text-base">
+              {gettext(
+                "Storyarn is a real working ecosystem: data, branches, scenes, screenplays and localization all living inside the same project."
+              )}
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <article class="p-6 rounded-3xl border border-base-content/8 bg-base-200/60">
+              <em class="inline-flex items-center justify-center min-w-[46px] min-h-[46px] rounded-xl mb-4 not-italic font-extrabold tracking-tight text-primary bg-primary/10">
+                01
+              </em>
+              <h3 class="mb-3 text-xl tracking-tight font-bold text-base-content">
+                {gettext("Sheets as source of truth")}
+              </h3>
+              <p class="text-base-content/60 leading-relaxed">
+                {gettext(
+                  "Characters, factions, quests, locations and items live in reusable structures with variables, formulas and inheritance."
+                )}
+              </p>
+            </article>
+
+            <article class="p-6 rounded-3xl border border-base-content/8 bg-base-200/60">
+              <em class="inline-flex items-center justify-center min-w-[46px] min-h-[46px] rounded-xl mb-4 not-italic font-extrabold tracking-tight text-accent bg-accent/10">
+                02
+              </em>
+              <h3 class="mb-3 text-xl tracking-tight font-bold text-base-content">
+                {gettext("Flows you can test")}
+              </h3>
+              <p class="text-base-content/60 leading-relaxed">
+                {gettext(
+                  "The value is not just the visual tree: it's being able to debug, simulate and verify it without exporting to another tool."
+                )}
+              </p>
+            </article>
+
+            <article class="p-6 rounded-3xl border border-base-content/8 bg-base-200/60">
+              <em class="inline-flex items-center justify-center min-w-[46px] min-h-[46px] rounded-xl mb-4 not-italic font-extrabold tracking-tight text-secondary bg-secondary/10">
+                03
+              </em>
+              <h3 class="mb-3 text-xl tracking-tight font-bold text-base-content">
+                {gettext("Scenes with real exploration")}
+              </h3>
+              <p class="text-base-content/60 leading-relaxed">
+                {gettext(
+                  "The spatial layer helps you think about the world as an interactive experience, not just as narrative documentation."
+                )}
+              </p>
+            </article>
+
+            <article class="p-6 rounded-3xl border border-base-content/8 bg-base-200/60">
+              <em class="inline-flex items-center justify-center min-w-[46px] min-h-[46px] rounded-xl mb-4 not-italic font-extrabold tracking-tight text-primary bg-primary/10">
+                04
+              </em>
+              <h3 class="mb-3 text-xl tracking-tight font-bold text-base-content">
+                {gettext("Story Player and Debug Mode")}
+              </h3>
+              <p class="text-base-content/60 leading-relaxed">
+                {gettext(
+                  "Test the story as a player or inspect it step by step with variables and conditions visible."
+                )}
+              </p>
+            </article>
+
+            <article class="p-6 rounded-3xl border border-base-content/8 bg-base-200/60">
+              <em class="inline-flex items-center justify-center min-w-[46px] min-h-[46px] rounded-xl mb-4 not-italic font-extrabold tracking-tight text-accent bg-accent/10">
+                05
+              </em>
+              <h3 class="mb-3 text-xl tracking-tight font-bold text-base-content">
+                {gettext("Integrated localization")}
+              </h3>
+              <p class="text-base-content/60 leading-relaxed">
+                {gettext(
+                  "Extract lines, translate, use glossaries and track coverage per language from the same narrative base."
+                )}
+              </p>
+            </article>
+
+            <article class="p-6 rounded-3xl border border-base-content/8 bg-base-200/60">
+              <em class="inline-flex items-center justify-center min-w-[46px] min-h-[46px] rounded-xl mb-4 not-italic font-extrabold tracking-tight text-secondary bg-secondary/10">
+                06
+              </em>
+              <h3 class="mb-3 text-xl tracking-tight font-bold text-base-content">
+                {gettext("Export for multiple engines")}
+              </h3>
+              <p class="text-base-content/60 leading-relaxed">
+                {gettext(
+                  "From Storyarn to Yarn Spinner, Ink, Unity, Godot Dialogic, Unreal or writing tools without redoing the work."
+                )}
+              </p>
+            </article>
+          </div>
         </div>
-        <p class="mt-3 text-lg sm:text-xl leading-relaxed text-base-content/60 max-w-lg">
-          {gettext(
-            "The open narrative design tool for game designers. Build branching dialogues, manage characters, and localize your stories — all in one place."
-          )}
-        </p>
-        <div class="mt-10 flex flex-wrap gap-4">
-          <a href="#waitlist" class="btn btn-primary btn-lg">
-            {gettext("Request early access")}
-            <.icon name="arrow-right" class="size-5" />
-          </a>
-          <a href="#features" class="btn btn-ghost btn-lg">
-            {gettext("See what's inside")}
-            <.icon name="chevron-down" class="size-5" />
-          </a>
+      </section>
+
+      <%!-- Discover Section (tabbed interactive) --%>
+      <section class="py-16 lg:py-20" id="discover">
+        <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
+          <div class="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-7 mb-8">
+            <h2 class="text-[clamp(2.2rem,3vw,3.8rem)] leading-[0.97] tracking-[-0.06em] font-bold max-w-[12ch] text-base-content">
+              {gettext("Discover the product pillars")}
+            </h2>
+            <p class="max-w-[36rem] text-base-content/60 leading-relaxed text-base">
+              {gettext(
+                "This section summarizes the main tools in Storyarn. Understand the platform architecture at a glance: global vision, structured modeling, visual authoring and scenes."
+              )}
+            </p>
+          </div>
+
+          <div class="lp-discover-scrollbox" data-feature-scrollbox>
+            <div class="lp-discover-shell" data-feature-shell data-active-feature="dashboard">
+              <div class="lp-discover-stage">
+                <div class="p-4 rounded-[2rem] border border-base-content/8 bg-base-200/60">
+                  <div class="lp-discover-tabs" role="tablist" aria-label={gettext("Main features")}>
+                    <button
+                      class="lp-discover-tab"
+                      type="button"
+                      role="tab"
+                      data-feature="dashboard"
+                    >
+                      {gettext("Dashboards")}
+                    </button>
+                    <button
+                      class="lp-discover-tab"
+                      type="button"
+                      role="tab"
+                      data-feature="sheets"
+                    >
+                      {gettext("Sheets")}
+                    </button>
+                    <button
+                      class="lp-discover-tab"
+                      type="button"
+                      role="tab"
+                      data-feature="flows"
+                    >
+                      {gettext("Flows")}
+                    </button>
+                    <button
+                      class="lp-discover-tab"
+                      type="button"
+                      role="tab"
+                      data-feature="scenes"
+                    >
+                      {gettext("Scenes")}
+                    </button>
+                  </div>
+
+                  <div class="lp-discover-display">
+                    <%!-- Dashboard preview --%>
+                    <section class="lp-discover-preview" data-feature="dashboard">
+                      <div class="flex flex-col sm:flex-row items-start justify-between gap-4 mb-5">
+                        <div>
+                          <strong class="block text-xl tracking-tight text-base-content">
+                            {gettext("Project dashboards that frame the whole narrative system")}
+                          </strong>
+                          <span class="block mt-1.5 text-base-content/50 text-sm leading-relaxed">
+                            {gettext(
+                              "Storyarn starts at project level: key metrics, warnings, coverage, exports and status across the full production pipeline."
+                            )}
+                          </span>
+                        </div>
+                        <span class="badge badge-ghost badge-sm whitespace-nowrap">{gettext("Project overview")}</span>
+                      </div>
+                      <div class="lp-preview-card">
+                        <div class="lp-preview-info">
+                          <strong class="block mb-2 text-base text-base-content">{gettext("Harbor of Broken Oaths")}</strong>
+                          <p class="text-base-content/60 text-sm leading-relaxed">
+                            {gettext(
+                              "A cross-tool dashboard that helps teams track narrative scale, content health and production readiness from one place."
+                            )}
+                          </p>
+                          <ul class="mt-3 pl-4 text-base-content/70 text-xs leading-relaxed list-disc">
+                            <li>{gettext("126 connected variables across sheets, flows and scenes")}</li>
+                            <li class="mt-1.5">{gettext("91 branching flows active in the current project")}</li>
+                            <li class="mt-1.5">{gettext("81% localization coverage ready for review")}</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </section>
+
+                    <%!-- Sheets preview --%>
+                    <section class="lp-discover-preview" data-feature="sheets">
+                      <div class="flex flex-col sm:flex-row items-start justify-between gap-4 mb-5">
+                        <div>
+                          <strong class="block text-xl tracking-tight text-base-content">
+                            {gettext("Sheets organize the world as structured, reusable data")}
+                          </strong>
+                          <span class="block mt-1.5 text-base-content/50 text-sm leading-relaxed">
+                            {gettext(
+                              "Characters, factions, locations and item logic live in a connected system with variables, blocks and inheritance."
+                            )}
+                          </span>
+                        </div>
+                        <span class="badge badge-ghost badge-sm whitespace-nowrap">{gettext("Structured worldbuilding")}</span>
+                      </div>
+                      <div class="lp-preview-card" style="align-items: center; justify-content: center;">
+                        <div class="lp-preview-info" style="max-width: 400px;">
+                          <strong class="block mb-2 text-base text-base-content">{gettext("Characters, stats, and inheritance")}</strong>
+                          <p class="text-base-content/60 text-sm leading-relaxed">
+                            {gettext(
+                              "Every entity in a sheet carries variables, blocks and formulas. Child sheets inherit from parents, keeping your world consistent."
+                            )}
+                          </p>
+                          <ul class="mt-3 pl-4 text-base-content/70 text-xs leading-relaxed list-disc">
+                            <li>{gettext("Characters, locations, factions, quests and items in one system")}</li>
+                            <li class="mt-1.5">{gettext("Variables, blocks and inheritance make narrative rules editable")}</li>
+                            <li class="mt-1.5">{gettext("Each sheet can open as a full surface, not just a row in a table")}</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </section>
+
+                    <%!-- Flows preview --%>
+                    <section class="lp-discover-preview" data-feature="flows">
+                      <div class="flex flex-col sm:flex-row items-start justify-between gap-4 mb-5">
+                        <div>
+                          <strong class="block text-xl tracking-tight text-base-content">
+                            {gettext("Flows turn branching narrative into an editable graph")}
+                          </strong>
+                          <span class="block mt-1.5 text-base-content/50 text-sm leading-relaxed">
+                            {gettext(
+                              "Familiar to anyone coming from articy:draft or Arcweaver, but wired directly into sheets, scenes, drafts and export."
+                            )}
+                          </span>
+                        </div>
+                        <span class="badge badge-ghost badge-sm whitespace-nowrap">{gettext("Visual narrative logic")}</span>
+                      </div>
+                      <div class="lp-preview-card" style="align-items: center; justify-content: center;">
+                        <div class="lp-preview-info" style="max-width: 400px;">
+                          <strong class="block mb-2 text-base text-base-content">{gettext("Narrative graph with live data hooks")}</strong>
+                          <p class="text-base-content/60 text-sm leading-relaxed">
+                            {gettext(
+                              "A visual authoring surface for dialogue trees, checks, branches and consequences with a workflow that feels familiar to narrative teams."
+                            )}
+                          </p>
+                          <ul class="mt-3 pl-4 text-base-content/70 text-xs leading-relaxed list-disc">
+                            <li>{gettext("Clear graph editing for dialogue, conditions, instructions and exits")}</li>
+                            <li class="mt-1.5">{gettext("Nodes pull from live project data instead of disconnected text fragments")}</li>
+                            <li class="mt-1.5">{gettext("Strong fit for teams coming from articy:draft or Arcweaver")}</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </section>
+
+                    <%!-- Scenes preview --%>
+                    <section class="lp-discover-preview" data-feature="scenes">
+                      <div class="flex flex-col sm:flex-row items-start justify-between gap-4 mb-5">
+                        <div>
+                          <strong class="block text-xl tracking-tight text-base-content">
+                            {gettext("Scenes give the world spatial structure before implementation")}
+                          </strong>
+                          <span class="block mt-1.5 text-base-content/50 text-sm leading-relaxed">
+                            {gettext(
+                              "Layered maps, zones and pins make scenes readable as systems, not as loose concept art or disconnected layout files."
+                            )}
+                          </span>
+                        </div>
+                        <span class="badge badge-ghost badge-sm whitespace-nowrap">{gettext("Spatial narrative layout")}</span>
+                      </div>
+                      <div class="lp-preview-card" style="align-items: center; justify-content: center;">
+                        <div class="lp-preview-info" style="max-width: 400px;">
+                          <strong class="block mb-2 text-base text-base-content">{gettext("Spatial structure for narrative beats")}</strong>
+                          <p class="text-base-content/60 text-sm leading-relaxed">
+                            {gettext(
+                              "Scene tools help teams think spatially before engineering: layers, zones, pins and map surfaces turn environments into usable design assets."
+                            )}
+                          </p>
+                          <ul class="mt-3 pl-4 text-base-content/70 text-xs leading-relaxed list-disc">
+                            <li>{gettext("Readable scene dashboards before moving into interactive layers")}</li>
+                            <li class="mt-1.5">{gettext("Spatial structure for narrative beats, triggers and world readability")}</li>
+                            <li class="mt-1.5">{gettext("A clear bridge between pure writing and playable presentation")}</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+              </div>
+
+              <%!-- Scrollable steps --%>
+              <div class="lp-discover-steps">
+                <article class="lp-discover-step is-active" data-feature-step="dashboard">
+                  <strong class="block mb-2 text-base-content/70 text-xs tracking-widest uppercase">
+                    {gettext("Feature 01")}
+                  </strong>
+                  <h3 class="mb-3.5 text-2xl tracking-tight font-bold text-base-content">
+                    {gettext("Dashboards")}
+                  </h3>
+                  <p class="text-base-content/60 leading-relaxed">
+                    {gettext(
+                      "Project-level dashboards make the platform readable at a glance: scale, content health, warnings, localization progress and shipping readiness."
+                    )}
+                  </p>
+                  <ul class="mt-4 grid gap-2.5 list-none p-0">
+                    <li class="lp-step-item">
+                      {gettext("One place to understand the narrative state of the whole project.")}
+                    </li>
+                    <li class="lp-step-item">
+                      {gettext("Turns Storyarn into a platform, not a collection of isolated editors.")}
+                    </li>
+                    <li class="lp-step-item">
+                      {gettext("Ideal for producers, leads and cross-discipline reviews.")}
+                    </li>
+                  </ul>
+                </article>
+
+                <article class="lp-discover-step" data-feature-step="sheets">
+                  <strong class="block mb-2 text-base-content/70 text-xs tracking-widest uppercase">
+                    {gettext("Feature 02")}
+                  </strong>
+                  <h3 class="mb-3.5 text-2xl tracking-tight font-bold text-base-content">
+                    {gettext("Sheets")}
+                  </h3>
+                  <p class="text-base-content/60 leading-relaxed">
+                    {gettext(
+                      "Worldbuilding becomes data instead of scattered notes. Every entity lives in a reusable structure with depth and internal logic."
+                    )}
+                  </p>
+                  <ul class="mt-4 grid gap-2.5 list-none p-0">
+                    <li class="lp-step-item">
+                      {gettext("Characters, locations, factions, quests and items in one system.")}
+                    </li>
+                    <li class="lp-step-item">
+                      {gettext("Variables, blocks and inheritance make narrative rules editable.")}
+                    </li>
+                    <li class="lp-step-item">
+                      {gettext("Each sheet can open as a full surface, not just a row in a table.")}
+                    </li>
+                  </ul>
+                </article>
+
+                <article class="lp-discover-step" data-feature-step="flows">
+                  <strong class="block mb-2 text-base-content/70 text-xs tracking-widest uppercase">
+                    {gettext("Feature 03")}
+                  </strong>
+                  <h3 class="mb-3.5 text-2xl tracking-tight font-bold text-base-content">
+                    {gettext("Flows")}
+                  </h3>
+                  <p class="text-base-content/60 leading-relaxed">
+                    {gettext(
+                      "A visual authoring surface for dialogue trees, checks, branches and consequences with a workflow that feels familiar to narrative teams."
+                    )}
+                  </p>
+                  <ul class="mt-4 grid gap-2.5 list-none p-0">
+                    <li class="lp-step-item">
+                      {gettext("Clear graph editing for dialogue, conditions, instructions and exits.")}
+                    </li>
+                    <li class="lp-step-item">
+                      {gettext("Nodes pull from live project data instead of disconnected text fragments.")}
+                    </li>
+                    <li class="lp-step-item">
+                      {gettext("Strong fit for teams coming from articy:draft or Arcweaver.")}
+                    </li>
+                  </ul>
+                </article>
+
+                <article class="lp-discover-step" data-feature-step="scenes">
+                  <strong class="block mb-2 text-base-content/70 text-xs tracking-widest uppercase">
+                    {gettext("Feature 04")}
+                  </strong>
+                  <h3 class="mb-3.5 text-2xl tracking-tight font-bold text-base-content">
+                    {gettext("Scenes")}
+                  </h3>
+                  <p class="text-base-content/60 leading-relaxed">
+                    {gettext(
+                      "Scene tools help teams think spatially before engineering: layers, zones, pins and map surfaces turn environments into usable design assets."
+                    )}
+                  </p>
+                  <ul class="mt-4 grid gap-2.5 list-none p-0">
+                    <li class="lp-step-item">
+                      {gettext("Readable scene dashboards before moving into interactive layers.")}
+                    </li>
+                    <li class="lp-step-item">
+                      {gettext("Spatial structure for narrative beats, triggers and world readability.")}
+                    </li>
+                    <li class="lp-step-item">
+                      {gettext("A clear bridge between pure writing and playable presentation.")}
+                    </li>
+                  </ul>
+                </article>
+
+                <div class="lp-discover-spacer" aria-hidden="true"></div>
+                <div class="lp-discover-spacer" aria-hidden="true"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <%!-- Exploration Mode Spotlight --%>
+      <section class="py-16 lg:py-20" id="exploration-mode">
+        <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
+          <div class="p-8 rounded-[2rem] border border-base-content/8 bg-base-200/60">
+            <div class="grid grid-cols-1 lg:grid-cols-[1.1fr_minmax(320px,0.72fr)] gap-6 items-start">
+              <div class="grid gap-4">
+                <span class="text-base-content/70 text-xs font-bold tracking-widest uppercase">
+                  {gettext("Exploration Mode")}
+                </span>
+                <h3 class="text-[clamp(2rem,4vw,3.6rem)] leading-[0.94] tracking-[-0.05em] font-bold text-base-content">
+                  {gettext("Turn scene design into a playable prototype.")}
+                </h3>
+                <p class="text-base-content/60 leading-relaxed">
+                  {gettext(
+                    "This is where Storyarn stops feeling like documentation and starts feeling like a game. Zones, pins, camera behavior, state and flow triggers come together in a surface that teams can explore, test and show."
+                  )}
+                </p>
+                <ul class="grid gap-3 list-none p-0">
+                  <li class="p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3 text-base-content/70 leading-relaxed">
+                    {gettext("Built to compete with dead documents, slide decks and unread GDDs.")}
+                  </li>
+                  <li class="p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3 text-base-content/70 leading-relaxed">
+                    {gettext("Strong fit for CRPG, point-and-click and narrative exploration workflows.")}
+                  </li>
+                  <li class="p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3 text-base-content/70 leading-relaxed">
+                    {gettext("Useful for internal demos, publisher pitches and early playtest loops.")}
+                  </li>
+                </ul>
+              </div>
+              <div class="flex justify-end items-start">
+                <span class="badge badge-ghost badge-sm">{gettext("Playable prototype engine")}</span>
+              </div>
+            </div>
+
+            <div class="lp-exploration-shell mt-6">
+              <div class="lp-exploration-map">
+                <div class="lp-exploration-zone"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <%!-- Version History Spotlight --%>
+      <section class="py-16 lg:py-20" id="version-history">
+        <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
+          <div class="p-8 rounded-[2rem] border border-base-content/8 bg-base-200/60">
+            <div class="grid grid-cols-1 lg:grid-cols-[minmax(320px,0.72fr)_1.1fr] gap-6 items-start">
+              <%!-- Version visual --%>
+              <div class="lp-version-shot">
+                <div class="lp-version-overlay">
+                  <div class="w-full max-w-[360px] p-4 rounded-2xl border border-base-content/8 bg-base-300/90 backdrop-blur">
+                    <div class="flex items-center justify-between gap-3 mb-3.5">
+                      <strong class="text-base text-base-content">{gettext("Version History")}</strong>
+                    </div>
+                    <div class="grid gap-3">
+                      <div class="grid gap-2 p-3.5 rounded-2xl border border-base-content/6 bg-base-content/3">
+                        <div class="flex items-center gap-2.5">
+                          <span class="w-3.5 h-3.5 rounded-full bg-accent/20 shadow-[0_0_0_1px_var(--color-accent)/22]"></span>
+                          <strong class="text-sm text-base-content">{gettext("Restored from v8")}</strong>
+                          <span class="badge badge-xs badge-outline border-accent/30 text-accent">v11</span>
+                        </div>
+                        <span class="text-base-content/50 text-xs">{gettext("Mar 12, 2026 at 15:59")}</span>
+                      </div>
+                      <div class="grid gap-2 p-3.5 rounded-2xl border border-base-content/6 bg-base-content/3">
+                        <div class="flex items-center gap-2.5">
+                          <span class="w-3.5 h-3.5 rounded-full bg-accent/20 shadow-[0_0_0_1px_var(--color-accent)/22]"></span>
+                          <strong class="text-sm text-base-content">{gettext("Before restore to v8")}</strong>
+                          <span class="badge badge-xs badge-outline border-accent/30 text-accent">v10</span>
+                        </div>
+                        <span class="text-base-content/50 text-xs">{gettext("Auto snapshot before destructive restore")}</span>
+                        <small class="text-base-content/40 text-xs">{gettext("Safe rollback path preserved")}</small>
+                      </div>
+                      <div class="grid gap-2 p-3.5 rounded-2xl border border-base-content/6 bg-base-content/3">
+                        <div class="flex items-center gap-2.5">
+                          <span class="w-3.5 h-3.5 rounded-full bg-accent/20 shadow-[0_0_0_1px_var(--color-accent)/22]"></span>
+                          <strong class="text-sm text-base-content">{gettext("Draft checkpoint")}</strong>
+                          <span class="badge badge-xs badge-outline border-accent/30 text-accent">{gettext("Draft")}</span>
+                        </div>
+                        <span class="text-base-content/50 text-xs">{gettext("Private branch for scene edits and experimentation")}</span>
+                        <small class="text-base-content/40 text-xs">{gettext("Ready to compare, keep or discard")}</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <%!-- Version copy --%>
+              <div class="grid gap-4">
+                <span class="text-base-content/70 text-xs font-bold tracking-widest uppercase">
+                  {gettext("Version History")}
+                </span>
+                <h3 class="text-[clamp(2rem,4vw,3.6rem)] leading-[0.94] tracking-[-0.05em] font-bold text-base-content">
+                  {gettext("Versioning that feels safe without feeling technical.")}
+                </h3>
+                <p class="text-base-content/60 leading-relaxed">
+                  {gettext(
+                    "Storyarn brings version history to sheets, flows and scenes in a way that feels native to narrative teams. The goal is not to teach Git. The goal is to let people experiment without fear."
+                  )}
+                </p>
+                <ul class="grid gap-3 list-none p-0">
+                  <li class="p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3 text-base-content/70 leading-relaxed">
+                    {gettext("Named versions, safe restore and private drafts for exploration.")}
+                  </li>
+                  <li class="p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3 text-base-content/70 leading-relaxed">
+                    {gettext("Designed around the feeling of \"I can always go back.\"")}
+                  </li>
+                  <li class="p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3 text-base-content/70 leading-relaxed">
+                    {gettext("A rare capability in narrative tooling and a strong differentiator.")}
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <%!-- Workflow Grid --%>
+      <section class="py-16 lg:py-20" id="workflow">
+        <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
+          <div class="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-7 mb-8">
+            <h2 class="text-[clamp(2.2rem,3vw,3.8rem)] leading-[0.97] tracking-[-0.06em] font-bold max-w-[12ch] text-base-content">
+              {gettext("From worldbuilding to shipped game")}
+            </h2>
+            <p class="max-w-[36rem] text-base-content/60 leading-relaxed text-base">
+              {gettext(
+                "Storyarn is not a standalone module but a connected flow from pre-production, iteration and shipping."
+              )}
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <article class="relative pt-16 px-5 pb-6 rounded-3xl border border-base-content/8 bg-base-200/60">
+              <span class="absolute left-5 top-5 text-base-content/20 text-3xl font-extrabold tracking-tight">01</span>
+              <h3 class="mb-3 text-lg tracking-tight font-bold text-base-content">
+                {gettext("Define the world")}
+              </h3>
+              <p class="text-base-content/60 leading-relaxed">
+                {gettext(
+                  "Model characters, factions, items and narrative rules in sheets that feed the rest of the project."
+                )}
+              </p>
+            </article>
+
+            <article class="relative pt-16 px-5 pb-6 rounded-3xl border border-base-content/8 bg-base-200/60">
+              <span class="absolute left-5 top-5 text-base-content/20 text-3xl font-extrabold tracking-tight">02</span>
+              <h3 class="mb-3 text-lg tracking-tight font-bold text-base-content">
+                {gettext("Write and branch")}
+              </h3>
+              <p class="text-base-content/60 leading-relaxed">
+                {gettext(
+                  "Build dialogues, checks, instructions and subflows using a visual editor prepared for large changes."
+                )}
+              </p>
+            </article>
+
+            <article class="relative pt-16 px-5 pb-6 rounded-3xl border border-base-content/8 bg-base-200/60">
+              <span class="absolute left-5 top-5 text-base-content/20 text-3xl font-extrabold tracking-tight">03</span>
+              <h3 class="mb-3 text-lg tracking-tight font-bold text-base-content">
+                {gettext("Explore and debug")}
+              </h3>
+              <p class="text-base-content/60 leading-relaxed">
+                {gettext(
+                  "Walk through scenes, test overlays, run the story player and use debug mode to validate logic and pacing."
+                )}
+              </p>
+            </article>
+
+            <article class="relative pt-16 px-5 pb-6 rounded-3xl border border-base-content/8 bg-base-200/60">
+              <span class="absolute left-5 top-5 text-base-content/20 text-3xl font-extrabold tracking-tight">04</span>
+              <h3 class="mb-3 text-lg tracking-tight font-bold text-base-content">
+                {gettext("Localize and export")}
+              </h3>
+              <p class="text-base-content/60 leading-relaxed">
+                {gettext(
+                  "Bring the project to your production pipeline with text, screenplays, variables and branches ready for the engine."
+                )}
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <%!-- CTA Section with waitlist --%>
+      <section class="py-8 pb-24" id="cta">
+        <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
+          <div class="lp-cta-band relative overflow-hidden p-10 rounded-[2rem] border border-base-content/8 bg-base-200/80" id="waitlist">
+            <div class="relative z-1 flex flex-col lg:flex-row items-end justify-between gap-6">
+              <div>
+                <h2 class="mb-3 text-[clamp(2rem,3vw,3.4rem)] leading-[0.96] tracking-[-0.06em] font-bold text-base-content">
+                  {gettext("Ready to build your next narrative?")}
+                </h2>
+                <p class="mb-2 max-w-[40rem] text-base-content/60 leading-relaxed">
+                  {gettext(
+                    "We're onboarding a small group of narrative designers and game studios. Join the waitlist and we'll send you an invite when your spot is ready."
+                  )}
+                </p>
+                <form action={~p"/waitlist"} method="post" class="flex flex-wrap gap-3 mt-6 max-w-[460px]">
+                  <input
+                    type="hidden"
+                    name="_csrf_token"
+                    value={Plug.CSRFProtection.get_csrf_token()}
+                  />
+                  <input
+                    type="email"
+                    name="waitlist[email]"
+                    placeholder={gettext("you@studio.com")}
+                    required
+                    class="input input-bordered flex-1 min-w-[200px] rounded-full bg-base-100"
+                  />
+                  <button type="submit" class="btn btn-primary rounded-full gap-2">
+                    {gettext("Join the waitlist")}
+                    <.icon name="arrow-right" class="size-4" />
+                  </button>
+                </form>
+                <p class="mt-3 text-base-content/30 text-xs">
+                  {gettext("No spam. We'll only email you when it's time.")}
+                </p>
+              </div>
+
+              <div class="flex-shrink-0">
+                <a href="#product" class="btn btn-ghost rounded-full border border-base-content/10">
+                  {gettext("Back to product")}
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <%!-- Footer --%>
+    <footer class="pb-8">
+      <div class="mx-auto w-[min(calc(100%-48px),1280px)] flex flex-col sm:flex-row justify-between gap-5 text-base-content/50 text-sm">
+        <span>{gettext("Storyarn - Open narrative design platform")}</span>
+        <div class="flex gap-6">
+          <.link navigate={~p"/docs"} class="hover:text-base-content transition-colors">
+            {gettext("Docs")}
+          </.link>
+          <.link navigate={~p"/contact"} class="hover:text-base-content transition-colors">
+            {gettext("Contact")}
+          </.link>
         </div>
       </div>
-    </div>
-  </section>
+    </footer>
+  </div>
 
-  <%!-- World Building Tools --%>
-  <section id="features" class="relative bg-base-200/50 border-y border-base-300/50">
-    <div class="max-w-5xl mx-auto px-6 py-24 sm:py-32">
-      <div class="max-w-lg mb-16">
-        <h2 class="text-3xl sm:text-4xl font-bold tracking-tight">
-          {gettext("World Building")}
-        </h2>
-        <p class="mt-4 text-base-content/60 text-lg">
-          {gettext(
-            "One workspace for your entire narrative. No more scattered docs, no more context switching."
-          )}
-        </p>
-      </div>
+  <%!-- Discover section scroll-driven tab switching --%>
+  <script>
+    (() => {
+      const root = document.querySelector("[data-feature-shell]");
+      if (!root) return;
 
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
-        <div>
-          <div
-            class="flex items-center justify-center size-11 rounded-xl mb-4"
-            style="background: rgba(245,158,11,0.1); color: #f59e0b;"
-          >
-            <.icon name="database" class="size-5" />
-          </div>
-          <h3 class="font-semibold text-lg">{gettext("Sheets")}</h3>
-          <p class="mt-2 text-base-content/60 leading-relaxed">
-            {gettext(
-              "Define every element of your world — characters, items, locations, factions. With variables, formulas, and property inheritance."
-            )}
-          </p>
-        </div>
+      const scrollbox = document.querySelector("[data-feature-scrollbox]");
+      const tabs = Array.from(root.querySelectorAll("[data-feature]"));
+      const steps = Array.from(root.querySelectorAll("[data-feature-step]"));
 
-        <div>
-          <div
-            class="flex items-center justify-center size-11 rounded-xl mb-4"
-            style="background: rgba(16,185,129,0.1); color: #10b981;"
-          >
-            <.icon name="git-branch" class="size-5" />
-          </div>
-          <h3 class="font-semibold text-lg">{gettext("Flows")}</h3>
-          <p class="mt-2 text-base-content/60 leading-relaxed">
-            {gettext(
-              "Visual node-based editor for branching dialogues, conditions, and game logic. Nine node types with real-time collaboration."
-            )}
-          </p>
-        </div>
+      const setActive = (feature) => {
+        root.dataset.activeFeature = feature;
+        tabs.forEach((tab) => {
+          tab.setAttribute("aria-selected", tab.dataset.feature === feature ? "true" : "false");
+        });
+        steps.forEach((step) => {
+          step.classList.toggle("is-active", step.dataset.featureStep === feature);
+        });
+      };
 
-        <div>
-          <div
-            class="flex items-center justify-center size-11 rounded-xl mb-4"
-            style="background: rgba(236,72,153,0.1); color: #ec4899;"
-          >
-            <.icon name="map" class="size-5" />
-          </div>
-          <h3 class="font-semibold text-lg">{gettext("Scenes")}</h3>
-          <p class="mt-2 text-base-content/60 leading-relaxed">
-            {gettext(
-              "Visual scene editor with layers, zones, and pin annotations. Connect locations to flows and explore your world spatially."
-            )}
-          </p>
-        </div>
+      let ticking = false;
 
-        <div>
-          <div
-            class="flex items-center justify-center size-11 rounded-xl mb-4"
-            style="background: rgba(99,102,241,0.1); color: #6366f1;"
-          >
-            <.icon name="play-circle" class="size-5" />
-          </div>
-          <h3 class="font-semibold text-lg">{gettext("Story Player")}</h3>
-          <p class="mt-2 text-base-content/60 leading-relaxed">
-            {gettext(
-              "Playtest your dialogues and branching paths in real time. Walk through your story as a player would, right from the editor."
-            )}
-          </p>
-        </div>
+      const updateFromScroll = () => {
+        const bounds = scrollbox
+          ? scrollbox.getBoundingClientRect()
+          : { top: 0, height: window.innerHeight };
+        const targetLine = bounds.top + bounds.height * 0.24;
+        let next = steps[0];
+        let closest = Number.POSITIVE_INFINITY;
 
-        <div>
-          <div
-            class="flex items-center justify-center size-11 rounded-xl mb-4"
-            style="background: rgba(14,165,233,0.1); color: #0ea5e9;"
-          >
-            <.icon name="compass" class="size-5" />
-          </div>
-          <h3 class="font-semibold text-lg">{gettext("Exploration Mode")}</h3>
-          <p class="mt-2 text-base-content/60 leading-relaxed">
-            {gettext(
-              "Navigate your scenes interactively. Move between zones, trigger actions, and experience your world from a player's perspective."
-            )}
-          </p>
-        </div>
+        steps.forEach((step) => {
+          const rect = step.getBoundingClientRect();
+          const center = rect.top + rect.height / 2;
+          const distance = Math.abs(center - targetLine);
+          if (distance < closest) {
+            closest = distance;
+            next = step;
+          }
+        });
 
-        <div>
-          <div
-            class="flex items-center justify-center size-11 rounded-xl mb-4"
-            style="background: rgba(168,85,247,0.1); color: #a855f7;"
-          >
-            <.icon name="bug" class="size-5" />
-          </div>
-          <h3 class="font-semibold text-lg">{gettext("Debug Mode")}</h3>
-          <p class="mt-2 text-base-content/60 leading-relaxed">
-            {gettext(
-              "Step through your flows node by node. Inspect variables, track conditions, and trace execution paths to find logic issues."
-            )}
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
+        if (next) setActive(next.dataset.featureStep);
+        ticking = false;
+      };
 
-  <%!-- Built-in Features --%>
-  <section class="relative">
-    <div class="max-w-5xl mx-auto px-6 py-24 sm:py-32">
-      <div class="max-w-lg mb-16">
-        <h2 class="text-3xl sm:text-4xl font-bold tracking-tight">
-          {gettext("Built-in Features")}
-        </h2>
-        <p class="mt-4 text-base-content/60 text-lg">
-          {gettext("Everything you need to ship your narrative, built right in.")}
-        </p>
-      </div>
+      const handleScroll = () => {
+        if (ticking) return;
+        ticking = true;
+        window.requestAnimationFrame(updateFromScroll);
+      };
 
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
-        <div>
-          <div
-            class="flex items-center justify-center size-11 rounded-xl mb-4"
-            style="background: rgba(99,102,241,0.1); color: #6366f1;"
-          >
-            <.icon name="layout-dashboard" class="size-5" />
-          </div>
-          <h3 class="font-semibold text-lg">{gettext("Dashboards")}</h3>
-          <p class="mt-2 text-base-content/60 leading-relaxed">
-            {gettext(
-              "At-a-glance overview of your project's progress. Word counts, variable usage, localization coverage, and content stats per tool."
-            )}
-          </p>
-        </div>
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          const feature = tab.dataset.feature;
+          const target = root.querySelector(`[data-feature-step="${feature}"]`);
+          if (!target) return;
+          setActive(feature);
+          if (scrollbox) {
+            const top = scrollbox.scrollTop +
+              (target.getBoundingClientRect().top - scrollbox.getBoundingClientRect().top) -
+              scrollbox.clientHeight * 0.16;
+            scrollbox.scrollTo({ top, behavior: "smooth" });
+          } else {
+            target.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        });
+      });
 
-        <div>
-          <div
-            class="flex items-center justify-center size-11 rounded-xl mb-4"
-            style="background: rgba(14,165,233,0.1); color: #0ea5e9;"
-          >
-            <.icon name="languages" class="size-5" />
-          </div>
-          <h3 class="font-semibold text-lg">{gettext("Localization")}</h3>
-          <p class="mt-2 text-base-content/60 leading-relaxed">
-            {gettext(
-              "Extract, translate, and manage every line of dialogue. DeepL integration, glossary support, and progress tracking per language."
-            )}
-          </p>
-        </div>
-
-        <div>
-          <div
-            class="flex items-center justify-center size-11 rounded-xl mb-4"
-            style="background: rgba(168,85,247,0.1); color: #a855f7;"
-          >
-            <.icon name="users" class="size-5" />
-          </div>
-          <h3 class="font-semibold text-lg">{gettext("Real-time Collaboration")}</h3>
-          <p class="mt-2 text-base-content/60 leading-relaxed">
-            {gettext(
-              "Work together with your team. Live cursors, presence indicators, and node locking so nobody overwrites anyone's work."
-            )}
-          </p>
-        </div>
-
-        <div>
-          <div
-            class="flex items-center justify-center size-11 rounded-xl mb-4"
-            style="background: rgba(245,158,11,0.1); color: #f59e0b;"
-          >
-            <.icon name="file-output" class="size-5" />
-          </div>
-          <h3 class="font-semibold text-lg">{gettext("Export & Import")}</h3>
-          <p class="mt-2 text-base-content/60 leading-relaxed">
-            {gettext(
-              "Export to Yarn Spinner, Ink, Unity, Godot Dialogic, Unreal, and articy:draft. Localization as Excel or CSV. Your data, your engine."
-            )}
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <%!-- How it works --%>
-  <section class="max-w-5xl mx-auto px-6 py-24 sm:py-32">
-    <div class="max-w-lg mb-16">
-      <h2 class="text-3xl sm:text-4xl font-bold tracking-tight">
-        {gettext("From outline to shipped")}
-      </h2>
-      <p class="mt-4 text-base-content/60 text-lg">
-        {gettext("Storyarn adapts to how narrative designers actually work.")}
-      </p>
-    </div>
-
-    <div class="grid sm:grid-cols-3 gap-12">
-      <div>
-        <div class="text-5xl font-black mb-3 leading-none text-cyan-500/30 dark:text-cyan-400/35">
-          01
-        </div>
-        <h3 class="font-semibold text-lg">{gettext("Structure your world")}</h3>
-        <p class="mt-2 text-base-content/60 leading-relaxed">
-          {gettext(
-            "Create sheets for characters, factions, and items. Define variables that drive your story's logic."
-          )}
-        </p>
-      </div>
-      <div>
-        <div class="text-5xl font-black mb-3 leading-none text-accent/30 dark:text-accent/40">
-          02
-        </div>
-        <h3 class="font-semibold text-lg">{gettext("Write branching narratives")}</h3>
-        <p class="mt-2 text-base-content/60 leading-relaxed">
-          {gettext(
-            "Use the flow editor to create dialogue trees, condition checks, and instructions. Test with the built-in story player."
-          )}
-        </p>
-      </div>
-      <div>
-        <div class="text-5xl font-black mb-3 leading-none text-secondary/30 dark:text-secondary/45">
-          03
-        </div>
-        <h3 class="font-semibold text-lg">{gettext("Localize and export")}</h3>
-        <p class="mt-2 text-base-content/60 leading-relaxed">
-          {gettext(
-            "Translate into every language your game supports. Export flows, screenplays, and localization data for your engine."
-          )}
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <%!-- Waitlist CTA --%>
-  <section id="waitlist" class="relative overflow-hidden bg-neutral text-neutral-content">
-    <div class="absolute inset-0 -z-0 opacity-10">
-      <div class="absolute top-1/2 left-1/4 w-64 h-64 bg-primary rounded-full blur-3xl"></div>
-      <div class="absolute bottom-0 right-1/4 w-48 h-48 bg-accent rounded-full blur-3xl"></div>
-    </div>
-    <div class="relative z-10 max-w-5xl mx-auto px-6 py-24 sm:py-32 text-center">
-      <div class="inline-flex items-center gap-2 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-medium text-primary mb-6">
-        <.icon name="lock" class="size-3" />
-        {gettext("Invite-only beta")}
-      </div>
-      <h2 class="text-3xl sm:text-4xl font-bold tracking-tight">
-        {gettext("Get early access")}
-      </h2>
-      <p class="mt-4 text-neutral-content/60 text-lg max-w-lg mx-auto">
-        {gettext(
-          "We're onboarding a small group of narrative designers and game studios. Join the waitlist and we'll send you an invite when your spot is ready."
-        )}
-      </p>
-      <form
-        action={~p"/waitlist"}
-        method="post"
-        class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto"
-      >
-        <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-        <input
-          type="email"
-          name="waitlist[email]"
-          placeholder={gettext("you@studio.com")}
-          required
-          class="input input-bordered w-full sm:flex-1 bg-neutral-content/5 border-neutral-content/10 text-neutral-content placeholder:text-neutral-content/30"
-        />
-        <button type="submit" class="btn btn-primary w-full sm:w-auto">
-          {gettext("Join the waitlist")}
-          <.icon name="arrow-right" class="size-4" />
-        </button>
-      </form>
-      <p class="mt-4 text-xs text-neutral-content/40">
-        {gettext("No spam. We'll only email you when it's time.")}
-      </p>
-    </div>
-  </section>
-
-  <%!-- Footer --%>
-  <footer class="border-t border-base-300/50">
-    <div class="max-w-5xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-base-content/40">
-      <span>{gettext("Storyarn — Open narrative design platform")}</span>
-      <div class="flex items-center gap-6">
-        <.link navigate={~p"/docs"} class="hover:text-base-content transition-colors">
-          {gettext("Docs")}
-        </.link>
-        <.link navigate={~p"/contact"} class="hover:text-base-content transition-colors">
-          {gettext("Contact")}
-        </.link>
-      </div>
-    </div>
-  </footer>
+      (scrollbox || window).addEventListener("scroll", handleScroll, { passive: true });
+      window.addEventListener("resize", handleScroll);
+      setActive(root.dataset.activeFeature || "dashboard");
+      updateFromScroll();
+    })();
+  </script>
 </Layouts.public>

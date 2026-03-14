@@ -1,0 +1,389 @@
+## This file is a PO Template file.
+##
+## "msgid"s here are often extracted from source code.
+## Add new messages manually only if they're dynamic
+## messages that can't be statically extracted.
+##
+## Run "mix gettext.extract" to bring this file up to
+## date. Leave "msgstr"s empty as changing them here has no
+## effect: edit them in PO (.po) files instead.
+#
+msgid ""
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:58
+#, elixir-autogen, elixir-format
+msgid "%{count} auto-save"
+msgid_plural "%{count} auto-saves"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn/versioning/conflict_detector.ex:152
+#, elixir-autogen, elixir-format
+msgid "%{count} inherited blocks will be auto-detached if source blocks are missing"
+msgstr ""
+
+#: lib/storyarn/versioning/conflict_detector.ex:175
+#, elixir-autogen, elixir-format
+msgid "%{count} missing %{type}"
+msgid_plural "%{count} missing %{type}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/components/versions_section.ex:143
+#, elixir-autogen, elixir-format
+msgid "Are you sure you want to delete this version?"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:1138
+#, elixir-autogen, elixir-format
+msgid "Auto-resolved:"
+msgstr ""
+
+#: lib/storyarn/versioning/project_snapshot_crud.ex:251
+#, elixir-autogen, elixir-format
+msgid "Before restore to project snapshot v%{number}"
+msgstr ""
+
+#: lib/storyarn/versioning/version_crud.ex:377
+#: lib/storyarn_web/components/versions_section.ex:520
+#, elixir-autogen, elixir-format
+msgid "Before restore to v%{number}"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:937
+#: lib/storyarn_web/components/versions_section.ex:996
+#: lib/storyarn_web/components/versions_section.ex:1055
+#: lib/storyarn_web/components/versions_section.ex:1152
+#, elixir-autogen, elixir-format
+msgid "Cancel"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:817
+#, elixir-autogen, elixir-format
+msgid "Compare with current"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:609
+#, elixir-autogen, elixir-format
+msgid "Could not create safety backup before restoring. Restore aborted."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:396
+#, elixir-autogen, elixir-format
+msgid "Could not create version."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:657
+#, elixir-autogen, elixir-format
+msgid "Could not delete version."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:563
+#, elixir-autogen, elixir-format
+msgid "Could not load version snapshot."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:424
+#, elixir-autogen, elixir-format
+msgid "Could not name version."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:619
+#, elixir-autogen, elixir-format
+msgid "Could not restore version."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:534
+#, elixir-autogen, elixir-format
+msgid "Could not save current state."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:900
+#: lib/storyarn_web/components/versions_section.ex:941
+#, elixir-autogen, elixir-format
+msgid "Create Version"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:760
+#, elixir-autogen, elixir-format
+msgid "Create a version to save the current state."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:804
+#, elixir-autogen, elixir-format
+msgid "Current"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:144
+#, elixir-autogen, elixir-format
+msgid "Delete"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:850
+#, elixir-autogen, elixir-format
+msgid "Delete version"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:142
+#, elixir-autogen, elixir-format
+msgid "Delete version?"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:927
+#: lib/storyarn_web/components/versions_section.ex:986
+#, elixir-autogen, elixir-format
+msgid "Describe what this version captures..."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:919
+#: lib/storyarn_web/components/versions_section.ex:978
+#, elixir-autogen, elixir-format
+msgid "Description"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:1046
+#, elixir-autogen, elixir-format
+msgid "Discard changes and restore"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:955
+#, elixir-autogen, elixir-format
+msgid "Give this auto-save a name to make it a milestone."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:429
+#: lib/storyarn_web/components/versions_section.ex:456
+#: lib/storyarn_web/components/versions_section.ex:640
+#, elixir-autogen, elixir-format
+msgid "Invalid version number."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:88
+#, elixir-autogen, elixir-format
+msgid "Load more"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:1097
+#, elixir-autogen, elixir-format
+msgid "Missing %{type} (ID: %{id})"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:1111
+#, elixir-autogen, elixir-format
+msgid "Missing references will be cleared."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:1116
+#, elixir-autogen, elixir-format
+msgid "Missing references will be cleared. Current state will be saved as a backup."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:953
+#, elixir-autogen, elixir-format
+msgid "Name This Version"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:1000
+#, elixir-autogen, elixir-format
+msgid "Name Version"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:828
+#, elixir-autogen, elixir-format
+msgid "Name this version"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:32
+#, elixir-autogen, elixir-format
+msgid "Named Versions"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:717
+#, elixir-autogen, elixir-format
+msgid "Named version limit reached (%{used}/%{limit})"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:193
+#: lib/storyarn_web/components/versions_section.ex:218
+#: lib/storyarn_web/components/versions_section.ex:366
+#: lib/storyarn_web/components/versions_section.ex:436
+#: lib/storyarn_web/components/versions_section.ex:506
+#, elixir-autogen, elixir-format
+msgid "Named version limit reached."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:801
+#, elixir-autogen, elixir-format
+msgid "No summary"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:758
+#, elixir-autogen, elixir-format
+msgid "No versions yet"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:1168
+#, elixir-autogen, elixir-format
+msgid "Restore"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:1166
+#, elixir-autogen, elixir-format
+msgid "Restore anyway"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:839
+#, elixir-autogen, elixir-format
+msgid "Restore this version"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:1068
+#, elixir-autogen, elixir-format
+msgid "Restore to version %{number}"
+msgstr ""
+
+#: lib/storyarn/versioning/project_snapshot_crud.ex:268
+#, elixir-autogen, elixir-format
+msgid "Restored from project snapshot v%{number}"
+msgstr ""
+
+#: lib/storyarn/versioning/version_crud.ex:394
+#, elixir-autogen, elixir-format
+msgid "Restored from v%{number}"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:598
+#, elixir-autogen, elixir-format
+msgid "Restored to version %{number}"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:1037
+#, elixir-autogen, elixir-format
+msgid "Save current state, then restore"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:1077
+#, elixir-autogen, elixir-format
+msgid "Shortcut collision — will be renamed to \"%{shortcut}\""
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:1087
+#, elixir-autogen, elixir-format
+msgid "Some referenced entities no longer exist:"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:1125
+#, elixir-autogen, elixir-format
+msgid "This will restore the entity to version %{number}."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:904
+#: lib/storyarn_web/components/versions_section.ex:961
+#, elixir-autogen, elixir-format
+msgid "Title"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:1014
+#, elixir-autogen, elixir-format
+msgid "Unsaved changes"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:390
+#, elixir-autogen, elixir-format
+msgid "Version created."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:653
+#, elixir-autogen, elixir-format
+msgid "Version deleted."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:420
+#, elixir-autogen, elixir-format
+msgid "Version named successfully."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:432
+#: lib/storyarn_web/components/versions_section.ex:448
+#: lib/storyarn_web/components/versions_section.ex:632
+#, elixir-autogen, elixir-format
+msgid "Version not found."
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:1026
+#, elixir-autogen, elixir-format
+msgid "What would you like to do with your current changes?"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:1018
+#, elixir-autogen, elixir-format
+msgid "You have changes that aren't saved in any version. Restoring to v%{number} will overwrite them."
+msgstr ""
+
+#: lib/storyarn/versioning/conflict_detector.ex:192
+#: lib/storyarn_web/components/versions_section.ex:1247
+#, elixir-autogen, elixir-format
+msgid "asset"
+msgid_plural "assets"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn/versioning/conflict_detector.ex:204
+#: lib/storyarn_web/components/versions_section.ex:1251
+#, elixir-autogen, elixir-format
+msgid "block"
+msgid_plural "blocks"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/components/versions_section.ex:888
+#, elixir-autogen, elixir-format
+msgid "by"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:911
+#: lib/storyarn_web/components/versions_section.ex:969
+#, elixir-autogen, elixir-format
+msgid "e.g., Before major refactor"
+msgstr ""
+
+#: lib/storyarn_web/components/versions_section.ex:1252
+#, elixir-autogen, elixir-format
+msgid "entity"
+msgstr ""
+
+#: lib/storyarn/versioning/conflict_detector.ex:198
+#: lib/storyarn_web/components/versions_section.ex:1249
+#, elixir-autogen, elixir-format
+msgid "flow"
+msgid_plural "flows"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/components/versions_section.ex:919
+#: lib/storyarn_web/components/versions_section.ex:978
+#, elixir-autogen, elixir-format
+msgid "optional"
+msgstr ""
+
+#: lib/storyarn/versioning/conflict_detector.ex:201
+#: lib/storyarn_web/components/versions_section.ex:1250
+#, elixir-autogen, elixir-format
+msgid "scene"
+msgid_plural "scenes"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn/versioning/conflict_detector.ex:195
+#: lib/storyarn_web/components/versions_section.ex:1248
+#, elixir-autogen, elixir-format
+msgid "sheet"
+msgid_plural "sheets"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn/versioning/conflict_detector.ex:183
+#, elixir-autogen, elixir-format
+msgid "shortcut collision"
+msgstr ""

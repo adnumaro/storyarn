@@ -206,6 +206,9 @@
 /* Story player styles */
 @import "./player.css";
 
+/* Landing page styles */
+@import "./landing.css";
+
 /* Debug panel tabs — browser-style lifted tabs */
 .debug-panel-tabs {
   display: flex;

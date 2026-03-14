@@ -355,7 +355,7 @@ msgstr "Guión sincronizado con el flujo."
 msgid "Screenplay updated from flow."
 msgstr "Guión actualizado desde el flujo."
 
-#: lib/storyarn_web/components/focus_layout.ex:42
+#: lib/storyarn_web/components/focus_layout.ex:44
 #: lib/storyarn_web/live/screenplay_live/index.ex:41
 #, elixir-autogen, elixir-format
 msgid "Screenplays"
@@ -390,7 +390,7 @@ msgid "Write and format screenplays with industry-standard formatting"
 msgstr "Escribe y formatea guiones con el formato estándar de la industria"
 
 #: lib/storyarn_web/live/screenplay_live/index.ex:196
-#: lib/storyarn_web/live/screenplay_live/show.ex:144
+#: lib/storyarn_web/live/screenplay_live/show.ex:152
 #, elixir-autogen, elixir-format
 msgid "You don't have access to this project."
 msgstr "No tienes acceso a este proyecto."

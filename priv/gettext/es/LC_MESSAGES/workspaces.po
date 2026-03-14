@@ -11,17 +11,17 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/workspace_live/show.ex:208
+#: lib/storyarn_web/live/workspace_live/show.ex:219
 #, elixir-autogen, elixir-format
 msgid "%{count} days ago"
 msgstr "hace %{count} días"
 
-#: lib/storyarn_web/live/workspace_live/show.ex:207
+#: lib/storyarn_web/live/workspace_live/show.ex:218
 #, elixir-autogen, elixir-format
 msgid "%{count} hours ago"
 msgstr "hace %{count} horas"
 
-#: lib/storyarn_web/live/workspace_live/show.ex:206
+#: lib/storyarn_web/live/workspace_live/show.ex:217
 #, elixir-autogen, elixir-format
 msgid "%{count} min ago"
 msgstr "hace %{count} min"
@@ -62,7 +62,7 @@ msgstr "Crear espacio de trabajo"
 msgid "Create a new workspace"
 msgstr "Crear un nuevo espacio de trabajo"
 
-#: lib/storyarn_web/live/workspace_live/show.ex:144
+#: lib/storyarn_web/live/workspace_live/show.ex:147
 #, elixir-autogen, elixir-format
 msgid "Create your first project to get started"
 msgstr "Crea tu primer proyecto para comenzar"
@@ -77,17 +77,17 @@ msgstr "Creando..."
 msgid "Default source language for new projects in this workspace."
 msgstr "Idioma de origen predeterminado para los nuevos proyectos de este espacio de trabajo."
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:131
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:136
 #, elixir-autogen, elixir-format
 msgid "Delete"
 msgstr "Eliminar"
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:123
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:128
 #, elixir-autogen, elixir-format
 msgid "Delete Workspace"
 msgstr "Eliminar espacio de trabajo"
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:129
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:134
 #, elixir-autogen, elixir-format
 msgid "Delete workspace?"
 msgstr "Eliminar espacio de trabajo"
@@ -103,7 +103,7 @@ msgstr "Descripción"
 msgid "Email address"
 msgstr "Dirección de email"
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:180
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:185
 #, elixir-autogen, elixir-format
 msgid "Failed to delete workspace."
 msgstr "Error al eliminar el espacio de trabajo."
@@ -165,9 +165,9 @@ msgstr "Miembros"
 msgid "My Workspace"
 msgstr "Mi espacio de trabajo"
 
-#: lib/storyarn_web/live/workspace_live/show.ex:112
-#: lib/storyarn_web/live/workspace_live/show.ex:121
-#: lib/storyarn_web/live/workspace_live/show.ex:159
+#: lib/storyarn_web/live/workspace_live/show.ex:115
+#: lib/storyarn_web/live/workspace_live/show.ex:124
+#: lib/storyarn_web/live/workspace_live/show.ex:170
 #, elixir-autogen, elixir-format
 msgid "New Project"
 msgstr "Nuevo proyecto"
@@ -177,12 +177,12 @@ msgstr "Nuevo proyecto"
 msgid "New Workspace"
 msgstr "Nuevo espacio de trabajo"
 
-#: lib/storyarn_web/live/workspace_live/show.ex:142
+#: lib/storyarn_web/live/workspace_live/show.ex:145
 #, elixir-autogen, elixir-format
 msgid "No projects yet"
 msgstr "Sin proyectos aún"
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:120
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:121
 #, elixir-autogen, elixir-format
 msgid "Once you delete a workspace, there is no going back. All projects will be deleted."
 msgstr "Una vez que elimines un espacio de trabajo, no hay vuelta atrás. Todos los proyectos serán eliminados."
@@ -192,7 +192,7 @@ msgstr "Una vez que elimines un espacio de trabajo, no hay vuelta atrás. Todos 
 msgid "Only the workspace owner can change member roles."
 msgstr "Solo el propietario del espacio de trabajo puede cambiar roles."
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:187
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:192
 #, elixir-autogen, elixir-format
 msgid "Only the workspace owner can delete the workspace."
 msgstr "Solo el propietario del espacio de trabajo puede eliminarlo."
@@ -202,7 +202,7 @@ msgstr "Solo el propietario del espacio de trabajo puede eliminarlo."
 msgid "Only the workspace owner can remove members."
 msgstr "Solo el propietario del espacio de trabajo puede eliminar miembros."
 
-#: lib/storyarn_web/live/workspace_live/show.ex:221
+#: lib/storyarn_web/live/workspace_live/show.ex:244
 #, elixir-autogen, elixir-format
 msgid "Project created successfully."
 msgstr "Proyecto creado exitosamente."
@@ -227,7 +227,7 @@ msgstr "Guardar cambios"
 msgid "Saving..."
 msgstr "Guardando..."
 
-#: lib/storyarn_web/live/workspace_live/show.ex:98
+#: lib/storyarn_web/live/workspace_live/show.ex:100
 #, elixir-autogen, elixir-format
 msgid "Search projects..."
 msgstr "Buscar proyectos..."
@@ -247,7 +247,7 @@ msgstr "Idioma de origen"
 msgid "Team Members"
 msgstr "Miembros del equipo"
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:130
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:135
 #, elixir-autogen, elixir-format
 msgid "This action cannot be undone."
 msgstr "Esta acción no se puede deshacer."
@@ -288,7 +288,7 @@ msgstr "Configuración del espacio de trabajo"
 msgid "Workspace created successfully."
 msgstr "Espacio de trabajo creado exitosamente."
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:175
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:180
 #, elixir-autogen, elixir-format
 msgid "Workspace deleted."
 msgstr "Espacio de trabajo eliminado."
@@ -299,14 +299,15 @@ msgstr "Espacio de trabajo eliminado."
 msgid "Workspace name"
 msgstr "Nombre del espacio de trabajo"
 
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:50
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:40
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:44
-#: lib/storyarn_web/live/workspace_live/show.ex:33
+#: lib/storyarn_web/live/workspace_live/show.ex:35
 #, elixir-autogen, elixir-format
 msgid "Workspace not found."
 msgstr "Espacio de trabajo no encontrado."
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:159
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:164
 #, elixir-autogen, elixir-format
 msgid "Workspace updated successfully."
 msgstr "Espacio de trabajo actualizado exitosamente."
@@ -316,6 +317,7 @@ msgstr "Espacio de trabajo actualizado exitosamente."
 msgid "Workspaces help you organize projects for different teams or purposes."
 msgstr "Los espacios de trabajo te ayudan a organizar proyectos para diferentes equipos o propósitos."
 
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:42
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:32
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:36
 #, elixir-autogen, elixir-format
@@ -327,7 +329,7 @@ msgstr "No tienes permiso para gestionar este espacio de trabajo."
 msgid "You're already a member of this workspace."
 msgstr "Ya eres miembro de este espacio de trabajo."
 
-#: lib/storyarn_web/live/workspace_live/show.ex:205
+#: lib/storyarn_web/live/workspace_live/show.ex:216
 #, elixir-autogen, elixir-format
 msgid "just now"
 msgstr "justo ahora"
@@ -363,7 +365,7 @@ msgid "Invalid role."
 msgstr "Rol no válido."
 
 #: lib/storyarn_web/live/project_live/form.ex:99
-#: lib/storyarn_web/live/workspace_live/show.ex:117
+#: lib/storyarn_web/live/workspace_live/show.ex:120
 #, elixir-autogen, elixir-format
 msgid "Project limit reached for your plan"
 msgstr "Límite de proyectos alcanzado para tu plan"
@@ -372,3 +374,13 @@ msgstr "Límite de proyectos alcanzado para tu plan"
 #, elixir-autogen, elixir-format
 msgid "You have reached the workspace limit for your plan."
 msgstr "Has alcanzado el límite de espacios de trabajo para tu plan."
+
+#: lib/storyarn_web/live/workspace_live/show.ex:153
+#, elixir-autogen, elixir-format, fuzzy
+msgid "No projects found"
+msgstr "Sin proyectos aún"
+
+#: lib/storyarn_web/live/workspace_live/show.ex:155
+#, elixir-autogen, elixir-format
+msgid "Try a different search term"
+msgstr ""
