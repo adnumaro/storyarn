@@ -10,7 +10,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
   import StoryarnWeb.Components.SheetComponents
 
   alias Storyarn.Assets
-  alias Storyarn.Assets.BlobStore
+
   alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Sheets
@@ -142,23 +142,14 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
   defp do_upload_avatar_file(socket, project, filename, content_type, binary_data) do
     user = socket.assigns.current_user
     sheet = socket.assigns.sheet
-    safe_filename = Assets.sanitize_filename(filename)
-    key = Assets.generate_key(project, safe_filename)
 
-    blob_hash = BlobStore.compute_hash(binary_data)
-    ext = BlobStore.ext_from_content_type(content_type)
-    BlobStore.ensure_blob(project.id, blob_hash, ext, binary_data)
-
-    asset_attrs = %{
-      filename: safe_filename,
-      content_type: content_type,
-      size: byte_size(binary_data),
-      key: key,
-      blob_hash: blob_hash
-    }
-
-    with {:ok, url} <- Assets.storage_upload(key, binary_data, content_type),
-         {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)),
+    with {:ok, asset} <-
+           Assets.upload_binary_and_create_asset(
+             binary_data,
+             %{filename: filename, content_type: content_type},
+             project,
+             user
+           ),
          {:ok, _updated_sheet} <- Sheets.update_sheet(sheet, %{avatar_asset_id: asset.id}) do
       updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
       sheets_tree = Sheets.list_sheets_tree(project.id)
@@ -167,7 +158,6 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
       {:noreply, assign(socket, :sheet, updated_sheet)}
     else
       {:error, _reason} ->
-        Assets.storage_delete(key)
         send(self(), {:sheet_avatar, :error, dgettext("sheets", "Could not upload avatar.")})
         {:noreply, socket}
     end

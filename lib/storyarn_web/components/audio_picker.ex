@@ -30,7 +30,6 @@ defmodule StoryarnWeb.Components.AudioPicker do
   use StoryarnWeb, :live_component
 
   alias Storyarn.Assets
-  alias Storyarn.Assets.BlobStore
   alias Storyarn.Billing
   alias Storyarn.Collaboration
 
@@ -211,39 +210,24 @@ defmodule StoryarnWeb.Components.AudioPicker do
 
   defp do_process_upload(socket, project, filename, content_type, binary_data) do
     user = socket.assigns.current_user
-    safe_filename = Assets.sanitize_filename(filename)
-    key = Assets.generate_key(project, safe_filename)
+    attrs = %{filename: filename, content_type: content_type}
 
-    blob_hash = BlobStore.compute_hash(binary_data)
-    ext = BlobStore.ext_from_content_type(content_type)
-    BlobStore.ensure_blob(project.id, blob_hash, ext, binary_data)
+    case Assets.upload_binary_and_create_asset(binary_data, attrs, project, user) do
+      {:ok, asset} ->
+        audio_assets = [asset | socket.assigns.audio_assets]
 
-    asset_attrs = %{
-      filename: safe_filename,
-      content_type: content_type,
-      size: byte_size(binary_data),
-      key: key,
-      blob_hash: blob_hash
-    }
+        send(self(), {:audio_picker, :selected, asset.id})
+        Collaboration.broadcast_change({:assets, project.id}, :asset_created, %{})
 
-    with {:ok, url} <- Assets.storage_upload(key, binary_data, content_type),
-         {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)) do
-      audio_assets = [asset | socket.assigns.audio_assets]
+        {:noreply,
+         assign(socket,
+           audio_assets: audio_assets,
+           selected_asset: asset,
+           selected_asset_id: asset.id,
+           uploading: false
+         )}
 
-      send(self(), {:audio_picker, :selected, asset.id})
-      Collaboration.broadcast_change({:assets, project.id}, :asset_created, %{})
-
-      {:noreply,
-       assign(socket,
-         audio_assets: audio_assets,
-         selected_asset: asset,
-         selected_asset_id: asset.id,
-         uploading: false
-       )}
-    else
       {:error, _reason} ->
-        Assets.storage_delete(key)
-
         send(
           self(),
           {:audio_picker, :error, dgettext("sheets", "Could not upload audio file.")}

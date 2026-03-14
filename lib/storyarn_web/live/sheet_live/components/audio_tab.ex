@@ -9,7 +9,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
   use StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Assets
-  alias Storyarn.Assets.BlobStore
+
   alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Flows
@@ -187,30 +187,20 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
 
   defp do_process_upload(socket, project, node_id, filename, content_type, binary_data) do
     user = socket.assigns.current_user
-    safe_filename = Assets.sanitize_filename(filename)
-    key = Assets.generate_key(project, safe_filename)
 
-    blob_hash = BlobStore.compute_hash(binary_data)
-    ext = BlobStore.ext_from_content_type(content_type)
-    BlobStore.ensure_blob(project.id, blob_hash, ext, binary_data)
+    case Assets.upload_binary_and_create_asset(
+           binary_data,
+           %{filename: filename, content_type: content_type},
+           project,
+           user
+         ) do
+      {:ok, asset} ->
+        audio_assets = [asset | socket.assigns.audio_assets]
+        socket = assign(socket, audio_assets: audio_assets, uploading_node_id: nil)
+        Collaboration.broadcast_change({:assets, project.id}, :asset_created, %{})
+        update_node_audio(socket, node_id, asset.id)
 
-    asset_attrs = %{
-      filename: safe_filename,
-      content_type: content_type,
-      size: byte_size(binary_data),
-      key: key,
-      blob_hash: blob_hash
-    }
-
-    with {:ok, url} <- Assets.storage_upload(key, binary_data, content_type),
-         {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)) do
-      audio_assets = [asset | socket.assigns.audio_assets]
-      socket = assign(socket, audio_assets: audio_assets, uploading_node_id: nil)
-      Collaboration.broadcast_change({:assets, project.id}, :asset_created, %{})
-      update_node_audio(socket, node_id, asset.id)
-    else
       {:error, _reason} ->
-        Assets.storage_delete(key)
         send(self(), {:audio_tab, :error, dgettext("sheets", "Could not upload audio file.")})
         {:noreply, assign(socket, :uploading_node_id, nil)}
     end

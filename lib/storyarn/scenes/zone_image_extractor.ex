@@ -176,19 +176,12 @@ defmodule Storyarn.Scenes.ZoneImageExtractor do
   end
 
   defp upload_and_create_asset(temp_path, zone_name, project) do
-    filename = Assets.sanitize_filename("#{zone_name}_extract.webp")
-    key = Assets.generate_key(project, filename)
+    filename = "#{zone_name}_extract.webp"
     content_type = "image/webp"
 
-    with {:ok, binary_data} <- File.read(temp_path),
-         {:ok, url} <- Assets.storage_upload(key, binary_data, content_type) do
-      Assets.create_asset(project, %{
-        filename: filename,
-        content_type: content_type,
-        size: byte_size(binary_data),
-        key: key,
-        url: url
-      })
+    with {:ok, binary_data} <- File.read(temp_path) do
+      attrs = %{filename: filename, content_type: content_type}
+      Assets.upload_binary_and_create_asset(binary_data, attrs, project, nil)
     end
   end
 

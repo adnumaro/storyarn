@@ -297,25 +297,61 @@ defmodule Storyarn.Assets do
   end
 
   defp do_upload_and_create_asset(path, entry, project, user) do
-    key = generate_key(project, entry.client_name)
     content = File.read!(path)
+    metadata = extract_image_metadata(path, entry.client_type)
 
-    blob_hash = BlobStore.compute_hash(content)
-    ext = BlobStore.ext_from_content_type(entry.client_type)
-    BlobStore.ensure_blob(project.id, blob_hash, ext, content)
+    upload_binary_and_create_asset(
+      content,
+      %{filename: entry.client_name, content_type: entry.client_type, metadata: metadata},
+      project,
+      user
+    )
+  end
 
-    with {:ok, url} <- Storage.upload(key, content, entry.client_type) do
-      metadata = extract_image_metadata(path, entry.client_type)
+  @doc """
+  Uploads binary data to storage, persists a content-addressed blob for
+  snapshot restoration, and creates the asset record.
 
-      case create_asset(project, user, %{
-             filename: entry.client_name,
-             content_type: entry.client_type,
-             size: entry.client_size,
-             key: key,
-             url: url,
-             metadata: metadata,
-             blob_hash: blob_hash
-           }) do
+  This is the single entry point for all asset creation from raw binary data.
+  LiveView file uploads should use `upload_and_create_asset/4` instead.
+
+  ## Attrs
+
+    * `:filename` — original filename (will be sanitized)
+    * `:content_type` — MIME type
+    * `:metadata` — optional extra metadata map (default `%{}`)
+
+  Returns `{:ok, asset}` or `{:error, reason}`.
+  """
+  @spec upload_binary_and_create_asset(binary(), map(), project(), user() | nil) ::
+          {:ok, asset()} | {:error, term()}
+  def upload_binary_and_create_asset(
+        binary_data,
+        %{filename: filename, content_type: content_type} = attrs,
+        %Project{} = project,
+        user \\ nil
+      ) do
+    safe_filename = sanitize_filename(filename)
+    key = generate_key(project, safe_filename)
+
+    blob_hash = BlobStore.compute_hash(binary_data)
+    ext = BlobStore.ext_from_content_type(content_type)
+
+    # Blob storage is content-addressed and idempotent — orphan blobs are
+    # harmless and will be reused if the same content is uploaded again.
+    with {:ok, _blob_key} <- BlobStore.ensure_blob(project.id, blob_hash, ext, binary_data),
+         {:ok, url} <- Storage.upload(key, binary_data, content_type) do
+      asset_attrs = %{
+        filename: safe_filename,
+        content_type: content_type,
+        size: byte_size(binary_data),
+        key: key,
+        url: url,
+        metadata: Map.get(attrs, :metadata, %{}),
+        blob_hash: blob_hash
+      }
+
+      case do_create_asset(project, user, asset_attrs) do
         {:ok, asset} ->
           {:ok, asset}
 
@@ -325,6 +361,9 @@ defmodule Storyarn.Assets do
       end
     end
   end
+
+  defp do_create_asset(project, nil, attrs), do: create_asset(project, attrs)
+  defp do_create_asset(project, user, attrs), do: create_asset(project, user, attrs)
 
   defp extract_image_metadata(path, content_type) do
     if String.starts_with?(content_type, "image/") and ImageProcessor.available?() do

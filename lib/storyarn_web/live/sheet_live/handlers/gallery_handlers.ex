@@ -151,25 +151,19 @@ defmodule StoryarnWeb.SheetLive.Handlers.GalleryHandlers do
          helpers
        ) do
     if Assets.allowed_content_type?(content_type) do
-      safe_filename = Assets.sanitize_filename(filename)
-      key = Assets.generate_key(project, safe_filename)
-
-      asset_attrs = %{
-        filename: safe_filename,
-        content_type: content_type,
-        size: byte_size(binary_data),
-        key: key
-      }
-
-      with {:ok, url} <- Assets.storage_upload(key, binary_data, content_type),
-           {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)),
+      with {:ok, asset} <-
+             Assets.upload_binary_and_create_asset(
+               binary_data,
+               %{filename: filename, content_type: content_type},
+               project,
+               user
+             ),
            {:ok, _gi} <- Sheets.add_gallery_image(block, asset.id) do
         helpers.maybe_create_version.(socket)
         helpers.notify_parent.(socket, :saved)
         {:noreply, helpers.reload_blocks.(socket)}
       else
         {:error, _} ->
-          Assets.storage_delete(key)
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not upload image."))}
       end
     else

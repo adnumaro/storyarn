@@ -7,6 +7,7 @@ defmodule StoryarnWeb.AssetLive.Index do
   import StoryarnWeb.AssetLive.Components.AssetComponents
 
   alias Storyarn.Assets
+  alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Projects
 
@@ -304,7 +305,7 @@ defmodule StoryarnWeb.AssetLive.Index do
       project = socket.assigns.project
       user = socket.assigns.current_scope.user
 
-      case Storyarn.Billing.can_upload_asset_for_project?(project, byte_size(binary_data)) do
+      case Billing.can_upload_asset_for_project?(project, byte_size(binary_data)) do
         :ok ->
           do_upload_file(socket, project, user, filename, content_type, binary_data)
 
@@ -323,39 +324,27 @@ defmodule StoryarnWeb.AssetLive.Index do
   end
 
   defp do_upload_file(socket, project, user, filename, content_type, binary_data) do
-    safe_filename = Assets.sanitize_filename(filename)
-    key = Assets.generate_key(project, safe_filename)
+    case Assets.upload_binary_and_create_asset(
+           binary_data,
+           %{filename: filename, content_type: content_type},
+           project,
+           user
+         ) do
+      {:ok, asset} ->
+        type_counts = Assets.count_assets_by_type(project.id)
+        usages = Assets.get_asset_usages(project.id, asset.id)
+        broadcast_asset_change(project.id, :asset_created)
 
-    blob_hash = Storyarn.Assets.BlobStore.compute_hash(binary_data)
-    ext = Storyarn.Assets.BlobStore.ext_from_content_type(content_type)
-    Storyarn.Assets.BlobStore.ensure_blob(project.id, blob_hash, ext, binary_data)
+        {:noreply,
+         socket
+         |> assign(:uploading, false)
+         |> assign(:type_counts, type_counts)
+         |> assign(:selected_asset, asset)
+         |> assign(:asset_usages, usages)
+         |> load_assets()
+         |> put_flash(:info, dgettext("assets", "Asset uploaded successfully."))}
 
-    asset_attrs = %{
-      filename: safe_filename,
-      content_type: content_type,
-      size: byte_size(binary_data),
-      key: key,
-      blob_hash: blob_hash
-    }
-
-    with {:ok, url} <- Assets.storage_upload(key, binary_data, content_type),
-         {:ok, asset} <- Assets.create_asset(project, user, Map.put(asset_attrs, :url, url)) do
-      type_counts = Assets.count_assets_by_type(project.id)
-      usages = Assets.get_asset_usages(project.id, asset.id)
-      broadcast_asset_change(project.id, :asset_created)
-
-      {:noreply,
-       socket
-       |> assign(:uploading, false)
-       |> assign(:type_counts, type_counts)
-       |> assign(:selected_asset, asset)
-       |> assign(:asset_usages, usages)
-       |> load_assets()
-       |> put_flash(:info, dgettext("assets", "Asset uploaded successfully."))}
-    else
       {:error, reason} ->
-        Assets.storage_delete(key)
-
         {:noreply,
          socket
          |> assign(:uploading, false)
