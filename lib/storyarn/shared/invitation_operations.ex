@@ -7,7 +7,8 @@ defmodule Storyarn.Shared.InvitationOperations do
   - `membership_schema` — e.g., ProjectMembership or WorkspaceMembership
   - `parent_key` — e.g., :project_id or :workspace_id
   - `rate_limit_context` — e.g., "project" or "workspace"
-  - `notifier_module` — e.g., ProjectNotifier or WorkspaceNotifier
+  - `parent_assoc` — e.g., :project or :workspace
+  - `template_fn` — e.g., &Templates.project_invitation/6
   - `invitation_path_prefix` — e.g., "/projects/invitations" or "/workspaces/invitations"
   - `memberships_module` — e.g., Projects.Memberships or Workspaces.Memberships
   - `preload_after_insert` — e.g., [:project, :invited_by] or [:workspace, :invited_by]
@@ -18,6 +19,7 @@ defmodule Storyarn.Shared.InvitationOperations do
   alias Storyarn.Billing
   alias Storyarn.RateLimiter
   alias Storyarn.Repo
+  alias Storyarn.Shared.InvitationNotifier
   alias Storyarn.Shared.TimeHelpers
 
   @doc """
@@ -182,7 +184,7 @@ defmodule Storyarn.Shared.InvitationOperations do
       {:ok, invitation} ->
         invitation = Repo.preload(invitation, config.preload_after_insert)
         url = invitation_url(config.invitation_path_prefix, encoded_token)
-        config.notifier_module.deliver_invitation(invitation, url, opts)
+        InvitationNotifier.deliver_invitation(config, invitation, url, opts)
         {:ok, invitation}
 
       {:error, %Ecto.Changeset{errors: errors}} = error ->

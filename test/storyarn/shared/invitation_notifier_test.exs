@@ -1,12 +1,20 @@
-defmodule Storyarn.Workspaces.WorkspaceNotifierTest do
+defmodule Storyarn.Shared.InvitationNotifierTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Workspaces.{WorkspaceInvitation, WorkspaceNotifier}
+  alias Storyarn.Emails.Templates
+  alias Storyarn.Shared.InvitationNotifier
+  alias Storyarn.Workspaces.WorkspaceInvitation
 
   import Storyarn.AccountsFixtures
   import Storyarn.WorkspacesFixtures
 
-  describe "deliver_invitation/2" do
+  @config %{
+    invitation_schema: WorkspaceInvitation,
+    parent_assoc: :workspace,
+    template_fn: &Templates.workspace_invitation/6
+  }
+
+  describe "deliver_invitation/4" do
     setup do
       owner = user_fixture()
       workspace = workspace_fixture(owner, %{name: "Test Workspace"})
@@ -29,17 +37,17 @@ defmodule Storyarn.Workspaces.WorkspaceNotifierTest do
     end
 
     test "delivers email to the invited address", %{invitation: invitation, url: url} do
-      assert {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, url)
+      assert {:ok, email} = InvitationNotifier.deliver_invitation(@config, invitation, url)
       assert email.to == [{"", "invitee@example.com"}]
     end
 
     test "sets the correct from address", %{invitation: invitation, url: url} do
-      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, url)
+      {:ok, email} = InvitationNotifier.deliver_invitation(@config, invitation, url)
       assert {"Storyarn", "noreply@storyarn.com"} = email.from
     end
 
-    test "includes workspace name in subject", %{invitation: invitation, url: url} do
-      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, url)
+    test "includes entity name in subject", %{invitation: invitation, url: url} do
+      {:ok, email} = InvitationNotifier.deliver_invitation(@config, invitation, url)
       assert email.subject =~ "Test Workspace"
     end
 
@@ -48,17 +56,17 @@ defmodule Storyarn.Workspaces.WorkspaceNotifierTest do
       url: url,
       encoded_token: encoded_token
     } do
-      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, url)
+      {:ok, email} = InvitationNotifier.deliver_invitation(@config, invitation, url)
       assert email.text_body =~ "/workspaces/invitations/#{encoded_token}"
     end
 
-    test "includes workspace name in body", %{invitation: invitation, url: url} do
-      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, url)
+    test "includes entity name in body", %{invitation: invitation, url: url} do
+      {:ok, email} = InvitationNotifier.deliver_invitation(@config, invitation, url)
       assert email.text_body =~ "Test Workspace"
     end
 
     test "includes the role in body", %{invitation: invitation, url: url} do
-      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, url)
+      {:ok, email} = InvitationNotifier.deliver_invitation(@config, invitation, url)
       assert email.text_body =~ "member"
     end
 
@@ -74,7 +82,7 @@ defmodule Storyarn.Workspaces.WorkspaceNotifierTest do
 
       invitation = %{invitation | invited_by: owner_with_name}
 
-      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, url)
+      {:ok, email} = InvitationNotifier.deliver_invitation(@config, invitation, url)
       assert email.text_body =~ "John Doe"
     end
 
@@ -83,19 +91,19 @@ defmodule Storyarn.Workspaces.WorkspaceNotifierTest do
       url: url,
       owner: owner
     } do
-      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, url)
+      {:ok, email} = InvitationNotifier.deliver_invitation(@config, invitation, url)
       assert email.text_body =~ owner.email
     end
 
     test "includes expiration days in body", %{invitation: invitation, url: url} do
-      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, url)
+      {:ok, email} = InvitationNotifier.deliver_invitation(@config, invitation, url)
       days = WorkspaceInvitation.validity_in_days()
       assert email.text_body =~ "#{days} days"
     end
 
     test "returns ok tuple with Swoosh email struct", %{invitation: invitation, url: url} do
       assert {:ok, %Swoosh.Email{} = email} =
-               WorkspaceNotifier.deliver_invitation(invitation, url)
+               InvitationNotifier.deliver_invitation(@config, invitation, url)
 
       assert email.to != []
       assert email.from != nil

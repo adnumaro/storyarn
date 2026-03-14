@@ -1,22 +1,17 @@
 defmodule Storyarn.Workspaces.Invitations do
   @moduledoc false
 
+  alias Storyarn.Emails.Templates
   alias Storyarn.Shared.InvitationOperations
-
-  alias Storyarn.Workspaces.{
-    Memberships,
-    Workspace,
-    WorkspaceInvitation,
-    WorkspaceMembership,
-    WorkspaceNotifier
-  }
+  alias Storyarn.Workspaces.{Memberships, Workspace, WorkspaceInvitation, WorkspaceMembership}
 
   @config %{
     invitation_schema: WorkspaceInvitation,
     membership_schema: WorkspaceMembership,
     parent_key: :workspace_id,
+    parent_assoc: :workspace,
     rate_limit_context: "workspace",
-    notifier_module: WorkspaceNotifier,
+    template_fn: &Templates.workspace_invitation/6,
     invitation_path_prefix: "/workspaces/invitations",
     memberships_module: Memberships,
     preload_after_insert: [:workspace, :invited_by]

@@ -1,22 +1,17 @@
 defmodule Storyarn.Projects.Invitations do
   @moduledoc false
 
-  alias Storyarn.Projects.{
-    Memberships,
-    Project,
-    ProjectInvitation,
-    ProjectMembership,
-    ProjectNotifier
-  }
-
+  alias Storyarn.Emails.Templates
+  alias Storyarn.Projects.{Memberships, Project, ProjectInvitation, ProjectMembership}
   alias Storyarn.Shared.InvitationOperations
 
   @config %{
     invitation_schema: ProjectInvitation,
     membership_schema: ProjectMembership,
     parent_key: :project_id,
+    parent_assoc: :project,
     rate_limit_context: "project",
-    notifier_module: ProjectNotifier,
+    template_fn: &Templates.project_invitation/6,
     invitation_path_prefix: "/projects/invitations",
     memberships_module: Memberships,
     preload_after_insert: [:project, :invited_by]
