@@ -29,6 +29,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
   import Ecto.Query
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
 
   alias Storyarn.Sheets.{EntityReference, Sheet}
 
@@ -308,7 +309,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   # Private functions
 
   defp batch_insert_references(source_type, source_id, references) do
-    now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+    now = TimeHelpers.now() |> DateTime.to_naive()
 
     entries =
       references

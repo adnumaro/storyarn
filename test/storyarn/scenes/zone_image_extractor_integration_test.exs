@@ -213,6 +213,18 @@ defmodule Storyarn.Scenes.ZoneImageExtractorIntegrationTest do
       assert max(w, h) >= 1000
     end
 
+    test "extracts using the asset key even when the public URL is remote", ctx do
+      zone = %SceneZone{name: "Remote URL", vertices: rect(15.0, 15.0, 75.0, 75.0)}
+
+      parent_map = %{
+        background_asset_id: ctx.bg_asset.id,
+        background_asset: %{ctx.bg_asset | url: "https://cdn.example.test/background.jpg"}
+      }
+
+      assert {:ok, asset, {_w, _h}} = ZoneImageExtractor.extract(parent_map, zone, ctx.project)
+      assert asset.content_type == "image/webp"
+    end
+
     test "extracted file exists on disk and is valid WebP", ctx do
       zone = %SceneZone{name: "Disk Check", vertices: rect(10.0, 10.0, 60.0, 60.0)}
 

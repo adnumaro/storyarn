@@ -2,6 +2,7 @@ defmodule StoryarnWeb.DocsLive.Show do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Docs
+  alias StoryarnWeb.FlowLive.Helpers.HtmlSanitizer
 
   @impl true
   def mount(_params, _session, socket) do
@@ -114,7 +115,7 @@ defmodule StoryarnWeb.DocsLive.Show do
       sidebar_open={@sidebar_open}
     >
       <div :if={@guide} class="docs-content">
-        {Phoenix.HTML.raw(@guide.body)}
+        {Phoenix.HTML.raw(HtmlSanitizer.sanitize_html(@guide.body))}
       </div>
 
       <div :if={!@guide} class="text-center py-20">

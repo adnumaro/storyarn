@@ -119,9 +119,17 @@ defmodule Storyarn.Exports.ExportOptions do
 
   defp get_bool(attrs, key, default) do
     str_key = to_string(key)
-    val = attrs[key]
-    val = if is_nil(val), do: attrs[str_key], else: val
-    if is_nil(val), do: default, else: !!val
+
+    case Map.get(attrs, key, Map.get(attrs, str_key)) do
+      nil -> default
+      true -> true
+      false -> false
+      "true" -> true
+      "false" -> false
+      "1" -> true
+      "0" -> false
+      val -> !!val
+    end
   end
 
   defp get_list_or_all(attrs, key) do

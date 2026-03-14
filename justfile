@@ -58,6 +58,7 @@ server:
 # Run all quality checks: Biome fix, Credo strict, Elixir tests, JS tests, E2E tests
 quality:
     cd assets && npx biome check --write js/
+    mix convention.check
     mix credo --strict
     mix test
     mix test.e2e

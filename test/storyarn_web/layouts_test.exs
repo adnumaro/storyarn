@@ -96,6 +96,20 @@ defmodule StoryarnWeb.LayoutsTest do
       assert html =~ ~s(logo-light-64.png)
       assert html =~ "Storyarn"
     end
+
+    test "supports forcing a dark theme for the public subtree" do
+      html =
+        render_component(&Layouts.public/1,
+          flash: %{},
+          current_scope: nil,
+          theme: "dark",
+          inner_block: inner_block("<p>Dark landing</p>")
+        )
+
+      assert html =~ ~s(data-theme="dark")
+      assert html =~ ~s(color-scheme: dark;)
+      assert html =~ "backdrop-blur-xl"
+    end
   end
 
   # ── auth/1 ──────────────────────────────────────────────────────────

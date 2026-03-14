@@ -11,6 +11,20 @@ defmodule Storyarn.Screenplays.ElementGrouping do
 
   @dialogue_group_types ScreenplayElement.dialogue_group_types()
   @non_mappeable_types ScreenplayElement.non_mappeable_types()
+  @classifiable_element_types %{
+    "scene_heading" => :scene_heading,
+    "action" => :action,
+    "character" => :character,
+    "dialogue" => :dialogue,
+    "parenthetical" => :parenthetical,
+    "transition" => :transition,
+    "dual_dialogue" => :dual_dialogue,
+    "conditional" => :conditional,
+    "instruction" => :instruction,
+    "response" => :response,
+    "hub_marker" => :hub_marker,
+    "jump_marker" => :jump_marker
+  }
 
   @doc """
   Computes dialogue groups from element adjacency.
@@ -177,10 +191,7 @@ defmodule Storyarn.Screenplays.ElementGrouping do
   end
 
   defp classify_element_type(type) when type in @non_mappeable_types, do: :non_mappeable
-  # Safe: input is validated against a fixed allowlist in ScreenplayElement.create_changeset.
-  # Uses String.to_atom/1 (not to_existing_atom) because orphan types like "parenthetical"
-  # may not exist as atoms elsewhere in the codebase.
-  defp classify_element_type(type), do: String.to_atom(type)
+  defp classify_element_type(type), do: Map.fetch!(@classifiable_element_types, type)
 
   defp attach_responses(groups) do
     {result, _} =

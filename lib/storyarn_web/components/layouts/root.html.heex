@@ -14,9 +14,6 @@
       name="sentry-dsn"
       content={Application.get_env(:sentry, :dsn)}
     />
-    <script>
-      (()=>{try{const t=localStorage.getItem("phx:theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");document.documentElement.setAttribute("data-theme",t)}catch(e){}})();
-    </script>
     <.live_title default="Storyarn" suffix=" · Storyarn">
       {assigns[:page_title]}
     </.live_title>

@@ -48,9 +48,11 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
         <li :if={!flow.is_main}>
           <button
             type="button"
+            id={"flow-tree-set-main-#{flow.id}"}
             phx-click="set_main_flow"
             phx-value-id={to_string(flow.id)}
-            onclick="event.stopPropagation();"
+            phx-hook="StopClick"
+            data-stop-propagation
           >
             <.icon name="star" class="size-4" />
             {dgettext("flows", "Set as main")}

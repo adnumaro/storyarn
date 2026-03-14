@@ -241,11 +241,14 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
         <:actions :if={@can_edit}>
           <button
             type="button"
+            id={"#{@entity_type}-create-child-#{@entity_id_str}"}
             phx-click={@create_child_event}
             phx-value-parent-id={@entity.id}
             class="btn btn-ghost btn-xs btn-square"
             title={@create_child_title}
-            onclick="event.preventDefault(); event.stopPropagation();"
+            phx-hook="StopClick"
+            data-prevent-default
+            data-stop-propagation
           >
             <.icon name="plus" class="size-3" />
           </button>
@@ -254,6 +257,7 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
           <.entity_menu
             entity_id={@entity_id_str}
             entity={@entity}
+            entity_type={@entity_type}
             set_pending_delete_event={@set_pending_delete_event}
             delete_modal_id={@delete_modal_id}
             delete_label={@delete_label}
@@ -299,11 +303,14 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
         <:actions :if={@can_edit}>
           <button
             type="button"
+            id={"#{@entity_type}-create-child-#{@entity_id_str}"}
             phx-click={@create_child_event}
             phx-value-parent-id={@entity.id}
             class="btn btn-ghost btn-xs btn-square"
             title={@create_child_title}
-            onclick="event.preventDefault(); event.stopPropagation();"
+            phx-hook="StopClick"
+            data-prevent-default
+            data-stop-propagation
           >
             <.icon name="plus" class="size-3" />
           </button>
@@ -312,6 +319,7 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
           <.entity_menu
             entity_id={@entity_id_str}
             entity={@entity}
+            entity_type={@entity_type}
             set_pending_delete_event={@set_pending_delete_event}
             delete_modal_id={@delete_modal_id}
             delete_label={@delete_label}
@@ -327,6 +335,7 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
 
   attr :entity_id, :string, required: true
   attr :entity, :map, required: true
+  attr :entity_type, :string, required: true
   attr :set_pending_delete_event, :string, required: true
   attr :delete_modal_id, :string, required: true
   attr :delete_label, :string, required: true
@@ -337,9 +346,12 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
     <div class="dropdown dropdown-end">
       <button
         type="button"
+        id={"#{@entity_type}-#{@entity_id}-menu-button"}
         tabindex="0"
         class="btn btn-ghost btn-xs btn-square"
-        onclick="event.preventDefault(); event.stopPropagation();"
+        phx-hook="StopClick"
+        data-prevent-default
+        data-stop-propagation
       >
         <.icon name="more-horizontal" class="size-4" />
       </button>
@@ -351,12 +363,14 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
         <li>
           <button
             type="button"
+            id={"#{@entity_type}-#{@entity_id}-delete-button"}
             class="text-error"
             phx-click={
               JS.push(@set_pending_delete_event, value: %{id: @entity_id})
               |> show_modal(@delete_modal_id)
             }
-            onclick="event.stopPropagation();"
+            phx-hook="StopClick"
+            data-stop-propagation
           >
             <.icon name="trash-2" class="size-4" />
             {@delete_label}

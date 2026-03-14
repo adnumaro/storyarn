@@ -136,6 +136,22 @@ defmodule Storyarn.Exports.ExportOptionsTest do
       assert opts.validate_before_export == false
       assert opts.pretty_print == false
     end
+
+    test "string booleans are parsed explicitly" do
+      {:ok, opts} =
+        ExportOptions.new(%{
+          "format" => "storyarn",
+          "include_sheets" => "false",
+          "include_flows" => "true",
+          "validate_before_export" => "false",
+          "pretty_print" => "true"
+        })
+
+      assert opts.include_sheets == false
+      assert opts.include_flows == true
+      assert opts.validate_before_export == false
+      assert opts.pretty_print == true
+    end
   end
 
   # =============================================================================

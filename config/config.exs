@@ -87,9 +87,6 @@ config :storyarn, StoryarnWeb.Gettext,
   default_locale: "en",
   locales: ~w(en es)
 
-# Disable Tesla deprecation warning (used by OAuth libraries)
-config :tesla, disable_deprecated_builder_warning: true
-
 # ExAws configuration for Cloudflare R2 (S3-compatible)
 # Credentials are configured in runtime.exs
 config :ex_aws,

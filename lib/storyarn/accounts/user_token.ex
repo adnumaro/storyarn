@@ -5,7 +5,7 @@ defmodule Storyarn.Accounts.UserToken do
   use Ecto.Schema
   import Ecto.Query
   alias Storyarn.Accounts.UserToken
-  alias Storyarn.Shared.TokenGenerator
+  alias Storyarn.Shared.{TimeHelpers, TokenGenerator}
 
   # It is very important to keep the magic link token expiry short,
   # since someone with access to the email may take over the account.
@@ -55,7 +55,7 @@ defmodule Storyarn.Accounts.UserToken do
   """
   def build_session_token(user) do
     token = :crypto.strong_rand_bytes(32)
-    dt = user.authenticated_at || DateTime.utc_now(:second)
+    dt = user.authenticated_at || TimeHelpers.now()
     {token, %UserToken{token: token, context: "session", user_id: user.id, authenticated_at: dt}}
   end
 

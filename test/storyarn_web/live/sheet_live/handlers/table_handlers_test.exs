@@ -472,6 +472,42 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
       assert updated_row.cells[ctx.option_col.slug] == "weapon"
     end
 
+    test "preserves underscores and normalizes spaces and hyphens in generated keys", ctx do
+      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
+
+      send_to_content_tab(view, "add_table_cell_option", %{
+        "key" => "Enter",
+        "column-id" => to_string(ctx.option_col.id),
+        "row-id" => to_string(ctx.default_row.id),
+        "column-slug" => ctx.option_col.slug,
+        "value" => "Magic_Item-XL"
+      })
+
+      updated_col = Sheets.get_table_column!(ctx.option_col.block_id, ctx.option_col.id)
+      assert hd(updated_col.config["options"])["key"] == "magic_item_xl"
+
+      updated_row = Sheets.get_table_row!(ctx.default_row.id)
+      assert updated_row.cells[ctx.option_col.slug] == "magic_item_xl"
+    end
+
+    test "falls back to option for punctuation-only labels", ctx do
+      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
+
+      send_to_content_tab(view, "add_table_cell_option", %{
+        "key" => "Enter",
+        "column-id" => to_string(ctx.option_col.id),
+        "row-id" => to_string(ctx.default_row.id),
+        "column-slug" => ctx.option_col.slug,
+        "value" => "_."
+      })
+
+      updated_col = Sheets.get_table_column!(ctx.option_col.block_id, ctx.option_col.id)
+      assert hd(updated_col.config["options"])["key"] == "option"
+
+      updated_row = Sheets.get_table_row!(ctx.default_row.id)
+      assert updated_row.cells[ctx.option_col.slug] == "option"
+    end
+
     test "does nothing with empty label", ctx do
       {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
 
@@ -553,6 +589,19 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
       updated = Sheets.get_table_column!(ctx.grade_col.block_id, ctx.grade_col.id)
       assert length(updated.config["options"]) == 1
       assert hd(updated.config["options"])["value"] == "A+"
+    end
+
+    test "normalizes punctuation-only values to option", ctx do
+      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
+
+      send_to_content_tab(view, "add_table_column_option_keydown", %{
+        "key" => "Enter",
+        "column-id" => to_string(ctx.grade_col.id),
+        "value" => "_."
+      })
+
+      updated = Sheets.get_table_column!(ctx.grade_col.block_id, ctx.grade_col.id)
+      assert hd(updated.config["options"])["key"] == "option"
     end
 
     test "ignores non-Enter keydown", ctx do
@@ -653,6 +702,21 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
       first_option = hd(updated.config["options"])
       assert first_option["value"] == "Gold"
       assert first_option["key"] == "gold"
+    end
+
+    test "keeps underscores when regenerating keys", ctx do
+      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
+
+      send_to_content_tab(view, "update_table_column_option", %{
+        "column-id" => to_string(ctx.tier_col.id),
+        "index" => "0",
+        "value" => "Ice_Blast"
+      })
+
+      updated = Sheets.get_table_column!(ctx.tier_col.block_id, ctx.tier_col.id)
+      first_option = hd(updated.config["options"])
+      assert first_option["value"] == "Ice_Blast"
+      assert first_option["key"] == "ice_blast"
     end
   end
 

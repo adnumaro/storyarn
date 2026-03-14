@@ -533,12 +533,24 @@ defmodule StoryarnWeb.Layouts do
     default: nil,
     doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
 
+  attr :theme, :string,
+    default: nil,
+    values: ~w(light dark),
+    doc: "optional daisyUI theme override for the public layout subtree"
+
   slot :inner_block, required: true
 
   def public(assigns) do
     ~H"""
-    <div class="min-h-screen flex flex-col">
-      <header class="navbar px-4 sm:px-6 lg:px-8">
+    <div
+      class="min-h-screen flex flex-col"
+      data-theme={@theme}
+      style={@theme && "color-scheme: #{@theme};"}
+    >
+      <header class={[
+        "navbar px-4 sm:px-0 mx-auto w-[min(calc(100%-48px),1280px)]",
+        @theme == "dark" && "relative z-20 mt-4 rounded-full border border-base-content/8 bg-base-100/70 px-5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.28)]"
+      ]}>
         <div class="flex-1">
           <.link navigate="/" class="flex items-center gap-2">
             <.app_logo class="w-8 h-8" />
@@ -585,7 +597,10 @@ defmodule StoryarnWeb.Layouts do
       <%!-- Mobile nav overlay --%>
       <nav
         id="mobile-nav"
-        class="hidden md:hidden fixed inset-0 z-50 bg-base-100"
+        class={[
+          "hidden md:hidden fixed inset-0 z-50 bg-base-100",
+          @theme == "dark" && "bg-base-100/95 backdrop-blur-xl"
+        ]}
         phx-click-away={JS.hide(to: "#mobile-nav", transition: "fade-out")}
       >
         <div class="flex items-center justify-between px-4 py-3">
@@ -861,7 +876,7 @@ defmodule StoryarnWeb.Layouts do
         guides={@guides}
         guide={@guide}
       >
-        <div class="prose">{raw(@guide.body)}</div>
+        <div class="prose">{raw(HtmlSanitizer.sanitize_html(@guide.body))}</div>
       </Layouts.docs>
   """
   attr :flash, :map, required: true
@@ -1077,18 +1092,19 @@ defmodule StoryarnWeb.Layouts do
       accent = ColorUtils.hex_to_oklch(a)
       accent_dark = ColorUtils.darken_oklch(a)
 
-      Phoenix.HTML.raw("""
-      <style>
-        :root, [data-theme="light"], [data-theme="dark"] {
-          --color-primary: #{primary};
-          --color-accent: #{accent};
-          --gradient-primary-from: #{primary};
-          --gradient-primary-to: #{primary_dark};
-          --gradient-accent-from: #{accent};
-          --gradient-accent-to: #{accent_dark};
-        }
-      </style>
-      """)
+      {:safe,
+       """
+       <style>
+         :root, [data-theme="light"], [data-theme="dark"] {
+           --color-primary: #{primary};
+           --color-accent: #{accent};
+           --gradient-primary-from: #{primary};
+           --gradient-primary-to: #{primary_dark};
+           --gradient-accent-from: #{accent};
+           --gradient-accent-to: #{accent_dark};
+         }
+       </style>
+       """}
     end
   end
 

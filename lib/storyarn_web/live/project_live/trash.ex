@@ -5,6 +5,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
   use StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Projects
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
 
   @impl true
@@ -150,7 +151,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
   end
 
   defp format_time_ago(datetime) do
-    now = DateTime.utc_now()
+    now = TimeHelpers.now()
     diff = DateTime.diff(now, datetime, :second)
 
     cond do

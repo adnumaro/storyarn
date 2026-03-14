@@ -29,19 +29,18 @@ defmodule Storyarn.Scenes.ZoneImageExtractor do
   def extract(parent_map, %SceneZone{} = zone, project) do
     zone_bbox = bounding_box(zone.vertices)
 
-    with {:ok, asset} <- get_background_asset(parent_map),
-         {:ok, img} <- open_image(asset),
-         {:ok, cropped} <- crop_to_bbox(img, zone_bbox),
-         {:ok, final} <- ensure_min_size(cropped),
-         {:ok, sharpened} <- sharpen(final),
-         dims <- {Image.width(sharpened), Image.height(sharpened)},
-         {:ok, temp_path} <- write_temp(sharpened),
-         {:ok, uploaded_asset} <- upload_and_create_asset(temp_path, zone.name, project) do
-      cleanup_temp(temp_path)
-      {:ok, uploaded_asset, dims}
-    else
+    case do_extract(parent_map, zone_bbox, zone.name, project) do
+      {:ok, uploaded_asset, dims, temp_path} ->
+        cleanup_temp(temp_path)
+        {:ok, uploaded_asset, dims}
+
       {:error, :no_background_image} = err ->
         err
+
+      {:error, reason, temp_path} ->
+        cleanup_temp(temp_path)
+        Logger.warning("[ZoneImageExtractor] Failed: #{inspect(reason)}")
+        {:error, :image_extraction_failed}
 
       {:error, reason} ->
         Logger.warning("[ZoneImageExtractor] Failed: #{inspect(reason)}")
@@ -64,6 +63,10 @@ defmodule Storyarn.Scenes.ZoneImageExtractor do
 
   defp get_background_asset(%{background_asset_id: nil}), do: {:error, :no_background_image}
 
+  defp get_background_asset(%{background_asset: %{key: key} = asset}) when is_binary(key) do
+    {:ok, asset}
+  end
+
   defp get_background_asset(%{background_asset: %{url: url}}) when is_binary(url) do
     {:ok, %{url: url}}
   end
@@ -73,6 +76,34 @@ defmodule Storyarn.Scenes.ZoneImageExtractor do
   end
 
   defp get_background_asset(_), do: {:error, :no_background_image}
+
+  defp do_extract(parent_map, zone_bbox, zone_name, project) do
+    with {:ok, asset} <- get_background_asset(parent_map),
+         {:ok, img} <- open_image(asset),
+         {:ok, cropped} <- crop_to_bbox(img, zone_bbox),
+         {:ok, final} <- ensure_min_size(cropped),
+         {:ok, sharpened} <- sharpen(final),
+         dims <- {Image.width(sharpened), Image.height(sharpened)},
+         {:ok, temp_path} <- write_temp(sharpened) do
+      case upload_and_create_asset(temp_path, zone_name, project) do
+        {:ok, uploaded_asset} -> {:ok, uploaded_asset, dims, temp_path}
+        {:error, reason} -> {:error, reason, temp_path}
+      end
+    end
+  end
+
+  defp open_image(%{key: key}) when is_binary(key) do
+    case Assets.storage_download(key) do
+      {:ok, binary_data} ->
+        case Image.open(binary_data) do
+          {:ok, _} = ok -> ok
+          {:error, reason} -> {:error, {:open_failed, reason}}
+        end
+
+      {:error, reason} ->
+        {:error, {:download_failed, reason}}
+    end
+  end
 
   defp open_image(%{url: url}) do
     case resolve_path(url) do

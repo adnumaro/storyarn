@@ -805,13 +805,6 @@ defmodule StoryarnWeb.VersionLive.Viewer do
   attr :mono, :boolean, default: false
 
   defp prop_row(assigns) do
-    assigns =
-      if assigns.rich_text do
-        assign(assigns, :sanitized, HtmlSanitizer.sanitize_html(assigns.rich_text))
-      else
-        assigns
-      end
-
     ~H"""
     <div>
       <dt class="text-[10px] font-medium text-base-content/50 uppercase tracking-wider mb-0.5">
@@ -820,7 +813,7 @@ defmodule StoryarnWeb.VersionLive.Viewer do
       <dd class={["text-xs text-base-content/80", @mono && "font-mono"]}>
         <%= if @rich_text do %>
           <div class="prose prose-xs max-w-none">
-            {Phoenix.HTML.raw(@sanitized)}
+            {Phoenix.HTML.raw(HtmlSanitizer.sanitize_html(@rich_text))}
           </div>
         <% else %>
           {@value || "—"}

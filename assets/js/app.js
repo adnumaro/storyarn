@@ -91,6 +91,7 @@ import { ScrollCollapse } from "./hooks/scroll_collapse";
 import { SearchableSelect } from "./hooks/searchable_select";
 import { SettingsSidebar } from "./hooks/settings_sidebar";
 import { SortableTree } from "./hooks/sortable_tree";
+import { StopClick } from "./hooks/stop_click";
 import { StoryPlayer } from "./hooks/story_player";
 import { TableCellCheckbox } from "./hooks/table_cell_checkbox";
 import { TableCellSelect } from "./hooks/table_cell_select";
@@ -109,6 +110,7 @@ import { UndoRedo } from "./hooks/undo_redo";
 
 // Theme management (keyboard shortcuts, cross-tab sync)
 import "./theme";
+import "./landing_page/discover_section";
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
 const liveSocket = new LiveSocket("/live", Socket, {
@@ -156,6 +158,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     DialogueScreenplayEditor,
     ScreenplayEditor,
     StoryPlayer,
+    StopClick,
     ExplorationPlayer,
     ExpressionEditor,
     FormulaBinding,

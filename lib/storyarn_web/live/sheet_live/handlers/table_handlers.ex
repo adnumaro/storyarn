@@ -590,7 +590,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
         new_options =
           List.update_at(existing_options, index, fn opt ->
-            %{"key" => slugify(new_value), "value" => new_value}
+            %{"key" => option_key_for(new_value), "value" => new_value}
             |> Map.merge(Map.drop(opt, ["key", "value"]))
           end)
 
@@ -824,7 +824,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   defp do_add_cell_option(column, row_id, column_slug, label, socket, helpers) do
     prev_config = column.config
-    key = slugify(label)
+    key = option_key_for(label)
     existing_options = (prev_config || %{})["options"] || []
     new_option = %{"key" => key, "value" => label}
     new_config = Map.put(prev_config || %{}, "options", existing_options ++ [new_option])
@@ -886,7 +886,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   defp do_add_column_option(column, label, socket, helpers) do
     prev_config = column.config
     existing_options = (prev_config || %{})["options"] || []
-    key = slugify(label)
+    key = option_key_for(label)
     new_option = %{"key" => key, "value" => label}
     new_config = Map.put(prev_config || %{}, "options", existing_options ++ [new_option])
 
@@ -903,15 +903,15 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     end
   end
 
-  defp slugify(text) when is_binary(text) do
-    text
+  defp option_key_for(label) do
+    label
     |> String.downcase()
     |> String.replace(~r/[^a-z0-9\s_-]/, "")
     |> String.replace(~r/[\s-]+/, "_")
     |> String.trim("_")
     |> then(fn
       "" -> "option"
-      slug -> slug
+      normalized -> normalized
     end)
   end
 end

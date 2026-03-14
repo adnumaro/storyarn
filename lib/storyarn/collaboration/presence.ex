@@ -13,6 +13,7 @@ defmodule Storyarn.Collaboration.Presence do
     pubsub_server: Storyarn.PubSub
 
   alias Storyarn.Collaboration.Colors
+  alias Storyarn.Shared.TimeHelpers
 
   @type presence_meta :: %{
           user_id: integer(),
@@ -109,7 +110,7 @@ defmodule Storyarn.Collaboration.Presence do
           display_name: Map.get(user, :display_name),
           avatar_url: Map.get(user, :avatar_url),
           color: Colors.for_user(user.id),
-          joined_at: DateTime.utc_now()
+          joined_at: TimeHelpers.now()
         },
         extra_meta
       )

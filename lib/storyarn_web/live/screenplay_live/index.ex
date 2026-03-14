@@ -121,9 +121,11 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
           <div :if={@can_edit} class="dropdown dropdown-end">
             <button
               type="button"
+              id={"screenplay-menu-#{@screenplay.id}"}
               tabindex="0"
               class="btn btn-ghost btn-sm btn-square"
-              onclick="event.stopPropagation();"
+              phx-hook="StopClick"
+              data-stop-propagation
             >
               <.icon name="more-horizontal" class="size-4" />
             </button>
@@ -134,12 +136,14 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
               <li>
                 <button
                   type="button"
+                  id={"screenplay-delete-#{@screenplay.id}"}
                   class="text-error"
                   phx-click={
                     JS.push("set_pending_delete", value: %{id: @screenplay.id})
                     |> show_modal("delete-screenplay-confirm")
                   }
-                  onclick="event.stopPropagation();"
+                  phx-hook="StopClick"
+                  data-stop-propagation
                 >
                   <.icon name="trash-2" class="size-4" />
                   {dgettext("screenplays", "Delete")}

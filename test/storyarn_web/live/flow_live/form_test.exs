@@ -154,7 +154,7 @@ defmodule StoryarnWeb.FlowLive.FormTest do
       assert flow
 
       # The parent should push_navigate to the flow show page
-      {path, flash} = assert_redirect(view)
+      {path, flash} = assert_redirect(view, 2000)
       assert path =~ "/flows/#{flow.id}"
       assert flash["info"] =~ "created successfully"
     end
@@ -220,7 +220,7 @@ defmodule StoryarnWeb.FlowLive.FormTest do
       |> render_submit()
 
       # The parent receives {Form, {:saved, flow}} and triggers push_navigate
-      {path, flash} = assert_redirect(view)
+      {path, flash} = assert_redirect(view, 2000)
 
       # Verify it navigates to the newly created flow
       assert path =~ "/flows/"

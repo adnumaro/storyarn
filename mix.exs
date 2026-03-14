@@ -47,6 +47,7 @@ defmodule Storyarn.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:tidewave, "~> 0.5", only: [:dev]},
       {:bcrypt_elixir, "~> 3.0"},
 
       # Encryption for sensitive data
@@ -148,6 +149,7 @@ defmodule Storyarn.MixProject do
         "compile --warning-as-errors",
         "deps.unlock --unused",
         "format",
+        "convention.check",
         "credo --strict",
         "test"
       ],

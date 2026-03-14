@@ -14,6 +14,7 @@ defmodule Storyarn.Workers.DraftCleanupWorker do
 
   alias Storyarn.Drafts.{CloneEngine, Draft}
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
 
   @impl Oban.Worker
   def perform(%Oban.Job{}) do
@@ -23,7 +24,7 @@ defmodule Storyarn.Workers.DraftCleanupWorker do
 
   defp cleanup_orphaned_entities do
     # Find merged/discarded drafts older than 1 day (give recent operations time to complete)
-    cutoff = DateTime.add(DateTime.utc_now(), -86_400, :second)
+    cutoff = DateTime.add(TimeHelpers.now(), -86_400, :second)
 
     orphaned_drafts =
       from(d in Draft,

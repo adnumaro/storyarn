@@ -13,6 +13,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   use Gettext, backend: StoryarnWeb.Gettext
 
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.{ProjectSnapshot, SnapshotStorage}
 
@@ -316,9 +317,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
   @spec prune_expired_snapshots(integer(), integer()) :: integer()
   def prune_expired_snapshots(project_id, retention_days) do
     cutoff =
-      DateTime.utc_now()
+      TimeHelpers.now()
       |> DateTime.add(-retention_days * 86_400, :second)
-      |> DateTime.truncate(:second)
 
     expired =
       from(s in ProjectSnapshot,

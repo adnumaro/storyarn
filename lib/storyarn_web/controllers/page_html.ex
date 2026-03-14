@@ -6,7 +6,13 @@ defmodule StoryarnWeb.PageHTML do
   """
   use StoryarnWeb, :html
 
-  import StoryarnWeb.Components.LandingComponents
+  import StoryarnWeb.Components.LandingPage.Hero
+  import StoryarnWeb.Components.LandingPage.FeatureGrid
+  import StoryarnWeb.Components.LandingPage.DiscoverSection
+  import StoryarnWeb.Components.LandingPage.Spotlights
+  import StoryarnWeb.Components.LandingPage.WorkflowGrid
+  import StoryarnWeb.Components.LandingPage.CtaWaitlist
+  import StoryarnWeb.Components.LandingPage.LandingFooter
 
   embed_templates "page_html/*"
 end

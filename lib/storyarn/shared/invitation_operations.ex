@@ -17,6 +17,7 @@ defmodule Storyarn.Shared.InvitationOperations do
   alias Storyarn.Billing
   alias Storyarn.RateLimiter
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
 
   @doc """
   Lists pending invitations for a parent entity.
@@ -25,7 +26,7 @@ defmodule Storyarn.Shared.InvitationOperations do
     config.invitation_schema
     |> where([i], field(i, ^config.parent_key) == ^parent_id)
     |> where([i], is_nil(i.accepted_at))
-    |> where([i], i.expires_at > ^DateTime.utc_now())
+    |> where([i], i.expires_at > ^TimeHelpers.now())
     |> preload(:invited_by)
     |> order_by([i], desc: i.inserted_at)
     |> Repo.all()
@@ -225,7 +226,7 @@ defmodule Storyarn.Shared.InvitationOperations do
 
   defp mark_invitation_accepted(invitation) do
     invitation
-    |> Ecto.Changeset.change(accepted_at: DateTime.utc_now(:second))
+    |> Ecto.Changeset.change(accepted_at: TimeHelpers.now())
     |> Repo.update()
   end
 end

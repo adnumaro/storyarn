@@ -5,6 +5,7 @@ defmodule StoryarnWeb.ScreenplayExportController do
 
   alias Storyarn.Projects
   alias Storyarn.Screenplays
+  alias Storyarn.Shared.NameNormalizer
 
   def fountain(conn, %{
         "workspace_slug" => workspace_slug,
@@ -27,7 +28,14 @@ defmodule StoryarnWeb.ScreenplayExportController do
            Screenplays.get_screenplay(project.id, id) do
       elements = Screenplays.list_elements(screenplay.id)
       text = Screenplays.export_fountain(elements)
-      filename = String.slice(slugify(screenplay.name), 0, 200) <> ".fountain"
+
+      slug =
+        case NameNormalizer.slugify(screenplay.name) do
+          "" -> "screenplay"
+          normalized -> normalized
+        end
+
+      filename = String.slice(slug, 0, 200) <> ".fountain"
 
       conn
       |> put_resp_content_type("text/plain")
@@ -40,18 +48,4 @@ defmodule StoryarnWeb.ScreenplayExportController do
         |> text(dgettext("screenplays", "Not found"))
     end
   end
-
-  defp slugify(name) when is_binary(name) do
-    name
-    |> String.downcase()
-    |> String.replace(~r/[^a-z0-9\s-]/, "")
-    |> String.replace(~r/\s+/, "-")
-    |> String.trim("-")
-    |> case do
-      "" -> "screenplay"
-      slug -> slug
-    end
-  end
-
-  defp slugify(_), do: "screenplay"
 end

@@ -380,6 +380,13 @@ defmodule Storyarn.Assets do
   """
   defdelegate storage_delete(key), to: Storage, as: :delete
 
+  @doc """
+  Downloads a file from storage as raw binary data.
+
+  Delegates to `Storyarn.Assets.Storage.download/1`.
+  """
+  defdelegate storage_download(key), to: Storage, as: :download
+
   # =============================================================================
   # ImageProcessor Delegations
   # =============================================================================

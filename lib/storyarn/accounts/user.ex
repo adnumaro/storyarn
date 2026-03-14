@@ -130,7 +130,7 @@ defmodule Storyarn.Accounts.User do
   Confirms the account by setting `confirmed_at`.
   """
   def confirm_changeset(user) do
-    now = DateTime.utc_now(:second)
+    now = Storyarn.Shared.TimeHelpers.now()
     change(user, confirmed_at: now)
   end
 

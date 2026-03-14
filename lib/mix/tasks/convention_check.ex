@@ -78,7 +78,7 @@ defmodule Mix.Tasks.Convention.Check do
     print_results(violations, opts)
 
     unless violations == [] do
-      Mix.shell().error("Convention check failed with #{length(violations)} violation(s)")
+      Mix.raise("Convention check failed with #{length(violations)} violation(s)")
     end
   end
 

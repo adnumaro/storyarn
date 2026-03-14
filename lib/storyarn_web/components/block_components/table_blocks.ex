@@ -800,8 +800,9 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
                 <input
                   type="checkbox"
                   checked={opt["key"] in (@value || [])}
-                  class="checkbox checkbox-xs checkbox-primary"
-                  onclick="event.preventDefault()"
+                  tabindex="-1"
+                  aria-hidden="true"
+                  class="checkbox checkbox-xs checkbox-primary pointer-events-none"
                 />
                 {opt["value"]}
               </button>
@@ -883,8 +884,9 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
                   <input
                     type="checkbox"
                     checked={opt["key"] in (@value || [])}
-                    class="checkbox checkbox-xs checkbox-primary"
-                    onclick="event.preventDefault()"
+                    tabindex="-1"
+                    aria-hidden="true"
+                    class="checkbox checkbox-xs checkbox-primary pointer-events-none"
                   />
                   {opt["value"]}
                 </button>

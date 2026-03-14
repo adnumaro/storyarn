@@ -24,7 +24,7 @@ defmodule Storyarn.Shared.InvitationSchema do
       import Ecto.Query
 
       alias Storyarn.Accounts.User
-      alias Storyarn.Shared.{TokenGenerator, Validations}
+      alias Storyarn.Shared.{TimeHelpers, TokenGenerator, Validations}
 
       @invitation_validity_in_days 7
       @__parent_key unquote(parent_key)
@@ -53,9 +53,8 @@ defmodule Storyarn.Shared.InvitationSchema do
         {encoded_token, hashed_token} = TokenGenerator.build_hashed_token()
 
         expires_at =
-          DateTime.utc_now()
+          TimeHelpers.now()
           |> DateTime.add(@invitation_validity_in_days, :day)
-          |> DateTime.truncate(:second)
 
         invited_by_id = if invited_by, do: invited_by.id, else: nil
 
@@ -86,7 +85,7 @@ defmodule Storyarn.Shared.InvitationSchema do
             query =
               from(i in __MODULE__,
                 where: i.token == ^hashed_token,
-                where: i.expires_at > ^DateTime.utc_now(),
+                where: i.expires_at > ^TimeHelpers.now(),
                 where: is_nil(i.accepted_at),
                 preload: unquote(verify_preloads)
               )
