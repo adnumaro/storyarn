@@ -1,0 +1,51 @@
+lib/storyarn_web/components/landing_page/hero.ex
+  659852d30a11706c 23-30
+  095b399a2b21387c 1-22,31-446
+lib/storyarn_web/components/landing_page/discover_section.ex
+  095b399a2b21387c 1-326
+lib/storyarn_web/components/landing_page/feature_grid.ex
+  095b399a2b21387c 1-105
+lib/storyarn_web/components/landing_page/spotlights.ex
+  095b399a2b21387c 1-153
+lib/storyarn_web/components/landing_page/workflow_grid.ex
+  095b399a2b21387c 1-87
+lib/storyarn_web/components/landing_page/cta_waitlist.ex
+  095b399a2b21387c 1-66
+lib/storyarn_web/components/landing_page/landing_footer.ex
+  095b399a2b21387c 1-24
+lib/storyarn_web/controllers/page_html.ex
+  095b399a2b21387c 9-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "f7e68dcc880f2fa703869585a79e06c7fe1cb231",
+  "prompts": {
+    "095b399a2b21387c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "999a1a0e-044f-4dab-8738-b93081641772",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 1125,
+      "total_deletions": 1,
+      "accepted_lines": 1206,
+      "overriden_lines": 0
+    },
+    "659852d30a11706c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ced6b-bce2-7c53-a491-b263cd1869b4",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 219,
+      "total_deletions": 130,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    }
+  }
+}
