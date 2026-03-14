@@ -1,0 +1,40 @@
+lib/storyarn_web/controllers/page_html.ex
+  095b399a2b21387c 9-10
+lib/storyarn_web/components/landing_components.ex
+  095b399a2b21387c 1-1095
+lib/storyarn_web/controllers/page_html/home.html.heex
+  095b399a2b21387c 4-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "6c25fc25262870f126453583a8799a7b3b340212",
+  "prompts": {
+    "095b399a2b21387c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "999a1a0e-044f-4dab-8738-b93081641772",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 1125,
+      "total_deletions": 1,
+      "accepted_lines": 2311,
+      "overriden_lines": 0
+    },
+    "659852d30a11706c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ced6b-bce2-7c53-a491-b263cd1869b4",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    }
+  }
+}
