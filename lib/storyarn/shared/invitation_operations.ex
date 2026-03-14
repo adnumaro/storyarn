@@ -8,7 +8,7 @@ defmodule Storyarn.Shared.InvitationOperations do
   - `parent_key` — e.g., :project_id or :workspace_id
   - `rate_limit_context` — e.g., "project" or "workspace"
   - `parent_assoc` — e.g., :project or :workspace
-  - `template_fn` — e.g., &Templates.project_invitation/6
+  - `template` — e.g., :project_invitation
   - `invitation_path_prefix` — e.g., "/projects/invitations" or "/workspaces/invitations"
   - `memberships_module` — e.g., Projects.Memberships or Workspaces.Memberships
   - `preload_after_insert` — e.g., [:project, :invited_by] or [:workspace, :invited_by]

@@ -2,8 +2,9 @@ defmodule StoryarnWeb.SceneLive.Index do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  use StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.Authorize
 
+  import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
   import StoryarnWeb.Live.Shared.TreePanelHandlers
   import StoryarnWeb.Components.DashboardComponents
 
@@ -471,7 +472,7 @@ defmodule StoryarnWeb.SceneLive.Index do
 
   def handle_event(event, %{"id" => scene_id}, socket)
       when event in ~w(delete delete_scene) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       case Scenes.get_scene(socket.assigns.project.id, scene_id) do
         nil -> {:noreply, put_flash(socket, :error, dgettext("scenes", "Scene not found."))}
         scene -> do_delete_scene(socket, scene)
@@ -480,7 +481,7 @@ defmodule StoryarnWeb.SceneLive.Index do
   end
 
   def handle_event("create_scene", _params, socket) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       case Scenes.create_scene(socket.assigns.project, %{name: dgettext("scenes", "Untitled")}) do
         {:ok, new_scene} ->
           {:noreply,
@@ -499,7 +500,7 @@ defmodule StoryarnWeb.SceneLive.Index do
   end
 
   def handle_event("create_child_scene", %{"parent-id" => parent_id}, socket) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       attrs = %{name: dgettext("scenes", "Untitled"), parent_id: parent_id}
 
       case Scenes.create_scene(socket.assigns.project, attrs) do
@@ -524,7 +525,7 @@ defmodule StoryarnWeb.SceneLive.Index do
         %{"item_id" => item_id, "new_parent_id" => new_parent_id, "position" => position},
         socket
       ) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       case Scenes.get_scene(socket.assigns.project.id, item_id) do
         nil -> {:noreply, put_flash(socket, :error, dgettext("scenes", "Scene not found."))}
         scene -> do_move_scene(socket, scene, new_parent_id, position)

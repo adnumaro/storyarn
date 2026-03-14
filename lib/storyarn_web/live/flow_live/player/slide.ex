@@ -7,7 +7,7 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   """
 
   alias Storyarn.Flows
-  alias StoryarnWeb.FlowLive.Helpers.HtmlSanitizer
+  alias StoryarnWeb.Helpers.HtmlSanitizer
 
   @doc """
   Build a slide from the current engine state and node.

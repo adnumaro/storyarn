@@ -1,7 +1,6 @@
 defmodule Storyarn.Projects.Invitations do
   @moduledoc false
 
-  alias Storyarn.Emails.Templates
   alias Storyarn.Projects.{Memberships, Project, ProjectInvitation, ProjectMembership}
   alias Storyarn.Shared.InvitationOperations
 
@@ -11,7 +10,7 @@ defmodule Storyarn.Projects.Invitations do
     parent_key: :project_id,
     parent_assoc: :project,
     rate_limit_context: "project",
-    template_fn: &Templates.project_invitation/6,
+    template: :project_invitation,
     invitation_path_prefix: "/projects/invitations",
     memberships_module: Memberships,
     preload_after_insert: [:project, :invited_by]

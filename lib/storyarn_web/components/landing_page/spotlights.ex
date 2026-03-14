@@ -4,6 +4,8 @@ defmodule StoryarnWeb.Components.LandingPage.Spotlights do
   """
   use StoryarnWeb, :html
 
+  import StoryarnWeb.Components.TextComponents, only: [widont: 1]
+
   def exploration_spotlight(assigns) do
     ~H"""
     <section class="py-16 lg:py-20 scroll-mt-32" id="exploration-mode">

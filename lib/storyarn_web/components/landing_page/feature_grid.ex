@@ -4,6 +4,8 @@ defmodule StoryarnWeb.Components.LandingPage.FeatureGrid do
   """
   use StoryarnWeb, :html
 
+  import StoryarnWeb.Components.TextComponents, only: [widont: 1]
+
   @feature_colors ~w(primary accent secondary primary accent secondary)
 
   def feature_grid(assigns) do

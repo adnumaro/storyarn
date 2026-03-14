@@ -6,13 +6,14 @@ defmodule Storyarn.Shared.InvitationNotifier do
   additionally include:
 
     - `parent_assoc` — atom key to fetch parent name (e.g., `:project` or `:workspace`)
-    - `template_fn` — function in `Storyarn.Emails.Templates` (e.g., `&Templates.project_invitation/6`)
+    - `template` — function name in `Storyarn.Emails.Templates` (e.g., `:project_invitation`)
     - `invitation_schema` — for `validity_in_days/0`
   """
 
   import Swoosh.Email
   require Logger
 
+  alias Storyarn.Emails.Templates
   alias Storyarn.Mailer
 
   @doc """
@@ -32,14 +33,14 @@ defmodule Storyarn.Shared.InvitationNotifier do
     days = config.invitation_schema.validity_in_days()
 
     {subject, html, text} =
-      config.template_fn.(
+      apply(Templates, config.template, [
         invitation.email,
         entity_name,
         inviter_name,
         invitation.role,
         url,
         days
-      )
+      ])
 
     deliver(invitation.email, subject, html, text)
   end

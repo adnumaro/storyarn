@@ -24,32 +24,41 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
   # serializer functions, and push event names.
   # ---------------------------------------------------------------------------
 
-  @type_config %{
-    pin: %{
+  defp type_config(:pin) do
+    %{
       get: &Scenes.get_pin/2,
       create: &Scenes.create_pin/2,
       update: &Scenes.update_pin/2,
       delete: &Scenes.delete_pin/1,
       assign_key: :pins,
       type_string: "pin"
-    },
-    zone: %{
+    }
+  end
+
+  defp type_config(:zone) do
+    %{
       get: &Scenes.get_zone/2,
       create: &Scenes.create_zone/2,
       update: &Scenes.update_zone/2,
       delete: &Scenes.delete_zone/1,
       assign_key: :zones,
       type_string: "zone"
-    },
-    connection: %{
+    }
+  end
+
+  defp type_config(:connection) do
+    %{
       get: &Scenes.get_connection/2,
       create: &Scenes.create_connection/2,
       update: &Scenes.update_connection/2,
       delete: &Scenes.delete_connection/1,
       assign_key: :connections,
       type_string: "connection"
-    },
-    annotation: %{
+    }
+  end
+
+  defp type_config(:annotation) do
+    %{
       get: &Scenes.get_annotation/2,
       create: &Scenes.create_annotation/2,
       update: &Scenes.update_annotation/2,
@@ -57,9 +66,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
       assign_key: :annotations,
       type_string: "annotation"
     }
-  }
-
-  defp type_config(type), do: Map.fetch!(@type_config, type)
+  end
 
   defp serialize(type, element) do
     case type do

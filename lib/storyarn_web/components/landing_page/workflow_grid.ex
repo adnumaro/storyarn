@@ -4,6 +4,8 @@ defmodule StoryarnWeb.Components.LandingPage.WorkflowGrid do
   """
   use StoryarnWeb, :html
 
+  import StoryarnWeb.Components.TextComponents, only: [widont: 1]
+
   def workflow_grid(assigns) do
     steps = [
       %{

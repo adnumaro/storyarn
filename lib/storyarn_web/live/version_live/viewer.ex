@@ -19,7 +19,7 @@ defmodule StoryarnWeb.VersionLive.Viewer do
   alias Storyarn.Projects
   alias Storyarn.Sheets
   alias Storyarn.Versioning
-  alias StoryarnWeb.FlowLive.Helpers.HtmlSanitizer
+  alias StoryarnWeb.Helpers.HtmlSanitizer
 
   @valid_entity_types ~w(flow sheet scene)
 

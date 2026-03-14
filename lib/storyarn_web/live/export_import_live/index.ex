@@ -2,7 +2,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  use StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Exports
   alias Storyarn.Exports.ExportOptions
@@ -576,7 +576,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   def handle_event("parse_import", _params, socket) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       socket
       |> consume_and_parse_import()
       |> handle_parse_result(socket)
@@ -591,7 +591,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   def handle_event("execute_import", _params, socket) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       ref = socket.assigns.parsed_data_ref
 
       case take_import_data(ref) do

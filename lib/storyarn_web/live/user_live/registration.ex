@@ -3,6 +3,8 @@ defmodule StoryarnWeb.UserLive.Registration do
 
   use StoryarnWeb, :live_view
 
+  import StoryarnWeb.Components.UIComponents, only: [oauth_buttons: 1]
+
   alias Storyarn.Accounts
   alias Storyarn.Accounts.User
   alias Storyarn.RateLimiter

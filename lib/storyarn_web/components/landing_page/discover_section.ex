@@ -4,6 +4,8 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
   """
   use StoryarnWeb, :html
 
+  import StoryarnWeb.Components.TextComponents, only: [widont: 1]
+
   def discover_section(assigns) do
     features = discover_features()
     active_feature = features |> hd() |> Map.fetch!(:id)

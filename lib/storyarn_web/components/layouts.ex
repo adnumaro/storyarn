@@ -8,6 +8,7 @@ defmodule StoryarnWeb.Layouts do
 
   import StoryarnWeb.Components.FocusLayout
   import StoryarnWeb.Components.MemberComponents, only: [user_avatar: 1]
+  import StoryarnWeb.Components.UIComponents, only: [theme_toggle: 1]
   import StoryarnWeb.DocsLive.Components.DocsSidebar
 
   alias Phoenix.LiveView.JS

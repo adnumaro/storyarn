@@ -2,9 +2,10 @@ defmodule StoryarnWeb.AssetLive.Index do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  use StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.AssetLive.Components.AssetComponents
+  import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
 
   alias Storyarn.Assets
   alias Storyarn.Billing
@@ -219,7 +220,7 @@ defmodule StoryarnWeb.AssetLive.Index do
   end
 
   def handle_event("confirm_delete_asset", _params, socket) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       delete_selected_asset(socket)
     end)
   end
@@ -240,7 +241,7 @@ defmodule StoryarnWeb.AssetLive.Index do
         %{"filename" => filename, "content_type" => content_type, "data" => data},
         socket
       ) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       process_upload(socket, filename, content_type, data)
     end)
   end

@@ -2,8 +2,9 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  use StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.Authorize
 
+  import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
   alias Storyarn.Localization
   alias Storyarn.Projects
 
@@ -503,7 +504,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   end
 
   defp with_auth(action, socket, fun) do
-    case authorize(socket, action) do
+    case Authorize.authorize(socket, action) do
       :ok -> fun.()
       {:error, :unauthorized} -> {:noreply, unauthorized_flash(socket)}
     end

@@ -2,8 +2,9 @@ defmodule StoryarnWeb.SheetLive.Index do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  use StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.Authorize
 
+  import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
   import StoryarnWeb.Live.Shared.TreePanelHandlers
   import StoryarnWeb.Components.DashboardComponents
 
@@ -431,7 +432,7 @@ defmodule StoryarnWeb.SheetLive.Index do
 
   def handle_event(event, %{"id" => sheet_id}, socket)
       when event in ~w(delete delete_sheet) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       with %{} = sheet <- Sheets.get_sheet(socket.assigns.project.id, sheet_id),
            {:ok, _} <- Sheets.delete_sheet(sheet) do
         {:noreply,
@@ -449,7 +450,7 @@ defmodule StoryarnWeb.SheetLive.Index do
   end
 
   def handle_event("create_sheet", _params, socket) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       attrs = %{name: dgettext("sheets", "Untitled")}
 
       case Sheets.create_sheet(socket.assigns.project, attrs) do
@@ -470,7 +471,7 @@ defmodule StoryarnWeb.SheetLive.Index do
   end
 
   def handle_event("create_child_sheet", %{"parent-id" => parent_id}, socket) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       attrs = %{name: dgettext("sheets", "New Sheet"), parent_id: parent_id}
 
       case Sheets.create_sheet(socket.assigns.project, attrs) do
@@ -497,7 +498,7 @@ defmodule StoryarnWeb.SheetLive.Index do
         %{"item_id" => sheet_id, "new_parent_id" => parent_id, "position" => position},
         socket
       ) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       with %{} = sheet <- Sheets.get_sheet(socket.assigns.project.id, sheet_id),
            parent_id = MapUtils.parse_int(parent_id),
            position = MapUtils.parse_int(position) || 0,

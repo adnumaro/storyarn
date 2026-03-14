@@ -3,8 +3,9 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
   LiveView for recovering deleted projects from their snapshots.
   """
   use StoryarnWeb, :live_view
-  use StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.Authorize
 
+  import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
   alias Storyarn.Billing
   alias Storyarn.Projects
   alias Storyarn.Versioning
@@ -198,7 +199,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
         %{"snapshot_id" => snapshot_id, "project_id" => project_id},
         socket
       ) do
-    with_authorization(socket, :manage_workspace, fn socket ->
+    Authorize.with_authorization(socket, :manage_workspace, fn socket ->
       workspace = socket.assigns.workspace
 
       case Billing.can_create_project?(workspace) do
