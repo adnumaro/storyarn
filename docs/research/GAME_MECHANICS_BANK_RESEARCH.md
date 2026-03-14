@@ -439,7 +439,7 @@ System maps to: US Patent claims mentioning "radial menu",
 
 ```json
 {
-  "id": "uuid",
+  "id": "id",
   "name": "Dialogue Wheel",
   "slug": "dialogue-wheel",
   "category": "dialogue_systems",
@@ -519,7 +519,7 @@ System maps to: US Patent claims mentioning "radial menu",
 
   "created_at": "2026-02-04",
   "updated_at": "2026-02-04",
-  "contributors": ["user-uuid"]
+  "contributors": ["user-id"]
 }
 ```
 

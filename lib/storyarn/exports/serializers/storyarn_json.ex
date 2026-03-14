@@ -285,7 +285,9 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
       "action_type" => pin.action_type,
       "action_data" => pin.action_data || %{},
       "condition" => pin.condition,
-      "condition_effect" => pin.condition_effect
+      "condition_effect" => pin.condition_effect,
+      "is_playable" => pin.is_playable,
+      "is_leader" => pin.is_leader
     }
   end
 
@@ -308,7 +310,8 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
       "action_type" => zone.action_type,
       "action_data" => zone.action_data || %{},
       "condition" => zone.condition,
-      "condition_effect" => zone.condition_effect
+      "condition_effect" => zone.condition_effect,
+      "is_walkable" => zone.is_walkable
     }
   end
 

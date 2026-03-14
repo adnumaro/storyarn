@@ -702,7 +702,9 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         "action_type" => pin_data["action_type"],
         "action_data" => pin_data["action_data"] || %{},
         "condition" => pin_data["condition"],
-        "condition_effect" => pin_data["condition_effect"]
+        "condition_effect" => pin_data["condition_effect"],
+        "is_playable" => pin_data["is_playable"] || false,
+        "is_leader" => pin_data["is_leader"] || false
       }
 
       pin =
@@ -731,7 +733,8 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         "action_type" => zone_data["action_type"],
         "action_data" => zone_data["action_data"] || %{},
         "condition" => zone_data["condition"],
-        "condition_effect" => zone_data["condition_effect"]
+        "condition_effect" => zone_data["condition_effect"],
+        "is_walkable" => zone_data["is_walkable"] || false
       }
 
       zone =

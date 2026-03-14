@@ -17,9 +17,9 @@ defmodule StoryarnWeb.VersionLive.Viewer do
 
   alias Storyarn.Assets
   alias Storyarn.Projects
+  alias Storyarn.Shared.HtmlSanitizer
   alias Storyarn.Sheets
   alias Storyarn.Versioning
-  alias Storyarn.Shared.HtmlSanitizer
 
   @valid_entity_types ~w(flow sheet scene)
 

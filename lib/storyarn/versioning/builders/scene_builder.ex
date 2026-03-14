@@ -140,7 +140,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       "action_type" => zone.action_type,
       "action_data" => zone.action_data,
       "condition" => zone.condition,
-      "condition_effect" => zone.condition_effect
+      "condition_effect" => zone.condition_effect,
+      "is_walkable" => zone.is_walkable
     }
   end
 
@@ -164,7 +165,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       "action_type" => pin.action_type,
       "action_data" => pin.action_data,
       "condition" => pin.condition,
-      "condition_effect" => pin.condition_effect
+      "condition_effect" => pin.condition_effect,
+      "is_playable" => pin.is_playable,
+      "is_leader" => pin.is_leader
     }
   end
 
@@ -327,27 +330,44 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   end
 
   defp build_zone_attrs(zone_data, scene_id, layer_id, now) do
+    zone_data
+    |> zone_base_attrs()
+    |> Map.merge(%{scene_id: scene_id, layer_id: layer_id, inserted_at: now, updated_at: now})
+  end
+
+  defp zone_base_attrs(d) do
+    Map.merge(
+      %{
+        name: d["name"],
+        vertices: d["vertices"],
+        fill_color: d["fill_color"],
+        border_color: d["border_color"],
+        target_type: d["target_type"],
+        target_id: d["target_id"],
+        tooltip: d["tooltip"],
+        condition: d["condition"]
+      },
+      zone_defaulted_attrs(d)
+    )
+  end
+
+  defp zone_defaulted_attrs(d) do
     %{
-      scene_id: scene_id,
-      layer_id: layer_id,
-      name: zone_data["name"],
-      vertices: zone_data["vertices"],
-      fill_color: zone_data["fill_color"],
-      border_color: zone_data["border_color"],
-      border_width: zone_data["border_width"] || 2,
-      border_style: zone_data["border_style"] || "solid",
-      opacity: zone_data["opacity"] || 0.3,
-      target_type: zone_data["target_type"],
-      target_id: zone_data["target_id"],
-      tooltip: zone_data["tooltip"],
-      position: zone_data["position"] || 0,
-      locked: zone_data["locked"] || false,
-      action_type: zone_data["action_type"] || "none",
-      action_data: zone_data["action_data"] || %{},
-      condition: zone_data["condition"],
-      condition_effect: zone_data["condition_effect"] || "hide",
-      inserted_at: now,
-      updated_at: now
+      border_width: d["border_width"] || 2,
+      border_style: d["border_style"] || "solid",
+      opacity: d["opacity"] || 0.3,
+      position: d["position"] || 0,
+      locked: d["locked"] || false
+    }
+    |> Map.merge(zone_action_defaults(d))
+  end
+
+  defp zone_action_defaults(d) do
+    %{
+      action_type: d["action_type"] || "none",
+      action_data: d["action_data"] || %{},
+      condition_effect: d["condition_effect"] || "hide",
+      is_walkable: d["is_walkable"] || false
     }
   end
 
@@ -372,31 +392,54 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   end
 
   defp build_pin_attrs(pin_data, scene_id, layer_id, now, snapshot, project_id) do
-    %{
+    pin_data
+    |> pin_base_attrs()
+    |> Map.merge(%{
       scene_id: scene_id,
       layer_id: layer_id,
-      position_x: pin_data["position_x"],
-      position_y: pin_data["position_y"],
-      pin_type: pin_data["pin_type"] || "location",
-      icon: pin_data["icon"],
-      color: pin_data["color"],
-      opacity: pin_data["opacity"] || 1.0,
-      label: pin_data["label"],
-      target_type: pin_data["target_type"],
-      target_id: pin_data["target_id"],
-      tooltip: pin_data["tooltip"],
-      size: pin_data["size"] || "md",
-      position: pin_data["position"] || 0,
-      locked: pin_data["locked"] || false,
       sheet_id: DiffHelpers.resolve_fk(pin_data["sheet_id"], Storyarn.Sheets.Sheet),
       icon_asset_id:
         AssetHashResolver.resolve_asset_fk(pin_data["icon_asset_id"], snapshot, project_id),
-      action_type: pin_data["action_type"] || "none",
-      action_data: pin_data["action_data"] || %{},
-      condition: pin_data["condition"],
-      condition_effect: pin_data["condition_effect"] || "hide",
       inserted_at: now,
       updated_at: now
+    })
+  end
+
+  defp pin_base_attrs(d) do
+    Map.merge(
+      %{
+        position_x: d["position_x"],
+        position_y: d["position_y"],
+        icon: d["icon"],
+        color: d["color"],
+        label: d["label"],
+        target_type: d["target_type"],
+        target_id: d["target_id"],
+        tooltip: d["tooltip"],
+        condition: d["condition"]
+      },
+      pin_defaulted_attrs(d)
+    )
+  end
+
+  defp pin_defaulted_attrs(d) do
+    %{
+      pin_type: d["pin_type"] || "location",
+      opacity: d["opacity"] || 1.0,
+      size: d["size"] || "md",
+      position: d["position"] || 0,
+      locked: d["locked"] || false
+    }
+    |> Map.merge(pin_action_defaults(d))
+  end
+
+  defp pin_action_defaults(d) do
+    %{
+      action_type: d["action_type"] || "none",
+      action_data: d["action_data"] || %{},
+      condition_effect: d["condition_effect"] || "hide",
+      is_playable: d["is_playable"] || false,
+      is_leader: d["is_leader"] || false
     }
   end
 

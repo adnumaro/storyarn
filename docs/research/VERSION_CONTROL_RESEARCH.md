@@ -354,8 +354,8 @@ Columnar database with extreme compression for logs.
 ```sql
 -- Page versions (deltas)
 CREATE TABLE page_versions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  page_id UUID NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+  id id PRIMARY KEY DEFAULT gen_random_id(),
+  page_id id NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
   version_number INTEGER NOT NULL,
 
   -- Delta storage
@@ -363,7 +363,7 @@ CREATE TABLE page_versions (
   patch_size_bytes INTEGER NOT NULL, -- For monitoring
 
   -- Metadata
-  changed_by UUID REFERENCES users(id),
+  changed_by id REFERENCES users(id),
   changed_fields TEXT[],             -- Quick reference without decompressing
   created_at TIMESTAMP DEFAULT NOW(),
 
@@ -381,8 +381,8 @@ CREATE INDEX idx_versions_snapshots ON page_versions(page_id, version_number)
 
 -- Archival tracking
 CREATE TABLE version_archives (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  page_id UUID NOT NULL,
+  id id PRIMARY KEY DEFAULT gen_random_id(),
+  page_id id NOT NULL,
   version_from INTEGER NOT NULL,
   version_to INTEGER NOT NULL,
   s3_key TEXT NOT NULL,              -- S3 path to archived bundle

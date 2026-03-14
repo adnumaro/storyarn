@@ -777,12 +777,12 @@ When exporting flows to JSON for game engines:
 {
   "flows": [
     {
-      "id": "uuid",
+      "id": "id",
       "shortcut": "act1.meet-jaime",
       "path": "Act 1/Meet Jaime",
       "description": "First encounter with Jaime at the tavern",
-      "entry_node_id": "uuid",
-      "exit_nodes": ["uuid", "uuid"],
+      "entry_node_id": "id",
+      "exit_nodes": ["id", "id"],
       "nodes": [...],
       "connections": [...]
     }
@@ -791,7 +791,7 @@ When exporting flows to JSON for game engines:
     {
       "id": "castle_burns",
       "triggered_in_flow": "act1.meet-jaime",
-      "triggered_at_node": "uuid",
+      "triggered_at_node": "id",
       "description": "The castle catches fire",
       "delay_type": "immediate"
     }

@@ -37,6 +37,7 @@ defmodule Storyarn.Scenes.SceneZone do
           action_data: map(),
           condition: map() | nil,
           condition_effect: String.t(),
+          is_walkable: boolean(),
           scene_id: integer() | nil,
           scene: Scene.t() | Ecto.Association.NotLoaded.t() | nil,
           layer_id: integer() | nil,
@@ -62,6 +63,7 @@ defmodule Storyarn.Scenes.SceneZone do
     field :action_data, :map, default: %{}
     field :condition, :map
     field :condition_effect, :string, default: "hide"
+    field :is_walkable, :boolean, default: false
 
     belongs_to :scene, Scene
     belongs_to :layer, SceneLayer
@@ -98,7 +100,8 @@ defmodule Storyarn.Scenes.SceneZone do
       :action_type,
       :action_data,
       :condition,
-      :condition_effect
+      :condition_effect,
+      :is_walkable
     ])
     |> validate_required([:name, :vertices])
     |> validate_length(:name, min: 1, max: 200)

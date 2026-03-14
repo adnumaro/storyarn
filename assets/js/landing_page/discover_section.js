@@ -15,9 +15,9 @@ const initDiscoverSection = () => {
 
   if (
     !(scrollbox instanceof HTMLElement) ||
-      tabs.length === 0 ||
-      slideGroups.length === 0 ||
-      steps.length === 0
+    tabs.length === 0 ||
+    slideGroups.length === 0 ||
+    steps.length === 0
   ) {
     return;
   }
@@ -26,9 +26,7 @@ const initDiscoverSection = () => {
     steps.filter((step) => step.dataset.featureStep === feature);
 
   const getSlideById = (feature, slide) =>
-    steps.find(
-      (step) => step.dataset.featureStep === feature && step.dataset.slide === slide,
-    );
+    steps.find((step) => step.dataset.featureStep === feature && step.dataset.slide === slide);
 
   const getDefaultSlide = (feature) => getSlidesForFeature(feature)[0]?.dataset.slide ?? null;
 
@@ -75,8 +73,7 @@ const initDiscoverSection = () => {
     });
 
     steps.forEach((step) => {
-      const active =
-        step.dataset.featureStep === feature && step.dataset.slide === resolvedSlide;
+      const active = step.dataset.featureStep === feature && step.dataset.slide === resolvedSlide;
 
       step.classList.toggle("is-active", active);
       step.setAttribute("aria-current", active ? "true" : "false");
@@ -84,7 +81,8 @@ const initDiscoverSection = () => {
 
     previews.forEach((preview) => {
       const active =
-        preview.dataset.featurePreview === feature && preview.dataset.slidePreview === resolvedSlide;
+        preview.dataset.featurePreview === feature &&
+        preview.dataset.slidePreview === resolvedSlide;
 
       preview.classList.toggle("is-active", active);
       preview.setAttribute("aria-hidden", active ? "false" : "true");

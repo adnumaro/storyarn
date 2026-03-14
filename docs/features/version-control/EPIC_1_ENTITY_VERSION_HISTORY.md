@@ -34,10 +34,10 @@ Without this, we'd duplicate the versioning code three times. A shared system me
 **New schema: `EntityVersion`** (replaces `SheetVersion`):
 ```
 entity_versions
-├── id (uuid)
+├── id (id)
 ├── entity_type (string: "sheet" | "flow" | "scene")
-├── entity_id (uuid)
-├── project_id (uuid, FK)
+├── entity_id (id)
+├── project_id (id, FK)
 ├── version_number (integer, auto-increment per entity)
 ├── title (string, nullable — nil for auto-snapshots)
 ├── description (text, nullable)
@@ -45,7 +45,7 @@ entity_versions
 ├── storage_key (string — R2 path to snapshot JSON)
 ├── snapshot_size_bytes (integer — for quota tracking)
 ├── is_auto (boolean — true for auto-snapshots, false for named)
-├── created_by_id (uuid, FK to users)
+├── created_by_id (id, FK to users)
 ├── inserted_at (utc_datetime)
 ```
 
@@ -76,21 +76,21 @@ Implementations: `SheetSnapshotBuilder`, `FlowSnapshotBuilder`, `SceneSnapshotBu
   "shortcut": "quest.main",
   "description": "...",
   "position": 0,
-  "parent_id": "uuid-or-null",
-  "scene_backdrop_id": "uuid-or-null",
+  "parent_id": "id-or-null",
+  "scene_backdrop_id": "id-or-null",
   "nodes": [
     {
-      "id": "uuid",
+      "id": "id",
       "type": "dialogue",
       "position_x": 150.0,
       "position_y": 200.0,
       "width": null,
       "data": {
-        "speaker_sheet_id": "uuid",
+        "speaker_sheet_id": "id",
         "text": "<p>Hello</p>",
         "stage_directions": "",
         "menu_text": "",
-        "audio_asset_id": "uuid-or-null",
+        "audio_asset_id": "id-or-null",
         "audio_blob_hash": "sha256-or-null",
         "technical_id": "dlg_001",
         "localization_id": "",
@@ -100,18 +100,18 @@ Implementations: `SheetSnapshotBuilder`, `FlowSnapshotBuilder`, `SceneSnapshotBu
   ],
   "connections": [
     {
-      "id": "uuid",
-      "source_node_id": "uuid",
+      "id": "id",
+      "source_node_id": "id",
       "source_output": "main",
-      "target_node_id": "uuid",
+      "target_node_id": "id",
       "target_input": "input"
     }
   ],
   "external_refs": {
-    "sheet_ids": ["uuid1", "uuid2"],
-    "flow_ids": ["uuid3"],
-    "asset_ids": ["uuid4"],
-    "asset_blob_hashes": {"uuid4": "sha256hash"}
+    "sheet_ids": ["id1", "id2"],
+    "flow_ids": ["id3"],
+    "asset_ids": ["id4"],
+    "asset_blob_hashes": {"id4": "sha256hash"}
   }
 }
 ```
@@ -123,7 +123,7 @@ Implementations: `SheetSnapshotBuilder`, `FlowSnapshotBuilder`, `SceneSnapshotBu
   "shortcut": "tavern",
   "description": "...",
   "position": 0,
-  "parent_id": "uuid-or-null",
+  "parent_id": "id-or-null",
   "width": 1000,
   "height": 1000,
   "scale_value": 500.0,
@@ -131,11 +131,11 @@ Implementations: `SheetSnapshotBuilder`, `FlowSnapshotBuilder`, `SceneSnapshotBu
   "default_zoom": 1.0,
   "default_center_x": 50.0,
   "default_center_y": 50.0,
-  "background_asset_id": "uuid-or-null",
+  "background_asset_id": "id-or-null",
   "background_blob_hash": "sha256-or-null",
   "layers": [
     {
-      "id": "uuid",
+      "id": "id",
       "name": "Default Layer",
       "position": 0,
       "visible": true,
@@ -145,8 +145,8 @@ Implementations: `SheetSnapshotBuilder`, `FlowSnapshotBuilder`, `SceneSnapshotBu
   ],
   "zones": [
     {
-      "id": "uuid",
-      "layer_id": "uuid",
+      "id": "id",
+      "layer_id": "id",
       "name": "Market Square",
       "vertices": [{"x": 10, "y": 10}, {"x": 90, "y": 10}, {"x": 90, "y": 90}],
       "fill_color": "#ff0000",
@@ -166,8 +166,8 @@ Implementations: `SheetSnapshotBuilder`, `FlowSnapshotBuilder`, `SceneSnapshotBu
   ],
   "pins": [
     {
-      "id": "uuid",
-      "layer_id": "uuid",
+      "id": "id",
+      "layer_id": "id",
       "label": "Jaime",
       "pin_type": "character",
       "position_x": 50.0,
@@ -176,8 +176,8 @@ Implementations: `SheetSnapshotBuilder`, `FlowSnapshotBuilder`, `SceneSnapshotBu
       "size": "md",
       "opacity": 1.0,
       "icon": "user",
-      "sheet_id": "uuid-or-null",
-      "icon_asset_id": "uuid-or-null",
+      "sheet_id": "id-or-null",
+      "icon_asset_id": "id-or-null",
       "icon_blob_hash": "sha256-or-null",
       "action_type": "none",
       "action_data": {},
@@ -190,9 +190,9 @@ Implementations: `SheetSnapshotBuilder`, `FlowSnapshotBuilder`, `SceneSnapshotBu
   ],
   "connections": [
     {
-      "id": "uuid",
-      "from_pin_id": "uuid",
-      "to_pin_id": "uuid",
+      "id": "id",
+      "from_pin_id": "id",
+      "to_pin_id": "id",
       "waypoints": [{"x": 30, "y": 40}],
       "line_style": "solid",
       "line_width": 2,
@@ -204,8 +204,8 @@ Implementations: `SheetSnapshotBuilder`, `FlowSnapshotBuilder`, `SceneSnapshotBu
   ],
   "annotations": [
     {
-      "id": "uuid",
-      "layer_id": "uuid",
+      "id": "id",
+      "layer_id": "id",
       "text": "North Gate",
       "position_x": 20.0,
       "position_y": 10.0,
@@ -218,11 +218,11 @@ Implementations: `SheetSnapshotBuilder`, `FlowSnapshotBuilder`, `SceneSnapshotBu
     }
   ],
   "external_refs": {
-    "sheet_ids": ["uuid1"],
-    "flow_ids": ["uuid2"],
-    "scene_ids": ["uuid3"],
-    "asset_ids": ["uuid4", "uuid5"],
-    "asset_blob_hashes": {"uuid4": "sha256a", "uuid5": "sha256b"}
+    "sheet_ids": ["id1"],
+    "flow_ids": ["id2"],
+    "scene_ids": ["id3"],
+    "asset_ids": ["id4", "id5"],
+    "asset_blob_hashes": {"id4": "sha256a", "id5": "sha256b"}
   }
 }
 ```

@@ -128,8 +128,8 @@ Searching a room, looting a chest, picking herbs — this is the second most fun
   {
     "items": [
       {
-        "id": "uuid",
-        "sheet_id": "uuid",
+        "id": "id",
+        "sheet_id": "id",
         "label": "Health Potion",
         "condition": { "logic": "all", "rules": [...] },
         "instruction": { "assignments": [...] }

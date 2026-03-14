@@ -94,6 +94,24 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
 
     ~H"""
     <div class="space-y-4">
+      <%!-- Walkable --%>
+      <div class="flex items-center justify-between">
+        <label class="text-xs font-medium text-base-content/60 flex items-center gap-1">
+          <.icon name="footprints" class="size-3" />
+          {dgettext("scenes", "Walkable area")}
+        </label>
+        <input
+          type="checkbox"
+          class="toggle toggle-xs toggle-primary"
+          checked={@zone.is_walkable}
+          phx-click="update_zone"
+          phx-value-id={@zone.id}
+          phx-value-field="is_walkable"
+          phx-value-value={!@zone.is_walkable}
+          disabled={!@can_edit}
+        />
+      </div>
+
       <%!-- Tooltip --%>
       <div>
         <label class="block text-xs font-medium text-base-content/60 mb-1">
@@ -232,6 +250,43 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
           class="input input-sm input-bordered w-full"
           disabled={!@can_edit}
         />
+      </div>
+
+      <%!-- Playable character --%>
+      <div class="pt-3 border-t border-base-300">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-medium text-base-content/60 flex items-center gap-1">
+            <.icon name="user" class="size-3" />
+            {dgettext("scenes", "Playable character")}
+          </label>
+          <input
+            type="checkbox"
+            class="toggle toggle-xs toggle-primary"
+            checked={@pin.is_playable}
+            phx-click="update_pin"
+            phx-value-id={@pin.id}
+            phx-value-field="is_playable"
+            phx-value-value={!@pin.is_playable}
+            disabled={!@can_edit}
+          />
+        </div>
+        <%!-- Leader (only if playable) --%>
+        <div :if={@pin.is_playable} class="flex items-center justify-between mt-2">
+          <label class="text-xs font-medium text-base-content/60 flex items-center gap-1">
+            <.icon name="crown" class="size-3" />
+            {dgettext("scenes", "Party leader")}
+          </label>
+          <input
+            type="checkbox"
+            class="toggle toggle-xs toggle-warning"
+            checked={@pin.is_leader}
+            phx-click="update_pin"
+            phx-value-id={@pin.id}
+            phx-value-field="is_leader"
+            phx-value-value={!@pin.is_leader}
+            disabled={!@can_edit}
+          />
+        </div>
       </div>
 
       <%!-- Link to --%>

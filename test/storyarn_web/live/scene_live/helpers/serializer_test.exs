@@ -59,7 +59,9 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
         action_type: "navigate",
         action_data: %{"scene_id" => 2},
         condition: nil,
-        condition_effect: "hide"
+        condition_effect: "hide",
+        is_playable: true,
+        is_leader: false
       }
 
       result = Serializer.serialize_pin(pin)
@@ -70,6 +72,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
       assert result.icon_asset_url == nil
       assert result.action_type == "navigate"
       assert result.locked == false
+      assert result.is_playable == true
+      assert result.is_leader == false
     end
 
     test "handles nil optional fields with defaults" do
@@ -95,7 +99,9 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
         action_type: nil,
         action_data: nil,
         condition: nil,
-        condition_effect: nil
+        condition_effect: nil,
+        is_playable: nil,
+        is_leader: nil
       }
 
       result = Serializer.serialize_pin(pin)
@@ -106,6 +112,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
       assert result.condition_effect == "hide"
       assert result.avatar_url == nil
       assert result.icon_asset_url == nil
+      assert result.is_playable == false
+      assert result.is_leader == false
     end
   end
 
@@ -131,7 +139,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
         action_type: "navigate",
         action_data: %{},
         condition: nil,
-        condition_effect: "hide"
+        condition_effect: "hide",
+        is_walkable: true
       }
 
       result = Serializer.serialize_zone(zone)
@@ -140,6 +149,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
       assert result.name == "Forest"
       assert result.vertices == [[0, 0], [100, 0], [100, 100]]
       assert result.locked == false
+      assert result.is_walkable == true
     end
 
     test "defaults locked to false when nil" do
@@ -161,12 +171,14 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
         action_type: nil,
         action_data: nil,
         condition: nil,
-        condition_effect: nil
+        condition_effect: nil,
+        is_walkable: nil
       }
 
       result = Serializer.serialize_zone(zone)
       assert result.locked == false
       assert result.condition_effect == "hide"
+      assert result.is_walkable == false
     end
   end
 

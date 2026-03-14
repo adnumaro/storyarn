@@ -87,7 +87,9 @@ defmodule StoryarnWeb.SceneLive.Helpers.Serializer do
       action_type: pin.action_type || "none",
       action_data: pin.action_data || %{},
       condition: pin.condition,
-      condition_effect: pin.condition_effect || "hide"
+      condition_effect: pin.condition_effect || "hide",
+      is_playable: pin.is_playable || false,
+      is_leader: pin.is_leader || false
     }
   end
 
@@ -116,7 +118,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.Serializer do
       action_type: zone.action_type,
       action_data: zone.action_data,
       condition: zone.condition,
-      condition_effect: zone.condition_effect || "hide"
+      condition_effect: zone.condition_effect || "hide",
+      is_walkable: zone.is_walkable || false
     }
   end
 

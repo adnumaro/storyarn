@@ -26,12 +26,14 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     position_x position_y pin_type icon color opacity label
     target_type target_id tooltip size sheet_id icon_asset_id
     locked action_type action_data condition condition_effect
+    is_playable is_leader
   )
 
   @zone_editable_fields ~w(
     name fill_color border_color border_width border_style opacity
     target_type target_id tooltip
     locked action_type action_data condition condition_effect
+    is_walkable
   )
 
   @connection_editable_fields ~w(
@@ -81,7 +83,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
       "action_type" => zone.action_type,
       "action_data" => zone.action_data,
       "condition" => zone.condition,
-      "condition_effect" => zone.condition_effect
+      "condition_effect" => zone.condition_effect,
+      "is_walkable" => zone.is_walkable
     }
   end
 
@@ -108,7 +111,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
       "action_type" => pin.action_type,
       "action_data" => pin.action_data,
       "condition" => pin.condition,
-      "condition_effect" => pin.condition_effect
+      "condition_effect" => pin.condition_effect,
+      "is_playable" => pin.is_playable,
+      "is_leader" => pin.is_leader
     }
   end
 

@@ -8,8 +8,8 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
   use StoryarnWeb, :live_component
 
   alias Storyarn.Flows
-  alias Storyarn.Sheets
   alias Storyarn.Shared.HtmlSanitizer
+  alias Storyarn.Sheets
 
   # Maximum traversal depth to prevent infinite loops in cyclic flows
   @max_traversal_depth 50

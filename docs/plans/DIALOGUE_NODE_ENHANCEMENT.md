@@ -52,7 +52,7 @@ end
 
 # Response structure
 %{
-  "id" => "uuid",
+  "id" => "id",
   "text" => "",
   "condition" => "",      # Visibility condition (uses condition builder)
   "instruction" => ""     # Action when selected
@@ -123,7 +123,7 @@ end
 - Manually editable
 
 **Localization ID:**
-- Format: `dialogue.{context}.{uuid_suffix}`
+- Format: `dialogue.{context}.{id_suffix}`
 - Auto-generated on node creation
 - Copy button included
 
@@ -333,7 +333,7 @@ The JSON export should include all dialogue fields:
 {
   "nodes": [
     {
-      "id": "uuid",
+      "id": "id",
       "type": "dialogue",
       "position": {"x": 100, "y": 200},
       "data": {

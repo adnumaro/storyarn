@@ -39,6 +39,8 @@ defmodule Storyarn.Scenes.ScenePin do
           action_data: map(),
           condition: map() | nil,
           condition_effect: String.t(),
+          is_playable: boolean(),
+          is_leader: boolean(),
           scene_id: integer() | nil,
           scene: Scene.t() | Ecto.Association.NotLoaded.t() | nil,
           layer_id: integer() | nil,
@@ -65,6 +67,8 @@ defmodule Storyarn.Scenes.ScenePin do
     field :action_data, :map, default: %{}
     field :condition, :map
     field :condition_effect, :string, default: "hide"
+    field :is_playable, :boolean, default: false
+    field :is_leader, :boolean, default: false
 
     belongs_to :scene, Scene
     belongs_to :layer, SceneLayer
@@ -109,7 +113,9 @@ defmodule Storyarn.Scenes.ScenePin do
       :action_type,
       :action_data,
       :condition,
-      :condition_effect
+      :condition_effect,
+      :is_playable,
+      :is_leader
     ])
     |> validate_required([:position_x, :position_y])
     |> validate_number(:position_x, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
