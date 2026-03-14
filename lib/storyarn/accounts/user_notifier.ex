@@ -22,11 +22,11 @@ defmodule Storyarn.Accounts.UserNotifier do
 
     case Mailer.deliver(email) do
       {:ok, _metadata} ->
-        Logger.info("Email sent to #{recipient}: #{subject}")
+        Logger.info("Email delivered successfully")
         {:ok, email}
 
       {:error, reason} ->
-        Logger.error("Failed to send email to #{recipient}: #{inspect(reason)}")
+        Logger.error("Email delivery failed: #{inspect(reason)}")
         {:error, reason}
     end
   end

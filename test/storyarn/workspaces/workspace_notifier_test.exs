@@ -17,68 +17,56 @@ defmodule Storyarn.Workspaces.WorkspaceNotifierTest do
       {:ok, invitation} = Repo.insert(invitation_struct)
       invitation = Repo.preload(invitation, [:workspace, :invited_by])
 
+      url = "http://localhost:4000/workspaces/invitations/#{encoded_token}"
+
       %{
         invitation: invitation,
+        url: url,
         encoded_token: encoded_token,
         owner: owner,
         workspace: workspace
       }
     end
 
-    test "delivers email to the invited address", %{
-      invitation: invitation,
-      encoded_token: encoded_token
-    } do
-      assert {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, encoded_token)
+    test "delivers email to the invited address", %{invitation: invitation, url: url} do
+      assert {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, url)
       assert email.to == [{"", "invitee@example.com"}]
     end
 
-    test "sets the correct from address", %{
-      invitation: invitation,
-      encoded_token: encoded_token
-    } do
-      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, encoded_token)
+    test "sets the correct from address", %{invitation: invitation, url: url} do
+      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, url)
       assert {"Storyarn", "noreply@storyarn.com"} = email.from
     end
 
-    test "includes workspace name in subject", %{
-      invitation: invitation,
-      encoded_token: encoded_token
-    } do
-      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, encoded_token)
+    test "includes workspace name in subject", %{invitation: invitation, url: url} do
+      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, url)
       assert email.subject =~ "Test Workspace"
     end
 
     test "includes invitation URL with token in body", %{
       invitation: invitation,
+      url: url,
       encoded_token: encoded_token
     } do
-      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, encoded_token)
+      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, url)
       assert email.text_body =~ "/workspaces/invitations/#{encoded_token}"
     end
 
-    test "includes workspace name in body", %{
-      invitation: invitation,
-      encoded_token: encoded_token
-    } do
-      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, encoded_token)
+    test "includes workspace name in body", %{invitation: invitation, url: url} do
+      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, url)
       assert email.text_body =~ "Test Workspace"
     end
 
-    test "includes the role in body", %{
-      invitation: invitation,
-      encoded_token: encoded_token
-    } do
-      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, encoded_token)
+    test "includes the role in body", %{invitation: invitation, url: url} do
+      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, url)
       assert email.text_body =~ "member"
     end
 
     test "includes inviter name in body when display_name is set", %{
       invitation: invitation,
-      encoded_token: encoded_token,
+      url: url,
       owner: owner
     } do
-      # Set display_name on the owner
       {:ok, owner_with_name} =
         owner
         |> Ecto.Changeset.change(display_name: "John Doe")
@@ -86,36 +74,29 @@ defmodule Storyarn.Workspaces.WorkspaceNotifierTest do
 
       invitation = %{invitation | invited_by: owner_with_name}
 
-      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, encoded_token)
+      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, url)
       assert email.text_body =~ "John Doe"
     end
 
     test "falls back to email when display_name is nil", %{
       invitation: invitation,
-      encoded_token: encoded_token,
+      url: url,
       owner: owner
     } do
-      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, encoded_token)
+      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, url)
       assert email.text_body =~ owner.email
     end
 
-    test "includes expiration days in body", %{
-      invitation: invitation,
-      encoded_token: encoded_token
-    } do
-      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, encoded_token)
+    test "includes expiration days in body", %{invitation: invitation, url: url} do
+      {:ok, email} = WorkspaceNotifier.deliver_invitation(invitation, url)
       days = WorkspaceInvitation.validity_in_days()
       assert email.text_body =~ "#{days} days"
     end
 
-    test "returns ok tuple with Swoosh email struct", %{
-      invitation: invitation,
-      encoded_token: encoded_token
-    } do
+    test "returns ok tuple with Swoosh email struct", %{invitation: invitation, url: url} do
       assert {:ok, %Swoosh.Email{} = email} =
-               WorkspaceNotifier.deliver_invitation(invitation, encoded_token)
+               WorkspaceNotifier.deliver_invitation(invitation, url)
 
-      # Verify it is a complete email with all required fields
       assert email.to != []
       assert email.from != nil
       assert email.subject != nil

@@ -6,7 +6,7 @@ defmodule Storyarn.Versioning.SnapshotDiff do
   their output into a structured result with stats and formatting.
   """
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Versioning.{SnapshotBuilder, VersionCrud}
 

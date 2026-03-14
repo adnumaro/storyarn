@@ -9,7 +9,7 @@ defmodule Storyarn.Emails.Templates do
   Admin-only templates (e.g. `admin_waitlist_signup`) stay in English.
   """
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Emails.Layout
 

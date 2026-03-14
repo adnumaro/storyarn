@@ -1640,11 +1640,6 @@ defmodule StoryarnWeb.FlowLive.Show do
     end
   end
 
-  # Ignore EXIT messages from linked processes (e.g. PubSub subscriptions)
-  def handle_info({:EXIT, _pid, _reason}, socket) do
-    {:noreply, socket}
-  end
-
   @impl true
   def terminate(_reason, socket) do
     if socket.assigns[:flow] do

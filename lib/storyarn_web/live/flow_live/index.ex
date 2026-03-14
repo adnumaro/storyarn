@@ -439,10 +439,6 @@ defmodule StoryarnWeb.FlowLive.Index do
      )}
   end
 
-  # Ignore EXIT messages from linked processes (e.g. Task.async in dashboard loading)
-  def handle_info({:EXIT, _pid, _reason}, socket) do
-    {:noreply, socket}
-  end
 
   # ===========================================================================
   # Events

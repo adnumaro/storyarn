@@ -26,7 +26,7 @@ defmodule Storyarn.Release do
     fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_waitlist_user(\"user@example.com\", \"es\")"'
   """
   def invite_waitlist_user(email, locale \\ "en") when is_binary(email) do
-    Gettext.put_locale(StoryarnWeb.Gettext, locale)
+    Gettext.put_locale(Storyarn.Gettext, locale)
 
     case Storyarn.Accounts.find_or_register_confirmed_user(email) do
       {:ok, _user} ->
@@ -37,7 +37,7 @@ defmodule Storyarn.Release do
         raise "Cannot invite #{email}: user creation failed"
     end
 
-    login_url = StoryarnWeb.Endpoint.url() <> "/users/log-in"
+    login_url = Storyarn.Urls.base_url() <> "/users/log-in"
 
     case Storyarn.Accounts.UserNotifier.deliver_waitlist_invite(email, login_url) do
       {:ok, _} -> IO.puts("Invitation sent to #{email}")
@@ -67,7 +67,7 @@ defmodule Storyarn.Release do
             "Invalid role #{inspect(role)} for #{type}. Allowed: #{inspect(allowed_roles)}"
     end
 
-    Gettext.put_locale(StoryarnWeb.Gettext, locale)
+    Gettext.put_locale(Storyarn.Gettext, locale)
 
     email = String.downcase(email)
 

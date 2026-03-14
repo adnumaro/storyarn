@@ -8,6 +8,7 @@ defmodule Storyarn.Shared.InvitationOperations do
   - `parent_key` — e.g., :project_id or :workspace_id
   - `rate_limit_context` — e.g., "project" or "workspace"
   - `notifier_module` — e.g., ProjectNotifier or WorkspaceNotifier
+  - `invitation_path_prefix` — e.g., "/projects/invitations" or "/workspaces/invitations"
   - `memberships_module` — e.g., Projects.Memberships or Workspaces.Memberships
   - `preload_after_insert` — e.g., [:project, :invited_by] or [:workspace, :invited_by]
   """
@@ -180,7 +181,8 @@ defmodule Storyarn.Shared.InvitationOperations do
     case Repo.insert(changeset) do
       {:ok, invitation} ->
         invitation = Repo.preload(invitation, config.preload_after_insert)
-        config.notifier_module.deliver_invitation(invitation, encoded_token, opts)
+        url = invitation_url(config.invitation_path_prefix, encoded_token)
+        config.notifier_module.deliver_invitation(invitation, url, opts)
         {:ok, invitation}
 
       {:error, %Ecto.Changeset{errors: errors}} = error ->
@@ -222,6 +224,10 @@ defmodule Storyarn.Shared.InvitationOperations do
     else
       {:error, changeset}
     end
+  end
+
+  defp invitation_url(path_prefix, token) do
+    Storyarn.Urls.base_url() <> path_prefix <> "/" <> token
   end
 
   defp mark_invitation_accepted(invitation) do

@@ -20,7 +20,7 @@ defmodule Storyarn.Drafts.MergeEngine do
   """
 
   import Ecto.Query, warn: false
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Drafts.{CloneEngine, Draft}
   alias Storyarn.Repo

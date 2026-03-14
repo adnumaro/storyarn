@@ -10,7 +10,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   @behaviour Storyarn.Versioning.SnapshotBuilder
 
   import Ecto.Query, warn: false
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Ecto.Multi
   alias Storyarn.Repo

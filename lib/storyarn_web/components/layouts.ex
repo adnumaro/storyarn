@@ -12,9 +12,6 @@ defmodule StoryarnWeb.Layouts do
 
   alias Phoenix.LiveView.JS
 
-  # Note: StoryarnWeb.Components.Sidebar is no longer imported here.
-  # The workspace sidebar is now rendered inline in the app layout.
-
   # Embed all files in layouts/* within this module.
   # The default root.html.heex file contains the HTML
   # skeleton of your application, namely HTML headers

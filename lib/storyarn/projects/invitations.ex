@@ -17,6 +17,7 @@ defmodule Storyarn.Projects.Invitations do
     parent_key: :project_id,
     rate_limit_context: "project",
     notifier_module: ProjectNotifier,
+    invitation_path_prefix: "/projects/invitations",
     memberships_module: Memberships,
     preload_after_insert: [:project, :invited_by]
   }

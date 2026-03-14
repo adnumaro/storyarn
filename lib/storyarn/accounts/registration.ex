@@ -1,7 +1,7 @@
 defmodule Storyarn.Accounts.Registration do
   @moduledoc false
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Accounts.User
   alias Storyarn.Repo

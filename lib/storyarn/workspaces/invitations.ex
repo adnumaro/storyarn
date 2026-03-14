@@ -17,6 +17,7 @@ defmodule Storyarn.Workspaces.Invitations do
     parent_key: :workspace_id,
     rate_limit_context: "workspace",
     notifier_module: WorkspaceNotifier,
+    invitation_path_prefix: "/workspaces/invitations",
     memberships_module: Memberships,
     preload_after_insert: [:workspace, :invited_by]
   }

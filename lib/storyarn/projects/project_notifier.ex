@@ -4,7 +4,7 @@ defmodule Storyarn.Projects.ProjectNotifier do
   """
   import Swoosh.Email
   require Logger
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Emails.Templates
   alias Storyarn.Mailer
@@ -23,11 +23,11 @@ defmodule Storyarn.Projects.ProjectNotifier do
 
     case Mailer.deliver(email) do
       {:ok, _metadata} ->
-        Logger.info("Email sent to #{recipient}: #{subject}")
+        Logger.info("Email delivered successfully")
         {:ok, email}
 
       {:error, reason} ->
-        Logger.error("Failed to send email to #{recipient}: #{inspect(reason)}")
+        Logger.error("Email delivery failed: #{inspect(reason)}")
         {:error, reason}
     end
   end
@@ -39,8 +39,7 @@ defmodule Storyarn.Projects.ProjectNotifier do
   @doc """
   Delivers a project invitation email.
   """
-  def deliver_invitation(%ProjectInvitation{} = invitation, encoded_token, opts \\ []) do
-    url = invitation_url(encoded_token)
+  def deliver_invitation(%ProjectInvitation{} = invitation, url, opts \\ []) do
     project_name = invitation.project.name
 
     inviter_name =
@@ -64,9 +63,5 @@ defmodule Storyarn.Projects.ProjectNotifier do
       )
 
     deliver(invitation.email, subject, html, text)
-  end
-
-  defp invitation_url(token) do
-    StoryarnWeb.Endpoint.url() <> "/projects/invitations/#{token}"
   end
 end

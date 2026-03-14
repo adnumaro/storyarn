@@ -10,7 +10,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
 
   require Logger
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers

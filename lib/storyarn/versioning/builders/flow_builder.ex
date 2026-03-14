@@ -9,7 +9,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   @behaviour Storyarn.Versioning.SnapshotBuilder
 
   import Ecto.Query, warn: false
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Ecto.Multi
   alias Storyarn.Flows.{Flow, FlowConnection, FlowNode}

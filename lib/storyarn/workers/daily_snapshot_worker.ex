@@ -10,7 +10,7 @@ defmodule Storyarn.Workers.DailySnapshotWorker do
   """
 
   use Oban.Worker, queue: :snapshots, max_attempts: 3
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   require Logger
 
