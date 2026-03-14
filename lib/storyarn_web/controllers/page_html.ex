@@ -6,5 +6,7 @@ defmodule StoryarnWeb.PageHTML do
   """
   use StoryarnWeb, :html
 
+  import StoryarnWeb.Components.LandingComponents
+
   embed_templates "page_html/*"
 end
