@@ -20,7 +20,7 @@ defmodule StoryarnWeb.PageController do
   end
 
   def join_waitlist(conn, %{"waitlist" => %{"email" => email}}) do
-    case RateLimiter.check_waitlist(client_ip(conn)) do
+    case RateLimiter.check_waitlist(format_ip(conn)) do
       :ok ->
         do_join_waitlist(conn, email)
 
@@ -37,7 +37,7 @@ defmodule StoryarnWeb.PageController do
         signup_info = %{
           locale: conn.assigns[:locale] || "en",
           accept_language: List.first(get_req_header(conn, "accept-language")) || "unknown",
-          ip: client_ip(conn),
+          ip: format_ip(conn),
           country: List.first(get_req_header(conn, "fly-region")) || "unknown"
         }
 
@@ -60,17 +60,8 @@ defmodule StoryarnWeb.PageController do
     end
   end
 
-  defp client_ip(conn) do
-    case get_req_header(conn, "fly-client-ip") do
-      [ip | _] ->
-        ip
-
-      _ ->
-        case get_req_header(conn, "x-forwarded-for") do
-          [xff | _] -> xff |> String.split(",") |> List.first() |> String.trim()
-          _ -> conn.remote_ip |> :inet.ntoa() |> to_string()
-        end
-    end
+  defp format_ip(conn) do
+    conn.remote_ip |> :inet.ntoa() |> to_string()
   end
 
   defp redirect_to_workspace(conn, user) do

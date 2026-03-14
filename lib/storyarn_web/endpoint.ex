@@ -66,6 +66,7 @@ defmodule StoryarnWeb.Endpoint do
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options
+  plug StoryarnWeb.Plugs.TrustedProxy
   plug Sentry.PlugContext
   plug StoryarnWeb.Router
 end

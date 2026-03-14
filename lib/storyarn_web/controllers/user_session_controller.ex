@@ -34,7 +34,7 @@ defmodule StoryarnWeb.UserSessionController do
   # email + password login
   defp create(conn, %{"user" => user_params}, info) do
     %{"email" => email, "password" => password} = user_params
-    ip_address = get_client_ip(conn)
+    ip_address = format_remote_ip(conn)
 
     case RateLimiter.check_login(ip_address) do
       :ok ->
@@ -60,33 +60,8 @@ defmodule StoryarnWeb.UserSessionController do
     end
   end
 
-  defp get_client_ip(conn) do
-    # Only trust X-Forwarded-For if explicitly configured (e.g., behind CloudFlare, AWS ELB)
-    # Without this, attackers can spoof IPs to bypass rate limiting
-    if trust_proxy?() do
-      case Plug.Conn.get_req_header(conn, "x-forwarded-for") do
-        [forwarded | _] ->
-          forwarded
-          |> String.split(",")
-          |> List.first()
-          |> String.trim()
-
-        [] ->
-          format_remote_ip(conn)
-      end
-    else
-      format_remote_ip(conn)
-    end
-  end
-
   defp format_remote_ip(conn) do
-    conn.remote_ip
-    |> :inet.ntoa()
-    |> to_string()
-  end
-
-  defp trust_proxy? do
-    Application.get_env(:storyarn, :trust_proxy, false)
+    conn.remote_ip |> :inet.ntoa() |> to_string()
   end
 
   def update_password(conn, %{"user" => user_params} = params) do
