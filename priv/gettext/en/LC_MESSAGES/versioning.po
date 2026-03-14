@@ -40,7 +40,7 @@ msgstr ""
 msgid "Auto-resolved:"
 msgstr ""
 
-#: lib/storyarn/versioning/project_snapshot_crud.ex:251
+#: lib/storyarn/versioning/project_snapshot_crud.ex:252
 #, elixir-autogen, elixir-format
 msgid "Before restore to project snapshot v%{number}"
 msgstr ""
@@ -243,7 +243,7 @@ msgstr ""
 msgid "Restore to version %{number}"
 msgstr ""
 
-#: lib/storyarn/versioning/project_snapshot_crud.ex:268
+#: lib/storyarn/versioning/project_snapshot_crud.ex:269
 #, elixir-autogen, elixir-format
 msgid "Restored from project snapshot v%{number}"
 msgstr ""

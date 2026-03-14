@@ -6,7 +6,7 @@ defmodule StoryarnWeb.Components.LandingPage.CtaWaitlist do
 
   def cta_waitlist(assigns) do
     ~H"""
-    <section class="py-8 pb-24" id="cta">
+    <section class="py-8 pb-24 scroll-mt-32" id="cta">
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
         <div
           class="lp-cta-band relative overflow-hidden p-10 rounded-[2rem] border border-base-content/8 bg-base-200/80"
@@ -15,11 +15,13 @@ defmodule StoryarnWeb.Components.LandingPage.CtaWaitlist do
           <div class="relative z-1 flex flex-col lg:flex-row items-end justify-between gap-6">
             <div>
               <h2 class="mb-3 text-[clamp(2rem,3vw,3.4rem)] leading-[0.96] tracking-[-0.06em] font-bold text-base-content">
-                {gettext("Ready to build your next narrative?")}
+                {widont(gettext("Ready to build your next narrative?"))}
               </h2>
               <p class="mb-2 max-w-[40rem] text-base-content/60 leading-relaxed">
-                {gettext(
-                  "We're onboarding a small group of narrative designers and game studios. Join the waitlist and we'll send you an invite when your spot is ready."
+                {widont(
+                  gettext(
+                    "We're onboarding a small group of narrative designers and game studios. Join the waitlist and we'll send you an invite when your spot is ready."
+                  )
                 )}
               </p>
               <form

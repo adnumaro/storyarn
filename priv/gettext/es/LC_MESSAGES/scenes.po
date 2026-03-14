@@ -38,13 +38,13 @@ msgid "Action type"
 msgstr "Tipo de acción"
 
 #: lib/storyarn_web/live/scene_live/show.ex:885
-#: lib/storyarn_web/live/version_live/viewer.ex:1289
+#: lib/storyarn_web/live/version_live/viewer.ex:1282
 #, elixir-autogen, elixir-format
 msgid "Add Annotation Here"
 msgstr "Añadir anotación aquí"
 
 #: lib/storyarn_web/live/scene_live/show.ex:884
-#: lib/storyarn_web/live/version_live/viewer.ex:1288
+#: lib/storyarn_web/live/version_live/viewer.ex:1281
 #, elixir-autogen, elixir-format
 msgid "Add Pin Here"
 msgstr "Añadir marcador aquí"
@@ -135,7 +135,7 @@ msgid "Border"
 msgstr "Borde"
 
 #: lib/storyarn_web/live/scene_live/show.ex:879
-#: lib/storyarn_web/live/version_live/viewer.ex:1283
+#: lib/storyarn_web/live/version_live/viewer.ex:1276
 #, elixir-autogen, elixir-format
 msgid "Bring to Front"
 msgstr "Traer al frente"
@@ -212,7 +212,7 @@ msgid "Condition"
 msgstr "Condición"
 
 #: lib/storyarn_web/live/scene_live/show.ex:876
-#: lib/storyarn_web/live/version_live/viewer.ex:1280
+#: lib/storyarn_web/live/version_live/viewer.ex:1273
 #, elixir-autogen, elixir-format
 msgid "Connect To…"
 msgstr "Conectar"
@@ -465,7 +465,7 @@ msgid "Create Scene"
 msgstr "Crear escena"
 
 #: lib/storyarn_web/live/scene_live/show.ex:886
-#: lib/storyarn_web/live/version_live/viewer.ex:1290
+#: lib/storyarn_web/live/version_live/viewer.ex:1283
 #, elixir-autogen, elixir-format
 msgid "Create child scene"
 msgstr "Crear escena hija"
@@ -493,7 +493,7 @@ msgstr "Etiquetas personalizadas"
 #: lib/storyarn_web/live/scene_live/show.ex:446
 #: lib/storyarn_web/live/scene_live/show.ex:462
 #: lib/storyarn_web/live/scene_live/show.ex:883
-#: lib/storyarn_web/live/version_live/viewer.ex:1287
+#: lib/storyarn_web/live/version_live/viewer.ex:1280
 #, elixir-autogen, elixir-format
 msgid "Delete"
 msgstr "Eliminar"
@@ -554,7 +554,7 @@ msgid "Drop image to set background"
 msgstr "Arrastra una imagen para el fondo"
 
 #: lib/storyarn_web/live/scene_live/show.ex:878
-#: lib/storyarn_web/live/version_live/viewer.ex:1282
+#: lib/storyarn_web/live/version_live/viewer.ex:1275
 #, elixir-autogen, elixir-format
 msgid "Duplicate"
 msgstr "Duplicar"
@@ -565,13 +565,13 @@ msgid "Edit"
 msgstr "Editor"
 
 #: lib/storyarn_web/live/scene_live/show.ex:875
-#: lib/storyarn_web/live/version_live/viewer.ex:1279
+#: lib/storyarn_web/live/version_live/viewer.ex:1272
 #, elixir-autogen, elixir-format
 msgid "Edit Properties"
 msgstr "Editar propiedades"
 
 #: lib/storyarn_web/live/scene_live/show.ex:877
-#: lib/storyarn_web/live/version_live/viewer.ex:1281
+#: lib/storyarn_web/live/version_live/viewer.ex:1274
 #, elixir-autogen, elixir-format
 msgid "Edit Vertices"
 msgstr "Editar vértices"
@@ -751,7 +751,7 @@ msgstr "Ubicacion"
 
 #: lib/storyarn_web/live/scene_live/components/floating_toolbar.ex:514
 #: lib/storyarn_web/live/scene_live/show.ex:881
-#: lib/storyarn_web/live/version_live/viewer.ex:1285
+#: lib/storyarn_web/live/version_live/viewer.ex:1278
 #, elixir-autogen, elixir-format
 msgid "Lock"
 msgstr "Bloquear"
@@ -779,7 +779,7 @@ msgid "Name the zone before creating a child scene."
 msgstr "Nombra la zona antes de crear una escena hija."
 
 #: lib/storyarn_web/live/scene_live/show.ex:887
-#: lib/storyarn_web/live/version_live/viewer.ex:1291
+#: lib/storyarn_web/live/version_live/viewer.ex:1284
 #, elixir-autogen, elixir-format
 msgid "Name the zone first"
 msgstr "Nombra la zona primero"
@@ -1068,7 +1068,7 @@ msgid "Select variable..."
 msgstr "Seleccionar variable..."
 
 #: lib/storyarn_web/live/scene_live/show.ex:880
-#: lib/storyarn_web/live/version_live/viewer.ex:1284
+#: lib/storyarn_web/live/version_live/viewer.ex:1277
 #, elixir-autogen, elixir-format
 msgid "Send to Back"
 msgstr "Enviar al fondo"
@@ -1207,7 +1207,7 @@ msgstr "Unidad"
 
 #: lib/storyarn_web/live/scene_live/components/floating_toolbar.ex:514
 #: lib/storyarn_web/live/scene_live/show.ex:882
-#: lib/storyarn_web/live/version_live/viewer.ex:1286
+#: lib/storyarn_web/live/version_live/viewer.ex:1279
 #, elixir-autogen, elixir-format
 msgid "Unlock"
 msgstr "Desbloquear"

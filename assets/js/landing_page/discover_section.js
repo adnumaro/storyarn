@@ -5,57 +5,153 @@ const initDiscoverSection = () => {
     return;
   }
 
-  const scrollbox = document.querySelector("[data-feature-scrollbox]");
-  const tabs = Array.from(root.querySelectorAll("[data-feature]"));
-  const steps = Array.from(root.querySelectorAll("[data-feature-step]"));
+  const scrollbox = root.querySelector("[data-feature-scrollbox]");
+  const tabs = Array.from(root.querySelectorAll("[data-feature-tab]"));
+  const triggerGroups = Array.from(root.querySelectorAll("[data-feature-triggers]"));
+  const triggers = Array.from(root.querySelectorAll("[data-slide-trigger]"));
+  const previews = Array.from(root.querySelectorAll("[data-slide-preview]"));
+  const slideGroups = Array.from(root.querySelectorAll("[data-feature-group]"));
+  const steps = Array.from(root.querySelectorAll("[data-slide]"));
 
-  if (tabs.length === 0 || steps.length === 0) {
+  if (
+    !(scrollbox instanceof HTMLElement) ||
+      tabs.length === 0 ||
+      slideGroups.length === 0 ||
+      steps.length === 0
+  ) {
     return;
   }
 
-  const setActive = (feature) => {
+  const getSlidesForFeature = (feature) =>
+    steps.filter((step) => step.dataset.featureStep === feature);
+
+  const getSlideById = (feature, slide) =>
+    steps.find(
+      (step) => step.dataset.featureStep === feature && step.dataset.slide === slide,
+    );
+
+  const getDefaultSlide = (feature) => getSlidesForFeature(feature)[0]?.dataset.slide ?? null;
+
+  const scrollboxIsScrollable = () => {
+    const styles = window.getComputedStyle(scrollbox);
+
+    return styles.overflowY !== "visible" && scrollbox.scrollHeight > scrollbox.clientHeight + 1;
+  };
+
+  const setActive = (feature, slide) => {
+    const resolvedSlide = slide ?? getDefaultSlide(feature);
+
+    if (!feature || !resolvedSlide) {
+      return;
+    }
+
     root.dataset.activeFeature = feature;
+    root.dataset.activeSlide = resolvedSlide;
 
     tabs.forEach((tab) => {
-      tab.setAttribute("aria-selected", tab.dataset.feature === feature ? "true" : "false");
+      const active = tab.dataset.featureTab === feature;
+      tab.classList.toggle("is-active", active);
+      tab.setAttribute("aria-selected", active ? "true" : "false");
+    });
+
+    triggerGroups.forEach((group) => {
+      const active = group.dataset.featureTriggers === feature;
+      group.classList.toggle("is-active", active);
+      group.setAttribute("aria-hidden", active ? "false" : "true");
+    });
+
+    triggers.forEach((trigger) => {
+      const active =
+        trigger.dataset.feature === feature && trigger.dataset.slideTarget === resolvedSlide;
+
+      trigger.classList.toggle("is-active", active);
+      trigger.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+
+    slideGroups.forEach((group) => {
+      const active = group.dataset.featureGroup === feature;
+      group.classList.toggle("is-active", active);
+      group.setAttribute("aria-hidden", active ? "false" : "true");
     });
 
     steps.forEach((step) => {
-      step.classList.toggle("is-active", step.dataset.featureStep === feature);
+      const active =
+        step.dataset.featureStep === feature && step.dataset.slide === resolvedSlide;
+
+      step.classList.toggle("is-active", active);
+      step.setAttribute("aria-current", active ? "true" : "false");
     });
+
+    previews.forEach((preview) => {
+      const active =
+        preview.dataset.featurePreview === feature && preview.dataset.slidePreview === resolvedSlide;
+
+      preview.classList.toggle("is-active", active);
+      preview.setAttribute("aria-hidden", active ? "false" : "true");
+    });
+  };
+
+  const scrollToSlide = (feature, slide, behavior = "smooth") => {
+    const target = getSlideById(feature, slide);
+
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    if (scrollboxIsScrollable()) {
+      const top =
+        scrollbox.scrollTop +
+        (target.getBoundingClientRect().top - scrollbox.getBoundingClientRect().top);
+
+      scrollbox.scrollTo({ top, behavior });
+      return;
+    }
+
+    target.scrollIntoView({ behavior, block: "start" });
   };
 
   let ticking = false;
 
   const updateFromScroll = () => {
-    const bounds =
-      scrollbox instanceof HTMLElement
-        ? scrollbox.getBoundingClientRect()
-        : { top: 0, height: window.innerHeight };
-    const targetLine = bounds.top + bounds.height * 0.24;
-    let next = steps[0];
-    let closest = Number.POSITIVE_INFINITY;
+    const activeFeature = root.dataset.activeFeature;
+    const featureSlides = getSlidesForFeature(activeFeature);
 
-    steps.forEach((step) => {
-      const rect = step.getBoundingClientRect();
+    if (featureSlides.length === 0) {
+      ticking = false;
+      return;
+    }
+
+    const targetLine = scrollboxIsScrollable()
+      ? scrollbox.getBoundingClientRect().top + scrollbox.clientHeight * 0.38
+      : window.innerHeight * 0.48;
+
+    let closestSlide = featureSlides[0];
+    let closestDistance = Number.POSITIVE_INFINITY;
+
+    featureSlides.forEach((slide) => {
+      const rect = slide.getBoundingClientRect();
       const center = rect.top + rect.height / 2;
       const distance = Math.abs(center - targetLine);
 
-      if (distance < closest) {
-        closest = distance;
-        next = step;
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestSlide = slide;
       }
     });
 
-    if (next instanceof HTMLElement && next.dataset.featureStep) {
-      setActive(next.dataset.featureStep);
+    const slideId = closestSlide?.dataset.slide;
+
+    if (slideId) {
+      setActive(activeFeature, slideId);
     }
 
     ticking = false;
   };
 
-  const handleScroll = () => {
-    if (ticking) return;
+  const requestSync = () => {
+    if (ticking) {
+      return;
+    }
 
     ticking = true;
     window.requestAnimationFrame(updateFromScroll);
@@ -63,36 +159,46 @@ const initDiscoverSection = () => {
 
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
-      const feature = tab.dataset.feature;
-      const target = root.querySelector(`[data-feature-step="${feature}"]`);
+      const feature = tab.dataset.featureTab;
+      const firstSlide = getDefaultSlide(feature);
 
-      if (!(target instanceof HTMLElement) || !feature) {
+      if (!feature || !firstSlide) {
         return;
       }
 
-      setActive(feature);
+      setActive(feature, firstSlide);
 
-      if (scrollbox instanceof HTMLElement) {
-        const top =
-          scrollbox.scrollTop +
-          (target.getBoundingClientRect().top - scrollbox.getBoundingClientRect().top) -
-          scrollbox.clientHeight * 0.16;
-
-        scrollbox.scrollTo({ top, behavior: "smooth" });
-      } else {
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (scrollboxIsScrollable()) {
+        scrollbox.scrollTo({ top: 0, behavior: "smooth" });
       }
     });
   });
 
-  (scrollbox instanceof HTMLElement ? scrollbox : window).addEventListener("scroll", handleScroll, {
-    passive: true,
+  triggers.forEach((trigger) => {
+    trigger.addEventListener("click", () => {
+      const feature = trigger.dataset.feature;
+      const slide = trigger.dataset.slideTarget;
+
+      if (!feature || !slide) {
+        return;
+      }
+
+      setActive(feature, slide);
+      scrollToSlide(feature, slide);
+    });
   });
-  window.addEventListener("resize", handleScroll);
+
+  scrollbox.addEventListener("scroll", requestSync, { passive: true });
+  window.addEventListener("scroll", requestSync, { passive: true });
+  window.addEventListener("resize", requestSync);
 
   root.dataset.discoverInitialized = "true";
-  setActive(root.dataset.activeFeature || "dashboard");
-  updateFromScroll();
+
+  const initialFeature = root.dataset.activeFeature || tabs[0]?.dataset.featureTab;
+  const initialSlide = root.dataset.activeSlide || getDefaultSlide(initialFeature);
+
+  setActive(initialFeature, initialSlide);
+  requestSync();
 };
 
 initDiscoverSection();

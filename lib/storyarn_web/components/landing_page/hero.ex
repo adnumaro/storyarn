@@ -6,15 +6,15 @@ defmodule StoryarnWeb.Components.LandingPage.Hero do
 
   def hero(assigns) do
     ~H"""
-    <section class="relative overflow-hidden pt-12 pb-8 lg:pt-16 lg:pb-12">
-      <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
-        <div class="relative min-h-[1180px] lg:min-h-[1100px]">
+    <section class="relative min-w-screen min-h-screen overflow-hidden">
+      <div class="relative">
+        <div class="relative mx-auto mt-[80px] w-[min(calc(100%-48px),1280px)] lg:mt-[150px]">
           <div class="relative z-3 w-full max-w-[1100px] pt-12 lg:pt-20">
             <%!-- Eyebrow badge --%>
             <div class="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-full border border-primary/20 bg-primary/10 text-primary text-xs tracking-widest uppercase">
               <span class="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_20px_var(--color-primary)]">
               </span>
-              {gettext("Private beta for studios and narrative teams")}
+              {gettext("Private beta")}
             </div>
 
             <%!-- Masthead: mascot + title --%>
@@ -45,8 +45,6 @@ defmodule StoryarnWeb.Components.LandingPage.Hero do
               )}
             </p>
 
-            <.hero_pills />
-
             <div class="flex flex-wrap gap-3.5 mt-8">
               <a href="#product" class="btn btn-primary btn-lg rounded-full">
                 {gettext("Explore Storyarn")}
@@ -64,25 +62,6 @@ defmodule StoryarnWeb.Components.LandingPage.Hero do
         </div>
       </div>
     </section>
-    """
-  end
-
-  defp hero_pills(assigns) do
-    ~H"""
-    <div class="flex flex-wrap gap-3 mt-7">
-      <span class="px-3.5 py-2.5 rounded-full border border-base-content/10 bg-base-content/5 text-base-content/70 text-sm">
-        {gettext("Sheets with inheritable variables")}
-      </span>
-      <span class="px-3.5 py-2.5 rounded-full border border-base-content/10 bg-base-content/5 text-base-content/70 text-sm">
-        {gettext("Flows with debug and story player")}
-      </span>
-      <span class="px-3.5 py-2.5 rounded-full border border-base-content/10 bg-base-content/5 text-base-content/70 text-sm">
-        {gettext("Explorable scenes")}
-      </span>
-      <span class="px-3.5 py-2.5 rounded-full border border-base-content/10 bg-base-content/5 text-base-content/70 text-sm">
-        {gettext("Integrated localization and export")}
-      </span>
-    </div>
     """
   end
 

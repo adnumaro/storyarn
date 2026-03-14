@@ -85,7 +85,7 @@ msgid "Block not found."
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/block_menu.ex:129
-#: lib/storyarn_web/components/block_components/table_blocks.ex:1175
+#: lib/storyarn_web/components/block_components/table_blocks.ex:1177
 #, elixir-autogen, elixir-format
 msgid "Boolean"
 msgstr ""
@@ -330,7 +330,7 @@ msgid "Custom Labels"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/block_menu.ex:118
-#: lib/storyarn_web/components/block_components/table_blocks.ex:1178
+#: lib/storyarn_web/components/block_components/table_blocks.ex:1180
 #, elixir-autogen, elixir-format
 msgid "Date"
 msgstr ""
@@ -472,7 +472,7 @@ msgid "Move to Trash"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/block_menu.ex:112
-#: lib/storyarn_web/components/block_components/table_blocks.ex:1177
+#: lib/storyarn_web/components/block_components/table_blocks.ex:1179
 #, elixir-autogen, elixir-format
 msgid "Multi Select"
 msgstr ""
@@ -493,7 +493,7 @@ msgstr ""
 
 #: lib/storyarn_web/components/block_components/boolean_blocks.ex:34
 #: lib/storyarn_web/components/block_components/config_popovers/boolean_config.ex:81
-#: lib/storyarn_web/components/block_components/table_blocks.ex:1078
+#: lib/storyarn_web/components/block_components/table_blocks.ex:1080
 #, elixir-autogen, elixir-format
 msgid "No"
 msgstr ""
@@ -544,7 +544,7 @@ msgid "No voice lines"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/block_menu.ex:90
-#: lib/storyarn_web/components/block_components/table_blocks.ex:1173
+#: lib/storyarn_web/components/block_components/table_blocks.ex:1175
 #, elixir-autogen, elixir-format
 msgid "Number"
 msgstr ""
@@ -624,7 +624,7 @@ msgid "Read by"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/block_menu.ex:140
-#: lib/storyarn_web/components/block_components/table_blocks.ex:1179
+#: lib/storyarn_web/components/block_components/table_blocks.ex:1181
 #, elixir-autogen, elixir-format
 msgid "Reference"
 msgstr ""
@@ -686,7 +686,7 @@ msgid "Search sheets and flows..."
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/block_menu.ex:101
-#: lib/storyarn_web/components/block_components/table_blocks.ex:1176
+#: lib/storyarn_web/components/block_components/table_blocks.ex:1178
 #, elixir-autogen, elixir-format
 msgid "Select"
 msgstr ""
@@ -705,8 +705,8 @@ msgstr ""
 #: lib/storyarn_web/components/block_components/select_blocks.ex:16
 #: lib/storyarn_web/components/block_components/table_blocks.ex:679
 #: lib/storyarn_web/components/block_components/table_blocks.ex:773
-#: lib/storyarn_web/components/block_components/table_blocks.ex:856
-#: lib/storyarn_web/components/block_components/table_blocks.ex:916
+#: lib/storyarn_web/components/block_components/table_blocks.ex:857
+#: lib/storyarn_web/components/block_components/table_blocks.ex:918
 #, elixir-autogen, elixir-format
 msgid "Select..."
 msgstr ""
@@ -757,7 +757,7 @@ msgid "Subsheets"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/block_menu.ex:68
-#: lib/storyarn_web/components/block_components/table_blocks.ex:1174
+#: lib/storyarn_web/components/block_components/table_blocks.ex:1176
 #, elixir-autogen, elixir-format
 msgid "Text"
 msgstr ""
@@ -863,7 +863,7 @@ msgstr ""
 
 #: lib/storyarn_web/components/block_components/boolean_blocks.ex:33
 #: lib/storyarn_web/components/block_components/config_popovers/boolean_config.ex:69
-#: lib/storyarn_web/components/block_components/table_blocks.ex:1072
+#: lib/storyarn_web/components/block_components/table_blocks.ex:1074
 #, elixir-autogen, elixir-format
 msgid "Yes"
 msgstr ""
@@ -1012,29 +1012,29 @@ msgid "Could not update column."
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/table_blocks.ex:733
-#: lib/storyarn_web/components/block_components/table_blocks.ex:814
+#: lib/storyarn_web/components/block_components/table_blocks.ex:815
 #, elixir-autogen, elixir-format
 msgid "+ New option"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/table_blocks.ex:704
-#: lib/storyarn_web/components/block_components/table_blocks.ex:941
+#: lib/storyarn_web/components/block_components/table_blocks.ex:943
 #, elixir-autogen, elixir-format
 msgid "Clear"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/table_blocks.ex:746
-#: lib/storyarn_web/components/block_components/table_blocks.ex:827
-#: lib/storyarn_web/components/block_components/table_blocks.ex:897
-#: lib/storyarn_web/components/block_components/table_blocks.ex:970
+#: lib/storyarn_web/components/block_components/table_blocks.ex:828
+#: lib/storyarn_web/components/block_components/table_blocks.ex:899
+#: lib/storyarn_web/components/block_components/table_blocks.ex:972
 #, elixir-autogen, elixir-format
 msgid "No matches"
 msgstr ""
 
 #: lib/storyarn_web/components/block_components/table_blocks.ex:688
 #: lib/storyarn_web/components/block_components/table_blocks.ex:782
-#: lib/storyarn_web/components/block_components/table_blocks.ex:865
-#: lib/storyarn_web/components/block_components/table_blocks.ex:925
+#: lib/storyarn_web/components/block_components/table_blocks.ex:866
+#: lib/storyarn_web/components/block_components/table_blocks.ex:927
 #, elixir-autogen, elixir-format
 msgid "Search..."
 msgstr ""
@@ -1217,7 +1217,7 @@ msgstr ""
 msgid "Expression"
 msgstr ""
 
-#: lib/storyarn_web/components/block_components/table_blocks.ex:1180
+#: lib/storyarn_web/components/block_components/table_blocks.ex:1182
 #, elixir-autogen, elixir-format
 msgid "Formula"
 msgstr ""

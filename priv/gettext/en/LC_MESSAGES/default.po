@@ -16,18 +16,18 @@ msgstr ""
 msgid "Actions"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:1051
-#: lib/storyarn_web/components/layouts.ex:1063
+#: lib/storyarn_web/components/layouts.ex:1068
+#: lib/storyarn_web/components/layouts.ex:1080
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:1058
+#: lib/storyarn_web/components/layouts.ex:1075
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:1046
+#: lib/storyarn_web/components/layouts.ex:1063
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr ""
@@ -53,14 +53,14 @@ msgstr ""
 msgid "Continue with Google"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:568
-#: lib/storyarn_web/components/layouts.ex:634
-#: lib/storyarn_web/components/layouts.ex:911
+#: lib/storyarn_web/components/layouts.ex:581
+#: lib/storyarn_web/components/layouts.ex:651
+#: lib/storyarn_web/components/layouts.ex:928
 #, elixir-autogen, elixir-format
 msgid "Log in"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:806
+#: lib/storyarn_web/components/layouts.ex:823
 #: lib/storyarn_web/components/sidebar.ex:85
 #, elixir-autogen, elixir-format
 msgid "Profile"
@@ -106,17 +106,17 @@ msgid_plural "%{count} more users"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/components/layouts.ex:804
+#: lib/storyarn_web/components/layouts.ex:821
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Account"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:701
+#: lib/storyarn_web/components/layouts.ex:718
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Back to app"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:813
+#: lib/storyarn_web/components/layouts.ex:830
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Connected accounts"
 msgstr ""
@@ -135,15 +135,16 @@ msgstr ""
 msgid "Dark mode"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:561
-#: lib/storyarn_web/components/layouts.ex:623
-#: lib/storyarn_web/components/layouts.ex:907
-#: lib/storyarn_web/controllers/page_html/home.html.heex:101
+#: lib/storyarn_web/components/landing_page/discover_section.ex:437
+#: lib/storyarn_web/components/landing_page/hero.ex:136
+#: lib/storyarn_web/components/layouts.ex:574
+#: lib/storyarn_web/components/layouts.ex:640
+#: lib/storyarn_web/components/layouts.ex:924
 #, elixir-autogen, elixir-format
 msgid "Dashboard"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:830
+#: lib/storyarn_web/components/layouts.ex:847
 #: lib/storyarn_web/live/version_live/viewer.ex:741
 #, elixir-autogen, elixir-format
 msgid "General"
@@ -155,7 +156,7 @@ msgstr ""
 msgid "Log out"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:835
+#: lib/storyarn_web/components/layouts.ex:852
 #, elixir-autogen, elixir-format
 msgid "Members"
 msgstr ""
@@ -182,7 +183,7 @@ msgstr ""
 msgid "Saved"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:808
+#: lib/storyarn_web/components/layouts.ex:825
 #, elixir-autogen, elixir-format
 msgid "Security"
 msgstr ""
@@ -394,9 +395,8 @@ msgstr ""
 msgid "File is too large (max 50 MB)."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:109
-#: lib/storyarn_web/controllers/page_html/home.html.heex:528
-#: lib/storyarn_web/controllers/page_html/home.html.heex:729
+#: lib/storyarn_web/components/landing_page/discover_section.ex:505
+#: lib/storyarn_web/components/landing_page/hero.ex:138
 #: lib/storyarn_web/live/export_import_live/index.ex:746
 #: lib/storyarn_web/live/export_import_live/index.ex:776
 #: lib/storyarn_web/live/export_import_live/index.ex:797
@@ -465,8 +465,8 @@ msgstr ""
 msgid "Invalid format"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:121
-#: lib/storyarn_web/controllers/page_html/home.html.heex:308
+#: lib/storyarn_web/components/landing_page/hero.ex:141
+#: lib/storyarn_web/components/landing_page/hero.ex:375
 #: lib/storyarn_web/live/export_import_live/index.ex:749
 #: lib/storyarn_web/live/export_import_live/index.ex:800
 #, elixir-autogen, elixir-format
@@ -489,7 +489,7 @@ msgid "Nodes"
 msgstr ""
 
 #: lib/storyarn_web/controllers/export_controller.ex:37
-#: lib/storyarn_web/live/screenplay_live/index.ex:165
+#: lib/storyarn_web/live/screenplay_live/index.ex:169
 #: lib/storyarn_web/live/screenplay_live/show.ex:107
 #, elixir-autogen, elixir-format
 msgid "Not found"
@@ -506,7 +506,7 @@ msgid "Only one file at a time."
 msgstr ""
 
 #: lib/storyarn_web/live/export_import_live/index.ex:203
-#: lib/storyarn_web/live/version_live/viewer.ex:866
+#: lib/storyarn_web/live/version_live/viewer.ex:859
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Options"
 msgstr ""
@@ -541,9 +541,8 @@ msgstr ""
 msgid "Rename — import with a new shortcut"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:113
-#: lib/storyarn_web/controllers/page_html/home.html.heex:536
-#: lib/storyarn_web/controllers/page_html/home.html.heex:754
+#: lib/storyarn_web/components/landing_page/discover_section.ex:553
+#: lib/storyarn_web/components/landing_page/hero.ex:139
 #: lib/storyarn_web/live/export_import_live/index.ex:747
 #: lib/storyarn_web/live/export_import_live/index.ex:778
 #: lib/storyarn_web/live/export_import_live/index.ex:798
@@ -551,7 +550,7 @@ msgstr ""
 msgid "Scenes"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:117
+#: lib/storyarn_web/components/landing_page/hero.ex:140
 #: lib/storyarn_web/live/export_import_live/index.ex:748
 #: lib/storyarn_web/live/export_import_live/index.ex:779
 #: lib/storyarn_web/live/export_import_live/index.ex:799
@@ -564,9 +563,8 @@ msgstr ""
 msgid "Select a .storyarn.json file"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:105
-#: lib/storyarn_web/controllers/page_html/home.html.heex:520
-#: lib/storyarn_web/controllers/page_html/home.html.heex:704
+#: lib/storyarn_web/components/landing_page/discover_section.ex:457
+#: lib/storyarn_web/components/landing_page/hero.ex:137
 #: lib/storyarn_web/live/export_import_live/index.ex:745
 #: lib/storyarn_web/live/export_import_live/index.ex:775
 #: lib/storyarn_web/live/export_import_live/index.ex:796
@@ -636,16 +634,16 @@ msgstr[1] ""
 msgid "Back to workspace"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:555
-#: lib/storyarn_web/components/layouts.ex:617
+#: lib/storyarn_web/components/landing_page/landing_footer.ex:17
+#: lib/storyarn_web/components/layouts.ex:568
+#: lib/storyarn_web/components/layouts.ex:634
 #: lib/storyarn_web/controllers/page_html/contact.html.heex:5
 #: lib/storyarn_web/controllers/page_html/contact.html.heex:60
-#: lib/storyarn_web/controllers/page_html/home.html.heex:1022
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Contact"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:25
+#: lib/storyarn_web/components/landing_page/hero.ex:34
 #, elixir-autogen, elixir-format
 msgid "Craft worlds."
 msgstr ""
@@ -660,15 +658,15 @@ msgstr ""
 msgid "Discord"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:552
-#: lib/storyarn_web/components/layouts.ex:610
+#: lib/storyarn_web/components/landing_page/landing_footer.ex:14
+#: lib/storyarn_web/components/layouts.ex:565
+#: lib/storyarn_web/components/layouts.ex:627
 #: lib/storyarn_web/controllers/page_html/contact.html.heex:57
-#: lib/storyarn_web/controllers/page_html/home.html.heex:1019
 #, elixir-autogen, elixir-format
 msgid "Docs"
 msgstr ""
 
-#: lib/storyarn_web/live/docs_live/show.ex:38
+#: lib/storyarn_web/live/docs_live/show.ex:39
 #, elixir-autogen, elixir-format
 msgid "Documentation"
 msgstr ""
@@ -683,7 +681,7 @@ msgstr ""
 msgid "For general inquiries, feedback, or support."
 msgstr ""
 
-#: lib/storyarn_web/live/docs_live/show.ex:51
+#: lib/storyarn_web/live/docs_live/show.ex:52
 #, elixir-autogen, elixir-format
 msgid "Guide not found"
 msgstr ""
@@ -703,38 +701,38 @@ msgstr ""
 msgid "Join the community to chat with other narrative designers."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:993
+#: lib/storyarn_web/components/landing_page/cta_waitlist.ex:43
 #, elixir-autogen, elixir-format
 msgid "Join the waitlist"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:953
+#: lib/storyarn_web/components/landing_page/workflow_grid.ex:35
 #, elixir-autogen, elixir-format
 msgid "Localize and export"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:985
+#: lib/storyarn_web/components/layouts.ex:1002
 #, elixir-autogen, elixir-format
 msgid "Next"
 msgstr ""
 
-#: lib/storyarn_web/live/docs_live/show.ex:122
+#: lib/storyarn_web/live/docs_live/show.ex:123
 #, elixir-autogen, elixir-format
 msgid "No documentation available yet."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:998
+#: lib/storyarn_web/components/landing_page/cta_waitlist.ex:48
 #, elixir-autogen, elixir-format
 msgid "No spam. We'll only email you when it's time."
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:973
+#: lib/storyarn_web/components/layouts.ex:990
 #, elixir-autogen, elixir-format
 msgid "Previous"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:565
-#: lib/storyarn_web/components/layouts.ex:631
+#: lib/storyarn_web/components/layouts.ex:578
+#: lib/storyarn_web/components/layouts.ex:648
 #, elixir-autogen, elixir-format
 msgid "Request access"
 msgstr ""
@@ -749,12 +747,12 @@ msgstr ""
 msgid "Storyarn — Open narrative design platform"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:975
+#: lib/storyarn_web/components/landing_page/cta_waitlist.ex:21
 #, elixir-autogen, elixir-format
 msgid "We're onboarding a small group of narrative designers and game studios. Join the waitlist and we'll send you an invite when your spot is ready."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:27
+#: lib/storyarn_web/components/landing_page/hero.ex:36
 #, elixir-autogen, elixir-format
 msgid "Weave stories."
 msgstr ""
@@ -765,17 +763,17 @@ msgstr ""
 msgid "You're on the list! We'll reach out when your spot is ready."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:988
+#: lib/storyarn_web/components/landing_page/cta_waitlist.ex:38
 #, elixir-autogen, elixir-format
 msgid "you@studio.com"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:1002
+#: lib/storyarn_web/components/layouts.ex:1019
 #, elixir-autogen, elixir-format
 msgid "On this page"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:900
+#: lib/storyarn_web/components/layouts.ex:917
 #, elixir-autogen, elixir-format, fuzzy
 msgid "docs"
 msgstr ""
@@ -800,7 +798,7 @@ msgstr ""
 msgid "%{total} items"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:599
+#: lib/storyarn_web/components/layouts.ex:616
 #: lib/storyarn_web/live/version_live/viewer.ex:201
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Close"
@@ -809,12 +807,6 @@ msgstr ""
 #: lib/storyarn_web/components/ui_components.ex:300
 #, elixir-autogen, elixir-format
 msgid "Danger Zone"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:512
-#: lib/storyarn_web/controllers/page_html/home.html.heex:679
-#, elixir-autogen, elixir-format, fuzzy
-msgid "Dashboards"
 msgstr ""
 
 #: lib/storyarn_web/components/dashboard_components.ex:173
@@ -849,8 +841,8 @@ msgstr ""
 #: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:229
 #: lib/storyarn_web/live/scene_live/index.ex:498
 #: lib/storyarn_web/live/scene_live/index.ex:519
-#: lib/storyarn_web/live/screenplay_live/index.ex:281
-#: lib/storyarn_web/live/screenplay_live/index.ex:303
+#: lib/storyarn_web/live/screenplay_live/index.ex:285
+#: lib/storyarn_web/live/screenplay_live/index.ex:307
 #: lib/storyarn_web/live/sheet_live/helpers/sheet_tree_helpers.ex:83
 #: lib/storyarn_web/live/sheet_live/index.ex:469
 #: lib/storyarn_web/live/sheet_live/index.ex:492
@@ -858,7 +850,7 @@ msgstr ""
 msgid "Item limit reached for your plan"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:578
+#: lib/storyarn_web/components/layouts.ex:591
 #, elixir-autogen, elixir-format
 msgid "Menu"
 msgstr ""
@@ -904,12 +896,12 @@ msgstr ""
 msgid "updated the flow"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:789
+#: lib/storyarn_web/components/landing_page/spotlights.ex:15
 #, elixir-autogen, elixir-format
 msgid "Exploration Mode"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:203
+#: lib/storyarn_web/components/landing_page/hero.ex:246
 #, elixir-autogen, elixir-format
 msgid "\"The harbor is still closed. I need a reason to open it.\""
 msgstr ""
@@ -963,48 +955,12 @@ msgid_plural "%{count} snapshots"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:565
-#, elixir-autogen, elixir-format
-msgid "126 connected variables across sheets, flows and scenes"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:567
-#, elixir-autogen, elixir-format
-msgid "81% localization coverage ready for review"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:566
-#, elixir-autogen, elixir-format
-msgid "91 branching flows active in the current project"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:663
-#, elixir-autogen, elixir-format
-msgid "A clear bridge between pure writing and playable presentation"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:769
-#, elixir-autogen, elixir-format
-msgid "A clear bridge between pure writing and playable presentation."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:560
-#, elixir-autogen, elixir-format
-msgid "A cross-tool dashboard that helps teams track narrative scale, content health and production readiness from one place."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:890
+#: lib/storyarn_web/components/landing_page/spotlights.ex:147
 #, elixir-autogen, elixir-format
 msgid "A rare capability in narrative tooling and a strong differentiator."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:624
-#: lib/storyarn_web/controllers/page_html/home.html.heex:732
-#, elixir-autogen, elixir-format
-msgid "A visual authoring surface for dialogue trees, checks, branches and consequences with a workflow that feels familiar to narrative teams."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:258
+#: lib/storyarn_web/components/landing_page/hero.ex:323
 #, elixir-autogen, elixir-format
 msgid "Act II - quarantine, forged seal, inner harbor access"
 msgstr ""
@@ -1015,17 +971,17 @@ msgstr ""
 msgid "Action"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:218
+#: lib/storyarn_web/components/landing_page/hero.ex:264
 #, elixir-autogen, elixir-format
 msgid "Activates overlay, scene pin and global act state."
 msgstr ""
 
-#: lib/storyarn_web/live/version_live/viewer.ex:1039
+#: lib/storyarn_web/live/version_live/viewer.ex:1032
 #, elixir-autogen, elixir-format
 msgid "Assignments"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:852
+#: lib/storyarn_web/components/landing_page/spotlights.ex:89
 #, elixir-autogen, elixir-format
 msgid "Auto snapshot before destructive restore"
 msgstr ""
@@ -1045,17 +1001,17 @@ msgstr ""
 msgid "Back to editor"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:1004
+#: lib/storyarn_web/components/landing_page/cta_waitlist.ex:57
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Back to product"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:849
+#: lib/storyarn_web/components/landing_page/spotlights.ex:87
 #, elixir-autogen, elixir-format
 msgid "Before restore to v8"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:343
+#: lib/storyarn_web/components/landing_page/hero.ex:383
 #, elixir-autogen, elixir-format
 msgid "Blocked"
 msgstr ""
@@ -1065,32 +1021,32 @@ msgstr ""
 msgid "Border Color"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:956
+#: lib/storyarn_web/components/landing_page/workflow_grid.ex:37
 #, elixir-autogen, elixir-format
 msgid "Bring the project to your production pipeline with text, screenplays, variables and branches ready for the engine."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:932
+#: lib/storyarn_web/components/landing_page/workflow_grid.ex:21
 #, elixir-autogen, elixir-format
 msgid "Build dialogues, checks, instructions and subflows using a visual editor prepared for large changes."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:801
+#: lib/storyarn_web/components/landing_page/spotlights.ex:27
 #, elixir-autogen, elixir-format
 msgid "Built to compete with dead documents, slide decks and unread GDDs."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:202
+#: lib/storyarn_web/components/landing_page/hero.ex:245
 #, elixir-autogen, elixir-format
 msgid "Captain Ilya"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:240
+#: lib/storyarn_web/components/landing_page/hero.ex:313
 #, elixir-autogen, elixir-format
 msgid "Captain Ilya - rank, trust, inventory, scene tags"
 msgstr ""
 
-#: lib/storyarn_web/live/version_live/viewer.ex:992
+#: lib/storyarn_web/live/version_live/viewer.ex:985
 #, elixir-autogen, elixir-format
 msgid "Cases"
 msgstr ""
@@ -1100,54 +1056,24 @@ msgstr ""
 msgid "Changes from previous version"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:238
+#: lib/storyarn_web/components/landing_page/hero.ex:312
 #, elixir-autogen, elixir-format
 msgid "Character"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:234
+#: lib/storyarn_web/components/landing_page/hero.ex:308
 #, elixir-autogen, elixir-format
 msgid "Character profile"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:581
-#, elixir-autogen, elixir-format
-msgid "Characters, factions, locations and item logic live in a connected system with variables, blocks and inheritance."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:408
+#: lib/storyarn_web/components/landing_page/feature_grid.ex:15
 #, elixir-autogen, elixir-format
 msgid "Characters, factions, quests, locations and items live in reusable structures with variables, formulas and inheritance."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:597
-#, elixir-autogen, elixir-format
-msgid "Characters, locations, factions, quests and items in one system"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:713
-#, elixir-autogen, elixir-format
-msgid "Characters, locations, factions, quests and items in one system."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:590
-#, elixir-autogen, elixir-format
-msgid "Characters, stats, and inheritance"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:211
+#: lib/storyarn_web/components/landing_page/hero.ex:256
 #, elixir-autogen, elixir-format
 msgid "Choice"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:629
-#, elixir-autogen, elixir-format
-msgid "Clear graph editing for dialogue, conditions, instructions and exits"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:738
-#, elixir-autogen, elixir-format
-msgid "Clear graph editing for dialogue, conditions, instructions and exits."
 msgstr ""
 
 #: lib/storyarn_web/live/version_live/viewer.ex:646
@@ -1157,7 +1083,7 @@ msgstr ""
 msgid "Color"
 msgstr ""
 
-#: lib/storyarn_web/live/version_live/viewer.ex:887
+#: lib/storyarn_web/live/version_live/viewer.ex:880
 #, elixir-autogen, elixir-format
 msgid "Columns"
 msgstr ""
@@ -1169,14 +1095,14 @@ msgstr ""
 msgid "Comparing versions"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:206
-#: lib/storyarn_web/live/version_live/viewer.ex:1016
-#: lib/storyarn_web/live/version_live/viewer.ex:1061
+#: lib/storyarn_web/components/landing_page/hero.ex:250
+#: lib/storyarn_web/live/version_live/viewer.ex:1009
+#: lib/storyarn_web/live/version_live/viewer.ex:1054
 #, elixir-autogen, elixir-format
 msgid "Condition"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:213
+#: lib/storyarn_web/components/landing_page/hero.ex:258
 #, elixir-autogen, elixir-format
 msgid "Consumes item, adds trust and enters the night harbor scene."
 msgstr ""
@@ -1191,17 +1117,18 @@ msgstr ""
 msgid "Current"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:81
+#: lib/storyarn_web/components/landing_page/discover_section.ex:537
+#: lib/storyarn_web/components/landing_page/hero.ex:109
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Debug mode"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:314
+#: lib/storyarn_web/components/landing_page/hero.ex:377
 #, elixir-autogen, elixir-format
 msgid "DeepL ready"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:917
+#: lib/storyarn_web/components/landing_page/workflow_grid.ex:11
 #, elixir-autogen, elixir-format
 msgid "Define the world"
 msgstr ""
@@ -1211,7 +1138,7 @@ msgstr ""
 msgid "Deleted %{time_ago}"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:840
+#: lib/storyarn_web/components/layouts.ex:857
 #: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:29
 #: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:65
 #, elixir-autogen, elixir-format
@@ -1223,82 +1150,67 @@ msgstr ""
 msgid "Deleted projects with available snapshots will appear here."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:887
+#: lib/storyarn_web/components/landing_page/spotlights.ex:144
 #, elixir-autogen, elixir-format
 msgid "Designed around the feeling of \"I can always go back.\""
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:201
+#: lib/storyarn_web/components/landing_page/hero.ex:244
 #, elixir-autogen, elixir-format
 msgid "Dialogue"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:179
+#: lib/storyarn_web/components/landing_page/hero.ex:223
 #, elixir-autogen, elixir-format
 msgid "Dialogue, checks, instructions and synchronized branches"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:492
+#: lib/storyarn_web/components/landing_page/discover_section.ex:22
 #, elixir-autogen, elixir-format
 msgid "Discover the product pillars"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:859
+#: lib/storyarn_web/components/landing_page/spotlights.ex:94
 #, elixir-autogen, elixir-format
 msgid "Draft"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:858
+#: lib/storyarn_web/components/landing_page/spotlights.ex:93
 #, elixir-autogen, elixir-format
 msgid "Draft checkpoint"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:599
-#, elixir-autogen, elixir-format
-msgid "Each sheet can open as a full surface, not just a row in a table"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:719
-#, elixir-autogen, elixir-format
-msgid "Each sheet can open as a full surface, not just a row in a table."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:231
+#: lib/storyarn_web/components/landing_page/hero.ex:307
 #, elixir-autogen, elixir-format
 msgid "Entity connected to dialogue, quest state and export"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:592
-#, elixir-autogen, elixir-format
-msgid "Every entity in a sheet carries variables, blocks and formulas. Child sheets inherit from parents, keeping your world consistent."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:48
+#: lib/storyarn_web/components/landing_page/hero.ex:80
 #, elixir-autogen, elixir-format
 msgid "Explorable scenes"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:290
+#: lib/storyarn_web/components/landing_page/hero.ex:356
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Exploration mode"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:58
+#: lib/storyarn_web/components/landing_page/hero.ex:52
 #, elixir-autogen, elixir-format
 msgid "Explore Storyarn"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:941
+#: lib/storyarn_web/components/landing_page/workflow_grid.ex:27
 #, elixir-autogen, elixir-format
 msgid "Explore and debug"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:475
+#: lib/storyarn_web/components/landing_page/feature_grid.ex:53
 #, elixir-autogen, elixir-format
 msgid "Export for multiple engines"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:125
+#: lib/storyarn_web/components/landing_page/hero.ex:142
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Exports"
 msgstr ""
@@ -1308,39 +1220,14 @@ msgstr ""
 msgid "Expression"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:464
+#: lib/storyarn_web/components/landing_page/feature_grid.ex:47
 #, elixir-autogen, elixir-format
 msgid "Extract lines, translate, use glossaries and track coverage per language from the same narrative base."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:247
+#: lib/storyarn_web/components/landing_page/hero.ex:317
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Faction"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:613
-#, elixir-autogen, elixir-format
-msgid "Familiar to anyone coming from articy:draft or Arcweaver, but wired directly into sheets, scenes, drafts and export."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:676
-#, elixir-autogen, elixir-format
-msgid "Feature 01"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:701
-#, elixir-autogen, elixir-format
-msgid "Feature 02"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:726
-#, elixir-autogen, elixir-format
-msgid "Feature 03"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:751
-#, elixir-autogen, elixir-format
-msgid "Feature 04"
 msgstr ""
 
 #: lib/storyarn_web/live/version_live/viewer.ex:701
@@ -1348,44 +1235,34 @@ msgstr ""
 msgid "Fill Color"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:176
+#: lib/storyarn_web/components/landing_page/hero.ex:222
 #, elixir-autogen, elixir-format
 msgid "Flow editor"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:610
-#, elixir-autogen, elixir-format
-msgid "Flows turn branching narrative into an editable graph"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:45
+#: lib/storyarn_web/components/landing_page/hero.ex:77
 #, elixir-autogen, elixir-format
 msgid "Flows with debug and story player"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:419
+#: lib/storyarn_web/components/landing_page/feature_grid.ex:21
 #, elixir-autogen, elixir-format
 msgid "Flows you can test"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:478
+#: lib/storyarn_web/components/landing_page/feature_grid.ex:55
 #, elixir-autogen, elixir-format
 msgid "From Storyarn to Yarn Spinner, Ink, Unity, Godot Dialogic, Unreal or writing tools without redoing the work."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:904
+#: lib/storyarn_web/components/landing_page/workflow_grid.ex:49
 #, elixir-autogen, elixir-format
 msgid "From worldbuilding to shipped game"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:249
+#: lib/storyarn_web/components/landing_page/hero.ex:318
 #, elixir-autogen, elixir-format
 msgid "Harbor Guild - resources, favors, reputation and routes"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:558
-#, elixir-autogen, elixir-format
-msgid "Harbor of Broken Oaths"
 msgstr ""
 
 #: lib/storyarn_web/live/version_live/viewer.ex:676
@@ -1393,17 +1270,12 @@ msgstr ""
 msgid "Icon"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:694
-#, elixir-autogen, elixir-format
-msgid "Ideal for producers, leads and cross-discipline reviews."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:336
+#: lib/storyarn_web/components/landing_page/hero.ex:382
 #, elixir-autogen, elixir-format
 msgid "In progress"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:265
+#: lib/storyarn_web/components/landing_page/hero.ex:327
 #, elixir-autogen, elixir-format
 msgid "Inherited Blocks"
 msgstr ""
@@ -1413,17 +1285,17 @@ msgstr ""
 msgid "Initial version"
 msgstr ""
 
-#: lib/storyarn_web/live/version_live/viewer.ex:1081
+#: lib/storyarn_web/live/version_live/viewer.ex:1074
 #, elixir-autogen, elixir-format
 msgid "Instruction"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:461
+#: lib/storyarn_web/components/landing_page/feature_grid.ex:45
 #, elixir-autogen, elixir-format
 msgid "Integrated localization"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:51
+#: lib/storyarn_web/components/landing_page/hero.ex:83
 #, elixir-autogen, elixir-format
 msgid "Integrated localization and export"
 msgstr ""
@@ -1457,17 +1329,12 @@ msgstr ""
 msgid "Layer"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:645
-#, elixir-autogen, elixir-format
-msgid "Layered maps, zones and pins make scenes readable as systems, not as loose concept art or disconnected layout files."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:252
+#: lib/storyarn_web/components/landing_page/hero.ex:319
 #, elixir-autogen, elixir-format
 msgid "Linked"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:243
+#: lib/storyarn_web/components/landing_page/hero.ex:314
 #, elixir-autogen, elixir-format
 msgid "Live"
 msgstr ""
@@ -1477,12 +1344,12 @@ msgstr ""
 msgid "Locked"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:505
+#: lib/storyarn_web/components/landing_page/discover_section.ex:112
 #, elixir-autogen, elixir-format
 msgid "Main features"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:844
+#: lib/storyarn_web/components/landing_page/spotlights.ex:84
 #, elixir-autogen, elixir-format
 msgid "Mar 12, 2026 at 15:59"
 msgstr ""
@@ -1492,7 +1359,7 @@ msgstr ""
 msgid "Menu Text"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:920
+#: lib/storyarn_web/components/landing_page/workflow_grid.ex:13
 #, elixir-autogen, elixir-format
 msgid "Model characters, factions, items and narrative rules in sheets that feed the rest of the project."
 msgstr ""
@@ -1503,19 +1370,14 @@ msgstr ""
 msgid "Name"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:884
+#: lib/storyarn_web/components/landing_page/spotlights.ex:141
 #, elixir-autogen, elixir-format
 msgid "Named versions, safe restore and private drafts for exploration."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:75
+#: lib/storyarn_web/components/landing_page/hero.ex:103
 #, elixir-autogen, elixir-format
 msgid "Narrative RPG - 4 languages - 12 active scenes - 91 flows"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:622
-#, elixir-autogen, elixir-format
-msgid "Narrative graph with live data hooks"
 msgstr ""
 
 #: lib/storyarn_web/live/compare_live/flow.ex:48
@@ -1525,7 +1387,7 @@ msgstr ""
 msgid "Next version"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:217
+#: lib/storyarn_web/components/landing_page/hero.ex:263
 #, elixir-autogen, elixir-format
 msgid "Night Harbor"
 msgstr ""
@@ -1555,27 +1417,12 @@ msgstr ""
 msgid "No snapshots available for this project."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:182
+#: lib/storyarn_web/components/landing_page/hero.ex:224
 #, elixir-autogen, elixir-format
 msgid "Node graph - live"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:630
-#, elixir-autogen, elixir-format
-msgid "Nodes pull from live project data instead of disconnected text fragments"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:741
-#, elixir-autogen, elixir-format
-msgid "Nodes pull from live project data instead of disconnected text fragments."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:688
-#, elixir-autogen, elixir-format
-msgid "One place to understand the narrative state of the whole project."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:390
+#: lib/storyarn_web/components/landing_page/feature_grid.ex:67
 #, elixir-autogen, elixir-format
 msgid "One platform for interactive narrative"
 msgstr ""
@@ -1585,12 +1432,12 @@ msgstr ""
 msgid "Opacity"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:93
+#: lib/storyarn_web/components/landing_page/hero.ex:130
 #, elixir-autogen, elixir-format
 msgid "Open narrative design tool"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:812
+#: lib/storyarn_web/components/landing_page/spotlights.ex:41
 #, elixir-autogen, elixir-format
 msgid "Playable prototype engine"
 msgstr ""
@@ -1608,29 +1455,24 @@ msgstr ""
 msgid "Previous version"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:13
+#: lib/storyarn_web/components/landing_page/hero.ex:17
 #, elixir-autogen, elixir-format
-msgid "Private beta for studios and narrative teams"
+msgid "Private beta"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:861
+#: lib/storyarn_web/components/landing_page/spotlights.ex:95
 #, elixir-autogen, elixir-format
 msgid "Private branch for scene edits and experimentation"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:357
+#: lib/storyarn_web/components/landing_page/hero.ex:435
 #, elixir-autogen, elixir-format
 msgid "Professional script reading with flow synchronization"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:311
+#: lib/storyarn_web/components/landing_page/hero.ex:376
 #, elixir-autogen, elixir-format
 msgid "Progress by language, glossary and pending lines"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:546
-#, elixir-autogen, elixir-format
-msgid "Project dashboards that frame the whole narrative system"
 msgstr ""
 
 #: lib/storyarn_web/controllers/snapshot_download_controller.ex:39
@@ -1638,22 +1480,12 @@ msgstr ""
 msgid "Project not found"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:554
-#, elixir-autogen, elixir-format
-msgid "Project overview"
-msgstr ""
-
 #: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:241
 #, elixir-autogen, elixir-format
 msgid "Project recovered as '%{name}'"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:682
-#, elixir-autogen, elixir-format
-msgid "Project-level dashboards make the platform readable at a glance: scale, content health, warnings, localization progress and shipping readiness."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:72
+#: lib/storyarn_web/components/landing_page/hero.ex:100
 #, elixir-autogen, elixir-format
 msgid "Project: Harbor of Broken Oaths"
 msgstr ""
@@ -1663,37 +1495,27 @@ msgstr ""
 msgid "Properties"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:256
+#: lib/storyarn_web/components/landing_page/hero.ex:322
 #, elixir-autogen, elixir-format
 msgid "Quest State"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:661
-#, elixir-autogen, elixir-format
-msgid "Readable scene dashboards before moving into interactive layers"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:763
-#, elixir-autogen, elixir-format
-msgid "Readable scene dashboards before moving into interactive layers."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:322
+#: lib/storyarn_web/components/landing_page/hero.ex:380
 #, elixir-autogen, elixir-format
 msgid "Ready"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:972
+#: lib/storyarn_web/components/landing_page/cta_waitlist.ex:18
 #, elixir-autogen, elixir-format
 msgid "Ready to build your next narrative?"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:862
+#: lib/storyarn_web/components/landing_page/spotlights.ex:96
 #, elixir-autogen, elixir-format
 msgid "Ready to compare, keep or discard"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:79
+#: lib/storyarn_web/components/landing_page/hero.ex:107
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Realtime collaboration"
 msgstr ""
@@ -1730,48 +1552,37 @@ msgstr ""
 msgid "Required"
 msgstr ""
 
-#: lib/storyarn_web/live/version_live/viewer.ex:958
+#: lib/storyarn_web/live/version_live/viewer.ex:951
 #, elixir-autogen, elixir-format
 msgid "Responses"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:841
+#: lib/storyarn_web/components/landing_page/spotlights.ex:82
 #, elixir-autogen, elixir-format
 msgid "Restored from v8"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:329
+#: lib/storyarn_web/components/landing_page/hero.ex:381
 #, elixir-autogen, elixir-format
 msgid "Review"
 msgstr ""
 
-#: lib/storyarn_web/live/version_live/viewer.ex:934
+#: lib/storyarn_web/live/version_live/viewer.ex:927
 #, elixir-autogen, elixir-format
 msgid "Rows"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:853
+#: lib/storyarn_web/components/landing_page/spotlights.ex:90
 #, elixir-autogen, elixir-format
 msgid "Safe rollback path preserved"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:284
+#: lib/storyarn_web/components/landing_page/hero.ex:354
 #, elixir-autogen, elixir-format
 msgid "Scene editor"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:656
-#: lib/storyarn_web/controllers/page_html/home.html.heex:757
-#, elixir-autogen, elixir-format
-msgid "Scene tools help teams think spatially before engineering: layers, zones, pins and map surfaces turn environments into usable design assets."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:642
-#, elixir-autogen, elixir-format
-msgid "Scenes give the world spatial structure before implementation"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:433
+#: lib/storyarn_web/components/landing_page/feature_grid.ex:29
 #, elixir-autogen, elixir-format
 msgid "Scenes with real exploration"
 msgstr ""
@@ -1782,17 +1593,17 @@ msgstr ""
 msgid "Scope"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:354
+#: lib/storyarn_web/components/landing_page/hero.ex:432
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Screenplay sync"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:61
+#: lib/storyarn_web/components/landing_page/hero.ex:58
 #, elixir-autogen, elixir-format
 msgid "See workflow"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:270
+#: lib/storyarn_web/components/landing_page/hero.ex:329
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Shared"
 msgstr ""
@@ -1802,22 +1613,17 @@ msgstr ""
 msgid "Sheet not found"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:405
+#: lib/storyarn_web/components/landing_page/feature_grid.ex:13
 #, elixir-autogen, elixir-format
 msgid "Sheets as source of truth"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:578
-#, elixir-autogen, elixir-format
-msgid "Sheets organize the world as structured, reusable data"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:42
+#: lib/storyarn_web/components/landing_page/hero.ex:74
 #, elixir-autogen, elixir-format
 msgid "Sheets with inheritable variables"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:212
+#: lib/storyarn_web/components/landing_page/hero.ex:257
 #, elixir-autogen, elixir-format
 msgid "Show travel permit"
 msgstr ""
@@ -1848,97 +1654,57 @@ msgstr ""
 msgid "Snapshot v%{number}"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:650
-#, elixir-autogen, elixir-format
-msgid "Spatial narrative layout"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:654
-#, elixir-autogen, elixir-format
-msgid "Spatial structure for narrative beats"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:662
-#, elixir-autogen, elixir-format
-msgid "Spatial structure for narrative beats, triggers and world readability"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:766
-#, elixir-autogen, elixir-format
-msgid "Spatial structure for narrative beats, triggers and world readability."
-msgstr ""
-
 #: lib/storyarn_web/live/version_live/viewer.ex:621
 #, elixir-autogen, elixir-format
 msgid "Stage Directions"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:267
+#: lib/storyarn_web/components/landing_page/hero.ex:328
 #, elixir-autogen, elixir-format
 msgid "Stats, progress flags and consequence table"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:447
+#: lib/storyarn_web/components/landing_page/feature_grid.ex:37
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Story Player and Debug Mode"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:130
+#: lib/storyarn_web/components/landing_page/hero.ex:146
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Story Player ready"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:1016
+#: lib/storyarn_web/components/landing_page/landing_footer.ex:11
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Storyarn - Open narrative design platform"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:34
+#: lib/storyarn_web/components/landing_page/hero.ex:43
 #, elixir-autogen, elixir-format
 msgid "Storyarn brings sheets, flows, scenes, screenplays, and localization into a single platform for interactive narrative. Everything connected: characters, variables, branches, maps, and export for your engine."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:878
+#: lib/storyarn_web/components/landing_page/spotlights.ex:135
 #, elixir-autogen, elixir-format
 msgid "Storyarn brings version history to sheets, flows and scenes in a way that feels native to narrative teams. The goal is not to teach Git. The goal is to let people experiment without fear."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:393
+#: lib/storyarn_web/components/landing_page/feature_grid.ex:69
 #, elixir-autogen, elixir-format
 msgid "Storyarn is a real working ecosystem: data, branches, scenes, screenplays and localization all living inside the same project."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:907
+#: lib/storyarn_web/components/landing_page/workflow_grid.ex:51
 #, elixir-autogen, elixir-format
 msgid "Storyarn is not a standalone module but a connected flow from pre-production, iteration and shipping."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:549
-#, elixir-autogen, elixir-format
-msgid "Storyarn starts at project level: key metrics, warnings, coverage, exports and status across the full production pipeline."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:804
+#: lib/storyarn_web/components/landing_page/spotlights.ex:30
 #, elixir-autogen, elixir-format
 msgid "Strong fit for CRPG, point-and-click and narrative exploration workflows."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:631
-#, elixir-autogen, elixir-format
-msgid "Strong fit for teams coming from articy:draft or Arcweaver"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:744
-#, elixir-autogen, elixir-format
-msgid "Strong fit for teams coming from articy:draft or Arcweaver."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:586
-#, elixir-autogen, elixir-format
-msgid "Structured worldbuilding"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:216
+#: lib/storyarn_web/components/landing_page/hero.ex:262
 #, elixir-autogen, elixir-format
 msgid "Subflow"
 msgstr ""
@@ -1953,12 +1719,12 @@ msgstr ""
 msgid "Technical ID"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:132
+#: lib/storyarn_web/components/landing_page/hero.ex:148
 #, elixir-autogen, elixir-format
 msgid "Test Act II with variables, checks and scene overlays without leaving the project."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:450
+#: lib/storyarn_web/components/landing_page/feature_grid.ex:39
 #, elixir-autogen, elixir-format
 msgid "Test the story as a player or inspect it step by step with variables and conditions visible."
 msgstr ""
@@ -1969,22 +1735,22 @@ msgstr ""
 msgid "Text"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:436
+#: lib/storyarn_web/components/landing_page/feature_grid.ex:31
 #, elixir-autogen, elixir-format
 msgid "The spatial layer helps you think about the world as an interactive experience, not just as narrative documentation."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:422
+#: lib/storyarn_web/components/landing_page/feature_grid.ex:23
 #, elixir-autogen, elixir-format
 msgid "The value is not just the visual tree: it's being able to debug, simulate and verify it without exporting to another tool."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:795
+#: lib/storyarn_web/components/landing_page/spotlights.ex:21
 #, elixir-autogen, elixir-format
 msgid "This is where Storyarn stops feeling like documentation and starts feeling like a game. Zones, pins, camera behavior, state and flow triggers come together in a surface that teams can explore, test and show."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:495
+#: lib/storyarn_web/components/landing_page/discover_section.ex:24
 #, elixir-autogen, elixir-format
 msgid "This section summarizes the main tools in Storyarn. Understand the platform architecture at a glance: global vision, structured modeling, visual authoring and scenes."
 msgstr ""
@@ -2005,19 +1771,14 @@ msgstr ""
 msgid "Tooltip"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:261
+#: lib/storyarn_web/components/landing_page/hero.ex:324
 #, elixir-autogen, elixir-format
 msgid "Tracked"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:792
+#: lib/storyarn_web/components/landing_page/spotlights.ex:18
 #, elixir-autogen, elixir-format
 msgid "Turn scene design into a playable prototype."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:691
-#, elixir-autogen, elixir-format
-msgid "Turns Storyarn into a platform, not a collection of isolated editors."
 msgstr ""
 
 #: lib/storyarn_web/live/version_live/viewer.ex:603
@@ -2028,17 +1789,17 @@ msgstr ""
 msgid "Type"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:208
+#: lib/storyarn_web/components/landing_page/hero.ex:252
 #, elixir-autogen, elixir-format
 msgid "Unlocks the diplomatic route and updates the harbor gate."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:807
+#: lib/storyarn_web/components/landing_page/spotlights.ex:35
 #, elixir-autogen, elixir-format
 msgid "Useful for internal demos, publisher pitches and early playtest loops."
 msgstr ""
 
-#: lib/storyarn_web/live/version_live/viewer.ex:842
+#: lib/storyarn_web/live/version_live/viewer.ex:835
 #, elixir-autogen, elixir-format
 msgid "Value"
 msgstr ""
@@ -2049,18 +1810,8 @@ msgstr ""
 msgid "Variable"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:598
-#, elixir-autogen, elixir-format
-msgid "Variables, blocks and inheritance make narrative rules editable"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:716
-#, elixir-autogen, elixir-format
-msgid "Variables, blocks and inheritance make narrative rules editable."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:835
-#: lib/storyarn_web/controllers/page_html/home.html.heex:872
+#: lib/storyarn_web/components/landing_page/spotlights.ex:78
+#: lib/storyarn_web/components/landing_page/spotlights.ex:129
 #, elixir-autogen, elixir-format
 msgid "Version History"
 msgstr ""
@@ -2073,22 +1824,17 @@ msgstr ""
 msgid "Version not found"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:80
+#: lib/storyarn_web/components/landing_page/hero.ex:108
 #, elixir-autogen, elixir-format
 msgid "Version snapshots"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:875
+#: lib/storyarn_web/components/landing_page/spotlights.ex:132
 #, elixir-autogen, elixir-format
 msgid "Versioning that feels safe without feeling technical."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:618
-#, elixir-autogen, elixir-format
-msgid "Visual narrative logic"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:944
+#: lib/storyarn_web/components/landing_page/workflow_grid.ex:29
 #, elixir-autogen, elixir-format
 msgid "Walk through scenes, test overlays, run the story player and use debug mode to validate logic and pacing."
 msgstr ""
@@ -2098,17 +1844,12 @@ msgstr ""
 msgid "Workspace project limit reached. Upgrade your plan to recover this project."
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:228
+#: lib/storyarn_web/components/landing_page/hero.ex:306
 #, elixir-autogen, elixir-format
 msgid "World sheet"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:707
-#, elixir-autogen, elixir-format
-msgid "Worldbuilding becomes data instead of scattered notes. Every entity lives in a reusable structure with depth and internal logic."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/home.html.heex:929
+#: lib/storyarn_web/components/landing_page/workflow_grid.ex:19
 #, elixir-autogen, elixir-format
 msgid "Write and branch"
 msgstr ""
@@ -2122,17 +1863,17 @@ msgstr ""
 msgid "Yes"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:287
+#: lib/storyarn_web/components/landing_page/hero.ex:355
 #, elixir-autogen, elixir-format
 msgid "Zones, pins, overlays and spatial links"
 msgstr ""
 
-#: lib/storyarn_web/live/version_live/viewer.ex:913
+#: lib/storyarn_web/live/version_live/viewer.ex:906
 #, elixir-autogen, elixir-format
 msgid "all rows"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:152
+#: lib/storyarn_web/components/landing_page/hero.ex:199
 #, elixir-autogen, elixir-format
 msgid "branching flows in the main project"
 msgstr ""
@@ -2142,27 +1883,322 @@ msgstr ""
 msgid "by %{email}"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:146
+#: lib/storyarn_web/components/landing_page/hero.ex:197
 #, elixir-autogen, elixir-format
 msgid "connected variables across sheets, flows and scenes"
 msgstr ""
 
-#: lib/storyarn_web/live/version_live/viewer.ex:902
+#: lib/storyarn_web/live/version_live/viewer.ex:895
 #, elixir-autogen, elixir-format, fuzzy
 msgid "constant"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:158
+#: lib/storyarn_web/components/landing_page/hero.ex:200
 #, elixir-autogen, elixir-format
 msgid "localization coverage ready for review"
 msgstr ""
 
-#: lib/storyarn_web/live/version_live/viewer.ex:905
+#: lib/storyarn_web/live/version_live/viewer.ex:898
 #, elixir-autogen, elixir-format
 msgid "required"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/home.html.heex:164
+#: lib/storyarn_web/components/landing_page/hero.ex:201
 #, elixir-autogen, elixir-format
 msgid "target runtimes: Yarn, Ink, Unity and Godot"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:444
+#, elixir-autogen, elixir-format
+msgid "A project dashboard turns Storyarn into a command surface: scale, warnings, localization coverage and readiness stay visible without opening every tool."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:579
+#, elixir-autogen, elixir-format
+msgid "Avoid hand-maintained links between spatial design and narrative logic."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:489
+#, elixir-autogen, elixir-format
+msgid "Backlinks"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:490
+#, elixir-autogen, elixir-format
+msgid "Backlinks show where every sheet is used"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:578
+#, elixir-autogen, elixir-format
+msgid "Bring story logic, references and world data into the map surface."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:475
+#, elixir-autogen, elixir-format
+msgid "Cell formulas"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:571
+#, elixir-autogen, elixir-format
+msgid "Connected systems"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:538
+#, elixir-autogen, elixir-format
+msgid "Debug mode explains why a branch was taken"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:592
+#, elixir-autogen, elixir-format
+msgid "Define hotspots, routes and interactions directly on the scene."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:512
+#, elixir-autogen, elixir-format
+msgid "Dialogue, checks, instructions and branches live in one graph that stays understandable as scope grows."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:593
+#, elixir-autogen, elixir-format
+msgid "Gate actions through narrative variables and conditions."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:449
+#, elixir-autogen, elixir-format
+msgid "Give leads a shared picture before reviews and planning."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:461
+#, elixir-autogen, elixir-format
+msgid "Inheritance"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:462
+#, elixir-autogen, elixir-format
+msgid "Inheritance keeps world rules consistent"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:496
+#, elixir-autogen, elixir-format
+msgid "Jump from a sheet to every flow, scene or screenplay that references it."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:566
+#, elixir-autogen, elixir-format
+msgid "Keep large spaces understandable during review and iteration."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:517
+#, elixir-autogen, elixir-format
+msgid "Keep logic connected to project data instead of disconnected fragments."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:450
+#, elixir-autogen, elixir-format
+msgid "Keep production conversations grounded in live project data."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:484
+#, elixir-autogen, elixir-format
+msgid "Keep systemic tuning inside the narrative model."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:557
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Layers"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:558
+#, elixir-autogen, elixir-format
+msgid "Layers and fog keep complex scenes readable"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:545
+#, elixir-autogen, elixir-format
+msgid "Make branching bugs reviewable by designers, not just engineers."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:482
+#, elixir-autogen, elixir-format
+msgid "Mix raw values, computed values and references in one grid."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:516
+#, elixir-autogen, elixir-format
+msgid "Model conversations, state changes and exits in one surface."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:574
+#, elixir-autogen, elixir-format
+msgid "Narrative state, characters and interactables stay wired into the same project model instead of living in separate documents."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:588
+#, elixir-autogen, elixir-format
+msgid "Navigation, actions and triggers can react to state so spatial storytelling becomes playable instead of descriptive."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:509
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Node graph"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:510
+#, elixir-autogen, elixir-format
+msgid "Node graphs keep branching logic readable"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:564
+#, elixir-autogen, elixir-format
+msgid "Organize maps with layered visibility instead of one overloaded canvas."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:469
+#, elixir-autogen, elixir-format
+msgid "Override only what changes for a variant, episode or region."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:464
+#, elixir-autogen, elixir-format
+msgid "Parent and child sheets let teams evolve characters, factions and locations without copying structures by hand."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:478
+#, elixir-autogen, elixir-format
+msgid "Per-cell formulas turn sheet tables into editable systems for balancing, tracking and narrative state."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:585
+#, elixir-autogen, elixir-format
+msgid "Pins and zones"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:586
+#, elixir-autogen, elixir-format
+msgid "Pins and zones drive conditional interaction"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:530
+#, elixir-autogen, elixir-format
+msgid "Play through choices and branches in the same workspace."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:441
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Project view"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:594
+#, elixir-autogen, elixir-format
+msgid "Prototype exploration logic before full implementation."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:468
+#, elixir-autogen, elixir-format
+msgid "Push shared variables and blocks down the hierarchy."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:492
+#, elixir-autogen, elixir-format
+msgid "Reference tracking makes dependencies visible so changing a character or quest never feels blind."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:497
+#, elixir-autogen, elixir-format
+msgid "Review impact before renaming, restructuring or deleting content."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:526
+#, elixir-autogen, elixir-format
+msgid "Run the flow as a player, inspect outcomes and feel rhythm before anything reaches the engine."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:518
+#, elixir-autogen, elixir-format
+msgid "Scale from quick sketches to production dialogue graphs."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:470
+#, elixir-autogen, elixir-format
+msgid "Scale the world model without turning it into copy-paste."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:560
+#, elixir-autogen, elixir-format
+msgid "Scene layers let teams stage progression, visibility and structure without flattening everything into one image."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:572
+#, elixir-autogen, elixir-format
+msgid "Scenes stay connected to flows and sheets"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:442
+#, elixir-autogen, elixir-format
+msgid "See narrative production from the top down"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:544
+#, elixir-autogen, elixir-format
+msgid "See what passed, what failed and what changed."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:523
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Story Player"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:524
+#, elixir-autogen, elixir-format
+msgid "Story Player tests pacing without leaving the editor"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:476
+#, elixir-autogen, elixir-format
+msgid "Tables mix manual data and live formulas"
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:448
+#, elixir-autogen, elixir-format
+msgid "Track narrative scale, health and progress in one place."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:498
+#, elixir-autogen, elixir-format
+msgid "Treat sheets as live production assets instead of static entries."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:532
+#, elixir-autogen, elixir-format
+msgid "Turn authored flows into something teams can actually experience."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:546
+#, elixir-autogen, elixir-format
+msgid "Turn hidden logic into an inspectable system."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:580
+#, elixir-autogen, elixir-format
+msgid "Turn scenes into connected production assets, not isolated boards."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:565
+#, elixir-autogen, elixir-format
+msgid "Use fog of war to communicate progression and discoverability."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:483
+#, elixir-autogen, elixir-format
+msgid "Use formulas where balancing would otherwise live in spreadsheets."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:531
+#, elixir-autogen, elixir-format
+msgid "Validate narrative rhythm before handoff."
+msgstr ""
+
+#: lib/storyarn_web/components/landing_page/discover_section.ex:540
+#, elixir-autogen, elixir-format
+msgid "Variable values, condition results and transitions become visible so teams can diagnose logic quickly."
 msgstr ""

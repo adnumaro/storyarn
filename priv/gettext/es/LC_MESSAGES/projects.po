@@ -11,21 +11,21 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/project_live/trash.ex:173
+#: lib/storyarn_web/live/project_live/trash.ex:174
 #, elixir-autogen, elixir-format
 msgid "%{count} day ago"
 msgid_plural "%{count} days ago"
 msgstr[0] "hace %{count} día"
 msgstr[1] "hace %{count} días"
 
-#: lib/storyarn_web/live/project_live/trash.ex:169
+#: lib/storyarn_web/live/project_live/trash.ex:170
 #, elixir-autogen, elixir-format
 msgid "%{count} hour ago"
 msgid_plural "%{count} hours ago"
 msgstr[0] "hace %{count} hora"
 msgstr[1] "hace %{count} horas"
 
-#: lib/storyarn_web/live/project_live/trash.ex:163
+#: lib/storyarn_web/live/project_live/trash.ex:164
 #, elixir-autogen, elixir-format
 msgid "%{count} minute ago"
 msgid_plural "%{count} minutes ago"
@@ -47,7 +47,7 @@ msgstr "Clave API"
 msgid "API Tier"
 msgstr "Nivel API"
 
-#: lib/storyarn_web/live/project_live/trash.ex:83
+#: lib/storyarn_web/live/project_live/trash.ex:84
 #, elixir-autogen, elixir-format
 msgid "All items in trash will be permanently deleted. This action cannot be undone."
 msgstr "Todos los elementos de la papelera se eliminarán permanentemente. Esta acción no se puede deshacer."
@@ -58,8 +58,8 @@ msgid "All variable references are up to date."
 msgstr "Todas las referencias de variables están actualizadas."
 
 #: lib/storyarn_web/live/project_live/form.ex:40
-#: lib/storyarn_web/live/project_live/trash.ex:73
-#: lib/storyarn_web/live/project_live/trash.ex:89
+#: lib/storyarn_web/live/project_live/trash.ex:74
+#: lib/storyarn_web/live/project_live/trash.ex:90
 #, elixir-autogen, elixir-format
 msgid "Cancel"
 msgstr "Cancelar"
@@ -91,8 +91,8 @@ msgstr "Crear proyecto"
 
 #: lib/storyarn_web/live/project_live/settings.ex:66
 #: lib/storyarn_web/live/project_live/settings.ex:455
-#: lib/storyarn_web/live/project_live/trash.ex:72
-#: lib/storyarn_web/live/project_live/trash.ex:145
+#: lib/storyarn_web/live/project_live/trash.ex:73
+#: lib/storyarn_web/live/project_live/trash.ex:146
 #, elixir-autogen, elixir-format
 msgid "Delete"
 msgstr "Eliminar"
@@ -102,7 +102,7 @@ msgstr "Eliminar"
 msgid "Delete Project"
 msgstr "Eliminar proyecto"
 
-#: lib/storyarn_web/live/project_live/trash.ex:65
+#: lib/storyarn_web/live/project_live/trash.ex:66
 #, elixir-autogen, elixir-format
 msgid "Delete permanently?"
 msgstr "¿Eliminar permanentemente?"
@@ -112,17 +112,17 @@ msgstr "¿Eliminar permanentemente?"
 msgid "Delete project?"
 msgstr "Eliminar proyecto"
 
-#: lib/storyarn_web/live/project_live/trash.ex:121
+#: lib/storyarn_web/live/project_live/trash.ex:122
 #, elixir-autogen, elixir-format
 msgid "Deleted %{time_ago}"
 msgstr "Eliminado %{time_ago}"
 
-#: lib/storyarn_web/live/project_live/trash.ex:25
+#: lib/storyarn_web/live/project_live/trash.ex:26
 #, elixir-autogen, elixir-format
 msgid "Deleted sheets are kept for 30 days before being permanently removed."
 msgstr "Las fichas eliminadas se conservan por 30 días antes de ser eliminadas permanentemente."
 
-#: lib/storyarn_web/live/project_live/trash.ex:48
+#: lib/storyarn_web/live/project_live/trash.ex:49
 #, elixir-autogen, elixir-format
 msgid "Deleted sheets will appear here."
 msgstr "Las fichas eliminadas aparecerán aquí."
@@ -144,13 +144,13 @@ msgstr "Editor"
 msgid "Email address"
 msgstr "Dirección de email"
 
-#: lib/storyarn_web/live/project_live/trash.ex:37
-#: lib/storyarn_web/live/project_live/trash.ex:88
+#: lib/storyarn_web/live/project_live/trash.ex:38
+#: lib/storyarn_web/live/project_live/trash.ex:89
 #, elixir-autogen, elixir-format
 msgid "Empty Trash"
 msgstr "Vaciar papelera"
 
-#: lib/storyarn_web/live/project_live/trash.ex:81
+#: lib/storyarn_web/live/project_live/trash.ex:82
 #, elixir-autogen, elixir-format
 msgid "Empty trash?"
 msgstr "¿Vaciar papelera?"
@@ -160,7 +160,7 @@ msgstr "¿Vaciar papelera?"
 msgid "Failed to delete project."
 msgstr "Error al eliminar el proyecto."
 
-#: lib/storyarn_web/live/project_live/trash.ex:279
+#: lib/storyarn_web/live/project_live/trash.ex:280
 #, elixir-autogen, elixir-format
 msgid "Failed to delete sheet."
 msgstr "Error al eliminar la ficha."
@@ -170,7 +170,7 @@ msgstr "Error al eliminar la ficha."
 msgid "Failed to repair variable references."
 msgstr "Error al reparar las referencias de variables."
 
-#: lib/storyarn_web/live/project_live/trash.ex:255
+#: lib/storyarn_web/live/project_live/trash.ex:256
 #, elixir-autogen, elixir-format
 msgid "Failed to restore sheet."
 msgstr "Error al restaurar la ficha."
@@ -259,7 +259,7 @@ msgstr "Proyecto eliminado."
 
 #: lib/storyarn_web/live/project_live/settings.ex:668
 #: lib/storyarn_web/live/project_live/show.ex:180
-#: lib/storyarn_web/live/project_live/trash.ex:207
+#: lib/storyarn_web/live/project_live/trash.ex:208
 #, elixir-autogen, elixir-format
 msgid "Project not found."
 msgstr "Proyecto no encontrado."
@@ -293,7 +293,7 @@ msgstr[1] "%{count} nodos reparados."
 
 #: lib/storyarn_web/live/project_live/settings.ex:419
 #: lib/storyarn_web/live/project_live/settings.ex:440
-#: lib/storyarn_web/live/project_live/trash.ex:134
+#: lib/storyarn_web/live/project_live/trash.ex:135
 #, elixir-autogen, elixir-format
 msgid "Restore"
 msgstr "Restaurar"
@@ -322,23 +322,23 @@ msgstr "Guardar cambios"
 msgid "Saving..."
 msgstr "Guardando..."
 
-#: lib/storyarn_web/live/project_live/trash.ex:258
-#: lib/storyarn_web/live/project_live/trash.ex:282
+#: lib/storyarn_web/live/project_live/trash.ex:259
+#: lib/storyarn_web/live/project_live/trash.ex:283
 #, elixir-autogen, elixir-format
 msgid "Sheet not found."
 msgstr "Ficha no encontrada."
 
-#: lib/storyarn_web/live/project_live/trash.ex:274
+#: lib/storyarn_web/live/project_live/trash.ex:275
 #, elixir-autogen, elixir-format
 msgid "Sheet permanently deleted."
 msgstr "Ficha eliminada permanentemente."
 
-#: lib/storyarn_web/live/project_live/trash.ex:250
+#: lib/storyarn_web/live/project_live/trash.ex:251
 #, elixir-autogen, elixir-format
 msgid "Sheet restored successfully."
 msgstr "Ficha restaurada exitosamente."
 
-#: lib/storyarn_web/live/project_live/trash.ex:307
+#: lib/storyarn_web/live/project_live/trash.ex:308
 #, elixir-autogen, elixir-format
 msgid "Some sheets could not be deleted."
 msgstr "Algunas fichas no pudieron ser eliminadas."
@@ -368,7 +368,7 @@ msgstr "Esta invitación ya fue aceptada."
 msgid "This invitation link is invalid or has expired."
 msgstr "Este enlace de invitación no es válido o ha expirado."
 
-#: lib/storyarn_web/live/project_live/trash.ex:67
+#: lib/storyarn_web/live/project_live/trash.ex:68
 #, elixir-autogen, elixir-format
 msgid "This sheet will be permanently deleted. This action cannot be undone."
 msgstr "Esta ficha será eliminada permanentemente. Esta acción no se puede deshacer."
@@ -383,17 +383,17 @@ msgstr "Esto actualizará los datos de nodos en todo el proyecto. ¿Continuar?"
 msgid "Translation Provider (DeepL)"
 msgstr "Proveedor de traducción (DeepL)"
 
-#: lib/storyarn_web/live/project_live/trash.ex:23
+#: lib/storyarn_web/live/project_live/trash.ex:24
 #, elixir-autogen, elixir-format
 msgid "Trash"
 msgstr "Papelera"
 
-#: lib/storyarn_web/live/project_live/trash.ex:301
+#: lib/storyarn_web/live/project_live/trash.ex:302
 #, elixir-autogen, elixir-format
 msgid "Trash emptied successfully."
 msgstr "Papelera vaciada exitosamente."
 
-#: lib/storyarn_web/live/project_live/trash.ex:46
+#: lib/storyarn_web/live/project_live/trash.ex:47
 #, elixir-autogen, elixir-format
 msgid "Trash is empty"
 msgstr "La papelera está vacía"
@@ -418,7 +418,7 @@ msgstr "No tienes permiso para gestionar este proyecto."
 msgid "You're already a member of this project."
 msgstr "Ya eres miembro de este proyecto."
 
-#: lib/storyarn_web/live/project_live/trash.ex:158
+#: lib/storyarn_web/live/project_live/trash.ex:159
 #, elixir-autogen, elixir-format
 msgid "just now"
 msgstr "justo ahora"

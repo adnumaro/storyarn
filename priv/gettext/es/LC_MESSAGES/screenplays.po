@@ -66,8 +66,8 @@ msgid "Could not create linked pages."
 msgstr "No se pudo crear la ficha."
 
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:79
-#: lib/storyarn_web/live/screenplay_live/index.ex:285
-#: lib/storyarn_web/live/screenplay_live/index.ex:307
+#: lib/storyarn_web/live/screenplay_live/index.ex:289
+#: lib/storyarn_web/live/screenplay_live/index.ex:311
 #, elixir-autogen, elixir-format
 msgid "Could not create screenplay."
 msgstr "No se pudo crear la ficha."
@@ -78,7 +78,7 @@ msgid "Could not delete element."
 msgstr "No se pudo eliminar la ficha."
 
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:42
-#: lib/storyarn_web/live/screenplay_live/index.ex:259
+#: lib/storyarn_web/live/screenplay_live/index.ex:263
 #, elixir-autogen, elixir-format
 msgid "Could not delete screenplay."
 msgstr "No se pudo eliminar la ficha."
@@ -89,7 +89,7 @@ msgid "Could not import file."
 msgstr "No se pudo crear el flujo."
 
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:61
-#: lib/storyarn_web/live/screenplay_live/index.ex:328
+#: lib/storyarn_web/live/screenplay_live/index.ex:332
 #, elixir-autogen, elixir-format
 msgid "Could not move screenplay."
 msgstr "No se pudo mover la ficha."
@@ -177,7 +177,7 @@ msgstr "Creando..."
 #: lib/storyarn_web/components/sidebar/screenplay_tree.ex:35
 #: lib/storyarn_web/components/sidebar/screenplay_tree.ex:54
 #: lib/storyarn_web/live/screenplay_live/index.ex:83
-#: lib/storyarn_web/live/screenplay_live/index.ex:145
+#: lib/storyarn_web/live/screenplay_live/index.ex:149
 #, elixir-autogen, elixir-format
 msgid "Delete"
 msgstr "Eliminar"
@@ -305,8 +305,8 @@ msgstr "Aún no hay guiones"
 msgid "No screenplays yet. Create your first screenplay to get started."
 msgstr "Aún no hay guiones. Crea tu primer guión para empezar."
 
-#: lib/storyarn_web/controllers/screenplay_export_controller.ex:19
-#: lib/storyarn_web/controllers/screenplay_export_controller.ex:40
+#: lib/storyarn_web/controllers/screenplay_export_controller.ex:20
+#: lib/storyarn_web/controllers/screenplay_export_controller.ex:48
 #, elixir-autogen, elixir-format
 msgid "Not found"
 msgstr "No encontrado"
@@ -321,7 +321,7 @@ msgstr "Enviar guión al flujo"
 msgid "Read mode"
 msgstr "Modo lectura"
 
-#: lib/storyarn_web/live/screenplay_live/index.ex:210
+#: lib/storyarn_web/live/screenplay_live/index.ex:214
 #, elixir-autogen, elixir-format
 msgid "Screenplay created successfully."
 msgstr "Espacio de trabajo creado exitosamente."
@@ -334,7 +334,7 @@ msgstr "El guión no está vinculado a un flujo."
 
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:31
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:36
-#: lib/storyarn_web/live/screenplay_live/index.ex:254
+#: lib/storyarn_web/live/screenplay_live/index.ex:258
 #, elixir-autogen, elixir-format
 msgid "Screenplay moved to trash."
 msgstr "Guión movido a la papelera."
@@ -373,8 +373,8 @@ msgstr "Desvincular"
 
 #: lib/storyarn_web/live/screenplay_live/components/screenplay_toolbar.ex:32
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:68
-#: lib/storyarn_web/live/screenplay_live/index.ex:271
-#: lib/storyarn_web/live/screenplay_live/index.ex:292
+#: lib/storyarn_web/live/screenplay_live/index.ex:275
+#: lib/storyarn_web/live/screenplay_live/index.ex:296
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr "Sin título"
@@ -389,7 +389,7 @@ msgstr "Actualizar guión desde el flujo"
 msgid "Write and format screenplays with industry-standard formatting"
 msgstr "Escribe y formatea guiones con el formato estándar de la industria"
 
-#: lib/storyarn_web/live/screenplay_live/index.ex:196
+#: lib/storyarn_web/live/screenplay_live/index.ex:200
 #: lib/storyarn_web/live/screenplay_live/show.ex:152
 #, elixir-autogen, elixir-format
 msgid "You don't have access to this project."

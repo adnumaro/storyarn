@@ -6,7 +6,7 @@ defmodule StoryarnWeb.Components.LandingPage.Spotlights do
 
   def exploration_spotlight(assigns) do
     ~H"""
-    <section class="py-16 lg:py-20" id="exploration-mode">
+    <section class="py-16 lg:py-20 scroll-mt-32" id="exploration-mode">
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
         <div class="p-8 rounded-[2rem] border border-base-content/8 bg-base-200/60">
           <div class="grid grid-cols-1 lg:grid-cols-[1.1fr_minmax(320px,0.72fr)] gap-6 items-start">
@@ -15,11 +15,13 @@ defmodule StoryarnWeb.Components.LandingPage.Spotlights do
                 {gettext("Exploration Mode")}
               </span>
               <h3 class="text-[clamp(2rem,4vw,3.6rem)] leading-[0.94] tracking-[-0.05em] font-bold text-base-content">
-                {gettext("Turn scene design into a playable prototype.")}
+                {widont(gettext("Turn scene design into a playable prototype."))}
               </h3>
               <p class="text-base-content/60 leading-relaxed">
-                {gettext(
-                  "This is where Storyarn stops feeling like documentation and starts feeling like a game. Zones, pins, camera behavior, state and flow triggers come together in a surface that teams can explore, test and show."
+                {widont(
+                  gettext(
+                    "This is where Storyarn stops feeling like documentation and starts feeling like a game. Zones, pins, camera behavior, state and flow triggers come together in a surface that teams can explore, test and show."
+                  )
                 )}
               </p>
               <ul class="grid gap-3 list-none p-0">
@@ -56,7 +58,7 @@ defmodule StoryarnWeb.Components.LandingPage.Spotlights do
 
   def version_spotlight(assigns) do
     ~H"""
-    <section class="py-16 lg:py-20" id="version-history">
+    <section class="py-16 lg:py-20 scroll-mt-32" id="version-history">
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
         <div class="p-8 rounded-[2rem] border border-base-content/8 bg-base-200/60">
           <div class="grid grid-cols-1 lg:grid-cols-[minmax(320px,0.72fr)_1.1fr] gap-6 items-start">
@@ -129,11 +131,13 @@ defmodule StoryarnWeb.Components.LandingPage.Spotlights do
         {gettext("Version History")}
       </span>
       <h3 class="text-[clamp(2rem,4vw,3.6rem)] leading-[0.94] tracking-[-0.05em] font-bold text-base-content">
-        {gettext("Versioning that feels safe without feeling technical.")}
+        {widont(gettext("Versioning that feels safe without feeling technical."))}
       </h3>
       <p class="text-base-content/60 leading-relaxed">
-        {gettext(
-          "Storyarn brings version history to sheets, flows and scenes in a way that feels native to narrative teams. The goal is not to teach Git. The goal is to let people experiment without fear."
+        {widont(
+          gettext(
+            "Storyarn brings version history to sheets, flows and scenes in a way that feels native to narrative teams. The goal is not to teach Git. The goal is to let people experiment without fear."
+          )
         )}
       </p>
       <ul class="grid gap-3 list-none p-0">

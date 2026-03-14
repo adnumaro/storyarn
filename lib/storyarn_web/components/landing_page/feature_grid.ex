@@ -61,7 +61,7 @@ defmodule StoryarnWeb.Components.LandingPage.FeatureGrid do
     assigns = assign(assigns, :features, Enum.zip(features, @feature_colors))
 
     ~H"""
-    <section class="py-16 lg:py-20" id="features">
+    <section class="py-16 lg:py-20 scroll-mt-32" id="features">
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
         <.section_header
           title={gettext("One platform for interactive narrative")}
@@ -94,11 +94,13 @@ defmodule StoryarnWeb.Components.LandingPage.FeatureGrid do
 
   defp section_header(assigns) do
     ~H"""
-    <div class="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-7 mb-8">
-      <h2 class="text-[clamp(2.2rem,3vw,3.8rem)] leading-[0.97] tracking-[-0.06em] font-bold max-w-[12ch] text-base-content">
-        {@title}
+    <div class="grid gap-4 mb-8 max-w-[56rem]">
+      <h2 class="text-[clamp(2.2rem,3vw,3.8rem)] leading-[0.97] tracking-[-0.06em] font-bold max-w-[16ch] text-base-content">
+        {widont(@title)}
       </h2>
-      <p class="max-w-[36rem] text-base-content/60 leading-relaxed text-base">{@description}</p>
+      <p class="max-w-[36rem] text-base-content/60 leading-relaxed text-base">
+        {widont(@description)}
+      </p>
     </div>
     """
   end

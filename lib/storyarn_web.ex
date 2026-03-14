@@ -86,6 +86,7 @@ defmodule StoryarnWeb do
       import Phoenix.HTML
       # Core UI components
       import StoryarnWeb.Components.CoreComponents
+      import StoryarnWeb.Components.TextComponents
       # Custom UI components
       import StoryarnWeb.Components.UIComponents
 

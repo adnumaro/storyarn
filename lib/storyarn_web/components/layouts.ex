@@ -535,7 +535,6 @@ defmodule StoryarnWeb.Layouts do
 
   attr :theme, :string,
     default: nil,
-    values: ~w(light dark),
     doc: "optional daisyUI theme override for the public layout subtree"
 
   slot :inner_block, required: true
@@ -543,54 +542,72 @@ defmodule StoryarnWeb.Layouts do
   def public(assigns) do
     ~H"""
     <div
-      class="min-h-screen flex flex-col"
+      class={["min-h-screen flex flex-col", @theme == "dark" && "landing-shell"]}
       data-theme={@theme}
       style={@theme && "color-scheme: #{@theme};"}
     >
-      <header class={[
-        "navbar px-4 sm:px-0 mx-auto w-[min(calc(100%-48px),1280px)]",
-        @theme == "dark" && "relative z-20 mt-4 rounded-full border border-base-content/8 bg-base-100/70 px-5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.28)]"
-      ]}>
-        <div class="flex-1">
-          <.link navigate="/" class="flex items-center gap-2">
-            <.app_logo class="w-8 h-8" />
-            <span class="text-xl brand-logotype">Storyarn</span>
-          </.link>
-        </div>
-        <%!-- Desktop nav --%>
-        <div class="flex-none hidden md:flex items-center gap-6">
-          <div class="flex items-center gap-1">
-            <.link navigate={~p"/docs"} class="btn btn-ghost btn-sm">
-              {gettext("Docs")}
-            </.link>
-            <.link navigate={~p"/contact"} class="btn btn-ghost btn-sm">
-              {gettext("Contact")}
+      <header
+        class={[
+          "navbar w-[min(calc(100%-48px),1280px)]",
+          @theme == "dark" &&
+            "z-[120] rounded-full border border-base-content/8 bg-base-100/70 px-5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.28)]"
+        ]}
+        style={
+          @theme == "dark" &&
+            "position: fixed; top: 1.25rem; left: 50%; transform: translateX(-50%);"
+        }
+      >
+        <div class="flex w-full items-center gap-4 px-4 sm:px-5 lg:px-6">
+          <div class="flex-none">
+            <.link navigate="/" class="flex items-center gap-2">
+              <.app_logo class="w-8 h-8" />
+              <span class="text-xl brand-logotype">Storyarn</span>
             </.link>
           </div>
-          <div class="flex items-center gap-1">
-            <%= if @current_scope && @current_scope.user do %>
-              <.link navigate={~p"/workspaces"} class="btn btn-ghost btn-sm">
-                {gettext("Dashboard")}
-              </.link>
-            <% else %>
-              <a href="#waitlist" class="btn btn-primary btn-sm">
-                {gettext("Request access")}
+          <%!-- Desktop nav --%>
+          <div class="hidden min-w-0 flex-1 items-center justify-between gap-6 lg:flex">
+            <div class="flex min-w-0 items-center gap-1">
+              <a href="#features" class="btn btn-ghost btn-sm">
+                {gettext("Features")}
               </a>
-              <.link navigate={~p"/users/log-in"} class="btn btn-ghost btn-sm">
-                {gettext("Log in")}
+              <a href="#discover" class="btn btn-ghost btn-sm">
+                {gettext("Discover")}
+              </a>
+              <a href="#workflow" class="btn btn-ghost btn-sm">
+                {gettext("Workflow")}
+              </a>
+              <.link navigate={~p"/docs"} class="btn btn-ghost btn-sm">
+                {gettext("Docs")}
               </.link>
-            <% end %>
+              <.link navigate={~p"/contact"} class="btn btn-ghost btn-sm">
+                {gettext("Contact")}
+              </.link>
+            </div>
+            <div class="flex flex-none items-center gap-1">
+              <%= if @current_scope && @current_scope.user do %>
+                <.link navigate={~p"/workspaces"} class="btn btn-ghost btn-sm">
+                  {gettext("Dashboard")}
+                </.link>
+              <% else %>
+                <a href="#waitlist" class="btn btn-primary btn-sm">
+                  {gettext("Request access")}
+                </a>
+                <.link navigate={~p"/users/log-in"} class="btn btn-ghost btn-sm">
+                  {gettext("Log in")}
+                </.link>
+              <% end %>
+            </div>
           </div>
-        </div>
-        <%!-- Mobile hamburger --%>
-        <div class="flex-none md:hidden">
-          <button
-            phx-click={JS.toggle(to: "#mobile-nav", in: "fade-in", out: "fade-out")}
-            class="btn btn-ghost btn-square btn-sm"
-            aria-label={gettext("Menu")}
-          >
-            <.icon name="menu" class="size-5" />
-          </button>
+          <%!-- Mobile hamburger --%>
+          <div class="ml-auto flex-none lg:hidden">
+            <button
+              phx-click={JS.toggle(to: "#mobile-nav", in: "fade-in", out: "fade-out")}
+              class="btn btn-ghost btn-square btn-sm"
+              aria-label={gettext("Menu")}
+            >
+              <.icon name="menu" class="size-5" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -598,57 +615,90 @@ defmodule StoryarnWeb.Layouts do
       <nav
         id="mobile-nav"
         class={[
-          "hidden md:hidden fixed inset-0 z-50 bg-base-100",
-          @theme == "dark" && "bg-base-100/95 backdrop-blur-xl"
+          "hidden fixed inset-0 z-[140] w-screen max-w-none lg:hidden",
+          @theme == "dark" && "bg-base-100/96 backdrop-blur-xl"
         ]}
+        style="z-index: 140;"
         phx-click-away={JS.hide(to: "#mobile-nav", transition: "fade-out")}
       >
-        <div class="flex items-center justify-between px-4 py-3">
-          <.link navigate="/" class="flex items-center gap-2">
-            <.app_logo class="w-8 h-8" />
-            <span class="text-xl brand-logotype">Storyarn</span>
-          </.link>
-          <button
-            phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
-            class="btn btn-ghost btn-square btn-sm"
-            aria-label={gettext("Close")}
-          >
-            <.icon name="x" class="size-5" />
-          </button>
-        </div>
-        <div class="border-t border-base-300 px-4 py-6 space-y-1">
-          <.link
-            navigate={~p"/docs"}
-            class="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium hover:bg-base-200 transition-colors"
-          >
-            <.icon name="book-open" class="size-5 text-base-content/50" />
-            {gettext("Docs")}
-          </.link>
-          <.link
-            navigate={~p"/contact"}
-            class="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium hover:bg-base-200 transition-colors"
-          >
-            <.icon name="mail" class="size-5 text-base-content/50" />
-            {gettext("Contact")}
-          </.link>
-        </div>
-        <div class="border-t border-base-300 px-4 py-6 space-y-3">
-          <%= if @current_scope && @current_scope.user do %>
-            <.link navigate={~p"/workspaces"} class="btn btn-primary btn-block">
-              {gettext("Dashboard")}
-            </.link>
-          <% else %>
-            <a
-              href="#waitlist"
-              class="btn btn-primary btn-block"
-              phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
-            >
-              {gettext("Request access")}
-            </a>
-            <.link navigate={~p"/users/log-in"} class="btn btn-ghost btn-block">
-              {gettext("Log in")}
-            </.link>
-          <% end %>
+        <div class="flex min-h-screen">
+          <aside class="flex min-h-screen w-full justify-center bg-base-100/98 px-5 pb-8 pt-5">
+            <div class="flex min-h-full w-full max-w-[420px] flex-col">
+              <div class="flex items-center justify-between gap-4">
+                <.link navigate="/" class="flex items-center gap-3 text-base-content">
+                  <.app_logo class="h-8 w-8" />
+                  <span class="text-xl brand-logotype">Storyarn</span>
+                </.link>
+                <button
+                  phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
+                  class="btn btn-ghost btn-square btn-sm"
+                  aria-label={gettext("Close")}
+                >
+                  <.icon name="x" class="size-5" />
+                </button>
+              </div>
+
+              <div class="mt-8 grid gap-2">
+                <a
+                  href="#features"
+                  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-base-content transition-colors hover:bg-base-content/5"
+                  phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
+                >
+                  <.icon name="sparkles" class="size-5 text-base-content/45" />
+                  {gettext("Features")}
+                </a>
+                <a
+                  href="#discover"
+                  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-base-content transition-colors hover:bg-base-content/5"
+                  phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
+                >
+                  <.icon name="panels-top-left" class="size-5 text-base-content/45" />
+                  {gettext("Discover")}
+                </a>
+                <a
+                  href="#workflow"
+                  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-base-content transition-colors hover:bg-base-content/5"
+                  phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
+                >
+                  <.icon name="git-branch" class="size-5 text-base-content/45" />
+                  {gettext("Workflow")}
+                </a>
+                <.link
+                  navigate={~p"/docs"}
+                  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-base-content transition-colors hover:bg-base-content/5"
+                >
+                  <.icon name="book-open" class="size-5 text-base-content/45" />
+                  {gettext("Docs")}
+                </.link>
+                <.link
+                  navigate={~p"/contact"}
+                  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-base-content transition-colors hover:bg-base-content/5"
+                >
+                  <.icon name="mail" class="size-5 text-base-content/45" />
+                  {gettext("Contact")}
+                </.link>
+              </div>
+
+              <div class="mt-auto grid gap-3 border-t border-base-content/8 pt-5">
+                <%= if @current_scope && @current_scope.user do %>
+                  <.link navigate={~p"/workspaces"} class="btn btn-primary btn-block rounded-2xl">
+                    {gettext("Dashboard")}
+                  </.link>
+                <% else %>
+                  <a
+                    href="#waitlist"
+                    class="btn btn-primary btn-block rounded-2xl"
+                    phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
+                  >
+                    {gettext("Request access")}
+                  </a>
+                  <.link navigate={~p"/users/log-in"} class="btn btn-ghost btn-block rounded-2xl">
+                    {gettext("Log in")}
+                  </.link>
+                <% end %>
+              </div>
+            </div>
+          </aside>
         </div>
       </nav>
 
