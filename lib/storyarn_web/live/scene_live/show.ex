@@ -43,6 +43,20 @@ defmodule StoryarnWeb.SceneLive.Show do
   @lock_heartbeat_interval 10_000
 
   @impl true
+  def render(%{compact: true, scene: nil} = assigns) do
+    ~H"""
+    <Layouts.compare flash={@flash}>
+      <div class="h-full flex items-center justify-center">
+        <span class="loading loading-spinner loading-lg text-base-content/30"></span>
+      </div>
+    </Layouts.compare>
+    """
+  end
+
+  def render(%{compact: true} = assigns) do
+    render_compact(assigns)
+  end
+
   def render(assigns) do
     ~H"""
     <Layouts.focus
@@ -331,8 +345,8 @@ defmodule StoryarnWeb.SceneLive.Show do
             data-close-event="close_element_panel"
             class={[
               "fixed flex flex-col overflow-hidden",
-              "inset-0 z-50 bg-base-100",
-              "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:z-[1010] xl:w-[480px]",
+              "inset-0 z-[1060] bg-base-100",
+              "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[480px]",
               "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
             ]}
           >
@@ -365,8 +379,8 @@ defmodule StoryarnWeb.SceneLive.Show do
             data-close-event="close_scene_settings"
             class={[
               "fixed flex flex-col overflow-hidden",
-              "inset-0 z-50 bg-base-100",
-              "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:z-[1010] xl:w-[320px]",
+              "inset-0 z-[1060] bg-base-100",
+              "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[320px]",
               "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
             ]}
           >
@@ -441,7 +455,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         title={dgettext("scenes", "Delete layer?")}
         message={
           dgettext(
-            "maps",
+            "scenes",
             "This layer will be deleted. All elements on this layer will be moved to no layer."
           )
         }
@@ -451,6 +465,118 @@ defmodule StoryarnWeb.SceneLive.Show do
         on_confirm={JS.push("confirm_delete_layer")}
       />
     </Layouts.focus>
+    """
+  end
+
+  defp render_compact(assigns) do
+    ~H"""
+    <Layouts.compare
+      flash={@flash}
+      panel_title={dgettext("scenes", "Layers")}
+      panel_open={@tree_panel_open}
+    >
+      <:panel>
+        <.layer_panel
+          layers={@layers}
+          active_layer_id={@active_layer_id}
+          renaming_layer_id={@renaming_layer_id}
+          can_edit={@can_edit}
+          edit_mode={@edit_mode}
+        />
+      </:panel>
+      <div class="h-full relative">
+        <%!-- Canvas fills the entire area --%>
+        <div
+          id="scene-canvas-wrapper"
+          class="absolute inset-0 overflow-hidden"
+        >
+          <div
+            id={"scene-canvas-#{@scene.id}"}
+            phx-hook="SceneCanvas"
+            phx-update="ignore"
+            data-scene={Jason.encode!(@scene_data)}
+            data-i18n={Jason.encode!(@canvas_i18n)}
+            data-current-user-id={@current_scope.user.id}
+            data-locks={Jason.encode!(@entity_locks)}
+            class="w-full h-full"
+          >
+            <div id="scene-canvas-container" class="w-full h-full"></div>
+          </div>
+        </div>
+
+        <%!-- Bottom dock --%>
+        <.dock
+          :if={@edit_mode}
+          active_tool={@active_tool}
+          pending_sheet={@pending_sheet_for_pin}
+          workspace={@workspace}
+          project={@project}
+          scene={@scene}
+          compact={true}
+        />
+
+        <%!-- Bottom-right controls: zoom + legend --%>
+        <div class="absolute bottom-3 right-3 z-[1000] flex items-end gap-2">
+          <div id="scene-controls-slot" phx-update="ignore"></div>
+          <.legend
+            pins={@pins}
+            zones={@zones}
+            connections={@connections}
+            legend_open={@legend_open}
+          />
+        </div>
+
+        <%!-- Floating element toolbar --%>
+        <.canvas_toolbar
+          id="scene-floating-toolbar"
+          canvas_id={"scene-canvas-#{@scene.id}"}
+          visible={@selected_element != nil && @can_edit && @edit_mode}
+          z_class="z-[1050]"
+        >
+          <.floating_toolbar
+            selected_type={@selected_type}
+            selected_element={@selected_element}
+            layers={@layers}
+            can_edit={not Map.get(@selected_element || %{}, :locked, false)}
+            can_toggle_lock={true}
+          />
+        </.canvas_toolbar>
+      </div>
+
+      <%!-- Element Properties Sidebar (outside canvas container to avoid z-index conflicts) --%>
+      <div
+        id="scene-element-panel"
+        phx-hook="RightSidebar"
+        data-right-panel
+        data-open-event="open_element_panel"
+        data-close-event="close_element_panel"
+        class={[
+          "fixed flex flex-col overflow-hidden",
+          "inset-0 z-[1060] bg-base-100",
+          "xl:inset-auto xl:right-3 xl:top-3 xl:bottom-3 xl:w-[480px]",
+          "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
+        ]}
+      >
+        <div :if={@element_panel_open && @selected_element != nil}>
+          <.scene_element_panel
+            selected_type={@selected_type}
+            selected_element={@selected_element}
+            can_edit={not Map.get(@selected_element || %{}, :locked, false)}
+            project_scenes={@project_scenes}
+            project_sheets={@project_sheets}
+            project_flows={@project_flows}
+            project_variables={@project_variables}
+            panel_sections={@panel_sections}
+          />
+        </div>
+        <div
+          :if={!(@element_panel_open && @selected_element != nil)}
+          class="flex items-center justify-center h-full"
+        >
+          <span class="loading loading-spinner loading-md text-base-content/40"></span>
+        </div>
+      </div>
+    </Layouts.compare>
     """
   end
 
@@ -478,6 +604,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         socket =
           socket
           |> assign(focus_layout_defaults())
+          |> assign(:compact, false)
           |> assign(:tree_panel_tab, "scenes")
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
@@ -547,11 +674,29 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   @impl true
-  def handle_params(%{"id" => _scene_id, "draft_id" => draft_id} = _params, _url, socket) do
+  def handle_params(%{"id" => _scene_id, "draft_id" => draft_id} = params, _url, socket) do
+    compact = params["layout"] == "compact"
+
+    socket =
+      socket
+      |> assign(:compact, compact)
+      |> then(fn s ->
+        if compact, do: assign(s, tree_panel_open: true, tree_panel_pinned: true), else: s
+      end)
+
     {:noreply, load_draft_scene(socket, draft_id)}
   end
 
   def handle_params(%{"id" => scene_id} = params, _url, socket) do
+    compact = params["layout"] == "compact"
+
+    socket =
+      socket
+      |> assign(:compact, compact)
+      |> then(fn s ->
+        if compact, do: assign(s, tree_panel_open: true, tree_panel_pinned: true), else: s
+      end)
+
     current_id =
       case socket.assigns.scene do
         %{id: id} -> to_string(id)
@@ -597,20 +742,26 @@ defmodule StoryarnWeb.SceneLive.Show do
 
       scene ->
         has_tree = socket.assigns.sidebar_loaded
+        compact = socket.assigns.compact
 
-        # Setup collaboration for new scene
-        scope = {:scene, scene.id}
-        user = socket.assigns.current_scope.user
-        Collab.setup(socket, scope, user, cursors: true, locks: true, changes: true)
-        {online_users, entity_locks} = Collab.get_initial_state(socket, scope)
+        # Setup collaboration (skip in compact mode)
+        {online_users, entity_locks} =
+          if compact do
+            {[], %{}}
+          else
+            scope = {:scene, scene.id}
+            user = socket.assigns.current_scope.user
+            Collab.setup(socket, scope, user, cursors: true, locks: true, changes: true)
+            Collab.get_initial_state(socket, scope)
+          end
 
         socket
         |> assign(:scene, scene)
-        |> assign(:collab_scope, scope)
+        |> assign(:collab_scope, if(compact, do: nil, else: {:scene, scene.id}))
         |> assign(:online_users, online_users)
         |> assign(:entity_locks, entity_locks)
         |> assign(:_broadcast, nil)
-        |> schedule_lock_heartbeat()
+        |> then(fn s -> if compact, do: s, else: schedule_lock_heartbeat(s) end)
         |> assign(:ancestors, Scenes.list_ancestors(scene))
         |> assign(:layers, scene.layers || [])
         |> assign(:zones, scene.zones || [])
@@ -744,6 +895,10 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_event("switch_tree_tab", %{"tab" => tab}, socket)
       when tab in ~w(scenes layers) do
     {:noreply, assign(socket, :tree_panel_tab, tab)}
+  end
+
+  def handle_event("open_versions_panel", _params, %{assigns: %{compact: true}} = socket) do
+    {:noreply, socket}
   end
 
   def handle_event("open_versions_panel", _params, socket) do
@@ -1521,6 +1676,15 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_info({:versions_section, :version_deleted, %{version: _}}, socket) do
     {:noreply, socket}
+  end
+
+  def handle_info({:versions_section, :compare_version, %{version: version}}, socket) do
+    %{workspace: workspace, project: project, scene: scene} = socket.assigns
+
+    compare_url =
+      ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}/compare/#{version.version_number}"
+
+    {:noreply, push_navigate(socket, to: compare_url)}
   end
 
   def handle_info({:versions_section, :flash, %{kind: kind, message: message}}, socket) do

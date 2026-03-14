@@ -182,22 +182,63 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       old = %{"name" => "Old", "shortcut" => "old", "blocks" => []}
       new = %{"name" => "New", "shortcut" => "old", "blocks" => []}
 
-      diff = SheetBuilder.diff_snapshots(old, new)
-      assert diff =~ "Renamed"
+      changes = SheetBuilder.diff_snapshots(old, new)
+      assert [%{category: :property, action: :modified, detail: detail}] = changes
+      assert detail =~ "Renamed"
     end
 
     test "detects added blocks" do
       old = %{"name" => "S", "blocks" => []}
       new = %{"name" => "S", "blocks" => [%{"position" => 0, "type" => "text"}]}
 
-      diff = SheetBuilder.diff_snapshots(old, new)
-      assert diff =~ "Added"
+      changes = SheetBuilder.diff_snapshots(old, new)
+      assert Enum.any?(changes, &(&1.category == :block && &1.action == :added))
     end
 
-    test "reports no changes for identical snapshots" do
+    test "detects removed blocks" do
+      old = %{
+        "name" => "S",
+        "blocks" => [%{"position" => 0, "type" => "text", "variable_name" => "name"}]
+      }
+
+      new = %{"name" => "S", "blocks" => []}
+
+      changes = SheetBuilder.diff_snapshots(old, new)
+      assert Enum.any?(changes, &(&1.category == :block && &1.action == :removed))
+    end
+
+    test "detects modified blocks by variable_name" do
+      old = %{
+        "name" => "S",
+        "blocks" => [
+          %{
+            "position" => 0,
+            "type" => "text",
+            "variable_name" => "health",
+            "value" => %{"content" => "100"}
+          }
+        ]
+      }
+
+      new = %{
+        "name" => "S",
+        "blocks" => [
+          %{
+            "position" => 0,
+            "type" => "text",
+            "variable_name" => "health",
+            "value" => %{"content" => "200"}
+          }
+        ]
+      }
+
+      changes = SheetBuilder.diff_snapshots(old, new)
+      assert Enum.any?(changes, &(&1.category == :block && &1.action == :modified))
+    end
+
+    test "returns empty list for identical snapshots" do
       snapshot = %{"name" => "S", "shortcut" => "s", "blocks" => []}
-      diff = SheetBuilder.diff_snapshots(snapshot, snapshot)
-      assert diff =~ "No changes"
+      assert SheetBuilder.diff_snapshots(snapshot, snapshot) == []
     end
   end
 end

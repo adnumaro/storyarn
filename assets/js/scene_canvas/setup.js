@@ -34,6 +34,7 @@ export function initMap(hook) {
     zoomSnap: 0.25,
     zoomDelta: 0.5,
     attributionControl: false,
+    zoomControl: false,
   });
 
   // Background image or grid placeholder
@@ -44,6 +45,7 @@ export function initMap(hook) {
     if (!data.width || !data.height) {
       const img = new Image();
       img.onload = () => {
+        if (!hook.leafletMap) return;
         const natW = img.naturalWidth;
         const natH = img.naturalHeight;
         if (natW && natH && (natW !== width || natH !== height)) {

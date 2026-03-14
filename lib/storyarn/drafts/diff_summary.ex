@@ -9,6 +9,7 @@ defmodule Storyarn.Drafts.DiffSummary do
   alias Storyarn.Drafts.{CloneEngine, Draft}
   alias Storyarn.Drafts.MergeEngine
   alias Storyarn.Versioning
+  alias Storyarn.Versioning.SnapshotDiff
 
   @type t :: %{
           draft_changes: String.t(),
@@ -28,7 +29,12 @@ defmodule Storyarn.Drafts.DiffSummary do
            CloneEngine.get_draft_entity(draft.entity_type, draft.id) do
       original_snapshot = builder.build_snapshot(original)
       draft_snapshot = builder.build_snapshot(draft_entity)
-      diff_text = builder.diff_snapshots(original_snapshot, draft_snapshot)
+
+      diff_text =
+        draft.entity_type
+        |> SnapshotDiff.diff(original_snapshot, draft_snapshot)
+        |> SnapshotDiff.format_summary()
+
       versions_since = count_versions_since_fork(draft)
 
       {:ok,
@@ -45,10 +51,6 @@ defmodule Storyarn.Drafts.DiffSummary do
   def build_summary(%Draft{}), do: {:error, :not_active}
 
   defp count_versions_since_fork(draft) do
-    versions = Versioning.list_versions(draft.entity_type, draft.source_entity_id)
-
-    Enum.count(versions, fn v ->
-      DateTime.compare(v.inserted_at, draft.inserted_at) == :gt
-    end)
+    Versioning.count_versions_since(draft.entity_type, draft.source_entity_id, draft.inserted_at)
   end
 end

@@ -389,6 +389,91 @@ defmodule StoryarnWeb.Layouts do
   end
 
   @doc """
+  Renders a chromeless canvas layout for version comparison mode.
+
+  No project menu, tool switcher, or user menu. Optional collapsible
+  side panel for layer controls or similar content. Always canvas mode.
+
+  ## Examples
+
+      <Layouts.compare flash={@flash} panel_title="Layers" panel_open={@tree_panel_open}>
+        <:panel>
+          Layer controls here
+        </:panel>
+        Canvas content here
+      </Layouts.compare>
+  """
+  attr :flash, :map, required: true
+  attr :panel_title, :string, default: nil, doc: "title shown in the side panel header"
+  attr :panel_open, :boolean, default: true, doc: "whether the side panel is open"
+
+  slot :panel, doc: "optional side panel content (e.g. layer controls)"
+  slot :inner_block, required: true
+
+  def compare(assigns) do
+    ~H"""
+    <div class="h-screen w-screen overflow-hidden relative bg-base-100">
+      <%!-- Floating button to reopen panel when collapsed --%>
+      <button
+        :if={@panel != [] && !@panel_open}
+        type="button"
+        phx-click="tree_panel_toggle"
+        class="fixed top-3 left-3 z-[1020] surface-panel p-1"
+        title={gettext("Show panel")}
+      >
+        <span class="toolbar-btn btn-square">
+          <.icon name="panel-left" class="size-4" />
+        </span>
+      </button>
+
+      <%!-- Collapsible side panel --%>
+      <div
+        :if={@panel != []}
+        id="compare-panel"
+        class={[
+          "fixed left-3 top-3 bottom-3 z-[1010] w-52 flex flex-col surface-panel overflow-hidden",
+          "transition-all duration-200",
+          if(@panel_open,
+            do: "translate-x-0 opacity-100",
+            else: "-translate-x-[calc(100%+0.75rem)] opacity-0 pointer-events-none"
+          )
+        ]}
+      >
+        <%!-- Panel header with title + collapse button --%>
+        <div class="flex items-center justify-between px-2.5 py-2 border-b border-base-300">
+          <span
+            :if={@panel_title}
+            class="text-xs font-medium text-base-content/60 flex items-center gap-1.5"
+          >
+            {@panel_title}
+          </span>
+          <button
+            type="button"
+            phx-click="tree_panel_toggle"
+            class="btn btn-ghost btn-xs btn-square"
+            title={gettext("Close panel")}
+          >
+            <.icon name="panel-left-close" class="size-3.5" />
+          </button>
+        </div>
+
+        <%!-- Panel content (scrollable) --%>
+        <div class="flex-1 overflow-y-auto p-2">
+          {render_slot(@panel)}
+        </div>
+      </div>
+
+      <%!-- Main content area (always canvas mode) --%>
+      <main id="main-content" class="h-full overflow-hidden">
+        {render_slot(@inner_block)}
+      </main>
+
+      <.flash_group flash={@flash} />
+    </div>
+    """
+  end
+
+  @doc """
   Renders a centered layout without sidebar for auth sheets.
 
   ## Examples

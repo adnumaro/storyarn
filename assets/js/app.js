@@ -179,9 +179,13 @@ window.addEventListener("phx:sheet-loading-start", (_info) => topbar.show(300));
 window.addEventListener("phx:sheet-loading-stop", (_info) => topbar.hide());
 
 // Handle native dialog methods via custom events (used by show_modal/hide_modal in core_components)
+// Supports both: dispatch to dialog element (from JS commands) and push_event with {id} (from server)
 window.addEventListener("phx:show-modal", (event) => {
   if (event.target instanceof HTMLDialogElement) {
     event.target.showModal();
+  } else if (event.detail?.id) {
+    const dialog = document.getElementById(event.detail.id);
+    if (dialog instanceof HTMLDialogElement) dialog.showModal();
   }
 });
 

@@ -19,6 +19,8 @@ defmodule Storyarn.Versioning do
     ProjectRecovery,
     ProjectSnapshot,
     ProjectSnapshotCrud,
+    SnapshotDiff,
+    SnapshotViewer,
     VersionCrud
   }
 
@@ -66,6 +68,18 @@ defmodule Storyarn.Versioning do
   Returns the total number of versions for an entity.
   """
   defdelegate count_versions(entity_type, entity_id), to: VersionCrud
+
+  @doc """
+  Returns `{prev_number, next_number}` adjacent to the given version number.
+  Either may be nil if no adjacent version exists.
+  """
+  defdelegate get_adjacent_version_numbers(entity_type, entity_id, current_number),
+    to: VersionCrud
+
+  @doc """
+  Counts versions created after the given timestamp for an entity.
+  """
+  defdelegate count_versions_since(entity_type, entity_id, since), to: VersionCrud
 
   # ========== Update ==========
 
@@ -188,6 +202,46 @@ defmodule Storyarn.Versioning do
   """
   defdelegate recover_project(workspace_id, snapshot_data, user_id, opts \\ []),
     to: ProjectRecovery
+
+  # ========== Snapshot Diff ==========
+
+  @doc """
+  Compares two snapshots and returns a structured diff result with changes and stats.
+  """
+  defdelegate diff_snapshots(entity_type, old_snapshot, new_snapshot),
+    to: SnapshotDiff,
+    as: :diff
+
+  @doc """
+  Returns true if two snapshots have any differences.
+  """
+  defdelegate snapshot_has_changes?(entity_type, old_snapshot, new_snapshot),
+    to: SnapshotDiff,
+    as: :has_changes?
+
+  @doc """
+  Converts a diff result into a human-readable summary string.
+  """
+  defdelegate format_diff_summary(diff_result),
+    to: SnapshotDiff,
+    as: :format_summary
+
+  # ========== Snapshot Viewer ==========
+
+  @doc """
+  Serializes a flow snapshot into the shape expected by the FlowCanvas JS hook.
+  """
+  defdelegate serialize_flow(snapshot), to: SnapshotViewer
+
+  @doc """
+  Serializes a scene snapshot into the shape expected by the SceneCanvas JS hook.
+  """
+  defdelegate serialize_scene(snapshot), to: SnapshotViewer
+
+  @doc """
+  Serializes a sheet snapshot into a list of block maps for BlockComponents.
+  """
+  defdelegate serialize_sheet(snapshot), to: SnapshotViewer
 
   # ========== Change Detection ==========
 

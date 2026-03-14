@@ -535,7 +535,10 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   end
 
   def handle_event("close_formula_sidebar", _params, socket) do
-    {:noreply, assign(socket, :formula_editing, nil)}
+    {:noreply,
+     socket
+     |> assign(:formula_editing, nil)
+     |> push_event("panel-close", %{to: "#formula-sidebar"})}
   end
 
   def handle_event("save_formula_expression", %{"value" => expression} = params, socket) do

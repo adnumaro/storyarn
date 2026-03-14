@@ -201,14 +201,14 @@ The historical version loads in an iframe using the same editor page but fed wit
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  Global header / toolbar                         │
+│  Global header / toolbar                        │
 ├────────────────────┬────────────────────────────┤
-│  Current version   │  Historical version         │
-│  (normal editor)   │  (iframe, readonly)         │
-│                    │                             │
-│  Full editing      │  Full inspection            │
-│  capabilities      │  Toolbars, sidebars work    │
-│                    │  No mutations               │
+│  Current version   │  Historical version        │
+│  (normal editor)   │  (iframe, readonly)        │
+│                    │                            │
+│  Full editing      │  Full inspection           │
+│  capabilities      │  Toolbars, sidebars work   │
+│                    │  No mutations              │
 └────────────────────┴────────────────────────────┘
 ```
 
@@ -268,15 +268,15 @@ Features 1-3 form a tight unit. Feature 4 can be built in parallel after Feature
 
 ## Key Files (expected)
 
-| File | Purpose |
-|------|---------|
-| `lib/storyarn/versioning/snapshot_diff.ex` | **NEW** — Diff engine core |
-| `lib/storyarn/versioning/builders/flow_builder.ex` | Add `diff_snapshots/2` |
-| `lib/storyarn/versioning/builders/scene_builder.ex` | Add `diff_snapshots/2` |
-| `lib/storyarn/versioning/builders/sheet_builder.ex` | Add `diff_snapshots/2` |
-| `lib/storyarn/versioning/version_crud.ex` | Wire diff into `create_version`, smart pre-restore |
-| `lib/storyarn/versioning/snapshot_builder.ex` | Add optional `diff_snapshots` callback |
-| `lib/storyarn_web/components/versions_section.ex` | Smart restore modal, changelog display, compare button |
-| `lib/storyarn_web/live/version_live/show.ex` | **NEW** — Readonly snapshot viewer for iframe |
-| `lib/storyarn_web/layouts/version_compare.html.heex` | **NEW** — Minimal layout for iframe |
-| `priv/repo/migrations/*_add_change_details_to_entity_versions.exs` | New JSON column |
+| File                                                               | Purpose                                                |
+|--------------------------------------------------------------------|--------------------------------------------------------|
+| `lib/storyarn/versioning/snapshot_diff.ex`                         | **NEW** — Diff engine core                             |
+| `lib/storyarn/versioning/builders/flow_builder.ex`                 | Add `diff_snapshots/2`                                 |
+| `lib/storyarn/versioning/builders/scene_builder.ex`                | Add `diff_snapshots/2`                                 |
+| `lib/storyarn/versioning/builders/sheet_builder.ex`                | Add `diff_snapshots/2`                                 |
+| `lib/storyarn/versioning/version_crud.ex`                          | Wire diff into `create_version`, smart pre-restore     |
+| `lib/storyarn/versioning/snapshot_builder.ex`                      | Add optional `diff_snapshots` callback                 |
+| `lib/storyarn_web/components/versions_section.ex`                  | Smart restore modal, changelog display, compare button |
+| `lib/storyarn_web/live/version_live/show.ex`                       | **NEW** — Readonly snapshot viewer for iframe          |
+| `lib/storyarn_web/layouts/version_compare.html.heex`               | **NEW** — Minimal layout for iframe                    |
+| `priv/repo/migrations/*_add_change_details_to_entity_versions.exs` | New JSON column                                        |

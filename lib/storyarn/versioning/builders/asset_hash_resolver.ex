@@ -39,7 +39,8 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolver do
            %{
              "filename" => asset.filename,
              "content_type" => asset.content_type,
-             "size" => asset.size
+             "size" => asset.size,
+             "url" => asset.url
            }}
         end)
 

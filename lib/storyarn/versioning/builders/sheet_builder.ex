@@ -34,6 +34,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       "shortcut" => sheet.shortcut,
       "avatar_asset_id" => sheet.avatar_asset_id,
       "banner_asset_id" => sheet.banner_asset_id,
+      "color" => sheet.color,
       "blocks" => Enum.map(sheet.blocks, &block_to_snapshot/1),
       "asset_blob_hashes" => hash_map,
       "asset_metadata" => metadata_map
@@ -97,6 +98,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       Sheet.update_changeset(sheet, %{
         name: snapshot["name"],
         shortcut: snapshot["shortcut"],
+        color: snapshot["color"],
         avatar_asset_id:
           AssetHashResolver.resolve_asset_fk(
             snapshot["avatar_asset_id"],
@@ -306,85 +308,118 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   # ========== Diff Snapshots ==========
 
+  alias Storyarn.Versioning.DiffHelpers
+
+  @block_compare_fields ~w(type config value is_constant variable_name scope required detached inherited_from_block_id table_data)
+
   @impl true
   def diff_snapshots(old_snapshot, new_snapshot) do
-    changes =
-      []
-      |> check_field_change(
-        old_snapshot,
-        new_snapshot,
-        "name",
-        dgettext("sheets", "Renamed sheet")
-      )
-      |> check_field_change(
-        old_snapshot,
-        new_snapshot,
-        "shortcut",
-        dgettext("sheets", "Changed shortcut")
-      )
-      |> check_field_change(
-        old_snapshot,
-        new_snapshot,
-        "avatar_asset_id",
-        dgettext("sheets", "Changed avatar")
-      )
-      |> check_field_change(
-        old_snapshot,
-        new_snapshot,
-        "banner_asset_id",
-        dgettext("sheets", "Changed banner")
-      )
-      |> append_block_changes(old_snapshot["blocks"] || [], new_snapshot["blocks"] || [])
-
-    format_change_summary(changes)
+    []
+    |> DiffHelpers.check_field_change(
+      old_snapshot,
+      new_snapshot,
+      "name",
+      :property,
+      dgettext("sheets", "Renamed sheet")
+    )
+    |> DiffHelpers.check_field_change(
+      old_snapshot,
+      new_snapshot,
+      "shortcut",
+      :property,
+      dgettext("sheets", "Changed shortcut")
+    )
+    |> DiffHelpers.check_field_change(
+      old_snapshot,
+      new_snapshot,
+      "color",
+      :property,
+      dgettext("sheets", "Changed color")
+    )
+    |> DiffHelpers.check_field_change(
+      old_snapshot,
+      new_snapshot,
+      "avatar_asset_id",
+      :property,
+      dgettext("sheets", "Changed avatar")
+    )
+    |> DiffHelpers.check_field_change(
+      old_snapshot,
+      new_snapshot,
+      "banner_asset_id",
+      :property,
+      dgettext("sheets", "Changed banner")
+    )
+    |> diff_blocks(old_snapshot["blocks"] || [], new_snapshot["blocks"] || [])
+    |> Enum.reverse()
   end
 
-  defp check_field_change(changes, old_snapshot, new_snapshot, field, message) do
-    if old_snapshot[field] != new_snapshot[field] do
-      [message | changes]
-    else
-      changes
-    end
-  end
+  defp diff_blocks(changes, old_blocks, new_blocks) do
+    key_fns = [
+      # Primary: match by variable_name (stable identifier for most blocks)
+      fn block ->
+        vn = block["variable_name"]
+        if vn && vn != "", do: vn
+      end,
+      # Fallback: match by position
+      & &1["position"]
+    ]
 
-  defp append_block_changes(changes, old_blocks, new_blocks) do
-    old_positions = MapSet.new(old_blocks, & &1["position"])
-    new_positions = MapSet.new(new_blocks, & &1["position"])
+    {matched, added, removed} = DiffHelpers.match_by_keys(old_blocks, new_blocks, key_fns)
 
-    added_count = MapSet.difference(new_positions, old_positions) |> MapSet.size()
-    removed_count = MapSet.difference(old_positions, new_positions) |> MapSet.size()
-    modified_count = count_modified_blocks(old_blocks, new_blocks, old_positions, new_positions)
+    {modified, _unchanged} =
+      DiffHelpers.find_modified(matched, fn old, new ->
+        DiffHelpers.fields_differ?(old, new, @block_compare_fields)
+      end)
 
     changes
-    |> maybe_add_count(
-      added_count,
-      &dngettext("sheets", "Added %{count} block", "Added %{count} blocks", &1, count: &1)
-    )
-    |> maybe_add_count(
-      removed_count,
-      &dngettext("sheets", "Removed %{count} block", "Removed %{count} blocks", &1, count: &1)
-    )
-    |> maybe_add_count(
-      modified_count,
-      &dngettext("sheets", "Modified %{count} block", "Modified %{count} blocks", &1, count: &1)
-    )
+    |> append_block_list(added, :added)
+    |> append_block_list(removed, :removed)
+    |> append_block_list_modified(modified)
   end
 
-  defp count_modified_blocks(old_blocks, new_blocks, old_positions, new_positions) do
-    common_positions = MapSet.intersection(old_positions, new_positions)
-    old_blocks_map = Map.new(old_blocks, &{&1["position"], &1})
-    new_blocks_map = Map.new(new_blocks, &{&1["position"], &1})
+  defp append_block_list(changes, [], _action), do: changes
 
-    Enum.count(common_positions, fn pos ->
-      old_blocks_map[pos] != new_blocks_map[pos]
+  defp append_block_list(changes, blocks, action) do
+    Enum.reduce(blocks, changes, fn block, acc ->
+      detail = block_detail(action, block)
+      [%{category: :block, action: action, detail: detail} | acc]
     end)
   end
 
-  defp maybe_add_count(changes, 0, _msg_fn), do: changes
-  defp maybe_add_count(changes, count, msg_fn), do: [msg_fn.(count) | changes]
+  defp append_block_list_modified(changes, []), do: changes
 
-  defp format_change_summary([]), do: dgettext("sheets", "No changes detected")
-  defp format_change_summary(changes), do: changes |> Enum.reverse() |> Enum.join(", ")
+  defp append_block_list_modified(changes, modified_pairs) do
+    Enum.reduce(modified_pairs, changes, fn {_old, new}, acc ->
+      detail = block_detail(:modified, new)
+      [%{category: :block, action: :modified, detail: detail} | acc]
+    end)
+  end
+
+  defp block_detail(action, block) do
+    type = block["type"] || "unknown"
+    name = block["variable_name"]
+
+    case {action, name} do
+      {:added, nil} ->
+        dgettext("sheets", "Added %{type} block", type: type)
+
+      {:added, name} ->
+        dgettext("sheets", "Added %{type} block \"%{name}\"", type: type, name: name)
+
+      {:removed, nil} ->
+        dgettext("sheets", "Removed %{type} block", type: type)
+
+      {:removed, name} ->
+        dgettext("sheets", "Removed %{type} block \"%{name}\"", type: type, name: name)
+
+      {:modified, nil} ->
+        dgettext("sheets", "Modified %{type} block", type: type)
+
+      {:modified, name} ->
+        dgettext("sheets", "Modified %{type} block \"%{name}\"", type: type, name: name)
+    end
+  end
 
   # ========== Scan References ==========
 

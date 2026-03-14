@@ -135,6 +135,21 @@ defmodule Storyarn.Sheets.SheetQueries do
   end
 
   @doc """
+  Lists sheets by a list of IDs within a project, with avatar and banner preloaded.
+  Used by the version viewer to build speaker data for dialogue nodes.
+  """
+  @spec list_sheets_by_ids(integer(), [integer()]) :: [Sheet.t()]
+  def list_sheets_by_ids(_project_id, []), do: []
+
+  def list_sheets_by_ids(project_id, ids) do
+    from(s in Sheet,
+      where: s.project_id == ^project_id and s.id in ^ids and is_nil(s.deleted_at),
+      preload: [:avatar_asset, :banner_asset]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
   Lists all non-deleted sheets for a project (flat, no tree structure).
   """
   @spec list_all_sheets(integer()) :: [Sheet.t()]

@@ -83,6 +83,18 @@ defmodule StoryarnWeb.FlowLive.Show do
     """
   end
 
+  def render(%{compact: true, loading: true} = assigns) do
+    ~H"""
+    <Layouts.compare flash={@flash}>
+      <div id={"flow-loader-#{@flow && @flow.id}"} phx-hook="FlowLoader" class="hidden"></div>
+    </Layouts.compare>
+    """
+  end
+
+  def render(%{compact: true} = assigns) do
+    render_compact(assigns)
+  end
+
   def render(assigns) do
     ~H"""
     <Layouts.focus
@@ -301,6 +313,117 @@ defmodule StoryarnWeb.FlowLive.Show do
     """
   end
 
+  defp render_compact(assigns) do
+    ~H"""
+    <Layouts.compare flash={@flash}>
+      <div class="h-full relative">
+        <%!-- Canvas fills the entire area --%>
+        <div class="absolute inset-0 flex flex-col">
+          <div class="flex-1 relative bg-base-200">
+            <div
+              id={"flow-canvas-#{@flow.id}"}
+              phx-hook="FlowCanvas"
+              phx-update="ignore"
+              class="absolute inset-0"
+              data-flow={Jason.encode!(@flow_data)}
+              data-sheets={Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))}
+              data-locks={Jason.encode!(@node_locks)}
+              data-user-id={@current_scope.user.id}
+              data-user-color={Collaboration.user_color(@current_scope.user.id)}
+              data-labels={Jason.encode!(flow_canvas_labels())}
+            >
+            </div>
+
+            <%!-- Floating Toolbar --%>
+            <.canvas_toolbar
+              id="flow-floating-toolbar"
+              canvas_id={"flow-canvas-#{@flow.id}"}
+              visible={@selected_node != nil && @editing_mode in [:toolbar, :annotation]}
+            >
+              <%= if @editing_mode == :annotation do %>
+                <.annotation_toolbar node={@selected_node} can_edit={@can_edit} />
+              <% else %>
+                <.node_toolbar
+                  node={@selected_node}
+                  form={@node_form}
+                  can_edit={@can_edit}
+                  all_sheets={@all_sheets}
+                  gallery_by_sheet={@gallery_by_sheet}
+                  flow_hubs={@flow_hubs}
+                  available_flows={@available_flows}
+                  available_scenes={assigns[:available_scenes] || []}
+                  flow_search_has_more={@flow_search_has_more}
+                  flow_search_deep={@flow_search_deep}
+                  subflow_exits={@subflow_exits}
+                  referencing_jumps={@referencing_jumps}
+                  referencing_flows={@referencing_flows}
+                  project_scenes={@project_scenes}
+                  node_select_loading={@node_select_loading}
+                />
+              <% end %>
+            </.canvas_toolbar>
+
+            <%!-- Bottom dock --%>
+            <.flow_dock
+              flow={@flow}
+              workspace={@workspace}
+              project={@project}
+              can_edit={@can_edit}
+              debug_panel_open={@debug_panel_open}
+              compact={true}
+            />
+          </div>
+        </div>
+      </div>
+
+      <%!-- Builder Sidebar (condition / instruction nodes) --%>
+      <div
+        id="builder-sidebar"
+        phx-hook="RightSidebar"
+        data-right-panel
+        data-open-event="open_builder"
+        data-close-event="close_builder"
+        class={[
+          "fixed flex flex-col overflow-hidden",
+          "inset-0 z-50 bg-base-100",
+          "xl:inset-auto xl:right-3 xl:top-3 xl:bottom-3 xl:z-[1010] xl:w-[480px]",
+          "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
+        ]}
+      >
+        <div :if={@selected_node && @editing_mode == :builder}>
+          <.builder_content
+            node={@selected_node}
+            form={@node_form}
+            can_edit={@can_edit}
+            project_variables={@project_variables}
+            panel_sections={@panel_sections}
+          />
+        </div>
+        <div
+          :if={!(@selected_node && @editing_mode == :builder)}
+          class="flex items-center justify-center h-full"
+        >
+          <span class="loading loading-spinner loading-md text-base-content/40"></span>
+        </div>
+      </div>
+
+      <%!-- Screenplay Editor sidebar --%>
+      <.live_component
+        :if={@selected_node && @editing_mode in [:screenplay, :editor]}
+        module={ScreenplayEditor}
+        id={"screenplay-editor-#{@selected_node.id}"}
+        node={@selected_node}
+        can_edit={@can_edit}
+        all_sheets={@all_sheets}
+        project_variables={@project_variables}
+        project={@project}
+        current_user={@current_scope.user}
+        panel_sections={@panel_sections}
+      />
+    </Layouts.compare>
+    """
+  end
+
   # ===========================================================================
   # Mount & Setup
   # ===========================================================================
@@ -322,6 +445,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         socket =
           socket
           |> assign(focus_layout_defaults())
+          |> assign(:compact, false)
           |> assign(:loading, true)
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
@@ -412,11 +536,15 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   @impl true
-  def handle_params(%{"id" => _flow_id, "draft_id" => draft_id} = _params, _url, socket) do
-    {:noreply, load_draft_flow(socket, draft_id)}
+  def handle_params(%{"id" => _flow_id, "draft_id" => draft_id} = params, _url, socket) do
+    compact = params["layout"] == "compact"
+    {:noreply, socket |> assign(:compact, compact) |> load_draft_flow(draft_id)}
   end
 
   def handle_params(%{"id" => flow_id} = params, _url, socket) do
+    compact = params["layout"] == "compact"
+    socket = assign(socket, :compact, compact)
+
     current_id =
       case socket.assigns.flow do
         %{id: id} -> to_string(id)
@@ -503,6 +631,10 @@ defmodule StoryarnWeb.FlowLive.Show do
   # Tree panel events (from FocusLayout)
   def handle_event("tree_panel_" <> _ = event, params, socket),
     do: handle_tree_panel_event(event, params, socket)
+
+  def handle_event("open_versions_panel", _params, %{assigns: %{compact: true}} = socket) do
+    {:noreply, socket}
+  end
 
   def handle_event("open_versions_panel", _params, socket) do
     {:noreply, assign(socket, :versions_panel_open, true)}
@@ -1277,12 +1409,12 @@ defmodule StoryarnWeb.FlowLive.Show do
     flow = data.flow
     user = socket.assigns.current_scope.user
 
-    unless socket.assigns.is_draft do
+    unless socket.assigns.is_draft or socket.assigns.compact do
       CollaborationHelpers.setup_collaboration(socket, flow, user)
     end
 
     {online_users, node_locks} =
-      if socket.assigns.is_draft do
+      if socket.assigns.is_draft or socket.assigns.compact do
         {[], %{}}
       else
         CollaborationHelpers.get_initial_collab_state(socket, flow)
@@ -1422,6 +1554,15 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_info({:versions_section, :version_deleted, %{version: _}}, socket) do
     {:noreply, socket}
+  end
+
+  def handle_info({:versions_section, :compare_version, %{version: version}}, socket) do
+    %{workspace: workspace, project: project, flow: flow} = socket.assigns
+
+    compare_url =
+      ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{flow.id}/compare/#{version.version_number}"
+
+    {:noreply, push_navigate(socket, to: compare_url)}
   end
 
   def handle_info({:versions_section, :flash, %{kind: kind, message: message}}, socket) do

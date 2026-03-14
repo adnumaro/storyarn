@@ -19,11 +19,11 @@
 
 ## Related Documentation
 
-| File                                  | Purpose                                     |
-|---------------------------------------|---------------------------------------------|
-| `docs/CURRENT_FEATURES.md`           | Comprehensive feature reference (canonical) |
-| `IMPLEMENTATION_PLAN.md`              | Full roadmap and task breakdown             |
-| `FUTURE_FEATURES.md`                  | Deferred features + competitive analysis    |
+| File                                    | Purpose                                     |
+|-----------------------------------------|---------------------------------------------|
+| `docs/CURRENT_FEATURES.md`              | Comprehensive feature reference (canonical) |
+| `IMPLEMENTATION_PLAN.md`                | Full roadmap and task breakdown             |
+| `FUTURE_FEATURES.md`                    | Deferred features + competitive analysis    |
 
 ## Language Policy
 

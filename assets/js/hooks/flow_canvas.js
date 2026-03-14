@@ -8,7 +8,11 @@
 import { ClassicPreset } from "rete";
 
 import "../flow_canvas/components/index.js";
-import { exitInlineEdit, setupEventHandlers } from "../flow_canvas/event_bindings.js";
+import {
+  exitInlineEdit,
+  setupEventHandlers,
+  setupReadonlyEventHandlers,
+} from "../flow_canvas/event_bindings.js";
 import { FlowNode } from "../flow_canvas/flow_node.js";
 import {
   createCursorHandler,
@@ -27,6 +31,9 @@ import { waitForCss } from "../utils/shadow_styles.js";
 
 export const FlowCanvas = {
   mounted() {
+    // Initialize counter before defineProperty so the getter never reads undefined
+    this._loadingFromServerCount = 0;
+
     // Define isLoadingFromServer as a live getter on the instance.
     // LiveView's Object.assign copies getters as static values, so we must
     // re-define it here to ensure it reads _loadingFromServerCount dynamically.
@@ -105,22 +112,25 @@ export const FlowCanvas = {
     const flowData = JSON.parse(container.dataset.flow || "{}");
     this.sheetsMap = JSON.parse(container.dataset.sheets || "{}");
     this.labels = JSON.parse(container.dataset.labels || "{}");
+    this.readonly = container.dataset.readonly === "true";
 
     // Collaboration data
     this.currentUserId = Number.parseInt(container.dataset.userId, 10);
     this.currentUserColor = container.dataset.userColor || "#3b82f6";
 
-    // Initialize handlers
-    this.cursorHandler = createCursorHandler(this);
-    this.lockHandler = createLockHandler(this);
-    this.editorHandlers = createEditorHandlers(this);
+    // Initialize handlers (skip collaboration/mutation handlers in readonly mode)
+    if (!this.readonly) {
+      this.cursorHandler = createCursorHandler(this);
+      this.lockHandler = createLockHandler(this);
+      this.editorHandlers = createEditorHandlers(this);
 
-    this.navigationHandler = createNavigationHandler(this);
-    this.debugHandler = createDebugHandler(this);
+      this.navigationHandler = createNavigationHandler(this);
+      this.debugHandler = createDebugHandler(this);
 
-    this.cursorHandler.init();
-    this.lockHandler.init();
-    this.editorHandlers.init();
+      this.cursorHandler.init();
+      this.lockHandler.init();
+      this.editorHandlers.init();
+    }
 
     // Create and configure plugins (socket deferral pipe reads these flags)
     this.connectionDataMap = new Map();
@@ -172,7 +182,7 @@ export const FlowCanvas = {
 
     // Register history and minimap after all nodes/connections are loaded
     // to avoid recording bulk-load operations in undo history.
-    if (this.history) {
+    if (this.history && !this.readonly) {
       this.area.use(this.history);
     }
     if (this.minimap) {
@@ -183,13 +193,19 @@ export const FlowCanvas = {
     this.minimapToggle = createMinimapToggle(this);
     this.minimapToggle.init();
 
-    // Set up event handlers
-    setupEventHandlers(this);
+    // Set up event handlers (readonly gets selection-only, full gets all mutations)
+    if (this.readonly) {
+      setupReadonlyEventHandlers(this);
+    } else {
+      setupEventHandlers(this);
+    }
 
-    // Floating toolbar
-    this.floatingToolbar = createFlowFloatingToolbar(this);
-    // Expose on DOM element so the CanvasToolbar hook can access it
-    this.el.__floatingToolbar = this.floatingToolbar;
+    // Floating toolbar (skip in readonly mode)
+    if (!this.readonly) {
+      this.floatingToolbar = createFlowFloatingToolbar(this);
+      // Expose on DOM element so the CanvasToolbar hook can access it
+      this.el.__floatingToolbar = this.floatingToolbar;
+    }
 
     // Wire LOD zoom watching + canvas zoom CSS var (after setupEventHandlers, before finalizeSetup)
     this.area.addPipe((context) => {
@@ -201,9 +217,11 @@ export const FlowCanvas = {
       return context;
     });
 
-    // Initialize keyboard handler after editor is ready
-    this.keyboardHandler = createKeyboardHandler(this, this.lockHandler);
-    this.keyboardHandler.init();
+    // Initialize keyboard handler after editor is ready (skip in readonly mode)
+    if (!this.readonly) {
+      this.keyboardHandler = createKeyboardHandler(this, this.lockHandler);
+      this.keyboardHandler.init();
+    }
 
     // Sync node container sizes with actual rendered content (before fitView)
     await this.syncAllNodeSizes();
@@ -421,29 +439,39 @@ export const FlowCanvas = {
   },
 
   disconnected() {
-    this.cursorHandler?.pause();
+    if (!this.readonly) {
+      this.cursorHandler?.pause();
+    }
     this.el.classList.add("opacity-50", "pointer-events-none");
   },
 
   reconnected() {
     this.el.classList.remove("opacity-50", "pointer-events-none");
-    this.cursorHandler?.resume();
-    this.pushEvent("request_flow_refresh", {});
+    if (!this.readonly) {
+      this.cursorHandler?.resume();
+      this.pushEvent("request_flow_refresh", {});
+    }
   },
 
   destroyed() {
     exitInlineEdit(this);
+    this._eventBindingsController?.abort();
     this.floatingToolbar?.hide();
     if (this.el.__floatingToolbar) {
       delete this.el.__floatingToolbar;
     }
     this.lodController?.destroy();
     this.cursorHandler?.destroy();
+    this.lockHandler?.destroy();
     this.keyboardHandler?.destroy();
     this.editorHandlers?.destroy();
     this.navigationHandler?.destroy();
     this.debugHandler?.destroy();
     this.minimapToggle?.destroy();
+
+    // Clean up promise queues to prevent callbacks running after destroy
+    this._nodeMoveQueue = null;
+    this._nodeUpdateQueue = null;
 
     if (this.area) {
       this.area.destroy();

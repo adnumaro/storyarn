@@ -38,6 +38,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
               is_current={version.id == @current_version_id}
               can_edit={@can_edit}
               can_name_version={@can_name_version}
+              expanded_changelogs={@expanded_changelogs}
               target={@myself}
             />
           </div>
@@ -70,6 +71,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
                 is_current={version.id == @current_version_id}
                 can_edit={@can_edit}
                 can_name_version={@can_name_version}
+                expanded_changelogs={@expanded_changelogs}
                 target={@myself}
               />
             </div>
@@ -106,6 +108,19 @@ defmodule StoryarnWeb.Components.VersionsSection do
         on_cancel={JS.push("hide_promote_modal", target: @myself)}
       >
         <.promote_version_form version={@promote_version} target={@myself} />
+      </.modal>
+
+      <%!-- Unsaved Changes Modal --%>
+      <.modal
+        :if={@unsaved_changes_preview != nil}
+        id="unsaved-changes-modal"
+        show
+        on_cancel={JS.push("cancel_restore", target: @myself)}
+      >
+        <.unsaved_changes_content
+          preview={@unsaved_changes_preview}
+          target={@myself}
+        />
       </.modal>
 
       <%!-- Restore Conflict Modal --%>
@@ -153,7 +168,8 @@ defmodule StoryarnWeb.Components.VersionsSection do
       |> assign_new(:limit_message, fn -> nil end)
       |> assign_new(:pending_delete_version, fn -> nil end)
       |> assign_new(:restore_preview, fn -> nil end)
-      |> assign_new(:restore_loading, fn -> false end)
+      |> assign_new(:unsaved_changes_preview, fn -> nil end)
+      |> assign_new(:expanded_changelogs, fn -> MapSet.new() end)
 
     socket =
       if is_nil(socket.assigns.versions) do
@@ -170,7 +186,9 @@ defmodule StoryarnWeb.Components.VersionsSection do
           if socket.assigns.can_name_version do
             assign(socket, :show_create_version_modal, true)
           else
-            flash_parent(socket, :error,
+            flash_parent(
+              socket,
+              :error,
               socket.assigns.limit_message ||
                 dgettext("versioning", "Named version limit reached.")
             )
@@ -189,12 +207,18 @@ defmodule StoryarnWeb.Components.VersionsSection do
 
   @impl true
   def handle_event("show_create_version_modal", _params, socket) do
-    if socket.assigns.can_name_version do
-      {:noreply, assign(socket, :show_create_version_modal, true)}
-    else
-      {:noreply,
-       flash_parent(socket, :error, socket.assigns.limit_message || dgettext("versioning", "Named version limit reached."))}
-    end
+    with_edit_authorization(socket, fn socket ->
+      if socket.assigns.can_name_version do
+        {:noreply, assign(socket, :show_create_version_modal, true)}
+      else
+        {:noreply,
+         flash_parent(
+           socket,
+           :error,
+           socket.assigns.limit_message || dgettext("versioning", "Named version limit reached.")
+         )}
+      end
+    end)
   end
 
   def handle_event("hide_create_version_modal", _params, socket) do
@@ -251,8 +275,20 @@ defmodule StoryarnWeb.Components.VersionsSection do
     end)
   end
 
+  def handle_event("save_and_restore", _params, socket) do
+    with_edit_authorization(socket, fn socket ->
+      save_and_restore(socket)
+    end)
+  end
+
+  def handle_event("discard_and_restore", _params, socket) do
+    with_edit_authorization(socket, fn socket ->
+      discard_and_restore(socket)
+    end)
+  end
+
   def handle_event("cancel_restore", _params, socket) do
-    {:noreply, assign(socket, :restore_preview, nil)}
+    {:noreply, assign(socket, restore_preview: nil, unsaved_changes_preview: nil)}
   end
 
   def handle_event("set_pending_delete_version", %{"version" => version_number}, socket) do
@@ -275,6 +311,39 @@ defmodule StoryarnWeb.Components.VersionsSection do
     with_edit_authorization(socket, fn socket ->
       delete_version(socket, version_number)
     end)
+  end
+
+  def handle_event("toggle_changelog", %{"version" => version_number}, socket) do
+    case parse_version_number(version_number) do
+      {:ok, number} ->
+        expanded = socket.assigns.expanded_changelogs
+
+        expanded =
+          if MapSet.member?(expanded, number),
+            do: MapSet.delete(expanded, number),
+            else: MapSet.put(expanded, number)
+
+        {:noreply, assign(socket, :expanded_changelogs, expanded)}
+
+      :error ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("compare_version", %{"version" => version_number}, socket) do
+    case parse_version_number(version_number) do
+      {:ok, number} ->
+        version = Enum.find(socket.assigns.versions, &(&1.version_number == number))
+
+        if version do
+          notify_parent(:compare_version, %{version: version})
+        end
+
+        {:noreply, socket}
+
+      :error ->
+        {:noreply, socket}
+    end
   end
 
   def handle_event("load_more_versions", _params, socket) do
@@ -351,11 +420,13 @@ defmodule StoryarnWeb.Components.VersionsSection do
            flash_parent(socket, :info, dgettext("versioning", "Version named successfully."))}
 
         {:error, _changeset} ->
-          {:noreply, flash_parent(socket, :error, dgettext("versioning", "Could not name version."))}
+          {:noreply,
+           flash_parent(socket, :error, dgettext("versioning", "Could not name version."))}
       end
     else
       :error ->
-        {:noreply, flash_parent(socket, :error, dgettext("versioning", "Invalid version number."))}
+        {:noreply,
+         flash_parent(socket, :error, dgettext("versioning", "Invalid version number."))}
 
       nil ->
         {:noreply, flash_parent(socket, :error, dgettext("versioning", "Version not found."))}
@@ -381,11 +452,97 @@ defmodule StoryarnWeb.Components.VersionsSection do
         end
 
       :error ->
-        {:noreply, flash_parent(socket, :error, dgettext("versioning", "Invalid version number."))}
+        {:noreply,
+         flash_parent(socket, :error, dgettext("versioning", "Invalid version number."))}
     end
   end
 
   defp detect_and_show_preview(socket, version) do
+    entity = socket.assigns.entity
+    entity_type = socket.assigns.entity_type
+
+    has_unsaved = check_unsaved_changes(entity_type, entity)
+
+    if has_unsaved do
+      # Show unsaved changes modal first — user must choose before proceeding
+      {:noreply,
+       assign(socket, :unsaved_changes_preview, %{
+         version: version
+       })}
+    else
+      # No unsaved changes — go straight to conflict detection, skip pre-restore snapshot
+      show_conflict_preview(socket, version, _skip_pre_snapshot = true)
+    end
+  end
+
+  defp check_unsaved_changes(entity_type, entity) do
+    builder = Versioning.get_builder!(entity_type)
+
+    case Versioning.get_latest_version(entity_type, entity.id) do
+      nil ->
+        # No versions exist — current state is always "unsaved"
+        true
+
+      latest ->
+        case Versioning.load_version_snapshot(latest) do
+          {:ok, latest_snapshot} ->
+            current_snapshot = builder.build_snapshot(entity)
+            Versioning.snapshot_has_changes?(entity_type, latest_snapshot, current_snapshot)
+
+          {:error, _} ->
+            # Can't load snapshot — assume unsaved to be safe
+            true
+        end
+    end
+  end
+
+  defp save_and_restore(socket) do
+    if check_named_version_allowed?(socket) do
+      do_save_and_restore(socket)
+    else
+      {:noreply,
+       socket
+       |> assign(:unsaved_changes_preview, nil)
+       |> flash_parent(:error, dgettext("versioning", "Named version limit reached."))}
+    end
+  end
+
+  defp do_save_and_restore(socket) do
+    %{version: version} = socket.assigns.unsaved_changes_preview
+    entity = socket.assigns.entity
+    entity_type = socket.assigns.entity_type
+    user_id = socket.assigns.current_user_id
+    project_id = socket.assigns.project_id
+
+    # Create a version with the current state, then proceed to conflict detection
+    case Versioning.create_version(entity_type, entity, project_id, user_id,
+           title:
+             dgettext("versioning", "Before restore to v%{number}",
+               number: version.version_number
+             ),
+           skip_diff: true
+         ) do
+      {:ok, _saved_version} ->
+        socket = assign(socket, :unsaved_changes_preview, nil)
+        # Pre-snapshot already created — skip it during restore
+        show_conflict_preview(socket, version, _skip_pre_snapshot = true)
+
+      {:error, _} ->
+        {:noreply,
+         socket
+         |> assign(:unsaved_changes_preview, nil)
+         |> flash_parent(:error, dgettext("versioning", "Could not save current state."))}
+    end
+  end
+
+  defp discard_and_restore(socket) do
+    %{version: version} = socket.assigns.unsaved_changes_preview
+    socket = assign(socket, :unsaved_changes_preview, nil)
+    # Skip pre-restore snapshot — user chose to discard
+    show_conflict_preview(socket, version, _skip_pre_snapshot = true)
+  end
+
+  defp show_conflict_preview(socket, version, skip_pre_snapshot) do
     entity = socket.assigns.entity
     entity_type = socket.assigns.entity_type
 
@@ -395,7 +552,8 @@ defmodule StoryarnWeb.Components.VersionsSection do
 
         preview = %{
           version: version,
-          report: report
+          report: report,
+          skip_pre_snapshot: skip_pre_snapshot
         }
 
         {:noreply, assign(socket, :restore_preview, preview)}
@@ -411,12 +569,16 @@ defmodule StoryarnWeb.Components.VersionsSection do
       nil ->
         {:noreply, socket}
 
-      %{version: version} ->
+      %{version: version} = preview ->
         entity = socket.assigns.entity
         entity_type = socket.assigns.entity_type
         user_id = socket.assigns.current_user_id
+        skip_pre = Map.get(preview, :skip_pre_snapshot, false)
 
-        case Versioning.restore_version(entity_type, entity, version, user_id: user_id) do
+        case Versioning.restore_version(entity_type, entity, version,
+               user_id: user_id,
+               skip_pre_snapshot: skip_pre
+             ) do
           {:ok, updated_entity} ->
             socket =
               socket
@@ -435,6 +597,18 @@ defmodule StoryarnWeb.Components.VersionsSection do
                :info,
                dgettext("versioning", "Restored to version %{number}",
                  number: version.version_number
+               )
+             )}
+
+          {:error, {:pre_restore_snapshot_failed, _}} ->
+            {:noreply,
+             socket
+             |> assign(:restore_preview, nil)
+             |> flash_parent(
+               :error,
+               dgettext(
+                 "versioning",
+                 "Could not create safety backup before restoring. Restore aborted."
                )
              )}
 
@@ -462,7 +636,8 @@ defmodule StoryarnWeb.Components.VersionsSection do
         end
 
       :error ->
-        {:noreply, flash_parent(socket, :error, dgettext("versioning", "Invalid version number."))}
+        {:noreply,
+         flash_parent(socket, :error, dgettext("versioning", "Invalid version number."))}
     end
   end
 
@@ -478,7 +653,8 @@ defmodule StoryarnWeb.Components.VersionsSection do
         {:noreply, flash_parent(socket, :info, dgettext("versioning", "Version deleted."))}
 
       {:error, _} ->
-        {:noreply, flash_parent(socket, :error, dgettext("versioning", "Could not delete version."))}
+        {:noreply,
+         flash_parent(socket, :error, dgettext("versioning", "Could not delete version."))}
     end
   end
 
@@ -507,7 +683,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
         versions
       end
 
-    {named, auto} = Enum.split_with(versions, &(not is_nil(&1.title)))
+    {named, auto} = Enum.split_with(versions, &(not &1.is_auto))
 
     socket
     |> assign(:versions, versions)
@@ -592,6 +768,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
   attr :is_current, :boolean, default: false
   attr :can_edit, :boolean, default: false
   attr :can_name_version, :boolean, default: true
+  attr :expanded_changelogs, :any, default: nil
   attr :target, :any, default: nil
 
   defp version_row(assigns) do
@@ -633,12 +810,19 @@ defmodule StoryarnWeb.Components.VersionsSection do
               v{@version.version_number}
             </span>
           </div>
-          <div
-            :if={@can_edit}
-            class="flex-shrink-0 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-          >
+          <div class="flex-shrink-0 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
-              :if={@variant == :auto && @can_name_version}
+              type="button"
+              class="btn btn-ghost btn-xs btn-square tooltip"
+              data-tip={dgettext("versioning", "Compare with current")}
+              phx-click="compare_version"
+              phx-value-version={@version.version_number}
+              phx-target={@target}
+            >
+              <.icon name="columns-2" class="size-3.5" />
+            </button>
+            <button
+              :if={@can_edit && @variant == :auto && @can_name_version}
               type="button"
               class="btn btn-ghost btn-xs btn-square tooltip"
               data-tip={dgettext("versioning", "Name this version")}
@@ -649,7 +833,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
               <.icon name="bookmark-plus" class="size-3.5" />
             </button>
             <button
-              :if={!@is_current}
+              :if={@can_edit && !@is_current}
               type="button"
               class="btn btn-ghost btn-xs btn-square tooltip"
               data-tip={dgettext("versioning", "Restore this version")}
@@ -660,6 +844,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
               <.icon name="rotate-ccw" class="size-3.5" />
             </button>
             <button
+              :if={@can_edit}
               type="button"
               class="btn btn-ghost btn-xs btn-square tooltip text-error"
               data-tip={dgettext("versioning", "Delete version")}
@@ -682,11 +867,20 @@ defmodule StoryarnWeb.Components.VersionsSection do
           {@version.description}
         </p>
         <p
-          :if={@variant == :named && @version.change_summary}
-          class="text-xs text-base-content/50 mt-0.5"
+          :if={@version.change_summary && @version.change_summary != @version.title}
+          class="text-xs text-base-content/50 mt-0.5 line-clamp-2"
         >
           {@version.change_summary}
         </p>
+        <.change_details_section
+          :if={@version.change_details}
+          change_details={@version.change_details}
+          version_number={@version.version_number}
+          expanded={
+            @expanded_changelogs && MapSet.member?(@expanded_changelogs, @version.version_number)
+          }
+          target={@target}
+        />
         <div class="text-xs text-base-content/60 mt-0.5">
           <span>{format_version_date(@version.inserted_at)}</span>
         </div>
@@ -813,6 +1007,60 @@ defmodule StoryarnWeb.Components.VersionsSection do
   attr :preview, :map, required: true
   attr :target, :any, default: nil
 
+  defp unsaved_changes_content(assigns) do
+    ~H"""
+    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+      <.icon name="alert-triangle" class="size-5 text-warning" />
+      {dgettext("versioning", "Unsaved changes")}
+    </h3>
+
+    <p class="text-base-content/70 mb-2">
+      {dgettext(
+        "versioning",
+        "You have changes that aren't saved in any version. Restoring to v%{number} will overwrite them.",
+        number: @preview.version.version_number
+      )}
+    </p>
+
+    <p class="text-sm text-base-content/50 mb-6">
+      {dgettext("versioning", "What would you like to do with your current changes?")}
+    </p>
+
+    <div class="flex flex-col gap-2">
+      <button
+        type="button"
+        class="btn btn-primary w-full justify-start gap-2"
+        phx-click="save_and_restore"
+        phx-target={@target}
+      >
+        <.icon name="save" class="size-4" />
+        {dgettext("versioning", "Save current state, then restore")}
+      </button>
+      <button
+        type="button"
+        class="btn btn-warning btn-outline w-full justify-start gap-2"
+        phx-click="discard_and_restore"
+        phx-target={@target}
+      >
+        <.icon name="trash-2" class="size-4" />
+        {dgettext("versioning", "Discard changes and restore")}
+      </button>
+      <button
+        type="button"
+        class="btn btn-ghost w-full justify-start gap-2"
+        phx-click="cancel_restore"
+        phx-target={@target}
+      >
+        <.icon name="x" class="size-4" />
+        {dgettext("versioning", "Cancel")}
+      </button>
+    </div>
+    """
+  end
+
+  attr :preview, :map, required: true
+  attr :target, :any, default: nil
+
   defp restore_preview_content(assigns) do
     ~H"""
     <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
@@ -859,17 +1107,23 @@ defmodule StoryarnWeb.Components.VersionsSection do
         </div>
 
         <p class="text-sm text-base-content/70">
-          {dgettext(
-            "versioning",
-            "Missing references will be cleared. Current state will be saved as a backup."
-          )}
+          <%= if @preview.skip_pre_snapshot do %>
+            {dgettext(
+              "versioning",
+              "Missing references will be cleared."
+            )}
+          <% else %>
+            {dgettext(
+              "versioning",
+              "Missing references will be cleared. Current state will be saved as a backup."
+            )}
+          <% end %>
         </p>
       </div>
     <% else %>
       <p class="text-base-content/70 mb-4">
-        {dgettext(
-          "versioning",
-          "Current state will be saved as a backup before restoring."
+        {dgettext("versioning", "This will restore the entity to version %{number}.",
+          number: @preview.version.version_number
         )}
       </p>
     <% end %>
@@ -917,6 +1171,71 @@ defmodule StoryarnWeb.Components.VersionsSection do
     </div>
     """
   end
+
+  attr :change_details, :map, required: true
+  attr :version_number, :integer, required: true
+  attr :expanded, :boolean, default: false
+  attr :target, :any, default: nil
+
+  defp change_details_section(assigns) do
+    ~H"""
+    <div class="mt-1">
+      <button
+        type="button"
+        class="text-[11px] text-base-content/40 hover:text-base-content/60 transition-colors flex items-center gap-0.5"
+        phx-click="toggle_changelog"
+        phx-value-version={@version_number}
+        phx-target={@target}
+      >
+        <.icon
+          name={if @expanded, do: "chevron-down", else: "chevron-right"}
+          class="size-3"
+        />
+        <.change_stats_badge stats={@change_details["stats"]} />
+      </button>
+      <div :if={@expanded} class="mt-1.5 space-y-0.5 ml-0.5">
+        <div
+          :for={change <- @change_details["changes"]}
+          class="flex items-start gap-1.5 text-[11px]"
+        >
+          <span class={[
+            "flex-shrink-0 font-mono font-bold leading-4",
+            change_action_color(change["action"])
+          ]}>
+            {change_action_icon(change["action"])}
+          </span>
+          <span class="text-base-content/60 leading-4">{change["detail"]}</span>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  defp change_stats_badge(assigns) do
+    ~H"""
+    <span class="flex items-center gap-1.5">
+      <span :if={@stats["added"] > 0} class="text-success">
+        +{@stats["added"]}
+      </span>
+      <span :if={@stats["modified"] > 0} class="text-warning">
+        ~{@stats["modified"]}
+      </span>
+      <span :if={@stats["removed"] > 0} class="text-error">
+        -{@stats["removed"]}
+      </span>
+    </span>
+    """
+  end
+
+  defp change_action_icon("added"), do: "+"
+  defp change_action_icon("modified"), do: "~"
+  defp change_action_icon("removed"), do: "-"
+  defp change_action_icon(_), do: "?"
+
+  defp change_action_color("added"), do: "text-success"
+  defp change_action_color("modified"), do: "text-warning"
+  defp change_action_color("removed"), do: "text-error"
+  defp change_action_color(_), do: "text-base-content/50"
 
   defp conflict_type_icon(:asset), do: "image"
   defp conflict_type_icon(:sheet), do: "file-text"

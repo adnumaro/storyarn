@@ -27,7 +27,9 @@ export function createPlugins(container, hook) {
   const editor = new NodeEditor();
   const area = new AreaPlugin(container);
   const connection = new ConnectionPlugin();
-  const contextMenu = new ContextMenuPlugin({ items: createContextMenuItems(hook) });
+  const contextMenu = hook.readonly
+    ? null
+    : new ContextMenuPlugin({ items: createContextMenuItems(hook) });
   const history = new HistoryPlugin({ timing: 200 });
   const arrange = new AutoArrangePlugin();
   const minimap = new MinimapPlugin();
@@ -174,9 +176,10 @@ export function createPlugins(container, hook) {
   area.use(connection);
   area.use(render);
 
-  // Magnetic connection — enlarges socket drop area for easier connecting
+  // Magnetic connection — enlarges socket drop area for easier connecting (skip in readonly)
   useMagneticConnection(connection, {
     async createConnection(from, to) {
+      if (hook.readonly) return;
       if (from.side === to.side) return;
       const [source, target] = from.side === "output" ? [from, to] : [to, from];
       const sourceNode = editor.getNode(source.nodeId);
@@ -204,11 +207,13 @@ export function createPlugins(container, hook) {
     },
   });
 
-  area.use(contextMenu);
+  if (contextMenu) area.use(contextMenu);
   area.use(arrange);
   // History preset — wires pipes on the editor and area for connection/drag tracking.
-  // Needs hook reference for isLoadingFromServer guard.
-  history.addPreset(createFlowHistoryPreset(hook));
+  // Needs hook reference for isLoadingFromServer guard. Skip in readonly mode.
+  if (!hook.readonly) {
+    history.addPreset(createFlowHistoryPreset(hook));
+  }
 
   // Minimap and history are deferred — caller must do area.use() after initial load
   // to avoid per-node updates during bulk addNode.
@@ -229,10 +234,12 @@ export async function finalizeSetup(area, editor, hasNodes) {
 
   if (hasNodes) {
     setTimeout(async () => {
+      if (!area || area.destroyed) return;
       await AreaExtensions.zoomAt(area, editor.getNodes());
       // Second zoomAt after a frame so Lit's <rete-minimap> Shadow DOM
       // is committed and its container query resolves for node scaling.
       requestAnimationFrame(async () => {
+        if (!area || area.destroyed) return;
         await AreaExtensions.zoomAt(area, editor.getNodes());
       });
     }, 100);

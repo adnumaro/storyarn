@@ -20,6 +20,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowDock do
   attr :project, :map, required: true
   attr :can_edit, :boolean, required: true
   attr :debug_panel_open, :boolean, default: false
+  attr :compact, :boolean, default: false
 
   def flow_dock(assigns) do
     assigns = assign(assigns, :groups, build_groups(assigns))
@@ -43,7 +44,11 @@ defmodule StoryarnWeb.FlowLive.Components.FlowDock do
         groups
       end
 
-    groups ++ [actions_group(assigns)]
+    if assigns.compact do
+      groups
+    else
+      groups ++ [actions_group(assigns)]
+    end
   end
 
   defp annotation_group do

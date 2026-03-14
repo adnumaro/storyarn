@@ -16,6 +16,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.Builders.AssetHashResolver
+  alias Storyarn.Versioning.DiffHelpers
 
   alias Storyarn.Scenes.{
     Scene,
@@ -310,39 +311,51 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       updated_at: now
     }
 
-    {1, [%{id: layer_id}]} = repo.insert_all(SceneLayer, [attrs], returning: [:id])
-    layer_id
+    case repo.insert_all(SceneLayer, [attrs], returning: [:id]) do
+      {1, [%{id: layer_id}]} -> layer_id
+      {0, _} -> raise "Failed to insert scene layer during restore"
+    end
   end
 
   defp insert_layer_zones(_repo, _scene_id, _layer_id, [], _now), do: :ok
 
   defp insert_layer_zones(repo, scene_id, layer_id, zones_data, now) do
     Enum.each(zones_data, fn zone_data ->
-      attrs = %{
-        scene_id: scene_id,
-        layer_id: layer_id,
-        name: zone_data["name"],
-        vertices: zone_data["vertices"],
-        fill_color: zone_data["fill_color"],
-        border_color: zone_data["border_color"],
-        border_width: zone_data["border_width"] || 2,
-        border_style: zone_data["border_style"] || "solid",
-        opacity: zone_data["opacity"] || 0.3,
-        target_type: zone_data["target_type"],
-        target_id: zone_data["target_id"],
-        tooltip: zone_data["tooltip"],
-        position: zone_data["position"] || 0,
-        locked: zone_data["locked"] || false,
-        action_type: zone_data["action_type"] || "none",
-        action_data: zone_data["action_data"] || %{},
-        condition: zone_data["condition"],
-        condition_effect: zone_data["condition_effect"] || "hide",
-        inserted_at: now,
-        updated_at: now
-      }
-
-      repo.insert_all(SceneZone, [attrs])
+      attrs = build_zone_attrs(zone_data, scene_id, layer_id, now)
+      insert_single!(repo, SceneZone, attrs, "scene zone")
     end)
+  end
+
+  defp build_zone_attrs(zone_data, scene_id, layer_id, now) do
+    %{
+      scene_id: scene_id,
+      layer_id: layer_id,
+      name: zone_data["name"],
+      vertices: zone_data["vertices"],
+      fill_color: zone_data["fill_color"],
+      border_color: zone_data["border_color"],
+      border_width: zone_data["border_width"] || 2,
+      border_style: zone_data["border_style"] || "solid",
+      opacity: zone_data["opacity"] || 0.3,
+      target_type: zone_data["target_type"],
+      target_id: zone_data["target_id"],
+      tooltip: zone_data["tooltip"],
+      position: zone_data["position"] || 0,
+      locked: zone_data["locked"] || false,
+      action_type: zone_data["action_type"] || "none",
+      action_data: zone_data["action_data"] || %{},
+      condition: zone_data["condition"],
+      condition_effect: zone_data["condition_effect"] || "hide",
+      inserted_at: now,
+      updated_at: now
+    }
+  end
+
+  defp insert_single!(repo, schema, attrs, label) do
+    case repo.insert_all(schema, [attrs]) do
+      {1, _} -> :ok
+      {0, _} -> raise "Failed to insert #{label} during restore"
+    end
   end
 
   defp insert_layer_pins(_repo, _scene_id, _layer_id, [], _now, _snapshot, _project_id), do: []
@@ -365,7 +378,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         size: pin_data["size"] || "md",
         position: pin_data["position"] || 0,
         locked: pin_data["locked"] || false,
-        sheet_id: resolve_fk(pin_data["sheet_id"], Storyarn.Sheets.Sheet),
+        sheet_id: DiffHelpers.resolve_fk(pin_data["sheet_id"], Storyarn.Sheets.Sheet),
         icon_asset_id:
           AssetHashResolver.resolve_asset_fk(
             pin_data["icon_asset_id"],
@@ -380,8 +393,10 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         updated_at: now
       }
 
-      {1, [%{id: pin_id}]} = repo.insert_all(ScenePin, [attrs], returning: [:id])
-      pin_id
+      case repo.insert_all(ScenePin, [attrs], returning: [:id]) do
+        {1, [%{id: pin_id}]} -> pin_id
+        {0, _} -> raise "Failed to insert scene pin during restore"
+      end
     end)
   end
 
@@ -403,7 +418,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         updated_at: now
       }
 
-      repo.insert_all(SceneAnnotation, [attrs])
+      insert_single!(repo, SceneAnnotation, attrs, "scene annotation")
     end)
   end
 
@@ -457,106 +472,316 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   # ========== Diff Snapshots ==========
 
+  alias Storyarn.Versioning.DiffHelpers
+
+  @layer_compare_fields ~w(name is_default visible fog_enabled fog_color fog_opacity)
+  @pin_compare_fields ~w(pin_type icon color opacity label size target_type target_id tooltip sheet_id icon_asset_id action_type action_data condition condition_effect locked)
+  @zone_compare_fields ~w(name vertices fill_color border_color border_width border_style opacity target_type target_id tooltip action_type action_data condition condition_effect locked)
+  @annotation_compare_fields ~w(text font_size color locked)
+  @connection_compare_fields ~w(line_style line_width color label bidirectional show_label)
+
   @impl true
   def diff_snapshots(old_snapshot, new_snapshot) do
-    changes =
-      []
-      |> check_field_change(
-        old_snapshot,
-        new_snapshot,
-        "name",
-        dgettext("scenes", "Renamed scene")
-      )
-      |> check_field_change(
-        old_snapshot,
-        new_snapshot,
-        "shortcut",
-        dgettext("scenes", "Changed shortcut")
-      )
-      |> check_field_change(
-        old_snapshot,
-        new_snapshot,
-        "description",
-        dgettext("scenes", "Changed description")
-      )
-      |> check_field_change(
-        old_snapshot,
-        new_snapshot,
-        "background_asset_id",
-        dgettext("scenes", "Changed background")
-      )
-      |> append_layer_changes(old_snapshot["layers"] || [], new_snapshot["layers"] || [])
-      |> append_connection_changes(
-        old_snapshot["connections"] || [],
-        new_snapshot["connections"] || []
-      )
-
-    format_change_summary(changes)
+    []
+    |> DiffHelpers.check_field_change(
+      old_snapshot,
+      new_snapshot,
+      "name",
+      :property,
+      dgettext("scenes", "Renamed scene")
+    )
+    |> DiffHelpers.check_field_change(
+      old_snapshot,
+      new_snapshot,
+      "shortcut",
+      :property,
+      dgettext("scenes", "Changed shortcut")
+    )
+    |> DiffHelpers.check_field_change(
+      old_snapshot,
+      new_snapshot,
+      "description",
+      :property,
+      dgettext("scenes", "Changed description")
+    )
+    |> DiffHelpers.check_field_group_change(
+      old_snapshot,
+      new_snapshot,
+      ~w(width height),
+      :property,
+      dgettext("scenes", "Changed dimensions")
+    )
+    |> DiffHelpers.check_field_group_change(
+      old_snapshot,
+      new_snapshot,
+      ~w(default_zoom default_center_x default_center_y),
+      :property,
+      dgettext("scenes", "Changed default view")
+    )
+    |> DiffHelpers.check_field_group_change(
+      old_snapshot,
+      new_snapshot,
+      ~w(scale_unit scale_value),
+      :property,
+      dgettext("scenes", "Changed scale settings")
+    )
+    |> DiffHelpers.check_field_change(
+      old_snapshot,
+      new_snapshot,
+      "background_asset_id",
+      :property,
+      dgettext("scenes", "Changed background")
+    )
+    |> diff_layers_and_connections(
+      old_snapshot["layers"] || [],
+      new_snapshot["layers"] || [],
+      old_snapshot["connections"] || [],
+      new_snapshot["connections"] || []
+    )
+    |> Enum.reverse()
   end
 
-  defp check_field_change(changes, old_snapshot, new_snapshot, field, message) do
-    if old_snapshot[field] != new_snapshot[field] do
-      [message | changes]
-    else
-      changes
-    end
-  end
+  defp diff_layers_and_connections(changes, old_layers, new_layers, old_conns, new_conns) do
+    {matched, added, removed} =
+      DiffHelpers.match_by_keys(old_layers, new_layers, [& &1["position"]])
 
-  defp append_layer_changes(changes, old_layers, new_layers) do
-    old_count = length(old_layers)
-    new_count = length(new_layers)
-    diff = new_count - old_count
-
-    # Count total pins/zones across layers for more detail
-    old_pins = old_layers |> Enum.flat_map(&(&1["pins"] || [])) |> length()
-    new_pins = new_layers |> Enum.flat_map(&(&1["pins"] || [])) |> length()
-    old_zones = old_layers |> Enum.flat_map(&(&1["zones"] || [])) |> length()
-    new_zones = new_layers |> Enum.flat_map(&(&1["zones"] || [])) |> length()
+    # Build pin index remapping from matched layers so that connection
+    # comparison uses semantic pin identity, not raw positional indices.
+    pin_index_remap = build_pin_index_remap(matched, old_layers, new_layers)
 
     changes
-    |> maybe_add_diff(diff, "layers",
-      add_fn:
-        &dngettext("scenes", "Added %{count} layer", "Added %{count} layers", &1, count: &1),
-      remove_fn:
-        &dngettext("scenes", "Removed %{count} layer", "Removed %{count} layers", &1, count: &1)
-    )
-    |> maybe_add_diff(new_pins - old_pins, "pins",
-      add_fn: &dngettext("scenes", "Added %{count} pin", "Added %{count} pins", &1, count: &1),
-      remove_fn:
-        &dngettext("scenes", "Removed %{count} pin", "Removed %{count} pins", &1, count: &1)
-    )
-    |> maybe_add_diff(new_zones - old_zones, "zones",
-      add_fn: &dngettext("scenes", "Added %{count} zone", "Added %{count} zones", &1, count: &1),
-      remove_fn:
-        &dngettext("scenes", "Removed %{count} zone", "Removed %{count} zones", &1, count: &1)
-    )
+    |> append_items(added, :layer, :added, &layer_detail(:added, &1))
+    |> append_items(removed, :layer, :removed, &layer_detail(:removed, &1))
+    |> diff_matched_layers(matched)
+    |> diff_connections(old_conns, new_conns, pin_index_remap)
   end
 
-  defp append_connection_changes(changes, old_conns, new_conns) do
-    diff = length(new_conns) - length(old_conns)
+  defp build_pin_index_remap(matched_layers, old_layers, new_layers) do
+    old_layer_index = old_layers |> Enum.with_index() |> Map.new()
+    new_layer_index = new_layers |> Enum.with_index() |> Map.new()
 
-    maybe_add_diff(changes, diff, "connections",
-      add_fn:
-        &dngettext("scenes", "Added %{count} connection", "Added %{count} connections", &1,
-          count: &1
-        ),
-      remove_fn:
-        &dngettext("scenes", "Removed %{count} connection", "Removed %{count} connections", &1,
-          count: &1
+    Enum.reduce(matched_layers, %{}, fn {old_layer, new_layer}, remap ->
+      old_layer_idx = Map.get(old_layer_index, old_layer)
+      new_layer_idx = Map.get(new_layer_index, new_layer)
+
+      old_pins = old_layer["pins"] || []
+      new_pins = new_layer["pins"] || []
+
+      old_pin_index = old_pins |> Enum.with_index() |> Map.new()
+      new_pin_index = new_pins |> Enum.with_index() |> Map.new()
+
+      {matched_pins, _added, _removed} =
+        DiffHelpers.match_by_keys(old_pins, new_pins, [& &1["position"]])
+
+      Enum.reduce(matched_pins, remap, fn {old_pin, new_pin}, acc ->
+        old_pin_idx = Map.get(old_pin_index, old_pin)
+        new_pin_idx = Map.get(new_pin_index, new_pin)
+
+        Map.put(acc, {old_layer_idx, old_pin_idx}, {new_layer_idx, new_pin_idx})
+      end)
+    end)
+  end
+
+  defp diff_matched_layers(changes, []), do: changes
+
+  defp diff_matched_layers(changes, matched_pairs) do
+    Enum.reduce(matched_pairs, changes, fn {old_layer, new_layer}, acc ->
+      layer_props_changed =
+        DiffHelpers.fields_differ?(old_layer, new_layer, @layer_compare_fields)
+
+      acc
+      |> maybe_add_layer_modified(layer_props_changed, new_layer)
+      |> diff_nested(
+        old_layer["pins"] || [],
+        new_layer["pins"] || [],
+        :pin,
+        @pin_compare_fields,
+        &pin_detail(&1, &2, new_layer)
+      )
+      |> diff_nested(
+        old_layer["zones"] || [],
+        new_layer["zones"] || [],
+        :zone,
+        @zone_compare_fields,
+        &zone_detail(&1, &2, new_layer)
+      )
+      |> diff_nested(
+        old_layer["annotations"] || [],
+        new_layer["annotations"] || [],
+        :annotation,
+        @annotation_compare_fields,
+        &annotation_detail(&1, &2, new_layer)
+      )
+    end)
+  end
+
+  defp maybe_add_layer_modified(changes, false, _layer), do: changes
+
+  defp maybe_add_layer_modified(changes, true, layer) do
+    name = layer["name"] || ""
+    detail = dgettext("scenes", "Modified layer \"%{name}\"", name: name)
+    [%{category: :layer, action: :modified, detail: detail} | changes]
+  end
+
+  defp diff_nested(changes, old_items, new_items, category, compare_fields, detail_fn) do
+    {matched, added, removed} =
+      DiffHelpers.match_by_keys(old_items, new_items, [& &1["position"]])
+
+    {modified, _unchanged} =
+      DiffHelpers.find_modified(matched, fn old, new ->
+        DiffHelpers.fields_differ?(old, new, compare_fields)
+      end)
+
+    changes
+    |> append_items(added, category, :added, &detail_fn.(:added, &1))
+    |> append_items(removed, category, :removed, &detail_fn.(:removed, &1))
+    |> append_modified_items(modified, category, &detail_fn.(:modified, &1))
+  end
+
+  defp diff_connections(changes, old_conns, new_conns, pin_index_remap) do
+    # Remap old connections to new index space so that pin reordering
+    # doesn't produce phantom connection adds/removes.
+    # Connections referencing removed pins get unique sentinel indexes
+    # so they won't falsely match new connections at the same raw index.
+    remapped_old_conns =
+      old_conns
+      |> Enum.with_index()
+      |> Enum.map(fn {conn, idx} ->
+        from_key = {conn["from_layer_index"], conn["from_pin_index"]}
+        to_key = {conn["to_layer_index"], conn["to_pin_index"]}
+
+        case {Map.get(pin_index_remap, from_key), Map.get(pin_index_remap, to_key)} do
+          {{new_fl, new_fp}, {new_tl, new_tp}} ->
+            conn
+            |> Map.put("from_layer_index", new_fl)
+            |> Map.put("from_pin_index", new_fp)
+            |> Map.put("to_layer_index", new_tl)
+            |> Map.put("to_pin_index", new_tp)
+
+          _ ->
+            # Pin was removed — use unique sentinel to ensure this appears as removed
+            conn
+            |> Map.put("from_layer_index", {:removed, idx})
+            |> Map.put("from_pin_index", {:removed, idx})
+            |> Map.put("to_layer_index", {:removed, idx})
+            |> Map.put("to_pin_index", {:removed, idx})
+        end
+      end)
+
+    key_fn = fn conn ->
+      {conn["from_layer_index"], conn["from_pin_index"], conn["to_layer_index"],
+       conn["to_pin_index"]}
+    end
+
+    {matched, added, removed} = DiffHelpers.match_by_keys(remapped_old_conns, new_conns, [key_fn])
+
+    {modified, _unchanged} =
+      DiffHelpers.find_modified(matched, fn old, new ->
+        DiffHelpers.fields_differ?(old, new, @connection_compare_fields)
+      end)
+
+    changes
+    |> append_items(added, :connection, :added, fn _conn ->
+      dgettext("scenes", "Added connection")
+    end)
+    |> append_items(removed, :connection, :removed, fn _conn ->
+      dgettext("scenes", "Removed connection")
+    end)
+    |> append_modified_items(modified, :connection, fn _new ->
+      dgettext("scenes", "Modified connection")
+    end)
+  end
+
+  # Generic helpers for building change lists
+
+  defp append_items(changes, [], _category, _action, _detail_fn), do: changes
+
+  defp append_items(changes, items, category, action, detail_fn) do
+    Enum.reduce(items, changes, fn item, acc ->
+      [%{category: category, action: action, detail: detail_fn.(item)} | acc]
+    end)
+  end
+
+  defp append_modified_items(changes, [], _category, _detail_fn), do: changes
+
+  defp append_modified_items(changes, modified_pairs, category, detail_fn) do
+    Enum.reduce(modified_pairs, changes, fn {_old, new}, acc ->
+      [%{category: category, action: :modified, detail: detail_fn.(new)} | acc]
+    end)
+  end
+
+  # Detail formatters
+
+  defp layer_detail(:added, layer),
+    do: dgettext("scenes", "Added layer \"%{name}\"", name: layer["name"] || "")
+
+  defp layer_detail(:removed, layer),
+    do: dgettext("scenes", "Removed layer \"%{name}\"", name: layer["name"] || "")
+
+  defp pin_detail(action, pin, layer) do
+    label = pin["label"] || ""
+    layer_name = layer["name"] || ""
+
+    case action do
+      :added ->
+        dgettext("scenes", "Added pin \"%{label}\" in layer \"%{layer}\"",
+          label: label,
+          layer: layer_name
         )
-    )
-  end
 
-  defp maybe_add_diff(changes, diff, _label, opts) do
-    cond do
-      diff > 0 -> [opts[:add_fn].(diff) | changes]
-      diff < 0 -> [opts[:remove_fn].(abs(diff)) | changes]
-      true -> changes
+      :removed ->
+        dgettext("scenes", "Removed pin \"%{label}\" in layer \"%{layer}\"",
+          label: label,
+          layer: layer_name
+        )
+
+      :modified ->
+        dgettext("scenes", "Modified pin \"%{label}\" in layer \"%{layer}\"",
+          label: label,
+          layer: layer_name
+        )
     end
   end
 
-  defp format_change_summary([]), do: dgettext("scenes", "No changes detected")
-  defp format_change_summary(changes), do: changes |> Enum.reverse() |> Enum.join(", ")
+  defp zone_detail(action, zone, layer) do
+    name = zone["name"] || ""
+    layer_name = layer["name"] || ""
+
+    case action do
+      :added ->
+        dgettext("scenes", "Added zone \"%{name}\" in layer \"%{layer}\"",
+          name: name,
+          layer: layer_name
+        )
+
+      :removed ->
+        dgettext("scenes", "Removed zone \"%{name}\" in layer \"%{layer}\"",
+          name: name,
+          layer: layer_name
+        )
+
+      :modified ->
+        dgettext("scenes", "Modified zone \"%{name}\" in layer \"%{layer}\"",
+          name: name,
+          layer: layer_name
+        )
+    end
+  end
+
+  defp annotation_detail(action, _annotation, layer) do
+    layer_name = layer["name"] || ""
+
+    case action do
+      :added ->
+        dgettext("scenes", "Added annotation in layer \"%{layer}\"", layer: layer_name)
+
+      :removed ->
+        dgettext("scenes", "Removed annotation in layer \"%{layer}\"", layer: layer_name)
+
+      :modified ->
+        dgettext("scenes", "Modified annotation in layer \"%{layer}\"", layer: layer_name)
+    end
+  end
 
   # ========== Scan References ==========
 
@@ -626,11 +851,4 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   defp maybe_add_ref(refs, type, id, context),
     do: [%{type: type, id: id, context: context} | refs]
-
-  # Returns the FK value only if the referenced record still exists, nil otherwise.
-  defp resolve_fk(nil, _schema), do: nil
-
-  defp resolve_fk(id, schema) do
-    if Repo.exists?(from(e in schema, where: e.id == ^id)), do: id, else: nil
-  end
 end

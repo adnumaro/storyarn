@@ -51,7 +51,7 @@ defmodule Storyarn.Versioning.VersionCrudTest do
       assert version.title == nil
     end
 
-    test "skips change_summary when title is provided", %{
+    test "generates change_summary even when title is provided", %{
       sheet: sheet,
       project: project,
       user: user
@@ -59,8 +59,38 @@ defmodule Storyarn.Versioning.VersionCrudTest do
       {:ok, version} =
         Versioning.create_version("sheet", sheet, project.id, user.id, title: "Manual")
 
-      assert version.change_summary == nil
+      assert version.change_summary != nil
       assert version.title == "Manual"
+    end
+
+    test "stores structured change_details with diff data", %{
+      sheet: sheet,
+      project: project,
+      user: user
+    } do
+      # First version — initial, no previous to diff against
+      {:ok, v1} = Versioning.create_version("sheet", sheet, project.id, user.id)
+      assert v1.change_details == nil
+
+      # Modify the sheet and create a second version
+      {:ok, modified_sheet} = Storyarn.Sheets.update_sheet(sheet, %{name: "Modified Name"})
+      modified_sheet = Storyarn.Repo.preload(modified_sheet, :blocks, force: true)
+
+      {:ok, v2} = Versioning.create_version("sheet", modified_sheet, project.id, user.id)
+      assert v2.change_summary != nil
+      assert v2.change_details != nil
+      assert is_map(v2.change_details)
+      assert is_list(v2.change_details["changes"])
+      assert is_map(v2.change_details["stats"])
+
+      # Should have at least one change (name modified)
+      assert v2.change_details["changes"] != []
+
+      # Each change has the expected structure
+      change = hd(v2.change_details["changes"])
+      assert change["category"] in ["property", "block", "node", "connection", "layer"]
+      assert change["action"] in ["added", "modified", "removed"]
+      assert is_binary(change["detail"])
     end
   end
 
@@ -185,8 +215,8 @@ defmodule Storyarn.Versioning.VersionCrudTest do
 
       assert updated.title == "Milestone 1"
       assert updated.description == "Before refactor"
-      # is_auto stays unchanged (promotion doesn't flip it)
-      assert updated.is_auto == true
+      # Promotion flips is_auto so it counts against the named version quota
+      assert updated.is_auto == false
     end
 
     test "requires title", %{sheet: sheet, project: project, user: user} do
@@ -263,6 +293,33 @@ defmodule Storyarn.Versioning.VersionCrudTest do
       # Should only have the original version
       versions = Versioning.list_versions("sheet", sheet.id)
       assert length(versions) == 1
+    end
+
+    test "skips pre-restore snapshot when skip_pre_snapshot is true", %{
+      sheet: sheet,
+      project: project,
+      user: user
+    } do
+      {:ok, version} =
+        Versioning.create_version("sheet", sheet, project.id, user.id, title: "Original")
+
+      {:ok, modified_sheet} = Storyarn.Sheets.update_sheet(sheet, %{name: "Modified"})
+      modified_sheet = Storyarn.Repo.preload(modified_sheet, :blocks, force: true)
+
+      # Restore with skip_pre_snapshot: true
+      {:ok, _restored} =
+        Versioning.restore_version("sheet", modified_sheet, version,
+          user_id: user.id,
+          skip_pre_snapshot: true
+        )
+
+      # Should have: Original (v1) + Restored from (v2) — NO "Before restore" snapshot
+      versions = Versioning.list_versions("sheet", sheet.id)
+      assert length(versions) == 2
+
+      titles = Enum.map(versions, & &1.title)
+      refute Enum.any?(titles, &(&1 =~ "Before restore"))
+      assert Enum.any?(titles, &(&1 =~ "Restored from"))
     end
 
     test "resolves shortcut collision with -restored suffix", %{

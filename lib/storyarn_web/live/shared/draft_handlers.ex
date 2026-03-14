@@ -3,6 +3,7 @@ defmodule StoryarnWeb.Live.Shared.DraftHandlers do
 
   import Phoenix.LiveView
   use Gettext, backend: StoryarnWeb.Gettext
+  require Logger
 
   alias Storyarn.{Collaboration, Drafts}
 
@@ -28,7 +29,8 @@ defmodule StoryarnWeb.Live.Shared.DraftHandlers do
            dgettext("drafts", "You've reached the maximum number of active drafts.")
          )}
 
-      {:error, _reason} ->
+      {:error, reason} ->
+        Logger.error("Failed to create draft: #{inspect(reason)}")
         {:noreply, put_flash(socket, :error, dgettext("drafts", "Could not create draft."))}
     end
   end
@@ -48,7 +50,8 @@ defmodule StoryarnWeb.Live.Shared.DraftHandlers do
          |> put_flash(:info, dgettext("drafts", "Draft discarded."))
          |> push_navigate(to: redirect_path)}
 
-      {:error, _} ->
+      {:error, reason} ->
+        Logger.error("Failed to discard draft: #{inspect(reason)}")
         {:noreply, put_flash(socket, :error, dgettext("drafts", "Could not discard draft."))}
     end
   end
@@ -89,7 +92,8 @@ defmodule StoryarnWeb.Live.Shared.DraftHandlers do
            dgettext("drafts", "The original entity no longer exists.")
          )}
 
-      {:error, _reason} ->
+      {:error, reason} ->
+        Logger.error("Failed to merge draft: #{inspect(reason)}")
         {:noreply, put_flash(socket, :error, dgettext("drafts", "Could not merge draft."))}
     end
   end
@@ -101,14 +105,16 @@ defmodule StoryarnWeb.Live.Shared.DraftHandlers do
   def handle_load_merge_summary(socket) do
     %{draft: draft} = socket.assigns
 
-    # Reset to nil so the modal shows a loading spinner on re-open
-    socket = Phoenix.Component.assign(socket, :merge_summary, nil)
-
     case Drafts.build_merge_summary(draft) do
       {:ok, summary} ->
-        {:noreply, Phoenix.Component.assign(socket, :merge_summary, summary)}
+        {:noreply,
+         socket
+         |> Phoenix.Component.assign(:merge_summary, summary)
+         |> Phoenix.LiveView.push_event("show-modal", %{id: "merge-review-modal"})}
 
-      {:error, _} ->
+      {:error, reason} ->
+        Logger.error("Failed to load merge summary: #{inspect(reason)}")
+
         {:noreply,
          put_flash(
            socket,
@@ -140,26 +146,21 @@ defmodule StoryarnWeb.Live.Shared.DraftHandlers do
   def handle_submit_rename_draft(socket, %{"name" => name, "draft_id" => draft_id}) do
     %{current_scope: scope, project: project} = socket.assigns
 
-    case Drafts.get_my_draft(draft_id, scope.user.id, project.id) do
+    with draft when not is_nil(draft) <- Drafts.get_my_draft(draft_id, scope.user.id, project.id),
+         {:ok, updated} <- Drafts.rename_draft(draft, name) do
+      updated_list = replace_draft_in_list(socket.assigns.my_drafts, updated)
+
+      {:noreply,
+       socket
+       |> Phoenix.Component.assign(:renaming_draft, nil)
+       |> Phoenix.Component.assign(:my_drafts, updated_list)}
+    else
       nil ->
         {:noreply, put_flash(socket, :error, dgettext("drafts", "Draft not found."))}
 
-      draft ->
-        case Drafts.rename_draft(draft, name) do
-          {:ok, updated} ->
-            updated_list =
-              Enum.map(socket.assigns.my_drafts, fn d ->
-                if d.id == updated.id, do: %{d | name: updated.name}, else: d
-              end)
-
-            {:noreply,
-             socket
-             |> Phoenix.Component.assign(:renaming_draft, nil)
-             |> Phoenix.Component.assign(:my_drafts, updated_list)}
-
-          {:error, _changeset} ->
-            {:noreply, put_flash(socket, :error, dgettext("drafts", "Could not rename draft."))}
-        end
+      {:error, changeset} ->
+        Logger.error("Failed to rename draft: #{inspect(changeset)}")
+        {:noreply, put_flash(socket, :error, dgettext("drafts", "Could not rename draft."))}
     end
   end
 
@@ -188,7 +189,8 @@ defmodule StoryarnWeb.Live.Shared.DraftHandlers do
                Drafts.list_my_drafts(project.id, scope.user.id)
              )}
 
-          {:error, _} ->
+          {:error, reason} ->
+            Logger.error("Failed to discard draft from list: #{inspect(reason)}")
             {:noreply, put_flash(socket, :error, dgettext("drafts", "Could not discard draft."))}
         end
     end
@@ -203,6 +205,12 @@ defmodule StoryarnWeb.Live.Shared.DraftHandlers do
     end
 
     {:noreply, socket}
+  end
+
+  defp replace_draft_in_list(drafts, updated) do
+    Enum.map(drafts, fn d ->
+      if d.id == updated.id, do: %{d | name: updated.name}, else: d
+    end)
   end
 
   defp editor_scope_for(%{entity_type: "flow", source_entity_id: id}), do: {:flow, id}

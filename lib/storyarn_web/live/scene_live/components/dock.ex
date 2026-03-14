@@ -25,6 +25,7 @@ defmodule StoryarnWeb.SceneLive.Components.Dock do
   attr :workspace, :map, required: true
   attr :project, :map, required: true
   attr :scene, :map, required: true
+  attr :compact, :boolean, default: false
 
   def dock(assigns) do
     assigns = assign(assigns, :groups, build_groups(assigns))
@@ -60,13 +61,18 @@ defmodule StoryarnWeb.SceneLive.Components.Dock do
   defp build_groups(assigns) do
     active_tool = assigns.active_tool
 
-    [
+    groups = [
       navigation_group(active_tool),
       creation_group(active_tool),
       [connector_item(active_tool)],
-      [ruler_item(active_tool)],
-      [history_item(assigns), play_item(assigns)]
+      [ruler_item(active_tool)]
     ]
+
+    if assigns.compact do
+      groups
+    else
+      groups ++ [[history_item(assigns), play_item(assigns)]]
+    end
   end
 
   defp navigation_group(active_tool) do
@@ -158,7 +164,7 @@ defmodule StoryarnWeb.SceneLive.Components.Dock do
       tooltip_title: dgettext("scenes", "Connector"),
       tooltip:
         dgettext(
-          "maps",
+          "scenes",
           "Draw connections between two pins. Click the source pin, then the target."
         ),
       click: "set_tool",

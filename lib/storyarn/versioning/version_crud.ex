@@ -14,7 +14,7 @@ defmodule Storyarn.Versioning.VersionCrud do
 
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Versioning.{EntityVersion, SnapshotStorage}
+  alias Storyarn.Versioning.{EntityVersion, SnapshotDiff, SnapshotStorage}
 
   @builders %{
     "sheet" => Storyarn.Versioning.Builders.SheetBuilder,
@@ -47,12 +47,13 @@ defmodule Storyarn.Versioning.VersionCrud do
     title = Keyword.get(opts, :title)
     description = Keyword.get(opts, :description)
     is_auto = Keyword.get(opts, :is_auto, false)
+    skip_diff = Keyword.get(opts, :skip_diff, false)
 
-    change_summary =
-      if title do
-        nil
+    {change_summary, change_details} =
+      if skip_diff do
+        {nil, nil}
       else
-        generate_change_summary(entity_type, entity.id, snapshot, builder)
+        generate_change_data(entity_type, entity.id, snapshot)
       end
 
     params = %{
@@ -64,6 +65,7 @@ defmodule Storyarn.Versioning.VersionCrud do
       title: title,
       description: description,
       change_summary: change_summary,
+      change_details: change_details,
       is_auto: is_auto
     }
 
@@ -107,6 +109,7 @@ defmodule Storyarn.Versioning.VersionCrud do
       title: params.title,
       description: params.description,
       change_summary: params.change_summary,
+      change_details: params.change_details,
       storage_key: storage_key,
       snapshot_size_bytes: size_bytes,
       is_auto: params.is_auto,
@@ -149,7 +152,7 @@ defmodule Storyarn.Versioning.VersionCrud do
 
       latest ->
         seconds_since_last =
-          DateTime.diff(TimeHelpers.now(), latest.inserted_at, :second)
+          abs(DateTime.diff(TimeHelpers.now(), latest.inserted_at, :second))
 
         if seconds_since_last >= min_interval do
           create_version(entity_type, entity, project_id, user_id, opts)
@@ -220,6 +223,52 @@ defmodule Storyarn.Versioning.VersionCrud do
     |> Repo.one()
   end
 
+  @doc """
+  Returns the version numbers immediately adjacent to the given version number.
+
+  Returns `{prev_number | nil, next_number | nil}` where prev is the highest
+  version_number below `current`, and next is the lowest above.
+  """
+  @spec get_adjacent_version_numbers(String.t(), integer(), integer()) ::
+          {integer() | nil, integer() | nil}
+  def get_adjacent_version_numbers(entity_type, entity_id, current_number) do
+    prev =
+      from(v in EntityVersion,
+        where:
+          v.entity_type == ^entity_type and v.entity_id == ^entity_id and
+            v.version_number < ^current_number,
+        order_by: [desc: v.version_number],
+        limit: 1,
+        select: v.version_number
+      )
+      |> Repo.one()
+
+    next =
+      from(v in EntityVersion,
+        where:
+          v.entity_type == ^entity_type and v.entity_id == ^entity_id and
+            v.version_number > ^current_number,
+        order_by: [asc: v.version_number],
+        limit: 1,
+        select: v.version_number
+      )
+      |> Repo.one()
+
+    {prev, next}
+  end
+
+  @doc """
+  Counts versions created after the given timestamp for an entity.
+  """
+  @spec count_versions_since(String.t(), integer(), DateTime.t()) :: non_neg_integer()
+  def count_versions_since(entity_type, entity_id, since) do
+    from(v in EntityVersion,
+      where:
+        v.entity_type == ^entity_type and v.entity_id == ^entity_id and v.inserted_at > ^since
+    )
+    |> Repo.aggregate(:count)
+  end
+
   # ========== Update ==========
 
   @doc """
@@ -235,13 +284,16 @@ defmodule Storyarn.Versioning.VersionCrud do
   end
 
   @doc """
-  Counts versions with a non-nil title for a project.
-  Includes both manual versions and promoted auto-snapshots.
+  Counts user-created named versions for a project.
+  Excludes auto-generated restore safety snapshots (`is_auto: true` with title).
   """
   @spec count_named_versions(integer()) :: integer()
   def count_named_versions(project_id) do
     from(v in EntityVersion,
-      where: v.project_id == ^project_id and not is_nil(v.title)
+      where:
+        v.project_id == ^project_id and
+          not is_nil(v.title) and
+          v.is_auto == false
     )
     |> Repo.aggregate(:count)
   end
@@ -287,18 +339,23 @@ defmodule Storyarn.Versioning.VersionCrud do
     builder = get_builder!(entity_type)
     user_id = Keyword.get(opts, :user_id)
 
-    with {:ok, snapshot} <- SnapshotStorage.load_snapshot(version.storage_key) do
-      maybe_create_pre_restore_snapshot(entity_type, entity, version, user_id)
+    with {:ok, snapshot} <- SnapshotStorage.load_snapshot(version.storage_key),
+         :ok <- require_pre_restore_snapshot(entity_type, entity, version, user_id, opts) do
       snapshot = maybe_resolve_shortcut_collision(entity_type, entity, snapshot)
 
       case builder.restore_snapshot(entity, snapshot, opts) do
         {:ok, updated_entity} ->
-          maybe_create_post_restore_snapshot(
+          log_snapshot_error(
+            maybe_create_post_restore_snapshot(
+              entity_type,
+              updated_entity,
+              entity,
+              version,
+              user_id
+            ),
+            "post-restore",
             entity_type,
-            updated_entity,
-            entity,
-            version,
-            user_id
+            entity.id
           )
 
           {:ok, updated_entity}
@@ -309,23 +366,34 @@ defmodule Storyarn.Versioning.VersionCrud do
     end
   end
 
-  defp maybe_create_pre_restore_snapshot(_entity_type, _entity, _version, nil), do: :noop
+  defp require_pre_restore_snapshot(_entity_type, _entity, _version, nil, _opts), do: :ok
 
-  defp maybe_create_pre_restore_snapshot(entity_type, entity, version, user_id) do
-    create_version(entity_type, entity, entity.project_id, user_id,
-      title:
-        dgettext("versioning", "Before restore to v%{number}", number: version.version_number),
-      is_auto: false
-    )
+  defp require_pre_restore_snapshot(entity_type, entity, version, user_id, opts) do
+    if Keyword.get(opts, :skip_pre_snapshot, false) do
+      :ok
+    else
+      case create_version(entity_type, entity, entity.project_id, user_id,
+             title:
+               dgettext("versioning", "Before restore to v%{number}",
+                 number: version.version_number
+               ),
+             is_auto: true,
+             skip_diff: true
+           ) do
+        {:ok, _version} -> :ok
+        {:error, reason} -> {:error, {:pre_restore_snapshot_failed, reason}}
+      end
+    end
   end
 
   defp maybe_create_post_restore_snapshot(_entity_type, _updated, _entity, _version, nil),
-    do: :noop
+    do: :ok
 
   defp maybe_create_post_restore_snapshot(entity_type, updated_entity, entity, version, user_id) do
     create_version(entity_type, updated_entity, entity.project_id, user_id,
       title: dgettext("versioning", "Restored from v%{number}", number: version.version_number),
-      is_auto: false
+      is_auto: true,
+      skip_diff: true
     )
   end
 
@@ -338,6 +406,14 @@ defmodule Storyarn.Versioning.VersionCrud do
   end
 
   # ========== Helpers ==========
+
+  defp log_snapshot_error({:error, reason}, phase, entity_type, entity_id) do
+    Logger.warning(
+      "Failed to create #{phase} snapshot for #{entity_type} #{entity_id}: #{inspect(reason)}"
+    )
+  end
+
+  defp log_snapshot_error(_result, _phase, _entity_type, _entity_id), do: :ok
 
   @doc """
   Returns the next version number for an entity.
@@ -393,19 +469,46 @@ defmodule Storyarn.Versioning.VersionCrud do
     |> Repo.exists?()
   end
 
-  defp generate_change_summary(entity_type, entity_id, current_snapshot, builder) do
+  defp generate_change_data(entity_type, entity_id, current_snapshot) do
     case get_latest_version(entity_type, entity_id) do
       nil ->
-        gettext("Initial version")
+        {gettext("Initial version"), nil}
 
       previous ->
         case SnapshotStorage.load_snapshot(previous.storage_key) do
           {:ok, previous_snapshot} ->
-            builder.diff_snapshots(previous_snapshot, current_snapshot)
+            diff_result = SnapshotDiff.diff(entity_type, previous_snapshot, current_snapshot)
+            summary = SnapshotDiff.format_summary(diff_result)
+            details = serialize_change_details(diff_result)
+            {summary, details}
 
-          {:error, _} ->
-            gettext("Changes from previous version")
+          {:error, reason} ->
+            Logger.warning(
+              "Failed to load previous snapshot for #{entity_type} #{entity_id}: #{inspect(reason)}"
+            )
+
+            {gettext("Changes from previous version"), nil}
         end
     end
+  end
+
+  defp serialize_change_details(%{changes: [], stats: _}), do: nil
+
+  defp serialize_change_details(%{changes: changes, stats: stats}) do
+    %{
+      "changes" =>
+        Enum.map(changes, fn change ->
+          %{
+            "category" => to_string(change.category),
+            "action" => to_string(change.action),
+            "detail" => change.detail
+          }
+        end),
+      "stats" => %{
+        "added" => stats.added,
+        "modified" => stats.modified,
+        "removed" => stats.removed
+      }
+    }
   end
 end

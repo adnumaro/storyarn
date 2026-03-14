@@ -20,6 +20,7 @@ defmodule Storyarn.Versioning.EntityVersion do
           title: String.t() | nil,
           description: String.t() | nil,
           change_summary: String.t() | nil,
+          change_details: map() | nil,
           storage_key: String.t(),
           snapshot_size_bytes: integer(),
           is_auto: boolean(),
@@ -38,6 +39,7 @@ defmodule Storyarn.Versioning.EntityVersion do
     field :title, :string
     field :description, :string
     field :change_summary, :string
+    field :change_details, :map
     field :storage_key, :string
     field :snapshot_size_bytes, :integer
     field :is_auto, :boolean, default: false
@@ -61,6 +63,7 @@ defmodule Storyarn.Versioning.EntityVersion do
       :title,
       :description,
       :change_summary,
+      :change_details,
       :storage_key,
       :snapshot_size_bytes,
       :is_auto,
@@ -87,10 +90,12 @@ defmodule Storyarn.Versioning.EntityVersion do
   @doc """
   Changeset for updating title and description on an existing version (promotion).
   Title is required — you cannot un-name a version.
+  Automatically sets `is_auto: false` so promoted versions count against the named quota.
   """
   def update_changeset(version, attrs) do
     version
     |> cast(attrs, [:title, :description])
+    |> put_change(:is_auto, false)
     |> validate_required([:title])
     |> validate_length(:title, min: 1, max: 255)
     |> validate_length(:description, max: 500)

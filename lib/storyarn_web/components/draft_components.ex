@@ -19,7 +19,7 @@ defmodule StoryarnWeb.Components.DraftComponents do
       </span>
       <button
         type="button"
-        phx-click={JS.push("load_merge_summary") |> show_modal("merge-review-modal")}
+        phx-click={JS.push("load_merge_summary")}
         class="btn btn-ghost btn-xs text-success"
       >
         <.icon name="git-merge" class="size-3.5" />

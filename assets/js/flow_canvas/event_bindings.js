@@ -51,10 +51,36 @@ export function exitInlineEdit(hook) {
 }
 
 /**
+ * Sets up readonly event handlers (selection only, no mutations).
+ * Used by the snapshot viewer to allow node inspection without editing.
+ * @param {Object} hook - The FlowCanvas hook instance
+ */
+export function setupReadonlyEventHandlers(hook) {
+  hook.selectedNodeId = null;
+
+  // Node selection — push event for property inspection
+  hook.area.addPipe((context) => {
+    if (context.type === "nodepicked") {
+      const node = hook.editor.getNode(context.data.id);
+      if (node?.nodeId) {
+        hook.selectedNodeId = node.nodeId;
+        hook.pushEvent("node_selected", { id: node.nodeId });
+      }
+    }
+    return context;
+  });
+}
+
+/**
  * Sets up all event handlers for the flow canvas.
  * @param {Object} hook - The FlowCanvas hook instance
  */
 export function setupEventHandlers(hook) {
+  // AbortController for DOM event listener cleanup on destroy
+  const ac = new AbortController();
+  hook._eventBindingsController = ac;
+  const signal = ac.signal;
+
   hook.selectedNodeId = null;
   hook.lastNodeClickTime = 0;
   hook.lastClickedNodeId = null;
@@ -160,7 +186,10 @@ export function setupEventHandlers(hook) {
   hook._nodeMoveQueue = Promise.resolve();
   hook.handleEvent("node_moved", (data) => {
     hook._nodeMoveQueue = hook._nodeMoveQueue
-      .then(() => hook.editorHandlers.handleNodeMoved(data))
+      .then(() => {
+        if (!hook.area) return; // destroyed guard
+        return hook.editorHandlers.handleNodeMoved(data);
+      })
       // biome-ignore lint/suspicious/noConsole: intentional error logging
       .catch((err) => console.error("node_moved handler error:", err));
   });
@@ -172,7 +201,10 @@ export function setupEventHandlers(hook) {
   hook._nodeUpdateQueue = Promise.resolve();
   hook.handleEvent("node_updated", (data) => {
     hook._nodeUpdateQueue = hook._nodeUpdateQueue
-      .then(() => hook.editorHandlers.handleNodeUpdated(data))
+      .then(() => {
+        if (!hook.area) return; // destroyed guard
+        return hook.editorHandlers.handleNodeUpdated(data);
+      })
       // biome-ignore lint/suspicious/noConsole: intentional error logging
       .catch((err) => console.error("node_updated handler error:", err));
   });
@@ -200,26 +232,26 @@ export function setupEventHandlers(hook) {
   // Navigation events (composed from storyarn-node Shadow DOM)
   hook.el.addEventListener("navigate-to-hub", (e) => {
     hook.navigationHandler.navigateToHub(e.detail.jumpDbId);
-  });
+  }, { signal });
 
   hook.el.addEventListener("navigate-to-jumps", (e) => {
     hook.navigationHandler.navigateToJumps(e.detail.hubDbId);
-  });
+  }, { signal });
 
   // Subflow navigation (composed from storyarn-node Shadow DOM)
   hook.el.addEventListener("navigate-to-subflow", (e) => {
     hook.pushEvent("navigate_to_subflow", { "flow-id": String(e.detail.flowId) });
-  });
+  }, { signal });
 
   // Exit flow reference navigation (composed from storyarn-node Shadow DOM)
   hook.el.addEventListener("navigate-to-exit-flow", (e) => {
     hook.pushEvent("navigate_to_exit_flow", { "flow-id": String(e.detail.flowId) });
-  });
+  }, { signal });
 
   // Referencing flow navigation (entry node → subflows that reference this flow)
   hook.el.addEventListener("navigate-to-referencing-flow", (e) => {
     hook.pushEvent("navigate_to_referencing_flow", { "flow-id": String(e.detail.flowId) });
-  });
+  }, { signal });
 
   // Inline edit save (composed from storyarn-node Shadow DOM)
   hook.el.addEventListener("node-inline-edit", (e) => {
@@ -250,7 +282,7 @@ export function setupEventHandlers(hook) {
       reteNode.nodeData = { ...reteNode.nodeData, [field]: value };
       hook.pushEvent("update_node_field", { field, value });
     }
-  });
+  }, { signal });
 
   // Speaker combobox — opens a searchable popover from the inline edit header
   hook._speakerPopover = null;
@@ -293,7 +325,7 @@ export function setupEventHandlers(hook) {
         hook._speakerPopover = null;
       },
     });
-  });
+  }, { signal });
 
   // Handle server events - Debug
   hook.handleEvent("debug_highlight_node", (data) => hook.debugHandler.handleHighlightNode(data));
@@ -359,6 +391,7 @@ export function setupEventHandlers(hook) {
 
     await new Promise((resolve) => {
       function frame(now) {
+        if (!hook.area) { resolve(); return; } // destroyed guard
         const elapsed = now - startTime;
         const t = Math.min(elapsed / DURATION, 1);
         const e = easeInOutCubic(t);
@@ -428,10 +461,10 @@ export function setupEventHandlers(hook) {
       hook.selectedNodeId = null;
       hook.floatingToolbar?.hide();
     }
-  });
+  }, { signal });
 
   // Detect drag end — show toolbar again after node move
   hook.el.addEventListener("pointerup", () => {
     hook.floatingToolbar?.setDragging(false);
-  });
+  }, { signal });
 }

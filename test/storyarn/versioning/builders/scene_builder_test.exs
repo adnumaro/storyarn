@@ -45,7 +45,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       snapshot = SceneBuilder.build_snapshot(scene)
 
       # Should have default layer + our new layer
-      assert length(snapshot["layers"]) >= 2
+      assert length(snapshot["layers"]) == 2
 
       # Check that at least one layer has zones or pins
       has_content =
@@ -118,7 +118,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
         )
 
       total_pins = restored.layers |> Enum.flat_map(& &1.pins) |> length()
-      assert total_pins >= 2
+      assert total_pins == 2
       assert length(restored.connections) == 1
     end
   end
@@ -195,27 +195,69 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       old = %{"name" => "Old", "shortcut" => "old", "layers" => [], "connections" => []}
       new = %{"name" => "New", "shortcut" => "old", "layers" => [], "connections" => []}
 
-      diff = SceneBuilder.diff_snapshots(old, new)
-      assert diff =~ "Renamed"
+      changes = SceneBuilder.diff_snapshots(old, new)
+      assert [%{category: :property, action: :modified, detail: detail}] = changes
+      assert detail =~ "Renamed"
     end
 
-    test "detects added pins" do
-      old = %{"name" => "S", "layers" => [%{"pins" => []}], "connections" => []}
-
-      new = %{
-        "name" => "S",
-        "layers" => [%{"pins" => [%{"label" => "A"}]}],
-        "connections" => []
+    test "detects added pins within matched layers" do
+      old_layer = %{
+        "position" => 0,
+        "name" => "Layer 1",
+        "pins" => [],
+        "zones" => [],
+        "annotations" => []
       }
 
-      diff = SceneBuilder.diff_snapshots(old, new)
-      assert diff =~ "Added"
+      new_layer = %{
+        "position" => 0,
+        "name" => "Layer 1",
+        "pins" => [%{"position" => 0, "label" => "A"}],
+        "zones" => [],
+        "annotations" => []
+      }
+
+      old = %{"name" => "S", "layers" => [old_layer], "connections" => []}
+      new = %{"name" => "S", "layers" => [new_layer], "connections" => []}
+
+      changes = SceneBuilder.diff_snapshots(old, new)
+      assert Enum.any?(changes, &(&1.category == :pin && &1.action == :added))
     end
 
-    test "reports no changes for identical snapshots" do
+    test "detects added layers" do
+      layer = %{
+        "position" => 0,
+        "name" => "New Layer",
+        "pins" => [],
+        "zones" => [],
+        "annotations" => []
+      }
+
+      old = %{"name" => "S", "layers" => [], "connections" => []}
+      new = %{"name" => "S", "layers" => [layer], "connections" => []}
+
+      changes = SceneBuilder.diff_snapshots(old, new)
+      assert Enum.any?(changes, &(&1.category == :layer && &1.action == :added))
+    end
+
+    test "detects connection changes" do
+      conn = %{
+        "from_layer_index" => 0,
+        "from_pin_index" => 0,
+        "to_layer_index" => 0,
+        "to_pin_index" => 1
+      }
+
+      old = %{"name" => "S", "layers" => [], "connections" => []}
+      new = %{"name" => "S", "layers" => [], "connections" => [conn]}
+
+      changes = SceneBuilder.diff_snapshots(old, new)
+      assert Enum.any?(changes, &(&1.category == :connection && &1.action == :added))
+    end
+
+    test "returns empty list for identical snapshots" do
       snapshot = %{"name" => "S", "shortcut" => "s", "layers" => [], "connections" => []}
-      diff = SceneBuilder.diff_snapshots(snapshot, snapshot)
-      assert diff =~ "No changes"
+      assert SceneBuilder.diff_snapshots(snapshot, snapshot) == []
     end
   end
 end

@@ -34,6 +34,137 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   @impl true
   def render(assigns) do
+    if assigns.compact do
+      render_compact(assigns)
+    else
+      render_full(assigns)
+    end
+  end
+
+  defp render_compact(assigns) do
+    ~H"""
+    <div class="h-screen overflow-y-auto bg-base-100 p-4">
+      <%= if @sheet do %>
+        <div
+          id="sheet-undo-redo"
+          phx-hook="UndoRedo"
+          class="w-full max-w-[950px] mx-auto bg-base-200 rounded-[20px] p-5 min-h-full"
+        >
+          <.live_component
+            module={Banner}
+            id="sheet-banner"
+            sheet={@sheet}
+            project={@project}
+            current_user={@current_scope.user}
+            can_edit={@can_edit}
+          />
+
+          <div class="flex items-start gap-4 mb-8">
+            <.live_component
+              module={SheetAvatar}
+              id="sheet-avatar"
+              sheet={@sheet}
+              project={@project}
+              current_user={@current_scope.user}
+              can_edit={@can_edit}
+            />
+            <div class="flex-1">
+              <.live_component
+                module={SheetTitle}
+                id="sheet-title"
+                sheet={@sheet}
+                project={@project}
+                current_user_id={@current_scope.user.id}
+                can_edit={@can_edit}
+                is_draft={@is_draft}
+                source_shortcut={@source_shortcut}
+              />
+            </div>
+          </div>
+
+          <div :if={!@sheet_data_loaded} class="flex justify-center py-12">
+            <span class="loading loading-spinner loading-lg text-base-content/30"></span>
+          </div>
+
+          <div :if={@sheet_data_loaded}>
+            <div role="tablist" class="tabs tabs-border mb-6">
+              <button
+                role="tab"
+                class={["tab", @current_tab == "content" && "tab-active"]}
+                phx-click="switch_tab"
+                phx-value-tab="content"
+              >
+                <.icon name="file-text" class="size-4 mr-2" />
+                {dgettext("sheets", "Content")}
+              </button>
+              <button
+                role="tab"
+                class={["tab", @current_tab == "references" && "tab-active"]}
+                phx-click="switch_tab"
+                phx-value-tab="references"
+              >
+                <.icon name="link" class="size-4 mr-2" />
+                {dgettext("sheets", "References")}
+              </button>
+              <button
+                role="tab"
+                class={["tab", @current_tab == "audio" && "tab-active"]}
+                phx-click="switch_tab"
+                phx-value-tab="audio"
+              >
+                <.icon name="volume-2" class="size-4 mr-2" />
+                {dgettext("sheets", "Audio")}
+              </button>
+            </div>
+
+            <.live_component
+              :if={@current_tab == "content"}
+              module={ContentTab}
+              id="content-tab"
+              workspace={@workspace}
+              project={@project}
+              sheet={@sheet}
+              blocks={@blocks}
+              children={@children}
+              can_edit={@can_edit}
+              current_user_id={@current_scope.user.id}
+              current_scope={@current_scope}
+              project_variables={@project_variables}
+              block_locks={@block_locks}
+            />
+
+            <.live_component
+              :if={@current_tab == "references"}
+              module={ReferencesTab}
+              id="references-tab"
+              project={@project}
+              workspace={@workspace}
+              sheet={@sheet}
+              blocks={@blocks}
+            />
+
+            <.live_component
+              :if={@current_tab == "audio"}
+              module={AudioTab}
+              id="audio-tab"
+              project={@project}
+              workspace={@workspace}
+              sheet={@sheet}
+              can_edit={@can_edit}
+              current_user={@current_scope.user}
+            />
+          </div>
+        </div>
+      <% else %>
+        <div class="flex justify-center py-12">
+          <span class="loading loading-spinner loading-lg text-base-content/30"></span>
+        </div>
+      <% end %>
+    </div>
+    """
+  end
+
+  defp render_full(assigns) do
     ~H"""
     <Layouts.focus
       flash={@flash}
@@ -257,6 +388,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         {:ok,
          socket
          |> assign(focus_layout_defaults())
+         |> assign(:compact, false)
          |> assign(:project, project)
          |> assign(:workspace, project.workspace)
          |> assign(:membership, membership)
@@ -300,12 +432,16 @@ defmodule StoryarnWeb.SheetLive.Show do
     {:noreply, load_draft_sheet(socket, draft_id)}
   end
 
-  def handle_params(%{"id" => sheet_id}, _url, socket) do
+  def handle_params(%{"id" => sheet_id} = params, _url, socket) do
+    compact = params["layout"] == "compact"
+
     current_sheet_id =
       case socket.assigns.sheet do
         %{id: id} -> to_string(id)
         _ -> nil
       end
+
+    socket = assign(socket, :compact, compact)
 
     if sheet_id == current_sheet_id do
       {:noreply, socket}
@@ -454,7 +590,12 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   def handle_event("switch_tab", %{"tab" => tab}, socket)
       when tab in ["content", "references", "audio", "history"] do
-    {:noreply, assign(socket, :current_tab, tab)}
+    # In compact mode, history tab is not available
+    if tab == "history" and socket.assigns.compact do
+      {:noreply, socket}
+    else
+      {:noreply, assign(socket, :current_tab, tab)}
+    end
   end
 
   # ===========================================================================
@@ -666,6 +807,15 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   def handle_info({:versions_section, :version_deleted, %{version: _}}, socket) do
     {:noreply, mark_saved(socket)}
+  end
+
+  def handle_info({:versions_section, :compare_version, %{version: version}}, socket) do
+    %{workspace: workspace, project: project, sheet: sheet} = socket.assigns
+
+    compare_url =
+      ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}/compare/#{version.version_number}"
+
+    {:noreply, push_navigate(socket, to: compare_url)}
   end
 
   def handle_info({:versions_section, :flash, %{kind: kind, message: message}}, socket) do

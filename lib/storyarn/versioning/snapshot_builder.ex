@@ -19,10 +19,21 @@ defmodule Storyarn.Versioning.SnapshotBuilder do
   @callback restore_snapshot(entity :: struct(), snapshot :: map(), opts :: keyword()) ::
               {:ok, struct()} | {:error, term()}
 
+  @type change :: %{
+          category: atom(),
+          action: :added | :removed | :modified,
+          detail: String.t()
+        }
+
   @doc """
-  Generates a human-readable summary of differences between two snapshots.
+  Compares two snapshots and returns a structured list of changes.
+
+  Each change has a `:category` (entity-specific, e.g. `:node`, `:block`, `:pin`),
+  an `:action` (`:added`, `:removed`, `:modified`), and a human-readable `:detail` string.
+
+  Returns an empty list when snapshots are identical.
   """
-  @callback diff_snapshots(old_snapshot :: map(), new_snapshot :: map()) :: String.t()
+  @callback diff_snapshots(old_snapshot :: map(), new_snapshot :: map()) :: [change()]
 
   @doc """
   Scans a snapshot for external references (foreign keys to other entities).

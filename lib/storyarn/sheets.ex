@@ -105,6 +105,13 @@ defmodule Storyarn.Sheets do
   defdelegate get_children(sheet_id), to: SheetQueries
 
   @doc """
+  Lists sheets by IDs with avatar and banner preloaded.
+  Used by the version viewer for speaker data in flow snapshots.
+  """
+  @spec list_sheets_by_ids(id(), [id()]) :: [sheet()]
+  defdelegate list_sheets_by_ids(project_id, ids), to: SheetQueries
+
+  @doc """
   Lists all sheets for a project.
   Used for speaker selection in dialogue nodes and canvas rendering.
   """

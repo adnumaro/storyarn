@@ -13,6 +13,7 @@ defmodule StoryarnWeb.Router do
                 "img-src 'self' data: blob: https:; " <>
                 "font-src 'self' data:; " <>
                 "connect-src 'self' ws: wss: https://*.ingest.sentry.io https://*.ingest.us.sentry.io; " <>
+                "frame-src 'self'; " <>
                 "frame-ancestors 'self'; " <>
                 "base-uri 'self'; " <>
                 "form-action 'self'"
@@ -194,6 +195,10 @@ defmodule StoryarnWeb.Router do
            SheetLive.Show,
            :edit
 
+      live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/compare/:version_number",
+           CompareLive.Sheet,
+           :compare
+
       # Localization
       live "/workspaces/:workspace_slug/projects/:project_slug/localization",
            LocalizationLive.Index,
@@ -230,6 +235,10 @@ defmodule StoryarnWeb.Router do
            FlowLive.PlayerLive,
            :play
 
+      live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/compare/:version_number",
+           CompareLive.Flow,
+           :compare
+
       # Scenes (world builder)
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes", SceneLive.Index, :index
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/new", SceneLive.Index, :new
@@ -243,6 +252,10 @@ defmodule StoryarnWeb.Router do
            SceneLive.ExplorationLive,
            :explore
 
+      live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/compare/:version_number",
+           CompareLive.Scene,
+           :compare
+
       # Screenplays (block-based screenplay editor)
       live "/workspaces/:workspace_slug/projects/:project_slug/screenplays",
            ScreenplayLive.Index,
@@ -254,6 +267,11 @@ defmodule StoryarnWeb.Router do
 
       live "/workspaces/:workspace_slug/projects/:project_slug/screenplays/:id",
            ScreenplayLive.Show,
+           :show
+
+      # Version snapshot viewer (iframe for split-view comparison)
+      live "/workspaces/:workspace_slug/projects/:project_slug/versions/:entity_type/:entity_id/:version_number",
+           VersionLive.Viewer,
            :show
     end
 

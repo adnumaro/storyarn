@@ -15,7 +15,9 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   alias Storyarn.Flows.{Flow, FlowConnection, FlowNode}
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Sheets
   alias Storyarn.Versioning.Builders.AssetHashResolver
+  alias Storyarn.Versioning.DiffHelpers
 
   # ========== Build Snapshot ==========
 
@@ -26,7 +28,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     # Sort nodes deterministically for stable indexes
     sorted_nodes =
       flow.nodes
-      |> Enum.reject(&(&1.deleted_at != nil))
+      |> Enum.filter(&is_nil(&1.deleted_at))
       |> Enum.sort_by(&{&1.position_x, &1.position_y, &1.type, &1.id})
 
     # Build ID → index map for connection references
@@ -47,12 +49,13 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     # Collect asset IDs from node data
     asset_ids =
       sorted_nodes
-      |> Enum.flat_map(fn node ->
-        data = node.data || %{}
-        [data["audio_asset_id"]]
+      |> Enum.map(fn node ->
+        (node.data || %{})["audio_asset_id"]
       end)
 
     {hash_map, metadata_map} = AssetHashResolver.resolve_hashes(asset_ids)
+
+    referenced_sheets = build_referenced_sheets(sorted_nodes, flow.project_id)
 
     %{
       "name" => flow.name,
@@ -64,7 +67,8 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       "nodes" => node_snapshots,
       "connections" => connection_snapshots,
       "asset_blob_hashes" => hash_map,
-      "asset_metadata" => metadata_map
+      "asset_metadata" => metadata_map,
+      "referenced_sheets" => referenced_sheets
     }
   end
 
@@ -90,6 +94,40 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     }
   end
 
+  # Embeds sheet metadata (name, color, avatar, banner) at snapshot time
+  # so the version viewer doesn't need to read live DB state.
+  defp build_referenced_sheets(nodes, project_id) do
+    sheet_ids =
+      nodes
+      |> Enum.flat_map(fn node ->
+        data = node.data || %{}
+        [data["speaker_sheet_id"], data["location_sheet_id"]]
+      end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    if sheet_ids == [] do
+      %{}
+    else
+      sheets = Sheets.list_sheets_by_ids(project_id, sheet_ids)
+
+      Map.new(sheets, fn sheet ->
+        {to_string(sheet.id),
+         %{
+           "id" => sheet.id,
+           "name" => sheet.name,
+           "shortcut" => sheet.shortcut,
+           "color" => sheet.color,
+           "avatar_url" => extract_asset_url(sheet.avatar_asset),
+           "banner_url" => extract_asset_url(sheet.banner_asset)
+         }}
+      end)
+    end
+  end
+
+  defp extract_asset_url(%{url: url}) when is_binary(url), do: url
+  defp extract_asset_url(_), do: nil
+
   # ========== Restore Snapshot ==========
 
   @impl true
@@ -102,7 +140,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
         description: snapshot["description"],
         is_main: snapshot["is_main"],
         settings: snapshot["settings"],
-        scene_id: resolve_fk(snapshot["scene_id"], Storyarn.Scenes.Scene)
+        scene_id: DiffHelpers.resolve_fk(snapshot["scene_id"], Storyarn.Scenes.Scene)
       })
     end)
     |> Multi.delete_all(:delete_connections, fn _changes ->
@@ -149,8 +187,10 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
           updated_at: now
         }
 
-        {1, [%{id: id}]} = repo.insert_all(FlowNode, [attrs], returning: [:id])
-        id
+        case repo.insert_all(FlowNode, [attrs], returning: [:id]) do
+          {1, [%{id: id}]} -> id
+          {0, _} -> raise "Failed to insert flow node during restore"
+        end
       end)
 
     {:ok, node_ids}
@@ -202,114 +242,211 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   # ========== Diff Snapshots ==========
 
+  alias Storyarn.Versioning.DiffHelpers
+
+  # Fields excluded from node comparison (canvas position is noise)
+  @node_ignore_fields ["position_x", "position_y", "word_count", "original_id"]
+
   @impl true
   def diff_snapshots(old_snapshot, new_snapshot) do
-    changes =
-      []
-      |> check_field_change(old_snapshot, new_snapshot, "name", dgettext("flows", "Renamed flow"))
-      |> check_field_change(
-        old_snapshot,
-        new_snapshot,
-        "shortcut",
-        dgettext("flows", "Changed shortcut")
-      )
-      |> check_field_change(
-        old_snapshot,
-        new_snapshot,
-        "description",
-        dgettext("flows", "Changed description")
-      )
-      |> check_field_change(
-        old_snapshot,
-        new_snapshot,
-        "scene_id",
-        dgettext("flows", "Changed scene")
-      )
-      |> append_node_changes(old_snapshot["nodes"] || [], new_snapshot["nodes"] || [])
-      |> append_connection_changes(
-        old_snapshot["connections"] || [],
-        new_snapshot["connections"] || []
-      )
-
-    format_change_summary(changes)
+    []
+    |> DiffHelpers.check_field_change(
+      old_snapshot,
+      new_snapshot,
+      "name",
+      :property,
+      dgettext("flows", "Renamed flow")
+    )
+    |> DiffHelpers.check_field_change(
+      old_snapshot,
+      new_snapshot,
+      "shortcut",
+      :property,
+      dgettext("flows", "Changed shortcut")
+    )
+    |> DiffHelpers.check_field_change(
+      old_snapshot,
+      new_snapshot,
+      "description",
+      :property,
+      dgettext("flows", "Changed description")
+    )
+    |> DiffHelpers.check_field_change(
+      old_snapshot,
+      new_snapshot,
+      "scene_id",
+      :property,
+      dgettext("flows", "Changed scene")
+    )
+    |> DiffHelpers.check_field_change(
+      old_snapshot,
+      new_snapshot,
+      "settings",
+      :property,
+      dgettext("flows", "Changed settings")
+    )
+    |> diff_nodes_and_connections(
+      old_snapshot["nodes"] || [],
+      new_snapshot["nodes"] || [],
+      old_snapshot["connections"] || [],
+      new_snapshot["connections"] || []
+    )
+    |> Enum.reverse()
   end
 
-  defp check_field_change(changes, old_snapshot, new_snapshot, field, message) do
-    if old_snapshot[field] != new_snapshot[field] do
-      [message | changes]
-    else
-      changes
+  # Diff nodes first, then use node matching to normalize connection indexes
+  # so that position-only moves don't produce phantom connection changes.
+  defp diff_nodes_and_connections(changes, old_nodes, new_nodes, old_conns, new_conns) do
+    # Build identity-based index maps so the positional fallback can find
+    # a node's index within its own list (old or new) without scanning the
+    # concatenated list, which broke when IDs were regenerated.
+    old_pos = node_position_map(old_nodes)
+    new_pos = node_position_map(new_nodes)
+
+    key_fns = [
+      # Primary: match by original_id (same DB session)
+      & &1["original_id"],
+      # Secondary: match by type + technical_id (stable across restores)
+      fn node ->
+        tid = get_in(node, ["data", "technical_id"])
+        if tid && tid != "", do: {node["type"], tid}
+      end,
+      # Tertiary: match by type + position within list
+      fn node ->
+        idx = Map.get(old_pos, node_identity(node)) || Map.get(new_pos, node_identity(node))
+        if idx, do: {:type_pos, node["type"], idx}
+      end
+    ]
+
+    {matched, added, removed} = DiffHelpers.match_by_keys(old_nodes, new_nodes, key_fns)
+
+    {modified, _unchanged} =
+      DiffHelpers.find_modified(matched, fn old, new ->
+        node_differs?(old, new)
+      end)
+
+    # Build old_index → new_index mapping from matched node pairs
+    # so connections can be compared by semantic identity, not positional index
+    old_node_index = old_nodes |> Enum.with_index() |> Map.new()
+    new_node_index = new_nodes |> Enum.with_index() |> Map.new()
+
+    old_index_to_new =
+      matched
+      |> Enum.reduce(%{}, fn {old_node, new_node}, acc ->
+        old_idx = Map.get(old_node_index, old_node)
+        new_idx = Map.get(new_node_index, new_node)
+        if old_idx && new_idx, do: Map.put(acc, old_idx, new_idx), else: acc
+      end)
+
+    changes
+    |> append_node_change_list(added, :added)
+    |> append_node_change_list(removed, :removed)
+    |> append_node_change_list_modified(modified)
+    |> diff_connections(old_conns, new_conns, old_index_to_new)
+  end
+
+  defp node_differs?(old, new) do
+    old_cleaned = Map.drop(old, @node_ignore_fields)
+    new_cleaned = Map.drop(new, @node_ignore_fields)
+    old_cleaned != new_cleaned
+  end
+
+  defp append_node_change_list(changes, [], _action), do: changes
+
+  defp append_node_change_list(changes, nodes, action) do
+    Enum.reduce(nodes, changes, fn node, acc ->
+      type = node["type"] || "unknown"
+
+      detail =
+        case action do
+          :added -> dgettext("flows", "Added %{type} node", type: type)
+          :removed -> dgettext("flows", "Removed %{type} node", type: type)
+        end
+
+      [%{category: :node, action: action, detail: detail} | acc]
+    end)
+  end
+
+  defp append_node_change_list_modified(changes, []), do: changes
+
+  defp append_node_change_list_modified(changes, modified_pairs) do
+    Enum.reduce(modified_pairs, changes, fn {_old, new}, acc ->
+      type = new["type"] || "unknown"
+      detail = dgettext("flows", "Modified %{type} node", type: type)
+      [%{category: :node, action: :modified, detail: detail} | acc]
+    end)
+  end
+
+  defp diff_connections(changes, old_conns, new_conns, old_index_to_new) do
+    # Remap old connection indexes to new coordinate space so that
+    # node position-only moves don't appear as connection changes.
+    # Connections referencing removed nodes get unique sentinel indexes
+    # so they won't falsely match new connections at the same raw index.
+    remapped_old_conns =
+      old_conns
+      |> Enum.with_index()
+      |> Enum.map(fn {conn, idx} ->
+        new_src = Map.get(old_index_to_new, conn["source_node_index"])
+        new_tgt = Map.get(old_index_to_new, conn["target_node_index"])
+
+        if new_src && new_tgt do
+          conn
+          |> Map.put("source_node_index", new_src)
+          |> Map.put("target_node_index", new_tgt)
+        else
+          # Node was removed — use unique sentinel to ensure this appears as removed
+          conn
+          |> Map.put("source_node_index", {:removed, idx})
+          |> Map.put("target_node_index", {:removed, idx})
+        end
+      end)
+
+    key_fn = fn conn ->
+      {conn["source_node_index"], conn["target_node_index"], conn["source_pin"],
+       conn["target_pin"]}
     end
+
+    {matched, added, removed} = DiffHelpers.match_by_keys(remapped_old_conns, new_conns, [key_fn])
+
+    {modified, _unchanged} =
+      DiffHelpers.find_modified(matched, fn old, new ->
+        DiffHelpers.fields_differ?(old, new, ["label"])
+      end)
+
+    changes
+    |> append_conn_changes(added, :added)
+    |> append_conn_changes(removed, :removed)
+    |> append_conn_changes_modified(modified)
   end
 
-  defp append_node_changes(changes, old_nodes, new_nodes) do
-    old_count = length(old_nodes)
-    new_count = length(new_nodes)
-    diff = new_count - old_count
+  defp append_conn_changes(changes, [], _action), do: changes
 
-    cond do
-      diff > 0 ->
-        [
-          dngettext("flows", "Added %{count} node", "Added %{count} nodes", diff, count: diff)
-          | changes
-        ]
+  defp append_conn_changes(changes, conns, action) do
+    Enum.reduce(conns, changes, fn _conn, acc ->
+      detail =
+        case action do
+          :added -> dgettext("flows", "Added connection")
+          :removed -> dgettext("flows", "Removed connection")
+        end
 
-      diff < 0 ->
-        abs_diff = abs(diff)
-
-        [
-          dngettext("flows", "Removed %{count} node", "Removed %{count} nodes", abs_diff,
-            count: abs_diff
-          )
-          | changes
-        ]
-
-      old_nodes != new_nodes ->
-        [dgettext("flows", "Modified nodes") | changes]
-
-      true ->
-        changes
-    end
+      [%{category: :connection, action: action, detail: detail} | acc]
+    end)
   end
 
-  defp append_connection_changes(changes, old_conns, new_conns) do
-    old_count = length(old_conns)
-    new_count = length(new_conns)
-    diff = new_count - old_count
+  defp append_conn_changes_modified(changes, []), do: changes
 
-    cond do
-      diff > 0 ->
-        [
-          dngettext("flows", "Added %{count} connection", "Added %{count} connections", diff,
-            count: diff
-          )
-          | changes
-        ]
-
-      diff < 0 ->
-        abs_diff = abs(diff)
-
-        [
-          dngettext(
-            "flows",
-            "Removed %{count} connection",
-            "Removed %{count} connections",
-            abs_diff,
-            count: abs_diff
-          )
-          | changes
-        ]
-
-      old_conns != new_conns ->
-        [dgettext("flows", "Modified connections") | changes]
-
-      true ->
-        changes
-    end
+  defp append_conn_changes_modified(changes, modified_pairs) do
+    Enum.reduce(modified_pairs, changes, fn _pair, acc ->
+      [
+        %{
+          category: :connection,
+          action: :modified,
+          detail: dgettext("flows", "Modified connection")
+        }
+        | acc
+      ]
+    end)
   end
-
-  defp format_change_summary([]), do: dgettext("flows", "No changes detected")
-  defp format_change_summary(changes), do: changes |> Enum.reverse() |> Enum.join(", ")
 
   # ========== Scan References ==========
 
@@ -353,10 +490,18 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   defp maybe_add_ref(refs, type, id, context),
     do: [%{type: type, id: id, context: context} | refs]
 
-  # Returns the FK value only if the referenced record still exists, nil otherwise.
-  defp resolve_fk(nil, _schema), do: nil
+  # Identity key for a snapshot node used by the positional fallback matcher.
+  # Uses type + spatial position as a lightweight fingerprint.
+  defp node_identity(node) do
+    {node["type"], node["position_x"], node["position_y"]}
+  end
 
-  defp resolve_fk(id, schema) do
-    if Repo.exists?(from(e in schema, where: e.id == ^id)), do: id, else: nil
+  # Builds an identity → list-index map for a list of snapshot nodes.
+  defp node_position_map(nodes) do
+    nodes
+    |> Enum.with_index()
+    |> Enum.reduce(%{}, fn {node, idx}, acc ->
+      Map.put_new(acc, node_identity(node), idx)
+    end)
   end
 end

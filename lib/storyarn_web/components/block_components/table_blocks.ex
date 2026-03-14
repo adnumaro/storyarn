@@ -1006,47 +1006,60 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
 
   defp table_cell(%{can_edit: false} = assigns) do
     ~H"""
-    <%= case @column.type do %>
-      <% "number" -> %>
-        <span class="text-sm">{display_value(@value, "0")}</span>
-      <% "text" -> %>
-        <span class={["text-sm", is_nil(@value) && "text-base-content/40"]}>
-          {display_value(@value, "\u2014")}
-        </span>
-      <% "boolean" -> %>
-        <.boolean_badge value={@value} />
-      <% "select" -> %>
-        <% options = @column.config["options"] || [] %>
-        <span class={["text-sm", is_nil(@value) && "text-base-content/40"]}>
-          {find_option_label(options, @value) || "\u2014"}
-        </span>
-      <% "multi_select" -> %>
-        <.multi_select_badges value={@value} column={@column} />
-      <% "reference" -> %>
-        <% is_multi = @column.config["multiple"] == true %>
-        <% options = @reference_options %>
-        <%= if is_multi do %>
-          <.reference_badges value={@value} options={options} />
-        <% else %>
+    <div class="px-2 py-1">
+      <%= case @column.type do %>
+        <% "number" -> %>
+          <span class="text-sm">{display_value(@value, "0")}</span>
+        <% "text" -> %>
+          <span class={["text-sm", is_nil(@value) && "text-base-content/40"]}>
+            {display_value(@value, "\u2014")}
+          </span>
+        <% "boolean" -> %>
+          <.boolean_badge value={@value} />
+        <% "select" -> %>
+          <% options = @column.config["options"] || [] %>
           <span class={["text-sm", is_nil(@value) && "text-base-content/40"]}>
             {find_option_label(options, @value) || "\u2014"}
           </span>
-        <% end %>
-      <% "date" -> %>
-        <span class={["text-sm", @value in [nil, ""] && "text-base-content/40"]}>
-          {format_date(@value)}
-        </span>
-      <% "formula" -> %>
-        <% computed = formula_cell_result(@value) %>
-        <span class="text-sm flex items-center gap-1">
-          <.icon name="sigma" class="size-3 opacity-30 shrink-0" />
-          <span class={[is_nil(computed) && "text-base-content/40"]}>
-            {display_value(format_formula_value(computed), "\u2014")}
+        <% "multi_select" -> %>
+          <.multi_select_badges value={@value} column={@column} />
+        <% "reference" -> %>
+          <% is_multi = @column.config["multiple"] == true %>
+          <% options = @reference_options %>
+          <%= if is_multi do %>
+            <.reference_badges value={@value} options={options} />
+          <% else %>
+            <span class={["text-sm", is_nil(@value) && "text-base-content/40"]}>
+              {find_option_label(options, @value) || "\u2014"}
+            </span>
+          <% end %>
+        <% "date" -> %>
+          <span class={["text-sm", @value in [nil, ""] && "text-base-content/40"]}>
+            {format_date(@value)}
           </span>
-        </span>
-      <% _ -> %>
-        <span class="text-base-content/40 text-sm">&mdash;</span>
-    <% end %>
+        <% "formula" -> %>
+          <% computed = formula_cell_result(@value) %>
+          <% expr = formula_cell_expression(@value) %>
+          <%= if computed do %>
+            <span class="text-sm flex items-center gap-1">
+              <.icon name="sigma" class="size-3 opacity-30 shrink-0" />
+              <span>{format_formula_value(computed)}</span>
+            </span>
+          <% else %>
+            <span class="text-sm flex items-center gap-1">
+              <.icon name="sigma" class="size-3 opacity-30 shrink-0" />
+              <span class={[
+                expr == "" && "text-base-content/40",
+                expr != "" && "font-mono text-info/70 text-xs"
+              ]}>
+                {if expr != "", do: expr, else: "\u2014"}
+              </span>
+            </span>
+          <% end %>
+        <% _ -> %>
+          <span class="text-base-content/40 text-sm">&mdash;</span>
+      <% end %>
+    </div>
     """
   end
 
