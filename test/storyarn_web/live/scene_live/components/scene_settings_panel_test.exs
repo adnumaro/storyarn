@@ -16,7 +16,8 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanelTest do
         scale_value: nil,
         scale_unit: nil,
         background_asset_id: nil,
-        background_asset: nil
+        background_asset: nil,
+        exploration_display_mode: "fit"
       },
       overrides
     )

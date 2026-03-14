@@ -367,6 +367,19 @@
   to   { opacity: 0.25; }
 }
 
+/* ===== Exploration Scaled Mode ===== */
+
+.exploration-viewport {
+  overflow: hidden;
+  padding: 0;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.exploration-camera {
+  will-change: transform;
+}
+
 /* ===== Exploration Flow Overlay ===== */
 
 .exploration-flow-overlay {

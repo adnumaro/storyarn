@@ -69,6 +69,52 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
           {dgettext("scenes", "Upload Background")}
         </button>
       </div>
+      <%!-- Exploration display mode --%>
+      <div class="pt-2 border-t border-base-300 space-y-2">
+        <label class="label text-xs font-medium">
+          <.icon name="monitor" class="size-3 inline-block mr-1" />
+          {dgettext("scenes", "Exploration Display")}
+        </label>
+        <div class="flex gap-1">
+          <button
+            type="button"
+            class={[
+              "btn btn-xs flex-1",
+              if(@scene.exploration_display_mode != "scaled",
+                do: "btn-primary",
+                else: "btn-ghost"
+              )
+            ]}
+            phx-click="update_exploration_display_mode"
+            phx-value-mode="fit"
+          >
+            <.icon name="maximize" class="size-3" />
+            {dgettext("scenes", "Fit")}
+          </button>
+          <button
+            type="button"
+            class={[
+              "btn btn-xs flex-1",
+              if(@scene.exploration_display_mode == "scaled",
+                do: "btn-primary",
+                else: "btn-ghost"
+              )
+            ]}
+            phx-click="update_exploration_display_mode"
+            phx-value-mode="scaled"
+          >
+            <.icon name="scan" class="size-3" />
+            {dgettext("scenes", "Scaled")}
+          </button>
+        </div>
+        <p class="text-xs text-base-content/40">
+          <%= if @scene.exploration_display_mode == "scaled" do %>
+            {dgettext("scenes", "Renders at native pixel size with CRPG-style camera scrolling.")}
+          <% else %>
+            {dgettext("scenes", "Scales to fit the viewport.")}
+          <% end %>
+        </p>
+      </div>
       <%!-- Map scale --%>
       <div class="pt-2 border-t border-base-300 space-y-2">
         <label class="label text-xs font-medium">

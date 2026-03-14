@@ -117,6 +117,27 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
     end
   end
 
+  def handle_update_exploration_display_mode(%{"mode" => mode}, socket)
+      when mode in ~w(fit scaled) do
+    case Scenes.update_scene(socket.assigns.scene, %{"exploration_display_mode" => mode}) do
+      {:ok, updated} ->
+        {:noreply,
+         socket
+         |> assign(:scene, updated)
+         |> assign(:scene_data, build_scene_data(updated, socket.assigns.can_edit))
+         |> schedule(:scene)
+         |> assign(:_broadcast, {:layer_updated, %{}})}
+
+      {:error, _} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("scenes", "Could not update display mode.")
+         )}
+    end
+  end
+
   def handle_toggle_pin_icon_upload(_params, socket) do
     {:noreply, assign(socket, :show_pin_icon_upload, !socket.assigns.show_pin_icon_upload)}
   end

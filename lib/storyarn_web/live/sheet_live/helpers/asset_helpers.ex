@@ -115,7 +115,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
       sheet = socket.assigns.sheet
       attrs = %{filename: filename, content_type: content_type}
 
-      with {:ok, asset} <- Assets.upload_binary_and_create_asset(binary_data, attrs, project, user),
+      with {:ok, asset} <-
+             Assets.upload_binary_and_create_asset(binary_data, attrs, project, user),
            {:ok, _updated_sheet} <- Sheets.update_sheet(sheet, %{avatar_asset_id: asset.id}) do
         updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
         sheets_tree = Sheets.list_sheets_tree(project.id)
@@ -141,7 +142,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
       sheet = socket.assigns.sheet
       attrs = %{filename: filename, content_type: content_type}
 
-      with {:ok, asset} <- Assets.upload_binary_and_create_asset(binary_data, attrs, project, user),
+      with {:ok, asset} <-
+             Assets.upload_binary_and_create_asset(binary_data, attrs, project, user),
            {:ok, _updated_sheet} <- Sheets.update_sheet(sheet, %{banner_asset_id: asset.id}) do
         updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
 
