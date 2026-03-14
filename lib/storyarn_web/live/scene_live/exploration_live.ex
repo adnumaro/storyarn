@@ -63,9 +63,16 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         </div>
       </div>
 
-      <div class="player-main relative">
+      <div class={[
+        "player-main relative",
+        @scene.exploration_display_mode == "scaled" && "exploration-viewport"
+      ]}>
         <%!-- Map layer (dimmed when flow active) --%>
-        <div class={["w-full max-w-4xl", @flow_mode && "opacity-30 pointer-events-none"]}>
+        <div class={[
+          "w-full",
+          @scene.exploration_display_mode != "scaled" && "max-w-4xl",
+          @flow_mode && "opacity-30 pointer-events-none"
+        ]}>
           <div
             id="exploration-player"
             phx-hook="ExplorationPlayer"
@@ -695,6 +702,9 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
       background_url: Serializer.background_url(scene),
       scene_width: scene.width,
       scene_height: scene.height,
+      display_mode: scene.exploration_display_mode || "fit",
+      default_center_x: scene.default_center_x,
+      default_center_y: scene.default_center_y,
       zones:
         Enum.map(zones, fn z ->
           z |> Serializer.serialize_zone() |> Map.put(:visibility, z.visibility)

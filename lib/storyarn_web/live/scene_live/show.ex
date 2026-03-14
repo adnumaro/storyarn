@@ -1247,6 +1247,13 @@ defmodule StoryarnWeb.SceneLive.Show do
     end)
   end
 
+  def handle_event("update_exploration_display_mode", params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      LayerHandlers.handle_update_exploration_display_mode(params, socket)
+      |> broadcast_scene_change()
+    end)
+  end
+
   def handle_event("toggle_pin_icon_upload", params, socket) do
     LayerHandlers.handle_toggle_pin_icon_upload(params, socket)
   end

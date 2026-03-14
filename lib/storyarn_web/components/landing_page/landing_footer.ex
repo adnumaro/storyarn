@@ -64,7 +64,6 @@ defmodule StoryarnWeb.Components.LandingPage.LandingFooter do
                 {gettext("Contact")}
               </.link>
             </nav>
-
           </div>
 
           <div class="mt-8 flex flex-col gap-3 border-t border-base-content/8 pt-4 text-sm text-base-content/42 sm:flex-row sm:items-center sm:justify-between">

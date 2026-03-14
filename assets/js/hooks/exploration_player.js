@@ -4,12 +4,17 @@
  *
  * Data attributes:
  * - data-exploration: JSON object containing:
- *   { background_url, scene_width, scene_height, zones[], pins[] }
+ *   { background_url, scene_width, scene_height, display_mode,
+ *     default_center_x, default_center_y, zones[], pins[] }
+ *
+ * Display modes:
+ * - fit: Scales to fit viewport (aspect-ratio wrapper, max-w-4xl)
+ * - scaled: Native pixel dimensions with CRPG-style edge-scroll camera
  *
  * Zone/pin action types:
- * - instruction: Clickable, pushes "exploration_instruction"
+ * - instruction: Clickable, pushes "exploration_element_click"
  * - display: Shows label + current variable value
- * - none/navigate: Zones with target_type push "exploration_target_click"
+ * - none/navigate: Zones with target_type push "exploration_element_click"
  *
  * Visibility states:
  * - visible: Rendered normally
@@ -25,12 +30,20 @@ const PIN_ICONS = {
   custom: Star,
 };
 
+// Camera constants
+const EDGE_THRESHOLD = 60; // px from viewport edge to start scrolling
+const MAX_SPEED = 800; // px/s at full edge
+const KEY_SPEED = 600; // px/s for arrow keys
+
 export const ExplorationPlayer = {
   mounted() {
     const data = JSON.parse(this.el.dataset.exploration || "{}");
     this.backgroundUrl = data.background_url;
     this.sceneWidth = data.scene_width || 800;
     this.sceneHeight = data.scene_height || 600;
+    this.displayMode = data.display_mode || "fit";
+    this.defaultCenterX = data.default_center_x ?? 50;
+    this.defaultCenterY = data.default_center_y ?? 50;
     this.zones = data.zones || [];
     this.pins = data.pins || [];
     this.variables = {};
@@ -51,12 +64,24 @@ export const ExplorationPlayer = {
   },
 
   destroyed() {
-    // Cleanup: nothing to do currently (DOM is removed on navigate)
+    this.destroyCamera();
   },
+
+  // ===========================================================================
+  // Render
+  // ===========================================================================
 
   render() {
     this.el.innerHTML = "";
 
+    if (this.displayMode === "scaled") {
+      this.renderScaledMode();
+    } else {
+      this.renderFitMode();
+    }
+  },
+
+  renderFitMode() {
     const wrapper = document.createElement("div");
     wrapper.className = "exploration-wrapper";
     wrapper.style.position = "relative";
@@ -66,18 +91,46 @@ export const ExplorationPlayer = {
     wrapper.style.overflow = "hidden";
     wrapper.style.borderRadius = "0.5rem";
 
-    // Background image
-    if (this.backgroundUrl) {
-      const img = document.createElement("img");
-      img.src = this.backgroundUrl;
-      img.alt = "Map";
-      img.style.position = "absolute";
-      img.style.inset = "0";
-      img.style.width = "100%";
-      img.style.height = "100%";
-      img.style.objectFit = "fill";
-      img.draggable = false;
+    this.renderBackground(wrapper, true);
+    this.renderElements(wrapper);
+    this.el.appendChild(wrapper);
+  },
 
+  renderScaledMode() {
+    // Camera div wraps the scene content and gets translated
+    const camera = document.createElement("div");
+    camera.className = "exploration-camera";
+    this.cameraEl = camera;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "exploration-wrapper";
+    wrapper.style.position = "relative";
+    wrapper.style.width = `${this.sceneWidth}px`;
+    wrapper.style.height = `${this.sceneHeight}px`;
+    wrapper.style.overflow = "hidden";
+
+    this.renderBackground(wrapper, false);
+    this.renderElements(wrapper);
+    camera.appendChild(wrapper);
+    this.el.appendChild(camera);
+
+    this.initCamera();
+  },
+
+  renderBackground(wrapper, useFitAspectRatio) {
+    if (!this.backgroundUrl) return;
+
+    const img = document.createElement("img");
+    img.src = this.backgroundUrl;
+    img.alt = "Map";
+    img.style.position = "absolute";
+    img.style.inset = "0";
+    img.style.width = "100%";
+    img.style.height = "100%";
+    img.style.objectFit = "fill";
+    img.draggable = false;
+
+    if (useFitAspectRatio) {
       const onLoad = () => {
         if (img.naturalWidth && img.naturalHeight) {
           wrapper.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
@@ -85,24 +138,205 @@ export const ExplorationPlayer = {
       };
       img.addEventListener("load", onLoad);
       if (img.complete && img.naturalWidth) onLoad();
-
-      wrapper.appendChild(img);
     }
 
-    // Render zones
+    wrapper.appendChild(img);
+  },
+
+  renderElements(wrapper) {
     for (const zone of this.zones) {
       const el = this.createZoneElement(zone);
       if (el) wrapper.appendChild(el);
     }
-
-    // Render pins
     for (const pin of this.pins) {
       const el = this.createPinElement(pin);
       if (el) wrapper.appendChild(el);
     }
-
-    this.el.appendChild(wrapper);
   },
+
+  // ===========================================================================
+  // Camera System (scaled mode only)
+  // ===========================================================================
+
+  initCamera() {
+    this.cameraX = 0;
+    this.cameraY = 0;
+    this.velocityX = 0;
+    this.velocityY = 0;
+    this.mouseX = -1;
+    this.mouseY = -1;
+    this.keysDown = new Set();
+    this.lastFrameTime = 0;
+    this.flowModePaused = false;
+
+    // Set initial camera position from default center
+    this.setInitialCameraPosition();
+
+    // Bind event handlers (store refs for cleanup)
+    this._onMouseMove = (e) => {
+      this.mouseX = e.clientX;
+      this.mouseY = e.clientY;
+    };
+    this._onKeyDown = (e) => {
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+        this.keysDown.add(e.key);
+      }
+    };
+    this._onKeyUp = (e) => {
+      this.keysDown.delete(e.key);
+    };
+    this._onResize = () => {
+      this.clampCamera();
+      this.applyCameraTransform();
+    };
+    this._onMouseLeave = () => {
+      this.mouseX = -1;
+      this.mouseY = -1;
+    };
+
+    document.addEventListener("mousemove", this._onMouseMove);
+    document.addEventListener("keydown", this._onKeyDown);
+    document.addEventListener("keyup", this._onKeyUp);
+    document.addEventListener("mouseleave", this._onMouseLeave);
+    window.addEventListener("resize", this._onResize);
+
+    // Start animation loop
+    this.lastFrameTime = performance.now();
+    this._animFrame = requestAnimationFrame((t) => this.cameraLoop(t));
+  },
+
+  destroyCamera() {
+    if (this._animFrame) {
+      cancelAnimationFrame(this._animFrame);
+      this._animFrame = null;
+    }
+    if (this._onMouseMove) {
+      document.removeEventListener("mousemove", this._onMouseMove);
+      document.removeEventListener("keydown", this._onKeyDown);
+      document.removeEventListener("keyup", this._onKeyUp);
+      document.removeEventListener("mouseleave", this._onMouseLeave);
+      window.removeEventListener("resize", this._onResize);
+    }
+  },
+
+  setInitialCameraPosition() {
+    const viewport = this.getViewportBounds();
+    if (!viewport) return;
+
+    // Convert center percentage to pixel offset
+    const centerPx = {
+      x: (this.defaultCenterX / 100) * this.sceneWidth,
+      y: (this.defaultCenterY / 100) * this.sceneHeight,
+    };
+
+    // Position camera so that center point is in the middle of viewport
+    this.cameraX = centerPx.x - viewport.width / 2;
+    this.cameraY = centerPx.y - viewport.height / 2;
+
+    this.clampCamera();
+    this.applyCameraTransform();
+  },
+
+  getViewportBounds() {
+    // The viewport is the player-main element (parent of the hook element)
+    const viewport = this.el.closest(".player-main");
+    if (!viewport) return null;
+    const rect = viewport.getBoundingClientRect();
+    return { width: rect.width, height: rect.height, left: rect.left, top: rect.top };
+  },
+
+  cameraLoop(timestamp) {
+    const dt = Math.min((timestamp - this.lastFrameTime) / 1000, 0.05); // cap at 50ms
+    this.lastFrameTime = timestamp;
+
+    // Check if flow mode is active (map container has pointer-events-none)
+    const mapContainer = this.el.parentElement;
+    this.flowModePaused = mapContainer && mapContainer.classList.contains("pointer-events-none");
+
+    if (!this.flowModePaused) {
+      this.updateCameraVelocity(dt);
+      this.cameraX += this.velocityX * dt;
+      this.cameraY += this.velocityY * dt;
+      this.clampCamera();
+      this.applyCameraTransform();
+    } else {
+      // Decelerate when paused
+      this.velocityX *= 0.9;
+      this.velocityY *= 0.9;
+    }
+
+    this._animFrame = requestAnimationFrame((t) => this.cameraLoop(t));
+  },
+
+  updateCameraVelocity(dt) {
+    const viewport = this.getViewportBounds();
+    if (!viewport) return;
+
+    let targetVx = 0;
+    let targetVy = 0;
+
+    // Edge-scroll from mouse position
+    if (this.mouseX >= 0 && this.mouseY >= 0) {
+      const relX = this.mouseX - viewport.left;
+      const relY = this.mouseY - viewport.top;
+
+      // Only apply edge scroll if mouse is within viewport
+      if (relX >= 0 && relX <= viewport.width && relY >= 0 && relY <= viewport.height) {
+        // Left edge
+        if (relX < EDGE_THRESHOLD) {
+          targetVx -= MAX_SPEED * (1 - relX / EDGE_THRESHOLD);
+        }
+        // Right edge
+        if (relX > viewport.width - EDGE_THRESHOLD) {
+          targetVx += MAX_SPEED * (1 - (viewport.width - relX) / EDGE_THRESHOLD);
+        }
+        // Top edge
+        if (relY < EDGE_THRESHOLD) {
+          targetVy -= MAX_SPEED * (1 - relY / EDGE_THRESHOLD);
+        }
+        // Bottom edge
+        if (relY > viewport.height - EDGE_THRESHOLD) {
+          targetVy += MAX_SPEED * (1 - (viewport.height - relY) / EDGE_THRESHOLD);
+        }
+      }
+    }
+
+    // Keyboard input (additive)
+    if (this.keysDown.has("ArrowLeft")) targetVx -= KEY_SPEED;
+    if (this.keysDown.has("ArrowRight")) targetVx += KEY_SPEED;
+    if (this.keysDown.has("ArrowUp")) targetVy -= KEY_SPEED;
+    if (this.keysDown.has("ArrowDown")) targetVy += KEY_SPEED;
+
+    // Smooth interpolation (ease-in/out)
+    const lerp = 1 - Math.pow(0.001, dt); // ~0.93 at 60fps
+    this.velocityX += (targetVx - this.velocityX) * lerp;
+    this.velocityY += (targetVy - this.velocityY) * lerp;
+
+    // Kill tiny velocities
+    if (Math.abs(this.velocityX) < 0.5) this.velocityX = 0;
+    if (Math.abs(this.velocityY) < 0.5) this.velocityY = 0;
+  },
+
+  clampCamera() {
+    const viewport = this.getViewportBounds();
+    if (!viewport) return;
+
+    const maxX = Math.max(0, this.sceneWidth - viewport.width);
+    const maxY = Math.max(0, this.sceneHeight - viewport.height);
+
+    this.cameraX = Math.max(0, Math.min(this.cameraX, maxX));
+    this.cameraY = Math.max(0, Math.min(this.cameraY, maxY));
+  },
+
+  applyCameraTransform() {
+    if (this.cameraEl) {
+      this.cameraEl.style.transform = `translate(${-this.cameraX}px, ${-this.cameraY}px)`;
+    }
+  },
+
+  // ===========================================================================
+  // Zone/Pin Creation (shared by both modes)
+  // ===========================================================================
 
   createZoneElement(zone) {
     const { vertices, visibility } = zone;
@@ -338,6 +572,10 @@ export const ExplorationPlayer = {
 
     return container;
   },
+
+  // ===========================================================================
+  // Helpers
+  // ===========================================================================
 
   getBoundingBox(vertices) {
     let minX = 100,

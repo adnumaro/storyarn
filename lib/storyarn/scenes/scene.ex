@@ -50,6 +50,7 @@ defmodule Storyarn.Scenes.Scene do
           annotations: [SceneAnnotation.t()] | Ecto.Association.NotLoaded.t(),
           current_version_id: integer() | nil,
           current_version: EntityVersion.t() | Ecto.Association.NotLoaded.t() | nil,
+          exploration_display_mode: String.t(),
           deleted_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
@@ -67,6 +68,7 @@ defmodule Storyarn.Scenes.Scene do
     field :position, :integer, default: 0
     field :scale_unit, :string
     field :scale_value, :float
+    field :exploration_display_mode, :string, default: "fit"
     field :draft_id, :integer
     field :deleted_at, :utc_datetime
 
@@ -109,7 +111,8 @@ defmodule Storyarn.Scenes.Scene do
       :background_asset_id,
       :position,
       :scale_unit,
-      :scale_value
+      :scale_value,
+      :exploration_display_mode
     ])
     |> HierarchicalSchema.validate_core_fields()
     |> HierarchicalSchema.validate_description()
@@ -120,6 +123,7 @@ defmodule Storyarn.Scenes.Scene do
     |> validate_number(:default_center_y, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
     |> validate_number(:scale_value, greater_than: 0)
     |> validate_length(:scale_unit, max: 50)
+    |> validate_inclusion(:exploration_display_mode, ~w(fit scaled))
     |> validate_shortcut()
     |> foreign_key_constraint(:parent_id)
     |> foreign_key_constraint(:background_asset_id)
