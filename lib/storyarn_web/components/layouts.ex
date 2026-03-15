@@ -374,7 +374,7 @@ defmodule StoryarnWeb.Layouts do
             do: "overflow-hidden",
             else: [
               "overflow-y-auto pt-[76px] pb-4 px-4 transition-[padding-left] duration-200",
-              @has_tree && @tree_panel_open && "md:pl-[264px]"
+              @has_tree && @tree_panel_open && "md:pl-[280px]"
             ]
           )
         ]}

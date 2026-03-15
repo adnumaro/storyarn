@@ -373,7 +373,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
       data-pinned={to_string(@tree_panel_pinned)}
       data-open={to_string(@tree_panel_open)}
       class={[
-        "fixed left-3 top-[76px] bottom-3 z-[1010] w-60 flex flex-col surface-panel overflow-hidden",
+        "fixed left-3 top-[76px] bottom-3 z-[1010] w-64 flex flex-col surface-panel overflow-hidden",
         "max-md:transition-transform max-md:duration-200",
         if(@tree_panel_open,
           do: "max-md:translate-x-0",
@@ -383,11 +383,6 @@ defmodule StoryarnWeb.Components.FocusLayout do
     >
       <%!-- Navigation header --%>
       <div class="px-2 pt-2 pb-2 border-b border-base-300 space-y-1">
-        <.tree_link
-          label={gettext("Back to workspace")}
-          href={~p"/workspaces/#{@workspace.slug}"}
-          icon="chevron-left"
-        />
         <.tree_link
           label={tool_label(@active_tool) <> " " <> gettext("dashboard")}
           href={tool_path(@workspace, @project, to_string(@active_tool))}

@@ -13,7 +13,6 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
 
   def reference_block(assigns) do
     label = get_in(assigns.block.config, ["label"]) || ""
-    allowed_types = get_in(assigns.block.config, ["allowed_types"]) || ["sheet", "flow"]
     target_type = get_in(assigns.block.value, ["target_type"])
     target_id = get_in(assigns.block.value, ["target_id"])
     is_constant = assigns.block.is_constant || false
@@ -21,7 +20,6 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
     assigns =
       assigns
       |> assign(:label, label)
-      |> assign(:allowed_types, allowed_types)
       |> assign(:target_type, target_type)
       |> assign(:target_id, target_id)
       |> assign(:is_constant, is_constant)
@@ -39,10 +37,18 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
       />
 
       <%= if @can_edit do %>
-        <div class="dropdown w-full">
-          <div
-            tabindex="0"
-            role="button"
+        <div
+          id={"reference-select-#{@block.id}"}
+          phx-hook="ReferenceSelect"
+          data-block-id={@block.id}
+          data-phx-target={@target}
+          data-idle-text={dgettext("sheets", "Type to search...")}
+          data-no-results-text={dgettext("sheets", "No results found")}
+          class="w-full"
+        >
+          <button
+            type="button"
+            data-role="trigger"
             class="input input-bordered w-full flex items-center justify-between cursor-pointer"
           >
             <%= if @has_reference && @reference_target do %>
@@ -51,19 +57,15 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
               <span class="text-base-content/50">{dgettext("sheets", "Select a reference...")}</span>
             <% end %>
             <.icon name="chevron-down" class="size-4 text-base-content/50" />
-          </div>
-          <div
-            tabindex="0"
-            class="dropdown-content z-50 bg-base-100 border border-base-300 rounded-lg shadow-lg w-full mt-1"
-          >
+          </button>
+
+          <template data-role="popover-template">
             <.reference_search
               block_id={@block.id}
-              allowed_types={@allowed_types}
               target_type={@target_type}
               target_id={@target_id}
-              target={@target}
             />
-          </div>
+          </template>
         </div>
       <% else %>
         <%= if @has_reference && @reference_target do %>
@@ -107,10 +109,8 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
   end
 
   attr :block_id, :integer, required: true
-  attr :allowed_types, :list, required: true
   attr :target_type, :string, default: nil
   attr :target_id, :integer, default: nil
-  attr :target, :any, default: nil
 
   defp reference_search(assigns) do
     ~H"""
@@ -118,20 +118,15 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
       <input
         type="text"
         class="input input-bordered input-sm w-full"
+        data-role="search"
         placeholder={dgettext("sheets", "Search sheets and flows...")}
-        phx-keyup="search_references"
-        phx-value-block-id={@block_id}
-        phx-debounce="300"
-        phx-target={@target}
-        id={"reference-search-#{@block_id}"}
       />
       <div
         id={"reference-results-#{@block_id}"}
+        data-role="list"
         class="mt-2 max-h-48 overflow-y-auto"
-        phx-hook="ReferenceSearch"
-        data-block-id={@block_id}
       >
-        <div class="text-center text-base-content/50 py-4 text-sm">
+        <div data-role="empty" class="text-center text-base-content/50 py-4 text-sm">
           {dgettext("sheets", "Type to search...")}
         </div>
       </div>
@@ -139,10 +134,8 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
         <div class="border-t border-base-300 mt-2 pt-2">
           <button
             type="button"
+            data-role="clear"
             class="btn btn-ghost btn-sm btn-block text-error"
-            phx-click="clear_reference"
-            phx-value-block-id={@block_id}
-            phx-target={@target}
           >
             <.icon name="x" class="size-4" />
             {dgettext("sheets", "Clear reference")}
