@@ -642,6 +642,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
              |> assign(:flow_nodes, nodes_map)
              |> assign(:flow_connections, connections)
              |> assign(:flow_sheets_map, sheets_map)
+             |> push_event("patrol_pause", %{})
              |> assign(:active_flow, %{
                flow_id: flow.id,
                flow: flow,
@@ -817,6 +818,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     |> apply_variable_update(new_variables)
     |> assign(:flow_mode, false)
     |> assign(:active_flow, nil)
+    |> push_event("patrol_resume", %{})
   end
 
   # ===========================================================================
@@ -946,6 +948,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     visible_items = Enum.map(visible_items, &load_item_sheet_data(&1, socket.assigns.project.id))
 
     socket
+    |> push_event("patrol_pause", %{})
     |> assign(:collection_mode, true)
     |> assign(:collection_zone, %{
       id: zone_id,
@@ -961,6 +964,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     |> assign(:collection_mode, false)
     |> assign(:collection_zone, nil)
     |> assign(:collection_items, [])
+    |> push_event("patrol_resume", %{})
   end
 
   defp execute_collection_item(socket, item) do
@@ -1088,6 +1092,8 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   end
 
   defp serialize_for_exploration(scene, zones, pins) do
+    connections = scene.connections || []
+
     %{
       background_url: Serializer.background_url(scene),
       scene_width: scene.width,
@@ -1102,8 +1108,81 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         end),
       pins:
         Enum.map(pins, fn p ->
-          p |> Serializer.serialize_pin() |> Map.put(:visibility, p.visibility)
+          serialized = p |> Serializer.serialize_pin() |> Map.put(:visibility, p.visibility)
+
+          if p.patrol_mode in [nil, "none"] do
+            serialized
+          else
+            route = build_patrol_route(p, pins, connections)
+            Map.put(serialized, :patrol_route, route)
+          end
         end)
     }
+  end
+
+  # ---------------------------------------------------------------------------
+  # Patrol Route Builder
+  # ---------------------------------------------------------------------------
+
+  # Builds an ordered patrol route by traversing connections from the given pin.
+  # Returns a flat list of %{x, y, is_pin_stop} points.
+  defp build_patrol_route(pin, pins, connections) do
+    pins_by_id = Map.new(pins, &{&1.id, &1})
+    start_point = %{x: pin.position_x, y: pin.position_y, is_pin_stop: true}
+    traverse_route([pin.id], pin.id, pins_by_id, connections, [start_point])
+  end
+
+  defp traverse_route(visited, current_pin_id, pins_by_id, connections, acc) do
+    next_connections = find_unvisited_connections(connections, current_pin_id, visited)
+
+    case next_connections do
+      [] ->
+        Enum.reverse(acc)
+
+      [conn | _] ->
+        {waypoints, target_pin_id} = connection_traversal_data(conn, current_pin_id)
+        follow_connection(visited, target_pin_id, waypoints, pins_by_id, connections, acc)
+    end
+  end
+
+  defp find_unvisited_connections(connections, pin_id, visited) do
+    connections
+    |> Enum.filter(fn conn ->
+      (conn.from_pin_id == pin_id && conn.to_pin_id not in visited) ||
+        (conn.bidirectional && conn.to_pin_id == pin_id && conn.from_pin_id not in visited)
+    end)
+    |> Enum.sort_by(& &1.id)
+  end
+
+  defp connection_traversal_data(conn, current_pin_id) do
+    if conn.from_pin_id == current_pin_id do
+      {conn.waypoints || [], conn.to_pin_id}
+    else
+      {Enum.reverse(conn.waypoints || []), conn.from_pin_id}
+    end
+  end
+
+  defp follow_connection(visited, target_pin_id, waypoints, pins_by_id, connections, acc) do
+    waypoint_points =
+      Enum.map(waypoints, fn wp ->
+        %{x: wp["x"], y: wp["y"], is_pin_stop: false}
+      end)
+
+    case Map.get(pins_by_id, target_pin_id) do
+      nil ->
+        Enum.reverse(acc)
+
+      target_pin ->
+        pin_point = %{x: target_pin.position_x, y: target_pin.position_y, is_pin_stop: true}
+        new_acc = [pin_point | Enum.reverse(waypoint_points)] ++ acc
+
+        traverse_route(
+          [target_pin_id | visited],
+          target_pin_id,
+          pins_by_id,
+          connections,
+          new_acc
+        )
+    end
   end
 end

@@ -20,6 +20,7 @@ defmodule Storyarn.Scenes.ScenePin do
   @valid_target_types ~w(sheet flow scene url)
   @valid_action_types ~w(none instruction display)
   @valid_condition_effects ~w(hide disable)
+  @valid_patrol_modes ~w(none loop ping_pong one_way)
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -41,6 +42,9 @@ defmodule Storyarn.Scenes.ScenePin do
           condition_effect: String.t(),
           is_playable: boolean(),
           is_leader: boolean(),
+          patrol_mode: String.t(),
+          patrol_speed: float(),
+          patrol_pause_ms: integer(),
           scene_id: integer() | nil,
           scene: Scene.t() | Ecto.Association.NotLoaded.t() | nil,
           layer_id: integer() | nil,
@@ -69,6 +73,9 @@ defmodule Storyarn.Scenes.ScenePin do
     field :condition_effect, :string, default: "hide"
     field :is_playable, :boolean, default: false
     field :is_leader, :boolean, default: false
+    field :patrol_mode, :string, default: "none"
+    field :patrol_speed, :float, default: 1.0
+    field :patrol_pause_ms, :integer, default: 0
 
     belongs_to :scene, Scene
     belongs_to :layer, SceneLayer
@@ -115,7 +122,10 @@ defmodule Storyarn.Scenes.ScenePin do
       :condition,
       :condition_effect,
       :is_playable,
-      :is_leader
+      :is_leader,
+      :patrol_mode,
+      :patrol_speed,
+      :patrol_pause_ms
     ])
     |> validate_required([:position_x, :position_y])
     |> validate_number(:position_x, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
@@ -125,6 +135,12 @@ defmodule Storyarn.Scenes.ScenePin do
     |> validate_inclusion(:action_type, @valid_action_types)
     |> validate_inclusion(:condition_effect, @valid_condition_effects)
     |> validate_number(:opacity, greater_than_or_equal_to: 0, less_than_or_equal_to: 1)
+    |> validate_inclusion(:patrol_mode, @valid_patrol_modes)
+    |> validate_number(:patrol_speed, greater_than: 0, less_than_or_equal_to: 3.0)
+    |> validate_number(:patrol_pause_ms,
+      greater_than_or_equal_to: 0,
+      less_than_or_equal_to: 30_000
+    )
     |> validate_target_pair(@valid_target_types)
     |> validate_action_data()
     |> validate_length(:label, max: 200)

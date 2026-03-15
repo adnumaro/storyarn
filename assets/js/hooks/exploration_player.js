@@ -48,6 +48,9 @@ const PARTY_DELAY_MS = 200; // ms before party starts following
 const PARTY_SPREAD = 2; // % perpendicular offset for fan formation
 const ARRIVAL_THRESHOLD = 0.3; // % distance to consider arrived
 
+// Patrol constants
+const PATROL_BASE_SPEED = 8; // %/s (slower than player's 15)
+
 export const ExplorationPlayer = {
   mounted() {
     const data = JSON.parse(this.el.dataset.exploration || "{}");
@@ -77,7 +80,13 @@ export const ExplorationPlayer = {
     this.partyMoving = false;
     this._movementFrame = null;
 
+    // Patrol state
+    this.patrolPins = [];
+    this.patrolStates = {};
+    this.patrolsPaused = false;
+
     this.initMovementData();
+    this.initPatrolData();
     this.render();
     this.initMovementClickHandler();
 
@@ -95,14 +104,9 @@ export const ExplorationPlayer = {
 
     this.handleEvent("request_positions", () => {
       this.pushEvent("report_positions", {
-        leader: this.leaderPin
-          ? { x: this.leaderCurrentX, y: this.leaderCurrentY }
-          : null,
+        leader: this.leaderPin ? { x: this.leaderCurrentX, y: this.leaderCurrentY } : null,
         party: this.partyPositions,
-        camera:
-          this.displayMode === "scaled"
-            ? { x: this.cameraX, y: this.cameraY }
-            : null,
+        camera: this.displayMode === "scaled" ? { x: this.cameraX, y: this.cameraY } : null,
       });
     });
 
@@ -127,6 +131,15 @@ export const ExplorationPlayer = {
         this.clampCamera();
         this.applyCameraTransform();
       }
+    });
+
+    this.handleEvent("patrol_pause", () => {
+      this.patrolsPaused = true;
+    });
+
+    this.handleEvent("patrol_resume", () => {
+      this.patrolsPaused = false;
+      this.ensureMovementLoop();
     });
 
     this.handleEvent("set_zoom", ({ zoom }) => {
@@ -558,6 +571,13 @@ export const ExplorationPlayer = {
     if (this._onWrapperClick) {
       this.el.removeEventListener("click", this._onWrapperClick);
     }
+    // Clean up patrol pause timers
+    for (const state of Object.values(this.patrolStates || {})) {
+      if (state.pauseTimer) {
+        clearTimeout(state.pauseTimer);
+        state.pauseTimer = null;
+      }
+    }
   },
 
   // ===========================================================================
@@ -629,6 +649,10 @@ export const ExplorationPlayer = {
     if (this.partyMoving) {
       anyMoving = this.stepParty(dt) || anyMoving;
     }
+
+    // Step patrol pins
+    const anyPatrolling = this.stepPatrols(dt);
+    anyMoving = anyMoving || anyPatrolling;
 
     if (anyMoving) {
       this._movementFrame = requestAnimationFrame((t) => this.movementLoop(t));
@@ -805,6 +829,160 @@ export const ExplorationPlayer = {
       const vis = visibilityMap.get(String(z.id)) || z.visibility;
       return vis !== "hide";
     });
+  },
+
+  // ===========================================================================
+  // Patrol System
+  // ===========================================================================
+
+  initPatrolData() {
+    this.patrolPins = this.pins.filter(
+      (p) => p.patrol_mode && p.patrol_mode !== "none" && !p.is_playable && p.visibility !== "hide",
+    );
+
+    this.patrolStates = {};
+    for (const pin of this.patrolPins) {
+      const route = pin.patrol_route || [];
+      this.patrolStates[pin.id] = {
+        routeIndex: 0,
+        direction: 1, // 1 = forward, -1 = backward (for ping_pong)
+        paused: false,
+        pauseTimer: null,
+        moving: route.length >= 2,
+        currentX: pin.position_x,
+        currentY: pin.position_y,
+      };
+    }
+
+    // Start movement loop if any patrols exist
+    if (this.patrolPins.length > 0) {
+      this.ensureMovementLoop();
+    }
+  },
+
+  ensureMovementLoop() {
+    if (!this._movementFrame) {
+      this._movementLastTime = performance.now();
+      this._movementFrame = requestAnimationFrame((t) => this.movementLoop(t));
+    }
+  },
+
+  stepPatrols(dt) {
+    if (this.patrolsPaused) return false;
+
+    let anyMoving = false;
+
+    for (const pin of this.patrolPins) {
+      const state = this.patrolStates[pin.id];
+      if (!state || !state.moving || state.paused) continue;
+
+      const route = pin.patrol_route || [];
+      if (route.length < 2) continue;
+
+      // Check if pin is currently hidden
+      const el = this.el.querySelector(`[data-element-type="pin"][data-element-id="${pin.id}"]`);
+      if (el && el.style.display === "none") continue;
+
+      const target = route[state.routeIndex];
+      if (!target) continue;
+
+      const dx = target.x - state.currentX;
+      const dy = target.y - state.currentY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < ARRIVAL_THRESHOLD) {
+        // Arrived at waypoint
+        state.currentX = target.x;
+        state.currentY = target.y;
+        this.updatePatrolPinDom(pin.id, state.currentX, state.currentY);
+
+        // Pause at pin stops if configured
+        if (target.is_pin_stop && pin.patrol_pause_ms > 0) {
+          state.paused = true;
+          state.pauseTimer = setTimeout(() => {
+            state.paused = false;
+            state.pauseTimer = null;
+            this.advancePatrolIndex(pin, state);
+            this.ensureMovementLoop();
+          }, pin.patrol_pause_ms);
+        } else {
+          this.advancePatrolIndex(pin, state);
+        }
+
+        anyMoving = true;
+      } else {
+        // Move toward target
+        const speed = PATROL_BASE_SPEED * (pin.patrol_speed || 1.0);
+        const step = speed * dt;
+        const ratio = Math.min(step / dist, 1);
+        state.currentX += dx * ratio;
+        state.currentY += dy * ratio;
+        this.updatePatrolPinDom(pin.id, state.currentX, state.currentY);
+        anyMoving = true;
+      }
+    }
+
+    return anyMoving;
+  },
+
+  advancePatrolIndex(pin, state) {
+    const route = pin.patrol_route || [];
+    if (route.length < 2) {
+      state.moving = false;
+      return;
+    }
+
+    const mode = pin.patrol_mode;
+
+    if (mode === "loop") {
+      state.routeIndex = (state.routeIndex + 1) % route.length;
+    } else if (mode === "ping_pong") {
+      const nextIndex = state.routeIndex + state.direction;
+      if (nextIndex >= route.length || nextIndex < 0) {
+        state.direction *= -1;
+        state.routeIndex += state.direction;
+      } else {
+        state.routeIndex = nextIndex;
+      }
+    } else if (mode === "one_way") {
+      if (state.routeIndex + 1 >= route.length) {
+        state.moving = false;
+      } else {
+        state.routeIndex++;
+      }
+    }
+  },
+
+  updatePatrolPinDom(pinId, x, y) {
+    const el = this.el.querySelector(`[data-element-type="pin"][data-element-id="${pinId}"]`);
+    if (el) {
+      el.style.left = `${x}%`;
+      el.style.top = `${y}%`;
+      el.style.transition = "none";
+    }
+  },
+
+  pausePatrolPin(pinId) {
+    const state = this.patrolStates[pinId];
+    if (!state) return;
+    if (state.pauseTimer) {
+      clearTimeout(state.pauseTimer);
+      state.pauseTimer = null;
+    }
+    state.moving = false;
+  },
+
+  resumePatrolPin(pinId) {
+    const state = this.patrolStates[pinId];
+    if (!state) return;
+    const pin = this.patrolPins.find((p) => String(p.id) === String(pinId));
+    if (!pin) return;
+    const route = pin.patrol_route || [];
+    if (route.length >= 2) {
+      state.moving = true;
+      state.paused = false;
+      this.ensureMovementLoop();
+    }
   },
 
   // ===========================================================================
@@ -1156,6 +1334,8 @@ export const ExplorationPlayer = {
 
       if (pinState.visibility === "hide") {
         if (el) el.style.display = "none";
+        // Clear patrol timer for hidden pins
+        this.pausePatrolPin(pinState.id);
       } else if (pinState.visibility === "disable") {
         if (el) {
           el.style.display = "";
@@ -1168,6 +1348,8 @@ export const ExplorationPlayer = {
           el.style.opacity = "1";
           el.style.pointerEvents = "auto";
         }
+        // Resume patrol for visible pins
+        this.resumePatrolPin(pinState.id);
       }
     }
   },

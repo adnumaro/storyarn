@@ -61,7 +61,10 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
         condition: nil,
         condition_effect: "hide",
         is_playable: true,
-        is_leader: false
+        is_leader: false,
+        patrol_mode: "loop",
+        patrol_speed: 1.5,
+        patrol_pause_ms: 500
       }
 
       result = Serializer.serialize_pin(pin)
@@ -74,6 +77,9 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
       assert result.locked == false
       assert result.is_playable == true
       assert result.is_leader == false
+      assert result.patrol_mode == "loop"
+      assert result.patrol_speed == 1.5
+      assert result.patrol_pause_ms == 500
     end
 
     test "handles nil optional fields with defaults" do
@@ -101,7 +107,10 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
         condition: nil,
         condition_effect: nil,
         is_playable: nil,
-        is_leader: nil
+        is_leader: nil,
+        patrol_mode: nil,
+        patrol_speed: nil,
+        patrol_pause_ms: nil
       }
 
       result = Serializer.serialize_pin(pin)
@@ -114,6 +123,9 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
       assert result.icon_asset_url == nil
       assert result.is_playable == false
       assert result.is_leader == false
+      assert result.patrol_mode == "none"
+      assert result.patrol_speed == 1.0
+      assert result.patrol_pause_ms == 0
     end
   end
 
