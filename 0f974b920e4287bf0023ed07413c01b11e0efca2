@@ -1,0 +1,25 @@
+assets/css/app.css
+  095b399a2b21387c 209-211
+assets/css/landing.css
+  095b399a2b21387c 4-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "0f974b920e4287bf0023ed07413c01b11e0efca2",
+  "prompts": {
+    "095b399a2b21387c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "999a1a0e-044f-4dab-8738-b93081641772",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 14,
+      "total_deletions": 3,
+      "accepted_lines": 11,
+      "overriden_lines": 0
+    }
+  }
+}
