@@ -1,0 +1,46 @@
+assets/js/landing_page/animations.js
+  f700114991880419 24,27-29,51,63,66-68,92,95-97
+test/storyarn_web/live/sheet_live/index_test.exs
+  4807c8c75efb300d 185
+assets/js/hooks/exploration_player.js
+  f700114991880419 153,208
+test/storyarn_web/layouts_test.exs
+  4807c8c75efb300d 433
+lib/storyarn_web/live/components/asset_upload.ex
+  4807c8c75efb300d 91,279-280,294
+lib/storyarn_web/live/sheet_live/index.ex
+  4807c8c75efb300d 484
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "bc1dc022dac659c391926d0c6e1b49739f3c2311",
+  "prompts": {
+    "4807c8c75efb300d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "751f3c2d-369e-4492-9bce-dcfe8a168e03",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 45,
+      "total_deletions": 24,
+      "accepted_lines": 36,
+      "overriden_lines": 0
+    },
+    "f700114991880419": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019cf299-fdf1-7441-bf77-4f069337dc91",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 1557,
+      "total_deletions": 17,
+      "accepted_lines": 1574,
+      "overriden_lines": 55
+    }
+  }
+}
