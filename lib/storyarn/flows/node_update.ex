@@ -3,11 +3,11 @@ defmodule Storyarn.Flows.NodeUpdate do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.{FlowNode, NodeCrud, VariableReferenceTracker}
+  alias Storyarn.Flows.{FlowNode, NodeCrud}
   alias Storyarn.Localization
+  alias Storyarn.References
   alias Storyarn.Repo
   alias Storyarn.Shared.{TimeHelpers, WordCount}
-  alias Storyarn.Sheets
 
   def update_node(%FlowNode{} = node, attrs) do
     node
@@ -125,8 +125,8 @@ defmodule Storyarn.Flows.NodeUpdate do
         |> Ecto.Changeset.put_change(:word_count, word_count)
         |> Repo.update!()
 
-      Sheets.update_flow_node_references(updated_node)
-      VariableReferenceTracker.update_references(updated_node)
+      References.update_flow_node_entity_references(updated_node)
+      References.update_flow_node_variable_references(updated_node)
       Localization.extract_flow_node(updated_node)
       updated_node
     end)

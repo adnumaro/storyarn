@@ -6,6 +6,7 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias Storyarn.References
   alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Shared.{NameNormalizer, TreeOperations, WordCount}
@@ -13,7 +14,6 @@ defmodule Storyarn.Sheets.BlockCrud do
   alias Storyarn.Sheets.{
     Block,
     PropertyInheritance,
-    ReferenceTracker,
     Sheet,
     TableColumn,
     TableRow
@@ -186,7 +186,7 @@ defmodule Storyarn.Sheets.BlockCrud do
     )
     |> Ecto.Multi.run(:update_references, fn _repo, %{block: updated_block} ->
       if updated_block.type in ["reference", "rich_text"] do
-        ReferenceTracker.update_block_references(updated_block)
+        References.update_block_references(updated_block)
       end
 
       {:ok, :done}
@@ -239,7 +239,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   """
   def delete_block(%Block{} = block) do
     # Clean up references and localization texts before soft-deleting
-    ReferenceTracker.delete_block_references(block.id)
+    References.delete_block_references(block.id)
     Localization.delete_block_texts(block.id)
 
     # If this is a parent block with scope: "children", soft-delete all instances
@@ -268,7 +268,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   Permanently deletes a block from the database.
   """
   def permanently_delete_block(%Block{} = block) do
-    ReferenceTracker.delete_block_references(block.id)
+    References.delete_block_references(block.id)
     Repo.delete(block)
   end
 

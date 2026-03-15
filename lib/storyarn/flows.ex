@@ -25,8 +25,7 @@ defmodule Storyarn.Flows do
     NavigationHistoryStore,
     NodeCrud,
     SceneResolver,
-    TreeOperations,
-    VariableReferenceTracker
+    TreeOperations
   }
 
   alias Storyarn.Flows.Evaluator.{
@@ -38,6 +37,7 @@ defmodule Storyarn.Flows do
 
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
+  alias Storyarn.References
   alias Storyarn.Repo
 
   # =============================================================================
@@ -403,64 +403,76 @@ defmodule Storyarn.Flows do
   Used by the sheet editor's variable usage section.
   """
   @spec get_variable_usage(integer(), integer()) :: [map()]
-  defdelegate get_variable_usage(block_id, project_id), to: VariableReferenceTracker
+  defdelegate get_variable_usage(block_id, project_id), to: References
 
   @doc """
   Counts variable references for a block, grouped by kind.
   Returns %{"read" => N, "write" => M}.
   """
   @spec count_variable_usage(integer()) :: map()
-  defdelegate count_variable_usage(block_id), to: VariableReferenceTracker
+  defdelegate count_variable_usage(block_id), to: References
 
   @doc """
   Returns a MapSet of block IDs that have at least one variable reference.
   """
   @spec referenced_block_ids([integer()]) :: MapSet.t()
-  defdelegate referenced_block_ids(block_ids), to: VariableReferenceTracker
+  defdelegate referenced_block_ids(block_ids), to: References
 
   @doc """
   Returns variable usage for a block with stale detection.
   Each ref map gets an additional `:stale` boolean.
   """
   @spec check_stale_references(integer(), integer()) :: [map()]
-  defdelegate check_stale_references(block_id, project_id), to: VariableReferenceTracker
+  defdelegate check_stale_references(block_id, project_id),
+    to: References,
+    as: :check_stale_variable_references
 
   @doc """
   Repairs all stale variable references across a project.
   Returns `{:ok, count}` of repaired nodes.
   """
   @spec repair_stale_references(integer()) :: {:ok, non_neg_integer()} | {:error, term()}
-  defdelegate repair_stale_references(project_id), to: VariableReferenceTracker
+  defdelegate repair_stale_references(project_id),
+    to: References,
+    as: :repair_stale_variable_references
 
   @doc """
   Returns a MapSet of node IDs in a flow that have at least one stale reference.
   """
   @spec list_stale_node_ids(integer()) :: MapSet.t()
-  defdelegate list_stale_node_ids(flow_id), to: VariableReferenceTracker
+  defdelegate list_stale_node_ids(flow_id), to: References
 
   @doc """
   Updates variable references for a scene zone after its action_data changes.
   """
   @spec update_scene_zone_references(map(), keyword()) :: :ok
-  defdelegate update_scene_zone_references(zone, opts \\ []), to: VariableReferenceTracker
+  defdelegate update_scene_zone_references(zone, opts \\ []),
+    to: References,
+    as: :update_scene_zone_variable_references
 
   @doc """
   Deletes all variable references for a scene zone.
   """
   @spec delete_map_zone_references(integer()) :: :ok
-  defdelegate delete_map_zone_references(zone_id), to: VariableReferenceTracker
+  defdelegate delete_map_zone_references(zone_id),
+    to: References,
+    as: :delete_scene_zone_variable_references
 
   @doc """
   Updates variable references for a scene pin after its action_data changes.
   """
   @spec update_scene_pin_references(map(), keyword()) :: :ok
-  defdelegate update_scene_pin_references(pin, opts \\ []), to: VariableReferenceTracker
+  defdelegate update_scene_pin_references(pin, opts \\ []),
+    to: References,
+    as: :update_scene_pin_variable_references
 
   @doc """
   Deletes all variable references for a scene pin.
   """
   @spec delete_map_pin_references(integer()) :: :ok
-  defdelegate delete_map_pin_references(pin_id), to: VariableReferenceTracker
+  defdelegate delete_map_pin_references(pin_id),
+    to: References,
+    as: :delete_scene_pin_variable_references
 
   # =============================================================================
   # Connections - CRUD Operations
@@ -649,7 +661,7 @@ defmodule Storyarn.Flows do
   """
   @spec serialize_for_canvas(flow(), keyword()) :: map()
   def serialize_for_canvas(%Flow{} = flow, opts \\ []) do
-    stale_node_ids = VariableReferenceTracker.list_stale_node_ids(flow.id)
+    stale_node_ids = References.list_stale_node_ids(flow.id)
 
     project_variables =
       opts[:project_variables] || Storyarn.Sheets.list_project_variables(flow.project_id)

@@ -712,82 +712,94 @@ defmodule Storyarn.Sheets do
   # Reference Tracking (Backlinks)
   # =============================================================================
 
-  alias Storyarn.Sheets.ReferenceTracker
+  alias Storyarn.References
 
   @doc """
   Gets backlinks for a target with resolved source information.
   """
   @spec get_backlinks_with_sources(String.t(), id(), id()) :: [map()]
-  defdelegate get_backlinks_with_sources(target_type, target_id, project_id), to: ReferenceTracker
+  defdelegate get_backlinks_with_sources(target_type, target_id, project_id), to: References
 
   @doc """
   Counts backlinks for a target.
   """
   @spec count_backlinks(String.t(), id()) :: integer()
-  defdelegate count_backlinks(target_type, target_id), to: ReferenceTracker
+  defdelegate count_backlinks(target_type, target_id), to: References
 
   @doc """
   Updates references from a flow node.
   Called after node data is saved to track mentions and references.
   """
   @spec update_flow_node_references(map()) :: :ok
-  defdelegate update_flow_node_references(node), to: ReferenceTracker
+  defdelegate update_flow_node_references(node),
+    to: References,
+    as: :update_flow_node_entity_references
 
   @doc """
   Deletes all references from a flow node.
   Called when a node is deleted.
   """
   @spec delete_flow_node_references(integer()) :: {integer(), nil}
-  defdelegate delete_flow_node_references(node_id), to: ReferenceTracker
+  defdelegate delete_flow_node_references(node_id),
+    to: References,
+    as: :delete_flow_node_entity_references
 
   @doc """
   Updates references from a scene zone.
   Called after zone data is saved to track target references.
   """
   @spec update_scene_zone_references(map()) :: :ok
-  defdelegate update_scene_zone_references(zone), to: ReferenceTracker
+  defdelegate update_scene_zone_references(zone),
+    to: References,
+    as: :update_scene_zone_entity_references
 
   @doc """
   Deletes all references from a scene zone.
   Called when a zone is deleted.
   """
   @spec delete_map_zone_references(integer()) :: {integer(), nil}
-  defdelegate delete_map_zone_references(zone_id), to: ReferenceTracker
+  defdelegate delete_map_zone_references(zone_id),
+    to: References,
+    as: :delete_scene_zone_entity_references
 
   @doc """
   Updates references from a scene pin.
   Called after pin data is saved to track target references.
   """
   @spec update_scene_pin_references(map()) :: :ok
-  defdelegate update_scene_pin_references(pin), to: ReferenceTracker
+  defdelegate update_scene_pin_references(pin),
+    to: References,
+    as: :update_scene_pin_entity_references
 
   @doc """
   Deletes all references from a scene pin.
   Called when a pin is deleted.
   """
   @spec delete_map_pin_references(integer()) :: {integer(), nil}
-  defdelegate delete_map_pin_references(pin_id), to: ReferenceTracker
+  defdelegate delete_map_pin_references(pin_id),
+    to: References,
+    as: :delete_scene_pin_entity_references
 
   @doc """
   Deletes all references where a given entity is the target.
   Used for permanent deletion cleanup.
   """
   @spec delete_target_references(String.t(), integer()) :: {integer(), nil}
-  defdelegate delete_target_references(target_type, target_id), to: ReferenceTracker
+  defdelegate delete_target_references(target_type, target_id), to: References
 
   @doc """
   Updates references from a screenplay element.
   Called after element content is saved to track character sheet refs and mentions.
   """
   @spec update_screenplay_element_references(map()) :: :ok
-  defdelegate update_screenplay_element_references(element), to: ReferenceTracker
+  defdelegate update_screenplay_element_references(element), to: References
 
   @doc """
   Deletes all references from a screenplay element.
   Called when an element is deleted.
   """
   @spec delete_screenplay_element_references(id()) :: {integer(), nil}
-  defdelegate delete_screenplay_element_references(element_id), to: ReferenceTracker
+  defdelegate delete_screenplay_element_references(element_id), to: References
 
   # =============================================================================
   # Export / Import helpers

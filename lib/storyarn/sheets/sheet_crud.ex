@@ -7,10 +7,11 @@ defmodule Storyarn.Sheets.SheetCrud do
   alias Storyarn.Collaboration
   alias Storyarn.Localization
   alias Storyarn.Projects.Project
+  alias Storyarn.References
   alias Storyarn.Repo
   alias Storyarn.Shared.{MapUtils, ShortcutHelpers, TimeHelpers}
   alias Storyarn.Shared.TreeOperations, as: SharedTree
-  alias Storyarn.Sheets.{PropertyInheritance, ReferenceTracker, Sheet}
+  alias Storyarn.Sheets.{PropertyInheritance, Sheet}
   alias Storyarn.Shortcuts
   alias Storyarn.Versioning.EntityVersion
 
@@ -147,7 +148,7 @@ defmodule Storyarn.Sheets.SheetCrud do
     |> Repo.delete_all()
 
     # Delete references where this sheet is the target
-    ReferenceTracker.delete_target_references("sheet", sheet.id)
+    References.delete_target_references("sheet", sheet.id)
 
     # Delete the sheet (blocks cascade via FK)
     Repo.delete(sheet)
@@ -245,7 +246,7 @@ defmodule Storyarn.Sheets.SheetCrud do
       sheet,
       attrs,
       &Shortcuts.generate_sheet_shortcut/3,
-      check_backlinks_fn: &(ReferenceTracker.count_backlinks("sheet", &1.id) > 0)
+      check_backlinks_fn: &(References.count_backlinks("sheet", &1.id) > 0)
     )
   end
 
