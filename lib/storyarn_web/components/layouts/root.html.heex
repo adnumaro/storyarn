@@ -14,6 +14,9 @@
       name="sentry-dsn"
       content={Application.get_env(:sentry, :dsn)}
     />
+    <link rel="icon" href={~p"/images/logos/logo-black-32.png"} type="image/png" sizes="32x32" />
+    <link rel="icon" href={~p"/images/logos/logo-black-16.png"} type="image/png" sizes="16x16" />
+    <link rel="apple-touch-icon" href={~p"/images/logos/logo-black-180.png"} sizes="180x180" />
     <.live_title default="Storyarn" suffix=" · Storyarn">
       {assigns[:page_title]}
     </.live_title>

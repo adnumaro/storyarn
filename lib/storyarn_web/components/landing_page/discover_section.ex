@@ -95,8 +95,8 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
 
   defp section_header(assigns) do
     ~H"""
-    <div class="grid gap-4 mb-8 max-w-[56rem]">
-      <h2 class="text-[clamp(2.2rem,3vw,3.8rem)] leading-[0.97] tracking-[-0.06em] font-bold max-w-[16ch] text-base-content">
+    <div class="grid gap-4 mb-8 max-w-[56rem]" data-reveal>
+      <h2 class="text-[clamp(2.2rem,3vw,3.8rem)] leading-[0.97] tracking-[-0.06em] font-bold text-base-content">
         {widont(@title)}
       </h2>
       <p class="max-w-[36rem] text-base-content/60 leading-relaxed text-base">
@@ -215,7 +215,7 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
       </div>
 
       <div class="lp-discover-step-copy">
-        <h3 class="text-[clamp(1.85rem,2.4vw,2.7rem)] leading-[0.98] tracking-[-0.04em] font-bold text-base-content max-w-[16ch]">
+        <h3 class="text-[clamp(1.85rem,2.4vw,2.7rem)] leading-[0.98] tracking-[-0.04em] font-bold text-base-content">
           {widont(@slide.title)}
         </h3>
         <p class="max-w-[34rem] text-base-content/60 leading-relaxed text-base">
@@ -252,184 +252,140 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
 
   defp discover_preview_visual(%{slide_id: "dashboard-overview"} = assigns) do
     ~H"""
-    <div class="lp-visual-surface lp-visual-dashboard">
-      <div class="lp-visual-metric-grid">
-        <div class="lp-visual-metric is-primary">
-          <strong>126</strong>
-          <span>Vars</span>
-        </div>
-        <div class="lp-visual-metric">
-          <strong>91</strong>
-          <span>Flows</span>
-        </div>
-        <div class="lp-visual-metric">
-          <strong>81%</strong>
-          <span>Loc</span>
-        </div>
-      </div>
-      <div class="lp-visual-bars">
-        <div class="lp-visual-bar" style="--bar-width: 88%;"></div>
-        <div class="lp-visual-bar" style="--bar-width: 64%;"></div>
-        <div class="lp-visual-bar" style="--bar-width: 76%;"></div>
-      </div>
-      <div class="lp-visual-chip-row">
-        <span class="lp-visual-chip">Warnings</span>
-        <span class="lp-visual-chip">Coverage</span>
-        <span class="lp-visual-chip">Readiness</span>
-      </div>
+    <div class="lp-screenshot-placeholder">
+      <.icon name="image" class="size-8 opacity-40" />
+      <strong>{gettext("Project dashboard")}</strong>
+      <span>
+        {gettext(
+          "Screenshot: Project dashboard with metric cards (variables, flows, coverage, exports), localization progress bars, and recent activity. Dark mode, ~720×400px."
+        )}
+      </span>
     </div>
     """
   end
 
   defp discover_preview_visual(%{slide_id: "sheets-inheritance"} = assigns) do
     ~H"""
-    <div class="lp-visual-surface lp-visual-tree">
-      <div class="lp-visual-node is-root">Captain</div>
-      <div class="lp-visual-tree-branch">
-        <div class="lp-visual-node">Harbor</div>
-        <div class="lp-visual-node">Act II</div>
-      </div>
-      <div class="lp-visual-tree-branch is-small">
-        <div class="lp-visual-node is-accent">Trust +2</div>
-        <div class="lp-visual-node is-accent">Gate open</div>
-        <div class="lp-visual-node is-accent">Night route</div>
-      </div>
+    <div class="lp-screenshot-placeholder">
+      <.icon name="image" class="size-8 opacity-40" />
+      <strong>{gettext("Sheet inheritance")}</strong>
+      <span>
+        {gettext(
+          "Screenshot: Sheet tree sidebar showing parent/child hierarchy, with a child sheet open displaying inherited blocks and overrides highlighted. Dark mode, ~720×400px."
+        )}
+      </span>
     </div>
     """
   end
 
   defp discover_preview_visual(%{slide_id: "sheets-formulas"} = assigns) do
     ~H"""
-    <div class="lp-visual-surface lp-visual-table-grid">
-      <div class="lp-visual-table-row is-head">
-        <span>HP</span>
-        <span>Trust</span>
-        <span>Price</span>
-        <span>Weight</span>
-      </div>
-      <div class="lp-visual-table-row">
-        <span>12</span>
-        <span class="is-highlight">=REP+2</span>
-        <span>45</span>
-        <span>3.2</span>
-      </div>
-      <div class="lp-visual-table-row">
-        <span>18</span>
-        <span>9</span>
-        <span class="is-highlight">=BASE*1.4</span>
-        <span>7.8</span>
-      </div>
-      <div class="lp-visual-table-summary">
-        <div>Sheet table</div>
-        <div>Live formulas</div>
-      </div>
+    <div class="lp-screenshot-placeholder">
+      <.icon name="image" class="size-8 opacity-40" />
+      <strong>{gettext("Cell formulas")}</strong>
+      <span>
+        {gettext(
+          "Screenshot: Sheet table block with formula cells visible (e.g. =REP+2, =BASE*1.4), showing computed values alongside raw data. Dark mode, ~720×400px."
+        )}
+      </span>
     </div>
     """
   end
 
   defp discover_preview_visual(%{slide_id: "sheets-backlinks"} = assigns) do
     ~H"""
-    <div class="lp-visual-surface lp-visual-backlinks">
-      <div class="lp-visual-backlink-center">Captain Ilya</div>
-      <div class="lp-visual-backlink-ring">
-        <span class="lp-visual-chip">Flow 12</span>
-        <span class="lp-visual-chip">Scene 03</span>
-        <span class="lp-visual-chip">SP 02</span>
-        <span class="lp-visual-chip">Quest A</span>
-      </div>
+    <div class="lp-screenshot-placeholder">
+      <.icon name="image" class="size-8 opacity-40" />
+      <strong>{gettext("Entity backlinks")}</strong>
+      <span>
+        {gettext(
+          "Screenshot: Sheet detail view with backlinks panel open, showing all flows, scenes, and screenplays that reference this entity. Dark mode, ~720×400px."
+        )}
+      </span>
     </div>
     """
   end
 
   defp discover_preview_visual(%{slide_id: "flows-node-graph"} = assigns) do
     ~H"""
-    <div class="lp-visual-surface lp-visual-flow-graph">
-      <div class="lp-visual-flow-line a"></div>
-      <div class="lp-visual-flow-line b"></div>
-      <div class="lp-visual-flow-line c"></div>
-      <div class="lp-visual-flow-node n1">Dialogue</div>
-      <div class="lp-visual-flow-node n2">Check</div>
-      <div class="lp-visual-flow-node n3">Choice</div>
-      <div class="lp-visual-flow-node n4">Jump</div>
+    <div class="lp-screenshot-placeholder">
+      <.icon name="image" class="size-8 opacity-40" />
+      <strong>{gettext("Flow node graph")}</strong>
+      <span>
+        {gettext(
+          "Screenshot: Flow editor canvas with dialogue, condition, choice, and subflow nodes connected. Show a branching conversation with multiple paths. Dark mode, ~720×400px."
+        )}
+      </span>
     </div>
     """
   end
 
   defp discover_preview_visual(%{slide_id: "flows-story-player"} = assigns) do
     ~H"""
-    <div class="lp-visual-surface lp-visual-story-player">
-      <div class="lp-visual-bubble is-primary">The gate is still closed.</div>
-      <div class="lp-visual-bubble">Show permit</div>
-      <div class="lp-visual-bubble">Ask for a favor</div>
-      <div class="lp-visual-choice-row">
-        <span class="lp-visual-choice">Permit</span>
-        <span class="lp-visual-choice">Bribe</span>
-        <span class="lp-visual-choice">Leave</span>
-      </div>
+    <div class="lp-screenshot-placeholder">
+      <.icon name="image" class="size-8 opacity-40" />
+      <strong>{gettext("Story Player")}</strong>
+      <span>
+        {gettext(
+          "Screenshot: Story Player running a flow with dialogue bubbles, speaker name, and choice buttons visible. Fullscreen player mode. Dark mode, ~720×400px."
+        )}
+      </span>
     </div>
     """
   end
 
   defp discover_preview_visual(%{slide_id: "flows-debug-mode"} = assigns) do
     ~H"""
-    <div class="lp-visual-surface lp-visual-debug">
-      <div class="lp-visual-debug-canvas">
-        <div class="lp-visual-flow-node n1 is-active">Check</div>
-        <div class="lp-visual-flow-node n2">Branch</div>
-      </div>
-      <div class="lp-visual-debug-panel">
-        <div class="lp-visual-debug-row">
-          <span>rep_guard</span>
-          <strong>4</strong>
-        </div>
-        <div class="lp-visual-debug-row">
-          <span>permit</span>
-          <strong>true</strong>
-        </div>
-        <div class="lp-visual-debug-row">
-          <span>result</span>
-          <strong>pass</strong>
-        </div>
-      </div>
+    <div class="lp-screenshot-placeholder">
+      <.icon name="image" class="size-8 opacity-40" />
+      <strong>{gettext("Debug mode")}</strong>
+      <span>
+        {gettext(
+          "Screenshot: Flow editor in debug mode with the debug panel open showing variable values, condition results (pass/fail), and execution history. Dark mode, ~720×400px."
+        )}
+      </span>
     </div>
     """
   end
 
   defp discover_preview_visual(%{slide_id: "scenes-layers"} = assigns) do
     ~H"""
-    <div class="lp-visual-surface lp-visual-scene lp-visual-scene-layers">
-      <div class="lp-visual-layer-chip">Base</div>
-      <div class="lp-visual-layer-chip is-active">Fog</div>
-      <div class="lp-visual-layer-chip">Signals</div>
-      <div class="lp-visual-scene-map"></div>
-      <div class="lp-visual-fog"></div>
+    <div class="lp-screenshot-placeholder">
+      <.icon name="image" class="size-8 opacity-40" />
+      <strong>{gettext("Scene layers")}</strong>
+      <span>
+        {gettext(
+          "Screenshot: Scene editor with layers panel visible, showing base map layer, fog of war layer toggled on, and a signals layer. Canvas with background image. Dark mode, ~720×400px."
+        )}
+      </span>
     </div>
     """
   end
 
   defp discover_preview_visual(%{slide_id: "scenes-connected"} = assigns) do
     ~H"""
-    <div class="lp-visual-surface lp-visual-scene lp-visual-scene-connected">
-      <div class="lp-visual-scene-map is-centered"></div>
-      <span class="lp-visual-chip is-floating a">Sheet</span>
-      <span class="lp-visual-chip is-floating b">Flow</span>
-      <span class="lp-visual-chip is-floating c">Quest</span>
+    <div class="lp-screenshot-placeholder">
+      <.icon name="image" class="size-8 opacity-40" />
+      <strong>{gettext("Connected scene data")}</strong>
+      <span>
+        {gettext(
+          "Screenshot: Scene canvas with pins that show connected sheet references, flow triggers, and quest state links in tooltips or side panel. Dark mode, ~720×400px."
+        )}
+      </span>
     </div>
     """
   end
 
   defp discover_preview_visual(%{slide_id: "scenes-pins-zones"} = assigns) do
     ~H"""
-    <div class="lp-visual-surface lp-visual-scene lp-visual-scene-interaction">
-      <div class="lp-visual-scene-map"></div>
-      <div class="lp-visual-zone a"></div>
-      <div class="lp-visual-zone b"></div>
-      <div class="lp-visual-pin a"></div>
-      <div class="lp-visual-pin b"></div>
-      <div class="lp-visual-action-panel">
-        <span>Pin open</span>
-        <strong>if trust >= 4</strong>
-      </div>
+    <div class="lp-screenshot-placeholder">
+      <.icon name="image" class="size-8 opacity-40" />
+      <strong>{gettext("Pins and zones")}</strong>
+      <span>
+        {gettext(
+          "Screenshot: Scene canvas with drawn zones, placed pins, and an open pin/zone config panel showing actions, conditions, and flow triggers. Dark mode, ~720×400px."
+        )}
+      </span>
     </div>
     """
   end
@@ -520,9 +476,7 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
               ),
             items: [
               gettext("Conversations, state changes, and exits — modeled in one surface."),
-              gettext(
-                "Logic stays connected to project data instead of living in fragments."
-              ),
+              gettext("Logic stays connected to project data instead of living in fragments."),
               gettext("From quick sketches to production-scale dialogue graphs.")
             ]
           },
@@ -537,9 +491,7 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
             items: [
               gettext("Walk through choices and branches in the same workspace."),
               gettext("Validate pacing and tone before anything reaches the engine."),
-              gettext(
-                "Turn authored flows into something the whole team can experience."
-              )
+              gettext("Turn authored flows into something the whole team can experience.")
             ]
           },
           %{
@@ -552,9 +504,7 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
               ),
             items: [
               gettext("What passed, what failed, and what changed — all on screen."),
-              gettext(
-                "Branching bugs become reviewable by designers, not just engineers."
-              ),
+              gettext("Branching bugs become reviewable by designers, not just engineers."),
               gettext("Hidden logic becomes an inspectable, shareable system.")
             ]
           }
@@ -588,9 +538,7 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
               ),
             items: [
               gettext("Story logic, references, and world data — on the map surface."),
-              gettext(
-                "No hand-maintained links between spatial design and narrative logic."
-              ),
+              gettext("No hand-maintained links between spatial design and narrative logic."),
               gettext("Scenes become connected production assets, not isolated boards.")
             ]
           },

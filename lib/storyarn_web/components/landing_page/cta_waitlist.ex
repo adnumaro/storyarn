@@ -12,6 +12,7 @@ defmodule StoryarnWeb.Components.LandingPage.CtaWaitlist do
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
         <div
           class="lp-cta-band relative overflow-hidden p-10 rounded-[2rem] border border-base-content/8 bg-base-200/80"
+          data-reveal
           id="waitlist"
         >
           <div class="relative z-1 flex flex-col lg:flex-row items-end justify-between gap-6">
@@ -41,9 +42,9 @@ defmodule StoryarnWeb.Components.LandingPage.CtaWaitlist do
                   name="waitlist[email]"
                   placeholder={gettext("you@studio.com")}
                   required
-                  class="input input-bordered flex-1 min-w-[200px] rounded-full bg-base-100"
+                  class="input input-bordered flex-1 min-w-[200px] bg-base-100"
                 />
-                <button type="submit" class="btn btn-primary rounded-full gap-2">
+                <button type="submit" class="btn btn-primary gap-2">
                   {gettext("Join the waitlist")}
                   <.icon name="arrow-right" class="size-4" />
                 </button>
@@ -52,7 +53,6 @@ defmodule StoryarnWeb.Components.LandingPage.CtaWaitlist do
                 {gettext("No spam. We'll only email you when it's time.")}
               </p>
             </div>
-
           </div>
         </div>
       </div>

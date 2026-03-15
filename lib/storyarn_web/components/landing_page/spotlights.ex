@@ -10,7 +10,7 @@ defmodule StoryarnWeb.Components.LandingPage.Spotlights do
     ~H"""
     <section class="py-16 lg:py-20 scroll-mt-32" id="exploration-mode">
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
-        <div class="p-8 rounded-[2rem] border border-base-content/8 bg-base-200/60">
+        <div class="p-8 rounded-[2rem] border border-base-content/8 bg-base-200/60" data-reveal>
           <div class="grid grid-cols-1 lg:grid-cols-[1.1fr_minmax(320px,0.72fr)] gap-6 items-start">
             <div class="grid gap-4">
               <span class="text-base-content/70 text-xs font-bold tracking-widest uppercase">
@@ -38,9 +38,7 @@ defmodule StoryarnWeb.Components.LandingPage.Spotlights do
                   )}
                 </li>
                 <li class="p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3 text-base-content/70 leading-relaxed">
-                  {gettext(
-                    "Useful for internal demos, publisher pitches, and early playtest loops."
-                  )}
+                  {gettext("Useful for internal demos, publisher pitches, and early playtest loops.")}
                 </li>
               </ul>
             </div>
@@ -52,8 +50,14 @@ defmodule StoryarnWeb.Components.LandingPage.Spotlights do
           </div>
 
           <div class="lp-exploration-shell mt-6">
-            <div class="lp-exploration-map">
-              <div class="lp-exploration-zone"></div>
+            <div class="lp-screenshot-placeholder">
+              <.icon name="image" class="size-8 opacity-40" />
+              <strong>{gettext("Scene exploration mode")}</strong>
+              <span>
+                {gettext(
+                  "Screenshot: Scene canvas with background image, drawn zones, interactive pins, and open side panel. Dark mode, ~1280×436px."
+                )}
+              </span>
             </div>
           </div>
         </div>
@@ -66,7 +70,7 @@ defmodule StoryarnWeb.Components.LandingPage.Spotlights do
     ~H"""
     <section class="py-16 lg:py-20 scroll-mt-32" id="version-history">
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
-        <div class="p-8 rounded-[2rem] border border-base-content/8 bg-base-200/60">
+        <div class="p-8 rounded-[2rem] border border-base-content/8 bg-base-200/60" data-reveal>
           <div class="grid grid-cols-1 lg:grid-cols-[minmax(320px,0.72fr)_1.1fr] gap-6 items-start">
             <.version_visual />
             <.version_copy />
@@ -79,53 +83,14 @@ defmodule StoryarnWeb.Components.LandingPage.Spotlights do
 
   defp version_visual(assigns) do
     ~H"""
-    <div class="lp-version-shot">
-      <div class="lp-version-overlay">
-        <div class="w-full max-w-[360px] p-4 rounded-2xl border border-base-content/8 bg-base-300/90 backdrop-blur">
-          <div class="flex items-center justify-between gap-3 mb-3.5">
-            <strong class="text-base text-base-content">{gettext("Version History")}</strong>
-          </div>
-          <div class="grid gap-3">
-            <.version_entry
-              title={gettext("Restored from v8")}
-              tag="v11"
-              line1={gettext("Mar 12, 2026 at 15:59")}
-            />
-            <.version_entry
-              title={gettext("Before restore to v8")}
-              tag="v10"
-              line1={gettext("Auto snapshot before destructive restore")}
-              line2={gettext("Safe rollback path preserved")}
-            />
-            <.version_entry
-              title={gettext("Draft checkpoint")}
-              tag={gettext("Draft")}
-              line1={gettext("Private branch for scene edits and experimentation")}
-              line2={gettext("Ready to compare, keep or discard")}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-    """
-  end
-
-  attr :title, :string, required: true
-  attr :tag, :string, required: true
-  attr :line1, :string, required: true
-  attr :line2, :string, default: nil
-
-  defp version_entry(assigns) do
-    ~H"""
-    <div class="grid gap-2 p-3.5 rounded-2xl border border-base-content/6 bg-base-content/3">
-      <div class="flex items-center gap-2.5">
-        <span class="w-3.5 h-3.5 rounded-full bg-accent/20 shadow-[0_0_0_1px_var(--color-accent)/22]">
-        </span>
-        <strong class="text-sm text-base-content">{@title}</strong>
-        <span class="badge badge-xs badge-outline border-accent/30 text-accent">{@tag}</span>
-      </div>
-      <span class="text-base-content/50 text-xs">{@line1}</span>
-      <small :if={@line2} class="text-base-content/40 text-xs">{@line2}</small>
+    <div class="lp-screenshot-placeholder" style="min-height: 360px;">
+      <.icon name="image" class="size-8 opacity-40" />
+      <strong>{gettext("Version history panel")}</strong>
+      <span>
+        {gettext(
+          "Screenshot: Version history panel open over a flow or scene editor, showing named versions (v11, v10, Draft), restore actions, and timestamps. Dark mode, ~480×360px."
+        )}
+      </span>
     </div>
     """
   end

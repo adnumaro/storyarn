@@ -42,7 +42,7 @@ defmodule StoryarnWeb.Components.LandingPage.WorkflowGrid do
       }
     ]
 
-    assigns = assign(assigns, :steps, steps)
+    assigns = assign(assigns, :steps, Enum.with_index(steps))
 
     ~H"""
     <section class="py-16 lg:py-20 scroll-mt-32" id="workflow">
@@ -58,8 +58,10 @@ defmodule StoryarnWeb.Components.LandingPage.WorkflowGrid do
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <article
-            :for={step <- @steps}
+            :for={{step, idx} <- @steps}
             class="relative pt-16 px-5 pb-6 rounded-3xl border border-base-content/8 bg-base-200/60"
+            data-reveal
+            data-reveal-delay={"#{idx * 100}"}
           >
             <span class="absolute left-5 top-5 text-base-content/20 text-3xl font-extrabold tracking-tight">
               {step.num}
@@ -78,8 +80,8 @@ defmodule StoryarnWeb.Components.LandingPage.WorkflowGrid do
 
   defp section_header(assigns) do
     ~H"""
-    <div class="grid gap-4 mb-8 max-w-[56rem]">
-      <h2 class="text-[clamp(2.2rem,3vw,3.8rem)] leading-[0.97] tracking-[-0.06em] font-bold max-w-[16ch] text-base-content">
+    <div class="grid gap-4 mb-8 max-w-[56rem]" data-reveal>
+      <h2 class="text-[clamp(2.2rem,3vw,3.8rem)] leading-[0.97] tracking-[-0.06em] font-bold text-base-content">
         {widont(@title)}
       </h2>
       <p class="max-w-[36rem] text-base-content/60 leading-relaxed text-base">

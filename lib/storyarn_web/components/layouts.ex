@@ -4,7 +4,7 @@ defmodule StoryarnWeb.Layouts do
   used by your application.
   """
   use StoryarnWeb, :html
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   import StoryarnWeb.Components.FocusLayout
   import StoryarnWeb.Components.MemberComponents, only: [user_avatar: 1]
@@ -23,8 +23,12 @@ defmodule StoryarnWeb.Layouts do
 
   defp app_logo(assigns) do
     ~H"""
-    <img src={~p"/images/logo-light-64.png"} alt="Storyarn" class={[@class, "dark:hidden"]} />
-    <img src={~p"/images/logo-dark-64.png"} alt="Storyarn" class={[@class, "hidden dark:block"]} />
+    <img src={~p"/images/logos/logo-white-48.png"} alt="Storyarn" class={[@class, "dark:hidden"]} />
+    <img
+      src={~p"/images/logos/logo-black-48.png"}
+      alt="Storyarn"
+      class={[@class, "hidden dark:block"]}
+    />
     """
   end
 
@@ -557,9 +561,17 @@ defmodule StoryarnWeb.Layouts do
       >
         <div class="flex w-full items-center gap-4 px-4 sm:px-5 lg:px-6">
           <div class="flex-none">
-            <.link navigate="/" class="flex items-center gap-2">
-              <.app_logo class="w-8 h-8" />
-              <span class="text-xl brand-logotype">Storyarn</span>
+            <.link navigate="/" class="flex items-center">
+              <img
+                src={~p"/images/logos/logo-name-black.png"}
+                alt="Storyarn"
+                class="h-[42px] w-auto dark:hidden"
+              />
+              <img
+                src={~p"/images/logos/logo-name-white.png"}
+                alt="Storyarn"
+                class="hidden h-[42px] w-auto dark:block"
+              />
             </.link>
           </div>
           <%!-- Desktop nav --%>
@@ -623,9 +635,12 @@ defmodule StoryarnWeb.Layouts do
           <aside class="flex min-h-screen w-full justify-center bg-base-100/98 px-5 pb-8 pt-5">
             <div class="flex min-h-full w-full max-w-[420px] flex-col">
               <div class="flex items-center justify-between gap-4">
-                <.link navigate="/" class="flex items-center gap-3 text-base-content">
-                  <.app_logo class="h-8 w-8" />
-                  <span class="text-xl brand-logotype">Storyarn</span>
+                <.link navigate="/" class="flex items-center text-base-content">
+                  <img
+                    src={~p"/images/logos/logo-name-white.png"}
+                    alt="Storyarn"
+                    class="h-[42px] w-auto"
+                  />
                 </.link>
                 <button
                   phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}

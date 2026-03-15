@@ -15,23 +15,12 @@ defmodule StoryarnWeb.Components.LandingPage.LandingFooter do
         <div class="rounded-[2rem] border border-base-content/8 bg-base-200/60 px-6 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.16)] sm:px-8 lg:px-10">
           <div class="grid gap-8 lg:grid-cols-[1.35fr_0.95fr_0.85fr] lg:items-start">
             <div class="grid gap-4 max-w-[30rem]">
-              <.link navigate="/" class="flex items-center gap-3 text-base-content">
+              <.link navigate="/" class="flex items-center text-base-content">
                 <img
-                  src={~p"/images/logo-light-64.png"}
+                  src={~p"/images/logos/logo-name-white.png"}
                   alt="Storyarn"
-                  class="h-10 w-10 dark:hidden"
+                  class="h-[42px] w-auto"
                 />
-                <img
-                  src={~p"/images/logo-dark-64.png"}
-                  alt="Storyarn"
-                  class="hidden h-10 w-10 dark:block"
-                />
-                <div>
-                  <strong class="block text-2xl brand-logotype leading-none">Storyarn</strong>
-                  <span class="mt-1 block text-sm text-base-content/55">
-                    {gettext("Narrative design platform")}
-                  </span>
-                </div>
               </.link>
 
               <p class="max-w-[28rem] text-sm leading-relaxed text-base-content/58">
