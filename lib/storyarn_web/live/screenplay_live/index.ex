@@ -2,8 +2,9 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  use StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.Authorize
 
+  import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
   alias Storyarn.Projects
@@ -248,7 +249,7 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
   end
 
   def handle_event("delete", %{"id" => screenplay_id}, socket) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       screenplay = Screenplays.get_screenplay!(socket.assigns.project.id, screenplay_id)
 
       case Screenplays.delete_screenplay(screenplay) do
@@ -270,7 +271,7 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
   end
 
   def handle_event("create_screenplay", _params, socket) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       case Screenplays.create_screenplay(socket.assigns.project, %{
              name: dgettext("screenplays", "Untitled")
            }) do
@@ -292,7 +293,7 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
   end
 
   def handle_event("create_child_screenplay", %{"parent-id" => parent_id}, socket) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       attrs = %{name: dgettext("screenplays", "Untitled"), parent_id: parent_id}
 
       case Screenplays.create_screenplay(socket.assigns.project, attrs) do
@@ -318,7 +319,7 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
         %{"item_id" => item_id, "new_parent_id" => new_parent_id, "position" => position},
         socket
       ) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       screenplay = Screenplays.get_screenplay!(socket.assigns.project.id, item_id)
       new_parent_id = MapUtils.parse_int(new_parent_id)
       position = MapUtils.parse_int(position) || 0

@@ -4,6 +4,8 @@ defmodule StoryarnWeb.Components.LandingPage.CtaWaitlist do
   """
   use StoryarnWeb, :html
 
+  import StoryarnWeb.Components.TextComponents, only: [widont: 1]
+
   def cta_waitlist(assigns) do
     ~H"""
     <section class="py-8 pb-24 scroll-mt-32" id="cta">

@@ -6,7 +6,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.TreeHandlers do
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_navigate: 2, push_patch: 2, put_flash: 3]
   use Gettext, backend: StoryarnWeb.Gettext
-  use StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Screenplays
 
@@ -64,7 +64,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.TreeHandlers do
   end
 
   def do_create_screenplay(socket, extra_attrs) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       attrs = Map.merge(%{name: dgettext("screenplays", "Untitled")}, extra_attrs)
 
       case Screenplays.create_screenplay(socket.assigns.project, attrs) do

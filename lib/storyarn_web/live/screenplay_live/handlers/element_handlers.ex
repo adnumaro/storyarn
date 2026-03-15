@@ -12,15 +12,14 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
   alias Storyarn.Sheets
 
   alias StoryarnWeb.ScreenplayLive.Helpers.SocketHelpers
-  import SocketHelpers
 
   # Title page / dual dialogue field validation (canonical source: SocketHelpers)
-  @valid_dual_sides SocketHelpers.valid_dual_sides()
-  @valid_dual_fields SocketHelpers.valid_dual_fields()
-  @valid_title_fields SocketHelpers.valid_title_fields()
+  @valid_dual_sides ~w(left right)
+  @valid_dual_fields ~w(character parenthetical dialogue)
+  @valid_title_fields ~w(title credit author draft_date contact)
 
   def do_delete_element(socket, id) do
-    case find_element(socket, id) do
+    case SocketHelpers.find_element(socket, id) do
       nil ->
         {:noreply, socket}
 
@@ -37,7 +36,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
       {:ok, _} ->
         reloaded = Screenplays.list_elements(socket.assigns.screenplay.id)
 
-        socket = assign_elements(socket, reloaded)
+        socket = SocketHelpers.assign_elements(socket, reloaded)
 
         socket =
           if prev do
@@ -55,7 +54,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
   end
 
   def do_update_screenplay_condition(socket, id, condition) do
-    case find_element(socket, id) do
+    case SocketHelpers.find_element(socket, id) do
       nil ->
         {:noreply, socket}
 
@@ -67,8 +66,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
           {:ok, updated} ->
             {:noreply,
              socket
-             |> update_element_in_list(updated)
-             |> push_element_data_updated(updated)}
+             |> SocketHelpers.update_element_in_list(updated)
+             |> SocketHelpers.push_element_data_updated(updated)}
 
           {:error, _} ->
             {:noreply,
@@ -78,7 +77,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
   end
 
   def do_update_screenplay_instruction(socket, id, assignments) do
-    case find_element(socket, id) do
+    case SocketHelpers.find_element(socket, id) do
       nil ->
         {:noreply, socket}
 
@@ -90,8 +89,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
           {:ok, updated} ->
             {:noreply,
              socket
-             |> update_element_in_list(updated)
-             |> push_element_data_updated(updated)}
+             |> SocketHelpers.update_element_in_list(updated)
+             |> SocketHelpers.push_element_data_updated(updated)}
 
           {:error, _} ->
             {:noreply,
@@ -101,7 +100,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
   end
 
   def do_add_response_choice(socket, id) do
-    case find_element(socket, id) do
+    case SocketHelpers.find_element(socket, id) do
       nil ->
         {:noreply, socket}
 
@@ -115,8 +114,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
           {:ok, updated} ->
             {:noreply,
              socket
-             |> update_element_in_list(updated)
-             |> push_element_data_updated(updated)}
+             |> SocketHelpers.update_element_in_list(updated)
+             |> SocketHelpers.push_element_data_updated(updated)}
 
           {:error, _} ->
             {:noreply,
@@ -126,7 +125,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
   end
 
   def do_remove_response_choice(socket, id, choice_id) do
-    case find_element(socket, id) do
+    case SocketHelpers.find_element(socket, id) do
       nil ->
         {:noreply, socket}
 
@@ -139,8 +138,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
           {:ok, updated} ->
             {:noreply,
              socket
-             |> update_element_in_list(updated)
-             |> push_element_data_updated(updated)}
+             |> SocketHelpers.update_element_in_list(updated)
+             |> SocketHelpers.push_element_data_updated(updated)}
 
           {:error, _} ->
             {:noreply,
@@ -172,7 +171,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
   end
 
   def do_set_character_sheet(socket, id, sheet_id) do
-    case find_element(socket, id) do
+    case SocketHelpers.find_element(socket, id) do
       nil ->
         {:noreply, socket}
 
@@ -182,7 +181,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
   end
 
   def persist_character_sheet(socket, element, sheet_id) do
-    sheet_id = parse_int(sheet_id)
+    sheet_id = SocketHelpers.parse_int(sheet_id)
     sheet = sheet_id && Map.get(socket.assigns.sheets_map, sheet_id)
     name = if sheet, do: String.upcase(sheet.name), else: element.content
     data = Map.put(element.data || %{}, "sheet_id", sheet_id)
@@ -190,7 +189,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
     case Screenplays.update_element(element, %{content: name, data: data}) do
       {:ok, updated} ->
         Sheets.update_screenplay_element_references(updated)
-        {:noreply, update_element_in_list(socket, updated)}
+        {:noreply, SocketHelpers.update_element_in_list(socket, updated)}
 
       {:error, _} ->
         {:noreply,
@@ -200,7 +199,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
 
   def do_update_dual_dialogue(socket, id, side, field, value)
       when side in @valid_dual_sides and field in @valid_dual_fields do
-    case find_element(socket, id) do
+    case SocketHelpers.find_element(socket, id) do
       nil ->
         {:noreply, socket}
 
@@ -218,7 +217,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
     sanitized_value =
       case field do
         f when f in ~w(dialogue parenthetical) -> Screenplays.content_sanitize_html(value)
-        "character" -> sanitize_plain_text(value)
+        "character" -> SocketHelpers.sanitize_plain_text(value)
       end
 
     updated_side = Map.put(side_data, field, sanitized_value)
@@ -226,8 +225,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
 
     case Screenplays.update_element(element, %{data: updated_data}) do
       {:ok, updated} ->
-        socket = update_element_in_list(socket, updated)
-        {:noreply, push_element_data_updated(socket, updated)}
+        socket = SocketHelpers.update_element_in_list(socket, updated)
+        {:noreply, SocketHelpers.push_element_data_updated(socket, updated)}
 
       {:error, _} ->
         {:noreply,
@@ -236,7 +235,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
   end
 
   def do_toggle_dual_parenthetical(socket, id, side) when side in @valid_dual_sides do
-    case find_element(socket, id) do
+    case SocketHelpers.find_element(socket, id) do
       nil ->
         {:noreply, socket}
 
@@ -253,8 +252,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
 
         case Screenplays.update_element(element, %{data: updated_data}) do
           {:ok, updated} ->
-            socket = update_element_in_list(socket, updated)
-            {:noreply, push_element_data_updated(socket, updated)}
+            socket = SocketHelpers.update_element_in_list(socket, updated)
+            {:noreply, SocketHelpers.push_element_data_updated(socket, updated)}
 
           {:error, _} ->
             {:noreply,
@@ -267,20 +266,20 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
 
   def do_update_title_page(socket, id, field, value)
       when field in @valid_title_fields do
-    case find_element(socket, id) do
+    case SocketHelpers.find_element(socket, id) do
       nil ->
         {:noreply, socket}
 
       element ->
         data = element.data || %{}
-        updated_data = Map.put(data, field, sanitize_plain_text(value))
+        updated_data = Map.put(data, field, SocketHelpers.sanitize_plain_text(value))
 
         case Screenplays.update_element(element, %{data: updated_data}) do
           {:ok, updated} ->
             {:noreply,
              socket
-             |> update_element_in_list(updated)
-             |> push_element_data_updated(updated)}
+             |> SocketHelpers.update_element_in_list(updated)
+             |> SocketHelpers.push_element_data_updated(updated)}
 
           {:error, _} ->
             {:noreply,
@@ -292,7 +291,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
   def do_update_title_page(socket, _id, _field, _value), do: {:noreply, socket}
 
   def update_choice_field(socket, element_id, choice_id, update_fn) do
-    case find_element(socket, element_id) do
+    case SocketHelpers.find_element(socket, element_id) do
       nil ->
         {:noreply, socket}
 
@@ -315,8 +314,8 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
       {:ok, updated} ->
         {:noreply,
          socket
-         |> update_element_in_list(updated)
-         |> push_element_data_updated(updated)}
+         |> SocketHelpers.update_element_in_list(updated)
+         |> SocketHelpers.push_element_data_updated(updated)}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("screenplays", "Could not update choice."))}
@@ -342,7 +341,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
   end
 
   def handle_navigate_to_sheet(%{"sheet_id" => sheet_id}, socket) do
-    sheet_id = parse_int(sheet_id)
+    sheet_id = SocketHelpers.parse_int(sheet_id)
     sheet = sheet_id && Map.get(socket.assigns.sheets_map, sheet_id)
 
     if sheet do

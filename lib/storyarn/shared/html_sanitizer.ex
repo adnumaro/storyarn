@@ -80,7 +80,6 @@ defmodule Storyarn.Shared.HtmlSanitizer do
   defp safe_uri?(value) do
     trimmed = value |> String.trim() |> String.downcase()
 
-    # Empty or relative URIs are safe
     trimmed == "" or
       not String.contains?(trimmed, ":") or
       Enum.any?(@safe_uri_schemes, &String.starts_with?(trimmed, &1))

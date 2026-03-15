@@ -2,8 +2,8 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  use StoryarnWeb.Helpers.Authorize
-  use StoryarnWeb.Live.Shared.RestorationHandlers
+  alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   alias Storyarn.Collaboration
   alias Storyarn.Projects
@@ -119,7 +119,8 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
         if connected?(socket), do: Collaboration.subscribe_restoration(project.id)
 
-        {can_edit, restoration_banner} = check_restoration_lock(project.id, can_edit)
+        {can_edit, restoration_banner} =
+          RestorationHandlers.check_restoration_lock(project.id, can_edit)
 
         {:ok,
          socket
@@ -215,7 +216,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("delete_element", %{"id" => id}, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_delete_element(socket, id) |> broadcast_screenplay_change()
     end)
   end
@@ -225,7 +226,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("sync_editor_content", %{"elements" => client_elements}, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       EditorHandlers.do_sync_editor_content(socket, client_elements)
       |> broadcast_screenplay_change()
     end)
@@ -240,7 +241,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "condition" => condition},
         socket
       ) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_update_screenplay_condition(socket, id, condition)
       |> broadcast_screenplay_change()
     end)
@@ -251,14 +252,14 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "assignments" => assignments},
         socket
       ) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_update_screenplay_instruction(socket, id, assignments)
       |> broadcast_screenplay_change()
     end)
   end
 
   def handle_event("add_response_choice", %{"element-id" => id}, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_add_response_choice(socket, id) |> broadcast_screenplay_change()
     end)
   end
@@ -268,7 +269,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "choice-id" => choice_id},
         socket
       ) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_remove_response_choice(socket, id, choice_id)
       |> broadcast_screenplay_change()
     end)
@@ -279,7 +280,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "choice-id" => choice_id, "value" => text},
         socket
       ) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_update_response_choice_text(socket, id, choice_id, text)
       |> broadcast_screenplay_change()
     end)
@@ -290,7 +291,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "choice-id" => choice_id},
         socket
       ) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_toggle_choice_condition(socket, id, choice_id)
       |> broadcast_screenplay_change()
     end)
@@ -301,7 +302,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "choice-id" => choice_id},
         socket
       ) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_toggle_choice_instruction(socket, id, choice_id)
       |> broadcast_screenplay_change()
     end)
@@ -312,7 +313,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "choice-id" => choice_id, "condition" => condition},
         socket
       ) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.update_choice_field(socket, id, choice_id, fn choice ->
         Map.put(choice, "condition", Storyarn.Flows.condition_sanitize(condition))
       end)
@@ -325,7 +326,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "choice-id" => choice_id, "assignments" => assignments},
         socket
       ) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.update_choice_field(socket, id, choice_id, fn choice ->
         Map.put(choice, "instruction", Storyarn.Flows.instruction_sanitize(assignments))
       end)
@@ -342,7 +343,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "side" => side, "field" => field, "value" => value},
         socket
       ) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_update_dual_dialogue(socket, id, side, field, value)
       |> broadcast_screenplay_change()
     end)
@@ -353,7 +354,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "side" => side},
         socket
       ) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_toggle_dual_parenthetical(socket, id, side)
       |> broadcast_screenplay_change()
     end)
@@ -368,7 +369,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => id, "field" => field, "value" => value},
         socket
       ) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_update_title_page(socket, id, field, value)
       |> broadcast_screenplay_change()
     end)
@@ -379,7 +380,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("import_fountain", %{"content" => content}, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       FountainImportHandlers.do_import_fountain(socket, content)
       |> broadcast_screenplay_change()
     end)
@@ -394,7 +395,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => eid, "choice-id" => cid},
         socket
       ) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       LinkedPageHandlers.do_create_linked_page(socket, eid, cid)
       |> broadcast_screenplay_change()
     end)
@@ -413,14 +414,14 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"element-id" => eid, "choice-id" => cid},
         socket
       ) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       LinkedPageHandlers.do_unlink_choice_screenplay(socket, eid, cid)
       |> broadcast_screenplay_change()
     end)
   end
 
   def handle_event("generate_all_linked_pages", %{"element-id" => eid}, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       LinkedPageHandlers.do_generate_all_linked_pages(socket, eid)
       |> broadcast_screenplay_change()
     end)
@@ -435,7 +436,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   end
 
   def handle_event("set_character_sheet", %{"id" => id, "sheet_id" => sheet_id}, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.do_set_character_sheet(socket, id, parse_int(sheet_id))
       |> broadcast_screenplay_change()
     end)
@@ -454,31 +455,31 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("save_name", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       TreeHandlers.handle_save_name(params, socket) |> broadcast_screenplay_change()
     end)
   end
 
   def handle_event("create_flow_from_screenplay", _params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       FlowSyncHandlers.do_create_flow_from_screenplay(socket) |> broadcast_screenplay_change()
     end)
   end
 
   def handle_event("sync_to_flow", _params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       FlowSyncHandlers.do_sync_to_flow(socket) |> broadcast_screenplay_change()
     end)
   end
 
   def handle_event("sync_from_flow", _params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       FlowSyncHandlers.do_sync_from_flow(socket) |> broadcast_screenplay_change()
     end)
   end
 
   def handle_event("unlink_flow", _params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       FlowSyncHandlers.do_unlink_flow(socket) |> broadcast_screenplay_change()
     end)
   end
@@ -497,14 +498,14 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
 
   def handle_event("confirm_delete_screenplay", _params, socket) do
     handle_confirm_delete(socket, fn socket, id ->
-      with_authorization(socket, :edit_content, fn _socket ->
+      Authorize.with_authorization(socket, :edit_content, fn _socket ->
         TreeHandlers.do_delete_screenplay(socket, id) |> broadcast_screenplay_change()
       end)
     end)
   end
 
   def handle_event("delete_screenplay", %{"id" => screenplay_id}, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       TreeHandlers.do_delete_screenplay(socket, screenplay_id) |> broadcast_screenplay_change()
     end)
   end
@@ -522,7 +523,7 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
         %{"item_id" => item_id, "new_parent_id" => new_parent_id, "position" => position},
         socket
       ) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       TreeHandlers.do_move_to_parent(socket, item_id, new_parent_id, position)
       |> broadcast_screenplay_change()
     end)
@@ -531,6 +532,30 @@ defmodule StoryarnWeb.ScreenplayLive.Show do
   # ---------------------------------------------------------------------------
   # Handle Info: Collaboration
   # ---------------------------------------------------------------------------
+
+  @impl true
+  def handle_info({:project_restoration_started, payload}, socket),
+    do:
+      RestorationHandlers.handle_restoration_event(
+        {:project_restoration_started, payload},
+        socket
+      )
+
+  @impl true
+  def handle_info({:project_restoration_completed, payload}, socket),
+    do:
+      RestorationHandlers.handle_restoration_event(
+        {:project_restoration_completed, payload},
+        socket
+      )
+
+  @impl true
+  def handle_info({:project_restoration_failed, payload}, socket),
+    do:
+      RestorationHandlers.handle_restoration_event(
+        {:project_restoration_failed, payload},
+        socket
+      )
 
   @impl true
   def handle_info({Storyarn.Collaboration.Presence, {:join, presence}}, socket) do

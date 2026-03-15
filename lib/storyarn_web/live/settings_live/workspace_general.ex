@@ -3,7 +3,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   LiveView for workspace general settings.
   """
   use StoryarnWeb, :live_view
-  use StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.Authorize
+
+  import StoryarnWeb.Components.UIComponents,
+    only: [danger_zone: 1, form_actions: 1, theme_toggle: 1]
 
   alias Storyarn.Localization
   alias Storyarn.Workspaces
@@ -154,7 +157,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
 
   @impl true
   def handle_event("save", %{"workspace" => workspace_params}, socket) do
-    with_authorization(socket, :manage_workspace, fn socket ->
+    Authorize.with_authorization(socket, :manage_workspace, fn socket ->
       case Workspaces.update_workspace(socket.assigns.workspace, workspace_params) do
         {:ok, workspace} ->
           {:noreply,

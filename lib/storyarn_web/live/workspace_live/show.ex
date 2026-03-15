@@ -5,6 +5,8 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   use StoryarnWeb, :live_view
   use Gettext, backend: StoryarnWeb.Gettext
 
+  import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
+
   alias Storyarn.Billing
   alias Storyarn.Projects
   alias Storyarn.Workspaces

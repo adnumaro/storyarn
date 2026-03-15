@@ -8,7 +8,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
   import StoryarnWeb.Components.DashboardComponents
 
   use StoryarnWeb.Live.Shared.DashboardHandlers
-  use StoryarnWeb.Live.Shared.RestorationHandlers
+  alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
@@ -149,7 +149,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
     case Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug) do
       {:ok, project, membership} ->
         can_manage = Projects.can?(membership.role, :manage_project)
-        {_, restoration_banner} = check_restoration_lock(project.id, false)
+        {_, restoration_banner} = RestorationHandlers.check_restoration_lock(project.id, false)
 
         socket =
           socket
@@ -181,6 +181,30 @@ defmodule StoryarnWeb.ProjectLive.Show do
          |> redirect(to: ~p"/workspaces")}
     end
   end
+
+  @impl true
+  def handle_info({:project_restoration_started, payload}, socket),
+    do:
+      RestorationHandlers.handle_restoration_event(
+        {:project_restoration_started, payload},
+        socket
+      )
+
+  @impl true
+  def handle_info({:project_restoration_completed, payload}, socket),
+    do:
+      RestorationHandlers.handle_restoration_event(
+        {:project_restoration_completed, payload},
+        socket
+      )
+
+  @impl true
+  def handle_info({:project_restoration_failed, payload}, socket),
+    do:
+      RestorationHandlers.handle_restoration_event(
+        {:project_restoration_failed, payload},
+        socket
+      )
 
   def handle_info(:load_dashboard_data, socket) do
     project = socket.assigns.project

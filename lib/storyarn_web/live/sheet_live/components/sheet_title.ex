@@ -5,7 +5,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
   """
 
   use StoryarnWeb, :live_component
-  use StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Sheets
 
@@ -75,11 +75,11 @@ defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
 
   @impl true
   def handle_event("save_name", %{"name" => name}, socket) do
-    with_edit_authorization(socket, fn socket -> do_save_name(socket, name) end)
+    Authorize.with_edit_authorization(socket, fn socket -> do_save_name(socket, name) end)
   end
 
   def handle_event("save_shortcut", %{"shortcut" => shortcut}, socket) do
-    with_edit_authorization(socket, fn socket -> do_save_shortcut(socket, shortcut) end)
+    Authorize.with_edit_authorization(socket, fn socket -> do_save_shortcut(socket, shortcut) end)
   end
 
   # ===========================================================================

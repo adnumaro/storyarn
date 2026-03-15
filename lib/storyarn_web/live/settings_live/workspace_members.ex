@@ -3,9 +3,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   LiveView for workspace team management settings.
   """
   use StoryarnWeb, :live_view
-  use StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.MemberComponents
+  import StoryarnWeb.Components.UIComponents, only: [form_actions: 1]
 
   alias Storyarn.Accounts
   alias Storyarn.Workspaces
@@ -139,7 +140,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
 
   @impl true
   def handle_event("send_invitation", %{"invite" => invite_params}, socket) do
-    with_authorization(socket, :manage_workspace_members, fn socket ->
+    Authorize.with_authorization(socket, :manage_workspace_members, fn socket ->
       do_send_invitation(socket, invite_params)
     end)
   end

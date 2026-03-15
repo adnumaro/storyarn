@@ -4,6 +4,8 @@ defmodule StoryarnWeb.SettingsLive.Profile do
   """
   use StoryarnWeb, :live_view
 
+  import StoryarnWeb.Components.UIComponents, only: [form_actions: 1]
+
   alias Storyarn.Accounts
 
   on_mount {StoryarnWeb.UserAuth, :require_sudo_mode}

@@ -2,7 +2,6 @@ defmodule StoryarnWeb.LocalizationLive.Report do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  use StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Localization
   alias Storyarn.Projects

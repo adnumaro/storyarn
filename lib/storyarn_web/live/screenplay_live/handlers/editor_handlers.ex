@@ -12,15 +12,14 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.EditorHandlers do
   alias Storyarn.Sheets
 
   alias StoryarnWeb.ScreenplayLive.Helpers.SocketHelpers
-  import SocketHelpers
 
   # All types managed by the unified TipTap editor (text blocks + atom NodeViews)
   @editor_types ~w(scene_heading action character dialogue parenthetical transition note section page_break hub_marker jump_marker title_page conditional instruction response dual_dialogue)
 
   # Title page / dual dialogue field validation (canonical source: SocketHelpers)
-  @valid_title_fields SocketHelpers.valid_title_fields()
-  @valid_dual_sides SocketHelpers.valid_dual_sides()
-  @valid_dual_fields SocketHelpers.valid_dual_fields()
+  @valid_title_fields ~w(title credit author draft_date contact)
+  @valid_dual_sides ~w(left right)
+  @valid_dual_fields ~w(character parenthetical dialogue)
 
   def do_sync_editor_content(socket, client_elements) when is_list(client_elements) do
     screenplay = socket.assigns.screenplay
@@ -43,7 +42,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.EditorHandlers do
     |> Enum.filter(&(&1.id in changed_ids))
     |> Enum.each(&Sheets.update_screenplay_element_references/1)
 
-    {:noreply, assign_elements(socket, elements)}
+    {:noreply, SocketHelpers.assign_elements(socket, elements)}
   end
 
   def do_sync_editor_content(socket, _), do: {:noreply, socket}
@@ -52,7 +51,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.EditorHandlers do
     client_elements
     |> Enum.map(& &1["element_id"])
     |> Enum.reject(&is_nil/1)
-    |> Enum.map(&parse_int/1)
+    |> Enum.map(&SocketHelpers.parse_int/1)
     |> Enum.reject(&is_nil/1)
     |> MapSet.new()
   end
@@ -70,7 +69,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.EditorHandlers do
   def upsert_client_elements(screenplay, client_elements, existing_by_id) do
     {ordered_ids, changed_ids} =
       Enum.reduce(client_elements, {[], MapSet.new()}, fn el, {ids, changed} ->
-        element_id = el["element_id"] && parse_int(el["element_id"])
+        element_id = el["element_id"] && SocketHelpers.parse_int(el["element_id"])
 
         type = el["type"] || "action"
 
@@ -153,7 +152,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.EditorHandlers do
   def sanitize_element_data("title_page", data) when is_map(data) do
     data
     |> Map.take(@valid_title_fields)
-    |> Map.new(fn {k, v} -> {k, sanitize_plain_text(v)} end)
+    |> Map.new(fn {k, v} -> {k, SocketHelpers.sanitize_plain_text(v)} end)
   end
 
   def sanitize_element_data("dual_dialogue", data) when is_map(data) do
@@ -166,7 +165,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.EditorHandlers do
         |> Map.new(fn
           {"dialogue", v} -> {"dialogue", Screenplays.content_sanitize_html(v)}
           {"parenthetical", v} -> {"parenthetical", Screenplays.content_sanitize_html(v)}
-          {"character", v} -> {"character", sanitize_plain_text(v)}
+          {"character", v} -> {"character", SocketHelpers.sanitize_plain_text(v)}
         end)
 
       {side, sanitized}
@@ -184,7 +183,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.EditorHandlers do
 
   def sanitize_choice_fields(choice) do
     choice
-    |> update_if_present("text", &sanitize_plain_text/1)
+    |> update_if_present("text", &SocketHelpers.sanitize_plain_text/1)
     |> update_if_present("condition", &Flows.condition_sanitize/1)
     |> update_if_present("instruction", &Flows.instruction_sanitize/1)
   end

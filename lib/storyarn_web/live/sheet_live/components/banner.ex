@@ -5,7 +5,7 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
   """
 
   use StoryarnWeb, :live_component
-  use StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.ColorPicker
 
@@ -117,7 +117,7 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
 
   @impl true
   def handle_event("remove_banner", _params, socket) do
-    with_edit_authorization(socket, fn socket ->
+    Authorize.with_edit_authorization(socket, fn socket ->
       sheet = socket.assigns.sheet
 
       case Sheets.update_sheet(sheet, %{banner_asset_id: nil}) do
@@ -143,7 +143,7 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
         %{"filename" => filename, "content_type" => content_type, "data" => data},
         socket
       ) do
-    with_edit_authorization(socket, fn socket ->
+    Authorize.with_edit_authorization(socket, fn socket ->
       with [_header, base64_data] <- String.split(data, ",", parts: 2),
            {:ok, binary_data} <- Base.decode64(base64_data) do
         upload_banner_file(socket, filename, content_type, binary_data)

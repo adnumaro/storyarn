@@ -2,10 +2,14 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  use StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.MemberComponents
   import StoryarnWeb.Components.ColorPicker
+
+  import StoryarnWeb.Components.UIComponents,
+    only: [danger_zone: 1, empty_state: 1, form_actions: 1, theme_toggle: 1]
+
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
   alias Storyarn.Billing
@@ -744,7 +748,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   end
 
   def handle_event("update_project", %{"project" => project_params}, socket) do
-    with_authorization(socket, :manage_project, fn socket ->
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
       case Projects.update_project(socket.assigns.project, project_params) do
         {:ok, project} ->
           project_changeset = Projects.change_project(project)
@@ -764,25 +768,25 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   end
 
   def handle_event("send_invitation", %{"invite" => invite_params}, socket) do
-    with_authorization(socket, :manage_members, fn socket ->
+    Authorize.with_authorization(socket, :manage_members, fn socket ->
       do_send_invitation(socket, invite_params)
     end)
   end
 
   def handle_event("remove_member", %{"id" => id}, socket) do
-    with_authorization(socket, :manage_members, fn socket ->
+    Authorize.with_authorization(socket, :manage_members, fn socket ->
       do_remove_member(socket, id)
     end)
   end
 
   def handle_event("repair_variable_references", _params, socket) do
-    with_authorization(socket, :manage_project, fn socket ->
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
       do_repair_variable_references(socket)
     end)
   end
 
   def handle_event("delete_project", _params, socket) do
-    with_authorization(socket, :manage_project, fn socket ->
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
       workspace = socket.assigns.workspace
 
       case Projects.delete_project(socket.assigns.project, socket.assigns.current_scope.user.id) do
@@ -799,25 +803,25 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   end
 
   def handle_event("create_snapshot", %{"snapshot" => params}, socket) do
-    with_authorization(socket, :manage_project, fn socket ->
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
       do_create_snapshot(socket, params)
     end)
   end
 
   def handle_event("restore_snapshot", %{"id" => id}, socket) do
-    with_authorization(socket, :manage_project, fn socket ->
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
       do_restore_snapshot(socket, id)
     end)
   end
 
   def handle_event("delete_snapshot", %{"id" => id}, socket) do
-    with_authorization(socket, :manage_project, fn socket ->
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
       do_delete_snapshot(socket, id)
     end)
   end
 
   def handle_event("save_version_control", %{"version_control" => params}, socket) do
-    with_authorization(socket, :manage_project, fn socket ->
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
       # Checkboxes: absent = false, present = true
       attrs = %{
         auto_snapshots_enabled: params["auto_snapshots_enabled"] == "true",
@@ -844,13 +848,13 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   end
 
   def handle_event("save_provider_config", %{"provider" => params}, socket) do
-    with_authorization(socket, :manage_project, fn socket ->
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
       do_save_provider_config(socket, params)
     end)
   end
 
   def handle_event("test_provider_connection", _params, socket) do
-    with_authorization(socket, :manage_project, fn socket ->
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
       do_test_provider_connection(socket)
     end)
   end
@@ -864,13 +868,13 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   end
 
   def handle_event("save_theme", _params, socket) do
-    with_authorization(socket, :manage_project, fn socket ->
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
       do_save_theme(socket)
     end)
   end
 
   def handle_event("reset_theme", _params, socket) do
-    with_authorization(socket, :manage_project, fn socket ->
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
       project = socket.assigns.project
       settings = Map.delete(project.settings || %{}, "theme")
 
@@ -889,7 +893,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   end
 
   def handle_event("clear_stale_lock", _params, socket) do
-    with_authorization(socket, :manage_project, fn socket ->
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
       case Projects.clear_stale_restoration_lock(socket.assigns.project.id) do
         {:ok, :cleared} ->
           {:noreply,

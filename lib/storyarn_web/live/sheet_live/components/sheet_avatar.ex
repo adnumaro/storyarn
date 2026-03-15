@@ -5,7 +5,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
   """
 
   use StoryarnWeb, :live_component
-  use StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.SheetComponents
 
@@ -79,7 +79,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
 
   @impl true
   def handle_event("remove_avatar", _params, socket) do
-    with_edit_authorization(socket, fn socket ->
+    Authorize.with_edit_authorization(socket, fn socket ->
       sheet = socket.assigns.sheet
 
       case Sheets.update_sheet(sheet, %{avatar_asset_id: nil}) do
@@ -106,7 +106,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
         %{"filename" => filename, "content_type" => content_type, "data" => data},
         socket
       ) do
-    with_edit_authorization(socket, fn socket ->
+    Authorize.with_edit_authorization(socket, fn socket ->
       with [_header, base64_data] <- String.split(data, ",", parts: 2),
            {:ok, binary_data} <- Base.decode64(base64_data) do
         upload_avatar_file(socket, filename, content_type, binary_data)

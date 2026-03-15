@@ -43,54 +43,77 @@ defmodule StoryarnWeb.Live.Shared.RestorationHandlers do
     Ecto.NoResultsError -> "another user"
   end
 
+  def handle_restoration_event({:project_restoration_started, payload}, socket) do
+    {:noreply,
+     socket
+     |> Phoenix.Component.assign(:can_edit, false)
+     |> Phoenix.Component.assign(:restoration_banner, %{
+       user_email: payload[:user_email] || "another user"
+     })}
+  end
+
+  def handle_restoration_event({:project_restoration_completed, _payload}, socket) do
+    path =
+      "/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}"
+
+    {:noreply,
+     socket
+     |> Phoenix.LiveView.put_flash(
+       :info,
+       Gettext.dgettext(StoryarnWeb.Gettext, "projects", "Project restored successfully.")
+     )
+     |> Phoenix.LiveView.push_navigate(to: path)}
+  end
+
+  def handle_restoration_event({:project_restoration_failed, _payload}, socket) do
+    can_edit =
+      case socket.assigns[:membership] do
+        %{role: role} -> Storyarn.Projects.can?(role, :edit_content)
+        _ -> false
+      end
+
+    {:noreply,
+     socket
+     |> Phoenix.Component.assign(:can_edit, can_edit)
+     |> Phoenix.Component.assign(:restoration_banner, nil)
+     |> Phoenix.LiveView.put_flash(
+       :error,
+       Gettext.dgettext(
+         StoryarnWeb.Gettext,
+         "projects",
+         "Project restoration failed. Please try again."
+       )
+     )}
+  end
+
   defmacro __using__(_opts) do
     quote do
+      alias StoryarnWeb.Live.Shared.RestorationHandlers, as: RestorationHandlers
+
       import StoryarnWeb.Live.Shared.RestorationHandlers, only: [check_restoration_lock: 2]
 
       @impl true
       def handle_info({:project_restoration_started, payload}, socket) do
-        {:noreply,
-         socket
-         |> Phoenix.Component.assign(:can_edit, false)
-         |> Phoenix.Component.assign(:restoration_banner, %{
-           user_email: payload[:user_email] || "another user"
-         })}
+        RestorationHandlers.handle_restoration_event(
+          {:project_restoration_started, payload},
+          socket
+        )
       end
 
       @impl true
       def handle_info({:project_restoration_completed, _payload}, socket) do
-        path =
-          "/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}"
-
-        {:noreply,
-         socket
-         |> Phoenix.LiveView.put_flash(
-           :info,
-           Gettext.dgettext(StoryarnWeb.Gettext, "projects", "Project restored successfully.")
-         )
-         |> Phoenix.LiveView.push_navigate(to: path)}
+        RestorationHandlers.handle_restoration_event(
+          {:project_restoration_completed, %{}},
+          socket
+        )
       end
 
       @impl true
       def handle_info({:project_restoration_failed, _payload}, socket) do
-        can_edit =
-          case socket.assigns[:membership] do
-            %{role: role} -> Storyarn.Projects.can?(role, :edit_content)
-            _ -> false
-          end
-
-        {:noreply,
-         socket
-         |> Phoenix.Component.assign(:can_edit, can_edit)
-         |> Phoenix.Component.assign(:restoration_banner, nil)
-         |> Phoenix.LiveView.put_flash(
-           :error,
-           Gettext.dgettext(
-             StoryarnWeb.Gettext,
-             "projects",
-             "Project restoration failed. Please try again."
-           )
-         )}
+        RestorationHandlers.handle_restoration_event(
+          {:project_restoration_failed, %{}},
+          socket
+        )
       end
 
       defoverridable handle_info: 2

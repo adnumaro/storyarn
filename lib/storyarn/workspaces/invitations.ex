@@ -1,7 +1,6 @@
 defmodule Storyarn.Workspaces.Invitations do
   @moduledoc false
 
-  alias Storyarn.Emails.Templates
   alias Storyarn.Shared.InvitationOperations
   alias Storyarn.Workspaces.{Memberships, Workspace, WorkspaceInvitation, WorkspaceMembership}
 
@@ -11,7 +10,7 @@ defmodule Storyarn.Workspaces.Invitations do
     parent_key: :workspace_id,
     parent_assoc: :workspace,
     rate_limit_context: "workspace",
-    template_fn: &Templates.workspace_invitation/6,
+    template: :workspace_invitation,
     invitation_path_prefix: "/workspaces/invitations",
     memberships_module: Memberships,
     preload_after_insert: [:workspace, :invited_by]

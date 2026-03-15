@@ -2,8 +2,9 @@ defmodule StoryarnWeb.ProjectLive.Trash do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  use StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.Authorize
 
+  import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
   alias Storyarn.Projects
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
@@ -212,7 +213,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
 
   @impl true
   def handle_event("restore_sheet", %{"id" => id}, socket) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       do_restore_sheet(socket, id)
     end)
   end
@@ -222,7 +223,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
   end
 
   def handle_event("confirm_delete_permanently", _params, socket) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       if socket.assigns.sheet_to_delete do
         do_delete_permanently(socket, socket.assigns.sheet_to_delete)
       else
@@ -232,7 +233,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
   end
 
   def handle_event("empty_trash", _params, socket) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       do_empty_trash(socket)
     end)
   end

@@ -312,13 +312,12 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   def handle_batch_update_positions(_params, socket), do: {:noreply, socket}
 
-  @search_limit Flows.default_search_limit()
-
   @spec handle_search_available_flows(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_search_available_flows(%{"query" => query}, socket) when is_binary(query) do
     project_id = socket.assigns.project.id
     current_flow_id = socket.assigns.flow.id
+    limit = search_limit()
 
     results = search_flows(socket, project_id, query, exclude_id: current_flow_id)
 
@@ -326,8 +325,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
      socket
      |> assign(:available_flows, results)
      |> assign(:flow_search_query, query)
-     |> assign(:flow_search_offset, @search_limit)
-     |> assign(:flow_search_has_more, length(results) >= @search_limit)}
+     |> assign(:flow_search_offset, limit)
+     |> assign(:flow_search_has_more, length(results) >= limit)}
   end
 
   def handle_search_available_flows(_params, socket), do: {:noreply, socket}
@@ -350,14 +349,15 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     current_flow_id = socket.assigns.flow.id
     query = socket.assigns[:flow_search_query] || ""
     offset = socket.assigns[:flow_search_offset] || 0
+    limit = search_limit()
 
     more = search_flows(socket, project_id, query, offset: offset, exclude_id: current_flow_id)
 
     {:noreply,
      socket
      |> assign(:available_flows, (socket.assigns[:available_flows] || []) ++ more)
-     |> assign(:flow_search_offset, offset + @search_limit)
-     |> assign(:flow_search_has_more, length(more) >= @search_limit)}
+     |> assign(:flow_search_offset, offset + limit)
+     |> assign(:flow_search_has_more, length(more) >= limit)}
   end
 
   defp search_flows(socket, project_id, query, opts) do
@@ -365,6 +365,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       do: Flows.search_flows_deep(project_id, query, opts),
       else: Flows.search_flows(project_id, query, opts)
   end
+
+  defp search_limit, do: Flows.default_search_limit()
 
   @spec handle_node_dragging(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}

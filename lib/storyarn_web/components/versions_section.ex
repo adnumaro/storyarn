@@ -8,7 +8,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
   """
 
   use StoryarnWeb, :live_component
-  use StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Billing
   alias Storyarn.Versioning
@@ -207,7 +207,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
 
   @impl true
   def handle_event("show_create_version_modal", _params, socket) do
-    with_edit_authorization(socket, fn socket ->
+    Authorize.with_edit_authorization(socket, fn socket ->
       if socket.assigns.can_name_version do
         {:noreply, assign(socket, :show_create_version_modal, true)}
       else
@@ -226,7 +226,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
   end
 
   def handle_event("create_version", %{"title" => title, "description" => description}, socket) do
-    with_edit_authorization(socket, fn socket ->
+    Authorize.with_edit_authorization(socket, fn socket ->
       create_version(socket, title, description)
     end)
   end
@@ -253,7 +253,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
   end
 
   def handle_event("promote_version", params, socket) do
-    with_edit_authorization(socket, fn socket ->
+    Authorize.with_edit_authorization(socket, fn socket ->
       promote_version(
         socket,
         params["version_number"],
@@ -264,25 +264,25 @@ defmodule StoryarnWeb.Components.VersionsSection do
   end
 
   def handle_event("preview_restore", %{"version" => version_number}, socket) do
-    with_edit_authorization(socket, fn socket ->
+    Authorize.with_edit_authorization(socket, fn socket ->
       preview_restore(socket, version_number)
     end)
   end
 
   def handle_event("confirm_restore", _params, socket) do
-    with_edit_authorization(socket, fn socket ->
+    Authorize.with_edit_authorization(socket, fn socket ->
       confirm_restore(socket)
     end)
   end
 
   def handle_event("save_and_restore", _params, socket) do
-    with_edit_authorization(socket, fn socket ->
+    Authorize.with_edit_authorization(socket, fn socket ->
       save_and_restore(socket)
     end)
   end
 
   def handle_event("discard_and_restore", _params, socket) do
-    with_edit_authorization(socket, fn socket ->
+    Authorize.with_edit_authorization(socket, fn socket ->
       discard_and_restore(socket)
     end)
   end
@@ -301,14 +301,14 @@ defmodule StoryarnWeb.Components.VersionsSection do
         {:noreply, socket}
 
       version_number ->
-        with_edit_authorization(socket, fn socket ->
+        Authorize.with_edit_authorization(socket, fn socket ->
           delete_version(socket, to_string(version_number))
         end)
     end
   end
 
   def handle_event("delete_version", %{"version" => version_number}, socket) do
-    with_edit_authorization(socket, fn socket ->
+    Authorize.with_edit_authorization(socket, fn socket ->
       delete_version(socket, version_number)
     end)
   end

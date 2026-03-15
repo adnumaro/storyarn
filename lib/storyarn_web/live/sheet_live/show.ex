@@ -2,8 +2,8 @@ defmodule StoryarnWeb.SheetLive.Show do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  use StoryarnWeb.Helpers.Authorize
-  use StoryarnWeb.Live.Shared.RestorationHandlers
+  alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   import StoryarnWeb.Components.SheetComponents
   import StoryarnWeb.Components.SaveIndicator
@@ -383,7 +383,8 @@ defmodule StoryarnWeb.SheetLive.Show do
 
         if connected?(socket), do: Collaboration.subscribe_restoration(project.id)
 
-        {can_edit, restoration_banner} = check_restoration_lock(project.id, can_edit)
+        {can_edit, restoration_banner} =
+          RestorationHandlers.check_restoration_lock(project.id, can_edit)
 
         {:ok,
          socket
@@ -603,13 +604,13 @@ defmodule StoryarnWeb.SheetLive.Show do
   # ===========================================================================
 
   def handle_event("undo", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       UndoRedoHandlers.handle_undo(params, socket)
     end)
   end
 
   def handle_event("redo", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       UndoRedoHandlers.handle_redo(params, socket)
     end)
   end
@@ -619,7 +620,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   # ===========================================================================
 
   def handle_event("create_draft", _params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       %{sheet: sheet} = socket.assigns
 
       DraftHandlers.handle_create_draft(socket, "sheet", sheet.id, fn s, draft ->
@@ -631,7 +632,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   def handle_event("discard_draft", _params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       %{project: project, draft: draft} = socket.assigns
 
       DraftHandlers.handle_discard_draft(
@@ -642,13 +643,13 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   def handle_event("load_merge_summary", _params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       DraftHandlers.handle_load_merge_summary(socket)
     end)
   end
 
   def handle_event("merge_draft", _params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       %{draft: draft} = socket.assigns
 
       DraftHandlers.handle_merge_draft(socket, fn s ->
@@ -660,13 +661,13 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   def handle_event("rename_draft_inline", %{"draft-id" => draft_id}, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       DraftHandlers.handle_rename_draft_inline(socket, draft_id)
     end)
   end
 
   def handle_event("submit_rename_draft", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       DraftHandlers.handle_submit_rename_draft(socket, params)
     end)
   end
@@ -676,7 +677,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   def handle_event("discard_draft_from_list", %{"draft_id" => draft_id}, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       DraftHandlers.handle_discard_draft_from_list(socket, draft_id)
     end)
   end
@@ -687,12 +688,16 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   def handle_event("confirm_delete_sheet", _params, socket) do
     handle_confirm_delete(socket, fn socket, id ->
-      with_authorization(socket, :edit_content, &SheetTreeHelpers.delete_sheet(&1, id))
+      Authorize.with_authorization(socket, :edit_content, &SheetTreeHelpers.delete_sheet(&1, id))
     end)
   end
 
   def handle_event("delete_sheet", %{"id" => sheet_id}, socket) do
-    with_authorization(socket, :edit_content, &SheetTreeHelpers.delete_sheet(&1, sheet_id))
+    Authorize.with_authorization(
+      socket,
+      :edit_content,
+      &SheetTreeHelpers.delete_sheet(&1, sheet_id)
+    )
   end
 
   def handle_event(
@@ -700,7 +705,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         %{"item_id" => sheet_id, "new_parent_id" => parent_id, "position" => position},
         socket
       ) do
-    with_authorization(
+    Authorize.with_authorization(
       socket,
       :edit_content,
       &SheetTreeHelpers.move_sheet(&1, sheet_id, parent_id, position)
@@ -708,11 +713,15 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   def handle_event("create_child_sheet", %{"parent-id" => parent_id}, socket) do
-    with_authorization(socket, :edit_content, &SheetTreeHelpers.create_child_sheet(&1, parent_id))
+    Authorize.with_authorization(
+      socket,
+      :edit_content,
+      &SheetTreeHelpers.create_child_sheet(&1, parent_id)
+    )
   end
 
   def handle_event("create_sheet", _params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       handle_create_entity(
         socket,
         %{name: dgettext("sheets", "Untitled")},
@@ -727,13 +736,13 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   # Sheet color (from ColorPicker hook — pushes to parent LV, not LiveComponent)
   def handle_event("set_sheet_color", %{"color" => color}, socket) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       update_sheet_color(socket, color)
     end)
   end
 
   def handle_event("clear_sheet_color", _params, socket) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       update_sheet_color(socket, nil)
     end)
   end
@@ -763,6 +772,30 @@ defmodule StoryarnWeb.SheetLive.Show do
   # ===========================================================================
   # Handle Info
   # ===========================================================================
+
+  @impl true
+  def handle_info({:project_restoration_started, payload}, socket),
+    do:
+      RestorationHandlers.handle_restoration_event(
+        {:project_restoration_started, payload},
+        socket
+      )
+
+  @impl true
+  def handle_info({:project_restoration_completed, payload}, socket),
+    do:
+      RestorationHandlers.handle_restoration_event(
+        {:project_restoration_completed, payload},
+        socket
+      )
+
+  @impl true
+  def handle_info({:project_restoration_failed, payload}, socket),
+    do:
+      RestorationHandlers.handle_restoration_event(
+        {:project_restoration_failed, payload},
+        socket
+      )
 
   @impl true
   def handle_info(:reset_save_status, socket) do

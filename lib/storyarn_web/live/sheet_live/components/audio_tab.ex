@@ -6,7 +6,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
   """
 
   use StoryarnWeb, :live_component
-  use StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Assets
 
@@ -81,7 +81,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
 
   @impl true
   def handle_event("select_audio", %{"node-id" => node_id, "audio_asset_id" => ""}, socket) do
-    with_edit_authorization(socket, fn socket ->
+    Authorize.with_edit_authorization(socket, fn socket ->
       update_node_audio(socket, node_id, nil)
     end)
   end
@@ -91,14 +91,14 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
         %{"node-id" => node_id, "audio_asset_id" => asset_id_str},
         socket
       ) do
-    with_edit_authorization(socket, fn socket ->
+    Authorize.with_edit_authorization(socket, fn socket ->
       asset_id = String.to_integer(asset_id_str)
       update_node_audio(socket, node_id, asset_id)
     end)
   end
 
   def handle_event("remove_audio", %{"node-id" => node_id}, socket) do
-    with_edit_authorization(socket, fn socket ->
+    Authorize.with_edit_authorization(socket, fn socket ->
       update_node_audio(socket, node_id, nil)
     end)
   end
@@ -126,7 +126,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
         },
         socket
       ) do
-    with_edit_authorization(socket, fn socket ->
+    Authorize.with_edit_authorization(socket, fn socket ->
       with [_header, base64_data] <- String.split(data, ",", parts: 2),
            {:ok, binary_data} <- Base.decode64(base64_data) do
         process_upload(socket, node_id, filename, content_type, binary_data)

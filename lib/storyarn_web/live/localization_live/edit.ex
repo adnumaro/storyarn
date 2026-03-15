@@ -2,7 +2,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  use StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Localization
   alias Storyarn.Projects
@@ -167,7 +167,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
 
   @impl true
   def handle_event("save_translation", %{"localized_text" => params}, socket) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       now = TimeHelpers.now()
       params = Map.put(params, "last_translated_at", now)
 
@@ -188,7 +188,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
   end
 
   def handle_event("translate_with_deepl", _params, socket) do
-    with_authorization(socket, :edit_content, fn socket ->
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
       text = socket.assigns.text
 
       case Localization.translate_single(socket.assigns.project.id, text.id) do

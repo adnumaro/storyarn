@@ -2,8 +2,8 @@ defmodule StoryarnWeb.SceneLive.Show do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  use StoryarnWeb.Helpers.Authorize
-  use StoryarnWeb.Live.Shared.RestorationHandlers
+  alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   import StoryarnWeb.Live.Shared.TreePanelHandlers
   import StoryarnWeb.SceneLive.Components.Dock
@@ -599,7 +599,8 @@ defmodule StoryarnWeb.SceneLive.Show do
 
         if connected?(socket), do: Collaboration.subscribe_restoration(project.id)
 
-        {can_edit, restoration_banner} = check_restoration_lock(project.id, can_edit)
+        {can_edit, restoration_banner} =
+          RestorationHandlers.check_restoration_lock(project.id, can_edit)
 
         socket =
           socket
@@ -929,7 +930,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("save_name", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       CanvasEventHandlers.handle_save_name(params, socket)
     end)
   end
@@ -947,7 +948,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_event("export_scene", _params, socket), do: {:noreply, socket}
 
   def handle_event("toggle_edit_mode", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       CanvasEventHandlers.handle_toggle_edit_mode(socket, params)
     end)
   end
@@ -1074,57 +1075,57 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("update_pin", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_pin(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_zone", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_zone(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_connection", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_connection(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_connection_waypoints", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_connection_waypoints(params, socket)
       |> broadcast_scene_change()
     end)
   end
 
   def handle_event("clear_connection_waypoints", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_clear_connection_waypoints(params, socket)
       |> broadcast_scene_change()
     end)
   end
 
   def handle_event("set_pending_delete_pin", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_set_pending_delete_pin(params, socket)
     end)
   end
 
   def handle_event("set_pending_delete_zone", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_set_pending_delete_zone(params, socket)
     end)
   end
 
   def handle_event("set_pending_delete_connection", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_set_pending_delete_connection(params, socket)
     end)
   end
 
   def handle_event("confirm_delete_element", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_confirm_delete_element(params, socket) |> broadcast_scene_change()
     end)
   end
@@ -1134,7 +1135,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("create_pin", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_create_pin(params, socket) |> broadcast_scene_change()
     end)
   end
@@ -1152,13 +1153,13 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("create_pin_from_sheet", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_create_pin_from_sheet(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("move_pin", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_move_pin(params, socket) |> broadcast_scene_change()
     end)
   end
@@ -1168,7 +1169,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("create_zone", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_create_zone(params, socket) |> broadcast_scene_change()
     end)
   end
@@ -1178,7 +1179,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("create_layer", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_create_layer(params, socket) |> broadcast_scene_change()
     end)
   end
@@ -1188,13 +1189,13 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("toggle_layer_visibility", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_toggle_layer_visibility(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_layer_fog", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_update_layer_fog(params, socket) |> broadcast_scene_change()
     end)
   end
@@ -1204,25 +1205,25 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("rename_layer", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_rename_layer(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("set_pending_delete_layer", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_set_pending_delete_layer(params, socket)
     end)
   end
 
   def handle_event("confirm_delete_layer", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_confirm_delete_layer(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("delete_layer", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_delete_layer(params, socket) |> broadcast_scene_change()
     end)
   end
@@ -1236,19 +1237,19 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("remove_background", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_remove_background(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_scene_scale", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_update_scene_scale(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_exploration_display_mode", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_update_exploration_display_mode(params, socket)
       |> broadcast_scene_change()
     end)
@@ -1259,7 +1260,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("remove_pin_icon", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_remove_pin_icon(params, socket) |> broadcast_scene_change()
     end)
   end
@@ -1269,49 +1270,49 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("update_zone_vertices", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_zone_vertices(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("duplicate_zone", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_duplicate_zone(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("delete_zone", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_delete_zone(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_zone_action_type", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_zone_action_type(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_zone_assignments", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_zone_assignments(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_zone_action_data", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_zone_action_data(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_zone_condition", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_zone_condition(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_zone_condition_effect", %{"value" => _} = params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_zone_condition_effect(params, socket)
       |> broadcast_scene_change()
     end)
@@ -1328,38 +1329,38 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("update_pin_action_type", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_pin_action_type(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_pin_assignments", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_pin_assignments(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_pin_action_data", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_pin_action_data(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_pin_condition", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_pin_condition(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_pin_condition_effect", %{"value" => _} = params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_pin_condition_effect(params, socket)
       |> broadcast_scene_change()
     end)
   end
 
   def handle_event("delete_pin", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_delete_pin(params, socket) |> broadcast_scene_change()
     end)
   end
@@ -1369,13 +1370,13 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("create_connection", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_create_connection(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("delete_connection", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_delete_connection(params, socket) |> broadcast_scene_change()
     end)
   end
@@ -1385,31 +1386,31 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("create_annotation", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_create_annotation(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_annotation", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_annotation(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("move_annotation", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_move_annotation(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("delete_annotation", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_delete_annotation(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("set_pending_delete_annotation", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_set_pending_delete_annotation(params, socket)
     end)
   end
@@ -1419,13 +1420,13 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("delete_selected", _params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_delete_selected(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("duplicate_selected", _params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_duplicate_selected(socket) |> broadcast_scene_change()
     end)
   end
@@ -1435,7 +1436,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("paste_element", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_paste_element(params, socket) |> broadcast_scene_change()
     end)
   end
@@ -1445,13 +1446,13 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("undo", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       UndoRedoHandlers.handle_undo(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("redo", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       UndoRedoHandlers.handle_redo(params, socket) |> broadcast_scene_change()
     end)
   end
@@ -1483,25 +1484,25 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("create_scene", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       TreeHandlers.handle_create_scene(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("create_child_scene", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       TreeHandlers.handle_create_child_scene(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("create_child_scene_from_zone", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       TreeHandlers.handle_create_child_scene_from_zone(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("create_draft", _params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       %{scene: scene} = socket.assigns
 
       DraftHandlers.handle_create_draft(socket, "scene", scene.id, fn s, draft ->
@@ -1513,7 +1514,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("discard_draft", _params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       %{project: project} = socket.assigns
 
       DraftHandlers.handle_discard_draft(
@@ -1524,13 +1525,13 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("load_merge_summary", _params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       DraftHandlers.handle_load_merge_summary(socket)
     end)
   end
 
   def handle_event("merge_draft", _params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       %{draft: draft} = socket.assigns
 
       DraftHandlers.handle_merge_draft(socket, fn s ->
@@ -1542,13 +1543,13 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("rename_draft_inline", %{"draft-id" => draft_id}, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       DraftHandlers.handle_rename_draft_inline(socket, draft_id)
     end)
   end
 
   def handle_event("submit_rename_draft", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       DraftHandlers.handle_submit_rename_draft(socket, params)
     end)
   end
@@ -1558,7 +1559,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("discard_draft_from_list", %{"draft_id" => draft_id}, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       DraftHandlers.handle_discard_draft_from_list(socket, draft_id)
     end)
   end
@@ -1569,20 +1570,20 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("confirm_delete_scene", _params, socket) do
     handle_confirm_delete(socket, fn socket, id ->
-      with_authorization(socket, :edit_content, fn _socket ->
+      Authorize.with_authorization(socket, :edit_content, fn _socket ->
         TreeHandlers.handle_delete_scene(%{"id" => id}, socket) |> broadcast_scene_change()
       end)
     end)
   end
 
   def handle_event("delete_scene", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       TreeHandlers.handle_delete_scene(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("move_to_parent", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       TreeHandlers.handle_move_to_parent(params, socket) |> broadcast_scene_change()
     end)
   end
@@ -1649,6 +1650,30 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
   # Handle Info: Version History
   # ---------------------------------------------------------------------------
+
+  @impl true
+  def handle_info({:project_restoration_started, payload}, socket),
+    do:
+      RestorationHandlers.handle_restoration_event(
+        {:project_restoration_started, payload},
+        socket
+      )
+
+  @impl true
+  def handle_info({:project_restoration_completed, payload}, socket),
+    do:
+      RestorationHandlers.handle_restoration_event(
+        {:project_restoration_completed, payload},
+        socket
+      )
+
+  @impl true
+  def handle_info({:project_restoration_failed, payload}, socket),
+    do:
+      RestorationHandlers.handle_restoration_event(
+        {:project_restoration_failed, payload},
+        socket
+      )
 
   def handle_info({:versions_section, :version_created, %{version: _}}, socket) do
     {:noreply, socket}
