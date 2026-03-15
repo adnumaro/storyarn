@@ -1,0 +1,71 @@
+lib/storyarn_web/components/landing_page/cta_waitlist.ex
+  7f0a5418e55165f4 15,45,47
+assets/js/app.js
+  7f0a5418e55165f4 114
+lib/storyarn_web/components/landing_page/discover_section.ex
+  7f0a5418e55165f4 98-99,218,255-257,259-261,269-276,283-285,287-289,297-299,301-303,311-318,325-327,329-331,339-341,343-345,353-360,367-369,371-373,381-383,385-387
+lib/storyarn_web/components/landing_page/workflow_grid.ex
+  7f0a5418e55165f4 45,61,63-64,83-84
+assets/css/landing.css
+  7f0a5418e55165f4 5,140,309,350-392
+lib/storyarn_web/components/landing_page/hero.ex
+  7f0a5418e55165f4 9,12,15,19-20,28,34-35,40
+assets/js/landing_page/animations.js
+  7f0a5418e55165f4 1-96
+lib/storyarn_web/components/landing_page/feature_grid.ex
+  7f0a5418e55165f4 15,24,33,42,51,60,73-75,82,92,94-95,97-98,114-115
+lib/storyarn_web/components/layouts.ex
+  7f0a5418e55165f4 26,28,564-568,570-573,638-642
+lib/storyarn_web/components/layouts/root.html.heex
+  7f0a5418e55165f4 17-19
+lib/storyarn_web/components/landing_page/landing_footer.ex
+  7f0a5418e55165f4 18,20,22
+lib/storyarn_web/components/landing_page/spotlights.ex
+  7f0a5418e55165f4 13,53-60,73,86-89,91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "d3f16899735f7c1a3f7021f91eea31b54d1859a1",
+  "prompts": {
+    "06f9ab29278d14ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d17ca57-1ef3-450a-a913-8bf379a38696",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 378,
+      "overriden_lines": 0
+    },
+    "7f0a5418e55165f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2aead71-3c2f-4e25-9bfe-50f896e0b35d",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 352,
+      "total_deletions": 1123,
+      "accepted_lines": 288,
+      "overriden_lines": 0
+    },
+    "f700114991880419": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019cf299-fdf1-7441-bf77-4f069337dc91",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 11,
+      "total_deletions": 19,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  }
+}
