@@ -80,18 +80,20 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
 
   defp table_header(assigns) do
     ~H"""
-    <button
-      :if={@can_manage}
-      type="button"
-      class="flex items-center gap-1.5 text-sm mb-1 transition-colors group/header"
-      phx-click="toggle_table_collapse"
-      phx-value-block-id={@block.id}
-      phx-target={@target}
-    >
-      <.icon
-        name={if @collapsed, do: "chevron-right", else: "chevron-down"}
-        class="size-3 text-base-content/40 group-hover/header:text-base-content/70"
-      />
+    <div :if={@can_manage} id={"table-header-#{@block.id}"} class="flex items-center gap-1.5 text-sm mb-1 group/header">
+      <button
+        type="button"
+        class="flex items-center justify-center shrink-0 cursor-pointer transition-colors"
+        phx-click="toggle_table_collapse"
+        phx-value-block-id={@block.id}
+        phx-target={@target}
+        aria-label={if @collapsed, do: gettext("Expand"), else: gettext("Collapse")}
+      >
+        <.icon
+          name={if @collapsed, do: "chevron-right", else: "chevron-down"}
+          class="size-3 text-base-content/40 hover:text-base-content/70"
+        />
+      </button>
       <.icon name="table-2" class="size-3.5 text-base-content/50" />
       <span :if={@is_constant} class="text-error tooltip tooltip-right" data-tip={gettext("Constant")}>
         <.icon name="lock" class="size-3" />
@@ -108,7 +110,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
         {@label}
       </span>
       <span :if={@collapsed} class="text-base-content/40">({@summary})</span>
-    </button>
+    </div>
     <%!-- Read-only or schema-locked: no collapse, just label --%>
     <label
       :if={!@can_manage && @label != ""}

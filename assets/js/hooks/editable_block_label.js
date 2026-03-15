@@ -21,11 +21,12 @@ export const EditableBlockLabel = {
       sel.addRange(range);
     });
 
-    // While editing, stop clicks from reaching parent (e.g. collapse toggle button)
+    // Stop clicks from bubbling to parent phx-click="select_block".
+    // A real double-click fires two click events then one dblclick;
+    // if those clicks bubble and trigger a server re-render, the DOM
+    // patch can interfere with the dblclick handler.
     this.el.addEventListener("click", (e) => {
-      if (this.el.contentEditable === "true") {
-        e.stopPropagation();
-      }
+      e.stopPropagation();
     });
 
     this.el.addEventListener("keydown", (e) => {
