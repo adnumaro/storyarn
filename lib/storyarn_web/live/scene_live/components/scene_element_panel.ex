@@ -76,7 +76,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
   # Zone panel
   # ---------------------------------------------------------------------------
 
-  @action_types ~w(none instruction display)
+  @action_types ~w(none walkable instruction display)
 
   attr :zone, :map, required: true
   attr :can_edit, :boolean, default: true
@@ -94,8 +94,8 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
 
     ~H"""
     <div class="space-y-4">
-      <%!-- Walkable --%>
-      <div class="flex items-center justify-between">
+      <%!-- Walkable (only show toggle when action type is NOT already "walkable") --%>
+      <div :if={@zone.action_type != "walkable"} class="flex items-center justify-between">
         <label class="text-xs font-medium text-base-content/60 flex items-center gap-1">
           <.icon name="footprints" class="size-3" />
           {dgettext("scenes", "Walkable area")}
@@ -104,10 +104,11 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
           type="checkbox"
           class="toggle toggle-xs toggle-primary"
           checked={@zone.is_walkable}
-          phx-click="update_zone"
-          phx-value-id={@zone.id}
-          phx-value-field="is_walkable"
-          phx-value-value={!@zone.is_walkable}
+          phx-click={
+            JS.push("update_zone",
+              value: %{id: @zone.id, field: "is_walkable", toggle: to_string(!@zone.is_walkable)}
+            )
+          }
           disabled={!@can_edit}
         />
       </div>
@@ -263,10 +264,11 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
             type="checkbox"
             class="toggle toggle-xs toggle-primary"
             checked={@pin.is_playable}
-            phx-click="update_pin"
-            phx-value-id={@pin.id}
-            phx-value-field="is_playable"
-            phx-value-value={!@pin.is_playable}
+            phx-click={
+              JS.push("update_pin",
+                value: %{id: @pin.id, field: "is_playable", toggle: to_string(!@pin.is_playable)}
+              )
+            }
             disabled={!@can_edit}
           />
         </div>
@@ -280,10 +282,11 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
             type="checkbox"
             class="toggle toggle-xs toggle-warning"
             checked={@pin.is_leader}
-            phx-click="update_pin"
-            phx-value-id={@pin.id}
-            phx-value-field="is_leader"
-            phx-value-value={!@pin.is_leader}
+            phx-click={
+              JS.push("update_pin",
+                value: %{id: @pin.id, field: "is_leader", toggle: to_string(!@pin.is_leader)}
+              )
+            }
             disabled={!@can_edit}
           />
         </div>

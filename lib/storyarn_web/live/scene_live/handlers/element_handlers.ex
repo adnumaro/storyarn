@@ -19,19 +19,19 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
 
   # ---------------------------------------------------------------------------
   # Editable field allowlists (matches schema changeset cast lists,
-  # excluding fields managed by dedicated handlers like position/layer_id)
+  # excluding fields managed by dedicated handlers like position)
   # ---------------------------------------------------------------------------
 
   @pin_editable_fields ~w(
     position_x position_y pin_type icon color opacity label
-    target_type target_id tooltip size sheet_id icon_asset_id
+    target_type target_id tooltip size sheet_id icon_asset_id layer_id
     locked action_type action_data condition condition_effect
     is_playable is_leader
   )
 
   @zone_editable_fields ~w(
     name fill_color border_color border_width border_style opacity
-    target_type target_id tooltip
+    target_type target_id tooltip layer_id
     locked action_type action_data condition condition_effect
     is_walkable
   )
@@ -40,7 +40,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     line_style line_width color label bidirectional show_label
   )
 
-  @annotation_editable_fields ~w(text position_x position_y font_size color locked)
+  @annotation_editable_fields ~w(text position_x position_y font_size color layer_id locked)
 
   # ---------------------------------------------------------------------------
   # Safe field-to-atom conversion: avoids ArgumentError on unknown fields
@@ -345,11 +345,12 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
 
   @default_action_data %{
     "none" => %{},
+    "walkable" => %{},
     "instruction" => %{"assignments" => []},
     "display" => %{"variable_ref" => ""}
   }
 
-  @doc "Changes a zone's action type (none, instruction, display) with default data."
+  @doc "Changes a zone's action type (none, walkable, instruction, display) with default data."
   def handle_update_zone_action_type(%{"zone-id" => id, "action-type" => type}, socket) do
     case Scenes.get_zone(socket.assigns.scene.id, id) do
       nil ->
@@ -358,10 +359,13 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
       zone ->
         action_data = Map.get(@default_action_data, type, %{})
 
-        do_update_zone_attrs(socket, zone, %{
+        attrs = %{
           "action_type" => type,
-          "action_data" => action_data
-        })
+          "action_data" => action_data,
+          "is_walkable" => type == "walkable"
+        }
+
+        do_update_zone_attrs(socket, zone, attrs)
     end
   end
 

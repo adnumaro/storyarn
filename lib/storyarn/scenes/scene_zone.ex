@@ -15,7 +15,7 @@ defmodule Storyarn.Scenes.SceneZone do
 
   @valid_border_styles ~w(solid dashed dotted)
   @valid_target_types ~w(flow scene)
-  @valid_action_types ~w(none instruction display)
+  @valid_action_types ~w(none walkable instruction display)
 
   @valid_condition_effects ~w(hide disable)
 

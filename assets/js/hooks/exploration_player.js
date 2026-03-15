@@ -55,6 +55,7 @@ export const ExplorationPlayer = {
     this.sceneWidth = data.scene_width || 800;
     this.sceneHeight = data.scene_height || 600;
     this.displayMode = data.display_mode || "fit";
+    this.defaultZoom = data.default_zoom || 1.0;
     this.defaultCenterX = data.default_center_x ?? 50;
     this.defaultCenterY = data.default_center_y ?? 50;
     this.zones = data.zones || [];
@@ -90,6 +91,14 @@ export const ExplorationPlayer = {
     this.handleEvent("toggle_show_zones", ({ show }) => {
       this.showZones = show;
       this.applyZoneColors();
+    });
+
+    this.handleEvent("set_zoom", ({ zoom }) => {
+      if (this.displayMode !== "scaled" || !this.wrapperEl) return;
+      this.zoom = zoom;
+      this.wrapperEl.style.transform = `scale(${this.zoom})`;
+      this.clampCamera();
+      this.applyCameraTransform();
     });
   },
 
@@ -128,6 +137,8 @@ export const ExplorationPlayer = {
   },
 
   renderScaledMode() {
+    this.zoom = this.defaultZoom;
+
     // Camera div wraps the scene content and gets translated
     const camera = document.createElement("div");
     camera.className = "exploration-camera";
@@ -136,16 +147,43 @@ export const ExplorationPlayer = {
     const wrapper = document.createElement("div");
     wrapper.className = "exploration-wrapper";
     wrapper.style.position = "relative";
-    wrapper.style.width = `${this.sceneWidth}px`;
-    wrapper.style.height = `${this.sceneHeight}px`;
-    wrapper.style.overflow = "hidden";
+    wrapper.style.transformOrigin = "0 0";
+    wrapper.style.transform = `scale(${this.zoom})`;
+    this.wrapperEl = wrapper;
+
+    // Set wrapper dimensions — use scene dimensions or defer to image natural size
+    if (this.sceneWidth && this.sceneHeight) {
+      wrapper.style.width = `${this.sceneWidth}px`;
+      wrapper.style.height = `${this.sceneHeight}px`;
+    }
 
     this.renderBackground(wrapper, false);
     this.renderElements(wrapper);
     camera.appendChild(wrapper);
     this.el.appendChild(camera);
 
-    this.initCamera();
+    // If no scene dimensions, wait for image to load and use natural size
+    if (!this.sceneWidth || !this.sceneHeight) {
+      const img = wrapper.querySelector("img");
+      if (img) {
+        const applyNatural = () => {
+          if (img.naturalWidth && img.naturalHeight) {
+            this.sceneWidth = img.naturalWidth;
+            this.sceneHeight = img.naturalHeight;
+            wrapper.style.width = `${this.sceneWidth}px`;
+            wrapper.style.height = `${this.sceneHeight}px`;
+            this.initCamera();
+          }
+        };
+        if (img.complete && img.naturalWidth) {
+          applyNatural();
+        } else {
+          img.addEventListener("load", applyNatural);
+        }
+      }
+    } else {
+      this.initCamera();
+    }
   },
 
   renderBackground(wrapper, useFitAspectRatio) {
@@ -253,14 +291,26 @@ export const ExplorationPlayer = {
     }
   },
 
+  // Effective dimensions after zoom
+  scaledWidth() {
+    return this.sceneWidth * (this.zoom || 1);
+  },
+
+  scaledHeight() {
+    return this.sceneHeight * (this.zoom || 1);
+  },
+
   setInitialCameraPosition() {
     const viewport = this.getViewportBounds();
     if (!viewport) return;
 
-    // Convert center percentage to pixel offset
+    // Center on leader pin if available, otherwise use scene default center
+    const centerX = this.leaderPin ? this.leaderPin.position_x : this.defaultCenterX;
+    const centerY = this.leaderPin ? this.leaderPin.position_y : this.defaultCenterY;
+
     const centerPx = {
-      x: (this.defaultCenterX / 100) * this.sceneWidth,
-      y: (this.defaultCenterY / 100) * this.sceneHeight,
+      x: (centerX / 100) * this.scaledWidth(),
+      y: (centerY / 100) * this.scaledHeight(),
     };
 
     // Position camera so that center point is in the middle of viewport
@@ -311,9 +361,9 @@ export const ExplorationPlayer = {
     const viewport = this.getViewportBounds();
     if (!viewport) return;
 
-    // Target: center camera on leader
-    const targetCamX = (this.leaderCurrentX / 100) * this.sceneWidth - viewport.width / 2;
-    const targetCamY = (this.leaderCurrentY / 100) * this.sceneHeight - viewport.height / 2;
+    // Target: center camera on leader (using scaled dimensions)
+    const targetCamX = (this.leaderCurrentX / 100) * this.scaledWidth() - viewport.width / 2;
+    const targetCamY = (this.leaderCurrentY / 100) * this.scaledHeight() - viewport.height / 2;
 
     // Smooth follow
     const lerp = 1 - 0.01 ** dt;
@@ -376,11 +426,20 @@ export const ExplorationPlayer = {
     const viewport = this.getViewportBounds();
     if (!viewport) return;
 
-    const maxX = Math.max(0, this.sceneWidth - viewport.width);
-    const maxY = Math.max(0, this.sceneHeight - viewport.height);
+    const sw = this.scaledWidth();
+    const sh = this.scaledHeight();
 
-    this.cameraX = Math.max(0, Math.min(this.cameraX, maxX));
-    this.cameraY = Math.max(0, Math.min(this.cameraY, maxY));
+    if (sw <= viewport.width) {
+      this.cameraX = -(viewport.width - sw) / 2;
+    } else {
+      this.cameraX = Math.max(0, Math.min(this.cameraX, sw - viewport.width));
+    }
+
+    if (sh <= viewport.height) {
+      this.cameraY = -(viewport.height - sh) / 2;
+    } else {
+      this.cameraY = Math.max(0, Math.min(this.cameraY, sh - viewport.height));
+    }
   },
 
   applyCameraTransform() {
@@ -428,9 +487,9 @@ export const ExplorationPlayer = {
       // Don't move if flow mode is active
       if (this.flowModePaused) return;
 
-      // Don't move if clicking on a zone or pin (they have their own handlers)
-      const clickedElement = e.target.closest("[data-element-type], .interaction-zone");
-      if (clickedElement) return;
+      // Don't move if clicking on a pin (pins have their own interaction)
+      const clickedPin = e.target.closest("[data-element-type='pin']");
+      if (clickedPin) return;
 
       const wrapper = this.el.querySelector(".exploration-wrapper");
       if (!wrapper) return;
@@ -447,13 +506,8 @@ export const ExplorationPlayer = {
       }
     };
 
-    // Attach to the wrapper after render
-    requestAnimationFrame(() => {
-      const wrapper = this.el.querySelector(".exploration-wrapper");
-      if (wrapper) {
-        wrapper.addEventListener("click", this._onWrapperClick);
-      }
-    });
+    // Attach to the hook root so it catches clicks from zones too
+    this.el.addEventListener("click", this._onWrapperClick);
   },
 
   destroyMovement() {
@@ -464,6 +518,9 @@ export const ExplorationPlayer = {
     if (this._partyTimeout) {
       clearTimeout(this._partyTimeout);
       this._partyTimeout = null;
+    }
+    if (this._onWrapperClick) {
+      this.el.removeEventListener("click", this._onWrapperClick);
     }
   },
 

@@ -70,7 +70,7 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
   # [Action▾] [Name] | [Fill▾ (+opacity)] [Border▾] | [Layer▾] [Lock] | [⚙]
   # ---------------------------------------------------------------------------
 
-  @action_types ~w(none instruction display)
+  @action_types ~w(none walkable instruction display)
 
   attr :zone, :map, required: true
   attr :layers, :list, default: []

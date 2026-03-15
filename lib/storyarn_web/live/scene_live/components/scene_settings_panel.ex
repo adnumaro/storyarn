@@ -114,6 +114,24 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
             {dgettext("scenes", "Scales to fit the viewport.")}
           <% end %>
         </p>
+        <div :if={@scene.exploration_display_mode == "scaled"} class="flex items-center gap-2 pt-1">
+          <label class="text-xs text-base-content/60 whitespace-nowrap">
+            {dgettext("scenes", "Zoom")}
+          </label>
+          <input
+            type="number"
+            min="0.5"
+            max="10"
+            step="0.5"
+            value={@scene.default_zoom || 1.0}
+            phx-blur="update_scene_scale"
+            phx-value-field="default_zoom"
+            name="value"
+            class="input input-xs flex-1"
+            disabled={!@can_edit}
+          />
+          <span class="text-xs text-base-content/40">×</span>
+        </div>
       </div>
       <%!-- Map scale --%>
       <div class="pt-2 border-t border-base-300 space-y-2">
