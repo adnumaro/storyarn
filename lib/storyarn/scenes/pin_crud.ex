@@ -81,6 +81,9 @@ defmodule Storyarn.Scenes.PinCrud do
   end
 
   def update_pin(%ScenePin{} = pin, attrs) do
+    attrs = enforce_leader_constraints(pin, attrs)
+    ensure_single_leader(pin, attrs)
+
     result =
       pin
       |> ScenePin.update_changeset(attrs)
@@ -116,5 +119,30 @@ defmodule Storyarn.Scenes.PinCrud do
 
   def change_pin(%ScenePin{} = pin, attrs \\ %{}) do
     ScenePin.update_changeset(pin, attrs)
+  end
+
+  # When is_playable is set to false, force is_leader to false too
+  defp enforce_leader_constraints(_pin, attrs) do
+    playable_value = attrs["is_playable"] || attrs[:is_playable]
+
+    if playable_value in [false, "false"] do
+      attrs
+      |> Map.put("is_leader", false)
+      |> Map.delete(:is_leader)
+    else
+      attrs
+    end
+  end
+
+  # When setting is_leader to true, clear is_leader on all other pins in the scene
+  defp ensure_single_leader(pin, attrs) do
+    leader_value = attrs["is_leader"] || attrs[:is_leader]
+
+    if leader_value in [true, "true"] do
+      from(p in ScenePin,
+        where: p.scene_id == ^pin.scene_id and p.id != ^pin.id and p.is_leader == true
+      )
+      |> Repo.update_all(set: [is_leader: false])
+    end
   end
 end

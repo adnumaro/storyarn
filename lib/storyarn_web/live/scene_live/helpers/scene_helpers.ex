@@ -100,6 +100,13 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
     end
   end
 
+  def parse_scale_field("default_zoom", raw) do
+    case parse_float_or_nil(raw) do
+      v when is_number(v) and v >= 0.5 and v <= 10 -> v
+      _ -> 1.0
+    end
+  end
+
   def parse_scale_field(_field, value), do: value
 
   # ---------------------------------------------------------------------------
@@ -154,11 +161,13 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
   # ---------------------------------------------------------------------------
 
   def action_type_icon("none"), do: "compass"
+  def action_type_icon("walkable"), do: "footprints"
   def action_type_icon("instruction"), do: "zap"
   def action_type_icon("display"), do: "bar-chart-3"
   def action_type_icon(_), do: "compass"
 
   def action_type_label("none"), do: dgettext("scenes", "Navigation")
+  def action_type_label("walkable"), do: dgettext("scenes", "Walkable Area")
   def action_type_label("instruction"), do: dgettext("scenes", "Action")
   def action_type_label("display"), do: dgettext("scenes", "Display")
   def action_type_label(_), do: dgettext("scenes", "Navigation")
@@ -169,6 +178,9 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
         "scenes",
         "Navigate to another scene or launch a flow as overlay. Condition controls zone visibility"
       )
+
+  def action_type_description("walkable"),
+    do: dgettext("scenes", "Defines traversable ground for character movement in exploration mode")
 
   def action_type_description("instruction"),
     do: dgettext("scenes", "Like Navigation, but also sets variables on click before navigating")

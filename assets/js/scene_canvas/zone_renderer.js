@@ -5,7 +5,7 @@
  */
 
 import L from "leaflet";
-import { BarChart3, Compass, createElement, Map as MapIcon, Zap } from "lucide";
+import { BarChart3, Compass, createElement, Footprints, Map as MapIcon, Zap } from "lucide";
 import { getCssVar } from "./color_utils.js";
 import { toLatLng } from "./coordinate_utils.js";
 
@@ -171,6 +171,12 @@ function buildLabelSpan(zone) {
  * Populates a label <span> with optional action icon, zone name, and optional child-map icon.
  */
 function populateLabelSpan(span, zone) {
+  if (zone.is_walkable) {
+    const walkIcon = createElement(Footprints, { width: 10, height: 10 });
+    walkIcon.style.color = "#4ade80";
+    span.appendChild(walkIcon);
+  }
+
   const actionIcon = ACTION_ICONS[zone.action_type];
   if (actionIcon) {
     span.appendChild(createElement(actionIcon, { width: 10, height: 10 }));

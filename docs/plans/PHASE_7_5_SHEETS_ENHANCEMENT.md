@@ -46,7 +46,7 @@ blocks
 ├── inherited_from_block_id     # FK to parent block (for inheritance)
 ├── detached                    # boolean - detached from parent definition
 ├── required                    # boolean - required field
-├── column_group_id             # UUID - groups blocks side-by-side
+├── column_group_id             # id - groups blocks side-by-side
 ├── column_index                # integer 0-2 - position within column group
 ├── deleted_at                  # Soft delete
 └── timestamps
@@ -338,7 +338,7 @@ Blocks with `scope: "children"` automatically cascade to descendant sheets.
 Blocks can be arranged side-by-side in 2-3 column groups.
 
 #### 7.5.9.1 Schema
-- [x] Add `column_group_id` (UUID) to blocks — shared by blocks in same group
+- [x] Add `column_group_id` (id) to blocks — shared by blocks in same group
 - [x] Add `column_index` (integer 0-2) to blocks — position within group
 
 #### 7.5.9.2 Operations
@@ -531,7 +531,7 @@ end
 ### Migration 8: Block Column Layout Fields
 ```elixir
 alter table(:blocks) do
-  add :column_group_id, :uuid
+  add :column_group_id, :id
   add :column_index, :integer, default: 0
 end
 

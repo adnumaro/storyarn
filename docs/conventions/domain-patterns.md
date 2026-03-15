@@ -295,7 +295,7 @@ Storyarn.Assets.Storage.adapter().get_url(key)
 
 # Key generation
 key = Assets.generate_key(project, filename)
-# => "projects/{project_id}/assets/{uuid}/{sanitized_filename}"
+# => "projects/{project_id}/assets/{id}/{sanitized_filename}"
 ```
 
 Adapters: `Storage.Local` (dev) and `Storage.R2` (prod, Cloudflare R2/S3-compatible).

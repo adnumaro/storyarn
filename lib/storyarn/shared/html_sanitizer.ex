@@ -1,9 +1,32 @@
-defmodule StoryarnWeb.FlowLive.Helpers.HtmlSanitizer do
-  @moduledoc false
+defmodule Storyarn.Shared.HtmlSanitizer do
+  @moduledoc """
+  Canonical HTML sanitizer with XSS protection.
+
+  Strips unsafe tags and attributes while preserving safe formatting HTML.
+  **ALWAYS use when rendering `raw()` content.**
+
+  Allowlisted tags cover TipTap output, rich-text formatting, and documentation content.
+  """
 
   @allowed_tags ~w(p br em strong b i u s span a ul ol li blockquote code pre sub sup del h1 h2 h3 h4 h5 h6 div)
   @safe_uri_schemes ~w(http: https: mailto: tel: #)
 
+  @doc """
+  Sanitizes HTML content by stripping unsafe tags, event-handler attributes,
+  and dangerous URI schemes.
+
+  ## Examples
+
+      iex> sanitize_html("<p>Hello</p>")
+      "<p>Hello</p>"
+
+      iex> sanitize_html("<script>alert('xss')</script><p>Safe</p>")
+      "alert(&#39;xss&#39;)<p>Safe</p>"
+
+      iex> sanitize_html(nil)
+      ""
+  """
+  @spec sanitize_html(String.t() | nil) :: String.t()
   def sanitize_html(""), do: ""
 
   def sanitize_html(html) when is_binary(html) do

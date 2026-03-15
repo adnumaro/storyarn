@@ -751,7 +751,7 @@ Input rules automatically convert block types as the user types:
 - **Behaviour-based** — pluggable adapter via config (`:local` or `:r2`)
 - **Local adapter (dev)** — stores in `priv/static/uploads/`, served via Phoenix static plug
 - **R2 adapter (production)** — Cloudflare R2 (S3-compatible) via ExAws; configurable CDN public URL; presigned upload/download URLs available
-- **Key format:** `projects/{project_id}/assets/{uuid}/{sanitized_filename}`
+- **Key format:** `projects/{project_id}/assets/{id}/{sanitized_filename}`
 - **Filename sanitization** — strips path components (no traversal), replaces special chars with `_`, downcased, truncated to 255 chars
 
 ### 5.4 Image Processing

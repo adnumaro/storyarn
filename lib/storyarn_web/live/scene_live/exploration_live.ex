@@ -703,6 +703,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
       scene_width: scene.width,
       scene_height: scene.height,
       display_mode: scene.exploration_display_mode || "fit",
+      default_zoom: scene.default_zoom || 1.0,
       default_center_x: scene.default_center_x,
       default_center_y: scene.default_center_y,
       zones:

@@ -6,8 +6,8 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
 
   alias Storyarn.Localization
   alias Storyarn.Projects
+  alias Storyarn.Shared.HtmlSanitizer
   alias Storyarn.Shared.TimeHelpers
-  alias StoryarnWeb.FlowLive.Helpers.HtmlSanitizer
 
   @impl true
   def render(assigns) do

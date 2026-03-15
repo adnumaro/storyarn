@@ -100,7 +100,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
   end
 
   def handle_update_scene_scale(%{"field" => field} = params, socket)
-      when field in ~w(scale_unit scale_value) do
+      when field in ~w(scale_unit scale_value default_zoom) do
     value = parse_scale_field(field, extract_field_value(params, field))
 
     case Scenes.update_scene(socket.assigns.scene, %{field => value}) do

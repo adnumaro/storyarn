@@ -41,7 +41,7 @@ This is where prototyping starts to feel like actual game design. Multi-step int
   {
     "interaction_methods": [
       {
-        "id": "uuid",
+        "id": "id",
         "label": "Pick lock",
         "icon": "lock-keyhole",
         "condition": { "logic": "all", "rules": [...] },

@@ -68,9 +68,9 @@ projects/{project_id}/project_snapshots/{snapshot_id}.tar.gz
 {
   "format_version": "1.0",
   "storyarn_version": "0.1.0",
-  "project_id": "uuid",
+  "project_id": "id",
   "project_name": "My RPG",
-  "snapshot_id": "uuid",
+  "snapshot_id": "id",
   "title": "Gold Master v1.0",
   "description": "Final version for publisher demo",
   "created_by": "user@example.com",
@@ -91,8 +91,8 @@ projects/{project_id}/project_snapshots/{snapshot_id}.tar.gz
 **New schema: `ProjectSnapshot`**
 ```
 project_snapshots
-├── id (uuid)
-├── project_id (uuid, FK)
+├── id (id)
+├── project_id (id, FK)
 ├── title (string, required, max 200)
 ├── description (text, nullable, max 1000)
 ├── storage_key (string — R2 path to .tar.gz)
@@ -100,7 +100,7 @@ project_snapshots
 ├── entity_counts (map — {sheets: N, flows: N, scenes: N, ...})
 ├── is_auto (boolean — true for daily auto-snapshots)
 ├── status (string: "creating" | "ready" | "failed" | "restoring")
-├── created_by_id (uuid, FK to users)
+├── created_by_id (id, FK to users)
 ├── inserted_at (utc_datetime)
 ```
 
@@ -207,7 +207,7 @@ Project restore is the most powerful recovery tool — but also the most dangero
 
 ### Schema changes
 - `Project`: add `restoration_in_progress` (boolean, default: false)
-- `Project`: add `restoration_started_by_id` (uuid, FK to users, nullable)
+- `Project`: add `restoration_started_by_id` (id, FK to users, nullable)
 - `Project`: add `restoration_started_at` (utc_datetime, nullable)
 
 ### Acceptance criteria
@@ -241,9 +241,9 @@ Accidental project deletion is catastrophic without this. With snapshot-based re
    a. User selects deleted project → sees list of available snapshots
    b. Selects a snapshot → clicks "Restore"
    c. System creates a **new project** in the workspace
-   d. All entities recreated from snapshot (new UUIDs generated)
+   d. All entities recreated from snapshot (new ids generated)
    e. Asset blobs already exist in R2 — new asset records point to same blobs
-   f. Internal references (node → sheet, zone → flow) remapped to new UUIDs
+   f. Internal references (node → sheet, zone → flow) remapped to new ids
 4. **Result**: a new project that is identical in content to the snapshot, but with fresh IDs
 
 ### Why new IDs (not revive old project)?
@@ -251,11 +251,11 @@ Accidental project deletion is catastrophic without this. With snapshot-based re
 - Clean separation: the restored project is a fresh entity
 - No risk of ghost references from other projects pointing to the old IDs
 
-### UUID remapping
+### id remapping
 The most complex part: every internal reference must be updated.
-- Snapshot contains original UUIDs for all entities
-- On restore, new UUIDs are generated for each entity
-- A mapping table `{old_uuid => new_uuid}` is built
+- Snapshot contains original ids for all entities
+- On restore, new ids are generated for each entity
+- A mapping table `{old_id => new_id}` is built
 - All internal references are remapped: `speaker_sheet_id`, `target_flow_id`, `parent_id`, `layer_id`, `from_pin_id`, etc.
 - External references (to entities outside the project) are left as-is — they may or may not still exist
 
@@ -273,7 +273,7 @@ After retention period, Oban job deletes snapshots and runs blob garbage collect
 - [ ] Project soft-delete does NOT remove R2 snapshots
 - [ ] Workspace settings shows deleted projects with snapshot availability
 - [ ] User can select snapshot and restore to new project
-- [ ] All entities recreated with new UUIDs
+- [ ] All entities recreated with new ids
 - [ ] Internal references remapped correctly
 - [ ] Asset blobs reused (not duplicated)
 - [ ] Restored project is fully functional

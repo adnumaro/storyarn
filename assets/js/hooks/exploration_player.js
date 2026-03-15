@@ -16,6 +16,12 @@
  * - display: Shows label + current variable value
  * - none/navigate: Zones with target_type push "exploration_element_click"
  *
+ * Movement system:
+ * - Walkable zones define traversable area (is_walkable flag)
+ * - Leader pin (is_leader) moves on click inside walkable area
+ * - Party pins (is_playable, !is_leader) follow with delay + fan offset
+ * - Point-in-polygon ray-casting for walkable area checks
+ *
  * Visibility states:
  * - visible: Rendered normally
  * - hide: Not rendered
@@ -35,6 +41,13 @@ const EDGE_THRESHOLD = 60; // px from viewport edge to start scrolling
 const MAX_SPEED = 800; // px/s at full edge
 const KEY_SPEED = 600; // px/s for arrow keys
 
+// Movement constants
+const MOVEMENT_SPEED = 15; // %/s — leader movement speed
+const PARTY_SPEED_FACTOR = 0.8; // party members move slower
+const PARTY_DELAY_MS = 200; // ms before party starts following
+const PARTY_SPREAD = 2; // % perpendicular offset for fan formation
+const ARRIVAL_THRESHOLD = 0.3; // % distance to consider arrived
+
 export const ExplorationPlayer = {
   mounted() {
     const data = JSON.parse(this.el.dataset.exploration || "{}");
@@ -42,6 +55,7 @@ export const ExplorationPlayer = {
     this.sceneWidth = data.scene_width || 800;
     this.sceneHeight = data.scene_height || 600;
     this.displayMode = data.display_mode || "fit";
+    this.defaultZoom = data.default_zoom || 1.0;
     this.defaultCenterX = data.default_center_x ?? 50;
     this.defaultCenterY = data.default_center_y ?? 50;
     this.zones = data.zones || [];
@@ -49,22 +63,48 @@ export const ExplorationPlayer = {
     this.variables = {};
     this.showZones = false;
 
+    // Movement state
+    this.walkableZones = [];
+    this.leaderPin = null;
+    this.partyPins = [];
+    this.leaderMoving = false;
+    this.leaderCurrentX = 0;
+    this.leaderCurrentY = 0;
+    this.leaderTargetX = 0;
+    this.leaderTargetY = 0;
+    this.partyTargets = [];
+    this.partyPositions = [];
+    this.partyMoving = false;
+    this._movementFrame = null;
+
+    this.initMovementData();
     this.render();
+    this.initMovementClickHandler();
 
     this.handleEvent("exploration_state_updated", ({ zones, pins, variables }) => {
       this.variables = variables || {};
       this.updateVisibility(zones, pins);
       this.updateDisplayZones();
+      this.updateWalkableZones(zones);
     });
 
     this.handleEvent("toggle_show_zones", ({ show }) => {
       this.showZones = show;
       this.applyZoneColors();
     });
+
+    this.handleEvent("set_zoom", ({ zoom }) => {
+      if (this.displayMode !== "scaled" || !this.wrapperEl) return;
+      this.zoom = zoom;
+      this.wrapperEl.style.transform = `scale(${this.zoom})`;
+      this.clampCamera();
+      this.applyCameraTransform();
+    });
   },
 
   destroyed() {
     this.destroyCamera();
+    this.destroyMovement();
   },
 
   // ===========================================================================
@@ -97,6 +137,8 @@ export const ExplorationPlayer = {
   },
 
   renderScaledMode() {
+    this.zoom = this.defaultZoom;
+
     // Camera div wraps the scene content and gets translated
     const camera = document.createElement("div");
     camera.className = "exploration-camera";
@@ -105,16 +147,43 @@ export const ExplorationPlayer = {
     const wrapper = document.createElement("div");
     wrapper.className = "exploration-wrapper";
     wrapper.style.position = "relative";
-    wrapper.style.width = `${this.sceneWidth}px`;
-    wrapper.style.height = `${this.sceneHeight}px`;
-    wrapper.style.overflow = "hidden";
+    wrapper.style.transformOrigin = "0 0";
+    wrapper.style.transform = `scale(${this.zoom})`;
+    this.wrapperEl = wrapper;
+
+    // Set wrapper dimensions — use scene dimensions or defer to image natural size
+    if (this.sceneWidth && this.sceneHeight) {
+      wrapper.style.width = `${this.sceneWidth}px`;
+      wrapper.style.height = `${this.sceneHeight}px`;
+    }
 
     this.renderBackground(wrapper, false);
     this.renderElements(wrapper);
     camera.appendChild(wrapper);
     this.el.appendChild(camera);
 
-    this.initCamera();
+    // If no scene dimensions, wait for image to load and use natural size
+    if (!this.sceneWidth || !this.sceneHeight) {
+      const img = wrapper.querySelector("img");
+      if (img) {
+        const applyNatural = () => {
+          if (img.naturalWidth && img.naturalHeight) {
+            this.sceneWidth = img.naturalWidth;
+            this.sceneHeight = img.naturalHeight;
+            wrapper.style.width = `${this.sceneWidth}px`;
+            wrapper.style.height = `${this.sceneHeight}px`;
+            this.initCamera();
+          }
+        };
+        if (img.complete && img.naturalWidth) {
+          applyNatural();
+        } else {
+          img.addEventListener("load", applyNatural);
+        }
+      }
+    } else {
+      this.initCamera();
+    }
   },
 
   renderBackground(wrapper, useFitAspectRatio) {
@@ -168,6 +237,7 @@ export const ExplorationPlayer = {
     this.keysDown = new Set();
     this.lastFrameTime = 0;
     this.flowModePaused = false;
+    this.cameraFollowLeader = false;
 
     // Set initial camera position from default center
     this.setInitialCameraPosition();
@@ -180,6 +250,8 @@ export const ExplorationPlayer = {
     this._onKeyDown = (e) => {
       if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
         this.keysDown.add(e.key);
+        // Manual camera control disables auto-follow
+        this.cameraFollowLeader = false;
       }
     };
     this._onKeyUp = (e) => {
@@ -219,14 +291,26 @@ export const ExplorationPlayer = {
     }
   },
 
+  // Effective dimensions after zoom
+  scaledWidth() {
+    return this.sceneWidth * (this.zoom || 1);
+  },
+
+  scaledHeight() {
+    return this.sceneHeight * (this.zoom || 1);
+  },
+
   setInitialCameraPosition() {
     const viewport = this.getViewportBounds();
     if (!viewport) return;
 
-    // Convert center percentage to pixel offset
+    // Center on leader pin if available, otherwise use scene default center
+    const centerX = this.leaderPin ? this.leaderPin.position_x : this.defaultCenterX;
+    const centerY = this.leaderPin ? this.leaderPin.position_y : this.defaultCenterY;
+
     const centerPx = {
-      x: (this.defaultCenterX / 100) * this.sceneWidth,
-      y: (this.defaultCenterY / 100) * this.sceneHeight,
+      x: (centerX / 100) * this.scaledWidth(),
+      y: (centerY / 100) * this.scaledHeight(),
     };
 
     // Position camera so that center point is in the middle of viewport
@@ -251,12 +335,17 @@ export const ExplorationPlayer = {
 
     // Check if flow mode is active (map container has pointer-events-none)
     const mapContainer = this.el.parentElement;
-    this.flowModePaused = mapContainer && mapContainer.classList.contains("pointer-events-none");
+    this.flowModePaused = mapContainer?.classList.contains("pointer-events-none");
 
     if (!this.flowModePaused) {
-      this.updateCameraVelocity(dt);
-      this.cameraX += this.velocityX * dt;
-      this.cameraY += this.velocityY * dt;
+      // Auto-follow leader in scaled mode during movement
+      if (this.cameraFollowLeader && this.leaderMoving) {
+        this.followLeaderWithCamera(dt);
+      } else {
+        this.updateCameraVelocity(dt);
+        this.cameraX += this.velocityX * dt;
+        this.cameraY += this.velocityY * dt;
+      }
       this.clampCamera();
       this.applyCameraTransform();
     } else {
@@ -266,6 +355,22 @@ export const ExplorationPlayer = {
     }
 
     this._animFrame = requestAnimationFrame((t) => this.cameraLoop(t));
+  },
+
+  followLeaderWithCamera(dt) {
+    const viewport = this.getViewportBounds();
+    if (!viewport) return;
+
+    // Target: center camera on leader (using scaled dimensions)
+    const targetCamX = (this.leaderCurrentX / 100) * this.scaledWidth() - viewport.width / 2;
+    const targetCamY = (this.leaderCurrentY / 100) * this.scaledHeight() - viewport.height / 2;
+
+    // Smooth follow
+    const lerp = 1 - 0.01 ** dt;
+    this.cameraX += (targetCamX - this.cameraX) * lerp;
+    this.cameraY += (targetCamY - this.cameraY) * lerp;
+    this.velocityX = 0;
+    this.velocityY = 0;
   },
 
   updateCameraVelocity(dt) {
@@ -308,7 +413,7 @@ export const ExplorationPlayer = {
     if (this.keysDown.has("ArrowDown")) targetVy += KEY_SPEED;
 
     // Smooth interpolation (ease-in/out)
-    const lerp = 1 - Math.pow(0.001, dt); // ~0.93 at 60fps
+    const lerp = 1 - 0.001 ** dt; // ~0.93 at 60fps
     this.velocityX += (targetVx - this.velocityX) * lerp;
     this.velocityY += (targetVy - this.velocityY) * lerp;
 
@@ -321,17 +426,349 @@ export const ExplorationPlayer = {
     const viewport = this.getViewportBounds();
     if (!viewport) return;
 
-    const maxX = Math.max(0, this.sceneWidth - viewport.width);
-    const maxY = Math.max(0, this.sceneHeight - viewport.height);
+    const sw = this.scaledWidth();
+    const sh = this.scaledHeight();
 
-    this.cameraX = Math.max(0, Math.min(this.cameraX, maxX));
-    this.cameraY = Math.max(0, Math.min(this.cameraY, maxY));
+    if (sw <= viewport.width) {
+      this.cameraX = -(viewport.width - sw) / 2;
+    } else {
+      this.cameraX = Math.max(0, Math.min(this.cameraX, sw - viewport.width));
+    }
+
+    if (sh <= viewport.height) {
+      this.cameraY = -(viewport.height - sh) / 2;
+    } else {
+      this.cameraY = Math.max(0, Math.min(this.cameraY, sh - viewport.height));
+    }
   },
 
   applyCameraTransform() {
     if (this.cameraEl) {
       this.cameraEl.style.transform = `translate(${-this.cameraX}px, ${-this.cameraY}px)`;
     }
+  },
+
+  // ===========================================================================
+  // Movement System
+  // ===========================================================================
+
+  initMovementData() {
+    // Collect walkable zones (visible ones only — hidden zones excluded)
+    this.walkableZones = this.zones.filter(
+      (z) => z.is_walkable && z.vertices && z.vertices.length >= 3 && z.visibility !== "hide",
+    );
+
+    // Find leader and party pins
+    this.leaderPin = this.pins.find((p) => p.is_leader && p.is_playable);
+    this.partyPins = this.pins.filter((p) => p.is_playable && !p.is_leader);
+
+    if (this.leaderPin) {
+      this.leaderCurrentX = this.leaderPin.position_x;
+      this.leaderCurrentY = this.leaderPin.position_y;
+      this.leaderTargetX = this.leaderCurrentX;
+      this.leaderTargetY = this.leaderCurrentY;
+    }
+
+    // Init party positions at their DB positions
+    this.partyPositions = this.partyPins.map((p) => ({
+      id: p.id,
+      x: p.position_x,
+      y: p.position_y,
+    }));
+    this.partyTargets = this.partyPositions.map((p) => ({ ...p }));
+  },
+
+  initMovementClickHandler() {
+    if (!this.leaderPin || this.walkableZones.length === 0) return;
+
+    // Click on the wrapper (not zones/pins) to move the leader
+    // We use a timeout to let zone/pin click handlers fire first
+    this._onWrapperClick = (e) => {
+      // Don't move if flow mode is active
+      if (this.flowModePaused) return;
+
+      // Don't move if clicking on a pin (pins have their own interaction)
+      const clickedPin = e.target.closest("[data-element-type='pin']");
+      if (clickedPin) return;
+
+      const wrapper = this.el.querySelector(".exploration-wrapper");
+      if (!wrapper) return;
+
+      const rect = wrapper.getBoundingClientRect();
+      const clickX = ((e.clientX - rect.left) / rect.width) * 100;
+      const clickY = ((e.clientY - rect.top) / rect.height) * 100;
+
+      if (this.isPointInWalkableArea(clickX, clickY)) {
+        this.startMovement(clickX, clickY);
+        this.showClickFeedback(e.clientX, e.clientY, true);
+      } else {
+        this.showClickFeedback(e.clientX, e.clientY, false);
+      }
+    };
+
+    // Attach to the hook root so it catches clicks from zones too
+    this.el.addEventListener("click", this._onWrapperClick);
+  },
+
+  destroyMovement() {
+    if (this._movementFrame) {
+      cancelAnimationFrame(this._movementFrame);
+      this._movementFrame = null;
+    }
+    if (this._partyTimeout) {
+      clearTimeout(this._partyTimeout);
+      this._partyTimeout = null;
+    }
+    if (this._onWrapperClick) {
+      this.el.removeEventListener("click", this._onWrapperClick);
+    }
+  },
+
+  // ===========================================================================
+  // Point-in-polygon (Ray-casting algorithm)
+  // ===========================================================================
+
+  isPointInWalkableArea(x, y) {
+    for (const zone of this.walkableZones) {
+      if (this.isPointInPolygon(x, y, zone.vertices)) {
+        return true;
+      }
+    }
+    return false;
+  },
+
+  isPointInPolygon(x, y, vertices) {
+    let inside = false;
+    for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
+      const xi = vertices[i].x;
+      const yi = vertices[i].y;
+      const xj = vertices[j].x;
+      const yj = vertices[j].y;
+
+      const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  },
+
+  // ===========================================================================
+  // Movement Animation
+  // ===========================================================================
+
+  startMovement(targetX, targetY) {
+    this.leaderTargetX = targetX;
+    this.leaderTargetY = targetY;
+    this.leaderMoving = true;
+
+    // Enable camera follow in scaled mode
+    if (this.displayMode === "scaled") {
+      this.cameraFollowLeader = true;
+    }
+
+    // Start party following after delay
+    if (this._partyTimeout) clearTimeout(this._partyTimeout);
+    this._partyTimeout = setTimeout(() => {
+      this.startPartyFollowing();
+    }, PARTY_DELAY_MS);
+
+    // Start movement loop if not already running
+    if (!this._movementFrame) {
+      this._movementLastTime = performance.now();
+      this._movementFrame = requestAnimationFrame((t) => this.movementLoop(t));
+    }
+  },
+
+  movementLoop(timestamp) {
+    const dt = Math.min((timestamp - this._movementLastTime) / 1000, 0.05);
+    this._movementLastTime = timestamp;
+
+    let anyMoving = false;
+
+    // Move leader
+    if (this.leaderMoving) {
+      anyMoving = this.stepLeader(dt) || anyMoving;
+    }
+
+    // Move party members
+    if (this.partyMoving) {
+      anyMoving = this.stepParty(dt) || anyMoving;
+    }
+
+    if (anyMoving) {
+      this._movementFrame = requestAnimationFrame((t) => this.movementLoop(t));
+    } else {
+      this._movementFrame = null;
+      this.cameraFollowLeader = false;
+    }
+  },
+
+  stepLeader(dt) {
+    const dx = this.leaderTargetX - this.leaderCurrentX;
+    const dy = this.leaderTargetY - this.leaderCurrentY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < ARRIVAL_THRESHOLD) {
+      this.leaderCurrentX = this.leaderTargetX;
+      this.leaderCurrentY = this.leaderTargetY;
+      this.leaderMoving = false;
+      this.updateLeaderDom();
+      return false;
+    }
+
+    const step = MOVEMENT_SPEED * dt;
+    const ratio = Math.min(step / dist, 1);
+    const nextX = this.leaderCurrentX + dx * ratio;
+    const nextY = this.leaderCurrentY + dy * ratio;
+
+    // Boundary check: verify next position is still in walkable area
+    if (this.isPointInWalkableArea(nextX, nextY)) {
+      this.leaderCurrentX = nextX;
+      this.leaderCurrentY = nextY;
+      this.updateLeaderDom();
+      return true;
+    }
+
+    // Can't move further — stop
+    this.leaderMoving = false;
+    return false;
+  },
+
+  stepParty(dt) {
+    let anyMoving = false;
+
+    for (let i = 0; i < this.partyPositions.length; i++) {
+      const pos = this.partyPositions[i];
+      const target = this.partyTargets[i];
+      if (!target) continue;
+
+      const dx = target.x - pos.x;
+      const dy = target.y - pos.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < ARRIVAL_THRESHOLD) {
+        pos.x = target.x;
+        pos.y = target.y;
+      } else {
+        const step = MOVEMENT_SPEED * PARTY_SPEED_FACTOR * dt;
+        const ratio = Math.min(step / dist, 1);
+        const nextX = pos.x + dx * ratio;
+        const nextY = pos.y + dy * ratio;
+
+        // Party members use simpler boundary check
+        if (this.isPointInWalkableArea(nextX, nextY)) {
+          pos.x = nextX;
+          pos.y = nextY;
+          anyMoving = true;
+        }
+      }
+
+      this.updatePartyPinDom(this.partyPins[i].id, pos.x, pos.y);
+    }
+
+    if (!anyMoving) {
+      this.partyMoving = false;
+    }
+    return anyMoving;
+  },
+
+  startPartyFollowing() {
+    if (this.partyPins.length === 0) return;
+
+    // Calculate movement direction for fan formation
+    const dx = this.leaderTargetX - this.leaderCurrentX;
+    const dy = this.leaderTargetY - this.leaderCurrentY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Perpendicular direction for spread
+    let perpX = 0;
+    let perpY = 1;
+    if (dist > 0.1) {
+      perpX = -dy / dist;
+      perpY = dx / dist;
+    }
+
+    // Compute fan formation targets around the leader's target
+    for (let i = 0; i < this.partyPins.length; i++) {
+      const offset = (i - (this.partyPins.length - 1) / 2) * PARTY_SPREAD;
+      // Party targets are offset behind and to the side of the leader target
+      const behindOffset = PARTY_SPREAD; // slightly behind leader
+      const ndx = dist > 0.1 ? dx / dist : 0;
+      const ndy = dist > 0.1 ? dy / dist : 0;
+      this.partyTargets[i] = {
+        id: this.partyPins[i].id,
+        x: this.leaderTargetX - ndx * behindOffset + perpX * offset,
+        y: this.leaderTargetY - ndy * behindOffset + perpY * offset,
+      };
+    }
+
+    this.partyMoving = true;
+
+    // Restart movement loop if needed
+    if (!this._movementFrame) {
+      this._movementLastTime = performance.now();
+      this._movementFrame = requestAnimationFrame((t) => this.movementLoop(t));
+    }
+  },
+
+  // ===========================================================================
+  // DOM Updates for Movement
+  // ===========================================================================
+
+  updateLeaderDom() {
+    if (!this.leaderPin) return;
+    const el = this.el.querySelector(
+      `[data-element-type="pin"][data-element-id="${this.leaderPin.id}"]`,
+    );
+    if (el) {
+      el.style.left = `${this.leaderCurrentX}%`;
+      el.style.top = `${this.leaderCurrentY}%`;
+      el.style.transition = "none";
+    }
+  },
+
+  updatePartyPinDom(pinId, x, y) {
+    const el = this.el.querySelector(`[data-element-type="pin"][data-element-id="${pinId}"]`);
+    if (el) {
+      el.style.left = `${x}%`;
+      el.style.top = `${y}%`;
+      el.style.transition = "none";
+    }
+  },
+
+  // ===========================================================================
+  // Click Feedback
+  // ===========================================================================
+
+  showClickFeedback(clientX, clientY, walkable) {
+    const ring = document.createElement("div");
+    ring.className = walkable ? "click-feedback-walkable" : "click-feedback-blocked";
+    ring.style.position = "fixed";
+    ring.style.left = `${clientX}px`;
+    ring.style.top = `${clientY}px`;
+    ring.style.transform = "translate(-50%, -50%)";
+    ring.style.pointerEvents = "none";
+    ring.style.zIndex = "9999";
+    document.body.appendChild(ring);
+
+    ring.addEventListener("animationend", () => ring.remove());
+  },
+
+  // ===========================================================================
+  // Walkable Zone Updates
+  // ===========================================================================
+
+  updateWalkableZones(zoneStates) {
+    // Refresh walkable zones considering visibility changes
+    const visibilityMap = new Map();
+    for (const z of zoneStates || []) {
+      visibilityMap.set(String(z.id), z.visibility);
+    }
+
+    this.walkableZones = this.zones.filter((z) => {
+      if (!z.is_walkable || !z.vertices || z.vertices.length < 3) return false;
+      const vis = visibilityMap.get(String(z.id)) || z.visibility;
+      return vis !== "hide";
+    });
   },
 
   // ===========================================================================
@@ -346,12 +783,14 @@ export const ExplorationPlayer = {
     const isDisabled = visibility === "disable";
     const actionType = zone.action_type || "none";
     const hasTarget = zone.target_type && zone.target_id;
+    const isWalkableOnly = zone.is_walkable && !hasTarget && actionType === "none";
     const isClickable = !isDisabled && (actionType === "instruction" || hasTarget);
 
     // Zone overlay with clip-path
     const div = document.createElement("div");
     div.className = `interaction-zone interaction-zone-${actionType}`;
     div.dataset.zoneId = zone.id;
+    div.dataset.walkable = zone.is_walkable ? "true" : "false";
     div.style.position = "absolute";
     div.style.inset = "0";
     div.style.clipPath = `polygon(${vertices.map((v) => `${v.x}% ${v.y}%`).join(", ")})`;
@@ -361,15 +800,21 @@ export const ExplorationPlayer = {
     div.dataset.fillColor = fillColor;
     div.dataset.fillOpacity = opacity;
 
-    // Transparent by default — "Show Zones" toggle reveals colors
+    // Walkable-only zones: invisible by default, green tint when Show Zones
     if (this.showZones) {
-      div.style.backgroundColor = fillColor;
-      div.style.opacity = isDisabled ? opacity * 0.3 : opacity;
+      if (isWalkableOnly) {
+        div.style.backgroundColor = "#4ade80";
+        div.style.opacity = isDisabled ? 0.1 : 0.2;
+      } else {
+        div.style.backgroundColor = fillColor;
+        div.style.opacity = isDisabled ? opacity * 0.3 : opacity;
+      }
     } else {
       div.style.backgroundColor = "transparent";
       div.style.opacity = "1";
     }
 
+    // Walkable-only zones are not clickable for actions — movement is handled by wrapper click
     if (isClickable) {
       div.style.pointerEvents = "auto";
       div.style.cursor = "pointer";
@@ -385,6 +830,9 @@ export const ExplorationPlayer = {
           div.style.backgroundColor = "transparent";
         }
       });
+    } else if (isWalkableOnly) {
+      // Walkable-only zones pass clicks through to wrapper for movement
+      div.style.pointerEvents = "none";
     }
 
     // Click handler — single consolidated event
@@ -420,7 +868,10 @@ export const ExplorationPlayer = {
       labelContainer.style.opacity = "0.3";
     }
 
-    if (actionType === "display") {
+    // Walkable-only zones: hide label in exploration (they define area, not interaction)
+    if (isWalkableOnly) {
+      labelContainer.style.display = "none";
+    } else if (actionType === "display") {
       const ref = zone.action_data?.variable_ref;
       const label = document.createElement("span");
       label.className = "zone-display-label";
@@ -499,6 +950,12 @@ export const ExplorationPlayer = {
     marker.style.transition = "transform 0.15s, box-shadow 0.15s";
     marker.style.flexShrink = "0";
 
+    // Leader pin gets a subtle crown glow
+    if (pin.is_leader) {
+      marker.style.border = "2px solid rgba(250,204,21,0.8)";
+      marker.style.boxShadow = "0 2px 8px rgba(250,204,21,0.3), 0 2px 6px rgba(0,0,0,0.4)";
+    }
+
     if (isClickable) {
       marker.style.cursor = "pointer";
 
@@ -508,7 +965,9 @@ export const ExplorationPlayer = {
       });
       marker.addEventListener("mouseleave", () => {
         marker.style.transform = "scale(1)";
-        marker.style.boxShadow = "0 2px 6px rgba(0,0,0,0.4)";
+        marker.style.boxShadow = pin.is_leader
+          ? "0 2px 8px rgba(250,204,21,0.3), 0 2px 6px rgba(0,0,0,0.4)"
+          : "0 2px 6px rgba(0,0,0,0.4)";
       });
 
       marker.addEventListener("click", () => {
@@ -622,8 +1081,17 @@ export const ExplorationPlayer = {
           if (overlay) {
             const zone = this.zones.find((z) => String(z.id) === String(zoneState.id));
             if (this.showZones && zone) {
-              overlay.style.backgroundColor = zone.fill_color || "#3b82f6";
-              overlay.style.opacity = zone.opacity != null ? zone.opacity : 0.3;
+              if (
+                zone.is_walkable &&
+                !zone.target_type &&
+                (zone.action_type || "none") === "none"
+              ) {
+                overlay.style.backgroundColor = "#4ade80";
+                overlay.style.opacity = 0.2;
+              } else {
+                overlay.style.backgroundColor = zone.fill_color || "#3b82f6";
+                overlay.style.opacity = zone.opacity != null ? zone.opacity : 0.3;
+              }
             } else {
               overlay.style.backgroundColor = "transparent";
               overlay.style.opacity = "1";
@@ -670,10 +1138,20 @@ export const ExplorationPlayer = {
     const overlays = this.el.querySelectorAll(".interaction-zone");
     for (const overlay of overlays) {
       if (this.showZones) {
-        const fillColor = overlay.dataset.fillColor || "#3b82f6";
-        const opacity = parseFloat(overlay.dataset.fillOpacity) || 0.3;
-        overlay.style.backgroundColor = fillColor;
-        overlay.style.opacity = opacity;
+        const isWalkable = overlay.dataset.walkable === "true";
+        const zone = this.zones.find((z) => String(z.id) === overlay.dataset.zoneId);
+        const isWalkableOnly =
+          isWalkable && zone && !zone.target_type && (zone.action_type || "none") === "none";
+
+        if (isWalkableOnly) {
+          overlay.style.backgroundColor = "#4ade80";
+          overlay.style.opacity = 0.2;
+        } else {
+          const fillColor = overlay.dataset.fillColor || "#3b82f6";
+          const opacity = parseFloat(overlay.dataset.fillOpacity) || 0.3;
+          overlay.style.backgroundColor = fillColor;
+          overlay.style.opacity = opacity;
+        }
       } else {
         overlay.style.backgroundColor = "transparent";
         overlay.style.opacity = "1";

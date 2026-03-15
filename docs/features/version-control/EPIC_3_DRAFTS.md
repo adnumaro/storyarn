@@ -38,26 +38,26 @@ The ability to say "let me try something" without fear is the most requested fea
 **New schema: `Draft`**
 ```
 drafts
-├── id (uuid)
-├── project_id (uuid, FK)
+├── id (id)
+├── project_id (id, FK)
 ├── entity_type (string: "sheet" | "flow" | "scene")
-├── source_entity_id (uuid — the original entity this was forked from)
+├── source_entity_id (id — the original entity this was forked from)
 ├── source_version_number (integer, nullable — version at fork time, if exists)
 ├── name (string — default: "{entity_name} — Draft")
 ├── status (string: "active" | "merged" | "discarded")
-├── created_by_id (uuid, FK to users)
+├── created_by_id (id, FK to users)
 ├── merged_at (utc_datetime, nullable)
 ├── inserted_at (utc_datetime)
 ├── updated_at (utc_datetime)
 ```
 
 **Entity tables extended:**
-- `sheets`, `flows`, `scenes` (and child tables): add `draft_id` (uuid, FK to drafts, nullable)
+- `sheets`, `flows`, `scenes` (and child tables): add `draft_id` (id, FK to drafts, nullable)
 - When `draft_id` is not null, the entity is a draft copy
 - All existing queries filter by `is_nil(draft_id)` to exclude draft copies from normal views
 
 ### Key implementation areas
-- **Cloning engine**: deep copy of entity + all children, assigning new UUIDs and setting `draft_id`
+- **Cloning engine**: deep copy of entity + all children, assigning new ids and setting `draft_id`
 - **Internal reference remapping**: within the draft, all internal references (node connections, layer assignments, pin connections) must point to the new cloned IDs
 - **External reference preservation**: references to entities outside the draft (sheets, flows, other scenes) keep their original IDs
 - **Asset references**: draft entities point to the same assets (no blob duplication needed)
@@ -73,7 +73,7 @@ drafts
 
 ### Acceptance criteria
 - [ ] "Create Draft" action available on flows, sheets, and scenes
-- [ ] Draft creates a complete deep copy with new UUIDs
+- [ ] Draft creates a complete deep copy with new ids
 - [ ] Internal references remapped correctly within the draft
 - [ ] External references preserved as-is
 - [ ] Draft entities excluded from all normal queries

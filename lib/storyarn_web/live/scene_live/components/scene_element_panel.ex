@@ -76,7 +76,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
   # Zone panel
   # ---------------------------------------------------------------------------
 
-  @action_types ~w(none instruction display)
+  @action_types ~w(none walkable instruction display)
 
   attr :zone, :map, required: true
   attr :can_edit, :boolean, default: true
@@ -94,6 +94,25 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
 
     ~H"""
     <div class="space-y-4">
+      <%!-- Walkable (only show toggle when action type is NOT already "walkable") --%>
+      <div :if={@zone.action_type != "walkable"} class="flex items-center justify-between">
+        <label class="text-xs font-medium text-base-content/60 flex items-center gap-1">
+          <.icon name="footprints" class="size-3" />
+          {dgettext("scenes", "Walkable area")}
+        </label>
+        <input
+          type="checkbox"
+          class="toggle toggle-xs toggle-primary"
+          checked={@zone.is_walkable}
+          phx-click={
+            JS.push("update_zone",
+              value: %{id: @zone.id, field: "is_walkable", toggle: to_string(!@zone.is_walkable)}
+            )
+          }
+          disabled={!@can_edit}
+        />
+      </div>
+
       <%!-- Tooltip --%>
       <div>
         <label class="block text-xs font-medium text-base-content/60 mb-1">
@@ -232,6 +251,45 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
           class="input input-sm input-bordered w-full"
           disabled={!@can_edit}
         />
+      </div>
+
+      <%!-- Playable character --%>
+      <div class="pt-3 border-t border-base-300">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-medium text-base-content/60 flex items-center gap-1">
+            <.icon name="user" class="size-3" />
+            {dgettext("scenes", "Playable character")}
+          </label>
+          <input
+            type="checkbox"
+            class="toggle toggle-xs toggle-primary"
+            checked={@pin.is_playable}
+            phx-click={
+              JS.push("update_pin",
+                value: %{id: @pin.id, field: "is_playable", toggle: to_string(!@pin.is_playable)}
+              )
+            }
+            disabled={!@can_edit}
+          />
+        </div>
+        <%!-- Leader (only if playable) --%>
+        <div :if={@pin.is_playable} class="flex items-center justify-between mt-2">
+          <label class="text-xs font-medium text-base-content/60 flex items-center gap-1">
+            <.icon name="crown" class="size-3" />
+            {dgettext("scenes", "Party leader")}
+          </label>
+          <input
+            type="checkbox"
+            class="toggle toggle-xs toggle-warning"
+            checked={@pin.is_leader}
+            phx-click={
+              JS.push("update_pin",
+                value: %{id: @pin.id, field: "is_leader", toggle: to_string(!@pin.is_leader)}
+              )
+            }
+            disabled={!@can_edit}
+          />
+        </div>
       </div>
 
       <%!-- Link to --%>
