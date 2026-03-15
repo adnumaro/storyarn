@@ -6,9 +6,12 @@ defmodule StoryarnWeb.ProjectLive.Show do
   use StoryarnWeb, :live_view
 
   import StoryarnWeb.Components.DashboardComponents
+  import StoryarnWeb.Live.Shared.TreePanelHandlers
 
   use StoryarnWeb.Live.Shared.DashboardHandlers
   alias StoryarnWeb.Live.Shared.RestorationHandlers
+
+  alias StoryarnWeb.Components.FocusLayout
 
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
@@ -24,10 +27,20 @@ defmodule StoryarnWeb.ProjectLive.Show do
       project={@project}
       workspace={@workspace}
       active_tool={:dashboard}
-      has_tree={false}
+      has_tree={true}
+      tree_panel_open={@tree_panel_open}
+      tree_panel_pinned={@tree_panel_pinned}
+      on_dashboard={true}
       can_edit={@can_manage}
       restoration_banner={@restoration_banner}
     >
+      <:tree_content>
+        <FocusLayout.dashboard_nav
+          workspace={@workspace}
+          project={@project}
+          is_super_admin={@current_scope.user.is_super_admin == true}
+        />
+      </:tree_content>
       <div class="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         <%!-- Loading State --%>
         <div :if={is_nil(@stats)} class="flex items-center justify-center py-12">
@@ -165,6 +178,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
           |> assign(:issues, nil)
           |> assign(:localization, [])
           |> assign(:activity, [])
+          |> assign(focus_layout_defaults())
 
         if connected?(socket) do
           Collaboration.subscribe_dashboard(project.id)
@@ -181,6 +195,10 @@ defmodule StoryarnWeb.ProjectLive.Show do
          |> redirect(to: ~p"/workspaces")}
     end
   end
+
+  @impl true
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: handle_tree_panel_event(event, params, socket)
 
   @impl true
   def handle_info({:project_restoration_started, payload}, socket),

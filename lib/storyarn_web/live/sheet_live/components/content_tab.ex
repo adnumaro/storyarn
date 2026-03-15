@@ -279,7 +279,13 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   end
 
   def handle_event("select_block", %{"id" => block_id}, socket) do
-    {:noreply, assign(socket, :selected_block_id, ContentTabHelpers.to_integer(block_id))}
+    id = ContentTabHelpers.to_integer(block_id)
+
+    if socket.assigns.selected_block_id == id do
+      {:noreply, socket}
+    else
+      {:noreply, assign(socket, :selected_block_id, id)}
+    end
   end
 
   def handle_event("deselect_block", _params, socket) do

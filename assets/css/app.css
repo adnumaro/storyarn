@@ -276,6 +276,11 @@
   @apply bg-base-200/90 backdrop-blur border border-base-300 rounded-xl shadow-sm;
 }
 
+:root:has([data-theme="dark"]) .surface-panel,
+[data-theme="dark"] .surface-panel {
+  @apply bg-base-content/[0.07] border-base-content/10;
+}
+
 /* Right sidebars — hidden by default, shown when hook sets data-panel-open.
    The attribute lives outside the template so LiveView patches can't touch it. */
 [phx-hook="RightSidebar"]:not([data-panel-open]) {

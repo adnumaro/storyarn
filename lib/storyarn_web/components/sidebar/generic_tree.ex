@@ -246,9 +246,6 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
             phx-value-parent-id={@entity.id}
             class="btn btn-ghost btn-xs btn-square"
             title={@create_child_title}
-            phx-hook="StopClick"
-            data-prevent-default
-            data-stop-propagation
           >
             <.icon name="plus" class="size-3" />
           </button>
@@ -308,9 +305,6 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
             phx-value-parent-id={@entity.id}
             class="btn btn-ghost btn-xs btn-square"
             title={@create_child_title}
-            phx-hook="StopClick"
-            data-prevent-default
-            data-stop-propagation
           >
             <.icon name="plus" class="size-3" />
           </button>
@@ -349,9 +343,6 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
         id={"#{@entity_type}-#{@entity_id}-menu-button"}
         tabindex="0"
         class="btn btn-ghost btn-xs btn-square"
-        phx-hook="StopClick"
-        data-prevent-default
-        data-stop-propagation
       >
         <.icon name="more-horizontal" class="size-4" />
       </button>
@@ -369,8 +360,6 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
               JS.push(@set_pending_delete_event, value: %{id: @entity_id})
               |> show_modal(@delete_modal_id)
             }
-            phx-hook="StopClick"
-            data-stop-propagation
           >
             <.icon name="trash-2" class="size-4" />
             {@delete_label}

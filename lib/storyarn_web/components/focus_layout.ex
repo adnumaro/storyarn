@@ -446,4 +446,56 @@ defmodule StoryarnWeb.Components.FocusLayout do
 
   defp user_email(%{current_scope: %{user: %{email: email}}}) when is_binary(email), do: email
   defp user_email(_), do: ""
+
+  defp tools, do: @tools
+
+  # ============================================================================
+  # Dashboard Navigation (sidebar for project dashboard)
+  # ============================================================================
+
+  attr :workspace, :map, required: true
+  attr :project, :map, required: true
+  attr :is_super_admin, :boolean, default: false
+
+  def dashboard_nav(assigns) do
+    hidden =
+      [:dashboard, :localization] ++ if(assigns.is_super_admin, do: [], else: [:screenplays])
+
+    assigns = assign(assigns, :nav_tools, Enum.reject(tools(), &(&1.key in hidden)))
+
+    ~H"""
+    <div class="space-y-4">
+      <div>
+        <div class="text-xs text-base-content/50 uppercase tracking-wider px-2 mb-1">
+          {gettext("Tools")}
+        </div>
+        <div class="space-y-0.5">
+          <.tree_link
+            :for={tool <- @nav_tools}
+            label={tool_label(tool.key)}
+            href={tool_path(@workspace, @project, to_string(tool.section))}
+            icon={tool.icon}
+          />
+        </div>
+      </div>
+      <div>
+        <div class="text-xs text-base-content/50 uppercase tracking-wider px-2 mb-1">
+          {gettext("Production")}
+        </div>
+        <div class="space-y-0.5">
+          <.tree_link
+            label={tool_label(:localization)}
+            href={tool_path(@workspace, @project, "localization")}
+            icon="languages"
+          />
+          <.tree_link
+            label={gettext("Export & Import")}
+            href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings/export-import"}
+            icon="arrow-left-right"
+          />
+        </div>
+      </div>
+    </div>
+    """
+  end
 end
