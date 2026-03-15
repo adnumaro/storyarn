@@ -1,0 +1,25 @@
+lib/storyarn_web/components/block_components/table_blocks.ex
+  7f0a5418e55165f4 83-84,86,89-90,94-96,113
+assets/js/hooks/editable_block_label.js
+  7f0a5418e55165f4 24-27,29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "ba5351e22d9fb66c166fa77c27cc3a70d76f7953",
+  "prompts": {
+    "7f0a5418e55165f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2aead71-3c2f-4e25-9bfe-50f896e0b35d",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 21,
+      "total_deletions": 18,
+      "accepted_lines": 14,
+      "overriden_lines": 0
+    }
+  }
+}
