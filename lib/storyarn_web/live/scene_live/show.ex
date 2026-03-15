@@ -392,6 +392,7 @@ defmodule StoryarnWeb.SceneLive.Show do
                 bg_upload_input_id={@uploads[:background] && @uploads.background.ref}
                 ambient_flows={@ambient_flows}
                 project_flows={@project_flows}
+                project_variables={@project_variables}
               />
             </div>
             <div
@@ -843,6 +844,44 @@ defmodule StoryarnWeb.SceneLive.Show do
   defp compute_reorder_index(idx, "up", _len), do: max(0, idx - 1)
   defp compute_reorder_index(idx, "down", len), do: min(len - 1, idx + 1)
   defp compute_reorder_index(idx, _direction, _len), do: idx
+
+  defp do_update_ambient_flow_trigger(socket, params) do
+    id = MapUtils.parse_int(params["id"])
+
+    case Scenes.get_ambient_flow(socket.assigns.scene.id, id) do
+      nil ->
+        socket
+
+      af ->
+        attrs = build_trigger_attrs(af, params)
+
+        case Scenes.update_ambient_flow(af, attrs) do
+          {:ok, _} ->
+            reload_ambient_flows(socket)
+
+          {:error, _} ->
+            put_flash(socket, :error, dgettext("scenes", "Could not update trigger."))
+        end
+    end
+  end
+
+  defp build_trigger_attrs(af, params) do
+    trigger_type = params["trigger_type"] || af.trigger_type
+
+    %{
+      "trigger_type" => trigger_type,
+      "trigger_config" => build_trigger_config(trigger_type, params),
+      "priority" => MapUtils.parse_int(params["priority"]) || 0
+    }
+  end
+
+  defp build_trigger_config("timed", params),
+    do: %{"interval_ms" => MapUtils.parse_int(params["interval_ms"]) || 30_000}
+
+  defp build_trigger_config("on_event", params),
+    do: %{"variable_ref" => params["variable_ref"] || ""}
+
+  defp build_trigger_config(_type, _params), do: %{}
 
   defp assign_scene_state(socket, scene, can_edit) do
     socket
@@ -1359,6 +1398,12 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_event("reorder_ambient_flow", %{"id" => id, "direction" => direction}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       {:noreply, do_reorder_ambient_flow(socket, id, direction)}
+    end)
+  end
+
+  def handle_event("update_ambient_flow_trigger", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      {:noreply, do_update_ambient_flow_trigger(socket, params)}
     end)
   end
 

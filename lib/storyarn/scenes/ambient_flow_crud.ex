@@ -16,7 +16,7 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
   def list_ambient_flows(scene_id) do
     from(af in SceneAmbientFlow,
       where: af.scene_id == ^scene_id,
-      order_by: [asc: af.position, asc: af.id],
+      order_by: [asc: af.position, desc: af.priority, asc: af.id],
       preload: [:flow]
     )
     |> Repo.all()
@@ -47,7 +47,7 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
   end
 
   @doc """
-  Updates an ambient flow (enabled, trigger_type, position).
+  Updates an ambient flow (enabled, trigger_type, trigger_config, priority, position).
   """
   def update_ambient_flow(%SceneAmbientFlow{} = ambient_flow, attrs) do
     ambient_flow

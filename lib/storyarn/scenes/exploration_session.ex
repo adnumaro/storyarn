@@ -16,6 +16,7 @@ defmodule Storyarn.Scenes.ExplorationSession do
 
     field :variable_values, :map, default: %{}
     field :collected_ids, {:array, :string}, default: []
+    field :completed_ambient_ids, {:array, :integer}, default: []
     field :player_positions, :map
     field :camera_state, :map
 
@@ -23,7 +24,7 @@ defmodule Storyarn.Scenes.ExplorationSession do
   end
 
   @required_fields ~w(user_id project_id)a
-  @optional_fields ~w(scene_id variable_values collected_ids player_positions camera_state)a
+  @optional_fields ~w(scene_id variable_values collected_ids completed_ambient_ids player_positions camera_state)a
 
   def changeset(session, attrs) do
     session

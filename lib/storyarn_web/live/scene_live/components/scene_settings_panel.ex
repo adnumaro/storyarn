@@ -5,7 +5,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
   """
 
   use StoryarnWeb, :html
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Phoenix.LiveView.JS
 
@@ -14,6 +14,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
   attr :bg_upload_input_id, :string, default: nil
   attr :ambient_flows, :list, default: []
   attr :project_flows, :list, default: []
+  attr :project_variables, :list, default: []
 
   def scene_settings_panel(assigns) do
     ~H"""
@@ -194,50 +195,119 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
         <div :if={@ambient_flows == []} class="text-xs text-base-content/40">
           {dgettext("scenes", "No ambient flows linked to this scene.")}
         </div>
-        <div :for={af <- @ambient_flows} class="flex items-center gap-1.5 group">
-          <span class="text-xs truncate flex-1" title={af.flow.name}>
-            <.icon name="git-branch" class="size-3 inline-block mr-0.5 opacity-50" />
-            {af.flow.name}
-          </span>
-          <div :if={@can_edit} class="flex items-center gap-0.5 shrink-0">
-            <button
-              type="button"
-              class="btn btn-ghost btn-xs btn-square opacity-0 group-hover:opacity-100"
-              phx-click="reorder_ambient_flow"
-              phx-value-id={af.id}
-              phx-value-direction="up"
-              title={dgettext("scenes", "Move up")}
-            >
-              <.icon name="chevron-up" class="size-3" />
-            </button>
-            <button
-              type="button"
-              class="btn btn-ghost btn-xs btn-square opacity-0 group-hover:opacity-100"
-              phx-click="reorder_ambient_flow"
-              phx-value-id={af.id}
-              phx-value-direction="down"
-              title={dgettext("scenes", "Move down")}
-            >
-              <.icon name="chevron-down" class="size-3" />
-            </button>
-            <label class="swap swap-rotate">
-              <input
-                type="checkbox"
-                checked={af.enabled}
-                phx-click="toggle_ambient_flow"
+        <div :for={af <- @ambient_flows} class="space-y-1">
+          <div class="flex items-center gap-1.5 group">
+            <span class="text-xs truncate flex-1" title={af.flow.name}>
+              <.icon name="git-branch" class="size-3 inline-block mr-0.5 opacity-50" />
+              {af.flow.name}
+            </span>
+            <div :if={@can_edit} class="flex items-center gap-0.5 shrink-0">
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs btn-square opacity-0 group-hover:opacity-100"
+                phx-click="reorder_ambient_flow"
                 phx-value-id={af.id}
-              />
-              <.icon name="eye" class="swap-on size-3.5 text-success" />
-              <.icon name="eye-off" class="swap-off size-3.5 text-base-content/30" />
-            </label>
-            <button
-              type="button"
-              class="btn btn-ghost btn-xs btn-square text-error opacity-0 group-hover:opacity-100"
-              phx-click="remove_ambient_flow"
+                phx-value-direction="up"
+                title={dgettext("scenes", "Move up")}
+              >
+                <.icon name="chevron-up" class="size-3" />
+              </button>
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs btn-square opacity-0 group-hover:opacity-100"
+                phx-click="reorder_ambient_flow"
+                phx-value-id={af.id}
+                phx-value-direction="down"
+                title={dgettext("scenes", "Move down")}
+              >
+                <.icon name="chevron-down" class="size-3" />
+              </button>
+              <label class="swap swap-rotate">
+                <input
+                  type="checkbox"
+                  checked={af.enabled}
+                  phx-click="toggle_ambient_flow"
+                  phx-value-id={af.id}
+                />
+                <.icon name="eye" class="swap-on size-3.5 text-success" />
+                <.icon name="eye-off" class="swap-off size-3.5 text-base-content/30" />
+              </label>
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs btn-square text-error opacity-0 group-hover:opacity-100"
+                phx-click="remove_ambient_flow"
+                phx-value-id={af.id}
+              >
+                <.icon name="x" class="size-3" />
+              </button>
+            </div>
+          </div>
+          <%!-- Trigger config row --%>
+          <div :if={@can_edit} class="flex items-center gap-1 pl-4">
+            <select
+              class="select select-xs select-bordered flex-1 min-w-0"
+              phx-change="update_ambient_flow_trigger"
               phx-value-id={af.id}
+              name="trigger_type"
             >
-              <.icon name="x" class="size-3" />
-            </button>
+              <option
+                :for={tt <- trigger_type_options()}
+                value={elem(tt, 1)}
+                selected={af.trigger_type == elem(tt, 1)}
+              >
+                {elem(tt, 0)}
+              </option>
+            </select>
+            <input
+              :if={af.trigger_type == "timed"}
+              type="number"
+              name="interval_ms"
+              value={af.trigger_config["interval_ms"] || 30000}
+              min="1000"
+              step="1000"
+              class="input input-xs input-bordered w-16"
+              phx-blur="update_ambient_flow_trigger"
+              phx-value-id={af.id}
+              phx-value-trigger_type={af.trigger_type}
+              title={dgettext("scenes", "Interval (ms)")}
+            />
+            <select
+              :if={af.trigger_type == "on_event"}
+              class="select select-xs select-bordered flex-1 min-w-0"
+              name="variable_ref"
+              phx-change="update_ambient_flow_trigger"
+              phx-value-id={af.id}
+              phx-value-trigger_type={af.trigger_type}
+            >
+              <option value="">{dgettext("scenes", "Select variable…")}</option>
+              <option
+                :for={v <- @project_variables}
+                value={"#{v.sheet_shortcut}.#{v.variable_name}"}
+                selected={
+                  af.trigger_config["variable_ref"] == "#{v.sheet_shortcut}.#{v.variable_name}"
+                }
+              >
+                {v.sheet_shortcut}.{v.variable_name}
+              </option>
+            </select>
+            <input
+              type="number"
+              name="priority"
+              value={af.priority}
+              min="0"
+              class="input input-xs input-bordered w-12"
+              phx-blur="update_ambient_flow_trigger"
+              phx-value-id={af.id}
+              phx-value-trigger_type={af.trigger_type}
+              title={dgettext("scenes", "Priority (higher = first)")}
+              placeholder="0"
+            />
+          </div>
+          <div :if={!@can_edit} class="pl-4">
+            <span class="badge badge-xs badge-ghost">{trigger_type_label(af.trigger_type)}</span>
+            <span :if={af.priority > 0} class="text-[10px] text-base-content/40 ml-1">
+              P{af.priority}
+            </span>
           </div>
         </div>
         <% available_flows = available_flows(@project_flows, @ambient_flows) %>
@@ -274,4 +344,19 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
     linked_ids = MapSet.new(ambient_flows, & &1.flow_id)
     Enum.reject(project_flows, &MapSet.member?(linked_ids, &1.id))
   end
+
+  defp trigger_type_options do
+    [
+      {dgettext("scenes", "On Enter"), "on_enter"},
+      {dgettext("scenes", "Timed"), "timed"},
+      {dgettext("scenes", "On Event"), "on_event"},
+      {dgettext("scenes", "One Shot"), "one_shot"}
+    ]
+  end
+
+  defp trigger_type_label("on_enter"), do: dgettext("scenes", "On Enter")
+  defp trigger_type_label("timed"), do: dgettext("scenes", "Timed")
+  defp trigger_type_label("on_event"), do: dgettext("scenes", "On Event")
+  defp trigger_type_label("one_shot"), do: dgettext("scenes", "One Shot")
+  defp trigger_type_label(other), do: other
 end

@@ -296,10 +296,21 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
           |> assign(:ambient_timer_ref, nil)
           |> assign(:ambient_start_timer_ref, nil)
           |> assign(:ambient_paused, false)
+          |> assign(:completed_ambient_ids, MapSet.new())
+          |> assign(:ambient_timed_refs, %{})
+          |> assign(:ambient_event_flows, [])
           |> maybe_start_ambient_flows(scene, existing_session)
 
         {:ok, socket, layout: false}
     end
+  end
+
+  @impl true
+  def terminate(_reason, socket) do
+    cancel_ambient_timer(socket)
+    cancel_all_timed_timers(socket)
+    cancel_ambient_start_timer(socket)
+    :ok
   end
 
   # ===========================================================================
@@ -377,69 +388,16 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   def handle_event("continue_session", _params, socket) do
     session = socket.assigns.pending_session
-
-    # Rebuild variables with saved overrides
-    variables = VariableHelpers.build_variables(socket.assigns.project.id)
-
-    variables =
-      Enum.reduce(session.variable_values || %{}, variables, fn {ref, value}, acc ->
-        case Map.get(acc, ref) do
-          nil -> acc
-          entry -> Map.put(acc, ref, %{entry | value: value})
-        end
-      end)
-
-    variables = FormulaRuntime.recompute_formulas(variables)
-
-    # Restore collected IDs
-    collected_ids = MapSet.new(session.collected_ids || [])
+    variables = restore_session_variables(socket, session)
 
     socket =
       socket
-      |> assign(:collected_ids, collected_ids)
+      |> assign(:collected_ids, MapSet.new(session.collected_ids || []))
+      |> assign(:completed_ambient_ids, MapSet.new(session.completed_ambient_ids || []))
       |> assign(:session_prompt, false)
       |> assign(:pending_session, nil)
 
-    # Navigate to saved scene if different from current
-    if session.scene_id && session.scene_id != socket.assigns.scene.id do
-      case Scenes.get_scene(socket.assigns.project.id, session.scene_id) do
-        nil ->
-          # Saved scene was deleted, stay on current scene with restored variables
-          socket =
-            socket
-            |> apply_variable_update(variables)
-            |> schedule_ambient_start()
-
-          {:noreply,
-           put_flash(
-             socket,
-             :warning,
-             dgettext("scenes", "Saved scene no longer exists. Starting on current scene.")
-           )}
-
-        _saved_scene ->
-          # Navigate to saved scene — positions will be restored via JS event
-          socket = assign(socket, :variables, variables)
-
-          path =
-            ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{session.scene_id}/explore"
-
-          {:noreply, push_navigate(socket, to: path)}
-      end
-    else
-      # Same scene — apply variables and restore positions
-      socket =
-        socket
-        |> apply_variable_update(variables)
-        |> push_event("restore_positions", %{
-          leader: get_in(session.player_positions, ["leader"]),
-          party: get_in(session.player_positions, ["party"]),
-          camera: session.camera_state
-        })
-        |> schedule_ambient_start()
-
-      {:noreply, socket}
-    end
+    {:noreply, apply_restored_session(socket, session, variables)}
   end
 
   def handle_event("new_session", _params, socket) do
@@ -560,6 +518,60 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
       true ->
         {:noreply, socket}
+    end
+  end
+
+  # ===========================================================================
+  # Private — Session Restore Helpers
+  # ===========================================================================
+
+  defp restore_session_variables(socket, session) do
+    variables = VariableHelpers.build_variables(socket.assigns.project.id)
+
+    variables =
+      Enum.reduce(session.variable_values || %{}, variables, fn {ref, value}, acc ->
+        case Map.get(acc, ref) do
+          nil -> acc
+          entry -> Map.put(acc, ref, %{entry | value: value})
+        end
+      end)
+
+    FormulaRuntime.recompute_formulas(variables)
+  end
+
+  defp apply_restored_session(socket, session, variables) do
+    if session.scene_id && session.scene_id != socket.assigns.scene.id do
+      navigate_to_saved_scene(socket, session, variables)
+    else
+      socket
+      |> apply_variable_update(variables)
+      |> push_event("restore_positions", %{
+        leader: get_in(session.player_positions, ["leader"]),
+        party: get_in(session.player_positions, ["party"]),
+        camera: session.camera_state
+      })
+      |> schedule_ambient_start()
+    end
+  end
+
+  defp navigate_to_saved_scene(socket, session, variables) do
+    case Scenes.get_scene(socket.assigns.project.id, session.scene_id) do
+      nil ->
+        socket
+        |> apply_variable_update(variables)
+        |> schedule_ambient_start()
+        |> put_flash(
+          :warning,
+          dgettext("scenes", "Saved scene no longer exists. Starting on current scene.")
+        )
+
+      _saved_scene ->
+        socket
+        |> assign(:variables, variables)
+        |> push_navigate(
+          to:
+            ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{session.scene_id}/explore"
+        )
     end
   end
 
@@ -880,6 +892,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   end
 
   defp apply_variable_update(socket, new_variables) do
+    old_variables = socket.assigns.variables
     zones = evaluate_elements(socket.assigns.scene.zones || [], new_variables)
     pins = evaluate_elements(socket.assigns.scene.pins || [], new_variables)
 
@@ -890,6 +903,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     |> assign(:variables, new_variables)
     |> assign(:zones, zones)
     |> assign(:pins, pins)
+    |> check_ambient_event_triggers(old_variables, new_variables)
     |> push_event("exploration_state_updated", %{
       zones: Enum.map(zones, &%{id: &1.id, visibility: &1.visibility}),
       pins: Enum.map(pins, &%{id: &1.id, visibility: &1.visibility}),
@@ -1081,7 +1095,8 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     %{
       scene_id: socket.assigns.scene.id,
       variable_values: variable_values,
-      collected_ids: MapSet.to_list(socket.assigns.collected_ids)
+      collected_ids: MapSet.to_list(socket.assigns.collected_ids),
+      completed_ambient_ids: MapSet.to_list(socket.assigns.completed_ambient_ids)
     }
   end
 
@@ -1194,14 +1209,30 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
       # Session prompt will be shown — ambient starts after user chooses
       socket
     else
-      ambient_flows =
-        Scenes.list_ambient_flows(scene.id)
-        |> Enum.filter(& &1.enabled)
-
-      socket
-      |> assign(:ambient_queue, ambient_flows)
-      |> schedule_ambient_start()
+      init_ambient_triggers(socket, scene.id)
     end
+  end
+
+  defp init_ambient_triggers(socket, scene_id) do
+    all_flows = Scenes.list_ambient_flows(scene_id) |> Enum.filter(& &1.enabled)
+    completed = socket.assigns.completed_ambient_ids
+
+    {on_enter, rest} = Enum.split_with(all_flows, &(&1.trigger_type == "on_enter"))
+    {one_shot, rest} = Enum.split_with(rest, &(&1.trigger_type == "one_shot"))
+    {timed, rest} = Enum.split_with(rest, &(&1.trigger_type == "timed"))
+    event_flows = Enum.filter(rest, &(&1.trigger_type == "on_event"))
+
+    # One-shot flows that haven't been completed yet — queue like on_enter
+    pending_one_shot = Enum.reject(one_shot, &MapSet.member?(completed, &1.id))
+
+    # Build initial queue sorted by priority (desc)
+    initial_queue = sort_by_priority(on_enter ++ pending_one_shot)
+
+    socket
+    |> assign(:ambient_queue, initial_queue)
+    |> assign(:ambient_event_flows, event_flows)
+    |> schedule_timed_flows(timed)
+    |> schedule_ambient_start()
   end
 
   defp schedule_ambient_start(socket) do
@@ -1226,6 +1257,70 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     end
   end
 
+  defp schedule_timed_flows(socket, timed_flows) do
+    if connected?(socket) do
+      refs =
+        Map.new(timed_flows, fn af ->
+          interval = af.trigger_config["interval_ms"] || 30_000
+          ref = Process.send_after(self(), {:ambient_timed, af.id}, interval)
+          {af.id, %{ref: ref, flow: af, interval: interval}}
+        end)
+
+      assign(socket, :ambient_timed_refs, refs)
+    else
+      socket
+    end
+  end
+
+  defp cancel_all_timed_timers(socket) do
+    Enum.each(socket.assigns.ambient_timed_refs, fn {_id, %{ref: ref}} ->
+      Process.cancel_timer(ref)
+    end)
+
+    assign(socket, :ambient_timed_refs, %{})
+  end
+
+  defp reschedule_timed_timer(socket, flow_id) do
+    case Map.get(socket.assigns.ambient_timed_refs, flow_id) do
+      nil ->
+        socket
+
+      entry ->
+        ref = Process.send_after(self(), {:ambient_timed, flow_id}, entry.interval)
+        refs = Map.put(socket.assigns.ambient_timed_refs, flow_id, %{entry | ref: ref})
+        assign(socket, :ambient_timed_refs, refs)
+    end
+  end
+
+  defp sort_by_priority(flows) do
+    Enum.sort_by(flows, & &1.priority, :desc)
+  end
+
+  defp enqueue_ambient_flow(socket, ambient_flow) do
+    queue = socket.assigns.ambient_queue
+    # Insert maintaining priority order (higher priority first)
+    new_queue = insert_by_priority(queue, ambient_flow)
+    assign(socket, :ambient_queue, new_queue)
+  end
+
+  defp insert_by_priority([], flow), do: [flow]
+
+  defp insert_by_priority([head | tail] = queue, flow) do
+    if flow.priority > head.priority do
+      [flow | queue]
+    else
+      [head | insert_by_priority(tail, flow)]
+    end
+  end
+
+  @impl true
+  def handle_info({:ambient_timed, af_id}, socket) do
+    # Reschedule regardless — timed triggers are recurring
+    socket = reschedule_timed_timer(socket, af_id)
+
+    {:noreply, maybe_enqueue_timed_flow(socket, af_id)}
+  end
+
   @impl true
   def handle_info(:ambient_start, socket) do
     socket = assign(socket, :ambient_start_timer_ref, nil)
@@ -1234,14 +1329,10 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     if socket.assigns.ambient_paused or socket.assigns.flow_mode do
       {:noreply, socket}
     else
-      # Load ambient flows if queue wasn't set yet (session prompt path)
+      # Init triggers if queue wasn't set yet (session prompt path)
       socket =
-        if socket.assigns.ambient_queue == [] do
-          ambient_flows =
-            Scenes.list_ambient_flows(socket.assigns.scene.id)
-            |> Enum.filter(& &1.enabled)
-
-          assign(socket, :ambient_queue, ambient_flows)
+        if socket.assigns.ambient_queue == [] and socket.assigns.ambient_event_flows == [] do
+          init_ambient_triggers(socket, socket.assigns.scene.id)
         else
           socket
         end
@@ -1265,6 +1356,23 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         current ->
           {:noreply, advance_ambient_flow(socket, current)}
       end
+    end
+  end
+
+  defp maybe_enqueue_timed_flow(socket, af_id) do
+    paused? = socket.assigns.ambient_paused or socket.assigns.flow_mode
+    timed_entry = Map.get(socket.assigns.ambient_timed_refs, af_id)
+
+    with false <- paused?,
+         %{flow: af} <- timed_entry,
+         false <- ambient_flow_active?(socket, af.id) do
+      socket = enqueue_ambient_flow(socket, af)
+
+      if is_nil(socket.assigns.ambient_current),
+        do: init_next_ambient_flow(socket),
+        else: socket
+    else
+      _ -> socket
     end
   end
 
@@ -1316,7 +1424,9 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
               nodes: nodes_map,
               connections: connections,
               sheets_map: sheets_map,
-              flow_id: ambient_flow.flow_id
+              flow_id: ambient_flow.flow_id,
+              ambient_flow_id: ambient_flow.id,
+              trigger_type: ambient_flow.trigger_type
             }
 
             {:ok, socket, current}
@@ -1581,10 +1691,23 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   end
 
   defp finish_ambient_flow(socket) do
+    socket = mark_one_shot_completed(socket)
+
     socket
     |> cancel_ambient_timer()
     |> assign(:ambient_current, nil)
     |> init_next_ambient_flow()
+  end
+
+  defp mark_one_shot_completed(socket) do
+    case socket.assigns.ambient_current do
+      %{trigger_type: "one_shot", ambient_flow_id: id} ->
+        completed = MapSet.put(socket.assigns.completed_ambient_ids, id)
+        assign(socket, :completed_ambient_ids, completed)
+
+      _ ->
+        socket
+    end
   end
 
   defp sync_ambient_variables(socket, engine_state) do
@@ -1601,13 +1724,17 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   defp pause_ambient_flow(socket) do
     socket
     |> cancel_ambient_timer()
+    |> cancel_all_timed_timers()
     |> assign(:ambient_paused, true)
     |> push_event("dismiss_ambient", %{})
   end
 
   defp resume_ambient_flow(socket) do
     if socket.assigns.ambient_paused do
-      socket = assign(socket, :ambient_paused, false)
+      socket =
+        socket
+        |> assign(:ambient_paused, false)
+        |> resume_timed_timers()
 
       case socket.assigns.ambient_current do
         nil ->
@@ -1625,6 +1752,22 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     end
   end
 
+  defp resume_timed_timers(socket) do
+    refs = socket.assigns.ambient_timed_refs
+
+    if refs == %{} do
+      socket
+    else
+      new_refs =
+        Map.new(refs, fn {id, entry} ->
+          ref = Process.send_after(self(), {:ambient_timed, id}, entry.interval)
+          {id, %{entry | ref: ref}}
+        end)
+
+      assign(socket, :ambient_timed_refs, new_refs)
+    end
+  end
+
   defp cancel_ambient_timer(socket) do
     case socket.assigns.ambient_timer_ref do
       nil ->
@@ -1634,6 +1777,32 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         Process.cancel_timer(ref)
         assign(socket, :ambient_timer_ref, nil)
     end
+  end
+
+  defp check_ambient_event_triggers(socket, old_variables, new_variables) do
+    event_flows = socket.assigns.ambient_event_flows
+
+    if event_flows == [] or socket.assigns.ambient_paused or socket.assigns.flow_mode do
+      socket
+    else
+      triggered = find_triggered_event_flows(event_flows, old_variables, new_variables, socket)
+      Enum.reduce(triggered, socket, &enqueue_ambient_flow(&2, &1))
+    end
+  end
+
+  defp find_triggered_event_flows(event_flows, old_vars, new_vars, socket) do
+    Enum.filter(event_flows, fn af ->
+      ref = af.trigger_config["variable_ref"]
+      old_val = get_in(old_vars, [ref, Access.key(:value)])
+      new_val = get_in(new_vars, [ref, Access.key(:value)])
+
+      ref && old_val != new_val && not ambient_flow_active?(socket, af.id)
+    end)
+  end
+
+  defp ambient_flow_active?(socket, af_id) do
+    Enum.any?(socket.assigns.ambient_queue, &(&1.id == af_id)) or
+      match?(%{ambient_flow_id: ^af_id}, socket.assigns.ambient_current)
   end
 
   defp find_pin_for_speaker(_pins, nil), do: nil
