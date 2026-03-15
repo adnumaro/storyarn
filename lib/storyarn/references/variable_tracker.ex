@@ -8,16 +8,21 @@ defmodule Storyarn.References.VariableTracker do
 
   alias Storyarn.Flows.VariableReferenceTracker
 
-  def update_flow_node_variable_references(node), do: VariableReferenceTracker.update_references(node)
-  def delete_flow_node_variable_references(node_id), do: VariableReferenceTracker.delete_references(node_id)
+  def update_flow_node_variable_references(node),
+    do: VariableReferenceTracker.update_references(node)
+
+  def delete_flow_node_variable_references(node_id),
+    do: VariableReferenceTracker.delete_references(node_id)
 
   def update_scene_pin_variable_references(pin, opts \\ []),
     do: VariableReferenceTracker.update_scene_pin_references(pin, opts)
 
-  def delete_scene_pin_variable_references(pin_id), do: VariableReferenceTracker.delete_map_pin_references(pin_id)
+  def delete_scene_pin_variable_references(pin_id),
+    do: VariableReferenceTracker.delete_map_pin_references(pin_id)
 
   def update_scene_zone_variable_references(zone, opts \\ []),
     do: VariableReferenceTracker.update_scene_zone_references(zone, opts)
 
-  def delete_scene_zone_variable_references(zone_id), do: VariableReferenceTracker.delete_map_zone_references(zone_id)
+  def delete_scene_zone_variable_references(zone_id),
+    do: VariableReferenceTracker.delete_map_zone_references(zone_id)
 end

@@ -13,7 +13,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   import StoryarnWeb.FlowLive.Helpers.SocketHelpers
   import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
@@ -92,7 +92,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          put_flash(
            socket,
            :error,
-           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Hub ID is required.")
+           Gettext.dgettext(Storyarn.Gettext, "flows", "Hub ID is required.")
          )}
 
       {:error, :hub_id_not_unique} ->
@@ -100,7 +100,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          put_flash(
            socket,
            :error,
-           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Hub ID already exists in this flow.")
+           Gettext.dgettext(Storyarn.Gettext, "flows", "Hub ID already exists in this flow.")
          )}
 
       {:error, _} ->
@@ -255,7 +255,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          socket,
          :error,
          Gettext.dgettext(
-           StoryarnWeb.Gettext,
+           Storyarn.Gettext,
            "flows",
            "This node is being edited by another user."
          )
@@ -328,7 +328,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     |> put_flash(
       :info,
       Gettext.dngettext(
-        StoryarnWeb.Gettext,
+        Storyarn.Gettext,
         "flows",
         "%{count} Jump node updated.",
         "%{count} Jump nodes updated.",
@@ -402,7 +402,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          put_flash(
            socket,
            :error,
-           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Could not restore node.")
+           Gettext.dgettext(Storyarn.Gettext, "flows", "Could not restore node.")
          )}
     end
   end
@@ -437,7 +437,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          put_flash(
            socket,
            :error,
-           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Hub ID is required.")
+           Gettext.dgettext(Storyarn.Gettext, "flows", "Hub ID is required.")
          )}
 
       {:error, :hub_id_not_unique} ->
@@ -445,7 +445,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          put_flash(
            socket,
            :error,
-           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Hub ID already exists in this flow.")
+           Gettext.dgettext(Storyarn.Gettext, "flows", "Hub ID already exists in this flow.")
          )}
 
       {:error, _} ->
@@ -453,7 +453,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          put_flash(
            socket,
            :error,
-           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Could not restore node data.")
+           Gettext.dgettext(Storyarn.Gettext, "flows", "Could not restore node data.")
          )}
     end
   end
@@ -497,7 +497,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          |> put_flash(
            :warning,
            Gettext.dngettext(
-             StoryarnWeb.Gettext,
+             Storyarn.Gettext,
              "flows",
              "%{count} Jump node lost its target.",
              "%{count} Jump nodes lost their target.",
@@ -524,7 +524,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          put_flash(
            socket,
            :error,
-           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "The Entry node cannot be deleted.")
+           Gettext.dgettext(Storyarn.Gettext, "flows", "The Entry node cannot be deleted.")
          )}
 
       {:error, :cannot_delete_last_exit} ->
@@ -533,7 +533,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
            socket,
            :error,
            Gettext.dgettext(
-             StoryarnWeb.Gettext,
+             Storyarn.Gettext,
              "flows",
              "A flow must have at least one Exit node."
            )
@@ -544,7 +544,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          put_flash(
            socket,
            :error,
-           Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Could not delete node.")
+           Gettext.dgettext(Storyarn.Gettext, "flows", "Could not delete node.")
          )}
     end
   end
