@@ -1331,7 +1331,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_event("add_ambient_flow", %{"flow_id" => ""}, socket), do: {:noreply, socket}
 
   def handle_event("add_ambient_flow", %{"flow_id" => flow_id}, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       case Scenes.create_ambient_flow(socket.assigns.scene.id, %{
              "flow_id" => MapUtils.parse_int(flow_id)
            }) do
@@ -1345,19 +1345,19 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("remove_ambient_flow", %{"id" => id}, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       {:noreply, do_remove_ambient_flow(socket, id)}
     end)
   end
 
   def handle_event("toggle_ambient_flow", %{"id" => id}, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       {:noreply, do_toggle_ambient_flow(socket, id)}
     end)
   end
 
   def handle_event("reorder_ambient_flow", %{"id" => id, "direction" => direction}, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       {:noreply, do_reorder_ambient_flow(socket, id, direction)}
     end)
   end
