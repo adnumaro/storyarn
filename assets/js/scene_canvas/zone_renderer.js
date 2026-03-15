@@ -11,6 +11,7 @@ import { toLatLng } from "./coordinate_utils.js";
 
 const ACTION_ICONS = {
   none: Compass,
+  walkable: Footprints,
   instruction: Zap,
   display: BarChart3,
 };
@@ -171,7 +172,7 @@ function buildLabelSpan(zone) {
  * Populates a label <span> with optional action icon, zone name, and optional child-map icon.
  */
 function populateLabelSpan(span, zone) {
-  if (zone.is_walkable) {
+  if (zone.is_walkable && zone.action_type !== "walkable") {
     const walkIcon = createElement(Footprints, { width: 10, height: 10 });
     walkIcon.style.color = "#4ade80";
     span.appendChild(walkIcon);

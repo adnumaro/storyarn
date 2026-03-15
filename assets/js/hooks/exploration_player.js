@@ -783,7 +783,8 @@ export const ExplorationPlayer = {
     const isDisabled = visibility === "disable";
     const actionType = zone.action_type || "none";
     const hasTarget = zone.target_type && zone.target_id;
-    const isWalkableOnly = zone.is_walkable && !hasTarget && actionType === "none";
+    const isWalkableOnly =
+      zone.is_walkable && !hasTarget && (actionType === "none" || actionType === "walkable");
     const isClickable = !isDisabled && (actionType === "instruction" || hasTarget);
 
     // Zone overlay with clip-path
@@ -1084,7 +1085,7 @@ export const ExplorationPlayer = {
               if (
                 zone.is_walkable &&
                 !zone.target_type &&
-                (zone.action_type || "none") === "none"
+                ["none", "walkable"].includes(zone.action_type || "none")
               ) {
                 overlay.style.backgroundColor = "#4ade80";
                 overlay.style.opacity = 0.2;
@@ -1141,7 +1142,10 @@ export const ExplorationPlayer = {
         const isWalkable = overlay.dataset.walkable === "true";
         const zone = this.zones.find((z) => String(z.id) === overlay.dataset.zoneId);
         const isWalkableOnly =
-          isWalkable && zone && !zone.target_type && (zone.action_type || "none") === "none";
+          isWalkable &&
+          zone &&
+          !zone.target_type &&
+          ["none", "walkable"].includes(zone.action_type || "none");
 
         if (isWalkableOnly) {
           overlay.style.backgroundColor = "#4ade80";
