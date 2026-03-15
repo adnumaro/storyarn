@@ -305,6 +305,81 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
         </div>
       </div>
 
+      <%!-- Patrol (only for non-playable pins) --%>
+      <div :if={!@pin.is_playable} class="pt-3 border-t border-base-300">
+        <label class="block text-xs font-medium text-base-content/60 mb-2 flex items-center gap-1">
+          <.icon name="route" class="size-3" />
+          {dgettext("scenes", "Patrol")}
+        </label>
+        <%!-- Patrol mode --%>
+        <div class="mb-2">
+          <label class="block text-[10px] text-base-content/40 mb-0.5">
+            {dgettext("scenes", "Mode")}
+          </label>
+          <select
+            class="select select-xs select-bordered w-full"
+            phx-change="update_pin"
+            phx-value-id={@pin.id}
+            phx-value-field="patrol_mode"
+            name="value"
+            disabled={!@can_edit}
+          >
+            <option value="none" selected={(@pin.patrol_mode || "none") == "none"}>
+              {dgettext("scenes", "None")}
+            </option>
+            <option value="loop" selected={@pin.patrol_mode == "loop"}>
+              {dgettext("scenes", "Loop")}
+            </option>
+            <option value="ping_pong" selected={@pin.patrol_mode == "ping_pong"}>
+              {dgettext("scenes", "Ping-pong")}
+            </option>
+            <option value="one_way" selected={@pin.patrol_mode == "one_way"}>
+              {dgettext("scenes", "One-way")}
+            </option>
+          </select>
+        </div>
+        <%!-- Speed & Pause (only when patrol mode != none) --%>
+        <div :if={(@pin.patrol_mode || "none") != "none"}>
+          <div class="mb-2">
+            <label class="block text-[10px] text-base-content/40 mb-0.5">
+              {dgettext("scenes", "Speed: %{speed}x", speed: @pin.patrol_speed || 1.0)}
+            </label>
+            <input
+              type="range"
+              class="range range-xs range-primary w-full"
+              min="0.2"
+              max="3.0"
+              step="0.1"
+              value={@pin.patrol_speed || 1.0}
+              phx-change="update_pin"
+              phx-value-id={@pin.id}
+              phx-value-field="patrol_speed"
+              name="value"
+              disabled={!@can_edit}
+            />
+          </div>
+          <div>
+            <label class="block text-[10px] text-base-content/40 mb-0.5">
+              {dgettext("scenes", "Pause at waypoints (ms)")}
+            </label>
+            <input
+              type="number"
+              class="input input-xs input-bordered w-full"
+              min="0"
+              max="30000"
+              step="100"
+              value={@pin.patrol_pause_ms || 0}
+              phx-change="update_pin"
+              phx-value-id={@pin.id}
+              phx-value-field="patrol_pause_ms"
+              phx-debounce="300"
+              name="value"
+              disabled={!@can_edit}
+            />
+          </div>
+        </div>
+      </div>
+
       <%!-- Link to --%>
       <div class="pt-3 border-t border-base-300">
         <label class="block text-xs font-medium text-base-content/60 mb-1">

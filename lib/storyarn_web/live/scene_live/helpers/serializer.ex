@@ -83,14 +83,36 @@ defmodule StoryarnWeb.SceneLive.Helpers.Serializer do
       avatar_url: pin_avatar_url(pin),
       icon_asset_url: pin_icon_asset_url(pin),
       position: pin.position,
-      locked: pin.locked || false,
-      action_type: pin.action_type || "none",
-      action_data: pin.action_data || %{},
+      locked: pin.locked,
+      action_type: pin.action_type,
+      action_data: pin.action_data,
       condition: pin.condition,
-      condition_effect: pin.condition_effect || "hide",
-      is_playable: pin.is_playable || false,
-      is_leader: pin.is_leader || false
+      condition_effect: pin.condition_effect,
+      is_playable: pin.is_playable,
+      is_leader: pin.is_leader,
+      patrol_mode: pin.patrol_mode,
+      patrol_speed: pin.patrol_speed,
+      patrol_pause_ms: pin.patrol_pause_ms
     }
+    |> apply_pin_defaults()
+  end
+
+  @pin_defaults %{
+    locked: false,
+    action_type: "none",
+    action_data: %{},
+    condition_effect: "hide",
+    is_playable: false,
+    is_leader: false,
+    patrol_mode: "none",
+    patrol_speed: 1.0,
+    patrol_pause_ms: 0
+  }
+
+  defp apply_pin_defaults(data) do
+    Enum.reduce(@pin_defaults, data, fn {key, default}, acc ->
+      Map.update!(acc, key, &(&1 || default))
+    end)
   end
 
   def pin_avatar_url(%{sheet: %{avatar_asset: %{url: url}}}) when is_binary(url), do: url

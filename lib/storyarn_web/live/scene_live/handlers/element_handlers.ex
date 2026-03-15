@@ -26,7 +26,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     position_x position_y pin_type icon color opacity label
     target_type target_id tooltip size sheet_id icon_asset_id layer_id
     locked action_type action_data condition condition_effect
-    is_playable is_leader
+    is_playable is_leader patrol_mode patrol_speed patrol_pause_ms
   )
 
   @zone_editable_fields ~w(
