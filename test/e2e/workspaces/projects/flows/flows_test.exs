@@ -118,6 +118,31 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")
       |> assert_has("#flow-dock")
     end
+
+    test "changing flow from the sidebar updates the browser path", %{conn: conn} do
+      user = user_fixture()
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      root_flow = flow_fixture(project, %{name: "Root Flow"})
+      branch_flow = flow_fixture(project, %{name: "Branch Flow"})
+
+      conn
+      |> authenticate(user)
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{root_flow.id}")
+      |> assert_has("h1", text: "Root Flow")
+      |> assert_has("button[data-tip='Show panel']")
+      |> click("button[data-tip='Show panel']")
+      |> assert_has("#tree-panel[data-open='true']")
+      |> assert_has(
+        "#flows-tree-container a[href='/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{branch_flow.id}']"
+      )
+      |> click(
+        "#flows-tree-container a[href='/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{branch_flow.id}']"
+      )
+      |> assert_path(
+        "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{branch_flow.id}"
+      )
+      |> assert_has("h1", text: "Branch Flow")
+    end
   end
 
   describe "flow access control" do

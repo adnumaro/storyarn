@@ -149,12 +149,19 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlersTest do
         position_y: 66.0
       })
 
+      render(view)
+
       # The LiveView should push pin_drag_update to the client
-      assert_push_event(view, "pin_drag_update", %{
-        id: _,
-        position_x: 55.0,
-        position_y: 66.0
-      })
+      assert_push_event(
+        view,
+        "pin_drag_update",
+        %{
+          id: _,
+          position_x: 55.0,
+          position_y: 66.0
+        },
+        1_000
+      )
     end
 
     test "annotation_dragging remote change pushes annotation_drag_update event", ctx do
@@ -169,11 +176,18 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlersTest do
         position_y: 22.0
       })
 
-      assert_push_event(view, "annotation_drag_update", %{
-        id: _,
-        position_x: 11.0,
-        position_y: 22.0
-      })
+      render(view)
+
+      assert_push_event(
+        view,
+        "annotation_drag_update",
+        %{
+          id: _,
+          position_x: 11.0,
+          position_y: 22.0
+        },
+        1_000
+      )
     end
 
     test "zone_dragging remote change pushes zone_drag_update event", ctx do
@@ -188,10 +202,17 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlersTest do
         vertices: vertices
       })
 
-      assert_push_event(view, "zone_drag_update", %{
-        id: _,
-        vertices: ^vertices
-      })
+      render(view)
+
+      assert_push_event(
+        view,
+        "zone_drag_update",
+        %{
+          id: _,
+          vertices: ^vertices
+        },
+        1_000
+      )
     end
   end
 end

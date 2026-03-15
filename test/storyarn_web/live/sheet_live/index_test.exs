@@ -182,6 +182,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
       parent = sheet_fixture(project, %{name: "Parent Sheet"})
 
       {:ok, view, _html} = live(conn, url)
+      _ = await_async(view)
 
       assert {:error, {:live_redirect, %{to: redirect_path}}} =
                render_click(view, "create_child_sheet", %{"parent-id" => parent.id})

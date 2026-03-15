@@ -93,7 +93,8 @@ defmodule StoryarnWeb.LayoutsTest do
           inner_block: inner_block("<p>Test</p>")
         )
 
-      assert html =~ ~s(logo-light-64.png)
+      assert html =~ ~s(logo-name-black.png)
+      assert html =~ ~s(logo-name-white.png)
       assert html =~ "Storyarn"
     end
 
@@ -160,7 +161,8 @@ defmodule StoryarnWeb.LayoutsTest do
           inner_block: inner_block("<p>Auth</p>")
         )
 
-      assert html =~ ~s(logo-light-64.png)
+      assert html =~ ~s(logo-white-48.png)
+      assert html =~ ~s(logo-black-48.png)
     end
   end
 
@@ -399,7 +401,7 @@ defmodule StoryarnWeb.LayoutsTest do
           })
         )
 
-      assert html =~ "pl-[264px]"
+      assert html =~ "md:pl-[280px]"
     end
 
     test "no left padding when tree panel is closed" do
@@ -413,7 +415,7 @@ defmodule StoryarnWeb.LayoutsTest do
           })
         )
 
-      refute html =~ "pl-[264px]"
+      refute html =~ "md:pl-[280px]"
     end
 
     test "no left padding in canvas mode even when tree is open" do
@@ -428,7 +430,7 @@ defmodule StoryarnWeb.LayoutsTest do
         )
 
       # Canvas mode uses overflow-hidden, no padding logic
-      refute html =~ "pl-[264px]"
+      refute html =~ "md:pl-[280px]"
     end
   end
 

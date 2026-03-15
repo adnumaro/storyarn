@@ -481,9 +481,7 @@ defmodule StoryarnWeb.SheetLive.Index do
       case Sheets.create_sheet(socket.assigns.project, attrs) do
         {:ok, new_sheet} ->
           {:noreply,
-           socket
-           |> reload_sheets()
-           |> push_navigate(
+           push_navigate(socket,
              to:
                ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
            )}

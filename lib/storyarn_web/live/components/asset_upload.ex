@@ -33,8 +33,10 @@ defmodule StoryarnWeb.Components.AssetUpload do
 
   @impl true
   def render(assigns) do
+    assigns = assign(assigns, :visible_entries, visible_entries(assigns.uploads.asset))
+
     ~H"""
-    <div class="asset-upload">
+    <div id={@id} class="asset-upload">
       <form
         id={"#{@id}-form"}
         phx-submit="save"
@@ -45,13 +47,13 @@ defmodule StoryarnWeb.Components.AssetUpload do
           class={[
             "border-2 border-dashed rounded-lg p-6 text-center transition-colors",
             "hover:border-primary hover:bg-primary/5",
-            @uploads.asset.entries != [] && "border-primary bg-primary/5"
+            @visible_entries != [] && "border-primary bg-primary/5"
           ]}
           phx-drop-target={@uploads.asset.ref}
         >
           <.live_file_input upload={@uploads.asset} class="hidden" />
 
-          <div :if={@uploads.asset.entries == []}>
+          <div :if={@visible_entries == []}>
             <.icon name="cloud-upload" class="size-12 mx-auto text-base-content/30 mb-2" />
             <p class="text-base-content/70 mb-2">
               {dgettext("assets", "Drag and drop files here, or")}
@@ -64,9 +66,9 @@ defmodule StoryarnWeb.Components.AssetUpload do
             </p>
           </div>
 
-          <div :if={@uploads.asset.entries != []} class="space-y-3">
+          <div :if={@visible_entries != []} class="space-y-3">
             <.upload_entry
-              :for={entry <- @uploads.asset.entries}
+              :for={entry <- @visible_entries}
               entry={entry}
               uploads={@uploads}
               myself={@myself}
@@ -74,7 +76,7 @@ defmodule StoryarnWeb.Components.AssetUpload do
           </div>
         </div>
 
-        <div :if={@uploads.asset.entries != []} class="mt-4 flex justify-end gap-2">
+        <div :if={@visible_entries != []} class="mt-4 flex justify-end gap-2">
           <button
             type="button"
             class="btn btn-ghost btn-sm"
@@ -86,7 +88,7 @@ defmodule StoryarnWeb.Components.AssetUpload do
           <button
             type="submit"
             class="btn btn-primary btn-sm"
-            disabled={not upload_valid?(@uploads.asset)}
+            disabled={not upload_valid?(@visible_entries)}
           >
             {dgettext("assets", "Upload")}
           </button>
@@ -274,8 +276,12 @@ defmodule StoryarnWeb.Components.AssetUpload do
     String.starts_with?(entry.client_type, "image/")
   end
 
-  defp upload_valid?(upload) do
-    upload.entries != [] and Enum.all?(upload.entries, & &1.valid?)
+  defp upload_valid?(entries) do
+    entries != [] and Enum.all?(entries, & &1.valid?)
+  end
+
+  defp visible_entries(upload) do
+    Enum.reject(upload.entries, & &1.cancelled?)
   end
 
   defp format_size(bytes) when bytes < 1024, do: "#{bytes} B"
@@ -285,5 +291,5 @@ defmodule StoryarnWeb.Components.AssetUpload do
   defp error_to_string(:too_large), do: dgettext("assets", "File is too large")
   defp error_to_string(:too_many_files), do: dgettext("assets", "Too many files")
   defp error_to_string(:not_accepted), do: dgettext("assets", "File type not accepted")
-  defp error_to_string(err), do: inspect(err)
+  defp error_to_string(_err), do: dgettext("assets", "Upload error")
 end

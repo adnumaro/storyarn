@@ -21,10 +21,12 @@ const initLandingAnimations = () => {
           }
         });
       },
-      { threshold: 0.15, rootMargin: "0px 0px -80px 0px" }
+      { threshold: 0.15, rootMargin: "0px 0px -80px 0px" },
     );
 
-    revealElements.forEach((el) => revealObserver.observe(el));
+    revealElements.forEach((el) => {
+      revealObserver.observe(el);
+    });
   }
 
   // ── Count-up animation for metrics ──
@@ -46,7 +48,7 @@ const initLandingAnimations = () => {
           const animate = (now) => {
             const elapsed = now - start;
             const progress = Math.min(elapsed / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
+            const eased = 1 - (1 - progress) ** 3;
             const current = Math.round(numTarget * eased);
             el.textContent = isPercent ? `${current}%` : String(current);
 
@@ -58,10 +60,12 @@ const initLandingAnimations = () => {
           countObserver.unobserve(el);
         });
       },
-      { threshold: 0.5 }
+      { threshold: 0.5 },
     );
 
-    countElements.forEach((el) => countObserver.observe(el));
+    countElements.forEach((el) => {
+      countObserver.observe(el);
+    });
   }
 
   // ── Progress bar animation ──
@@ -85,10 +89,12 @@ const initLandingAnimations = () => {
           barObserver.unobserve(el);
         });
       },
-      { threshold: 0.3 }
+      { threshold: 0.3 },
     );
 
-    barElements.forEach((el) => barObserver.observe(el));
+    barElements.forEach((el) => {
+      barObserver.observe(el);
+    });
   }
 };
 

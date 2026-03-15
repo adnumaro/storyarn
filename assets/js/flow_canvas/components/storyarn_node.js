@@ -29,7 +29,9 @@ export class StoryarnNode extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    adoptTailwind(this.shadowRoot);
+    // Expose a readiness promise so the hook can measure after Shadow DOM
+    // Tailwind has actually been adopted for this node instance.
+    this._tailwindReady = adoptTailwind(this.shadowRoot);
   }
 
   render() {

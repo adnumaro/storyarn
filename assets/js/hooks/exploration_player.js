@@ -150,9 +150,7 @@ export const ExplorationPlayer = {
       const pinId = String(pin_id);
       this.dismissBubbleImmediate(pinId);
 
-      const pinEl = this.el.querySelector(
-        `[data-element-type="pin"][data-element-id="${pinId}"]`,
-      );
+      const pinEl = this.el.querySelector(`[data-element-type="pin"][data-element-id="${pinId}"]`);
       if (!pinEl) return;
 
       const bubble = document.createElement("div");
@@ -188,8 +186,7 @@ export const ExplorationPlayer = {
       this.dismissSubtitle();
 
       const subtitle = document.createElement("div");
-      subtitle.className =
-        "exploration-subtitle exploration-bubble-enter";
+      subtitle.className = "exploration-subtitle exploration-bubble-enter";
       subtitle.setAttribute("data-role", "ambient-subtitle");
 
       if (speaker) {
@@ -208,10 +205,7 @@ export const ExplorationPlayer = {
       this.activeSubtitle = { el: subtitle, timer: null };
 
       if (duration > 0) {
-        this.activeSubtitle.timer = setTimeout(
-          () => this.dismissSubtitle(),
-          duration,
-        );
+        this.activeSubtitle.timer = setTimeout(() => this.dismissSubtitle(), duration);
       }
     });
 

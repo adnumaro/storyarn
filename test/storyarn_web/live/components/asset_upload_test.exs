@@ -232,11 +232,13 @@ defmodule StoryarnWeb.Components.AssetUploadTest do
       html = render(view)
       assert html =~ "cancel_me.png"
 
-      view
-      |> element("button[phx-click=\"cancel_upload\"]")
-      |> render_click()
+      [ref] = Regex.run(~r/phx-value-ref="([^"]+)"/, html, capture: :all_but_first)
 
-      html = render(view)
+      html =
+        view
+        |> with_target("#test-upload")
+        |> render_click("cancel_upload", %{"ref" => ref})
+
       refute html =~ "cancel_me.png"
       assert html =~ "Browse Files"
     end
@@ -268,11 +270,11 @@ defmodule StoryarnWeb.Components.AssetUploadTest do
       html = render(view)
       assert html =~ "remove_me.png"
 
-      view
-      |> element("button[phx-click=\"cancel_all\"]")
-      |> render_click()
+      html =
+        view
+        |> with_target("#test-upload")
+        |> render_click("cancel_all", %{})
 
-      html = render(view)
       refute html =~ "remove_me.png"
       assert html =~ "Browse Files"
     end

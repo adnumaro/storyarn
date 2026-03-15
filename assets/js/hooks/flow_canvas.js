@@ -69,18 +69,25 @@ export const FlowCanvas = {
 
     // Wait for Lit to finish rendering the shadow DOM
     if (el.updateComplete) await el.updateComplete;
+    if (el._tailwindReady) await el._tailwindReady;
 
     const nodeEl = el.shadowRoot?.querySelector(".node");
     if (!nodeEl) return;
     const w = nodeEl.offsetWidth;
     const h = nodeEl.offsetHeight;
     if (w > 0 && h > 0) {
+      const node = this.editor.getNode(nodeId);
+      if (node) {
+        node.width = w;
+        node.height = h;
+      }
       await this.area.resize(nodeId, w, h);
     }
   },
 
   /** Sync sizes for all nodes in the editor. */
   async syncAllNodeSizes() {
+    await waitForCss();
     // Wait one frame for all Lit elements to finish rendering
     await new Promise((r) => requestAnimationFrame(r));
     for (const [nodeId] of this.area.nodeViews) {
