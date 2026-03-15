@@ -1,0 +1,29 @@
+test/storyarn/projects/dashboard_test.exs
+  2cc74a908a28c916 76-106
+lib/storyarn/sheets/sheet_stats.ex
+  2cc74a908a28c916 8,77,79-82,87-97,142-151,157-158,163-165,169-176,181-209,215,219-244
+lib/storyarn/projects/dashboard.ex
+  2cc74a908a28c916 207-208,210,237,239-241
+test/storyarn/sheets/sheet_stats_test.exs
+  2cc74a908a28c916 5,11,16,110-112,114,118-119,123-151,156,164,170-171,183,185,200-201,204,208,213-214,230-233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "2cb12965c579dd232056f0f01e8a35ca98ef62d1",
+  "prompts": {
+    "2cc74a908a28c916": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019cf396-ecfd-72d3-a882-601eb962a5d0",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 224,
+      "total_deletions": 174,
+      "accepted_lines": 189,
+      "overriden_lines": 0
+    }
+  }
+}
