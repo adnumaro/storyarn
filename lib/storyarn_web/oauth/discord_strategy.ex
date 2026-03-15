@@ -40,7 +40,7 @@ defmodule StoryarnWeb.OAuth.DiscordStrategy do
     opts = [redirect_uri: callback_url(conn)]
     token = StoryarnWeb.OAuth.DiscordOAuth.get_token!([code: code], opts)
 
-    if token.access_token == nil do
+    if is_nil(token.access_token) do
       err = token.other_params["error"]
       desc = token.other_params["error_description"]
       set_errors!(conn, [error(err, desc)])
