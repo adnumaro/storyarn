@@ -1,8 +1,6 @@
 defmodule StoryarnWeb.Router do
   use StoryarnWeb, :router
 
-  import StoryarnWeb.UserAuth
-
   # Content Security Policy
   # 'unsafe-inline' is kept for styles because Tailwind/daisyUI emit inline styles in places.
   @csp_policy "default-src 'self'; " <>
@@ -15,6 +13,7 @@ defmodule StoryarnWeb.Router do
                 "frame-ancestors 'self'; " <>
                 "base-uri 'self'; " <>
                 "form-action 'self'"
+  @user_auth_hook Module.concat(["StoryarnWeb", "UserAuth"])
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -73,12 +72,12 @@ defmodule StoryarnWeb.Router do
     live_session :docs,
       on_mount:
         if(Application.compile_env(:storyarn, :sql_sandbox),
-          do: [StoryarnWeb.LiveSandbox],
+          do: [Module.concat(["StoryarnWeb", "LiveSandbox"])],
           else: []
         ) ++
           [
             Sentry.LiveViewHook,
-            {StoryarnWeb.UserAuth, :mount_current_scope}
+            {@user_auth_hook, :mount_current_scope}
           ] do
       live "/", DocsLive.Show, :index
       live "/:category/:slug", DocsLive.Show, :show
@@ -126,13 +125,13 @@ defmodule StoryarnWeb.Router do
     live_session :require_authenticated_user,
       on_mount:
         if(Application.compile_env(:storyarn, :sql_sandbox),
-          do: [StoryarnWeb.LiveSandbox],
+          do: [Module.concat(["StoryarnWeb", "LiveSandbox"])],
           else: []
         ) ++
           [
             Sentry.LiveViewHook,
-            {StoryarnWeb.UserAuth, :require_authenticated},
-            {StoryarnWeb.UserAuth, :load_workspaces}
+            {@user_auth_hook, :require_authenticated},
+            {@user_auth_hook, :load_workspaces}
           ] do
       # User Settings (Linear-style)
       live "/users/settings", SettingsLive.Profile, :edit
@@ -282,13 +281,13 @@ defmodule StoryarnWeb.Router do
     live_session :current_user,
       on_mount:
         if(Application.compile_env(:storyarn, :sql_sandbox),
-          do: [StoryarnWeb.LiveSandbox],
+          do: [Module.concat(["StoryarnWeb", "LiveSandbox"])],
           else: []
         ) ++
           [
             Sentry.LiveViewHook,
-            {StoryarnWeb.UserAuth, :mount_current_scope},
-            {StoryarnWeb.UserAuth, :load_workspaces}
+            {@user_auth_hook, :mount_current_scope},
+            {@user_auth_hook, :load_workspaces}
           ] do
       live "/users/register", UserLive.Registration, :new
       live "/users/log-in", UserLive.Login, :new
@@ -304,5 +303,17 @@ defmodule StoryarnWeb.Router do
 
     post "/users/log-in", UserSessionController, :create
     delete "/users/log-out", UserSessionController, :delete
+  end
+
+  defp fetch_current_scope_for_user(conn, opts) do
+    StoryarnWeb.UserAuth.fetch_current_scope_for_user(conn, opts)
+  end
+
+  defp store_sudo_return_to(conn, opts) do
+    StoryarnWeb.UserAuth.store_sudo_return_to(conn, opts)
+  end
+
+  defp require_authenticated_user(conn, opts) do
+    StoryarnWeb.UserAuth.require_authenticated_user(conn, opts)
   end
 end

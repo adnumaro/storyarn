@@ -88,11 +88,13 @@ defmodule StoryarnWeb.Live.Shared.RestorationHandlers do
 
   defmacro __using__(_opts) do
     quote do
+      alias StoryarnWeb.Live.Shared.RestorationHandlers, as: RestorationHandlers
+
       import StoryarnWeb.Live.Shared.RestorationHandlers, only: [check_restoration_lock: 2]
 
       @impl true
       def handle_info({:project_restoration_started, payload}, socket) do
-        StoryarnWeb.Live.Shared.RestorationHandlers.handle_restoration_event(
+        RestorationHandlers.handle_restoration_event(
           {:project_restoration_started, payload},
           socket
         )
@@ -100,7 +102,7 @@ defmodule StoryarnWeb.Live.Shared.RestorationHandlers do
 
       @impl true
       def handle_info({:project_restoration_completed, _payload}, socket) do
-        StoryarnWeb.Live.Shared.RestorationHandlers.handle_restoration_event(
+        RestorationHandlers.handle_restoration_event(
           {:project_restoration_completed, %{}},
           socket
         )
@@ -108,7 +110,7 @@ defmodule StoryarnWeb.Live.Shared.RestorationHandlers do
 
       @impl true
       def handle_info({:project_restoration_failed, _payload}, socket) do
-        StoryarnWeb.Live.Shared.RestorationHandlers.handle_restoration_event(
+        RestorationHandlers.handle_restoration_event(
           {:project_restoration_failed, %{}},
           socket
         )

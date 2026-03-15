@@ -1,7 +1,6 @@
 defmodule Storyarn.Shared.InvitationNotifierTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Emails.Templates
   alias Storyarn.Shared.InvitationNotifier
   alias Storyarn.Workspaces.WorkspaceInvitation
 
@@ -11,7 +10,7 @@ defmodule Storyarn.Shared.InvitationNotifierTest do
   @config %{
     invitation_schema: WorkspaceInvitation,
     parent_assoc: :workspace,
-    template_fn: &Templates.workspace_invitation/6
+    template: :workspace_invitation
   }
 
   describe "deliver_invitation/4" do

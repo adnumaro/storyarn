@@ -12,22 +12,20 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
   - `NodeEventHandlers` delegates on_select, on_double_click
   """
 
-  alias StoryarnWeb.FlowLive.Nodes
-
-  @node_modules %{
-    "annotation" => Nodes.Annotation.Node,
-    "entry" => Nodes.Entry.Node,
-    "exit" => Nodes.Exit.Node,
-    "dialogue" => Nodes.Dialogue.Node,
-    "hub" => Nodes.Hub.Node,
-    "condition" => Nodes.Condition.Node,
-    "instruction" => Nodes.Instruction.Node,
-    "jump" => Nodes.Jump.Node,
-    "subflow" => Nodes.Subflow.Node,
-    "slug_line" => Nodes.SlugLine.Node
+  @node_suffixes %{
+    "annotation" => "Annotation",
+    "entry" => "Entry",
+    "exit" => "Exit",
+    "dialogue" => "Dialogue",
+    "hub" => "Hub",
+    "condition" => "Condition",
+    "instruction" => "Instruction",
+    "jump" => "Jump",
+    "subflow" => "Subflow",
+    "slug_line" => "SlugLine"
   }
 
-  @types Map.keys(@node_modules) |> Enum.sort()
+  @types Map.keys(@node_suffixes) |> Enum.sort()
 
   @doc "All known node types."
   @spec types() :: [String.t()]
@@ -39,7 +37,12 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
 
   @doc "Returns the node module for a given type."
   @spec node_module(String.t()) :: module() | nil
-  def node_module(type), do: Map.get(@node_modules, type)
+  def node_module(type) do
+    case Map.get(@node_suffixes, type) do
+      nil -> nil
+      suffix -> Module.concat(["StoryarnWeb", "FlowLive", "Nodes", suffix, "Node"])
+    end
+  end
 
   @doc "Returns the Lucide icon name for a node type."
   @spec icon_name(String.t()) :: String.t()

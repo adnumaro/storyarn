@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.FlowLive.Helpers.HtmlSanitizerTest do
   use ExUnit.Case, async: true
 
-  alias StoryarnWeb.FlowLive.Helpers.HtmlSanitizer
+  alias StoryarnWeb.Helpers.HtmlSanitizer
 
   # ── Allowed tags pass through ──────────────────────────────────────
 

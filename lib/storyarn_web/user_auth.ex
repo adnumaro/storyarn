@@ -2,7 +2,6 @@ defmodule StoryarnWeb.UserAuth do
   @moduledoc """
   Plugs and functions for user authentication and session management.
   """
-  use StoryarnWeb, :verified_routes
   use Gettext, backend: StoryarnWeb.Gettext
 
   import Plug.Conn
@@ -63,7 +62,7 @@ defmodule StoryarnWeb.UserAuth do
     conn
     |> renew_session(nil)
     |> delete_resp_cookie(@remember_me_cookie)
-    |> redirect(to: ~p"/")
+    |> redirect(to: "/")
   end
 
   @doc """
@@ -234,7 +233,7 @@ defmodule StoryarnWeb.UserAuth do
           :error,
           dgettext("identity", "You must log in to access this page.")
         )
-        |> Phoenix.LiveView.redirect(to: ~p"/users/log-in")
+        |> Phoenix.LiveView.redirect(to: "/users/log-in")
 
       {:halt, socket}
     end
@@ -248,7 +247,7 @@ defmodule StoryarnWeb.UserAuth do
     else
       socket =
         socket
-        |> Phoenix.LiveView.redirect(to: ~p"/users/confirm-access")
+        |> Phoenix.LiveView.redirect(to: "/users/confirm-access")
 
       {:halt, socket}
     end
@@ -300,8 +299,8 @@ defmodule StoryarnWeb.UserAuth do
   @doc "Returns the path to redirect to after log in."
   def signed_in_path(%Accounts.User{} = user) do
     case Workspaces.get_default_workspace(user) do
-      %Workspaces.Workspace{slug: slug} -> ~p"/workspaces/#{slug}"
-      nil -> ~p"/workspaces/new"
+      %Workspaces.Workspace{slug: slug} -> "/workspaces/#{slug}"
+      nil -> "/workspaces/new"
     end
   end
 
@@ -309,7 +308,7 @@ defmodule StoryarnWeb.UserAuth do
     signed_in_path(user)
   end
 
-  def signed_in_path(_), do: ~p"/"
+  def signed_in_path(_), do: "/"
 
   @doc """
   Plug that stores the current path as user_return_to for sudo mode re-authentication.
@@ -332,7 +331,7 @@ defmodule StoryarnWeb.UserAuth do
       conn
       |> put_flash(:error, dgettext("identity", "You must log in to access this page."))
       |> maybe_store_return_to()
-      |> redirect(to: ~p"/users/log-in")
+      |> redirect(to: "/users/log-in")
       |> halt()
     end
   end
