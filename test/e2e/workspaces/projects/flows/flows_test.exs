@@ -127,7 +127,9 @@ defmodule StoryarnWeb.E2E.FlowsTest do
 
       conn
       |> authenticate(user)
-      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{root_flow.id}")
+      |> visit(
+        "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{root_flow.id}"
+      )
       |> assert_has("h1", text: "Root Flow")
       |> assert_has("button[data-tip='Show panel']")
       |> click("button[data-tip='Show panel']")

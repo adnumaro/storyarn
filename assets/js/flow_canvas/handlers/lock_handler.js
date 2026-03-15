@@ -96,5 +96,11 @@ export function createLockHandler(hook) {
       const lockInfo = hook.nodeLocks[nodeId];
       return lockInfo && lockInfo.user_id !== hook.currentUserId;
     },
+
+    /**
+     * Keeps FlowCanvas teardown symmetrical with the rest of the handlers.
+     * Lock indicators are rebuilt from server state, so no explicit cleanup is needed.
+     */
+    destroy() {},
   };
 }

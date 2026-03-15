@@ -86,7 +86,7 @@ export const SortableTree = {
     if (!this._drag) return;
 
     if (!this._drag.active) {
-      this._drag.el.querySelector(".group\\/item a")?.click();
+      this._activateLink(this._drag.el.querySelector(".group\\/item a"));
       this._cleanup();
       return;
     }
@@ -121,6 +121,27 @@ export const SortableTree = {
     this._clearExpandTimer();
     this._cancelAutoScroll();
     this._drag = null;
+  },
+
+  _activateLink(anchor) {
+    if (!(anchor instanceof HTMLAnchorElement)) return;
+
+    // Re-dispatch a real bubbling click event instead of relying on
+    // HTMLElement.click(). LiveView's patch navigation listens at window level,
+    // and this keeps sidebar "click without drag" behavior aligned with a user click.
+    const event = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      view: window,
+      button: 0,
+    });
+
+    anchor.dispatchEvent(event);
+
+    if (!event.defaultPrevented && anchor.href) {
+      window.location.assign(anchor.href);
+    }
   },
 
   // ── Drag preview ──────────────────────────────────────────────────────────

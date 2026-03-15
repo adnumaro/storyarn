@@ -1500,6 +1500,11 @@ defmodule StoryarnWeb.FlowLive.Show do
      |> redirect(to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows")}
   end
 
+  # Linked helper processes can terminate normally during flow transitions.
+  # Ignore those exits so the editor does not remount while switching flows.
+  @impl true
+  def handle_info({:EXIT, _pid, :normal}, socket), do: {:noreply, socket}
+
   @impl true
   def handle_info({:project_restoration_started, payload}, socket),
     do:

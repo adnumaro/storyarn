@@ -383,6 +383,9 @@ defmodule StoryarnWeb.FlowLive.Index do
   end
 
   @impl true
+  def handle_info({:EXIT, _pid, :normal}, socket), do: {:noreply, socket}
+
+  @impl true
   def handle_async(:load_dashboard_data, {:ok, data}, socket) do
     {:noreply,
      socket
