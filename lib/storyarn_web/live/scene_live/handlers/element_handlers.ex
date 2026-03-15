@@ -347,7 +347,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     "none" => %{},
     "walkable" => %{},
     "instruction" => %{"assignments" => []},
-    "display" => %{"variable_ref" => ""}
+    "display" => %{"variable_ref" => ""},
+    "collection" => %{"items" => [], "collect_all_enabled" => true, "empty_message" => ""}
   }
 
   @doc "Changes a zone's action type (none, walkable, instruction, display) with default data."
@@ -415,6 +416,115 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     case Scenes.get_zone(socket.assigns.scene.id, id) do
       nil -> {:noreply, socket}
       zone -> do_update_zone_attrs(socket, zone, %{"condition_effect" => value})
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Collection item handlers
+  # ---------------------------------------------------------------------------
+
+  @doc "Adds a new collection item to a zone's action_data."
+  def handle_add_collection_item(%{"zone-id" => id}, socket) do
+    case Scenes.get_zone(socket.assigns.scene.id, id) do
+      nil ->
+        {:noreply, socket}
+
+      zone ->
+        items = get_in(zone.action_data || %{}, ["items"]) || []
+
+        new_item = %{
+          "id" => Ecto.UUID.generate(),
+          "sheet_id" => nil,
+          "label" => "",
+          "condition" => nil,
+          "instruction" => %{"assignments" => []}
+        }
+
+        new_data = Map.put(zone.action_data || %{}, "items", items ++ [new_item])
+        do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
+    end
+  end
+
+  @doc "Removes a collection item by its UUID."
+  def handle_remove_collection_item(%{"zone-id" => zone_id, "item-id" => item_id}, socket) do
+    case Scenes.get_zone(socket.assigns.scene.id, zone_id) do
+      nil ->
+        {:noreply, socket}
+
+      zone ->
+        items = get_in(zone.action_data || %{}, ["items"]) || []
+        updated_items = Enum.reject(items, &(&1["id"] == item_id))
+        new_data = Map.put(zone.action_data || %{}, "items", updated_items)
+        do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
+    end
+  end
+
+  @doc "Updates a field on a collection item (label, sheet_id)."
+  def handle_update_collection_item(
+        %{"zone-id" => zone_id, "item-id" => item_id, "field" => field} = params,
+        socket
+      ) do
+    value = Map.get(params, "value", "")
+    update_fn = fn item -> Map.put(item, field, value) end
+    do_update_collection_item(socket, zone_id, item_id, update_fn)
+  end
+
+  @doc "Updates the condition on a collection item."
+  def handle_update_collection_item_condition(
+        %{"zone-id" => zone_id, "item-id" => item_id, "condition" => condition},
+        socket
+      ) do
+    update_fn = fn item -> Map.put(item, "condition", condition) end
+    do_update_collection_item(socket, zone_id, item_id, update_fn)
+  end
+
+  @doc "Updates the instruction assignments on a collection item."
+  def handle_update_collection_item_instruction(
+        %{"zone-id" => zone_id, "item-id" => item_id, "assignments" => assignments},
+        socket
+      ) do
+    update_fn = fn item -> Map.put(item, "instruction", %{"assignments" => assignments}) end
+    do_update_collection_item(socket, zone_id, item_id, update_fn)
+  end
+
+  defp do_update_collection_item(socket, zone_id, item_id, update_fn) do
+    case Scenes.get_zone(socket.assigns.scene.id, zone_id) do
+      nil ->
+        {:noreply, socket}
+
+      zone ->
+        items = get_in(zone.action_data || %{}, ["items"]) || []
+        updated_items = update_collection_item_in_list(items, item_id, update_fn)
+        new_data = Map.put(zone.action_data || %{}, "items", updated_items)
+        do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
+    end
+  end
+
+  defp update_collection_item_in_list(items, item_id, update_fn) do
+    Enum.map(items, fn item ->
+      if item["id"] == item_id, do: update_fn.(item), else: item
+    end)
+  end
+
+  @doc "Updates collection-level settings (collect_all_enabled, empty_message)."
+  def handle_update_collection_settings(
+        %{"zone-id" => zone_id, "field" => field, "value" => value},
+        socket
+      ) do
+    case Scenes.get_zone(socket.assigns.scene.id, zone_id) do
+      nil ->
+        {:noreply, socket}
+
+      zone ->
+        parsed_value =
+          case {field, value} do
+            {"collect_all_enabled", "true"} -> true
+            {"collect_all_enabled", "false"} -> false
+            _ -> value
+          end
+
+        new_data = Map.put(zone.action_data || %{}, field, parsed_value)
+        do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
     end
   end
 

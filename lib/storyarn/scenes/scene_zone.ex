@@ -15,7 +15,7 @@ defmodule Storyarn.Scenes.SceneZone do
 
   @valid_border_styles ~w(solid dashed dotted)
   @valid_target_types ~w(flow scene)
-  @valid_action_types ~w(none walkable instruction display)
+  @valid_action_types ~w(none walkable instruction display collection)
 
   @valid_condition_effects ~w(hide disable)
 
@@ -174,6 +174,13 @@ defmodule Storyarn.Scenes.SceneZone do
 
   defp do_validate_action_data(changeset, "display", _),
     do: add_error(changeset, :action_data, "must include \"variable_ref\"")
+
+  defp do_validate_action_data(changeset, "collection", %{"items" => list})
+       when is_list(list),
+       do: changeset
+
+  defp do_validate_action_data(changeset, "collection", _),
+    do: add_error(changeset, :action_data, "must include \"items\" as a list")
 
   defp do_validate_action_data(changeset, _, _), do: changeset
 

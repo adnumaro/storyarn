@@ -13,6 +13,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
 
   import StoryarnWeb.Components.ConditionBuilder
   import StoryarnWeb.Components.ExpressionEditor
+  import StoryarnWeb.SceneLive.Components.CollectionItemsEditor
   import StoryarnWeb.SceneLive.Components.ToolbarWidgets
 
   import StoryarnWeb.SceneLive.Helpers.SceneHelpers,
@@ -76,7 +77,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
   # Zone panel
   # ---------------------------------------------------------------------------
 
-  @action_types ~w(none walkable instruction display)
+  @action_types ~w(none walkable instruction display collection)
 
   attr :zone, :map, required: true
   attr :can_edit, :boolean, default: true
@@ -179,6 +180,18 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
           variables={@project_variables}
           selected_ref={@action_data["variable_ref"] || ""}
           can_edit={@can_edit}
+        />
+      </div>
+
+      <%!-- Collection --%>
+      <div :if={@zone.action_type == "collection"} class="pt-3 border-t border-base-300">
+        <.collection_items_editor
+          zone={@zone}
+          action_data={@action_data}
+          can_edit={@can_edit}
+          project_sheets={@project_sheets}
+          project_variables={@project_variables}
+          panel_sections={@panel_sections}
         />
       </div>
 

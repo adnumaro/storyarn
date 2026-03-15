@@ -422,3 +422,93 @@
   z-index: 10;
   animation: player-fade-in 0.3s ease;
 }
+
+/* ===== Exploration Collection Overlay ===== */
+
+.exploration-collection-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.5);
+  animation: player-fade-in 0.3s ease;
+}
+
+.collection-modal {
+  background: oklch(0.18 0.01 260);
+  border: 1px solid oklch(0.30 0.01 260);
+  border-radius: 0.75rem;
+  width: 100%;
+  max-width: 420px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  animation: player-fade-in 0.3s ease;
+}
+
+.collection-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid oklch(0.25 0.01 260);
+}
+
+.collection-modal-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  color: oklch(0.60 0.01 260);
+}
+
+.collection-modal-items {
+  padding: 0.75rem;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.collection-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border: 1px solid oklch(0.28 0.01 260);
+  border-radius: 0.5rem;
+  background: oklch(0.15 0.01 260);
+  transition: border-color 0.15s;
+}
+
+.collection-item-card:hover {
+  border-color: oklch(0.40 0.05 260);
+}
+
+.collection-item-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.collection-item-label {
+  font-size: 0.9375rem;
+  color: oklch(0.85 0.01 260);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.collection-modal-footer {
+  display: flex;
+  justify-content: center;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid oklch(0.25 0.01 260);
+}

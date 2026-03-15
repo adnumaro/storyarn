@@ -102,6 +102,69 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
             </button>
           </div>
         </div>
+
+        <%!-- Collection overlay --%>
+        <div :if={@collection_mode && @collection_zone} class="exploration-collection-overlay">
+          <div class="collection-modal">
+            <div class="collection-modal-header">
+              <h3 class="text-lg font-semibold">
+                <.icon name="package-open" class="size-5 inline-block mr-1 opacity-60" />
+                {dgettext("scenes", "Collection")}
+              </h3>
+              <button
+                type="button"
+                phx-click="collection_close"
+                class="player-toolbar-btn"
+              >
+                <.icon name="x" class="size-4" />
+              </button>
+            </div>
+
+            <div :if={@collection_items == []} class="collection-modal-empty">
+              <.icon name="package-open" class="size-8 opacity-30" />
+              <p class="text-sm opacity-50 mt-2">
+                {if @collection_zone.empty_message != "",
+                  do: @collection_zone.empty_message,
+                  else: dgettext("scenes", "Nothing here...")}
+              </p>
+            </div>
+
+            <div :if={@collection_items != []} class="collection-modal-items">
+              <div
+                :for={item <- @collection_items}
+                class="collection-item-card"
+              >
+                <div class="collection-item-info">
+                  <span class="collection-item-label">
+                    {item["label"] || item["_sheet_name"] || dgettext("scenes", "Item")}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  phx-click="collection_take"
+                  phx-value-item-id={item["id"]}
+                  class="player-toolbar-btn player-toolbar-btn-primary"
+                >
+                  {dgettext("scenes", "Take")}
+                </button>
+              </div>
+            </div>
+
+            <div
+              :if={@collection_items != [] && @collection_zone.collect_all_enabled}
+              class="collection-modal-footer"
+            >
+              <button
+                type="button"
+                phx-click="collection_take_all"
+                class="player-toolbar-btn player-toolbar-btn-primary"
+              >
+                <.icon name="package-check" class="size-4" />
+                {dgettext("scenes", "Take All")}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <.flash_group flash={@flash} />
@@ -169,6 +232,10 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
           |> assign(:flow_nodes, %{})
           |> assign(:flow_connections, [])
           |> assign(:flow_sheets_map, %{})
+          |> assign(:collection_mode, false)
+          |> assign(:collection_zone, nil)
+          |> assign(:collection_items, [])
+          |> assign(:collected_ids, MapSet.new())
 
         {:ok, socket, layout: false}
     end
@@ -195,18 +262,52 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   end
 
   def handle_event("exit_exploration", _params, socket) do
-    if socket.assigns.flow_mode do
-      # Exit flow overlay, return to map exploration
-      {:noreply,
-       socket
-       |> assign(:flow_mode, false)
-       |> assign(:active_flow, nil)}
-    else
-      path =
-        ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{socket.assigns.scene.id}"
+    cond do
+      socket.assigns.collection_mode ->
+        {:noreply, close_collection_modal(socket)}
 
-      {:noreply, push_navigate(socket, to: path)}
+      socket.assigns.flow_mode ->
+        {:noreply,
+         socket
+         |> assign(:flow_mode, false)
+         |> assign(:active_flow, nil)}
+
+      true ->
+        path =
+          ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{socket.assigns.scene.id}"
+
+        {:noreply, push_navigate(socket, to: path)}
     end
+  end
+
+  # ===========================================================================
+  # Events — Collection
+  # ===========================================================================
+
+  def handle_event("collection_take", %{"item-id" => item_id}, socket) do
+    item = Enum.find(socket.assigns.collection_items, &(&1["id"] == item_id))
+
+    if item do
+      socket = execute_collection_item(socket, item)
+      {:noreply, refresh_collection_items(socket)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("collection_take_all", _params, socket) do
+    visible_items = socket.assigns.collection_items
+
+    socket =
+      Enum.reduce(visible_items, socket, fn item, acc ->
+        execute_collection_item(acc, item)
+      end)
+
+    {:noreply, refresh_collection_items(socket)}
+  end
+
+  def handle_event("collection_close", _params, socket) do
+    {:noreply, close_collection_modal(socket)}
   end
 
   # ===========================================================================
@@ -280,15 +381,20 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   def handle_event("handle_keydown", %{"key" => key}, socket) do
     cond do
-      # Escape — exit flow overlay or exploration
+      # Escape — close collection modal, exit flow overlay, or exit exploration
       key == "Escape" ->
-        if socket.assigns.flow_mode do
-          {:noreply, socket |> assign(:flow_mode, false) |> assign(:active_flow, nil)}
-        else
-          path =
-            ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{socket.assigns.scene.id}"
+        cond do
+          socket.assigns.collection_mode ->
+            {:noreply, close_collection_modal(socket)}
 
-          {:noreply, push_navigate(socket, to: path)}
+          socket.assigns.flow_mode ->
+            {:noreply, socket |> assign(:flow_mode, false) |> assign(:active_flow, nil)}
+
+          true ->
+            path =
+              ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{socket.assigns.scene.id}"
+
+            {:noreply, push_navigate(socket, to: path)}
         end
 
       # Flow mode keyboard controls
@@ -325,6 +431,13 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
       _ ->
         socket
     end
+  end
+
+  defp handle_element_action(
+         %{"action_type" => "collection", "element_id" => zone_id, "action_data" => action_data},
+         socket
+       ) do
+    open_collection_modal(socket, zone_id, action_data)
   end
 
   defp handle_element_action(_params, socket), do: socket
@@ -667,6 +780,101 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
       handle_event("flow_finish", %{}, socket)
     else
       handle_event("flow_continue", %{}, socket)
+    end
+  end
+
+  # ===========================================================================
+  # Private — Collection Helpers
+  # ===========================================================================
+
+  defp open_collection_modal(socket, zone_id, action_data) do
+    items = action_data["items"] || []
+    variables = socket.assigns.variables
+    collected = socket.assigns.collected_ids
+
+    visible_items =
+      items
+      |> Enum.reject(&MapSet.member?(collected, &1["id"]))
+      |> Enum.filter(&item_visible?(&1, variables))
+
+    # Load sheet data for visible items
+    visible_items = Enum.map(visible_items, &load_item_sheet_data(&1, socket.assigns.project.id))
+
+    socket
+    |> assign(:collection_mode, true)
+    |> assign(:collection_zone, %{
+      id: zone_id,
+      action_data: action_data,
+      empty_message: action_data["empty_message"] || "",
+      collect_all_enabled: action_data["collect_all_enabled"] != false
+    })
+    |> assign(:collection_items, visible_items)
+  end
+
+  defp close_collection_modal(socket) do
+    socket
+    |> assign(:collection_mode, false)
+    |> assign(:collection_zone, nil)
+    |> assign(:collection_items, [])
+  end
+
+  defp execute_collection_item(socket, item) do
+    assignments = get_in(item, ["instruction", "assignments"]) || []
+    collected = MapSet.put(socket.assigns.collected_ids, item["id"])
+    socket = assign(socket, :collected_ids, collected)
+
+    if assignments == [] do
+      socket
+    else
+      case Flows.execute_instructions(assignments, socket.assigns.variables) do
+        {:ok, new_variables, _changes, _errors, _warnings} ->
+          new_variables = FormulaRuntime.recompute_formulas(new_variables)
+          refresh_exploration_state(socket, new_variables)
+
+        _ ->
+          socket
+      end
+    end
+  end
+
+  defp refresh_collection_items(socket) do
+    case socket.assigns.collection_zone do
+      nil ->
+        socket
+
+      zone_info ->
+        items = zone_info.action_data["items"] || []
+        variables = socket.assigns.variables
+        collected = socket.assigns.collected_ids
+
+        visible_items =
+          items
+          |> Enum.reject(&MapSet.member?(collected, &1["id"]))
+          |> Enum.filter(&item_visible?(&1, variables))
+          |> Enum.map(&load_item_sheet_data(&1, socket.assigns.project.id))
+
+        assign(socket, :collection_items, visible_items)
+    end
+  end
+
+  defp item_visible?(item, variables) do
+    case item["condition"] do
+      nil -> true
+      condition when condition == %{} -> true
+      condition -> elem(Flows.evaluate_condition(condition, variables), 0)
+    end
+  end
+
+  defp load_item_sheet_data(item, project_id) do
+    case MapUtils.parse_int(item["sheet_id"]) do
+      nil ->
+        item
+
+      sheet_id ->
+        case Sheets.get_sheet(project_id, sheet_id) do
+          nil -> item
+          sheet -> Map.put(item, "_sheet_name", sheet.name)
+        end
     end
   end
 

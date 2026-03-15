@@ -785,7 +785,8 @@ export const ExplorationPlayer = {
     const hasTarget = zone.target_type && zone.target_id;
     const isWalkableOnly =
       zone.is_walkable && !hasTarget && (actionType === "none" || actionType === "walkable");
-    const isClickable = !isDisabled && (actionType === "instruction" || hasTarget);
+    const isClickable =
+      !isDisabled && (actionType === "instruction" || actionType === "collection" || hasTarget);
 
     // Zone overlay with clip-path
     const div = document.createElement("div");
