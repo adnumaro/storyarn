@@ -87,6 +87,7 @@ export const ExplorationPlayer = {
 
     // Speech bubble state
     this.activeBubbles = {};
+    this.activeSubtitle = null;
 
     this.initMovementData();
     this.initPatrolData();
@@ -183,6 +184,42 @@ export const ExplorationPlayer = {
       this.dismissBubble(String(pin_id));
     });
 
+    this.handleEvent("show_subtitle", ({ text, speaker, duration }) => {
+      this.dismissSubtitle();
+
+      const subtitle = document.createElement("div");
+      subtitle.className =
+        "exploration-subtitle exploration-bubble-enter";
+      subtitle.setAttribute("data-role", "ambient-subtitle");
+
+      if (speaker) {
+        const speakerSpan = document.createElement("span");
+        speakerSpan.className = "exploration-bubble-speaker";
+        speakerSpan.textContent = speaker;
+        subtitle.appendChild(speakerSpan);
+      }
+
+      const textSpan = document.createElement("span");
+      textSpan.className = "exploration-bubble-text";
+      textSpan.textContent = text;
+      subtitle.appendChild(textSpan);
+
+      this.el.appendChild(subtitle);
+      this.activeSubtitle = { el: subtitle, timer: null };
+
+      if (duration > 0) {
+        this.activeSubtitle.timer = setTimeout(
+          () => this.dismissSubtitle(),
+          duration,
+        );
+      }
+    });
+
+    this.handleEvent("dismiss_ambient", () => {
+      this.dismissAllBubbles();
+      this.dismissSubtitle();
+    });
+
     this.handleEvent("set_zoom", ({ zoom }) => {
       if (this.displayMode !== "scaled" || !this.wrapperEl) return;
       this.zoom = zoom;
@@ -194,6 +231,7 @@ export const ExplorationPlayer = {
 
   destroyed() {
     this.dismissAllBubbles();
+    this.dismissSubtitle();
     this.destroyCamera();
     this.destroyMovement();
   },
@@ -1059,6 +1097,13 @@ export const ExplorationPlayer = {
     for (const pinId of Object.keys(this.activeBubbles)) {
       this.dismissBubbleImmediate(pinId);
     }
+  },
+
+  dismissSubtitle() {
+    if (!this.activeSubtitle) return;
+    if (this.activeSubtitle.timer) clearTimeout(this.activeSubtitle.timer);
+    this.activeSubtitle.el.remove();
+    this.activeSubtitle = null;
   },
 
   // ===========================================================================

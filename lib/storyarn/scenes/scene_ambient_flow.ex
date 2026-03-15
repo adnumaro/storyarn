@@ -41,7 +41,7 @@ defmodule Storyarn.Scenes.SceneAmbientFlow do
   def changeset(ambient_flow, attrs) do
     ambient_flow
     |> cast(attrs, [:flow_id, :trigger_type, :enabled, :position])
-    |> validate_required([:scene_id, :flow_id])
+    |> validate_required([:flow_id])
     |> validate_inclusion(:trigger_type, @trigger_types)
     |> foreign_key_constraint(:scene_id)
     |> foreign_key_constraint(:flow_id)

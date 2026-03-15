@@ -13,6 +13,7 @@ defmodule Storyarn.Repo.Migrations.CreateSceneAmbientFlows do
     end
 
     create index(:scene_ambient_flows, [:scene_id])
+    create index(:scene_ambient_flows, [:flow_id])
     create unique_index(:scene_ambient_flows, [:scene_id, :flow_id])
   end
 end

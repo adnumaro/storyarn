@@ -628,3 +628,24 @@
   from { opacity: 1; transform: translateX(-50%) translateY(0); }
   to   { opacity: 0; transform: translateX(-50%) translateY(4px); }
 }
+
+/* ===== Ambient Subtitle (no speaker pin match) ===== */
+
+.exploration-subtitle {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: min(90%, 28rem);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  background: oklch(0.20 0.01 260 / 0.9);
+  border: 1px solid oklch(0.40 0.01 260 / 0.3);
+  backdrop-filter: blur(8px);
+  z-index: 20;
+  pointer-events: none;
+  text-align: center;
+}

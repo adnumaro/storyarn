@@ -5,6 +5,7 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
 
   alias Storyarn.Flows.Flow
   alias Storyarn.Repo
+  alias Storyarn.Scenes
   alias Storyarn.Scenes.SceneAmbientFlow
   alias Storyarn.Shared.MapUtils
 
@@ -88,14 +89,16 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
   end
 
   defp validate_same_project(scene_id, flow_id) when is_integer(flow_id) do
-    scene_project_id = Storyarn.Scenes.get_scene_project_id(scene_id)
-    flow = Repo.get(Flow, flow_id)
+    case Scenes.get_scene_project_id(scene_id) do
+      nil ->
+        {:error, :scene_not_found}
 
-    cond do
-      is_nil(scene_project_id) -> {:error, :scene_not_found}
-      is_nil(flow) -> {:error, :flow_not_found}
-      flow.project_id != scene_project_id -> {:error, :cross_project}
-      true -> {:ok, flow}
+      scene_project_id ->
+        case Repo.get(Flow, flow_id) do
+          nil -> {:error, :flow_not_found}
+          %{project_id: ^scene_project_id} -> {:ok, :valid}
+          _ -> {:error, :cross_project}
+        end
     end
   end
 
