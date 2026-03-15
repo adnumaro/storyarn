@@ -5,7 +5,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Instruction.Node do
   Sets variable values when executed. Contains assignments and a description.
   """
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers

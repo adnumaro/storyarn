@@ -7,7 +7,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.SlugLine.Node do
   via `location_sheet_id` and displays INT/EXT, sub-location, and time of day.
   """
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Components.NodeTypeHelpers

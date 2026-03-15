@@ -2,7 +2,7 @@ defmodule StoryarnWeb.Components.BlockComponents.GalleryBlocks do
   @moduledoc false
 
   use Phoenix.Component
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   import StoryarnWeb.Components.CoreComponents,
     only: [block_label: 1, icon: 1, modal: 1, confirm_modal: 1, show_modal: 1, hide_modal: 2]

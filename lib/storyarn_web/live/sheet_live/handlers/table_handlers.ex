@@ -14,7 +14,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   import Phoenix.LiveView, only: [put_flash: 3]
   import StoryarnWeb.SheetLive.Helpers.FormulaHelpers, only: [parse_binding_value: 1]
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Shared.FormulaEngine
   alias Storyarn.Sheets

@@ -5,7 +5,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.TreeHandlers do
 
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_navigate: 2, push_patch: 2, put_flash: 3]
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
   alias StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Screenplays

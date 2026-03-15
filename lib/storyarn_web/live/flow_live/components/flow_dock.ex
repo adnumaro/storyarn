@@ -6,7 +6,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowDock do
   """
 
   use Phoenix.Component
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
   use StoryarnWeb, :verified_routes
 
   alias Phoenix.LiveView.JS

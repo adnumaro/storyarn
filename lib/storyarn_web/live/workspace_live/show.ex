@@ -3,7 +3,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   LiveView for displaying a workspace dashboard with its projects.
   """
   use StoryarnWeb, :live_view
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
 

@@ -5,7 +5,7 @@ defmodule StoryarnWeb.Components.MemberComponents do
   These components are used in both project and workspace settings sheets.
   """
   use Phoenix.Component
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Phoenix.LiveView.JS
 

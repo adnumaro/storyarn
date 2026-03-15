@@ -6,7 +6,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
   switch mode (multiple labeled outputs).
   """
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Flows
 

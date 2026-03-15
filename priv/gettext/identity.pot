@@ -16,12 +16,12 @@ msgstr ""
 msgid "%{name}'s workspace"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:19
+#: lib/storyarn_web/live/user_live/registration.ex:21
 #, elixir-autogen, elixir-format
 msgid "Already registered?"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:102
+#: lib/storyarn_web/live/user_live/registration.ex:104
 #, elixir-autogen, elixir-format
 msgid "An email was sent to %{email}, please access it to confirm your account."
 msgstr ""
@@ -57,19 +57,19 @@ msgstr ""
 msgid "Could not link account: %{errors}"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:46
+#: lib/storyarn_web/live/user_live/registration.ex:48
 #, elixir-autogen, elixir-format
 msgid "Create an account"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:43
+#: lib/storyarn_web/live/user_live/registration.ex:45
 #, elixir-autogen, elixir-format
 msgid "Creating account..."
 msgstr ""
 
 #: lib/storyarn_web/live/user_live/confirm_access.ex:50
 #: lib/storyarn_web/live/user_live/login.ex:47
-#: lib/storyarn_web/live/user_live/registration.ex:36
+#: lib/storyarn_web/live/user_live/registration.ex:38
 #, elixir-autogen, elixir-format
 msgid "Email"
 msgstr ""
@@ -84,7 +84,7 @@ msgstr ""
 msgid "Failed to link %{provider}: %{message}"
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:107
+#: lib/storyarn_web/controllers/user_session_controller.ex:82
 #, elixir-autogen, elixir-format
 msgid "Failed to update password."
 msgstr ""
@@ -106,7 +106,7 @@ msgstr ""
 
 #: lib/storyarn_web/live/user_live/confirmation.ex:58
 #: lib/storyarn_web/live/user_live/login.ex:16
-#: lib/storyarn_web/live/user_live/registration.ex:21
+#: lib/storyarn_web/live/user_live/registration.ex:23
 #, elixir-autogen, elixir-format
 msgid "Log in"
 msgstr ""
@@ -121,7 +121,7 @@ msgstr ""
 msgid "Log me in only this time"
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:122
+#: lib/storyarn_web/controllers/user_session_controller.ex:97
 #, elixir-autogen, elixir-format
 msgid "Logged out successfully."
 msgstr ""
@@ -143,17 +143,17 @@ msgstr ""
 msgid "No %{provider} account linked."
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:103
+#: lib/storyarn_web/controllers/user_session_controller.ex:78
 #, elixir-autogen, elixir-format
 msgid "Password updated successfully!"
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:114
+#: lib/storyarn_web/controllers/user_session_controller.ex:89
 #, elixir-autogen, elixir-format
 msgid "Please re-authenticate to change your password."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:17
+#: lib/storyarn_web/live/user_live/registration.ex:19
 #, elixir-autogen, elixir-format
 msgid "Register for an account"
 msgstr ""
@@ -193,7 +193,7 @@ msgstr ""
 msgid "Too many login attempts. Please try again later."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:76
+#: lib/storyarn_web/live/user_live/registration.ex:78
 #, elixir-autogen, elixir-format
 msgid "Too many registration attempts. Please try again later."
 msgstr ""
@@ -225,13 +225,13 @@ msgid "You are running the local mail adapter."
 msgstr ""
 
 #: lib/storyarn_web/live/user_live/confirm_access.ex:79
-#: lib/storyarn_web/user_auth.ex:235
-#: lib/storyarn_web/user_auth.ex:333
+#: lib/storyarn_web/user_auth.ex:234
+#: lib/storyarn_web/user_auth.ex:332
 #, elixir-autogen, elixir-format
 msgid "You must log in to access this page."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:30
+#: lib/storyarn_web/live/user_live/registration.ex:32
 #, elixir-autogen, elixir-format
 msgid "or register with email"
 msgstr ""
@@ -241,7 +241,7 @@ msgstr ""
 msgid "the mailbox sheet"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:23
+#: lib/storyarn_web/live/user_live/registration.ex:25
 #, elixir-autogen, elixir-format
 msgid "to your account now."
 msgstr ""

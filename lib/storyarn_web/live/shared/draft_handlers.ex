@@ -2,7 +2,7 @@ defmodule StoryarnWeb.Live.Shared.DraftHandlers do
   @moduledoc false
 
   import Phoenix.LiveView
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
   require Logger
 
   alias Storyarn.{Collaboration, Drafts}

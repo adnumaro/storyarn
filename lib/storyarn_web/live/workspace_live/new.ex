@@ -3,7 +3,7 @@ defmodule StoryarnWeb.WorkspaceLive.New do
   LiveView for creating a new workspace.
   """
   use StoryarnWeb, :live_view
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Workspaces
   alias Storyarn.Workspaces.Workspace

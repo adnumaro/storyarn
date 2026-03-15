@@ -6,7 +6,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Hub.Node do
   On selection, loads referencing jump nodes.
   """
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   import Phoenix.Component, only: [assign: 3]
 

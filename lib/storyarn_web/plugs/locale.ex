@@ -10,7 +10,7 @@ defmodule StoryarnWeb.Plugs.Locale do
   """
   import Plug.Conn
 
-  @locales Gettext.known_locales(StoryarnWeb.Gettext)
+  @locales Gettext.known_locales(Storyarn.Gettext)
   @default_locale "en"
 
   def init(opts), do: opts
@@ -22,7 +22,7 @@ defmodule StoryarnWeb.Plugs.Locale do
         get_locale_from_header(conn) ||
         @default_locale
 
-    Gettext.put_locale(StoryarnWeb.Gettext, locale)
+    Gettext.put_locale(Storyarn.Gettext, locale)
 
     conn
     |> put_session(:locale, locale)

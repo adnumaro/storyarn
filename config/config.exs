@@ -83,7 +83,7 @@ config :phoenix, :json_library, Jason
 config :phoenix, :filter_parameters, ["password", "secret", "token", "api_key", "_csrf_token"]
 
 # Configure Gettext locales
-config :storyarn, StoryarnWeb.Gettext,
+config :storyarn, Storyarn.Gettext,
   default_locale: "en",
   locales: ~w(en es)
 

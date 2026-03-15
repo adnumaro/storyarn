@@ -191,7 +191,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
         entity_name: workspace.name,
         entity_id: workspace.id,
         role: role,
-        locale: Gettext.get_locale(StoryarnWeb.Gettext)
+        locale: Gettext.get_locale(Storyarn.Gettext)
       }
 
       Accounts.notify_admin_invitation_request(request_info)

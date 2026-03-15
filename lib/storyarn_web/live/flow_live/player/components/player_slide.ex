@@ -6,7 +6,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlide do
   """
 
   use Phoenix.Component
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Shared.HtmlSanitizer
 

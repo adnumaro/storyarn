@@ -11,7 +11,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   """
 
   import Phoenix.Component, only: [assign: 3]
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Components.NodeTypeHelpers

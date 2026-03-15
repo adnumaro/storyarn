@@ -6,7 +6,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSearchPanel do
   """
 
   use Phoenix.Component
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.SceneLive.Helpers.SceneHelpers, only: [search_result_icon: 1]

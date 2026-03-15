@@ -11,7 +11,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
 
   use Phoenix.Component
   use StoryarnWeb, :verified_routes
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.Components.MemberComponents, only: [user_avatar: 1]

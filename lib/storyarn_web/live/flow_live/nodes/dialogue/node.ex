@@ -11,7 +11,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   - Open screenplay mode
   """
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3]
@@ -91,7 +91,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
     result =
       NodeHelpers.persist_node_update(socket, node_id, fn data ->
         default_text =
-          Gettext.dgettext(StoryarnWeb.Gettext, "flows", "Response %{n}", n: response_number)
+          Gettext.dgettext(Storyarn.Gettext, "flows", "Response %{n}", n: response_number)
 
         new_response = %{
           "id" => new_id,

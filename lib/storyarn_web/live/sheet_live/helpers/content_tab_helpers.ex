@@ -9,7 +9,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ContentTabHelpers do
   - Integer parsing utility
   """
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Flows
   alias Storyarn.Sheets

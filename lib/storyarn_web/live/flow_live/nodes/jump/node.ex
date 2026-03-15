@@ -5,7 +5,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Jump.Node do
   References a Hub node by target_hub_id to create non-linear flow paths.
   """
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   def type, do: "jump"
   def icon_name, do: "log-out"

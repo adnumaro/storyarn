@@ -60,7 +60,7 @@ defmodule StoryarnWeb.Live.Shared.RestorationHandlers do
      socket
      |> Phoenix.LiveView.put_flash(
        :info,
-       Gettext.dgettext(StoryarnWeb.Gettext, "projects", "Project restored successfully.")
+       Gettext.dgettext(Storyarn.Gettext, "projects", "Project restored successfully.")
      )
      |> Phoenix.LiveView.push_navigate(to: path)}
   end
@@ -79,7 +79,7 @@ defmodule StoryarnWeb.Live.Shared.RestorationHandlers do
      |> Phoenix.LiveView.put_flash(
        :error,
        Gettext.dgettext(
-         StoryarnWeb.Gettext,
+         Storyarn.Gettext,
          "projects",
          "Project restoration failed. Please try again."
        )

@@ -6,7 +6,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
   (terminal, flow_reference, or caller_return).
   """
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Flows
   alias Storyarn.Scenes

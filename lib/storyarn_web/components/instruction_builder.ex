@@ -10,7 +10,7 @@ defmodule StoryarnWeb.Components.InstructionBuilder do
   """
 
   use Phoenix.Component
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   attr :id, :string, required: true
   attr :assignments, :list, default: []

@@ -4,7 +4,7 @@ defmodule StoryarnWeb.ScreenplayLive.Handlers.ElementHandlers do
   """
 
   import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, put_flash: 3]
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
   use StoryarnWeb, :verified_routes
 
   alias Storyarn.Flows

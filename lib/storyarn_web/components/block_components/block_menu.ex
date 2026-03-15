@@ -2,7 +2,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BlockMenu do
   @moduledoc false
 
   use Phoenix.Component
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
 

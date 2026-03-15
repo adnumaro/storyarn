@@ -14,7 +14,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.InheritanceHandlers do
   import Phoenix.LiveView, only: [push_navigate: 2, put_flash: 3]
 
   use StoryarnWeb, :verified_routes
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Helpers.ContentTabHelpers

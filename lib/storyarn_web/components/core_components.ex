@@ -27,7 +27,7 @@ defmodule StoryarnWeb.Components.CoreComponents do
 
   """
   use Phoenix.Component
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Phoenix.LiveView.JS
 
@@ -706,9 +706,9 @@ defmodule StoryarnWeb.Components.CoreComponents do
     # with our gettext backend as first argument. Translations are
     # available in the errors.po file (as we use the "errors" domain).
     if count = opts[:count] do
-      Gettext.dngettext(StoryarnWeb.Gettext, "errors", msg, msg, count, opts)
+      Gettext.dngettext(Storyarn.Gettext, "errors", msg, msg, count, opts)
     else
-      Gettext.dgettext(StoryarnWeb.Gettext, "errors", msg, opts)
+      Gettext.dgettext(Storyarn.Gettext, "errors", msg, opts)
     end
   end
 

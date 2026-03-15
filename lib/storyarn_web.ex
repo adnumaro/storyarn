@@ -40,7 +40,7 @@ defmodule StoryarnWeb do
     quote do
       use Phoenix.Controller, formats: [:html, :json]
 
-      use Gettext, backend: StoryarnWeb.Gettext
+      use Gettext, backend: Storyarn.Gettext
 
       import Plug.Conn
 
@@ -80,7 +80,7 @@ defmodule StoryarnWeb do
   defp html_helpers do
     quote do
       # Translation
-      use Gettext, backend: StoryarnWeb.Gettext
+      use Gettext, backend: Storyarn.Gettext
 
       # HTML escaping functionality
       import Phoenix.HTML

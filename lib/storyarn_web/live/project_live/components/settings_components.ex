@@ -6,7 +6,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   used by the settings LiveView.
   """
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
   use StoryarnWeb, :verified_routes
 
   require Logger
@@ -294,7 +294,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
         entity_name: project.name,
         entity_id: project.id,
         role: role,
-        locale: Gettext.get_locale(StoryarnWeb.Gettext)
+        locale: Gettext.get_locale(Storyarn.Gettext)
       }
 
       Accounts.notify_admin_invitation_request(request_info)

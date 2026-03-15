@@ -128,7 +128,7 @@ defmodule StoryarnWeb.DocsLive.Show do
 
   # Use current Gettext locale if docs exist for it, otherwise fall back to English.
   defp docs_locale do
-    locale = Gettext.get_locale(StoryarnWeb.Gettext)
+    locale = Gettext.get_locale(Storyarn.Gettext)
     if Docs.list_guides(locale) != [], do: locale, else: "en"
   end
 end

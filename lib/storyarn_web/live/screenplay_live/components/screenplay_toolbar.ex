@@ -2,7 +2,7 @@ defmodule StoryarnWeb.ScreenplayLive.Components.ScreenplayToolbar do
   @moduledoc false
 
   use Phoenix.Component
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
   use StoryarnWeb, :verified_routes
 
   import StoryarnWeb.Components.CoreComponents

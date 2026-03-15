@@ -7,7 +7,7 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
 
   use Phoenix.Component
   use StoryarnWeb, :verified_routes
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   import StoryarnWeb.Components.Sidebar.GenericTree
 

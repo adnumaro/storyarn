@@ -7,7 +7,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ConfigPopovers.NumberConfig do
   """
 
   use Phoenix.Component
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false

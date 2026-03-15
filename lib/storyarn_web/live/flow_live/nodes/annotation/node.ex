@@ -9,7 +9,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Annotation.Node do
   Data: text (plain text), color (hex), font_size ("sm"|"md"|"lg").
   """
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   import Phoenix.Component, only: [assign: 3]
 

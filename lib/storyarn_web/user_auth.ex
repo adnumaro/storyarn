@@ -2,7 +2,7 @@ defmodule StoryarnWeb.UserAuth do
   @moduledoc """
   Plugs and functions for user authentication and session management.
   """
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   import Plug.Conn
   import Phoenix.Controller

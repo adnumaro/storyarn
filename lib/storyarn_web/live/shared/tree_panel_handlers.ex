@@ -161,7 +161,7 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlers do
          Phoenix.LiveView.put_flash(
            socket,
            :error,
-           Gettext.gettext(StoryarnWeb.Gettext, "Item limit reached for your plan")
+           Gettext.gettext(Storyarn.Gettext, "Item limit reached for your plan")
          )}
 
       {:error, _changeset} ->

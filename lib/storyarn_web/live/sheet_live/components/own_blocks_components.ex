@@ -9,7 +9,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
   """
 
   use Phoenix.Component
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
   import StoryarnWeb.Components.BlockComponents, only: [block_component: 1, block_menu: 1]

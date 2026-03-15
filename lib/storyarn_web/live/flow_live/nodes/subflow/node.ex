@@ -7,7 +7,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
   pins are generated from the referenced flow's Exit nodes.
   """
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [put_flash: 3]

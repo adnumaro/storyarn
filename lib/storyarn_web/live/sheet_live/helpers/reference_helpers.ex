@@ -4,7 +4,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
   import Phoenix.Component
   import Phoenix.LiveView
   import StoryarnWeb.Helpers.SaveStatusTimer
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets

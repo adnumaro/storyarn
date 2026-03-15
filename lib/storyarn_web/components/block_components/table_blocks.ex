@@ -2,7 +2,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
   @moduledoc false
 
   use Phoenix.Component
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
   import StoryarnWeb.SheetLive.Helpers.FormulaHelpers

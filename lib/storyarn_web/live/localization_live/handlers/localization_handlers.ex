@@ -8,7 +8,7 @@ defmodule StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers do
 
   import Phoenix.LiveView, only: [put_flash: 3]
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Localization
 

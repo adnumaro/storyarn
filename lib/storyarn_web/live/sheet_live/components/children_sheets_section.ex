@@ -6,7 +6,7 @@ defmodule StoryarnWeb.SheetLive.Components.ChildrenSheetsSection do
   """
 
   use Phoenix.Component
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
   use StoryarnWeb, :verified_routes
 
   import StoryarnWeb.Components.SheetComponents, only: [sheet_avatar: 1]

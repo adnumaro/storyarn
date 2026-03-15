@@ -6,7 +6,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
   use StoryarnWeb, :verified_routes
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Scenes
   import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]

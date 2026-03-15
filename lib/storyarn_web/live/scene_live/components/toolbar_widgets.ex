@@ -7,7 +7,7 @@ defmodule StoryarnWeb.SceneLive.Components.ToolbarWidgets do
   """
 
   use Phoenix.Component
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Phoenix.LiveView.JS
 

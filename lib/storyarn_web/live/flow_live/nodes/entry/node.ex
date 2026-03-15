@@ -6,7 +6,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Entry.Node do
   Auto-created with the flow.
   """
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Flows
 

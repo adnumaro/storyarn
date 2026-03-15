@@ -108,7 +108,7 @@ defmodule StoryarnWeb.Helpers.Authorize do
 
   defp unauthorized_message do
     # Use Gettext directly since we can't use the macro in a function body
-    Gettext.gettext(StoryarnWeb.Gettext, "You don't have permission to perform this action.")
+    Gettext.gettext(Storyarn.Gettext, "You don't have permission to perform this action.")
   end
 
   @doc """

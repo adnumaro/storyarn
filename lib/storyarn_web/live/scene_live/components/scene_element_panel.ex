@@ -7,7 +7,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
   """
 
   use StoryarnWeb, :html
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Phoenix.LiveView.JS
 

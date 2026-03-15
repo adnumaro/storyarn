@@ -1,6 +1,6 @@
 defmodule StoryarnWeb.UserSessionController do
   use StoryarnWeb, :controller
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Accounts
   alias Storyarn.RateLimiter

@@ -2,7 +2,7 @@ defmodule StoryarnWeb.Components.BlockComponents.LayoutBlocks do
   @moduledoc false
 
   use Phoenix.Component
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   import StoryarnWeb.Components.CoreComponents, only: [block_label: 1]
 

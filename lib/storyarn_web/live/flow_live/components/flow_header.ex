@@ -2,7 +2,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowHeader do
   @moduledoc false
 
   use Phoenix.Component
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.Components.FocusLayout, only: [entity_title_pill: 1]

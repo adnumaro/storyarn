@@ -6,7 +6,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockValueHelpers do
   {:noreply, socket}, for use in LiveComponents that manage their own state.
   """
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets

@@ -7,7 +7,7 @@ defmodule StoryarnWeb.SceneLive.Components.CollectionItemsEditor do
   """
 
   use StoryarnWeb, :html
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   import StoryarnWeb.Components.ConditionBuilder
   import StoryarnWeb.Components.ExpressionEditor

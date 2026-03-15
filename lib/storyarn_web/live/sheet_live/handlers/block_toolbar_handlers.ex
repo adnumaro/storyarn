@@ -15,7 +15,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockToolbarHandlers do
 
   import Phoenix.LiveView, only: [put_flash: 3]
 
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Handlers.InheritanceHandlers

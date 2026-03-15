@@ -6,7 +6,7 @@ defmodule StoryarnWeb.SceneLive.Components.Dock do
 
   use Phoenix.Component
   use StoryarnWeb, :verified_routes
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Phoenix.LiveView.JS
 

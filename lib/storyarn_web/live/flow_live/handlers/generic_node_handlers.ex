@@ -13,7 +13,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, push_patch: 2, put_flash: 3]
 
   use StoryarnWeb, :verified_routes
-  use Gettext, backend: StoryarnWeb.Gettext
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Flows
   alias Storyarn.Sheets
