@@ -105,7 +105,10 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
         <.icon name={if @target.type == "sheet", do: "file-text", else: "git-branch"} class="size-4" />
       </span>
       <span class="min-w-0 flex-1 truncate font-medium">{@target.name}</span>
-      <span :if={@target.shortcut} class="hidden max-w-28 truncate text-base-content/50 text-sm lg:inline">
+      <span
+        :if={@target.shortcut}
+        class="hidden max-w-28 truncate text-base-content/50 text-sm lg:inline"
+      >
         #{@target.shortcut}
       </span>
     </div>

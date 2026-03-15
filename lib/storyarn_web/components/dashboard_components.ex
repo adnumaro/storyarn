@@ -46,7 +46,10 @@ defmodule StoryarnWeb.Components.DashboardComponents do
         </div>
       </div>
     </.link>
-    <div :if={!@href} class="card h-full border border-base-300/80 bg-gradient-to-br from-base-200/95 via-base-200/90 to-primary/8 p-3.5 shadow-sm backdrop-blur-sm sm:p-4 dark:border-base-content/10 dark:from-base-content/[0.11] dark:via-base-content/[0.08] dark:to-primary/10">
+    <div
+      :if={!@href}
+      class="card h-full border border-base-300/80 bg-gradient-to-br from-base-200/95 via-base-200/90 to-primary/8 p-3.5 shadow-sm backdrop-blur-sm sm:p-4 dark:border-base-content/10 dark:from-base-content/[0.11] dark:via-base-content/[0.08] dark:to-primary/10"
+    >
       <div class="flex h-full flex-col gap-4">
         <div class="flex items-center gap-2 text-sm text-base-content/60">
           <div class="rounded-md bg-primary/10 p-1.5">
