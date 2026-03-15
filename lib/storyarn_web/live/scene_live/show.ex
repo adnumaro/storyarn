@@ -1318,6 +1318,45 @@ defmodule StoryarnWeb.SceneLive.Show do
     end)
   end
 
+  def handle_event("add_collection_item", params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      ElementHandlers.handle_add_collection_item(params, socket) |> broadcast_scene_change()
+    end)
+  end
+
+  def handle_event("remove_collection_item", params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      ElementHandlers.handle_remove_collection_item(params, socket) |> broadcast_scene_change()
+    end)
+  end
+
+  def handle_event("update_collection_item", params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      ElementHandlers.handle_update_collection_item(params, socket) |> broadcast_scene_change()
+    end)
+  end
+
+  def handle_event("update_collection_item_condition", params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      ElementHandlers.handle_update_collection_item_condition(params, socket)
+      |> broadcast_scene_change()
+    end)
+  end
+
+  def handle_event("update_collection_item_instruction", params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      ElementHandlers.handle_update_collection_item_instruction(params, socket)
+      |> broadcast_scene_change()
+    end)
+  end
+
+  def handle_event("update_collection_settings", params, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      ElementHandlers.handle_update_collection_settings(params, socket)
+      |> broadcast_scene_change()
+    end)
+  end
+
   # Expression editor tab toggle (Builder ↔ Code)
   def handle_event("toggle_expression_tab", %{"id" => id, "tab" => tab}, socket) do
     panel_sections = Map.put(socket.assigns.panel_sections, "tab_#{id}", tab)

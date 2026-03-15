@@ -20,6 +20,7 @@ defmodule Storyarn.Scenes do
   alias Storyarn.Scenes.{
     AnnotationCrud,
     ConnectionCrud,
+    ExplorationSessionCrud,
     LayerCrud,
     PinCrud,
     Scene,
@@ -592,6 +593,30 @@ defmodule Storyarn.Scenes do
 
   @doc "Detects issues in scenes. Returns [%{issue_type, scene_id, scene_name}]."
   defdelegate detect_scene_issues(project_id), to: SceneStats
+
+  # =============================================================================
+  # Exploration Sessions
+  # =============================================================================
+
+  @doc "Gets an existing exploration session for a user and project."
+  defdelegate get_exploration_session(user_id, project_id),
+    to: ExplorationSessionCrud,
+    as: :get_session
+
+  @doc "Upserts an exploration session (create or update, includes positions)."
+  defdelegate save_exploration_session(user_id, project_id, attrs),
+    to: ExplorationSessionCrud,
+    as: :save_session
+
+  @doc "Deletes an exploration session (new game)."
+  defdelegate delete_exploration_session(user_id, project_id),
+    to: ExplorationSessionCrud,
+    as: :delete_session
+
+  @doc "Deletes exploration sessions older than N days."
+  defdelegate cleanup_old_exploration_sessions(days \\ 30),
+    to: ExplorationSessionCrud,
+    as: :cleanup_old_sessions
 
   # =============================================================================
   # Versioning
