@@ -1,0 +1,23 @@
+lib/storyarn_web/components/dashboard_components.ex
+  2ac4f1599893ece2 37-43,45,49-53,55-56,59,66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "7fc8ae511d2a46ae7bc1e67253964d9ceff29fc0",
+  "prompts": {
+    "2ac4f1599893ece2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019cf345-963d-7970-b7d4-34a67086c1b2",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 20,
+      "total_deletions": 20,
+      "accepted_lines": 17,
+      "overriden_lines": 0
+    }
+  }
+}
