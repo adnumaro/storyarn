@@ -18,12 +18,14 @@ defmodule Storyarn.Scenes do
   import Ecto.Query, warn: false
 
   alias Storyarn.Scenes.{
+    AmbientFlowCrud,
     AnnotationCrud,
     ConnectionCrud,
     ExplorationSessionCrud,
     LayerCrud,
     PinCrud,
     Scene,
+    SceneAmbientFlow,
     SceneAnnotation,
     SceneConnection,
     SceneCrud,
@@ -50,6 +52,7 @@ defmodule Storyarn.Scenes do
   @type pin :: ScenePin.t()
   @type connection :: SceneConnection.t()
   @type annotation :: SceneAnnotation.t()
+  @type ambient_flow :: SceneAmbientFlow.t()
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
 
@@ -460,6 +463,36 @@ defmodule Storyarn.Scenes do
 
   @spec delete_annotation(annotation()) :: {:ok, annotation()} | {:error, changeset()}
   defdelegate delete_annotation(annotation), to: AnnotationCrud
+
+  # =============================================================================
+  # Ambient Flows
+  # =============================================================================
+
+  @doc "Lists ambient flows for a scene, ordered by position. Preloads `:flow`."
+  @spec list_ambient_flows(integer()) :: [ambient_flow()]
+  defdelegate list_ambient_flows(scene_id), to: AmbientFlowCrud
+
+  @doc "Gets a single ambient flow scoped to a scene. Returns `nil` if not found."
+  @spec get_ambient_flow(integer(), integer()) :: ambient_flow() | nil
+  defdelegate get_ambient_flow(scene_id, id), to: AmbientFlowCrud
+
+  @doc "Creates an ambient flow link. Validates flow belongs to same project."
+  @spec create_ambient_flow(integer(), attrs()) :: {:ok, ambient_flow()} | {:error, term()}
+  defdelegate create_ambient_flow(scene_id, attrs), to: AmbientFlowCrud
+
+  @doc "Updates an ambient flow (enabled, trigger_type, position)."
+  @spec update_ambient_flow(ambient_flow(), attrs()) ::
+          {:ok, ambient_flow()} | {:error, changeset()}
+  defdelegate update_ambient_flow(ambient_flow, attrs), to: AmbientFlowCrud
+
+  @doc "Deletes an ambient flow link."
+  @spec delete_ambient_flow(ambient_flow()) :: {:ok, ambient_flow()} | {:error, changeset()}
+  defdelegate delete_ambient_flow(ambient_flow), to: AmbientFlowCrud
+
+  @doc "Reorders ambient flows by updating positions from ordered ID list."
+  @spec reorder_ambient_flows(integer(), [integer()]) ::
+          {:ok, [ambient_flow()]} | {:error, term()}
+  defdelegate reorder_ambient_flows(scene_id, ordered_ids), to: AmbientFlowCrud
 
   # =============================================================================
   # Target Queries (backlinks)

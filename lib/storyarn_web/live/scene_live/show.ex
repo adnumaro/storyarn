@@ -389,6 +389,8 @@ defmodule StoryarnWeb.SceneLive.Show do
                 scene={@scene}
                 can_edit={@can_edit}
                 bg_upload_input_id={@uploads[:background] && @uploads.background.ref}
+                ambient_flows={@ambient_flows}
+                project_flows={@project_flows}
               />
             </div>
             <div
@@ -626,6 +628,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           |> assign(:pins, [])
           |> assign(:connections, [])
           |> assign(:annotations, [])
+          |> assign(:ambient_flows, [])
           |> assign(:scene_data, %{})
           |> assign(:edit_mode, can_edit)
           |> assign(:active_tool, :select)
@@ -771,6 +774,40 @@ defmodule StoryarnWeb.SceneLive.Show do
     |> then(fn s -> if compact, do: s, else: schedule_lock_heartbeat(s) end)
   end
 
+  defp reload_ambient_flows(socket) do
+    assign(socket, :ambient_flows, Scenes.list_ambient_flows(socket.assigns.scene.id))
+  end
+
+  defp do_reorder_ambient_flow(socket, id, direction) do
+    flows = socket.assigns.ambient_flows
+
+    case Enum.find_index(flows, &(to_string(&1.id) == id)) do
+      nil ->
+        socket
+
+      idx ->
+        new_idx =
+          case direction do
+            "up" -> max(0, idx - 1)
+            "down" -> min(length(flows) - 1, idx + 1)
+            _ -> idx
+          end
+
+        if idx != new_idx do
+          ordered_ids =
+            flows
+            |> Enum.map(& &1.id)
+            |> List.delete_at(idx)
+            |> List.insert_at(new_idx, Enum.at(flows, idx).id)
+
+          Scenes.reorder_ambient_flows(socket.assigns.scene.id, ordered_ids)
+          reload_ambient_flows(socket)
+        else
+          socket
+        end
+    end
+  end
+
   defp assign_scene_state(socket, scene, can_edit) do
     socket
     |> assign(:scene, scene)
@@ -780,6 +817,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     |> assign(:pins, scene.pins || [])
     |> assign(:connections, scene.connections || [])
     |> assign(:annotations, scene.annotations || [])
+    |> assign(:ambient_flows, Scenes.list_ambient_flows(scene.id))
     |> assign(:scene_data, build_scene_data(scene, can_edit))
     |> assign(:edit_mode, can_edit)
     |> assign(:active_tool, :select)
@@ -1251,6 +1289,56 @@ defmodule StoryarnWeb.SceneLive.Show do
     with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_update_exploration_display_mode(params, socket)
       |> broadcast_scene_change()
+    end)
+  end
+
+  def handle_event("add_ambient_flow", %{"flow_id" => ""}, socket), do: {:noreply, socket}
+
+  def handle_event("add_ambient_flow", %{"flow_id" => flow_id}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      case Scenes.create_ambient_flow(socket.assigns.scene.id, %{"flow_id" => flow_id}) do
+        {:ok, _} ->
+          {:noreply, reload_ambient_flows(socket)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not add ambient flow."))}
+      end
+    end)
+  end
+
+  def handle_event("remove_ambient_flow", %{"id" => id}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      scene = socket.assigns.scene
+
+      case Scenes.get_ambient_flow(scene.id, id) do
+        nil ->
+          {:noreply, socket}
+
+        af ->
+          Scenes.delete_ambient_flow(af)
+          {:noreply, reload_ambient_flows(socket)}
+      end
+    end)
+  end
+
+  def handle_event("toggle_ambient_flow", %{"id" => id}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      scene = socket.assigns.scene
+
+      case Scenes.get_ambient_flow(scene.id, id) do
+        nil ->
+          {:noreply, socket}
+
+        af ->
+          Scenes.update_ambient_flow(af, %{enabled: !af.enabled})
+          {:noreply, reload_ambient_flows(socket)}
+      end
+    end)
+  end
+
+  def handle_event("reorder_ambient_flow", %{"id" => id, "direction" => direction}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      {:noreply, do_reorder_ambient_flow(socket, id, direction)}
     end)
   end
 

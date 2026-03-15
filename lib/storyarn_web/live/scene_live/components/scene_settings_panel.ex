@@ -12,6 +12,8 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
   attr :scene, :map, required: true
   attr :can_edit, :boolean, required: true
   attr :bg_upload_input_id, :string, default: nil
+  attr :ambient_flows, :list, default: []
+  attr :project_flows, :list, default: []
 
   def scene_settings_panel(assigns) do
     ~H"""
@@ -183,6 +185,75 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
           {@scene.width || 1000} &times; {@scene.height || 1000} px
         </p>
       </div>
+      <%!-- Ambient Flows --%>
+      <div class="pt-2 border-t border-base-300 space-y-2">
+        <label class="label text-xs font-medium">
+          <.icon name="wind" class="size-3 inline-block mr-1" />
+          {dgettext("scenes", "Ambient Flows")}
+        </label>
+        <div :if={@ambient_flows == []} class="text-xs text-base-content/40">
+          {dgettext("scenes", "No ambient flows linked to this scene.")}
+        </div>
+        <div :for={af <- @ambient_flows} class="flex items-center gap-1.5 group">
+          <span class="text-xs truncate flex-1" title={af.flow.name}>
+            <.icon name="git-branch" class="size-3 inline-block mr-0.5 opacity-50" />
+            {af.flow.name}
+          </span>
+          <div :if={@can_edit} class="flex items-center gap-0.5 shrink-0">
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs btn-square opacity-0 group-hover:opacity-100"
+              phx-click="reorder_ambient_flow"
+              phx-value-id={af.id}
+              phx-value-direction="up"
+              title={dgettext("scenes", "Move up")}
+            >
+              <.icon name="chevron-up" class="size-3" />
+            </button>
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs btn-square opacity-0 group-hover:opacity-100"
+              phx-click="reorder_ambient_flow"
+              phx-value-id={af.id}
+              phx-value-direction="down"
+              title={dgettext("scenes", "Move down")}
+            >
+              <.icon name="chevron-down" class="size-3" />
+            </button>
+            <label class="swap swap-rotate">
+              <input
+                type="checkbox"
+                checked={af.enabled}
+                phx-click="toggle_ambient_flow"
+                phx-value-id={af.id}
+              />
+              <.icon name="eye" class="swap-on size-3.5 text-success" />
+              <.icon name="eye-off" class="swap-off size-3.5 text-base-content/30" />
+            </label>
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs btn-square text-error opacity-0 group-hover:opacity-100"
+              phx-click="remove_ambient_flow"
+              phx-value-id={af.id}
+            >
+              <.icon name="x" class="size-3" />
+            </button>
+          </div>
+        </div>
+        <% available_flows = available_flows(@project_flows, @ambient_flows) %>
+        <div :if={@can_edit && available_flows != []}>
+          <select
+            class="select select-xs select-bordered w-full"
+            phx-change="add_ambient_flow"
+            name="flow_id"
+          >
+            <option value="">{dgettext("scenes", "+ Add ambient flow…")}</option>
+            <option :for={flow <- available_flows} value={flow.id}>
+              {flow.name}
+            </option>
+          </select>
+        </div>
+      </div>
     </div>
     """
   end
@@ -198,4 +269,9 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
   end
 
   defp format_scale_value(val), do: to_string(val)
+
+  defp available_flows(project_flows, ambient_flows) do
+    linked_ids = MapSet.new(ambient_flows, & &1.flow_id)
+    Enum.reject(project_flows, &MapSet.member?(linked_ids, &1.id))
+  end
 end
