@@ -26,6 +26,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias Storyarn.Drafts
   alias Storyarn.Projects
   alias Storyarn.Scenes
+  alias Storyarn.Shared.MapUtils
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
 
   alias StoryarnWeb.Components.Sidebar.SceneTree
@@ -389,6 +390,8 @@ defmodule StoryarnWeb.SceneLive.Show do
                 scene={@scene}
                 can_edit={@can_edit}
                 bg_upload_input_id={@uploads[:background] && @uploads.background.ref}
+                ambient_flows={@ambient_flows}
+                project_flows={@project_flows}
               />
             </div>
             <div
@@ -627,6 +630,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           |> assign(:pins, [])
           |> assign(:connections, [])
           |> assign(:annotations, [])
+          |> assign(:ambient_flows, [])
           |> assign(:scene_data, %{})
           |> assign(:edit_mode, can_edit)
           |> assign(:active_tool, :select)
@@ -772,6 +776,74 @@ defmodule StoryarnWeb.SceneLive.Show do
     |> then(fn s -> if compact, do: s, else: schedule_lock_heartbeat(s) end)
   end
 
+  defp reload_ambient_flows(socket) do
+    assign(socket, :ambient_flows, Scenes.list_ambient_flows(socket.assigns.scene.id))
+  end
+
+  defp do_remove_ambient_flow(socket, id) do
+    scene = socket.assigns.scene
+
+    case Scenes.get_ambient_flow(scene.id, MapUtils.parse_int(id)) do
+      nil ->
+        socket
+
+      af ->
+        case Scenes.delete_ambient_flow(af) do
+          {:ok, _} ->
+            reload_ambient_flows(socket)
+
+          {:error, _} ->
+            put_flash(socket, :error, dgettext("scenes", "Could not remove ambient flow."))
+        end
+    end
+  end
+
+  defp do_toggle_ambient_flow(socket, id) do
+    scene = socket.assigns.scene
+
+    case Scenes.get_ambient_flow(scene.id, MapUtils.parse_int(id)) do
+      nil ->
+        socket
+
+      af ->
+        case Scenes.update_ambient_flow(af, %{enabled: !af.enabled}) do
+          {:ok, _} ->
+            reload_ambient_flows(socket)
+
+          {:error, _} ->
+            put_flash(socket, :error, dgettext("scenes", "Could not update ambient flow."))
+        end
+    end
+  end
+
+  defp do_reorder_ambient_flow(socket, id, direction) do
+    flows = socket.assigns.ambient_flows
+
+    with idx when idx != nil <- Enum.find_index(flows, &(to_string(&1.id) == id)),
+         new_idx <- compute_reorder_index(idx, direction, length(flows)),
+         true <- idx != new_idx do
+      ordered_ids =
+        flows
+        |> Enum.map(& &1.id)
+        |> List.delete_at(idx)
+        |> List.insert_at(new_idx, Enum.at(flows, idx).id)
+
+      case Scenes.reorder_ambient_flows(socket.assigns.scene.id, ordered_ids) do
+        {:ok, _} ->
+          reload_ambient_flows(socket)
+
+        {:error, _} ->
+          put_flash(socket, :error, dgettext("scenes", "Could not reorder ambient flows."))
+      end
+    else
+      _ -> socket
+    end
+  end
+
+  defp compute_reorder_index(idx, "up", _len), do: max(0, idx - 1)
+  defp compute_reorder_index(idx, "down", len), do: min(len - 1, idx + 1)
+  defp compute_reorder_index(idx, _direction, _len), do: idx
+
   defp assign_scene_state(socket, scene, can_edit) do
     socket
     |> assign(:scene, scene)
@@ -781,6 +853,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     |> assign(:pins, scene.pins || [])
     |> assign(:connections, scene.connections || [])
     |> assign(:annotations, scene.annotations || [])
+    |> assign(:ambient_flows, Scenes.list_ambient_flows(scene.id))
     |> assign(:scene_data, build_scene_data(scene, can_edit))
     |> assign(:edit_mode, can_edit)
     |> assign(:active_tool, :select)
@@ -1252,6 +1325,40 @@ defmodule StoryarnWeb.SceneLive.Show do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       LayerHandlers.handle_update_exploration_display_mode(params, socket)
       |> broadcast_scene_change()
+    end)
+  end
+
+  def handle_event("add_ambient_flow", %{"flow_id" => ""}, socket), do: {:noreply, socket}
+
+  def handle_event("add_ambient_flow", %{"flow_id" => flow_id}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      case Scenes.create_ambient_flow(socket.assigns.scene.id, %{
+             "flow_id" => MapUtils.parse_int(flow_id)
+           }) do
+        {:ok, _} ->
+          {:noreply, reload_ambient_flows(socket)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not add ambient flow."))}
+      end
+    end)
+  end
+
+  def handle_event("remove_ambient_flow", %{"id" => id}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      {:noreply, do_remove_ambient_flow(socket, id)}
+    end)
+  end
+
+  def handle_event("toggle_ambient_flow", %{"id" => id}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      {:noreply, do_toggle_ambient_flow(socket, id)}
+    end)
+  end
+
+  def handle_event("reorder_ambient_flow", %{"id" => id, "direction" => direction}, socket) do
+    with_authorization(socket, :edit_content, fn _socket ->
+      {:noreply, do_reorder_ambient_flow(socket, id, direction)}
     end)
   end
 

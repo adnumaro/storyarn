@@ -4,7 +4,7 @@ description: Ecto schema architect - designs migrations, data models, and query 
 tools: Read, Grep, Glob, Bash
 disallowedTools: Write, Edit, NotebookEdit
 permissionMode: bypassPermissions
-model: sonnet
+model: opus
 skills:
   - ecto-patterns
 ---

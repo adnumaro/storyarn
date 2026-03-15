@@ -4,7 +4,7 @@ description: Oban worker specialist - reviews idempotency, error handling, and p
 tools: Read, Grep, Glob
 disallowedTools: Write, Edit, NotebookEdit
 permissionMode: bypassPermissions
-model: sonnet
+model: opus
 skills:
   - oban
 ---

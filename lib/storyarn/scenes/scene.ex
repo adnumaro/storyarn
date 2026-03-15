@@ -19,7 +19,16 @@ defmodule Storyarn.Scenes.Scene do
 
   alias Storyarn.Assets.Asset
   alias Storyarn.Projects.Project
-  alias Storyarn.Scenes.{SceneAnnotation, SceneConnection, SceneLayer, ScenePin, SceneZone}
+
+  alias Storyarn.Scenes.{
+    SceneAmbientFlow,
+    SceneAnnotation,
+    SceneConnection,
+    SceneLayer,
+    ScenePin,
+    SceneZone
+  }
+
   alias Storyarn.Shared.{HierarchicalSchema, Validations}
   alias Storyarn.Versioning.EntityVersion
 
@@ -82,6 +91,7 @@ defmodule Storyarn.Scenes.Scene do
     has_many :pins, ScenePin
     has_many :connections, SceneConnection
     has_many :annotations, SceneAnnotation
+    has_many :ambient_flows, SceneAmbientFlow
 
     timestamps(type: :utc_datetime)
   end

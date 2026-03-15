@@ -20,7 +20,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Scenes
-  alias Storyarn.Shared.{FormulaRuntime, MapUtils}
+  alias Storyarn.Shared.{FormulaRuntime, HtmlUtils, MapUtils}
   alias Storyarn.Sheets
 
   alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
@@ -290,6 +290,13 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
           |> assign(:collected_ids, MapSet.new())
           |> assign(:session_prompt, existing_session != nil)
           |> assign(:pending_session, existing_session)
+          # Ambient flows
+          |> assign(:ambient_queue, [])
+          |> assign(:ambient_current, nil)
+          |> assign(:ambient_timer_ref, nil)
+          |> assign(:ambient_start_timer_ref, nil)
+          |> assign(:ambient_paused, false)
+          |> maybe_start_ambient_flows(scene, existing_session)
 
         {:ok, socket, layout: false}
     end
@@ -398,7 +405,10 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
       case Scenes.get_scene(socket.assigns.project.id, session.scene_id) do
         nil ->
           # Saved scene was deleted, stay on current scene with restored variables
-          socket = apply_variable_update(socket, variables)
+          socket =
+            socket
+            |> apply_variable_update(variables)
+            |> schedule_ambient_start()
 
           {:noreply,
            put_flash(
@@ -426,6 +436,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
           party: get_in(session.player_positions, ["party"]),
           camera: session.camera_state
         })
+        |> schedule_ambient_start()
 
       {:noreply, socket}
     end
@@ -438,7 +449,8 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     {:noreply,
      socket
      |> assign(:session_prompt, false)
-     |> assign(:pending_session, nil)}
+     |> assign(:pending_session, nil)
+     |> schedule_ambient_start()}
   end
 
   def handle_event("save_session", _params, socket) do
@@ -643,6 +655,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
              |> assign(:flow_connections, connections)
              |> assign(:flow_sheets_map, sheets_map)
              |> push_event("patrol_pause", %{})
+             |> pause_ambient_flow()
              |> assign(:active_flow, %{
                flow_id: flow.id,
                flow: flow,
@@ -819,6 +832,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     |> assign(:flow_mode, false)
     |> assign(:active_flow, nil)
     |> push_event("patrol_resume", %{})
+    |> resume_ambient_flow()
   end
 
   # ===========================================================================
@@ -1161,6 +1175,484 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
       {Enum.reverse(conn.waypoints || []), conn.from_pin_id}
     end
   end
+
+  # ===========================================================================
+  # Private — Ambient Flow Execution
+  # ===========================================================================
+
+  # Minimum / maximum bubble display time in ms
+  @ambient_min_duration_ms 2_000
+  @ambient_max_duration_ms 8_000
+  # Reading speed: ~60 words per minute = 1 word per second
+  @ambient_ms_per_word 1_000
+  # Delay before starting ambient flows after scene load
+  @ambient_start_delay_ms 1_500
+  @max_ambient_jump_depth 20
+
+  defp maybe_start_ambient_flows(socket, scene, existing_session) do
+    if existing_session do
+      # Session prompt will be shown — ambient starts after user chooses
+      socket
+    else
+      ambient_flows =
+        Scenes.list_ambient_flows(scene.id)
+        |> Enum.filter(& &1.enabled)
+
+      socket
+      |> assign(:ambient_queue, ambient_flows)
+      |> schedule_ambient_start()
+    end
+  end
+
+  defp schedule_ambient_start(socket) do
+    socket = cancel_ambient_start_timer(socket)
+
+    if connected?(socket) do
+      ref = Process.send_after(self(), :ambient_start, @ambient_start_delay_ms)
+      assign(socket, :ambient_start_timer_ref, ref)
+    else
+      socket
+    end
+  end
+
+  defp cancel_ambient_start_timer(socket) do
+    case socket.assigns.ambient_start_timer_ref do
+      nil ->
+        socket
+
+      ref ->
+        Process.cancel_timer(ref)
+        assign(socket, :ambient_start_timer_ref, nil)
+    end
+  end
+
+  @impl true
+  def handle_info(:ambient_start, socket) do
+    socket = assign(socket, :ambient_start_timer_ref, nil)
+
+    # Ignore stale timer if ambient is paused or a full flow is active
+    if socket.assigns.ambient_paused or socket.assigns.flow_mode do
+      {:noreply, socket}
+    else
+      # Load ambient flows if queue wasn't set yet (session prompt path)
+      socket =
+        if socket.assigns.ambient_queue == [] do
+          ambient_flows =
+            Scenes.list_ambient_flows(socket.assigns.scene.id)
+            |> Enum.filter(& &1.enabled)
+
+          assign(socket, :ambient_queue, ambient_flows)
+        else
+          socket
+        end
+
+      {:noreply, init_next_ambient_flow(socket)}
+    end
+  end
+
+  @impl true
+  def handle_info(:ambient_advance, socket) do
+    socket = assign(socket, :ambient_timer_ref, nil)
+
+    # Ignore stale timer if ambient is paused or a full flow is active
+    if socket.assigns.ambient_paused or socket.assigns.flow_mode do
+      {:noreply, socket}
+    else
+      case socket.assigns.ambient_current do
+        nil ->
+          {:noreply, socket}
+
+        current ->
+          {:noreply, advance_ambient_flow(socket, current)}
+      end
+    end
+  end
+
+  defp init_next_ambient_flow(socket) do
+    case socket.assigns.ambient_queue do
+      [] ->
+        assign(socket, :ambient_current, nil)
+
+      [ambient_flow | rest] ->
+        socket = assign(socket, :ambient_queue, rest)
+
+        case load_ambient_flow(socket, ambient_flow) do
+          {:ok, socket, current} ->
+            socket
+            |> assign(:ambient_current, current)
+            |> process_ambient_node(current)
+
+          :skip ->
+            init_next_ambient_flow(socket)
+        end
+    end
+  end
+
+  defp load_ambient_flow(socket, ambient_flow) do
+    project = socket.assigns.project
+
+    case Flows.get_flow(project.id, ambient_flow.flow_id) do
+      nil ->
+        :skip
+
+      _flow ->
+        nodes_map = DebugExecutionHandlers.build_nodes_map(ambient_flow.flow_id)
+        connections = DebugExecutionHandlers.build_connections(ambient_flow.flow_id)
+        all_sheets = Sheets.list_all_sheets(project.id)
+        sheets_map = FormHelpers.sheets_map(all_sheets)
+
+        case find_entry_and_step(
+               nodes_map,
+               connections,
+               socket.assigns.variables,
+               ambient_flow.flow_id
+             ) do
+          {:error, _} ->
+            :skip
+
+          {:ok, engine_state} ->
+            current = %{
+              engine_state: engine_state,
+              nodes: nodes_map,
+              connections: connections,
+              sheets_map: sheets_map,
+              flow_id: ambient_flow.flow_id
+            }
+
+            {:ok, socket, current}
+        end
+    end
+  end
+
+  defp process_ambient_node(socket, current) do
+    state = current.engine_state
+    node = Map.get(current.nodes, state.current_node_id)
+
+    cond do
+      state.status == :finished ->
+        finish_ambient_flow(socket)
+
+      node && node.type == "dialogue" ->
+        show_ambient_dialogue(socket, current, node)
+
+      true ->
+        # Non-dialogue interactive node (shouldn't happen often) — skip
+        finish_ambient_flow(socket)
+    end
+  end
+
+  defp show_ambient_dialogue(socket, current, node) do
+    data = node.data || %{}
+    state = current.engine_state
+
+    # Resolve text with variable interpolation (reuse Slide logic)
+    slide = Slide.build(node, state, current.sheets_map, socket.assigns.project.id)
+    plain_text = HtmlUtils.strip_html(slide.text || "")
+    duration = ambient_bubble_duration(plain_text)
+
+    # Find pin matching the speaker's sheet_id
+    speaker_sheet_id = MapUtils.parse_int(data["speaker_sheet_id"])
+    pin = find_pin_for_speaker(socket.assigns.pins, speaker_sheet_id)
+
+    socket =
+      if pin do
+        push_event(socket, "show_bubble", %{
+          pin_id: pin.id,
+          text: plain_text,
+          speaker: slide.speaker_name,
+          duration: duration
+        })
+      else
+        # No matching pin — show as subtitle
+        push_event(socket, "show_subtitle", %{
+          text: plain_text,
+          speaker: slide.speaker_name,
+          duration: duration
+        })
+      end
+
+    # Cancel any previous timer before scheduling auto-advance
+    socket = cancel_ambient_timer(socket)
+    ref = Process.send_after(self(), :ambient_advance, duration)
+    assign(socket, :ambient_timer_ref, ref)
+  end
+
+  defp advance_ambient_flow(socket, current) do
+    state = current.engine_state
+    nodes = current.nodes
+    connections = current.connections
+
+    # Auto-choose first valid response if dialogue had choices
+    state =
+      case state.pending_choices do
+        %{responses: [first | _]} ->
+          case Flows.evaluator_choose_response(state, first.id, connections) do
+            {:ok, new_state} -> new_state
+            {:error, _, _} -> state
+          end
+
+        _ ->
+          state
+      end
+
+    # Step to next interactive node
+    case PlayerEngine.step_until_interactive(state, nodes, connections) do
+      {:flow_jump, new_state, target_flow_id, _skipped} ->
+        handle_ambient_flow_jump(socket, current, new_state, target_flow_id)
+
+      {:flow_return, new_state, _skipped} ->
+        handle_ambient_flow_return(socket, current, new_state)
+
+      {:finished, new_state, _skipped} ->
+        # Apply variable changes before finishing
+        socket
+        |> sync_ambient_variables(new_state)
+        |> finish_ambient_flow()
+
+      {_status, new_state, _skipped} ->
+        current = %{current | engine_state: new_state}
+
+        socket
+        |> sync_ambient_variables(new_state)
+        |> assign(:ambient_current, current)
+        |> process_ambient_node(current)
+    end
+  end
+
+  defp handle_ambient_flow_jump(socket, current, state, target_flow_id, depth \\ 0)
+
+  defp handle_ambient_flow_jump(socket, _current, _state, _target_flow_id, depth)
+       when depth > @max_ambient_jump_depth do
+    finish_ambient_flow(socket)
+  end
+
+  defp handle_ambient_flow_jump(socket, current, state, target_flow_id, depth) do
+    state =
+      Flows.evaluator_push_flow_context(
+        state,
+        state.current_node_id,
+        current.nodes,
+        current.connections,
+        ""
+      )
+
+    target_nodes = DebugExecutionHandlers.build_nodes_map(target_flow_id)
+    target_connections = DebugExecutionHandlers.build_connections(target_flow_id)
+
+    case DebugExecutionHandlers.find_entry_node(target_nodes) do
+      nil ->
+        finish_ambient_flow(socket)
+
+      entry_id ->
+        log_entry = %{node_id: entry_id, depth: length(state.call_stack)}
+
+        new_state = %{
+          state
+          | current_node_id: entry_id,
+            current_flow_id: target_flow_id,
+            status: :paused,
+            execution_path: [entry_id | state.execution_path],
+            execution_log: [log_entry | state.execution_log]
+        }
+
+        case PlayerEngine.step_until_interactive(new_state, target_nodes, target_connections) do
+          {:flow_jump, stepped, next_flow_id, _} ->
+            new_current = %{
+              current
+              | engine_state: stepped,
+                nodes: target_nodes,
+                connections: target_connections
+            }
+
+            handle_ambient_flow_jump(socket, new_current, stepped, next_flow_id, depth + 1)
+
+          {:flow_return, stepped, _} ->
+            new_current = %{
+              current
+              | engine_state: stepped,
+                nodes: target_nodes,
+                connections: target_connections
+            }
+
+            handle_ambient_flow_return(socket, new_current, stepped, depth + 1)
+
+          {:finished, stepped, _} ->
+            socket
+            |> sync_ambient_variables(stepped)
+            |> finish_ambient_flow()
+
+          {_status, stepped, _} ->
+            new_current = %{
+              current
+              | engine_state: stepped,
+                nodes: target_nodes,
+                connections: target_connections,
+                flow_id: target_flow_id
+            }
+
+            socket
+            |> sync_ambient_variables(stepped)
+            |> assign(:ambient_current, new_current)
+            |> process_ambient_node(new_current)
+        end
+    end
+  end
+
+  defp handle_ambient_flow_return(socket, current, state, depth \\ 0)
+
+  defp handle_ambient_flow_return(socket, _current, _state, depth)
+       when depth > @max_ambient_jump_depth do
+    finish_ambient_flow(socket)
+  end
+
+  defp handle_ambient_flow_return(socket, current, state, depth) do
+    case Flows.evaluator_pop_flow_context(state) do
+      {:ok, frame, new_state} ->
+        parent_nodes = frame.nodes
+        parent_connections = frame.connections
+
+        conn =
+          Enum.find(parent_connections, fn c ->
+            c.source_node_id == frame.return_node_id and c.source_pin in ["default", "output"]
+          end)
+
+        new_state =
+          if conn do
+            log_entry = %{node_id: conn.target_node_id, depth: length(new_state.call_stack)}
+
+            %{
+              new_state
+              | current_node_id: conn.target_node_id,
+                current_flow_id: frame.flow_id,
+                status: :paused,
+                execution_path: [conn.target_node_id | frame.execution_path],
+                execution_log: [log_entry | new_state.execution_log]
+            }
+          else
+            %{new_state | status: :finished, current_flow_id: frame.flow_id}
+          end
+
+        case PlayerEngine.step_until_interactive(new_state, parent_nodes, parent_connections) do
+          {:flow_jump, stepped, next_flow_id, _} ->
+            new_current = %{
+              current
+              | engine_state: stepped,
+                nodes: parent_nodes,
+                connections: parent_connections
+            }
+
+            handle_ambient_flow_jump(socket, new_current, stepped, next_flow_id, depth + 1)
+
+          {:flow_return, stepped, _} ->
+            new_current = %{
+              current
+              | engine_state: stepped,
+                nodes: parent_nodes,
+                connections: parent_connections
+            }
+
+            handle_ambient_flow_return(socket, new_current, stepped, depth + 1)
+
+          {:finished, stepped, _} ->
+            socket
+            |> sync_ambient_variables(stepped)
+            |> finish_ambient_flow()
+
+          {_status, stepped, _} ->
+            new_current = %{
+              current
+              | engine_state: stepped,
+                nodes: parent_nodes,
+                connections: parent_connections,
+                flow_id: frame.flow_id
+            }
+
+            socket
+            |> sync_ambient_variables(stepped)
+            |> assign(:ambient_current, new_current)
+            |> process_ambient_node(new_current)
+        end
+
+      {:error, :empty_stack} ->
+        socket
+        |> sync_ambient_variables(state)
+        |> finish_ambient_flow()
+    end
+  end
+
+  defp finish_ambient_flow(socket) do
+    socket
+    |> cancel_ambient_timer()
+    |> assign(:ambient_current, nil)
+    |> init_next_ambient_flow()
+  end
+
+  defp sync_ambient_variables(socket, engine_state) do
+    new_variables = engine_state.variables
+
+    if new_variables != socket.assigns.variables do
+      new_variables = FormulaRuntime.recompute_formulas(new_variables)
+      apply_variable_update(socket, new_variables)
+    else
+      socket
+    end
+  end
+
+  defp pause_ambient_flow(socket) do
+    socket
+    |> cancel_ambient_timer()
+    |> assign(:ambient_paused, true)
+    |> push_event("dismiss_ambient", %{})
+  end
+
+  defp resume_ambient_flow(socket) do
+    if socket.assigns.ambient_paused do
+      socket = assign(socket, :ambient_paused, false)
+
+      case socket.assigns.ambient_current do
+        nil ->
+          # No active ambient flow — try starting next from queue
+          init_next_ambient_flow(socket)
+
+        current ->
+          # Advance past the interrupted dialogue rather than re-showing it.
+          # Re-showing would repeat content the player already saw before the
+          # full flow started, which feels more jarring than skipping ahead.
+          advance_ambient_flow(socket, current)
+      end
+    else
+      socket
+    end
+  end
+
+  defp cancel_ambient_timer(socket) do
+    case socket.assigns.ambient_timer_ref do
+      nil ->
+        socket
+
+      ref ->
+        Process.cancel_timer(ref)
+        assign(socket, :ambient_timer_ref, nil)
+    end
+  end
+
+  defp find_pin_for_speaker(_pins, nil), do: nil
+
+  defp find_pin_for_speaker(pins, speaker_sheet_id) do
+    Enum.find(pins, fn pin ->
+      pin.sheet_id == speaker_sheet_id and pin.visibility == :visible
+    end)
+  end
+
+  defp ambient_bubble_duration(text) do
+    word_count = text |> String.split(~r/\s+/, trim: true) |> length()
+    duration = word_count * @ambient_ms_per_word
+    duration |> max(@ambient_min_duration_ms) |> min(@ambient_max_duration_ms)
+  end
+
+  # ---------------------------------------------------------------------------
+  # Patrol Route Builder
+  # ---------------------------------------------------------------------------
 
   defp follow_connection(visited, target_pin_id, waypoints, pins_by_id, connections, acc) do
     waypoint_points =

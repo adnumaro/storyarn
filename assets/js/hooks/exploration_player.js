@@ -85,6 +85,10 @@ export const ExplorationPlayer = {
     this.patrolStates = {};
     this.patrolsPaused = false;
 
+    // Speech bubble state
+    this.activeBubbles = {};
+    this.activeSubtitle = null;
+
     this.initMovementData();
     this.initPatrolData();
     this.render();
@@ -142,6 +146,80 @@ export const ExplorationPlayer = {
       this.ensureMovementLoop();
     });
 
+    this.handleEvent("show_bubble", ({ pin_id, text, speaker, duration }) => {
+      const pinId = String(pin_id);
+      this.dismissBubbleImmediate(pinId);
+
+      const pinEl = this.el.querySelector(
+        `[data-element-type="pin"][data-element-id="${pinId}"]`,
+      );
+      if (!pinEl) return;
+
+      const bubble = document.createElement("div");
+      bubble.className = "exploration-bubble exploration-bubble-enter";
+      bubble.setAttribute("data-role", "speech-bubble");
+
+      if (speaker) {
+        const speakerSpan = document.createElement("span");
+        speakerSpan.className = "exploration-bubble-speaker";
+        speakerSpan.textContent = speaker;
+        bubble.appendChild(speakerSpan);
+      }
+
+      const textSpan = document.createElement("span");
+      textSpan.className = "exploration-bubble-text";
+      textSpan.textContent = text;
+      bubble.appendChild(textSpan);
+
+      pinEl.insertBefore(bubble, pinEl.firstChild);
+
+      const entry = { el: bubble, timer: null };
+      if (duration > 0) {
+        entry.timer = setTimeout(() => this.dismissBubble(pinId), duration);
+      }
+      this.activeBubbles[pinId] = entry;
+    });
+
+    this.handleEvent("dismiss_bubble", ({ pin_id }) => {
+      this.dismissBubble(String(pin_id));
+    });
+
+    this.handleEvent("show_subtitle", ({ text, speaker, duration }) => {
+      this.dismissSubtitle();
+
+      const subtitle = document.createElement("div");
+      subtitle.className =
+        "exploration-subtitle exploration-bubble-enter";
+      subtitle.setAttribute("data-role", "ambient-subtitle");
+
+      if (speaker) {
+        const speakerSpan = document.createElement("span");
+        speakerSpan.className = "exploration-bubble-speaker";
+        speakerSpan.textContent = speaker;
+        subtitle.appendChild(speakerSpan);
+      }
+
+      const textSpan = document.createElement("span");
+      textSpan.className = "exploration-bubble-text";
+      textSpan.textContent = text;
+      subtitle.appendChild(textSpan);
+
+      this.el.appendChild(subtitle);
+      this.activeSubtitle = { el: subtitle, timer: null };
+
+      if (duration > 0) {
+        this.activeSubtitle.timer = setTimeout(
+          () => this.dismissSubtitle(),
+          duration,
+        );
+      }
+    });
+
+    this.handleEvent("dismiss_ambient", () => {
+      this.dismissAllBubbles();
+      this.dismissSubtitle();
+    });
+
     this.handleEvent("set_zoom", ({ zoom }) => {
       if (this.displayMode !== "scaled" || !this.wrapperEl) return;
       this.zoom = zoom;
@@ -152,6 +230,8 @@ export const ExplorationPlayer = {
   },
 
   destroyed() {
+    this.dismissAllBubbles();
+    this.dismissSubtitle();
     this.destroyCamera();
     this.destroyMovement();
   },
@@ -986,6 +1066,47 @@ export const ExplorationPlayer = {
   },
 
   // ===========================================================================
+  // Speech Bubbles
+  // ===========================================================================
+
+  dismissBubble(pinId) {
+    const entry = this.activeBubbles[pinId];
+    if (!entry) return;
+    if (entry.timer) clearTimeout(entry.timer);
+    entry.el.classList.remove("exploration-bubble-enter");
+    entry.el.classList.add("exploration-bubble-exit");
+    entry.el.addEventListener(
+      "animationend",
+      () => {
+        entry.el.remove();
+        delete this.activeBubbles[pinId];
+      },
+      { once: true },
+    );
+  },
+
+  dismissBubbleImmediate(pinId) {
+    const entry = this.activeBubbles[pinId];
+    if (!entry) return;
+    if (entry.timer) clearTimeout(entry.timer);
+    entry.el.remove();
+    delete this.activeBubbles[pinId];
+  },
+
+  dismissAllBubbles() {
+    for (const pinId of Object.keys(this.activeBubbles)) {
+      this.dismissBubbleImmediate(pinId);
+    }
+  },
+
+  dismissSubtitle() {
+    if (!this.activeSubtitle) return;
+    if (this.activeSubtitle.timer) clearTimeout(this.activeSubtitle.timer);
+    this.activeSubtitle.el.remove();
+    this.activeSubtitle = null;
+  },
+
+  // ===========================================================================
   // Zone/Pin Creation (shared by both modes)
   // ===========================================================================
 
@@ -1334,8 +1455,9 @@ export const ExplorationPlayer = {
 
       if (pinState.visibility === "hide") {
         if (el) el.style.display = "none";
-        // Clear patrol timer for hidden pins
+        // Clear patrol timer and speech bubble for hidden pins
         this.pausePatrolPin(pinState.id);
+        this.dismissBubbleImmediate(String(pinState.id));
       } else if (pinState.visibility === "disable") {
         if (el) {
           el.style.display = "";
