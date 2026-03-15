@@ -1,0 +1,38 @@
+lib/storyarn_web.ex
+  7f0a5418e55165f4 43,83
+config/config.exs
+  7f0a5418e55165f4 86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "e63fc948fd6077ea8cdb8560429b9c54ad9c6f12",
+  "prompts": {
+    "06f9ab29278d14ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d17ca57-1ef3-450a-a913-8bf379a38696",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 46,
+      "total_deletions": 30,
+      "accepted_lines": 427,
+      "overriden_lines": 0
+    },
+    "7f0a5418e55165f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2aead71-3c2f-4e25-9bfe-50f896e0b35d",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}
