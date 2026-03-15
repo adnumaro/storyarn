@@ -1,0 +1,29 @@
+lib/storyarn_web/components/dashboard_components.ex
+  2ac4f1599893ece2 37,49,254
+lib/storyarn_web/live/flow_live/index.ex
+  2ac4f1599893ece2 163
+lib/storyarn_web/live/sheet_live/index.ex
+  2ac4f1599893ece2 152
+lib/storyarn_web/live/scene_live/index.ex
+  2ac4f1599893ece2 181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "ab95a4313adf724dd60524b7ba5d3cb485a6ea6b",
+  "prompts": {
+    "2ac4f1599893ece2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019cf345-963d-7970-b7d4-34a67086c1b2",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 22,
+      "total_deletions": 22,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    }
+  }
+}
