@@ -57,50 +57,148 @@ A single patrolling guard transforms a static map into a living scene. The playe
 ## Feature 2: Ambient Flows (Morte-style)
 
 ### What
-Flows that execute in parallel with exploration, without blocking player interaction. Dialogue lines appear as floating subtitles or speech bubbles over characters while the player continues moving and interacting.
+Flows that execute in parallel with exploration, without blocking player interaction. Dialogue lines appear as floating speech bubbles over characters while the player continues moving and interacting.
 
 Inspired by Planescape: Torment, where Morte comments constantly as you explore — reacting to locations, events, and player actions without ever taking control away.
 
 ### Why (standalone value)
 This adds a **narrative layer** to exploration that doesn't exist in any competing tool. The designer can create a living narrator, companion commentary, environmental storytelling — all running in the background while the player plays.
 
-### Key concepts
-- **Ambient flow binding**: a flow is linked to a scene (or zone) as `ambient`
-- **Trigger types**: `on_enter` (scene/zone), `on_event` (variable change), `timed` (every N seconds), `one_shot` (plays once)
-- **Display**: speech bubbles above the speaking pin, or subtitles at bottom of screen
-- **Non-blocking**: player can move, click, interact while ambient flow runs
-- **Auto-advance**: dialogue lines advance on a timer (configurable per node: 2s, 4s, etc.)
-- **Interruption**: if the player triggers a full flow (from a pin/zone click), ambient flow pauses. Resumes after
-- **Flow features**: conditions work normally — companion says different things based on variable state
+### Blocks
 
-### Schema changes
-- New join schema: `SceneAmbientFlow`
-  - `scene_id`, `flow_id`
-  - `trigger_type`: `on_enter` | `on_event` | `timed` | `one_shot`
-  - `trigger_config` (jsonb): `{"zone_id": "...", "delay_ms": 5000, "event_variable": "..."}`
-  - `priority` (integer): when multiple ambient flows trigger, higher priority plays first
-  - `position` (integer): ordering
+This feature is split into 4 incremental blocks. Each block is shippable and builds on the previous one.
 
-### Design considerations
-- Ambient flows reuse the existing PlayerEngine but with a different UI renderer (bubbles instead of overlay)
-- Multiple ambient flows can queue or overlap — need a priority/queue system
-- The speaking pin must be identified — ambient flows should reference which pin "speaks" (via speaker_sheet_id on dialogue nodes, matched to pins with the same sheet)
-- Speech bubble positioning: above the pin, follows if NPC is patrolling
-- Auto-advance timing: could be based on text length (words per minute) or manual per-node
-- Ambient flows should NOT have entry/exit choices — they're linear narration. If a flow has branches, it becomes a full interactive flow
-- Consider: ambient sounds (non-speech) as part of ambient flows — a node with only audio_asset_id plays a sound effect
+---
 
-### Acceptance criteria
-- [ ] Scene settings: link ambient flows with trigger configuration
-- [ ] `on_enter` trigger fires when entering the scene
-- [ ] `on_event` trigger fires when a specific variable changes
-- [ ] `timed` trigger fires periodically
-- [ ] `one_shot` trigger fires once and marks as completed
-- [ ] Dialogue appears as speech bubbles above the speaking pin
+#### Block A: Speech Bubbles (visual foundation)
+
+**What:** A generic mechanism to show a text bubble above any pin. No flow engine, no triggers — just `push_event("show_bubble", ...)` from the server and JS renders/dismisses it.
+
+**Why first:** Every subsequent block needs this rendering primitive. Building it standalone lets us test the visual independently and reuse it for non-ambient purposes too (e.g. tutorial hints, NPC barks).
+
+**Scope:**
+- JS: `showBubble({ pinId, text, speaker, duration, position })` — creates a floating div above the pin element, auto-dismisses after `duration` ms
+- Bubble follows pin position (works with patrol movement via polling or MutationObserver on pin style)
+- CSS animation: fade-in, fade-out
+- Queue: if a bubble is already showing on a pin, replace it (no stacking)
+- Server helper: `push_bubble(socket, pin_id, text, opts)` — convenience wrapper
+
+**Key files:**
+- `assets/js/hooks/exploration_player.js` — `showBubble`, `dismissBubble` methods + `handleEvent("show_bubble")`
+- `assets/css/exploration.css` — bubble styles
+- `exploration_live.ex` — `push_bubble/4` helper
+
+**Acceptance criteria:**
+- [ ] `push_event("show_bubble", %{pin_id, text, duration})` renders a bubble above the pin
+- [ ] Bubble auto-dismisses after duration
+- [ ] Bubble follows pin if it moves (patrol)
+- [ ] New bubble on same pin replaces existing one
+- [ ] Bubble has fade-in/fade-out animation
+
+---
+
+#### Block B: Ambient Flow Schema + Editor UI
+
+**What:** The data model for linking flows to scenes as ambient, and the editor UI to configure them. No runtime execution yet.
+
+**Schema — `SceneAmbientFlow`:**
+- `scene_id` (FK), `flow_id` (FK)
+- `trigger_type`: `on_enter` (only trigger type for now — others added in Block D)
+- `enabled` (boolean, default true)
+- `position` (integer — ordering)
+
+**Why minimal schema:** Skip `trigger_config`, `priority`, and advanced trigger types. `on_enter` is the only trigger — it fires when the scene loads. This covers 80% of ambient flow use cases (companion comments on entering a room).
+
+**Editor UI in scene settings or element panel:**
+- List of ambient flows linked to this scene
+- Add flow (searchable select from project flows)
+- Reorder (drag or arrows)
+- Remove
+- Enable/disable toggle
+
+**Key files:**
+- `priv/repo/migrations/..._create_scene_ambient_flows.exs`
+- `lib/storyarn/scenes/scene_ambient_flow.ex` — schema
+- `lib/storyarn/scenes/ambient_flow_crud.ex` — CRUD submodule
+- `lib/storyarn/scenes.ex` — facade delegates
+- Scene editor UI (settings section or dedicated panel)
+
+**Acceptance criteria:**
+- [ ] Migration + schema with validations
+- [ ] CRUD: list/create/update/delete ambient flow bindings
+- [ ] Editor UI: add, remove, reorder, enable/disable ambient flows for a scene
+- [ ] Unique constraint: same flow can't be linked twice to the same scene
+
+---
+
+#### Block C: Ambient Flow Execution (on_enter)
+
+**What:** When entering exploration mode, enabled ambient flows execute automatically in the background. The PlayerEngine steps through the flow linearly, rendering each dialogue node as a speech bubble (Block A) on the appropriate pin, auto-advancing after a timer.
+
+**Runtime flow:**
+1. On mount, load enabled ambient flows for the scene (ordered by position)
+2. For each: init PlayerEngine, step to first interactive node
+3. If dialogue node: find the pin whose `sheet_id` matches `speaker_sheet_id` → show bubble on that pin
+4. Auto-advance after `duration` (based on text length: ~60 words/min, minimum 2s, max 8s)
+5. Continue stepping until flow ends
+6. If condition node: evaluate normally, follow the matching branch
+7. If instruction node: execute (update variables), continue stepping
+8. Non-dialogue nodes (hub, jump, etc.): skip silently, continue stepping
+
+**Constraints (keep it simple):**
+- **One ambient flow at a time** — flows execute sequentially, not in parallel. No priority queue needed
+- **Linear only** — dialogue responses are ignored (auto-continue). The flow is treated as a linear narration
+- **No speaker match = subtitle** — if no pin matches `speaker_sheet_id`, show bubble as a floating subtitle at bottom center
+- **Variables shared** — ambient flow reads/writes the same `variables` map as the exploration session
+
+**Pause/resume with full flows:**
+- When a full flow starts (`init_flow`): pause ambient flow (save engine state, dismiss active bubble)
+- When full flow ends (`return_to_exploration`): resume ambient flow from where it left off
+- Reuse existing `patrol_pause`/`patrol_resume` pattern — add `ambient_pause`/`ambient_resume` or bundle into a single `exploration_pause`/`exploration_resume`
+
+**Key files:**
+- `exploration_live.ex` — ambient flow lifecycle (init, step, pause, resume), new assigns
+- `assets/js/hooks/exploration_player.js` — reuses `showBubble` from Block A
+
+**Acceptance criteria:**
+- [ ] Ambient flows auto-start on scene mount (on_enter)
+- [ ] Dialogue nodes render as speech bubbles on the matching pin
+- [ ] Auto-advance based on text length
+- [ ] Condition/instruction nodes execute silently
+- [ ] Ambient flow pauses during full flow, resumes after
 - [ ] Player can move and interact while ambient flow runs
-- [ ] Ambient flow pauses when a full flow is active, resumes after
-- [ ] Conditions in ambient flow nodes evaluate correctly
-- [ ] Multiple ambient flows respect priority ordering
+- [ ] Multiple ambient flows play sequentially (one finishes, next starts)
+- [ ] Variables modified by ambient flows are reflected in exploration state
+
+---
+
+#### Block D: Additional Triggers + Priority
+
+**What:** Extend the trigger system beyond `on_enter`. Add `timed`, `on_event`, and `one_shot` trigger types. Add priority field for ordering when multiple flows trigger simultaneously.
+
+**Schema changes:**
+- `SceneAmbientFlow`: add `trigger_config` (jsonb, default `%{}`)
+- `SceneAmbientFlow`: add `priority` (integer, default 0)
+
+**Trigger types:**
+- `on_enter` — fires on scene load (existing)
+- `timed` — fires every N ms (`trigger_config: {"interval_ms": 30000}`). Useful for periodic companion comments
+- `on_event` — fires when a variable changes (`trigger_config: {"variable_ref": "mc.jaime.health"}`). Companion reacts to taking damage
+- `one_shot` — fires once per session, tracked via `completed_ambient_ids` set in socket assigns (same pattern as `collected_ids`)
+
+**Priority:** When multiple flows trigger at the same time, higher priority plays first. Others queue behind.
+
+**Editor UI updates:**
+- Trigger type select (on_enter / timed / on_event / one_shot)
+- Conditional fields based on trigger type (interval input, variable select)
+- Priority input
+
+**Acceptance criteria:**
+- [ ] `timed` trigger fires periodically
+- [ ] `on_event` trigger fires when the specified variable changes
+- [ ] `one_shot` trigger fires once and is marked completed for the session
+- [ ] Priority ordering when multiple flows trigger simultaneously
+- [ ] Editor UI for trigger configuration
 
 ---
 

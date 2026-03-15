@@ -567,3 +567,64 @@
   border-top: 1px solid oklch(0.25 0.01 260);
   justify-content: flex-end;
 }
+
+/* ===== Speech Bubbles ===== */
+
+.exploration-bubble {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  max-width: 200px;
+  width: max-content;
+  white-space: normal;
+  background: oklch(0.15 0.01 260);
+  border: 1px solid oklch(0.30 0.01 260);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 8px;
+  z-index: 15;
+}
+
+.exploration-bubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid oklch(0.30 0.01 260);
+}
+
+.exploration-bubble-speaker {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: oklch(0.65 0.15 260);
+  margin-bottom: 2px;
+}
+
+.exploration-bubble-text {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: oklch(0.85 0.01 260);
+}
+
+.exploration-bubble-enter {
+  animation: exploration-bubble-fade-in 0.2s ease both;
+}
+
+.exploration-bubble-exit {
+  animation: exploration-bubble-fade-out 0.2s ease both;
+}
+
+@keyframes exploration-bubble-fade-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes exploration-bubble-fade-out {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to   { opacity: 0; transform: translateX(-50%) translateY(4px); }
+}
