@@ -149,7 +149,7 @@ defmodule StoryarnWeb.SheetLive.Index do
   defp sheet_table(assigns) do
     ~H"""
     <table class="table table-sm w-full">
-      <thead class="sticky top-0 bg-base-100 z-10">
+      <thead class="dashboard-table-head sticky top-0 z-10">
         <tr class="text-xs text-base-content/50 uppercase">
           <th class="font-medium">
             <button

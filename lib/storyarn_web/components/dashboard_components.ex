@@ -34,7 +34,7 @@ defmodule StoryarnWeb.Components.DashboardComponents do
   def stat_card(assigns) do
     ~H"""
     <.link :if={@href} navigate={@href} class="group h-full">
-      <div class="card bg-base-200/50 p-4 h-full hover:bg-base-200 transition-colors cursor-pointer">
+      <div class="card h-full overflow-hidden border border-base-300/80 bg-gradient-to-br from-base-200/95 via-base-200/90 to-primary/8 p-4 shadow-sm backdrop-blur-sm transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:border-base-content/15 hover:shadow-md dark:border-base-content/10 dark:from-base-content/[0.11] dark:via-base-content/[0.08] dark:to-primary/10">
         <div class="flex items-start gap-3">
           <div class="rounded-lg bg-primary/10 p-2">
             <.icon name={@icon} class="size-5 text-primary" />
@@ -46,7 +46,7 @@ defmodule StoryarnWeb.Components.DashboardComponents do
         </div>
       </div>
     </.link>
-    <div :if={!@href} class="card bg-base-200/50 p-4 h-full">
+    <div :if={!@href} class="card h-full overflow-hidden border border-base-300/80 bg-gradient-to-br from-base-200/95 via-base-200/90 to-primary/8 p-4 shadow-sm backdrop-blur-sm dark:border-base-content/10 dark:from-base-content/[0.11] dark:via-base-content/[0.08] dark:to-primary/10">
       <div class="flex items-center gap-3">
         <div class="rounded-lg bg-primary/10 p-2">
           <.icon name={@icon} class="size-5 text-primary" />
@@ -251,7 +251,7 @@ defmodule StoryarnWeb.Components.DashboardComponents do
 
   def dashboard_table_wrapper(assigns) do
     ~H"""
-    <div class="overflow-auto max-h-[32rem] -mx-5">
+    <div class="overflow-auto max-h-[32rem] -mx-5 rounded-xl bg-base-200/90 backdrop-blur-sm dark:bg-base-content/[0.07]">
       {render_slot(@inner_block)}
     </div>
     """
