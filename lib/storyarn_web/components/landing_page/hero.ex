@@ -41,7 +41,7 @@ defmodule StoryarnWeb.Components.LandingPage.Hero do
 
             <p class="mt-6 max-w-[46rem] text-base-content/60 text-lg leading-relaxed">
               {gettext(
-                "Storyarn brings sheets, flows, scenes, screenplays, and localization into a single platform for interactive narrative. Everything connected: characters, variables, branches, maps, and export for your engine."
+                "The narrative design platform where characters, dialogue, worlds, and localization live in one connected project — from first draft to engine-ready export."
               )}
             </p>
 
@@ -106,7 +106,7 @@ defmodule StoryarnWeb.Components.LandingPage.Hero do
         <div>
           <strong class="block text-sm text-base-content">Storyarn</strong>
           <span class="block mt-1 text-base-content/50 text-xs">
-            {gettext("Open narrative design tool")}
+            {gettext("Narrative design platform")}
           </span>
         </div>
       </div>
@@ -125,7 +125,7 @@ defmodule StoryarnWeb.Components.LandingPage.Hero do
         <strong class="block text-sm text-base-content">{gettext("Story Player ready")}</strong>
         <span class="block mt-1.5 text-base-content/50 text-xs leading-relaxed">
           {gettext(
-            "Test Act II with variables, checks and scene overlays without leaving the project."
+            "Play through Act II with live variables, condition checks, and scene overlays."
           )}
         </span>
       </div>
@@ -173,11 +173,11 @@ defmodule StoryarnWeb.Components.LandingPage.Hero do
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
       <.metric_card
         value="126"
-        label={gettext("connected variables across sheets, flows and scenes")}
+        label={gettext("variables connected across sheets, flows, and scenes")}
       />
-      <.metric_card value="91" label={gettext("branching flows in the main project")} />
+      <.metric_card value="91" label={gettext("branching flows in the project")} />
       <.metric_card value="81%" label={gettext("localization coverage ready for review")} />
-      <.metric_card value="4" label={gettext("target runtimes: Yarn, Ink, Unity and Godot")} />
+      <.metric_card value="4" label={gettext("export targets: Yarn, Ink, Unity, and Godot")} />
     </div>
     """
   end
@@ -199,7 +199,7 @@ defmodule StoryarnWeb.Components.LandingPage.Hero do
     <section class="rounded-3xl border border-base-content/8 bg-base-200/80 overflow-hidden">
       <.panel_header
         title={gettext("Flow editor")}
-        subtitle={gettext("Dialogue, checks, instructions and synchronized branches")}
+        subtitle={gettext("Dialogue, conditions, instructions, and branching — all in one graph")}
         badge={gettext("Node graph - live")}
       />
       <div class="lp-flow-canvas relative min-h-[294px]">
@@ -228,19 +228,19 @@ defmodule StoryarnWeb.Components.LandingPage.Hero do
           class="n2"
           type={gettext("Condition")}
           title="rep_guardia >= 4"
-          desc={gettext("Unlocks the diplomatic route and updates the harbor gate.")}
+          desc={gettext("Unlocks the diplomatic route if reputation is high enough.")}
         />
         <.flow_node
           class="n3"
           type={gettext("Choice")}
           title={gettext("Show travel permit")}
-          desc={gettext("Consumes item, adds trust and enters the night harbor scene.")}
+          desc={gettext("Uses the travel permit, earns trust, and enters the night harbor.")}
         />
         <.flow_node
           class="n4"
           type={gettext("Subflow")}
           title={gettext("Night Harbor")}
-          desc={gettext("Activates overlay, scene pin and global act state.")}
+          desc={gettext("Triggers the overlay, scene pin, and global act state.")}
         />
       </div>
     </section>
@@ -283,7 +283,7 @@ defmodule StoryarnWeb.Components.LandingPage.Hero do
     <section class="rounded-3xl border border-base-content/8 bg-base-200/80 overflow-hidden">
       <.panel_header
         title={gettext("World sheet")}
-        subtitle={gettext("Entity connected to dialogue, quest state and export")}
+        subtitle={gettext("Characters, factions, and world data connected to every tool")}
         badge={gettext("Character profile")}
       />
       <div class="p-4 grid gap-3">
@@ -352,7 +352,7 @@ defmodule StoryarnWeb.Components.LandingPage.Hero do
     <section class="rounded-3xl border border-base-content/8 bg-base-200/80 overflow-hidden">
       <.panel_header
         title={gettext("Localization")}
-        subtitle={gettext("Progress by language, glossary and pending lines")}
+        subtitle={gettext("Coverage per language, glossary, and pending lines")}
         badge={gettext("DeepL ready")}
       />
       <div class="p-4 grid gap-3">

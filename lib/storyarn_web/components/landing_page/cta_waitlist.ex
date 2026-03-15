@@ -17,12 +17,12 @@ defmodule StoryarnWeb.Components.LandingPage.CtaWaitlist do
           <div class="relative z-1 flex flex-col lg:flex-row items-end justify-between gap-6">
             <div>
               <h2 class="mb-3 text-[clamp(2rem,3vw,3.4rem)] leading-[0.96] tracking-[-0.06em] font-bold text-base-content">
-                {widont(gettext("Ready to build your next narrative?"))}
+                {widont(gettext("Start building your next narrative"))}
               </h2>
               <p class="mb-2 max-w-[40rem] text-base-content/60 leading-relaxed">
                 {widont(
                   gettext(
-                    "We're onboarding a small group of narrative designers and game studios. Join the waitlist and we'll send you an invite when your spot is ready."
+                    "We're onboarding a small group of narrative designers and game studios. Join the waitlist — we'll reach out when your spot opens."
                   )
                 )}
               </p>
@@ -53,14 +53,6 @@ defmodule StoryarnWeb.Components.LandingPage.CtaWaitlist do
               </p>
             </div>
 
-            <div class="flex-shrink-0">
-              <a
-                href="#product"
-                class="btn btn-ghost rounded-full border border-base-content/10"
-              >
-                {gettext("Back to product")}
-              </a>
-            </div>
           </div>
         </div>
       </div>

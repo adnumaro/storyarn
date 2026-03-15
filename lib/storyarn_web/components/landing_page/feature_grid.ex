@@ -15,15 +15,15 @@ defmodule StoryarnWeb.Components.LandingPage.FeatureGrid do
         title: gettext("Sheets as source of truth"),
         desc:
           gettext(
-            "Characters, factions, quests, locations and items live in reusable structures with variables, formulas and inheritance."
+            "Characters, factions, quests, and items live in structured sheets with variables, formulas, and inheritance — your single source of truth."
           )
       },
       %{
         num: "02",
-        title: gettext("Flows you can test"),
+        title: gettext("Flows you can actually play"),
         desc:
           gettext(
-            "The value is not just the visual tree: it's being able to debug, simulate and verify it without exporting to another tool."
+            "Build branching dialogue, then play it, debug it, and verify it — without ever leaving the editor."
           )
       },
       %{
@@ -31,15 +31,15 @@ defmodule StoryarnWeb.Components.LandingPage.FeatureGrid do
         title: gettext("Scenes with real exploration"),
         desc:
           gettext(
-            "The spatial layer helps you think about the world as an interactive experience, not just as narrative documentation."
+            "Place zones, pins, and triggers on a canvas. Walk through the world before it reaches the engine."
           )
       },
       %{
         num: "04",
-        title: gettext("Story Player and Debug Mode"),
+        title: gettext("Play it. Debug it. Ship it."),
         desc:
           gettext(
-            "Test the story as a player or inspect it step by step with variables and conditions visible."
+            "Experience the story as a player, or step through it with every variable and condition visible."
           )
       },
       %{
@@ -47,7 +47,7 @@ defmodule StoryarnWeb.Components.LandingPage.FeatureGrid do
         title: gettext("Integrated localization"),
         desc:
           gettext(
-            "Extract lines, translate, use glossaries and track coverage per language from the same narrative base."
+            "Extract lines, translate with DeepL, manage glossaries, and track coverage per language — all from the same project."
           )
       },
       %{
@@ -55,7 +55,7 @@ defmodule StoryarnWeb.Components.LandingPage.FeatureGrid do
         title: gettext("Export for multiple engines"),
         desc:
           gettext(
-            "From Storyarn to Yarn Spinner, Ink, Unity, Godot Dialogic, Unreal or writing tools without redoing the work."
+            "Export to Yarn Spinner, Ink, Godot Dialogic, Unity, or Unreal — your narrative data, ready for production."
           )
       }
     ]
@@ -66,10 +66,10 @@ defmodule StoryarnWeb.Components.LandingPage.FeatureGrid do
     <section class="py-16 lg:py-20 scroll-mt-32" id="features">
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
         <.section_header
-          title={gettext("One platform for interactive narrative")}
+          title={gettext("Everything a narrative team needs, working together")}
           description={
             gettext(
-              "Storyarn is a real working ecosystem: data, branches, scenes, screenplays and localization all living inside the same project."
+              "Every tool designed to feed the others — so characters, logic, worlds, and translations stay connected instead of scattered across files."
             )
           }
         />

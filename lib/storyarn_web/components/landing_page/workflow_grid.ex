@@ -13,7 +13,7 @@ defmodule StoryarnWeb.Components.LandingPage.WorkflowGrid do
         title: gettext("Define the world"),
         desc:
           gettext(
-            "Model characters, factions, items and narrative rules in sheets that feed the rest of the project."
+            "Model characters, factions, items, and narrative rules in sheets that feed every other tool."
           )
       },
       %{
@@ -21,7 +21,7 @@ defmodule StoryarnWeb.Components.LandingPage.WorkflowGrid do
         title: gettext("Write and branch"),
         desc:
           gettext(
-            "Build dialogues, checks, instructions and subflows using a visual editor prepared for large changes."
+            "Build dialogue, conditions, instructions, and subflows in a visual editor built for production scale."
           )
       },
       %{
@@ -29,7 +29,7 @@ defmodule StoryarnWeb.Components.LandingPage.WorkflowGrid do
         title: gettext("Explore and debug"),
         desc:
           gettext(
-            "Walk through scenes, test overlays, run the story player and use debug mode to validate logic and pacing."
+            "Walk through scenes, run the Story Player, and use debug mode to validate logic and pacing."
           )
       },
       %{
@@ -37,7 +37,7 @@ defmodule StoryarnWeb.Components.LandingPage.WorkflowGrid do
         title: gettext("Localize and export"),
         desc:
           gettext(
-            "Bring the project to your production pipeline with text, screenplays, variables and branches ready for the engine."
+            "Bring text, screenplays, variables, and branches to your engine — localized and production-ready."
           )
       }
     ]
@@ -51,7 +51,7 @@ defmodule StoryarnWeb.Components.LandingPage.WorkflowGrid do
           title={gettext("From worldbuilding to shipped game")}
           description={
             gettext(
-              "Storyarn is not a standalone module but a connected flow from pre-production, iteration and shipping."
+              "A connected workflow from pre-production through iteration to export — not a set of disconnected modules."
             )
           }
         />

@@ -29,14 +29,14 @@ defmodule StoryarnWeb.Components.LandingPage.LandingFooter do
                 <div>
                   <strong class="block text-2xl brand-logotype leading-none">Storyarn</strong>
                   <span class="mt-1 block text-sm text-base-content/55">
-                    {gettext("Open narrative design tool")}
+                    {gettext("Narrative design platform")}
                   </span>
                 </div>
               </.link>
 
               <p class="max-w-[28rem] text-sm leading-relaxed text-base-content/58">
                 {gettext(
-                  "Storyarn brings sheets, flows, scenes, screenplays, and localization into a single platform for interactive narrative. Everything connected: characters, variables, branches, maps, and export for your engine."
+                  "Design characters, dialogue, worlds, and localization in one connected project. Built for narrative teams shipping interactive stories."
                 )}
               </p>
 

@@ -21,10 +21,10 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
     <section class="py-16 lg:py-20 scroll-mt-32" id="discover">
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
         <.section_header
-          title={gettext("Discover the product pillars")}
+          title={gettext("See how it all connects")}
           description={
             gettext(
-              "This section summarizes the main tools in Storyarn. Understand the platform architecture at a glance: global vision, structured modeling, visual authoring and scenes."
+              "Four core tools. One connected workflow. Explore how each layer of Storyarn strengthens the rest."
             )
           }
         />
@@ -443,15 +443,15 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
           %{
             id: "dashboard-overview",
             trigger: gettext("Project view"),
-            title: gettext("See narrative production from the top down"),
+            title: gettext("See the full picture from one dashboard"),
             description:
               gettext(
-                "A project dashboard turns Storyarn into a command surface: scale, warnings, localization coverage and readiness stay visible without opening every tool."
+                "Track narrative scale, localization coverage, and production readiness without opening each tool individually."
               ),
             items: [
-              gettext("Track narrative scale, health and progress in one place."),
-              gettext("Give leads a shared picture before reviews and planning."),
-              gettext("Keep production conversations grounded in live project data.")
+              gettext("Narrative scale, health, and progress — visible at a glance."),
+              gettext("A shared picture for leads before reviews and planning."),
+              gettext("Production conversations grounded in live data, not memory.")
             ]
           }
         ]
@@ -463,15 +463,15 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
           %{
             id: "sheets-inheritance",
             trigger: gettext("Inheritance"),
-            title: gettext("Inheritance keeps world rules consistent"),
+            title: gettext("Inheritance keeps your world consistent"),
             description:
               gettext(
-                "Parent and child sheets let teams evolve characters, factions and locations without copying structures by hand."
+                "Parent and child sheets let you evolve characters, factions, and locations without duplicating structures."
               ),
             items: [
-              gettext("Push shared variables and blocks down the hierarchy."),
-              gettext("Override only what changes for a variant, episode or region."),
-              gettext("Scale the world model without turning it into copy-paste.")
+              gettext("Shared variables and blocks flow down the hierarchy."),
+              gettext("Override only what changes — per variant, episode, or region."),
+              gettext("Scale the world model without copy-paste.")
             ]
           },
           %{
@@ -480,26 +480,28 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
             title: gettext("Tables mix manual data and live formulas"),
             description:
               gettext(
-                "Per-cell formulas turn sheet tables into editable systems for balancing, tracking and narrative state."
+                "Per-cell formulas turn sheet tables into live systems for balancing, tracking, and narrative state."
               ),
             items: [
-              gettext("Mix raw values, computed values and references in one grid."),
-              gettext("Use formulas where balancing would otherwise live in spreadsheets."),
-              gettext("Keep systemic tuning inside the narrative model.")
+              gettext("Mix raw values, computed fields, and references in one grid."),
+              gettext(
+                "Balance the game where the narrative lives — not in a separate spreadsheet."
+              ),
+              gettext("Systemic tuning stays inside the narrative model.")
             ]
           },
           %{
             id: "sheets-backlinks",
             trigger: gettext("Backlinks"),
-            title: gettext("Backlinks show where every sheet is used"),
+            title: gettext("See where every entity is referenced"),
             description:
               gettext(
-                "Reference tracking makes dependencies visible so changing a character or quest never feels blind."
+                "Reference tracking makes dependencies visible — changing a character or quest is never a blind edit."
               ),
             items: [
-              gettext("Jump from a sheet to every flow, scene or screenplay that references it."),
-              gettext("Review impact before renaming, restructuring or deleting content."),
-              gettext("Treat sheets as live production assets instead of static entries.")
+              gettext("Jump from any sheet to every flow, scene, or screenplay that uses it."),
+              gettext("Review impact before renaming, restructuring, or deleting."),
+              gettext("Sheets become live production assets, not static database entries.")
             ]
           }
         ]
@@ -511,43 +513,49 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
           %{
             id: "flows-node-graph",
             trigger: gettext("Node graph"),
-            title: gettext("Node graphs keep branching logic readable"),
+            title: gettext("Visual graphs that stay readable as scope grows"),
             description:
               gettext(
-                "Dialogue, checks, instructions and branches live in one graph that stays understandable as scope grows."
+                "Dialogue, conditions, instructions, and branches in one graph — designed to stay clear even at production scale."
               ),
             items: [
-              gettext("Model conversations, state changes and exits in one surface."),
-              gettext("Keep logic connected to project data instead of disconnected fragments."),
-              gettext("Scale from quick sketches to production dialogue graphs.")
+              gettext("Conversations, state changes, and exits — modeled in one surface."),
+              gettext(
+                "Logic stays connected to project data instead of living in fragments."
+              ),
+              gettext("From quick sketches to production-scale dialogue graphs.")
             ]
           },
           %{
             id: "flows-story-player",
             trigger: gettext("Story Player"),
-            title: gettext("Story Player tests pacing without leaving the editor"),
+            title: gettext("Play the story without leaving the editor"),
             description:
               gettext(
-                "Run the flow as a player, inspect outcomes and feel rhythm before anything reaches the engine."
+                "Run any flow as a player. Feel the rhythm, inspect outcomes, and catch issues before handoff."
               ),
             items: [
-              gettext("Play through choices and branches in the same workspace."),
-              gettext("Validate narrative rhythm before handoff."),
-              gettext("Turn authored flows into something teams can actually experience.")
+              gettext("Walk through choices and branches in the same workspace."),
+              gettext("Validate pacing and tone before anything reaches the engine."),
+              gettext(
+                "Turn authored flows into something the whole team can experience."
+              )
             ]
           },
           %{
             id: "flows-debug-mode",
             trigger: gettext("Debug mode"),
-            title: gettext("Debug mode explains why a branch was taken"),
+            title: gettext("See exactly why a branch was taken"),
             description:
               gettext(
-                "Variable values, condition results and transitions become visible so teams can diagnose logic quickly."
+                "Variable values, condition results, and transitions — all visible so teams can diagnose logic at a glance."
               ),
             items: [
-              gettext("See what passed, what failed and what changed."),
-              gettext("Make branching bugs reviewable by designers, not just engineers."),
-              gettext("Turn hidden logic into an inspectable system.")
+              gettext("What passed, what failed, and what changed — all on screen."),
+              gettext(
+                "Branching bugs become reviewable by designers, not just engineers."
+              ),
+              gettext("Hidden logic becomes an inspectable, shareable system.")
             ]
           }
         ]
@@ -559,43 +567,45 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
           %{
             id: "scenes-layers",
             trigger: gettext("Layers"),
-            title: gettext("Layers and fog keep complex scenes readable"),
+            title: gettext("Layers and fog keep complex maps readable"),
             description:
               gettext(
-                "Scene layers let teams stage progression, visibility and structure without flattening everything into one image."
+                "Layers let you stage progression, visibility, and structure without flattening everything into one image."
               ),
             items: [
-              gettext("Organize maps with layered visibility instead of one overloaded canvas."),
-              gettext("Use fog of war to communicate progression and discoverability."),
-              gettext("Keep large spaces understandable during review and iteration.")
+              gettext("Layered visibility instead of one overloaded canvas."),
+              gettext("Fog of war to communicate progression and discoverability."),
+              gettext("Large spaces stay understandable during review and iteration.")
             ]
           },
           %{
             id: "scenes-connected",
             trigger: gettext("Connected systems"),
-            title: gettext("Scenes stay connected to flows and sheets"),
+            title: gettext("Maps wired to your narrative data"),
             description:
               gettext(
-                "Narrative state, characters and interactables stay wired into the same project model instead of living in separate documents."
+                "Characters, state, and interactables stay connected to the project model instead of living in separate documents."
               ),
             items: [
-              gettext("Bring story logic, references and world data into the map surface."),
-              gettext("Avoid hand-maintained links between spatial design and narrative logic."),
-              gettext("Turn scenes into connected production assets, not isolated boards.")
+              gettext("Story logic, references, and world data — on the map surface."),
+              gettext(
+                "No hand-maintained links between spatial design and narrative logic."
+              ),
+              gettext("Scenes become connected production assets, not isolated boards.")
             ]
           },
           %{
             id: "scenes-pins-zones",
             trigger: gettext("Pins and zones"),
-            title: gettext("Pins and zones drive conditional interaction"),
+            title: gettext("Pins and zones make scenes interactive"),
             description:
               gettext(
-                "Navigation, actions and triggers can react to state so spatial storytelling becomes playable instead of descriptive."
+                "Actions and triggers react to narrative state — spatial storytelling becomes playable, not just descriptive."
               ),
             items: [
-              gettext("Define hotspots, routes and interactions directly on the scene."),
-              gettext("Gate actions through narrative variables and conditions."),
-              gettext("Prototype exploration logic before full implementation.")
+              gettext("Hotspots, routes, and interactions placed directly on the scene."),
+              gettext("Actions gated by narrative variables and conditions."),
+              gettext("Prototype exploration logic before the engine build.")
             ]
           }
         ]
