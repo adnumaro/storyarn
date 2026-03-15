@@ -1319,39 +1319,39 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("add_collection_item", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_add_collection_item(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("remove_collection_item", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_remove_collection_item(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_collection_item", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_collection_item(params, socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_collection_item_condition", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_collection_item_condition(params, socket)
       |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_collection_item_instruction", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_collection_item_instruction(params, socket)
       |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_collection_settings", params, socket) do
-    with_authorization(socket, :edit_content, fn _socket ->
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_collection_settings(params, socket)
       |> broadcast_scene_change()
     end)

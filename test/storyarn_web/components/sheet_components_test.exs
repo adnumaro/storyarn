@@ -274,7 +274,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{child.id}"
         )
 
-      html = render_async(view, 500)
+      html = await_async(view)
       assert html =~ "Parent Character"
     end
 
@@ -288,7 +288,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      html = render_async(view, 500)
+      html = await_async(view)
       # Breadcrumb uses sheet_breadcrumb component which renders ancestor names as links
       # Root-level sheets have no ancestors, so no breadcrumb navigation links appear
       refute html =~ "sheet-breadcrumb"

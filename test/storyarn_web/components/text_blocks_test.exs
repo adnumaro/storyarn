@@ -439,7 +439,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocksTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      html = render_async(view, 500)
+      html = await_async(view)
 
       assert html =~ "Full Name"
       assert html =~ "Jaime Lannister"
@@ -462,7 +462,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocksTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      html = render_async(view, 500)
+      html = await_async(view)
 
       assert html =~ "Health Points"
       assert html =~ "100"
@@ -485,7 +485,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocksTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      html = render_async(view, 500)
+      html = await_async(view)
 
       assert html =~ "Biography"
       assert html =~ "TiptapEditor"
@@ -508,7 +508,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocksTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      html = render_async(view, 500)
+      html = await_async(view)
 
       assert html =~ "type=\"text\""
       assert html =~ "Enter nickname..."
@@ -534,7 +534,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocksTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      html = render_async(view, 500)
+      html = await_async(view)
 
       assert html =~ "Cersei"
       # Viewer should not see editable input
@@ -569,7 +569,7 @@ defmodule StoryarnWeb.Components.BlockComponents.TextBlocksTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      html = render_async(view, 500)
+      html = await_async(view)
 
       assert html =~ "Text Field"
       assert html =~ "Alpha"

@@ -351,27 +351,59 @@ defmodule StoryarnWeb.SceneLive.Index do
   # ===========================================================================
 
   def handle_info(:load_dashboard_data, socket) do
-    project_id = socket.assigns.project.id
+    %{project: project, workspace: workspace, sort_by: sort_by, sort_dir: sort_dir} =
+      socket.assigns
+
+    {:noreply,
+     start_async(socket, :load_dashboard_data, fn ->
+       load_dashboard_data_async(project.id, workspace, project, sort_by, sort_dir)
+     end)}
+  end
+
+  @impl true
+  def handle_info({StoryarnWeb.SceneLive.Form, {:saved, scene}}, socket) do
+    {:noreply,
+     socket
+     |> put_flash(:info, dgettext("scenes", "Scene created successfully."))
+     |> push_navigate(
+       to:
+         ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{scene.id}"
+     )}
+  end
+
+  @impl true
+  def handle_async(:load_dashboard_data, {:ok, data}, socket) do
+    {:noreply,
+     socket
+     |> assign(:dashboard_stats, data.dashboard_stats)
+     |> assign(:all_scene_table_data, data.sorted_table)
+     |> assign(:scene_table_data, data.page_rows)
+     |> assign(:page, 1)
+     |> assign(:total_pages, data.total_pages)
+     |> assign(:scene_issues, data.formatted_issues)}
+  end
+
+  def handle_async(:load_dashboard_data, {:exit, _reason}, socket) do
+    {:noreply, socket}
+  end
+
+  defp load_dashboard_data_async(project_id, workspace, project, sort_by, sort_dir) do
     scenes = Scenes.list_scenes(project_id)
 
-    # Run independent queries in parallel with caching
-    tasks = [
-      Task.async(fn ->
-        {DashboardCache.fetch(project_id, :scene_stats, fn ->
-           Scenes.scene_stats_for_project(project_id)
-         end),
-         DashboardCache.fetch(project_id, :scene_bg, fn ->
-           Scenes.scenes_with_background_count(project_id)
-         end)}
-      end),
-      Task.async(fn ->
-        DashboardCache.fetch(project_id, :scene_issues, fn ->
-          Scenes.detect_scene_issues(project_id)
-        end)
+    stats =
+      DashboardCache.fetch(project_id, :scene_stats, fn ->
+        Scenes.scene_stats_for_project(project_id)
       end)
-    ]
 
-    [{stats, bg_count}, issues] = Task.await_many(tasks, 15_000)
+    bg_count =
+      DashboardCache.fetch(project_id, :scene_bg, fn ->
+        Scenes.scenes_with_background_count(project_id)
+      end)
+
+    issues =
+      DashboardCache.fetch(project_id, :scene_issues, fn ->
+        Scenes.detect_scene_issues(project_id)
+      end)
 
     table_data =
       Enum.map(scenes, fn scene ->
@@ -392,45 +424,21 @@ defmodule StoryarnWeb.SceneLive.Index do
         }
       end)
 
-    sorted_table =
-      sort_table(
-        table_data,
-        socket.assigns.sort_by,
-        socket.assigns.sort_dir,
-        scene_sort_columns()
-      )
-
+    sorted_table = sort_table(table_data, sort_by, sort_dir, scene_sort_columns())
     {page_rows, total_pages} = paginate(sorted_table, 1)
 
-    dashboard_stats = %{
-      scene_count: length(scenes),
-      zone_count: table_data |> Enum.map(& &1.zone_count) |> Enum.sum(),
-      pin_count: table_data |> Enum.map(& &1.pin_count) |> Enum.sum(),
-      background_count: bg_count
+    %{
+      dashboard_stats: %{
+        scene_count: length(scenes),
+        zone_count: table_data |> Enum.map(& &1.zone_count) |> Enum.sum(),
+        pin_count: table_data |> Enum.map(& &1.pin_count) |> Enum.sum(),
+        background_count: bg_count
+      },
+      sorted_table: sorted_table,
+      page_rows: page_rows,
+      total_pages: total_pages,
+      formatted_issues: format_scene_issues(issues, workspace, project)
     }
-
-    formatted_issues =
-      format_scene_issues(issues, socket.assigns.workspace, socket.assigns.project)
-
-    {:noreply,
-     socket
-     |> assign(:dashboard_stats, dashboard_stats)
-     |> assign(:all_scene_table_data, sorted_table)
-     |> assign(:scene_table_data, page_rows)
-     |> assign(:page, 1)
-     |> assign(:total_pages, total_pages)
-     |> assign(:scene_issues, formatted_issues)}
-  end
-
-  @impl true
-  def handle_info({StoryarnWeb.SceneLive.Form, {:saved, scene}}, socket) do
-    {:noreply,
-     socket
-     |> put_flash(:info, dgettext("scenes", "Scene created successfully."))
-     |> push_navigate(
-       to:
-         ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{scene.id}"
-     )}
   end
 
   # ===========================================================================

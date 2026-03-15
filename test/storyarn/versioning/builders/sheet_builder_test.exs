@@ -1,6 +1,8 @@
 defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
   use Storyarn.DataCase, async: true
 
+  import Ecto.Query, warn: false
+
   alias Storyarn.Versioning.Builders.SheetBuilder
 
   import Storyarn.AccountsFixtures
@@ -77,6 +79,63 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
       assert restored.name == sheet.name
       blocks = Storyarn.Sheets.list_blocks(sheet.id)
       assert length(blocks) == 2
+    end
+  end
+
+  describe "instantiate_snapshot/3" do
+    test "materializes a new sheet, remaps internal inheritance, and restores table data",
+         %{project: project, sheet: sheet} do
+      block_a =
+        block_fixture(sheet, %{
+          type: "text",
+          position: 0,
+          variable_name: "health",
+          config: %{"label" => "Health"}
+        })
+
+      block_b =
+        block_fixture(sheet, %{
+          type: "number",
+          position: 1,
+          variable_name: "health_copy",
+          config: %{"label" => "Health Copy"}
+        })
+
+      from(b in Storyarn.Sheets.Block, where: b.id == ^block_b.id)
+      |> Storyarn.Repo.update_all(set: [inherited_from_block_id: block_a.id])
+
+      table_block = table_block_fixture(sheet, %{position: 2})
+      column = table_column_fixture(table_block, %{name: "Score", type: "number"})
+
+      [default_row] = Storyarn.Sheets.list_table_rows(table_block.id)
+      Storyarn.Sheets.update_table_cell(default_row, column.slug, "99")
+
+      snapshot = SheetBuilder.build_snapshot(sheet)
+
+      assert {:ok, materialized, id_maps} =
+               SheetBuilder.instantiate_snapshot(project.id, snapshot,
+                 reset_shortcut: true,
+                 position: 7
+               )
+
+      assert materialized.id != sheet.id
+      assert materialized.draft_id == nil
+      assert materialized.position == 7
+      assert materialized.shortcut == nil
+      assert id_maps.sheet == %{sheet.id => materialized.id}
+      assert Map.has_key?(id_maps.block, block_a.id)
+      assert Map.has_key?(id_maps.block, block_b.id)
+
+      blocks = Storyarn.Sheets.list_blocks(materialized.id)
+      cloned_b = Enum.find(blocks, &(&1.variable_name == "health_copy"))
+      assert cloned_b.inherited_from_block_id == id_maps.block[block_a.id]
+
+      cloned_table = Enum.find(blocks, &(&1.type == "table"))
+      assert cloned_table
+      assert Enum.any?(Storyarn.Sheets.list_table_columns(cloned_table.id), &(&1.name == "Score"))
+
+      [cloned_row | _] = Storyarn.Sheets.list_table_rows(cloned_table.id)
+      assert cloned_row.cells["score"] == "99"
     end
   end
 

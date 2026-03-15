@@ -24,11 +24,16 @@ defmodule StoryarnWeb.VersionLive.ViewerTest do
       %{project: project, sheet: sheet, version: version}
     end
 
-    test "renders sheet version snapshot", %{conn: conn, project: project, sheet: sheet} do
+    test "renders sheet version snapshot", %{
+      conn: conn,
+      project: project,
+      sheet: sheet,
+      version: version
+    } do
       {:ok, _view, html} =
         live(
           conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/versions/sheet/#{sheet.id}/1"
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/versions/sheet/#{sheet.id}/#{version.version_number}"
         )
 
       assert html =~ "v1"
@@ -84,21 +89,26 @@ defmodule StoryarnWeb.VersionLive.ViewerTest do
       assert path =~ "/users/log-in"
     end
 
-    test "blocks access for non-member", %{project: project, sheet: sheet} do
+    test "blocks access for non-member", %{project: project, sheet: sheet, version: version} do
       non_member = user_fixture()
       conn = log_in_user(build_conn(), non_member)
 
       result =
         live(
           conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/versions/sheet/#{sheet.id}/1"
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/versions/sheet/#{sheet.id}/#{version.version_number}"
         )
 
       # Non-member can't resolve the project, so gets redirected
       assert {:error, {:redirect, %{to: "/workspaces"}}} = result
     end
 
-    test "validates version belongs to correct project", %{conn: conn, user: user, sheet: sheet} do
+    test "validates version belongs to correct project", %{
+      conn: conn,
+      user: user,
+      sheet: sheet,
+      version: version
+    } do
       # Create another project that the user owns
       other_project = project_fixture(user) |> Repo.preload(:workspace)
 
@@ -106,7 +116,7 @@ defmodule StoryarnWeb.VersionLive.ViewerTest do
       result =
         live(
           conn,
-          ~p"/workspaces/#{other_project.workspace.slug}/projects/#{other_project.slug}/versions/sheet/#{sheet.id}/1"
+          ~p"/workspaces/#{other_project.workspace.slug}/projects/#{other_project.slug}/versions/sheet/#{sheet.id}/#{version.version_number}"
         )
 
       assert {:error, {:redirect, %{to: "/workspaces"}}} = result

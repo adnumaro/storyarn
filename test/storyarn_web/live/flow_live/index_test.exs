@@ -80,8 +80,7 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
         )
 
-      # Dashboard loads async, so render to get updated state
-      html = render(view)
+      html = await_async(view)
 
       assert html =~ "Main Story"
       assert html =~ "Nodes"
@@ -96,8 +95,7 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")
 
-      # Wait for async dashboard data
-      html = render(view)
+      html = await_async(view)
 
       # Extract table body to avoid matching sidebar tree occurrences
       [_, table_body] = String.split(html, "<tbody>", parts: 2)

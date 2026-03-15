@@ -6,6 +6,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
+  import Storyarn.SheetsFixtures
 
   setup do
     user = user_fixture()
@@ -76,6 +77,24 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       assert is_integer(conn["to_layer_index"])
       assert is_integer(conn["to_pin_index"])
     end
+
+    test "captures orphan entities and orphan-pin connections", %{scene: scene} do
+      _zone = zone_fixture(scene, %{"name" => "Loose Zone"})
+      pin1 = pin_fixture(scene, %{"label" => "Loose A"})
+      pin2 = pin_fixture(scene, %{"label" => "Loose B"})
+      _annotation = annotation_fixture(scene, %{"text" => "Loose Note"})
+      _conn = connection_fixture(scene, pin1, pin2)
+
+      snapshot = SceneBuilder.build_snapshot(scene)
+
+      assert length(snapshot["orphan_zones"]) == 1
+      assert length(snapshot["orphan_pins"]) == 2
+      assert length(snapshot["orphan_annotations"]) == 1
+
+      [conn] = snapshot["connections"]
+      assert conn["from_layer_index"] == -1
+      assert conn["to_layer_index"] == -1
+    end
   end
 
   describe "restore_snapshot/3" do
@@ -120,6 +139,134 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       total_pins = restored.layers |> Enum.flat_map(& &1.pins) |> length()
       assert total_pins == 2
       assert length(restored.connections) == 1
+    end
+  end
+
+  describe "instantiate_snapshot/3" do
+    test "materializes a new scene and remaps connection pin ids", %{
+      project: project,
+      scene: scene
+    } do
+      layer = layer_fixture(scene, %{"name" => "Gameplay"})
+
+      pin1 =
+        pin_fixture(scene, %{
+          "position_x" => 20.0,
+          "position_y" => 20.0,
+          "label" => "A",
+          "layer_id" => layer.id
+        })
+
+      pin2 =
+        pin_fixture(scene, %{
+          "position_x" => 80.0,
+          "position_y" => 80.0,
+          "label" => "B",
+          "layer_id" => layer.id
+        })
+
+      connection = connection_fixture(scene, pin1, pin2)
+
+      snapshot = SceneBuilder.build_snapshot(scene)
+
+      assert {:ok, materialized, id_maps} =
+               SceneBuilder.instantiate_snapshot(project.id, snapshot,
+                 reset_shortcut: true,
+                 position: 5
+               )
+
+      assert materialized.id != scene.id
+      assert materialized.draft_id == nil
+      assert materialized.position == 5
+      assert materialized.shortcut == nil
+      assert id_maps.scene == %{scene.id => materialized.id}
+      assert id_maps.pin[pin1.id]
+      assert id_maps.pin[pin2.id]
+      assert id_maps.connection[connection.id]
+
+      pin_ids = materialized.layers |> Enum.flat_map(& &1.pins) |> Enum.map(& &1.id)
+      cloned_connection = hd(materialized.connections)
+
+      assert cloned_connection.from_pin_id in pin_ids
+      assert cloned_connection.to_pin_id in pin_ids
+      assert cloned_connection.from_pin_id != pin1.id
+      assert cloned_connection.to_pin_id != pin2.id
+    end
+
+    test "materializes orphan pins and remaps explicit sheet refs across projects", %{
+      user: user,
+      project: project,
+      scene: scene
+    } do
+      source_sheet = sheet_fixture(project)
+      pin1 = pin_fixture(scene, %{"label" => "Loose A", "sheet_id" => source_sheet.id})
+      pin2 = pin_fixture(scene, %{"label" => "Loose B"})
+      connection = connection_fixture(scene, pin1, pin2)
+      snapshot = SceneBuilder.build_snapshot(scene)
+
+      target_project = project_fixture(user)
+      target_sheet = sheet_fixture(target_project)
+
+      assert {:ok, materialized, id_maps} =
+               SceneBuilder.instantiate_snapshot(target_project.id, snapshot,
+                 external_id_maps: %{sheet: %{source_sheet.id => target_sheet.id}}
+               )
+
+      assert id_maps.pin[pin1.id]
+      assert id_maps.pin[pin2.id]
+      assert id_maps.connection[connection.id]
+
+      orphan_pin_ids = Enum.map(materialized.pins, & &1.id)
+      remapped_pin = Enum.find(materialized.pins, &(&1.label == "Loose A"))
+      cloned_connection = hd(materialized.connections)
+
+      assert remapped_pin.sheet_id == target_sheet.id
+      assert cloned_connection.from_pin_id in orphan_pin_ids
+      assert cloned_connection.to_pin_id in orphan_pin_ids
+    end
+
+    test "clears cross-project sheet refs when no external map is provided", %{
+      user: user,
+      project: project,
+      scene: scene
+    } do
+      source_sheet = sheet_fixture(project)
+      _pin = pin_fixture(scene, %{"label" => "Loose A", "sheet_id" => source_sheet.id})
+      snapshot = SceneBuilder.build_snapshot(scene)
+      target_project = project_fixture(user)
+
+      assert {:ok, materialized, _id_maps} =
+               SceneBuilder.instantiate_snapshot(target_project.id, snapshot)
+
+      assert Enum.all?(materialized.pins, &is_nil(&1.sheet_id))
+    end
+
+    test "drops scene pin external refs when preserve_external_refs is false", %{
+      project: project,
+      scene: scene
+    } do
+      linked_sheet = sheet_fixture(project)
+      target_scene = scene_fixture(project)
+
+      _pin =
+        pin_fixture(scene, %{
+          "label" => "Loose A",
+          "sheet_id" => linked_sheet.id,
+          "target_type" => "scene",
+          "target_id" => target_scene.id
+        })
+
+      snapshot = SceneBuilder.build_snapshot(scene)
+
+      assert {:ok, materialized, _id_maps} =
+               SceneBuilder.instantiate_snapshot(project.id, snapshot,
+                 preserve_external_refs: false,
+                 reset_shortcut: true
+               )
+
+      assert Enum.all?(materialized.pins, fn pin ->
+               is_nil(pin.sheet_id) and is_nil(pin.target_type) and is_nil(pin.target_id)
+             end)
     end
   end
 
@@ -188,6 +335,34 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       refs = SceneBuilder.scan_references(snapshot)
       assert refs == []
     end
+
+    test "extracts orphan pin and zone refs" do
+      snapshot = %{
+        "background_asset_id" => nil,
+        "layers" => [],
+        "orphan_pins" => [
+          %{
+            "sheet_id" => 10,
+            "icon_asset_id" => 20,
+            "target_type" => "scene",
+            "target_id" => 30
+          }
+        ],
+        "orphan_zones" => [
+          %{"target_type" => "flow", "target_id" => 40}
+        ]
+      }
+
+      refs = SceneBuilder.scan_references(snapshot)
+
+      types_and_ids = Enum.map(refs, &{&1.type, &1.id}) |> Enum.sort()
+
+      assert {:asset, 20} in types_and_ids
+      assert {:flow, 40} in types_and_ids
+      assert {:scene, 30} in types_and_ids
+      assert {:sheet, 10} in types_and_ids
+      assert length(refs) == 4
+    end
   end
 
   describe "diff_snapshots/2" do
@@ -255,8 +430,73 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       assert Enum.any?(changes, &(&1.category == :connection && &1.action == :added))
     end
 
+    test "detects orphan pin changes" do
+      old = %{
+        "name" => "S",
+        "layers" => [],
+        "orphan_pins" => [],
+        "connections" => []
+      }
+
+      new = %{
+        "name" => "S",
+        "layers" => [],
+        "orphan_pins" => [%{"position" => 0, "label" => "Loose A"}],
+        "connections" => []
+      }
+
+      changes = SceneBuilder.diff_snapshots(old, new)
+      assert Enum.any?(changes, &(&1.category == :pin && &1.action == :added))
+    end
+
+    test "matches orphan-pin connection changes semantically" do
+      orphan_pin = %{"position" => 0, "label" => "Loose A"}
+
+      old = %{
+        "name" => "S",
+        "layers" => [],
+        "orphan_pins" => [orphan_pin],
+        "connections" => [
+          %{
+            "from_layer_index" => -1,
+            "from_pin_index" => 0,
+            "to_layer_index" => -1,
+            "to_pin_index" => 0,
+            "label" => "Old"
+          }
+        ]
+      }
+
+      new = %{
+        "name" => "S",
+        "layers" => [],
+        "orphan_pins" => [orphan_pin],
+        "connections" => [
+          %{
+            "from_layer_index" => -1,
+            "from_pin_index" => 0,
+            "to_layer_index" => -1,
+            "to_pin_index" => 0,
+            "label" => "New"
+          }
+        ]
+      }
+
+      changes = SceneBuilder.diff_snapshots(old, new)
+      assert Enum.any?(changes, &(&1.category == :connection && &1.action == :modified))
+    end
+
     test "returns empty list for identical snapshots" do
-      snapshot = %{"name" => "S", "shortcut" => "s", "layers" => [], "connections" => []}
+      snapshot = %{
+        "name" => "S",
+        "shortcut" => "s",
+        "layers" => [],
+        "orphan_pins" => [],
+        "orphan_zones" => [],
+        "orphan_annotations" => [],
+        "connections" => []
+      }
+
       assert SceneBuilder.diff_snapshots(snapshot, snapshot) == []
     end
   end

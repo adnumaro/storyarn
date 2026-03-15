@@ -4,12 +4,13 @@ defmodule Storyarn.Drafts.DraftCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Billing.Plan
-  alias Storyarn.Drafts.{CloneEngine, Draft}
+  alias Storyarn.Drafts.{BaselineIds, CloneEngine, Draft}
   alias Storyarn.Flows.Flow
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Sheet
+  alias Storyarn.Versioning
 
   @default_draft_limit 2
 
@@ -36,10 +37,10 @@ defmodule Storyarn.Drafts.DraftCrud do
 
   defp do_create_draft(project_id, entity_type, source_entity_id, user_id, name) do
     source_name = CloneEngine.get_source_name(entity_type, project_id, source_entity_id)
+    baseline_ids = baseline_entity_ids(entity_type, project_id, source_entity_id)
+    source_version_number = latest_source_version_number(entity_type, source_entity_id)
 
     with {:ok, source_name} <- require_source(source_name),
-         baseline_ids <-
-           CloneEngine.get_baseline_entity_ids(entity_type, project_id, source_entity_id),
          {:ok, draft} <-
            insert_draft(
              project_id,
@@ -47,7 +48,8 @@ defmodule Storyarn.Drafts.DraftCrud do
              source_entity_id,
              user_id,
              name || source_name <> " (Draft)",
-             baseline_ids
+             baseline_ids,
+             source_version_number
            ),
          {:ok, _cloned} <- CloneEngine.clone(entity_type, project_id, source_entity_id, draft.id) do
       {:ok, Repo.preload(draft, :created_by)}
@@ -57,15 +59,38 @@ defmodule Storyarn.Drafts.DraftCrud do
   defp require_source(nil), do: {:error, :source_not_found}
   defp require_source(name), do: {:ok, name}
 
-  defp insert_draft(project_id, entity_type, source_entity_id, user_id, draft_name, baseline_ids) do
+  defp insert_draft(
+         project_id,
+         entity_type,
+         source_entity_id,
+         user_id,
+         draft_name,
+         baseline_ids,
+         source_version_number
+       ) do
     %Draft{project_id: project_id, created_by_id: user_id}
     |> Draft.create_changeset(%{
       entity_type: entity_type,
       source_entity_id: source_entity_id,
+      source_version_number: source_version_number,
       name: draft_name
     })
     |> Ecto.Changeset.put_change(:baseline_entity_ids, baseline_ids)
     |> Repo.insert()
+  end
+
+  defp baseline_entity_ids(entity_type, project_id, source_entity_id) do
+    case CloneEngine.build_source_snapshot(entity_type, project_id, source_entity_id) do
+      {:ok, snapshot} -> BaselineIds.from_snapshot(entity_type, snapshot)
+      {:error, _reason} -> %{}
+    end
+  end
+
+  defp latest_source_version_number(entity_type, source_entity_id) do
+    case Versioning.get_latest_version(entity_type, source_entity_id) do
+      nil -> nil
+      version -> version.version_number
+    end
   end
 
   @doc """

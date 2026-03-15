@@ -41,7 +41,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockToolbarHandlersTest do
 
   defp mount_sheet(conn, url) do
     {:ok, view, _html} = live(conn, url)
-    html = render_async(view, 500)
+    html = await_async(view)
     {:ok, view, html}
   end
 

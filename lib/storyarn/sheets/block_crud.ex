@@ -6,8 +6,8 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   alias Storyarn.Collaboration
   alias Storyarn.Flows
-  alias Storyarn.References
   alias Storyarn.Localization
+  alias Storyarn.References
   alias Storyarn.Repo
   alias Storyarn.Shared.{NameNormalizer, TreeOperations, WordCount}
 

@@ -317,41 +317,58 @@ defmodule StoryarnWeb.SheetLive.Index do
   # ===========================================================================
 
   def handle_info(:load_dashboard_data, socket) do
-    project_id = socket.assigns.project.id
+    %{project: project, workspace: workspace, sort_by: sort_by, sort_dir: sort_dir} =
+      socket.assigns
+
+    {:noreply,
+     start_async(socket, :load_dashboard_data, fn ->
+       load_dashboard_data_async(project.id, workspace, project, sort_by, sort_dir)
+     end)}
+  end
+
+  @impl true
+  def handle_async(:load_dashboard_data, {:ok, data}, socket) do
+    {:noreply,
+     socket
+     |> assign(:dashboard_stats, data.dashboard_stats)
+     |> assign(:all_sheet_table_data, data.sorted_table)
+     |> assign(:sheet_table_data, data.page_rows)
+     |> assign(:page, 1)
+     |> assign(:total_pages, data.total_pages)
+     |> assign(:sheet_issues, data.formatted_issues)}
+  end
+
+  def handle_async(:load_dashboard_data, {:exit, _reason}, socket) do
+    {:noreply, socket}
+  end
+
+  defp load_dashboard_data_async(project_id, workspace, project, sort_by, sort_dir) do
     sheets = Sheets.list_all_sheets(project_id)
 
-    # Run independent queries in parallel with caching
-    tasks = [
-      Task.async(fn ->
-        {DashboardCache.fetch(project_id, :sheet_stats, fn ->
-           Sheets.sheet_stats_for_project(project_id)
-         end),
-         DashboardCache.fetch(project_id, :sheet_words, fn ->
-           Sheets.sheet_word_counts(project_id)
-         end)}
-      end),
-      Task.async(fn ->
-        referenced_ids =
-          DashboardCache.fetch(project_id, :sheet_refs, fn ->
-            Sheets.referenced_block_ids_for_project(project_id)
-          end)
-
-        issues =
-          DashboardCache.fetch(project_id, :sheet_issues, fn ->
-            Sheets.detect_sheet_issues(project_id, referenced_ids)
-          end)
-
-        {referenced_ids, issues}
-      end),
-      Task.async(fn ->
-        DashboardCache.fetch(project_id, :sheet_total_vars, fn ->
-          Sheets.list_project_variables(project_id) |> length()
-        end)
+    stats =
+      DashboardCache.fetch(project_id, :sheet_stats, fn ->
+        Sheets.sheet_stats_for_project(project_id)
       end)
-    ]
 
-    [{stats, word_counts}, {referenced_ids, issues}, total_variable_count] =
-      Task.await_many(tasks, 15_000)
+    word_counts =
+      DashboardCache.fetch(project_id, :sheet_words, fn ->
+        Sheets.sheet_word_counts(project_id)
+      end)
+
+    referenced_ids =
+      DashboardCache.fetch(project_id, :sheet_refs, fn ->
+        Sheets.referenced_block_ids_for_project(project_id)
+      end)
+
+    issues =
+      DashboardCache.fetch(project_id, :sheet_issues, fn ->
+        Sheets.detect_sheet_issues(project_id, referenced_ids)
+      end)
+
+    total_variable_count =
+      DashboardCache.fetch(project_id, :sheet_total_vars, fn ->
+        Sheets.list_project_variables(project_id) |> length()
+      end)
 
     table_data =
       Enum.map(sheets, fn sheet ->
@@ -367,35 +384,22 @@ defmodule StoryarnWeb.SheetLive.Index do
         }
       end)
 
-    sorted_table =
-      sort_table(
-        table_data,
-        socket.assigns.sort_by,
-        socket.assigns.sort_dir,
-        sheet_sort_columns()
-      )
-
+    sorted_table = sort_table(table_data, sort_by, sort_dir, sheet_sort_columns())
     {page_rows, total_pages} = paginate(sorted_table, 1)
 
-    dashboard_stats = %{
-      sheet_count: length(sheets),
-      block_count: table_data |> Enum.map(& &1.block_count) |> Enum.sum(),
-      variable_count: total_variable_count,
-      variables_in_use: MapSet.size(referenced_ids),
-      word_count: table_data |> Enum.map(& &1.word_count) |> Enum.sum()
+    %{
+      dashboard_stats: %{
+        sheet_count: length(sheets),
+        block_count: table_data |> Enum.map(& &1.block_count) |> Enum.sum(),
+        variable_count: total_variable_count,
+        variables_in_use: MapSet.size(referenced_ids),
+        word_count: table_data |> Enum.map(& &1.word_count) |> Enum.sum()
+      },
+      sorted_table: sorted_table,
+      page_rows: page_rows,
+      total_pages: total_pages,
+      formatted_issues: format_sheet_issues(issues, workspace, project)
     }
-
-    formatted_issues =
-      format_sheet_issues(issues, socket.assigns.workspace, socket.assigns.project)
-
-    {:noreply,
-     socket
-     |> assign(:dashboard_stats, dashboard_stats)
-     |> assign(:all_sheet_table_data, sorted_table)
-     |> assign(:sheet_table_data, page_rows)
-     |> assign(:page, 1)
-     |> assign(:total_pages, total_pages)
-     |> assign(:sheet_issues, formatted_issues)}
   end
 
   # ===========================================================================

@@ -92,6 +92,16 @@ defmodule StoryarnWeb.ConnCase do
     |> Plug.Conn.put_session(:user_token, token)
   end
 
+  @doc """
+  Waits for LiveView async tasks with a test-friendly timeout.
+
+  The 500ms defaults used by some tests are too tight under full-suite load and
+  lead to scheduler/DB-related flakes without indicating product regressions.
+  """
+  def await_async(view, timeout \\ 3_000) do
+    Phoenix.LiveViewTest.render_async(view, timeout)
+  end
+
   defp maybe_set_token_authenticated_at(_token, nil), do: nil
 
   defp maybe_set_token_authenticated_at(token, authenticated_at) do

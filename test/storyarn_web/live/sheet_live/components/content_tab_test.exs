@@ -37,7 +37,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTabTest do
 
   defp mount_sheet(conn, workspace, project, sheet) do
     {:ok, view, _html} = live(conn, sheet_path(workspace, project, sheet))
-    html = render_async(view, 500)
+    html = await_async(view)
     {:ok, view, html}
   end
 

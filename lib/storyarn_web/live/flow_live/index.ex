@@ -362,29 +362,60 @@ defmodule StoryarnWeb.FlowLive.Index do
 
   @impl true
   def handle_info(:load_dashboard_data, socket) do
-    project_id = socket.assigns.project.id
+    %{project: project, workspace: workspace, sort_by: sort_by, sort_dir: sort_dir} =
+      socket.assigns
+
+    {:noreply,
+     start_async(socket, :load_dashboard_data, fn ->
+       load_dashboard_data_async(project.id, workspace, project, sort_by, sort_dir)
+     end)}
+  end
+
+  @impl true
+  def handle_info({StoryarnWeb.FlowLive.Form, {:saved, flow}}, socket) do
+    {:noreply,
+     socket
+     |> put_flash(:info, dgettext("flows", "Flow created successfully."))
+     |> push_navigate(
+       to:
+         ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow.id}"
+     )}
+  end
+
+  @impl true
+  def handle_async(:load_dashboard_data, {:ok, data}, socket) do
+    {:noreply,
+     socket
+     |> assign(:dashboard_stats, data.dashboard_stats)
+     |> assign(:all_flow_table_data, data.sorted_table)
+     |> assign(:flow_table_data, data.page_rows)
+     |> assign(:page, 1)
+     |> assign(:total_pages, data.total_pages)
+     |> assign(:flow_issues, data.formatted_issues)}
+  end
+
+  def handle_async(:load_dashboard_data, {:exit, _reason}, socket) do
+    {:noreply, socket}
+  end
+
+  defp load_dashboard_data_async(project_id, workspace, project, sort_by, sort_dir) do
     flows = Flows.list_flows(project_id)
 
-    # Run independent queries in parallel with caching
-    tasks = [
-      Task.async(fn ->
-        {DashboardCache.fetch(project_id, :flow_stats, fn ->
-           Flows.flow_stats_for_project(project_id)
-         end),
-         DashboardCache.fetch(project_id, :flow_words, fn ->
-           Flows.flow_word_counts(project_id)
-         end)}
-      end),
-      Task.async(fn ->
-        DashboardCache.fetch(project_id, :flow_issues, fn ->
-          Flows.detect_flow_issues(project_id)
-        end)
+    stats =
+      DashboardCache.fetch(project_id, :flow_stats, fn ->
+        Flows.flow_stats_for_project(project_id)
       end)
-    ]
 
-    [{stats, word_counts}, issues] = Task.await_many(tasks, 15_000)
+    word_counts =
+      DashboardCache.fetch(project_id, :flow_words, fn ->
+        Flows.flow_word_counts(project_id)
+      end)
 
-    # Build table data by merging flow list with stats
+    issues =
+      DashboardCache.fetch(project_id, :flow_issues, fn ->
+        Flows.detect_flow_issues(project_id)
+      end)
+
     table_data =
       Enum.map(flows, fn flow ->
         flow_stats =
@@ -402,42 +433,21 @@ defmodule StoryarnWeb.FlowLive.Index do
         }
       end)
 
-    sorted_table =
-      sort_table(table_data, socket.assigns.sort_by, socket.assigns.sort_dir, flow_sort_columns())
-
+    sorted_table = sort_table(table_data, sort_by, sort_dir, flow_sort_columns())
     {page_rows, total_pages} = paginate(sorted_table, 1)
 
-    # Aggregate stats
-    dashboard_stats = %{
-      flow_count: length(flows),
-      node_count: table_data |> Enum.map(& &1.node_count) |> Enum.sum(),
-      dialogue_count: table_data |> Enum.map(& &1.dialogue_count) |> Enum.sum(),
-      word_count: table_data |> Enum.map(& &1.word_count) |> Enum.sum()
+    %{
+      dashboard_stats: %{
+        flow_count: length(flows),
+        node_count: table_data |> Enum.map(& &1.node_count) |> Enum.sum(),
+        dialogue_count: table_data |> Enum.map(& &1.dialogue_count) |> Enum.sum(),
+        word_count: table_data |> Enum.map(& &1.word_count) |> Enum.sum()
+      },
+      sorted_table: sorted_table,
+      page_rows: page_rows,
+      total_pages: total_pages,
+      formatted_issues: format_flow_issues(issues, workspace, project)
     }
-
-    # Format issues with hrefs
-    formatted_issues =
-      format_flow_issues(issues, socket.assigns.workspace, socket.assigns.project)
-
-    {:noreply,
-     socket
-     |> assign(:dashboard_stats, dashboard_stats)
-     |> assign(:all_flow_table_data, sorted_table)
-     |> assign(:flow_table_data, page_rows)
-     |> assign(:page, 1)
-     |> assign(:total_pages, total_pages)
-     |> assign(:flow_issues, formatted_issues)}
-  end
-
-  @impl true
-  def handle_info({StoryarnWeb.FlowLive.Form, {:saved, flow}}, socket) do
-    {:noreply,
-     socket
-     |> put_flash(:info, dgettext("flows", "Flow created successfully."))
-     |> push_navigate(
-       to:
-         ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow.id}"
-     )}
   end
 
   # ===========================================================================

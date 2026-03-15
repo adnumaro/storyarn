@@ -22,7 +22,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      html = render_async(view, 500)
+      html = await_async(view)
       assert html =~ "Test Sheet"
     end
 
@@ -38,7 +38,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      html = render_async(view, 500)
+      html = await_async(view)
       assert html =~ "Shared Sheet"
     end
 
@@ -72,7 +72,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet1.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       # Simulate move_sheet event
       render_hook(view, "move_to_parent", %{
@@ -97,7 +97,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{child.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       # Move to root level (empty parent_id)
       render_hook(view, "move_to_parent", %{
@@ -122,7 +122,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{parent.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       # Try to move parent under its child (would create cycle)
       render_hook(view, "move_to_parent", %{
@@ -149,7 +149,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet1.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       # Try to move sheet
       render_hook(view, "move_to_parent", %{
@@ -177,7 +177,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{parent.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       # Get initial sheet count
       initial_tree = Sheets.list_sheets_tree(project.id)
@@ -207,7 +207,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{parent.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       # Get initial sheet count
       initial_tree = Sheets.list_sheets_tree(project.id)
@@ -235,7 +235,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       %{view: view, project: project, sheet: sheet}
     end
@@ -284,7 +284,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       # Get initial sheet count
       initial_tree = Sheets.list_sheets_tree(project.id)
@@ -310,7 +310,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       initial_tree = Sheets.list_sheets_tree(project.id)
       initial_count = count_sheets(initial_tree)
@@ -337,7 +337,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       render_click(view, "delete_sheet", %{"id" => other_sheet.id})
 
@@ -356,7 +356,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       render_click(view, "delete_sheet", %{"id" => sheet.id})
 
@@ -379,7 +379,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       render_click(view, "delete_sheet", %{"id" => other_sheet.id})
 
@@ -402,7 +402,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       # Set pending delete
       render_click(view, "set_pending_delete_sheet", %{"id" => other_sheet.id})
@@ -424,7 +424,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       # Confirm delete without setting pending id first — should be a no-op
       render_click(view, "confirm_delete_sheet", %{})
@@ -447,7 +447,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       render_click(view, "set_sheet_color", %{"color" => "#ff5733"})
 
@@ -465,7 +465,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       # Set a color first
       render_click(view, "set_sheet_color", %{"color" => "#ff5733"})
@@ -489,7 +489,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       render_click(view, "set_sheet_color", %{"color" => "#ff5733"})
 
@@ -529,7 +529,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{child.id}"
         )
 
-      html = render_async(view, 500)
+      html = await_async(view)
 
       # The breadcrumb should show the ancestor name
       assert html =~ "Grandparent Sheet"
@@ -546,7 +546,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      html = render_async(view, 500)
+      html = await_async(view)
 
       # Root sheets have no ancestors, so the breadcrumb component should not render
       # We check that the breadcrumb container with ancestor navigation is not present
@@ -567,7 +567,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       # Toggle the tree panel (starts open by default)
       render_click(view, "tree_panel_toggle", %{})
@@ -587,7 +587,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       # Pin/unpin the tree panel
       render_click(view, "tree_panel_pin", %{})
@@ -605,7 +605,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       # Simulate the JS hook sending initial pinned state
       render_click(view, "tree_panel_init", %{"pinned" => true})
@@ -627,7 +627,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       %{view: view, project: project, sheet: sheet}
     end
@@ -768,7 +768,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       # Undo with empty stack — should not crash
       html = render_hook(view, "undo", %{})
@@ -785,7 +785,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       # Redo with empty stack — should not crash
       html = render_hook(view, "redo", %{})
@@ -802,7 +802,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
         )
 
-      render_async(view, 500)
+      await_async(view)
 
       # Set a color (this pushes to undo stack)
       render_click(view, "set_sheet_color", %{"color" => "#abcdef"})

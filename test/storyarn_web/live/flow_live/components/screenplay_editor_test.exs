@@ -20,7 +20,7 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditorTest do
   # Simulates the FlowLoader JS hook: triggers the event + waits for start_async
   defp load_flow(view) do
     render_click(view, "load_flow_data", %{})
-    render_async(view, 500)
+    await_async(view)
   end
 
   # Opens the screenplay editor for a dialogue node

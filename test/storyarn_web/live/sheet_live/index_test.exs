@@ -78,8 +78,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets"
         )
 
-      # Dashboard loads async, so render to get updated state
-      html = render(view)
+      html = await_async(view)
 
       assert html =~ "Character Sheet"
       assert html =~ "Blocks"
@@ -95,8 +94,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
 
-      # Wait for async dashboard data
-      html = render(view)
+      html = await_async(view)
 
       # Extract table body to avoid matching sidebar tree occurrences
       [_, table_body] = String.split(html, "<tbody>", parts: 2)
@@ -216,6 +214,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
       sheet = sheet_fixture(project, %{name: "To Delete"})
 
       {:ok, view, _html} = live(conn, url)
+      _ = await_async(view)
 
       render_click(view, "set_pending_delete_sheet", %{"id" => sheet.id})
 
@@ -236,6 +235,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
       sheet_fixture(project, %{name: "Should Remain"})
 
       {:ok, view, _html} = live(conn, url)
+      _ = await_async(view)
 
       render_click(view, "confirm_delete_sheet")
 
@@ -251,7 +251,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
       sheet = sheet_fixture(project, %{name: "Delete Me"})
 
       {:ok, view, _html} = live(conn, url)
-      assert render(view) =~ "Delete Me"
+      assert await_async(view) =~ "Delete Me"
 
       render_click(view, "delete_sheet", %{"id" => sheet.id})
 
@@ -270,6 +270,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
       url = ~p"/workspaces/#{ws.slug}/projects/#{project.slug}/sheets"
 
       {:ok, view, _html} = live(conn, url)
+      _ = await_async(view)
 
       render_click(view, "delete_sheet", %{"id" => sheet.id})
 

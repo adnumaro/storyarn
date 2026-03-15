@@ -4,8 +4,10 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
   alias Storyarn.Versioning.Builders.FlowBuilder
 
   import Storyarn.AccountsFixtures
-  import Storyarn.ProjectsFixtures
+  import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures, only: [scene_fixture: 1]
 
   setup do
     user = user_fixture()
@@ -85,6 +87,102 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       active_nodes = Enum.reject(restored.nodes, &(&1.deleted_at != nil))
       assert length(active_nodes) == length(snapshot["nodes"])
       assert length(restored.connections) == 1
+    end
+  end
+
+  describe "instantiate_snapshot/3" do
+    test "materializes a new flow and remaps connection node ids", %{project: project, flow: flow} do
+      node_a = node_fixture(flow, %{type: "dialogue", position_x: 100.0, position_y: 100.0})
+      node_b = node_fixture(flow, %{type: "hub", position_x: 200.0, position_y: 100.0})
+      connection = connection_fixture(flow, node_a, node_b)
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+
+      assert {:ok, materialized, id_maps} =
+               FlowBuilder.instantiate_snapshot(project.id, snapshot,
+                 reset_shortcut: true,
+                 position: 11
+               )
+
+      assert materialized.id != flow.id
+      assert materialized.draft_id == nil
+      assert materialized.position == 11
+      assert materialized.shortcut == nil
+      assert id_maps.flow == %{flow.id => materialized.id}
+      assert id_maps.node[node_a.id]
+      assert id_maps.node[node_b.id]
+      assert id_maps.connection[connection.id]
+
+      node_ids = Enum.map(materialized.nodes, & &1.id)
+      cloned_connection = hd(materialized.connections)
+
+      assert cloned_connection.source_node_id in node_ids
+      assert cloned_connection.target_node_id in node_ids
+      assert cloned_connection.source_node_id != node_a.id
+      assert cloned_connection.target_node_id != node_b.id
+    end
+
+    test "remaps external scene refs with explicit id maps", %{
+      user: user,
+      project: project,
+      flow: flow
+    } do
+      source_scene = scene_fixture(project)
+      {:ok, flow} = Storyarn.Flows.update_flow(flow, %{scene_id: source_scene.id})
+      snapshot = FlowBuilder.build_snapshot(flow)
+
+      target_project = project_fixture(user)
+      target_scene = scene_fixture(target_project)
+
+      assert {:ok, materialized, _id_maps} =
+               FlowBuilder.instantiate_snapshot(target_project.id, snapshot,
+                 external_id_maps: %{scene: %{source_scene.id => target_scene.id}}
+               )
+
+      assert materialized.scene_id == target_scene.id
+    end
+
+    test "clears cross-project scene refs when no external map is provided", %{
+      user: user,
+      project: project,
+      flow: flow
+    } do
+      source_scene = scene_fixture(project)
+      {:ok, flow} = Storyarn.Flows.update_flow(flow, %{scene_id: source_scene.id})
+      snapshot = FlowBuilder.build_snapshot(flow)
+
+      target_project = project_fixture(user)
+
+      assert {:ok, materialized, _id_maps} =
+               FlowBuilder.instantiate_snapshot(target_project.id, snapshot)
+
+      assert materialized.scene_id == nil
+    end
+
+    test "drops external refs when preserve_external_refs is false", %{
+      user: user,
+      project: project,
+      flow: flow
+    } do
+      scene = scene_fixture(project)
+      audio_asset = audio_asset_fixture(project, user)
+      {:ok, flow} = Storyarn.Flows.update_flow(flow, %{scene_id: scene.id})
+
+      _node =
+        node_fixture(flow, %{
+          data: %{"speaker" => "Narrator", "text" => "Hello", "audio_asset_id" => audio_asset.id}
+        })
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+
+      assert {:ok, materialized, _id_maps} =
+               FlowBuilder.instantiate_snapshot(project.id, snapshot,
+                 preserve_external_refs: false,
+                 reset_shortcut: true
+               )
+
+      assert materialized.scene_id == nil
+      assert Enum.all?(materialized.nodes, &is_nil((&1.data || %{})["audio_asset_id"]))
     end
   end
 

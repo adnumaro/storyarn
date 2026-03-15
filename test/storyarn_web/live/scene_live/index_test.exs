@@ -24,7 +24,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       assert html =~ "Scenes"
 
       # Scene name appears after async dashboard load
-      _ = render_async(view)
+      _ = await_async(view)
       assert render(view) =~ "World Map"
     end
 
@@ -42,7 +42,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
 
       assert html =~ "Scenes"
 
-      _ = render_async(view)
+      _ = await_async(view)
       assert render(view) =~ "Shared Scene"
     end
 
@@ -150,7 +150,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
         )
 
-      _ = render_async(view)
+      _ = await_async(view)
       assert render(view) =~ "Doomed Scene"
 
       render_click(view, "set_pending_delete", %{"id" => scene.id})
@@ -171,7 +171,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
         )
 
-      _ = render_async(view)
+      _ = await_async(view)
 
       # Call confirm_delete without set_pending_delete first
       render_click(view, "confirm_delete")
@@ -194,7 +194,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
         )
 
-      _ = render_async(view)
+      _ = await_async(view)
       render_click(view, "delete", %{"id" => scene.id})
 
       html = render(view)
@@ -380,7 +380,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
         )
 
       # Wait for async dashboard data to load
-      _ = render_async(view)
+      _ = await_async(view)
       html = render(view)
 
       assert html =~ "Scenes"
@@ -405,7 +405,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
         )
 
-      _ = render_async(view)
+      _ = await_async(view)
 
       # Default sort: name asc — Alpha before Zeta
       html = render(view)
