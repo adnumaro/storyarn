@@ -2,6 +2,7 @@ defmodule Storyarn.Drafts.DraftCrudTest do
   use Storyarn.DataCase, async: true
 
   alias Storyarn.Drafts
+  alias Storyarn.Versioning
 
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
@@ -90,6 +91,15 @@ defmodule Storyarn.Drafts.DraftCrudTest do
       %{user: user, project: project} = setup_project()
 
       assert {:error, _} = Drafts.create_draft(project.id, "flow", -1, user.id)
+    end
+
+    test "stores the latest source version number when one exists" do
+      %{user: user, project: project} = setup_project()
+      flow = flow_fixture(project)
+      {:ok, version} = Versioning.create_version("flow", flow, project.id, user.id)
+
+      assert {:ok, draft} = Drafts.create_draft(project.id, "flow", flow.id, user.id)
+      assert draft.source_version_number == version.version_number
     end
   end
 

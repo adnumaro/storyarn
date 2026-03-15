@@ -123,6 +123,58 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
     end
   end
 
+  describe "instantiate_snapshot/3" do
+    test "materializes a new scene and remaps connection pin ids", %{
+      project: project,
+      scene: scene
+    } do
+      layer = layer_fixture(scene, %{"name" => "Gameplay"})
+
+      pin1 =
+        pin_fixture(scene, %{
+          "position_x" => 20.0,
+          "position_y" => 20.0,
+          "label" => "A",
+          "layer_id" => layer.id
+        })
+
+      pin2 =
+        pin_fixture(scene, %{
+          "position_x" => 80.0,
+          "position_y" => 80.0,
+          "label" => "B",
+          "layer_id" => layer.id
+        })
+
+      connection = connection_fixture(scene, pin1, pin2)
+
+      snapshot = SceneBuilder.build_snapshot(scene)
+
+      assert {:ok, materialized, id_maps} =
+               SceneBuilder.instantiate_snapshot(project.id, snapshot,
+                 reset_shortcut: true,
+                 position: 5
+               )
+
+      assert materialized.id != scene.id
+      assert materialized.draft_id == nil
+      assert materialized.position == 5
+      assert materialized.shortcut == nil
+      assert id_maps.scene == %{scene.id => materialized.id}
+      assert id_maps.pin[pin1.id]
+      assert id_maps.pin[pin2.id]
+      assert id_maps.connection[connection.id]
+
+      pin_ids = materialized.layers |> Enum.flat_map(& &1.pins) |> Enum.map(& &1.id)
+      cloned_connection = hd(materialized.connections)
+
+      assert cloned_connection.from_pin_id in pin_ids
+      assert cloned_connection.to_pin_id in pin_ids
+      assert cloned_connection.from_pin_id != pin1.id
+      assert cloned_connection.to_pin_id != pin2.id
+    end
+  end
+
   describe "scan_references/1" do
     test "extracts background asset, pin, and zone target refs" do
       snapshot = %{

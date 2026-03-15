@@ -19,6 +19,15 @@ defmodule Storyarn.Versioning.SnapshotBuilder do
   @callback restore_snapshot(entity :: struct(), snapshot :: map(), opts :: keyword()) ::
               {:ok, struct()} | {:error, term()}
 
+  @doc """
+  Materializes a brand-new entity from a snapshot.
+
+  Returns the created root entity together with an old-to-new ID map for any
+  child entities materialized from the snapshot.
+  """
+  @callback instantiate_snapshot(project_id :: integer(), snapshot :: map(), opts :: keyword()) ::
+              {:ok, struct(), map()} | {:error, term()}
+
   @type change :: %{
           category: atom(),
           action: :added | :removed | :modified,

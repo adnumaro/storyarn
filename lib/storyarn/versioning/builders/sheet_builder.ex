@@ -13,8 +13,8 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   alias Ecto.Multi
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.{Block, Sheet, TableColumn, TableRow}
+  alias Storyarn.Versioning.MaterializationHelpers
   alias Storyarn.Versioning.Builders.AssetHashResolver
 
   # ========== Build Snapshot ==========
@@ -30,11 +30,14 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     {hash_map, metadata_map} = AssetHashResolver.resolve_hashes(asset_ids)
 
     %{
+      "original_id" => sheet.id,
       "name" => sheet.name,
       "shortcut" => sheet.shortcut,
+      "description" => sheet.description,
       "avatar_asset_id" => sheet.avatar_asset_id,
       "banner_asset_id" => sheet.banner_asset_id,
       "color" => sheet.color,
+      "hidden_inherited_block_ids" => sheet.hidden_inherited_block_ids || [],
       "blocks" => Enum.map(sheet.blocks, &block_to_snapshot/1),
       "asset_blob_hashes" => hash_map,
       "asset_metadata" => metadata_map
@@ -90,6 +93,73 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   # ========== Restore Snapshot ==========
 
   @impl true
+  def instantiate_snapshot(project_id, snapshot, opts \\ []) do
+    Repo.transaction(fn ->
+      now = MaterializationHelpers.now()
+      preserve_external_refs? = MaterializationHelpers.preserve_external_refs?(opts)
+
+      sheet_attrs =
+        %{
+          project_id: project_id,
+          draft_id: MaterializationHelpers.root_draft_id(opts),
+          name: snapshot["name"],
+          shortcut: MaterializationHelpers.root_shortcut(snapshot, opts),
+          description: snapshot["description"],
+          color: snapshot["color"],
+          hidden_inherited_block_ids: snapshot["hidden_inherited_block_ids"] || [],
+          avatar_asset_id:
+            resolve_sheet_asset(
+              snapshot["avatar_asset_id"],
+              snapshot,
+              project_id,
+              preserve_external_refs?
+            ),
+          banner_asset_id:
+            resolve_sheet_asset(
+              snapshot["banner_asset_id"],
+              snapshot,
+              project_id,
+              preserve_external_refs?
+            ),
+          parent_id: MaterializationHelpers.root_parent_id(opts),
+          position: MaterializationHelpers.root_position(opts)
+        }
+        |> Map.merge(MaterializationHelpers.timestamps(now))
+
+      with {:ok, sheet_id} <-
+             MaterializationHelpers.insert_one_returning_id(Repo, Sheet, sheet_attrs),
+           {:ok, inserted_blocks, block_id_map} <-
+             insert_sheet_blocks(sheet_id, snapshot["blocks"] || [], now),
+           :ok <-
+             remap_sheet_block_inheritance(
+               inserted_blocks,
+               snapshot["blocks"] || [],
+               block_id_map,
+               preserve_external_refs?
+             ),
+           :ok <- restore_table_data(Repo, inserted_blocks, snapshot["blocks"] || [], now) do
+        sheet =
+          Sheet
+          |> Repo.get!(sheet_id)
+          |> Repo.preload([:avatar_asset, :banner_asset, :blocks], force: true)
+
+        id_maps = %{
+          sheet: MaterializationHelpers.root_id_map(snapshot, sheet_id),
+          block: block_id_map
+        }
+
+        {sheet, id_maps}
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+    |> case do
+      {:ok, {sheet, id_maps}} -> {:ok, sheet, id_maps}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @impl true
   def restore_snapshot(%Sheet{} = sheet, snapshot, opts \\ []) do
     baseline_block_ids = Keyword.get(opts, :baseline_block_ids)
 
@@ -143,7 +213,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   defp restore_blocks_from_snapshot(_repo, _sheet_id, [], _baseline), do: {:ok, 0}
 
   defp restore_blocks_from_snapshot(repo, sheet_id, blocks_data, baseline_block_ids) do
-    now = TimeHelpers.now()
+    now = MaterializationHelpers.now()
     existing_source_ids = load_existing_source_ids(repo, blocks_data)
 
     # When doing selective merge, collect variable names from preserved blocks
@@ -294,6 +364,77 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
       repo.insert_all(TableRow, row_entries)
     end
+  end
+
+  defp insert_sheet_blocks(_sheet_id, [], _now), do: {:ok, [], %{}}
+
+  defp insert_sheet_blocks(sheet_id, blocks_data, now) do
+    sorted_data = Enum.sort_by(blocks_data, & &1["position"])
+
+    entries =
+      Enum.map(sorted_data, fn block_data ->
+        %{
+          sheet_id: sheet_id,
+          type: block_data["type"],
+          position: block_data["position"],
+          config: block_data["config"] || %{},
+          value: block_data["value"] || %{},
+          is_constant: block_data["is_constant"] || false,
+          variable_name: block_data["variable_name"],
+          scope: block_data["scope"] || "self",
+          inherited_from_block_id: block_data["inherited_from_block_id"],
+          detached: block_data["detached"] || false,
+          required: block_data["required"] || false
+        }
+        |> Map.merge(MaterializationHelpers.timestamps(now))
+      end)
+
+    case MaterializationHelpers.insert_all_returning(Repo, Block, entries, [:id, :position]) do
+      {:ok, inserted_blocks} ->
+        {:ok, inserted_blocks, MaterializationHelpers.build_id_map(sorted_data, inserted_blocks)}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp remap_sheet_block_inheritance(
+         inserted_blocks,
+         blocks_data,
+         block_id_map,
+         preserve_external_refs?
+       ) do
+    inserted_by_position = Map.new(inserted_blocks, &{&1.position, &1.id})
+
+    Enum.reduce_while(blocks_data, :ok, fn block_data, :ok ->
+      inherited_from = block_data["inherited_from_block_id"]
+
+      case Map.get(inserted_by_position, block_data["position"]) do
+        nil ->
+          {:halt, {:error, :missing_inserted_block}}
+
+        block_id ->
+          remapped =
+            MaterializationHelpers.remap_reference(
+              inherited_from,
+              block_id_map,
+              preserve_external_refs?
+            )
+
+          case Repo.update_all(from(b in Block, where: b.id == ^block_id),
+                 set: [inherited_from_block_id: remapped]
+               ) do
+            {1, _} -> {:cont, :ok}
+            _ -> {:halt, {:error, :inheritance_remap_failed}}
+          end
+      end
+    end)
+  end
+
+  defp resolve_sheet_asset(_asset_id, _snapshot, _project_id, false), do: nil
+
+  defp resolve_sheet_asset(asset_id, snapshot, project_id, true) do
+    AssetHashResolver.resolve_asset_fk(asset_id, snapshot, project_id)
   end
 
   defp resolve_inheritance(block_data, existing_source_ids) do

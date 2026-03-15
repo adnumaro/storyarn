@@ -88,6 +88,39 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
     end
   end
 
+  describe "instantiate_snapshot/3" do
+    test "materializes a new flow and remaps connection node ids", %{project: project, flow: flow} do
+      node_a = node_fixture(flow, %{type: "dialogue", position_x: 100.0, position_y: 100.0})
+      node_b = node_fixture(flow, %{type: "hub", position_x: 200.0, position_y: 100.0})
+      connection = connection_fixture(flow, node_a, node_b)
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+
+      assert {:ok, materialized, id_maps} =
+               FlowBuilder.instantiate_snapshot(project.id, snapshot,
+                 reset_shortcut: true,
+                 position: 11
+               )
+
+      assert materialized.id != flow.id
+      assert materialized.draft_id == nil
+      assert materialized.position == 11
+      assert materialized.shortcut == nil
+      assert id_maps.flow == %{flow.id => materialized.id}
+      assert id_maps.node[node_a.id]
+      assert id_maps.node[node_b.id]
+      assert id_maps.connection[connection.id]
+
+      node_ids = Enum.map(materialized.nodes, & &1.id)
+      cloned_connection = hd(materialized.connections)
+
+      assert cloned_connection.source_node_id in node_ids
+      assert cloned_connection.target_node_id in node_ids
+      assert cloned_connection.source_node_id != node_a.id
+      assert cloned_connection.target_node_id != node_b.id
+    end
+  end
+
   describe "scan_references/1" do
     test "extracts speaker, subflow, and audio refs from nodes" do
       snapshot = %{
