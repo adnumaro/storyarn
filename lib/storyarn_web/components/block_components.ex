@@ -64,7 +64,8 @@ defmodule StoryarnWeb.Components.BlockComponents do
     <div
       class={[
         "relative flex items-start gap-2 lg:block w-full p-2",
-        @is_selected && "ring-2 ring-primary/30 rounded-lg"
+        @is_selected && "ring-2 ring-primary/30 rounded-lg",
+        @block.type == "table" && "overflow-x-hidden"
       ]}
       phx-click="select_block"
       phx-value-id={@block.id}
@@ -102,7 +103,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
       />
 
       <%!-- Block content --%>
-      <div class="flex-1 lg:flex-none">
+      <div class={["flex-1 lg:flex-none", @block.type == "table" && "min-w-0"]}>
         <%= case @block.type do %>
           <% "text" -> %>
             <.text_block

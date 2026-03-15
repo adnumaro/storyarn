@@ -80,7 +80,11 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
 
   defp table_header(assigns) do
     ~H"""
-    <div :if={@can_manage} id={"table-header-#{@block.id}"} class="flex items-center gap-1.5 text-sm mb-1 group/header">
+    <div
+      :if={@can_manage}
+      id={"table-header-#{@block.id}"}
+      class="flex items-center gap-1.5 text-sm mb-1 group/header"
+    >
       <button
         type="button"
         class="flex items-center justify-center shrink-0 cursor-pointer transition-colors"
@@ -128,12 +132,12 @@ defmodule StoryarnWeb.Components.BlockComponents.TableBlocks do
 
   defp expanded_table(assigns) do
     ~H"""
-    <div class="group/table">
+    <div class="group/table w-full max-w-full">
       <%!-- Table grid + add column button in a flex row --%>
-      <div class="flex items-stretch gap-2">
-        <div class="flex-1 min-w-0 border border-base-content/20 rounded-lg overflow-x-auto">
+      <div class="flex w-full max-w-full min-w-0 items-stretch gap-2">
+        <div class="flex-1 min-w-0 max-w-full overflow-auto border border-base-content/20 rounded-lg">
           <table
-            class="table table-sm table-fixed w-full [&_:is(th,td)]:border-base-content/20 [&_:is(th,td)]:border-r [&_:is(th,td):last-child]:border-r-0"
+            class="table table-sm table-fixed min-w-full w-max [&_:is(th,td)]:border-base-content/20 [&_:is(th,td)]:border-r [&_:is(th,td):last-child]:border-r-0"
             id={@can_manage && "table-resize-#{@block.id}"}
             phx-hook={@can_manage && "TableColumnResize"}
             data-phx-target={@can_manage && @target}

@@ -49,14 +49,18 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
           <button
             type="button"
             data-role="trigger"
-            class="input input-bordered w-full flex items-center justify-between cursor-pointer"
+            class="input input-bordered w-full min-w-0 flex items-center gap-2 overflow-hidden text-start cursor-pointer"
           >
             <%= if @has_reference && @reference_target do %>
-              <.reference_display target={@reference_target} />
+              <div class="flex-1 min-w-0 text-start">
+                <.reference_display target={@reference_target} />
+              </div>
             <% else %>
-              <span class="text-base-content/50">{dgettext("sheets", "Select a reference...")}</span>
+              <span class="flex-1 truncate text-start text-base-content/50">
+                {dgettext("sheets", "Select a reference...")}
+              </span>
             <% end %>
-            <.icon name="chevron-down" class="size-4 text-base-content/50" />
+            <.icon name="chevron-down" class="size-4 shrink-0 text-base-content/50" />
           </button>
 
           <template data-role="popover-template">
@@ -92,7 +96,7 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
 
   defp reference_display(assigns) do
     ~H"""
-    <div class="flex items-center gap-2 min-w-0">
+    <div class="flex w-full min-w-0 items-center gap-2 overflow-hidden">
       <span class={[
         "flex-shrink-0 size-6 rounded flex items-center justify-center text-xs",
         @target.type == "sheet" && "bg-primary/20 text-primary",
@@ -100,8 +104,8 @@ defmodule StoryarnWeb.Components.BlockComponents.ReferenceBlocks do
       ]}>
         <.icon name={if @target.type == "sheet", do: "file-text", else: "git-branch"} class="size-4" />
       </span>
-      <span class="truncate font-medium">{@target.name}</span>
-      <span :if={@target.shortcut} class="text-base-content/50 text-sm">
+      <span class="min-w-0 flex-1 truncate font-medium">{@target.name}</span>
+      <span :if={@target.shortcut} class="hidden max-w-28 truncate text-base-content/50 text-sm lg:inline">
         #{@target.shortcut}
       </span>
     </div>

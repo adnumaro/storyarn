@@ -48,7 +48,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         <div
           id="sheet-undo-redo"
           phx-hook="UndoRedo"
-          class="w-full max-w-[950px] mx-auto bg-base-200 rounded-[20px] p-5 min-h-full"
+          class="w-full max-w-[950px] mx-auto bg-base-200 dark:bg-base-content/[0.07] rounded-[20px] p-5 min-h-full"
         >
           <.live_component
             module={Banner}
@@ -206,7 +206,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         <div
           id="sheet-undo-redo"
           phx-hook="UndoRedo"
-          class="w-full max-w-[950px] mx-auto bg-base-200 rounded-[20px] p-5 min-h-full"
+          class="w-full max-w-[950px] mx-auto bg-base-200 dark:bg-base-content/[0.07] rounded-[20px] p-5 min-h-full"
         >
           <%!-- Banner --%>
           <.live_component
