@@ -4,7 +4,7 @@ description: Expert Elixir/Phoenix code reviewer - idioms, patterns, performance
 tools: Read, Grep, Glob
 disallowedTools: Write, Edit, NotebookEdit
 permissionMode: bypassPermissions
-model: sonnet
+model: opus
 skills:
   - elixir-idioms
   - phoenix-contexts
