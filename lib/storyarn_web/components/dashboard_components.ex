@@ -34,36 +34,36 @@ defmodule StoryarnWeb.Components.DashboardComponents do
   def stat_card(assigns) do
     ~H"""
     <.link :if={@href} navigate={@href} class="group h-full">
-      <div class="card h-full overflow-hidden border border-base-300/80 bg-gradient-to-br from-base-200/95 via-base-200/90 to-primary/8 p-4 shadow-sm backdrop-blur-sm transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:border-base-content/15 hover:shadow-md dark:border-base-content/10 dark:from-base-content/[0.11] dark:via-base-content/[0.08] dark:to-primary/10">
-        <div class="flex items-start gap-3">
-          <div class="rounded-lg bg-primary/10 p-2">
-            <.icon name={@icon} class="size-5 text-primary" />
+      <div class="card h-full border border-base-300/80 bg-gradient-to-br from-base-200/95 via-base-200/90 to-primary/8 p-3.5 shadow-sm backdrop-blur-sm transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:border-base-content/15 hover:shadow-md sm:p-4 dark:border-base-content/10 dark:from-base-content/[0.11] dark:via-base-content/[0.08] dark:to-primary/10">
+        <div class="flex h-full flex-col gap-4">
+          <div class="flex items-center gap-2 text-sm text-base-content/60">
+            <div class="rounded-md bg-primary/10 p-1.5">
+              <.icon name={@icon} class="size-4 text-primary" />
+            </div>
+            <p class="truncate">{@label}</p>
           </div>
-          <div>
-            <p class="text-2xl font-bold">{@value}</p>
-            <p class="text-sm text-base-content/60">{@label}</p>
-          </div>
+          <p class="mt-auto text-center text-2xl font-bold leading-none">{@value}</p>
         </div>
       </div>
     </.link>
-    <div :if={!@href} class="card h-full overflow-hidden border border-base-300/80 bg-gradient-to-br from-base-200/95 via-base-200/90 to-primary/8 p-4 shadow-sm backdrop-blur-sm dark:border-base-content/10 dark:from-base-content/[0.11] dark:via-base-content/[0.08] dark:to-primary/10">
-      <div class="flex items-center gap-3">
-        <div class="rounded-lg bg-primary/10 p-2">
-          <.icon name={@icon} class="size-5 text-primary" />
-        </div>
-        <div>
-          <p class="text-2xl font-bold">{@value}</p>
-          <p class="flex items-center gap-1 text-sm text-base-content/60">
-            {@label}
+    <div :if={!@href} class="card h-full border border-base-300/80 bg-gradient-to-br from-base-200/95 via-base-200/90 to-primary/8 p-3.5 shadow-sm backdrop-blur-sm sm:p-4 dark:border-base-content/10 dark:from-base-content/[0.11] dark:via-base-content/[0.08] dark:to-primary/10">
+      <div class="flex h-full flex-col gap-4">
+        <div class="flex items-center gap-2 text-sm text-base-content/60">
+          <div class="rounded-md bg-primary/10 p-1.5">
+            <.icon name={@icon} class="size-4 text-primary" />
+          </div>
+          <p class="flex min-w-0 items-center gap-1">
+            <span class="truncate">{@label}</span>
             <span
               :if={@tooltip}
-              class="tooltip tooltip-bottom cursor-help"
+              class="tooltip tooltip-bottom inline-flex shrink-0 cursor-help"
               data-tip={@tooltip}
             >
               <.icon name="info" class="size-3.5 opacity-50" />
             </span>
           </p>
         </div>
+        <p class="mt-auto text-center text-2xl font-bold leading-none">{@value}</p>
       </div>
     </div>
     """

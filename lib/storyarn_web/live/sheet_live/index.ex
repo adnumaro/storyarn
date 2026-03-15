@@ -60,7 +60,7 @@ defmodule StoryarnWeb.SheetLive.Index do
 
         <div :if={@dashboard_stats} class="space-y-6">
           <%!-- Stats row --%>
-          <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
             <.stat_card
               icon="file-text"
               label={dgettext("sheets", "Sheets")}
@@ -78,7 +78,7 @@ defmodule StoryarnWeb.SheetLive.Index do
             />
             <.stat_card
               icon="link"
-              label={dgettext("sheets", "In Use")}
+              label={dgettext("sheets", "Vars in use")}
               value={@dashboard_stats.variables_in_use}
             />
             <.stat_card
