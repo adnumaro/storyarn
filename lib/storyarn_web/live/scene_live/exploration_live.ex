@@ -54,6 +54,14 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         <div class="player-toolbar-right">
           <button
             type="button"
+            class="player-toolbar-btn"
+            phx-click="save_session"
+            title={dgettext("scenes", "Save progress")}
+          >
+            <.icon name="save" class="size-4" />
+          </button>
+          <button
+            type="button"
             class={"player-toolbar-btn #{if @show_zones, do: "player-toolbar-btn-active"}"}
             phx-click="toggle_show_zones"
             title={dgettext("scenes", "Show zones")}
@@ -67,6 +75,47 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         "player-main relative",
         @scene.exploration_display_mode == "scaled" && "exploration-viewport"
       ]}>
+        <%!-- Session prompt overlay --%>
+        <div :if={@session_prompt} class="exploration-session-overlay">
+          <div class="session-prompt-modal">
+            <div class="session-prompt-header">
+              <h3 class="text-lg font-semibold">
+                <.icon name="bookmark" class="size-5 inline-block mr-1 opacity-60" />
+                {dgettext("scenes", "Saved Progress Found")}
+              </h3>
+            </div>
+            <div class="session-prompt-body">
+              <p class="text-sm opacity-70">
+                {dgettext("scenes", "You have a saved exploration session.")}
+              </p>
+              <div :if={@pending_session} class="session-prompt-details">
+                <div :if={@pending_session.scene} class="text-sm">
+                  <span class="opacity-50">{dgettext("scenes", "Scene:")}</span>
+                  <span class="font-medium ml-1">{@pending_session.scene.name}</span>
+                </div>
+                <div class="text-xs opacity-40">
+                  {dgettext("scenes", "Last played: %{time}",
+                    time: Calendar.strftime(@pending_session.updated_at, "%b %d, %Y at %H:%M")
+                  )}
+                </div>
+              </div>
+            </div>
+            <div class="session-prompt-actions">
+              <button
+                type="button"
+                phx-click="continue_session"
+                class="player-toolbar-btn player-toolbar-btn-primary"
+              >
+                <.icon name="play" class="size-4" />
+                {dgettext("scenes", "Continue")}
+              </button>
+              <button type="button" phx-click="new_session" class="player-toolbar-btn">
+                <.icon name="rotate-ccw" class="size-4" />
+                {dgettext("scenes", "New Game")}
+              </button>
+            </div>
+          </div>
+        </div>
         <%!-- Map layer (dimmed when flow active) --%>
         <div class={[
           "w-full",
@@ -213,6 +262,9 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
          )}
 
       scene ->
+        user_id = socket.assigns.current_scope.user.id
+        existing_session = Scenes.get_exploration_session(user_id, project.id)
+
         variables = VariableHelpers.build_variables(project.id)
         zones = evaluate_elements(scene.zones || [], variables)
         pins = evaluate_elements(scene.pins || [], variables)
@@ -236,6 +288,8 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
           |> assign(:collection_zone, nil)
           |> assign(:collection_items, [])
           |> assign(:collected_ids, MapSet.new())
+          |> assign(:session_prompt, existing_session != nil)
+          |> assign(:pending_session, existing_session)
 
         {:ok, socket, layout: false}
     end
@@ -308,6 +362,97 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   def handle_event("collection_close", _params, socket) do
     {:noreply, close_collection_modal(socket)}
+  end
+
+  # ===========================================================================
+  # Events — Session Persistence
+  # ===========================================================================
+
+  def handle_event("continue_session", _params, socket) do
+    session = socket.assigns.pending_session
+
+    # Rebuild variables with saved overrides
+    variables = VariableHelpers.build_variables(socket.assigns.project.id)
+
+    variables =
+      Enum.reduce(session.variable_values || %{}, variables, fn {ref, value}, acc ->
+        case Map.get(acc, ref) do
+          nil -> acc
+          entry -> Map.put(acc, ref, %{entry | value: value})
+        end
+      end)
+
+    variables = FormulaRuntime.recompute_formulas(variables)
+
+    # Restore collected IDs
+    collected_ids = MapSet.new(session.collected_ids || [])
+
+    socket =
+      socket
+      |> assign(:collected_ids, collected_ids)
+      |> assign(:session_prompt, false)
+      |> assign(:pending_session, nil)
+
+    # Navigate to saved scene if different from current
+    if session.scene_id && session.scene_id != socket.assigns.scene.id do
+      case Scenes.get_scene(socket.assigns.project.id, session.scene_id) do
+        nil ->
+          # Saved scene was deleted, stay on current scene with restored variables
+          socket = apply_variable_update(socket, variables)
+
+          {:noreply,
+           put_flash(
+             socket,
+             :warning,
+             dgettext("scenes", "Saved scene no longer exists. Starting on current scene.")
+           )}
+
+        _saved_scene ->
+          # Navigate to saved scene — positions will be restored via JS event
+          socket = assign(socket, :variables, variables)
+
+          path =
+            ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{session.scene_id}/explore"
+
+          {:noreply, push_navigate(socket, to: path)}
+      end
+    else
+      # Same scene — apply variables and restore positions
+      socket =
+        socket
+        |> apply_variable_update(variables)
+        |> push_event("restore_positions", %{
+          leader: get_in(session.player_positions, ["leader"]),
+          party: get_in(session.player_positions, ["party"]),
+          camera: session.camera_state
+        })
+
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("new_session", _params, socket) do
+    user_id = socket.assigns.current_scope.user.id
+    Scenes.delete_exploration_session(user_id, socket.assigns.project.id)
+
+    {:noreply,
+     socket
+     |> assign(:session_prompt, false)
+     |> assign(:pending_session, nil)}
+  end
+
+  def handle_event("save_session", _params, socket) do
+    {:noreply, push_event(socket, "request_positions", %{})}
+  end
+
+  def handle_event("report_positions", params, socket) do
+    case do_save_session(socket, params) do
+      {:ok, socket} ->
+        {:noreply, put_flash(socket, :info, dgettext("scenes", "Progress saved."))}
+
+      {:error, socket} ->
+        {:noreply, put_flash(socket, :error, dgettext("scenes", "Failed to save progress."))}
+    end
   end
 
   # ===========================================================================
@@ -902,6 +1047,43 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         "disable" -> :disable
         _ -> :hide
       end
+    end
+  end
+
+  # ===========================================================================
+  # Private — Session Persistence Helpers
+  # ===========================================================================
+
+  defp build_session_attrs(socket) do
+    variable_values =
+      socket.assigns.variables
+      |> Enum.reject(fn {_ref, v} -> v.value == v.initial_value end)
+      |> Map.new(fn {ref, v} -> {ref, v.value} end)
+
+    %{
+      scene_id: socket.assigns.scene.id,
+      variable_values: variable_values,
+      collected_ids: MapSet.to_list(socket.assigns.collected_ids)
+    }
+  end
+
+  defp do_save_session(socket, position_params) do
+    user_id = socket.assigns.current_scope.user.id
+    project_id = socket.assigns.project.id
+
+    attrs =
+      build_session_attrs(socket)
+      |> Map.merge(%{
+        player_positions: %{
+          "leader" => position_params["leader"],
+          "party" => position_params["party"]
+        },
+        camera_state: position_params["camera"]
+      })
+
+    case Scenes.save_exploration_session(user_id, project_id, attrs) do
+      {:ok, _session} -> {:ok, socket}
+      {:error, _changeset} -> {:error, socket}
     end
   end
 

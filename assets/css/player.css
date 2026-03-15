@@ -512,3 +512,58 @@
   padding: 0.75rem 1.25rem;
   border-top: 1px solid oklch(0.25 0.01 260);
 }
+
+/* ===== Exploration Session Prompt ===== */
+
+.exploration-session-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  z-index: 30;
+  background: rgba(0, 0, 0, 0.6);
+  animation: player-fade-in 0.3s ease;
+}
+
+.session-prompt-modal {
+  background: oklch(0.18 0.01 260);
+  border: 1px solid oklch(0.30 0.01 260);
+  border-radius: 0.75rem;
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  animation: player-fade-in 0.3s ease;
+}
+
+.session-prompt-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid oklch(0.25 0.01 260);
+}
+
+.session-prompt-body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.session-prompt-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: oklch(0.15 0.01 260);
+  border: 1px solid oklch(0.25 0.01 260);
+}
+
+.session-prompt-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid oklch(0.25 0.01 260);
+  justify-content: flex-end;
+}

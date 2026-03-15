@@ -93,6 +93,42 @@ export const ExplorationPlayer = {
       this.applyZoneColors();
     });
 
+    this.handleEvent("request_positions", () => {
+      this.pushEvent("report_positions", {
+        leader: this.leaderPin
+          ? { x: this.leaderCurrentX, y: this.leaderCurrentY }
+          : null,
+        party: this.partyPositions,
+        camera:
+          this.displayMode === "scaled"
+            ? { x: this.cameraX, y: this.cameraY }
+            : null,
+      });
+    });
+
+    this.handleEvent("restore_positions", ({ leader, party, camera }) => {
+      if (leader && this.leaderPin) {
+        this.leaderCurrentX = leader.x;
+        this.leaderCurrentY = leader.y;
+        this.leaderTargetX = leader.x;
+        this.leaderTargetY = leader.y;
+        this.updateLeaderDom();
+      }
+      if (party && party.length > 0) {
+        this.partyPositions = party;
+        this.partyTargets = party.map((p) => ({ ...p }));
+        for (const p of party) {
+          this.updatePartyPinDom(p.id, p.x, p.y);
+        }
+      }
+      if (camera && this.displayMode === "scaled") {
+        this.cameraX = camera.x;
+        this.cameraY = camera.y;
+        this.clampCamera();
+        this.applyCameraTransform();
+      }
+    });
+
     this.handleEvent("set_zoom", ({ zoom }) => {
       if (this.displayMode !== "scaled" || !this.wrapperEl) return;
       this.zoom = zoom;
