@@ -73,6 +73,37 @@ defmodule Storyarn.Projects.DashboardTest do
       # Total: 2 + 9 + 2 = 13
       assert stats.total_word_count == 13
     end
+
+    test "matches sheet dashboard words when the project only has sheets", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Hero", description: "Main hero"})
+
+      block_fixture(sheet, %{
+        type: "text",
+        config: %{"label" => "Biography", "placeholder" => "Add story"},
+        value: %{"content" => "Brave explorer"}
+      })
+
+      block_fixture(sheet, %{
+        type: "select",
+        config: %{
+          "label" => "Class",
+          "placeholder" => "Choose class",
+          "options" => [
+            %{"key" => "sword_master", "value" => "Sword Master"}
+          ]
+        }
+      })
+
+      table_block = table_block_fixture(sheet, %{label: "Stats"})
+      table_column_fixture(table_block, %{name: "Combat Rank"})
+      table_row_fixture(table_block, %{name: "Front Line"})
+
+      stats = Dashboard.project_stats(project.id)
+      sheet_words = Storyarn.Sheets.sheet_word_counts(project.id) |> Map.values() |> Enum.sum()
+
+      assert sheet_words == 21
+      assert stats.total_word_count == sheet_words
+    end
   end
 
   describe "count_all_nodes_by_type/1" do

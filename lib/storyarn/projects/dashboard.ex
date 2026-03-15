@@ -204,15 +204,13 @@ defmodule Storyarn.Projects.Dashboard do
     |> Repo.aggregate(:count)
   end
 
-  # Hybrid word count: SUM(word_count) for heavy content (dialogue, text blocks)
-  # + lightweight text queries for metadata (names, labels, descriptions).
-  # At 800K-word scale, content is 99%+ of total; metadata is ~300KB transfer.
+  # Reuse per-context counters where available so project totals stay aligned with
+  # the dashboards users see inside each tool.
   defp count_total_words(project_id) do
-    content_words = sum_flow_word_counts(project_id) + sum_block_word_counts(project_id)
+    content_words = sum_flow_word_counts(project_id) + sum_sheet_word_counts(project_id)
 
     metadata_texts =
       collect_flow_metadata(project_id) ++
-        collect_sheet_metadata(project_id) ++
         collect_scene_metadata(project_id) ++
         collect_screenplay_metadata(project_id)
 
@@ -236,14 +234,11 @@ defmodule Storyarn.Projects.Dashboard do
     |> Repo.one()
   end
 
-  defp sum_block_word_counts(project_id) do
-    from(b in Block,
-      join: s in Sheet,
-      on: b.sheet_id == s.id,
-      where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
-      select: coalesce(sum(b.word_count), 0)
-    )
-    |> Repo.one()
+  defp sum_sheet_word_counts(project_id) do
+    project_id
+    |> Sheets.sheet_word_counts()
+    |> Map.values()
+    |> Enum.sum()
   end
 
   # -- Flow metadata: names, descriptions, slug line texts, case labels, connection labels
@@ -297,95 +292,6 @@ defmodule Storyarn.Projects.Dashboard do
       |> Repo.all()
 
     flow_texts ++ slug_texts ++ case_labels ++ conn_labels
-  end
-
-  # -- Sheet metadata: names, descriptions, block labels/placeholders/options
-  # (block text/rich_text content is in word_count — NOT loaded here)
-
-  defp collect_sheet_metadata(project_id) do
-    sheet_texts = query_sheet_texts(project_id)
-    block_labels = query_block_labels(project_id)
-    option_values = query_block_option_values(project_id)
-    table_col_names = query_table_column_names(project_id)
-    table_row_names = query_table_row_names(project_id)
-    gallery_texts = query_gallery_texts(project_id)
-
-    sheet_texts ++
-      block_labels ++
-      option_values ++
-      table_col_names ++
-      table_row_names ++
-      gallery_texts
-  end
-
-  defp query_sheet_texts(project_id) do
-    from(s in Sheet,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at),
-      select: [s.name, s.description]
-    )
-    |> Repo.all()
-  end
-
-  defp query_block_labels(project_id) do
-    from(b in Block,
-      join: s in Sheet,
-      on: b.sheet_id == s.id,
-      where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
-      select: [fragment("?->>'label'", b.config), fragment("?->>'placeholder'", b.config)]
-    )
-    |> Repo.all()
-  end
-
-  defp query_block_option_values(project_id) do
-    from(b in Block,
-      join: s in Sheet,
-      on: b.sheet_id == s.id,
-      where:
-        s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at) and
-          b.type in ["select", "multi_select"],
-      select: fragment("?->'options'", b.config)
-    )
-    |> Repo.all()
-    |> Enum.flat_map(fn
-      opts when is_list(opts) -> Enum.map(opts, &Map.get(&1, "value"))
-      _ -> []
-    end)
-  end
-
-  defp query_table_column_names(project_id) do
-    from(tc in "table_columns",
-      join: b in "blocks",
-      on: tc.block_id == b.id,
-      join: s in "sheets",
-      on: b.sheet_id == s.id,
-      where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
-      select: tc.name
-    )
-    |> Repo.all()
-  end
-
-  defp query_table_row_names(project_id) do
-    from(tr in "table_rows",
-      join: b in "blocks",
-      on: tr.block_id == b.id,
-      join: s in "sheets",
-      on: b.sheet_id == s.id,
-      where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
-      select: tr.name
-    )
-    |> Repo.all()
-  end
-
-  defp query_gallery_texts(project_id) do
-    from(gi in "block_gallery_images",
-      join: b in "blocks",
-      on: gi.block_id == b.id,
-      join: s in "sheets",
-      on: b.sheet_id == s.id,
-      where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
-      select: [gi.label, gi.description]
-    )
-    |> Repo.all()
   end
 
   # -- Scene metadata: names, descriptions, layer/zone/pin/annotation/connection labels

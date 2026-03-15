@@ -2,17 +2,18 @@ defmodule Storyarn.Sheets.SheetStatsTest do
   use Storyarn.DataCase, async: true
 
   import Storyarn.AccountsFixtures
+  import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Repo
-  alias Storyarn.Sheets.SheetStats
+  alias Storyarn.Sheets.{BlockGalleryImage, SheetStats}
 
   setup do
     user = user_fixture()
     project = project_fixture(user) |> Repo.preload(:workspace)
-    %{project: project}
+    %{project: project, user: user}
   end
 
   describe "sheet_stats_for_project/1" do
@@ -106,23 +107,53 @@ defmodule Storyarn.Sheets.SheetStatsTest do
   end
 
   describe "sheet_word_counts/1" do
-    test "counts words in text/rich_text blocks plus sheet name", %{project: project} do
-      sheet = sheet_fixture(project, %{name: "Words"})
+    test "counts all sheet texts included in the project dashboard", %{
+      project: project,
+      user: user
+    } do
+      sheet = sheet_fixture(project, %{name: "Hero", description: "Main hero"})
 
       block_fixture(sheet, %{
         type: "text",
-        value: %{"content" => "hello world foo"}
+        config: %{"label" => "Biography", "placeholder" => "Add story"},
+        value: %{"content" => "Brave explorer"}
       })
 
       block_fixture(sheet, %{
-        type: "rich_text",
-        value: %{"content" => "bar baz"}
+        type: "select",
+        config: %{
+          "label" => "Class",
+          "placeholder" => "Choose class",
+          "options" => [
+            %{"key" => "sword_master", "value" => "Sword Master"},
+            %{"key" => "moon_mage", "value" => "Moon Mage"}
+          ]
+        }
+      })
+
+      table_block = table_block_fixture(sheet, %{label: "Stats"})
+      table_column_fixture(table_block, %{name: "Combat Rank"})
+      table_row_fixture(table_block, %{name: "Front Line"})
+
+      gallery_block =
+        block_fixture(sheet, %{
+          type: "gallery",
+          config: %{"label" => "Moodboard", "placeholder" => ""}
+        })
+
+      asset = image_asset_fixture(project, user)
+
+      Repo.insert!(%BlockGalleryImage{
+        block_id: gallery_block.id,
+        asset_id: asset.id,
+        label: "Moonlit Dock",
+        description: "Quiet blue harbor",
+        position: 0
       })
 
       counts = SheetStats.sheet_word_counts(project.id)
 
-      # 1 (sheet name "Words") + 3 (text) + 2 (rich_text) = 6
-      assert counts[sheet.id] == 6
+      assert counts[sheet.id] == 29
     end
 
     test "strips HTML before counting", %{project: project} do
@@ -130,13 +161,14 @@ defmodule Storyarn.Sheets.SheetStatsTest do
 
       block_fixture(sheet, %{
         type: "rich_text",
+        config: %{"label" => "Body", "placeholder" => ""},
         value: %{"content" => "<p>Hello <strong>world</strong></p>"}
       })
 
       counts = SheetStats.sheet_word_counts(project.id)
 
-      # 1 (sheet name "Test") + 2 (rich_text) = 3
-      assert counts[sheet.id] == 3
+      # 1 (sheet name "Test") + 1 (label "Body") + 2 (rich_text) = 4
+      assert counts[sheet.id] == 4
     end
 
     test "counts sheet name words even without blocks", %{project: project} do
@@ -148,9 +180,9 @@ defmodule Storyarn.Sheets.SheetStatsTest do
       assert counts[sheet.id] == 2
     end
 
-    test "counts table row names from non-inherited table blocks", %{project: project} do
+    test "counts table row and column names from table blocks", %{project: project} do
       sheet = sheet_fixture(project, %{name: "Main"})
-      table_block = block_fixture(sheet, %{type: "table"})
+      table_block = table_block_fixture(sheet, %{label: "Table"})
 
       alias Storyarn.Sheets.TableRow
 
@@ -165,20 +197,21 @@ defmodule Storyarn.Sheets.SheetStatsTest do
 
       counts = SheetStats.sheet_word_counts(project.id)
 
-      # 1 (sheet name "Main") + 2 (auto-created "Row 1") + 6 (manual rows) = 9
-      assert counts[sheet.id] == 9
+      # 1 (sheet name "Main") + 1 (label "Table") + 1 (auto "Value") + 2 (auto "Row 1") + 6 manual rows = 11
+      assert counts[sheet.id] == 11
     end
 
-    test "excludes table row names from inherited table blocks", %{project: project} do
+    test "includes table row names from inherited table blocks", %{project: project} do
       parent_sheet = sheet_fixture(project, %{name: "Parent"})
       child_sheet = sheet_fixture(project, %{name: "Child"})
 
-      parent_block = block_fixture(parent_sheet, %{type: "table"})
+      parent_block = table_block_fixture(parent_sheet, %{label: "Table"})
 
       inherited_block =
         block_fixture(child_sheet, %{
           type: "table",
-          inherited_from_block_id: parent_block.id
+          inherited_from_block_id: parent_block.id,
+          config: %{"label" => "Table", "collapsed" => false}
         })
 
       alias Storyarn.Sheets.TableRow
@@ -194,10 +227,10 @@ defmodule Storyarn.Sheets.SheetStatsTest do
 
       counts = SheetStats.sheet_word_counts(project.id)
 
-      # Parent: 1 (name) + 2 (auto "Row 1") + 1 (row "STR") = 4
-      assert counts[parent_sheet.id] == 4
-      # Child: 1 (name) + 0 (inherited block rows excluded) = 1
-      assert counts[child_sheet.id] == 1
+      # Parent: 1 (name) + 1 (label "Table") + 1 (auto "Value") + 2 (auto "Row 1") + 1 ("STR") = 6
+      assert counts[parent_sheet.id] == 6
+      # Child: 1 (name) + 1 (label "Table") + 1 (auto "Value") + 2 (auto "Row 1") + 1 ("DEX") = 6
+      assert counts[child_sheet.id] == 6
     end
   end
 
