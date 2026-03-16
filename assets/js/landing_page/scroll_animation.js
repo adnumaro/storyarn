@@ -36,6 +36,8 @@ function initPortalClick() {
   const topbar = document.querySelector(".landing-shell > header");
   const landingPage = document.querySelector(".landing-page");
 
+  gsap.set(heroContent, { yPercent: -10 });
+
   function portalFrameRect() {
     return portalFrame.getBoundingClientRect();
   }
@@ -56,6 +58,7 @@ function initPortalClick() {
     // Fade out all surrounding UI
     gsap.to(heroContent, {
       opacity: 0,
+      yPercent: -10,
       y: -30,
       duration: 0.5,
       ease: "power2.in",
@@ -91,6 +94,7 @@ function initPortalClick() {
 
     // Animate video position from the portal opening to centered fullscreen.
     const videoRect = portalFrameRect();
+    const startRadius = window.getComputedStyle(portalFrame).borderRadius;
 
     // Calculate target: centered in viewport, 92vw wide, 16:9
     const targetW = Math.min(window.innerWidth * 0.92, 1400);
@@ -109,6 +113,7 @@ function initPortalClick() {
     video.style.transform = "none";
     video.style.zIndex = "99999";
     video.style.pointerEvents = "none";
+    video.style.borderRadius = startRadius;
 
     // Animate video position, size, and mask gradient
     const maskProxy = { solid: 25, fade: 46 };
@@ -267,6 +272,7 @@ function initPortalClick() {
     // Fade all UI back in
     gsap.to(heroContent, {
       opacity: 1,
+      yPercent: -10,
       y: 0,
       duration: 0.5,
       ease: "power2.out",

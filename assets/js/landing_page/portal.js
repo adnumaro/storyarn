@@ -13,6 +13,7 @@ const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent) || window.inne
 
 function initPortal() {
   const canvas = document.getElementById("portal-canvas");
+  const portalFrame = document.getElementById("portal-video-frame");
   if (!canvas || canvas.dataset.initialized) return;
   canvas.dataset.initialized = "true";
 
@@ -44,6 +45,8 @@ function initPortal() {
     uIntensity: { value: 1.0 },
     uScale: { value: 1.0 },
     uResolution: { value: new THREE.Vector2() },
+    uPortalCenter: { value: new THREE.Vector2() },
+    uPortalMaxWidth: { value: 0 },
   };
 
   const material = new THREE.ShaderMaterial({
@@ -60,6 +63,7 @@ function initPortal() {
 
   // Resize
   const stage = canvas.parentElement;
+  const bufferSize = new THREE.Vector2();
 
   function resize() {
     if (!stage) return;
@@ -73,7 +77,37 @@ function initPortal() {
     }
 
     renderer.setSize(width, height, false);
-    uniforms.uResolution.value.set(width, height);
+    renderer.getDrawingBufferSize(bufferSize);
+    uniforms.uResolution.value.copy(bufferSize);
+
+    const scaleX = bufferSize.x / width;
+    const scaleY = bufferSize.y / height;
+    const frameRect = portalFrame?.getBoundingClientRect();
+
+    stage?.style.setProperty("--lp-portal-center-x", `${width * 0.5}px`);
+    stage?.style.setProperty("--lp-portal-center-y", `${height * 0.72}px`);
+
+    if (frameRect) {
+      const minPortalWidth = window.innerWidth < 640 ? 1240 : 1020;
+      const localCenterX = frameRect.left - rect.left + frameRect.width * 0.5;
+      const localCenterY = frameRect.top - rect.top + frameRect.height * 0.5;
+      const portalYOffset = Math.min(frameRect.height * 0.28, window.innerWidth < 640 ? 112 : 156);
+      const maxPortalWidth = Math.min(Math.max(frameRect.width * 2.05 + 900, minPortalWidth), 2220);
+      const portalCenterY = localCenterY + portalYOffset;
+
+      stage?.style.setProperty("--lp-portal-center-x", `${localCenterX}px`);
+      stage?.style.setProperty("--lp-portal-center-y", `${portalCenterY}px`);
+
+      uniforms.uPortalCenter.value.set(
+        localCenterX * scaleX,
+        (height - localCenterY - portalYOffset) * scaleY,
+      );
+      uniforms.uPortalMaxWidth.value = maxPortalWidth * scaleX;
+      return;
+    }
+
+    uniforms.uPortalCenter.value.set(bufferSize.x * 0.5, bufferSize.y * 0.5);
+    uniforms.uPortalMaxWidth.value = Math.min(width * 0.92, 1360) * scaleX;
   }
 
   // Animation loop
@@ -108,6 +142,9 @@ function initPortal() {
   if (stage && "ResizeObserver" in window) {
     resizeObserver = new ResizeObserver(() => resize());
     resizeObserver.observe(stage);
+    if (portalFrame) {
+      resizeObserver.observe(portalFrame);
+    }
   }
 
   // Cleanup

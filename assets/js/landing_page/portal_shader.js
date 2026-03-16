@@ -19,6 +19,8 @@ export const fragmentShader = /* glsl */ `
   uniform float uIntensity;
   uniform float uScale;
   uniform vec2 uResolution;
+  uniform vec2 uPortalCenter;
+  uniform float uPortalMaxWidth;
 
   varying vec2 vUv;
 
@@ -69,16 +71,17 @@ export const fragmentShader = /* glsl */ `
   }
 
   void main() {
-    float aspect = uResolution.x / uResolution.y;
-    vec2 uv = (vUv - 0.5) * 2.0;
-    // Offset ring center: shift down, squash vertically, scale wider
-    uv.y += 0.85;
-    uv.x *= pow(aspect, 0.35);
-    uv.y *= 1.4;
-    uv *= 0.7;
+    float portalHalfWidth = max(uPortalMaxWidth * 0.5, 1.0);
+    vec2 uv = (gl_FragCoord.xy - uPortalCenter) / portalHalfWidth;
+    uv.y *= 1.08;
 
     // Apply scroll zoom
     uv /= uScale;
+
+    // Keep the portal visually capped even when the canvas spans the full hero.
+    float horizontalMask = 1.0 - smoothstep(0.88, 1.14, abs(uv.x));
+    float verticalMask = 1.0 - smoothstep(1.02, 1.38, abs(uv.y));
+    float portalMask = horizontalMask * verticalMask;
 
     float dist = length(uv);
     float angle = atan(uv.x, uv.y);
@@ -147,6 +150,7 @@ export const fragmentShader = /* glsl */ `
     // Combine all layers
     float alpha = energy + innerGlow + outerHalo + farGlow + flames + inwardWisps + sparkle;
     alpha *= uIntensity;
+    alpha *= portalMask;
     alpha = clamp(alpha, 0.0, 1.0);
 
     // Premultiply for additive blending on dark background

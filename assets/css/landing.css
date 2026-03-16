@@ -363,8 +363,8 @@ html:has(.landing-shell) {
 /* ===== Hero section ===== */
 #hero-section {
   background:
-    radial-gradient(circle at 50% 18%, rgba(34, 211, 238, 0.14), transparent 28%),
-    linear-gradient(180deg, #071019 0%, #0a0d13 46%, #07090d 100%);
+    radial-gradient(circle at 50% 18%, #15cde870, transparent 28%),
+    linear-gradient(180deg, #15cde82e 0%, #15cde869 46%, #15cde8a6 100%);
   overflow: hidden;
 }
 
@@ -387,9 +387,25 @@ html:has(.landing-shell) {
   pointer-events: none;
 }
 
+.lp-portal-wrap::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at var(--lp-portal-center-x, 50%) var(--lp-portal-center-y, 72%),
+    rgba(34, 211, 238, 0.38) 0%,
+    rgba(17, 132, 164, 0.24) 24%,
+    rgba(7, 13, 19, 0.9) 62%,
+    rgba(4, 8, 14, 1) 100%
+  );
+}
+
 .lp-portal-backdrop {
   position: absolute;
   inset: -8% -12% -16%;
+  z-index: 0;
   background:
     radial-gradient(circle at 50% 72%, rgba(88, 232, 255, 0.14), transparent 14%),
     radial-gradient(circle at 50% 84%, rgba(16, 104, 137, 0.34), transparent 34%),
@@ -472,7 +488,7 @@ html:has(.landing-shell) {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  border-radius: 34px;
+  border-radius: 30%;
   isolation: isolate;
   background: linear-gradient(180deg, rgba(8, 14, 20, 0.06), rgba(8, 14, 20, 0.46));
   box-shadow:
@@ -624,7 +640,7 @@ html:has(.landing-shell) {
   }
 
   .lp-portal-video-frame {
-    border-radius: 24px;
+    border-radius: 30%;
   }
 
   .lp-portal-fallback::after {
