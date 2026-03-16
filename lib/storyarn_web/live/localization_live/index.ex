@@ -5,8 +5,12 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   alias StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
+  import StoryarnWeb.Live.Shared.TreePanelHandlers
   alias Storyarn.Localization
   alias Storyarn.Projects
+  alias StoryarnWeb.Components.LanguagePicker
+  alias StoryarnWeb.Components.LocaleMark
+  alias StoryarnWeb.Components.PopoverSelect
 
   import StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers
   alias StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers
@@ -22,9 +26,22 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       project={@project}
       workspace={@workspace}
       active_tool={:localization}
-      has_tree={false}
+      on_dashboard={true}
+      has_tree={true}
+      tree_panel_open={@tree_panel_open}
+      tree_panel_pinned={@tree_panel_pinned}
+      show_pin={false}
       can_edit={@can_edit}
     >
+      <:tree_content>
+        <.localization_sidebar
+          source_language={@source_language}
+          languages={@languages}
+          target_languages={@target_languages}
+          selected_locale={@selected_locale}
+          can_edit={@can_edit}
+        />
+      </:tree_content>
       <:top_bar_extra_right :if={@can_edit && @target_languages != []}>
         <div class="flex items-center gap-1 px-1.5 py-1 surface-panel">
           <.link
@@ -72,181 +89,100 @@ defmodule StoryarnWeb.LocalizationLive.Index do
           </button>
         </div>
       </:top_bar_extra_right>
-      <div class="max-w-6xl mx-auto mt-4">
-        <%!-- Language management bar --%>
-        <div>
-          <div class="flex flex-wrap items-center gap-2 mb-4">
-            <%!-- Source language badge --%>
-            <div :if={@source_language} class="badge badge-primary gap-1.5 py-3">
-              <.icon name="flag" class="size-3" />
-              {Localization.language_name(@source_language.locale_code)}
-              <span class="opacity-60">({@source_language.locale_code})</span>
-            </div>
-
-            <%!-- Target language chips --%>
-            <div
-              :for={lang <- @target_languages}
-              class="badge badge-outline gap-1 py-3"
-            >
-              {lang.name}
-              <span class="opacity-60">({lang.locale_code})</span>
-              <button
-                :if={@can_edit}
-                phx-click={show_modal("remove-language-#{lang.id}")}
-                class="ml-0.5 hover:text-error cursor-pointer"
-                title={dgettext("localization", "Remove language")}
-              >
-                <.icon name="x" class="size-3" />
-              </button>
-            </div>
-
-            <%!-- Add Language dropdown --%>
-            <div :if={@can_edit} class="dropdown">
-              <div tabindex="0" role="button" class="btn btn-ghost btn-xs gap-1">
-                <.icon name="plus" class="size-3.5" />
-                {dgettext("localization", "Add Language")}
-              </div>
-              <div
-                tabindex="0"
-                class="dropdown-content bg-base-200 rounded-box z-10 w-64 p-3 shadow-sm"
-              >
-                <form phx-change="add_target_language">
-                  <select name="locale_code" class="select select-bordered select-sm w-full">
-                    <option value="">{dgettext("localization", "Select language...")}</option>
-                    <option
-                      :for={{label, code} <- language_picker_options(assigns)}
-                      value={code}
-                    >
-                      {label}
-                    </option>
-                  </select>
-                </form>
-              </div>
-            </div>
-
-            <%!-- Sync button --%>
-            <button
-              :if={@can_edit && @target_languages != []}
-              phx-click="sync_texts"
-              phx-disable-with={dgettext("localization", "Syncing...")}
-              class="btn btn-ghost btn-xs gap-1"
-              title={
-                dgettext(
-                  "localization",
-                  "Re-extract all translatable content from flows, sheets, and blocks"
-                )
-              }
-            >
-              <.icon name="refresh-cw" class="size-3.5" />
-              {dgettext("localization", "Sync")}
-            </button>
-          </div>
-
-          <%!-- Remove language confirmation modals --%>
-          <.confirm_modal
-            :for={lang <- @target_languages}
-            id={"remove-language-#{lang.id}"}
-            title={dgettext("localization", "Remove language?")}
-            message={
-              dgettext(
-                "localization",
-                "This will remove %{name} (%{code}) and all its translations from this project.",
-                name: lang.name,
-                code: lang.locale_code
-              )
-            }
-            confirm_text={dgettext("localization", "Remove")}
-            confirm_variant="error"
-            icon="trash-2"
-            on_confirm={JS.push("remove_language", value: %{id: lang.id})}
-          />
-        </div>
+      <div class="mx-auto mt-4 max-w-6xl space-y-6">
+        <.header>
+          {dgettext("localization", "Localization")}
+          <:subtitle>
+            {dgettext(
+              "localization",
+              "Review source strings, filter translations, and track progress for every target language."
+            )}
+          </:subtitle>
+        </.header>
 
         <%!-- No target languages yet --%>
-        <div :if={@target_languages == []} class="mt-4">
+        <div :if={@target_languages == []}>
           <.empty_state icon="globe">
-            {dgettext("localization", "Add a target language above to start translating.")}
+            {dgettext(
+              "localization",
+              "Use the sidebar to add a target language and start translating."
+            )}
           </.empty_state>
         </div>
 
         <%!-- Filters + Progress (only when target languages exist) --%>
-        <div :if={@target_languages != []} class="mt-2">
-          <%!-- Language selector + Progress bar --%>
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-3">
-              <select
-                name="locale"
-                class="select select-bordered select-sm"
-                phx-change="change_locale"
-              >
-                <option
-                  :for={lang <- @target_languages}
-                  value={lang.locale_code}
-                  selected={lang.locale_code == @selected_locale}
-                >
-                  {lang.name} ({lang.locale_code})
-                </option>
-              </select>
-            </div>
-
-            <div :if={@progress} class="flex items-center gap-3">
-              <progress
-                class="progress progress-primary w-40"
-                value={@progress.final}
-                max={max(@progress.total, 1)}
-              />
-              <span class="text-sm opacity-70">
-                {dgettext("localization", "%{done} / %{total} final",
-                  done: @progress.final,
-                  total: @progress.total
-                )}
-              </span>
+        <div :if={@target_languages != []} class="space-y-4">
+          <div
+            :if={@progress}
+            id="localization-progress-summary"
+            class="rounded-[1.5rem] border border-base-300 bg-base-200/60 p-4"
+          >
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div class="space-y-1">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-base-content/50">
+                  {dgettext("localization", "Progress")}
+                </p>
+                <h2 class="text-lg font-semibold">
+                  {dgettext("localization", "Final translations")}
+                </h2>
+                <p class="text-sm text-base-content/60">
+                  {dgettext(
+                    "localization",
+                    "Measure the strings that are ready to ship in the active language."
+                  )}
+                </p>
+              </div>
+              <div class="min-w-0 lg:w-72 space-y-2">
+                <progress
+                  class="progress progress-primary w-full"
+                  value={@progress.final}
+                  max={max(@progress.total, 1)}
+                />
+                <div class="flex items-center justify-between text-sm text-base-content/70">
+                  <span>
+                    {dgettext("localization", "%{done} / %{total} final",
+                      done: @progress.final,
+                      total: @progress.total
+                    )}
+                  </span>
+                  <span class="tabular-nums">
+                    {if @progress.total > 0,
+                      do: round(@progress.final * 100 / @progress.total),
+                      else: 0}%
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
           <%!-- Filters row --%>
-          <div class="flex items-center gap-3 mb-4">
-            <%!-- Status filter --%>
-            <select
-              name="status"
-              class="select select-bordered select-sm"
-              phx-change="change_filter"
-            >
-              <option value="" selected={@filter_status == nil}>
-                {dgettext("localization", "All statuses")}
-              </option>
-              <option
-                :for={s <- ~w(pending draft in_progress review final)}
-                value={s}
-                selected={@filter_status == s}
-              >
-                {status_label(s)}
-              </option>
-            </select>
+          <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <PopoverSelect.popover_select
+              id="localization-status-filter"
+              event="change_filter"
+              param_key="status"
+              options={status_filter_options()}
+              selected_value={@filter_status}
+              selected_label={selected_status_filter_label(@filter_status)}
+              placeholder={dgettext("localization", "All statuses")}
+            />
 
-            <%!-- Source type filter --%>
-            <select
-              name="source_type"
-              class="select select-bordered select-sm"
-              phx-change="change_filter"
-            >
-              <option value="" selected={@filter_source_type == nil}>
-                {dgettext("localization", "All types")}
-              </option>
-              <option
-                :for={t <- ~w(flow_node block sheet flow)}
-                value={t}
-                selected={@filter_source_type == t}
-              >
-                {source_type_label(t)}
-              </option>
-            </select>
+            <PopoverSelect.popover_select
+              id="localization-source-type-filter"
+              event="change_filter"
+              param_key="source_type"
+              options={source_type_filter_options()}
+              selected_value={@filter_source_type}
+              selected_label={selected_source_type_filter_label(@filter_source_type)}
+              placeholder={dgettext("localization", "All types")}
+            />
 
             <%!-- Search --%>
-            <form phx-change="search" class="flex-1">
+            <form id="localization-search-form" phx-change="search" class="flex-1">
               <label class="input input-sm input-bordered flex items-center gap-2">
                 <.icon name="search" class="size-4 opacity-50" />
                 <input
+                  id="localization-search-input"
                   type="text"
                   name="search"
                   value={@search}
@@ -362,6 +298,25 @@ defmodule StoryarnWeb.LocalizationLive.Index do
             </div>
           </div>
         </div>
+
+        <%!-- Remove language confirmation modals --%>
+        <.confirm_modal
+          :for={lang <- @target_languages}
+          id={"remove-language-#{lang.id}"}
+          title={dgettext("localization", "Remove language?")}
+          message={
+            dgettext(
+              "localization",
+              "This will remove %{name} (%{code}) and all its translations from this project.",
+              name: lang.name,
+              code: lang.locale_code
+            )
+          }
+          confirm_text={dgettext("localization", "Remove")}
+          confirm_variant="error"
+          icon="trash-2"
+          on_confirm={JS.push("remove_language", value: %{id: lang.id})}
+        />
       </div>
     </Layouts.focus>
     """
@@ -374,6 +329,167 @@ defmodule StoryarnWeb.LocalizationLive.Index do
     <span class={["badge badge-sm", status_class(@status)]}>
       {status_label(@status)}
     </span>
+    """
+  end
+
+  attr :source_language, :map, default: nil
+  attr :languages, :list, default: []
+  attr :target_languages, :list, default: []
+  attr :selected_locale, :string, default: nil
+  attr :can_edit, :boolean, default: false
+
+  defp localization_sidebar(assigns) do
+    ~H"""
+    <div id="localization-sidebar" class="space-y-6">
+      <section :if={@source_language} id="localization-sidebar-source-language" class="space-y-2">
+        <p class="px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-base-content/50">
+          {dgettext("localization", "Source language")}
+        </p>
+        <div
+          id="localization-source-language-option"
+          class="flex items-center gap-2 rounded-[1rem] border border-primary/30 bg-primary/10 p-2"
+        >
+          <div class="flex min-w-0 flex-1 items-center gap-3">
+            <LocaleMark.locale_mark locale_code={@source_language.locale_code} />
+            <span class="min-w-0">
+              <span class="block truncate text-sm font-medium text-base-content">
+                {@source_language.name}
+              </span>
+            </span>
+          </div>
+        </div>
+        <LanguagePicker.language_picker
+          :if={@can_edit}
+          id="localization-source-language-picker"
+          event="change_source_language"
+          options={LanguagePicker.source_language_options(@source_language)}
+          placeholder={dgettext("localization", "Change source language...")}
+          search_placeholder={dgettext("localization", "Search languages...")}
+          empty_label={dgettext("localization", "No matches")}
+          button_icon="languages"
+        />
+      </section>
+
+      <section id="localization-sidebar-language-selector" class="space-y-2">
+        <div class="flex items-center justify-between px-1">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-base-content/50">
+            {dgettext("localization", "Target languages")}
+          </p>
+          <span :if={@target_languages != []} class="badge badge-ghost badge-xs">
+            {length(@target_languages)}
+          </span>
+        </div>
+
+        <div
+          :if={@target_languages == []}
+          class="rounded-[1.25rem] border border-dashed border-base-300 bg-base-200/40 p-3 text-sm text-base-content/60"
+        >
+          {dgettext("localization", "No target languages yet.")}
+        </div>
+
+        <div :if={@target_languages != []} class="space-y-2">
+          <div
+            :for={lang <- @target_languages}
+            id={"localization-language-option-#{lang.id}"}
+            class={[
+              "flex items-center gap-2 rounded-[1rem] border p-2 transition-colors",
+              if(lang.locale_code == @selected_locale,
+                do: "border-primary/30 bg-primary/10",
+                else: "border-base-300 bg-base-100 hover:bg-base-200/70"
+              )
+            ]}
+          >
+            <button
+              id={"select-locale-#{lang.locale_code}"}
+              type="button"
+              phx-click="change_locale"
+              phx-value-locale={lang.locale_code}
+              class="flex min-w-0 flex-1 items-center gap-3 text-left"
+            >
+              <LocaleMark.locale_mark
+                locale_code={lang.locale_code}
+                class={if(lang.locale_code == @selected_locale, do: nil, else: "opacity-90")}
+              />
+              <span class="min-w-0">
+                <span class="block truncate text-sm font-medium text-base-content">
+                  {lang.name}
+                </span>
+              </span>
+            </button>
+
+            <button
+              :if={@can_edit}
+              type="button"
+              phx-click={show_modal("remove-language-#{lang.id}")}
+              class="btn btn-ghost btn-xs btn-square text-base-content/50 hover:text-error"
+              title={dgettext("localization", "Remove language")}
+            >
+              <.icon name="x" class="size-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <.add_language_picker
+          :if={@can_edit}
+          languages={@languages}
+          source_language={@source_language}
+        />
+
+        <button
+          :if={@can_edit && @target_languages != []}
+          id="localization-sync-button"
+          type="button"
+          phx-click="sync_texts"
+          phx-disable-with={dgettext("localization", "Syncing...")}
+          class="btn btn-ghost btn-sm w-full justify-start gap-2"
+          title={
+            dgettext(
+              "localization",
+              "Re-extract all translatable content from flows, sheets, and blocks"
+            )
+          }
+        >
+          <.icon name="refresh-cw" class="size-4" />
+          {dgettext("localization", "Sync")}
+        </button>
+      </section>
+    </div>
+    """
+  end
+
+  attr :languages, :list, default: []
+  attr :source_language, :map, default: nil
+
+  defp add_language_picker(assigns) do
+    picker_options = language_picker_options(assigns)
+
+    assigns =
+      assigns
+      |> assign(:picker_options, picker_options)
+      |> assign(:picker_disabled, picker_options == [])
+
+    ~H"""
+    <div>
+      <div :if={!@picker_disabled}>
+        <LanguagePicker.language_picker
+          id="localization-language-picker"
+          event="add_target_language"
+          options={@picker_options}
+          placeholder={dgettext("localization", "Add language")}
+          search_placeholder={dgettext("localization", "Search languages...")}
+          empty_label={dgettext("localization", "No matches")}
+          button_icon="plus"
+        />
+      </div>
+
+      <div
+        :if={@picker_disabled}
+        id="localization-language-picker"
+        class="rounded-[1rem] border border-dashed border-base-300 bg-base-200/40 px-3 py-2 text-sm text-base-content/60"
+      >
+        {dgettext("localization", "All available languages are already added.")}
+      </div>
+    </div>
     """
   end
 
@@ -408,6 +524,8 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
         socket =
           socket
+          |> assign(focus_layout_defaults())
+          |> assign(:tree_panel_open, true)
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
           |> assign(:membership, membership)
@@ -435,6 +553,10 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   end
 
   @impl true
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: handle_tree_panel_event(event, params, socket)
+
+  @impl true
   def handle_event("change_locale", %{"locale" => locale}, socket) do
     {:noreply,
      socket
@@ -444,13 +566,10 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   end
 
   def handle_event("change_filter", params, socket) do
-    status = if params["status"] == "", do: nil, else: params["status"]
-    source_type = if params["source_type"] == "", do: nil, else: params["source_type"]
-
     {:noreply,
      socket
-     |> assign(:filter_status, status || socket.assigns.filter_status)
-     |> assign(:filter_source_type, source_type || socket.assigns.filter_source_type)
+     |> maybe_assign_filter(:filter_status, params, "status")
+     |> maybe_assign_filter(:filter_source_type, params, "source_type")
      |> assign(:page, 1)
      |> load_texts()}
   end
@@ -472,6 +591,15 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
   def handle_event("add_target_language", %{"locale_code" => ""}, socket),
     do: {:noreply, socket}
+
+  def handle_event("change_source_language", %{"locale_code" => ""}, socket),
+    do: {:noreply, socket}
+
+  def handle_event("change_source_language", params, socket) do
+    with_auth(:edit_content, socket, fn ->
+      LocalizationHandlers.handle_change_source_language(params, socket)
+    end)
+  end
 
   def handle_event("add_target_language", params, socket) do
     with_auth(:edit_content, socket, fn ->
@@ -517,4 +645,35 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       dgettext("localization", "You don't have permission to perform this action.")
     )
   end
+
+  defp status_filter_options do
+    [
+      {dgettext("localization", "All statuses"), ""}
+      | Enum.map(~w(pending draft in_progress review final), &{status_label(&1), &1})
+    ]
+  end
+
+  defp source_type_filter_options do
+    [
+      {dgettext("localization", "All types"), ""}
+      | Enum.map(~w(flow_node block sheet flow), &{source_type_label(&1), &1})
+    ]
+  end
+
+  defp selected_status_filter_label(nil), do: dgettext("localization", "All statuses")
+  defp selected_status_filter_label(status), do: status_label(status)
+
+  defp selected_source_type_filter_label(nil), do: dgettext("localization", "All types")
+  defp selected_source_type_filter_label(source_type), do: source_type_label(source_type)
+
+  defp maybe_assign_filter(socket, assign_key, params, param_key) do
+    if Map.has_key?(params, param_key) do
+      assign(socket, assign_key, blank_to_nil(params[param_key]))
+    else
+      socket
+    end
+  end
+
+  defp blank_to_nil(""), do: nil
+  defp blank_to_nil(value), do: value
 end

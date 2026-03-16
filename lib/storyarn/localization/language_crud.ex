@@ -95,6 +95,31 @@ defmodule Storyarn.Localization.LanguageCrud do
   end
 
   @doc """
+  Changes the project's source language to `locale_code`.
+
+  If the locale already exists as a target language, it is promoted to source.
+  Otherwise a new source language row is created and the previous source row
+  is removed, so the project keeps a single configured source language.
+  """
+  def change_source_language(%Project{} = project, locale_code) when is_binary(locale_code) do
+    Repo.transaction(fn ->
+      current_source = current_source_or_rollback(project.id)
+
+      if current_source.locale_code == locale_code do
+        current_source
+      else
+        project.id
+        |> find_or_create_source_candidate(locale_code)
+        |> promote_source_language(project.id, current_source)
+      end
+    end)
+    |> case do
+      {:ok, %ProjectLanguage{} = language} -> {:ok, language}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
   Reorders languages by setting their positions based on the provided list of IDs.
   """
   def reorder_languages(project_id, language_ids) when is_list(language_ids) do
@@ -158,5 +183,45 @@ defmodule Storyarn.Localization.LanguageCrud do
     )
     |> Repo.one!()
     |> Kernel.+(1)
+  end
+
+  defp current_source_or_rollback(project_id) do
+    case get_source_language(project_id) do
+      %ProjectLanguage{} = language -> language
+      nil -> Repo.rollback(:no_source_language)
+    end
+  end
+
+  defp find_or_create_source_candidate(project_id, locale_code) do
+    case get_language_by_locale(project_id, locale_code) do
+      %ProjectLanguage{} = language ->
+        language
+
+      nil ->
+        %ProjectLanguage{project_id: project_id}
+        |> ProjectLanguage.create_changeset(%{
+          "locale_code" => locale_code,
+          "name" => Languages.name(locale_code),
+          "is_source" => false,
+          "position" => next_position(project_id)
+        })
+        |> Repo.insert!()
+    end
+  end
+
+  defp promote_source_language(next_source, project_id, current_source) do
+    from(l in ProjectLanguage,
+      where: l.project_id == ^project_id and l.is_source == true
+    )
+    |> Repo.update_all(set: [is_source: false])
+
+    next_source =
+      next_source
+      |> ProjectLanguage.update_changeset(%{"is_source" => true})
+      |> Repo.update!()
+
+    Repo.delete!(current_source)
+
+    next_source
   end
 end

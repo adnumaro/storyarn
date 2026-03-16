@@ -20,6 +20,28 @@ defmodule StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers do
     do_add_target_language(socket, code)
   end
 
+  @spec handle_change_source_language(map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def handle_change_source_language(%{"locale_code" => code}, socket) do
+    case Localization.change_source_language(socket.assigns.project, code) do
+      {:ok, _language} ->
+        socket =
+          socket
+          |> reload_languages()
+          |> put_flash(:info, dgettext("localization", "Source language updated."))
+
+        {:noreply, socket}
+
+      {:error, _reason} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("localization", "Could not update the source language.")
+         )}
+    end
+  end
+
   @spec handle_remove_language(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_remove_language(%{"id" => id}, socket) do

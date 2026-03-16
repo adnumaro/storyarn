@@ -77,6 +77,52 @@ defmodule Storyarn.Localization.Languages do
 
   @languages_by_code Map.new(@languages, &{&1.code, &1})
 
+  @flag_overrides %{
+    "ar" => "sa",
+    "bg" => "bg",
+    "ca" => "ad",
+    "cs" => "cz",
+    "da" => "dk",
+    "de" => "de",
+    "el" => "gr",
+    "en" => "gb",
+    "es" => "es",
+    "et" => "ee",
+    "fi" => "fi",
+    "fil" => "ph",
+    "fr" => "fr",
+    "he" => "il",
+    "hi" => "in",
+    "hr" => "hr",
+    "hu" => "hu",
+    "id" => "id",
+    "it" => "it",
+    "ja" => "jp",
+    "ko" => "kr",
+    "lt" => "lt",
+    "lv" => "lv",
+    "ms" => "my",
+    "nb" => "no",
+    "nl" => "nl",
+    "pl" => "pl",
+    "ro" => "ro",
+    "ru" => "ru",
+    "sk" => "sk",
+    "sl" => "si",
+    "sr" => "rs",
+    "sv" => "se",
+    "th" => "th",
+    "tr" => "tr",
+    "uk" => "ua",
+    "vi" => "vn",
+    "zh-Hans" => "cn",
+    "zh-Hant" => "tw"
+  }
+
+  @short_label_overrides %{
+    "es-419" => "LA"
+  }
+
   @doc "Returns all languages sorted by name."
   @spec all() :: [language()]
   def all, do: @languages
@@ -92,6 +138,23 @@ defmodule Storyarn.Localization.Languages do
       %{name: name} -> name
       nil -> code
     end
+  end
+
+  @doc "Returns the ISO alpha-2 country code used for a locale flag, or nil when there is no good flag."
+  @spec flag_code(String.t()) :: String.t() | nil
+  def flag_code(code) do
+    region_flag_code(code) || Map.get(@flag_overrides, code)
+  end
+
+  @doc "Returns a compact fallback label for a locale when there is no flag."
+  @spec short_label(String.t()) :: String.t()
+  def short_label(code) do
+    Map.get(@short_label_overrides, code) ||
+      code
+      |> String.split("-", parts: 2)
+      |> hd()
+      |> String.slice(0, 2)
+      |> String.upcase()
   end
 
   @doc """
@@ -112,5 +175,12 @@ defmodule Storyarn.Localization.Languages do
     @languages
     |> Enum.reject(&MapSet.member?(exclude_set, &1.code))
     |> Enum.map(&{"#{&1.name} (#{&1.code})", &1.code})
+  end
+
+  defp region_flag_code(code) do
+    case String.split(code, "-", parts: 2) do
+      [_language, region] when byte_size(region) == 2 -> String.downcase(region)
+      _ -> nil
+    end
   end
 end

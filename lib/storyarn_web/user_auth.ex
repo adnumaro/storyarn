@@ -11,6 +11,9 @@ defmodule StoryarnWeb.UserAuth do
   alias Storyarn.Accounts.Scope
   alias Storyarn.Workspaces
 
+  @locales Gettext.known_locales(Storyarn.Gettext)
+  @default_locale "en"
+
   # Make the remember me cookie valid for 14 days. This should match
   # the session validity setting in UserToken.
   @max_cookie_age_in_days 14
@@ -262,7 +265,17 @@ defmodule StoryarnWeb.UserAuth do
   end
 
   defp mount_current_scope(socket, session) do
-    Phoenix.Component.assign_new(socket, :current_scope, fn ->
+    locale =
+      case session["locale"] do
+        locale when locale in @locales -> locale
+        _ -> @default_locale
+      end
+
+    Gettext.put_locale(Storyarn.Gettext, locale)
+
+    socket
+    |> Phoenix.Component.assign(:locale, locale)
+    |> Phoenix.Component.assign_new(:current_scope, fn ->
       {user, _} =
         if user_token = session["user_token"] do
           Accounts.get_user_by_session_token(user_token)

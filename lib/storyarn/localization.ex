@@ -82,6 +82,11 @@ defmodule Storyarn.Localization do
   @spec set_source_language(project_language()) :: {:ok, project_language()}
   defdelegate set_source_language(language), to: LanguageCrud
 
+  @doc "Changes the project source language to the given locale code."
+  @spec change_source_language(Project.t(), String.t()) ::
+          {:ok, project_language()} | {:error, term()}
+  defdelegate change_source_language(project, locale_code), to: LanguageCrud
+
   @doc "Reorders languages by the given list of IDs."
   @spec reorder_languages(id(), [id()]) :: {:ok, any()}
   defdelegate reorder_languages(project_id, language_ids), to: LanguageCrud

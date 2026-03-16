@@ -14,8 +14,11 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
   alias Storyarn.Billing
   alias Storyarn.Collaboration
+  alias Storyarn.Localization
   alias Storyarn.Projects
   alias Storyarn.Versioning
+  alias StoryarnWeb.Components.LanguagePicker
+  alias StoryarnWeb.Components.LocaleMark
 
   # ===========================================================================
   # Render
@@ -38,6 +41,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
       <.section_content
         live_action={@live_action}
         project_form={@project_form}
+        source_language={@source_language}
         members={@members}
         current_scope={@current_scope}
         invite_form={@invite_form}
@@ -109,6 +113,50 @@ defmodule StoryarnWeb.ProjectLive.Settings do
             </.button>
           </.form_actions>
         </.form>
+      </section>
+
+      <div class="divider" />
+
+      <%!-- Localization --%>
+      <section class="space-y-4">
+        <div>
+          <h3 class="text-lg font-semibold mb-1">{dgettext("projects", "Source language")}</h3>
+          <p class="text-sm opacity-70">
+            {dgettext(
+              "projects",
+              "Defines the base locale used for source texts and translation workflows in this project."
+            )}
+          </p>
+        </div>
+
+        <div class="card bg-base-200 p-4 space-y-4">
+          <div
+            id="project-source-language-option"
+            class="rounded-2xl border border-base-300 bg-base-100/80 p-3"
+          >
+            <div class="flex items-center gap-3">
+              <LocaleMark.locale_mark locale_code={@source_language.locale_code} />
+              <div class="min-w-0">
+                <div class="truncate text-sm font-semibold">
+                  {Localization.language_name(@source_language.locale_code)}
+                </div>
+                <div class="text-xs text-base-content/60">
+                  {@source_language.locale_code}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <LanguagePicker.language_picker
+            id="project-source-language-picker"
+            event="change_source_language"
+            options={LanguagePicker.source_language_options(@source_language)}
+            placeholder={dgettext("projects", "Change source language...")}
+            search_placeholder={dgettext("projects", "Search languages...")}
+            empty_label={dgettext("projects", "No matches")}
+            button_icon="languages"
+          />
+        </div>
       </section>
 
       <div class="divider" />
@@ -624,6 +672,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
       {:ok, project, membership} ->
         if Projects.can?(membership.role, :manage_project) do
           members = Projects.list_project_members(project.id)
+          {:ok, source_language} = Localization.ensure_source_language(project)
 
           project_changeset = Projects.change_project(project)
           provider_config = get_provider_config(project.id)
@@ -635,6 +684,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
             |> assign(:membership, membership)
             |> assign(:current_workspace, project.workspace)
             |> assign(:members, members)
+            |> assign(:source_language, source_language)
             |> assign(:project_form, to_form(project_changeset))
             |> assign(:invite_form, to_form(invite_changeset(%{}), as: "invite"))
             |> assign(
@@ -763,6 +813,26 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
         {:error, changeset} ->
           {:noreply, assign(socket, :project_form, to_form(changeset))}
+      end
+    end)
+  end
+
+  def handle_event("change_source_language", %{"locale_code" => locale_code}, socket) do
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
+      case Localization.change_source_language(socket.assigns.project, locale_code) do
+        {:ok, source_language} ->
+          {:noreply,
+           socket
+           |> assign(:source_language, source_language)
+           |> put_flash(:info, dgettext("projects", "Source language updated."))}
+
+        {:error, _reason} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             dgettext("projects", "Could not update the source language.")
+           )}
       end
     end)
   end

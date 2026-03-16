@@ -36,7 +36,9 @@ export const SearchableSelect = {
     if (wasOpen && this._fp) {
       this._fp.open();
       this._onOpen();
-      this.search.value = prevSearch;
+      if (this.search) {
+        this.search.value = prevSearch;
+      }
       if (!this.serverSearchEvent) {
         this.filter();
       }

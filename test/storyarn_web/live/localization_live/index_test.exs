@@ -6,6 +6,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.LocalizationFixtures
 
+  alias Storyarn.Localization
   alias Storyarn.Repo
 
   defp loc_path(project) do
@@ -60,24 +61,73 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       {:ok, _view, html} = live(conn, loc_path(project))
 
-      assert html =~ "Add a target language above to start translating."
+      assert html =~ "Use the sidebar to add a target language and start translating."
     end
 
-    test "shows Add Language button for owner", %{conn: conn, user: user} do
+    test "renders the localization sidebar for owner", %{conn: conn, user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+
+      {:ok, view, _html} = live(conn, loc_path(project))
+
+      assert has_element?(view, "#localization-sidebar")
+      assert has_element?(view, "#localization-sidebar-source-language")
+      assert has_element?(view, "#localization-source-language-option")
+      assert has_element?(view, "#localization-sidebar-language-selector")
+
+      assert has_element?(
+               view,
+               "#localization-source-language-picker[phx-hook='SearchableSelect']"
+             )
+
+      assert has_element?(view, "#localization-language-picker[phx-hook='SearchableSelect']")
+      refute has_element?(view, "#localization-language-picker select")
+    end
+
+    test "does not include the source language in the add language picker", %{
+      conn: conn,
+      user: user
+    } do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
       {:ok, _view, html} = live(conn, loc_path(project))
 
-      assert html =~ "Add Language"
+      refute html =~ "English (en)"
+    end
+
+    test "renders flags for source and target locales", %{conn: conn, user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      {:ok, _view, html} = live(conn, loc_path(project))
+
+      assert html =~ "/images/flags/1x1/gb.svg"
+      assert html =~ "/images/flags/1x1/es.svg"
+    end
+
+    test "uses the session locale for filter labels and source type translations", %{
+      conn: conn,
+      user: user
+    } do
+      conn = Plug.Conn.put_session(conn, :locale, "es")
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      {:ok, _view, html} = live(conn, loc_path(project))
+
+      assert html =~ "Todos los tipos"
+      assert html =~ "Todos los estados"
+      assert html =~ "Nodo"
+      refute html =~ "Modo"
     end
 
     test "shows Sync button when target languages exist", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
-      {:ok, _view, html} = live(conn, loc_path(project))
+      {:ok, view, html} = live(conn, loc_path(project))
 
       assert html =~ "Sync"
+      assert has_element?(view, "#localization-sync-button")
     end
 
     test "shows progress bar when texts exist", %{conn: conn, user: user} do
@@ -96,10 +146,14 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
-      {:ok, _view, html} = live(conn, loc_path(project))
+      {:ok, view, html} = live(conn, loc_path(project))
 
       assert html =~ "All statuses"
       assert html =~ "All types"
+      assert has_element?(view, "#localization-status-filter[phx-hook='SearchableSelect']")
+      assert has_element?(view, "#localization-source-type-filter[phx-hook='SearchableSelect']")
+      refute has_element?(view, "select#localization-status-filter")
+      refute has_element?(view, "select#localization-source-type-filter")
     end
 
     test "shows status badges for texts", %{conn: conn, user: user} do
@@ -174,21 +228,23 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
     test "defaults selected locale to first target language", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
-      _lang_es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-      _lang_fr = language_fixture(project, %{locale_code: "fr", name: "French"})
+      lang_es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      lang_fr = language_fixture(project, %{locale_code: "fr", name: "French"})
 
-      {:ok, _view, html} = live(conn, loc_path(project))
+      {:ok, view, html} = live(conn, loc_path(project))
 
-      # The locale selector should be present with both languages
       assert html =~ "Spanish (es)"
       assert html =~ "French (fr)"
+      assert has_element?(view, "#localization-language-option-#{lang_es.id}")
+      assert has_element?(view, "#localization-language-option-#{lang_fr.id}")
+      assert has_element?(view, "#select-locale-es")
     end
   end
 
   describe "change_locale event" do
     setup :register_and_log_in_user
 
-    test "switches selected locale and reloads texts", %{conn: conn, user: user} do
+    test "switches selected locale from the sidebar and reloads texts", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _lang_es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       _lang_fr = language_fixture(project, %{locale_code: "fr", name: "French"})
@@ -210,8 +266,10 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       # Initial render shows es texts (first target language)
       assert html =~ "Spanish text"
 
-      # Switch to French
-      html = render_change(view, "change_locale", %{"locale" => "fr"})
+      html =
+        view
+        |> element("#select-locale-fr")
+        |> render_click()
 
       assert html =~ "French text"
     end
@@ -226,6 +284,37 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       # Switch locale - should not crash and should render
       html = render_change(view, "change_locale", %{"locale" => "fr"})
       assert html =~ "French (fr)"
+    end
+  end
+
+  describe "change_source_language event" do
+    setup :register_and_log_in_user
+
+    test "updates the project's source language", %{conn: conn, user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+
+      {:ok, view, _html} = live(conn, loc_path(project))
+
+      html = render_click(view, "change_source_language", %{"locale_code" => "en-US"})
+
+      assert html =~ "Source language updated."
+      assert html =~ "English (US)"
+
+      source_language = Localization.get_source_language(project.id)
+      assert source_language.locale_code == "en-US"
+      assert Localization.get_language_by_locale(project.id, "en") == nil
+    end
+
+    test "viewer cannot change source language", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = project_fixture(owner) |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+
+      {:ok, view, _html} = live(conn, loc_path(project))
+
+      html = render_click(view, "change_source_language", %{"locale_code" => "en-US"})
+
+      assert html =~ "permission"
     end
   end
 
@@ -295,24 +384,34 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       refute html =~ "Flow node text"
     end
 
-    test "empty status value preserves current filter", %{conn: conn, user: user} do
+    test "empty status value clears current filter", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
-      _text =
+      _pending_text =
         localized_text_fixture(project.id, %{
-          source_text: "Some text",
-          locale_code: "es"
+          source_text: "Pending text here",
+          locale_code: "es",
+          status: "pending"
+        })
+
+      _final_text =
+        localized_text_fixture(project.id, %{
+          source_text: "Final text here",
+          locale_code: "es",
+          status: "final",
+          translated_text: "Texto final"
         })
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      # Set a filter first
-      render_change(view, "change_filter", %{"status" => "pending"})
+      html = render_change(view, "change_filter", %{"status" => "final"})
+      assert html =~ "Final text here"
+      refute html =~ "Pending text here"
 
-      # Sending empty status does not crash, preserves previous filter
       html = render_change(view, "change_filter", %{"status" => ""})
-      assert html =~ "Some text"
+      assert html =~ "Final text here"
+      assert html =~ "Pending text here"
     end
   end
 
@@ -421,7 +520,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       {:ok, view, _html} = live(conn, loc_path(project))
 
       # No target languages yet, should show empty state
-      assert render(view) =~ "Add a target language above to start translating."
+      assert render(view) =~ "Use the sidebar to add a target language and start translating."
 
       html = render_change(view, "add_target_language", %{"locale_code" => "fr"})
 
@@ -439,7 +538,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       html = render_change(view, "add_target_language", %{"locale_code" => ""})
 
       # Should still show the empty state (no target languages)
-      assert html =~ "Add a target language above to start translating."
+      assert html =~ "Use the sidebar to add a target language and start translating."
     end
 
     test "viewer cannot add target language", %{conn: conn, user: user} do
@@ -471,7 +570,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       assert html =~ "Language removed"
       # After removal, should show the empty state (no target languages)
-      assert html =~ "Add a target language above to start translating."
+      assert html =~ "Use the sidebar to add a target language and start translating."
     end
 
     test "viewer cannot remove a language", %{conn: conn, user: user} do
@@ -564,9 +663,11 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       project = project_fixture(owner) |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
 
-      {:ok, _view, html} = live(conn, loc_path(project))
+      {:ok, view, html} = live(conn, loc_path(project))
 
-      refute html =~ "Add Language"
+      refute html =~ "Add language"
+      refute has_element?(view, "#localization-source-language-picker")
+      refute has_element?(view, "#localization-language-picker")
     end
 
     test "viewer cannot see Sync button", %{conn: conn, user: user} do
@@ -575,9 +676,10 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       _membership = membership_fixture(project, user, "viewer")
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
-      {:ok, _view, html} = live(conn, loc_path(project))
+      {:ok, view, html} = live(conn, loc_path(project))
 
       refute html =~ "Sync"
+      refute has_element?(view, "#localization-sync-button")
     end
 
     test "viewer cannot see remove language X button on chips", %{conn: conn, user: user} do

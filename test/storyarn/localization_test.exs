@@ -177,6 +177,33 @@ defmodule Storyarn.LocalizationTest do
       assert old.is_source == false
     end
 
+    test "change_source_language/2 replaces the current source with a new locale" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _en = source_language_fixture(project)
+
+      {:ok, new_source} = Localization.change_source_language(project, "en-US")
+
+      assert new_source.locale_code == "en-US"
+      assert new_source.is_source == true
+      assert Localization.get_source_language(project.id).locale_code == "en-US"
+      assert Localization.get_language_by_locale(project.id, "en") == nil
+    end
+
+    test "change_source_language/2 promotes an existing target language" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _en = source_language_fixture(project)
+      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      {:ok, new_source} = Localization.change_source_language(project, "es")
+
+      assert new_source.locale_code == "es"
+      assert new_source.is_source == true
+      assert Localization.get_source_language(project.id).locale_code == "es"
+      assert Localization.get_language_by_locale(project.id, "en") == nil
+    end
+
     test "reorder_languages/2 updates positions" do
       user = user_fixture()
       project = project_fixture(user)

@@ -5,6 +5,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Localization
   alias Storyarn.Repo
 
   defp settings_path(project, section \\ nil) do
@@ -18,7 +19,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     test "renders settings with sidebar navigation", %{conn: conn, user: user} do
       project = project_fixture(user, %{name: "My Project"}) |> Repo.preload(:workspace)
 
-      {:ok, _view, html} = live(conn, settings_path(project))
+      {:ok, view, html} = live(conn, settings_path(project))
 
       # Sidebar sections
       assert html =~ "Back to project"
@@ -31,9 +32,11 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       # General content
       assert html =~ "My Project"
+      assert html =~ "Source language"
       assert html =~ "Project Theme"
       assert html =~ "Maintenance"
       assert html =~ "Danger Zone"
+      assert has_element?(view, "#project-source-language-picker[phx-hook='SearchableSelect']")
     end
 
     test "redirects non-owner", %{conn: conn, user: user} do
@@ -60,6 +63,23 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       assert html =~ "updated successfully"
       assert html =~ ~s(value="New Name")
+    end
+
+    test "updates the project source language with the shared picker", %{conn: conn, user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+
+      {:ok, view, _html} = live(conn, settings_path(project))
+
+      html = render_click(view, "change_source_language", %{"locale_code" => "es-419"})
+
+      assert html =~ "Source language updated."
+      assert html =~ "Spanish (Latin America)"
+      assert html =~ "es-419"
+
+      source_language = Localization.get_source_language(project.id)
+      assert source_language.locale_code == "es-419"
+      assert Localization.get_language_by_locale(project.id, "en") == nil
+      assert has_element?(view, "#project-source-language-option", "LA")
     end
 
     test "deletes project from danger zone", %{conn: conn, user: user} do

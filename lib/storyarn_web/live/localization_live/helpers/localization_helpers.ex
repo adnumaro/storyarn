@@ -80,7 +80,12 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
 
   @spec language_picker_options(map()) :: list()
   def language_picker_options(assigns) do
-    existing_codes = Enum.map(assigns.languages, & &1.locale_code)
+    existing_codes =
+      assigns.languages
+      |> Enum.map(& &1.locale_code)
+      |> maybe_add_source_locale(assigns[:source_language])
+      |> Enum.uniq()
+
     Localization.language_options_for_select(exclude: existing_codes)
   end
 
@@ -96,6 +101,11 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
   @spec non_blank(String.t()) :: String.t() | nil
   def non_blank(""), do: nil
   def non_blank(s), do: s
+
+  defp maybe_add_source_locale(codes, %{locale_code: locale_code}) when is_binary(locale_code),
+    do: [locale_code | codes]
+
+  defp maybe_add_source_locale(codes, _source_language), do: codes
 
   @spec strip_html(String.t() | nil) :: String.t()
   def strip_html(text), do: Storyarn.Shared.HtmlUtils.strip_html(text)
