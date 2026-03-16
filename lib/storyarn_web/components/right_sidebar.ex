@@ -54,8 +54,8 @@ defmodule StoryarnWeb.Components.RightSidebar do
       data-phx-target={@phx_target}
       class={[
         "fixed flex flex-col overflow-hidden right-sidebar",
-        "inset-0 z-50 bg-base-100",
-        "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:z-[1010]",
+        "inset-0 z-[1030] bg-base-100",
+        "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3",
         "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
       ]}
       style={"--rs-width: #{@width}"}

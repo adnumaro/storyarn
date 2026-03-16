@@ -46,6 +46,7 @@ export function createCombobox(opts) {
   let highlightedIndex = -1;
   let filteredOptions = [...options];
   let currentValue = value;
+  let blurTimeoutId = null;
 
   // Create input element
   const input = document.createElement("input");
@@ -62,9 +63,23 @@ export function createCombobox(opts) {
 
   if (!freeText) {
     input.addEventListener("pointerdown", (e) => {
-      if (disabled || document.activeElement === input) return;
-      e.preventDefault();
-      input.focus();
+      if (disabled) return;
+      if (document.activeElement !== input) {
+        // Prevent default browser focus so we control it via input.focus()
+        e.preventDefault();
+        input.focus();
+      } else if (!isOpen) {
+        // Already focused but dropdown closed (e.g. after Escape) — reopen
+        openDropdown();
+      }
+    });
+
+    // Prevent LiveView's dispatchClickAway from stealing focus when
+    // clicking inside the combobox. LiveView listens for mouseup on
+    // the document to dispatch phx-click-away JS commands, which can
+    // programmatically focus other elements and blur our input.
+    input.addEventListener("mouseup", (e) => {
+      e.stopPropagation();
     });
   }
 
@@ -116,11 +131,18 @@ export function createCombobox(opts) {
 
   input.addEventListener("focus", () => {
     if (disabled || freeText) return;
+    // Cancel any pending blur timeout (e.g. from click-away race)
+    if (blurTimeoutId) {
+      clearTimeout(blurTimeoutId);
+      blurTimeoutId = null;
+    }
+    // Read layout BEFORE DOM writes to avoid forced reflow
+    const width = Math.max(200, input.offsetWidth);
     // Select text so typing replaces it; show all options unfiltered
     input.select();
     isOpen = true;
     filterOptions("");
-    dropdown.style.width = `${Math.max(200, input.offsetWidth)}px`;
+    dropdown.style.width = `${width}px`;
     fp.open();
   });
 
@@ -133,13 +155,18 @@ export function createCombobox(opts) {
       return;
     }
     // Delay close to allow mousedown on dropdown options
-    setTimeout(() => closeDropdown(), 150);
+    blurTimeoutId = setTimeout(() => {
+      blurTimeoutId = null;
+      closeDropdown();
+    }, 150);
   });
 
   input.addEventListener("input", () => {
     if (!fixedWidth) adjustInputWidth(input);
-    // Update width to match input
-    dropdown.style.width = `${Math.max(200, input.offsetWidth)}px`;
+    // Defer width sync to next frame to avoid forced reflow after adjustInputWidth
+    requestAnimationFrame(() => {
+      dropdown.style.width = `${Math.max(200, input.offsetWidth)}px`;
+    });
     if (freeText) {
       // Only update local state — don't fire onSelect until blur/Enter
       currentValue = input.value;
@@ -208,9 +235,16 @@ export function createCombobox(opts) {
 
   function openDropdown() {
     if (disabled || freeText) return;
+    // Cancel any pending blur timeout
+    if (blurTimeoutId) {
+      clearTimeout(blurTimeoutId);
+      blurTimeoutId = null;
+    }
+    // Read layout BEFORE DOM writes to avoid forced reflow
+    const width = Math.max(200, input.offsetWidth);
     isOpen = true;
     filterOptions(input.value);
-    dropdown.style.width = `${Math.max(200, input.offsetWidth)}px`;
+    dropdown.style.width = `${width}px`;
     fp.open();
   }
 
@@ -310,6 +344,10 @@ export function createCombobox(opts) {
 
   // --- Cleanup ---
   function destroy() {
+    if (blurTimeoutId) {
+      clearTimeout(blurTimeoutId);
+      blurTimeoutId = null;
+    }
     closeDropdown();
     fp.destroy();
   }

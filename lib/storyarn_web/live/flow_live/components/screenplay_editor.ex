@@ -49,9 +49,9 @@ defmodule StoryarnWeb.FlowLive.Components.ScreenplayEditor do
         [
           "fixed flex flex-col overflow-hidden",
           # Mobile: fullscreen overlay
-          "inset-0 z-50 bg-base-100",
+          "inset-0 z-[1010] bg-base-100",
           # Desktop (xl): floating sidebar
-          "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:z-[1010] xl:w-[600px]",
+          "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[600px]",
           "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
         ]
       }

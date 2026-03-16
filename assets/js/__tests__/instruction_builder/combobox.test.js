@@ -138,6 +138,12 @@ describe("createCombobox", () => {
       expect(dropdown().style.display).toBe("block");
     });
 
+    it("opens dropdown on pointerdown", () => {
+      cb = createCombobox({ container: el, options: FLAT_OPTIONS });
+      cb.input.dispatchEvent(new Event("pointerdown", { bubbles: true, cancelable: true }));
+      expect(dropdown().style.display).toBe("block");
+    });
+
     it("renders all options when opened", () => {
       cb = createCombobox({ container: el, options: FLAT_OPTIONS });
       fire(cb.input, "focus");
@@ -152,6 +158,13 @@ describe("createCombobox", () => {
       });
       fire(cb.input, "focus");
       expect(dropdown().style.display).not.toBe("block");
+    });
+
+    it("keeps dropdown open when clicking an already focused input", () => {
+      cb = createCombobox({ container: el, options: FLAT_OPTIONS });
+      fire(cb.input, "focus");
+      cb.input.dispatchEvent(new Event("pointerdown", { bubbles: true, cancelable: true }));
+      expect(dropdown().style.display).toBe("block");
     });
   });
 

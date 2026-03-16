@@ -56,6 +56,8 @@ export const RightSidebar = {
       if (e.target.closest("[role='dialog']") || e.target.closest(".modal")) return;
       if (e.target.closest(".dock-item")) return;
       if (e.target.closest("[data-panel-trigger]")) return;
+      // Body-appended floating popovers (combobox dropdowns, operator selectors)
+      if (e.target.closest(".combobox-dropdown") || e.target.closest(".operator-dropdown")) return;
       this._doClose();
     };
     requestAnimationFrame(() => {
