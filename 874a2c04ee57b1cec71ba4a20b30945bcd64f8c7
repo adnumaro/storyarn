@@ -1,0 +1,25 @@
+test/storyarn_web/live/localization_live/index_test.exs
+  3c6e4a0488393f91 9,64,67,70,72-83,86-89,94,97,103-122,127,130,149,153-156,231-232,234,238-240,247,271-272,290-317,387,391,393-403,408-410,413-414,523,541,573,666,668-670,679,682
+lib/storyarn_web/live/localization_live/index.ex
+  3c6e4a0488393f91 8,11-13,29-33,36-44,92-95,98,100-101,108,114,116-118,120-133,135,137,141-142,145-154,159-178,181,185,301,319,335-444,452-492,527-528,555-557,571-572,595-602,648-653,655-678
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "874a2c04ee57b1cec71ba4a20b30945bcd64f8c7",
+  "prompts": {
+    "3c6e4a0488393f91": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019cf3be-584b-7e61-ad7f-e4d296fa37d6",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 603,
+      "total_deletions": 342,
+      "accepted_lines": 411,
+      "overriden_lines": 0
+    }
+  }
+}
