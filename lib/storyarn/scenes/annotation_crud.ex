@@ -33,7 +33,7 @@ defmodule Storyarn.Scenes.AnnotationCrud do
     |> SceneAnnotation.create_changeset(Map.put(attrs, "position", position))
     |> Repo.insert()
     |> tap(fn
-      {:ok, _annotation} -> Repo.get(Scene, scene_id) |> Localization.extract_scene()
+      {:ok, _annotation} -> maybe_extract_scene(scene_id)
       _ -> :ok
     end)
   end
@@ -43,7 +43,7 @@ defmodule Storyarn.Scenes.AnnotationCrud do
     |> SceneAnnotation.update_changeset(attrs)
     |> Repo.update()
     |> tap(fn
-      {:ok, _updated_annotation} -> Repo.get(Scene, annotation.scene_id) |> Localization.extract_scene()
+      {:ok, _updated_annotation} -> maybe_extract_scene(annotation.scene_id)
       _ -> :ok
     end)
   end
@@ -56,10 +56,13 @@ defmodule Storyarn.Scenes.AnnotationCrud do
 
   def delete_annotation(%SceneAnnotation{} = annotation) do
     Repo.delete(annotation)
-    |> tap(fn
-      {:ok, _deleted_annotation} -> Repo.get(Scene, annotation.scene_id) |> Localization.extract_scene()
-      _ -> :ok
-    end)
+  end
+
+  defp maybe_extract_scene(scene_id) do
+    case Repo.get(Scene, scene_id) do
+      nil -> :ok
+      scene -> Localization.extract_scene(scene)
+    end
   end
 
 end

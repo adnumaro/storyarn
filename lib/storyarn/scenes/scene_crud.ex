@@ -443,7 +443,8 @@ defmodule Storyarn.Scenes.SceneCrud do
           m.project_id == ^project_id and
             m.parent_id == ^parent_id and
             not is_nil(m.deleted_at) and
-            m.deleted_at >= ^since_threshold
+            m.deleted_at >= ^since_threshold and
+            is_nil(m.draft_id)
       )
       |> Repo.all()
 

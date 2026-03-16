@@ -666,7 +666,7 @@ defmodule Storyarn.Screenplays.ScreenplayCrudTest do
       assert ScreenplayCrud.count_screenplays(project.id) == 0
     end
 
-    test "includes drafts in count", %{project: project} do
+    test "excludes drafts from count", %{project: project} do
       original = screenplay_fixture(project, %{name: "Original"})
 
       {:ok, _draft} =
@@ -674,8 +674,8 @@ defmodule Storyarn.Screenplays.ScreenplayCrudTest do
         |> Screenplay.create_changeset(%{name: "Draft"})
         |> Repo.insert()
 
-      # count_screenplays has no draft_of_id filter
-      assert ScreenplayCrud.count_screenplays(project.id) == 2
+      # count_screenplays excludes draft screenplays
+      assert ScreenplayCrud.count_screenplays(project.id) == 1
     end
   end
 

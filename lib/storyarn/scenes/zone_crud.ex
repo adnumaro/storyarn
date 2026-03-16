@@ -110,14 +110,27 @@ defmodule Storyarn.Scenes.ZoneCrud do
   end
 
   def delete_zone(%SceneZone{} = zone) do
-    Sheets.delete_map_zone_references(zone.id)
-    Flows.delete_map_zone_references(zone.id)
+    result =
+      Repo.transaction(fn ->
+        Sheets.delete_map_zone_references(zone.id)
+        Flows.delete_map_zone_references(zone.id)
 
-    Repo.delete(zone)
-    |> tap(fn
-      {:ok, _deleted_zone} -> Repo.get(Scene, zone.scene_id) |> Localization.extract_scene()
-      _ -> :ok
-    end)
+        case Repo.delete(zone) do
+          {:ok, deleted} -> deleted
+          {:error, changeset} -> Repo.rollback(changeset)
+        end
+      end)
+
+    case result do
+      {:ok, _} ->
+        scene = Repo.get(Scene, zone.scene_id)
+        if scene, do: Localization.extract_scene(scene)
+
+      _ ->
+        :ok
+    end
+
+    result
   end
 
   def change_zone(%SceneZone{} = zone, attrs \\ %{}) do

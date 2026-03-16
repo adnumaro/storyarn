@@ -55,7 +55,7 @@ defmodule Storyarn.Scenes.ConnectionCrud do
       |> SceneConnection.create_changeset(attrs)
       |> Repo.insert()
       |> tap(fn
-        {:ok, _connection} -> Repo.get(Scene, scene_id) |> Localization.extract_scene()
+        {:ok, _connection} -> maybe_extract_scene(scene_id)
         _ -> :ok
       end)
     end
@@ -66,7 +66,7 @@ defmodule Storyarn.Scenes.ConnectionCrud do
     |> SceneConnection.update_changeset(attrs)
     |> Repo.update()
     |> tap(fn
-      {:ok, _updated_connection} -> Repo.get(Scene, connection.scene_id) |> Localization.extract_scene()
+      {:ok, _updated_connection} -> maybe_extract_scene(connection.scene_id)
       _ -> :ok
     end)
   end
@@ -82,10 +82,13 @@ defmodule Storyarn.Scenes.ConnectionCrud do
 
   def delete_connection(%SceneConnection{} = connection) do
     Repo.delete(connection)
-    |> tap(fn
-      {:ok, _deleted_connection} -> Repo.get(Scene, connection.scene_id) |> Localization.extract_scene()
-      _ -> :ok
-    end)
+  end
+
+  defp maybe_extract_scene(scene_id) do
+    case Repo.get(Scene, scene_id) do
+      nil -> :ok
+      scene -> Localization.extract_scene(scene)
+    end
   end
 
   def change_connection(%SceneConnection{} = connection, attrs \\ %{}) do

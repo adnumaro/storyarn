@@ -271,12 +271,13 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
         end
       end)
 
-    # Apply repairs inside a transaction
+    # Apply repairs inside a transaction (skip deleted nodes)
     Repo.transaction(fn ->
       Enum.each(repairs_by_node, fn {node_id, new_data} ->
-        node = Repo.get!(FlowNode, node_id)
-        # Use do_update_node_data path via Flows facade to re-trigger reference tracking
-        Storyarn.Flows.update_node_data(node, new_data)
+        case Repo.get(FlowNode, node_id) do
+          nil -> :skip
+          node -> Storyarn.Flows.update_node_data(node, new_data)
+        end
       end)
 
       map_size(repairs_by_node)

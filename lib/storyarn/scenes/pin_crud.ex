@@ -119,14 +119,27 @@ defmodule Storyarn.Scenes.PinCrud do
   end
 
   def delete_pin(%ScenePin{} = pin) do
-    Sheets.delete_map_pin_references(pin.id)
-    Flows.delete_map_pin_references(pin.id)
+    result =
+      Repo.transaction(fn ->
+        Sheets.delete_map_pin_references(pin.id)
+        Flows.delete_map_pin_references(pin.id)
 
-    Repo.delete(pin)
-    |> tap(fn
-      {:ok, _deleted_pin} -> Repo.get(Scene, pin.scene_id) |> Localization.extract_scene()
-      _ -> :ok
-    end)
+        case Repo.delete(pin) do
+          {:ok, deleted} -> deleted
+          {:error, changeset} -> Repo.rollback(changeset)
+        end
+      end)
+
+    case result do
+      {:ok, _} ->
+        scene = Repo.get(Scene, pin.scene_id)
+        if scene, do: Localization.extract_scene(scene)
+
+      _ ->
+        :ok
+    end
+
+    result
   end
 
   def change_pin(%ScenePin{} = pin, attrs \\ %{}) do

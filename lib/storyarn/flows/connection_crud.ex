@@ -59,8 +59,17 @@ defmodule Storyarn.Flows.ConnectionCrud do
   end
 
   def create_connection(%Flow{} = flow, attrs) do
-    source_node = Repo.get(FlowNode, attrs[:source_node_id] || attrs["source_node_id"])
-    target_node = Repo.get(FlowNode, attrs[:target_node_id] || attrs["target_node_id"])
+    source_node_id = attrs[:source_node_id] || attrs["source_node_id"]
+    target_node_id = attrs[:target_node_id] || attrs["target_node_id"]
+
+    # Scope nodes to this flow to prevent cross-flow connections
+    source_node =
+      from(n in FlowNode, where: n.id == ^source_node_id and n.flow_id == ^flow.id)
+      |> Repo.one()
+
+    target_node =
+      from(n in FlowNode, where: n.id == ^target_node_id and n.flow_id == ^flow.id)
+      |> Repo.one()
 
     case validate_connection_rules(source_node, target_node) do
       :ok ->

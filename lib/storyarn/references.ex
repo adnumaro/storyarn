@@ -17,7 +17,6 @@ defmodule Storyarn.References do
   defdelegate delete_scene_zone_entity_references(zone_id), to: EntityTracker
   defdelegate delete_target_references(target_type, target_id), to: EntityTracker
 
-  defdelegate get_backlinks(target_type, target_id), to: Backlinks
   defdelegate get_backlinks_with_sources(target_type, target_id, project_id), to: Backlinks
   defdelegate count_backlinks(target_type, target_id), to: Backlinks
 
@@ -28,7 +27,6 @@ defmodule Storyarn.References do
   defdelegate update_scene_zone_variable_references(zone, opts \\ []), to: VariableTracker
   defdelegate delete_scene_zone_variable_references(zone_id), to: VariableTracker
 
-  defdelegate get_variable_usage(block_id, project_id), to: VariableUsage
   defdelegate count_variable_usage(block_id), to: VariableUsage
   defdelegate referenced_block_ids(block_ids), to: VariableUsage
   defdelegate check_stale_variable_references(block_id, project_id), to: VariableUsage

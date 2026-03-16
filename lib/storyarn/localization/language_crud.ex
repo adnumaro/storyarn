@@ -88,9 +88,12 @@ defmodule Storyarn.Localization.LanguageCrud do
       |> Repo.update_all(set: [is_source: false])
 
       # Set the new source language
-      language
-      |> ProjectLanguage.update_changeset(%{"is_source" => true})
-      |> Repo.update!()
+      case language
+           |> ProjectLanguage.update_changeset(%{"is_source" => true})
+           |> Repo.update() do
+        {:ok, updated} -> updated
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
     end)
   end
 
@@ -216,11 +219,17 @@ defmodule Storyarn.Localization.LanguageCrud do
     |> Repo.update_all(set: [is_source: false])
 
     next_source =
-      next_source
-      |> ProjectLanguage.update_changeset(%{"is_source" => true})
-      |> Repo.update!()
+      case next_source
+           |> ProjectLanguage.update_changeset(%{"is_source" => true})
+           |> Repo.update() do
+        {:ok, updated} -> updated
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
 
-    Repo.delete!(current_source)
+    case Repo.delete(current_source) do
+      {:ok, _} -> :ok
+      {:error, changeset} -> Repo.rollback(changeset)
+    end
 
     next_source
   end

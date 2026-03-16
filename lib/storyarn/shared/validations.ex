@@ -54,4 +54,19 @@ defmodule Storyarn.Shared.Validations do
       message: "must have the @ sign and no spaces"
     )
   end
+
+  @slug_format ~r/^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
+  @doc """
+  Validates slug format and length.
+  Lowercase alphanumeric with hyphens, 1-100 characters.
+  """
+  @spec validate_slug(Ecto.Changeset.t()) :: Ecto.Changeset.t()
+  def validate_slug(changeset) do
+    changeset
+    |> validate_length(:slug, min: 1, max: 100)
+    |> validate_format(:slug, @slug_format,
+      message: "must be lowercase alphanumeric with hyphens"
+    )
+  end
 end

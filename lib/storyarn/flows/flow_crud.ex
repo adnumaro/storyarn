@@ -266,31 +266,37 @@ defmodule Storyarn.Flows.FlowCrud do
            |> Repo.insert() do
         {:ok, flow} ->
           # Auto-create Entry node at position {100, 300}
-          %FlowNode{flow_id: flow.id}
-          |> FlowNode.create_changeset(%{
-            type: "entry",
-            position_x: 100.0,
-            position_y: 300.0,
-            data: %{}
-          })
-          |> Repo.insert!()
+          case %FlowNode{flow_id: flow.id}
+               |> FlowNode.create_changeset(%{
+                 type: "entry",
+                 position_x: 100.0,
+                 position_y: 300.0,
+                 data: %{}
+               })
+               |> Repo.insert() do
+            {:ok, _} -> :ok
+            {:error, cs} -> Repo.rollback(cs)
+          end
 
           # Auto-create Exit node at position {500, 300}
-          %FlowNode{flow_id: flow.id}
-          |> FlowNode.create_changeset(%{
-            type: "exit",
-            position_x: 500.0,
-            position_y: 300.0,
-            data: %{
-              "label" => "",
-              "technical_id" => "",
-              "outcome_tags" => [],
-              "outcome_color" => "#22c55e",
-              "exit_mode" => "terminal",
-              "referenced_flow_id" => nil
-            }
-          })
-          |> Repo.insert!()
+          case %FlowNode{flow_id: flow.id}
+               |> FlowNode.create_changeset(%{
+                 type: "exit",
+                 position_x: 500.0,
+                 position_y: 300.0,
+                 data: %{
+                   "label" => "",
+                   "technical_id" => "",
+                   "outcome_tags" => [],
+                   "outcome_color" => "#22c55e",
+                   "exit_mode" => "terminal",
+                   "referenced_flow_id" => nil
+                 }
+               })
+               |> Repo.insert() do
+            {:ok, _} -> :ok
+            {:error, cs} -> Repo.rollback(cs)
+          end
 
           Collaboration.broadcast_dashboard_change(project.id, :flows)
           flow
@@ -428,9 +434,10 @@ defmodule Storyarn.Flows.FlowCrud do
       from(f in Flow, where: f.project_id == ^flow.project_id and f.is_main == true)
       |> Repo.update_all(set: [is_main: false])
 
-      flow
-      |> Ecto.Changeset.change(is_main: true)
-      |> Repo.update!()
+      case flow |> Ecto.Changeset.change(is_main: true) |> Repo.update() do
+        {:ok, updated} -> updated
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
     end)
   end
 

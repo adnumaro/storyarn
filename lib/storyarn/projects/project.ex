@@ -80,13 +80,7 @@ defmodule Storyarn.Projects.Project do
     |> unique_constraint([:workspace_id, :slug])
   end
 
-  defp validate_slug(changeset) do
-    changeset
-    |> validate_length(:slug, min: 1, max: 100)
-    |> validate_format(:slug, ~r/^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-      message: "must be lowercase alphanumeric with hyphens"
-    )
-  end
+  defp validate_slug(changeset), do: Storyarn.Shared.Validations.validate_slug(changeset)
 
   @doc """
   Changeset for updating a project.

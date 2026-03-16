@@ -43,15 +43,19 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   def update_block_references(block) do
     block_id = block.id
 
-    # Delete existing references from this block
-    from(r in EntityReference,
-      where: r.source_type == "block" and r.source_id == ^block_id
-    )
-    |> Repo.delete_all()
+    Repo.transaction(fn ->
+      # Delete existing references from this block
+      from(r in EntityReference,
+        where: r.source_type == "block" and r.source_id == ^block_id
+      )
+      |> Repo.delete_all()
 
-    # Extract and batch-insert new references
-    references = extract_block_references(block)
-    batch_insert_references("block", block_id, references)
+      # Extract and batch-insert new references
+      references = extract_block_references(block)
+      batch_insert_references("block", block_id, references)
+    end)
+
+    :ok
   end
 
   @doc """
@@ -72,11 +76,13 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   """
   @spec update_flow_node_references(map()) :: :ok
   def update_flow_node_references(%{id: node_id, data: data}) when is_map(data) do
-    # Delete existing references from this node
-    delete_flow_node_references(node_id)
+    Repo.transaction(fn ->
+      delete_flow_node_references(node_id)
+      references = extract_flow_node_refs(data)
+      batch_insert_references("flow_node", node_id, references)
+    end)
 
-    references = extract_flow_node_refs(data)
-    batch_insert_references("flow_node", node_id, references)
+    :ok
   end
 
   def update_flow_node_references(_node), do: :ok
@@ -106,13 +112,17 @@ defmodule Storyarn.Sheets.ReferenceTracker do
         data: data,
         content: content
       }) do
-    delete_screenplay_element_references(element_id)
+    Repo.transaction(fn ->
+      delete_screenplay_element_references(element_id)
 
-    references =
-      extract_screenplay_element_refs(type, data, content)
-      |> Enum.uniq_by(fn ref -> {ref.type, ref.id, ref.context} end)
+      references =
+        extract_screenplay_element_refs(type, data, content)
+        |> Enum.uniq_by(fn ref -> {ref.type, ref.id, ref.context} end)
 
-    batch_insert_references("screenplay_element", element_id, references)
+      batch_insert_references("screenplay_element", element_id, references)
+    end)
+
+    :ok
   end
 
   def update_screenplay_element_references(_element), do: :ok

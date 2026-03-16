@@ -231,7 +231,10 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   Counts non-deleted screenplays for a project.
   """
   def count_screenplays(project_id) do
-    from(sp in Screenplay, where: sp.project_id == ^project_id and is_nil(sp.deleted_at))
+    from(sp in Screenplay,
+      where:
+        sp.project_id == ^project_id and is_nil(sp.deleted_at) and is_nil(sp.draft_of_id)
+    )
     |> Repo.aggregate(:count)
   end
 
@@ -240,7 +243,8 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   """
   def list_shortcuts(project_id) do
     from(sp in Screenplay,
-      where: sp.project_id == ^project_id and is_nil(sp.deleted_at),
+      where:
+        sp.project_id == ^project_id and is_nil(sp.deleted_at) and is_nil(sp.draft_of_id),
       select: sp.shortcut
     )
     |> Repo.all()

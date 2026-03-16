@@ -88,24 +88,27 @@ defmodule Storyarn.Sheets.BlockCrud do
         else: 0
 
     result =
-      %Block{sheet_id: sheet.id}
-      |> Block.create_changeset(
-        attrs
-        |> Map.put(:position, position)
-        |> Map.put_new(:config, config)
-        |> Map.put_new(:value, value)
-      )
-      |> Ecto.Changeset.put_change(:word_count, word_count)
-      |> ensure_unique_variable_name(sheet.id, nil)
-      |> Repo.insert()
+      Repo.transaction(fn ->
+        case %Block{sheet_id: sheet.id}
+             |> Block.create_changeset(
+               attrs
+               |> Map.put(:position, position)
+               |> Map.put_new(:config, config)
+               |> Map.put_new(:value, value)
+             )
+             |> Ecto.Changeset.put_change(:word_count, word_count)
+             |> ensure_unique_variable_name(sheet.id, nil)
+             |> Repo.insert() do
+          {:ok, block} ->
+            # Table structure + propagation inside same transaction
+            maybe_create_default_table_structure({:ok, block})
+            maybe_propagate_to_descendants({:ok, block}, sheet.id)
+            block
 
-    # If block is a table, auto-create 1 default column + 1 default row
-    # (must happen BEFORE propagation so table structure exists when copied to children)
-    maybe_create_default_table_structure(result)
-
-    # If block has scope: "children" and is not itself an inherited instance,
-    # auto-create instances on all descendant sheets
-    maybe_propagate_to_descendants(result, sheet.id)
+          {:error, changeset} ->
+            Repo.rollback(changeset)
+        end
+      end)
 
     case result do
       {:ok, _} -> broadcast_sheet_change(sheet)

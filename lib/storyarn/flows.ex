@@ -402,13 +402,6 @@ defmodule Storyarn.Flows do
   # =============================================================================
 
   @doc """
-  Returns all variable references for a block, with flow/node info.
-  Used by the sheet editor's variable usage section.
-  """
-  @spec get_variable_usage(integer(), integer()) :: [map()]
-  defdelegate get_variable_usage(block_id, project_id), to: References
-
-  @doc """
   Counts variable references for a block, grouped by kind.
   Returns %{"read" => N, "write" => M}.
   """

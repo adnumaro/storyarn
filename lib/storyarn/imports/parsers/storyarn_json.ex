@@ -14,7 +14,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Screenplays
-  alias Storyarn.Shared.MapUtils
+
   alias Storyarn.Sheets
 
   @required_top_keys ~w(storyarn_version export_version project)
@@ -960,8 +960,12 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       Enum.reduce(strings, [], fn entry, acc ->
         translations = entry["translations"] || %{}
         remapped_source_id = remap_source_id(id_map, entry["source_type"], entry["source_id"])
-        source_id = remapped_source_id || MapUtils.parse_int(entry["source_id"])
+        # Skip texts whose source entity was not imported (avoid cross-project ID links)
+        source_id = remapped_source_id
 
+        if is_nil(source_id) do
+          acc
+        else
         Enum.reduce(translations, acc, fn {locale_code, translation}, inner_acc ->
           attrs = %{
             project_id: project_id,
@@ -990,6 +994,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
           [attrs | inner_acc]
         end)
+        end
       end)
 
     Localization.bulk_import_texts(Enum.reverse(valid_attrs))

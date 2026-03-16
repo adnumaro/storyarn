@@ -136,16 +136,19 @@ defmodule Storyarn.Flows.NodeUpdate do
     word_count = WordCount.for_node_data(node.type, data)
 
     Repo.transaction(fn ->
-      updated_node =
-        node
-        |> FlowNode.data_changeset(%{data: data})
-        |> Ecto.Changeset.put_change(:word_count, word_count)
-        |> Repo.update!()
+      case node
+           |> FlowNode.data_changeset(%{data: data})
+           |> Ecto.Changeset.put_change(:word_count, word_count)
+           |> Repo.update() do
+        {:ok, updated_node} ->
+          References.update_flow_node_entity_references(updated_node)
+          References.update_flow_node_variable_references(updated_node)
+          Localization.extract_flow_node(updated_node)
+          updated_node
 
-      References.update_flow_node_entity_references(updated_node)
-      References.update_flow_node_variable_references(updated_node)
-      Localization.extract_flow_node(updated_node)
-      updated_node
+        {:error, changeset} ->
+          Repo.rollback(changeset)
+      end
     end)
   end
 
