@@ -60,6 +60,14 @@ export function createCombobox(opts) {
 
   if (!fixedWidth) adjustInputWidth(input);
 
+  if (!freeText) {
+    input.addEventListener("pointerdown", (e) => {
+      if (disabled || document.activeElement === input) return;
+      e.preventDefault();
+      input.focus();
+    });
+  }
+
   // Numeric filter: allow digits, a leading minus, and one decimal point
   if (numeric) {
     input.addEventListener("beforeinput", (e) => {

@@ -4,7 +4,7 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
   use Phoenix.Component
   use Gettext, backend: Storyarn.Gettext
 
-  import StoryarnWeb.Components.CoreComponents, only: [block_label: 1]
+  import StoryarnWeb.Components.CoreComponents, only: [block_label: 1, icon: 1]
 
   @doc """
   Renders a boolean block with support for two-state (true/false) or tri-state (true/null/false).
@@ -181,38 +181,12 @@ defmodule StoryarnWeb.Components.BlockComponents.BooleanBlocks do
       <%= case @content do %>
         <% true -> %>
           <span class="badge badge-success gap-1">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="size-3"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
+            <.icon name="check" class="size-3" />
             {@true_label}
           </span>
         <% false -> %>
           <span class="badge badge-error gap-1">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="size-3"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <.icon name="x" class="size-3" />
             {@false_label}
           </span>
         <% nil -> %>

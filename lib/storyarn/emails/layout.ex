@@ -14,7 +14,7 @@ defmodule Storyarn.Emails.Layout do
   """
   def render(content, opts \\ []) do
     preview = Keyword.get(opts, :preview, "")
-    logo_url = Storyarn.Urls.base_url() <> "/images/logo-name.png"
+    logo_url = Storyarn.Urls.base_url() <> "/images/logos/logo-name-white.png"
 
     mjml = """
     <mjml>
