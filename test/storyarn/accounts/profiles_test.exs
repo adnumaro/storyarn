@@ -115,7 +115,7 @@ defmodule Storyarn.Accounts.ProfilesTest do
 
     test "boundary: exactly at the limit" do
       user = user_fixture()
-      exactly_20_min_ago = DateTime.utc_now() |> DateTime.add(-20, :minute)
+      exactly_20_min_ago = Storyarn.Shared.TimeHelpers.now() |> DateTime.add(-20, :minute)
       user = %{user | authenticated_at: exactly_20_min_ago}
       # At exactly the boundary, should return false (not after)
       refute Profiles.sudo_mode?(user)

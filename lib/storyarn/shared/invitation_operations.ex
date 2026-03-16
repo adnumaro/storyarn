@@ -106,7 +106,7 @@ defmodule Storyarn.Shared.InvitationOperations do
       not is_nil(invitation.accepted_at) ->
         {:error, :already_accepted}
 
-      DateTime.compare(invitation.expires_at, DateTime.utc_now()) == :lt ->
+      DateTime.compare(invitation.expires_at, TimeHelpers.now()) == :lt ->
         {:error, :expired}
 
       String.downcase(user.email) != String.downcase(invitation.email) ->
@@ -134,7 +134,7 @@ defmodule Storyarn.Shared.InvitationOperations do
     config.invitation_schema
     |> where([i], i.id == ^id)
     |> where([i], is_nil(i.accepted_at))
-    |> where([i], i.expires_at > ^DateTime.utc_now())
+    |> where([i], i.expires_at > ^TimeHelpers.now())
     |> Repo.one()
   end
 
@@ -158,7 +158,7 @@ defmodule Storyarn.Shared.InvitationOperations do
       where: field(i, ^config.parent_key) == ^parent_id,
       where: fragment("lower(?)", i.email) == ^email,
       where: is_nil(i.accepted_at),
-      where: i.expires_at > ^DateTime.utc_now()
+      where: i.expires_at > ^TimeHelpers.now()
     )
     |> Repo.exists?()
   end
