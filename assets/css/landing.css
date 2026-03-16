@@ -360,6 +360,279 @@ html:has(.landing-shell) {
   transform: translateY(0);
 }
 
+/* ===== Hero section ===== */
+#hero-section {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(34, 211, 238, 0.14), transparent 28%),
+    linear-gradient(180deg, #071019 0%, #0a0d13 46%, #07090d 100%);
+  overflow: hidden;
+}
+
+#hero-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(4, 8, 12, 0.18) 0%, rgba(4, 8, 12, 0.04) 28%, rgba(4, 8, 12, 0.0) 48%, rgba(4, 8, 12, 0.18) 72%, rgba(4, 8, 12, 0.82) 100%),
+    radial-gradient(circle at 50% 86%, rgba(34, 211, 238, 0.12), transparent 30%);
+}
+
+/* ===== Hero portal (Three.js WebGL) ===== */
+.lp-portal-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.lp-portal-backdrop {
+  position: absolute;
+  inset: -8% -12% -16%;
+  background:
+    radial-gradient(circle at 50% 72%, rgba(88, 232, 255, 0.14), transparent 14%),
+    radial-gradient(circle at 50% 84%, rgba(16, 104, 137, 0.34), transparent 34%),
+    radial-gradient(circle at 50% 100%, rgba(4, 8, 14, 0.96), rgba(4, 8, 14, 0) 56%);
+  filter: blur(18px);
+}
+
+.lp-portal-wrap canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.lp-portal-trigger {
+  --lp-portal-frame-width: min(72vw, 900px);
+  position: absolute;
+  left: 50%;
+  top: 83%;
+  width: var(--lp-portal-frame-width);
+  aspect-ratio: 16 / 9;
+  transform: translate(-50%, -50%);
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  display: block;
+  pointer-events: auto;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), filter 220ms ease;
+}
+
+.lp-portal-trigger.is-active {
+  pointer-events: none;
+}
+
+@media (hover: hover) {
+  .lp-portal-trigger:hover {
+    transform: translate(-50%, -50%) scale(1.015);
+    filter: brightness(1.04);
+  }
+}
+
+.lp-portal-trigger:focus-visible {
+  outline: none;
+}
+
+.lp-portal-trigger:focus-visible .lp-portal-video-frame {
+  box-shadow:
+    0 0 0 1px rgba(186, 230, 253, 0.42),
+    0 0 0 6px rgba(14, 165, 233, 0.16),
+    0 48px 120px rgba(0, 0, 0, 0.5);
+}
+
+.lp-portal-trigger-badge {
+  position: absolute;
+  left: 50%;
+  top: 14%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(186, 230, 253, 0.22);
+  background: rgba(7, 16, 24, 0.46);
+  color: rgba(240, 249, 255, 0.92);
+  font-size: 0.84rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+}
+
+.lp-portal-video-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 34px;
+  isolation: isolate;
+  background: linear-gradient(180deg, rgba(8, 14, 20, 0.06), rgba(8, 14, 20, 0.46));
+  box-shadow:
+    0 0 90px rgba(22, 207, 240, 0.1),
+    0 48px 120px rgba(0, 0, 0, 0.5);
+}
+
+.lp-portal-video-frame::before {
+  content: "";
+  position: absolute;
+  inset: -8% 18% 32%;
+  z-index: 0;
+  opacity: 0;
+  background: radial-gradient(circle, rgba(88, 232, 255, 0.22), transparent 72%);
+  transition: opacity 220ms ease;
+}
+
+@media (hover: hover) {
+  .lp-portal-trigger:hover .lp-portal-video-frame::before {
+    opacity: 1;
+  }
+}
+
+.lp-portal-video-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.05) 0 15%, rgba(255, 255, 255, 0) 22%),
+    radial-gradient(circle at 50% 50%, rgba(5, 8, 12, 0) 0 22%, rgba(5, 8, 12, 0.22) 36%, rgba(5, 8, 12, 0.74) 56%, rgba(5, 8, 12, 0.96) 100%);
+}
+
+/* Video behind the portal center (visible through transparent canvas) */
+.lp-portal-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.94;
+  filter: saturate(0.84) brightness(0.72) contrast(1.08);
+  mask-image: radial-gradient(circle at 50% 50%, black 20%, rgba(0, 0, 0, 0.98) 26%, transparent 47%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, black 20%, rgba(0, 0, 0, 0.98) 26%, transparent 47%);
+}
+
+/* Video in fullscreen mode (inside overlay) */
+.lp-portal-video.is-fullscreen {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  width: 92vw;
+  max-width: 1400px;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  mask-image: none;
+  -webkit-mask-image: none;
+  border-radius: 12px;
+  pointer-events: auto;
+}
+
+/* Fallback when WebGL is unavailable */
+.lp-portal-fallback canvas { display: none; }
+.lp-portal-fallback::after {
+  content: "";
+  position: absolute;
+  top: 83%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(72vw, 760px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid rgba(34, 211, 238, 0.3);
+  box-shadow: 0 0 60px rgba(34, 211, 238, 0.15), inset 0 0 60px rgba(34, 211, 238, 0.08);
+}
+
+/* ===== Portal zoom-in fullscreen overlay (below topbar z-index: 120) ===== */
+.lp-portal-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(7, 10, 16, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+  backdrop-filter: blur(10px);
+}
+
+.lp-portal-fullscreen.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.lp-portal-fullscreen video {
+  width: 92vw;
+  max-width: 1400px;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  object-fit: contain;
+}
+
+.lp-portal-fullscreen-close {
+  position: absolute;
+  top: 24px; right: 24px;
+  z-index: 99999;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  font-size: 1.4rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.lp-portal-fullscreen-close:hover {
+  background: rgba(255,255,255,0.16);
+}
+
+/* ===== Portal responsive ===== */
+@media (max-width: 1024px) {
+  .lp-portal-trigger {
+    --lp-portal-frame-width: min(86vw, 760px);
+    top: 85%;
+  }
+}
+
+@media (max-width: 640px) {
+  .lp-portal-trigger {
+    --lp-portal-frame-width: min(108vw, 620px);
+    top: 88%;
+  }
+
+  .lp-portal-trigger-badge {
+    top: 12%;
+    padding: 0.5rem 0.78rem;
+    font-size: 0.76rem;
+  }
+
+  .lp-portal-video-frame {
+    border-radius: 24px;
+  }
+
+  .lp-portal-fallback::after {
+    top: 88%;
+    width: min(108vw, 620px);
+  }
+}
+
 /* ===== Eyebrow badge pulse ===== */
 @keyframes lp-badge-pulse {
   0%, 100% { opacity: 1; box-shadow: 0 0 20px var(--color-primary); }

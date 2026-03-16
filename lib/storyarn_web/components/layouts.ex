@@ -575,41 +575,41 @@ defmodule StoryarnWeb.Layouts do
             </.link>
           </div>
           <%!-- Desktop nav --%>
-          <div class="hidden min-w-0 flex-1 items-center justify-between gap-6 lg:flex">
+          <div class="hidden min-w-0 flex-1 items-center justify-between gap-6 xl:flex">
             <div class="flex min-w-0 items-center gap-1">
-              <a href="#features" class="btn btn-ghost btn-sm">
+              <a href="#features" class="btn btn-ghost">
                 {gettext("Features")}
               </a>
-              <a href="#discover" class="btn btn-ghost btn-sm">
+              <a href="#discover" class="btn btn-ghost">
                 {gettext("Discover")}
               </a>
-              <a href="#workflow" class="btn btn-ghost btn-sm">
+              <a href="#workflow" class="btn btn-ghost">
                 {gettext("Workflow")}
               </a>
-              <.link navigate={~p"/docs"} class="btn btn-ghost btn-sm">
+              <.link navigate={~p"/docs"} class="btn btn-ghost">
                 {gettext("Docs")}
               </.link>
-              <.link navigate={~p"/contact"} class="btn btn-ghost btn-sm">
+              <.link navigate={~p"/contact"} class="btn btn-ghost">
                 {gettext("Contact")}
               </.link>
             </div>
             <div class="flex flex-none items-center gap-1">
               <%= if @current_scope && @current_scope.user do %>
-                <.link navigate={~p"/workspaces"} class="btn btn-ghost btn-sm">
+                <.link navigate={~p"/workspaces"} class="btn btn-ghost">
                   {gettext("Dashboard")}
                 </.link>
               <% else %>
-                <a href="#waitlist" class="btn btn-primary btn-sm">
+                <a href="#waitlist" class="btn btn-primary">
                   {gettext("Request access")}
                 </a>
-                <.link navigate={~p"/users/log-in"} class="btn btn-ghost btn-sm">
+                <.link navigate={~p"/users/log-in"} class="btn btn-ghost">
                   {gettext("Log in")}
                 </.link>
               <% end %>
             </div>
           </div>
           <%!-- Mobile hamburger --%>
-          <div class="ml-auto flex-none lg:hidden">
+          <div class="ml-auto flex-none xl:hidden">
             <button
               phx-click={JS.toggle(to: "#mobile-nav", in: "fade-in", out: "fade-out")}
               class="btn btn-ghost btn-square btn-sm"
@@ -625,7 +625,7 @@ defmodule StoryarnWeb.Layouts do
       <nav
         id="mobile-nav"
         class={[
-          "hidden fixed inset-0 z-[140] w-screen max-w-none lg:hidden",
+          "hidden fixed inset-0 z-[140] w-screen max-w-none xl:hidden",
           @theme == "dark" && "bg-base-100/96 backdrop-blur-xl"
         ]}
         style="z-index: 140;"

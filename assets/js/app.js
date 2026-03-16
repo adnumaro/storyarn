@@ -110,8 +110,8 @@ import { UndoRedo } from "./hooks/undo_redo";
 
 // Theme management (keyboard shortcuts, cross-tab sync)
 import "./theme";
-import "./landing_page/discover_section";
-import "./landing_page/animations";
+// Landing page modules moved to separate landing.js bundle
+// (Three.js + GSAP only loaded on the landing page)
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
 const liveSocket = new LiveSocket("/live", Socket, {

@@ -11,7 +11,9 @@ defmodule StoryarnWeb.PageController do
         redirect_to_workspace(conn, user)
 
       _ ->
-        render(conn, :home)
+        conn
+        |> assign(:landing_page, true)
+        |> render(:home)
     end
   end
 
