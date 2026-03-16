@@ -1,0 +1,25 @@
+lib/storyarn_web/live/flow_live/show.ex
+  5b91b5424362fbb2 267,388
+lib/storyarn_web/live/flow_live/components/screenplay_editor.ex
+  5b91b5424362fbb2 52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "1e5c1802dbb7ed5d418bb536de8811f91b8068bf",
+  "prompts": {
+    "5b91b5424362fbb2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9183743-f76e-46a1-bef6-37da167d96ea",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 3,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}
