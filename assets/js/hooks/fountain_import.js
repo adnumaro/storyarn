@@ -24,17 +24,26 @@ export const FountainImport = {
 
     input.addEventListener("change", () => {
       const file = input.files?.[0];
-      if (!file) return;
+      if (!file) {
+        input.remove();
+        return;
+      }
 
       const reader = new FileReader();
       reader.onload = () => {
         this.pushEvent("import_fountain", { content: reader.result });
+        input.remove();
+      };
+      reader.onerror = () => {
+        this.pushEvent("upload_validation_error", {
+          message: "Could not read file",
+        });
+        input.remove();
       };
       reader.readAsText(file);
     });
 
     document.body.appendChild(input);
     input.click();
-    input.remove();
   },
 };

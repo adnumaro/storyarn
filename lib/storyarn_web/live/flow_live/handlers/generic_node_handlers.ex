@@ -130,7 +130,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   @spec handle_node_selected(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_node_selected(%{"id" => node_id}, socket) do
-    node = Flows.get_node!(socket.assigns.flow.id, node_id)
+    node = Flows.get_node(socket.assigns.flow.id, node_id)
+    if is_nil(node), do: {:noreply, socket}, else: do_handle_node_selected(node_id, node, socket)
+  end
+
+  defp do_handle_node_selected(node_id, node, socket) do
     form = FormHelpers.node_data_to_form(node)
     user = socket.assigns.current_scope.user
 
@@ -158,7 +162,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   @spec handle_node_double_clicked(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_node_double_clicked(%{"id" => node_id}, socket) do
-    node = Flows.get_node!(socket.assigns.flow.id, node_id)
+    case Flows.get_node(socket.assigns.flow.id, node_id) do
+      nil -> {:noreply, socket}
+      node -> do_handle_node_double_clicked(node, socket)
+    end
+  end
+
+  defp do_handle_node_double_clicked(node, socket) do
     editing_mode = NodeTypeRegistry.on_double_click(node.type, node)
 
     case editing_mode do
@@ -166,7 +176,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
         handle_navigate_to_flow(socket, flow_id)
 
       mode ->
-        handle_open_editing_mode(socket, node, node_id, mode)
+        handle_open_editing_mode(socket, node, to_string(node.id), mode)
     end
   end
 
@@ -467,8 +477,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   @spec handle_start_preview(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_start_preview(%{"id" => node_id}, socket) do
-    node = Flows.get_node!(socket.assigns.flow.id, node_id)
-    {:noreply, socket |> assign(:preview_show, true) |> assign(:preview_node, node)}
+    case Flows.get_node(socket.assigns.flow.id, node_id) do
+      nil -> {:noreply, socket}
+      node -> {:noreply, socket |> assign(:preview_show, true) |> assign(:preview_node, node)}
+    end
   end
 
   # Private helpers

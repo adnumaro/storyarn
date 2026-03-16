@@ -106,8 +106,10 @@ export const DialogueScreenplayEditor = {
     el.style.opacity = "0";
     el.style.transform = `translateX(${SLIDE_OFFSET})`;
 
-    // Element stays hidden (inline styles remain) until the server removes it from DOM
-    setTimeout(() => this.pushEvent(serverEvent), CLOSE_DURATION);
+    // Guard against pushEvent after hook is destroyed
+    this._closeTimer = setTimeout(() => {
+      if (!this._destroyed) this.pushEvent(serverEvent);
+    }, CLOSE_DURATION);
   },
 
   handleKeyDown(event) {
@@ -130,6 +132,8 @@ export const DialogueScreenplayEditor = {
   },
 
   destroyed() {
+    this._destroyed = true;
+    if (this._closeTimer) clearTimeout(this._closeTimer);
     document.removeEventListener("keydown", this.handleKeyDown);
   },
 };

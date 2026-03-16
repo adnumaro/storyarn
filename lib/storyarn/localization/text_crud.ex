@@ -149,12 +149,27 @@ defmodule Storyarn.Localization.TextCrud do
     source_field = attrs["source_field"]
     locale_code = attrs["locale_code"]
 
-    case get_text_by_source(source_type, source_id, source_field, locale_code) do
-      nil ->
-        create_text(project_id, attrs)
+    # Use insert with on_conflict to avoid TOCTOU race on concurrent extractions.
+    # First try to insert; on conflict, fall back to update with status downgrade logic.
+    changeset =
+      %LocalizedText{project_id: project_id}
+      |> LocalizedText.create_changeset(attrs)
 
-      existing ->
-        update_source_text(existing, attrs)
+    case Repo.insert(changeset,
+           on_conflict: :nothing,
+           conflict_target: [:source_type, :source_id, :source_field, :locale_code]
+         ) do
+      {:ok, %{id: nil}} ->
+        # Conflict occurred (on_conflict: :nothing returns struct with nil id)
+        # Fetch and update with proper status downgrade logic
+        existing = get_text_by_source(source_type, source_id, source_field, locale_code)
+        if existing, do: update_source_text(existing, attrs), else: create_text(project_id, attrs)
+
+      {:ok, text} ->
+        {:ok, text}
+
+      {:error, changeset} ->
+        {:error, changeset}
     end
   end
 

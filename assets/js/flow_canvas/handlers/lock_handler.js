@@ -2,12 +2,26 @@
  * Lock handling for collaborative node editing.
  * Shows visual indicators when nodes are locked by other users.
  */
+import { Lock } from "lucide";
+import { createIconHTML } from "../node_config.js";
+
+const LOCK_ICON = createIconHTML(Lock, { size: 12 });
 
 /**
  * Creates the lock handler with methods bound to the hook context.
  * @param {Object} hook - The FlowCanvas hook instance
  * @returns {Object} Handler methods
  */
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function sanitizeColor(color) {
+  return /^#[0-9a-fA-F]{3,8}$/.test(color) ? color : "#888";
+}
+
 export function createLockHandler(hook) {
   return {
     /**
@@ -57,12 +71,11 @@ export function createLockHandler(hook) {
     createLockIndicator(lockInfo) {
       const lockEl = document.createElement("div");
       lockEl.className = "node-lock-indicator";
-      const emailName = lockInfo.user_email?.split("@")[0] || "User";
+      const emailName = escapeHtml(lockInfo.user_email?.split("@")[0] || "User");
+      const safeColor = sanitizeColor(lockInfo.user_color);
 
       lockEl.innerHTML = `
-        <svg width="12" height="12" viewBox="0 0 20 20" fill="${lockInfo.user_color}">
-          <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z" clip-rule="evenodd"/>
-        </svg>
+        <span style="color: ${safeColor};">${LOCK_ICON}</span>
         <span>${emailName}</span>
       `;
 
@@ -75,10 +88,10 @@ export function createLockHandler(hook) {
         gap: 4px;
         padding: 2px 6px;
         background: var(--color-base-100, white);
-        border: 1px solid ${lockInfo.user_color};
+        border: 1px solid ${safeColor};
         border-radius: 12px;
         font-size: 10px;
-        color: ${lockInfo.user_color};
+        color: ${safeColor};
         font-family: system-ui, sans-serif;
         z-index: 10;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);

@@ -118,13 +118,13 @@ export const ColorPicker = {
     this.el.appendChild(trigger);
 
     // ── Sync ──
-    let debounceTimer;
+    this._debounceTimer = null;
     this._pushColor = (hex) => {
       swatch.style.background = hex;
       inputSwatch.style.background = hex;
       triggerHex.textContent = hex;
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
+      clearTimeout(this._debounceTimer);
+      this._debounceTimer = setTimeout(() => {
         this.pushEvent(event, { [field]: hex });
       }, 150);
     };
@@ -156,6 +156,7 @@ export const ColorPicker = {
   },
 
   destroyed() {
+    if (this._debounceTimer) clearTimeout(this._debounceTimer);
     this._fp?.destroy();
   },
 };

@@ -29,7 +29,7 @@ defmodule Storyarn.Flows.NodeUpdate do
   @batch_node_positions_sql """
   UPDATE flow_nodes
   SET position_x = data.x, position_y = data.y, updated_at = $4
-  FROM unnest($1::bigint[], $2::int[], $3::int[]) AS data(id, x, y)
+  FROM unnest($1::bigint[], $2::float8[], $3::float8[]) AS data(id, x, y)
   WHERE flow_nodes.id = data.id AND flow_nodes.flow_id = $5 AND flow_nodes.deleted_at IS NULL
   """
 
@@ -40,7 +40,7 @@ defmodule Storyarn.Flows.NodeUpdate do
       {ids, xs, ys} =
         Enum.reduce(positions, {[], [], []}, fn %{id: id, position_x: x, position_y: y},
                                                 {ids, xs, ys} ->
-          {[id | ids], [trunc(x) | xs], [trunc(y) | ys]}
+          {[id | ids], [x / 1 | xs], [y / 1 | ys]}
         end)
 
       Repo.query!(@batch_node_positions_sql, [

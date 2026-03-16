@@ -181,7 +181,9 @@ defmodule Storyarn.Billing.Limits do
   end
 
   defp count_workspace_projects(workspace_id) do
-    from(p in Project, where: p.workspace_id == ^workspace_id)
+    from(p in Project,
+      where: p.workspace_id == ^workspace_id and is_nil(p.deleted_at)
+    )
     |> Repo.aggregate(:count)
   end
 

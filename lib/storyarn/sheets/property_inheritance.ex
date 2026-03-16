@@ -267,11 +267,17 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   """
   @spec restore_inherited_instances(Block.t()) :: {:ok, integer()}
   def restore_inherited_instances(%Block{} = parent_block) do
+    # Only restore instances deleted within 2 seconds of the parent block's deletion,
+    # to avoid restoring instances that were individually deleted by the user.
+    since = parent_block.deleted_at || TimeHelpers.now()
+    since_threshold = DateTime.add(since, -2, :second)
+
     {count, _} =
       from(b in Block,
         where:
           b.inherited_from_block_id == ^parent_block.id and
-            not is_nil(b.deleted_at)
+            not is_nil(b.deleted_at) and
+            b.deleted_at >= ^since_threshold
       )
       |> Repo.update_all(set: [deleted_at: nil])
 

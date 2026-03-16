@@ -250,7 +250,7 @@ defmodule Storyarn.Flows.NodeCrud do
   Returns a map of %{flow_id => %{flow: flow, exit_labels: [...]}} for valid refs,
   or an empty map if there are no subflow nodes.
   """
-  def batch_resolve_subflow_data(nodes) do
+  def batch_resolve_subflow_data(nodes, project_id \\ nil) do
     ref_ids =
       nodes
       |> Enum.filter(&(&1.type == "subflow"))
@@ -263,14 +263,21 @@ defmodule Storyarn.Flows.NodeCrud do
     if ref_ids == [] do
       %{}
     else
+      flow_query = from(f in Flow, where: f.id in ^ref_ids)
+
+      flow_query =
+        if project_id,
+          do: where(flow_query, [f], f.project_id == ^project_id),
+          else: flow_query
+
       flows =
-        from(f in Flow, where: f.id in ^ref_ids)
+        flow_query
         |> Repo.all()
         |> Map.new(&{&1.id, &1})
 
       exits =
         from(n in FlowNode,
-          where: n.flow_id in ^ref_ids and n.type == "exit",
+          where: n.flow_id in ^ref_ids and n.type == "exit" and is_nil(n.deleted_at),
           select: %{
             flow_id: n.flow_id,
             id: n.id,

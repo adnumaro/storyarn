@@ -238,30 +238,26 @@ defmodule Storyarn.Sheets.BlockCrud do
   Soft-deletes a block by setting deleted_at timestamp.
   """
   def delete_block(%Block{} = block) do
-    # Clean up references and localization texts before soft-deleting
-    References.delete_block_references(block.id)
-    Localization.delete_block_texts(block.id)
+    Repo.transaction(fn ->
+      # Clean up references and localization texts before soft-deleting
+      References.delete_block_references(block.id)
+      Localization.delete_block_texts(block.id)
 
-    # If this is a parent block with scope: "children", soft-delete all instances
-    if block.scope == "children" do
-      PropertyInheritance.delete_inherited_instances(block)
-    end
+      # If this is a parent block with scope: "children", soft-delete all instances
+      if block.scope == "children" do
+        PropertyInheritance.delete_inherited_instances(block)
+      end
 
-    result =
-      block
-      |> Block.delete_changeset()
-      |> Repo.update()
+      case block |> Block.delete_changeset() |> Repo.update() do
+        {:ok, deleted_block} ->
+          maybe_dissolve_column_group(deleted_block.sheet_id, deleted_block.column_group_id)
+          broadcast_block_change(deleted_block)
+          deleted_block
 
-    # If the block was in a column group, check if the group should dissolve
-    case result do
-      {:ok, deleted_block} ->
-        maybe_dissolve_column_group(deleted_block.sheet_id, deleted_block.column_group_id)
-        broadcast_block_change(deleted_block)
-        {:ok, deleted_block}
-
-      error ->
-        error
-    end
+        {:error, changeset} ->
+          Repo.rollback(changeset)
+      end
+    end)
   end
 
   @doc """
@@ -408,8 +404,8 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   defp swap_block_positions(%Block{} = a, %Block{} = b) do
     Repo.transaction(fn ->
-      # Use a temporary position to avoid unique constraint violations
-      temp_pos = -1
+      # Use a large negative sentinel to avoid unique constraint collisions
+      temp_pos = -999_999
 
       Repo.update!(Block.position_changeset(a, %{position: temp_pos}))
       Repo.update!(Block.position_changeset(b, %{position: a.position}))
@@ -726,8 +722,11 @@ defmodule Storyarn.Sheets.BlockCrud do
   end
 
   defp broadcast_block_change(%Block{} = block) do
-    sheet = Repo.get!(Sheet, block.sheet_id)
-    Collaboration.broadcast_dashboard_change(sheet.project_id, :sheets)
+    project_id =
+      from(s in Sheet, where: s.id == ^block.sheet_id, select: s.project_id)
+      |> Repo.one()
+
+    if project_id, do: Collaboration.broadcast_dashboard_change(project_id, :sheets)
   end
 
   # =============================================================================

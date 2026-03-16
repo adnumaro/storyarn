@@ -169,6 +169,10 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   @spec update_node_data(Phoenix.LiveView.Socket.t(), map()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def update_node_data(socket, node_params) do
+    if is_nil(socket.assigns.selected_node), do: {:noreply, socket}, else: do_update_node_data(socket, node_params)
+  end
+
+  defp do_update_node_data(socket, node_params) do
     node_id = socket.assigns.selected_node.id
     normalized_params = normalize_form_params(node_params)
 

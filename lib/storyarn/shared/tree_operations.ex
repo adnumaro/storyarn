@@ -52,10 +52,17 @@ defmodule Storyarn.Shared.TreeOperations do
   """
   def batch_set_positions(_table, [], _opts), do: :ok
 
+  @allowed_scope_fields ~w(project_id sheet_id flow_id scene_id workspace_id block_id)
+
   def batch_set_positions(table, id_position_pairs, opts) when is_list(id_position_pairs) do
     {ids, positions} = Enum.unzip(id_position_pairs)
 
     {scope_field, scope_value} = Keyword.fetch!(opts, :scope)
+
+    unless scope_field in @allowed_scope_fields do
+      raise ArgumentError,
+            "scope_field must be one of #{inspect(@allowed_scope_fields)}, got: #{inspect(scope_field)}"
+    end
     soft_delete = Keyword.get(opts, :soft_delete, false)
     parent_id = Keyword.get(opts, :parent_id, :skip)
 

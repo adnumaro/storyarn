@@ -8,6 +8,16 @@
  * @param {Object} hook - The FlowCanvas hook instance
  * @returns {Object} Handler methods
  */
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function sanitizeColor(color) {
+  return /^#[0-9a-fA-F]{3,8}$/.test(color) ? color : "#888";
+}
+
 export function createCursorHandler(hook) {
   return {
     /**
@@ -106,17 +116,18 @@ export function createCursorHandler(hook) {
         z-index: 100;
       `;
 
-      const emailName = data.user_email?.split("@")[0] || "User";
+      const emailName = escapeHtml(data.user_email?.split("@")[0] || "User");
+      const safeColor = sanitizeColor(data.user_color);
 
       cursor.innerHTML = `
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));">
-          <path d="M5.5 3.21V20.8c0 .45.54.67.85.35l4.86-4.86a.5.5 0 0 1 .35-.15h6.87c.48 0 .72-.58.38-.92L6.35 2.86a.5.5 0 0 0-.85.35Z" fill="${data.user_color}" stroke="white" stroke-width="1.5"/>
+          <path d="M5.5 3.21V20.8c0 .45.54.67.85.35l4.86-4.86a.5.5 0 0 1 .35-.15h6.87c.48 0 .72-.58.38-.92L6.35 2.86a.5.5 0 0 0-.85.35Z" fill="${safeColor}" stroke="white" stroke-width="1.5"/>
         </svg>
         <span style="
           position: absolute;
           top: 20px;
           left: 12px;
-          background: ${data.user_color};
+          background: ${safeColor};
           color: white;
           font-size: 10px;
           padding: 2px 6px;

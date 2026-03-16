@@ -117,13 +117,19 @@ defmodule Storyarn.Sheets.SheetCrud do
   def restore_sheet(%Sheet{} = sheet) do
     alias Storyarn.Sheets.Block
 
+    # Only restore blocks deleted within 2 seconds of the sheet's deletion,
+    # to avoid restoring blocks that were individually deleted by the user.
+    since = sheet.deleted_at || TimeHelpers.now()
+    since_threshold = DateTime.add(since, -2, :second)
+
     Ecto.Multi.new()
     |> Ecto.Multi.update(:sheet, Sheet.restore_changeset(sheet))
     |> Ecto.Multi.run(:restore_blocks, fn repo, _changes ->
-      # Restore all soft-deleted blocks for this sheet
       {count, _} =
         from(b in Block,
-          where: b.sheet_id == ^sheet.id and not is_nil(b.deleted_at)
+          where:
+            b.sheet_id == ^sheet.id and not is_nil(b.deleted_at) and
+              b.deleted_at >= ^since_threshold
         )
         |> repo.update_all(set: [deleted_at: nil])
 
@@ -141,17 +147,22 @@ defmodule Storyarn.Sheets.SheetCrud do
   Use with caution - this cannot be undone.
   """
   def permanently_delete_sheet(%Sheet{} = sheet) do
-    # Delete all versions first
-    from(v in EntityVersion,
-      where: v.entity_type == "sheet" and v.entity_id == ^sheet.id
-    )
-    |> Repo.delete_all()
+    Repo.transaction(fn ->
+      # Delete all versions first
+      from(v in EntityVersion,
+        where: v.entity_type == "sheet" and v.entity_id == ^sheet.id
+      )
+      |> Repo.delete_all()
 
-    # Delete references where this sheet is the target
-    References.delete_target_references("sheet", sheet.id)
+      # Delete references where this sheet is the target
+      References.delete_target_references("sheet", sheet.id)
 
-    # Delete the sheet (blocks cascade via FK)
-    Repo.delete(sheet)
+      # Delete the sheet (blocks cascade via FK)
+      case Repo.delete(sheet) do
+        {:ok, deleted} -> deleted
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
   end
 
   def move_sheet(%Sheet{} = sheet, parent_id, position \\ nil) do

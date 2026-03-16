@@ -39,23 +39,46 @@ defmodule Storyarn.Flows.NodeCreate do
   end
 
   defp create_entry_node(flow, attrs) do
-    if has_entry_node?(flow.id) do
-      {:error, :entry_node_exists}
-    else
-      insert_node(flow, attrs)
-    end
+    # Lock the flow row to prevent TOCTOU race condition on entry node uniqueness
+    Repo.transaction(fn ->
+      lock_flow!(flow.id)
+
+      if has_entry_node?(flow.id) do
+        Repo.rollback(:entry_node_exists)
+      else
+        case insert_node(flow, attrs) do
+          {:ok, node} -> node
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end
+    end)
   end
 
   defp create_hub_node(flow, attrs) do
     hub_id = get_in(attrs, ["data", "hub_id"])
     hub_id = if hub_id == nil || hub_id == "", do: generate_hub_id(flow.id), else: hub_id
 
-    if NodeCrud.hub_id_exists?(flow.id, hub_id, nil) do
-      {:error, :hub_id_not_unique}
-    else
-      updated_data = Map.put(attrs["data"] || %{}, "hub_id", hub_id)
-      insert_node(flow, Map.put(attrs, "data", updated_data))
-    end
+    # Lock the flow row to prevent TOCTOU race condition on hub_id uniqueness
+    Repo.transaction(fn ->
+      lock_flow!(flow.id)
+
+      if NodeCrud.hub_id_exists?(flow.id, hub_id, nil) do
+        Repo.rollback(:hub_id_not_unique)
+      else
+        updated_data = Map.put(attrs["data"] || %{}, "hub_id", hub_id)
+
+        case insert_node(flow, Map.put(attrs, "data", updated_data)) do
+          {:ok, node} -> node
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end
+    end)
+  end
+
+  # Acquires a row-level lock on the flow to serialize concurrent node creation
+  defp lock_flow!(flow_id) do
+    from(f in Flow, where: f.id == ^flow_id, lock: "FOR UPDATE")
+    |> Repo.one!()
   end
 
   defp insert_node(%Flow{} = flow, attrs) do
@@ -142,20 +165,20 @@ defmodule Storyarn.Flows.NodeCreate do
   end
 
   defp get_referenced_flow_ids(flow_id) do
-    # Subflow references
+    # Subflow references (exclude soft-deleted nodes)
     subflow_refs =
       from(n in FlowNode,
-        where: n.flow_id == ^flow_id and n.type == "subflow",
+        where: n.flow_id == ^flow_id and n.type == "subflow" and is_nil(n.deleted_at),
         where: not is_nil(fragment("?->>'referenced_flow_id'", n.data)),
         where: fragment("?->>'referenced_flow_id' ~ '^[0-9]+$'", n.data),
         select: fragment("(?->>'referenced_flow_id')::integer", n.data)
       )
       |> Repo.all()
 
-    # Exit flow references
+    # Exit flow references (exclude soft-deleted nodes)
     exit_refs =
       from(n in FlowNode,
-        where: n.flow_id == ^flow_id and n.type == "exit",
+        where: n.flow_id == ^flow_id and n.type == "exit" and is_nil(n.deleted_at),
         where: fragment("?->>'exit_mode'", n.data) == "flow_reference",
         where: not is_nil(fragment("?->>'referenced_flow_id'", n.data)),
         where: fragment("?->>'referenced_flow_id' ~ '^[0-9]+$'", n.data),

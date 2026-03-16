@@ -61,12 +61,19 @@ defmodule StoryarnWeb.UserLive.Registration do
 
   def mount(_params, _session, socket) do
     # Registration disabled during invite-only beta
-    {:ok, redirect(socket, to: ~p"/")}
+    # Extract client IP for rate limiting (only available during mount)
+    ip =
+      case get_connect_info(socket, :peer_data) do
+        %{address: addr} when is_tuple(addr) -> addr |> :inet.ntoa() |> to_string()
+        _ -> "unknown"
+      end
+
+    {:ok, socket |> assign(:client_ip, ip) |> redirect(to: ~p"/")}
   end
 
   @impl true
   def handle_event("save", %{"user" => user_params}, socket) do
-    case RateLimiter.check_registration(socket.assigns.ip_address) do
+    case RateLimiter.check_registration(socket.assigns[:client_ip] || "unknown") do
       :ok ->
         do_register(socket, user_params)
 

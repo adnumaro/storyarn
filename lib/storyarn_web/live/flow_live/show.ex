@@ -732,12 +732,18 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("open_builder", _params, socket) do
-    socket =
-      socket
-      |> assign(:editing_mode, :builder)
-      |> push_event("center_on_node", %{id: socket.assigns.selected_node.id, sidebar_width: 480})
+    case socket.assigns.selected_node do
+      nil ->
+        {:noreply, socket}
 
-    {:noreply, socket}
+      node ->
+        socket =
+          socket
+          |> assign(:editing_mode, :builder)
+          |> push_event("center_on_node", %{id: node.id, sidebar_width: 480})
+
+        {:noreply, socket}
+    end
   end
 
   def handle_event("close_builder", _params, socket) do
@@ -861,22 +867,26 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_event("update_annotation_color", %{"value" => color}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      node = socket.assigns.selected_node
-
-      NodeHelpers.persist_node_update(socket, node.id, fn data ->
-        Map.put(data, "color", color)
-      end)
+      case socket.assigns.selected_node do
+        nil -> {:noreply, socket}
+        node ->
+          NodeHelpers.persist_node_update(socket, node.id, fn data ->
+            Map.put(data, "color", color)
+          end)
+      end
     end)
   end
 
   def handle_event("update_annotation_font_size", %{"value" => size}, socket)
       when size in ["sm", "md", "lg"] do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      node = socket.assigns.selected_node
-
-      NodeHelpers.persist_node_update(socket, node.id, fn data ->
-        Map.put(data, "font_size", size)
-      end)
+      case socket.assigns.selected_node do
+        nil -> {:noreply, socket}
+        node ->
+          NodeHelpers.persist_node_update(socket, node.id, fn data ->
+            Map.put(data, "font_size", size)
+          end)
+      end
     end)
   end
 
@@ -1020,22 +1030,26 @@ defmodule StoryarnWeb.FlowLive.Show do
   # Create linked flow (exit flow_reference / subflow)
   def handle_event("create_linked_flow", %{"node-id" => node_id_str}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      node = Flows.get_node!(socket.assigns.flow.id, node_id_str)
+      case Flows.get_node(socket.assigns.flow.id, node_id_str) do
+        nil ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Node not found."))}
 
-      case Flows.create_linked_flow(socket.assigns.project, socket.assigns.flow, node) do
-        {:ok, %{flow: new_flow}} ->
-          {:noreply,
-           push_patch(socket,
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
-           )}
+        node ->
+          case Flows.create_linked_flow(socket.assigns.project, socket.assigns.flow, node) do
+            {:ok, %{flow: new_flow}} ->
+              {:noreply,
+               push_patch(socket,
+                 to:
+                   ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
+               )}
 
-        {:error, :limit_reached, _details} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
+            {:error, :limit_reached, _details} ->
+              {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
 
-        {:error, _, _reason, _changes} ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("flows", "Could not create linked flow."))}
+            {:error, _, _reason, _changes} ->
+              {:noreply,
+               put_flash(socket, :error, dgettext("flows", "Could not create linked flow."))}
+          end
       end
     end)
   end
@@ -1265,15 +1279,19 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_event("set_main_flow", %{"id" => flow_id}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      flow = Flows.get_flow!(socket.assigns.project.id, flow_id)
+      case Flows.get_flow(socket.assigns.project.id, flow_id) do
+        nil ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
 
-      case Flows.set_main_flow(flow) do
-        {:ok, _} ->
-          {:noreply,
-           assign(socket, :flows_tree, Flows.list_flows_tree(socket.assigns.project.id))}
+        flow ->
+          case Flows.set_main_flow(flow) do
+            {:ok, _} ->
+              {:noreply,
+               assign(socket, :flows_tree, Flows.list_flows_tree(socket.assigns.project.id))}
 
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not set main flow."))}
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, dgettext("flows", "Could not set main flow."))}
+          end
       end
     end)
   end

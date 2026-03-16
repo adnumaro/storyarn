@@ -86,8 +86,13 @@ defmodule Storyarn.Accounts.OAuth do
     email = get_email_from_auth(auth)
 
     case Storyarn.Accounts.Users.get_user_by_email(email) do
-      %User{} = user ->
+      %User{confirmed_at: confirmed_at} = user when not is_nil(confirmed_at) ->
+        # Only auto-link if the existing user's email is confirmed
         link_identity_to_user(user, provider, auth)
+
+      %User{} ->
+        # Existing user with unconfirmed email — don't auto-link (prevents account takeover)
+        {:error, :email_not_confirmed}
 
       nil ->
         create_new_user_with_identity(email, provider, auth, register_user_fn)

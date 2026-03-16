@@ -13,8 +13,12 @@ export const FlowLoader = {
     document.getElementById("page-loader")?.classList.remove("hidden");
 
     // Guarantee at least one paint before triggering the heavy load
-    requestAnimationFrame(() => {
+    this._rafId = requestAnimationFrame(() => {
       this.pushEvent("load_flow_data", {});
     });
+  },
+
+  destroyed() {
+    if (this._rafId) cancelAnimationFrame(this._rafId);
   },
 };

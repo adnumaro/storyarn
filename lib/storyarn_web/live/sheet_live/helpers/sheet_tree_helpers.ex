@@ -18,14 +18,18 @@ defmodule StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers do
   @spec delete_sheet(Phoenix.LiveView.Socket.t(), any()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def delete_sheet(socket, sheet_id) do
-    sheet = Sheets.get_sheet!(socket.assigns.project.id, sheet_id)
+    case Sheets.get_sheet(socket.assigns.project.id, sheet_id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Sheet not found."))}
 
-    case Sheets.delete_sheet(sheet) do
-      {:ok, _} ->
-        handle_sheet_deleted(socket, sheet)
+      sheet ->
+        case Sheets.delete_sheet(sheet) do
+          {:ok, _} ->
+            handle_sheet_deleted(socket, sheet)
 
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
+        end
     end
   end
 
@@ -36,7 +40,16 @@ defmodule StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers do
   @spec move_sheet(Phoenix.LiveView.Socket.t(), any(), any(), integer()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def move_sheet(socket, sheet_id, parent_id, position) do
-    sheet = Sheets.get_sheet!(socket.assigns.project.id, sheet_id)
+    case Sheets.get_sheet(socket.assigns.project.id, sheet_id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Sheet not found."))}
+
+      sheet ->
+        do_move_sheet(socket, sheet, parent_id, position)
+    end
+  end
+
+  defp do_move_sheet(socket, sheet, parent_id, position) do
     parent_id = normalize_parent_id(parent_id)
     position = normalize_position(position)
 
