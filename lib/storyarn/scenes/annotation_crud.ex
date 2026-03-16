@@ -3,8 +3,9 @@ defmodule Storyarn.Scenes.AnnotationCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Localization
   alias Storyarn.Repo
-  alias Storyarn.Scenes.{PositionUtils, SceneAnnotation}
+  alias Storyarn.Scenes.{PositionUtils, Scene, SceneAnnotation}
 
   def list_annotations(scene_id) do
     from(a in SceneAnnotation,
@@ -31,12 +32,20 @@ defmodule Storyarn.Scenes.AnnotationCrud do
     %SceneAnnotation{scene_id: scene_id}
     |> SceneAnnotation.create_changeset(Map.put(attrs, "position", position))
     |> Repo.insert()
+    |> tap(fn
+      {:ok, _annotation} -> Repo.get(Scene, scene_id) |> Localization.extract_scene()
+      _ -> :ok
+    end)
   end
 
   def update_annotation(%SceneAnnotation{} = annotation, attrs) do
     annotation
     |> SceneAnnotation.update_changeset(attrs)
     |> Repo.update()
+    |> tap(fn
+      {:ok, _updated_annotation} -> Repo.get(Scene, annotation.scene_id) |> Localization.extract_scene()
+      _ -> :ok
+    end)
   end
 
   def move_annotation(%SceneAnnotation{} = annotation, position_x, position_y) do
@@ -47,5 +56,10 @@ defmodule Storyarn.Scenes.AnnotationCrud do
 
   def delete_annotation(%SceneAnnotation{} = annotation) do
     Repo.delete(annotation)
+    |> tap(fn
+      {:ok, _deleted_annotation} -> Repo.get(Scene, annotation.scene_id) |> Localization.extract_scene()
+      _ -> :ok
+    end)
   end
+
 end

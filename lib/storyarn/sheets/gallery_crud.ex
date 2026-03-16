@@ -3,6 +3,7 @@ defmodule Storyarn.Sheets.GalleryCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Sheets.{Block, BlockGalleryImage, Sheet}
 
@@ -51,6 +52,10 @@ defmodule Storyarn.Sheets.GalleryCrud do
     %BlockGalleryImage{block_id: block_id}
     |> BlockGalleryImage.create_changeset(%{asset_id: asset_id, position: position})
     |> Repo.insert()
+    |> tap(fn
+      {:ok, _gallery_image} -> Repo.get(Block, block_id) |> Localization.extract_block()
+      _ -> :ok
+    end)
   end
 
   @doc "Adds multiple images to a gallery block in batch."
@@ -76,6 +81,10 @@ defmodule Storyarn.Sheets.GalleryCrud do
     gallery_image
     |> BlockGalleryImage.update_changeset(attrs)
     |> Repo.update()
+    |> tap(fn
+      {:ok, _updated_image} -> Repo.get(Block, gallery_image.block_id) |> Localization.extract_block()
+      _ -> :ok
+    end)
   end
 
   # ===========================================================================
@@ -85,8 +94,15 @@ defmodule Storyarn.Sheets.GalleryCrud do
   @doc "Removes a gallery image (hard delete)."
   def remove_gallery_image(gallery_image_id) do
     case Repo.get(BlockGalleryImage, gallery_image_id) do
-      nil -> {:error, :not_found}
-      gi -> Repo.delete(gi)
+      nil ->
+        {:error, :not_found}
+
+      gi ->
+        Repo.delete(gi)
+        |> tap(fn
+          {:ok, _deleted_image} -> Repo.get(Block, gi.block_id) |> Localization.extract_block()
+          _ -> :ok
+        end)
     end
   end
 
@@ -153,4 +169,5 @@ defmodule Storyarn.Sheets.GalleryCrud do
     |> Repo.one()
     |> Kernel.+(1)
   end
+
 end

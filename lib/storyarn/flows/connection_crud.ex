@@ -4,6 +4,7 @@ defmodule Storyarn.Flows.ConnectionCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows.{Flow, FlowConnection, FlowNode}
+  alias Storyarn.Localization
   alias Storyarn.Repo
 
   def list_connections(flow_id) do
@@ -51,6 +52,10 @@ defmodule Storyarn.Flows.ConnectionCrud do
     %FlowConnection{flow_id: flow.id}
     |> FlowConnection.create_changeset(attrs)
     |> Repo.insert()
+    |> tap(fn
+      {:ok, _connection} -> Localization.extract_flow(flow)
+      _ -> :ok
+    end)
   end
 
   def create_connection(%Flow{} = flow, attrs) do
@@ -62,6 +67,10 @@ defmodule Storyarn.Flows.ConnectionCrud do
         %FlowConnection{flow_id: flow.id}
         |> FlowConnection.create_changeset(attrs)
         |> Repo.insert()
+        |> tap(fn
+          {:ok, _connection} -> Localization.extract_flow(flow)
+          _ -> :ok
+        end)
 
       {:error, _reason} = error ->
         error
@@ -72,10 +81,24 @@ defmodule Storyarn.Flows.ConnectionCrud do
     connection
     |> FlowConnection.update_changeset(attrs)
     |> Repo.update()
+    |> tap(fn
+      {:ok, _updated_connection} ->
+        Repo.get(Flow, connection.flow_id) |> Localization.extract_flow()
+
+      _ ->
+        :ok
+    end)
   end
 
   def delete_connection(%FlowConnection{} = connection) do
     Repo.delete(connection)
+    |> tap(fn
+      {:ok, _deleted_connection} ->
+        Repo.get(Flow, connection.flow_id) |> Localization.extract_flow()
+
+      _ ->
+        :ok
+    end)
   end
 
   def delete_connection_by_nodes(flow_id, source_node_id, target_node_id) do
@@ -86,6 +109,13 @@ defmodule Storyarn.Flows.ConnectionCrud do
           c.target_node_id == ^target_node_id
     )
     |> Repo.delete_all()
+    |> tap(fn
+      {deleted_count, _} when deleted_count > 0 ->
+        Repo.get(Flow, flow_id) |> Localization.extract_flow()
+
+      _ ->
+        :ok
+    end)
   end
 
   def delete_connection_by_pins(flow_id, source_node_id, source_pin, target_node_id, target_pin) do
@@ -98,6 +128,13 @@ defmodule Storyarn.Flows.ConnectionCrud do
           c.target_pin == ^target_pin
     )
     |> Repo.delete_all()
+    |> tap(fn
+      {deleted_count, _} when deleted_count > 0 ->
+        Repo.get(Flow, flow_id) |> Localization.extract_flow()
+
+      _ ->
+        :ok
+    end)
   end
 
   @doc """

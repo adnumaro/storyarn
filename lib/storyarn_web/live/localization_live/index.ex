@@ -656,7 +656,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   defp source_type_filter_options do
     [
       {dgettext("localization", "All types"), ""}
-      | Enum.map(~w(flow_node block sheet flow), &{source_type_label(&1), &1})
+      | Enum.map(~w(flow_node block sheet flow scene), &{source_type_label(&1), &1})
     ]
   end
 

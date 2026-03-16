@@ -4,9 +4,10 @@ defmodule Storyarn.Scenes.ZoneCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows
+  alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Scenes
-  alias Storyarn.Scenes.{PositionUtils, SceneZone}
+  alias Storyarn.Scenes.{PositionUtils, Scene, SceneZone}
   alias Storyarn.Sheets
 
   @doc """
@@ -66,6 +67,7 @@ defmodule Storyarn.Scenes.ZoneCrud do
         project_id = Scenes.get_scene_project_id(scene_id)
         Sheets.update_scene_zone_references(zone)
         Flows.update_scene_zone_references(zone, project_id: project_id)
+        Repo.get(Scene, scene_id) |> Localization.extract_scene()
 
       _ ->
         :ok
@@ -89,6 +91,8 @@ defmodule Storyarn.Scenes.ZoneCrud do
           project_id: project_id
         )
 
+        Repo.get(Scene, zone.scene_id) |> Localization.extract_scene()
+
       _ ->
         :ok
     end
@@ -108,7 +112,12 @@ defmodule Storyarn.Scenes.ZoneCrud do
   def delete_zone(%SceneZone{} = zone) do
     Sheets.delete_map_zone_references(zone.id)
     Flows.delete_map_zone_references(zone.id)
+
     Repo.delete(zone)
+    |> tap(fn
+      {:ok, _deleted_zone} -> Repo.get(Scene, zone.scene_id) |> Localization.extract_scene()
+      _ -> :ok
+    end)
   end
 
   def change_zone(%SceneZone{} = zone, attrs \\ %{}) do
@@ -140,4 +149,5 @@ defmodule Storyarn.Scenes.ZoneCrud do
     )
     |> Repo.one()
   end
+
 end

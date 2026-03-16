@@ -3,8 +3,9 @@ defmodule Storyarn.Scenes.LayerCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Localization
   alias Storyarn.Repo
-  alias Storyarn.Scenes.{PositionUtils, SceneAnnotation, SceneLayer, ScenePin, SceneZone}
+  alias Storyarn.Scenes.{PositionUtils, Scene, SceneAnnotation, SceneLayer, ScenePin, SceneZone}
   alias Storyarn.Shared.TreeOperations
 
   @doc """
@@ -40,12 +41,20 @@ defmodule Storyarn.Scenes.LayerCrud do
     %SceneLayer{scene_id: scene_id}
     |> SceneLayer.create_changeset(Map.put(attrs, "position", position))
     |> Repo.insert()
+    |> tap(fn
+      {:ok, _layer} -> Repo.get(Scene, scene_id) |> Localization.extract_scene()
+      _ -> :ok
+    end)
   end
 
   def update_layer(%SceneLayer{} = layer, attrs) do
     layer
     |> SceneLayer.update_changeset(attrs)
     |> Repo.update()
+    |> tap(fn
+      {:ok, _updated_layer} -> Repo.get(Scene, layer.scene_id) |> Localization.extract_scene()
+      _ -> :ok
+    end)
   end
 
   @doc """
@@ -93,8 +102,12 @@ defmodule Storyarn.Scenes.LayerCrud do
     |> Repo.update_all(set: [layer_id: nil])
 
     case Repo.delete(layer) do
-      {:ok, deleted} -> deleted
-      {:error, changeset} -> Repo.rollback(changeset)
+      {:ok, deleted} ->
+        Repo.get(Scene, deleted.scene_id) |> Localization.extract_scene()
+        deleted
+
+      {:error, changeset} ->
+        Repo.rollback(changeset)
     end
   end
 
@@ -114,4 +127,5 @@ defmodule Storyarn.Scenes.LayerCrud do
   def change_layer(%SceneLayer{} = layer, attrs \\ %{}) do
     SceneLayer.update_changeset(layer, attrs)
   end
+
 end

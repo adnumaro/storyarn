@@ -3,8 +3,9 @@ defmodule Storyarn.Scenes.ConnectionCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Localization
   alias Storyarn.Repo
-  alias Storyarn.Scenes.{SceneConnection, ScenePin}
+  alias Storyarn.Scenes.{Scene, SceneConnection, ScenePin}
 
   @doc """
   Lists all connections for a map, with from_pin and to_pin preloaded.
@@ -53,6 +54,10 @@ defmodule Storyarn.Scenes.ConnectionCrud do
       %SceneConnection{scene_id: scene_id}
       |> SceneConnection.create_changeset(attrs)
       |> Repo.insert()
+      |> tap(fn
+        {:ok, _connection} -> Repo.get(Scene, scene_id) |> Localization.extract_scene()
+        _ -> :ok
+      end)
     end
   end
 
@@ -60,6 +65,10 @@ defmodule Storyarn.Scenes.ConnectionCrud do
     connection
     |> SceneConnection.update_changeset(attrs)
     |> Repo.update()
+    |> tap(fn
+      {:ok, _updated_connection} -> Repo.get(Scene, connection.scene_id) |> Localization.extract_scene()
+      _ -> :ok
+    end)
   end
 
   @doc """
@@ -73,6 +82,10 @@ defmodule Storyarn.Scenes.ConnectionCrud do
 
   def delete_connection(%SceneConnection{} = connection) do
     Repo.delete(connection)
+    |> tap(fn
+      {:ok, _deleted_connection} -> Repo.get(Scene, connection.scene_id) |> Localization.extract_scene()
+      _ -> :ok
+    end)
   end
 
   def change_connection(%SceneConnection{} = connection, attrs \\ %{}) do
@@ -91,4 +104,5 @@ defmodule Storyarn.Scenes.ConnectionCrud do
         {:error, :pin_belongs_to_different_scene}
     end
   end
+
 end

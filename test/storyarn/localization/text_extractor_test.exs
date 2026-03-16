@@ -10,6 +10,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
   import Storyarn.FlowsFixtures
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
   setup do
@@ -512,7 +513,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
   end
 
   describe "block extraction — select block" do
-    test "extracts label and option labels from select block", %{project: project} do
+    test "extracts label, placeholder, and option labels from select block", %{project: project} do
       {:ok, sheet} = Sheets.create_sheet(project, %{name: "Character"})
 
       block =
@@ -543,11 +544,12 @@ defmodule Storyarn.Localization.TextExtractorTest do
 
       texts = Localization.get_texts_for_source("block", block.id)
 
-      # Should have: config.label + 3 option labels = 4
-      assert length(texts) == 4
+      # Should have: config.label + config.placeholder + 3 option labels = 5
+      assert length(texts) == 5
 
       fields = Enum.map(texts, & &1.source_field) |> MapSet.new()
       assert "config.label" in fields
+      assert "config.placeholder" in fields
       assert "config.options.warrior" in fields
       assert "config.options.mage" in fields
       assert "config.options.rogue" in fields
@@ -607,7 +609,7 @@ defmodule Storyarn.Localization.TextExtractorTest do
   end
 
   describe "block extraction — other block types" do
-    test "number block extracts only label", %{project: project} do
+    test "number block extracts label and placeholder", %{project: project} do
       {:ok, sheet} = Sheets.create_sheet(project, %{name: "Character"})
 
       block =
@@ -620,9 +622,11 @@ defmodule Storyarn.Localization.TextExtractorTest do
       {:ok, _} = Sheets.update_block_config(block, %{"label" => "Health", "placeholder" => "0"})
 
       texts = Localization.get_texts_for_source("block", block.id)
-      assert length(texts) == 1
-      assert hd(texts).source_field == "config.label"
-      assert hd(texts).source_text == "Health"
+      assert length(texts) == 2
+
+      fields = Enum.map(texts, & &1.source_field) |> MapSet.new()
+      assert "config.label" in fields
+      assert "config.placeholder" in fields
     end
 
     test "boolean block extracts only label", %{project: project} do
@@ -785,6 +789,63 @@ defmodule Storyarn.Localization.TextExtractorTest do
 
       assert name_text.source_text == "Chapter 1"
       assert desc_text.source_text == "The beginning"
+    end
+  end
+
+  # =============================================================================
+  # Scene Extraction
+  # =============================================================================
+
+  describe "scene extraction" do
+    test "extracts scene texts from scene content and nested elements", %{project: project} do
+      scene = scene_fixture(project, %{name: "World Map", description: "Main hub"})
+      layer = layer_fixture(scene, %{"name" => "Upper City"})
+
+      zone =
+        zone_fixture(scene, %{
+          "name" => "Market Square",
+          "tooltip" => "Crowded at noon",
+          "layer_id" => layer.id
+        })
+
+      pin_1 =
+        pin_fixture(scene, %{
+          "label" => "Clock Tower",
+          "tooltip" => "Visible everywhere",
+          "layer_id" => layer.id
+        })
+
+      pin_2 =
+        pin_fixture(scene, %{
+          "label" => "West Gate",
+          "tooltip" => "",
+          "layer_id" => layer.id
+        })
+
+      annotation =
+        annotation_fixture(scene, %{
+          "text" => "Secret route",
+          "layer_id" => layer.id
+        })
+
+      connection =
+        Storyarn.ScenesFixtures.connection_fixture(scene, pin_1, pin_2, %{
+          "label" => "Patrol path"
+        })
+
+      texts = Localization.get_texts_for_source("scene", scene.id)
+      fields = Enum.map(texts, & &1.source_field) |> MapSet.new()
+
+      assert "name" in fields
+      assert "description" in fields
+      assert "layer.#{layer.id}.name" in fields
+      assert "zone.#{zone.id}.name" in fields
+      assert "zone.#{zone.id}.tooltip" in fields
+      assert "pin.#{pin_1.id}.label" in fields
+      assert "pin.#{pin_1.id}.tooltip" in fields
+      assert "pin.#{pin_2.id}.label" in fields
+      assert "annotation.#{annotation.id}.text" in fields
+      assert "connection.#{connection.id}.label" in fields
     end
   end
 

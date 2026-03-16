@@ -4,6 +4,7 @@ defmodule Storyarn.Flows.FlowStats do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows.{Flow, FlowNode}
+  alias Storyarn.Localization.LocalizableWords
   alias Storyarn.Projects.Dashboard
   alias Storyarn.Repo
 
@@ -39,20 +40,10 @@ defmodule Storyarn.Flows.FlowStats do
   end
 
   @doc """
-  Returns per-flow word counts from the denormalized `word_count` column.
+  Returns per-flow counts for all localizable words in each flow.
   Returns `%{flow_id => word_count}`.
   """
-  def flow_word_counts(project_id) do
-    from(n in FlowNode,
-      join: f in Flow,
-      on: n.flow_id == f.id,
-      where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at),
-      group_by: n.flow_id,
-      select: {n.flow_id, sum(n.word_count)}
-    )
-    |> Repo.all()
-    |> Map.new()
-  end
+  defdelegate flow_word_counts(project_id), to: LocalizableWords
 
   # ===========================================================================
   # Issue Detection

@@ -4,9 +4,10 @@ defmodule Storyarn.Scenes.PinCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows
+  alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Scenes
-  alias Storyarn.Scenes.{PositionUtils, ScenePin}
+  alias Storyarn.Scenes.{PositionUtils, Scene, ScenePin}
   alias Storyarn.Sheets
 
   @doc """
@@ -72,6 +73,7 @@ defmodule Storyarn.Scenes.PinCrud do
         project_id = Scenes.get_scene_project_id(scene_id)
         Sheets.update_scene_pin_references(pin)
         Flows.update_scene_pin_references(pin, project_id: project_id)
+        Repo.get(Scene, scene_id) |> Localization.extract_scene()
 
       _ ->
         :ok
@@ -94,6 +96,7 @@ defmodule Storyarn.Scenes.PinCrud do
         project_id = Scenes.get_scene_project_id(pin.scene_id)
         Sheets.update_scene_pin_references(updated_pin)
         Flows.update_scene_pin_references(updated_pin, project_id: project_id)
+        Repo.get(Scene, pin.scene_id) |> Localization.extract_scene()
 
       _ ->
         :ok
@@ -114,7 +117,12 @@ defmodule Storyarn.Scenes.PinCrud do
   def delete_pin(%ScenePin{} = pin) do
     Sheets.delete_map_pin_references(pin.id)
     Flows.delete_map_pin_references(pin.id)
+
     Repo.delete(pin)
+    |> tap(fn
+      {:ok, _deleted_pin} -> Repo.get(Scene, pin.scene_id) |> Localization.extract_scene()
+      _ -> :ok
+    end)
   end
 
   def change_pin(%ScenePin{} = pin, attrs \\ %{}) do
@@ -145,4 +153,5 @@ defmodule Storyarn.Scenes.PinCrud do
       |> Repo.update_all(set: [is_leader: false])
     end
   end
+
 end

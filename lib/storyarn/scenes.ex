@@ -621,6 +621,9 @@ defmodule Storyarn.Scenes do
   @doc "Returns per-scene zone, pin, and connection counts. %{scene_id => %{zone_count, pin_count, connection_count}}."
   defdelegate scene_stats_for_project(project_id), to: SceneStats
 
+  @doc "Returns per-scene counts for all localizable words. %{scene_id => word_count}."
+  defdelegate scene_word_counts(project_id), to: SceneStats
+
   @doc "Returns the count of scenes that have a background image."
   defdelegate scenes_with_background_count(project_id), to: SceneStats
 

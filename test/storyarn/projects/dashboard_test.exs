@@ -4,6 +4,7 @@ defmodule Storyarn.Projects.DashboardTest do
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Projects.Dashboard
@@ -103,6 +104,40 @@ defmodule Storyarn.Projects.DashboardTest do
 
       assert sheet_words == 21
       assert stats.total_word_count == sheet_words
+    end
+
+    test "counts scene words from nested scene content", %{project: project} do
+      scene = scene_fixture(project, %{name: "World Map", description: "Capital city"})
+      layer = layer_fixture(scene, %{"name" => "Upper City"})
+
+      zone_fixture(scene, %{
+        "name" => "Market Square",
+        "tooltip" => "Crowded at noon",
+        "layer_id" => layer.id
+      })
+
+      pin_1 =
+        pin_fixture(scene, %{
+          "label" => "Clock Tower",
+          "tooltip" => "Visible everywhere",
+          "layer_id" => layer.id
+        })
+
+      pin_2 =
+        pin_fixture(scene, %{
+          "label" => "West Gate",
+          "tooltip" => "",
+          "layer_id" => layer.id
+        })
+
+      annotation_fixture(scene, %{"text" => "Secret route", "layer_id" => layer.id})
+      Storyarn.ScenesFixtures.connection_fixture(scene, pin_1, pin_2, %{"label" => "Patrol path"})
+
+      scene_words = Storyarn.Scenes.scene_word_counts(project.id) |> Map.values() |> Enum.sum()
+      stats = Dashboard.project_stats(project.id)
+
+      assert scene_words == 22
+      assert stats.total_word_count == scene_words
     end
   end
 

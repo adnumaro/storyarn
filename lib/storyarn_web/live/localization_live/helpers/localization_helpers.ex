@@ -131,6 +131,7 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
   def source_type_label("block"), do: dgettext("localization", "Block")
   def source_type_label("sheet"), do: dgettext("localization", "Sheet")
   def source_type_label("flow"), do: dgettext("localization", "Flow")
+  def source_type_label("scene"), do: dgettext("localization", "Scene")
   def source_type_label("screenplay"), do: dgettext("localization", "Screenplay")
   def source_type_label(other), do: other
 

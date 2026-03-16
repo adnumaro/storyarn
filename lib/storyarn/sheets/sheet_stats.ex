@@ -4,8 +4,8 @@ defmodule Storyarn.Sheets.SheetStats do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows.VariableReference
+  alias Storyarn.Localization.LocalizableWords
   alias Storyarn.Repo
-  alias Storyarn.Shared.HtmlUtils
   alias Storyarn.Sheets.{Block, Sheet, TableColumn, TableRow}
 
   @variable_types ~w(text rich_text number select multi_select boolean date)
@@ -83,20 +83,7 @@ defmodule Storyarn.Sheets.SheetStats do
 
   Returns `%{sheet_id => word_count}`.
   """
-  def sheet_word_counts(project_id) do
-    [
-      sheet_metadata_word_counts(project_id),
-      block_content_word_counts(project_id),
-      block_metadata_word_counts(project_id),
-      block_option_word_counts(project_id),
-      table_column_word_counts(project_id),
-      table_row_word_counts(project_id),
-      gallery_word_counts(project_id)
-    ]
-    |> Enum.reduce(%{}, fn counts, acc ->
-      Map.merge(acc, counts, fn _sheet_id, left, right -> left + right end)
-    end)
-  end
+  defdelegate sheet_word_counts(project_id), to: LocalizableWords
 
   @doc """
   Returns a MapSet of block IDs that have at least one variable reference.
@@ -138,110 +125,6 @@ defmodule Storyarn.Sheets.SheetStats do
   # ===========================================================================
   # Private
   # ===========================================================================
-
-  defp sheet_metadata_word_counts(project_id) do
-    from(s in Sheet,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at),
-      select: {s.id, [s.name, s.description]}
-    )
-    |> Repo.all()
-    |> grouped_text_word_counts()
-  end
-
-  defp block_content_word_counts(project_id) do
-    from(b in Block,
-      join: s in Sheet,
-      on: b.sheet_id == s.id,
-      where:
-        s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at) and
-          b.word_count > 0,
-      group_by: s.id,
-      select: {s.id, sum(b.word_count)}
-    )
-    |> Repo.all()
-    |> Map.new()
-  end
-
-  defp block_metadata_word_counts(project_id) do
-    from(b in Block,
-      join: s in Sheet,
-      on: b.sheet_id == s.id,
-      where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
-      select: {s.id, [fragment("?->>'label'", b.config), fragment("?->>'placeholder'", b.config)]}
-    )
-    |> Repo.all()
-    |> grouped_text_word_counts()
-  end
-
-  defp block_option_word_counts(project_id) do
-    from(b in Block,
-      join: s in Sheet,
-      on: b.sheet_id == s.id,
-      where:
-        s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at) and
-          b.type in ["select", "multi_select"],
-      select: {s.id, fragment("?->'options'", b.config)}
-    )
-    |> Repo.all()
-    |> Enum.flat_map(fn
-      {sheet_id, options} when is_list(options) ->
-        Enum.map(options, &{sheet_id, Map.get(&1, "value")})
-
-      _ ->
-        []
-    end)
-    |> grouped_text_word_counts()
-  end
-
-  defp table_column_word_counts(project_id) do
-    from(tc in TableColumn,
-      join: b in Block,
-      on: tc.block_id == b.id,
-      join: s in Sheet,
-      on: b.sheet_id == s.id,
-      where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
-      select: {s.id, tc.name}
-    )
-    |> Repo.all()
-    |> grouped_text_word_counts()
-  end
-
-  defp table_row_word_counts(project_id) do
-    from(tr in TableRow,
-      join: b in Block,
-      on: tr.block_id == b.id,
-      join: s in Sheet,
-      on: b.sheet_id == s.id,
-      where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
-      select: {s.id, tr.name}
-    )
-    |> Repo.all()
-    |> grouped_text_word_counts()
-  end
-
-  defp gallery_word_counts(project_id) do
-    from(gi in "block_gallery_images",
-      join: b in "blocks",
-      on: gi.block_id == b.id,
-      join: s in "sheets",
-      on: b.sheet_id == s.id,
-      where: s.project_id == ^project_id and is_nil(b.deleted_at) and is_nil(s.deleted_at),
-      select: {s.id, [gi.label, gi.description]}
-    )
-    |> Repo.all()
-    |> grouped_text_word_counts()
-  end
-
-  defp grouped_text_word_counts(rows) do
-    rows
-    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-    |> Map.new(fn {sheet_id, texts} ->
-      {sheet_id, texts |> List.flatten() |> Enum.map(&text_word_count/1) |> Enum.sum()}
-    end)
-  end
-
-  defp text_word_count(text) when is_binary(text), do: HtmlUtils.word_count(text)
-  defp text_word_count(_), do: 0
 
   defp detect_empty_sheets(project_id) do
     # Sheets with no blocks AND no children are "empty"

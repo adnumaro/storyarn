@@ -207,149 +207,33 @@ defmodule Storyarn.Projects.Dashboard do
   # Reuse per-context counters where available so project totals stay aligned with
   # the dashboards users see inside each tool.
   defp count_total_words(project_id) do
-    content_words = sum_flow_word_counts(project_id) + sum_sheet_word_counts(project_id)
+    flow_words =
+      project_id
+      |> Flows.flow_word_counts()
+      |> Map.values()
+      |> Enum.sum()
 
-    metadata_texts =
-      collect_flow_metadata(project_id) ++
-        collect_scene_metadata(project_id) ++
-        collect_screenplay_metadata(project_id)
+    sheet_words =
+      project_id
+      |> Sheets.sheet_word_counts()
+      |> Map.values()
+      |> Enum.sum()
 
-    metadata_words =
-      metadata_texts
+    scene_words =
+      project_id
+      |> Scenes.scene_word_counts()
+      |> Map.values()
+      |> Enum.sum()
+
+    screenplay_words =
+      project_id
+      |> collect_screenplay_metadata()
       |> List.flatten()
       |> Enum.reject(&(is_nil(&1) or &1 == ""))
       |> Enum.map(&HtmlUtils.word_count/1)
       |> Enum.sum()
 
-    content_words + metadata_words
-  end
-
-  defp sum_flow_word_counts(project_id) do
-    from(n in FlowNode,
-      join: f in Flow,
-      on: n.flow_id == f.id,
-      where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at),
-      select: coalesce(sum(n.word_count), 0)
-    )
-    |> Repo.one()
-  end
-
-  defp sum_sheet_word_counts(project_id) do
-    project_id
-    |> Sheets.sheet_word_counts()
-    |> Map.values()
-    |> Enum.sum()
-  end
-
-  # -- Flow metadata: names, descriptions, slug line texts, case labels, connection labels
-  # (dialogue/response/menu text is in word_count — NOT loaded here)
-
-  defp collect_flow_metadata(project_id) do
-    flow_texts =
-      from(f in Flow,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at),
-        select: [f.name, f.description]
-      )
-      |> Repo.all()
-
-    slug_texts =
-      from(n in FlowNode,
-        join: f in Flow,
-        on: n.flow_id == f.id,
-        where:
-          f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at) and
-            n.type == "slug_line",
-        select: [
-          fragment("?->>'location'", n.data),
-          fragment("?->>'description'", n.data),
-          fragment("?->>'sub_location'", n.data)
-        ]
-      )
-      |> Repo.all()
-
-    case_labels =
-      from(n in FlowNode,
-        join: f in Flow,
-        on: n.flow_id == f.id,
-        where:
-          f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at) and
-            n.type == "condition",
-        select: fragment("?->'cases'", n.data)
-      )
-      |> Repo.all()
-      |> Enum.flat_map(fn
-        cases when is_list(cases) -> Enum.map(cases, &Map.get(&1, "label"))
-        _ -> []
-      end)
-
-    conn_labels =
-      from(c in FlowConnection,
-        join: f in Flow,
-        on: c.flow_id == f.id,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at),
-        select: c.label
-      )
-      |> Repo.all()
-
-    flow_texts ++ slug_texts ++ case_labels ++ conn_labels
-  end
-
-  # -- Scene metadata: names, descriptions, layer/zone/pin/annotation/connection labels
-
-  defp collect_scene_metadata(project_id) do
-    scene_texts =
-      from(s in "scenes",
-        where: s.project_id == ^project_id and is_nil(s.deleted_at),
-        select: [s.name, s.description]
-      )
-      |> Repo.all()
-
-    layer_names =
-      from(l in "scene_layers",
-        join: s in "scenes",
-        on: l.scene_id == s.id,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at),
-        select: l.name
-      )
-      |> Repo.all()
-
-    zone_texts =
-      from(z in "scene_zones",
-        join: s in "scenes",
-        on: z.scene_id == s.id,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at),
-        select: [z.name, z.tooltip]
-      )
-      |> Repo.all()
-
-    pin_texts =
-      from(p in "scene_pins",
-        join: s in "scenes",
-        on: p.scene_id == s.id,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at),
-        select: [p.label, p.tooltip]
-      )
-      |> Repo.all()
-
-    annotation_texts =
-      from(a in "scene_annotations",
-        join: s in "scenes",
-        on: a.scene_id == s.id,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at),
-        select: a.text
-      )
-      |> Repo.all()
-
-    conn_labels =
-      from(c in "scene_connections",
-        join: s in "scenes",
-        on: c.scene_id == s.id,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at),
-        select: c.label
-      )
-      |> Repo.all()
-
-    scene_texts ++ layer_names ++ zone_texts ++ pin_texts ++ annotation_texts ++ conn_labels
+    flow_words + sheet_words + scene_words + screenplay_words
   end
 
   # -- Screenplay metadata: names, descriptions, element content

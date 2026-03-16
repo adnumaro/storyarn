@@ -1118,7 +1118,9 @@ defmodule Storyarn.Flows.FlowCrudTest do
 
   describe "flow_word_counts/1" do
     test "counts words from dialogue text" do
-      %{project: project, flow: flow} = create_project_and_flow()
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project, %{name: "Intro", description: ""})
 
       node_fixture(flow, %{
         type: "dialogue",
@@ -1126,12 +1128,14 @@ defmodule Storyarn.Flows.FlowCrudTest do
       })
 
       counts = Flows.flow_word_counts(project.id)
-      # "Hello world" = 2, "Choose this" = 2
-      assert counts[flow.id] == 4
+      # Flow name: "Intro" = 1, dialogue text = 2, menu text = 2
+      assert counts[flow.id] == 5
     end
 
     test "strips HTML before counting words" do
-      %{project: project, flow: flow} = create_project_and_flow()
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project, %{name: "Intro", description: ""})
 
       node_fixture(flow, %{
         type: "dialogue",
@@ -1139,11 +1143,14 @@ defmodule Storyarn.Flows.FlowCrudTest do
       })
 
       counts = Flows.flow_word_counts(project.id)
-      assert counts[flow.id] == 3
+      # Flow name: "Intro" = 1, dialogue text = 3
+      assert counts[flow.id] == 4
     end
 
     test "counts response texts" do
-      %{project: project, flow: flow} = create_project_and_flow()
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project, %{name: "Intro", description: ""})
 
       node_fixture(flow, %{
         type: "dialogue",
@@ -1157,12 +1164,14 @@ defmodule Storyarn.Flows.FlowCrudTest do
       })
 
       counts = Flows.flow_word_counts(project.id)
-      # "Question here" = 2, "Yes please" = 2, "No thanks" = 2
-      assert counts[flow.id] == 6
+      # Flow name: "Intro" = 1, prompt = 2, responses = 4
+      assert counts[flow.id] == 7
     end
 
     test "counts stage_directions words" do
-      %{project: project, flow: flow} = create_project_and_flow()
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project, %{name: "Intro", description: ""})
 
       node_fixture(flow, %{
         type: "dialogue",
@@ -1170,7 +1179,8 @@ defmodule Storyarn.Flows.FlowCrudTest do
       })
 
       counts = Flows.flow_word_counts(project.id)
-      assert counts[flow.id] == 4
+      # Flow name: "Intro" = 1, stage directions = 4
+      assert counts[flow.id] == 5
     end
 
     test "returns empty map for project with no flows" do

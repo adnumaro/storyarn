@@ -11,6 +11,7 @@ defmodule Storyarn.Scenes.SceneCrud do
 
   alias Storyarn.Billing
   alias Storyarn.Collaboration
+  alias Storyarn.Localization
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes.{Scene, SceneLayer, ScenePin, SceneZone, TreeOperations}
@@ -121,6 +122,28 @@ defmodule Storyarn.Scenes.SceneCrud do
     |> Elixir.Map.new()
   end
 
+  defp descendant_scene_ids(project_id, scene_id) do
+    from(s in Scene,
+      where: s.project_id == ^project_id and is_nil(s.deleted_at),
+      select: {s.id, s.parent_id}
+    )
+    |> Repo.all()
+    |> collect_descendant_ids(scene_id)
+  end
+
+  defp collect_descendant_ids(rows, root_id) do
+    children_by_parent = Enum.group_by(rows, &elem(&1, 1), &elem(&1, 0))
+
+    do_collect_descendant_ids(children_by_parent, root_id, [])
+    |> Enum.reverse()
+  end
+
+  defp do_collect_descendant_ids(children_by_parent, parent_id, acc) do
+    Enum.reduce(Map.get(children_by_parent, parent_id, []), acc, fn child_id, current_acc ->
+      do_collect_descendant_ids(children_by_parent, child_id, [child_id | current_acc])
+    end)
+  end
+
   @doc """
   Searches scenes by name or shortcut for reference selection.
   Returns scenes matching the query, limited to 10 results.
@@ -229,8 +252,12 @@ defmodule Storyarn.Scenes.SceneCrud do
       result = do_create_scene(project, attrs)
 
       case result do
-        {:ok, _} -> Collaboration.broadcast_dashboard_change(project.id, :scenes)
-        _ -> :ok
+        {:ok, scene} ->
+          Localization.extract_scene(scene)
+          Collaboration.broadcast_dashboard_change(project.id, :scenes)
+
+        _ ->
+          :ok
       end
 
       result
@@ -272,6 +299,10 @@ defmodule Storyarn.Scenes.SceneCrud do
     scene
     |> Scene.update_changeset(attrs)
     |> Repo.update()
+    |> tap(fn
+      {:ok, updated_scene} -> Localization.extract_scene(updated_scene)
+      _ -> :ok
+    end)
   end
 
   @doc """
@@ -279,8 +310,13 @@ defmodule Storyarn.Scenes.SceneCrud do
   Also soft-deletes all children recursively.
   """
   def delete_scene(%Scene{} = scene) do
+    descendant_ids = descendant_scene_ids(scene.project_id, scene.id)
+
     result =
       Repo.transaction(fn ->
+        Localization.delete_scene_texts(scene.id)
+        Enum.each(descendant_ids, &Localization.delete_scene_texts/1)
+
         # Soft delete the scene itself
         case scene |> Scene.delete_changeset() |> Repo.update() do
           {:ok, deleted_scene} ->

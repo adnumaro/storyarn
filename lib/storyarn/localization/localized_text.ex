@@ -9,7 +9,7 @@ defmodule Storyarn.Localization.LocalizedText do
   identifies a translation. The `source_type` + `source_id` point to the origin entity,
   and `source_field` identifies which field within that entity.
 
-  Source types: `"flow_node"`, `"block"`, `"sheet"`, `"flow"`, `"screenplay"`
+  Source types: `"flow_node"`, `"block"`, `"sheet"`, `"flow"`, `"scene"`, `"screenplay"`
 
   Status workflow: pending → draft → in_progress → review → final
   When source text changes on a `final` entry, status downgrades to `review`.
@@ -24,7 +24,7 @@ defmodule Storyarn.Localization.LocalizedText do
 
   @valid_statuses ~w(pending draft in_progress review final)
   @valid_vo_statuses ~w(none needed recorded approved)
-  @valid_source_types ~w(flow_node block sheet flow screenplay)
+  @valid_source_types ~w(flow_node block sheet flow scene screenplay)
 
   @type t :: %__MODULE__{
           id: integer() | nil,

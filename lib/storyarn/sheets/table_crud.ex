@@ -5,6 +5,7 @@ defmodule Storyarn.Sheets.TableCrud do
 
   alias Ecto.Multi
   alias Storyarn.Flows
+  alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Shared.{NameNormalizer, TimeHelpers, TreeOperations}
   alias Storyarn.Sheets.{Block, FormulaBindingRewriter, Sheet, TableColumn, TableRow}
@@ -71,8 +72,12 @@ defmodule Storyarn.Sheets.TableCrud do
       end)
       |> Repo.transaction()
       |> case do
-        {:ok, %{column: column}} -> {:ok, column}
-        {:error, :column, changeset, _} -> {:error, changeset}
+        {:ok, %{column: column}} ->
+          Repo.get(Block, block_id) |> Localization.extract_block()
+          {:ok, column}
+
+        {:error, :column, changeset, _} ->
+          {:error, changeset}
       end
 
     result
@@ -144,8 +149,12 @@ defmodule Storyarn.Sheets.TableCrud do
     multi
     |> Repo.transaction()
     |> case do
-      {:ok, %{column: column}} -> {:ok, column}
-      {:error, :column, changeset, _} -> {:error, changeset}
+      {:ok, %{column: column}} ->
+        Repo.get(Block, column.block_id) |> Localization.extract_block()
+        {:ok, column}
+
+      {:error, :column, changeset, _} ->
+        {:error, changeset}
     end
   end
 
@@ -173,8 +182,12 @@ defmodule Storyarn.Sheets.TableCrud do
       end)
       |> Repo.transaction()
       |> case do
-        {:ok, %{column: column}} -> {:ok, column}
-        {:error, :column, changeset, _} -> {:error, changeset}
+        {:ok, %{column: column}} ->
+          Repo.get(Block, column.block_id) |> Localization.extract_block()
+          {:ok, column}
+
+        {:error, :column, changeset, _} ->
+          {:error, changeset}
       end
     end
   end
@@ -325,8 +338,12 @@ defmodule Storyarn.Sheets.TableCrud do
       end)
       |> Repo.transaction()
       |> case do
-        {:ok, %{row: row}} -> {:ok, row}
-        {:error, :row, changeset, _} -> {:error, changeset}
+        {:ok, %{row: row}} ->
+          Repo.get(Block, block_id) |> Localization.extract_block()
+          {:ok, row}
+
+        {:error, :row, changeset, _} ->
+          {:error, changeset}
       end
 
     result
@@ -360,8 +377,12 @@ defmodule Storyarn.Sheets.TableCrud do
     end)
     |> Repo.transaction()
     |> case do
-      {:ok, %{row: row}} -> {:ok, row}
-      {:error, :row, changeset, _} -> {:error, changeset}
+      {:ok, %{row: row}} ->
+        Repo.get(Block, row.block_id) |> Localization.extract_block()
+        {:ok, row}
+
+      {:error, :row, changeset, _} ->
+        {:error, changeset}
     end
   end
 
@@ -399,8 +420,12 @@ defmodule Storyarn.Sheets.TableCrud do
       |> Multi.delete(:row, row)
       |> Repo.transaction()
       |> case do
-        {:ok, %{row: row}} -> {:ok, row}
-        {:error, :row, changeset, _} -> {:error, changeset}
+        {:ok, %{row: row}} ->
+          Repo.get(Block, row.block_id) |> Localization.extract_block()
+          {:ok, row}
+
+        {:error, :row, changeset, _} ->
+          {:error, changeset}
       end
     end
   end

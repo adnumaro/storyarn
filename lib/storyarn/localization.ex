@@ -151,7 +151,7 @@ defmodule Storyarn.Localization do
   # Text Extraction
   # =============================================================================
 
-  @doc "Extracts all localizable texts for a project (flows, nodes, sheets, blocks)."
+  @doc "Extracts all localizable texts for a project (flows, nodes, sheets, blocks, scenes)."
   @spec extract_all(id()) :: {:ok, non_neg_integer()}
   defdelegate extract_all(project_id), to: TextExtractor
 
@@ -159,17 +159,25 @@ defmodule Storyarn.Localization do
   @spec extract_flow_node(struct()) :: :ok
   defdelegate extract_flow_node(node), to: TextExtractor
 
-  @doc "Extracts localizable texts from a flow after its metadata is updated."
-  @spec extract_flow(struct()) :: :ok
+  @doc "Extracts localizable texts from a flow after its metadata is updated. No-op if nil."
+  @spec extract_flow(struct() | nil) :: :ok
+  def extract_flow(nil), do: :ok
   defdelegate extract_flow(flow), to: TextExtractor
 
-  @doc "Extracts localizable texts from a block after its value or config is updated."
-  @spec extract_block(struct()) :: :ok
+  @doc "Extracts localizable texts from a block after its value or config is updated. No-op if nil."
+  @spec extract_block(struct() | nil) :: :ok
+  def extract_block(nil), do: :ok
   defdelegate extract_block(block), to: TextExtractor
 
-  @doc "Extracts localizable texts from a sheet after its metadata is updated."
-  @spec extract_sheet(struct()) :: :ok
+  @doc "Extracts localizable texts from a sheet after its metadata is updated. No-op if nil."
+  @spec extract_sheet(struct() | nil) :: :ok
+  def extract_sheet(nil), do: :ok
   defdelegate extract_sheet(sheet), to: TextExtractor
+
+  @doc "Extracts localizable texts from a scene after its content changes. No-op if nil."
+  @spec extract_scene(struct() | nil) :: :ok
+  def extract_scene(nil), do: :ok
+  defdelegate extract_scene(scene), to: TextExtractor
 
   @doc "Cleans up localized texts when a flow node is deleted."
   @spec delete_flow_node_texts(id()) :: :ok
@@ -186,6 +194,10 @@ defmodule Storyarn.Localization do
   @doc "Cleans up localized texts when a sheet is deleted."
   @spec delete_sheet_texts(id()) :: :ok
   defdelegate delete_sheet_texts(sheet_id), to: TextExtractor
+
+  @doc "Cleans up localized texts when a scene is deleted."
+  @spec delete_scene_texts(id()) :: :ok
+  defdelegate delete_scene_texts(scene_id), to: TextExtractor
 
   # =============================================================================
   # Translation
