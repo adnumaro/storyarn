@@ -1,0 +1,21 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "4b281138aed4e523bacf0c36fb1fa4c099d414a6",
+  "prompts": {
+    "1094886e84c7bb8b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019cf853-e801-7453-a8bc-d6c114475f91",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 44,
+      "total_deletions": 42,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    }
+  }
+}
