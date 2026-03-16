@@ -92,8 +92,10 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
         socket
       ) do
     Authorize.with_edit_authorization(socket, fn socket ->
-      asset_id = String.to_integer(asset_id_str)
-      update_node_audio(socket, node_id, asset_id)
+      case Integer.parse(asset_id_str) do
+        {asset_id, ""} -> update_node_audio(socket, node_id, asset_id)
+        _ -> {:noreply, socket}
+      end
     end)
   end
 
@@ -143,7 +145,7 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
   # ===========================================================================
 
   defp update_node_audio(socket, node_id_str, audio_asset_id) do
-    node_id = String.to_integer(node_id_str)
+    {node_id, ""} = Integer.parse(to_string(node_id_str))
     line = Enum.find(socket.assigns.voice_lines, &(&1.node.id == node_id))
 
     if line do

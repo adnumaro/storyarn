@@ -23,8 +23,12 @@ defmodule Storyarn.Flows.NodeDelete do
 
     case result do
       {:ok, _, _} ->
-        flow = Repo.get!(Storyarn.Flows.Flow, node.flow_id)
-        Storyarn.Collaboration.broadcast_dashboard_change(flow.project_id, :flows)
+        project_id =
+          from(f in Storyarn.Flows.Flow, where: f.id == ^node.flow_id, select: f.project_id)
+          |> Repo.one()
+
+        if project_id,
+          do: Storyarn.Collaboration.broadcast_dashboard_change(project_id, :flows)
 
       _ ->
         :ok

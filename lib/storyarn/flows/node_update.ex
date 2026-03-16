@@ -73,8 +73,11 @@ defmodule Storyarn.Flows.NodeUpdate do
   end
 
   defp maybe_broadcast_dashboard({:ok, _, _}, node) do
-    flow = Repo.get!(Storyarn.Flows.Flow, node.flow_id)
-    Storyarn.Collaboration.broadcast_dashboard_change(flow.project_id, :flows)
+    project_id =
+      from(f in Storyarn.Flows.Flow, where: f.id == ^node.flow_id, select: f.project_id)
+      |> Repo.one()
+
+    if project_id, do: Storyarn.Collaboration.broadcast_dashboard_change(project_id, :flows)
   end
 
   defp maybe_broadcast_dashboard(_, _), do: :ok
@@ -90,11 +93,25 @@ defmodule Storyarn.Flows.NodeUpdate do
       hub_id == nil || hub_id == "" ->
         {:error, :hub_id_required}
 
-      NodeCrud.hub_id_exists?(node.flow_id, hub_id, node.id) ->
-        {:error, :hub_id_not_unique}
-
       true ->
-        do_update_hub_data(node, data, hub_id)
+        # Lock flow row to serialize concurrent hub_id uniqueness checks
+        Repo.transaction(fn ->
+          from(f in Storyarn.Flows.Flow, where: f.id == ^node.flow_id, lock: "FOR UPDATE")
+          |> Repo.one!()
+
+          if NodeCrud.hub_id_exists?(node.flow_id, hub_id, node.id) do
+            Repo.rollback(:hub_id_not_unique)
+          else
+            case do_update_hub_data(node, data, hub_id) do
+              {:ok, updated_node, meta} -> {updated_node, meta}
+              {:error, reason} -> Repo.rollback(reason)
+            end
+          end
+        end)
+        |> case do
+          {:ok, {updated_node, meta}} -> {:ok, updated_node, meta}
+          {:error, reason} -> {:error, reason}
+        end
     end
   end
 

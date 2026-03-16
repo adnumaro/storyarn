@@ -3,9 +3,7 @@
  */
 
 /** Escape HTML special characters in text content. */
-export function escapeHtml(text) {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
+export { escapeHtml } from "../utils/escape_html.js";
 
 /** Escape an HTML attribute value (includes quotes). */
 export function escapeAttr(str) {

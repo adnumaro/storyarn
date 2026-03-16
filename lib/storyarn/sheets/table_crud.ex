@@ -163,32 +163,37 @@ defmodule Storyarn.Sheets.TableCrud do
   Removes the column's cell key from all rows.
   """
   def delete_column(%TableColumn{} = column) do
-    column_count =
-      from(c in TableColumn, where: c.block_id == ^column.block_id, select: count(c.id))
-      |> Repo.one()
+    Multi.new()
+    |> Multi.run(:check_last, fn _repo, _changes ->
+      # Lock the block row to serialize concurrent column deletions
+      from(b in Block, where: b.id == ^column.block_id, lock: "FOR UPDATE") |> Repo.one!()
 
-    if column_count <= 1 do
-      {:error, :last_column}
-    else
-      Multi.new()
-      |> Multi.run(:sync_children, fn _repo, _changes ->
-        sync_column_to_children(column.block_id, column, :delete)
-        {:ok, :done}
-      end)
-      |> Multi.delete(:column, column)
-      |> Multi.run(:remove_cells, fn _repo, _changes ->
-        remove_cell_from_all_rows(column.block_id, column.slug)
-        {:ok, :done}
-      end)
-      |> Repo.transaction()
-      |> case do
-        {:ok, %{column: column}} ->
-          Repo.get(Block, column.block_id) |> Localization.extract_block()
-          {:ok, column}
+      count =
+        from(c in TableColumn, where: c.block_id == ^column.block_id, select: count(c.id))
+        |> Repo.one()
 
-        {:error, :column, changeset, _} ->
-          {:error, changeset}
-      end
+      if count <= 1, do: {:error, :last_column}, else: {:ok, :checked}
+    end)
+    |> Multi.run(:sync_children, fn _repo, _changes ->
+      sync_column_to_children(column.block_id, column, :delete)
+      {:ok, :done}
+    end)
+    |> Multi.delete(:column, column)
+    |> Multi.run(:remove_cells, fn _repo, _changes ->
+      remove_cell_from_all_rows(column.block_id, column.slug)
+      {:ok, :done}
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{column: column}} ->
+        Repo.get(Block, column.block_id) |> Localization.extract_block()
+        {:ok, column}
+
+      {:error, :check_last, :last_column, _} ->
+        {:error, :last_column}
+
+      {:error, :column, changeset, _} ->
+        {:error, changeset}
     end
   end
 
@@ -405,28 +410,33 @@ defmodule Storyarn.Sheets.TableCrud do
 
   @doc "Deletes a row. Prevents deletion of the last row."
   def delete_row(%TableRow{} = row) do
-    row_count =
-      from(r in TableRow, where: r.block_id == ^row.block_id, select: count(r.id))
-      |> Repo.one()
+    Multi.new()
+    |> Multi.run(:check_last, fn _repo, _changes ->
+      # Lock the block row to serialize concurrent row deletions
+      from(b in Block, where: b.id == ^row.block_id, lock: "FOR UPDATE") |> Repo.one!()
 
-    if row_count <= 1 do
-      {:error, :last_row}
-    else
-      Multi.new()
-      |> Multi.run(:sync_children, fn _repo, _changes ->
-        sync_row_to_children(row.block_id, row, :delete)
-        {:ok, :done}
-      end)
-      |> Multi.delete(:row, row)
-      |> Repo.transaction()
-      |> case do
-        {:ok, %{row: row}} ->
-          Repo.get(Block, row.block_id) |> Localization.extract_block()
-          {:ok, row}
+      count =
+        from(r in TableRow, where: r.block_id == ^row.block_id, select: count(r.id))
+        |> Repo.one()
 
-        {:error, :row, changeset, _} ->
-          {:error, changeset}
-      end
+      if count <= 1, do: {:error, :last_row}, else: {:ok, :checked}
+    end)
+    |> Multi.run(:sync_children, fn _repo, _changes ->
+      sync_row_to_children(row.block_id, row, :delete)
+      {:ok, :done}
+    end)
+    |> Multi.delete(:row, row)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{row: row}} ->
+        Repo.get(Block, row.block_id) |> Localization.extract_block()
+        {:ok, row}
+
+      {:error, :check_last, :last_row, _} ->
+        {:error, :last_row}
+
+      {:error, :row, changeset, _} ->
+        {:error, changeset}
     end
   end
 

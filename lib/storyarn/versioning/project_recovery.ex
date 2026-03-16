@@ -420,8 +420,8 @@ defmodule Storyarn.Versioning.ProjectRecovery do
         machine_translated: text["machine_translated"] || false,
         last_translated_at: text["last_translated_at"],
         last_reviewed_at: text["last_reviewed_at"],
-        translated_by_id: text["translated_by_id"],
-        reviewed_by_id: text["reviewed_by_id"],
+        translated_by_id: nil,
+        reviewed_by_id: nil,
         inserted_at: now,
         updated_at: now
       }

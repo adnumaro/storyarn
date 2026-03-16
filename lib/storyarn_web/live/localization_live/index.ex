@@ -583,10 +583,16 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   end
 
   def handle_event("change_page", %{"page" => page}, socket) do
-    {:noreply,
-     socket
-     |> assign(:page, String.to_integer(page))
-     |> load_texts()}
+    case Integer.parse(page) do
+      {page_int, ""} when page_int > 0 ->
+        {:noreply,
+         socket
+         |> assign(:page, page_int)
+         |> load_texts()}
+
+      _ ->
+        {:noreply, socket}
+    end
   end
 
   def handle_event("add_target_language", %{"locale_code" => ""}, socket),

@@ -347,9 +347,10 @@ defmodule Storyarn.Versioning.VersionCrudTest do
       # Reload sheet1
       sheet1 = Storyarn.Repo.preload(sheet1, :blocks, force: true)
 
-      # Restore — should use "-restored" suffix
+      # Restore — should use random suffix to avoid collision
       {:ok, restored} = Versioning.restore_version("sheet", sheet1, version)
-      assert restored.shortcut == old_shortcut <> "-restored"
+      assert String.starts_with?(restored.shortcut, old_shortcut <> "-")
+      assert restored.shortcut != old_shortcut
     end
   end
 

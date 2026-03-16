@@ -342,6 +342,9 @@ defmodule Storyarn.Flows do
   @spec list_hubs(integer()) :: [map()]
   defdelegate list_hubs(flow_id), to: NodeCrud
 
+  @doc "Returns the default hub color hex value."
+  defdelegate hub_colors_default_hex(), to: HubColors, as: :default_hex
+
   @doc """
   Finds a hub node in a flow by its hub_id string.
   Returns nil if not found.

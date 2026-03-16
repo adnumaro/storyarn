@@ -845,6 +845,5 @@ defmodule Storyarn.Localization.LocalizableWords do
 
   defp hash(_), do: nil
 
-  defp word_count(text) when is_binary(text), do: HtmlUtils.word_count(text)
-  defp word_count(_), do: 0
+  defp word_count(text), do: HtmlUtils.word_count(text)
 end

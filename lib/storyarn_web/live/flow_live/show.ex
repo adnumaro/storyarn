@@ -264,8 +264,8 @@ defmodule StoryarnWeb.FlowLive.Show do
         data-close-event="close_builder"
         class={[
           "fixed flex flex-col overflow-hidden",
-          "inset-0 z-50 bg-base-100",
-          "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:z-[1010] xl:w-[480px]",
+          "inset-0 z-[1010] bg-base-100",
+          "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[480px]",
           "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
         ]}
       >
@@ -385,8 +385,8 @@ defmodule StoryarnWeb.FlowLive.Show do
         data-close-event="close_builder"
         class={[
           "fixed flex flex-col overflow-hidden",
-          "inset-0 z-50 bg-base-100",
-          "xl:inset-auto xl:right-3 xl:top-3 xl:bottom-3 xl:z-[1010] xl:w-[480px]",
+          "inset-0 z-[1010] bg-base-100",
+          "xl:inset-auto xl:right-3 xl:top-3 xl:bottom-3 xl:w-[480px]",
           "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
         ]}
       >
@@ -1115,17 +1115,21 @@ defmodule StoryarnWeb.FlowLive.Show do
   # Hub color picker
   def handle_event("update_hub_color", %{"color" => color}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      node = socket.assigns.selected_node
+      case socket.assigns.selected_node do
+        nil ->
+          {:noreply, socket}
 
-      validated =
-        StoryarnWeb.FlowLive.Components.NodeTypeHelpers.validate_hex_color(
-          color,
-          Flows.HubColors.default_hex()
-        )
+        node ->
+          validated =
+            StoryarnWeb.FlowLive.Components.NodeTypeHelpers.validate_hex_color(
+              color,
+              Flows.hub_colors_default_hex()
+            )
 
-      NodeHelpers.persist_node_update(socket, node.id, fn data ->
-        Map.put(data, "color", validated)
-      end)
+          NodeHelpers.persist_node_update(socket, node.id, fn data ->
+            Map.put(data, "color", validated)
+          end)
+      end
     end)
   end
 

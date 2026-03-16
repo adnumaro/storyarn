@@ -138,7 +138,7 @@ config :sentry,
   enable_source_code_context: true,
   root_source_code_paths: [File.cwd!()],
   environment_name: config_env(),
-  filter: Storyarn.SentryEventFilter
+  filter: Sentry.DefaultEventFilter
 
 # Oban background job processing
 config :storyarn, Oban,

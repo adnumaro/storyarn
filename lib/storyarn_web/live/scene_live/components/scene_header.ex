@@ -164,7 +164,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneHeader do
             <.icon name="git-branch" class="size-3.5 opacity-60" />
             <span class="text-xs">
               {dngettext(
-                "maps",
+                "scenes",
                 "Used in %{count} flow",
                 "Used in %{count} flows",
                 length(@referencing_flows),

@@ -224,6 +224,7 @@ export const ExplorationPlayer = {
   },
 
   destroyed() {
+    this._destroyed = true;
     this.dismissAllBubbles();
     this.dismissSubtitle();
     this.destroyCamera();
@@ -290,6 +291,7 @@ export const ExplorationPlayer = {
       const img = wrapper.querySelector("img");
       if (img) {
         const applyNatural = () => {
+          if (this._destroyed) return;
           if (img.naturalWidth && img.naturalHeight) {
             this.sceneWidth = img.naturalWidth;
             this.sceneHeight = img.naturalHeight;

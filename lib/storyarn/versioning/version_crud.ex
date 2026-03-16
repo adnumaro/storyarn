@@ -450,7 +450,8 @@ defmodule Storyarn.Versioning.VersionCrud do
     shortcut = snapshot["shortcut"]
 
     if shortcut && shortcut_taken?(entity_type, entity, shortcut) do
-      Map.put(snapshot, "shortcut", shortcut <> "-restored")
+      suffix = :crypto.strong_rand_bytes(4) |> Base.encode16(case: :lower)
+      Map.put(snapshot, "shortcut", shortcut <> "-" <> suffix)
     else
       snapshot
     end
