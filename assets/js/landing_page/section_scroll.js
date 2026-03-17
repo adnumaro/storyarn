@@ -62,6 +62,8 @@ function initLandingSectionScroll() {
 
   let discoverSubIndex = 0;
   let discoverDebounce = null;
+  let discoverBoundaryReady = false;
+  let discoverBoundaryLock = null;
 
   function setDiscoverActive(feature, _slide) {
     if (!discoverRoot) return;
@@ -106,29 +108,42 @@ function initLandingSectionScroll() {
 
   // ── Unified scroll handler ──
 
+  let scrollCooldown = null;
+
   function handleScrollDown() {
-    if (animating) return;
+    if (animating || scrollCooldown) return;
 
     // On discover panel: advance sub-steps first
     if (currentIndex === DISCOVER_PANEL && discoverFlatSteps.length > 1) {
       if (discoverSubIndex < discoverFlatSteps.length - 1) {
-        // Debounce discover sub-steps to prevent rapid scrolling
         if (discoverDebounce) return;
         discoverDebounce = setTimeout(() => {
           discoverDebounce = null;
         }, 400);
-
+        discoverBoundaryReady = false;
+        clearTimeout(discoverBoundaryLock);
+        discoverBoundaryLock = null;
         gotoDiscoverStep(discoverSubIndex + 1);
         return;
       }
-      // Exhausted all discover steps — fall through to next section
+      // At last step: absorb scroll, unlock after delay
+      if (!discoverBoundaryReady) {
+        if (!discoverBoundaryLock) {
+          discoverBoundaryLock = setTimeout(() => {
+            discoverBoundaryReady = true;
+            discoverBoundaryLock = null;
+          }, 400);
+        }
+        return;
+      }
+      discoverBoundaryReady = false;
     }
 
     gotoPanel(currentIndex + 1, true);
   }
 
   function handleScrollUp() {
-    if (animating) return;
+    if (animating || scrollCooldown) return;
 
     // On discover panel: retreat sub-steps first
     if (currentIndex === DISCOVER_PANEL && discoverFlatSteps.length > 1) {
@@ -137,11 +152,23 @@ function initLandingSectionScroll() {
         discoverDebounce = setTimeout(() => {
           discoverDebounce = null;
         }, 400);
-
+        discoverBoundaryReady = false;
+        clearTimeout(discoverBoundaryLock);
+        discoverBoundaryLock = null;
         gotoDiscoverStep(discoverSubIndex - 1);
         return;
       }
-      // At first discover step — fall through to previous section
+      // At first step: absorb scroll, unlock after delay
+      if (!discoverBoundaryReady) {
+        if (!discoverBoundaryLock) {
+          discoverBoundaryLock = setTimeout(() => {
+            discoverBoundaryReady = true;
+            discoverBoundaryLock = null;
+          }, 400);
+        }
+        return;
+      }
+      discoverBoundaryReady = false;
     }
 
     gotoPanel(currentIndex - 1, false);
@@ -301,6 +328,7 @@ function initLandingSectionScroll() {
       onComplete() {
         currentIndex = index;
         animating = false;
+        scrollCooldown = setTimeout(() => { scrollCooldown = null; }, 80);
 
         // Monitor lifecycle: resume when entering discover, pause when leaving
         const monitor = getMonitorAPI();
@@ -411,7 +439,9 @@ function initLandingSectionScroll() {
   function teardown() {
     clearTimeout(resizeTimer);
     clearTimeout(discoverDebounce);
+    clearTimeout(scrollCooldown);
     discoverDebounce = null;
+    scrollCooldown = null;
     animating = false;
     intentObserver?.disable();
     intentObserver?.kill();
