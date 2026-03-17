@@ -110,17 +110,27 @@ function createMonitorGroup(textures) {
   inset.position.z = bodyDepth / 2 + 0.003;
   group.add(inset);
 
-  // ── Screen (flat plane on front) ──
+  // ── Screen (two planes for crossfade) ──
   const screenGeo = new THREE.PlaneGeometry(screenW, screenH);
-  const screenMaterial = new THREE.MeshBasicMaterial({
+  const screenMatA = new THREE.MeshBasicMaterial({
     map: textures[0] || null,
     toneMapped: false,
+    transparent: true,
+    opacity: 1,
   });
-  const screen = new THREE.Mesh(screenGeo, screenMaterial);
-  screen.position.z = bodyDepth / 2 + 0.005;
-  group.add(screen);
+  const screenMatB = new THREE.MeshBasicMaterial({
+    toneMapped: false,
+    transparent: true,
+    opacity: 0,
+  });
+  const screenA = new THREE.Mesh(screenGeo, screenMatA);
+  const screenB = new THREE.Mesh(screenGeo.clone(), screenMatB);
+  screenA.position.z = bodyDepth / 2 + 0.005;
+  screenB.position.z = bodyDepth / 2 + 0.006;
+  group.add(screenA);
+  group.add(screenB);
 
-  return { group, screen, screenMaterial };
+  return { group, screenA, screenB, screenMatA, screenMatB };
 }
 
 function initDiscoverMonitor() {
@@ -170,9 +180,7 @@ function initDiscoverMonitor() {
   try {
     monitor = createMonitorGroup([]);
     scene.add(monitor.group);
-    console.log("[discover-monitor] Monitor group created OK");
   } catch (e) {
-    console.error("[discover-monitor] createMonitorGroup CRASHED:", e);
     return;
   }
 
@@ -181,11 +189,9 @@ function initDiscoverMonitor() {
   const textures = [];
 
   SCREEN_IMAGES.forEach((src, i) => {
-    console.log(`[discover-monitor] Loading texture ${i}: ${src}`);
     loader.load(
       src,
       (texture) => {
-        console.log(`[discover-monitor] Texture ${i} loaded OK:`, texture.image.width, "x", texture.image.height);
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.minFilter = THREE.LinearFilter;
         texture.magFilter = THREE.LinearFilter;
@@ -193,17 +199,13 @@ function initDiscoverMonitor() {
 
         // Show texture as soon as it loads for current step
         if (i === currentSubStep) {
-          console.log(`[discover-monitor] Assigning texture ${i} to screen`);
-          monitor.screenMaterial.map = texture;
-          monitor.screenMaterial.needsUpdate = true;
+          monitor.screenMatA.map = texture;
+          monitor.screenMatA.needsUpdate = true;
           renderer.render(scene, camera);
         }
       },
-      (progress) => {
-        console.log(`[discover-monitor] Texture ${i} progress:`, progress);
-      },
-      (err) => {
-        console.error(`[discover-monitor] Texture ${i} FAILED to load:`, src, err);
+      undefined,
+      () => {
         textures[i] = null;
       },
     );
@@ -250,7 +252,6 @@ function initDiscoverMonitor() {
 
   resize();
   renderer.render(scene, camera);
-  console.log("[discover-monitor] Init done. Screen material:", monitor.screenMaterial, "Canvas size:", canvas.width, "x", canvas.height);
 
   // Render loop
   function render() {
@@ -275,7 +276,6 @@ function initDiscoverMonitor() {
   }
 
   function setSubStep(index) {
-    console.log("[discover-monitor] setSubStep called:", index);
     if (index < 0 || index >= SUB_STEPS.length) return;
 
     const target = SUB_STEPS[index];
@@ -309,11 +309,33 @@ function initDiscoverMonitor() {
       ease: "power3.inOut",
     });
 
-    // Swap texture at the midpoint of the animation
+    // Crossfade: new image fades in on top, old fades out underneath
     if (prevStep !== index && textures[index]) {
-      gsap.delayedCall(0.35, () => {
-        monitor.screenMaterial.map = textures[index];
-        monitor.screenMaterial.needsUpdate = true;
+      // Put new texture on B layer (on top), fade it in
+      monitor.screenMatB.map = textures[index];
+      monitor.screenMatB.needsUpdate = true;
+      monitor.screenMatB.opacity = 0;
+
+      gsap.to(monitor.screenMatB, {
+        opacity: 1,
+        duration: 0.8,
+        ease: "power2.inOut",
+        onComplete() {
+          // Swap: move new texture to A, reset B
+          monitor.screenMatA.map = textures[index];
+          monitor.screenMatA.needsUpdate = true;
+          monitor.screenMatA.opacity = 1;
+          monitor.screenMatB.opacity = 0;
+        },
+      });
+
+      gsap.to(monitor.screenMatA, {
+        opacity: 0,
+        duration: 0.8,
+        ease: "power2.inOut",
+        onComplete() {
+          monitor.screenMatA.opacity = 1;
+        },
       });
     }
   }
@@ -341,10 +363,8 @@ function initDiscoverMonitor() {
   const tabButtons = Array.from(
     document.querySelectorAll("[data-feature-shell] button[data-feature-tab]"),
   );
-  console.log("[discover-monitor] Found tab buttons:", tabButtons.length, tabButtons.map(b => b.textContent.trim()));
   tabButtons.forEach((btn, i) => {
     btn.addEventListener("click", () => {
-      console.log("[discover-monitor] Tab clicked:", i, btn.textContent.trim());
       setSubStep(i);
     });
   });

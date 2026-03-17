@@ -96,10 +96,8 @@ function initLandingSectionScroll() {
   }
 
   // Tab click handlers — drive both text overlays and monitor
-  console.log("[section-scroll] discoverTabs:", discoverTabs.length, "discoverFlatSteps:", discoverFlatSteps.length);
   discoverTabs.forEach((tab, index) => {
     tab.addEventListener("click", () => {
-      console.log("[section-scroll] Tab click:", index, tab.textContent.trim(), "monitorAPI:", getMonitorAPI());
       if (index < discoverFlatSteps.length) {
         gotoDiscoverStep(index);
       }
