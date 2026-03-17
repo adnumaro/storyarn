@@ -361,6 +361,124 @@ html:has(.landing-shell) {
 }
 
 /* ===== Hero section ===== */
+.lp-hero-features-stack {
+  position: relative;
+}
+
+.lp-hero-features-stage {
+  position: relative;
+}
+
+.lp-features-anchor {
+  position: relative;
+  display: block;
+  height: 0;
+  scroll-margin-top: 6rem;
+}
+
+.lp-features-section {
+  position: relative;
+  z-index: 20;
+  min-height: 100svh;
+  display: flex;
+  align-items: stretch;
+  background:
+    radial-gradient(circle at 50% -15%, rgb(0 0 0 / 28%), transparent 24%),
+    linear-gradient(180deg, #055560a6 -15%, rgba(10, 18, 26, 0.98) 18%, rgba(6, 12, 18, 0.98) 54%, rgba(4, 8, 14, 1) 100%);
+}
+
+.lp-features-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 18%, transparent 76%, rgba(0, 0, 0, 0.18) 100%),
+    radial-gradient(circle at 50% 22%, rgba(56, 189, 248, 0.12), transparent 24%);
+}
+
+.lp-features-shell {
+  position: relative;
+  z-index: 1;
+  min-height: 100svh;
+  width: min(calc(100% - 48px), 1280px);
+  max-width: 1280px;
+  display: grid;
+  align-content: center;
+  gap: 2rem;
+  padding-top: 7rem;
+  padding-bottom: 4rem;
+}
+
+.lp-features-copy {
+  display: grid;
+  gap: 1rem;
+  max-width: 56rem;
+}
+
+.lp-auto-section {
+  position: relative;
+  z-index: 30;
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  background:
+    radial-gradient(circle at 50% -15%, rgb(0 0 0 / 28%), transparent 24%),
+    linear-gradient(180deg, rgba(10, 18, 26, 1) 0%, rgba(6, 12, 18, 1) 54%, rgba(4, 8, 14, 1) 100%);
+}
+
+.lp-auto-section > div {
+  width: min(calc(100% - 48px), 1280px);
+  max-width: 1280px;
+  margin-inline: auto;
+}
+
+.lp-cta-footer-section {
+  position: relative;
+}
+
+.lp-cta-footer-section > footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.lp-features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.lp-feature-card {
+  min-height: 0;
+  backdrop-filter: blur(18px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 48px rgba(0, 0, 0, 0.22);
+}
+
+.lp-hero-features-stack.is-scroll-staged {
+  min-height: 100svh;
+}
+
+.lp-hero-features-stack.is-scroll-staged .lp-hero-features-stage {
+  position: relative;
+  height: 100svh;
+  overflow: clip;
+}
+
+.lp-hero-features-stack.is-scroll-staged .lp-features-section {
+  position: absolute;
+  inset: 0;
+}
+
+.lp-hero-features-stack.is-scroll-staged .lp-auto-section {
+  position: absolute;
+  inset: 0;
+}
+
 #hero-section {
   background:
     radial-gradient(circle at 50% 18%, #15cde870, transparent 28%),
@@ -465,7 +583,7 @@ html:has(.landing-shell) {
 .lp-portal-trigger-badge {
   position: absolute;
   left: 50%;
-  top: 14%;
+  top: 50%;
   transform: translate(-50%, -50%);
   z-index: 3;
   display: inline-flex;
@@ -490,37 +608,9 @@ html:has(.landing-shell) {
   overflow: hidden;
   border-radius: 30%;
   isolation: isolate;
-  background: linear-gradient(180deg, rgba(8, 14, 20, 0.06), rgba(8, 14, 20, 0.46));
   box-shadow:
     0 0 90px rgba(22, 207, 240, 0.1),
     0 48px 120px rgba(0, 0, 0, 0.5);
-}
-
-.lp-portal-video-frame::before {
-  content: "";
-  position: absolute;
-  inset: -8% 18% 32%;
-  z-index: 0;
-  opacity: 0;
-  background: radial-gradient(circle, rgba(88, 232, 255, 0.22), transparent 72%);
-  transition: opacity 220ms ease;
-}
-
-@media (hover: hover) {
-  .lp-portal-trigger:hover .lp-portal-video-frame::before {
-    opacity: 1;
-  }
-}
-
-.lp-portal-video-frame::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.05) 0 15%, rgba(255, 255, 255, 0) 22%),
-    radial-gradient(circle at 50% 50%, rgba(5, 8, 12, 0) 0 22%, rgba(5, 8, 12, 0.22) 36%, rgba(5, 8, 12, 0.74) 56%, rgba(5, 8, 12, 0.96) 100%);
 }
 
 /* Video behind the portal center (visible through transparent canvas) */
@@ -621,6 +711,15 @@ html:has(.landing-shell) {
 
 /* ===== Portal responsive ===== */
 @media (max-width: 1024px) {
+  .lp-features-shell {
+    padding-top: 6rem;
+    gap: 1.5rem;
+  }
+
+  .lp-features-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .lp-portal-trigger {
     --lp-portal-frame-width: min(86vw, 760px);
     top: 85%;
@@ -628,13 +727,47 @@ html:has(.landing-shell) {
 }
 
 @media (max-width: 640px) {
+  .lp-features-section {
+    min-height: auto;
+  }
+
+  .lp-auto-section {
+    min-height: auto;
+    display: block;
+  }
+
+  .lp-features-shell {
+    min-height: auto;
+    align-content: start;
+    padding-top: 6.5rem;
+    padding-bottom: 3rem;
+  }
+
+  .lp-features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lp-hero-features-stack.is-scroll-staged .lp-auto-section {
+    position: relative;
+    min-height: auto;
+  }
+
+  .lp-hero-features-stack.is-scroll-staged,
+  .lp-hero-features-stack.is-scroll-staged .lp-hero-features-stage,
+  .lp-hero-features-stack.is-scroll-staged .lp-features-section {
+    min-height: auto;
+    height: auto;
+    position: relative;
+    overflow: visible;
+  }
+
   .lp-portal-trigger {
     --lp-portal-frame-width: min(108vw, 620px);
     top: 88%;
   }
 
   .lp-portal-trigger-badge {
-    top: 12%;
+    top: 16%;
     padding: 0.5rem 0.78rem;
     font-size: 0.76rem;
   }

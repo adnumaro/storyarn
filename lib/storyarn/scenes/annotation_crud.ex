@@ -64,5 +64,4 @@ defmodule Storyarn.Scenes.AnnotationCrud do
       scene -> Localization.extract_scene(scene)
     end
   end
-
 end

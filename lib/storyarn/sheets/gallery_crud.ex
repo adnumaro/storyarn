@@ -82,8 +82,11 @@ defmodule Storyarn.Sheets.GalleryCrud do
     |> BlockGalleryImage.update_changeset(attrs)
     |> Repo.update()
     |> tap(fn
-      {:ok, _updated_image} -> Repo.get(Block, gallery_image.block_id) |> Localization.extract_block()
-      _ -> :ok
+      {:ok, _updated_image} ->
+        Repo.get(Block, gallery_image.block_id) |> Localization.extract_block()
+
+      _ ->
+        :ok
     end)
   end
 
@@ -169,5 +172,4 @@ defmodule Storyarn.Sheets.GalleryCrud do
     |> Repo.one()
     |> Kernel.+(1)
   end
-
 end

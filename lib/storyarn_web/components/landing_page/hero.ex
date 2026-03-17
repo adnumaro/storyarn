@@ -44,7 +44,7 @@ defmodule StoryarnWeb.Components.LandingPage.Hero do
         class="pointer-events-none relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[1180px] flex-col items-center place-content-center px-6 pb-20 pt-28 text-center sm:px-8 sm:pb-24 sm:pt-32 lg:pt-40"
         style="transform: translateY(-10%);"
       >
-        <div class="pointer-events-auto">
+        <div id="hero-content-inner" class="pointer-events-auto">
           <%!-- Eyebrow badge --%>
           <div class="inline-flex items-center gap-1.5 sm:gap-2.5 px-3 sm:px-4 py-1.5 sm:py-2.5 rounded-full border border-primary/20 bg-primary/10 text-primary text-[0.65rem] sm:text-xs tracking-widest uppercase">
             <span class="lp-badge-dot w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-primary"></span>

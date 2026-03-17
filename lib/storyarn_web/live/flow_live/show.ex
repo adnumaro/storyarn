@@ -868,7 +868,9 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("update_annotation_color", %{"value" => color}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       case socket.assigns.selected_node do
-        nil -> {:noreply, socket}
+        nil ->
+          {:noreply, socket}
+
         node ->
           NodeHelpers.persist_node_update(socket, node.id, fn data ->
             Map.put(data, "color", color)
@@ -881,7 +883,9 @@ defmodule StoryarnWeb.FlowLive.Show do
       when size in ["sm", "md", "lg"] do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       case socket.assigns.selected_node do
-        nil -> {:noreply, socket}
+        nil ->
+          {:noreply, socket}
+
         node ->
           NodeHelpers.persist_node_update(socket, node.id, fn data ->
             Map.put(data, "font_size", size)

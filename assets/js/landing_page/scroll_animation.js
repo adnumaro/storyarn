@@ -21,6 +21,7 @@ function clearVideoMask(video) {
 function initPortalClick() {
   const portalTrigger = document.getElementById("portal-trigger");
   const portalFrame = document.getElementById("portal-video-frame");
+  const portalBadge = portalTrigger?.querySelector(".lp-portal-trigger-badge");
   const heroContent = document.getElementById("hero-content");
   const fullscreen = document.getElementById("portal-fullscreen");
   const closeBtn = document.getElementById("portal-fullscreen-close");
@@ -35,6 +36,9 @@ function initPortalClick() {
   // Elements to fade out during portal entry
   const topbar = document.querySelector(".landing-shell > header");
   const landingPage = document.querySelector(".landing-page");
+  const fullscreenShadow = "0 40px 120px rgba(0, 0, 0, 0.46)";
+  let currentTimeline = null;
+  let isTransitioning = false;
 
   gsap.set(heroContent, { yPercent: -10 });
 
@@ -42,8 +46,47 @@ function initPortalClick() {
     return portalFrame.getBoundingClientRect();
   }
 
+  function killActiveTweens() {
+    currentTimeline?.kill();
+    currentTimeline = null;
+
+    gsap.killTweensOf([heroContent, topbar, landingPage, portalFrame, portalBadge, video]);
+  }
+
+  function restorePortalChrome() {
+    portalFrame.style.opacity = "";
+
+    if (portalBadge) {
+      portalBadge.style.opacity = "";
+    }
+  }
+
+  function setFlyingVideoRect(rect, radius, boxShadow) {
+    video.style.position = "fixed";
+    video.style.top = `${rect.top}px`;
+    video.style.left = `${rect.left}px`;
+    video.style.width = `${rect.width}px`;
+    video.style.height = `${rect.height}px`;
+    video.style.transform = "none";
+    video.style.zIndex = "99999";
+    video.style.pointerEvents = "none";
+    video.style.objectFit = "cover";
+    video.style.borderRadius = radius;
+    video.style.boxShadow = boxShadow;
+  }
+
+  function resolvedBoxShadow(boxShadow) {
+    if (!boxShadow || boxShadow === "none") {
+      return fullscreenShadow;
+    }
+
+    return boxShadow;
+  }
+
   function openFullscreen() {
     const portal = getPortalAPI();
+
+    if (isTransitioning || fullscreen.classList.contains("is-active")) return;
 
     if (reduced || !portal) {
       fullscreen.appendChild(video);
@@ -55,11 +98,15 @@ function initPortalClick() {
       return;
     }
 
+    isTransitioning = true;
+    killActiveTweens();
+    restorePortalChrome();
+
     // Fade out all surrounding UI
     gsap.to(heroContent, {
       opacity: 0,
       yPercent: -10,
-      y: -30,
+      y: -48,
       duration: 0.5,
       ease: "power2.in",
     });
@@ -94,7 +141,9 @@ function initPortalClick() {
 
     // Animate video position from the portal opening to centered fullscreen.
     const videoRect = portalFrameRect();
-    const startRadius = window.getComputedStyle(portalFrame).borderRadius;
+    const frameStyle = window.getComputedStyle(portalFrame);
+    const startRadius = frameStyle.borderRadius;
+    const startShadow = resolvedBoxShadow(frameStyle.boxShadow);
 
     // Calculate target: centered in viewport, 92vw wide, 16:9
     const targetW = Math.min(window.innerWidth * 0.92, 1400);
@@ -105,29 +154,14 @@ function initPortalClick() {
     // Move the video out of transformed ancestors before animating it in the viewport.
     portalTrigger.classList.add("is-active");
     fullscreen.appendChild(video);
-    video.style.position = "fixed";
-    video.style.top = `${videoRect.top}px`;
-    video.style.left = `${videoRect.left}px`;
-    video.style.width = `${videoRect.width}px`;
-    video.style.height = `${videoRect.height}px`;
-    video.style.transform = "none";
-    video.style.zIndex = "99999";
-    video.style.pointerEvents = "none";
-    video.style.borderRadius = startRadius;
+    setFlyingVideoRect(videoRect, startRadius, startShadow);
 
     // Animate video position, size, and mask gradient
     const maskProxy = { solid: 25, fade: 46 };
+    const proxy = { scale: 1, intensity: 1, vol: 0 };
 
-    gsap.to(video, {
-      top: targetY,
-      left: targetX,
-      width: targetW,
-      height: targetH,
-      borderRadius: 12,
-      duration: 1.15,
-      ease: "power3.in",
+    currentTimeline = gsap.timeline({
       onComplete() {
-        // Move video to fullscreen overlay, reset inline styles
         video.style.cssText = "";
         fullscreen.appendChild(video);
         video.classList.add("is-fullscreen");
@@ -138,42 +172,88 @@ function initPortalClick() {
         } catch {
           // fallback
         }
+        currentTimeline = null;
+        isTransitioning = false;
       },
     });
 
-    gsap.to(maskProxy, {
-      solid: 100,
-      fade: 100,
-      duration: 1.0,
-      ease: "power2.in",
-      onUpdate() {
-        setVideoMask(video, maskProxy.solid, maskProxy.fade);
+    currentTimeline.to(
+      video,
+      {
+        top: targetY,
+        left: targetX,
+        width: targetW,
+        height: targetH,
+        borderRadius: 12,
+        boxShadow: fullscreenShadow,
+        duration: 1.22,
+        ease: "power3.in",
       },
-    });
+      0,
+    );
 
-    // Portal zoom + volume
-    const proxy = { scale: 1, intensity: 1, vol: 0 };
-
-    gsap.to(proxy, {
-      scale: 12,
-      intensity: 3,
-      vol: 1,
-      duration: 1.4,
-      ease: "power3.in",
-      onUpdate() {
-        portal.setScale(proxy.scale);
-        portal.setIntensity(proxy.intensity);
-        try {
-          video.volume = proxy.vol;
-        } catch {
-          // volume setter may fail
-        }
+    currentTimeline.to(
+      maskProxy,
+      {
+        solid: 100,
+        fade: 100,
+        duration: 1.0,
+        ease: "power2.in",
+        onUpdate() {
+          setVideoMask(video, maskProxy.solid, maskProxy.fade);
+        },
       },
-    });
+      0,
+    );
+
+    currentTimeline.to(
+      portalFrame,
+      {
+        opacity: 0,
+        duration: 0.52,
+        ease: "power2.inOut",
+      },
+      0.22,
+    );
+
+    if (portalBadge) {
+      currentTimeline.to(
+        portalBadge,
+        {
+          opacity: 0,
+          duration: 0.34,
+          ease: "power2.inOut",
+        },
+        0.16,
+      );
+    }
+
+    currentTimeline.to(
+      proxy,
+      {
+        scale: 12,
+        intensity: 3,
+        vol: 1,
+        duration: 1.4,
+        ease: "power3.in",
+        onUpdate() {
+          portal.setScale(proxy.scale);
+          portal.setIntensity(proxy.intensity);
+          try {
+            video.volume = proxy.vol;
+          } catch {
+            // volume setter may fail
+          }
+        },
+      },
+      0,
+    );
   }
 
   function closeFullscreen() {
     const portal = getPortalAPI();
+
+    if (isTransitioning || !fullscreen.classList.contains("is-active")) return;
 
     if (reduced || !portal) {
       fullscreen.classList.remove("is-active");
@@ -184,6 +264,9 @@ function initPortalClick() {
       portalTrigger.classList.remove("is-active");
       return;
     }
+
+    isTransitioning = true;
+    killActiveTweens();
 
     // Fade volume out
     const volProxy = { vol: video.volume || 1 };
@@ -206,67 +289,105 @@ function initPortalClick() {
     const videoRect = video.getBoundingClientRect();
     const startRadius = window.getComputedStyle(video).borderRadius;
     const targetRect = portalFrameRect();
-    const targetRadius = window.getComputedStyle(portalFrame).borderRadius;
+    const frameStyle = window.getComputedStyle(portalFrame);
+    const targetRadius = frameStyle.borderRadius;
+    const targetShadow = resolvedBoxShadow(frameStyle.boxShadow);
 
     // Keep the video fixed during the closing flight, then dock it back into the portal.
     video.classList.remove("is-fullscreen");
     fullscreen.classList.remove("is-active");
+    portalTrigger.classList.add("is-active");
 
     // Animate from fullscreen back into the portal opening.
-    video.style.position = "fixed";
-    video.style.top = `${videoRect.top}px`;
-    video.style.left = `${videoRect.left}px`;
-    video.style.width = `${videoRect.width}px`;
-    video.style.height = `${videoRect.height}px`;
-    video.style.transform = "none";
-    video.style.zIndex = "99999";
-    video.style.pointerEvents = "none";
-    video.style.objectFit = "cover";
-    video.style.borderRadius = startRadius;
+    setFlyingVideoRect(
+      videoRect,
+      startRadius,
+      resolvedBoxShadow(window.getComputedStyle(video).boxShadow),
+    );
     clearVideoMask(video);
 
     const maskProxy = { solid: 100, fade: 100 };
+    const zoomProxy = { scale: 12, intensity: 3 };
 
-    gsap.to(video, {
-      top: targetRect.top,
-      left: targetRect.left,
-      width: targetRect.width,
-      height: targetRect.height,
-      borderRadius: targetRadius,
-      duration: 0.6,
-      ease: "power2.out",
+    currentTimeline = gsap.timeline({
       onComplete() {
         video.style.cssText = "";
         clearVideoMask(video);
         portalFrame.appendChild(video);
         portalTrigger.classList.remove("is-active");
+        restorePortalChrome();
+        currentTimeline = null;
+        isTransitioning = false;
       },
     });
 
-    gsap.to(maskProxy, {
-      solid: 25,
-      fade: 46,
-      duration: 0.5,
-      delay: 0.1,
-      ease: "power2.out",
-      onUpdate() {
-        setVideoMask(video, maskProxy.solid, maskProxy.fade);
+    currentTimeline.to(
+      video,
+      {
+        top: targetRect.top,
+        left: targetRect.left,
+        width: targetRect.width,
+        height: targetRect.height,
+        borderRadius: targetRadius,
+        boxShadow: targetShadow,
+        duration: 0.72,
+        ease: "power2.out",
       },
-    });
+      0,
+    );
+
+    currentTimeline.to(
+      maskProxy,
+      {
+        solid: 25,
+        fade: 46,
+        duration: 0.58,
+        ease: "power2.out",
+        onUpdate() {
+          setVideoMask(video, maskProxy.solid, maskProxy.fade);
+        },
+      },
+      0.08,
+    );
+
+    currentTimeline.to(
+      portalFrame,
+      {
+        opacity: 1,
+        duration: 0.18,
+        ease: "power2.inOut",
+      },
+      0.56,
+    );
+
+    if (portalBadge) {
+      currentTimeline.to(
+        portalBadge,
+        {
+          opacity: 1,
+          duration: 0.18,
+          ease: "power2.inOut",
+        },
+        0.62,
+      );
+    }
 
     if (portal && !reduced) {
       // Zoom portal back
-      const zoomProxy = { scale: 12, intensity: 3 };
-      gsap.to(zoomProxy, {
-        scale: 1,
-        intensity: 1,
-        duration: 0.6,
-        ease: "power2.out",
-        onUpdate() {
-          portal.setScale(zoomProxy.scale);
-          portal.setIntensity(zoomProxy.intensity);
+      currentTimeline.to(
+        zoomProxy,
+        {
+          scale: 1,
+          intensity: 1,
+          duration: 0.6,
+          ease: "power2.out",
+          onUpdate() {
+            portal.setScale(zoomProxy.scale);
+            portal.setIntensity(zoomProxy.intensity);
+          },
         },
-      });
+        0,
+      );
     }
 
     // Fade all UI back in
@@ -321,6 +442,8 @@ function initPortalClick() {
   window.addEventListener(
     "phx:page-loading-start",
     () => {
+      killActiveTweens();
+      restorePortalChrome();
       portalTrigger.removeEventListener("click", openFullscreen);
       document.removeEventListener("keydown", onKeyDown);
       delete portalTrigger.dataset.clickInitialized;

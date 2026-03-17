@@ -1,13 +1,20 @@
 <Layouts.public flash={@flash} current_scope={@current_scope} theme="dark">
-  <.hero />
-  <div class="landing-page">
-    <main>
+  <div id="hero-features-stack" class="lp-hero-features-stack">
+    <div id="features" class="lp-features-anchor" aria-hidden="true"></div>
+
+    <div id="hero-features-stage" class="lp-hero-features-stage">
+      <.hero />
       <.feature_grid />
       <.discover_section />
       <.version_spotlight />
       <.workflow_grid />
-      <.cta_waitlist />
-    </main>
-    <.landing_footer current_scope={@current_scope} />
+      <div class="lp-auto-section lp-cta-footer-section" data-section-step>
+        <div>
+          <.cta_waitlist />
+        </div>
+        <.landing_footer current_scope={@current_scope} />
+      </div>
+    </div>
   </div>
+
 </Layouts.public>

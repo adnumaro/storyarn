@@ -18,7 +18,7 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
       |> assign(:active_slide, active_slide)
 
     ~H"""
-    <section class="py-16 lg:py-20 scroll-mt-32" id="discover">
+    <section class="lp-auto-section py-16 lg:py-20 scroll-mt-32" id="discover" data-section-step>
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
         <.section_header
           title={gettext("See how it all connects")}
@@ -250,20 +250,6 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
 
   attr :slide_id, :string, required: true
 
-  defp discover_preview_visual(%{slide_id: "dashboard-overview"} = assigns) do
-    ~H"""
-    <div class="lp-screenshot-placeholder">
-      <.icon name="image" class="size-8 opacity-40" />
-      <strong>{gettext("Project dashboard")}</strong>
-      <span>
-        {gettext(
-          "Screenshot: Project dashboard with metric cards (variables, flows, coverage, exports), localization progress bars, and recent activity. Dark mode, ~720×400px."
-        )}
-      </span>
-    </div>
-    """
-  end
-
   defp discover_preview_visual(%{slide_id: "sheets-inheritance"} = assigns) do
     ~H"""
     <div class="lp-screenshot-placeholder">
@@ -272,34 +258,6 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
       <span>
         {gettext(
           "Screenshot: Sheet tree sidebar showing parent/child hierarchy, with a child sheet open displaying inherited blocks and overrides highlighted. Dark mode, ~720×400px."
-        )}
-      </span>
-    </div>
-    """
-  end
-
-  defp discover_preview_visual(%{slide_id: "sheets-formulas"} = assigns) do
-    ~H"""
-    <div class="lp-screenshot-placeholder">
-      <.icon name="image" class="size-8 opacity-40" />
-      <strong>{gettext("Cell formulas")}</strong>
-      <span>
-        {gettext(
-          "Screenshot: Sheet table block with formula cells visible (e.g. =REP+2, =BASE*1.4), showing computed values alongside raw data. Dark mode, ~720×400px."
-        )}
-      </span>
-    </div>
-    """
-  end
-
-  defp discover_preview_visual(%{slide_id: "sheets-backlinks"} = assigns) do
-    ~H"""
-    <div class="lp-screenshot-placeholder">
-      <.icon name="image" class="size-8 opacity-40" />
-      <strong>{gettext("Entity backlinks")}</strong>
-      <span>
-        {gettext(
-          "Screenshot: Sheet detail view with backlinks panel open, showing all flows, scenes, and screenplays that reference this entity. Dark mode, ~720×400px."
         )}
       </span>
     </div>
@@ -320,34 +278,6 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
     """
   end
 
-  defp discover_preview_visual(%{slide_id: "flows-story-player"} = assigns) do
-    ~H"""
-    <div class="lp-screenshot-placeholder">
-      <.icon name="image" class="size-8 opacity-40" />
-      <strong>{gettext("Story Player")}</strong>
-      <span>
-        {gettext(
-          "Screenshot: Story Player running a flow with dialogue bubbles, speaker name, and choice buttons visible. Fullscreen player mode. Dark mode, ~720×400px."
-        )}
-      </span>
-    </div>
-    """
-  end
-
-  defp discover_preview_visual(%{slide_id: "flows-debug-mode"} = assigns) do
-    ~H"""
-    <div class="lp-screenshot-placeholder">
-      <.icon name="image" class="size-8 opacity-40" />
-      <strong>{gettext("Debug mode")}</strong>
-      <span>
-        {gettext(
-          "Screenshot: Flow editor in debug mode with the debug panel open showing variable values, condition results (pass/fail), and execution history. Dark mode, ~720×400px."
-        )}
-      </span>
-    </div>
-    """
-  end
-
   defp discover_preview_visual(%{slide_id: "scenes-layers"} = assigns) do
     ~H"""
     <div class="lp-screenshot-placeholder">
@@ -362,56 +292,8 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
     """
   end
 
-  defp discover_preview_visual(%{slide_id: "scenes-connected"} = assigns) do
-    ~H"""
-    <div class="lp-screenshot-placeholder">
-      <.icon name="image" class="size-8 opacity-40" />
-      <strong>{gettext("Connected scene data")}</strong>
-      <span>
-        {gettext(
-          "Screenshot: Scene canvas with pins that show connected sheet references, flow triggers, and quest state links in tooltips or side panel. Dark mode, ~720×400px."
-        )}
-      </span>
-    </div>
-    """
-  end
-
-  defp discover_preview_visual(%{slide_id: "scenes-pins-zones"} = assigns) do
-    ~H"""
-    <div class="lp-screenshot-placeholder">
-      <.icon name="image" class="size-8 opacity-40" />
-      <strong>{gettext("Pins and zones")}</strong>
-      <span>
-        {gettext(
-          "Screenshot: Scene canvas with drawn zones, placed pins, and an open pin/zone config panel showing actions, conditions, and flow triggers. Dark mode, ~720×400px."
-        )}
-      </span>
-    </div>
-    """
-  end
-
   defp discover_features do
     [
-      %{
-        id: "dashboard",
-        label: gettext("Dashboard"),
-        slides: [
-          %{
-            id: "dashboard-overview",
-            trigger: gettext("Project view"),
-            title: gettext("See the full picture from one dashboard"),
-            description:
-              gettext(
-                "Track narrative scale, localization coverage, and production readiness without opening each tool individually."
-              ),
-            items: [
-              gettext("Narrative scale, health, and progress — visible at a glance."),
-              gettext("A shared picture for leads before reviews and planning."),
-              gettext("Production conversations grounded in live data, not memory.")
-            ]
-          }
-        ]
-      },
       %{
         id: "sheets",
         label: gettext("Sheets"),
@@ -428,36 +310,6 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
               gettext("Shared variables and blocks flow down the hierarchy."),
               gettext("Override only what changes — per variant, episode, or region."),
               gettext("Scale the world model without copy-paste.")
-            ]
-          },
-          %{
-            id: "sheets-formulas",
-            trigger: gettext("Cell formulas"),
-            title: gettext("Tables mix manual data and live formulas"),
-            description:
-              gettext(
-                "Per-cell formulas turn sheet tables into live systems for balancing, tracking, and narrative state."
-              ),
-            items: [
-              gettext("Mix raw values, computed fields, and references in one grid."),
-              gettext(
-                "Balance the game where the narrative lives — not in a separate spreadsheet."
-              ),
-              gettext("Systemic tuning stays inside the narrative model.")
-            ]
-          },
-          %{
-            id: "sheets-backlinks",
-            trigger: gettext("Backlinks"),
-            title: gettext("See where every entity is referenced"),
-            description:
-              gettext(
-                "Reference tracking makes dependencies visible — changing a character or quest is never a blind edit."
-              ),
-            items: [
-              gettext("Jump from any sheet to every flow, scene, or screenplay that uses it."),
-              gettext("Review impact before renaming, restructuring, or deleting."),
-              gettext("Sheets become live production assets, not static database entries.")
             ]
           }
         ]
@@ -479,34 +331,6 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
               gettext("Logic stays connected to project data instead of living in fragments."),
               gettext("From quick sketches to production-scale dialogue graphs.")
             ]
-          },
-          %{
-            id: "flows-story-player",
-            trigger: gettext("Story Player"),
-            title: gettext("Play the story without leaving the editor"),
-            description:
-              gettext(
-                "Run any flow as a player. Feel the rhythm, inspect outcomes, and catch issues before handoff."
-              ),
-            items: [
-              gettext("Walk through choices and branches in the same workspace."),
-              gettext("Validate pacing and tone before anything reaches the engine."),
-              gettext("Turn authored flows into something the whole team can experience.")
-            ]
-          },
-          %{
-            id: "flows-debug-mode",
-            trigger: gettext("Debug mode"),
-            title: gettext("See exactly why a branch was taken"),
-            description:
-              gettext(
-                "Variable values, condition results, and transitions — all visible so teams can diagnose logic at a glance."
-              ),
-            items: [
-              gettext("What passed, what failed, and what changed — all on screen."),
-              gettext("Branching bugs become reviewable by designers, not just engineers."),
-              gettext("Hidden logic becomes an inspectable, shareable system.")
-            ]
           }
         ]
       },
@@ -526,34 +350,6 @@ defmodule StoryarnWeb.Components.LandingPage.DiscoverSection do
               gettext("Layered visibility instead of one overloaded canvas."),
               gettext("Fog of war to communicate progression and discoverability."),
               gettext("Large spaces stay understandable during review and iteration.")
-            ]
-          },
-          %{
-            id: "scenes-connected",
-            trigger: gettext("Connected systems"),
-            title: gettext("Maps wired to your narrative data"),
-            description:
-              gettext(
-                "Characters, state, and interactables stay connected to the project model instead of living in separate documents."
-              ),
-            items: [
-              gettext("Story logic, references, and world data — on the map surface."),
-              gettext("No hand-maintained links between spatial design and narrative logic."),
-              gettext("Scenes become connected production assets, not isolated boards.")
-            ]
-          },
-          %{
-            id: "scenes-pins-zones",
-            trigger: gettext("Pins and zones"),
-            title: gettext("Pins and zones make scenes interactive"),
-            description:
-              gettext(
-                "Actions and triggers react to narrative state — spatial storytelling becomes playable, not just descriptive."
-              ),
-            items: [
-              gettext("Hotspots, routes, and interactions placed directly on the scene."),
-              gettext("Actions gated by narrative variables and conditions."),
-              gettext("Prototype exploration logic before the engine build.")
             ]
           }
         ]

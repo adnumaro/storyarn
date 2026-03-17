@@ -112,10 +112,12 @@ function initPortal() {
 
   // Animation loop
   let raf;
-  const clock = new THREE.Clock();
+  const timer = new THREE.Timer();
+  timer.connect(document);
 
-  function loop() {
-    uniforms.uTime.value = clock.getElapsedTime();
+  function loop(timestamp) {
+    timer.update(timestamp);
+    uniforms.uTime.value = timer.getElapsed();
     renderer.render(scene, camera);
     raf = requestAnimationFrame(loop);
   }
@@ -153,6 +155,7 @@ function initPortal() {
     clearTimeout(resizeTimer);
     window.removeEventListener("resize", onResize);
     resizeObserver?.disconnect();
+    timer.dispose();
     renderer.dispose();
     material.dispose();
     quad.geometry.dispose();

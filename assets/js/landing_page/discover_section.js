@@ -186,9 +186,22 @@ const initDiscoverSection = () => {
     });
   });
 
-  scrollbox.addEventListener("scroll", requestSync, { passive: true });
-  window.addEventListener("scroll", requestSync, { passive: true });
-  window.addEventListener("resize", requestSync);
+  // Only enable scroll-based sync when NOT in staged scroll mode
+  // (staged mode controls discover steps via section_scroll.js)
+  const enableScrollSync = () => {
+    const staged = document.getElementById("hero-features-stack")?.classList.contains("is-scroll-staged");
+    if (!staged) {
+      scrollbox.addEventListener("scroll", requestSync, { passive: true });
+      window.addEventListener("scroll", requestSync, { passive: true });
+    }
+  };
+  enableScrollSync();
+  window.addEventListener("resize", () => {
+    scrollbox.removeEventListener("scroll", requestSync);
+    window.removeEventListener("scroll", requestSync);
+    enableScrollSync();
+    requestSync();
+  });
 
   root.dataset.discoverInitialized = "true";
 

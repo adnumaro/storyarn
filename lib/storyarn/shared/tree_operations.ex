@@ -63,6 +63,7 @@ defmodule Storyarn.Shared.TreeOperations do
       raise ArgumentError,
             "scope_field must be one of #{inspect(@allowed_scope_fields)}, got: #{inspect(scope_field)}"
     end
+
     soft_delete = Keyword.get(opts, :soft_delete, false)
     parent_id = Keyword.get(opts, :parent_id, :skip)
 

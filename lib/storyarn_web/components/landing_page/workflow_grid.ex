@@ -45,7 +45,7 @@ defmodule StoryarnWeb.Components.LandingPage.WorkflowGrid do
     assigns = assign(assigns, :steps, Enum.with_index(steps))
 
     ~H"""
-    <section class="py-16 lg:py-20 scroll-mt-32" id="workflow">
+    <section class="lp-auto-section py-16 lg:py-20 scroll-mt-32" id="workflow" data-section-step>
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
         <.section_header
           title={gettext("From worldbuilding to shipped game")}

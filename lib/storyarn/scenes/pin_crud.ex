@@ -169,5 +169,4 @@ defmodule Storyarn.Scenes.PinCrud do
       |> Repo.update_all(set: [is_leader: false])
     end
   end
-
 end

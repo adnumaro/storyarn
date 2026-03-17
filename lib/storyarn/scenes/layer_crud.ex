@@ -127,5 +127,4 @@ defmodule Storyarn.Scenes.LayerCrud do
   def change_layer(%SceneLayer{} = layer, attrs \\ %{}) do
     SceneLayer.update_changeset(layer, attrs)
   end
-
 end

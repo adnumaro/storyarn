@@ -76,8 +76,11 @@ defmodule StoryarnWeb.Components.LandingPage.FeatureGrid do
       )
 
     ~H"""
-    <section class="py-16 lg:py-20 scroll-mt-32" id="features">
-      <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
+    <section class="lp-features-section" id="features-section" aria-labelledby="features-title">
+      <div
+        class="lp-features-shell mx-auto w-[min(calc(100%-48px),1280px)]"
+        data-feature-stage-shell
+      >
         <.section_header
           title={gettext("One platform, everything connected")}
           description={
@@ -87,12 +90,11 @@ defmodule StoryarnWeb.Components.LandingPage.FeatureGrid do
           }
         />
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="lp-features-grid">
           <article
-            :for={{{feature, color}, idx} <- @features}
-            class="p-6 rounded-3xl border border-base-content/8 bg-base-200/60"
-            data-reveal
-            data-reveal-delay={"#{idx * 80}"}
+            :for={{{feature, color}, _idx} <- @features}
+            class="lp-feature-card p-5 sm:p-6 rounded-3xl border border-base-content/8 bg-base-200/60"
+            data-feature-card
           >
             <em class={"inline-flex items-center justify-center min-w-[46px] min-h-[46px] rounded-xl mb-4 not-italic text-#{color} bg-#{color}/10"}>
               <.icon name={feature.icon} class="size-5" />
@@ -111,8 +113,11 @@ defmodule StoryarnWeb.Components.LandingPage.FeatureGrid do
 
   defp section_header(assigns) do
     ~H"""
-    <div class="grid gap-4 mb-8 max-w-[56rem]" data-reveal>
-      <h2 class="text-[clamp(2.2rem,3vw,3.8rem)] leading-[0.97] tracking-[-0.06em] font-bold text-base-content">
+    <div class="lp-features-copy" data-feature-intro>
+      <h2
+        id="features-title"
+        class="text-[clamp(2.2rem,3vw,3.8rem)] leading-[0.97] tracking-[-0.06em] font-bold text-base-content"
+      >
         {widont(@title)}
       </h2>
       <p class="max-w-[36rem] text-base-content/60 leading-relaxed text-base">

@@ -232,8 +232,7 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   """
   def count_screenplays(project_id) do
     from(sp in Screenplay,
-      where:
-        sp.project_id == ^project_id and is_nil(sp.deleted_at) and is_nil(sp.draft_of_id)
+      where: sp.project_id == ^project_id and is_nil(sp.deleted_at) and is_nil(sp.draft_of_id)
     )
     |> Repo.aggregate(:count)
   end
@@ -243,8 +242,7 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   """
   def list_shortcuts(project_id) do
     from(sp in Screenplay,
-      where:
-        sp.project_id == ^project_id and is_nil(sp.deleted_at) and is_nil(sp.draft_of_id),
+      where: sp.project_id == ^project_id and is_nil(sp.deleted_at) and is_nil(sp.draft_of_id),
       select: sp.shortcut
     )
     |> Repo.all()

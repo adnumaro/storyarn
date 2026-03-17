@@ -107,5 +107,4 @@ defmodule Storyarn.Scenes.ConnectionCrud do
         {:error, :pin_belongs_to_different_scene}
     end
   end
-
 end

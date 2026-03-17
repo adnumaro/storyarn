@@ -8,7 +8,11 @@ defmodule StoryarnWeb.Components.LandingPage.Spotlights do
 
   def exploration_spotlight(assigns) do
     ~H"""
-    <section class="py-16 lg:py-20 scroll-mt-32" id="exploration-mode">
+    <section
+      class="lp-auto-section py-16 lg:py-20 scroll-mt-32"
+      id="exploration-mode"
+      data-section-step
+    >
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
         <div class="p-8 rounded-[2rem] border border-base-content/8 bg-base-200/60" data-reveal>
           <div class="grid grid-cols-1 lg:grid-cols-[1.1fr_minmax(320px,0.72fr)] gap-6 items-start">
@@ -68,7 +72,11 @@ defmodule StoryarnWeb.Components.LandingPage.Spotlights do
 
   def version_spotlight(assigns) do
     ~H"""
-    <section class="py-16 lg:py-20 scroll-mt-32" id="version-history">
+    <section
+      class="lp-auto-section py-16 lg:py-20 scroll-mt-32"
+      id="version-history"
+      data-section-step
+    >
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
         <div class="p-8 rounded-[2rem] border border-base-content/8 bg-base-200/60" data-reveal>
           <div class="grid grid-cols-1 lg:grid-cols-[minmax(320px,0.72fr)_1.1fr] gap-6 items-start">
