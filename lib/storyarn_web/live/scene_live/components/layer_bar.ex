@@ -129,10 +129,10 @@ defmodule StoryarnWeb.SceneLive.Components.LayerBar do
         phx-click="set_active_layer"
         phx-value-id={@layer.id}
         class={[
-          "btn btn-xs flex-1 justify-start min-w-0",
+          "flex items-center gap-1 flex-1 min-w-0 px-2 py-1 rounded-lg cursor-pointer text-sm",
           if(@layer.id == @active_layer_id,
-            do: "btn-primary btn-outline",
-            else: "btn-ghost"
+            do: "bg-base-content/5 font-medium",
+            else: "hover:bg-base-content/5"
           )
         ]}
         title={dgettext("scenes", "Set as active layer")}

@@ -1,5 +1,6 @@
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { getMonitorAPI } from "./discover_monitor.js";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -44,21 +45,9 @@ function initLandingSectionScroll() {
   // ── Discover sub-pager ──
 
   const discoverRoot = stack.querySelector("[data-feature-shell]");
-  const discoverScrollbox = discoverRoot?.querySelector("[data-feature-scrollbox]");
-  const discoverTabs = Array.from(discoverRoot?.querySelectorAll("[data-feature-tab]") ?? []);
-  const discoverTriggerGroups = Array.from(
-    discoverRoot?.querySelectorAll("[data-feature-triggers]") ?? [],
-  );
-  const discoverTriggers = Array.from(
-    discoverRoot?.querySelectorAll("[data-slide-trigger]") ?? [],
-  );
-  const discoverPreviews = Array.from(
-    discoverRoot?.querySelectorAll("[data-slide-preview]") ?? [],
-  );
-  const discoverSlideGroups = Array.from(
-    discoverRoot?.querySelectorAll("[data-feature-group]") ?? [],
-  );
+  const discoverTabs = Array.from(discoverRoot?.querySelectorAll("button[data-feature-tab]") ?? []);
   const discoverSteps = Array.from(discoverRoot?.querySelectorAll("[data-slide]") ?? []);
+  const discoverTexts = Array.from(discoverRoot?.querySelectorAll("[data-discover-text]") ?? []);
 
   // Build flat list of {feature, slide} in tab order
   const discoverFlatSteps = [];
@@ -74,70 +63,48 @@ function initLandingSectionScroll() {
   let discoverSubIndex = 0;
   let discoverDebounce = null;
 
-  function setDiscoverActive(feature, slide) {
+  function setDiscoverActive(feature, _slide) {
     if (!discoverRoot) return;
 
     discoverRoot.dataset.activeFeature = feature;
-    discoverRoot.dataset.activeSlide = slide;
 
+    // Toggle tab indicators
     discoverTabs.forEach((tab) => {
       const active = tab.dataset.featureTab === feature;
       tab.classList.toggle("is-active", active);
       tab.setAttribute("aria-selected", active ? "true" : "false");
     });
 
-    discoverTriggerGroups.forEach((group) => {
-      const active = group.dataset.featureTriggers === feature;
-      group.classList.toggle("is-active", active);
-      group.setAttribute("aria-hidden", active ? "false" : "true");
+    // Toggle text overlays
+    discoverTexts.forEach((text) => {
+      const active = text.dataset.featureTab === feature;
+      text.classList.toggle("is-active", active);
     });
-
-    discoverTriggers.forEach((trigger) => {
-      const active =
-        trigger.dataset.feature === feature && trigger.dataset.slideTarget === slide;
-      trigger.classList.toggle("is-active", active);
-      trigger.setAttribute("aria-pressed", active ? "true" : "false");
-    });
-
-    discoverSlideGroups.forEach((group) => {
-      const active = group.dataset.featureGroup === feature;
-      group.classList.toggle("is-active", active);
-      group.setAttribute("aria-hidden", active ? "false" : "true");
-    });
-
-    discoverSteps.forEach((step) => {
-      const active = step.dataset.featureStep === feature && step.dataset.slide === slide;
-      step.classList.toggle("is-active", active);
-      step.setAttribute("aria-current", active ? "true" : "false");
-    });
-
-    discoverPreviews.forEach((preview) => {
-      const active =
-        preview.dataset.featurePreview === feature && preview.dataset.slidePreview === slide;
-      preview.classList.toggle("is-active", active);
-      preview.setAttribute("aria-hidden", active ? "false" : "true");
-    });
-
-    // Scroll the scrollbox to the active step
-    const targetStep = discoverSteps.find(
-      (s) => s.dataset.featureStep === feature && s.dataset.slide === slide,
-    );
-    if (targetStep && discoverScrollbox) {
-      const top =
-        discoverScrollbox.scrollTop +
-        (targetStep.getBoundingClientRect().top - discoverScrollbox.getBoundingClientRect().top);
-      discoverScrollbox.scrollTo({ top, behavior: "smooth" });
-    }
   }
 
   function gotoDiscoverStep(index) {
     if (index < 0 || index >= discoverFlatSteps.length) return false;
 
     discoverSubIndex = index;
+
+    // Animate the 3D monitor
+    const monitor = getMonitorAPI();
+    monitor?.setSubStep(index);
     const { feature, slide } = discoverFlatSteps[index];
     setDiscoverActive(feature, slide);
     return true;
   }
+
+  // Tab click handlers — drive both text overlays and monitor
+  console.log("[section-scroll] discoverTabs:", discoverTabs.length, "discoverFlatSteps:", discoverFlatSteps.length);
+  discoverTabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => {
+      console.log("[section-scroll] Tab click:", index, tab.textContent.trim(), "monitorAPI:", getMonitorAPI());
+      if (index < discoverFlatSteps.length) {
+        gotoDiscoverStep(index);
+      }
+    });
+  });
 
   // ── Unified scroll handler ──
 
@@ -329,16 +296,22 @@ function initLandingSectionScroll() {
         currentIndex = index;
         animating = false;
 
-        // Set discover sub-index when arriving at discover panel
-        if (index === DISCOVER_PANEL && discoverFlatSteps.length > 0) {
+        // Monitor lifecycle: resume when entering discover, pause when leaving
+        const monitor = getMonitorAPI();
+        if (index === DISCOVER_PANEL) {
+          monitor?.resume();
           if (isScrollingDown) {
             discoverSubIndex = 0;
             setDiscoverActive(discoverFlatSteps[0].feature, discoverFlatSteps[0].slide);
+            monitor?.setSubStep(0);
           } else {
             discoverSubIndex = discoverFlatSteps.length - 1;
             const last = discoverFlatSteps[discoverSubIndex];
             setDiscoverActive(last.feature, last.slide);
+            monitor?.setSubStep(discoverSubIndex);
           }
+        } else if (from === DISCOVER_PANEL) {
+          monitor?.pause();
         }
       },
     });
