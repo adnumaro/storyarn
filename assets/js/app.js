@@ -24,26 +24,8 @@ if (typeof window.sessionStorage === "undefined") {
 }
 
 // Sentry browser error tracking (only initializes if DSN meta tag is present)
-import * as Sentry from "@sentry/browser";
-
-const sentryDsn = document.querySelector("meta[name='sentry-dsn']")?.getAttribute("content");
-if (sentryDsn) {
-  Sentry.init({
-    dsn: sentryDsn,
-    environment: window.location.hostname === "localhost" ? "development" : "production",
-    // Don't send errors in development
-    enabled: window.location.hostname !== "localhost",
-    // Ignore common non-actionable errors
-    ignoreErrors: [
-      // Browser extensions and third-party scripts
-      "ResizeObserver loop",
-      "Non-Error promise rejection",
-      // LiveView reconnection (expected behavior)
-      "WebSocket connection",
-      "transport was disconnected",
-    ],
-  });
-}
+import { initSentry } from "./utils/sentry";
+initSentry();
 
 // Include phoenix_html to handle method=PUT/DELETE in forms and buttons.
 import "phoenix_html";

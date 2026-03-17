@@ -6,6 +6,7 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { gsap } from "gsap";
+import { captureException } from "../utils/sentry";
 
 let monitorAPI = null;
 
@@ -151,7 +152,8 @@ function initDiscoverMonitor() {
       antialias: true,
       powerPreference: "high-performance",
     });
-  } catch {
+  } catch (e) {
+    captureException(e, { component: "discover-monitor", phase: "renderer-init" });
     return;
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -181,6 +183,7 @@ function initDiscoverMonitor() {
     monitor = createMonitorGroup([]);
     scene.add(monitor.group);
   } catch (e) {
+    captureException(e, { component: "discover-monitor", phase: "monitor-create" });
     return;
   }
 

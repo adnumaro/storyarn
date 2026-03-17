@@ -6,6 +6,7 @@
  */
 
 import { ClassicPreset } from "rete";
+import { captureException } from "../utils/sentry";
 
 import "../flow_canvas/components/index.js";
 import {
@@ -438,8 +439,7 @@ export const FlowCanvas = {
         this.history.add(new AutoLayoutAction(this, prevPositions, newPositions));
       }
     } catch (error) {
-      // biome-ignore lint/suspicious/noConsole: error feedback for unlikely ELK layout failure
-      console.error("Auto-layout failed:", error);
+      captureException(error, { component: "flow-canvas", phase: "auto-layout" });
     } finally {
       this._autoLayoutInProgress = false;
     }

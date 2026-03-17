@@ -6,6 +6,7 @@
 
 import * as THREE from "three";
 import { fragmentShader, vertexShader } from "./portal_shader.js";
+import { captureException } from "../utils/sentry";
 
 let portalAPI = null;
 
@@ -28,7 +29,8 @@ function initPortal() {
       antialias: false,
       powerPreference: isMobile ? "low-power" : "high-performance",
     });
-  } catch {
+  } catch (e) {
+    captureException(e, { component: "portal", phase: "renderer-init" });
     canvas.closest(".lp-portal-wrap")?.classList.add("lp-portal-fallback");
     return;
   }
