@@ -9,6 +9,8 @@ import { gsap } from "gsap";
 import { captureException } from "../utils/sentry";
 
 let monitorAPI = null;
+let monitorReadyResolve = null;
+const monitorReady = new Promise((resolve) => { monitorReadyResolve = resolve; });
 
 const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 768;
 
@@ -136,10 +138,16 @@ function createMonitorGroup(textures) {
 
 function initDiscoverMonitor() {
   const canvas = document.getElementById("discover-monitor-canvas");
-  if (!canvas || canvas.dataset.initialized) return;
+  if (!canvas || canvas.dataset.initialized) {
+    monitorReadyResolve?.();
+    return;
+  }
 
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduced || isMobile) return;
+  if (reduced || isMobile) {
+    monitorReadyResolve?.();
+    return;
+  }
 
   canvas.dataset.initialized = "true";
 
@@ -205,6 +213,7 @@ function initDiscoverMonitor() {
           monitor.screenMatA.map = texture;
           monitor.screenMatA.needsUpdate = true;
           renderer.render(scene, camera);
+          monitorReadyResolve?.();
         }
       },
       undefined,
@@ -240,8 +249,9 @@ function initDiscoverMonitor() {
   function resize() {
     if (!stage) return;
     const rect = stage.getBoundingClientRect();
-    const width = Math.round(rect.width);
-    const height = Math.round(rect.height);
+    // Use viewport dimensions as fallback when section is off-screen
+    const width = Math.round(rect.width > 0 ? rect.width : window.innerWidth);
+    const height = Math.round(rect.height > 0 ? rect.height : window.innerHeight);
     if (width <= 0 || height <= 0) return;
 
     renderer.setSize(width, height, false);
@@ -267,6 +277,8 @@ function initDiscoverMonitor() {
     if (running) return;
     running = true;
     resize();
+    // Ensure first frame has correct position before it's visible
+    renderer.render(scene, camera);
     render();
   }
 
@@ -377,6 +389,10 @@ function initDiscoverMonitor() {
 
 export function getMonitorAPI() {
   return monitorAPI;
+}
+
+export function whenMonitorReady() {
+  return monitorReady;
 }
 
 initDiscoverMonitor();

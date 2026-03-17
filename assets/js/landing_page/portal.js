@@ -9,13 +9,18 @@ import { fragmentShader, vertexShader } from "./portal_shader.js";
 import { captureException } from "../utils/sentry";
 
 let portalAPI = null;
+let portalReadyResolve = null;
+const portalReady = new Promise((resolve) => { portalReadyResolve = resolve; });
 
 const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 768;
 
 function initPortal() {
   const canvas = document.getElementById("portal-canvas");
   const portalFrame = document.getElementById("portal-video-frame");
-  if (!canvas || canvas.dataset.initialized) return;
+  if (!canvas || canvas.dataset.initialized) {
+    portalReadyResolve?.();
+    return;
+  }
   canvas.dataset.initialized = "true";
 
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -32,6 +37,7 @@ function initPortal() {
   } catch (e) {
     captureException(e, { component: "portal", phase: "renderer-init" });
     canvas.closest(".lp-portal-wrap")?.classList.add("lp-portal-fallback");
+    portalReadyResolve?.();
     return;
   }
   renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2));
@@ -177,10 +183,15 @@ function initPortal() {
     },
     dispose,
   };
+  portalReadyResolve?.();
 }
 
 export function getPortalAPI() {
   return portalAPI;
+}
+
+export function whenPortalReady() {
+  return portalReady;
 }
 
 initPortal();

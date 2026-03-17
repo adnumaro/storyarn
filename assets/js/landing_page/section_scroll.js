@@ -288,6 +288,14 @@ function initLandingSectionScroll() {
       return;
     }
 
+    // Discover entrance animation — runs concurrently with slide
+    const discoverEl = document.getElementById("discover");
+    if (index === DISCOVER_PANEL) {
+      requestAnimationFrame(() => discoverEl?.classList.add("is-entered"));
+    } else if (currentIndex === DISCOVER_PANEL) {
+      discoverEl?.classList.remove("is-entered");
+    }
+
     const timeline = gsap.timeline({
       defaults: { duration: 0.76, ease: "power3.inOut" },
       onComplete() {
