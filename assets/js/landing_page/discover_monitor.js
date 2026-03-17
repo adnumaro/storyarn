@@ -4,6 +4,7 @@
  */
 
 import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { gsap } from "gsap";
 
 let monitorAPI = null;
@@ -58,97 +59,66 @@ function createCurvedPlane(width, height, curveRadius, segmentsX, segmentsY) {
   return geo;
 }
 
+function curveBox(geometry, curveRadius) {
+  const pos = geometry.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const z = pos.getZ(i);
+    const angle = x / curveRadius;
+    const curvedZ = curveRadius - Math.cos(angle) * curveRadius;
+    pos.setX(i, Math.sin(angle) * curveRadius);
+    pos.setZ(i, curvedZ + z);
+  }
+  pos.needsUpdate = true;
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function createMonitorGroup(textures) {
   const group = new THREE.Group();
 
   const screenW = 3.2;
   const screenH = 2.0;
-  const bezelPad = 0.06;
+  const bezelPad = 0.08;
   const bezelW = screenW + bezelPad * 2;
   const bezelH = screenH + bezelPad * 2;
-  const bodyDepth = 0.06;
+  const bodyDepth = 0.18;
   const curveRadius = 8;
-  const segments = 32;
+  const segments = 40;
 
-  // Curved body (back panel)
-  const bodyGeo = createCurvedPlane(bezelW, bezelH, curveRadius, segments, 1);
-  const bodyMaterial = new THREE.MeshStandardMaterial({
-    color: 0x1a1a2e,
-    roughness: 0.3,
-    metalness: 0.7,
-    side: THREE.DoubleSide,
+  // ── 3D rounded body (flat front, rounded corners) ──
+  const bodyGeo = new RoundedBoxGeometry(bezelW, bezelH, bodyDepth, 3, 0.04);
+
+  const bodyMat = new THREE.MeshPhysicalMaterial({
+    color: 0x111122,
+    roughness: 0.22,
+    metalness: 0.85,
+    clearcoat: 0.3,
+    clearcoatRoughness: 0.15,
   });
-  const body = new THREE.Mesh(bodyGeo, bodyMaterial);
-  body.position.z = -bodyDepth;
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
   group.add(body);
 
-  // Curved screen
-  const screenGeometry = createCurvedPlane(screenW, screenH, curveRadius, segments, 1);
+  // ── Front bezel inset (darker recessed area around screen) ──
+  const insetGeo = new THREE.PlaneGeometry(screenW + 0.02, screenH + 0.02);
+  const insetMat = new THREE.MeshStandardMaterial({
+    color: 0x0a0a14,
+    roughness: 0.9,
+    metalness: 0.1,
+  });
+  const inset = new THREE.Mesh(insetGeo, insetMat);
+  inset.position.z = bodyDepth / 2 + 0.003;
+  group.add(inset);
+
+  // ── Screen (flat plane on front) ──
+  const screenGeo = new THREE.PlaneGeometry(screenW, screenH);
   const screenMaterial = new THREE.MeshBasicMaterial({
     map: textures[0] || null,
     toneMapped: false,
   });
-  const screen = new THREE.Mesh(screenGeometry, screenMaterial);
-  screen.position.z = 0.002;
+  const screen = new THREE.Mesh(screenGeo, screenMaterial);
+  screen.position.z = bodyDepth / 2 + 0.005;
   group.add(screen);
-
-  // Curved gradient overlay
-  const gradientCanvas = document.createElement("canvas");
-  gradientCanvas.width = 4;
-  gradientCanvas.height = 256;
-  const ctx = gradientCanvas.getContext("2d");
-  const gradient = ctx.createLinearGradient(0, 0, 0, 256);
-  gradient.addColorStop(0, "rgba(10, 18, 26, 0)");
-  gradient.addColorStop(0.5, "rgba(10, 18, 26, 0)");
-  gradient.addColorStop(0.85, "rgba(10, 18, 26, 0.7)");
-  gradient.addColorStop(1, "rgba(10, 18, 26, 1)");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 4, 256);
-
-  const gradientTexture = new THREE.CanvasTexture(gradientCanvas);
-  const gradientMaterial = new THREE.MeshBasicMaterial({
-    map: gradientTexture,
-    transparent: true,
-    depthWrite: false,
-  });
-  const gradientPlane = new THREE.Mesh(
-    createCurvedPlane(screenW, screenH, curveRadius, segments, 1),
-    gradientMaterial,
-  );
-  gradientPlane.position.z = 0.004;
-  group.add(gradientPlane);
-
-  // Edge frame (top, bottom, left, right curved strips)
-  const frameMat = new THREE.MeshStandardMaterial({
-    color: 0x252540,
-    roughness: 0.2,
-    metalness: 0.8,
-  });
-
-  // Top strip
-  const topStrip = createCurvedPlane(bezelW, bezelPad, curveRadius, segments, 1);
-  const topMesh = new THREE.Mesh(topStrip, frameMat);
-  topMesh.position.y = screenH / 2 + bezelPad / 2;
-  topMesh.position.z = 0.001;
-  group.add(topMesh);
-
-  // Bottom strip
-  const botMesh = new THREE.Mesh(topStrip.clone(), frameMat);
-  botMesh.position.y = -(screenH / 2 + bezelPad / 2);
-  botMesh.position.z = 0.001;
-  group.add(botMesh);
-
-  // Subtle edge glow
-  const rimGeo = createCurvedPlane(bezelW + 0.04, bezelH + 0.04, curveRadius, segments, 1);
-  const rimMaterial = new THREE.MeshBasicMaterial({
-    color: 0x22d3ee,
-    transparent: true,
-    opacity: 0.1,
-    side: THREE.DoubleSide,
-  });
-  const rim = new THREE.Mesh(rimGeo, rimMaterial);
-  rim.position.z = -0.001;
-  group.add(rim);
 
   return { group, screen, screenMaterial };
 }

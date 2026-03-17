@@ -86,6 +86,22 @@ html:has(.landing-shell) {
   display: block;
 }
 
+.lp-discover-canvas-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    rgba(6, 10, 15, 1) 10%,
+    rgba(6, 10, 15, 1) 20%,
+    rgba(6, 10, 15, 0.85) 30%,
+    rgba(6, 10, 15, 0.4) 40%,
+    rgba(6, 10, 15, 0) 60%
+  );
+}
+
 /* Text overlays */
 .lp-discover-text {
   position: absolute;
