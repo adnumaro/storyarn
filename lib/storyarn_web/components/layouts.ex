@@ -23,9 +23,9 @@ defmodule StoryarnWeb.Layouts do
 
   defp app_logo(assigns) do
     ~H"""
-    <img src={~p"/images/logos/logo-white-48.png"} alt="Storyarn" class={[@class, "dark:hidden"]} />
+    <img src={~p"/images/logos/logo-black-48.png"} alt="Storyarn" class={[@class, "dark:hidden"]} />
     <img
-      src={~p"/images/logos/logo-black-48.png"}
+      src={~p"/images/logos/logo-white-48.png"}
       alt="Storyarn"
       class={[@class, "hidden dark:block"]}
     />
@@ -548,6 +548,11 @@ defmodule StoryarnWeb.Layouts do
       data-theme={@theme}
       style={@theme && "color-scheme: #{@theme};"}
     >
+      <div :if={@theme == "dark"} id="landing-loader" class="lp-loader">
+        <div class="lp-loader-bar">
+          <div class="lp-loader-fill"></div>
+        </div>
+      </div>
       <header
         class={[
           "navbar w-[min(calc(100%-48px),1280px)]",
@@ -637,9 +642,14 @@ defmodule StoryarnWeb.Layouts do
               <div class="flex items-center justify-between gap-4">
                 <.link navigate="/" class="flex items-center text-base-content">
                   <img
+                    src={~p"/images/logos/logo-name-black.png"}
+                    alt="Storyarn"
+                    class="h-[42px] w-auto dark:hidden"
+                  />
+                  <img
                     src={~p"/images/logos/logo-name-white.png"}
                     alt="Storyarn"
-                    class="h-[42px] w-auto"
+                    class="hidden h-[42px] w-auto dark:block"
                   />
                 </.link>
                 <button

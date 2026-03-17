@@ -4,14 +4,42 @@
    - Discover section data-attribute tab switching
    - Exploration shell decorative background */
 
-/* ===== Landing loader ===== */
-.landing-shell.is-loading {
-  opacity: 0;
+/* ===== Landing loader overlay ===== */
+.lp-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(4, 8, 14);
+  transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.landing-shell.is-ready {
-  opacity: 1;
-  transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+.lp-loader.is-done {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.lp-loader-bar {
+  width: 120px;
+  height: 8px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.lp-loader-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--color-primary, #22d3ee);
+  width: 0%;
+  transition: width 0.3s ease-out;
+}
+
+.landing-shell.is-loading {
+  overflow: hidden;
+  height: 100vh;
 }
 
 /* ===== Landing shell ===== */
