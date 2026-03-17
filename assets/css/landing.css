@@ -37,10 +37,6 @@
   transition: width 0.3s ease-out;
 }
 
-.landing-shell.is-loading {
-  overflow: hidden;
-  height: 100vh;
-}
 
 /* ===== Landing shell ===== */
 html:has(.landing-shell) {

@@ -61,9 +61,9 @@ function initLandingSectionScroll() {
   });
 
   let discoverSubIndex = 0;
-  let discoverDebounce = null;
   let discoverBoundaryReady = false;
   let discoverBoundaryLock = null;
+  let discoverStepTimer = null;
 
   function setDiscoverActive(feature, _slide) {
     if (!discoverRoot) return;
@@ -87,6 +87,7 @@ function initLandingSectionScroll() {
   function gotoDiscoverStep(index) {
     if (index < 0 || index >= discoverFlatSteps.length) return false;
 
+    animating = true;
     discoverSubIndex = index;
 
     // Animate the 3D monitor
@@ -94,6 +95,15 @@ function initLandingSectionScroll() {
     monitor?.setSubStep(index);
     const { feature, slide } = discoverFlatSteps[index];
     setDiscoverActive(feature, slide);
+
+    // Unlock after monitor animation completes + cooldown
+    clearTimeout(discoverStepTimer);
+    discoverStepTimer = setTimeout(() => {
+      animating = false;
+      discoverStepTimer = null;
+      scrollCooldown = setTimeout(() => { scrollCooldown = null; }, 400);
+    }, 400);
+
     return true;
   }
 
@@ -116,10 +126,6 @@ function initLandingSectionScroll() {
     // On discover panel: advance sub-steps first
     if (currentIndex === DISCOVER_PANEL && discoverFlatSteps.length > 1) {
       if (discoverSubIndex < discoverFlatSteps.length - 1) {
-        if (discoverDebounce) return;
-        discoverDebounce = setTimeout(() => {
-          discoverDebounce = null;
-        }, 400);
         discoverBoundaryReady = false;
         clearTimeout(discoverBoundaryLock);
         discoverBoundaryLock = null;
@@ -148,10 +154,6 @@ function initLandingSectionScroll() {
     // On discover panel: retreat sub-steps first
     if (currentIndex === DISCOVER_PANEL && discoverFlatSteps.length > 1) {
       if (discoverSubIndex > 0) {
-        if (discoverDebounce) return;
-        discoverDebounce = setTimeout(() => {
-          discoverDebounce = null;
-        }, 400);
         discoverBoundaryReady = false;
         clearTimeout(discoverBoundaryLock);
         discoverBoundaryLock = null;
@@ -301,16 +303,16 @@ function initLandingSectionScroll() {
     if (animating) return;
     animating = true;
 
-    // Beyond boundaries — release
-    if ((index >= totalPanels && isScrollingDown) || (index < 0 && !isScrollingDown)) {
+    // Beyond boundaries
+    if (index >= totalPanels && isScrollingDown) {
+      // Last panel — nowhere to go, stay here
+      animating = false;
+      return;
+    }
+    if (index < 0 && !isScrollingDown) {
       gsap.delayedCall(0, () => {
         animating = false;
-
-        if (isScrollingDown) {
-          releaseToNextSection();
-        } else {
-          releaseToPrevSection();
-        }
+        releaseToPrevSection();
       });
       return;
     }
@@ -328,7 +330,7 @@ function initLandingSectionScroll() {
       onComplete() {
         currentIndex = index;
         animating = false;
-        scrollCooldown = setTimeout(() => { scrollCooldown = null; }, 80);
+        scrollCooldown = setTimeout(() => { scrollCooldown = null; }, 400);
 
         // Monitor lifecycle: resume when entering discover, pause when leaving
         const monitor = getMonitorAPI();
@@ -438,7 +440,8 @@ function initLandingSectionScroll() {
 
   function teardown() {
     clearTimeout(resizeTimer);
-    clearTimeout(discoverDebounce);
+    clearTimeout(discoverBoundaryLock);
+    clearTimeout(discoverStepTimer);
     clearTimeout(scrollCooldown);
     discoverDebounce = null;
     scrollCooldown = null;
