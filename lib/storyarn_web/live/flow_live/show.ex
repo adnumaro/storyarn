@@ -867,30 +867,14 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_event("update_annotation_color", %{"value" => color}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      case socket.assigns.selected_node do
-        nil ->
-          {:noreply, socket}
-
-        node ->
-          NodeHelpers.persist_node_update(socket, node.id, fn data ->
-            Map.put(data, "color", color)
-          end)
-      end
+      update_selected_node_data(socket, "color", color)
     end)
   end
 
   def handle_event("update_annotation_font_size", %{"value" => size}, socket)
       when size in ["sm", "md", "lg"] do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      case socket.assigns.selected_node do
-        nil ->
-          {:noreply, socket}
-
-        node ->
-          NodeHelpers.persist_node_update(socket, node.id, fn data ->
-            Map.put(data, "font_size", size)
-          end)
-      end
+      update_selected_node_data(socket, "font_size", size)
     end)
   end
 
@@ -1039,21 +1023,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           {:noreply, put_flash(socket, :error, dgettext("flows", "Node not found."))}
 
         node ->
-          case Flows.create_linked_flow(socket.assigns.project, socket.assigns.flow, node) do
-            {:ok, %{flow: new_flow}} ->
-              {:noreply,
-               push_patch(socket,
-                 to:
-                   ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
-               )}
-
-            {:error, :limit_reached, _details} ->
-              {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
-
-            {:error, _, _reason, _changes} ->
-              {:noreply,
-               put_flash(socket, :error, dgettext("flows", "Could not create linked flow."))}
-          end
+          do_create_linked_flow(socket, node)
       end
     end)
   end
@@ -1119,21 +1089,13 @@ defmodule StoryarnWeb.FlowLive.Show do
   # Hub color picker
   def handle_event("update_hub_color", %{"color" => color}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      case socket.assigns.selected_node do
-        nil ->
-          {:noreply, socket}
+      validated =
+        StoryarnWeb.FlowLive.Components.NodeTypeHelpers.validate_hex_color(
+          color,
+          Flows.hub_colors_default_hex()
+        )
 
-        node ->
-          validated =
-            StoryarnWeb.FlowLive.Components.NodeTypeHelpers.validate_hex_color(
-              color,
-              Flows.hub_colors_default_hex()
-            )
-
-          NodeHelpers.persist_node_update(socket, node.id, fn data ->
-            Map.put(data, "color", validated)
-          end)
-      end
+      update_selected_node_data(socket, "color", validated)
     end)
   end
 
@@ -1292,14 +1254,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           {:noreply, put_flash(socket, :error, dgettext("flows", "Flow not found."))}
 
         flow ->
-          case Flows.set_main_flow(flow) do
-            {:ok, _} ->
-              {:noreply,
-               assign(socket, :flows_tree, Flows.list_flows_tree(socket.assigns.project.id))}
-
-            {:error, _} ->
-              {:noreply, put_flash(socket, :error, dgettext("flows", "Could not set main flow."))}
-          end
+          do_set_main_flow(socket, flow)
       end
     end)
   end
@@ -1770,6 +1725,42 @@ defmodule StoryarnWeb.FlowLive.Show do
     user_id = socket.assigns.current_scope.user.id
     project_id = socket.assigns.project.id
     Flows.nav_history_put({user_id, project_id}, history)
+  end
+
+  defp update_selected_node_data(socket, field, value) do
+    case socket.assigns.selected_node do
+      nil -> {:noreply, socket}
+      node -> NodeHelpers.persist_node_update(socket, node.id, &Map.put(&1, field, value))
+    end
+  end
+
+  defp do_create_linked_flow(socket, node) do
+    case Flows.create_linked_flow(socket.assigns.project, socket.assigns.flow, node) do
+      {:ok, %{flow: new_flow}} ->
+        {:noreply,
+         push_patch(socket,
+           to:
+             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
+         )}
+
+      {:error, :limit_reached, _details} ->
+        {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
+
+      {:error, _, _reason, _changes} ->
+        {:noreply,
+         put_flash(socket, :error, dgettext("flows", "Could not create linked flow."))}
+    end
+  end
+
+  defp do_set_main_flow(socket, flow) do
+    case Flows.set_main_flow(flow) do
+      {:ok, _} ->
+        {:noreply,
+         assign(socket, :flows_tree, Flows.list_flows_tree(socket.assigns.project.id))}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not set main flow."))}
+    end
   end
 
   defp assign_scene_info(socket, flow) do

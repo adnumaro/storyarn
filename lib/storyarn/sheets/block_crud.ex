@@ -81,34 +81,15 @@ defmodule Storyarn.Sheets.BlockCrud do
     block_type = attrs[:type] || attrs["type"]
     config = attrs[:config] || Block.default_config(block_type)
     value = attrs[:value] || Block.default_value(block_type)
+    word_count = block_word_count(block_type, value)
 
-    word_count =
-      if block_type in ~w(text rich_text),
-        do: WordCount.for_block_value(value),
-        else: 0
+    enriched_attrs =
+      attrs
+      |> Map.put(:position, position)
+      |> Map.put_new(:config, config)
+      |> Map.put_new(:value, value)
 
-    result =
-      Repo.transaction(fn ->
-        case %Block{sheet_id: sheet.id}
-             |> Block.create_changeset(
-               attrs
-               |> Map.put(:position, position)
-               |> Map.put_new(:config, config)
-               |> Map.put_new(:value, value)
-             )
-             |> Ecto.Changeset.put_change(:word_count, word_count)
-             |> ensure_unique_variable_name(sheet.id, nil)
-             |> Repo.insert() do
-          {:ok, block} ->
-            # Table structure + propagation inside same transaction
-            maybe_create_default_table_structure({:ok, block})
-            maybe_propagate_to_descendants({:ok, block}, sheet.id)
-            block
-
-          {:error, changeset} ->
-            Repo.rollback(changeset)
-        end
-      end)
+    result = insert_block_in_transaction(sheet, enriched_attrs, word_count)
 
     case result do
       {:ok, _} -> broadcast_sheet_change(sheet)
@@ -139,6 +120,29 @@ defmodule Storyarn.Sheets.BlockCrud do
     end
 
     result
+  end
+
+  defp block_word_count(block_type, value) when block_type in ~w(text rich_text),
+    do: WordCount.for_block_value(value)
+
+  defp block_word_count(_block_type, _value), do: 0
+
+  defp insert_block_in_transaction(sheet, attrs, word_count) do
+    Repo.transaction(fn ->
+      case %Block{sheet_id: sheet.id}
+           |> Block.create_changeset(attrs)
+           |> Ecto.Changeset.put_change(:word_count, word_count)
+           |> ensure_unique_variable_name(sheet.id, nil)
+           |> Repo.insert() do
+        {:ok, block} ->
+          maybe_create_default_table_structure({:ok, block})
+          maybe_propagate_to_descendants({:ok, block}, sheet.id)
+          block
+
+        {:error, changeset} ->
+          Repo.rollback(changeset)
+      end
+    end)
   end
 
   defp maybe_propagate_to_descendants({:ok, block}, sheet_id)

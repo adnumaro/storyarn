@@ -271,17 +271,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
         end
       end)
 
-    # Apply repairs inside a transaction (skip deleted nodes)
-    Repo.transaction(fn ->
-      Enum.each(repairs_by_node, fn {node_id, new_data} ->
-        case Repo.get(FlowNode, node_id) do
-          nil -> :skip
-          node -> Storyarn.Flows.update_node_data(node, new_data)
-        end
-      end)
-
-      map_size(repairs_by_node)
-    end)
+    apply_repairs(repairs_by_node)
   end
 
   @doc """
@@ -301,6 +291,20 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   defp list_stale_table_node_ids(flow_id) do
     Storyarn.Sheets.list_stale_table_node_ids(flow_id)
+  end
+
+  defp apply_repairs(repairs_by_node) do
+    Repo.transaction(fn ->
+      Enum.each(repairs_by_node, &repair_single_node/1)
+      map_size(repairs_by_node)
+    end)
+  end
+
+  defp repair_single_node({node_id, new_data}) do
+    case Repo.get(FlowNode, node_id) do
+      nil -> :skip
+      node -> Storyarn.Flows.update_node_data(node, new_data)
+    end
   end
 
   # -- Private --

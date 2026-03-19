@@ -966,38 +966,42 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         if is_nil(source_id) do
           acc
         else
-          Enum.reduce(translations, acc, fn {locale_code, translation}, inner_acc ->
-            attrs = %{
-              project_id: project_id,
-              source_type: entry["source_type"],
-              source_id: source_id,
-              source_field: entry["source_field"],
-              source_text: entry["source_text"],
-              source_text_hash: entry["source_text_hash"],
-              speaker_sheet_id: remap_id(id_map, :sheet, entry["speaker_sheet_id"]),
-              locale_code: locale_code,
-              translated_text: translation["translated_text"],
-              status: translation["status"] || "pending",
-              vo_status: translation["vo_status"] || "none",
-              vo_asset_id: remap_id(id_map, :asset, translation["vo_asset_id"]),
-              translator_notes: translation["translator_notes"],
-              reviewer_notes: translation["reviewer_notes"],
-              word_count: translation["word_count"],
-              machine_translated: translation["machine_translated"] || false,
-              last_translated_at: parse_datetime(translation["last_translated_at"]),
-              last_reviewed_at: parse_datetime(translation["last_reviewed_at"]),
-              translated_by_id: nil,
-              reviewed_by_id: nil,
-              inserted_at: now,
-              updated_at: now
-            }
-
-            [attrs | inner_acc]
-          end)
+          build_translation_attrs(acc, entry, translations, project_id, source_id, id_map, now)
         end
       end)
 
     Localization.bulk_import_texts(Enum.reverse(valid_attrs))
+  end
+
+  defp build_translation_attrs(acc, entry, translations, project_id, source_id, id_map, now) do
+    Enum.reduce(translations, acc, fn {locale_code, translation}, inner_acc ->
+      attrs = %{
+        project_id: project_id,
+        source_type: entry["source_type"],
+        source_id: source_id,
+        source_field: entry["source_field"],
+        source_text: entry["source_text"],
+        source_text_hash: entry["source_text_hash"],
+        speaker_sheet_id: remap_id(id_map, :sheet, entry["speaker_sheet_id"]),
+        locale_code: locale_code,
+        translated_text: translation["translated_text"],
+        status: translation["status"] || "pending",
+        vo_status: translation["vo_status"] || "none",
+        vo_asset_id: remap_id(id_map, :asset, translation["vo_asset_id"]),
+        translator_notes: translation["translator_notes"],
+        reviewer_notes: translation["reviewer_notes"],
+        word_count: translation["word_count"],
+        machine_translated: translation["machine_translated"] || false,
+        last_translated_at: parse_datetime(translation["last_translated_at"]),
+        last_reviewed_at: parse_datetime(translation["last_reviewed_at"]),
+        translated_by_id: nil,
+        reviewed_by_id: nil,
+        inserted_at: now,
+        updated_at: now
+      }
+
+      [attrs | inner_acc]
+    end)
   end
 
   defp import_glossary(project_id, glossary_entries) do

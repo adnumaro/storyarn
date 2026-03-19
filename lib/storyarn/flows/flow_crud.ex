@@ -265,38 +265,8 @@ defmodule Storyarn.Flows.FlowCrud do
            |> Flow.create_changeset(attrs)
            |> Repo.insert() do
         {:ok, flow} ->
-          # Auto-create Entry node at position {100, 300}
-          case %FlowNode{flow_id: flow.id}
-               |> FlowNode.create_changeset(%{
-                 type: "entry",
-                 position_x: 100.0,
-                 position_y: 300.0,
-                 data: %{}
-               })
-               |> Repo.insert() do
-            {:ok, _} -> :ok
-            {:error, cs} -> Repo.rollback(cs)
-          end
-
-          # Auto-create Exit node at position {500, 300}
-          case %FlowNode{flow_id: flow.id}
-               |> FlowNode.create_changeset(%{
-                 type: "exit",
-                 position_x: 500.0,
-                 position_y: 300.0,
-                 data: %{
-                   "label" => "",
-                   "technical_id" => "",
-                   "outcome_tags" => [],
-                   "outcome_color" => "#22c55e",
-                   "exit_mode" => "terminal",
-                   "referenced_flow_id" => nil
-                 }
-               })
-               |> Repo.insert() do
-            {:ok, _} -> :ok
-            {:error, cs} -> Repo.rollback(cs)
-          end
+          insert_default_node!(flow.id, "entry", 100.0, 300.0, %{})
+          insert_default_node!(flow.id, "exit", 500.0, 300.0, default_exit_data())
 
           Collaboration.broadcast_dashboard_change(project.id, :flows)
           flow
@@ -322,6 +292,26 @@ defmodule Storyarn.Flows.FlowCrud do
     end
 
     result
+  end
+
+  defp insert_default_node!(flow_id, type, x, y, data) do
+    case %FlowNode{flow_id: flow_id}
+         |> FlowNode.create_changeset(%{type: type, position_x: x, position_y: y, data: data})
+         |> Repo.insert() do
+      {:ok, _} -> :ok
+      {:error, cs} -> Repo.rollback(cs)
+    end
+  end
+
+  defp default_exit_data do
+    %{
+      "label" => "",
+      "technical_id" => "",
+      "outcome_tags" => [],
+      "outcome_color" => "#22c55e",
+      "exit_mode" => "terminal",
+      "referenced_flow_id" => nil
+    }
   end
 
   @doc """

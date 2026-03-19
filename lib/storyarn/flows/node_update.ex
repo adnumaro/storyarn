@@ -89,29 +89,34 @@ defmodule Storyarn.Flows.NodeUpdate do
   defp update_hub_node_data(node, data) do
     hub_id = data["hub_id"]
 
-    cond do
-      hub_id == nil || hub_id == "" ->
-        {:error, :hub_id_required}
+    if hub_id == nil || hub_id == "" do
+      {:error, :hub_id_required}
+    else
+      update_hub_in_transaction(node, data, hub_id)
+    end
+  end
 
-      true ->
-        # Lock flow row to serialize concurrent hub_id uniqueness checks
-        Repo.transaction(fn ->
-          from(f in Storyarn.Flows.Flow, where: f.id == ^node.flow_id, lock: "FOR UPDATE")
-          |> Repo.one!()
+  defp update_hub_in_transaction(node, data, hub_id) do
+    Repo.transaction(fn ->
+      from(f in Storyarn.Flows.Flow, where: f.id == ^node.flow_id, lock: "FOR UPDATE")
+      |> Repo.one!()
 
-          if NodeCrud.hub_id_exists?(node.flow_id, hub_id, node.id) do
-            Repo.rollback(:hub_id_not_unique)
-          else
-            case do_update_hub_data(node, data, hub_id) do
-              {:ok, updated_node, meta} -> {updated_node, meta}
-              {:error, reason} -> Repo.rollback(reason)
-            end
-          end
-        end)
-        |> case do
-          {:ok, {updated_node, meta}} -> {:ok, updated_node, meta}
-          {:error, reason} -> {:error, reason}
-        end
+      if NodeCrud.hub_id_exists?(node.flow_id, hub_id, node.id) do
+        Repo.rollback(:hub_id_not_unique)
+      else
+        apply_hub_update_or_rollback(node, data, hub_id)
+      end
+    end)
+    |> case do
+      {:ok, {updated_node, meta}} -> {:ok, updated_node, meta}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp apply_hub_update_or_rollback(node, data, hub_id) do
+    case do_update_hub_data(node, data, hub_id) do
+      {:ok, updated_node, meta} -> {updated_node, meta}
+      {:error, reason} -> Repo.rollback(reason)
     end
   end
 

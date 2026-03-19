@@ -255,17 +255,7 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
           {:noreply, put_flash(socket, :error, dgettext("screenplays", "Screenplay not found."))}
 
         screenplay ->
-          case Screenplays.delete_screenplay(screenplay) do
-            {:ok, _} ->
-              {:noreply,
-               socket
-               |> put_flash(:info, dgettext("screenplays", "Screenplay moved to trash."))
-               |> reload_screenplays()}
-
-            {:error, _} ->
-              {:noreply,
-               put_flash(socket, :error, dgettext("screenplays", "Could not delete screenplay."))}
-          end
+          perform_delete(socket, screenplay)
       end
     end)
   end
@@ -329,19 +319,37 @@ defmodule StoryarnWeb.ScreenplayLive.Index do
           {:noreply, put_flash(socket, :error, dgettext("screenplays", "Screenplay not found."))}
 
         screenplay ->
-          new_parent_id = MapUtils.parse_int(new_parent_id)
-          position = MapUtils.parse_int(position) || 0
-
-          case Screenplays.move_screenplay_to_position(screenplay, new_parent_id, position) do
-            {:ok, _} ->
-              {:noreply, reload_screenplays(socket)}
-
-            {:error, _} ->
-              {:noreply,
-               put_flash(socket, :error, dgettext("screenplays", "Could not move screenplay."))}
-          end
+          perform_move(socket, screenplay, new_parent_id, position)
       end
     end)
+  end
+
+  defp perform_delete(socket, screenplay) do
+    case Screenplays.delete_screenplay(screenplay) do
+      {:ok, _} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, dgettext("screenplays", "Screenplay moved to trash."))
+         |> reload_screenplays()}
+
+      {:error, _} ->
+        {:noreply,
+         put_flash(socket, :error, dgettext("screenplays", "Could not delete screenplay."))}
+    end
+  end
+
+  defp perform_move(socket, screenplay, new_parent_id, position) do
+    new_parent_id = MapUtils.parse_int(new_parent_id)
+    position = MapUtils.parse_int(position) || 0
+
+    case Screenplays.move_screenplay_to_position(screenplay, new_parent_id, position) do
+      {:ok, _} ->
+        {:noreply, reload_screenplays(socket)}
+
+      {:error, _} ->
+        {:noreply,
+         put_flash(socket, :error, dgettext("screenplays", "Could not move screenplay."))}
+    end
   end
 
   defp reload_screenplays(socket) do

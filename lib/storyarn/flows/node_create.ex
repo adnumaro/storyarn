@@ -39,17 +39,13 @@ defmodule Storyarn.Flows.NodeCreate do
   end
 
   defp create_entry_node(flow, attrs) do
-    # Lock the flow row to prevent TOCTOU race condition on entry node uniqueness
     Repo.transaction(fn ->
       lock_flow!(flow.id)
 
       if has_entry_node?(flow.id) do
         Repo.rollback(:entry_node_exists)
       else
-        case insert_node(flow, attrs) do
-          {:ok, node} -> node
-          {:error, reason} -> Repo.rollback(reason)
-        end
+        insert_node_or_rollback(flow, attrs)
       end
     end)
   end
@@ -58,7 +54,6 @@ defmodule Storyarn.Flows.NodeCreate do
     hub_id = get_in(attrs, ["data", "hub_id"])
     hub_id = if hub_id == nil || hub_id == "", do: generate_hub_id(flow.id), else: hub_id
 
-    # Lock the flow row to prevent TOCTOU race condition on hub_id uniqueness
     Repo.transaction(fn ->
       lock_flow!(flow.id)
 
@@ -66,13 +61,16 @@ defmodule Storyarn.Flows.NodeCreate do
         Repo.rollback(:hub_id_not_unique)
       else
         updated_data = Map.put(attrs["data"] || %{}, "hub_id", hub_id)
-
-        case insert_node(flow, Map.put(attrs, "data", updated_data)) do
-          {:ok, node} -> node
-          {:error, reason} -> Repo.rollback(reason)
-        end
+        insert_node_or_rollback(flow, Map.put(attrs, "data", updated_data))
       end
     end)
+  end
+
+  defp insert_node_or_rollback(flow, attrs) do
+    case insert_node(flow, attrs) do
+      {:ok, node} -> node
+      {:error, reason} -> Repo.rollback(reason)
+    end
   end
 
   # Acquires a row-level lock on the flow to serialize concurrent node creation
