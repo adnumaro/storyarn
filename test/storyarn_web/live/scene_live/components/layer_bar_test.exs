@@ -127,15 +127,15 @@ defmodule StoryarnWeb.SceneLive.Components.LayerBarTest do
   # ── layer_row (active state) ────────────────────────────────────
 
   describe "layer active state" do
-    test "highlights active layer with primary outline" do
+    test "highlights active layer with background and bold" do
       html = render_bar([make_layer(1)], active_layer_id: 1)
-      assert html =~ "btn-primary"
-      assert html =~ "btn-outline"
+      assert html =~ "bg-base-content/5"
+      assert html =~ "font-medium"
     end
 
-    test "uses ghost style for inactive layer" do
+    test "uses hover style for inactive layer" do
       html = render_bar([make_layer(1), make_layer(2)], active_layer_id: 1)
-      assert html =~ "btn-ghost"
+      assert html =~ "hover:bg-base-content/5"
     end
 
     test "renders set_active_layer click handler" do

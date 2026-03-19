@@ -20,6 +20,11 @@ export const BannerUpload = {
         content_type: file.type,
         data: base64,
       }),
+      optimizationWarning: {
+        modalId: "optimization-warning-banner",
+        storageKey: "storyarn_skip_opt_warning_banner",
+        checkFn: (file) => file.type === "image/png" || file.type === "image/gif",
+      },
     });
   },
   destroyed() {

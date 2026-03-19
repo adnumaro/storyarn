@@ -331,7 +331,9 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
   defp background_set?(%{background_asset_id: id}) when not is_nil(id), do: true
   defp background_set?(_), do: false
 
-  defp background_asset_url(%{background_asset: %{url: url}}) when is_binary(url), do: url
+  defp background_asset_url(%{background_asset: asset}) when not is_nil(asset),
+    do: Storyarn.Assets.display_url(asset)
+
   defp background_asset_url(_), do: nil
 
   defp format_scale_value(val) when is_float(val) do

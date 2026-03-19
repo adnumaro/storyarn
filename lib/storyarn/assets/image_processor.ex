@@ -11,9 +11,17 @@ defmodule Storyarn.Assets.ImageProcessor do
   making it a much safer choice for processing untrusted image uploads.
   """
 
+  require Logger
+
   @thumbnail_size 200
   @max_dimension 2048
   @default_quality 85
+
+  @webp_types ~w(image/webp image/jpeg)
+  @avatar_max_width 192
+  @avatar_max_height 192
+  @banner_max_width 1920
+  @banner_max_height 640
 
   @doc """
   Generates a thumbnail for an image.
@@ -178,6 +186,99 @@ defmodule Storyarn.Assets.ImageProcessor do
     _ -> false
   end
 
+  @doc """
+  Checks whether an image needs web optimization based on its purpose.
+
+  Returns `:skip` if already optimal, or `{:generate, config}` with resize params.
+
+  ## Purposes
+
+    * `:avatar` - Skip if WebP/JPEG and ≤192×192
+    * `:banner` - Skip if WebP/JPEG and ≤1920×640
+    * `:scene_background` / `:gallery` - Skip if WebP/JPEG (any size)
+  """
+  @spec needs_optimization?(String.t(), map(), atom()) :: :skip | {:generate, map()}
+  def needs_optimization?(content_type, metadata, purpose)
+
+  def needs_optimization?(content_type, metadata, :avatar) do
+    if content_type in @webp_types and
+         Map.get(metadata, "width", 0) <= @avatar_max_width and
+         Map.get(metadata, "height", 0) <= @avatar_max_height do
+      :skip
+    else
+      {:generate, %{width: @avatar_max_width, height: @avatar_max_height, crop: true}}
+    end
+  end
+
+  def needs_optimization?(content_type, metadata, :banner) do
+    if content_type in @webp_types and
+         Map.get(metadata, "width", 0) <= @banner_max_width and
+         Map.get(metadata, "height", 0) <= @banner_max_height do
+      :skip
+    else
+      {:generate, %{width: @banner_max_width, height: @banner_max_height, crop: true}}
+    end
+  end
+
+  def needs_optimization?(content_type, _metadata, purpose)
+      when purpose in [:scene_background, :gallery] do
+    if content_type in @webp_types, do: :skip, else: {:generate, %{crop: false}}
+  end
+
+  def needs_optimization?(_content_type, _metadata, _purpose), do: :skip
+
+  @doc """
+  Converts binary image data to WebP format without resizing.
+
+  Returns `{:ok, webp_binary}` or `{:error, reason}`.
+  """
+  @spec to_webp(binary()) :: {:ok, binary()} | {:error, term()}
+  def to_webp(binary_data) do
+    tmp_input = tmp_path("input")
+    tmp_output = tmp_path("output") <> ".webp"
+
+    try do
+      File.write!(tmp_input, binary_data)
+
+      with {:ok, image} <- Image.open(tmp_input),
+           {:ok, _} <- Image.write(image, tmp_output, quality: @default_quality) do
+        {:ok, File.read!(tmp_output)}
+      else
+        {:error, reason} -> {:error, format_error(reason)}
+      end
+    after
+      File.rm(tmp_input)
+      File.rm(tmp_output)
+    end
+  end
+
+  @doc """
+  Resizes and centre-crops binary image data to exact dimensions, outputting WebP.
+
+  Returns `{:ok, webp_binary}` or `{:error, reason}`.
+  """
+  @spec resize_to_webp(binary(), pos_integer(), pos_integer()) ::
+          {:ok, binary()} | {:error, term()}
+  def resize_to_webp(binary_data, width, height) do
+    tmp_input = tmp_path("input")
+    tmp_output = tmp_path("output") <> ".webp"
+
+    try do
+      File.write!(tmp_input, binary_data)
+
+      with {:ok, thumbnail} <-
+             Image.thumbnail(tmp_input, width, resize: :both, height: height, crop: :centre),
+           {:ok, _} <- Image.write(thumbnail, tmp_output, quality: @default_quality) do
+        {:ok, File.read!(tmp_output)}
+      else
+        {:error, reason} -> {:error, format_error(reason)}
+      end
+    after
+      File.rm(tmp_input)
+      File.rm(tmp_output)
+    end
+  end
+
   # Private helpers
 
   defp thumbnail_path(source_path) do
@@ -185,6 +286,10 @@ defmodule Storyarn.Assets.ImageProcessor do
     ext = Path.extname(source_path)
     base = Path.basename(source_path, ext)
     Path.join(dir, "#{base}_thumb.jpg")
+  end
+
+  defp tmp_path(prefix) do
+    Path.join(System.tmp_dir!(), "storyarn_#{prefix}_#{Ecto.UUID.generate()}")
   end
 
   defp format_error(%Vix.Vips.Image.Error{message: message}), do: message

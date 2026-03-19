@@ -39,7 +39,7 @@ defmodule StoryarnWeb.Components.SheetComponents do
     ~H"""
     <img
       :if={@has_avatar}
-      src={@avatar_asset.url}
+      src={Assets.display_url(@avatar_asset)}
       alt={@name || "Sheet avatar"}
       class={["rounded object-cover", @size_class]}
     />

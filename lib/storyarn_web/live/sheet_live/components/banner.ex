@@ -8,6 +8,7 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
   alias StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.ColorPicker
+  import StoryarnWeb.Components.UIComponents, only: [optimization_warning_dialog: 1]
 
   alias Storyarn.Assets
 
@@ -25,7 +26,7 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
         class="relative group h-48 sm:h-56 lg:h-64 overflow-hidden rounded-2xl mb-6"
       >
         <img
-          src={@sheet.banner_asset.url}
+          src={Assets.display_url(@sheet.banner_asset)}
           alt=""
           class="w-full h-full object-cover"
         />
@@ -102,6 +103,16 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
           />
         </div>
       </div>
+
+      <.optimization_warning_dialog
+        id="optimization-warning-banner"
+        message={
+          dgettext(
+            "sheets",
+            "For best results, upload a 1920\u00D7640 (3:1) WebP or JPEG image. Larger or PNG images will be automatically converted, and the optimized copy will count toward your storage limit."
+          )
+        }
+      />
     </div>
     """
   end
@@ -183,7 +194,7 @@ defmodule StoryarnWeb.SheetLive.Components.Banner do
     with {:ok, asset} <-
            Assets.upload_binary_and_create_asset(
              binary_data,
-             %{filename: filename, content_type: content_type},
+             %{filename: filename, content_type: content_type, purpose: :banner},
              project,
              user
            ),

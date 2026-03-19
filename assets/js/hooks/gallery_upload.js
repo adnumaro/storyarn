@@ -15,6 +15,11 @@ export const GalleryUpload = {
       extraPayload: () => ({ block_id: this.el.dataset.blockId }),
       typeErrorMessage: "Please select image files.",
       sizeErrorMessage: "Each image must be less than 20MB.",
+      optimizationWarning: {
+        modalId: "optimization-warning-gallery",
+        storageKey: "storyarn_skip_opt_warning_gallery",
+        checkFn: (file) => file.type === "image/png" || file.type === "image/gif",
+      },
     });
   },
   destroyed() {

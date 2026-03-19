@@ -20,6 +20,11 @@ export const AvatarUpload = {
         content_type: file.type,
         data: base64,
       }),
+      optimizationWarning: {
+        modalId: "optimization-warning-avatar",
+        storageKey: "storyarn_skip_opt_warning_avatar",
+        checkFn: (file) => file.type === "image/png" || file.type === "image/gif",
+      },
     });
   },
   destroyed() {

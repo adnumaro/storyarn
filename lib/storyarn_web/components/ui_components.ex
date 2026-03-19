@@ -330,4 +330,53 @@ defmodule StoryarnWeb.Components.UIComponents do
     </div>
     """
   end
+
+  @doc """
+  Renders an image optimization warning dialog.
+
+  Used by upload hooks to warn users that PNG/GIF images will be converted to WebP.
+  The dialog is shown from JS via `HTMLDialogElement.showModal()` and uses
+  `data-confirm-upload` / `data-cancel-upload` / `data-skip-warning` attributes
+  for the file_upload_handler to bind to.
+
+  ## Examples
+
+      <.optimization_warning_dialog
+        id="optimization-warning-avatar"
+        message="For best results, upload a 192×192 WebP or JPEG."
+      />
+  """
+  attr :id, :string, required: true
+  attr :message, :string, required: true
+
+  def optimization_warning_dialog(assigns) do
+    ~H"""
+    <dialog id={@id} class="modal">
+      <div class="modal-box max-w-sm">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="text-warning">
+            <.icon name="image" class="size-8" />
+          </div>
+          <h3 class="font-bold text-lg">{gettext("Image Optimization")}</h3>
+        </div>
+        <p class="text-base-content/70 mb-4">{@message}</p>
+        <label class="flex items-center gap-2 mb-4 cursor-pointer">
+          <input type="checkbox" class="checkbox checkbox-sm" data-skip-warning />
+          <span class="text-sm text-base-content/60">{gettext("Don't show this again")}</span>
+        </label>
+        <div class="modal-action justify-end gap-2">
+          <button type="button" class="btn btn-ghost" data-cancel-upload>
+            {gettext("Cancel")}
+          </button>
+          <button type="button" class="btn btn-primary" data-confirm-upload>
+            {gettext("Upload")}
+          </button>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button type="button" data-cancel-upload>close</button>
+      </form>
+    </dialog>
+    """
+  end
 end

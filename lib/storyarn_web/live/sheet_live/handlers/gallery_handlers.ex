@@ -154,7 +154,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.GalleryHandlers do
       with {:ok, asset} <-
              Assets.upload_binary_and_create_asset(
                binary_data,
-               %{filename: filename, content_type: content_type},
+               %{filename: filename, content_type: content_type, purpose: :gallery},
                project,
                user
              ),

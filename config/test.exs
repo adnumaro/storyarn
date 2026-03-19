@@ -40,6 +40,12 @@ config :logger, level: :warning
 # Oban: inline mode for testing
 config :storyarn, Oban, testing: :manual
 
+# Isolate test file uploads from dev (prevents polluting priv/static/uploads/)
+config :storyarn, :storage,
+  adapter: :local,
+  upload_dir: "priv/static/uploads/test",
+  public_path: "/uploads/test"
+
 # Disable rate limiting in tests
 config :storyarn, Storyarn.RateLimiter, enabled: false
 

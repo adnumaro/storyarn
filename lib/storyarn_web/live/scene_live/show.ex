@@ -1095,7 +1095,21 @@ defmodule StoryarnWeb.SceneLive.Show do
     |> maybe_acquire_lock(id)
   end
 
-  def handle_event("validate_bg_upload", _params, socket), do: {:noreply, socket}
+  def handle_event("validate_bg_upload", _params, socket) do
+    case socket.assigns.uploads[:background] do
+      %{entries: [entry | _]} ->
+        if entry.valid? do
+          {:noreply, socket}
+        else
+          errors = upload_errors(socket.assigns.uploads.background, entry)
+          message = upload_error_to_message(errors)
+          {:noreply, put_flash(socket, :error, message)}
+        end
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
 
   def handle_event("noop", _params, socket), do: {:noreply, socket}
 
@@ -2060,7 +2074,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     allow_upload(socket, :background,
       accept: ~w(image/jpeg image/png image/gif image/webp),
       max_entries: 1,
-      max_file_size: 10_485_760,
+      max_file_size: 52_428_800,
       auto_upload: true,
       progress: fn name, entry, socket -> handle_progress(name, entry, socket) end
     )
@@ -2081,7 +2095,8 @@ defmodule StoryarnWeb.SceneLive.Show do
            path,
            entry,
            socket.assigns.project,
-           socket.assigns.current_scope.user
+           socket.assigns.current_scope.user,
+           purpose: :scene_background
          ) do
       {:ok, asset} -> {:ok, {:ok, asset}}
       {:error, reason} -> {:ok, {:error, reason}}
@@ -2115,6 +2130,19 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   defp background_set?(%{background_asset_id: id}) when not is_nil(id), do: true
   defp background_set?(_), do: false
+
+  defp upload_error_to_message(errors) do
+    cond do
+      :too_large in errors ->
+        dgettext("scenes", "File is too large. Maximum size is 50 MB.")
+
+      :not_accepted in errors ->
+        dgettext("scenes", "File type not supported. Please upload a JPEG, PNG, GIF, or WebP image.")
+
+      true ->
+        dgettext("scenes", "Could not upload file.")
+    end
+  end
 
   attr :sheets, :list, required: true
 

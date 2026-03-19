@@ -7,7 +7,10 @@ defmodule StoryarnWeb.Components.BlockComponents.GalleryBlocks do
   import StoryarnWeb.Components.CoreComponents,
     only: [block_label: 1, icon: 1, modal: 1, confirm_modal: 1, show_modal: 1, hide_modal: 2]
 
+  import StoryarnWeb.Components.UIComponents, only: [optimization_warning_dialog: 1]
+
   alias Phoenix.LiveView.JS
+  alias Storyarn.Assets
 
   attr :block, :map, required: true
   attr :can_edit, :boolean, default: false
@@ -56,7 +59,7 @@ defmodule StoryarnWeb.Components.BlockComponents.GalleryBlocks do
             phx-click={show_modal("gallery-detail-#{gi.id}")}
           >
             <img
-              src={gi.asset.url}
+              src={Assets.display_url(gi.asset)}
               alt={gi.label || gi.asset.filename}
               class="w-full h-full object-cover"
               loading="lazy"
@@ -88,6 +91,16 @@ defmodule StoryarnWeb.Components.BlockComponents.GalleryBlocks do
           />
         </label>
       </div>
+
+      <.optimization_warning_dialog
+        id="optimization-warning-gallery"
+        message={
+          dgettext(
+            "sheets",
+            "For best results, upload WebP or JPEG images. PNG files will be automatically converted, and the optimized copies will count toward your storage limit."
+          )
+        }
+      />
 
       <%!-- Detail modals for each image --%>
       <.gallery_detail_modal

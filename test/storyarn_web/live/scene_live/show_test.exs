@@ -1327,8 +1327,9 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       html = render_click(view, "set_active_layer", %{"id" => to_string(new_layer.id)})
 
-      # The new active layer button should have the primary outline
-      assert html =~ "btn-primary btn-outline"
+      # The new active layer button should have background and bold styling
+      assert html =~ "bg-base-content/5"
+      assert html =~ "font-medium"
     end
 
     test "new pin gets active layer_id", %{conn: conn, user: user} do

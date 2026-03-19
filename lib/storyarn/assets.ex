@@ -6,6 +6,8 @@ defmodule Storyarn.Assets do
   Supports both local storage (development) and Cloudflare R2 (production).
   """
 
+  require Logger
+
   import Ecto.Query, warn: false
   alias Storyarn.Repo
 
@@ -286,26 +288,32 @@ defmodule Storyarn.Assets do
 
   Returns `{:ok, asset}` on success or `{:error, reason}` on failure.
   """
-  @spec upload_and_create_asset(String.t(), Phoenix.LiveView.UploadEntry.t(), project(), user()) ::
+  @spec upload_and_create_asset(
+          String.t(),
+          Phoenix.LiveView.UploadEntry.t(),
+          project(),
+          user(),
+          keyword()
+        ) ::
           {:ok, asset()} | {:error, term()}
-  def upload_and_create_asset(path, entry, %Project{} = project, %User{} = user) do
+  def upload_and_create_asset(path, entry, %Project{} = project, %User{} = user, opts \\ []) do
     workspace = Repo.get!(Workspace, project.workspace_id)
 
     with :ok <- Billing.can_upload_asset?(workspace, entry.client_size) do
-      do_upload_and_create_asset(path, entry, project, user)
+      do_upload_and_create_asset(path, entry, project, user, opts)
     end
   end
 
-  defp do_upload_and_create_asset(path, entry, project, user) do
+  defp do_upload_and_create_asset(path, entry, project, user, opts) do
     content = File.read!(path)
     metadata = extract_image_metadata(path, entry.client_type)
 
-    upload_binary_and_create_asset(
-      content,
-      %{filename: entry.client_name, content_type: entry.client_type, metadata: metadata},
-      project,
-      user
-    )
+    attrs = %{filename: entry.client_name, content_type: entry.client_type, metadata: metadata}
+
+    attrs =
+      if purpose = Keyword.get(opts, :purpose), do: Map.put(attrs, :purpose, purpose), else: attrs
+
+    upload_binary_and_create_asset(content, attrs, project, user)
   end
 
   @doc """
@@ -353,12 +361,92 @@ defmodule Storyarn.Assets do
 
       case do_create_asset(project, user, asset_attrs) do
         {:ok, asset} ->
+          purpose = Map.get(attrs, :purpose)
+          skip_variants = Map.get(attrs, :skip_variants, false)
+
+          if purpose && !skip_variants do
+            schedule_variant_generation(binary_data, asset, project, user, purpose)
+          end
+
           {:ok, asset}
 
         {:error, changeset} ->
           Storage.delete(key)
           {:error, changeset}
       end
+    end
+  end
+
+  defp schedule_variant_generation(binary_data, asset, project, user, purpose) do
+    Task.Supervisor.start_child(Storyarn.TaskSupervisor, fn ->
+      maybe_generate_variant(binary_data, asset, project, user, purpose)
+    end)
+  end
+
+  defp maybe_generate_variant(binary_data, asset, project, user, purpose) do
+    if not String.starts_with?(asset.content_type, "image/") or
+         not ImageProcessor.available?() do
+      {:ok, asset}
+    else
+      case ImageProcessor.needs_optimization?(asset.content_type, asset.metadata || %{}, purpose) do
+        :skip ->
+          {:ok, asset}
+
+        {:generate, %{crop: true, width: w, height: h}} ->
+          do_generate_variant(
+            binary_data,
+            asset,
+            project,
+            user,
+            &ImageProcessor.resize_to_webp(&1, w, h)
+          )
+
+        {:generate, %{crop: false}} ->
+          do_generate_variant(binary_data, asset, project, user, &ImageProcessor.to_webp/1)
+      end
+    end
+  end
+
+  defp do_generate_variant(binary_data, original_asset, project, user, process_fn) do
+    case process_fn.(binary_data) do
+      {:ok, webp_data} ->
+        variant_filename = Path.rootname(original_asset.filename) <> ".webp"
+
+        variant_attrs = %{
+          filename: variant_filename,
+          content_type: "image/webp",
+          metadata: %{
+            "is_variant" => true,
+            "original_asset_id" => original_asset.id
+          },
+          skip_variants: true
+        }
+
+        case upload_binary_and_create_asset(webp_data, variant_attrs, project, user) do
+          {:ok, variant} ->
+            updated_metadata =
+              Map.merge(original_asset.metadata || %{}, %{
+                "web_url" => variant.url,
+                "web_asset_id" => variant.id
+              })
+
+            case update_asset(original_asset, %{metadata: updated_metadata}) do
+              {:ok, updated_original} ->
+                {:ok, updated_original}
+
+              {:error, reason} ->
+                Logger.warning("[ImageOptimization] Failed to link variant to asset #{original_asset.id}: #{inspect(reason)}")
+                {:ok, original_asset}
+            end
+
+          {:error, reason} ->
+            Logger.warning("[ImageOptimization] Failed to upload variant for asset #{original_asset.id}: #{inspect(reason)}")
+            {:ok, original_asset}
+        end
+
+      {:error, reason} ->
+        Logger.warning("[ImageOptimization] Failed to generate WebP for asset #{original_asset.id}: #{inspect(reason)}")
+        {:ok, original_asset}
     end
   end
 
@@ -377,8 +465,15 @@ defmodule Storyarn.Assets do
   end
 
   # =============================================================================
-  # Asset Type Checks
+  # Asset Type Checks & Display
   # =============================================================================
+
+  @doc """
+  Returns the optimized web URL if a variant exists, otherwise the original URL.
+
+  Delegates to `Storyarn.Assets.Asset.display_url/1`.
+  """
+  defdelegate display_url(asset), to: Asset
 
   @doc """
   Checks if an asset is an image based on its content type.

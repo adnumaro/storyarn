@@ -8,6 +8,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
   alias StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.SheetComponents
+  import StoryarnWeb.Components.UIComponents, only: [optimization_warning_dialog: 1]
 
   alias Storyarn.Assets
 
@@ -64,6 +65,16 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
       <% else %>
         <.sheet_avatar avatar_asset={@sheet.avatar_asset} name={@sheet.name} size="xl" />
       <% end %>
+
+      <.optimization_warning_dialog
+        id="optimization-warning-avatar"
+        message={
+          dgettext(
+            "sheets",
+            "For best results, upload a 192\u00D7192 WebP or JPEG image. Larger or PNG images will be automatically converted, and the optimized copy will count toward your storage limit."
+          )
+        }
+      />
     </div>
     """
   end
@@ -146,7 +157,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
     with {:ok, asset} <-
            Assets.upload_binary_and_create_asset(
              binary_data,
-             %{filename: filename, content_type: content_type},
+             %{filename: filename, content_type: content_type, purpose: :avatar},
              project,
              user
            ),

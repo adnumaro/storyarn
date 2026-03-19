@@ -85,6 +85,14 @@ defmodule Storyarn.Assets.Asset do
   end
 
   @doc """
+  Returns the optimized web URL if a variant exists, otherwise the original URL.
+  """
+  def display_url(%__MODULE__{metadata: %{"web_url" => url}}) when is_binary(url), do: url
+  def display_url(%__MODULE__{url: url}), do: url
+  def display_url(%{url: url}) when is_binary(url), do: url
+  def display_url(nil), do: nil
+
+  @doc """
   Checks if an asset is an image.
   """
   def image?(%__MODULE__{content_type: content_type}) do
@@ -108,7 +116,7 @@ defmodule Storyarn.Assets.Asset do
     |> validate_inclusion(:content_type, @allowed_content_types,
       message: "is not a supported file type"
     )
-    |> validate_number(:size, greater_than: 0, less_than_or_equal_to: 20_000_000)
+    |> validate_number(:size, greater_than: 0, less_than_or_equal_to: 52_428_800)
     |> unique_constraint(:key, name: :assets_project_id_key_index)
   end
 
