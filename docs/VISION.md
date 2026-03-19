@@ -428,6 +428,217 @@ From a character sheet, AI generates a complete brief for artists:
 
 The artist receives a professional document, not a Slack message saying "make me an elf."
 
+### 7. Create on Reference — Inline Entity Creation
+
+**Core concept:** The user types a dot-notation path that doesn't exist, and the system creates it. Like `mkdir -p` for game design entities. The designer thinks and the tool follows — no context switching.
+
+**Example 1: Speaker in dialogue node**
+
+```
+User types: characters.main-characters.elias
+
+System:
+1. Parse path: ["characters", "main-characters", "elias"]
+2. Look up sheet with shortcut "characters" → exists?
+   - Yes → find child "main-characters" → exists?
+     - Yes → find child "elias" → exists?
+       - No → create sheet "Elias" inside main-characters
+     - No → create folder "Main Characters", then "Elias" inside
+   - No → create entire hierarchy
+3. Assign created sheet as speaker
+```
+
+**Example 2: Variable in condition/instruction builder**
+
+```
+User types: elias.has_key
+
+System:
+1. Find sheet "elias" → found
+2. Find block "has_key" in elias → doesn't exist
+3. Infer type from name + context:
+   - Name "has_key" → suggests boolean (has_*, is_*, can_*)
+   - Used in condition with true/false → boolean confirmed
+4. Create block "has_key" type boolean on sheet elias
+5. Use it in the condition
+```
+
+**Type inference — dual strategy (name + context):**
+
+By name pattern:
+
+| Pattern | Inferred Type | Confidence |
+|---|---|---|
+| `has_*`, `is_*`, `can_*`, `was_*` | boolean | High |
+| `count_*`, `num_*`, `*_count`, `health`, `level`, `age` | number | Medium |
+| `name`, `title`, `description`, `*_text` | text | Medium |
+| Everything else | Unknown | Show modal |
+
+By usage context:
+
+| Context | Inferred Type |
+|---|---|
+| Compared with `true`/`false` | boolean |
+| Compared with a number | number |
+| Operator `greater_than`, `less_than` | number |
+| Operator `contains`, `starts_with` | text |
+| Operator `is_empty`, `is_nil` | Ambiguous — show modal |
+
+When both agree, create without asking. When they conflict or are ambiguous, show a quick one-click confirmation modal.
+
+**Accidental creation prevention:**
+
+- **Fuzzy matching first.** Before creating, search for similar: "Did you mean `has_key`?"
+- **Undo.** Ctrl+Z undoes the creation
+- **Visual indicator.** Input changes color or shows a "NEW" badge when about to create
+
+**Hierarchy rules:**
+- Intermediate folders are normal sheets without blocks
+- User can add blocks to them later
+- A "folder" is simply a sheet that has children
+
+**Where it applies:**
+
+| Context | What Gets Created | Example |
+|---|---|---|
+| Flow → dialogue speaker | Sheet (character) | `characters.elias` |
+| Flow → condition variable | Block on existing sheet | `elias.has_key` |
+| Flow → instruction variable | Block on existing sheet | `elias.gold` → number |
+| Scene → pin reference | Sheet | `items.magic-sword` |
+| Scene → zone trigger | Flow | `chapter1.tavern-dialogue` |
+| Condition → sheet reference | Full sheet | `factions.guild` |
+
+**Project settings toggle:**
+
+| Mode | Behavior | Target |
+|---|---|---|
+| **Creative** (default) | Create on reference active | Indies, rapid prototyping |
+| **Strict** | Only reference existing entities, autocomplete only | AAA, large teams |
+
+**Technical implementation:**
+
+```elixir
+defmodule Storyarn.Shared.InlineCreator do
+  @doc """
+  Resolves a dot-notation path, creating missing entities as needed.
+  Returns {:ok, entity} | {:confirm, type_options} | {:suggest, similar}
+  """
+  def resolve_or_create(path, project_id, opts \\ [])
+
+  # opts:
+  #   context: :speaker | :condition | :instruction
+  #   operator: "greater_than" | "is_true" | ...
+  #   value: "50" | "true" | ...
+  #   enabled: true/false (from project settings)
+end
+```
+
+JS side: extend existing search inputs (combobox/searchable select):
+- Exact match → select
+- Fuzzy match → suggest
+- No match + creative mode → show "Create `elias.has_key`" option with inferred type
+- User confirms with Enter or click
+
+**Assessment:**
+
+| Aspect | Rating |
+|---|---|
+| User value | **Very high** — eliminates constant friction |
+| Implementation complexity | **Medium** — parsing/creation is simple, fuzzy + confirmation UX is the complex part |
+| Risk | **Low with toggle** — enterprises disable it, indies enjoy it |
+| Competitive differentiator | **High** — articy has nothing like this |
+
+### 8. Avatar Gallery — Multi-Avatar System for Sheets
+
+**Core concept:** The sheet avatar evolves from a single image to an ordered list of images. Two management modes: a quick inline film strip (carrete) and a full-size gallery modal for detailed editing.
+
+**Why:** Character portraits with expressions are standard across RPGs, visual novels, adventure games, and tactical RPGs. Persona 5 uses 12-20 per character, Fire Emblem uses 8-12, RPG Maker defaults to 8. articy has AlternatePortraits but with poor UX — no visual preview in flows, no inline editing.
+
+**Mode 1: Film Strip (inline in sheet)**
+
+Quick management: add, reorder, select default. No name editing, no metadata. Pure speed.
+
+```
+┌─────────────┐
+│    [img]    │
+├─────────────┤
+│  ★ [img]   │  ← default
+├─────────────┤
+│    [img]    │
+├─────────────┤
+│   + Add     │
+├─────────────┤
+│  Gallery    │  ← opens modal
+└─────────────┘
+```
+
+Film strip actions: add image, reorder (drag), select default (click), delete (hover → X), open gallery.
+
+**Mode 2: Gallery Modal (full-size)**
+
+Detailed management with two sub-views:
+
+Grid view — all avatars visible, click inline to name, drag to reorder.
+
+Single view — click any image from grid to see full-size, with editable fields below:
+- **Name** (optional) — normalized with `variablify` (e.g., "Angry Face" → `angry_face`)
+- **Notes** (optional) — free text for art direction, actor notes, context
+- Navigation arrows between images
+- "Set as default" button
+- Delete button
+
+**Editing capabilities per mode:**
+
+| Action | Film Strip | Gallery Grid | Gallery Single |
+|---|---|---|---|
+| Add image | Yes | Yes | No |
+| Reorder | Drag | Drag | Arrows ← → |
+| Select default | Click | Click | Button |
+| Delete | Hover → X | Hover → X | Button |
+| Edit name | No | Click inline | Input field |
+| Edit notes/metadata | No | No | Yes |
+| View full size | No | No | Yes |
+
+**In dialogue nodes:**
+
+Click the avatar on the dialogue node → selector shows all avatars from the speaker's gallery:
+- Named avatars show name + thumbnail
+- Unnamed avatars show thumbnail only
+- Default is always labeled "default"
+- If no avatar is selected for a node, the sheet's default avatar is used
+
+**Data model:**
+
+```
+SheetAvatar (new table)
+  - sheet_id (required, belongs_to Sheet)
+  - asset_id (required, belongs_to Asset)
+  - name (string, optional, variablified)
+  - notes (text, optional)
+  - position (integer)
+  - is_default (boolean, default false)
+
+Dialogue node data:
+  - avatar_id (nullable — if null, use sheet default)
+```
+
+New table (not JSON field) for: queryability, DB-level ordering, clean schema migration.
+
+**Design principles:**
+- **Zero overhead if unused** — single avatar works exactly as today
+- **No imposed semantics** — images can represent emotions, costumes, ages, angles — user decides
+- **Modal absorbs future complexity** — tags, audio references, or any new fields get added to single view without changing the strip
+- **Exportable** — name + notes travel in the export, engine plugins can auto-map expressions
+
+**Assessment:**
+
+| Aspect | Rating |
+|---|---|
+| User value | **High** — standard industry need, every narrative game uses portraits |
+| Implementation complexity | **Medium** — new table, film strip component, gallery modal |
+| Risk | **Very low** — backwards compatible, optional feature |
+| Competitive differentiator | **High** — articy's AlternatePortraits is clunky, no visual preview in flows |
+
 ---
 
 ## VI. Monetization Angles
