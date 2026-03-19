@@ -5,12 +5,14 @@
  */
 
 import * as THREE from "three";
-import { fragmentShader, vertexShader } from "./portal_shader.js";
 import { captureException } from "../utils/sentry";
+import { fragmentShader, vertexShader } from "./portal_shader.js";
 
 let portalAPI = null;
 let portalReadyResolve = null;
-const portalReady = new Promise((resolve) => { portalReadyResolve = resolve; });
+const portalReady = new Promise((resolve) => {
+  portalReadyResolve = resolve;
+});
 
 const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 768;
 

@@ -7,6 +7,7 @@
  */
 
 import { initSentry } from "./utils/sentry";
+
 initSentry();
 
 // ── Loader setup ──
@@ -51,8 +52,8 @@ import "./landing_page/section_scroll";
 import "./landing_page/animations";
 import "./landing_page/discover_section";
 
-import { whenPortalReady } from "./landing_page/portal";
 import { whenMonitorReady } from "./landing_page/discover_monitor";
+import { whenPortalReady } from "./landing_page/portal";
 
 // Track each scene independently
 whenPortalReady().then(updateProgress);

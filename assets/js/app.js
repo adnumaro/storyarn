@@ -25,6 +25,7 @@ if (typeof window.sessionStorage === "undefined") {
 
 // Sentry browser error tracking (only initializes if DSN meta tag is present)
 import { initSentry } from "./utils/sentry";
+
 initSentry();
 
 // Include phoenix_html to handle method=PUT/DELETE in forms and buttons.
