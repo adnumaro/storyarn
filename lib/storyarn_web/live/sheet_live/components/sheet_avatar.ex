@@ -1,17 +1,15 @@
 defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
   @moduledoc """
-  LiveComponent for the sheet avatar with edit options.
-  Handles avatar display, upload, and removal.
+  LiveComponent for the sheet avatar film strip.
+  Handles avatar display, upload, removal, and default selection.
   """
 
   use StoryarnWeb, :live_component
   alias StoryarnWeb.Helpers.Authorize
 
-  import StoryarnWeb.Components.SheetComponents
   import StoryarnWeb.Components.UIComponents, only: [optimization_warning_dialog: 1]
 
   alias Storyarn.Assets
-
   alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Sheets
@@ -20,51 +18,85 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
   def render(assigns) do
     ~H"""
     <div>
-      <%= if @can_edit do %>
+      <%!-- Main avatar display --%>
+      <div class="flex items-center gap-3">
         <div class="relative group">
-          <div class="dropdown">
-            <div tabindex="0" role="button" class="cursor-pointer">
-              <.sheet_avatar avatar_asset={@sheet.avatar_asset} name={@sheet.name} size="xl" />
-              <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded flex items-center justify-center transition-opacity">
-                <.icon name="camera" class="size-4 text-white" />
-              </div>
-            </div>
-            <ul
-              tabindex="0"
-              class="dropdown-content menu menu-sm bg-base-100 rounded-box shadow-lg border border-base-300 w-40 z-50"
-            >
-              <li>
-                <label class="cursor-pointer">
-                  <.icon name="upload" class="size-4" />
-                  {dgettext("sheets", "Upload avatar")}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    class="hidden"
-                    phx-hook="AvatarUpload"
-                    id="avatar-upload-input"
-                    data-sheet-id={@sheet.id}
-                    data-target={@myself}
-                  />
-                </label>
-              </li>
-              <li :if={@sheet.avatar_asset}>
-                <button
-                  type="button"
-                  class="text-error"
-                  phx-click="remove_avatar"
-                  phx-target={@myself}
-                >
-                  <.icon name="trash-2" class="size-4" />
-                  {dgettext("sheets", "Remove")}
-                </button>
-              </li>
-            </ul>
-          </div>
+          <%= if @default_avatar && @default_avatar.asset do %>
+            <img
+              src={Assets.display_url(@default_avatar.asset)}
+              alt={@sheet.name}
+              class="size-10 rounded object-cover"
+            />
+          <% else %>
+            <.icon name="file" class="size-10 opacity-60" />
+          <% end %>
+
+          <label
+            :if={@can_edit}
+            for="avatar-upload-input"
+            class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded flex items-center justify-center transition-opacity cursor-pointer"
+          >
+            <.icon name="camera" class="size-4 text-white" />
+          </label>
         </div>
-      <% else %>
-        <.sheet_avatar avatar_asset={@sheet.avatar_asset} name={@sheet.name} size="xl" />
-      <% end %>
+      </div>
+
+      <%!-- Film strip --%>
+      <div :if={@can_edit && @avatars != []} class="flex items-center gap-1.5 mt-2">
+        <div
+          :for={avatar <- @avatars}
+          class={[
+            "relative group/thumb size-7 rounded overflow-hidden border-2 transition-colors shrink-0",
+            if(avatar.is_default,
+              do: "border-primary",
+              else: "border-base-content/10 hover:border-base-content/30"
+            )
+          ]}
+        >
+          <button
+            :if={avatar.asset}
+            type="button"
+            phx-click="set_default"
+            phx-value-id={avatar.id}
+            phx-target={@myself}
+            class="w-full h-full"
+          >
+            <img
+              src={Assets.display_url(avatar.asset)}
+              alt={avatar.name || ""}
+              class="w-full h-full object-cover"
+            />
+          </button>
+          <button
+            type="button"
+            phx-click="remove_avatar"
+            phx-value-id={avatar.id}
+            phx-target={@myself}
+            class="absolute top-0 right-0 size-3.5 bg-black/70 rounded-bl flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity z-10"
+          >
+            <.icon name="x" class="size-2.5 text-white" />
+          </button>
+        </div>
+
+        <label
+          for="avatar-upload-input"
+          class="size-7 rounded border-2 border-dashed border-base-content/20 hover:border-base-content/40 flex items-center justify-center cursor-pointer transition-colors shrink-0"
+        >
+          <.icon name="plus" class="size-3 text-base-content/40" />
+        </label>
+      </div>
+
+      <%!-- Single shared file input --%>
+      <input
+        :if={@can_edit}
+        type="file"
+        accept="image/*"
+        class="hidden"
+        phx-hook="AvatarUpload"
+        id="avatar-upload-input"
+        data-sheet-id={@sheet.id}
+        data-target={@myself}
+      />
 
       <.optimization_warning_dialog
         id="optimization-warning-avatar"
@@ -81,7 +113,13 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
 
   @impl true
   def update(assigns, socket) do
-    {:ok, assign(socket, assigns)}
+    avatars = if is_list(assigns.sheet.avatars), do: assigns.sheet.avatars, else: []
+
+    {:ok,
+     socket
+     |> assign(assigns)
+     |> assign(:avatars, Enum.sort_by(avatars, & &1.position))
+     |> assign(:default_avatar, Enum.find(avatars, & &1.is_default))}
   end
 
   # ===========================================================================
@@ -89,20 +127,24 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
   # ===========================================================================
 
   @impl true
-  def handle_event("remove_avatar", _params, socket) do
+  def handle_event("set_default", %{"id" => id}, socket) do
     Authorize.with_edit_authorization(socket, fn socket ->
-      sheet = socket.assigns.sheet
+      case get_owned_avatar(socket, id) do
+        {:ok, avatar} ->
+          Sheets.set_avatar_default(avatar)
+          reload_and_notify(socket)
 
-      case Sheets.update_sheet(sheet, %{avatar_asset_id: nil}) do
-        {:ok, _updated_sheet} ->
-          updated_sheet = Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
-          sheets_tree = Sheets.list_sheets_tree(socket.assigns.project.id)
-          send(self(), {:sheet_avatar, :sheet_updated, updated_sheet, sheets_tree})
-          {:noreply, assign(socket, :sheet, updated_sheet)}
-
-        {:error, _changeset} ->
-          send(self(), {:sheet_avatar, :error, dgettext("sheets", "Could not remove avatar.")})
+        {:error, _} ->
           {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("remove_avatar", %{"id" => id}, socket) do
+    Authorize.with_edit_authorization(socket, fn socket ->
+      case get_owned_avatar(socket, id) do
+        {:ok, avatar} -> do_remove_avatar(socket, avatar)
+        {:error, _} -> {:noreply, socket}
       end
     end)
   end
@@ -133,6 +175,27 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
   # Private Functions
   # ===========================================================================
 
+  defp do_remove_avatar(socket, avatar) do
+    case Sheets.remove_avatar(avatar.id) do
+      {:ok, _} ->
+        reload_and_notify(socket)
+
+      {:error, _} ->
+        send(self(), {:sheet_avatar, :error, dgettext("sheets", "Could not remove avatar.")})
+        {:noreply, socket}
+    end
+  end
+
+  defp get_owned_avatar(socket, id) do
+    avatar = Sheets.get_avatar(String.to_integer(id))
+
+    if avatar && avatar.sheet_id == socket.assigns.sheet.id do
+      {:ok, avatar}
+    else
+      {:error, :not_owned}
+    end
+  end
+
   defp upload_avatar_file(socket, filename, content_type, binary_data) do
     project = socket.assigns.project
 
@@ -161,16 +224,22 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
              project,
              user
            ),
-         {:ok, _updated_sheet} <- Sheets.update_sheet(sheet, %{avatar_asset_id: asset.id}) do
-      updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
-      sheets_tree = Sheets.list_sheets_tree(project.id)
-      send(self(), {:sheet_avatar, :sheet_updated, updated_sheet, sheets_tree})
+         {:ok, _avatar} <- Sheets.add_avatar(sheet, asset.id) do
       Collaboration.broadcast_change({:assets, project.id}, :asset_created, %{})
-      {:noreply, assign(socket, :sheet, updated_sheet)}
+      reload_and_notify(socket)
     else
       {:error, _reason} ->
         send(self(), {:sheet_avatar, :error, dgettext("sheets", "Could not upload avatar.")})
         {:noreply, socket}
     end
+  end
+
+  defp reload_and_notify(socket) do
+    project = socket.assigns.project
+    sheet = socket.assigns.sheet
+    updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
+    sheets_tree = Sheets.list_sheets_tree(project.id)
+    send(self(), {:sheet_avatar, :sheet_updated, updated_sheet, sheets_tree})
+    {:noreply, assign(socket, :sheet, updated_sheet)}
   end
 end
