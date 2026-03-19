@@ -16,7 +16,10 @@ defmodule Storyarn.Assets.VariantGenerationTest do
   end
 
   describe "variant generation with purpose" do
-    test "PNG upload with :gallery purpose triggers async variant", %{project: project, user: user} do
+    test "PNG upload with :gallery purpose triggers async variant", %{
+      project: project,
+      user: user
+    } do
       binary = File.read!(@test_png_path)
 
       assert {:ok, asset} =
@@ -83,7 +86,10 @@ defmodule Storyarn.Assets.VariantGenerationTest do
       Assets.storage_delete(asset.key)
     end
 
-    test "upload with skip_variants: true does not generate variant", %{project: project, user: user} do
+    test "upload with skip_variants: true does not generate variant", %{
+      project: project,
+      user: user
+    } do
       binary = File.read!(@test_png_path)
 
       assert {:ok, asset} =
@@ -137,7 +143,10 @@ defmodule Storyarn.Assets.VariantGenerationTest do
       Assets.storage_delete(variant.key)
     end
 
-    test "non-image upload with purpose does not generate variant", %{project: project, user: user} do
+    test "non-image upload with purpose does not generate variant", %{
+      project: project,
+      user: user
+    } do
       assert {:ok, asset} =
                Assets.upload_binary_and_create_asset(
                  "fake audio content",

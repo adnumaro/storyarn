@@ -116,21 +116,6 @@ defmodule StoryarnWeb.FlowLive.Index do
           </.dashboard_section>
         </div>
 
-        <.modal
-          :if={@live_action == :new and @can_edit}
-          id="new-flow-modal"
-          show
-          on_cancel={JS.patch(~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows")}
-        >
-          <.live_component
-            module={StoryarnWeb.FlowLive.Form}
-            id="new-flow-form"
-            project={@project}
-            title={dgettext("flows", "New Flow")}
-            navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows"}
-          />
-        </.modal>
-
         <.confirm_modal
           :if={@can_edit}
           id="delete-flow-confirm"
@@ -372,14 +357,8 @@ defmodule StoryarnWeb.FlowLive.Index do
   end
 
   @impl true
-  def handle_info({StoryarnWeb.FlowLive.Form, {:saved, flow}}, socket) do
-    {:noreply,
-     socket
-     |> put_flash(:info, dgettext("flows", "Flow created successfully."))
-     |> push_navigate(
-       to:
-         ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow.id}"
-     )}
+  def handle_info({StoryarnWeb.FlowLive.Form, {:saved, _flow}}, socket) do
+    {:noreply, socket}
   end
 
   @impl true

@@ -39,7 +39,7 @@ defmodule StoryarnWeb.FlowLive.Form do
           <.link patch={@navigate} class="btn btn-ghost">
             {dgettext("flows", "Cancel")}
           </.link>
-          <.button variant="primary" phx-disable-with={dgettext("flows", "Creating...")}>
+          <.button id="create-flow-btn" variant="primary" phx-disable-with={dgettext("flows", "Creating...")}>
             {dgettext("flows", "Create Flow")}
           </.button>
         </div>

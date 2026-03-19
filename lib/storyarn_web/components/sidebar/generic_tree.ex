@@ -118,6 +118,7 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
         :if={@can_edit}
         type="button"
         phx-click={@create_event}
+        data-testid={"create-#{@entity_type}"}
         class="btn btn-ghost btn-sm w-full gap-1.5 mt-1 text-base-content/50 hover:text-base-content"
       >
         <.icon name="plus" class="size-4" />

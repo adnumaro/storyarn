@@ -58,28 +58,15 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       |> assert_has("a", text: "Main Story Flow")
     end
 
-    test "can open new flow modal", %{conn: conn} do
+    test "can create a new flow from sidebar", %{conn: conn} do
       user = user_fixture()
       project = project_fixture(user) |> Repo.preload(:workspace)
 
       conn
       |> authenticate(user)
-      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/new")
-      |> assert_has("h1", text: "New Flow")
-    end
-
-    test "can create a new flow", %{conn: conn} do
-      user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
-
-      conn
-      |> authenticate(user)
-      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/new")
-      |> assert_has("h1", text: "New Flow")
-      |> fill_in("Name", with: "My Dialogue Tree")
-      |> fill_in("Description", with: "A branching conversation")
-      |> click_button("Create Flow")
-      |> assert_has("h1", text: "My Dialogue Tree")
+      |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")
+      |> click("[data-testid='create-flows']")
+      |> assert_has("[data-testid='entity-title']")
     end
 
     test "shows main badge on main flow", %{conn: conn} do

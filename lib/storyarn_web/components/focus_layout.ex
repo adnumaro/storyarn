@@ -254,6 +254,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
         <h1
           :if={@can_edit && @name_id}
           id={@name_id}
+          data-testid="entity-title"
           class="text-sm font-medium outline-none rounded px-1 -mx-1 empty:before:content-[attr(data-placeholder)] empty:before:text-base-content/30"
           contenteditable="true"
           phx-hook="EditableTitle"
@@ -263,7 +264,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
         >
           {@name}
         </h1>
-        <h1 :if={!(@can_edit && @name_id)} class="text-sm font-medium">{@name}</h1>
+        <h1 :if={!(@can_edit && @name_id)} data-testid="entity-title" class="text-sm font-medium">{@name}</h1>
 
         <%!-- Shortcut: static badge --%>
         <span

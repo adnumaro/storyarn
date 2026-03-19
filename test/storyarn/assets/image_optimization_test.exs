@@ -11,22 +11,38 @@ defmodule Storyarn.Assets.ImageOptimizationTest do
   describe "needs_optimization?/3 — avatar" do
     test "skips small JPEG avatar" do
       assert :skip ==
-               ImageProcessor.needs_optimization?("image/jpeg", %{"width" => 100, "height" => 100}, :avatar)
+               ImageProcessor.needs_optimization?(
+                 "image/jpeg",
+                 %{"width" => 100, "height" => 100},
+                 :avatar
+               )
     end
 
     test "skips small WebP avatar" do
       assert :skip ==
-               ImageProcessor.needs_optimization?("image/webp", %{"width" => 192, "height" => 192}, :avatar)
+               ImageProcessor.needs_optimization?(
+                 "image/webp",
+                 %{"width" => 192, "height" => 192},
+                 :avatar
+               )
     end
 
     test "generates for PNG avatar" do
       assert {:generate, %{width: 192, height: 192, crop: true}} =
-               ImageProcessor.needs_optimization?("image/png", %{"width" => 100, "height" => 100}, :avatar)
+               ImageProcessor.needs_optimization?(
+                 "image/png",
+                 %{"width" => 100, "height" => 100},
+                 :avatar
+               )
     end
 
     test "generates for oversized JPEG avatar" do
       assert {:generate, %{width: 192, height: 192, crop: true}} =
-               ImageProcessor.needs_optimization?("image/jpeg", %{"width" => 500, "height" => 500}, :avatar)
+               ImageProcessor.needs_optimization?(
+                 "image/jpeg",
+                 %{"width" => 500, "height" => 500},
+                 :avatar
+               )
     end
 
     test "skips JPEG avatar with missing metadata (defaults to 0x0)" do
@@ -35,19 +51,31 @@ defmodule Storyarn.Assets.ImageOptimizationTest do
 
     test "generates for GIF avatar regardless of size" do
       assert {:generate, %{width: 192, height: 192, crop: true}} =
-               ImageProcessor.needs_optimization?("image/gif", %{"width" => 50, "height" => 50}, :avatar)
+               ImageProcessor.needs_optimization?(
+                 "image/gif",
+                 %{"width" => 50, "height" => 50},
+                 :avatar
+               )
     end
   end
 
   describe "needs_optimization?/3 — banner" do
     test "skips small JPEG banner" do
       assert :skip ==
-               ImageProcessor.needs_optimization?("image/jpeg", %{"width" => 1920, "height" => 640}, :banner)
+               ImageProcessor.needs_optimization?(
+                 "image/jpeg",
+                 %{"width" => 1920, "height" => 640},
+                 :banner
+               )
     end
 
     test "generates for PNG banner" do
       assert {:generate, %{width: 1920, height: 640, crop: true}} =
-               ImageProcessor.needs_optimization?("image/png", %{"width" => 1920, "height" => 640}, :banner)
+               ImageProcessor.needs_optimization?(
+                 "image/png",
+                 %{"width" => 1920, "height" => 640},
+                 :banner
+               )
     end
 
     test "generates for oversized JPEG banner" do
@@ -72,12 +100,20 @@ defmodule Storyarn.Assets.ImageOptimizationTest do
 
     test "skips WebP scene background" do
       assert :skip ==
-               ImageProcessor.needs_optimization?("image/webp", %{"width" => 4000, "height" => 3000}, :scene_background)
+               ImageProcessor.needs_optimization?(
+                 "image/webp",
+                 %{"width" => 4000, "height" => 3000},
+                 :scene_background
+               )
     end
 
     test "generates for PNG scene background" do
       assert {:generate, %{crop: false}} =
-               ImageProcessor.needs_optimization?("image/png", %{"width" => 4000, "height" => 3000}, :scene_background)
+               ImageProcessor.needs_optimization?(
+                 "image/png",
+                 %{"width" => 4000, "height" => 3000},
+                 :scene_background
+               )
     end
 
     test "generates for GIF scene background" do
