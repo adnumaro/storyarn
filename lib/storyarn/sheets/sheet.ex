@@ -20,7 +20,7 @@ defmodule Storyarn.Sheets.Sheet do
   alias Storyarn.Assets.Asset
   alias Storyarn.Projects.Project
   alias Storyarn.Shared.{HierarchicalSchema, Validations}
-  alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.{Block, SheetAvatar}
   alias Storyarn.Versioning.EntityVersion
 
   # Color format: hex color with 3, 6, or 8 characters (e.g., #fff, #3b82f6, #3b82f680)
@@ -34,8 +34,6 @@ defmodule Storyarn.Sheets.Sheet do
           color: String.t() | nil,
           position: integer() | nil,
           hidden_inherited_block_ids: [integer()],
-          avatar_asset_id: integer() | nil,
-          avatar_asset: Asset.t() | Ecto.Association.NotLoaded.t() | nil,
           banner_asset_id: integer() | nil,
           banner_asset: Asset.t() | Ecto.Association.NotLoaded.t() | nil,
           current_version_id: integer() | nil,
@@ -46,6 +44,7 @@ defmodule Storyarn.Sheets.Sheet do
           parent: t() | Ecto.Association.NotLoaded.t() | nil,
           children: [t()] | Ecto.Association.NotLoaded.t(),
           blocks: [Block.t()] | Ecto.Association.NotLoaded.t(),
+          avatars: [SheetAvatar.t()] | Ecto.Association.NotLoaded.t(),
           deleted_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
@@ -63,7 +62,6 @@ defmodule Storyarn.Sheets.Sheet do
 
     belongs_to :project, Project
     belongs_to :parent, __MODULE__
-    belongs_to :avatar_asset, Asset
     belongs_to :banner_asset, Asset
     belongs_to :current_version, EntityVersion
     has_many :children, __MODULE__, foreign_key: :parent_id
@@ -83,7 +81,6 @@ defmodule Storyarn.Sheets.Sheet do
       :shortcut,
       :description,
       :color,
-      :avatar_asset_id,
       :banner_asset_id,
       :parent_id,
       :position,
@@ -93,7 +90,6 @@ defmodule Storyarn.Sheets.Sheet do
     |> validate_shortcut()
     |> validate_color()
     |> foreign_key_constraint(:parent_id)
-    |> foreign_key_constraint(:avatar_asset_id)
     |> foreign_key_constraint(:banner_asset_id)
   end
 
@@ -107,7 +103,6 @@ defmodule Storyarn.Sheets.Sheet do
       :shortcut,
       :description,
       :color,
-      :avatar_asset_id,
       :banner_asset_id,
       :parent_id,
       :position,
@@ -117,7 +112,6 @@ defmodule Storyarn.Sheets.Sheet do
     |> validate_shortcut()
     |> validate_color()
     |> foreign_key_constraint(:parent_id)
-    |> foreign_key_constraint(:avatar_asset_id)
     |> foreign_key_constraint(:banner_asset_id)
   end
 

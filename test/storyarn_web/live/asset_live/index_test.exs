@@ -327,7 +327,8 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       import Storyarn.SheetsFixtures
 
       image = image_asset_fixture(project, user)
-      sheet = sheet_fixture(project, %{name: "Hero Character", avatar_asset_id: image.id})
+      sheet = sheet_fixture(project, %{name: "Hero Character"})
+      {:ok, _} = Storyarn.Sheets.add_avatar(sheet, image.id, %{is_default: true})
 
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")

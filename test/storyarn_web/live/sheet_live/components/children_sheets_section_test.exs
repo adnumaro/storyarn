@@ -26,7 +26,7 @@ defmodule StoryarnWeb.SheetLive.Components.ChildrenSheetsSectionTest do
       %{
         id: Ecto.UUID.generate(),
         name: "Child Sheet",
-        avatar_asset: nil
+        avatars: []
       },
       attrs
     )
@@ -101,7 +101,7 @@ defmodule StoryarnWeb.SheetLive.Components.ChildrenSheetsSectionTest do
 
   describe "avatar rendering" do
     test "renders sheet_avatar for child with no avatar asset" do
-      children = [make_child(%{name: "No Avatar", avatar_asset: nil})]
+      children = [make_child(%{name: "No Avatar", avatars: []})]
 
       html = render_section(%{children: children})
 
@@ -110,8 +110,14 @@ defmodule StoryarnWeb.SheetLive.Components.ChildrenSheetsSectionTest do
     end
 
     test "renders sheet_avatar for child with avatar asset" do
-      avatar = %{id: "asset-1", url: "/uploads/avatar.png"}
-      children = [make_child(%{name: "Has Avatar", avatar_asset: avatar})]
+      avatar_asset = %{id: "asset-1", url: "/uploads/avatar.png"}
+
+      children = [
+        make_child(%{
+          name: "Has Avatar",
+          avatars: [%{is_default: true, asset: avatar_asset}]
+        })
+      ]
 
       html = render_section(%{children: children})
 

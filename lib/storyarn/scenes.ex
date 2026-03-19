@@ -527,9 +527,9 @@ defmodule Storyarn.Scenes do
   # Preload Helpers (wrap Repo.preload to keep web layer clean)
   # =============================================================================
 
-  @doc "Preloads pin associations (icon_asset, sheet with avatar_asset)."
+  @doc "Preloads pin associations (icon_asset, sheet with avatars)."
   def preload_pin_associations(pin) do
-    Repo.preload(pin, [:icon_asset, sheet: :avatar_asset], force: true)
+    Repo.preload(pin, [:icon_asset, sheet: [avatars: :asset]], force: true)
   end
 
   @doc "Preloads scene background_asset association."
@@ -537,9 +537,9 @@ defmodule Storyarn.Scenes do
     Repo.preload(scene, :background_asset, force: true)
   end
 
-  @doc "Preloads sheet avatar_asset association."
+  @doc "Preloads sheet avatars association."
   def preload_sheet_avatar(sheet) do
-    Repo.preload(sheet, avatar_asset: [])
+    Repo.preload(sheet, avatars: :asset)
   end
 
   # =============================================================================

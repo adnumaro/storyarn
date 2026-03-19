@@ -17,24 +17,29 @@ defmodule StoryarnWeb.Components.SheetComponents do
   @doc """
   Renders a sheet avatar image or falls back to a default file icon.
 
+  Accepts either a preloaded avatars list (from `sheet.avatars`) or a single
+  asset map/struct. When given a list, it finds the default avatar.
+
   ## Examples
 
-      <.sheet_avatar avatar_asset={@sheet.avatar_asset} />
-      <.sheet_avatar avatar_asset={@sheet.avatar_asset} size="xl" />
-      <.sheet_avatar avatar_asset={nil} name="Character" />
+      <.sheet_avatar avatars={@sheet.avatars} />
+      <.sheet_avatar avatars={@sheet.avatars} size="xl" />
+      <.sheet_avatar avatars={[]} name="Character" />
   """
-  attr :avatar_asset, :any, default: nil
+  attr :avatars, :any, default: nil
   attr :name, :string, default: nil
   attr :size, :string, values: ["sm", "md", "lg", "xl"], default: "md"
 
   def sheet_avatar(assigns) do
     size_class = Map.get(@avatar_sizes, assigns.size, "size-5")
-    has_avatar = has_avatar?(assigns.avatar_asset)
+    avatar_asset = resolve_avatar_asset(assigns.avatars)
+    has_avatar = has_avatar?(avatar_asset)
 
     assigns =
       assigns
       |> assign(:size_class, size_class)
       |> assign(:has_avatar, has_avatar)
+      |> assign(:avatar_asset, avatar_asset)
 
     ~H"""
     <img
@@ -46,6 +51,17 @@ defmodule StoryarnWeb.Components.SheetComponents do
     <.icon :if={!@has_avatar} name="file" class={"#{@size_class} opacity-60"} />
     """
   end
+
+  # Resolve the default avatar asset from various input types
+  defp resolve_avatar_asset(avatars) when is_list(avatars) do
+    case Enum.find(avatars, & &1.is_default) || List.first(avatars) do
+      nil -> nil
+      %{asset: asset} -> asset
+      _ -> nil
+    end
+  end
+
+  defp resolve_avatar_asset(_), do: nil
 
   defp has_avatar?(nil), do: false
   defp has_avatar?(%Ecto.Association.NotLoaded{}), do: false
@@ -75,7 +91,7 @@ defmodule StoryarnWeb.Components.SheetComponents do
           }
           class="hover:text-base-content flex items-center gap-1 truncate max-w-[120px]"
         >
-          <.sheet_avatar avatar_asset={ancestor.avatar_asset} name={ancestor.name} size="sm" />
+          <.sheet_avatar avatars={ancestor.avatars} name={ancestor.name} size="sm" />
           {ancestor.name}
         </.link>
       </span>

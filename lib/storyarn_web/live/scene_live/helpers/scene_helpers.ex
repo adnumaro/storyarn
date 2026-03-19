@@ -153,7 +153,13 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
     end)
   end
 
-  def sheet_avatar_url(%{avatar_asset: %{url: url}}) when is_binary(url), do: url
+  def sheet_avatar_url(%{avatars: avatars}) when is_list(avatars) do
+    case Enum.find(avatars, & &1.is_default) || List.first(avatars) do
+      %{asset: %{url: url}} when is_binary(url) -> url
+      _ -> nil
+    end
+  end
+
   def sheet_avatar_url(_), do: nil
 
   # ---------------------------------------------------------------------------

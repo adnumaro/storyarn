@@ -43,7 +43,7 @@ defmodule Storyarn.Scenes.PinCrud do
   def get_pin(scene_id, pin_id) do
     from(p in ScenePin,
       where: p.scene_id == ^scene_id and p.id == ^pin_id,
-      preload: [:icon_asset, sheet: :avatar_asset]
+      preload: [:icon_asset, sheet: [avatars: :asset]]
     )
     |> Repo.one()
   end
@@ -54,7 +54,7 @@ defmodule Storyarn.Scenes.PinCrud do
   def get_pin!(scene_id, pin_id) do
     from(p in ScenePin,
       where: p.scene_id == ^scene_id and p.id == ^pin_id,
-      preload: [:icon_asset, sheet: :avatar_asset]
+      preload: [:icon_asset, sheet: [avatars: :asset]]
     )
     |> Repo.one!()
   end

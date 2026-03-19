@@ -38,7 +38,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
     %{
       id: sheet.id,
       name: sheet.name,
-      avatar_url: (default_avatar && default_avatar.url) || extract_asset_url(sheet.avatar_asset),
+      avatar_url: default_avatar && default_avatar.url,
       banner_url: extract_asset_url(sheet.banner_asset),
       color: sheet.color,
       avatars: avatars,

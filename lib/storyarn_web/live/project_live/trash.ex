@@ -5,6 +5,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
   alias StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
+  import StoryarnWeb.Components.SheetComponents, only: [sheet_avatar: 1]
   alias Storyarn.Projects
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
@@ -105,17 +106,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
     <div class="flex items-center justify-between p-4 bg-base-200 rounded-lg">
       <div class="flex items-center gap-3 min-w-0">
         <div class="flex-shrink-0">
-          <%= if @sheet.avatar_asset do %>
-            <img
-              src={@sheet.avatar_asset.url}
-              alt=""
-              class="size-10 rounded object-cover"
-            />
-          <% else %>
-            <div class="size-10 rounded bg-base-300 flex items-center justify-center">
-              <.icon name="file-text" class="size-5 text-base-content/50" />
-            </div>
-          <% end %>
+          <.sheet_avatar avatars={@sheet.avatars} name={@sheet.name} size="xl" />
         </div>
         <div class="min-w-0">
           <p class="font-medium truncate">{@sheet.name}</p>

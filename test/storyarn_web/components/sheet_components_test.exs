@@ -15,36 +15,29 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
   # =============================================================================
 
   describe "sheet_avatar/1" do
-    test "renders fallback icon when avatar_asset is nil" do
-      html = render_component(&SheetComponents.sheet_avatar/1, avatar_asset: nil)
+    test "renders fallback icon when avatars is nil" do
+      html = render_component(&SheetComponents.sheet_avatar/1, avatars: nil)
 
       # Should render an icon, not an image
       refute html =~ "<img"
       assert html =~ "opacity-60"
     end
 
-    test "renders fallback icon when avatar_asset is not loaded" do
-      html =
-        render_component(&SheetComponents.sheet_avatar/1,
-          avatar_asset: %Ecto.Association.NotLoaded{
-            __field__: :avatar_asset,
-            __owner__: Storyarn.Sheets.Sheet,
-            __cardinality__: :one
-          }
-        )
+    test "renders fallback icon when avatars is empty list" do
+      html = render_component(&SheetComponents.sheet_avatar/1, avatars: [])
 
       refute html =~ "<img"
       assert html =~ "opacity-60"
     end
 
-    test "renders image when avatar_asset is an image" do
+    test "renders image when avatars has a default avatar with image asset" do
       user = user_fixture()
       project = project_fixture(user) |> Repo.preload(:workspace)
       asset = image_asset_fixture(project, user)
 
       html =
         render_component(&SheetComponents.sheet_avatar/1,
-          avatar_asset: asset,
+          avatars: [%{is_default: true, asset: asset}],
           name: "Test Character"
         )
 
@@ -64,7 +57,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
           filename: "document.pdf"
         })
 
-      html = render_component(&SheetComponents.sheet_avatar/1, avatar_asset: asset)
+      html = render_component(&SheetComponents.sheet_avatar/1, avatars: [%{is_default: true, asset: asset}])
 
       refute html =~ "<img"
       assert html =~ "opacity-60"
@@ -77,7 +70,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
 
       html =
         render_component(&SheetComponents.sheet_avatar/1,
-          avatar_asset: asset,
+          avatars: [%{is_default: true, asset: asset}],
           name: nil
         )
 
@@ -87,7 +80,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
     test "applies sm size class" do
       html =
         render_component(&SheetComponents.sheet_avatar/1,
-          avatar_asset: nil,
+          avatars: nil,
           size: "sm"
         )
 
@@ -95,7 +88,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
     end
 
     test "applies md size class (default)" do
-      html = render_component(&SheetComponents.sheet_avatar/1, avatar_asset: nil)
+      html = render_component(&SheetComponents.sheet_avatar/1, avatars: nil)
 
       assert html =~ "size-5"
     end
@@ -103,7 +96,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
     test "applies lg size class" do
       html =
         render_component(&SheetComponents.sheet_avatar/1,
-          avatar_asset: nil,
+          avatars: nil,
           size: "lg"
         )
 
@@ -113,7 +106,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
     test "applies xl size class" do
       html =
         render_component(&SheetComponents.sheet_avatar/1,
-          avatar_asset: nil,
+          avatars: nil,
           size: "xl"
         )
 
@@ -127,7 +120,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
 
       html =
         render_component(&SheetComponents.sheet_avatar/1,
-          avatar_asset: asset,
+          avatars: [%{is_default: true, asset: asset}],
           size: "xl"
         )
 
@@ -151,7 +144,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
 
     test "renders breadcrumb with single ancestor", %{project: project, workspace: workspace} do
       parent = sheet_fixture(project, %{name: "Parent Sheet"})
-      parent = Repo.preload(parent, :avatar_asset)
+      parent = Repo.preload(parent, avatars: :asset)
 
       html =
         render_component(&SheetComponents.sheet_breadcrumb/1,
@@ -175,7 +168,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
 
       ancestors =
         [grandparent, parent]
-        |> Enum.map(&Repo.preload(&1, :avatar_asset))
+        |> Enum.map(&Repo.preload(&1, avatars: :asset))
 
       html =
         render_component(&SheetComponents.sheet_breadcrumb/1,
@@ -194,8 +187,8 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
       project: project,
       workspace: workspace
     } do
-      ancestor1 = sheet_fixture(project, %{name: "Ancestor1"}) |> Repo.preload(:avatar_asset)
-      ancestor2 = sheet_fixture(project, %{name: "Ancestor2"}) |> Repo.preload(:avatar_asset)
+      ancestor1 = sheet_fixture(project, %{name: "Ancestor1"}) |> Repo.preload(avatars: :asset)
+      ancestor2 = sheet_fixture(project, %{name: "Ancestor2"}) |> Repo.preload(avatars: :asset)
 
       html =
         render_component(&SheetComponents.sheet_breadcrumb/1,
@@ -215,7 +208,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
     end
 
     test "renders sheet avatars for each ancestor", %{project: project, workspace: workspace} do
-      ancestor = sheet_fixture(project, %{name: "Ancestor"}) |> Repo.preload(:avatar_asset)
+      ancestor = sheet_fixture(project, %{name: "Ancestor"}) |> Repo.preload(avatars: :asset)
 
       html =
         render_component(&SheetComponents.sheet_breadcrumb/1,
@@ -229,7 +222,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
     end
 
     test "has correct container styling", %{project: project, workspace: workspace} do
-      ancestor = sheet_fixture(project, %{name: "Test"}) |> Repo.preload(:avatar_asset)
+      ancestor = sheet_fixture(project, %{name: "Test"}) |> Repo.preload(avatars: :asset)
 
       html =
         render_component(&SheetComponents.sheet_breadcrumb/1,
@@ -242,7 +235,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
     end
 
     test "truncates long ancestor names", %{project: project, workspace: workspace} do
-      ancestor = sheet_fixture(project, %{name: "Very Long"}) |> Repo.preload(:avatar_asset)
+      ancestor = sheet_fixture(project, %{name: "Very Long"}) |> Repo.preload(avatars: :asset)
 
       html =
         render_component(&SheetComponents.sheet_breadcrumb/1,

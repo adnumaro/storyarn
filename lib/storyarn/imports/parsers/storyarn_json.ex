@@ -351,13 +351,14 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
             {map, records}
 
           shortcut ->
+            avatar_asset_id = remap_id(map, :asset, sheet_data["avatar_asset_id"])
+
             attrs = %{
               "name" => sheet_data["name"],
               "shortcut" => shortcut,
               "description" => sheet_data["description"],
               "color" => sheet_data["color"],
               "position" => sheet_data["position"] || 0,
-              "avatar_asset_id" => remap_id(map, :asset, sheet_data["avatar_asset_id"]),
               "banner_asset_id" => remap_id(map, :asset, sheet_data["banner_asset_id"]),
               "hidden_inherited_block_ids" => []
             }
@@ -368,6 +369,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
                 {:sheet, sheet_data["name"]}
               )
 
+            maybe_create_imported_avatar(sheet, avatar_asset_id)
             map = Map.put(map, {:sheet, sheet_data["id"]}, sheet.id)
 
             # Import blocks
@@ -1124,6 +1126,12 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     uuid = Ecto.UUID.generate()
     sanitized = String.replace(filename || "unknown", ~r/[^\w\-.]/, "_")
     "imports/#{uuid}/#{sanitized}"
+  end
+
+  defp maybe_create_imported_avatar(_sheet, nil), do: :ok
+
+  defp maybe_create_imported_avatar(sheet, avatar_asset_id) do
+    Sheets.add_avatar(sheet, avatar_asset_id, %{is_default: true})
   end
 
   defp link_parent_ids(records, id_map, entity_type) do

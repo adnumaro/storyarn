@@ -147,7 +147,7 @@ defmodule StoryarnWeb.VersionLive.Viewer do
 
                   <%!-- Header: avatar + name --%>
                   <div class="flex items-start gap-4 mb-8">
-                    <.sheet_avatar avatar_asset={@sheet_avatar} name={@sheet_name} size="xl" />
+                    <.sheet_avatar avatars={@sheet_avatar} name={@sheet_name} size="xl" />
                     <div class="flex-1">
                       <h1 class="text-3xl font-bold px-2 -mx-2 py-1">{@sheet_name}</h1>
                       <div
@@ -1143,7 +1143,7 @@ defmodule StoryarnWeb.VersionLive.Viewer do
            id: sheet.id,
            name: sheet.name,
            color: sheet.color,
-           avatar_url: extract_asset_url(sheet.avatar_asset),
+           avatar_url: extract_default_avatar_url(sheet),
            banner_url: extract_asset_url(sheet.banner_asset),
            gallery_images: []
          }}
@@ -1155,6 +1155,15 @@ defmodule StoryarnWeb.VersionLive.Viewer do
 
   defp extract_asset_url(%{url: url}) when is_binary(url), do: url
   defp extract_asset_url(_), do: nil
+
+  defp extract_default_avatar_url(%{avatars: avatars}) when is_list(avatars) do
+    case Enum.find(avatars, & &1.is_default) || List.first(avatars) do
+      %{asset: %{url: url}} when is_binary(url) -> url
+      _ -> nil
+    end
+  end
+
+  defp extract_default_avatar_url(_), do: nil
 
   # ========== Private: Sheet Helpers ==========
 
@@ -1181,8 +1190,8 @@ defmodule StoryarnWeb.VersionLive.Viewer do
                blob_hashes,
                project_id
              ) do
-          nil -> nil
-          url -> %{url: url}
+          nil -> []
+          url -> [%{is_default: true, asset: %{url: url}}]
         end,
       sheet_color: snapshot["color"]
     }

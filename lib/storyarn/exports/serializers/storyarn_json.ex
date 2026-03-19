@@ -92,7 +92,7 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
       "color" => sheet.color,
       "parent_id" => maybe_to_string(sheet.parent_id),
       "position" => sheet.position,
-      "avatar_asset_id" => maybe_to_string(sheet.avatar_asset_id),
+      "avatar_asset_id" => maybe_to_string(default_avatar_asset_id(sheet)),
       "banner_asset_id" => maybe_to_string(sheet.banner_asset_id),
       "hidden_inherited_block_ids" =>
         Enum.map(sheet.hidden_inherited_block_ids || [], &to_string/1),
@@ -510,6 +510,15 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
 
   defp maybe_to_string(nil), do: nil
   defp maybe_to_string(id), do: to_string(id)
+
+  defp default_avatar_asset_id(%{avatars: avatars}) when is_list(avatars) do
+    case Enum.find(avatars, & &1.is_default) || List.first(avatars) do
+      %{asset_id: id} -> id
+      _ -> nil
+    end
+  end
+
+  defp default_avatar_asset_id(_), do: nil
 
   defp maybe_to_iso8601(nil), do: nil
   defp maybe_to_iso8601(%DateTime{} = dt), do: DateTime.to_iso8601(dt)

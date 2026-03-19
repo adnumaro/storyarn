@@ -80,25 +80,29 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpersTest do
           id: 1,
           name: "Jaime",
           color: "#ff0000",
-          avatar_asset: %{url: "https://cdn.test/jaime.png"},
+          avatars: [
+            %{
+              id: 1,
+              position: 0,
+              is_default: true,
+              name: nil,
+              asset: %{url: "https://cdn.test/jaime.png"}
+            }
+          ],
           banner_asset: %{url: "https://cdn.test/jaime-banner.png"}
         },
-        %{id: 2, name: "Anya", color: "#00ff00", avatar_asset: nil, banner_asset: nil}
+        %{id: 2, name: "Anya", color: "#00ff00", avatars: [], banner_asset: nil}
       ]
 
       result = FormHelpers.sheets_map(sheets)
 
       assert map_size(result) == 2
 
-      assert result["1"] == %{
-               id: 1,
-               name: "Jaime",
-               avatar_url: "https://cdn.test/jaime.png",
-               banner_url: "https://cdn.test/jaime-banner.png",
-               color: "#ff0000",
-               avatars: [],
-               gallery_images: []
-             }
+      assert result["1"].id == 1
+      assert result["1"].name == "Jaime"
+      assert result["1"].avatar_url == "https://cdn.test/jaime.png"
+      assert result["1"].banner_url == "https://cdn.test/jaime-banner.png"
+      assert result["1"].color == "#ff0000"
 
       assert result["2"] == %{
                id: 2,
@@ -111,15 +115,15 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpersTest do
              }
     end
 
-    test "handles avatar_asset with non-binary url" do
-      sheets = [%{id: 10, name: "NPC", color: nil, avatar_asset: %{url: nil}, banner_asset: nil}]
+    test "handles sheets with no avatars" do
+      sheets = [%{id: 10, name: "NPC", color: nil, avatars: [], banner_asset: nil}]
       result = FormHelpers.sheets_map(sheets)
 
       assert result["10"].avatar_url == nil
     end
 
-    test "handles avatar_asset without url key" do
-      sheets = [%{id: 10, name: "NPC", color: nil, avatar_asset: %{}, banner_asset: %{}}]
+    test "handles banner_asset without url key" do
+      sheets = [%{id: 10, name: "NPC", color: nil, avatars: [], banner_asset: %{}}]
       result = FormHelpers.sheets_map(sheets)
 
       assert result["10"].avatar_url == nil

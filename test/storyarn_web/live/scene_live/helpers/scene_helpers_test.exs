@@ -287,21 +287,21 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpersTest do
   # ── sheet_avatar_url/1 ──────────────────────────────────────────────
 
   describe "sheet_avatar_url/1" do
-    test "extracts url from nested avatar_asset" do
-      sheet = %{avatar_asset: %{url: "https://cdn.test/avatar.png"}}
+    test "extracts url from default avatar" do
+      sheet = %{avatars: [%{is_default: true, asset: %{url: "https://cdn.test/avatar.png"}}]}
       assert SceneHelpers.sheet_avatar_url(sheet) == "https://cdn.test/avatar.png"
     end
 
-    test "returns nil for nil avatar_asset" do
-      assert SceneHelpers.sheet_avatar_url(%{avatar_asset: nil}) == nil
+    test "returns nil for empty avatars" do
+      assert SceneHelpers.sheet_avatar_url(%{avatars: []}) == nil
     end
 
-    test "returns nil for missing avatar_asset" do
+    test "returns nil for missing avatars key" do
       assert SceneHelpers.sheet_avatar_url(%{}) == nil
     end
 
-    test "returns nil for nil url" do
-      assert SceneHelpers.sheet_avatar_url(%{avatar_asset: %{url: nil}}) == nil
+    test "returns nil for nil url in avatar asset" do
+      assert SceneHelpers.sheet_avatar_url(%{avatars: [%{is_default: true, asset: %{url: nil}}]}) == nil
     end
   end
 

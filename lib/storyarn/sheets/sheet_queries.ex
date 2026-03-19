@@ -28,7 +28,7 @@ defmodule Storyarn.Sheets.SheetQueries do
       from(s in Sheet,
         where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
         order_by: [asc: s.position, asc: s.name],
-        preload: [:avatar_asset]
+        preload: [avatars: :asset]
       )
       |> Repo.all()
 
@@ -43,7 +43,7 @@ defmodule Storyarn.Sheets.SheetQueries do
     Sheet
     |> where(project_id: ^project_id, id: ^sheet_id)
     |> where([s], is_nil(s.deleted_at) and is_nil(s.draft_id))
-    |> preload([:blocks, :avatar_asset, :banner_asset])
+    |> preload([:blocks, :banner_asset, avatars: :asset])
     |> Repo.one()
   end
 
@@ -55,7 +55,7 @@ defmodule Storyarn.Sheets.SheetQueries do
     Sheet
     |> where(project_id: ^project_id, id: ^sheet_id)
     |> where([s], is_nil(s.deleted_at) and is_nil(s.draft_id))
-    |> preload([:blocks, :avatar_asset, :banner_asset])
+    |> preload([:blocks, :banner_asset, avatars: :asset])
     |> Repo.one!()
   end
 
@@ -68,7 +68,7 @@ defmodule Storyarn.Sheets.SheetQueries do
     Sheet
     |> where(project_id: ^project_id, id: ^sheet_id)
     |> where([s], is_nil(s.deleted_at) and is_nil(s.draft_id))
-    |> preload([:blocks, :avatar_asset, :banner_asset, :current_version, avatars: :asset])
+    |> preload([:blocks, :banner_asset, :current_version, avatars: :asset])
     |> Repo.one()
   end
 
@@ -81,7 +81,7 @@ defmodule Storyarn.Sheets.SheetQueries do
     Sheet
     |> where(project_id: ^project_id, id: ^sheet_id)
     |> where([s], is_nil(s.deleted_at) and is_nil(s.draft_id))
-    |> preload([:blocks, :avatar_asset, :banner_asset, :current_version, avatars: :asset])
+    |> preload([:blocks, :banner_asset, :current_version, avatars: :asset])
     |> Repo.one!()
   end
 
@@ -112,7 +112,7 @@ defmodule Storyarn.Sheets.SheetQueries do
           from(s in Sheet,
             where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
             order_by: [asc: s.position, asc: s.name],
-            preload: [:avatar_asset]
+            preload: [avatars: :asset]
           )
           |> Repo.all()
 
@@ -129,7 +129,7 @@ defmodule Storyarn.Sheets.SheetQueries do
     from(s in Sheet,
       where: s.parent_id == ^sheet_id and is_nil(s.deleted_at),
       order_by: [asc: s.position, asc: s.name],
-      preload: [:avatar_asset]
+      preload: [avatars: :asset]
     )
     |> Repo.all()
   end
@@ -144,7 +144,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   def list_sheets_by_ids(project_id, ids) do
     from(s in Sheet,
       where: s.project_id == ^project_id and s.id in ^ids and is_nil(s.deleted_at),
-      preload: [:avatar_asset, :banner_asset]
+      preload: [:banner_asset, avatars: :asset]
     )
     |> Repo.all()
   end
@@ -157,7 +157,7 @@ defmodule Storyarn.Sheets.SheetQueries do
     from(s in Sheet,
       where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
       order_by: [asc: s.position, asc: s.name],
-      preload: [:avatar_asset, :banner_asset, avatars: :asset]
+      preload: [:banner_asset, avatars: :asset]
     )
     |> Repo.all()
   end
@@ -172,7 +172,7 @@ defmodule Storyarn.Sheets.SheetQueries do
         s.project_id == ^project_id and s.id not in subquery(parent_ids_subquery(project_id)) and
           is_nil(s.deleted_at) and is_nil(s.draft_id),
       order_by: [asc: s.position, asc: s.name],
-      preload: [:avatar_asset]
+      preload: [avatars: :asset]
     )
     |> Repo.all()
   end
@@ -230,7 +230,7 @@ defmodule Storyarn.Sheets.SheetQueries do
       where:
         s.project_id == ^project_id and s.shortcut == ^shortcut and is_nil(s.deleted_at) and
           is_nil(s.draft_id),
-      preload: [:blocks, :avatar_asset]
+      preload: [:blocks, avatars: :asset]
     )
     |> Repo.one()
   end
@@ -666,7 +666,7 @@ defmodule Storyarn.Sheets.SheetQueries do
       else
         from(s in Sheet,
           where: s.id in ^source_sheet_ids and is_nil(s.deleted_at),
-          preload: [:avatar_asset]
+          preload: [avatars: :asset]
         )
         |> Repo.all()
         |> Map.new(fn s -> {s.id, s} end)
@@ -731,7 +731,7 @@ defmodule Storyarn.Sheets.SheetQueries do
     from(s in Sheet,
       where: s.project_id == ^project_id and not is_nil(s.deleted_at),
       order_by: [desc: s.deleted_at],
-      preload: [:avatar_asset]
+      preload: [avatars: :asset]
     )
     |> Repo.all()
   end
@@ -744,7 +744,7 @@ defmodule Storyarn.Sheets.SheetQueries do
     Sheet
     |> where(project_id: ^project_id, id: ^sheet_id)
     |> where([s], not is_nil(s.deleted_at))
-    |> preload([:avatar_asset])
+    |> preload([avatars: :asset])
     |> Repo.one()
   end
 
@@ -792,7 +792,7 @@ defmodule Storyarn.Sheets.SheetQueries do
       ancestors_map =
         from(s in Sheet,
           where: s.id in ^ancestor_ids and is_nil(s.deleted_at),
-          preload: [:avatar_asset]
+          preload: [avatars: :asset]
         )
         |> Repo.all()
         |> Map.new(fn s -> {s.id, s} end)
@@ -834,7 +834,7 @@ defmodule Storyarn.Sheets.SheetQueries do
     query =
       from(s in Sheet,
         where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
-        preload: [blocks: ^blocks_query],
+        preload: [blocks: ^blocks_query, avatars: :asset],
         order_by: [asc: s.position, asc: s.name]
       )
 
@@ -1166,10 +1166,14 @@ defmodule Storyarn.Sheets.SheetQueries do
   Used by the Assets context for usage tracking.
   """
   def list_sheets_using_asset_as_avatar(project_id, asset_id) do
+    alias Storyarn.Sheets.SheetAvatar
+
     from(s in Sheet,
+      join: sa in SheetAvatar,
+      on: sa.sheet_id == s.id and sa.asset_id == ^asset_id,
       where: s.project_id == ^project_id,
       where: is_nil(s.deleted_at),
-      where: s.avatar_asset_id == ^asset_id,
+      distinct: true,
       order_by: [asc: s.name]
     )
     |> Repo.all()

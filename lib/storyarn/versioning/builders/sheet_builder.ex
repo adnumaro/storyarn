@@ -24,9 +24,12 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     active_blocks = from(b in Block, where: is_nil(b.deleted_at), order_by: [asc: b.position])
 
     sheet =
-      Repo.preload(sheet, [blocks: {active_blocks, [:table_columns, :table_rows]}], force: true)
+      Repo.preload(sheet, [blocks: {active_blocks, [:table_columns, :table_rows]}, avatars: :asset],
+        force: true
+      )
 
-    asset_ids = [sheet.avatar_asset_id, sheet.banner_asset_id]
+    default_avatar_asset_id = default_avatar_asset_id(sheet)
+    asset_ids = [default_avatar_asset_id, sheet.banner_asset_id]
     {hash_map, metadata_map} = AssetHashResolver.resolve_hashes(asset_ids)
 
     %{
@@ -34,7 +37,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       "name" => sheet.name,
       "shortcut" => sheet.shortcut,
       "description" => sheet.description,
-      "avatar_asset_id" => sheet.avatar_asset_id,
+      "avatar_asset_id" => default_avatar_asset_id,
       "banner_asset_id" => sheet.banner_asset_id,
       "color" => sheet.color,
       "hidden_inherited_block_ids" => sheet.hidden_inherited_block_ids || [],
@@ -98,6 +101,14 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       now = MaterializationHelpers.now()
       preserve_external_refs? = MaterializationHelpers.preserve_external_refs?(opts)
 
+      avatar_asset_id =
+        resolve_sheet_asset(
+          snapshot["avatar_asset_id"],
+          snapshot,
+          project_id,
+          preserve_external_refs?
+        )
+
       sheet_attrs =
         %{
           project_id: project_id,
@@ -107,13 +118,6 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
           description: snapshot["description"],
           color: snapshot["color"],
           hidden_inherited_block_ids: snapshot["hidden_inherited_block_ids"] || [],
-          avatar_asset_id:
-            resolve_sheet_asset(
-              snapshot["avatar_asset_id"],
-              snapshot,
-              project_id,
-              preserve_external_refs?
-            ),
           banner_asset_id:
             resolve_sheet_asset(
               snapshot["banner_asset_id"],
@@ -128,6 +132,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
       with {:ok, sheet_id} <-
              MaterializationHelpers.insert_one_returning_id(Repo, Sheet, sheet_attrs),
+           :ok <- maybe_create_avatar(sheet_id, avatar_asset_id, now),
            {:ok, inserted_blocks, block_id_map} <-
              insert_sheet_blocks(sheet_id, snapshot["blocks"] || [], now),
            :ok <-
@@ -141,7 +146,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
         sheet =
           Sheet
           |> Repo.get!(sheet_id)
-          |> Repo.preload([:avatar_asset, :banner_asset, :blocks], force: true)
+          |> Repo.preload([:banner_asset, :blocks, avatars: :asset], force: true)
 
         id_maps = %{
           sheet: MaterializationHelpers.root_id_map(snapshot, sheet_id),
@@ -163,18 +168,19 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   def restore_snapshot(%Sheet{} = sheet, snapshot, opts \\ []) do
     baseline_block_ids = Keyword.get(opts, :baseline_block_ids)
 
+    avatar_asset_id =
+      AssetHashResolver.resolve_asset_fk(
+        snapshot["avatar_asset_id"],
+        snapshot,
+        sheet.project_id
+      )
+
     Multi.new()
     |> Multi.update(:sheet, fn _changes ->
       Sheet.update_changeset(sheet, %{
         name: snapshot["name"],
         shortcut: snapshot["shortcut"],
         color: snapshot["color"],
-        avatar_asset_id:
-          AssetHashResolver.resolve_asset_fk(
-            snapshot["avatar_asset_id"],
-            snapshot,
-            sheet.project_id
-          ),
         banner_asset_id:
           AssetHashResolver.resolve_asset_fk(
             snapshot["banner_asset_id"],
@@ -182,6 +188,25 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
             sheet.project_id
           )
       })
+    end)
+    |> Multi.delete_all(:delete_avatars, fn _changes ->
+      from(sa in Storyarn.Sheets.SheetAvatar, where: sa.sheet_id == ^sheet.id)
+    end)
+    |> Multi.run(:restore_avatar, fn _repo, _changes ->
+      if avatar_asset_id do
+        now = Storyarn.Shared.TimeHelpers.now()
+
+        Repo.insert(%Storyarn.Sheets.SheetAvatar{
+          sheet_id: sheet.id,
+          asset_id: avatar_asset_id,
+          is_default: true,
+          position: 0,
+          inserted_at: now,
+          updated_at: now
+        })
+      else
+        {:ok, nil}
+      end
     end)
     |> Multi.delete_all(:delete_blocks, fn _changes ->
       delete_blocks_query(sheet.id, baseline_block_ids)
@@ -192,7 +217,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     |> Repo.transaction()
     |> case do
       {:ok, %{sheet: updated_sheet}} ->
-        {:ok, Repo.preload(updated_sheet, [:avatar_asset, :banner_asset, :blocks], force: true)}
+        {:ok, Repo.preload(updated_sheet, [:banner_asset, :blocks, avatars: :asset], force: true)}
 
       {:error, _op, reason, _changes} ->
         {:error, reason}
@@ -430,6 +455,31 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   defp resolve_sheet_asset(asset_id, snapshot, project_id, true) do
     AssetHashResolver.resolve_asset_fk(asset_id, snapshot, project_id)
+  end
+
+  defp default_avatar_asset_id(%{avatars: avatars}) when is_list(avatars) do
+    case Enum.find(avatars, & &1.is_default) || List.first(avatars) do
+      %{asset_id: id} -> id
+      _ -> nil
+    end
+  end
+
+  defp default_avatar_asset_id(_), do: nil
+
+  defp maybe_create_avatar(_sheet_id, nil, _now), do: :ok
+
+  defp maybe_create_avatar(sheet_id, asset_id, now) do
+    case Repo.insert(%Storyarn.Sheets.SheetAvatar{
+           sheet_id: sheet_id,
+           asset_id: asset_id,
+           is_default: true,
+           position: 0,
+           inserted_at: now,
+           updated_at: now
+         }) do
+      {:ok, _} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   defp update_inherited_from_block(block_id, remapped) do

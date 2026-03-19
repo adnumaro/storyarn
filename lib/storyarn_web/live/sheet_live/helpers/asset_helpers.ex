@@ -11,34 +11,45 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
 
   @doc """
   Handles remove_avatar event.
+  Removes the default avatar from the sheet's avatars list.
   """
   def remove_avatar(socket) do
     sheet = socket.assigns.sheet
 
-    case Sheets.update_sheet(sheet, %{avatar_asset_id: nil}) do
-      {:ok, _updated_sheet} ->
-        updated_sheet = Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
-        sheets_tree = Sheets.list_sheets_tree(socket.assigns.project.id)
+    case Sheets.get_default_avatar(sheet.id) do
+      nil ->
+        {:noreply, socket}
 
-        {:noreply,
-         socket
-         |> assign(:sheet, updated_sheet)
-         |> assign(:sheets_tree, sheets_tree)
-         |> mark_saved()}
+      avatar ->
+        case Sheets.remove_avatar(avatar.id) do
+          {:ok, _} ->
+            updated_sheet = Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
+            sheets_tree = Sheets.list_sheets_tree(socket.assigns.project.id)
 
-      {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not remove avatar."))}
+            {:noreply,
+             socket
+             |> assign(:sheet, updated_sheet)
+             |> assign(:sheets_tree, sheets_tree)
+             |> mark_saved()}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not remove avatar."))}
+        end
     end
   end
 
   @doc """
   Handles set_avatar event.
+  Adds an asset as the default avatar for the sheet.
   """
   def set_avatar(socket, asset_id) do
     sheet = socket.assigns.sheet
 
-    case Sheets.update_sheet(sheet, %{avatar_asset_id: asset_id}) do
-      {:ok, _updated_sheet} ->
+    case Sheets.add_avatar(sheet, asset_id) do
+      {:ok, avatar} ->
+        # Set the newly added avatar as the default
+        Sheets.set_avatar_default(avatar)
+
         updated_sheet = Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
         sheets_tree = Sheets.list_sheets_tree(socket.assigns.project.id)
 
@@ -48,7 +59,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
          |> assign(:sheets_tree, sheets_tree)
          |> mark_saved()}
 
-      {:error, _changeset} ->
+      {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not set avatar."))}
     end
   end
@@ -117,7 +128,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
 
       with {:ok, asset} <-
              Assets.upload_binary_and_create_asset(binary_data, attrs, project, user),
-           {:ok, _updated_sheet} <- Sheets.update_sheet(sheet, %{avatar_asset_id: asset.id}) do
+           {:ok, avatar} <- Sheets.add_avatar(sheet, asset.id),
+           {:ok, _} <- Sheets.set_avatar_default(avatar) do
         updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
         sheets_tree = Sheets.list_sheets_tree(project.id)
 

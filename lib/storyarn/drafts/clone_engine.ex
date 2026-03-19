@@ -83,7 +83,7 @@ defmodule Storyarn.Drafts.CloneEngine do
   def get_draft_entity("sheet", draft_id) do
     from(s in Sheet,
       where: s.draft_id == ^draft_id,
-      preload: [:blocks, :avatar_asset, :banner_asset]
+      preload: [:blocks, :banner_asset, avatars: :asset]
     )
     |> Repo.one()
   end
@@ -105,7 +105,7 @@ defmodule Storyarn.Drafts.CloneEngine do
       preload: [
         :layers,
         :zones,
-        [pins: [:icon_asset, sheet: :avatar_asset]],
+        [pins: [:icon_asset, sheet: [avatars: :asset]]],
         :annotations,
         :background_asset,
         connections: [:from_pin, :to_pin]

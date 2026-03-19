@@ -96,13 +96,15 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
       %{user: user, project: project} = setup_project()
 
       asset = image_asset_fixture(project, user)
-      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Test", avatar_asset_id: asset.id})
+      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Test"})
+      {:ok, _avatar} = Sheets.add_avatar(sheet, asset.id, %{is_default: true})
       block_fixture(sheet, %{type: "text"})
 
       result = SheetQueries.get_sheet(project.id, sheet.id)
 
       assert result.id == sheet.id
-      assert result.avatar_asset != nil
+      assert [avatar] = result.avatars
+      assert avatar.asset_id == asset.id
       assert length(result.blocks) == 1
     end
 
@@ -1473,8 +1475,8 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
 
       asset = image_asset_fixture(project, user)
 
-      {:ok, sheet} =
-        Sheets.create_sheet(project, %{name: "With Avatar", avatar_asset_id: asset.id})
+      {:ok, sheet} = Sheets.create_sheet(project, %{name: "With Avatar"})
+      {:ok, _avatar} = Sheets.add_avatar(sheet, asset.id, %{is_default: true})
 
       _no_avatar = sheet_fixture(project, %{name: "No Avatar"})
 
@@ -1496,7 +1498,8 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
       %{user: user, project: project} = setup_project()
 
       asset = image_asset_fixture(project, user)
-      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Deleted", avatar_asset_id: asset.id})
+      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Deleted"})
+      {:ok, _avatar} = Sheets.add_avatar(sheet, asset.id, %{is_default: true})
       {:ok, _} = Sheets.trash_sheet(sheet)
 
       assert SheetQueries.list_sheets_using_asset_as_avatar(project.id, asset.id) == []

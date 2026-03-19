@@ -61,6 +61,12 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTree do
     ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
   end
 
-  defp get_avatar_url(%{avatar_asset: %{url: url}}) when is_binary(url), do: url
+  defp get_avatar_url(%{avatars: avatars}) when is_list(avatars) do
+    case Enum.find(avatars, & &1.is_default) || List.first(avatars) do
+      %{asset: %{url: url}} when is_binary(url) -> url
+      _ -> nil
+    end
+  end
+
   defp get_avatar_url(_sheet), do: nil
 end

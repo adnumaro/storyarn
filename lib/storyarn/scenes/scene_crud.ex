@@ -174,7 +174,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   @scene_preloads [
     :layers,
     :zones,
-    [pins: [:icon_asset, sheet: :avatar_asset]],
+    [pins: [:icon_asset, sheet: [avatars: :asset]]],
     :annotations,
     :background_asset,
     connections: [:from_pin, :to_pin]

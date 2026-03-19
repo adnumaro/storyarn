@@ -52,7 +52,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
         target_type: "flow",
         target_id: 5,
         sheet_id: 3,
-        sheet: %{avatar_asset: %{url: "https://cdn.test/avatar.png"}},
+        sheet: %{avatars: [%{is_default: true, asset: %{url: "https://cdn.test/avatar.png"}}]},
         icon_asset: nil,
         position: 0,
         locked: false,
@@ -320,7 +320,12 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
 
   describe "pin_avatar_url/1" do
     test "extracts url from nested sheet avatar" do
-      pin = %{sheet: %{avatar_asset: %{url: "https://cdn.test/avatar.png"}}}
+      pin = %{
+        sheet: %{
+          avatars: [%{is_default: true, asset: %{url: "https://cdn.test/avatar.png"}}]
+        }
+      }
+
       assert Serializer.pin_avatar_url(pin) == "https://cdn.test/avatar.png"
     end
 
@@ -328,12 +333,14 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
       assert Serializer.pin_avatar_url(%{sheet: nil}) == nil
     end
 
-    test "returns nil for nil avatar_asset" do
-      assert Serializer.pin_avatar_url(%{sheet: %{avatar_asset: nil}}) == nil
+    test "returns nil for empty avatars" do
+      assert Serializer.pin_avatar_url(%{sheet: %{avatars: []}}) == nil
     end
 
-    test "returns nil for non-binary url" do
-      assert Serializer.pin_avatar_url(%{sheet: %{avatar_asset: %{url: nil}}}) == nil
+    test "returns nil for non-binary url in avatar" do
+      assert Serializer.pin_avatar_url(%{
+               sheet: %{avatars: [%{is_default: true, asset: %{url: nil}}]}
+             }) == nil
     end
   end
 

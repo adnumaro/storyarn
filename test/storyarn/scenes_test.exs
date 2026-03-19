@@ -858,12 +858,13 @@ defmodule Storyarn.ScenesTest do
       assert pin.sheet_id == sheet.id
     end
 
-    test "pin with sheet_id preloads sheet and avatar_asset via get_scene" do
+    test "pin with sheet_id preloads sheet and avatars via get_scene" do
       user = user_fixture()
       project = project_fixture(user)
       scene = scene_fixture(project)
       avatar = image_asset_fixture(project, user, %{url: "https://example.com/avatar.png"})
-      sheet = sheet_fixture(project, %{avatar_asset_id: avatar.id})
+      sheet = sheet_fixture(project)
+      {:ok, _} = Storyarn.Sheets.add_avatar(sheet, avatar.id, %{is_default: true})
 
       {:ok, _pin} =
         Scenes.create_pin(scene.id, %{
@@ -876,7 +877,8 @@ defmodule Storyarn.ScenesTest do
       [loaded_pin] = loaded_scene.pins
       assert loaded_pin.sheet_id == sheet.id
       assert loaded_pin.sheet.id == sheet.id
-      assert loaded_pin.sheet.avatar_asset.url == "https://example.com/avatar.png"
+      [sheet_avatar] = loaded_pin.sheet.avatars
+      assert sheet_avatar.asset.url == "https://example.com/avatar.png"
     end
 
     test "create_pin/2 with icon_asset_id stores the reference" do

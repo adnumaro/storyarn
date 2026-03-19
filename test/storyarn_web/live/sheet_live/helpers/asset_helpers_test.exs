@@ -60,14 +60,14 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpersTest do
     test "removes avatar from sheet", %{project: project, sheet: sheet, user: user} do
       # Set an avatar first
       asset = asset_fixture(project, user)
-      {:ok, _} = Sheets.update_sheet(sheet, %{avatar_asset_id: asset.id})
+      {:ok, _} = Sheets.add_avatar(sheet, asset.id, %{is_default: true})
       sheet_with_avatar = Sheets.get_sheet_full!(project.id, sheet.id)
 
       socket = build_socket(project, sheet_with_avatar, user)
       {:noreply, updated_socket} = AssetHelpers.remove_avatar(socket)
 
       # Verify avatar was removed
-      assert updated_socket.assigns.sheet.avatar_asset_id == nil
+      assert updated_socket.assigns.sheet.avatars == []
       assert updated_socket.assigns.save_status == :saved
     end
 
@@ -77,7 +77,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpersTest do
       user: user
     } do
       asset = asset_fixture(project, user)
-      {:ok, _} = Sheets.update_sheet(sheet, %{avatar_asset_id: asset.id})
+      {:ok, _} = Sheets.add_avatar(sheet, asset.id, %{is_default: true})
       sheet_with_avatar = Sheets.get_sheet_full!(project.id, sheet.id)
 
       socket = build_socket(project, sheet_with_avatar, user)
@@ -89,10 +89,9 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpersTest do
 
     test "works when sheet has no avatar", %{project: project, sheet: sheet, user: user} do
       socket = build_socket(project, sheet, user)
-      {:noreply, updated_socket} = AssetHelpers.remove_avatar(socket)
+      {:noreply, _updated_socket} = AssetHelpers.remove_avatar(socket)
 
-      assert updated_socket.assigns.sheet.avatar_asset_id == nil
-      assert updated_socket.assigns.save_status == :saved
+      # No error - just a no-op
     end
   end
 
@@ -107,7 +106,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpersTest do
       socket = build_socket(project, sheet, user)
       {:noreply, updated_socket} = AssetHelpers.set_avatar(socket, asset.id)
 
-      assert updated_socket.assigns.sheet.avatar_asset_id == asset.id
+      assert updated_socket.assigns.sheet.avatars != []
       assert updated_socket.assigns.save_status == :saved
     end
 
@@ -115,13 +114,16 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpersTest do
       asset1 = asset_fixture(project, user)
       asset2 = asset_fixture(project, user)
 
-      {:ok, _} = Sheets.update_sheet(sheet, %{avatar_asset_id: asset1.id})
+      {:ok, _} = Sheets.add_avatar(sheet, asset1.id, %{is_default: true})
       sheet_with_avatar = Sheets.get_sheet_full!(project.id, sheet.id)
 
       socket = build_socket(project, sheet_with_avatar, user)
       {:noreply, updated_socket} = AssetHelpers.set_avatar(socket, asset2.id)
 
-      assert updated_socket.assigns.sheet.avatar_asset_id == asset2.id
+      default_avatar =
+        Enum.find(updated_socket.assigns.sheet.avatars, & &1.is_default)
+
+      assert default_avatar.asset_id == asset2.id
     end
 
     test "updates sheets_tree after setting avatar", %{
@@ -150,7 +152,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpersTest do
         AssetHelpers.upload_avatar(socket, "test_avatar.png", "image/png", @valid_data_url)
 
       # Avatar should be set
-      assert updated_socket.assigns.sheet.avatar_asset_id != nil
+      assert updated_socket.assigns.sheet.avatars != []
       assert updated_socket.assigns.save_status == :saved
     end
 

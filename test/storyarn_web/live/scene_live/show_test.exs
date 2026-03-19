@@ -2143,7 +2143,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     test "pin serialization includes avatar_url when sheet has avatar", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       avatar = image_asset_fixture(project, user, %{url: "https://example.com/avatar.png"})
-      sheet = sheet_fixture(project, %{avatar_asset_id: avatar.id})
+      sheet = sheet_fixture(project)
+      {:ok, _} = Storyarn.Sheets.add_avatar(sheet, avatar.id, %{is_default: true})
       scene = scene_fixture(project)
 
       {:ok, _pin} =

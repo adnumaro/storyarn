@@ -29,7 +29,7 @@ defmodule StoryarnWeb.SheetLive.Components.ChildrenSheetsSection do
           navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{child.id}"}
           class="flex items-center gap-2 p-2 rounded hover:bg-base-200"
         >
-          <.sheet_avatar avatar_asset={child.avatar_asset} name={child.name} size="md" />
+          <.sheet_avatar avatars={child.avatars} name={child.name} size="md" />
           <span>{child.name}</span>
         </.link>
       </div>

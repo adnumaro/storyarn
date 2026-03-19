@@ -248,7 +248,7 @@ defmodule Storyarn.Assets do
 
   Checks:
   - Flow nodes with `data->>'audio_asset_id'` matching the asset (excludes soft-deleted)
-  - Sheets with `avatar_asset_id` matching the asset (excludes soft-deleted)
+  - Sheets with avatars referencing the asset via `sheet_avatars` (excludes soft-deleted)
   - Sheets with `banner_asset_id` matching the asset (excludes soft-deleted)
 
   Returns:

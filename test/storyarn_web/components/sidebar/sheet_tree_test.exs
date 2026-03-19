@@ -9,7 +9,7 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTreeTest do
     %{
       id: id,
       name: Keyword.get(opts, :name, "Sheet #{id}"),
-      avatar_asset: Keyword.get(opts, :avatar_asset, nil),
+      avatars: Keyword.get(opts, :avatars, []),
       children: Keyword.get(opts, :children, [])
     }
   end
@@ -45,14 +45,18 @@ defmodule StoryarnWeb.Components.Sidebar.SheetTreeTest do
   # ── SheetTree-unique: avatar rendering ───────────────────────────
 
   describe "avatar rendering" do
-    test "renders avatar URL when sheet has avatar_asset" do
-      sheet = make_sheet(1, avatar_asset: %{url: "https://example.com/avatar.png"})
+    test "renders avatar URL when sheet has avatars" do
+      sheet =
+        make_sheet(1,
+          avatars: [%{is_default: true, asset: %{url: "https://example.com/avatar.png"}}]
+        )
+
       html = render_section([sheet])
       assert html =~ "https://example.com/avatar.png"
     end
 
-    test "does not render avatar when avatar_asset is nil" do
-      sheet = make_sheet(1, avatar_asset: nil)
+    test "does not render avatar when avatars is empty" do
+      sheet = make_sheet(1, avatars: [])
       html = render_section([sheet])
       refute html =~ "avatar"
     end

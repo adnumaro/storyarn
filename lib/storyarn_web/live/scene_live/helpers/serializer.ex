@@ -115,7 +115,13 @@ defmodule StoryarnWeb.SceneLive.Helpers.Serializer do
     end)
   end
 
-  def pin_avatar_url(%{sheet: %{avatar_asset: %{url: url}}}) when is_binary(url), do: url
+  def pin_avatar_url(%{sheet: %{avatars: avatars}}) when is_list(avatars) do
+    case Enum.find(avatars, & &1.is_default) || List.first(avatars) do
+      %{asset: %{url: url}} when is_binary(url) -> url
+      _ -> nil
+    end
+  end
+
   def pin_avatar_url(_), do: nil
 
   def pin_icon_asset_url(%{icon_asset: %{url: url}}) when is_binary(url), do: url

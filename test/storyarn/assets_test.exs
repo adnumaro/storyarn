@@ -250,7 +250,8 @@ defmodule Storyarn.AssetsTest do
       import Storyarn.SheetsFixtures
 
       image = image_asset_fixture(project, user)
-      sheet = sheet_fixture(project, %{name: "Hero", avatar_asset_id: image.id})
+      sheet = sheet_fixture(project, %{name: "Hero"})
+      {:ok, _} = Storyarn.Sheets.add_avatar(sheet, image.id, %{is_default: true})
 
       usages = Assets.get_asset_usages(project.id, image.id)
 
@@ -305,7 +306,8 @@ defmodule Storyarn.AssetsTest do
       import Storyarn.SheetsFixtures
 
       image = image_asset_fixture(project, user)
-      sheet = sheet_fixture(project, %{name: "Hero", avatar_asset_id: image.id})
+      sheet = sheet_fixture(project, %{name: "Hero"})
+      {:ok, _} = Storyarn.Sheets.add_avatar(sheet, image.id, %{is_default: true})
 
       # Soft-delete the sheet via raw changeset
       Ecto.Changeset.change(sheet, deleted_at: DateTime.utc_now() |> DateTime.truncate(:second))
@@ -781,7 +783,8 @@ defmodule Storyarn.AssetsTest do
       })
 
       # Add sheet avatar usage
-      _sheet = sheet_fixture(project, %{name: "Hero", avatar_asset_id: image.id})
+      sheet = sheet_fixture(project, %{name: "Hero"})
+      {:ok, _} = Storyarn.Sheets.add_avatar(sheet, image.id, %{is_default: true})
 
       assert Assets.count_asset_usages(project.id, image.id) == 2
     end
@@ -802,7 +805,8 @@ defmodule Storyarn.AssetsTest do
       })
 
       # Sheet avatar usage
-      _avatar_sheet = sheet_fixture(project, %{name: "Hero", avatar_asset_id: image.id})
+      avatar_sheet = sheet_fixture(project, %{name: "Hero"})
+      {:ok, _} = Storyarn.Sheets.add_avatar(avatar_sheet, image.id, %{is_default: true})
 
       # Sheet banner usage
       _banner_sheet = sheet_fixture(project, %{name: "Location", banner_asset_id: image.id})
@@ -938,7 +942,8 @@ defmodule Storyarn.AssetsTest do
       project = project_fixture(user)
       image = image_asset_fixture(project, user)
 
-      _avatar_sheet = sheet_fixture(project, %{name: "Character", avatar_asset_id: image.id})
+      avatar_sheet = sheet_fixture(project, %{name: "Character"})
+      {:ok, _} = Storyarn.Sheets.add_avatar(avatar_sheet, image.id, %{is_default: true})
       _banner_sheet = sheet_fixture(project, %{name: "Location", banner_asset_id: image.id})
 
       usages = Assets.get_asset_usages(project.id, image.id)

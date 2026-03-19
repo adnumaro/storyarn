@@ -120,7 +120,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
            "name" => sheet.name,
            "shortcut" => sheet.shortcut,
            "color" => sheet.color,
-           "avatar_url" => extract_asset_url(sheet.avatar_asset),
+           "avatar_url" => extract_default_avatar_url(sheet),
            "banner_url" => extract_asset_url(sheet.banner_asset)
          }}
       end)
@@ -129,6 +129,15 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   defp extract_asset_url(%{url: url}) when is_binary(url), do: url
   defp extract_asset_url(_), do: nil
+
+  defp extract_default_avatar_url(%{avatars: avatars}) when is_list(avatars) do
+    case Enum.find(avatars, & &1.is_default) || List.first(avatars) do
+      %{asset: %{url: url}} when is_binary(url) -> url
+      _ -> nil
+    end
+  end
+
+  defp extract_default_avatar_url(sheet), do: extract_asset_url(Map.get(sheet, :avatar_asset))
 
   # ========== Restore Snapshot ==========
 

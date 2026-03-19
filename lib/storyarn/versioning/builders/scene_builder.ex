@@ -312,7 +312,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
                  :connections,
                  :annotations,
                  :zones,
-                 [pins: [:icon_asset, sheet: :avatar_asset]],
+                 [pins: [:icon_asset, sheet: [avatars: :asset]]],
                  {:layers, [:zones, :pins]}
                ],
                force: true
@@ -405,7 +405,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
              :connections,
              :annotations,
              :zones,
-             [pins: [:icon_asset, sheet: :avatar_asset]],
+             [pins: [:icon_asset, sheet: [avatars: :asset]]],
              {:layers, [:zones, :pins]}
            ],
            force: true

@@ -12,66 +12,44 @@ defmodule Storyarn.SheetsTest do
   import Storyarn.ProjectsFixtures
 
   describe "sheet avatar" do
-    test "create_sheet/2 with avatar_asset_id sets the avatar" do
+    test "add_avatar/3 creates a sheet avatar record" do
       user = user_fixture()
       project = project_fixture(user)
       asset = image_asset_fixture(project, user)
-
-      {:ok, sheet} =
-        Sheets.create_sheet(project, %{name: "Test Sheet", avatar_asset_id: asset.id})
-
-      assert sheet.avatar_asset_id == asset.id
-    end
-
-    test "update_sheet/2 can set avatar_asset_id" do
-      user = user_fixture()
-      project = project_fixture(user)
       sheet = sheet_fixture(project)
-      asset = image_asset_fixture(project, user)
 
-      {:ok, updated} = Sheets.update_sheet(sheet, %{avatar_asset_id: asset.id})
+      {:ok, avatar} = Sheets.add_avatar(sheet, asset.id, %{is_default: true})
 
-      assert updated.avatar_asset_id == asset.id
+      assert avatar.asset_id == asset.id
+      assert avatar.is_default == true
     end
 
-    test "update_sheet/2 can remove avatar_asset_id" do
+    test "get_sheet/2 preloads avatars" do
       user = user_fixture()
       project = project_fixture(user)
       asset = image_asset_fixture(project, user)
-
-      {:ok, sheet} =
-        Sheets.create_sheet(project, %{name: "Test Sheet", avatar_asset_id: asset.id})
-
-      {:ok, updated} = Sheets.update_sheet(sheet, %{avatar_asset_id: nil})
-
-      assert updated.avatar_asset_id == nil
-    end
-
-    test "get_sheet/2 preloads avatar_asset" do
-      user = user_fixture()
-      project = project_fixture(user)
-      asset = image_asset_fixture(project, user)
-
-      {:ok, sheet} =
-        Sheets.create_sheet(project, %{name: "Test Sheet", avatar_asset_id: asset.id})
+      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Test Sheet"})
+      {:ok, _avatar} = Sheets.add_avatar(sheet, asset.id, %{is_default: true})
 
       loaded_sheet = Sheets.get_sheet(project.id, sheet.id)
 
-      assert loaded_sheet.avatar_asset.id == asset.id
-      assert loaded_sheet.avatar_asset.url == asset.url
+      assert [avatar] = loaded_sheet.avatars
+      assert avatar.asset.id == asset.id
+      assert avatar.asset.url == asset.url
     end
 
-    test "list_sheets_tree/1 preloads avatar_asset for all sheets" do
+    test "list_sheets_tree/1 preloads avatars for all sheets" do
       user = user_fixture()
       project = project_fixture(user)
       asset = image_asset_fixture(project, user)
 
-      {:ok, _sheet} =
-        Sheets.create_sheet(project, %{name: "Test Sheet", avatar_asset_id: asset.id})
+      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Test Sheet"})
+      {:ok, _avatar} = Sheets.add_avatar(sheet, asset.id, %{is_default: true})
 
-      [sheet] = Sheets.list_sheets_tree(project.id)
+      [tree_sheet] = Sheets.list_sheets_tree(project.id)
 
-      assert sheet.avatar_asset.id == asset.id
+      assert [avatar] = tree_sheet.avatars
+      assert avatar.asset.id == asset.id
     end
   end
 
