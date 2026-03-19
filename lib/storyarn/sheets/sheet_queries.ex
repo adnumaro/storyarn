@@ -68,7 +68,7 @@ defmodule Storyarn.Sheets.SheetQueries do
     Sheet
     |> where(project_id: ^project_id, id: ^sheet_id)
     |> where([s], is_nil(s.deleted_at) and is_nil(s.draft_id))
-    |> preload([:blocks, :avatar_asset, :banner_asset, :current_version])
+    |> preload([:blocks, :avatar_asset, :banner_asset, :current_version, avatars: :asset])
     |> Repo.one()
   end
 
@@ -81,7 +81,7 @@ defmodule Storyarn.Sheets.SheetQueries do
     Sheet
     |> where(project_id: ^project_id, id: ^sheet_id)
     |> where([s], is_nil(s.deleted_at) and is_nil(s.draft_id))
-    |> preload([:blocks, :avatar_asset, :banner_asset, :current_version])
+    |> preload([:blocks, :avatar_asset, :banner_asset, :current_version, avatars: :asset])
     |> Repo.one!()
   end
 
@@ -157,7 +157,7 @@ defmodule Storyarn.Sheets.SheetQueries do
     from(s in Sheet,
       where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
       order_by: [asc: s.position, asc: s.name],
-      preload: [:avatar_asset, :banner_asset]
+      preload: [:avatar_asset, :banner_asset, avatars: :asset]
     )
     |> Repo.all()
   end

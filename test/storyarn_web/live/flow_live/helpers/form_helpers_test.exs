@@ -96,6 +96,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpersTest do
                avatar_url: "https://cdn.test/jaime.png",
                banner_url: "https://cdn.test/jaime-banner.png",
                color: "#ff0000",
+               avatars: [],
                gallery_images: []
              }
 
@@ -105,6 +106,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpersTest do
                avatar_url: nil,
                banner_url: nil,
                color: "#00ff00",
+               avatars: [],
                gallery_images: []
              }
     end

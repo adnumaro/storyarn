@@ -21,7 +21,9 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
 
   def build(%{type: "dialogue"} = node, state, sheets_map, _project_id) do
     data = node.data || %{}
-    speaker = resolve_speaker(data["speaker_sheet_id"], sheets_map)
+    sheet_info = resolve_sheet_info(data["speaker_sheet_id"], sheets_map)
+    speaker = build_speaker(sheet_info)
+    avatar_url = resolve_avatar_url(data["avatar_id"], sheet_info, speaker)
 
     text =
       (data["text"] || "")
@@ -55,6 +57,7 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
       speaker_name: speaker.name,
       speaker_initials: speaker.initials,
       speaker_color: speaker.color,
+      speaker_avatar_url: avatar_url,
       text: text,
       stage_directions: stage_directions,
       menu_text: menu_text,
@@ -88,7 +91,7 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
 
   def build(%{type: "slug_line"} = node, state, sheets_map, _project_id) do
     data = node.data || %{}
-    location = resolve_speaker(data["location_sheet_id"], sheets_map)
+    location = build_speaker(resolve_sheet_info(data["location_sheet_id"], sheets_map))
 
     description =
       interpolate_variables(
@@ -115,16 +118,35 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   # Speaker resolution
   # ===========================================================================
 
-  defp resolve_speaker(sheet_id, sheets_map) when is_integer(sheet_id) or is_binary(sheet_id) do
+  defp resolve_sheet_info(sheet_id, sheets_map)
+       when is_integer(sheet_id) or is_binary(sheet_id) do
     id = parse_sheet_id(sheet_id)
+    Map.get(sheets_map, to_string(id))
+  end
 
-    case Map.get(sheets_map, to_string(id)) do
-      nil -> %{name: nil, initials: "?", color: nil}
-      info -> %{name: info.name, initials: speaker_initials(info.name), color: info[:color]}
+  defp resolve_sheet_info(_, _), do: nil
+
+  defp build_speaker(nil), do: %{name: nil, initials: "?", color: nil, avatar_url: nil}
+
+  defp build_speaker(info) do
+    %{
+      name: info.name,
+      initials: speaker_initials(info.name),
+      color: info[:color],
+      avatar_url: info[:avatar_url]
+    }
+  end
+
+  defp resolve_avatar_url(avatar_id, sheet_info, speaker) when not is_nil(avatar_id) do
+    avatars = (sheet_info && sheet_info[:avatars]) || []
+
+    case Enum.find(avatars, &(&1.id == avatar_id)) do
+      %{url: url} -> url
+      _ -> speaker.avatar_url
     end
   end
 
-  defp resolve_speaker(_, _sheets_map), do: %{name: nil, initials: "?", color: nil}
+  defp resolve_avatar_url(_, _, speaker), do: speaker.avatar_url
 
   defp parse_sheet_id(id) when is_integer(id), do: id
 

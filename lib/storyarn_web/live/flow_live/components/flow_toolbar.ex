@@ -57,20 +57,13 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
     has_audio = assigns.node.data["audio_asset_id"] not in [nil, ""]
     speaker_id = assigns.node.data["speaker_sheet_id"]
 
-    gallery_images =
-      if speaker_id do
-        id = if is_binary(speaker_id), do: String.to_integer(speaker_id), else: speaker_id
-        gallery_image_entries(assigns.gallery_by_sheet, id)
-      else
-        []
-      end
-
-    has_override = assigns.node.data["image_override_url"] not in [nil, ""]
+    speaker_avatars = sheet_avatar_entries(assigns.all_sheets, speaker_id)
+    has_override = assigns.node.data["avatar_id"] not in [nil, "", 0]
 
     assigns =
       assigns
       |> assign(:has_audio, has_audio)
-      |> assign(:gallery_images, gallery_images)
+      |> assign(:speaker_avatars, speaker_avatars)
       |> assign(:has_override, has_override)
 
     ~H"""
@@ -98,10 +91,10 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       {@form[:technical_id].value}
     </span>
     <.icon :if={@has_audio} name="volume-2" class="size-3.5 text-info" />
-    <.image_override_picker
-      :if={@can_edit && @gallery_images != []}
+    <.avatar_picker
+      :if={@can_edit && @speaker_avatars != []}
       id={"dialogue-img-#{@node.id}"}
-      gallery_images={@gallery_images}
+      speaker_avatars={@speaker_avatars}
       has_override={@has_override}
     />
     <button
@@ -458,17 +451,8 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
         if to_string(s.id) == to_string(location_id), do: s.name
       end)
 
-    gallery_images =
-      if location_id && location_id != "" do
-        id =
-          if is_binary(location_id), do: String.to_integer(location_id), else: location_id
-
-        gallery_image_entries(assigns.gallery_by_sheet, id)
-      else
-        []
-      end
-
-    has_override = assigns.node.data["image_override_url"] not in [nil, ""]
+    speaker_avatars = sheet_avatar_entries(assigns.all_sheets, location_id)
+    has_override = assigns.node.data["avatar_id"] not in [nil, "", 0]
 
     assigns =
       assigns
@@ -476,7 +460,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       |> assign(:selected_location, selected_location)
       |> assign(:int_ext, int_ext)
       |> assign(:time, time)
-      |> assign(:gallery_images, gallery_images)
+      |> assign(:speaker_avatars, speaker_avatars)
       |> assign(:has_override, has_override)
 
     ~H"""
@@ -522,10 +506,10 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
       event="update_node_data"
       event_params_fn={fn value -> %{node: %{time_of_day: value}} end}
     />
-    <.image_override_picker
-      :if={@can_edit && @gallery_images != []}
+    <.avatar_picker
+      :if={@can_edit && @speaker_avatars != []}
       id={"slug-img-#{@node.id}"}
-      gallery_images={@gallery_images}
+      speaker_avatars={@speaker_avatars}
       has_override={@has_override}
     />
     """
@@ -701,10 +685,10 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
   end
 
   # ════════════════════════════════════════════════════════════════════════
-  # Image Override Picker
+  # Avatar Picker
   # ════════════════════════════════════════════════════════════════════════
 
-  defp image_override_picker(assigns) do
+  defp avatar_picker(assigns) do
     ~H"""
     <div
       phx-hook="ToolbarPopover"
@@ -716,26 +700,26 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
         data-role="trigger"
         type="button"
         class={"toolbar-btn text-xs #{if @has_override, do: "text-primary"}"}
-        title={dgettext("flows", "Override image")}
+        title={dgettext("flows", "Select avatar")}
       >
         <.icon name="image" class="size-3.5" />
       </button>
       <template data-role="popover-template">
         <div class="p-2">
           <div class="text-xs font-medium text-base-content/60 mb-2">
-            {dgettext("flows", "Override image")}
+            {dgettext("flows", "Select avatar")}
           </div>
           <div class="grid grid-cols-3 gap-1.5">
             <button
-              :for={img <- @gallery_images}
+              :for={avatar <- @speaker_avatars}
               type="button"
               data-event="update_node_field"
-              data-params={Jason.encode!(%{field: "image_override_url", value: img.url})}
+              data-params={Jason.encode!(%{field: "avatar_id", value: avatar.id})}
               class="aspect-square rounded-md overflow-hidden border border-base-content/10 hover:border-primary transition-colors"
             >
               <img
-                src={img.url}
-                alt={img.label || ""}
+                src={avatar.url}
+                alt={avatar.name || ""}
                 class="w-full h-full object-cover"
               />
             </button>
@@ -744,11 +728,11 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
             :if={@has_override}
             type="button"
             data-event="update_node_field"
-            data-params={Jason.encode!(%{field: "image_override_url", value: ""})}
+            data-params={Jason.encode!(%{field: "avatar_id", value: nil})}
             class="flex items-center gap-1.5 w-full mt-2 px-2 py-1.5 rounded text-xs text-base-content/60 hover:bg-base-content/10"
           >
             <.icon name="x" class="size-3" />
-            {dgettext("flows", "Clear override")}
+            {dgettext("flows", "Use default")}
           </button>
         </div>
       </template>
@@ -756,21 +740,27 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
     """
   end
 
-  defp gallery_image_entries(gallery_by_sheet, sheet_id) do
-    case Map.get(gallery_by_sheet, sheet_id) do
-      nil ->
-        []
+  defp sheet_avatar_entries(_all_sheets, sheet_id) when sheet_id in [nil, ""], do: []
 
-      images ->
-        Enum.flat_map(images, fn gi ->
-          case gi.asset do
+  defp sheet_avatar_entries(all_sheets, sheet_id) do
+    id = if is_binary(sheet_id), do: String.to_integer(sheet_id), else: sheet_id
+
+    case Enum.find(all_sheets, &(&1.id == id)) do
+      %{avatars: avatars} when is_list(avatars) ->
+        avatars
+        |> Enum.sort_by(& &1.position)
+        |> Enum.flat_map(fn a ->
+          case a.asset do
             %{url: url} when is_binary(url) ->
-              [%{id: gi.id, url: url, label: gi.label || gi.asset.filename}]
+              [%{id: a.id, url: url, name: a.name}]
 
             _ ->
               []
           end
         end)
+
+      _ ->
+        []
     end
   end
 

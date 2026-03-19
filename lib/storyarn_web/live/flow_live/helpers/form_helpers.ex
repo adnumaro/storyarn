@@ -32,15 +32,35 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
   end
 
   defp build_sheet_entry(sheet, gallery_by_sheet) do
+    avatars = build_avatars(sheet)
+    default_avatar = Enum.find(avatars, & &1.is_default)
+
     %{
       id: sheet.id,
       name: sheet.name,
-      avatar_url: extract_asset_url(sheet.avatar_asset),
+      avatar_url: (default_avatar && default_avatar.url) || extract_asset_url(sheet.avatar_asset),
       banner_url: extract_asset_url(sheet.banner_asset),
       color: sheet.color,
+      avatars: avatars,
       gallery_images: build_gallery_images(Map.get(gallery_by_sheet, sheet.id))
     }
   end
+
+  defp build_avatars(%{avatars: avatars}) when is_list(avatars) do
+    avatars
+    |> Enum.sort_by(& &1.position)
+    |> Enum.map(fn a ->
+      %{
+        id: a.id,
+        url: a.asset && a.asset.url,
+        name: a.name,
+        is_default: a.is_default
+      }
+    end)
+    |> Enum.filter(& &1.url)
+  end
+
+  defp build_avatars(_), do: []
 
   defp extract_asset_url(%{url: url}) when is_binary(url), do: url
   defp extract_asset_url(_), do: nil

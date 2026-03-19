@@ -68,6 +68,7 @@ defmodule Storyarn.Sheets.Sheet do
     belongs_to :current_version, EntityVersion
     has_many :children, __MODULE__, foreign_key: :parent_id
     has_many :blocks, Block
+    has_many :avatars, Storyarn.Sheets.SheetAvatar
 
     timestamps(type: :utc_datetime)
   end

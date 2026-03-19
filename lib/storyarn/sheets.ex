@@ -12,11 +12,13 @@ defmodule Storyarn.Sheets do
   """
 
   alias Storyarn.Sheets.{
+    AvatarCrud,
     Block,
     BlockCrud,
     GalleryCrud,
     PropertyInheritance,
     Sheet,
+    SheetAvatar,
     SheetCrud,
     SheetQueries,
     SheetStats,
@@ -525,15 +527,45 @@ defmodule Storyarn.Sheets do
   defdelegate batch_load_gallery_data_by_sheet(project_id), to: GalleryCrud
   defdelegate get_first_gallery_image(sheet_id), to: GalleryCrud
 
+  # =============================================================================
+  # Sheet Avatars
+  # =============================================================================
+
+  @type sheet_avatar :: SheetAvatar.t()
+
+  defdelegate list_avatars(sheet_id), to: AvatarCrud
+  defdelegate get_avatar(id), to: AvatarCrud
+  defdelegate get_default_avatar(sheet_id), to: AvatarCrud
+  defdelegate add_avatar(sheet, asset_id, attrs \\ %{}), to: AvatarCrud
+  defdelegate update_avatar(avatar, attrs), to: AvatarCrud
+  defdelegate remove_avatar(avatar_id), to: AvatarCrud
+  defdelegate set_avatar_default(avatar), to: AvatarCrud, as: :set_default
+  defdelegate reorder_avatars(sheet_id, ordered_ids), to: AvatarCrud
+  defdelegate batch_load_avatars_by_sheet(project_id), to: AvatarCrud
+
   @doc """
   Returns the default image for a sheet using fallback hierarchy:
-  avatar → banner → first gallery image → nil.
+  default avatar → banner → first gallery image → nil.
   """
+  def get_sheet_default_image(%Sheet{avatars: avatars} = sheet) when is_list(avatars) do
+    case Enum.find(avatars, & &1.is_default) do
+      %SheetAvatar{asset: asset} when not is_nil(asset) -> asset
+      _ -> fallback_sheet_image(sheet)
+    end
+  end
+
   def get_sheet_default_image(%Sheet{} = sheet) do
-    cond do
-      sheet.avatar_asset_id -> sheet.avatar_asset
-      sheet.banner_asset_id -> sheet.banner_asset
-      true -> get_first_gallery_image(sheet.id)
+    case get_default_avatar(sheet.id) do
+      %SheetAvatar{asset: asset} when not is_nil(asset) -> asset
+      _ -> fallback_sheet_image(sheet)
+    end
+  end
+
+  defp fallback_sheet_image(sheet) do
+    if sheet.banner_asset_id do
+      sheet.banner_asset
+    else
+      get_first_gallery_image(sheet.id)
     end
   end
 

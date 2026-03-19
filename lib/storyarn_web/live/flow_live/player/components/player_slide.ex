@@ -17,7 +17,14 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlide do
     ~H"""
     <div class="player-slide player-slide-dialogue">
       <div class="player-speaker">
+        <img
+          :if={@slide.speaker_avatar_url}
+          src={@slide.speaker_avatar_url}
+          alt={@slide.speaker_name || ""}
+          class="player-speaker-avatar object-cover"
+        />
         <div
+          :if={!@slide.speaker_avatar_url}
           class="player-speaker-avatar"
           style={if @slide.speaker_color, do: "background-color: #{@slide.speaker_color}"}
         >

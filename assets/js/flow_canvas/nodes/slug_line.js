@@ -36,7 +36,10 @@ export default {
 
     const locId = nodeData.location_sheet_id;
     const locSheet = locId ? sheetsMap?.[String(locId)] : null;
-    const overrideUrl = nodeData.image_override_url;
+    const avatarId = nodeData.avatar_id;
+    const avatars = locSheet?.avatars || [];
+    const overrideAvatar = avatarId ? avatars.find((a) => a.id === avatarId) : null;
+    const overrideUrl = overrideAvatar?.url;
 
     // Header always shows the clapperboard icon + location name
     const headerLabel = locSheet?.name || config.label;
@@ -121,7 +124,7 @@ export default {
 
   needsRebuild(oldData, newData) {
     if (oldData?.location_sheet_id !== newData.location_sheet_id) return true;
-    if (oldData?.image_override_url !== newData.image_override_url) return true;
+    if (oldData?.avatar_id !== newData.avatar_id) return true;
     if (oldData?.int_ext !== newData.int_ext) return true;
     if (oldData?.sub_location !== newData.sub_location) return true;
     if (oldData?.time_of_day !== newData.time_of_day) return true;

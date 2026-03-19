@@ -15,6 +15,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
         type: :dialogue,
         speaker_name: "Jaime",
         speaker_initials: "JA",
+        speaker_avatar_url: nil,
         speaker_color: "#8b5cf6",
         text: "<p>Hello, traveler!</p>",
         stage_directions: ""
@@ -34,6 +35,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
         type: :dialogue,
         speaker_name: "Luna",
         speaker_initials: "LU",
+        speaker_avatar_url: nil,
         speaker_color: "#22c55e",
         text: "<p>Greetings.</p>",
         stage_directions: ""
@@ -50,6 +52,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
         type: :dialogue,
         speaker_name: "Unknown",
         speaker_initials: "UN",
+        speaker_avatar_url: nil,
         speaker_color: nil,
         text: "<p>Who are you?</p>",
         stage_directions: ""
@@ -66,6 +69,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
         type: :dialogue,
         speaker_name: nil,
         speaker_initials: "??",
+        speaker_avatar_url: nil,
         speaker_color: nil,
         text: "<p>Narrator text</p>",
         stage_directions: ""
@@ -82,6 +86,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
         type: :dialogue,
         speaker_name: "Evil",
         speaker_initials: "EV",
+        speaker_avatar_url: nil,
         speaker_color: nil,
         text: "<p>Safe text</p><script>alert('xss')</script>",
         stage_directions: ""
@@ -98,6 +103,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
         type: :dialogue,
         speaker_name: "Evil",
         speaker_initials: "EV",
+        speaker_avatar_url: nil,
         speaker_color: nil,
         text: "<p onclick=\"steal()\">Click me</p>",
         stage_directions: ""
@@ -114,6 +120,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
         type: :dialogue,
         speaker_name: "Jaime",
         speaker_initials: "JA",
+        speaker_avatar_url: nil,
         speaker_color: nil,
         text: "<p>I see...</p>",
         stage_directions: "looks away nervously"
@@ -130,6 +137,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
         type: :dialogue,
         speaker_name: "Jaime",
         speaker_initials: "JA",
+        speaker_avatar_url: nil,
         speaker_color: nil,
         text: "<p>Hello</p>",
         stage_directions: ""
@@ -145,6 +153,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlideTest do
         type: :dialogue,
         speaker_name: "Narrator",
         speaker_initials: "NA",
+        speaker_avatar_url: nil,
         speaker_color: nil,
         text: "<p>This is <strong>bold</strong> and <em>italic</em> text.</p>",
         stage_directions: ""

@@ -28,7 +28,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.SlugLine.Node do
       "time_of_day" => "",
       "description" => "",
       "technical_id" => "",
-      "image_override_url" => nil
+      "avatar_id" => nil
     }
   end
 
@@ -40,7 +40,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.SlugLine.Node do
       "time_of_day" => data["time_of_day"] || "",
       "description" => data["description"] || "",
       "technical_id" => data["technical_id"] || "",
-      "image_override_url" => data["image_override_url"]
+      "avatar_id" => data["avatar_id"]
     }
   end
 

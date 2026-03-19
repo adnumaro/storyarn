@@ -35,7 +35,11 @@ export default {
       </div>
     `;
 
-    const overrideUrl = nodeData.image_override_url;
+    // Resolve avatar: specific avatar_id override > default avatar > banner > fallback
+    const avatarId = nodeData.avatar_id;
+    const avatars = speakerSheet?.avatars || [];
+    const overrideAvatar = avatarId ? avatars.find((a) => a.id === avatarId) : null;
+    const overrideUrl = overrideAvatar?.url;
     const bannerUrl = speakerSheet?.banner_url;
     const avatarUrl = speakerSheet?.avatar_url;
 
@@ -248,7 +252,7 @@ export default {
     // Text/stage_directions are content-only — skip to avoid exiting inline edit mode.
     if (oldData?.speaker_sheet_id !== newData.speaker_sheet_id) return true;
     if (oldData?.audio_asset_id !== newData.audio_asset_id) return true;
-    if (oldData?.image_override_url !== newData.image_override_url) return true;
+    if (oldData?.avatar_id !== newData.avatar_id) return true;
     if (oldData?.has_stale_refs !== newData.has_stale_refs) return true;
 
     const oldResp = oldData?.responses || [];
