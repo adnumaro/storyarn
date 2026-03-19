@@ -69,6 +69,8 @@ priv/static/uploads/test
 
 docs/game_references
 priv/static/images/temp
+priv/repo/seeds/private
+priv/static/videos/private
 
 .claude/plans
 .claude/audit
