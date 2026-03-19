@@ -115,7 +115,7 @@ export function setupFileUpload(hook, config) {
 
     modal.showModal();
 
-    const confirmBtn = modal.querySelector("[data-confirm-upload]");
+    const confirmBtn = modal.querySelector("[data-proceed-upload]");
     const cancelBtn = modal.querySelector("[data-cancel-upload]");
     const checkbox = modal.querySelector("[data-skip-warning]");
 

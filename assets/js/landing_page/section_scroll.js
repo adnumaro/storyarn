@@ -14,7 +14,6 @@ function initLandingSectionScroll() {
   const featureIntro = stack?.querySelector("[data-feature-intro]");
   const featureCards = stack?.querySelectorAll("[data-feature-card]");
   const autoSections = Array.from(stack?.querySelectorAll("[data-section-step]") ?? []);
-  const footer = document.querySelector(".landing-shell footer");
 
   if (
     !stack ||
@@ -101,7 +100,9 @@ function initLandingSectionScroll() {
     discoverStepTimer = setTimeout(() => {
       animating = false;
       discoverStepTimer = null;
-      scrollCooldown = setTimeout(() => { scrollCooldown = null; }, 400);
+      scrollCooldown = setTimeout(() => {
+        scrollCooldown = null;
+      }, 400);
     }, 400);
 
     return true;
@@ -241,13 +242,6 @@ function initLandingSectionScroll() {
 
   // ── Release at boundaries ──
 
-  function releaseToNextSection() {
-    intentObserver?.disable();
-    requestAnimationFrame(() => {
-      window.scrollTo(0, footer?.offsetTop ?? stack.offsetTop + window.innerHeight);
-    });
-  }
-
   function releaseToPrevSection() {
     intentObserver?.disable();
     requestAnimationFrame(() => {
@@ -282,9 +276,7 @@ function initLandingSectionScroll() {
   }
 
   function animateAutoToFeatures(timeline, current) {
-    timeline
-      .to(current, { yPercent: 100 }, 0)
-      .to(featuresSection, { yPercent: 0 }, 0);
+    timeline.to(current, { yPercent: 100 }, 0).to(featuresSection, { yPercent: 0 }, 0);
   }
 
   function animateAutoToAuto(timeline, current, next, isDown) {
@@ -330,7 +322,9 @@ function initLandingSectionScroll() {
       onComplete() {
         currentIndex = index;
         animating = false;
-        scrollCooldown = setTimeout(() => { scrollCooldown = null; }, 400);
+        scrollCooldown = setTimeout(() => {
+          scrollCooldown = null;
+        }, 400);
 
         // Monitor lifecycle: resume when entering discover, pause when leaving
         const monitor = getMonitorAPI();
@@ -387,7 +381,9 @@ function initLandingSectionScroll() {
       gsap.set([featuresSection, heroContentInner, featureShell, featureIntro, ...cardList], {
         clearProps: "all",
       });
-      autoSections.forEach((s) => gsap.set(s, { clearProps: "all" }));
+      autoSections.forEach((s) => {
+        gsap.set(s, { clearProps: "all" });
+      });
       return;
     }
 

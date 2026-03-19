@@ -361,19 +361,22 @@ defmodule Storyarn.Assets do
 
       case do_create_asset(project, user, asset_attrs) do
         {:ok, asset} ->
-          purpose = Map.get(attrs, :purpose)
-          skip_variants = Map.get(attrs, :skip_variants, false)
-
-          if purpose && !skip_variants do
-            schedule_variant_generation(binary_data, asset, project, user, purpose)
-          end
-
+          maybe_schedule_variant(binary_data, asset, project, user, attrs)
           {:ok, asset}
 
         {:error, changeset} ->
           Storage.delete(key)
           {:error, changeset}
       end
+    end
+  end
+
+  defp maybe_schedule_variant(binary_data, asset, project, user, attrs) do
+    purpose = Map.get(attrs, :purpose)
+    skip = Map.get(attrs, :skip_variants, false)
+
+    if purpose && !skip do
+      schedule_variant_generation(binary_data, asset, project, user, purpose)
     end
   end
 
@@ -410,42 +413,45 @@ defmodule Storyarn.Assets do
   defp do_generate_variant(binary_data, original_asset, project, user, process_fn) do
     case process_fn.(binary_data) do
       {:ok, webp_data} ->
-        variant_filename = Path.rootname(original_asset.filename) <> ".webp"
-
-        variant_attrs = %{
-          filename: variant_filename,
-          content_type: "image/webp",
-          metadata: %{
-            "is_variant" => true,
-            "original_asset_id" => original_asset.id
-          },
-          skip_variants: true
-        }
-
-        case upload_binary_and_create_asset(webp_data, variant_attrs, project, user) do
-          {:ok, variant} ->
-            updated_metadata =
-              Map.merge(original_asset.metadata || %{}, %{
-                "web_url" => variant.url,
-                "web_asset_id" => variant.id
-              })
-
-            case update_asset(original_asset, %{metadata: updated_metadata}) do
-              {:ok, updated_original} ->
-                {:ok, updated_original}
-
-              {:error, reason} ->
-                Logger.warning("[ImageOptimization] Failed to link variant to asset #{original_asset.id}: #{inspect(reason)}")
-                {:ok, original_asset}
-            end
-
-          {:error, reason} ->
-            Logger.warning("[ImageOptimization] Failed to upload variant for asset #{original_asset.id}: #{inspect(reason)}")
-            {:ok, original_asset}
-        end
+        upload_and_link_variant(webp_data, original_asset, project, user)
 
       {:error, reason} ->
         Logger.warning("[ImageOptimization] Failed to generate WebP for asset #{original_asset.id}: #{inspect(reason)}")
+        {:ok, original_asset}
+    end
+  end
+
+  defp upload_and_link_variant(webp_data, original_asset, project, user) do
+    variant_attrs = %{
+      filename: Path.rootname(original_asset.filename) <> ".webp",
+      content_type: "image/webp",
+      metadata: %{"is_variant" => true, "original_asset_id" => original_asset.id},
+      skip_variants: true
+    }
+
+    case upload_binary_and_create_asset(webp_data, variant_attrs, project, user) do
+      {:ok, variant} ->
+        link_variant_to_original(original_asset, variant)
+
+      {:error, reason} ->
+        Logger.warning("[ImageOptimization] Failed to upload variant for asset #{original_asset.id}: #{inspect(reason)}")
+        {:ok, original_asset}
+    end
+  end
+
+  defp link_variant_to_original(original_asset, variant) do
+    updated_metadata =
+      Map.merge(original_asset.metadata || %{}, %{
+        "web_url" => variant.url,
+        "web_asset_id" => variant.id
+      })
+
+    case update_asset(original_asset, %{metadata: updated_metadata}) do
+      {:ok, updated_original} ->
+        {:ok, updated_original}
+
+      {:error, reason} ->
+        Logger.warning("[ImageOptimization] Failed to link variant to asset #{original_asset.id}: #{inspect(reason)}")
         {:ok, original_asset}
     end
   end

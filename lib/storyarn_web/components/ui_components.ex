@@ -11,7 +11,7 @@ defmodule StoryarnWeb.Components.UIComponents do
 
   alias Phoenix.LiveView.JS
 
-  import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
+  import StoryarnWeb.Components.CoreComponents, only: [icon: 1, modal: 1, hide_modal: 1]
 
   @doc """
   Renders a role badge.
@@ -332,12 +332,12 @@ defmodule StoryarnWeb.Components.UIComponents do
   end
 
   @doc """
-  Renders an image optimization warning dialog.
+  Renders an image optimization warning modal.
 
   Used by upload hooks to warn users that PNG/GIF images will be converted to WebP.
-  The dialog is shown from JS via `HTMLDialogElement.showModal()` and uses
-  `data-confirm-upload` / `data-cancel-upload` / `data-skip-warning` attributes
-  for the file_upload_handler to bind to.
+  The modal is opened from JS via `HTMLDialogElement.showModal()` on the underlying
+  `<dialog>` element. Uses `data-proceed-upload` / `data-cancel-upload` /
+  `data-skip-warning` attributes for file_upload_handler.js to bind to.
 
   ## Examples
 
@@ -351,32 +351,27 @@ defmodule StoryarnWeb.Components.UIComponents do
 
   def optimization_warning_dialog(assigns) do
     ~H"""
-    <dialog id={@id} class="modal">
-      <div class="modal-box max-w-sm">
-        <div class="flex items-center gap-3 mb-2">
-          <div class="text-warning">
-            <.icon name="image" class="size-8" />
-          </div>
-          <h3 class="font-bold text-lg">{gettext("Image Optimization")}</h3>
+    <.modal id={@id} on_cancel={hide_modal(@id)}>
+      <div class="flex items-center gap-3 mb-2">
+        <div class="text-warning">
+          <.icon name="image" class="size-8" />
         </div>
-        <p class="text-base-content/70 mb-4">{@message}</p>
-        <label class="flex items-center gap-2 mb-4 cursor-pointer">
-          <input type="checkbox" class="checkbox checkbox-sm" data-skip-warning />
-          <span class="text-sm text-base-content/60">{gettext("Don't show this again")}</span>
-        </label>
-        <div class="modal-action justify-end gap-2">
-          <button type="button" class="btn btn-ghost" data-cancel-upload>
-            {gettext("Cancel")}
-          </button>
-          <button type="button" class="btn btn-primary" data-confirm-upload>
-            {gettext("Upload")}
-          </button>
-        </div>
+        <h3 class="font-bold text-lg">{gettext("Image Optimization")}</h3>
       </div>
-      <form method="dialog" class="modal-backdrop">
-        <button type="button" data-cancel-upload>close</button>
-      </form>
-    </dialog>
+      <p class="text-base-content/70 mb-4">{@message}</p>
+      <label class="flex items-center gap-2 mb-4 cursor-pointer">
+        <input type="checkbox" class="checkbox checkbox-sm" data-skip-warning />
+        <span class="text-sm text-base-content/60">{gettext("Don't show this again")}</span>
+      </label>
+      <div class="modal-action justify-end gap-2">
+        <button type="button" class="btn btn-ghost" data-cancel-upload>
+          {gettext("Cancel")}
+        </button>
+        <button type="button" class="btn btn-primary" data-proceed-upload>
+          {gettext("Upload")}
+        </button>
+      </div>
+    </.modal>
     """
   end
 end

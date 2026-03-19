@@ -3,14 +3,16 @@
  * Exports a public API for section_scroll.js to drive sub-step transitions.
  */
 
+import { gsap } from "gsap";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import { gsap } from "gsap";
 import { captureException } from "../utils/sentry";
 
 let monitorAPI = null;
 let monitorReadyResolve = null;
-const monitorReady = new Promise((resolve) => { monitorReadyResolve = resolve; });
+const monitorReady = new Promise((resolve) => {
+  monitorReadyResolve = resolve;
+});
 
 const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 768;
 
@@ -30,53 +32,6 @@ const SUB_STEPS = [
   { rotY: 0, rotZ: 0, posX: 0, camZ: -1.8, yOffset: -1 },
 ];
 
-function createRoundedRectShape(width, height, radius) {
-  const shape = new THREE.Shape();
-  const x = -width / 2;
-  const y = -height / 2;
-
-  shape.moveTo(x + radius, y);
-  shape.lineTo(x + width - radius, y);
-  shape.quadraticCurveTo(x + width, y, x + width, y + radius);
-  shape.lineTo(x + width, y + height - radius);
-  shape.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-  shape.lineTo(x + radius, y + height);
-  shape.quadraticCurveTo(x, y + height, x, y + height - radius);
-  shape.lineTo(x, y + radius);
-  shape.quadraticCurveTo(x, y, x + radius, y);
-
-  return shape;
-}
-
-function createCurvedPlane(width, height, curveRadius, segmentsX, segmentsY) {
-  const geo = new THREE.PlaneGeometry(width, height, segmentsX, segmentsY);
-  const pos = geo.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    const angle = x / curveRadius;
-    pos.setX(i, Math.sin(angle) * curveRadius);
-    pos.setZ(i, curveRadius - Math.cos(angle) * curveRadius);
-  }
-  pos.needsUpdate = true;
-  geo.computeVertexNormals();
-  return geo;
-}
-
-function curveBox(geometry, curveRadius) {
-  const pos = geometry.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    const z = pos.getZ(i);
-    const angle = x / curveRadius;
-    const curvedZ = curveRadius - Math.cos(angle) * curveRadius;
-    pos.setX(i, Math.sin(angle) * curveRadius);
-    pos.setZ(i, curvedZ + z);
-  }
-  pos.needsUpdate = true;
-  geometry.computeVertexNormals();
-  return geometry;
-}
-
 function createMonitorGroup(textures) {
   const group = new THREE.Group();
 
@@ -86,8 +41,6 @@ function createMonitorGroup(textures) {
   const bezelW = screenW + bezelPad * 2;
   const bezelH = screenH + bezelPad * 2;
   const bodyDepth = 0.18;
-  const curveRadius = 8;
-  const segments = 40;
 
   // ── 3D rounded body (flat front, rounded corners) ──
   const bodyGeo = new RoundedBoxGeometry(bezelW, bezelH, bodyDepth, 3, 0.04);
