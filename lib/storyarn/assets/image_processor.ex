@@ -267,7 +267,7 @@ defmodule Storyarn.Assets.ImageProcessor do
       File.write!(tmp_input, binary_data)
 
       with {:ok, thumbnail} <-
-             Image.thumbnail(tmp_input, width, resize: :both, height: height, crop: :centre),
+             Image.thumbnail(tmp_input, width, resize: :both, height: height, crop: :center),
            {:ok, _} <- Image.write(thumbnail, tmp_output, quality: @default_quality) do
         {:ok, File.read!(tmp_output)}
       else
