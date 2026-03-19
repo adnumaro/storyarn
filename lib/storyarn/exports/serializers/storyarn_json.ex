@@ -97,9 +97,24 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
       "hidden_inherited_block_ids" =>
         Enum.map(sheet.hidden_inherited_block_ids || [], &to_string/1),
       "current_version_id" => maybe_to_string(sheet.current_version_id),
+      "avatars" => serialize_sheet_avatars(sheet),
       "blocks" => Enum.map(sheet.blocks, &serialize_block/1)
     }
   end
+
+  defp serialize_sheet_avatars(%{avatars: avatars}) when is_list(avatars) do
+    Enum.map(avatars, fn a ->
+      %{
+        "asset_id" => to_string(a.asset_id),
+        "name" => a.name,
+        "notes" => a.notes,
+        "position" => a.position,
+        "is_default" => a.is_default
+      }
+    end)
+  end
+
+  defp serialize_sheet_avatars(_), do: []
 
   defp serialize_block(block) do
     base = %{
