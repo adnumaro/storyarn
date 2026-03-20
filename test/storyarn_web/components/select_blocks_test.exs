@@ -61,14 +61,15 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
   # ===========================================================================
 
   describe "select_block/1 — can_edit true" do
-    test "renders select element with all options" do
+    test "renders hook container with all options in template" do
       html =
         render_component(&SelectBlocks.select_block/1,
           block: build_block(),
           can_edit: true
         )
 
-      assert html =~ "<select"
+      assert html =~ ~s(phx-hook="BlockSelect")
+      assert html =~ ~s(data-mode="select")
       assert html =~ "Warrior"
       assert html =~ "Mage"
       assert html =~ "Rogue"
@@ -84,7 +85,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
       assert html =~ "Class"
     end
 
-    test "renders placeholder as first option" do
+    test "renders placeholder in trigger and as clear option" do
       html =
         render_component(&SelectBlocks.select_block/1,
           block: build_block(),
@@ -94,7 +95,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
       assert html =~ "Choose..."
     end
 
-    test "marks selected option when content matches" do
+    test "highlights selected option and shows value in trigger" do
       block = build_block(%{value: %{"content" => "mage"}})
 
       html =
@@ -103,35 +104,24 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           can_edit: true
         )
 
-      assert html =~ "<select"
-      # The select should contain the options with mage selected
-      assert html =~ ~s(value="mage")
-      assert html =~ "selected"
+      # Trigger shows the display value
+      assert html =~ "Mage"
+      # Selected option has primary styling
+      assert html =~ "bg-primary/10"
     end
 
-    test "includes phx-change and phx-value-id attributes" do
+    test "includes data-event and data-params on options" do
       html =
         render_component(&SelectBlocks.select_block/1,
           block: build_block(),
           can_edit: true
         )
 
-      assert html =~ ~s(phx-change="update_block_value")
-      assert html =~ ~s(phx-value-id="block-1")
+      assert html =~ ~s(data-event="update_block_value")
+      assert html =~ "block-1"
     end
 
-    test "does not render read-only display div" do
-      html =
-        render_component(&SelectBlocks.select_block/1,
-          block: build_block(),
-          can_edit: true
-        )
-
-      # Should not show the read-only dash display
-      refute html =~ "text-base-content/40"
-    end
-
-    test "renders with phx-target when target is provided" do
+    test "renders with data-phx-target when target is provided" do
       html =
         render_component(&SelectBlocks.select_block/1,
           block: build_block(),
@@ -139,7 +129,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           target: "#my-component"
         )
 
-      assert html =~ ~s(phx-target="#my-component")
+      assert html =~ ~s(data-phx-target="#my-component")
     end
   end
 
@@ -154,7 +144,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
         )
 
       assert html =~ "Warrior"
-      refute html =~ "<select"
+      refute html =~ "BlockSelect"
     end
 
     test "renders dash when no selection" do
@@ -166,10 +156,9 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           can_edit: false
         )
 
-      # Should show "-" fallback and dim styling
       assert html =~ "text-base-content/40"
       assert html =~ "-"
-      refute html =~ "<select"
+      refute html =~ "BlockSelect"
     end
 
     test "renders dash when content does not match any option" do
@@ -181,7 +170,6 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           can_edit: false
         )
 
-      # find_option_label returns nil for non-matching key, display_value is nil
       assert html =~ "text-base-content/40"
       assert html =~ "-"
     end
@@ -197,7 +185,6 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           can_edit: true
         )
 
-      # block_label renders a lock icon + "Constant" tooltip for constants
       assert html =~ "Constant"
       assert html =~ "lock"
     end
@@ -232,7 +219,6 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           can_edit: true
         )
 
-      # Falls back to dgettext("sheets", "Select...")
       assert html =~ "Select..."
     end
 
@@ -248,9 +234,8 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           can_edit: true
         )
 
-      assert html =~ "<select"
+      assert html =~ "BlockSelect"
       assert html =~ "Pick one"
-      # No option values other than placeholder
       refute html =~ "Warrior"
     end
 
@@ -266,7 +251,6 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           can_edit: true
         )
 
-      # block_label with empty label renders nothing inside <label :if={@label != ""}>
       refute html =~ "<label"
     end
 
@@ -282,7 +266,6 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           can_edit: true
         )
 
-      # nil || "" => "" which means no label rendered
       refute html =~ "<label"
     end
 
@@ -295,8 +278,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           can_edit: true
         )
 
-      # All values fallback to defaults
-      assert html =~ "<select"
+      assert html =~ "BlockSelect"
       assert html =~ "Select..."
     end
   end
@@ -308,8 +290,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           block: build_block(%{value: %{"content" => "warrior"}})
         )
 
-      # Should render read-only view (no select element)
-      refute html =~ "<select"
+      refute html =~ "BlockSelect"
       assert html =~ "Warrior"
     end
 
@@ -321,8 +302,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           is_editing: true
         )
 
-      # Should render without error
-      assert html =~ "<select"
+      assert html =~ "BlockSelect"
     end
   end
 
@@ -331,7 +311,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
   # ===========================================================================
 
   describe "multi_select_block/1 — can_edit true, with selections" do
-    test "renders selected tags with labels" do
+    test "renders selected tags in trigger" do
       block = build_multi_block(%{value: %{"content" => ["stealth", "magic"]}})
 
       html =
@@ -344,7 +324,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
       assert html =~ "Magic"
     end
 
-    test "renders remove buttons (X icon) on each tag" do
+    test "renders toggle options with checkboxes in template" do
       block = build_multi_block(%{value: %{"content" => ["stealth"]}})
 
       html =
@@ -353,9 +333,9 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           can_edit: true
         )
 
-      assert html =~ ~s(phx-click="toggle_multi_select")
-      assert html =~ ~s(phx-value-key="stealth")
-      assert html =~ ~s(phx-value-id="block-2")
+      assert html =~ ~s(data-event="toggle_multi_select")
+      assert html =~ "stealth"
+      assert html =~ "block-2"
     end
 
     test "renders badge-primary class on tags" do
@@ -370,7 +350,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
       assert html =~ "badge badge-primary"
     end
 
-    test "renders text input for adding new tags" do
+    test "renders add-input in template for new tags" do
       block = build_multi_block(%{value: %{"content" => ["stealth"]}})
 
       html =
@@ -379,8 +359,8 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           can_edit: true
         )
 
-      assert html =~ ~s(type="text")
-      assert html =~ ~s(phx-keydown="multi_select_keydown")
+      assert html =~ ~s(data-role="add-input")
+      assert html =~ ~s(data-block-id="block-2")
     end
   end
 
@@ -402,11 +382,10 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           can_edit: true
         )
 
-      # resolve_placeholder("", []) => "Type and press Enter to add..."
       assert html =~ "Type and press Enter to add..."
     end
 
-    test "renders 'Add more...' placeholder when has selection and empty placeholder" do
+    test "shows badges in trigger when has selection and empty placeholder" do
       block =
         build_multi_block(%{
           config: %{
@@ -423,8 +402,9 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           can_edit: true
         )
 
-      # resolve_placeholder("", _selected) => "Add more..."
-      assert html =~ "Add more..."
+      # Trigger shows badges when selections exist
+      assert html =~ "Stealth"
+      assert html =~ "badge badge-primary"
     end
 
     test "renders custom placeholder when placeholder is set" do
@@ -444,11 +424,10 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           can_edit: true
         )
 
-      # resolve_placeholder("Search skills...", _) => "Search skills..."
       assert html =~ "Search skills..."
     end
 
-    test "renders custom placeholder even when has selections" do
+    test "shows badges instead of placeholder when has selections" do
       block =
         build_multi_block(%{
           config: %{
@@ -465,8 +444,9 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           can_edit: true
         )
 
-      # Custom placeholder always wins when non-empty
-      assert html =~ "Search skills..."
+      # Trigger shows badges, not placeholder
+      assert html =~ "Stealth"
+      assert html =~ "badge badge-primary"
     end
   end
 
@@ -483,9 +463,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
       assert html =~ "Stealth"
       assert html =~ "Archery"
       assert html =~ "badge-sm badge-primary"
-      # No remove buttons or input
-      refute html =~ ~s(phx-click="toggle_multi_select")
-      refute html =~ ~s(phx-keydown="multi_select_keydown")
+      refute html =~ "BlockSelect"
     end
 
     test "renders dash when no selection" do
@@ -513,7 +491,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
       assert html =~ "-"
     end
 
-    test "does not render editable input or remove buttons" do
+    test "does not render editable hook or add-input" do
       block = build_multi_block(%{value: %{"content" => ["stealth"]}})
 
       html =
@@ -522,8 +500,8 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           can_edit: false
         )
 
-      refute html =~ "block-input"
-      refute html =~ ~s(type="text")
+      refute html =~ "BlockSelect"
+      refute html =~ ~s(data-role="add-input")
     end
   end
 
@@ -545,7 +523,6 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           can_edit: true
         )
 
-      # resolve_selected_options falls back to key as label
       assert html =~ "unknown_skill"
     end
 
@@ -625,10 +602,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           can_edit: true
         )
 
-      # label defaults to "", placeholder resolves through resolve_placeholder
-      # No label element rendered for empty label
       refute html =~ "<label"
-      # Default placeholder for empty placeholder + no selections
       assert html =~ "Type and press Enter to add..."
     end
 
@@ -673,14 +647,13 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           block: block
         )
 
-      # Should render read-only view
       assert html =~ "Stealth"
-      refute html =~ "block-input"
+      refute html =~ "BlockSelect"
     end
   end
 
-  describe "multi_select_block/1 — phx-target propagation" do
-    test "passes target to toggle_multi_select and input" do
+  describe "multi_select_block/1 — data-phx-target propagation" do
+    test "passes target to hook container" do
       block = build_multi_block(%{value: %{"content" => ["stealth"]}})
 
       html =
@@ -690,8 +663,7 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocksTest do
           target: "#sheet-editor"
         )
 
-      # target should be present on both remove button and input
-      assert html =~ ~s(phx-target="#sheet-editor")
+      assert html =~ ~s(data-phx-target="#sheet-editor")
     end
   end
 end
