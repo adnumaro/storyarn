@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
   @moduledoc """
   LiveComponent for sheet avatar management.
-  Film strip popover + ImageGallery modal for detailed editing.
+  Film strip popover + JS ImageGallery hook overlay for detailed editing.
   """
 
   use StoryarnWeb, :live_component
@@ -13,7 +13,6 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
   alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Sheets
-  alias StoryarnWeb.Components.ImageGallery
 
   @impl true
   def render(assigns) do
@@ -45,15 +44,13 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
         >
           <div class="grid grid-cols-3 gap-2" style="width: 16.5rem;">
             <div :for={avatar <- @avatars} class="flex flex-col items-center">
-              <div
-                class={[
-                  "relative group/thumb size-20 rounded-lg overflow-hidden border-2 transition-colors",
-                  if(avatar.is_default,
-                    do: "border-primary",
-                    else: "border-base-content/10 hover:border-base-content/30"
-                  )
-                ]}
-              >
+              <div class={[
+                "relative group/thumb size-20 rounded-lg overflow-hidden border-2 transition-colors",
+                if(avatar.is_default,
+                  do: "border-primary",
+                  else: "border-base-content/10 hover:border-base-content/30"
+                )
+              ]}>
                 <button
                   :if={avatar.asset}
                   type="button"
@@ -96,7 +93,7 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
           <button
             :if={@avatars != []}
             type="button"
-            phx-click={show_modal("avatar-gallery-#{@sheet.id}")}
+            phx-click={JS.dispatch("open-gallery", to: "#avatar-gallery-#{@sheet.id}")}
             class="flex items-center justify-center gap-1.5 w-full mt-2 pt-2 border-t border-base-content/10 text-xs text-base-content/50 hover:text-base-content transition-colors cursor-pointer"
           >
             <.icon name="layout-grid" class="size-3.5" />
@@ -105,42 +102,27 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
         </div>
       </div>
 
-      <%!-- Gallery modal (generic ImageGallery LiveComponent) --%>
-      <.live_component
+      <%!-- Gallery (pure JS hook overlay) --%>
+      <div
         :if={@can_edit}
-        module={ImageGallery}
+        phx-hook="ImageGallery"
         id={"avatar-gallery-#{@sheet.id}"}
-        items={to_gallery_items(@avatars)}
-        can_edit={@can_edit}
-        title={dgettext("sheets", "Avatar Gallery")}
-        name_placeholder={dgettext("sheets", "e.g. happy, angry, combat...")}
-        notes_placeholder={dgettext("sheets", "Voice direction, art notes...")}
-        upload_label={dgettext("sheets", "Add avatar")}
-        upload_input_id="avatar-upload-input"
-        empty_message={dgettext("sheets", "No avatars yet. Upload one to get started.")}
-      >
-        <:item_badge :let={item}>
-          <span :if={item.is_default} class="badge badge-primary badge-xs">
-            {dgettext("sheets", "default")}
-          </span>
-        </:item_badge>
-        <:item_actions :let={item}>
-          <button
-            :if={!item.is_default}
-            type="button"
-            phx-click="set_default"
-            phx-value-id={item.id}
-            phx-target={@myself}
-            class="btn btn-sm btn-ghost gap-1"
-          >
-            <.icon name="star" class="size-3.5" />
-            {dgettext("sheets", "Set as default")}
-          </button>
-          <span :if={item.is_default} class="badge badge-primary badge-sm">
-            {dgettext("sheets", "Default")}
-          </span>
-        </:item_actions>
-      </.live_component>
+        data-items={Jason.encode!(to_gallery_items(@avatars))}
+        data-can-edit={to_string(@can_edit)}
+        data-target={"##{@id}"}
+        data-title={dgettext("sheets", "Avatar Gallery")}
+        data-name-placeholder={dgettext("sheets", "e.g. happy, angry, combat...")}
+        data-notes-placeholder={dgettext("sheets", "Voice direction, art notes...")}
+        data-upload-input-id="avatar-upload-input"
+        data-empty-message={dgettext("sheets", "No avatars yet. Upload one to get started.")}
+        data-upload-label={dgettext("sheets", "Add avatar")}
+        data-name-label={dgettext("sheets", "Name")}
+        data-notes-label={dgettext("sheets", "Notes")}
+        data-delete-text={dgettext("sheets", "Delete")}
+        data-set-default-text={dgettext("sheets", "Set as default")}
+        data-default-badge-text={dgettext("sheets", "default")}
+        data-default-label-text={dgettext("sheets", "Default")}
+      />
 
       <%!-- Shared file input --%>
       <input
@@ -207,6 +189,55 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
     end)
   end
 
+  # Gallery hook events (pushEventTo from JS)
+  def handle_event("gallery_update_name", %{"id" => id, "value" => value}, socket) do
+    Authorize.with_edit_authorization(socket, fn socket ->
+      case get_owned_avatar(socket, id) do
+        {:ok, avatar} ->
+          Sheets.update_avatar(avatar, %{name: value})
+          {:noreply, socket}
+
+        {:error, _} ->
+          {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("gallery_update_notes", %{"id" => id, "value" => value}, socket) do
+    Authorize.with_edit_authorization(socket, fn socket ->
+      case get_owned_avatar(socket, id) do
+        {:ok, avatar} ->
+          Sheets.update_avatar(avatar, %{notes: value})
+          {:noreply, socket}
+
+        {:error, _} ->
+          {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("gallery_delete", %{"id" => id}, socket) do
+    Authorize.with_edit_authorization(socket, fn socket ->
+      case get_owned_avatar(socket, id) do
+        {:ok, avatar} -> do_remove_avatar(socket, avatar)
+        {:error, _} -> {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("gallery_set_default", %{"id" => id}, socket) do
+    Authorize.with_edit_authorization(socket, fn socket ->
+      case get_owned_avatar(socket, id) do
+        {:ok, avatar} ->
+          Sheets.set_avatar_default(avatar)
+          reload_and_notify(socket)
+
+        {:error, _} ->
+          {:noreply, socket}
+      end
+    end)
+  end
+
   def handle_event("upload_validation_error", %{"message" => message}, socket) do
     send(self(), {:sheet_avatar, :error, message})
     {:noreply, socket}
@@ -228,12 +259,6 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
       end
     end)
   end
-
-  # ===========================================================================
-  # ImageGallery events (from parent handle_info)
-  # ===========================================================================
-
-  # These are handled in sheet_live/show.ex via handle_info({:image_gallery, ...})
 
   # ===========================================================================
   # Private Functions

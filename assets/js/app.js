@@ -64,6 +64,7 @@ import { FormulaBinding } from "./hooks/formula_binding";
 import { FormulaPreview } from "./hooks/formula_preview";
 import { FountainImport } from "./hooks/fountain_import";
 import { GallerySortable } from "./hooks/gallery_sortable";
+import { ImageGallery } from "./hooks/image_gallery";
 import { GalleryUpload } from "./hooks/gallery_upload";
 import { InstructionBuilder } from "./hooks/instruction_builder";
 import { ReferenceSelect } from "./hooks/reference_select";
@@ -124,6 +125,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     FlowLoader,
     GallerySortable,
     GalleryUpload,
+    ImageGallery,
     InstructionBuilder,
     ColorPicker,
     ConditionBuilder,

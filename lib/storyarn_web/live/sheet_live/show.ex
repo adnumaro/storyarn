@@ -889,30 +889,6 @@ defmodule StoryarnWeb.SheetLive.Show do
     {:noreply, put_flash(socket, :error, message)}
   end
 
-  # Handle messages from ImageGallery LiveComponent
-  def handle_info({:image_gallery, :update_name, %{id: id, value: value}}, socket) do
-    case Sheets.get_avatar(id) do
-      nil -> {:noreply, socket}
-      avatar ->
-        Sheets.update_avatar(avatar, %{name: value})
-        reload_sheet(socket)
-    end
-  end
-
-  def handle_info({:image_gallery, :update_notes, %{id: id, value: value}}, socket) do
-    case Sheets.get_avatar(id) do
-      nil -> {:noreply, socket}
-      avatar ->
-        Sheets.update_avatar(avatar, %{notes: value})
-        reload_sheet(socket)
-    end
-  end
-
-  def handle_info({:image_gallery, :delete, %{id: id}}, socket) do
-    Sheets.remove_avatar(id)
-    reload_sheet(socket)
-  end
-
   # Handle messages from SheetTitle LiveComponent
   def handle_info({:sheet_title, :name_saved, sheet, sheets_tree}, socket) do
     prev_name = socket.assigns.sheet.name
@@ -1108,18 +1084,6 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   defp sheet_path(socket, sheet) do
     ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{sheet.id}"
-  end
-
-  defp reload_sheet(socket) do
-    project = socket.assigns.project
-    sheet = Sheets.get_sheet_full!(project.id, socket.assigns.sheet.id)
-    sheets_tree = Sheets.list_sheets_tree(project.id)
-    broadcast_sheet_change(socket, :sheet_updated)
-
-    {:noreply,
-     socket
-     |> assign(:sheet, sheet)
-     |> assign(:sheets_tree, sheets_tree)}
   end
 
   defp reload_sheet_state(socket, sheet) do

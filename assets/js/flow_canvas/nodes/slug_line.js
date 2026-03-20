@@ -51,22 +51,14 @@ export default {
       </div>
     `;
 
-    // Visual strip: override → banner → avatar → empty (same pattern as dialogue)
+    // Visual strip: gallery image override → banner → empty (no avatars for slug lines)
     const bannerUrl = locSheet?.banner_url;
-    const avatarUrl = locSheet?.avatar_url;
 
     const visualHtml = overrideUrl
       ? html`<img src="${overrideUrl}" class="block w-[calc(100%-24px)] max-h-[200px] object-contain rounded-lg mx-3 mt-3" alt="" />`
       : bannerUrl
         ? html`<img src="${bannerUrl}" class="block w-[calc(100%-24px)] max-h-[200px] object-contain rounded-lg mx-3 mt-3" alt="" />`
-        : avatarUrl
-          ? html`<div
-              class="flex items-center justify-center px-3 pt-3"
-              style="background-color: ${color}20"
-            >
-              <img src="${avatarUrl}" class="size-16 rounded-lg object-cover shadow-md" alt="" />
-            </div>`
-          : "";
+        : "";
 
     const hasContent = slugLine || description || visualHtml !== "";
     const extraClass = hasContent ? "slug-line min-w-[200px] max-w-[280px]" : "";

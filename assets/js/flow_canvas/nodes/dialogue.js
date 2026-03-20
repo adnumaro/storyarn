@@ -35,31 +35,28 @@ export default {
       </div>
     `;
 
-    // Resolve avatar: specific avatar_id override > default avatar > banner > fallback
+    // Resolve avatar: specific avatar_id override > default avatar > fallback (no banner)
     const avatarId = nodeData.avatar_id;
     const avatars = speakerSheet?.avatars || [];
     const overrideAvatar = avatarId ? avatars.find((a) => a.id === avatarId) : null;
     const overrideUrl = overrideAvatar?.url;
-    const bannerUrl = speakerSheet?.banner_url;
     const avatarUrl = speakerSheet?.avatar_url;
 
     const visualHtml = overrideUrl
       ? html`<img src="${overrideUrl}" class="block w-[calc(100%-24px)] max-h-[200px] object-contain rounded-lg mx-3 mt-3" alt="" />`
-      : bannerUrl
-        ? html`<img src="${bannerUrl}" class="block w-[calc(100%-24px)] max-h-[200px] object-contain rounded-lg mx-3 mt-3" alt="" />`
-        : avatarUrl
+      : avatarUrl
+        ? html`<div
+            class="flex items-center justify-center px-3 pt-3"
+            style="background-color: ${color}20"
+          >
+            <img src="${avatarUrl}" class="size-16 rounded-lg object-cover shadow-md" alt="" />
+          </div>`
+        : speakerSheet
           ? html`<div
               class="flex items-center justify-center px-3 pt-3"
               style="background-color: ${color}20"
-            >
-              <img src="${avatarUrl}" class="size-16 rounded-lg object-cover shadow-md" alt="" />
-            </div>`
-          : speakerSheet
-            ? html`<div
-                class="flex items-center justify-center px-3 pt-3"
-                style="background-color: ${color}20"
-              ></div>`
-            : "";
+            ></div>`
+          : "";
 
     return { color, headerHtml, visualHtml };
   },
