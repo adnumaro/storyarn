@@ -13,6 +13,7 @@ export const AvatarUpload = {
       eventName: "upload_avatar",
       errorEventName: "upload_validation_error",
       typeErrorMessage: "Please select an image file.",
+      multiple: true,
       sizeErrorMessage: "Image must be less than 5MB.",
       buildPayload: (file, base64) => ({
         sheet_id: this.el.dataset.sheetId,

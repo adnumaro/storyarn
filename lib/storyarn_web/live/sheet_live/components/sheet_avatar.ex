@@ -1,6 +1,7 @@
 defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
   @moduledoc """
-  LiveComponent for the sheet avatar with film strip popover and gallery modal.
+  LiveComponent for sheet avatar management.
+  Film strip popover + ImageGallery modal for detailed editing.
   """
 
   use StoryarnWeb, :live_component
@@ -12,136 +13,141 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
   alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Sheets
+  alias StoryarnWeb.Components.ImageGallery
 
   @impl true
   def render(assigns) do
     ~H"""
     <div>
-      <%!-- Main avatar display --%>
-      <div class="relative group">
-        <%= if @default_avatar && @default_avatar.asset do %>
-          <img
-            src={Assets.display_url(@default_avatar.asset)}
-            alt={@sheet.name}
-            class="size-10 rounded object-cover cursor-pointer"
-            phx-click={if @can_edit, do: show_modal("avatar-gallery-#{@sheet.id}")}
-          />
-        <% else %>
-          <div
-            class="size-10 rounded bg-base-300 flex items-center justify-center cursor-pointer"
-            phx-click={if @can_edit, do: show_modal("avatar-gallery-#{@sheet.id}")}
-          >
-            <.icon name="file" class="size-5 opacity-40" />
+      <%!-- Main avatar with click → strip popover --%>
+      <div class="dropdown dropdown-bottom">
+        <div tabindex="0" role="button" class="cursor-pointer">
+          <div class="relative group">
+            <%= if @default_avatar && @default_avatar.asset do %>
+              <img
+                src={Assets.display_url(@default_avatar.asset)}
+                alt={@sheet.name}
+                class="size-20 rounded object-cover"
+              />
+            <% else %>
+              <div class="size-20 rounded bg-base-300 flex items-center justify-center">
+                <.icon name="file" class="size-8 opacity-40" />
+              </div>
+            <% end %>
           </div>
-        <% end %>
+        </div>
 
-        <label
+        <%!-- Film strip popover --%>
+        <div
           :if={@can_edit}
-          for="avatar-upload-input"
-          class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded flex items-center justify-center transition-opacity cursor-pointer"
+          tabindex="0"
+          class="dropdown-content z-50 bg-base-200 border border-base-300 rounded-lg shadow-lg p-3 mt-1"
         >
-          <.icon name="camera" class="size-4 text-white" />
-        </label>
-      </div>
-
-      <%!-- Gallery modal --%>
-      <.modal :if={@can_edit} id={"avatar-gallery-#{@sheet.id}"} on_cancel={hide_modal("avatar-gallery-#{@sheet.id}")}>
-        <h3 class="font-bold text-lg mb-4">
-          {dgettext("sheets", "Avatar Gallery")}
-        </h3>
-
-        <%= if @avatars == [] do %>
-          <div class="text-center py-8 text-base-content/40">
-            <.icon name="image" class="size-8 mx-auto mb-2 opacity-40" />
-            <p class="text-sm">{dgettext("sheets", "No avatars yet. Upload one to get started.")}</p>
-          </div>
-        <% else %>
-          <%!-- Grid of avatars --%>
-          <div class="grid grid-cols-3 sm:grid-cols-4 gap-3">
-            <div :for={avatar <- @avatars} class="group/card relative">
-              <%!-- Avatar image --%>
-              <button
-                :if={avatar.asset}
-                type="button"
-                phx-click="set_default"
-                phx-value-id={avatar.id}
-                phx-target={@myself}
+          <div class="grid grid-cols-3 gap-2" style="width: 16.5rem;">
+            <div :for={avatar <- @avatars} class="flex flex-col items-center">
+              <div
                 class={[
-                  "aspect-square w-full rounded-lg overflow-hidden border-2 transition-colors",
+                  "relative group/thumb size-20 rounded-lg overflow-hidden border-2 transition-colors",
                   if(avatar.is_default,
                     do: "border-primary",
                     else: "border-base-content/10 hover:border-base-content/30"
                   )
                 ]}
               >
-                <img
-                  src={Assets.display_url(avatar.asset)}
-                  alt={avatar.name || ""}
-                  class="w-full h-full object-cover"
-                />
-              </button>
-
-              <%!-- Default badge --%>
-              <span
-                :if={avatar.is_default}
-                class="absolute top-1 left-1 badge badge-primary badge-xs"
-              >
-                {dgettext("sheets", "default")}
+                <button
+                  :if={avatar.asset}
+                  type="button"
+                  phx-click="set_default"
+                  phx-value-id={avatar.id}
+                  phx-target={@myself}
+                  class="w-full h-full"
+                >
+                  <img
+                    src={Assets.display_url(avatar.asset)}
+                    alt={avatar.name || ""}
+                    class="w-full h-full object-cover"
+                  />
+                </button>
+                <button
+                  type="button"
+                  phx-click="remove_avatar"
+                  phx-value-id={avatar.id}
+                  phx-target={@myself}
+                  class="absolute top-0 right-0 size-4 bg-black/70 rounded-bl flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity z-10"
+                >
+                  <.icon name="x" class="size-2.5 text-white" />
+                </button>
+              </div>
+              <span class="text-[10px] text-base-content/50 truncate max-w-full mt-0.5">
+                {avatar.name || ""}
               </span>
+            </div>
 
-              <%!-- Remove button --%>
-              <button
-                type="button"
-                phx-click="remove_avatar"
-                phx-value-id={avatar.id}
-                phx-target={@myself}
-                class="absolute top-1 right-1 size-5 rounded-full bg-black/70 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity"
+            <div class="flex flex-col items-center">
+              <label
+                for="avatar-upload-input"
+                class="size-20 rounded-lg border-2 border-dashed border-base-content/20 hover:border-base-content/40 flex items-center justify-center cursor-pointer transition-colors"
               >
-                <.icon name="x" class="size-3 text-white" />
-              </button>
-
-              <%!-- Name input --%>
-              <input
-                type="text"
-                value={avatar.name || ""}
-                placeholder={dgettext("sheets", "name...")}
-                phx-blur="update_avatar_name"
-                phx-value-id={avatar.id}
-                phx-target={@myself}
-                class="input input-xs w-full mt-1 text-center text-xs bg-transparent border-0 border-b border-base-content/10 focus:border-primary rounded-none px-0"
-              />
-
-              <%!-- Notes textarea (expandable) --%>
-              <textarea
-                rows="1"
-                value={avatar.notes || ""}
-                placeholder={dgettext("sheets", "notes...")}
-                phx-blur="update_avatar_notes"
-                phx-value-id={avatar.id}
-                phx-target={@myself}
-                class="textarea textarea-xs w-full mt-0.5 text-xs bg-transparent border-0 resize-none px-0 min-h-0 h-5 focus:h-12 transition-all text-base-content/50 focus:text-base-content"
-              >{avatar.notes || ""}</textarea>
+                <.icon name="plus" class="size-5 text-base-content/40" />
+              </label>
             </div>
           </div>
-        <% end %>
 
-        <%!-- Upload button --%>
-        <div class="mt-4">
-          <label
-            for="avatar-upload-input"
-            class="btn btn-ghost btn-sm w-full border border-dashed border-base-content/20"
+          <button
+            :if={@avatars != []}
+            type="button"
+            phx-click={show_modal("avatar-gallery-#{@sheet.id}")}
+            class="flex items-center justify-center gap-1.5 w-full mt-2 pt-2 border-t border-base-content/10 text-xs text-base-content/50 hover:text-base-content transition-colors cursor-pointer"
           >
-            <.icon name="plus" class="size-4" />
-            {dgettext("sheets", "Add avatar")}
-          </label>
+            <.icon name="layout-grid" class="size-3.5" />
+            {dgettext("sheets", "Gallery")}
+          </button>
         </div>
-      </.modal>
+      </div>
 
-      <%!-- Single shared file input --%>
+      <%!-- Gallery modal (generic ImageGallery LiveComponent) --%>
+      <.live_component
+        :if={@can_edit}
+        module={ImageGallery}
+        id={"avatar-gallery-#{@sheet.id}"}
+        items={to_gallery_items(@avatars)}
+        can_edit={@can_edit}
+        title={dgettext("sheets", "Avatar Gallery")}
+        name_placeholder={dgettext("sheets", "e.g. happy, angry, combat...")}
+        notes_placeholder={dgettext("sheets", "Voice direction, art notes...")}
+        upload_label={dgettext("sheets", "Add avatar")}
+        upload_input_id="avatar-upload-input"
+        empty_message={dgettext("sheets", "No avatars yet. Upload one to get started.")}
+      >
+        <:item_badge :let={item}>
+          <span :if={item.is_default} class="badge badge-primary badge-xs">
+            {dgettext("sheets", "default")}
+          </span>
+        </:item_badge>
+        <:item_actions :let={item}>
+          <button
+            :if={!item.is_default}
+            type="button"
+            phx-click="set_default"
+            phx-value-id={item.id}
+            phx-target={@myself}
+            class="btn btn-sm btn-ghost gap-1"
+          >
+            <.icon name="star" class="size-3.5" />
+            {dgettext("sheets", "Set as default")}
+          </button>
+          <span :if={item.is_default} class="badge badge-primary badge-sm">
+            {dgettext("sheets", "Default")}
+          </span>
+        </:item_actions>
+      </.live_component>
+
+      <%!-- Shared file input --%>
       <input
         :if={@can_edit}
         type="file"
         accept="image/*"
+        multiple
         class="hidden"
         phx-hook="AvatarUpload"
         id="avatar-upload-input"
@@ -165,11 +171,12 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
   @impl true
   def update(assigns, socket) do
     avatars = if is_list(assigns.sheet.avatars), do: assigns.sheet.avatars, else: []
+    sorted = Enum.sort_by(avatars, & &1.position)
 
     {:ok,
      socket
      |> assign(assigns)
-     |> assign(:avatars, Enum.sort_by(avatars, & &1.position))
+     |> assign(:avatars, sorted)
      |> assign(:default_avatar, Enum.find(avatars, & &1.is_default))}
   end
 
@@ -200,32 +207,6 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
     end)
   end
 
-  def handle_event("update_avatar_name", %{"id" => id, "value" => value}, socket) do
-    Authorize.with_edit_authorization(socket, fn socket ->
-      case get_owned_avatar(socket, id) do
-        {:ok, avatar} ->
-          Sheets.update_avatar(avatar, %{name: value})
-          reload_and_notify(socket)
-
-        {:error, _} ->
-          {:noreply, socket}
-      end
-    end)
-  end
-
-  def handle_event("update_avatar_notes", %{"id" => id, "value" => value}, socket) do
-    Authorize.with_edit_authorization(socket, fn socket ->
-      case get_owned_avatar(socket, id) do
-        {:ok, avatar} ->
-          Sheets.update_avatar(avatar, %{notes: value})
-          reload_and_notify(socket)
-
-        {:error, _} ->
-          {:noreply, socket}
-      end
-    end)
-  end
-
   def handle_event("upload_validation_error", %{"message" => message}, socket) do
     send(self(), {:sheet_avatar, :error, message})
     {:noreply, socket}
@@ -249,8 +230,28 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
   end
 
   # ===========================================================================
+  # ImageGallery events (from parent handle_info)
+  # ===========================================================================
+
+  # These are handled in sheet_live/show.ex via handle_info({:image_gallery, ...})
+
+  # ===========================================================================
   # Private Functions
   # ===========================================================================
+
+  defp to_gallery_items(avatars) do
+    Enum.map(avatars, fn a ->
+      %{
+        id: a.id,
+        url: Assets.display_url(a.asset),
+        original_url: a.asset && a.asset.url,
+        name: a.name,
+        notes: a.notes,
+        filename: a.asset && a.asset.filename,
+        is_default: a.is_default
+      }
+    end)
+  end
 
   defp do_remove_avatar(socket, avatar) do
     case Sheets.remove_avatar(avatar.id) do
@@ -264,7 +265,8 @@ defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
   end
 
   defp get_owned_avatar(socket, id) do
-    avatar = Sheets.get_avatar(String.to_integer(id))
+    id = if is_binary(id), do: String.to_integer(id), else: id
+    avatar = Sheets.get_avatar(id)
 
     if avatar && avatar.sheet_id == socket.assigns.sheet.id do
       {:ok, avatar}
