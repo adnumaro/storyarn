@@ -38,18 +38,70 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
         can_edit={@can_edit}
         target={@target}
       />
-      <select
+      <div
         :if={@can_edit}
-        class="select select-bordered w-full"
-        phx-change="update_block_value"
-        phx-value-id={@block.id}
-        phx-target={@target}
+        id={"block-select-#{@block.id}"}
+        phx-hook="BlockSelect"
+        data-mode="select"
+        data-phx-target={@target}
+        class="w-full"
       >
-        <option value="">{@placeholder}</option>
-        <option :for={opt <- @options} value={opt["key"]} selected={@content == opt["key"]}>
-          {opt["value"]}
-        </option>
-      </select>
+        <button
+          type="button"
+          data-role="trigger"
+          class="select select-bordered w-full flex items-center justify-between cursor-pointer"
+        >
+          <span class={["truncate", !@display_value && "text-base-content/50"]}>
+            {@display_value || @placeholder}
+          </span>
+        </button>
+
+        <template data-role="popover-template">
+          <div class="p-2">
+            <input
+              :if={length(@options) > 5}
+              type="text"
+              data-role="search"
+              class="input input-bordered input-sm w-full mb-2"
+              placeholder={dgettext("sheets", "Search...")}
+            />
+            <div data-role="list" class="max-h-48 overflow-y-auto">
+              <button
+                type="button"
+                data-event="update_block_value"
+                data-params={Jason.encode!(%{id: @block.id, value: ""})}
+                data-search-text=""
+                class={[
+                  "w-full text-left px-2 py-1.5 rounded text-sm hover:bg-base-300 transition-colors",
+                  !@content && "bg-base-300"
+                ]}
+              >
+                <span class="text-base-content/50">{@placeholder}</span>
+              </button>
+              <button
+                :for={opt <- @options}
+                type="button"
+                data-event="update_block_value"
+                data-params={Jason.encode!(%{id: @block.id, value: opt["key"]})}
+                data-search-text={String.downcase(opt["value"] || "")}
+                class={[
+                  "w-full text-left px-2 py-1.5 rounded text-sm hover:bg-base-300 transition-colors",
+                  @content == opt["key"] && "bg-primary/10 text-primary font-medium"
+                ]}
+              >
+                {opt["value"]}
+              </button>
+            </div>
+            <div
+              data-role="empty"
+              class="text-center text-base-content/50 py-3 text-sm"
+              style="display:none"
+            >
+              {dgettext("sheets", "No matches")}
+            </div>
+          </div>
+        </template>
+      </div>
       <div
         :if={!@can_edit}
         class={["py-2 min-h-10", @display_value == nil && "text-base-content/40"]}
@@ -80,31 +132,77 @@ defmodule StoryarnWeb.Components.BlockComponents.SelectBlocks do
       />
       <div
         :if={@can_edit}
-        class="block-input w-full min-h-12 py-2 flex flex-wrap items-center gap-1.5 px-4"
+        id={"block-select-#{@block.id}"}
+        phx-hook="BlockSelect"
+        data-mode="multi_select"
+        data-phx-target={@target}
+        class="w-full"
       >
-        <%!-- Selected tags --%>
-        <span :for={opt <- @selected_options} class="badge badge-primary gap-1">
-          {opt.label}
-          <button
-            type="button"
-            class="hover:opacity-70"
-            phx-click="toggle_multi_select"
-            phx-value-id={@block.id}
-            phx-value-key={opt.key}
-            phx-target={@target}
-          >
-            <.icon name="x" class="size-3" />
-          </button>
-        </span>
-        <%!-- Input for adding new tags --%>
-        <input
-          type="text"
-          class="flex-1 min-w-24 bg-transparent border-none outline-none text-sm"
-          placeholder={@placeholder}
-          phx-keydown="multi_select_keydown"
-          phx-value-id={@block.id}
-          phx-target={@target}
-        />
+        <button
+          type="button"
+          data-role="trigger"
+          class="block-input w-full min-h-12 py-2 flex flex-wrap items-center gap-1.5 px-4 cursor-pointer"
+        >
+          <span :for={opt <- @selected_options} class="badge badge-primary gap-1">
+            {opt.label}
+          </span>
+          <span :if={@selected_options == []} class="text-base-content/50 text-sm">
+            {@placeholder}
+          </span>
+          <.icon name="chevron-down" class="size-4 shrink-0 text-base-content/50 ml-auto" />
+        </button>
+
+        <template data-role="popover-template">
+          <div class="p-2">
+            <input
+              :if={length(@options) > 5}
+              type="text"
+              data-role="search"
+              class="input input-bordered input-sm w-full mb-2"
+              placeholder={dgettext("sheets", "Search...")}
+            />
+            <div data-role="list" class="max-h-48 overflow-y-auto">
+              <button
+                :for={opt <- @options}
+                type="button"
+                data-event="toggle_multi_select"
+                data-params={Jason.encode!(%{id: @block.id, key: opt["key"]})}
+                data-search-text={String.downcase(opt["value"] || "")}
+                class={[
+                  "w-full text-left px-2 py-1.5 rounded text-sm hover:bg-base-300 transition-colors flex items-center gap-2",
+                  opt["key"] in @content && "bg-primary/10"
+                ]}
+              >
+                <span class={[
+                  "size-4 rounded border flex items-center justify-center shrink-0",
+                  if(opt["key"] in @content,
+                    do: "bg-primary border-primary text-primary-content",
+                    else: "border-base-content/30"
+                  )
+                ]}>
+                  <.icon :if={opt["key"] in @content} name="check" class="size-3" />
+                </span>
+                {opt["value"]}
+              </button>
+            </div>
+            <div
+              data-role="empty"
+              class="text-center text-base-content/50 py-3 text-sm"
+              style="display:none"
+            >
+              {dgettext("sheets", "No matches")}
+            </div>
+            <div class="border-t border-base-300 mt-2 pt-2">
+              <input
+                type="text"
+                data-role="add-input"
+                data-block-id={@block.id}
+                class="input input-bordered input-sm w-full"
+                placeholder={dgettext("sheets", "Type and press Enter to add...")}
+              />
+            </div>
+          </div>
+        </template>
       </div>
       <div :if={!@can_edit} class="py-2 min-h-10">
         <div :if={@content != []} class="flex flex-wrap gap-1">
