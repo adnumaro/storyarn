@@ -317,7 +317,7 @@ export function createZoneHandler(hook, i18n = {}) {
           fillOpacity: 1,
           weight: 2,
           interactive: false,
-          className: isFirst ? "map-zone-close-target" : "",
+          className: "",
         }).addTo(hook.leafletMap);
         vertexMarkers.push(marker);
 
