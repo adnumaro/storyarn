@@ -591,8 +591,7 @@ defmodule Storyarn.Scenes.SceneCrud do
         scene_id: m.id,
         scene_name: m.name,
         pin_id: p.id,
-        pin_label: p.label,
-        pin_action_data: p.action_data
+        pin_label: p.label
       },
       order_by: [asc: vr.kind, asc: m.name]
     )
@@ -695,7 +694,6 @@ defmodule Storyarn.Scenes.SceneCrud do
         scene_name: m.name,
         pin_id: p.id,
         pin_label: p.label,
-        pin_action_data: p.action_data,
         source_sheet: vr.source_sheet,
         source_variable: vr.source_variable,
         stale:

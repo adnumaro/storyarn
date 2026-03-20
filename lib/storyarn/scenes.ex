@@ -513,12 +513,17 @@ defmodule Storyarn.Scenes do
       )
       |> Repo.all()
 
+    # Pins only have flow_id now (no generic target_type/target_id)
     pins =
-      from(p in ScenePin,
-        where: p.target_type == ^target_type and p.target_id == ^target_id,
-        preload: [:scene]
-      )
-      |> Repo.all()
+      if target_type == "flow" do
+        from(p in ScenePin,
+          where: p.flow_id == ^target_id,
+          preload: [:scene]
+        )
+        |> Repo.all()
+      else
+        []
+      end
 
     %{zones: zones, pins: pins}
   end

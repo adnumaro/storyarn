@@ -9,6 +9,7 @@ defmodule Storyarn.Scenes.ZoneCrud do
   alias Storyarn.Scenes
   alias Storyarn.Scenes.{PositionUtils, Scene, SceneZone}
   alias Storyarn.Sheets
+  alias Storyarn.Shortcuts
 
   @doc """
   Lists zones for a map, with optional layer_id filter.
@@ -56,6 +57,7 @@ defmodule Storyarn.Scenes.ZoneCrud do
   def create_zone(scene_id, attrs) do
     position = PositionUtils.next_position(SceneZone, scene_id)
     attrs = Storyarn.Shared.MapUtils.stringify_keys(attrs)
+    attrs = maybe_generate_zone_shortcut(attrs, scene_id, nil)
 
     result =
       %SceneZone{scene_id: scene_id}
@@ -77,6 +79,8 @@ defmodule Storyarn.Scenes.ZoneCrud do
   end
 
   def update_zone(%SceneZone{} = zone, attrs) do
+    attrs = maybe_regenerate_zone_shortcut(zone, attrs)
+
     result =
       zone
       |> SceneZone.update_changeset(attrs)
@@ -161,5 +165,45 @@ defmodule Storyarn.Scenes.ZoneCrud do
       limit: 1
     )
     |> Repo.one()
+  end
+
+  # Generate shortcut from name on create if name present and no shortcut in attrs
+  defp maybe_generate_zone_shortcut(attrs, scene_id, exclude_id) do
+    name = attrs["name"]
+    shortcut = attrs["shortcut"]
+
+    if is_binary(name) && name != "" && is_nil(shortcut) do
+      Map.put(attrs, "shortcut", Shortcuts.generate_zone_shortcut(name, scene_id, exclude_id))
+    else
+      attrs
+    end
+  end
+
+  # Regenerate shortcut on update when name changes
+  defp maybe_regenerate_zone_shortcut(zone, attrs) do
+    attrs = Storyarn.Shared.MapUtils.stringify_keys(attrs)
+    new_name = attrs["name"]
+
+    cond do
+      # Name is changing → regenerate shortcut
+      is_binary(new_name) && new_name != "" && new_name != zone.name ->
+        Map.put(
+          attrs,
+          "shortcut",
+          Shortcuts.generate_zone_shortcut(new_name, zone.scene_id, zone.id)
+        )
+
+      # No shortcut exists but name does → generate
+      is_nil(zone.shortcut) && is_binary(zone.name) && zone.name != "" &&
+          !Map.has_key?(attrs, "name") ->
+        Map.put(
+          attrs,
+          "shortcut",
+          Shortcuts.generate_zone_shortcut(zone.name, zone.scene_id, zone.id)
+        )
+
+      true ->
+        attrs
+    end
   end
 end

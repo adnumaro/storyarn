@@ -154,6 +154,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     %{
       "original_id" => zone.id,
       "name" => zone.name,
+      "shortcut" => zone.shortcut,
+      "hidden" => zone.hidden,
       "vertices" => zone.vertices,
       "fill_color" => zone.fill_color,
       "border_color" => zone.border_color,
@@ -183,16 +185,15 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       "color" => pin.color,
       "opacity" => pin.opacity,
       "label" => pin.label,
-      "target_type" => pin.target_type,
-      "target_id" => pin.target_id,
+      "shortcut" => pin.shortcut,
+      "hidden" => pin.hidden,
+      "flow_id" => pin.flow_id,
       "tooltip" => pin.tooltip,
       "size" => pin.size,
       "position" => pin.position,
       "locked" => pin.locked,
       "sheet_id" => pin.sheet_id,
       "icon_asset_id" => pin.icon_asset_id,
-      "action_type" => pin.action_type,
-      "action_data" => pin.action_data,
       "condition" => pin.condition,
       "condition_effect" => pin.condition_effect,
       "is_playable" => pin.is_playable,
@@ -511,6 +512,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     Map.merge(
       %{
         name: d["name"],
+        shortcut: d["shortcut"],
+        hidden: d["hidden"] || false,
         vertices: d["vertices"],
         fill_color: d["fill_color"],
         border_color: d["border_color"],
@@ -586,8 +589,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         icon: d["icon"],
         color: d["color"],
         label: d["label"],
-        target_type: d["target_type"],
-        target_id: d["target_id"],
+        shortcut: d["shortcut"],
+        hidden: d["hidden"] || false,
+        flow_id: d["flow_id"],
         tooltip: d["tooltip"],
         condition: d["condition"]
       },
@@ -608,8 +612,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   defp pin_action_defaults(d) do
     %{
-      action_type: d["action_type"] || "none",
-      action_data: d["action_data"] || %{},
       condition_effect: d["condition_effect"] || "hide",
       is_playable: d["is_playable"] || false,
       is_leader: d["is_leader"] || false
@@ -940,8 +942,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     |> Map.merge(%{
       scene_id: scene_id,
       layer_id: layer_id,
-      target_type: if(preserve_external_refs?, do: pin_data["target_type"]),
-      target_id: if(preserve_external_refs?, do: pin_data["target_id"]),
+      flow_id: if(preserve_external_refs?, do: pin_data["flow_id"]),
       sheet_id:
         if(preserve_external_refs?,
           do: resolve_scene_sheet_id(pin_data["sheet_id"], project_id, opts)
@@ -1046,8 +1047,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   alias Storyarn.Versioning.DiffHelpers
 
   @layer_compare_fields ~w(name is_default visible fog_enabled fog_color fog_opacity)
-  @pin_compare_fields ~w(pin_type icon color opacity label size target_type target_id tooltip sheet_id icon_asset_id action_type action_data condition condition_effect locked)
-  @zone_compare_fields ~w(name vertices fill_color border_color border_width border_style opacity target_type target_id tooltip action_type action_data condition condition_effect locked)
+  @pin_compare_fields ~w(pin_type icon color opacity label shortcut hidden size flow_id tooltip sheet_id icon_asset_id condition condition_effect locked)
+  @zone_compare_fields ~w(name shortcut hidden vertices fill_color border_color border_width border_style opacity target_type target_id tooltip action_type action_data condition condition_effect locked)
   @annotation_compare_fields ~w(text font_size color locked)
   @connection_compare_fields ~w(line_style line_width color label bidirectional show_label)
 
@@ -1452,7 +1453,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       acc
       |> maybe_add_ref(:sheet, pin["sheet_id"], prefix <> " — sheet")
       |> maybe_add_ref(:asset, pin["icon_asset_id"], prefix <> " — icon asset")
-      |> maybe_add_target_ref(pin["target_type"], pin["target_id"], prefix <> " — target")
+      |> maybe_add_ref(:flow, pin["flow_id"], prefix <> " — flow")
     end)
   end
 
@@ -1476,7 +1477,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       acc
       |> maybe_add_ref(:sheet, pin["sheet_id"], prefix <> " — sheet")
       |> maybe_add_ref(:asset, pin["icon_asset_id"], prefix <> " — icon asset")
-      |> maybe_add_target_ref(pin["target_type"], pin["target_id"], prefix <> " — target")
+      |> maybe_add_ref(:flow, pin["flow_id"], prefix <> " — flow")
     end)
   end
 

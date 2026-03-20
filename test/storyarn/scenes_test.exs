@@ -5,6 +5,7 @@ defmodule Storyarn.ScenesTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
+  import Storyarn.FlowsFixtures, only: [flow_fixture: 1]
   import Storyarn.ScenesFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
@@ -823,21 +824,20 @@ defmodule Storyarn.ScenesTest do
       assert Scenes.list_connections(scene.id) == []
     end
 
-    test "pin with target" do
+    test "pin with flow_id" do
       user = user_fixture()
       project = project_fixture(user)
       scene = scene_fixture(project)
+      flow = flow_fixture(project)
 
       {:ok, pin} =
         Scenes.create_pin(scene.id, %{
           "position_x" => 50.0,
           "position_y" => 50.0,
-          "target_type" => "flow",
-          "target_id" => 99
+          "flow_id" => flow.id
         })
 
-      assert pin.target_type == "flow"
-      assert pin.target_id == 99
+      assert pin.flow_id == flow.id
     end
 
     test "create_pin/2 with sheet_id stores the reference" do
@@ -1271,7 +1271,7 @@ defmodule Storyarn.ScenesTest do
   # =============================================================================
 
   describe "target queries" do
-    test "get_elements_for_target/2 returns pins and zones" do
+    test "get_elements_for_target/2 returns zones by target_type/target_id" do
       user = user_fixture()
       project = project_fixture(user)
       scene = scene_fixture(project)
@@ -1283,24 +1283,30 @@ defmodule Storyarn.ScenesTest do
           "target_id" => 42
         })
 
+      result = Scenes.get_elements_for_target("scene", 42)
+
+      assert length(result.zones) == 1
+      assert hd(result.zones).name == "Kingdom Zone"
+      assert hd(result.zones).scene.id == scene.id
+    end
+
+    test "get_elements_for_target/2 returns pins by flow_id" do
+      user = user_fixture()
+      project = project_fixture(user)
+      scene = scene_fixture(project)
+      flow = flow_fixture(project)
+
       _pin =
         pin_fixture(scene, %{
-          "label" => "Kingdom Pin",
-          "target_type" => "sheet",
-          "target_id" => 42
+          "label" => "Flow Pin",
+          "flow_id" => flow.id
         })
 
-      result_zones = Scenes.get_elements_for_target("scene", 42)
+      result = Scenes.get_elements_for_target("flow", flow.id)
 
-      assert length(result_zones.zones) == 1
-      assert hd(result_zones.zones).name == "Kingdom Zone"
-      assert hd(result_zones.zones).scene.id == scene.id
-
-      result_pins = Scenes.get_elements_for_target("sheet", 42)
-
-      assert length(result_pins.pins) == 1
-      assert hd(result_pins.pins).label == "Kingdom Pin"
-      assert hd(result_pins.pins).scene.id == scene.id
+      assert length(result.pins) == 1
+      assert hd(result.pins).label == "Flow Pin"
+      assert hd(result.pins).scene.id == scene.id
     end
 
     test "get_elements_for_target/2 returns empty for unlinked targets" do

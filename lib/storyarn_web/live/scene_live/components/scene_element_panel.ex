@@ -16,9 +16,6 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
   import StoryarnWeb.SceneLive.Components.CollectionItemsEditor
   import StoryarnWeb.SceneLive.Components.ToolbarWidgets
 
-  import StoryarnWeb.SceneLive.Helpers.SceneHelpers,
-    only: [action_type_icon: 1, action_type_label: 1]
-
   attr :selected_type, :string, required: true
   attr :selected_element, :map, required: true
   attr :can_edit, :boolean, default: true
@@ -108,6 +105,35 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
           phx-click={
             JS.push("update_zone",
               value: %{id: @zone.id, field: "is_walkable", toggle: to_string(!@zone.is_walkable)}
+            )
+          }
+          disabled={!@can_edit}
+        />
+      </div>
+
+      <%!-- Shortcut --%>
+      <div :if={@zone.shortcut} class="flex items-center gap-2">
+        <label class="text-xs font-medium text-base-content/60 shrink-0">
+          {dgettext("scenes", "Shortcut")}
+        </label>
+        <div class="text-xs font-mono text-base-content/80 bg-base-200 rounded px-2 py-0.5 truncate">
+          {@zone.shortcut}
+        </div>
+      </div>
+
+      <%!-- Hidden in exploration --%>
+      <div class="flex items-center justify-between">
+        <label class="text-xs font-medium text-base-content/60 flex items-center gap-1">
+          <.icon name="eye-off" class="size-3" />
+          {dgettext("scenes", "Hidden in exploration")}
+        </label>
+        <input
+          type="checkbox"
+          class="toggle toggle-xs toggle-primary"
+          checked={@zone.hidden}
+          phx-click={
+            JS.push("update_zone",
+              value: %{id: @zone.id, field: "hidden", toggle: to_string(!@zone.hidden)}
             )
           }
           disabled={!@can_edit}
@@ -242,11 +268,6 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
   attr :panel_sections, :map, default: %{}
 
   defp pin_panel(assigns) do
-    assigns =
-      assigns
-      |> assign(:action_types, @action_types)
-      |> assign(:action_data, assigns.pin.action_data || %{})
-
     ~H"""
     <div class="space-y-4">
       <%!-- Tooltip --%>
@@ -380,82 +401,59 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
         </div>
       </div>
 
-      <%!-- Link to --%>
-      <div class="pt-3 border-t border-base-300">
+      <%!-- Shortcut --%>
+      <div :if={@pin.shortcut} class="pt-3 border-t border-base-300">
         <label class="block text-xs font-medium text-base-content/60 mb-1">
-          {dgettext("scenes", "Link to")}
+          {dgettext("scenes", "Shortcut")}
         </label>
-        <.toolbar_target_picker
-          id={"panel-pin-target-#{@pin.id}"}
-          event="update_pin"
-          element_id={@pin.id}
-          current_type={@pin.target_type}
-          current_target_id={@pin.target_id}
-          target_types={~w(sheet flow scene url)}
-          project_scenes={@project_scenes}
-          project_sheets={@project_sheets}
-          project_flows={@project_flows}
-          disabled={!@can_edit}
-        />
-      </div>
-
-      <%!-- Action type --%>
-      <div class="pt-3 border-t border-base-300">
-        <label class="block text-xs font-medium text-base-content/60 mb-1">
-          {dgettext("scenes", "Action")}
-        </label>
-        <div class="flex gap-1">
-          <button
-            :for={type <- @action_types}
-            type="button"
-            phx-click={
-              JS.push("update_pin_action_type",
-                value: %{"pin-id": @pin.id, "action-type": type}
-              )
-            }
-            class={[
-              "flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer hover:bg-base-content/10",
-              type == (@pin.action_type || "none") && "font-semibold text-primary bg-base-content/5"
-            ]}
-            disabled={!@can_edit}
-          >
-            <.icon name={action_type_icon(type)} class="size-3" />
-            {action_type_label(type)}
-          </button>
+        <div class="text-xs font-mono text-base-content/80 bg-base-200 rounded px-2 py-1">
+          {@pin.shortcut}
         </div>
       </div>
 
-      <%!-- Instruction --%>
-      <div :if={@pin.action_type == "instruction"} class="pt-3 border-t border-base-300">
+      <%!-- Flow --%>
+      <div class="pt-3 border-t border-base-300">
         <label class="block text-xs font-medium text-base-content/60 mb-1">
-          {dgettext("scenes", "Assignments")}
+          {dgettext("scenes", "Flow")}
         </label>
-        <.expression_editor
-          id={"panel-pin-instruction-#{@pin.id}"}
-          mode="instruction"
-          assignments={@action_data["assignments"] || []}
-          variables={@project_variables}
-          can_edit={@can_edit}
-          context={%{"pin-id" => @pin.id}}
-          event_name="update_pin_assignments"
-          active_tab={Map.get(@panel_sections, "tab_panel-pin-instruction-#{@pin.id}", "builder")}
-        />
+        <select
+          class="select select-sm select-bordered w-full"
+          phx-change="update_pin"
+          phx-value-id={@pin.id}
+          phx-value-field="flow_id"
+          name="value"
+          disabled={!@can_edit}
+        >
+          <option value="">{dgettext("scenes", "None")}</option>
+          <option
+            :for={flow <- @project_flows}
+            value={flow.id}
+            selected={@pin.flow_id == flow.id}
+          >
+            {flow.name}
+          </option>
+        </select>
       </div>
 
-      <%!-- Display --%>
-      <div :if={@pin.action_type == "display"} class="pt-3 border-t border-base-300">
-        <label class="block text-xs font-medium text-base-content/60 mb-1">
-          {dgettext("scenes", "Variable")}
-        </label>
-        <.display_variable_picker
-          id={"panel-pin-display-var-#{@pin.id}"}
-          element_id={@pin.id}
-          event="update_pin_action_data"
-          context_key="pin-id"
-          variables={@project_variables}
-          selected_ref={@action_data["variable_ref"] || ""}
-          can_edit={@can_edit}
-        />
+      <%!-- Hidden in exploration --%>
+      <div class="pt-3 border-t border-base-300">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-medium text-base-content/60 flex items-center gap-1">
+            <.icon name="eye-off" class="size-3" />
+            {dgettext("scenes", "Hidden in exploration")}
+          </label>
+          <input
+            type="checkbox"
+            class="toggle toggle-xs toggle-primary"
+            checked={@pin.hidden}
+            phx-click={
+              JS.push("update_pin",
+                value: %{id: @pin.id, field: "hidden", toggle: to_string(!@pin.hidden)}
+              )
+            }
+            disabled={!@can_edit}
+          />
+        </div>
       </div>
 
       <%!-- Condition --%>

@@ -10,7 +10,7 @@ defmodule Storyarn.Shortcuts do
 
   alias Storyarn.Flows.Flow
   alias Storyarn.Repo
-  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.{Scene, ScenePin, SceneZone}
   alias Storyarn.Screenplays.Screenplay
   alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Sheets.Sheet
@@ -32,6 +32,12 @@ defmodule Storyarn.Shortcuts do
 
   def generate_scene_shortcut(name, project_id, exclude_id \\ nil),
     do: generate_unique(name, &list_entity_shortcuts(Scene, project_id, &1), exclude_id)
+
+  def generate_pin_shortcut(label, scene_id, exclude_id \\ nil),
+    do: generate_unique(label, &list_scene_element_shortcuts(ScenePin, scene_id, &1), exclude_id)
+
+  def generate_zone_shortcut(name, scene_id, exclude_id \\ nil),
+    do: generate_unique(name, &list_scene_element_shortcuts(SceneZone, scene_id, &1), exclude_id)
 
   defp generate_unique(name, list_fn, exclude_id) do
     base_shortcut = NameNormalizer.shortcutify(name)
@@ -82,5 +88,23 @@ defmodule Storyarn.Shortcuts do
     else
       candidate
     end
+  end
+
+  # Scene-scoped shortcut listing (pins/zones have no project_id or deleted_at)
+  defp list_scene_element_shortcuts(schema, scene_id, exclude_id) do
+    query =
+      from(e in schema,
+        where: e.scene_id == ^scene_id and not is_nil(e.shortcut),
+        select: e.shortcut
+      )
+
+    query =
+      if exclude_id do
+        where(query, [e], e.id != ^exclude_id)
+      else
+        query
+      end
+
+    Repo.all(query)
   end
 end

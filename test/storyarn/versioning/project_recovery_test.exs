@@ -194,8 +194,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
         pin_fixture(scene, %{
           "label" => "Gate",
           "sheet_id" => speaker.id,
-          "target_type" => "flow",
-          "target_id" => flow.id
+          "flow_id" => flow.id
         })
 
       _zone =
@@ -230,7 +229,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
 
       assert recovered_flow.scene_id == recovered_scene.id
       assert recovered_pin.sheet_id == recovered_speaker.id
-      assert recovered_pin.target_id == recovered_flow.id
+      assert recovered_pin.flow_id == recovered_flow.id
       assert recovered_zone.target_id == recovered_target_scene.id
       assert recovered_dialogue.data["speaker_sheet_id"] == recovered_speaker.id
       assert recovered_dialogue.data["location_sheet_id"] == recovered_speaker.id

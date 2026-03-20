@@ -58,12 +58,11 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbarTest do
         opacity: 1.0,
         locked: false,
         layer_id: 1,
-        action_type: "none",
-        action_data: %{},
+        shortcut: nil,
+        hidden: false,
+        flow_id: nil,
         condition: nil,
         condition_effect: "visibility",
-        target_type: nil,
-        target_id: nil,
         tooltip: ""
       },
       overrides

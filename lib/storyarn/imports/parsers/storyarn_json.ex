@@ -691,16 +691,15 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         "color" => pin_data["color"],
         "opacity" => pin_data["opacity"],
         "label" => pin_data["label"],
-        "target_type" => pin_data["target_type"],
-        "target_id" => remap_target_id(map, pin_data["target_type"], pin_data["target_id"]),
+        "shortcut" => pin_data["shortcut"],
+        "hidden" => pin_data["hidden"] || false,
+        "flow_id" => resolve_pin_flow_id(pin_data, map),
         "tooltip" => pin_data["tooltip"],
         "size" => pin_data["size"],
         "position" => pin_data["position"] || 0,
         "locked" => pin_data["locked"] || false,
         "icon_asset_id" => remap_id(map, :asset, pin_data["icon_asset_id"]),
         "sheet_id" => remap_id(map, :sheet, pin_data["sheet_id"]),
-        "action_type" => pin_data["action_type"],
-        "action_data" => pin_data["action_data"] || %{},
         "condition" => pin_data["condition"],
         "condition_effect" => pin_data["condition_effect"],
         "is_playable" => pin_data["is_playable"] || false,
@@ -718,6 +717,8 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     Enum.reduce(zones, {id_map, []}, fn zone_data, {map, results} ->
       attrs = %{
         "name" => zone_data["name"],
+        "shortcut" => zone_data["shortcut"],
+        "hidden" => zone_data["hidden"] || false,
         "layer_id" => remap_id(map, :layer, zone_data["layer_id"]),
         "vertices" => zone_data["vertices"] || [],
         "fill_color" => zone_data["fill_color"],
@@ -1035,6 +1036,15 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   # =============================================================================
   # Helpers
   # =============================================================================
+
+  # Backwards compat: old exports have target_type/target_id, new ones have flow_id
+  defp resolve_pin_flow_id(pin_data, id_map) do
+    cond do
+      pin_data["flow_id"] -> remap_id(id_map, :flow, pin_data["flow_id"])
+      pin_data["target_type"] == "flow" && pin_data["target_id"] -> remap_id(id_map, :flow, pin_data["target_id"])
+      true -> nil
+    end
+  end
 
   defp remap_id(_map, _type, nil), do: nil
 

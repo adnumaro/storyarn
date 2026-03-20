@@ -265,7 +265,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
                )
 
       assert Enum.all?(materialized.pins, fn pin ->
-               is_nil(pin.sheet_id) and is_nil(pin.target_type) and is_nil(pin.target_id)
+               is_nil(pin.sheet_id) and is_nil(pin.flow_id)
              end)
     end
   end
@@ -280,14 +280,12 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
               %{
                 "sheet_id" => 10,
                 "icon_asset_id" => 20,
-                "target_type" => "flow",
-                "target_id" => 30
+                "flow_id" => 30
               },
               %{
                 "sheet_id" => nil,
                 "icon_asset_id" => nil,
-                "target_type" => "url",
-                "target_id" => nil
+                "flow_id" => nil
               }
             ],
             "zones" => [
@@ -321,8 +319,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
               %{
                 "sheet_id" => nil,
                 "icon_asset_id" => nil,
-                "target_type" => "url",
-                "target_id" => nil
+                "flow_id" => nil
               }
             ],
             "zones" => [
@@ -344,8 +341,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
           %{
             "sheet_id" => 10,
             "icon_asset_id" => 20,
-            "target_type" => "scene",
-            "target_id" => 30
+            "flow_id" => 30
           }
         ],
         "orphan_zones" => [
@@ -358,8 +354,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
       types_and_ids = Enum.map(refs, &{&1.type, &1.id}) |> Enum.sort()
 
       assert {:asset, 20} in types_and_ids
+      assert {:flow, 30} in types_and_ids
       assert {:flow, 40} in types_and_ids
-      assert {:scene, 30} in types_and_ids
       assert {:sheet, 10} in types_and_ids
       assert length(refs) == 4
     end

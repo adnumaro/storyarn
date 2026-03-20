@@ -619,6 +619,30 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     push_navigate(socket, to: path)
   end
 
+  # Pin with dedicated flow_id field
+  defp handle_element_target(%{"element_type" => "pin", "flow_id" => flow_id}, socket)
+       when is_binary(flow_id) and flow_id != "" do
+    case MapUtils.parse_int(flow_id) do
+      nil ->
+        socket
+
+      parsed_id ->
+        case init_flow(socket, parsed_id) do
+          {:ok, socket} -> socket
+          {:error, socket} -> socket
+        end
+    end
+  end
+
+  defp handle_element_target(%{"element_type" => "pin", "flow_id" => flow_id}, socket)
+       when is_integer(flow_id) do
+    case init_flow(socket, flow_id) do
+      {:ok, socket} -> socket
+      {:error, socket} -> socket
+    end
+  end
+
+  # Zone with target_type/target_id (zones still use the old pattern)
   defp handle_element_target(%{"target_type" => "flow", "target_id" => flow_id}, socket)
        when not is_nil(flow_id) and flow_id != "" do
     case MapUtils.parse_int(flow_id) do

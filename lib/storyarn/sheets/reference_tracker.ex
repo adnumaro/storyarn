@@ -464,17 +464,17 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   defp extract_map_pin_refs(pin) do
     refs = []
 
-    # Track target_type/target_id (navigate link)
+    # Track flow_id (dedicated flow link)
     refs =
-      if pin.target_type && pin.target_id do
-        [%{type: pin.target_type, id: pin.target_id, context: "target"} | refs]
+      if pin.flow_id do
+        [%{type: "flow", id: pin.flow_id, context: "target"} | refs]
       else
         refs
       end
 
-    # Track sheet_id (avatar/display sheet — separate from target)
+    # Track sheet_id (avatar/display sheet)
     refs =
-      if pin.sheet_id && pin.sheet_id != pin.target_id do
+      if pin.sheet_id do
         [%{type: "sheet", id: pin.sheet_id, context: "display"} | refs]
       else
         refs

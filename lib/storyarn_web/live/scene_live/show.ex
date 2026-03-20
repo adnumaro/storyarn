@@ -1530,24 +1530,6 @@ defmodule StoryarnWeb.SceneLive.Show do
   # Pin handlers — delegate to ElementHandlers
   # ---------------------------------------------------------------------------
 
-  def handle_event("update_pin_action_type", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_pin_action_type(params, socket) |> broadcast_scene_change()
-    end)
-  end
-
-  def handle_event("update_pin_assignments", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_pin_assignments(params, socket) |> broadcast_scene_change()
-    end)
-  end
-
-  def handle_event("update_pin_action_data", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_pin_action_data(params, socket) |> broadcast_scene_change()
-    end)
-  end
-
   def handle_event("update_pin_condition", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_pin_condition(params, socket) |> broadcast_scene_change()

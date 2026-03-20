@@ -2,9 +2,9 @@ defmodule Storyarn.Scenes.ScenePin do
   @moduledoc """
   Schema for scene pins.
 
-  Pins are point markers placed on a scene. They can link to sheets, flows,
-  scenes, or external URLs. Position is stored as percentage pairs (0-100)
-  relative to the scene dimensions.
+  Pins are point markers placed on a scene. They can display a sheet's avatar
+  and optionally launch a flow when clicked in exploration mode (`flow_id`).
+  Position is stored as percentage pairs (0-100) relative to the scene dimensions.
   """
   use Ecto.Schema
   import Ecto.Changeset
@@ -12,13 +12,13 @@ defmodule Storyarn.Scenes.ScenePin do
   import Storyarn.Scenes.ChangesetHelpers
 
   alias Storyarn.Assets.Asset
+  alias Storyarn.Flows.Flow
   alias Storyarn.Scenes.{Scene, SceneConnection, SceneLayer}
+  alias Storyarn.Shared.Validations
   alias Storyarn.Sheets.Sheet
 
   @valid_pin_types ~w(location character event custom)
   @valid_sizes ~w(sm md lg)
-  @valid_target_types ~w(sheet flow scene url)
-  @valid_action_types ~w(none instruction display)
   @valid_condition_effects ~w(hide disable)
   @valid_patrol_modes ~w(none loop ping_pong one_way)
 
@@ -30,14 +30,12 @@ defmodule Storyarn.Scenes.ScenePin do
           icon: String.t() | nil,
           color: String.t() | nil,
           label: String.t() | nil,
-          target_type: String.t() | nil,
-          target_id: integer() | nil,
+          shortcut: String.t() | nil,
+          hidden: boolean(),
           tooltip: String.t() | nil,
           size: String.t(),
           position: integer() | nil,
           locked: boolean(),
-          action_type: String.t(),
-          action_data: map(),
           condition: map() | nil,
           condition_effect: String.t(),
           is_playable: boolean(),
@@ -49,6 +47,8 @@ defmodule Storyarn.Scenes.ScenePin do
           scene: Scene.t() | Ecto.Association.NotLoaded.t() | nil,
           layer_id: integer() | nil,
           layer: SceneLayer.t() | Ecto.Association.NotLoaded.t() | nil,
+          flow_id: integer() | nil,
+          flow: Flow.t() | Ecto.Association.NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -61,14 +61,12 @@ defmodule Storyarn.Scenes.ScenePin do
     field :color, :string
     field :opacity, :float, default: 1.0
     field :label, :string
-    field :target_type, :string
-    field :target_id, :integer
+    field :shortcut, :string
+    field :hidden, :boolean, default: false
     field :tooltip, :string
     field :size, :string, default: "md"
     field :position, :integer, default: 0
     field :locked, :boolean, default: false
-    field :action_type, :string, default: "none"
-    field :action_data, :map, default: %{}
     field :condition, :map
     field :condition_effect, :string, default: "hide"
     field :is_playable, :boolean, default: false
@@ -81,6 +79,7 @@ defmodule Storyarn.Scenes.ScenePin do
     belongs_to :layer, SceneLayer
     belongs_to :sheet, Sheet
     belongs_to :icon_asset, Asset
+    belongs_to :flow, Flow
 
     has_many :outgoing_connections, SceneConnection, foreign_key: :from_pin_id
     has_many :incoming_connections, SceneConnection, foreign_key: :to_pin_id
@@ -108,8 +107,9 @@ defmodule Storyarn.Scenes.ScenePin do
       :color,
       :opacity,
       :label,
-      :target_type,
-      :target_id,
+      :shortcut,
+      :hidden,
+      :flow_id,
       :tooltip,
       :size,
       :layer_id,
@@ -117,8 +117,6 @@ defmodule Storyarn.Scenes.ScenePin do
       :icon_asset_id,
       :position,
       :locked,
-      :action_type,
-      :action_data,
       :condition,
       :condition_effect,
       :is_playable,
@@ -132,7 +130,6 @@ defmodule Storyarn.Scenes.ScenePin do
     |> validate_number(:position_y, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
     |> validate_inclusion(:pin_type, @valid_pin_types)
     |> validate_inclusion(:size, @valid_sizes)
-    |> validate_inclusion(:action_type, @valid_action_types)
     |> validate_inclusion(:condition_effect, @valid_condition_effects)
     |> validate_number(:opacity, greater_than_or_equal_to: 0, less_than_or_equal_to: 1)
     |> validate_inclusion(:patrol_mode, @valid_patrol_modes)
@@ -141,8 +138,8 @@ defmodule Storyarn.Scenes.ScenePin do
       greater_than_or_equal_to: 0,
       less_than_or_equal_to: 30_000
     )
-    |> validate_target_pair(@valid_target_types)
-    |> validate_action_data()
+    |> Validations.validate_shortcut()
+    |> unique_constraint(:shortcut, name: :scene_pins_scene_id_shortcut_index)
     |> validate_length(:label, max: 200)
     |> validate_length(:color, max: 20)
     |> validate_color(:color)
@@ -151,30 +148,8 @@ defmodule Storyarn.Scenes.ScenePin do
     |> foreign_key_constraint(:layer_id)
     |> foreign_key_constraint(:sheet_id)
     |> foreign_key_constraint(:icon_asset_id)
+    |> foreign_key_constraint(:flow_id)
   end
-
-  # Validates action_data shape based on action_type (same logic as SceneZone)
-  defp validate_action_data(changeset) do
-    action_type = get_field(changeset, :action_type)
-    action_data = get_field(changeset, :action_data) || %{}
-    do_validate_action_data(changeset, action_type, action_data)
-  end
-
-  defp do_validate_action_data(changeset, "instruction", %{"assignments" => list})
-       when is_list(list),
-       do: changeset
-
-  defp do_validate_action_data(changeset, "instruction", _),
-    do: add_error(changeset, :action_data, "must include \"assignments\" as a list")
-
-  defp do_validate_action_data(changeset, "display", %{"variable_ref" => ref})
-       when is_binary(ref),
-       do: changeset
-
-  defp do_validate_action_data(changeset, "display", _),
-    do: add_error(changeset, :action_data, "must include \"variable_ref\"")
-
-  defp do_validate_action_data(changeset, _, _), do: changeset
 
   @doc """
   Changeset for moving a pin (position_x/position_y only — drag optimization).

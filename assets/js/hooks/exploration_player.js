@@ -1107,6 +1107,8 @@ export const ExplorationPlayer = {
   // ===========================================================================
 
   createZoneElement(zone) {
+    if (zone.hidden) return null;
+
     const { vertices, visibility } = zone;
     if (!vertices || vertices.length < 3) return null;
     if (visibility === "hide") return null;
@@ -1237,13 +1239,13 @@ export const ExplorationPlayer = {
   },
 
   createPinElement(pin) {
+    if (pin.hidden) return null;
+
     const { visibility } = pin;
     if (visibility === "hide") return null;
 
     const isDisabled = visibility === "disable";
-    const actionType = pin.action_type || "none";
-    const hasTarget = pin.target_type && pin.target_id;
-    const isClickable = !isDisabled && (actionType === "instruction" || hasTarget);
+    const isClickable = !isDisabled && pin.flow_id;
 
     const color = pin.color || "#3b82f6";
     const size = pin.size || "md";
@@ -1307,10 +1309,7 @@ export const ExplorationPlayer = {
         this.pushEvent("exploration_element_click", {
           element_type: "pin",
           element_id: pin.id,
-          action_type: actionType,
-          action_data: pin.action_data || {},
-          target_type: pin.target_type || null,
-          target_id: pin.target_id || null,
+          flow_id: pin.flow_id || null,
         });
       });
     }

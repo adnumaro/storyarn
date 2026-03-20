@@ -9,6 +9,7 @@ defmodule Storyarn.Scenes.PinCrud do
   alias Storyarn.Scenes
   alias Storyarn.Scenes.{PositionUtils, Scene, ScenePin}
   alias Storyarn.Sheets
+  alias Storyarn.Shortcuts
 
   @doc """
   Lists pins for a map, with optional layer_id filter.
@@ -62,6 +63,7 @@ defmodule Storyarn.Scenes.PinCrud do
   def create_pin(scene_id, attrs) do
     position = PositionUtils.next_position(ScenePin, scene_id)
     attrs = Storyarn.Shared.MapUtils.stringify_keys(attrs)
+    attrs = maybe_generate_pin_shortcut(attrs, scene_id, nil)
 
     result =
       %ScenePin{scene_id: scene_id}
@@ -84,6 +86,7 @@ defmodule Storyarn.Scenes.PinCrud do
 
   def update_pin(%ScenePin{} = pin, attrs) do
     attrs = enforce_leader_constraints(pin, attrs)
+    attrs = maybe_regenerate_pin_shortcut(pin, attrs)
 
     result =
       Repo.transaction(fn ->
@@ -169,4 +172,45 @@ defmodule Storyarn.Scenes.PinCrud do
       |> Repo.update_all(set: [is_leader: false])
     end
   end
+
+  # Generate shortcut from label on create if label present and no shortcut in attrs
+  defp maybe_generate_pin_shortcut(attrs, scene_id, exclude_id) do
+    label = attrs["label"]
+    shortcut = attrs["shortcut"]
+
+    if is_binary(label) && label != "" && is_nil(shortcut) do
+      Map.put(attrs, "shortcut", Shortcuts.generate_pin_shortcut(label, scene_id, exclude_id))
+    else
+      attrs
+    end
+  end
+
+  # Regenerate shortcut on update when label changes
+  # Note: attrs are already string-keyed from enforce_leader_constraints
+  defp maybe_regenerate_pin_shortcut(pin, attrs) do
+    new_label = attrs["label"]
+
+    cond do
+      label_being_cleared?(attrs, new_label) ->
+        Map.put(attrs, "shortcut", nil)
+
+      label_changing?(new_label, pin.label) ->
+        Map.put(attrs, "shortcut", Shortcuts.generate_pin_shortcut(new_label, pin.scene_id, pin.id))
+
+      shortcut_missing_for_existing_label?(pin, attrs) ->
+        Map.put(attrs, "shortcut", Shortcuts.generate_pin_shortcut(pin.label, pin.scene_id, pin.id))
+
+      true ->
+        attrs
+    end
+  end
+
+  defp label_being_cleared?(attrs, new_label),
+    do: Map.has_key?(attrs, "label") and (is_nil(new_label) or new_label == "")
+
+  defp label_changing?(new_label, current_label),
+    do: is_binary(new_label) and new_label != "" and new_label != current_label
+
+  defp shortcut_missing_for_existing_label?(pin, attrs),
+    do: is_nil(pin.shortcut) and is_binary(pin.label) and pin.label != "" and not Map.has_key?(attrs, "label")
 end

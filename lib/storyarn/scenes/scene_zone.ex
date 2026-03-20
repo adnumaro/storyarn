@@ -12,6 +12,7 @@ defmodule Storyarn.Scenes.SceneZone do
   import Storyarn.Scenes.ChangesetHelpers
 
   alias Storyarn.Scenes.{Scene, SceneLayer}
+  alias Storyarn.Shared.Validations
 
   @valid_border_styles ~w(solid dashed dotted)
   @valid_target_types ~w(flow scene)
@@ -22,6 +23,8 @@ defmodule Storyarn.Scenes.SceneZone do
   @type t :: %__MODULE__{
           id: integer() | nil,
           name: String.t() | nil,
+          shortcut: String.t() | nil,
+          hidden: boolean(),
           vertices: [map()] | nil,
           fill_color: String.t() | nil,
           border_color: String.t() | nil,
@@ -64,6 +67,8 @@ defmodule Storyarn.Scenes.SceneZone do
     field :condition, :map
     field :condition_effect, :string, default: "hide"
     field :is_walkable, :boolean, default: false
+    field :shortcut, :string
+    field :hidden, :boolean, default: false
 
     belongs_to :scene, Scene
     belongs_to :layer, SceneLayer
@@ -101,7 +106,9 @@ defmodule Storyarn.Scenes.SceneZone do
       :action_data,
       :condition,
       :condition_effect,
-      :is_walkable
+      :is_walkable,
+      :shortcut,
+      :hidden
     ])
     |> validate_required([:name, :vertices])
     |> validate_length(:name, min: 1, max: 200)
@@ -117,6 +124,8 @@ defmodule Storyarn.Scenes.SceneZone do
     |> validate_length(:border_color, max: 20)
     |> validate_color(:border_color)
     |> validate_length(:tooltip, max: 500)
+    |> Validations.validate_shortcut()
+    |> unique_constraint(:shortcut, name: :scene_zones_scene_id_shortcut_index)
     |> validate_vertices()
     |> foreign_key_constraint(:layer_id)
   end

@@ -171,95 +171,6 @@ defmodule Storyarn.Scenes.ScenePinTest do
   end
 
   # =============================================================================
-  # Action type & action_data validation
-  # =============================================================================
-
-  describe "action_type validation" do
-    test "valid action types" do
-      for type <- ~w(none instruction display) do
-        action_data =
-          case type do
-            "instruction" -> %{"assignments" => []}
-            "display" -> %{"variable_ref" => "mc.jaime.health"}
-            _ -> %{}
-          end
-
-        cs =
-          ScenePin.create_changeset(%ScenePin{}, %{
-            position_x: 50.0,
-            position_y: 50.0,
-            action_type: type,
-            action_data: action_data
-          })
-
-        assert cs.valid?, "Expected action_type '#{type}' to be valid"
-      end
-    end
-
-    test "instruction requires assignments list in action_data" do
-      cs =
-        ScenePin.create_changeset(%ScenePin{}, %{
-          position_x: 50.0,
-          position_y: 50.0,
-          action_type: "instruction",
-          action_data: %{"wrong_key" => "value"}
-        })
-
-      refute cs.valid?
-      assert errors_on(cs)[:action_data]
-    end
-
-    test "instruction with valid assignments list" do
-      cs =
-        ScenePin.create_changeset(%ScenePin{}, %{
-          position_x: 50.0,
-          position_y: 50.0,
-          action_type: "instruction",
-          action_data: %{"assignments" => [%{"id" => "a1", "operator" => "set"}]}
-        })
-
-      assert cs.valid?
-    end
-
-    test "display requires variable_ref string in action_data" do
-      cs =
-        ScenePin.create_changeset(%ScenePin{}, %{
-          position_x: 50.0,
-          position_y: 50.0,
-          action_type: "display",
-          action_data: %{"wrong_key" => "value"}
-        })
-
-      refute cs.valid?
-      assert errors_on(cs)[:action_data]
-    end
-
-    test "display with valid variable_ref" do
-      cs =
-        ScenePin.create_changeset(%ScenePin{}, %{
-          position_x: 50.0,
-          position_y: 50.0,
-          action_type: "display",
-          action_data: %{"variable_ref" => "mc.jaime.health"}
-        })
-
-      assert cs.valid?
-    end
-
-    test "none action_type allows any action_data" do
-      cs =
-        ScenePin.create_changeset(%ScenePin{}, %{
-          position_x: 50.0,
-          position_y: 50.0,
-          action_type: "none",
-          action_data: %{"random" => "data"}
-        })
-
-      assert cs.valid?
-    end
-  end
-
-  # =============================================================================
   # Condition effect validation
   # =============================================================================
 
@@ -291,44 +202,96 @@ defmodule Storyarn.Scenes.ScenePinTest do
   end
 
   # =============================================================================
-  # Target pair validation
+  # Shortcut validation
   # =============================================================================
 
-  describe "target_pair validation" do
-    test "valid with both target_type and target_id" do
+  describe "shortcut validation" do
+    test "valid shortcut" do
       cs =
         ScenePin.create_changeset(%ScenePin{}, %{
           position_x: 50.0,
           position_y: 50.0,
-          target_type: "sheet",
-          target_id: 1
+          shortcut: "guard-west"
         })
 
       assert cs.valid?
     end
 
-    test "invalid with target_id but no target_type" do
+    test "invalid shortcut format" do
       cs =
         ScenePin.create_changeset(%ScenePin{}, %{
           position_x: 50.0,
           position_y: 50.0,
-          target_id: 1
+          shortcut: "INVALID!"
         })
 
       refute cs.valid?
-      assert errors_on(cs)[:target_type]
+      assert errors_on(cs)[:shortcut]
     end
 
-    test "invalid with target_type but no target_id" do
+    test "nil shortcut is valid" do
       cs =
         ScenePin.create_changeset(%ScenePin{}, %{
           position_x: 50.0,
           position_y: 50.0,
-          target_type: "flow"
+          shortcut: nil
         })
 
-      refute cs.valid?
-      assert errors_on(cs)[:target_id]
+      assert cs.valid?
+    end
+  end
+
+  # =============================================================================
+  # Hidden field
+  # =============================================================================
+
+  describe "hidden field" do
+    test "defaults to false" do
+      cs = ScenePin.create_changeset(%ScenePin{}, %{position_x: 50.0, position_y: 50.0})
+      assert cs.valid?
+      # hidden is not in changes (uses schema default)
+      refute get_change(cs, :hidden)
+    end
+
+    test "can be set to true" do
+      cs =
+        ScenePin.create_changeset(%ScenePin{}, %{
+          position_x: 50.0,
+          position_y: 50.0,
+          hidden: true
+        })
+
+      assert cs.valid?
+      assert get_change(cs, :hidden) == true
+    end
+  end
+
+  # =============================================================================
+  # flow_id field
+  # =============================================================================
+
+  describe "flow_id field" do
+    test "can set flow_id" do
+      cs =
+        ScenePin.create_changeset(%ScenePin{}, %{
+          position_x: 50.0,
+          position_y: 50.0,
+          flow_id: 42
+        })
+
+      assert cs.valid?
+      assert get_change(cs, :flow_id) == 42
+    end
+
+    test "nil flow_id is valid" do
+      cs =
+        ScenePin.create_changeset(%ScenePin{}, %{
+          position_x: 50.0,
+          position_y: 50.0,
+          flow_id: nil
+        })
+
+      assert cs.valid?
     end
   end
 

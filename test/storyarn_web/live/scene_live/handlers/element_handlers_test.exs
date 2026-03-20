@@ -329,106 +329,6 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
   end
 
   # -------------------------------------------------------------------
-  # Pin action type / assignments / action_data handlers
-  # -------------------------------------------------------------------
-
-  describe "update_pin_action_type" do
-    setup [:register_and_log_in_user, :setup_scene]
-
-    test "changes pin action type to instruction with default data", ctx do
-      pin = pin_fixture(ctx.scene)
-
-      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
-
-      render_hook(view, "update_pin_action_type", %{
-        "pin-id" => to_string(pin.id),
-        "action-type" => "instruction"
-      })
-
-      updated = Scenes.get_pin!(pin.id)
-      assert updated.action_type == "instruction"
-      assert updated.action_data == %{"assignments" => []}
-    end
-
-    test "changes pin action type to display", ctx do
-      pin = pin_fixture(ctx.scene)
-
-      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
-
-      render_hook(view, "update_pin_action_type", %{
-        "pin-id" => to_string(pin.id),
-        "action-type" => "display"
-      })
-
-      updated = Scenes.get_pin!(pin.id)
-      assert updated.action_type == "display"
-      assert updated.action_data == %{"variable_ref" => ""}
-    end
-
-    test "no-op when pin does not exist", ctx do
-      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
-
-      render_hook(view, "update_pin_action_type", %{
-        "pin-id" => "999999",
-        "action-type" => "instruction"
-      })
-    end
-  end
-
-  describe "update_pin_assignments" do
-    setup [:register_and_log_in_user, :setup_scene]
-
-    test "updates instruction assignments for a pin", ctx do
-      pin = pin_fixture(ctx.scene)
-
-      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
-
-      # First set to instruction type
-      render_hook(view, "update_pin_action_type", %{
-        "pin-id" => to_string(pin.id),
-        "action-type" => "instruction"
-      })
-
-      assignments = [
-        %{"variable" => "mc.gold", "operator" => "add", "value" => "50"}
-      ]
-
-      render_hook(view, "update_pin_assignments", %{
-        "pin-id" => to_string(pin.id),
-        "assignments" => assignments
-      })
-
-      updated = Scenes.get_pin!(pin.id)
-      assert updated.action_data["assignments"] == assignments
-    end
-  end
-
-  describe "update_pin_action_data" do
-    setup [:register_and_log_in_user, :setup_scene]
-
-    test "updates a single field in pin action_data", ctx do
-      pin = pin_fixture(ctx.scene)
-
-      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
-
-      # Set to display type first
-      render_hook(view, "update_pin_action_type", %{
-        "pin-id" => to_string(pin.id),
-        "action-type" => "display"
-      })
-
-      render_hook(view, "update_pin_action_data", %{
-        "pin-id" => to_string(pin.id),
-        "field" => "variable_ref",
-        "value" => "mc.jaime.gold"
-      })
-
-      updated = Scenes.get_pin!(pin.id)
-      assert updated.action_data["variable_ref"] == "mc.jaime.gold"
-    end
-  end
-
-  # -------------------------------------------------------------------
   # Pin condition handlers
   # -------------------------------------------------------------------
 
@@ -1431,36 +1331,6 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
   end
 
   # -------------------------------------------------------------------
-  # Update pin action_data — field update
-  # -------------------------------------------------------------------
-
-  describe "update_pin_action_data — field update" do
-    setup [:register_and_log_in_user, :setup_scene]
-
-    test "updates a field in pin action_data", ctx do
-      pin = pin_fixture(ctx.scene, %{"label" => "Data Pin"})
-
-      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
-
-      # Set action type to display
-      render_hook(view, "update_pin_action_type", %{
-        "pin-id" => to_string(pin.id),
-        "action-type" => "display"
-      })
-
-      # Update action data field
-      render_hook(view, "update_pin_action_data", %{
-        "pin-id" => to_string(pin.id),
-        "field" => "variable_ref",
-        "value" => "mc.health"
-      })
-
-      updated = Scenes.get_pin(ctx.scene.id, pin.id)
-      assert updated.action_data["variable_ref"] == "mc.health"
-    end
-  end
-
-  # -------------------------------------------------------------------
   # Update pin condition_effect — additional
   # -------------------------------------------------------------------
 
@@ -1485,32 +1355,6 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
   # -------------------------------------------------------------------
   # Update pin assignments — additional
   # -------------------------------------------------------------------
-
-  describe "update_pin_assignments — instruction" do
-    setup [:register_and_log_in_user, :setup_scene]
-
-    test "updates instruction assignments for a pin", ctx do
-      pin = pin_fixture(ctx.scene, %{"label" => "Assign Pin"})
-
-      {:ok, view, _html} = live(ctx.conn, scene_url(ctx.project, ctx.scene))
-
-      # Set action type to instruction first
-      render_hook(view, "update_pin_action_type", %{
-        "pin-id" => to_string(pin.id),
-        "action-type" => "instruction"
-      })
-
-      assignments = [%{"variable" => "mc.health", "operator" => "set", "value" => "100"}]
-
-      render_hook(view, "update_pin_assignments", %{
-        "pin-id" => to_string(pin.id),
-        "assignments" => assignments
-      })
-
-      updated = Scenes.get_pin(ctx.scene.id, pin.id)
-      assert updated.action_data["assignments"] == assignments
-    end
-  end
 
   # -------------------------------------------------------------------
   # Field allowlist validation

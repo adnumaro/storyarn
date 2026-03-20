@@ -174,41 +174,56 @@ defmodule Storyarn.Versioning.SnapshotViewer do
       tooltip: pin["tooltip"],
       size: pin["size"] || "md",
       layer_id: layer_id,
-      target_type: pin["target_type"],
-      target_id: pin["target_id"],
+      shortcut: pin["shortcut"],
+      hidden: pin["hidden"] || false,
+      flow_id: pin["flow_id"],
       sheet_id: pin["sheet_id"],
       avatar_url: nil,
       icon_asset_id: pin["icon_asset_id"],
       icon_asset_url: resolve_asset_url(pin["icon_asset_id"], asset_metadata),
       position: pin["position"] || 0,
       locked: pin["locked"] || false,
-      action_type: pin["action_type"] || "none",
-      action_data: pin["action_data"] || %{},
       condition: pin["condition"],
       condition_effect: pin["condition_effect"] || "hide"
     }
   end
 
+  @zone_view_defaults %{
+    "hidden" => false,
+    "border_width" => 2,
+    "border_style" => "solid",
+    "opacity" => 0.3,
+    "position" => 0,
+    "locked" => false,
+    "action_type" => "none",
+    "action_data" => %{},
+    "condition_effect" => "hide"
+  }
+
   defp serialize_zone(zone, zone_id, layer_id) do
+    z = Map.merge(@zone_view_defaults, zone)
+
     %{
       id: zone_id,
-      name: zone["name"],
-      vertices: zone["vertices"],
-      fill_color: zone["fill_color"],
-      border_color: zone["border_color"],
-      border_width: zone["border_width"] || 2,
-      border_style: zone["border_style"] || "solid",
-      opacity: zone["opacity"] || 0.3,
-      tooltip: zone["tooltip"],
+      name: z["name"],
+      shortcut: z["shortcut"],
+      hidden: z["hidden"],
+      vertices: z["vertices"],
+      fill_color: z["fill_color"],
+      border_color: z["border_color"],
+      border_width: z["border_width"],
+      border_style: z["border_style"],
+      opacity: z["opacity"],
+      tooltip: z["tooltip"],
       layer_id: layer_id,
-      target_type: zone["target_type"],
-      target_id: zone["target_id"],
-      position: zone["position"] || 0,
-      locked: zone["locked"] || false,
-      action_type: zone["action_type"] || "none",
-      action_data: zone["action_data"] || %{},
-      condition: zone["condition"],
-      condition_effect: zone["condition_effect"] || "hide"
+      target_type: z["target_type"],
+      target_id: z["target_id"],
+      position: z["position"],
+      locked: z["locked"],
+      action_type: z["action_type"],
+      action_data: z["action_data"],
+      condition: z["condition"],
+      condition_effect: z["condition_effect"]
     }
   end
 

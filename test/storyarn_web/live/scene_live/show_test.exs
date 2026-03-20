@@ -4,6 +4,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
+  import Storyarn.FlowsFixtures, only: [flow_fixture: 1]
   import Storyarn.ScenesFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
@@ -2067,15 +2068,14 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert scene_data["can_edit"] == false
     end
 
-    test "pin serialization includes target_type and target_id", %{conn: conn, user: user} do
+    test "pin serialization includes flow_id", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       scene = scene_fixture(project)
-      target_scene = scene_fixture(project, %{name: "Target"})
+      flow = flow_fixture(project)
 
       pin = pin_fixture(scene, %{"label" => "Linked Pin"})
 
-      {:ok, _} =
-        Scenes.update_pin(pin, %{"target_type" => "scene", "target_id" => target_scene.id})
+      {:ok, _} = Scenes.update_pin(pin, %{"flow_id" => flow.id})
 
       {:ok, view, _html} =
         live(
@@ -2085,8 +2085,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       scene_data = extract_scene_data(render(view))
       [pin_data] = scene_data["pins"]
-      assert pin_data["target_type"] == "scene"
-      assert pin_data["target_id"] == target_scene.id
+      assert pin_data["flow_id"] == flow.id
     end
 
     test "zone serialization includes target_type and target_id", %{conn: conn, user: user} do
@@ -2136,8 +2135,6 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert pin.sheet_id == sheet.id
       assert pin.label == sheet.name
       assert pin.pin_type == "character"
-      assert pin.target_type == "sheet"
-      assert pin.target_id == sheet.id
     end
 
     test "pin serialization includes avatar_url when sheet has avatar", %{conn: conn, user: user} do

@@ -268,7 +268,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp build_scene_pin_updates(pin_data, id_maps) do
     []
     |> maybe_put_db_update(:sheet_id, pin_data["sheet_id"], id_maps.sheet)
-    |> maybe_put_target_update(pin_data["target_type"], pin_data["target_id"], id_maps)
+    |> maybe_put_db_update(:flow_id, pin_data["flow_id"], id_maps.flow)
   end
 
   defp maybe_update_scene_pin([], _new_pin_id), do: :ok

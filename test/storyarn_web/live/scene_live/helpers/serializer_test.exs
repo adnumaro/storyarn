@@ -46,18 +46,17 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
         color: "#ff0000",
         opacity: 1.0,
         label: "Castle",
+        shortcut: "castle",
+        hidden: false,
         tooltip: "Enter the castle",
         size: 24,
         layer_id: 1,
-        target_type: "flow",
-        target_id: 5,
+        flow_id: 5,
         sheet_id: 3,
         sheet: %{avatars: [%{is_default: true, asset: %{url: "https://cdn.test/avatar.png"}}]},
         icon_asset: nil,
         position: 0,
         locked: false,
-        action_type: "navigate",
-        action_data: %{"scene_id" => 2},
         condition: nil,
         condition_effect: "hide",
         is_playable: true,
@@ -71,9 +70,11 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
 
       assert result.id == 10
       assert result.label == "Castle"
+      assert result.shortcut == "castle"
+      assert result.hidden == false
+      assert result.flow_id == 5
       assert result.avatar_url == "https://cdn.test/avatar.png"
       assert result.icon_asset_url == nil
-      assert result.action_type == "navigate"
       assert result.locked == false
       assert result.is_playable == true
       assert result.is_leader == false
@@ -92,18 +93,17 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
         color: nil,
         opacity: nil,
         label: nil,
+        shortcut: nil,
+        hidden: nil,
         tooltip: nil,
         size: nil,
         layer_id: nil,
-        target_type: nil,
-        target_id: nil,
+        flow_id: nil,
         sheet_id: nil,
         sheet: nil,
         icon_asset: nil,
         position: nil,
         locked: nil,
-        action_type: nil,
-        action_data: nil,
         condition: nil,
         condition_effect: nil,
         is_playable: nil,
@@ -116,8 +116,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
       result = Serializer.serialize_pin(pin)
 
       assert result.locked == false
-      assert result.action_type == "none"
-      assert result.action_data == %{}
+      assert result.hidden == false
       assert result.condition_effect == "hide"
       assert result.avatar_url == nil
       assert result.icon_asset_url == nil
@@ -136,6 +135,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
       zone = %{
         id: 5,
         name: "Forest",
+        shortcut: "forest",
+        hidden: false,
         vertices: [[0, 0], [100, 0], [100, 100]],
         fill_color: "#00ff00",
         border_color: "#000000",
@@ -168,6 +169,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
       zone = %{
         id: 1,
         name: "Z",
+        shortcut: nil,
+        hidden: nil,
         vertices: [],
         fill_color: nil,
         border_color: nil,

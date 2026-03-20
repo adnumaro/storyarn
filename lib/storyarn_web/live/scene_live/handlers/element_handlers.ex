@@ -24,14 +24,14 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
 
   @pin_editable_fields ~w(
     position_x position_y pin_type icon color opacity label
-    target_type target_id tooltip size sheet_id icon_asset_id layer_id
-    locked action_type action_data condition condition_effect
+    shortcut hidden flow_id tooltip size sheet_id icon_asset_id layer_id
+    locked condition condition_effect
     is_playable is_leader patrol_mode patrol_speed patrol_pause_ms
   )
 
   @zone_editable_fields ~w(
     name fill_color border_color border_width border_style opacity
-    target_type target_id tooltip layer_id
+    shortcut hidden target_type target_id tooltip layer_id
     locked action_type action_data condition condition_effect
     is_walkable
   )
@@ -104,12 +104,10 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
       "tooltip" => pin.tooltip,
       "layer_id" => pin.layer_id,
       "opacity" => pin.opacity,
-      "target_type" => pin.target_type,
-      "target_id" => pin.target_id,
+      "hidden" => pin.hidden,
+      "flow_id" => pin.flow_id,
       "sheet_id" => pin.sheet_id,
       "icon_asset_id" => pin.icon_asset_id,
-      "action_type" => pin.action_type,
-      "action_data" => pin.action_data,
       "condition" => pin.condition,
       "condition_effect" => pin.condition_effect,
       "is_playable" => pin.is_playable,
@@ -529,49 +527,6 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   end
 
   # ---------------------------------------------------------------------------
-  # Pin action handlers (action_type + action_data)
-  # ---------------------------------------------------------------------------
-
-  @doc "Changes a pin's action type (none, instruction, display) with default data."
-  def handle_update_pin_action_type(%{"pin-id" => id, "action-type" => type}, socket) do
-    case Scenes.get_pin(socket.assigns.scene.id, id) do
-      nil ->
-        {:noreply, socket}
-
-      pin ->
-        action_data = Map.get(@default_action_data, type, %{})
-        do_update_pin_attrs(socket, pin, %{"action_type" => type, "action_data" => action_data})
-    end
-  end
-
-  @doc "Updates instruction assignments for an instruction-type pin."
-  def handle_update_pin_assignments(%{"pin-id" => id, "assignments" => assignments}, socket) do
-    case Scenes.get_pin(socket.assigns.scene.id, id) do
-      nil ->
-        {:noreply, socket}
-
-      pin ->
-        new_data = Map.merge(pin.action_data || %{}, %{"assignments" => assignments})
-        do_update_pin_attrs(socket, pin, %{"action_data" => new_data})
-    end
-  end
-
-  @doc "Updates a single field in a pin's action_data (e.g., variable_ref)."
-  def handle_update_pin_action_data(
-        %{"pin-id" => id, "field" => field, "value" => value},
-        socket
-      ) do
-    case Scenes.get_pin(socket.assigns.scene.id, id) do
-      nil ->
-        {:noreply, socket}
-
-      pin ->
-        new_data = Map.merge(pin.action_data || %{}, %{field => value})
-        do_update_pin_attrs(socket, pin, %{"action_data" => new_data})
-    end
-  end
-
-  # ---------------------------------------------------------------------------
   # Pin condition handlers
   # ---------------------------------------------------------------------------
 
@@ -802,8 +757,6 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
       "label" => sheet.name,
       "pin_type" => "character",
       "sheet_id" => sheet.id,
-      "target_type" => "sheet",
-      "target_id" => sheet.id,
       "layer_id" => socket.assigns.active_layer_id
     }
 
@@ -881,8 +834,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     end
   end
 
-  defp do_update_pin(socket, pin, "target_type", ""),
-    do: do_update_pin_attrs(socket, pin, %{"target_type" => nil, "target_id" => nil})
+  defp do_update_pin(socket, pin, "flow_id", ""),
+    do: do_update_pin_attrs(socket, pin, %{"flow_id" => nil})
 
   defp do_update_pin(socket, pin, field, value) do
     prev_value = safe_field_get(pin, field)
