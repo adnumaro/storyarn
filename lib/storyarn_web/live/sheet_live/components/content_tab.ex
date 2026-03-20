@@ -1215,6 +1215,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
             id={"formula-binding-#{@formula.row_id}-#{@formula.column_slug}-#{sym}"}
             phx-hook="FormulaBinding"
             phx-update="ignore"
+            data-phx-target={@target}
             data-symbol={sym}
             data-value={formula_cell_binding(@formula.value, sym)}
             data-display={formula_binding_display(@formula.value, sym, @same_row_cols)}

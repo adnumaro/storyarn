@@ -32,9 +32,8 @@ export const FormulaBinding = {
     const currentValue = this.el.dataset.value || "";
     const displayValue = this.el.dataset.display || "";
 
-    // Find the ContentTab component target for event routing
-    const sidebar = this.el.closest("[phx-hook='FormulaSidebar']");
-    this._target = sidebar?.dataset?.phxTarget || null;
+    // ContentTab component target for event routing
+    this._target = this.el.dataset.phxTarget || null;
 
     this._combobox = createCombobox({
       container: this.el,
