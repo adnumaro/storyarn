@@ -26,7 +26,7 @@ msgstr ""
 msgid "Add cover"
 msgstr ""
 
-#: lib/storyarn_web/components/block_components/select_blocks.ex:154
+#: lib/storyarn_web/components/block_components/select_blocks.ex:252
 #, elixir-autogen, elixir-format
 msgid "Add more..."
 msgstr ""
@@ -794,7 +794,8 @@ msgstr ""
 msgid "Type / to add a block"
 msgstr ""
 
-#: lib/storyarn_web/components/block_components/select_blocks.ex:153
+#: lib/storyarn_web/components/block_components/select_blocks.ex:201
+#: lib/storyarn_web/components/block_components/select_blocks.ex:251
 #, elixir-autogen, elixir-format
 msgid "Type and press Enter to add..."
 msgstr ""
@@ -1021,6 +1022,8 @@ msgstr ""
 msgid "Clear"
 msgstr ""
 
+#: lib/storyarn_web/components/block_components/select_blocks.ex:100
+#: lib/storyarn_web/components/block_components/select_blocks.ex:193
 #: lib/storyarn_web/components/block_components/table_blocks.ex:752
 #: lib/storyarn_web/components/block_components/table_blocks.ex:834
 #: lib/storyarn_web/components/block_components/table_blocks.ex:905
@@ -1029,6 +1032,8 @@ msgstr ""
 msgid "No matches"
 msgstr ""
 
+#: lib/storyarn_web/components/block_components/select_blocks.ex:66
+#: lib/storyarn_web/components/block_components/select_blocks.ex:162
 #: lib/storyarn_web/components/block_components/table_blocks.ex:694
 #: lib/storyarn_web/components/block_components/table_blocks.ex:788
 #: lib/storyarn_web/components/block_components/table_blocks.ex:872
@@ -1210,7 +1215,7 @@ msgstr ""
 msgid "Delete image"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:1185
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:1184
 #, elixir-autogen, elixir-format
 msgid "Expression"
 msgstr ""
@@ -1220,7 +1225,7 @@ msgstr ""
 msgid "Formula"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:1141
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:1140
 #, elixir-autogen, elixir-format
 msgid "Formula Editor"
 msgstr ""
@@ -1231,7 +1236,7 @@ msgstr ""
 msgid "Gallery"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:1123
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:1122
 #, elixir-autogen, elixir-format
 msgid "Invalid expression"
 msgstr ""
@@ -1251,7 +1256,7 @@ msgstr ""
 msgid "Optional label..."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:1171
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:1170
 #, elixir-autogen, elixir-format
 msgid "Preview"
 msgstr ""
@@ -1266,7 +1271,7 @@ msgstr ""
 msgid "Upload error"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:1206
+#: lib/storyarn_web/live/sheet_live/components/content_tab.ex:1205
 #, elixir-autogen, elixir-format
 msgid "Variable Bindings"
 msgstr ""

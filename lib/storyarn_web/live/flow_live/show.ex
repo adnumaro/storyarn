@@ -1702,6 +1702,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       search: dgettext("flows", "Search…"),
       no_speaker: dgettext("flows", "Dialogue"),
       stage_directions: dgettext("flows", "Stage directions…"),
+      menu_text: dgettext("flows", "Menu text…"),
       dialogue_text: dgettext("flows", "Dialogue text…")
     }
   end

@@ -66,8 +66,9 @@ export default {
     const { color, headerHtml, visualHtml } = this._renderChrome(nodeData, config, sheetsMap);
     const preview = this.getPreviewText(nodeData);
 
-    // Body: stage directions + preview text (stacked rows)
-    const hasText = nodeData.stage_directions || preview;
+    // Body: stage directions + menu text + preview text (stacked rows)
+    const menuText = nodeData.menu_text || "";
+    const hasText = nodeData.stage_directions || menuText || preview;
 
     const bodyHtml = hasText
       ? html`
@@ -79,6 +80,7 @@ export default {
                 </div>`
                 : ""
             }
+            ${menuText ? html`<div class="text-xs text-primary/70 font-medium mb-1 break-words">≡ ${menuText}</div>` : ""}
             ${preview ? html`<div class="text-sm text-base-content/85 leading-relaxed break-words whitespace-pre-wrap">${preview}</div>` : ""}
           </div>
         `
@@ -145,6 +147,22 @@ export default {
             const val = e.target.value.trim();
             if (val !== (nodeData.stage_directions || "")) {
               onSave("stage_directions", val);
+            }
+          }}
+          @keydown=${(e) => {
+            if (e.key === "Enter") e.target.blur();
+            e.stopPropagation();
+          }}
+        />
+        <input
+          class="inline-input w-full bg-transparent border-0 border-b text-xs py-0.5 mb-1 outline-none font-[inherit] text-primary/70 font-medium"
+          placeholder=${labels?.menu_text || "Menu text…"}
+          .value=${nodeData.menu_text || ""}
+          @pointerdown=${stopDrag}
+          @blur=${(e) => {
+            const val = e.target.value.trim();
+            if (val !== (nodeData.menu_text || "")) {
+              onSave("menu_text", val);
             }
           }}
           @keydown=${(e) => {

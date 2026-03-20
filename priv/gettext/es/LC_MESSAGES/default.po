@@ -807,7 +807,7 @@ msgstr "Problema detectado"
 #: lib/storyarn_web/live/flow_live/index.ex:516
 #: lib/storyarn_web/live/flow_live/index.ex:537
 #: lib/storyarn_web/live/flow_live/index.ex:576
-#: lib/storyarn_web/live/flow_live/show.ex:1747
+#: lib/storyarn_web/live/flow_live/show.ex:1746
 #: lib/storyarn_web/live/scene_live/form.ex:85
 #: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:31
 #: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:52

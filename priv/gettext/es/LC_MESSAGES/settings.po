@@ -11,7 +11,7 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/settings_live/profile.ex:180
+#: lib/storyarn_web/live/settings_live/profile.ex:185
 #, elixir-autogen, elixir-format
 msgid "A link to confirm your email change has been sent to the new address."
 msgstr "Se ha enviado un enlace para confirmar el cambio de email a la nueva dirección."
@@ -147,7 +147,7 @@ msgstr "Perfil"
 msgid "Profile Settings"
 msgstr "Configuración de perfil"
 
-#: lib/storyarn_web/live/settings_live/profile.ex:149
+#: lib/storyarn_web/live/settings_live/profile.ex:154
 #, elixir-autogen, elixir-format
 msgid "Profile updated successfully."
 msgstr "Perfil actualizado exitosamente."
