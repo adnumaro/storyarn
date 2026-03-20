@@ -866,16 +866,6 @@ body.dnd-active [data-toolbar] {
   outline-offset: 2px;
 }
 
-/* Map Canvas - Freeform zone close target (first vertex) */
-.map-zone-close-target {
-  animation: zone-close-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes zone-close-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.4); opacity: 0.7; }
-}
-
 /* Map Canvas - Zone label at centroid */
 .map-zone-label {
   pointer-events: none;

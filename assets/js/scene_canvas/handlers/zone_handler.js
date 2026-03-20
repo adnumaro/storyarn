@@ -317,22 +317,22 @@ export function createZoneHandler(hook, i18n = {}) {
           fillOpacity: 1,
           weight: 2,
           interactive: false,
-          className: "",
         }).addTo(hook.leafletMap);
         vertexMarkers.push(marker);
-
-        // After 3+ vertices, make first vertex pulse to indicate close target
-        if (drawingVertices.length === 3 && vertexMarkers[0]) {
-          const el = vertexMarkers[0].getElement();
-          if (el) el.classList.add("map-zone-close-target");
-        }
 
         updatePreview();
       }
     });
 
-    // Ghost preview for shape presets
+    // Ghost preview for shape presets + close-target hint on first vertex
     hook.leafletMap.on("mousemove", (e) => {
+      // Enlarge first vertex when mouse is near it (freeform close hint)
+      if (drawingVertices.length >= 3 && vertexMarkers[0]) {
+        const near = isNearFirstVertex(e);
+        vertexMarkers[0].setRadius(near ? 10 : 7);
+      }
+
+      // Shape preset ghost
       const tool = hook.currentTool;
       const vertices = computeShapeVertices(
         tool,
