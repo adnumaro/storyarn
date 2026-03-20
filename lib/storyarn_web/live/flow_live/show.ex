@@ -263,10 +263,9 @@ defmodule StoryarnWeb.FlowLive.Show do
         data-open-event="open_builder"
         data-close-event="close_builder"
         class={[
-          "fixed flex flex-col overflow-hidden",
+          "fixed flex flex-col overflow-hidden right-sidebar",
           "inset-0 z-[1030] bg-base-100",
-          "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[480px]",
-          "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
+          "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[480px]"
         ]}
       >
         <div :if={@selected_node && @editing_mode == :builder}>
@@ -384,10 +383,9 @@ defmodule StoryarnWeb.FlowLive.Show do
         data-open-event="open_builder"
         data-close-event="close_builder"
         class={[
-          "fixed flex flex-col overflow-hidden",
+          "fixed flex flex-col overflow-hidden right-sidebar",
           "inset-0 z-[1030] bg-base-100",
-          "xl:inset-auto xl:right-3 xl:top-3 xl:bottom-3 xl:w-[480px]",
-          "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
+          "xl:inset-auto xl:right-3 xl:top-3 xl:bottom-3 xl:w-[480px]"
         ]}
       >
         <div :if={@selected_node && @editing_mode == :builder}>

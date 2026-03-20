@@ -271,7 +271,8 @@
 }
 
 /* Shared surface for floating toolbars, sidebars, and panels.
-   Single source of truth — change here to update all UI chrome. */
+   Single source of truth — change here to update all UI chrome.
+   .right-sidebar inherits these tokens at xl: breakpoint (see below). */
 .surface-panel {
   @apply bg-base-200/90 backdrop-blur border border-base-300 rounded-xl shadow-sm;
 }
@@ -297,10 +298,18 @@
   display: none !important;
 }
 
-/* Right sidebar dynamic width (mobile: full width, desktop: custom) */
+/* Right sidebar: mobile full-screen, desktop inherits surface-panel styling.
+   Uses the same surface-panel tokens so all floating chrome stays in sync. */
 @media (min-width: 1280px) {
   .right-sidebar {
     width: var(--rs-width, 320px);
+    @apply bg-base-200/90 backdrop-blur border border-base-300 rounded-xl shadow-sm;
+  }
+
+  :root:has([data-theme="dark"]) .right-sidebar,
+  [data-theme="dark"] .right-sidebar {
+    background-color: oklch(from var(--color-base-100) calc(l + 0.08) c h / 0.92);
+    @apply border-base-content/10;
   }
 }
 

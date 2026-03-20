@@ -345,10 +345,9 @@ defmodule StoryarnWeb.SceneLive.Show do
             data-open-event="open_element_panel"
             data-close-event="close_element_panel"
             class={[
-              "fixed flex flex-col overflow-hidden",
+              "fixed flex flex-col overflow-hidden right-sidebar",
               "inset-0 z-[1060] bg-base-100",
-              "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[480px]",
-              "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
+              "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[480px]"
             ]}
           >
             <div :if={@element_panel_open && @selected_element != nil}>
@@ -379,10 +378,9 @@ defmodule StoryarnWeb.SceneLive.Show do
             data-open-event="open_scene_settings"
             data-close-event="close_scene_settings"
             class={[
-              "fixed flex flex-col overflow-hidden",
+              "fixed flex flex-col overflow-hidden right-sidebar",
               "inset-0 z-[1060] bg-base-100",
-              "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[320px]",
-              "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
+              "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[320px]"
             ]}
           >
             <div :if={@scene_settings_open && @can_edit && @edit_mode}>
@@ -555,10 +553,9 @@ defmodule StoryarnWeb.SceneLive.Show do
         data-open-event="open_element_panel"
         data-close-event="close_element_panel"
         class={[
-          "fixed flex flex-col overflow-hidden",
+          "fixed flex flex-col overflow-hidden right-sidebar",
           "inset-0 z-[1060] bg-base-100",
-          "xl:inset-auto xl:right-3 xl:top-3 xl:bottom-3 xl:w-[480px]",
-          "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
+          "xl:inset-auto xl:right-3 xl:top-3 xl:bottom-3 xl:w-[480px]"
         ]}
       >
         <div :if={@element_panel_open && @selected_element != nil}>

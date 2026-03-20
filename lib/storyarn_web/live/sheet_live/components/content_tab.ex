@@ -114,10 +114,9 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
         data-close-event="close_formula_sidebar"
         data-phx-target={"##{@id}"}
         class={[
-          "fixed flex flex-col overflow-hidden",
+          "fixed flex flex-col overflow-hidden right-sidebar",
           "inset-0 z-[1030] bg-base-100",
-          "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:z-[1010] xl:w-[400px]",
-          "xl:bg-base-200/95 xl:backdrop-blur xl:border xl:border-base-300 xl:rounded-xl xl:shadow-sm"
+          "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:z-[1010] xl:w-[400px]"
         ]}
       >
         <div :if={@formula_editing != nil}>
