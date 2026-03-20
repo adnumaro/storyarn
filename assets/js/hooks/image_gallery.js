@@ -1,4 +1,4 @@
-import { createElement, X, ChevronLeft, ChevronRight, Trash2, Star, Plus, Image } from "lucide";
+import { ChevronLeft, ChevronRight, createElement, Image, Plus, Star, Trash2, X } from "lucide";
 
 /**
  * ImageGallery hook — Pure JS overlay for browsing/editing image collections.
@@ -107,7 +107,9 @@ export const ImageGallery = {
     this._overlay = document.createElement("div");
     this._overlay.className = "fixed inset-0 z-[9999] flex items-center justify-center";
     this._overlay.style.cssText = "opacity:0; transition:opacity 150ms ease-out";
-    requestAnimationFrame(() => { this._overlay.style.opacity = "1"; });
+    requestAnimationFrame(() => {
+      this._overlay.style.opacity = "1";
+    });
 
     // Backdrop
     const backdrop = document.createElement("div");
@@ -120,7 +122,9 @@ export const ImageGallery = {
     this._container.className =
       "relative bg-base-200 rounded-xl shadow-2xl border border-base-content/10 w-full max-w-xl max-h-[85vh] overflow-hidden flex flex-col mx-4";
     this._container.style.cssText = "transform:scale(0.95); transition:transform 150ms ease-out";
-    requestAnimationFrame(() => { this._container.style.transform = "scale(1)"; });
+    requestAnimationFrame(() => {
+      this._container.style.transform = "scale(1)";
+    });
     this._overlay.appendChild(this._container);
 
     document.body.appendChild(this._overlay);
@@ -175,10 +179,13 @@ export const ImageGallery = {
         const card = this._el("div", "group/card relative flex flex-col items-center");
 
         // Thumbnail button
-        const thumbBtn = this._el("button", [
-          "aspect-square w-full rounded-lg overflow-hidden border-2 transition-colors cursor-pointer",
-          "border-base-content/10 hover:border-base-content/30",
-        ].join(" "));
+        const thumbBtn = this._el(
+          "button",
+          [
+            "aspect-square w-full rounded-lg overflow-hidden border-2 transition-colors cursor-pointer",
+            "border-base-content/10 hover:border-base-content/30",
+          ].join(" "),
+        );
         thumbBtn.type = "button";
         const img = document.createElement("img");
         img.src = item.url;
@@ -195,16 +202,21 @@ export const ImageGallery = {
         // Default badge
         if (item.is_default) {
           const badge = this._el("div", "absolute top-1 left-1");
-          badge.appendChild(this._el("span", "badge badge-primary badge-xs", this._defaultBadgeText));
+          badge.appendChild(
+            this._el("span", "badge badge-primary badge-xs", this._defaultBadgeText),
+          );
           card.appendChild(badge);
         }
 
         // Delete X button
         if (this._canEdit) {
-          const delBtn = this._el("button", [
-            "absolute top-1 right-1 size-5 rounded-full bg-black/70",
-            "flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity",
-          ].join(" "));
+          const delBtn = this._el(
+            "button",
+            [
+              "absolute top-1 right-1 size-5 rounded-full bg-black/70",
+              "flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity",
+            ].join(" "),
+          );
           delBtn.type = "button";
           delBtn.appendChild(createElement(X, { width: 12, height: 12, color: "white" }));
           delBtn.addEventListener("click", (e) => {
@@ -229,7 +241,9 @@ export const ImageGallery = {
           });
           card.appendChild(nameInput);
         } else if (item.name) {
-          card.appendChild(this._el("p", "text-xs text-base-content/60 mt-1 truncate max-w-full", item.name));
+          card.appendChild(
+            this._el("p", "text-xs text-base-content/60 mt-1 truncate max-w-full", item.name),
+          );
         }
 
         grid.appendChild(card);
@@ -282,7 +296,9 @@ export const ImageGallery = {
       prevBtn.addEventListener("click", () => this._navigate(-1));
       nav.appendChild(prevBtn);
 
-      nav.appendChild(this._el("span", "text-xs text-base-content/40", `${this._currentIndex + 1}/${count}`));
+      nav.appendChild(
+        this._el("span", "text-xs text-base-content/40", `${this._currentIndex + 1}/${count}`),
+      );
 
       const nextBtn = this._iconButton(ChevronRight, "btn-ghost btn-xs btn-square");
       nextBtn.addEventListener("click", () => this._navigate(1));
@@ -297,7 +313,10 @@ export const ImageGallery = {
     const body = this._el("div", "overflow-y-auto px-5 pb-5 flex-1");
 
     // Image
-    const imgWrap = this._el("div", "flex justify-center bg-base-300/20 rounded-lg overflow-hidden mb-4");
+    const imgWrap = this._el(
+      "div",
+      "flex justify-center bg-base-300/20 rounded-lg overflow-hidden mb-4",
+    );
     const img = document.createElement("img");
     img.src = item.original_url || item.url;
     img.alt = item.name || "";
@@ -348,7 +367,10 @@ export const ImageGallery = {
     body.appendChild(notesGroup);
 
     // Footer: actions + delete
-    const footer = this._el("div", "flex items-center justify-between pt-3 border-t border-base-content/10");
+    const footer = this._el(
+      "div",
+      "flex items-center justify-between pt-3 border-t border-base-content/10",
+    );
 
     const actions = this._el("div", "flex items-center gap-2");
 
