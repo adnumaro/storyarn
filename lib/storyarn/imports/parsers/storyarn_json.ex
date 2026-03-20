@@ -1129,22 +1129,24 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   defp import_sheet_avatars(sheet, sheet_data, id_map) do
     case sheet_data["avatars"] do
       avatars when is_list(avatars) and avatars != [] ->
-        Enum.each(avatars, fn avatar_data ->
-          asset_id = remap_id(id_map, :asset, avatar_data["asset_id"])
-
-          if asset_id do
-            Sheets.add_avatar(sheet, asset_id, %{
-              name: avatar_data["name"],
-              notes: avatar_data["notes"],
-              is_default: avatar_data["is_default"] || false
-            })
-          end
-        end)
+        Enum.each(avatars, &import_single_avatar(sheet, &1, id_map))
 
       _ ->
         # Fallback: legacy format with avatar_asset_id
         avatar_asset_id = remap_id(id_map, :asset, sheet_data["avatar_asset_id"])
         if avatar_asset_id, do: Sheets.add_avatar(sheet, avatar_asset_id)
+    end
+  end
+
+  defp import_single_avatar(sheet, avatar_data, id_map) do
+    asset_id = remap_id(id_map, :asset, avatar_data["asset_id"])
+
+    if asset_id do
+      Sheets.add_avatar(sheet, asset_id, %{
+        name: avatar_data["name"],
+        notes: avatar_data["notes"],
+        is_default: avatar_data["is_default"] || false
+      })
     end
   end
 
