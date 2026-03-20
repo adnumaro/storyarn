@@ -77,6 +77,13 @@ defmodule StoryarnWeb.SettingsLive.Profile do
               label={dgettext("settings", "Display Name")}
               placeholder={dgettext("settings", "How you want to be called")}
             />
+            <.input
+              field={@profile_form[:locale]}
+              type="select"
+              label={dgettext("settings", "Language")}
+              prompt={dgettext("settings", "Auto-detect from browser")}
+              options={[{"English", "en"}, {"Español", "es"}]}
+            />
             <.form_actions>
               <.button variant="primary" phx-disable-with={dgettext("settings", "Saving...")}>
                 {dgettext("settings", "Save Profile")}
@@ -134,9 +141,18 @@ defmodule StoryarnWeb.SettingsLive.Profile do
     user = socket.assigns.current_scope.user
 
     case Accounts.update_user_profile(user, user_params) do
-      {:ok, _user} ->
+      {:ok, updated_user} ->
+        path =
+          if updated_user.locale do
+            ~p"/users/settings?locale=#{updated_user.locale}"
+          else
+            ~p"/users/settings"
+          end
+
         {:noreply,
-         put_flash(socket, :info, dgettext("settings", "Profile updated successfully."))}
+         socket
+         |> put_flash(:info, dgettext("settings", "Profile updated successfully."))
+         |> redirect(to: path)}
 
       {:error, changeset} ->
         {:noreply, assign(socket, profile_form: to_form(changeset, action: :insert))}

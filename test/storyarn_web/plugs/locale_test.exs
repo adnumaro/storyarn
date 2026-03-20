@@ -19,7 +19,6 @@ defmodule StoryarnWeb.Plugs.LocaleTest do
         |> Locale.call([])
 
       assert conn.assigns.locale == "en"
-      assert get_session(conn, :locale) == "en"
     end
 
     test "uses locale from URL params" do

@@ -106,7 +106,7 @@ msgstr ""
 
 #: lib/storyarn_web/components/sidebar/flow_tree.ex:37
 #: lib/storyarn_web/components/sidebar/flow_tree.ex:71
-#: lib/storyarn_web/live/flow_live/index.ex:138
+#: lib/storyarn_web/live/flow_live/index.ex:123
 #, elixir-autogen, elixir-format
 msgid "Are you sure you want to delete this flow?"
 msgstr ""
@@ -164,7 +164,7 @@ msgstr ""
 
 #: lib/storyarn_web/components/instruction_builder.ex:52
 #: lib/storyarn_web/components/instruction_builder.ex:61
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:669
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:653
 #, elixir-autogen, elixir-format
 msgid "Clear"
 msgstr ""
@@ -181,8 +181,8 @@ msgstr ""
 
 #: lib/storyarn_web/live/flow_live/components/screenplay_editor.ex:318
 #: lib/storyarn_web/live/flow_live/nodes/condition/node.ex:15
-#: lib/storyarn_web/live/flow_live/show.ex:1698
-#: lib/storyarn_web/live/project_live/show.ex:278
+#: lib/storyarn_web/live/flow_live/show.ex:1684
+#: lib/storyarn_web/live/project_live/show.ex:296
 #, elixir-autogen, elixir-format
 msgid "Condition"
 msgstr ""
@@ -203,7 +203,7 @@ msgstr ""
 msgid "Continue"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:792
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:782
 #, elixir-autogen, elixir-format
 msgid "Continue to flow"
 msgstr ""
@@ -213,33 +213,33 @@ msgstr ""
 msgid "Copy to clipboard"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:537
-#: lib/storyarn_web/live/flow_live/index.ex:558
-#: lib/storyarn_web/live/flow_live/show.ex:1244
-#: lib/storyarn_web/live/flow_live/show.ex:1259
+#: lib/storyarn_web/live/flow_live/index.ex:519
+#: lib/storyarn_web/live/flow_live/index.ex:540
+#: lib/storyarn_web/live/flow_live/show.ex:1228
+#: lib/storyarn_web/live/flow_live/show.ex:1243
 #, elixir-autogen, elixir-format
 msgid "Could not create flow."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:277
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:287
 #, elixir-autogen, elixir-format
 msgid "Could not create sheet."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:499
-#: lib/storyarn_web/live/flow_live/show.ex:1359
-#: lib/storyarn_web/live/flow_live/show.ex:1375
+#: lib/storyarn_web/live/flow_live/index.ex:481
+#: lib/storyarn_web/live/flow_live/show.ex:1340
+#: lib/storyarn_web/live/flow_live/show.ex:1356
 #, elixir-autogen, elixir-format
 msgid "Could not delete flow."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1499
+#: lib/storyarn_web/live/flow_live/show.ex:1480
 #, elixir-autogen, elixir-format
 msgid "Could not load flow data."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:578
-#: lib/storyarn_web/live/flow_live/show.ex:1390
+#: lib/storyarn_web/live/flow_live/index.ex:560
+#: lib/storyarn_web/live/flow_live/show.ex:1371
 #, elixir-autogen, elixir-format
 msgid "Could not move flow."
 msgstr ""
@@ -249,13 +249,13 @@ msgstr ""
 msgid "Could not save flow name."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:479
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:491
 #, elixir-autogen, elixir-format
 msgid "Could not save shortcut."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:518
-#: lib/storyarn_web/live/flow_live/show.ex:1276
+#: lib/storyarn_web/live/flow_live/index.ex:500
+#: lib/storyarn_web/live/flow_live/show.ex:1762
 #, elixir-autogen, elixir-format
 msgid "Could not set main flow."
 msgstr ""
@@ -288,16 +288,16 @@ msgstr ""
 
 #: lib/storyarn_web/components/sidebar/flow_tree.ex:38
 #: lib/storyarn_web/components/sidebar/flow_tree.ex:72
-#: lib/storyarn_web/live/flow_live/index.ex:139
-#: lib/storyarn_web/live/flow_live/index.ex:284
-#: lib/storyarn_web/live/flow_live/show.ex:1716
+#: lib/storyarn_web/live/flow_live/index.ex:124
+#: lib/storyarn_web/live/flow_live/index.ex:269
+#: lib/storyarn_web/live/flow_live/show.ex:1702
 #, elixir-autogen, elixir-format
 msgid "Delete"
 msgstr ""
 
 #: lib/storyarn_web/components/sidebar/flow_tree.ex:36
 #: lib/storyarn_web/components/sidebar/flow_tree.ex:70
-#: lib/storyarn_web/live/flow_live/index.ex:137
+#: lib/storyarn_web/live/flow_live/index.ex:122
 #, elixir-autogen, elixir-format
 msgid "Delete flow?"
 msgstr ""
@@ -314,11 +314,11 @@ msgstr ""
 
 #: lib/storyarn_web/live/flow_live/components/screenplay_editor.ex:87
 #: lib/storyarn_web/live/flow_live/index.ex:77
-#: lib/storyarn_web/live/flow_live/index.ex:194
+#: lib/storyarn_web/live/flow_live/index.ex:179
 #: lib/storyarn_web/live/flow_live/nodes/dialogue/node.ex:27
-#: lib/storyarn_web/live/flow_live/show.ex:1697
-#: lib/storyarn_web/live/flow_live/show.ex:1719
-#: lib/storyarn_web/live/project_live/show.ex:277
+#: lib/storyarn_web/live/flow_live/show.ex:1683
+#: lib/storyarn_web/live/flow_live/show.ex:1705
+#: lib/storyarn_web/live/project_live/show.ex:295
 #, elixir-autogen, elixir-format
 msgid "Dialogue"
 msgstr ""
@@ -344,14 +344,14 @@ msgid "Entering sub-flow"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/nodes/entry/node.ex:15
-#: lib/storyarn_web/live/project_live/show.ex:284
+#: lib/storyarn_web/live/project_live/show.ex:302
 #, elixir-autogen, elixir-format
 msgid "Entry"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:20
-#: lib/storyarn_web/live/flow_live/show.ex:1702
-#: lib/storyarn_web/live/project_live/show.ex:285
+#: lib/storyarn_web/live/flow_live/show.ex:1688
+#: lib/storyarn_web/live/project_live/show.ex:303
 #, elixir-autogen, elixir-format
 msgid "Exit"
 msgstr ""
@@ -376,29 +376,25 @@ msgstr ""
 msgid "Flow"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:378
-#, elixir-autogen, elixir-format
-msgid "Flow created successfully."
-msgstr ""
-
-#: lib/storyarn_web/live/flow_live/index.ex:492
-#: lib/storyarn_web/live/flow_live/show.ex:1358
-#: lib/storyarn_web/live/flow_live/show.ex:1374
+#: lib/storyarn_web/live/flow_live/index.ex:474
+#: lib/storyarn_web/live/flow_live/show.ex:1339
+#: lib/storyarn_web/live/flow_live/show.ex:1355
 #, elixir-autogen, elixir-format
 msgid "Flow moved to trash."
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/handlers/navigation_handlers.ex:23
-#: lib/storyarn_web/live/flow_live/index.ex:496
-#: lib/storyarn_web/live/flow_live/index.ex:515
+#: lib/storyarn_web/live/flow_live/index.ex:478
+#: lib/storyarn_web/live/flow_live/index.ex:497
 #: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:225
 #: lib/storyarn_web/live/flow_live/player_live.ex:105
 #: lib/storyarn_web/live/flow_live/show.ex:594
+#: lib/storyarn_web/live/flow_live/show.ex:1254
 #, elixir-autogen, elixir-format
 msgid "Flow not found."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:511
+#: lib/storyarn_web/live/flow_live/index.ex:493
 #, elixir-autogen, elixir-format
 msgid "Flow set as main."
 msgstr ""
@@ -416,8 +412,8 @@ msgid "History"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/nodes/hub/node.ex:17
-#: lib/storyarn_web/live/flow_live/show.ex:1700
-#: lib/storyarn_web/live/project_live/show.ex:280
+#: lib/storyarn_web/live/flow_live/show.ex:1686
+#: lib/storyarn_web/live/project_live/show.ex:298
 #, elixir-autogen, elixir-format
 msgid "Hub"
 msgstr ""
@@ -429,8 +425,8 @@ msgstr ""
 
 #: lib/storyarn_web/live/flow_live/components/screenplay_editor.ex:332
 #: lib/storyarn_web/live/flow_live/nodes/instruction/node.ex:15
-#: lib/storyarn_web/live/flow_live/show.ex:1699
-#: lib/storyarn_web/live/project_live/show.ex:279
+#: lib/storyarn_web/live/flow_live/show.ex:1685
+#: lib/storyarn_web/live/project_live/show.ex:297
 #, elixir-autogen, elixir-format
 msgid "Instruction"
 msgstr ""
@@ -446,8 +442,8 @@ msgid "Invalid flow reference."
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/nodes/jump/node.ex:12
-#: lib/storyarn_web/live/flow_live/show.ex:1701
-#: lib/storyarn_web/live/project_live/show.ex:281
+#: lib/storyarn_web/live/flow_live/show.ex:1687
+#: lib/storyarn_web/live/project_live/show.ex:299
 #, elixir-autogen, elixir-format
 msgid "Jump"
 msgstr ""
@@ -458,7 +454,7 @@ msgid "Localization ID"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/components/flow_header.ex:77
-#: lib/storyarn_web/live/flow_live/index.ex:247
+#: lib/storyarn_web/live/flow_live/index.ex:232
 #, elixir-autogen, elixir-format
 msgid "Main"
 msgstr ""
@@ -469,7 +465,7 @@ msgid "Main Story"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/components/flow_header.ex:75
-#: lib/storyarn_web/live/flow_live/index.ex:245
+#: lib/storyarn_web/live/flow_live/index.ex:230
 #, elixir-autogen, elixir-format
 msgid "Main flow"
 msgstr ""
@@ -490,7 +486,7 @@ msgid "Move to Trash"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/form.ex:27
-#: lib/storyarn_web/live/flow_live/index.ex:172
+#: lib/storyarn_web/live/flow_live/index.ex:157
 #, elixir-autogen, elixir-format
 msgid "Name"
 msgstr ""
@@ -501,7 +497,6 @@ msgid "Narrator"
 msgstr ""
 
 #: lib/storyarn_web/components/sidebar/flow_tree.ex:35
-#: lib/storyarn_web/live/flow_live/index.ex:129
 #, elixir-autogen, elixir-format
 msgid "New Flow"
 msgstr ""
@@ -607,7 +602,7 @@ msgstr ""
 msgid "Responses:"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:793
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:783
 #, elixir-autogen, elixir-format
 msgid "Return to caller"
 msgstr ""
@@ -635,7 +630,7 @@ msgid "Set"
 msgstr ""
 
 #: lib/storyarn_web/components/sidebar/flow_tree.ex:58
-#: lib/storyarn_web/live/flow_live/index.ex:272
+#: lib/storyarn_web/live/flow_live/index.ex:257
 #, elixir-autogen, elixir-format
 msgid "Set as main"
 msgstr ""
@@ -660,7 +655,7 @@ msgstr ""
 msgid "Set … to true"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:478
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:490
 #, elixir-autogen, elixir-format
 msgid "Shortcut %{error}"
 msgstr ""
@@ -701,8 +696,8 @@ msgid "Stop"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/nodes/subflow/node.ex:20
-#: lib/storyarn_web/live/flow_live/show.ex:1703
-#: lib/storyarn_web/live/project_live/show.ex:283
+#: lib/storyarn_web/live/flow_live/show.ex:1689
+#: lib/storyarn_web/live/project_live/show.ex:301
 #, elixir-autogen, elixir-format
 msgid "Subflow"
 msgstr ""
@@ -732,7 +727,7 @@ msgstr ""
 msgid "Technical ID"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:509
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:521
 #, elixir-autogen, elixir-format
 msgid "This node is being edited by %{user}"
 msgstr ""
@@ -759,10 +754,10 @@ msgid "Type"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/components/flow_header.ex:67
-#: lib/storyarn_web/live/flow_live/index.ex:525
-#: lib/storyarn_web/live/flow_live/index.ex:544
-#: lib/storyarn_web/live/flow_live/show.ex:1241
-#: lib/storyarn_web/live/flow_live/show.ex:1256
+#: lib/storyarn_web/live/flow_live/index.ex:507
+#: lib/storyarn_web/live/flow_live/index.ex:526
+#: lib/storyarn_web/live/flow_live/show.ex:1225
+#: lib/storyarn_web/live/flow_live/show.ex:1240
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr ""
@@ -782,7 +777,7 @@ msgstr ""
 msgid "Waiting"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:349
+#: lib/storyarn_web/live/flow_live/index.ex:334
 #: lib/storyarn_web/live/flow_live/player_live.ex:95
 #: lib/storyarn_web/live/flow_live/show.ex:482
 #, elixir-autogen, elixir-format
@@ -997,7 +992,7 @@ msgstr "Could not select that response."
 msgid "Error advancing through flow."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/player/components/player_slide.ex:58
+#: lib/storyarn_web/live/flow_live/player/components/player_slide.ex:65
 #, elixir-autogen, elixir-format
 msgid "No content to display."
 msgstr ""
@@ -1072,14 +1067,14 @@ msgstr ""
 msgid "of the blocks"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:178
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:171
 #, elixir-autogen, elixir-format
 msgid "%{count} assignment"
 msgid_plural "%{count} assignments"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:444
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:437
 #, elixir-autogen, elixir-format
 msgid "%{count} exit"
 msgid_plural "%{count} exits"
@@ -1093,7 +1088,7 @@ msgid_plural "%{count} refs"
 msgstr[0] "%{count} ref"
 msgstr[1] "%{count} refs"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:152
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:145
 #, elixir-autogen, elixir-format
 msgid "%{count} rule"
 msgid_plural "%{count} rules"
@@ -1120,17 +1115,17 @@ msgstr ""
 msgid "Condition Builder"
 msgstr "Condition Builder"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:798
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:788
 #, elixir-autogen, elixir-format
 msgid "Continues into another flow"
 msgstr "Continues into another flow"
 
-#: lib/storyarn_web/live/flow_live/show.ex:1038
+#: lib/storyarn_web/live/flow_live/show.ex:1751
 #, elixir-autogen, elixir-format
 msgid "Could not create linked flow."
 msgstr "Could not create linked flow."
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:795
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:785
 #, elixir-autogen, elixir-format
 msgid "Ends the flow entirely"
 msgstr ""
@@ -1141,7 +1136,7 @@ msgid "Entry point"
 msgstr "Entry point"
 
 #: lib/storyarn_web/live/flow_live/components/screenplay_editor.ex:428
-#: lib/storyarn_web/live/flow_live/show.ex:1708
+#: lib/storyarn_web/live/flow_live/show.ex:1694
 #, elixir-autogen, elixir-format
 msgid "Generate technical ID"
 msgstr ""
@@ -1151,8 +1146,8 @@ msgstr ""
 msgid "Instruction Builder"
 msgstr "Instruction Builder"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:215
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:317
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:208
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:310
 #, elixir-autogen, elixir-format
 msgid "Label…"
 msgstr "Label…"
@@ -1162,52 +1157,52 @@ msgstr "Label…"
 msgid "Localization key"
 msgstr "Localization key"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:276
-#: lib/storyarn_web/live/flow_live/show.ex:1711
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:269
+#: lib/storyarn_web/live/flow_live/show.ex:1697
 #, elixir-autogen, elixir-format
 msgid "Locate target hub"
 msgstr "Locate target hub"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:508
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:492
 #, elixir-autogen, elixir-format
 msgid "Location…"
 msgstr "Location…"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:696
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:680
 #, elixir-autogen, elixir-format
 msgid "No matches"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:538
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:522
 #, elixir-autogen, elixir-format
 msgid "No toolbar for this type"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:385
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:439
-#: lib/storyarn_web/live/flow_live/show.ex:1712
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:378
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:432
+#: lib/storyarn_web/live/flow_live/show.ex:1698
 #, elixir-autogen, elixir-format
 msgid "Open referenced flow"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:366
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:359
 #, elixir-autogen, elixir-format
 msgid "Outcome color"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:801
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:791
 #, elixir-autogen, elixir-format
 msgid "Returns to the calling subflow"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:639
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:623
 #: lib/storyarn_web/live/flow_live/components/screenplay_editor.ex:190
-#: lib/storyarn_web/live/flow_live/show.ex:1718
+#: lib/storyarn_web/live/flow_live/show.ex:1704
 #, elixir-autogen, elixir-format
 msgid "Search…"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:421
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:414
 #, elixir-autogen, elixir-format
 msgid "Select flow…"
 msgstr "Select flow…"
@@ -1222,23 +1217,23 @@ msgstr ""
 msgid "Short text shown in menus…"
 msgstr "Short text shown in menus…"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:263
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:256
 #, elixir-autogen, elixir-format
 msgid "Target hub…"
 msgstr "Target hub…"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:791
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:781
 #, elixir-autogen, elixir-format
 msgid "Terminal"
 msgstr "Terminal"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:521
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:505
 #, elixir-autogen, elixir-format
 msgid "Time…"
 msgstr "Time…"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:147
-#: lib/storyarn_web/live/flow_live/show.ex:1709
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:140
+#: lib/storyarn_web/live/flow_live/show.ex:1695
 #, elixir-autogen, elixir-format
 msgid "Toggle switch mode"
 msgstr ""
@@ -1253,17 +1248,17 @@ msgstr "Builder"
 msgid "Code"
 msgstr "Code"
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:309
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:319
 #, elixir-autogen, elixir-format
 msgid "Could not update node positions."
 msgstr "Could not update node positions."
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:655
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:639
 #, elixir-autogen, elixir-format
 msgid "Search in content"
 msgstr "Search in content"
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:688
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:672
 #, elixir-autogen, elixir-format
 msgid "Show more…"
 msgstr "Show more…"
@@ -1298,7 +1293,7 @@ msgstr ""
 msgid "Step limit (%{count}) reached — possible infinite loop."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1096
+#: lib/storyarn_web/live/flow_live/show.ex:1084
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Could not update scene map."
 msgstr "Could not update node positions."
@@ -1328,7 +1323,7 @@ msgstr ""
 msgid "Scene backdrop"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:824
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:814
 #, elixir-autogen, elixir-format
 msgid "Transition…"
 msgstr ""
@@ -1338,17 +1333,17 @@ msgstr ""
 msgid "inherited"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1691
+#: lib/storyarn_web/live/flow_live/show.ex:1677
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Add node"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1695
+#: lib/storyarn_web/live/flow_live/show.ex:1681
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Auto-layout"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1713
+#: lib/storyarn_web/live/flow_live/show.ex:1699
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Create linked flow"
 msgstr ""
@@ -1358,12 +1353,12 @@ msgstr ""
 msgid "DIALOGUE"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1721
+#: lib/storyarn_web/live/flow_live/show.ex:1707
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Dialogue text…"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1715
+#: lib/storyarn_web/live/flow_live/show.ex:1701
 #, elixir-autogen, elixir-format
 msgid "Duplicate"
 msgstr ""
@@ -1373,23 +1368,23 @@ msgstr ""
 msgid "Format"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:232
-#: lib/storyarn_web/live/flow_live/show.ex:1710
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:225
+#: lib/storyarn_web/live/flow_live/show.ex:1696
 #, elixir-autogen, elixir-format
 msgid "Locate referencing jumps"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1706
+#: lib/storyarn_web/live/flow_live/show.ex:1692
 #, elixir-autogen, elixir-format
 msgid "Open editor panel"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1693
+#: lib/storyarn_web/live/flow_live/show.ex:1679
 #, elixir-autogen, elixir-format
 msgid "Play preview"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1707
+#: lib/storyarn_web/live/flow_live/show.ex:1693
 #, elixir-autogen, elixir-format
 msgid "Preview from here"
 msgstr ""
@@ -1404,12 +1399,12 @@ msgstr ""
 msgid "Remove block"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1720
+#: lib/storyarn_web/live/flow_live/show.ex:1706
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Stage directions…"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1694
+#: lib/storyarn_web/live/flow_live/show.ex:1680
 #, elixir-autogen, elixir-format
 msgid "Start debugging"
 msgstr ""
@@ -1429,7 +1424,7 @@ msgstr ""
 msgid "Unknown variable"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1714
+#: lib/storyarn_web/live/flow_live/show.ex:1700
 #, elixir-autogen, elixir-format
 msgid "View referencing flows"
 msgstr ""
@@ -1468,17 +1463,12 @@ msgstr[1] ""
 msgid "%{type} #%{id}"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1692
+#: lib/storyarn_web/live/flow_live/show.ex:1678
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Add Note"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:751
-#, elixir-autogen, elixir-format, fuzzy
-msgid "Clear override"
-msgstr ""
-
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:587
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:571
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Delete note"
 msgstr ""
@@ -1509,40 +1499,34 @@ msgstr ""
 msgid "Note"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:566
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:550
 #, elixir-autogen, elixir-format
 msgid "Note color"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:159
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:152
 #, elixir-autogen, elixir-format
 msgid "Open condition builder"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:187
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:180
 #, elixir-autogen, elixir-format
 msgid "Open instruction builder"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:111
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:104
 #, elixir-autogen, elixir-format
 msgid "Open screenplay editor"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:719
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:726
-#, elixir-autogen, elixir-format
-msgid "Override image"
-msgstr ""
-
-#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:498
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:482
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Setting…"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/nodes/slug_line/node.ex:20
-#: lib/storyarn_web/live/flow_live/show.ex:1704
-#: lib/storyarn_web/live/project_live/show.ex:282
+#: lib/storyarn_web/live/flow_live/show.ex:1690
+#: lib/storyarn_web/live/project_live/show.ex:300
 #, elixir-autogen, elixir-format
 msgid "Slug Line"
 msgstr ""
@@ -1572,7 +1556,7 @@ msgstr ""
 msgid "Character speech and player responses"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:205
+#: lib/storyarn_web/live/flow_live/index.ex:190
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Conditions"
 msgstr ""
@@ -1587,7 +1571,7 @@ msgstr ""
 msgid "Could not create node."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:228
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:234
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Could not duplicate node."
 msgstr ""
@@ -1607,12 +1591,12 @@ msgstr ""
 msgid "End point of a flow"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:637
+#: lib/storyarn_web/live/flow_live/index.ex:619
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has %{count} disconnected node(s)"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:633
+#: lib/storyarn_web/live/flow_live/index.ex:615
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has no entry node"
 msgstr ""
@@ -1637,7 +1621,7 @@ msgstr ""
 msgid "Logic"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:227
+#: lib/storyarn_web/live/flow_live/index.ex:212
 #, elixir-autogen, elixir-format
 msgid "Modified"
 msgstr ""
@@ -1658,7 +1642,7 @@ msgid "Navigation"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/index.ex:72
-#: lib/storyarn_web/live/flow_live/index.ex:183
+#: lib/storyarn_web/live/flow_live/index.ex:168
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Nodes"
 msgstr ""
@@ -1689,37 +1673,37 @@ msgid "Story and dialogue nodes"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/index.ex:82
-#: lib/storyarn_web/live/flow_live/index.ex:216
+#: lib/storyarn_web/live/flow_live/index.ex:201
 #, elixir-autogen, elixir-format
 msgid "Words"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:507
+#: lib/storyarn/versioning/builders/flow_builder.ex:516
 #, elixir-autogen, elixir-format
 msgid "Added %{type} node"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:573
+#: lib/storyarn/versioning/builders/flow_builder.ex:582
 #, elixir-autogen, elixir-format
 msgid "Added connection"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:417
+#: lib/storyarn/versioning/builders/flow_builder.ex:426
 #, elixir-autogen, elixir-format
 msgid "Changed description"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:424
+#: lib/storyarn/versioning/builders/flow_builder.ex:433
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Changed scene"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:431
+#: lib/storyarn/versioning/builders/flow_builder.ex:440
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Changed settings"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:410
+#: lib/storyarn/versioning/builders/flow_builder.ex:419
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Changed shortcut"
 msgstr ""
@@ -1729,7 +1713,7 @@ msgstr ""
 msgid "Draft not found."
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:603
+#: lib/storyarn/versioning/builders/flow_builder.ex:612
 #, elixir-autogen, elixir-format
 msgid "Flow backdrop scene"
 msgstr ""
@@ -1739,42 +1723,42 @@ msgstr ""
 msgid "Flow not found"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:520
+#: lib/storyarn/versioning/builders/flow_builder.ex:529
 #, elixir-autogen, elixir-format
 msgid "Modified %{type} node"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:589
+#: lib/storyarn/versioning/builders/flow_builder.ex:598
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Modified connection"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:626
+#: lib/storyarn/versioning/builders/flow_builder.ex:635
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} (%{type}) — audio"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:621
+#: lib/storyarn/versioning/builders/flow_builder.ex:630
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} (%{type}) — referenced flow"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:616
+#: lib/storyarn/versioning/builders/flow_builder.ex:625
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} (%{type}) — speaker"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:508
+#: lib/storyarn/versioning/builders/flow_builder.ex:517
 #, elixir-autogen, elixir-format
 msgid "Removed %{type} node"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:574
+#: lib/storyarn/versioning/builders/flow_builder.ex:583
 #, elixir-autogen, elixir-format
 msgid "Removed connection"
 msgstr ""
 
-#: lib/storyarn/versioning/builders/flow_builder.ex:403
+#: lib/storyarn/versioning/builders/flow_builder.ex:412
 #, elixir-autogen, elixir-format
 msgid "Renamed flow"
 msgstr ""
@@ -1788,4 +1772,20 @@ msgstr ""
 #: lib/storyarn_web/live/flow_live/components/flow_dock.ex:112
 #, elixir-autogen, elixir-format
 msgid "View and manage version history"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/show.ex:1023
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Node not found."
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:703
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:710
+#, elixir-autogen, elixir-format
+msgid "Select avatar"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/components/flow_toolbar.ex:735
+#, elixir-autogen, elixir-format
+msgid "Use default"
 msgstr ""

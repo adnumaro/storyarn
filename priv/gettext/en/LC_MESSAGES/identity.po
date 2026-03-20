@@ -21,7 +21,7 @@ msgstr ""
 msgid "Already registered?"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:104
+#: lib/storyarn_web/live/user_live/registration.ex:111
 #, elixir-autogen, elixir-format
 msgid "An email was sent to %{email}, please access it to confirm your account."
 msgstr ""
@@ -193,7 +193,7 @@ msgstr ""
 msgid "Too many login attempts. Please try again later."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:78
+#: lib/storyarn_web/live/user_live/registration.ex:85
 #, elixir-autogen, elixir-format
 msgid "Too many registration attempts. Please try again later."
 msgstr ""
@@ -225,8 +225,8 @@ msgid "You are running the local mail adapter."
 msgstr ""
 
 #: lib/storyarn_web/live/user_live/confirm_access.ex:79
-#: lib/storyarn_web/user_auth.ex:234
-#: lib/storyarn_web/user_auth.ex:332
+#: lib/storyarn_web/user_auth.ex:237
+#: lib/storyarn_web/user_auth.ex:350
 #, elixir-autogen, elixir-format
 msgid "You must log in to access this page."
 msgstr ""

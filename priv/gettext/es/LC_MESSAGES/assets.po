@@ -42,12 +42,12 @@ msgstr "Recursos"
 msgid "Audio"
 msgstr "Audio"
 
-#: lib/storyarn_web/live/components/asset_upload.ex:60
+#: lib/storyarn_web/live/components/asset_upload.ex:62
 #, elixir-autogen, elixir-format
 msgid "Browse Files"
 msgstr "Explorar archivos"
 
-#: lib/storyarn_web/live/components/asset_upload.ex:84
+#: lib/storyarn_web/live/components/asset_upload.ex:86
 #, elixir-autogen, elixir-format
 msgid "Cancel"
 msgstr "Cancelar"
@@ -82,12 +82,12 @@ msgstr "Eliminar"
 msgid "Details"
 msgstr "Detalles"
 
-#: lib/storyarn_web/live/components/asset_upload.ex:57
+#: lib/storyarn_web/live/components/asset_upload.ex:59
 #, elixir-autogen, elixir-format
 msgid "Drag and drop files here, or"
 msgstr "Arrastra y suelta archivos aquí, o"
 
-#: lib/storyarn_web/live/components/asset_upload.ex:222
+#: lib/storyarn_web/live/components/asset_upload.ex:224
 #, elixir-autogen, elixir-format
 msgid "Failed to upload files."
 msgstr "Error al subir los archivos."
@@ -97,12 +97,12 @@ msgstr "Error al subir los archivos."
 msgid "File"
 msgstr "Archivo"
 
-#: lib/storyarn_web/live/components/asset_upload.ex:285
+#: lib/storyarn_web/live/components/asset_upload.ex:291
 #, elixir-autogen, elixir-format
 msgid "File is too large"
 msgstr "El archivo es demasiado grande"
 
-#: lib/storyarn_web/live/components/asset_upload.ex:287
+#: lib/storyarn_web/live/components/asset_upload.ex:293
 #, elixir-autogen, elixir-format
 msgid "File type not accepted"
 msgstr "Tipo de archivo no aceptado"
@@ -112,7 +112,7 @@ msgstr "Tipo de archivo no aceptado"
 msgid "Filename"
 msgstr "Nombre de archivo"
 
-#: lib/storyarn_web/live/components/asset_upload.ex:220
+#: lib/storyarn_web/live/components/asset_upload.ex:222
 #, elixir-autogen, elixir-format
 msgid "Files uploaded successfully."
 msgstr "Archivos subidos exitosamente."
@@ -133,7 +133,7 @@ msgstr "Imágenes"
 msgid "Invalid file data."
 msgstr "Datos de archivo inválidos."
 
-#: lib/storyarn_web/live/components/asset_upload.ex:63
+#: lib/storyarn_web/live/components/asset_upload.ex:65
 #, elixir-autogen, elixir-format
 msgid "Max file size: %{size}MB"
 msgstr "Tamaño máximo: %{size}MB"
@@ -165,7 +165,7 @@ msgid_plural "This asset is used in %{count} places. Are you sure you want to de
 msgstr[0] "Este recurso se usa en %{count} lugar. ¿Estás seguro de que quieres eliminarlo?"
 msgstr[1] "Este recurso se usa en %{count} lugares. ¿Estás seguro de que quieres eliminarlo?"
 
-#: lib/storyarn_web/live/components/asset_upload.ex:286
+#: lib/storyarn_web/live/components/asset_upload.ex:292
 #, elixir-autogen, elixir-format
 msgid "Too many files"
 msgstr "Demasiados archivos"
@@ -181,7 +181,7 @@ msgid "Unsupported file type."
 msgstr "Tipo de archivo no compatible."
 
 #: lib/storyarn_web/live/asset_live/index.ex:37
-#: lib/storyarn_web/live/components/asset_upload.ex:91
+#: lib/storyarn_web/live/components/asset_upload.ex:93
 #, elixir-autogen, elixir-format
 msgid "Upload"
 msgstr "Subir"
@@ -192,7 +192,7 @@ msgid "Upload failed. Please try again."
 msgstr "Error al subir. Por favor, inténtalo de nuevo."
 
 #: lib/storyarn_web/live/asset_live/components/asset_components.ex:110
-#: lib/storyarn_web/live/components/asset_upload.ex:97
+#: lib/storyarn_web/live/components/asset_upload.ex:99
 #, elixir-autogen, elixir-format
 msgid "Uploaded"
 msgstr "Subido"
@@ -231,3 +231,8 @@ msgstr "Archivo demasiado grande (máximo 20MB)."
 #, elixir-autogen, elixir-format
 msgid "Storage limit reached. Upgrade your plan."
 msgstr "Límite de almacenamiento alcanzado. Mejora tu plan."
+
+#: lib/storyarn_web/live/components/asset_upload.ex:294
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Upload error"
+msgstr "Subir"

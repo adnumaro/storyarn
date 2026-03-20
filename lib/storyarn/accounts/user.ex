@@ -14,6 +14,7 @@ defmodule Storyarn.Accounts.User do
           authenticated_at: DateTime.t() | nil,
           display_name: String.t() | nil,
           avatar_url: String.t() | nil,
+          locale: String.t() | nil,
           identities: [Storyarn.Accounts.UserIdentity.t()] | Ecto.Association.NotLoaded.t(),
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
@@ -27,6 +28,7 @@ defmodule Storyarn.Accounts.User do
     field :authenticated_at, :utc_datetime, virtual: true
     field :display_name, :string
     field :avatar_url, :string
+    field :locale, :string
     field :is_super_admin, :boolean, default: false
 
     has_many :identities, Storyarn.Accounts.UserIdentity
@@ -139,9 +141,10 @@ defmodule Storyarn.Accounts.User do
   """
   def profile_changeset(user, attrs) do
     user
-    |> cast(attrs, [:display_name, :avatar_url])
+    |> cast(attrs, [:display_name, :avatar_url, :locale])
     |> validate_length(:display_name, max: 100)
     |> validate_format(:avatar_url, ~r/^https?:\/\/.+/, message: "must be a valid URL")
+    |> validate_inclusion(:locale, Gettext.known_locales(Storyarn.Gettext))
   end
 
   @doc """

@@ -42,12 +42,12 @@ msgstr ""
 msgid "Audio"
 msgstr ""
 
-#: lib/storyarn_web/live/components/asset_upload.ex:60
+#: lib/storyarn_web/live/components/asset_upload.ex:62
 #, elixir-autogen, elixir-format
 msgid "Browse Files"
 msgstr ""
 
-#: lib/storyarn_web/live/components/asset_upload.ex:84
+#: lib/storyarn_web/live/components/asset_upload.ex:86
 #, elixir-autogen, elixir-format
 msgid "Cancel"
 msgstr ""
@@ -82,12 +82,12 @@ msgstr ""
 msgid "Details"
 msgstr ""
 
-#: lib/storyarn_web/live/components/asset_upload.ex:57
+#: lib/storyarn_web/live/components/asset_upload.ex:59
 #, elixir-autogen, elixir-format
 msgid "Drag and drop files here, or"
 msgstr ""
 
-#: lib/storyarn_web/live/components/asset_upload.ex:222
+#: lib/storyarn_web/live/components/asset_upload.ex:224
 #, elixir-autogen, elixir-format
 msgid "Failed to upload files."
 msgstr ""
@@ -97,12 +97,12 @@ msgstr ""
 msgid "File"
 msgstr ""
 
-#: lib/storyarn_web/live/components/asset_upload.ex:285
+#: lib/storyarn_web/live/components/asset_upload.ex:291
 #, elixir-autogen, elixir-format
 msgid "File is too large"
 msgstr ""
 
-#: lib/storyarn_web/live/components/asset_upload.ex:287
+#: lib/storyarn_web/live/components/asset_upload.ex:293
 #, elixir-autogen, elixir-format
 msgid "File type not accepted"
 msgstr ""
@@ -112,7 +112,7 @@ msgstr ""
 msgid "Filename"
 msgstr ""
 
-#: lib/storyarn_web/live/components/asset_upload.ex:220
+#: lib/storyarn_web/live/components/asset_upload.ex:222
 #, elixir-autogen, elixir-format
 msgid "Files uploaded successfully."
 msgstr ""
@@ -133,7 +133,7 @@ msgstr ""
 msgid "Invalid file data."
 msgstr ""
 
-#: lib/storyarn_web/live/components/asset_upload.ex:63
+#: lib/storyarn_web/live/components/asset_upload.ex:65
 #, elixir-autogen, elixir-format
 msgid "Max file size: %{size}MB"
 msgstr ""
@@ -165,7 +165,7 @@ msgid_plural "This asset is used in %{count} places. Are you sure you want to de
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/components/asset_upload.ex:286
+#: lib/storyarn_web/live/components/asset_upload.ex:292
 #, elixir-autogen, elixir-format
 msgid "Too many files"
 msgstr ""
@@ -181,7 +181,7 @@ msgid "Unsupported file type."
 msgstr ""
 
 #: lib/storyarn_web/live/asset_live/index.ex:37
-#: lib/storyarn_web/live/components/asset_upload.ex:91
+#: lib/storyarn_web/live/components/asset_upload.ex:93
 #, elixir-autogen, elixir-format
 msgid "Upload"
 msgstr ""
@@ -192,7 +192,7 @@ msgid "Upload failed. Please try again."
 msgstr ""
 
 #: lib/storyarn_web/live/asset_live/components/asset_components.ex:110
-#: lib/storyarn_web/live/components/asset_upload.ex:97
+#: lib/storyarn_web/live/components/asset_upload.ex:99
 #, elixir-autogen, elixir-format
 msgid "Uploaded"
 msgstr ""
@@ -230,4 +230,9 @@ msgstr ""
 #: lib/storyarn_web/live/asset_live/index.ex:317
 #, elixir-autogen, elixir-format
 msgid "Storage limit reached. Upgrade your plan."
+msgstr ""
+
+#: lib/storyarn_web/live/components/asset_upload.ex:294
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Upload error"
 msgstr ""

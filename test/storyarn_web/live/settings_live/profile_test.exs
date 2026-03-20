@@ -66,12 +66,12 @@ defmodule StoryarnWeb.SettingsLive.ProfileTest do
     test "can update display name", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/users/settings")
 
-      result =
-        view
-        |> form("#profile_form", %{"user" => %{"display_name" => "New Name"}})
-        |> render_submit()
+      view
+      |> form("#profile_form", %{"user" => %{"display_name" => "New Name"}})
+      |> render_submit()
 
-      assert result =~ "Profile updated successfully"
+      {path, _flash} = assert_redirect(view)
+      assert path =~ "/users/settings"
     end
 
     test "validates profile on change", %{conn: conn} do

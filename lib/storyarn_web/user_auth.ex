@@ -265,24 +265,29 @@ defmodule StoryarnWeb.UserAuth do
   end
 
   defp mount_current_scope(socket, session) do
+    socket =
+      Phoenix.Component.assign_new(socket, :current_scope, fn ->
+        {user, _} =
+          if user_token = session["user_token"] do
+            Accounts.get_user_by_session_token(user_token)
+          end || {nil, nil}
+
+        Scope.for_user(user)
+      end)
+
+    user = socket.assigns.current_scope && socket.assigns.current_scope.user
+
     locale =
-      case session["locale"] do
-        locale when locale in @locales -> locale
-        _ -> @default_locale
-      end
+      (user && user.locale) ||
+        case session["locale"] do
+          l when l in @locales -> l
+          _ -> nil
+        end ||
+        @default_locale
 
     Gettext.put_locale(Storyarn.Gettext, locale)
 
-    socket
-    |> Phoenix.Component.assign(:locale, locale)
-    |> Phoenix.Component.assign_new(:current_scope, fn ->
-      {user, _} =
-        if user_token = session["user_token"] do
-          Accounts.get_user_by_session_token(user_token)
-        end || {nil, nil}
-
-      Scope.for_user(user)
-    end)
+    Phoenix.Component.assign(socket, :locale, locale)
   end
 
   defp load_workspaces(socket) do

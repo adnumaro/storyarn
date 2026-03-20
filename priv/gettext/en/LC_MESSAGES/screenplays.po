@@ -66,8 +66,8 @@ msgid "Could not create linked pages."
 msgstr ""
 
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:79
-#: lib/storyarn_web/live/screenplay_live/index.ex:290
-#: lib/storyarn_web/live/screenplay_live/index.ex:312
+#: lib/storyarn_web/live/screenplay_live/index.ex:284
+#: lib/storyarn_web/live/screenplay_live/index.ex:306
 #, elixir-autogen, elixir-format
 msgid "Could not create screenplay."
 msgstr ""
@@ -78,7 +78,7 @@ msgid "Could not delete element."
 msgstr ""
 
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:42
-#: lib/storyarn_web/live/screenplay_live/index.ex:264
+#: lib/storyarn_web/live/screenplay_live/index.ex:337
 #, elixir-autogen, elixir-format
 msgid "Could not delete screenplay."
 msgstr ""
@@ -89,7 +89,7 @@ msgid "Could not import file."
 msgstr ""
 
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:61
-#: lib/storyarn_web/live/screenplay_live/index.ex:333
+#: lib/storyarn_web/live/screenplay_live/index.ex:351
 #, elixir-autogen, elixir-format
 msgid "Could not move screenplay."
 msgstr ""
@@ -334,13 +334,15 @@ msgstr ""
 
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:31
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:36
-#: lib/storyarn_web/live/screenplay_live/index.ex:259
+#: lib/storyarn_web/live/screenplay_live/index.ex:332
 #, elixir-autogen, elixir-format
 msgid "Screenplay moved to trash."
 msgstr ""
 
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:18
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:49
+#: lib/storyarn_web/live/screenplay_live/index.ex:255
+#: lib/storyarn_web/live/screenplay_live/index.ex:319
 #, elixir-autogen, elixir-format
 msgid "Screenplay not found."
 msgstr ""
@@ -373,8 +375,8 @@ msgstr ""
 
 #: lib/storyarn_web/live/screenplay_live/components/screenplay_toolbar.ex:32
 #: lib/storyarn_web/live/screenplay_live/handlers/tree_handlers.ex:68
-#: lib/storyarn_web/live/screenplay_live/index.ex:276
-#: lib/storyarn_web/live/screenplay_live/index.ex:297
+#: lib/storyarn_web/live/screenplay_live/index.ex:270
+#: lib/storyarn_web/live/screenplay_live/index.ex:291
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr ""
