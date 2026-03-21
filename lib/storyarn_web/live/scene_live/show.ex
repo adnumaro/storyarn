@@ -1475,7 +1475,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     end)
   end
 
-  def handle_event("update_zone_condition_effect", %{"value" => _} = params, socket) do
+  def handle_event("update_zone_condition_effect", %{"effect" => _} = params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_zone_condition_effect(params, socket)
       |> broadcast_scene_change()
@@ -1537,7 +1537,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     end)
   end
 
-  def handle_event("update_pin_condition_effect", %{"value" => _} = params, socket) do
+  def handle_event("update_pin_condition_effect", %{"effect" => _} = params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_pin_condition_effect(params, socket)
       |> broadcast_scene_change()

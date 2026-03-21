@@ -410,10 +410,10 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   def handle_update_zone_condition(_params, socket), do: {:noreply, socket}
 
   @doc "Updates a zone's condition_effect (hide or disable)."
-  def handle_update_zone_condition_effect(%{"id" => id, "value" => value}, socket) do
+  def handle_update_zone_condition_effect(%{"id" => id, "effect" => effect}, socket) do
     case Scenes.get_zone(socket.assigns.scene.id, id) do
       nil -> {:noreply, socket}
-      zone -> do_update_zone_attrs(socket, zone, %{"condition_effect" => value})
+      zone -> do_update_zone_attrs(socket, zone, %{"condition_effect" => effect})
     end
   end
 
@@ -541,10 +541,10 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   def handle_update_pin_condition(_params, socket), do: {:noreply, socket}
 
   @doc "Updates a pin's condition_effect (hide or disable)."
-  def handle_update_pin_condition_effect(%{"id" => id, "value" => value}, socket) do
+  def handle_update_pin_condition_effect(%{"id" => id, "effect" => effect}, socket) do
     case Scenes.get_pin(socket.assigns.scene.id, id) do
       nil -> {:noreply, socket}
-      pin -> do_update_pin_attrs(socket, pin, %{"condition_effect" => value})
+      pin -> do_update_pin_attrs(socket, pin, %{"condition_effect" => effect})
     end
   end
 

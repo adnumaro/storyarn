@@ -304,7 +304,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
 
       render_hook(view, "update_zone_condition_effect", %{
         "id" => to_string(zone.id),
-        "value" => "disable"
+        "effect" => "disable"
       })
 
       updated = Scenes.get_zone!(zone.id)
@@ -320,7 +320,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
 
       render_hook(view, "update_zone_condition_effect", %{
         "id" => to_string(zone.id),
-        "value" => "hide"
+        "effect" => "hide"
       })
 
       updated = Scenes.get_zone!(zone.id)
@@ -389,7 +389,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
 
       render_hook(view, "update_pin_condition_effect", %{
         "id" => to_string(pin.id),
-        "value" => "disable"
+        "effect" => "disable"
       })
 
       updated = Scenes.get_pin!(pin.id)
@@ -1322,7 +1322,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
 
       render_hook(view, "update_zone_condition_effect", %{
         "id" => to_string(zone.id),
-        "value" => "disable"
+        "effect" => "disable"
       })
 
       updated = Scenes.get_zone(ctx.scene.id, zone.id)
@@ -1344,7 +1344,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlersTest do
 
       render_hook(view, "update_pin_condition_effect", %{
         "id" => to_string(pin.id),
-        "value" => "disable"
+        "effect" => "disable"
       })
 
       updated = Scenes.get_pin(ctx.scene.id, pin.id)

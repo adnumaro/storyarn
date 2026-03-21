@@ -227,20 +227,40 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
           <label class="text-xs font-medium text-base-content/60">
             {dgettext("scenes", "Condition")}
           </label>
-          <select
-            name="value"
-            class="select select-xs w-20 text-xs"
-            phx-change="update_zone_condition_effect"
-            phx-value-id={@zone.id}
-            disabled={!@can_edit}
-          >
-            <option value="hide" selected={(@zone.condition_effect || "hide") == "hide"}>
+          <div class="join">
+            <button
+              type="button"
+              class={[
+                "btn btn-xs join-item",
+                if((@zone.condition_effect || "hide") == "hide",
+                  do: "btn-active",
+                  else: "btn-ghost"
+                )
+              ]}
+              phx-click="update_zone_condition_effect"
+              phx-value-id={@zone.id}
+              phx-value-effect="hide"
+              disabled={!@can_edit}
+            >
               {dgettext("scenes", "Hide")}
-            </option>
-            <option value="disable" selected={(@zone.condition_effect || "hide") == "disable"}>
+            </button>
+            <button
+              type="button"
+              class={[
+                "btn btn-xs join-item",
+                if((@zone.condition_effect || "hide") == "disable",
+                  do: "btn-active",
+                  else: "btn-ghost"
+                )
+              ]}
+              phx-click="update_zone_condition_effect"
+              phx-value-id={@zone.id}
+              phx-value-effect="disable"
+              disabled={!@can_edit}
+            >
               {dgettext("scenes", "Disable")}
-            </option>
-          </select>
+            </button>
+          </div>
         </div>
         <.condition_builder
           id={"panel-zone-condition-#{@zone.id}-#{@can_edit}"}
@@ -462,20 +482,40 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
           <label class="text-xs font-medium text-base-content/60">
             {dgettext("scenes", "Condition")}
           </label>
-          <select
-            name="value"
-            class="select select-xs w-20 text-xs"
-            phx-change="update_pin_condition_effect"
-            phx-value-id={@pin.id}
-            disabled={!@can_edit}
-          >
-            <option value="hide" selected={(@pin.condition_effect || "hide") == "hide"}>
+          <div class="join">
+            <button
+              type="button"
+              class={[
+                "btn btn-xs join-item",
+                if((@pin.condition_effect || "hide") == "hide",
+                  do: "btn-active",
+                  else: "btn-ghost"
+                )
+              ]}
+              phx-click="update_pin_condition_effect"
+              phx-value-id={@pin.id}
+              phx-value-effect="hide"
+              disabled={!@can_edit}
+            >
               {dgettext("scenes", "Hide")}
-            </option>
-            <option value="disable" selected={(@pin.condition_effect || "hide") == "disable"}>
+            </button>
+            <button
+              type="button"
+              class={[
+                "btn btn-xs join-item",
+                if((@pin.condition_effect || "hide") == "disable",
+                  do: "btn-active",
+                  else: "btn-ghost"
+                )
+              ]}
+              phx-click="update_pin_condition_effect"
+              phx-value-id={@pin.id}
+              phx-value-effect="disable"
+              disabled={!@can_edit}
+            >
               {dgettext("scenes", "Disable")}
-            </option>
-          </select>
+            </button>
+          </div>
         </div>
         <.condition_builder
           id={"panel-pin-condition-#{@pin.id}-#{@can_edit}"}
