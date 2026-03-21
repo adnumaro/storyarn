@@ -1,5 +1,6 @@
 defmodule StoryarnWeb.Router do
   use StoryarnWeb, :router
+  import PhoenixStorybook.Router
 
   # Content Security Policy
   # 'unsafe-inline' is kept for styles because Tailwind/daisyUI emit inline styles in places.
@@ -69,11 +70,16 @@ defmodule StoryarnWeb.Router do
     # as long as you are also using SSL (which you should anyway).
     import Phoenix.LiveDashboard.Router
 
+    scope "/" do
+      storybook_assets()
+    end
+
     scope "/dev" do
       pipe_through :browser
 
       live_dashboard "/dashboard", metrics: StoryarnWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
+      live_storybook "/storybook", backend_module: StoryarnWeb.Storybook
     end
 
     # V2 pages — Vue + NuxtUI, separate root layout, no restrictive CSP
