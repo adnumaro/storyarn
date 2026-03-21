@@ -198,18 +198,32 @@ defmodule StoryarnWeb.FlowLive.Components.DebugVariablesTab do
 
   def var_edit_input(%{var: %{block_type: "boolean"}} = assigns) do
     ~H"""
-    <select
-      name="value"
-      class="select select-xs select-bordered w-full text-left text-info"
-      phx-change="debug_set_variable"
-      phx-value-key={@key}
-      autofocus
-      phx-key="Escape"
-      phx-keydown="debug_cancel_edit"
-    >
-      <option value="true" selected={@var.value == true}>true</option>
-      <option value="false" selected={@var.value != true}>false</option>
-    </select>
+    <div class="join w-full">
+      <button
+        type="button"
+        class={[
+          "btn btn-xs join-item flex-1",
+          if(@var.value == true, do: "btn-info", else: "btn-ghost")
+        ]}
+        phx-click="debug_set_variable"
+        phx-value-key={@key}
+        phx-value-value="true"
+      >
+        true
+      </button>
+      <button
+        type="button"
+        class={[
+          "btn btn-xs join-item flex-1",
+          if(@var.value != true, do: "btn-info", else: "btn-ghost")
+        ]}
+        phx-click="debug_set_variable"
+        phx-value-key={@key}
+        phx-value-value="false"
+      >
+        false
+      </button>
+    </div>
     """
   end
 

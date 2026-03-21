@@ -274,24 +274,66 @@ defmodule StoryarnWeb.FlowLive.Components.DebugPanel do
 
     assigns = Phoenix.Component.assign(assigns, :nodes, nodes)
 
+    current_label =
+      case Enum.find(nodes, fn {id, _} -> id == assigns.start_node_id end) do
+        {id, node} -> start_node_label(node, id)
+        nil -> dgettext("flows", "Select node...")
+      end
+
+    assigns = Phoenix.Component.assign(assigns, :current_label, current_label)
+
     ~H"""
-    <form phx-change="debug_change_start_node" class="flex items-center gap-1">
+    <div class="flex items-center gap-1">
       <span class="text-xs text-base-content/30">{dgettext("flows", "Start:")}</span>
-      <select
-        name="node_id"
-        class="select select-xs select-ghost text-xs h-6 min-h-0 pl-1 pr-5 font-normal"
-        disabled={@disabled}
-        title={dgettext("flows", "Change start node (resets session)")}
+      <div
+        id="debug-start-node-select"
+        phx-hook="SearchableSelect"
       >
-        <option
-          :for={{id, node} <- @nodes}
-          value={id}
-          selected={id == @start_node_id}
+        <button
+          data-role="trigger"
+          type="button"
+          class="btn btn-ghost btn-xs font-normal h-6 min-h-0 pl-1 pr-2 gap-1"
+          disabled={@disabled}
+          title={dgettext("flows", "Change start node (resets session)")}
         >
-          {start_node_label(node, id)}
-        </option>
-      </select>
-    </form>
+          <span class="text-xs truncate max-w-32">{@current_label}</span>
+          <.icon name="chevron-down" class="size-3 shrink-0 opacity-50" />
+        </button>
+        <template data-role="popover-template">
+          <div class="p-2 pb-1">
+            <input
+              data-role="search"
+              type="text"
+              placeholder={dgettext("flows", "Search nodes...")}
+              class="input input-xs input-bordered w-full"
+              autocomplete="off"
+            />
+          </div>
+          <div data-role="list" class="max-h-48 overflow-y-auto p-1">
+            <button
+              :for={{id, node} <- @nodes}
+              type="button"
+              data-event="debug_change_start_node"
+              data-params={Jason.encode!(%{"node_id" => id})}
+              data-search-text={String.downcase(start_node_label(node, id))}
+              class={[
+                "flex w-full items-center rounded px-2 py-1.5 text-left text-xs hover:bg-base-content/10",
+                id == @start_node_id && "bg-base-content/10 font-semibold text-primary"
+              ]}
+            >
+              {start_node_label(node, id)}
+            </button>
+          </div>
+          <div
+            data-role="empty"
+            class="px-3 py-2 text-xs text-base-content/40 italic"
+            style="display:none"
+          >
+            {dgettext("flows", "No matches")}
+          </div>
+        </template>
+      </div>
+    </div>
     """
   end
 

@@ -363,14 +363,52 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
       <% else %>
         <%= if @can_edit do %>
           <div class="flex items-center gap-2 mt-1">
-            <form phx-change="select_audio" phx-target={@myself} phx-value-node-id={@node_id}>
-              <select name="audio_asset_id" class="select select-xs select-bordered">
-                <option value="">{dgettext("sheets", "No audio")}</option>
-                <option :for={asset <- @audio_assets} value={asset.id}>
-                  {asset.filename}
-                </option>
-              </select>
-            </form>
+            <div
+              id={"audio-select-#{@node_id}"}
+              phx-hook="EntitySelect"
+              data-phx-target="#audio-tab"
+            >
+              <button
+                data-role="trigger"
+                type="button"
+                class="btn btn-ghost btn-xs justify-between border border-base-300 bg-base-100 font-normal gap-1"
+              >
+                <span class="text-xs truncate">{dgettext("sheets", "Select audio...")}</span>
+                <.icon name="chevron-down" class="size-3 shrink-0 opacity-50" />
+              </button>
+              <div data-role="popover-source" style="display:none">
+                <div class="p-2 pb-1">
+                  <input
+                    data-role="search"
+                    type="text"
+                    placeholder={dgettext("sheets", "Search audio...")}
+                    class="input input-xs input-bordered w-full"
+                    autocomplete="off"
+                  />
+                </div>
+                <div data-role="list" class="max-h-48 overflow-y-auto p-1">
+                  <button
+                    :for={asset <- @audio_assets}
+                    type="button"
+                    data-event="select_audio"
+                    data-params={Jason.encode!(%{"audio_asset_id" => to_string(asset.id), "node-id" => @node_id})}
+                    data-search-text={String.downcase(asset.filename)}
+                    class="flex w-full items-center rounded px-2 py-1.5 text-left text-xs hover:bg-base-content/10"
+                  >
+                    {asset.filename}
+                  </button>
+                </div>
+                <div
+                  data-role="empty"
+                  class="px-3 py-2 text-xs text-base-content/40 italic"
+                  style={if @audio_assets != [], do: "display:none"}
+                >
+                  {if @audio_assets == [],
+                    do: dgettext("sheets", "No audio assets. Upload one first."),
+                    else: dgettext("sheets", "No matches")}
+                </div>
+              </div>
+            </div>
             <label class={[
               "btn btn-ghost btn-xs gap-1",
               @is_uploading && "btn-disabled"
