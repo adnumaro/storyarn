@@ -68,6 +68,8 @@ defmodule Storyarn.MixProject do
       {:phoenix_live_dashboard, "~> 0.8.3"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.3", runtime: Mix.env() == :dev},
+      {:live_vue, "~> 1.0"},
+      {:igniter, "~> 0.6"},
       {:lucide_icons, "~> 2.0"},
       {:swoosh, "~> 1.16"},
       {:gen_smtp, "~> 1.0"},

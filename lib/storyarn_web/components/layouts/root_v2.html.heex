@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang={assigns[:locale] || "en"} class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <link rel="icon" href={~p"/images/logos/logo-white-32.png"} type="image/png" sizes="32x32" />
+    <.live_title default="Storyarn" suffix=" · Storyarn">
+      {assigns[:page_title]}
+    </.live_title>
+    <PhoenixVite.Components.assets
+      names={["js/app_v2.js", "css/app_v2.css"]}
+      manifest={{:storyarn, "priv/static/.vite/manifest.json"}}
+      dev_server={PhoenixVite.Components.has_vite_watcher?(StoryarnWeb.Endpoint)}
+      to_url={fn p -> static_url(assigns[:conn] || assigns[:socket], p) end}
+    />
+  </head>
+  <body class="bg-[var(--ui-bg)] text-[var(--ui-text)] antialiased">
+    {@inner_content}
+  </body>
+</html>

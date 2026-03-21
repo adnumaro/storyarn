@@ -56,8 +56,9 @@ export const RightSidebar = {
       if (e.target.closest("[role='dialog']") || e.target.closest(".modal")) return;
       if (e.target.closest(".dock-item")) return;
       if (e.target.closest("[data-panel-trigger]")) return;
-      // Body-appended floating popovers (combobox dropdowns, operator selectors)
+      // Body-appended floating popovers (combobox dropdowns, operator selectors, Vue selects)
       if (e.target.closest(".combobox-dropdown") || e.target.closest(".operator-dropdown")) return;
+      if (e.target.closest("[data-floating-popover]")) return;
       this._doClose();
     };
     requestAnimationFrame(() => {

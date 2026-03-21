@@ -82,6 +82,10 @@ defmodule StoryarnWeb do
       # Translation
       use Gettext, backend: Storyarn.Gettext
 
+      # LiveVue — must be before Phoenix.HTML/CoreComponents imports
+      use LiveVue
+      use LiveVue.Components, vue_root: ["./assets/vue", "./lib/storyarn_web"]
+
       # HTML escaping functionality
       import Phoenix.HTML
       # Core UI components

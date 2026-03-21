@@ -26,8 +26,12 @@ config :storyarn, StoryarnWeb.Endpoint,
   secret_key_base: "is1dQ2K6QVxn1UOnW8D8mKFpVfq7eRlcMkiAxyGdi7qOVmc3DgicHUOXWXo8twvQ",
   watchers: [
     esbuild: {Esbuild, :install_and_run, [:storyarn, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:storyarn, ~w(--watch)]}
-  ]
+    tailwind: {Tailwind, :install_and_run, [:storyarn, ~w(--watch)]},
+    vite: {PhoenixVite.Npm, :run, [:vite, ~w(dev)]}
+  ],
+  static_url: [host: "localhost", port: 5173]
+
+config :live_vue, vite_host: "http://localhost:5173", ssr_module: LiveVue.SSR.ViteJS
 
 # ## SSL Support
 #
