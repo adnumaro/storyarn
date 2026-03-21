@@ -144,28 +144,37 @@ defmodule Storyarn.Scenes.SceneCrud do
     end)
   end
 
+  @default_search_limit 20
+
   @doc """
   Searches scenes by name or shortcut for reference selection.
-  Returns scenes matching the query, limited to 10 results.
-  """
-  def search_scenes(project_id, query) when is_binary(query) do
-    query = String.trim(query)
 
-    if query == "" do
+  ## Options
+    - `:limit` - Max results (default #{@default_search_limit})
+    - `:offset` - Skip N results (default 0)
+  """
+  def search_scenes(project_id, query, opts \\ []) when is_binary(query) do
+    limit = Keyword.get(opts, :limit, @default_search_limit)
+    offset = Keyword.get(opts, :offset, 0)
+    query_str = String.trim(query)
+
+    if query_str == "" do
       from(m in Scene,
         where: m.project_id == ^project_id and is_nil(m.deleted_at) and is_nil(m.draft_id),
         order_by: [desc: m.updated_at],
-        limit: 10
+        limit: ^limit,
+        offset: ^offset
       )
       |> Repo.all()
     else
-      search_term = "%#{SearchHelpers.sanitize_like_query(query)}%"
+      search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
 
       from(m in Scene,
         where: m.project_id == ^project_id and is_nil(m.deleted_at) and is_nil(m.draft_id),
         where: ilike(m.name, ^search_term) or ilike(m.shortcut, ^search_term),
         order_by: [asc: m.name],
-        limit: 10
+        limit: ^limit,
+        offset: ^offset
       )
       |> Repo.all()
     end

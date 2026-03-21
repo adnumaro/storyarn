@@ -9,13 +9,15 @@ defmodule StoryarnWeb.SceneLive.Components.CollectionItemsEditor do
   use StoryarnWeb, :html
   use Gettext, backend: Storyarn.Gettext
 
+  alias Storyarn.Shared.MapUtils
+
   import StoryarnWeb.Components.ConditionBuilder
   import StoryarnWeb.Components.ExpressionEditor
 
   attr :zone, :map, required: true
   attr :action_data, :map, required: true
   attr :can_edit, :boolean, default: true
-  attr :project_sheets, :list, default: []
+  attr :project_id, :integer, required: true
   attr :project_variables, :list, default: []
   attr :panel_sections, :map, default: %{}
 
@@ -91,7 +93,7 @@ defmodule StoryarnWeb.SceneLive.Components.CollectionItemsEditor do
           idx={idx}
           zone_id={@zone.id}
           can_edit={@can_edit}
-          project_sheets={@project_sheets}
+          project_id={@project_id}
           project_variables={@project_variables}
           panel_sections={@panel_sections}
         />
@@ -116,23 +118,19 @@ defmodule StoryarnWeb.SceneLive.Components.CollectionItemsEditor do
   attr :idx, :integer, required: true
   attr :zone_id, :integer, required: true
   attr :can_edit, :boolean, default: true
-  attr :project_sheets, :list, default: []
+  attr :project_id, :integer, required: true
   attr :project_variables, :list, default: []
   attr :panel_sections, :map, default: %{}
 
   defp collection_item_card(assigns) do
     item_id = assigns.item["id"]
     sheet_id = assigns.item["sheet_id"]
-
-    sheet =
-      if sheet_id do
-        Enum.find(assigns.project_sheets, &(to_string(&1.id) == to_string(sheet_id)))
-      end
+    parsed_sheet_id = if sheet_id, do: MapUtils.parse_int(sheet_id), else: nil
 
     assigns =
       assigns
       |> assign(:item_id, item_id)
-      |> assign(:sheet, sheet)
+      |> assign(:parsed_sheet_id, parsed_sheet_id)
 
     ~H"""
     <div class="border border-base-300 rounded-lg p-2 space-y-2 bg-base-200/30">
@@ -153,28 +151,16 @@ defmodule StoryarnWeb.SceneLive.Components.CollectionItemsEditor do
       </div>
 
       <%!-- Sheet picker --%>
-      <div>
-        <label class="block text-xs text-base-content/50 mb-0.5">
-          {dgettext("scenes", "Sheet")}
-        </label>
-        <select
-          class="select select-xs select-bordered w-full"
-          phx-change="update_collection_item"
-          phx-value-zone-id={@zone_id}
-          phx-value-item-id={@item_id}
-          phx-value-field="sheet_id"
-          disabled={!@can_edit}
-        >
-          <option value="">{dgettext("scenes", "None")}</option>
-          <option
-            :for={sheet <- @project_sheets}
-            value={sheet.id}
-            selected={to_string(sheet.id) == to_string(@item["sheet_id"])}
-          >
-            {sheet.name}
-          </option>
-        </select>
-      </div>
+      <.live_component
+        module={StoryarnWeb.Components.EntitySelect}
+        id={"collection-item-sheet-#{@zone_id}-#{@item_id}"}
+        project_id={@project_id}
+        entity_type={:sheet}
+        selected_id={@parsed_sheet_id}
+        label={dgettext("scenes", "Sheet")}
+        placeholder={dgettext("scenes", "Select sheet...")}
+        disabled={!@can_edit}
+      />
 
       <%!-- Label --%>
       <div>
@@ -188,7 +174,7 @@ defmodule StoryarnWeb.SceneLive.Components.CollectionItemsEditor do
           phx-value-zone-id={@zone_id}
           phx-value-item-id={@item_id}
           phx-value-field="label"
-          placeholder={if(@sheet, do: @sheet.name, else: dgettext("scenes", "Item name..."))}
+          placeholder={dgettext("scenes", "Item name...")}
           class="input input-xs input-bordered w-full"
           disabled={!@can_edit}
         />

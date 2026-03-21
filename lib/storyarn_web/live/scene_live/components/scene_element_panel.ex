@@ -19,6 +19,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
   attr :selected_type, :string, required: true
   attr :selected_element, :map, required: true
   attr :can_edit, :boolean, default: true
+  attr :project_id, :integer, required: true
   attr :project_scenes, :list, default: []
   attr :project_sheets, :list, default: []
   attr :project_flows, :list, default: []
@@ -42,6 +43,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
         :if={@selected_type == "zone"}
         zone={@selected_element}
         can_edit={@can_edit}
+        project_id={@project_id}
         project_scenes={@project_scenes}
         project_sheets={@project_sheets}
         project_flows={@project_flows}
@@ -52,9 +54,8 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
         :if={@selected_type == "pin"}
         pin={@selected_element}
         can_edit={@can_edit}
+        project_id={@project_id}
         project_scenes={@project_scenes}
-        project_sheets={@project_sheets}
-        project_flows={@project_flows}
         project_variables={@project_variables}
         panel_sections={@panel_sections}
       />
@@ -78,6 +79,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
 
   attr :zone, :map, required: true
   attr :can_edit, :boolean, default: true
+  attr :project_id, :integer, required: true
   attr :project_scenes, :list, default: []
   attr :project_sheets, :list, default: []
   attr :project_flows, :list, default: []
@@ -215,7 +217,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
           zone={@zone}
           action_data={@action_data}
           can_edit={@can_edit}
-          project_sheets={@project_sheets}
+          project_id={@project_id}
           project_variables={@project_variables}
           panel_sections={@panel_sections}
         />
@@ -281,9 +283,8 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
 
   attr :pin, :map, required: true
   attr :can_edit, :boolean, default: true
+  attr :project_id, :integer, required: true
   attr :project_scenes, :list, default: []
-  attr :project_sheets, :list, default: []
-  attr :project_flows, :list, default: []
   attr :project_variables, :list, default: []
   attr :panel_sections, :map, default: %{}
 
@@ -303,6 +304,20 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
           phx-value-field="tooltip"
           placeholder={dgettext("scenes", "Hover text...")}
           class="input input-sm input-bordered w-full"
+          disabled={!@can_edit}
+        />
+      </div>
+
+      <%!-- Linked Sheet --%>
+      <div class="pt-3 border-t border-base-300">
+        <.live_component
+          module={StoryarnWeb.Components.EntitySelect}
+          id={"pin-sheet-#{@pin.id}"}
+          project_id={@project_id}
+          entity_type={:sheet}
+          selected_id={@pin.sheet_id}
+          label={dgettext("scenes", "Sheet")}
+          placeholder={dgettext("scenes", "Select sheet...")}
           disabled={!@can_edit}
         />
       </div>
@@ -357,27 +372,51 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
           <label class="block text-[10px] text-base-content/40 mb-0.5">
             {dgettext("scenes", "Mode")}
           </label>
-          <select
-            class="select select-xs select-bordered w-full"
-            phx-change="update_pin"
-            phx-value-id={@pin.id}
-            phx-value-field="patrol_mode"
-            name="value"
-            disabled={!@can_edit}
+          <div
+            id={"pin-patrol-mode-#{@pin.id}"}
+            phx-hook="SearchableSelect"
           >
-            <option value="none" selected={(@pin.patrol_mode || "none") == "none"}>
-              {dgettext("scenes", "None")}
-            </option>
-            <option value="loop" selected={@pin.patrol_mode == "loop"}>
-              {dgettext("scenes", "Loop")}
-            </option>
-            <option value="ping_pong" selected={@pin.patrol_mode == "ping_pong"}>
-              {dgettext("scenes", "Ping-pong")}
-            </option>
-            <option value="one_way" selected={@pin.patrol_mode == "one_way"}>
-              {dgettext("scenes", "One-way")}
-            </option>
-          </select>
+            <button
+              data-role="trigger"
+              type="button"
+              class="btn btn-ghost btn-sm w-full justify-between border border-base-300 bg-base-100 font-normal"
+              disabled={!@can_edit}
+            >
+              <span class="text-xs">{patrol_mode_label(@pin.patrol_mode)}</span>
+              <.icon name="chevron-down" class="size-3 shrink-0 opacity-50" />
+            </button>
+            <template data-role="popover-template">
+              <div data-role="list" class="p-1">
+                <button
+                  :for={
+                    {value, label} <- [
+                      {"none", dgettext("scenes", "None")},
+                      {"loop", dgettext("scenes", "Loop")},
+                      {"ping_pong", dgettext("scenes", "Ping-pong")},
+                      {"one_way", dgettext("scenes", "One-way")}
+                    ]
+                  }
+                  type="button"
+                  data-event="update_pin"
+                  data-params={
+                    Jason.encode!(%{
+                      "id" => @pin.id,
+                      "field" => "patrol_mode",
+                      "value" => value
+                    })
+                  }
+                  data-search-text={String.downcase(label)}
+                  class={[
+                    "flex w-full items-center rounded px-2 py-1.5 text-left text-xs hover:bg-base-content/10",
+                    (@pin.patrol_mode || "none") == value &&
+                      "bg-base-content/10 font-semibold text-primary"
+                  ]}
+                >
+                  {label}
+                </button>
+              </div>
+            </template>
+          </div>
         </div>
         <%!-- Speed & Pause (only when patrol mode != none) --%>
         <div :if={(@pin.patrol_mode || "none") != "none"}>
@@ -433,26 +472,16 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
 
       <%!-- Flow --%>
       <div class="pt-3 border-t border-base-300">
-        <label class="block text-xs font-medium text-base-content/60 mb-1">
-          {dgettext("scenes", "Flow")}
-        </label>
-        <select
-          class="select select-sm select-bordered w-full"
-          phx-change="update_pin"
-          phx-value-id={@pin.id}
-          phx-value-field="flow_id"
-          name="value"
+        <.live_component
+          module={StoryarnWeb.Components.EntitySelect}
+          id={"pin-flow-#{@pin.id}"}
+          project_id={@project_id}
+          entity_type={:flow}
+          selected_id={@pin.flow_id}
+          label={dgettext("scenes", "Flow")}
+          placeholder={dgettext("scenes", "Select flow...")}
           disabled={!@can_edit}
-        >
-          <option value="">{dgettext("scenes", "None")}</option>
-          <option
-            :for={flow <- @project_flows}
-            value={flow.id}
-            selected={@pin.flow_id == flow.id}
-          >
-            {flow.name}
-          </option>
-        </select>
+        />
       </div>
 
       <%!-- Hidden in exploration --%>
@@ -671,4 +700,9 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
   defp panel_title("connection"), do: dgettext("scenes", "Connection Properties")
   defp panel_title("annotation"), do: dgettext("scenes", "Annotation Properties")
   defp panel_title(_), do: dgettext("scenes", "Properties")
+
+  defp patrol_mode_label("loop"), do: dgettext("scenes", "Loop")
+  defp patrol_mode_label("ping_pong"), do: dgettext("scenes", "Ping-pong")
+  defp patrol_mode_label("one_way"), do: dgettext("scenes", "One-way")
+  defp patrol_mode_label(_), do: dgettext("scenes", "None")
 end

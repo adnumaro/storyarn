@@ -192,29 +192,39 @@ defmodule Storyarn.Sheets.SheetQueries do
   # Search
   # =============================================================================
 
-  @doc """
-  Searches sheets by name or shortcut. Returns up to 10 results.
-  Empty query returns most recently updated sheets.
-  """
-  @spec search_sheets(integer(), String.t()) :: [Sheet.t()]
-  def search_sheets(project_id, query) when is_binary(query) do
-    query = String.trim(query)
+  @default_search_limit 20
 
-    if query == "" do
+  @doc """
+  Searches sheets by name or shortcut.
+  Empty query returns most recently updated sheets.
+
+  ## Options
+    - `:limit` - Max results (default #{@default_search_limit})
+    - `:offset` - Skip N results (default 0)
+  """
+  @spec search_sheets(integer(), String.t(), keyword()) :: [Sheet.t()]
+  def search_sheets(project_id, query, opts \\ []) when is_binary(query) do
+    limit = Keyword.get(opts, :limit, @default_search_limit)
+    offset = Keyword.get(opts, :offset, 0)
+    query_str = String.trim(query)
+
+    if query_str == "" do
       from(s in Sheet,
         where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
         order_by: [desc: s.updated_at],
-        limit: 10
+        limit: ^limit,
+        offset: ^offset
       )
       |> Repo.all()
     else
-      search_term = "%#{SearchHelpers.sanitize_like_query(query)}%"
+      search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
 
       from(s in Sheet,
         where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
         where: ilike(s.name, ^search_term) or ilike(s.shortcut, ^search_term),
         order_by: [asc: s.name],
-        limit: 10
+        limit: ^limit,
+        offset: ^offset
       )
       |> Repo.all()
     end

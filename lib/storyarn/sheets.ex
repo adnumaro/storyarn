@@ -59,6 +59,9 @@ defmodule Storyarn.Sheets do
   @spec list_sheets_tree(id()) :: [sheet()]
   defdelegate list_sheets_tree(project_id), to: SheetQueries
 
+  @doc "Searches sheets by name/shortcut with pagination. Options: :limit, :offset."
+  defdelegate search_sheets(project_id, query, opts \\ []), to: SheetQueries
+
   @doc """
   Gets a single sheet by ID within a project.
   Returns `nil` if the sheet doesn't exist or doesn't belong to the project.

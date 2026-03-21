@@ -351,11 +351,12 @@ defmodule StoryarnWeb.SceneLive.Show do
               "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[480px]"
             ]}
           >
-            <div :if={@element_panel_open && @selected_element != nil}>
+            <div :if={@element_panel_open && @selected_element != nil} class="flex flex-col flex-1 min-h-0">
               <.scene_element_panel
                 selected_type={@selected_type}
                 selected_element={@selected_element}
                 can_edit={not Map.get(@selected_element || %{}, :locked, false)}
+                project_id={@project.id}
                 project_scenes={@project_scenes}
                 project_sheets={@project_sheets}
                 project_flows={@project_flows}
@@ -564,6 +565,7 @@ defmodule StoryarnWeb.SceneLive.Show do
             selected_type={@selected_type}
             selected_element={@selected_element}
             can_edit={not Map.get(@selected_element || %{}, :locked, false)}
+            project_id={@project.id}
             project_scenes={@project_scenes}
             project_sheets={@project_sheets}
             project_flows={@project_flows}
@@ -1550,6 +1552,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     end)
   end
 
+
   # ---------------------------------------------------------------------------
   # Connection handlers — delegate to ElementHandlers
   # ---------------------------------------------------------------------------
@@ -1794,6 +1797,67 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   @impl true
+  def handle_info({:entity_selected, "pin-sheet-" <> _, sheet_id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      pin = socket.assigns.selected_element
+
+      case Scenes.update_pin(pin, %{"sheet_id" => sheet_id}) do
+        {:ok, updated} ->
+          updated = Scenes.preload_pin_associations(updated)
+
+          {:noreply,
+           socket
+           |> assign(:selected_element, updated)
+           |> assign(:pins, replace_in_list(socket.assigns.pins, updated))
+           |> push_event("pin_updated", serialize_pin(updated))
+           |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})}
+
+        {:error, _} ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("scenes", "Could not update pin."))}
+      end
+    end)
+  end
+
+  def handle_info({:entity_selected, "pin-flow-" <> _, flow_id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      pin = socket.assigns.selected_element
+
+      case Scenes.update_pin(pin, %{"flow_id" => flow_id}) do
+        {:ok, updated} ->
+          updated = Scenes.preload_pin_associations(updated)
+
+          {:noreply,
+           socket
+           |> assign(:selected_element, updated)
+           |> assign(:pins, replace_in_list(socket.assigns.pins, updated))
+           |> push_event("pin_updated", serialize_pin(updated))
+           |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})}
+
+        {:error, _} ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("scenes", "Could not update pin."))}
+      end
+    end)
+  end
+
+  def handle_info({:entity_selected, "collection-item-sheet-" <> rest, sheet_id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      [zone_id, item_id] = String.split(rest, "-", parts: 2)
+
+      ElementHandlers.handle_update_collection_item(
+        %{
+          "zone-id" => zone_id,
+          "item-id" => item_id,
+          "field" => "sheet_id",
+          "value" => if(sheet_id, do: to_string(sheet_id), else: "")
+        },
+        socket
+      )
+      |> broadcast_scene_change()
+    end)
+  end
+
   def handle_info({:pin_icon_uploaded, asset}, socket) do
     case socket.assigns[:selected_element] do
       %{__struct__: Storyarn.Scenes.ScenePin} = pin ->

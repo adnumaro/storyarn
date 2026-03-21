@@ -232,3 +232,37 @@ The current workflow is: edit scene → navigate to exploration URL → test →
 - [ ] "Preview from here" on right-click context menu for pins
 - [ ] Preview state is ephemeral (no session created)
 - [ ] All exploration features work in preview mode
+
+---
+
+## Feature: Zone-Level Ambient Flows
+
+### What
+Move ambient flows from scene-level to zone-level. Instead of flows triggering when the scene loads, they trigger when the player enters/exits a specific zone. This allows localized narrative that responds to where the player is standing.
+
+### Why
+Scene-level ambient flows fire globally — a companion comment plays regardless of where the player is. Zone-level ambient flows enable spatial narrative: entering a graveyard triggers eerie dialogue, stepping into a tavern triggers a bard's song, leaving a safe zone triggers a warning.
+
+### Migration
+- **Current**: `SceneAmbientFlow` belongs_to `:scene` — flows are scene-wide
+- **Target**: `SceneAmbientFlow` belongs_to `:zone` (nullable) — flows can be zone-scoped or scene-wide (fallback)
+- Add `zone_id` foreign key to `scene_ambient_flows` table
+- Scene-level ambient flows (zone_id = nil) become the fallback/default
+- Zone-level flows take priority when the player is inside that zone
+
+### Trigger types (zone-scoped)
+- `on_enter` — player enters the zone
+- `on_exit` — player leaves the zone
+- `on_event` — variable changes while player is in zone
+- `timed` — interval while player remains in zone
+- `one_shot` — once per session per zone
+
+### Editor UI
+- Move ambient flow configuration from scene settings panel to zone panel
+- Zone panel gets an "Ambient Flows" section (same UI pattern)
+- Scene settings panel keeps a "Default Ambient Flows" section for scene-wide flows (zone_id = nil)
+
+### Key considerations
+- Multiple overlapping zones: all active zone ambient flows run (priority resolves order)
+- Player movement between zones: exit flows for old zone, enter flows for new zone
+- Zone conditions still apply: if zone is hidden by condition, its ambient flows don't trigger

@@ -57,6 +57,7 @@ import { DocsScrollSpy } from "./hooks/docs_scroll_spy";
 import { EditableBlockLabel } from "./hooks/editable_block_label";
 import { EditableShortcut } from "./hooks/editable_shortcut";
 import { EditableTitle } from "./hooks/editable_title";
+import { EntitySelect } from "./hooks/entity_select";
 import { ExplorationPlayer } from "./hooks/exploration_player";
 import { ExpressionEditor } from "./hooks/expression_editor";
 import { FlowCanvas } from "./hooks/flow_canvas";
@@ -116,6 +117,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     EditableBlockLabel,
     EditableShortcut,
     EditableTitle,
+    EntitySelect,
     SortableTree,
     TreePanel,
     TreeToggle,

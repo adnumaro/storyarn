@@ -78,8 +78,8 @@ defmodule Storyarn.Scenes do
   Searches scenes by name or shortcut for reference selection.
   Returns scenes matching the query, limited to 10 results.
   """
-  @spec search_scenes(integer(), String.t()) :: [scene_record()]
-  defdelegate search_scenes(project_id, query), to: SceneCrud
+  @spec search_scenes(integer(), String.t(), keyword()) :: [scene_record()]
+  defdelegate search_scenes(project_id, query, opts \\ []), to: SceneCrud
 
   @doc """
   Gets a single scene by ID within a project, with all associations preloaded.
