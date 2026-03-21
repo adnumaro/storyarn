@@ -24,7 +24,7 @@ export default defineConfig({
       input: ["js/app_v2.js", "css/app_v2.css"],
     },
     outDir: "../priv/static",
-    emptyOutDir: true,
+    emptyOutDir: false,
   },
   resolve: {
     alias: {

@@ -1,6 +1,15 @@
 <!DOCTYPE html>
-<html lang={assigns[:locale] || "en"} class="dark">
+<html lang={assigns[:locale] || "en"}>
   <head>
+    <script>
+      // Sync theme class with localStorage (same key as v1: "phx:theme")
+      (function() {
+        var stored = localStorage.getItem("phx:theme");
+        var dark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+        if (dark) document.documentElement.classList.add("dark");
+        else document.documentElement.classList.remove("dark");
+      })();
+    </script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
@@ -15,7 +24,7 @@
       to_url={fn p -> static_url(assigns[:conn] || assigns[:socket], p) end}
     />
   </head>
-  <body class="bg-[var(--ui-bg)] text-[var(--ui-text)] antialiased">
+  <body class="bg-background text-foreground antialiased">
     {@inner_content}
   </body>
 </html>

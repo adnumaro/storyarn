@@ -34,6 +34,16 @@ liveSocket.connect()
 
 window.liveSocket = liveSocket
 
+// Theme sync — reads same localStorage key as v1 ("phx:theme"), applies as class
+function applyV2Theme() {
+  const stored = localStorage.getItem("phx:theme")
+  const dark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches
+  document.documentElement.classList.toggle("dark", dark)
+}
+applyV2Theme()
+window.addEventListener("storage", (e) => { if (e.key === "phx:theme") applyV2Theme() })
+window.addEventListener("phx:set-theme", applyV2Theme)
+
 // Dev tools
 if (process.env.NODE_ENV === "development") {
   window.addEventListener("phx:live_reload:attached", ({ detail: reloader }) => {

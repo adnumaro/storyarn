@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@source "../vue";
+@source "../../lib/storyarn_web";
+
 @custom-variant dark (&:is(.dark *));
 
 /*
@@ -85,6 +88,9 @@
   body {
     @apply bg-background text-foreground;
   }
+  button, [role="button"], a[href], [tabindex]:not([tabindex="-1"]) {
+    cursor: pointer;
+  }
 }
 
 /* Expression editor (CodeMirror) — dark theme colors for v2 */
@@ -112,6 +118,41 @@
   --cm-tooltip-border: #3e4451;
 }
 
+
+/* ================================================================
+   Focus Layout — floating toolbar and panel chrome (v2 equivalent of
+   .surface-panel and .toolbar-btn from app.css / DaisyUI)
+   ================================================================ */
+
+/* Frosted glass panel shared by all floating UI chrome */
+.v2-surface-panel {
+  background-color: hsl(var(--card) / 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+/* Toolbar button — ghost style with subtle hover */
+.v2-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: hsl(var(--foreground));
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.v2-toolbar-btn:hover {
+  background-color: hsl(var(--accent));
+}
 
 /* ================================================================
    Sentence-Flow UI — shared by ConditionBuilder & InstructionBuilder

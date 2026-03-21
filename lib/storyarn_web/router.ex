@@ -75,12 +75,24 @@ defmodule StoryarnWeb.Router do
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
 
-    # V2 pages — Vue + NuxtUI, separate root layout, no restrictive CSP
+    # V2 pages — Vue + shadcn, separate root layout, no restrictive CSP
     scope "/dev" do
       pipe_through :browser_v2
 
-      live_session :v2 do
+      live_session :v2,
+        on_mount: [{StoryarnWeb.UserAuth, :mount_current_scope}] do
         live "/vue-test", StoryarnWeb.VueTestLive
+      end
+    end
+
+    scope "/" do
+      pipe_through :browser_v2
+
+      live_session :v2_authenticated,
+        on_mount: [{StoryarnWeb.UserAuth, :require_authenticated}] do
+        live "/workspaces/:workspace_slug/projects/:project_slug/v2/sheets",
+          StoryarnWeb.SheetLive.IndexV2,
+          :index
       end
     end
   end

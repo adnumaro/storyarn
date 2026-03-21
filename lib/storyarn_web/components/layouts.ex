@@ -390,6 +390,9 @@ defmodule StoryarnWeb.Layouts do
     """
   end
 
+  # V2 Focus layout — delegates to FocusLayoutV2 module (Vue + shadcn-vue)
+  defdelegate focus_v2(assigns), to: StoryarnWeb.Components.FocusLayoutV2
+
   @doc """
   Renders a chromeless canvas layout for version comparison mode.
 
