@@ -86,3 +86,172 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Expression editor (CodeMirror) — dark theme colors for v2 */
+:root,
+.dark {
+  --cm-bg: #282c34;
+  --cm-gutter-bg: #282c34;
+  --cm-gutter-fg: #495162;
+  --cm-gutter-border: #3e4451;
+  --cm-active-line: #2c313c;
+  --cm-active-gutter: #2c313c;
+  --cm-selection: rgba(67, 90, 136, 0.4);
+  --cm-cursor: #528bff;
+  --cm-text: #abb2bf;
+  --cm-placeholder: #5c6370;
+  --cm-variable: #61afef;
+  --cm-string: #98c379;
+  --cm-number: #d19a66;
+  --cm-keyword: #c678dd;
+  --cm-operator: #56b6c2;
+  --cm-paren: #e5c07b;
+  --cm-punct: #abb2bf;
+  --cm-comment: #5c6370;
+  --cm-tooltip-bg: #21252b;
+  --cm-tooltip-border: #3e4451;
+}
+
+
+/* ================================================================
+   Sentence-Flow UI — shared by ConditionBuilder & InstructionBuilder
+   Uses shadcn CSS variables (--color-foreground, --color-border, etc.)
+   ================================================================ */
+
+/* --- Assignment row (instruction) --- */
+.instruction-builder .assignment-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.3);
+}
+
+.instruction-builder .assignment-row:hover .sp-row-action {
+  opacity: 1;
+}
+
+/* --- Condition rule row --- */
+.condition-builder .condition-rule-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid hsl(var(--border) / 0.3);
+}
+
+.condition-builder .condition-rule-row:hover .sp-row-action {
+  opacity: 1;
+}
+
+/* --- Static sentence text (connectors: "to", "·", "from") --- */
+.instruction-builder .sentence-text,
+.condition-builder .sentence-text {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* --- Interactive sentence slot (sheet, variable, operator, value) --- */
+.instruction-builder .sentence-slot,
+.condition-builder .sentence-slot {
+  font-size: 0.875rem;
+  color: hsl(var(--foreground));
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed hsl(var(--foreground) / 0.2);
+  outline: none;
+  min-width: 3ch;
+  padding: 0 0.125rem;
+  cursor: pointer;
+}
+
+.instruction-builder .sentence-slot:focus,
+.condition-builder .sentence-slot:focus {
+  border-bottom-style: solid;
+  border-bottom-color: hsl(var(--primary));
+}
+
+.instruction-builder .sentence-slot.filled,
+.condition-builder .sentence-slot.filled {
+  border-bottom-style: solid;
+  border-bottom-color: hsl(var(--foreground) / 0.1);
+}
+
+.instruction-builder .sentence-slot::placeholder,
+.condition-builder .sentence-slot::placeholder {
+  color: hsl(var(--muted-foreground) / 0.6);
+  font-weight: 400;
+  font-style: italic;
+}
+
+.instruction-builder .sentence-slot:disabled,
+.condition-builder .sentence-slot:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --- Operator selector (clickable verb: "Set", "Add", etc.) --- */
+.instruction-builder .operator-selector {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-bottom: 1px dashed hsl(var(--foreground) / 0.2);
+  padding: 0 0.125rem;
+  font-weight: 500;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.instruction-builder .operator-selector:hover {
+  color: hsl(var(--primary));
+  border-bottom-color: hsl(var(--primary));
+}
+
+/* --- Operator dropdown (inside popover) --- */
+.operator-option {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.operator-option:hover {
+  background-color: hsl(var(--accent));
+}
+
+.operator-option.active {
+  color: hsl(var(--primary));
+  font-weight: 500;
+}
+
+/* --- Row actions (remove button, value type toggle) --- */
+.sp-row-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.sp-row-action:hover {
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--accent));
+}
+
+.sp-row-action-danger:hover {
+  color: hsl(var(--destructive));
+  background-color: hsl(var(--destructive) / 0.1);
+}

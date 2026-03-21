@@ -1,139 +1,167 @@
 <script setup>
 /**
- * Variable condition editor — "if variable X operator Y then..."
- *
- * Builds a condition object: { variable_ref, operator, value, logic }
- * Emits the full condition on change for the parent to persist.
+ * Variable condition editor — block-format condition builder.
+ * Wraps in .condition-builder for sentence-flow CSS.
  */
 
-import { computed } from "vue"
-import { Button } from "./ui/button"
-import { Input } from "./ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select"
-import { X, Plus } from "lucide-vue-next"
+import { computed, ref, watch } from "vue"
+import { Plus, Group } from "lucide-vue-next"
+import ConditionBlock from "./condition/ConditionBlock.vue"
+import ConditionGroup from "./condition/ConditionGroup.vue"
+import LogicToggle from "./condition/LogicToggle.vue"
+import { generateId } from "@/vue/lib/variables"
 
 const props = defineProps({
   condition: { type: [Object, Array, null], default: null },
   variables: { type: Array, default: () => [] },
   disabled: { type: Boolean, default: false },
+  switchMode: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(["update:condition"])
 
-const operators = [
-  { value: "==", label: "=" },
-  { value: "!=", label: "≠" },
-  { value: ">", label: ">" },
-  { value: ">=", label: "≥" },
-  { value: "<", label: "<" },
-  { value: "<=", label: "≤" },
-]
-
-const rules = computed(() => {
-  if (!props.condition) return []
-  if (Array.isArray(props.condition)) return props.condition
-  return [props.condition]
-})
-
-function addRule() {
-  const updated = [...rules.value, { variable_ref: "", operator: "==", value: "" }]
-  emit("update:condition", updated)
+function ensureBlockFormat(condition) {
+  if (!condition) return { logic: "all", blocks: [] }
+  if (condition.blocks) return condition
+  const rules = condition.rules || []
+  if (rules.length === 0) return { logic: "all", blocks: [] }
+  return {
+    logic: "all",
+    blocks: [{ id: generateId("block"), type: "block", logic: condition.logic || "all", rules: [...rules] }],
+  }
 }
 
-function removeRule(index) {
-  const updated = rules.value.filter((_, i) => i !== index)
-  emit("update:condition", updated.length ? updated : null)
+const internalCondition = ref(ensureBlockFormat(props.condition))
+watch(() => props.condition, (v) => { internalCondition.value = ensureBlockFormat(v) }, { deep: true })
+
+const selectionMode = ref(false)
+const selectedBlockIds = ref(new Set())
+const blocks = computed(() => internalCondition.value.blocks || [])
+const standAloneBlockCount = computed(() => blocks.value.filter((b) => b.type === "block").length)
+
+function emitUpdate() { emit("update:condition", { ...internalCondition.value }) }
+
+function updateTopLogic(logic) {
+  internalCondition.value = { ...internalCondition.value, logic }
+  emitUpdate()
 }
 
-function updateRule(index, field, value) {
-  const updated = rules.value.map((r, i) =>
-    i === index ? { ...r, [field]: value } : r,
-  )
-  emit("update:condition", updated)
+function updateBlock(index, updatedBlock) {
+  const b = [...blocks.value]; b[index] = updatedBlock
+  internalCondition.value = { ...internalCondition.value, blocks: b }
+  emitUpdate()
 }
 
-const variableOptions = computed(() =>
-  props.variables.map((v) => ({
-    value: v.ref || `${v.sheet_shortcut}.${v.variable_name}`,
-    label: v.name || v.variable_name || v.ref,
-  })),
-)
+function removeBlock(index) {
+  internalCondition.value = { ...internalCondition.value, blocks: blocks.value.filter((_, i) => i !== index) }
+  emitUpdate()
+}
+
+function addBlock() {
+  const newBlock = { id: generateId("block"), type: "block", logic: "all", rules: [{ id: generateId("rule"), sheet: null, variable: null, operator: "equals", value: null }] }
+  if (props.switchMode) newBlock.label = ""
+  internalCondition.value = { ...internalCondition.value, blocks: [...blocks.value, newBlock] }
+  emitUpdate()
+}
+
+function ungroupGroup(index) {
+  const inner = blocks.value[index].blocks || []
+  const b = [...blocks.value]; b.splice(index, 1, ...inner)
+  internalCondition.value = { ...internalCondition.value, blocks: b }
+  emitUpdate()
+}
+
+function enterSelectionMode() { selectionMode.value = true; selectedBlockIds.value = new Set() }
+function cancelSelectionMode() { selectionMode.value = false; selectedBlockIds.value = new Set() }
+
+function toggleBlockSelection(blockId) {
+  const ids = new Set(selectedBlockIds.value)
+  ids.has(blockId) ? ids.delete(blockId) : ids.add(blockId)
+  selectedBlockIds.value = ids
+}
+
+function groupSelectedBlocks() {
+  if (selectedBlockIds.value.size < 2) return
+  const selected = [], remaining = []
+  let insertIdx = -1
+  blocks.value.forEach((block, i) => {
+    if (block.type === "block" && selectedBlockIds.value.has(block.id)) {
+      selected.push(block); if (insertIdx === -1) insertIdx = i
+    } else remaining.push(block)
+  })
+  if (selected.length < 2) return
+  remaining.splice(insertIdx, 0, { id: generateId("group"), type: "group", logic: "all", blocks: selected })
+  internalCondition.value = { ...internalCondition.value, blocks: remaining }
+  selectionMode.value = false; selectedBlockIds.value = new Set()
+  emitUpdate()
+}
 </script>
 
 <template>
-  <div class="space-y-2">
-    <div
-      v-for="(rule, index) in rules"
-      :key="index"
-      class="flex items-center gap-1.5"
-    >
-      <Select
-        :model-value="rule.variable_ref"
-        :disabled="disabled"
-        @update:model-value="(v) => updateRule(index, 'variable_ref', v)"
-      >
-        <SelectTrigger class="flex-1 h-8 text-xs">
-          <SelectValue placeholder="Variable..." />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem
-            v-for="v in variableOptions"
-            :key="v.value"
-            :value="v.value"
-          >
-            {{ v.label }}
-          </SelectItem>
-        </SelectContent>
-      </Select>
+  <div class="condition-builder space-y-2">
+    <LogicToggle
+      v-if="blocks.length >= 2 && !switchMode"
+      :logic="internalCondition.logic"
+      of-label="of the blocks"
+      :disabled="disabled"
+      class="mb-2"
+      @update:logic="updateTopLogic"
+    />
 
-      <Select
-        :model-value="rule.operator"
-        :disabled="disabled"
-        @update:model-value="(v) => updateRule(index, 'operator', v)"
-      >
-        <SelectTrigger class="w-14 h-8 text-xs">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem v-for="op in operators" :key="op.value" :value="op.value">
-            {{ op.label }}
-          </SelectItem>
-        </SelectContent>
-      </Select>
+    <p v-if="switchMode && blocks.length > 0" class="text-xs text-muted-foreground mb-2">
+      Each condition creates an output. First match wins.
+    </p>
 
-      <Input
-        :model-value="rule.value"
-        :disabled="disabled"
-        class="flex-1 h-8 text-xs"
-        placeholder="Value"
-        @update:model-value="(v) => updateRule(index, 'value', v)"
-      />
+    <div class="space-y-2">
+      <div v-for="(item, index) in blocks" :key="item.id" class="relative">
+        <!-- Selection mode -->
+        <label v-if="selectionMode && item.type === 'block'" class="flex items-start gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            class="mt-2 size-3.5 accent-primary"
+            :checked="selectedBlockIds.has(item.id)"
+            @change="toggleBlockSelection(item.id)"
+          />
+          <div class="flex-1">
+            <ConditionBlock :block="item" :variables="variables" :disabled="disabled" :switch-mode="switchMode"
+              @update:block="(b) => updateBlock(index, b)" @remove="removeBlock(index)" />
+          </div>
+        </label>
 
-      <Button
-        v-if="!disabled"
-        variant="ghost"
-        size="xs"
-        @click="removeRule(index)"
-      >
-        <X class="size-3" />
-      </Button>
+        <!-- Normal -->
+        <template v-else>
+          <ConditionGroup v-if="item.type === 'group'" :group="item" :variables="variables" :disabled="disabled"
+            @update:group="(g) => updateBlock(index, g)" @ungroup="ungroupGroup(index)" />
+          <ConditionBlock v-else :block="item" :variables="variables" :disabled="disabled" :switch-mode="switchMode"
+            @update:block="(b) => updateBlock(index, b)" @remove="removeBlock(index)" />
+        </template>
+      </div>
     </div>
 
-    <Button
-      v-if="!disabled"
-      variant="outline"
-      size="xs"
-      class="w-full"
-      @click="addRule"
-    >
-      <Plus class="size-3" />
-      Add condition
-    </Button>
+    <div v-if="!disabled" class="flex items-center gap-2 mt-2">
+      <template v-if="selectionMode">
+        <button type="button"
+          class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          :disabled="selectedBlockIds.size < 2" @click="groupSelectedBlocks">
+          <Group class="size-3" /> Group selected ({{ selectedBlockIds.size }})
+        </button>
+        <button type="button" class="inline-flex items-center px-2 py-1 text-xs text-muted-foreground rounded hover:bg-accent transition-colors"
+          @click="cancelSelectionMode">Cancel</button>
+      </template>
+      <template v-else>
+        <button type="button"
+          class="inline-flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground border border-dashed border-border rounded hover:bg-accent/50 transition-colors"
+          @click="addBlock">
+          <Plus class="size-3" /> Add block
+        </button>
+        <button v-if="!switchMode && standAloneBlockCount >= 2" type="button"
+          class="inline-flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground rounded hover:bg-accent transition-colors"
+          @click="enterSelectionMode">
+          <Group class="size-3" /> Group
+        </button>
+      </template>
+    </div>
+
+    <p v-if="blocks.length === 0 && disabled" class="text-xs text-muted-foreground italic">No conditions set</p>
   </div>
 </template>

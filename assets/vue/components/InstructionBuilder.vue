@@ -1,22 +1,15 @@
 <script setup>
 /**
- * Variable assignment editor — "set variable X = value"
+ * Variable assignment editor — instruction builder.
+ * Wraps in .instruction-builder for sentence-flow CSS.
  *
- * Builds assignments array: [{ variable_ref, operation, value }]
- * Emits the full array on change for the parent to persist.
+ * Maintains internal reactive state (like ConditionBuilder) so changes
+ * are reflected immediately without waiting for LiveView prop updates.
  */
 
-import { computed } from "vue"
-import { Button } from "./ui/button"
-import { Input } from "./ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select"
-import { X, Plus } from "lucide-vue-next"
+import { ref, watch } from "vue"
+import { Plus } from "lucide-vue-next"
+import AssignmentRow from "./instruction/AssignmentRow.vue"
 
 const props = defineProps({
   assignments: { type: Array, default: () => [] },
@@ -26,117 +19,63 @@ const props = defineProps({
 
 const emit = defineEmits(["update:assignments"])
 
-const operations = [
-  { value: "set", label: "=" },
-  { value: "add", label: "+=" },
-  { value: "subtract", label: "-=" },
-  { value: "multiply", label: "*=" },
-  { value: "toggle", label: "toggle" },
-]
+const internalAssignments = ref([...props.assignments])
+
+watch(
+  () => props.assignments,
+  (v) => { internalAssignments.value = [...v] },
+  { deep: true },
+)
+
+function emitUpdate() {
+  emit("update:assignments", [...internalAssignments.value])
+}
 
 function addAssignment() {
-  const updated = [
-    ...props.assignments,
-    { variable_ref: "", operation: "set", value: "" },
+  internalAssignments.value = [
+    ...internalAssignments.value,
+    { operator: "set", sheet: null, variable: null, value_type: "literal", value: null, value_sheet: null },
   ]
-  emit("update:assignments", updated)
+  emitUpdate()
+}
+
+function updateAssignment(index, updated) {
+  const arr = [...internalAssignments.value]
+  arr[index] = updated
+  internalAssignments.value = arr
+  emitUpdate()
 }
 
 function removeAssignment(index) {
-  emit(
-    "update:assignments",
-    props.assignments.filter((_, i) => i !== index),
-  )
+  internalAssignments.value = internalAssignments.value.filter((_, i) => i !== index)
+  emitUpdate()
 }
-
-function updateAssignment(index, field, value) {
-  const updated = props.assignments.map((a, i) =>
-    i === index ? { ...a, [field]: value } : a,
-  )
-  emit("update:assignments", updated)
-}
-
-const variableOptions = computed(() =>
-  props.variables.map((v) => ({
-    value: v.ref || `${v.sheet_shortcut}.${v.variable_name}`,
-    label: v.name || v.variable_name || v.ref,
-  })),
-)
 </script>
 
 <template>
-  <div class="space-y-2">
-    <div
-      v-for="(assignment, index) in assignments"
+  <div class="instruction-builder">
+    <AssignmentRow
+      v-for="(assignment, index) in internalAssignments"
       :key="index"
-      class="flex items-center gap-1.5"
-    >
-      <Select
-        :model-value="assignment.variable_ref"
-        :disabled="disabled"
-        @update:model-value="(v) => updateAssignment(index, 'variable_ref', v)"
-      >
-        <SelectTrigger class="flex-1 h-8 text-xs">
-          <SelectValue placeholder="Variable..." />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem
-            v-for="v in variableOptions"
-            :key="v.value"
-            :value="v.value"
-          >
-            {{ v.label }}
-          </SelectItem>
-        </SelectContent>
-      </Select>
+      :assignment="assignment"
+      :variables="variables"
+      :disabled="disabled"
+      @update:assignment="(a) => updateAssignment(index, a)"
+      @remove="removeAssignment(index)"
+    />
 
-      <Select
-        :model-value="assignment.operation"
-        :disabled="disabled"
-        @update:model-value="(v) => updateAssignment(index, 'operation', v)"
-      >
-        <SelectTrigger class="w-16 h-8 text-xs">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem
-            v-for="op in operations"
-            :key="op.value"
-            :value="op.value"
-          >
-            {{ op.label }}
-          </SelectItem>
-        </SelectContent>
-      </Select>
-
-      <Input
-        v-if="assignment.operation !== 'toggle'"
-        :model-value="assignment.value"
-        :disabled="disabled"
-        class="flex-1 h-8 text-xs"
-        placeholder="Value"
-        @update:model-value="(v) => updateAssignment(index, 'value', v)"
-      />
-
-      <Button
-        v-if="!disabled"
-        variant="ghost"
-        size="xs"
-        @click="removeAssignment(index)"
-      >
-        <X class="size-3" />
-      </Button>
-    </div>
-
-    <Button
+    <button
       v-if="!disabled"
-      variant="outline"
-      size="xs"
-      class="w-full"
+      type="button"
+      class="inline-flex items-center justify-center gap-1 w-full mt-1 px-2 py-1 text-xs text-muted-foreground border border-dashed border-border rounded hover:bg-accent/50 transition-colors"
       @click="addAssignment"
     >
       <Plus class="size-3" />
       Add assignment
-    </Button>
+    </button>
+
+    <p v-if="internalAssignments.length === 0 && disabled" class="text-xs text-muted-foreground italic py-2">
+      No assignments set
+    </p>
   </div>
 </template>
