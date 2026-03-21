@@ -11,6 +11,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
 
   alias Phoenix.LiveView.JS
   alias StoryarnWeb.Components.SearchableSelect
+  alias StoryarnWeb.Helpers.EntitySearch
 
   import StoryarnWeb.Components.ConditionBuilder
   import StoryarnWeb.Components.ExpressionEditor
@@ -201,15 +202,22 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
         <label class="block text-xs font-medium text-base-content/60 mb-1">
           {dgettext("scenes", "Variable")}
         </label>
-        <.display_variable_picker
+        <.live_component
+          module={SearchableSelect}
           id={"panel-zone-display-var-#{@zone.id}"}
-          element_id={@zone.id}
-          event="update_zone_action_data"
-          context_key="zone-id"
-          variables={@project_variables}
-          selected_ref={@action_data["variable_ref"] || ""}
-          can_edit={@can_edit}
-        />
+          search_fn={{EntitySearch, :search_variables, [@project_id]}}
+          get_name_fn={{EntitySearch, :get_variable_name, [@project_id]}}
+          value={@action_data["variable_ref"] || ""}
+          on_select={"select_zone_display_var:#{@zone.id}"}
+          none_label={dgettext("scenes", "Clear")}
+          placeholder={dgettext("scenes", "Select variable...")}
+          search_placeholder={dgettext("scenes", "Search variables...")}
+          disabled={!@can_edit}
+        >
+          <:option :let={item}>
+            <span class="text-base-content/50">{item.prefix}</span>{item.suffix}
+          </:option>
+        </.live_component>
       </div>
 
       <%!-- Collection --%>
@@ -559,97 +567,6 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
       >
         {dgettext("scenes", "No waypoints")}
       </p>
-    </div>
-    """
-  end
-
-  # ---------------------------------------------------------------------------
-  # Shared: display variable picker
-  # ---------------------------------------------------------------------------
-
-  attr :id, :string, required: true
-  attr :element_id, :integer, required: true
-  attr :event, :string, required: true
-  attr :context_key, :string, required: true
-  attr :variables, :list, required: true
-  attr :selected_ref, :string, default: ""
-  attr :can_edit, :boolean, default: true
-
-  defp display_variable_picker(assigns) do
-    selected_label =
-      if assigns.selected_ref != "" do
-        assigns.selected_ref
-      end
-
-    assigns = assign(assigns, :selected_label, selected_label)
-
-    ~H"""
-    <div id={@id} phx-hook="SearchableSelect">
-      <button
-        data-role="trigger"
-        type="button"
-        class="btn btn-sm btn-ghost gap-1 w-full justify-between font-normal border border-base-300"
-        disabled={!@can_edit}
-      >
-        <span :if={@selected_label} class="text-xs truncate">{@selected_label}</span>
-        <span :if={!@selected_label} class="text-xs opacity-50">
-          {dgettext("scenes", "Select variable...")}
-        </span>
-        <.icon name="chevron-down" class="size-3 opacity-50 shrink-0" />
-      </button>
-      <template data-role="popover-template">
-        <div class="p-2 pb-1">
-          <input
-            data-role="search"
-            type="text"
-            placeholder={dgettext("scenes", "Search variables...")}
-            class="input input-xs input-bordered w-full"
-            autocomplete="off"
-          />
-        </div>
-        <div data-role="list" class="max-h-48 overflow-y-auto p-1">
-          <button
-            :if={@selected_ref != ""}
-            type="button"
-            data-event={@event}
-            data-params={
-              Jason.encode!(%{@context_key => @element_id, "field" => "variable_ref", "value" => ""})
-            }
-            data-search-text=""
-            class="flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs text-base-content/50 cursor-pointer hover:bg-base-content/10"
-          >
-            <.icon name="x" class="size-3" />
-            {dgettext("scenes", "Clear")}
-          </button>
-          <button
-            :for={var <- @variables}
-            type="button"
-            data-event={@event}
-            data-params={
-              Jason.encode!(%{
-                @context_key => @element_id,
-                "field" => "variable_ref",
-                "value" => "#{var.sheet_shortcut}.#{var.variable_name}"
-              })
-            }
-            data-search-text={"#{String.downcase(var.sheet_shortcut)}.#{String.downcase(var.variable_name)}"}
-            class={[
-              "flex items-center w-full px-2 py-1.5 rounded text-xs cursor-pointer hover:bg-base-content/10 truncate",
-              "#{var.sheet_shortcut}.#{var.variable_name}" == @selected_ref &&
-                "font-semibold text-primary"
-            ]}
-          >
-            <span class="text-base-content/50">{var.sheet_shortcut}.</span>{var.variable_name}
-          </button>
-        </div>
-        <div
-          data-role="empty"
-          class="px-3 py-2 text-xs text-base-content/40 italic"
-          style="display:none"
-        >
-          {dgettext("scenes", "No matches")}
-        </div>
-      </template>
     </div>
     """
   end

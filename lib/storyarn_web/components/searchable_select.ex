@@ -143,7 +143,6 @@ defmodule StoryarnWeb.Components.SearchableSelect do
       |> assign_new(:none_label, fn -> gettext("None") end)
       |> assign_new(:empty_label, fn -> gettext("No matches") end)
       |> assign_new(:disabled, fn -> false end)
-      |> assign_new(:notify_id, fn -> nil end)
       |> assign_new(:match_trigger_width, fn -> false end)
 
     ~H"""
@@ -168,7 +167,7 @@ defmodule StoryarnWeb.Components.SearchableSelect do
           <button
             data-role="trigger"
             type="button"
-            class="btn btn-ghost btn-sm w-full justify-between border border-base-300 bg-base-100 font-normal"
+            class="btn btn-ghost btn-sm w-full justify-start gap-1 border border-base-300 bg-base-100 font-normal"
             disabled={@disabled}
           >
             {render_slot(@trigger)}

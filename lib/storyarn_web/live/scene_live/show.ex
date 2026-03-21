@@ -395,7 +395,6 @@ defmodule StoryarnWeb.SceneLive.Show do
                 bg_upload_input_id={@uploads[:background] && @uploads.background.ref}
                 ambient_flows={@ambient_flows}
                 project_flows={@project_flows}
-                project_variables={@project_variables}
               />
             </div>
             <div
@@ -1396,6 +1395,22 @@ defmodule StoryarnWeb.SceneLive.Show do
     end)
   end
 
+  def handle_event("select_add_ambient_flow", %{"id" => ""}, socket), do: {:noreply, socket}
+
+  def handle_event("select_add_ambient_flow", %{"id" => flow_id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      case Scenes.create_ambient_flow(socket.assigns.scene.id, %{
+             "flow_id" => MapUtils.parse_int(flow_id)
+           }) do
+        {:ok, _} ->
+          {:noreply, reload_ambient_flows(socket)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not add ambient flow."))}
+      end
+    end)
+  end
+
   def handle_event("add_ambient_flow", %{"flow_id" => ""}, socket), do: {:noreply, socket}
 
   def handle_event("add_ambient_flow", %{"flow_id" => flow_id}, socket) do
@@ -1510,6 +1525,13 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_event("update_zone_assignments", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_zone_assignments(params, socket) |> broadcast_scene_change()
+    end)
+  end
+
+  def handle_event("select_zone_display_var:" <> zone_id, %{"id" => variable_ref}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      params = %{"zone-id" => zone_id, "field" => "variable_ref", "value" => variable_ref}
+      ElementHandlers.handle_update_zone_action_data(params, socket) |> broadcast_scene_change()
     end)
   end
 

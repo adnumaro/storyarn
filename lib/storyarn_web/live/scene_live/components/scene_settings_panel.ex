@@ -9,13 +9,13 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
 
   alias Phoenix.LiveView.JS
   alias StoryarnWeb.Components.SearchableSelect
+  alias StoryarnWeb.Helpers.EntitySearch
 
   attr :scene, :map, required: true
   attr :can_edit, :boolean, required: true
   attr :bg_upload_input_id, :string, default: nil
   attr :ambient_flows, :list, default: []
   attr :project_flows, :list, default: []
-  attr :project_variables, :list, default: []
 
   def scene_settings_panel(assigns) do
     ~H"""
@@ -272,7 +272,8 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
               <.live_component
                 module={SearchableSelect}
                 id={"ambient-variable-ref-#{af.id}"}
-                options={variable_ref_options(@project_variables)}
+                search_fn={{EntitySearch, :search_variables, [@scene.project_id]}}
+                get_name_fn={{EntitySearch, :get_variable_name, [@scene.project_id]}}
                 value={af.trigger_config["variable_ref"]}
                 on_select={"select_ambient_variable_ref:#{af.id}"}
                 placeholder={dgettext("scenes", "Select variable...")}
@@ -304,49 +305,21 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
         </div>
         <% available_flows = available_flows(@project_flows, @ambient_flows) %>
         <div :if={@can_edit && available_flows != []}>
-          <div
+          <.live_component
+            module={SearchableSelect}
             id={"add-ambient-flow-#{@scene.id}"}
-            phx-hook="SearchableSelect"
+            options={Enum.map(available_flows, &%{id: &1.id, name: &1.name})}
+            value={nil}
+            on_select="select_add_ambient_flow"
+            allow_none={false}
+            placeholder={dgettext("scenes", "Add ambient flow...")}
+            search_placeholder={dgettext("scenes", "Search flows...")}
           >
-            <button
-              data-role="trigger"
-              type="button"
-              class="btn btn-ghost btn-xs w-full justify-start gap-1 border border-base-300 bg-base-100 font-normal text-primary"
-            >
-              <.icon name="plus" class="size-3" />
-              <span class="text-xs">{dgettext("scenes", "Add ambient flow…")}</span>
-            </button>
-            <template data-role="popover-template">
-              <div class="p-2 pb-1">
-                <input
-                  data-role="search"
-                  type="text"
-                  placeholder={dgettext("scenes", "Search flows...")}
-                  class="input input-xs input-bordered w-full"
-                  autocomplete="off"
-                />
-              </div>
-              <div data-role="list" class="max-h-48 overflow-y-auto p-1">
-                <button
-                  :for={flow <- available_flows}
-                  type="button"
-                  data-event="add_ambient_flow"
-                  data-params={Jason.encode!(%{"flow_id" => to_string(flow.id)})}
-                  data-search-text={String.downcase(flow.name)}
-                  class="flex w-full items-center rounded px-2 py-1.5 text-left text-xs hover:bg-base-content/10"
-                >
-                  {flow.name}
-                </button>
-              </div>
-              <div
-                data-role="empty"
-                class="px-3 py-2 text-xs text-base-content/40 italic"
-                style="display:none"
-              >
-                {dgettext("scenes", "No matches")}
-              </div>
-            </template>
-          </div>
+            <:trigger>
+              <.icon name="plus" class="size-3 text-primary" />
+              <span class="text-xs text-primary">{dgettext("scenes", "Add ambient flow...")}</span>
+            </:trigger>
+          </.live_component>
         </div>
       </div>
     </div>
@@ -379,13 +352,6 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
       %{id: "on_event", name: dgettext("scenes", "On Event")},
       %{id: "one_shot", name: dgettext("scenes", "One Shot")}
     ]
-  end
-
-  defp variable_ref_options(variables) do
-    Enum.map(variables, fn v ->
-      ref = "#{v.sheet_shortcut}.#{v.variable_name}"
-      %{id: ref, name: ref, prefix: "#{v.sheet_shortcut}.", suffix: v.variable_name}
-    end)
   end
 
   defp trigger_type_label("on_enter"), do: dgettext("scenes", "On Enter")

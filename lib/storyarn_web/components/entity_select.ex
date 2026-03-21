@@ -1,9 +1,9 @@
 defmodule StoryarnWeb.Components.EntitySelect do
   @moduledoc """
-  Self-contained LiveComponent for selecting project entities (sheets, flows, scenes).
+  Thin wrapper around `SearchableSelect` for selecting project entities.
 
-  Loads entities lazily with server-side search and infinite scroll (load more).
-  The selected entity name is resolved independently from the list.
+  Normalizes `entity_type` / `entity_types` into MFA tuples and delegates all
+  search, pagination, and rendering logic to `SearchableSelect`.
 
   ## Communication
 
@@ -11,8 +11,9 @@ defmodule StoryarnWeb.Components.EntitySelect do
 
   ## Usage
 
+      # Single type (backward compatible)
       <.live_component
-        module={StoryarnWeb.Components.EntitySelect}
+        module={EntitySelect}
         id="pin-sheet-123"
         project_id={@project.id}
         entity_type={:sheet}
@@ -21,62 +22,31 @@ defmodule StoryarnWeb.Components.EntitySelect do
         placeholder={dgettext("scenes", "Select sheet...")}
         disabled={!@can_edit}
       />
+
+      # Multi-type
+      <.live_component
+        module={EntitySelect}
+        id="reference-123"
+        project_id={@project.id}
+        entity_types={[:sheet, :flow]}
+        selected_id={@ref_id}
+        label="Reference"
+      />
   """
 
   use StoryarnWeb, :live_component
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Flows
-  alias Storyarn.Scenes
-  alias Storyarn.Sheets
-
-  @page_size 20
-
-  @impl true
-  def mount(socket) do
-    {:ok,
-     assign(socket,
-       entities: [],
-       selected_name: nil,
-       query: "",
-       has_more: false,
-       _source_key: nil
-     )}
-  end
+  alias StoryarnWeb.Components.SearchableSelect
+  alias StoryarnWeb.Helpers.EntitySearch
 
   @impl true
   def update(assigns, socket) do
-    # Track the data source key to avoid re-fetching on every parent re-render.
-    # Only re-fetch when project_id or entity_type actually change.
-    source_key = {assigns[:project_id], assigns[:entity_type]}
-    prev_source_key = socket.assigns[:_source_key]
-    prev_selected = socket.assigns[:selected_id]
+    types = assigns[:entity_types] || [assigns[:entity_type]]
 
-    socket = assign(socket, assigns)
+    {search_fn, get_name_fn} = build_mfa_tuples(types, assigns.project_id)
 
-    socket =
-      if source_key != prev_source_key do
-        entities = search(assigns.entity_type, assigns.project_id, "", 0)
-        has_more = length(entities) >= @page_size
-
-        socket
-        |> assign(:_source_key, source_key)
-        |> assign(:entities, entities)
-        |> assign(:query, "")
-        |> assign(:has_more, has_more)
-      else
-        socket
-      end
-
-    socket =
-      if assigns[:selected_id] != prev_selected do
-        name = resolve_selected_name(socket.assigns)
-        assign(socket, :selected_name, name)
-      else
-        socket
-      end
-
-    {:ok, socket}
+    {:ok, assign(socket, Map.merge(assigns, %{search_fn: search_fn, get_name_fn: get_name_fn}))}
   end
 
   @impl true
@@ -87,174 +57,68 @@ defmodule StoryarnWeb.Components.EntitySelect do
       |> assign_new(:disabled, fn -> false end)
       |> assign_new(:label, fn -> nil end)
       |> assign_new(:placeholder, fn -> gettext("Select...") end)
+      |> assign_new(:search_placeholder, fn -> search_placeholder(assigns) end)
 
     ~H"""
     <div>
-      <label :if={@label} class="block text-xs font-medium text-base-content/60 mb-1">
-        {@label}
-      </label>
-      <div
-        id={@id}
-        phx-hook="EntitySelect"
-        data-phx-target={"##{@id}"}
-        data-selected={if @selected_id, do: to_string(@selected_id), else: ""}
-        data-active-class="bg-base-content/10 font-semibold text-primary"
-        data-version={length(@entities)}
-      >
-        <button
-          data-role="trigger"
-          type="button"
-          class="btn btn-ghost btn-sm w-full justify-between border border-base-300 bg-base-100 font-normal"
-          disabled={@disabled}
-        >
-          <span class="min-w-0 truncate text-sm">
-            {if @selected_name, do: @selected_name, else: @placeholder}
-          </span>
-          <.icon name="chevron-down" class="size-3 shrink-0 opacity-50" />
-        </button>
-
-        <%!-- Source div: LiveView patches this. Hook reads it on updated(). --%>
-        <div data-role="popover-source" style="display:none">
-          <div class="p-2 pb-1">
-            <input
-              data-role="search"
-              type="text"
-              placeholder={search_placeholder(@entity_type)}
-              class="input input-xs input-bordered w-full"
-              autocomplete="off"
-            />
-          </div>
-          <div data-role="list" class="max-h-56 overflow-y-auto p-1">
-            <button
-              :if={@allow_none}
-              type="button"
-              data-event="select_entity"
-              data-params={Jason.encode!(%{"id" => ""})}
-              data-value=""
-              data-search-text=""
-              class="flex w-full items-center rounded px-2 py-1.5 text-left text-xs hover:bg-base-content/10"
-            >
-              {gettext("None")}
-            </button>
-            <button
-              :for={entity <- @entities}
-              type="button"
-              data-event="select_entity"
-              data-params={Jason.encode!(%{"id" => to_string(entity.id)})}
-              data-value={to_string(entity.id)}
-              data-search-text={String.downcase(entity.name)}
-              class="flex w-full items-center rounded px-2 py-1.5 text-left text-xs hover:bg-base-content/10"
-            >
-              {entity.name}
-            </button>
-            <div
-              :if={@has_more}
-              data-role="sentinel"
-              class="flex items-center justify-center py-2"
-            >
-              <span class="loading loading-spinner loading-xs text-base-content/30"></span>
-            </div>
-          </div>
-          <div
-            data-role="empty"
-            class="px-3 py-2 text-xs italic text-base-content/40"
-            style={if @entities != [] or @allow_none, do: "display:none"}
-          >
-            {gettext("No matches")}
-          </div>
-        </div>
-      </div>
+      <.live_component
+        module={SearchableSelect}
+        id={"#{@id}-inner"}
+        search_fn={@search_fn}
+        get_name_fn={@get_name_fn}
+        value={@selected_id}
+        on_select="entity_selected"
+        target={@myself}
+        label={@label}
+        placeholder={@placeholder}
+        search_placeholder={@search_placeholder}
+        allow_none={@allow_none}
+        disabled={@disabled}
+      />
     </div>
     """
   end
 
   @impl true
-  def handle_event("select_entity", %{"id" => id}, socket) do
-    parsed_id = if id == "", do: nil, else: String.to_integer(id)
+  def handle_event("entity_selected", %{"id" => id}, socket) do
+    parsed_id = if id == "", do: nil, else: parse_id(id)
     send(self(), {:entity_selected, socket.assigns.id, parsed_id})
-
-    name =
-      if parsed_id do
-        find_in_list(socket.assigns.entities, parsed_id) ||
-          get_entity_name(socket.assigns.entity_type, socket.assigns.project_id, parsed_id)
-      end
-
-    {:noreply, assign(socket, selected_id: parsed_id, selected_name: name)}
-  end
-
-  def handle_event("search_entities", %{"query" => query}, socket) do
-    entities = search(socket.assigns.entity_type, socket.assigns.project_id, query, 0)
-    has_more = length(entities) >= @page_size
-
-    {:noreply,
-     socket
-     |> assign(:entities, entities)
-     |> assign(:query, query)
-     |> assign(:has_more, has_more)}
-  end
-
-  def handle_event("load_more", _params, socket) do
-    offset = length(socket.assigns.entities)
-
-    more =
-      search(socket.assigns.entity_type, socket.assigns.project_id, socket.assigns.query, offset)
-
-    has_more = length(more) >= @page_size
-
-    {:noreply,
-     socket
-     |> assign(:entities, socket.assigns.entities ++ more)
-     |> assign(:has_more, has_more)}
+    {:noreply, socket}
   end
 
   # ---------------------------------------------------------------------------
   # Private
   # ---------------------------------------------------------------------------
 
-  defp search(:sheet, project_id, query, offset) do
-    Sheets.search_sheets(project_id, query, limit: @page_size, offset: offset)
+  defp build_mfa_tuples([type], project_id) do
+    {
+      {EntitySearch, :search_entities, [type, project_id]},
+      {EntitySearch, :get_entity_name, [type, project_id]}
+    }
   end
 
-  defp search(:flow, project_id, query, offset) do
-    Flows.search_flows(project_id, query, limit: @page_size, offset: offset)
+  defp build_mfa_tuples(types, project_id) when is_list(types) do
+    {
+      {EntitySearch, :search_entities_multi, [types, project_id]},
+      {EntitySearch, :get_entity_name_multi, [types, project_id]}
+    }
   end
 
-  defp search(:scene, project_id, query, offset) do
-    Scenes.search_scenes(project_id, query, limit: @page_size, offset: offset)
+  defp search_placeholder(%{entity_types: types}) when is_list(types) do
+    gettext("Search...")
   end
 
-  defp get_entity_name(type, project_id, id) do
-    import Ecto.Query, only: [from: 2]
+  defp search_placeholder(%{entity_type: :sheet}), do: dgettext("scenes", "Search sheets...")
+  defp search_placeholder(%{entity_type: :flow}), do: dgettext("scenes", "Search flows...")
+  defp search_placeholder(%{entity_type: :scene}), do: dgettext("scenes", "Search scenes...")
+  defp search_placeholder(_), do: gettext("Search...")
 
-    schema = entity_schema(type)
-
-    from(e in schema,
-      where: e.id == ^id and e.project_id == ^project_id and is_nil(e.deleted_at),
-      select: e.name
-    )
-    |> Storyarn.Repo.one()
-  end
-
-  defp entity_schema(:sheet), do: Storyarn.Sheets.Sheet
-  defp entity_schema(:flow), do: Storyarn.Flows.Flow
-  defp entity_schema(:scene), do: Storyarn.Scenes.Scene
-
-  defp find_in_list(entities, id) do
-    case Enum.find(entities, &(&1.id == id)) do
-      nil -> nil
-      entity -> entity.name
+  defp parse_id(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {int, ""} -> int
+      _ -> value
     end
   end
 
-  defp resolve_selected_name(%{selected_id: nil}), do: nil
-
-  defp resolve_selected_name(%{entities: entities, selected_id: id} = assigns) do
-    find_in_list(entities, id) ||
-      get_entity_name(assigns.entity_type, assigns.project_id, id)
-  end
-
-  defp search_placeholder(:sheet), do: dgettext("scenes", "Search sheets...")
-  defp search_placeholder(:flow), do: dgettext("scenes", "Search flows...")
-  defp search_placeholder(:scene), do: dgettext("scenes", "Search scenes...")
-  defp search_placeholder(_), do: gettext("Search...")
+  defp parse_id(value), do: value
 end
