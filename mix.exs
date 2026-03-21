@@ -70,7 +70,6 @@ defmodule Storyarn.MixProject do
       {:tailwind, "~> 0.3", runtime: Mix.env() == :dev},
       {:live_vue, "~> 1.0"},
       {:igniter, "~> 0.6"},
-      {:phoenix_storybook, "~> 1.0", only: :dev},
       {:lucide_icons, "~> 2.0"},
       {:swoosh, "~> 1.16"},
       {:gen_smtp, "~> 1.0"},
