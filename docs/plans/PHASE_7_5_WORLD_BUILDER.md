@@ -823,8 +823,8 @@ create index(:map_connections, [:scene_id])
 | 4     | Map pins table + CRUD                       | ✅       | Can add/move/delete pins                      |
 | 5     | Map connections CRUD                        | ✅       | Can create connections between pins           |
 | 6     | Maps sidebar section + tree                 | ✅       | Maps tool link, tree with search/sort/menu    |
-| 7     | SceneLive.Index + Form                        | ✅       | List maps, create via modal, delete           |
-| 8     | SceneLive.Show (list-based, no canvas)        | ✅       | Detail page: layers, zones, pins, connections |
+| 7     | SceneLive.Index + Form                      | ✅       | List maps, create via modal, delete           |
+| 8     | SceneLive.Show (list-based, no canvas)      | ✅       | Detail page: layers, zones, pins, connections |
 | 9     | Basic map editor (Leaflet canvas + bg)      | ✅       | Can upload map image, pan/zoom                |
 | 10    | Zone drawing UI                             | ✅       | Can draw polygonal zones on map               |
 | 11    | Zone vertex editing                         | ✅       | Can reshape zones (drag/add/remove vertices)  |

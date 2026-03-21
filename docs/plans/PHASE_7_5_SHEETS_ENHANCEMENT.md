@@ -151,16 +151,17 @@ Invalid: MC.Jaime (uppercase), my shortcut (spaces), @mention (special chars)
 - [ ] Return type information with value
 
 **Which blocks can be variables:**
-| Block Type   | Can be Variable | Value Type |
-|--------------|-----------------|------------|
-| text         | Yes             | string     |
-| rich_text    | Yes             | string (HTML) |
-| number       | Yes             | number     |
-| select       | Yes             | string (selected key) |
-| multi_select | Yes             | array of strings |
-| date         | Yes             | string (ISO date) |
+
+| Block Type   | Can be Variable | Value Type                 |
+|--------------|-----------------|----------------------------|
+| text         | Yes             | string                     |
+| rich_text    | Yes             | string (HTML)              |
+| number       | Yes             | number                     |
+| select       | Yes             | string (selected key)      |
+| multi_select | Yes             | array of strings           |
+| date         | Yes             | string (ISO date)          |
 | boolean      | Yes             | boolean / null (tri-state) |
-| reference    | No (for now)    | - |
+| reference    | No (for now)    | -                          |
 
 ---
 

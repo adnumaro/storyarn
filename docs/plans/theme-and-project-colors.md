@@ -6,12 +6,12 @@ Replace daisyUI default `light`/`dark` themes with custom Storyarn palette.
 
 ### Colors (oklch)
 
-| Role      | Light                          | Dark                           |
-|-----------|--------------------------------|--------------------------------|
-| Primary   | `oklch(78% 0.14 185)` (cyan)  | same                           |
-| Secondary | `oklch(45% 0.04 260)` (slate) | same                           |
-| Accent    | `oklch(72% 0.16 60)` (amber)  | same                           |
-| Neutral   | `oklch(18% 0.025 260)` (dark steel) | same                      |
+| Role      | Light                               | Dark  |
+|-----------|-------------------------------------|-------|
+| Primary   | `oklch(78% 0.14 185)` (cyan)        | same  |
+| Secondary | `oklch(45% 0.04 260)` (slate)       | same  |
+| Accent    | `oklch(72% 0.16 60)` (amber)        | same  |
+| Neutral   | `oklch(18% 0.025 260)` (dark steel) | same  |
 
 ### Gradients (buttons only)
 

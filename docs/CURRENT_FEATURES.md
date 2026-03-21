@@ -1037,17 +1037,22 @@ All edit operations gated by `ProjectMembership.can?(role, :edit_content)` via `
 
 ### 6.23 Actions & Conditions
 
-Zones and pins support interactive behavior for the exploration/player mode:
+**Zones** support interactive behavior for the exploration/player mode:
 
-- **Action types:**
-  - `none` — element acts as a pure navigation target (links to sheet/flow/scene/url)
+- **Action types** (zones only):
+  - `none` — zone acts as a pure navigation target (links to flow/scene)
+  - `walkable` — defines traversable area for character movement
   - `instruction` — executes variable assignments when clicked (via action_data map containing assignment rules)
   - `display` — displays a variable value when clicked
-- **Conditions** — variable-based condition expressions (same condition builder as flow nodes); evaluated against current variable state
+  - `collection` — presents collectible items when clicked
+
+**Pins** link to flows/sheets/scenes via `target_type`/`target_id`. Pins do not have action types — interaction is determined by their target link.
+
+- **Conditions** — variable-based condition expressions (same condition builder as flow nodes); evaluated against current variable state. Available on both zones and pins.
 - **Condition effects:**
   - `hide` — element is not rendered when condition is false
   - `disable` — element is rendered but non-interactive when condition is false
-- UI: condition builder and action configuration in the "More (...)" popover of the floating toolbar
+- UI: condition builder in the element properties panel; zone action type in floating toolbar
 
 ### 6.24 Exploration Mode (Player)
 
@@ -1055,8 +1060,9 @@ Full-screen exploration mode for scenes. Route: `/workspaces/:ws/projects/:proj/
 
 - **Architecture:** `ExplorationLive` (layout: false) renders a Leaflet canvas with interactive zones and pins
 - **Interactions:**
-  - Click zones/pins with `action_type="instruction"` to execute variable assignments
-  - Click zones/pins with target links to navigate (sheet/flow/scene)
+  - Click zones with `action_type="instruction"` to execute variable assignments
+  - Click zones with target links to navigate (flow/scene)
+  - Click pins with target links to launch flows or navigate
   - Launch flows overlaid on a dimmed scene background
 - **Flow execution** — full flow engine integration: auto-advances through non-interactive nodes, stops at dialogue (waiting for input), handles cross-flow jumps and returns
 - **Variable state** — tracked across scene/flow navigation; condition evaluation uses live variable state

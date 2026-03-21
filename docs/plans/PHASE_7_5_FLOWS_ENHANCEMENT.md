@@ -44,12 +44,13 @@ Page / Flow:
 ```
 
 **UI Behavior:**
-| Situation | UI Response |
-|-----------|-------------|
-| Has children, has content | Show tree + editor |
-| Has children, no content | Show tree + "Add content" placeholder |
-| No children, has content | Show editor |
-| No children, no content | Show "Empty flow" state |
+
+| Situation                 | UI Response                           |
+|---------------------------|---------------------------------------|
+| Has children, has content | Show tree + editor                    |
+| Has children, no content  | Show tree + "Add content" placeholder |
+| No children, has content  | Show editor                           |
+| No children, no content   | Show "Empty flow" state               |
 
 ### Why No `is_folder` Flag?
 
@@ -72,25 +73,25 @@ We initially considered an explicit `is_folder` boolean but decided against it:
 
 ### Completed ✅
 
-| Task                                 | Status  | Notes                                |
-|--------------------------------------|---------|--------------------------------------|
-| Tree structure (parent_id, position) | ✅ Done  | Migration `20260203185253`           |
-| Soft delete (deleted_at)             | ✅ Done  | Cascade to children                  |
-| Description field                    | ✅ Done  | Migration `20260204000652`           |
-| TreeOperations module                | ✅ Done  | reorder_flows, move_flow_to_position |
-| list_flows_tree/1                    | ✅ Done  | Recursive tree building              |
-| Unified model (remove is_folder)     | ✅ Done  | Migration `20260204000652`           |
-| Pages description field              | ✅ Done  | Consistency with Flows               |
-| Tree UI (sidebar)                    | ✅ Done  | ProjectSidebar, SortableTree hook    |
-| Entry node                           | ✅ Done  | Auto-created, cannot delete          |
-| Exit node                            | ✅ Done  | Multiple allowed, can delete         |
-| Hub node                             | ✅ Done  | hub_id unique per flow, color picker |
-| Jump node                            | ✅ Done  | Targets hub_id in same flow          |
-| Subflow node (was "FlowJump")        | ✅ Done  | Dynamic exit pins from referenced flow |
-| Scene node                           | ✅ Done  | Screenplay slug line (INT/EXT, location, time) |
-| Instruction node                     | ✅ Done  | Variable assignment builder          |
-| Tree UI (sidebar)                    | ✅ Done  | SortableTree, drag-and-drop, context menu |
-| Entry "Referenced By"                | ✅ Done  | Shows subflows and exit flow_references |
+| Task                                 | Status   | Notes                                          |
+|--------------------------------------|----------|------------------------------------------------|
+| Tree structure (parent_id, position) | ✅ Done   | Migration `20260203185253`                     |
+| Soft delete (deleted_at)             | ✅ Done   | Cascade to children                            |
+| Description field                    | ✅ Done   | Migration `20260204000652`                     |
+| TreeOperations module                | ✅ Done   | reorder_flows, move_flow_to_position           |
+| list_flows_tree/1                    | ✅ Done   | Recursive tree building                        |
+| Unified model (remove is_folder)     | ✅ Done   | Migration `20260204000652`                     |
+| Pages description field              | ✅ Done   | Consistency with Flows                         |
+| Tree UI (sidebar)                    | ✅ Done   | ProjectSidebar, SortableTree hook              |
+| Entry node                           | ✅ Done   | Auto-created, cannot delete                    |
+| Exit node                            | ✅ Done   | Multiple allowed, can delete                   |
+| Hub node                             | ✅ Done   | hub_id unique per flow, color picker           |
+| Jump node                            | ✅ Done   | Targets hub_id in same flow                    |
+| Subflow node (was "FlowJump")        | ✅ Done   | Dynamic exit pins from referenced flow         |
+| Scene node                           | ✅ Done   | Screenplay slug line (INT/EXT, location, time) |
+| Instruction node                     | ✅ Done   | Variable assignment builder                    |
+| Tree UI (sidebar)                    | ✅ Done   | SortableTree, drag-and-drop, context menu      |
+| Entry "Referenced By"                | ✅ Done   | Shows subflows and exit flow_references        |
 
 ### Pending
 
@@ -148,20 +149,20 @@ flow_versions (NOT YET IMPLEMENTED)
 
 ### Overview of All Node Types
 
-| Node        | Type Key      | Category     | Purpose                                  | Status   |
-|-------------|---------------|--------------|------------------------------------------|----------|
-| Entry       | `entry`       | Flow Control | Single entry point per flow (required)   | ✅ Done   |
-| Exit        | `exit`        | Flow Control | Exit point(s), 3 modes: terminal, flow_reference, caller_return | ✅ Done |
-| Subflow     | `subflow`     | Inter-flow   | Navigate to another flow (dynamic exit pins) | ✅ Done |
-| Hub         | `hub`         | Intra-flow   | Convergence point for multiple paths     | ✅ Done   |
-| Jump        | `jump`        | Intra-flow   | Jump to a Hub in same flow               | ✅ Done   |
-| Scene       | `scene`       | Narrative    | Screenplay slug line (INT/EXT, location, time) | ✅ Done |
-| Event       | `event`       | World State  | Trigger parallel events without blocking | Pending  |
+| Node        | Type Key      | Category     | Purpose                                                         | Status    |
+|-------------|---------------|--------------|-----------------------------------------------------------------|-----------|
+| Entry       | `entry`       | Flow Control | Single entry point per flow (required)                          | ✅ Done    |
+| Exit        | `exit`        | Flow Control | Exit point(s), 3 modes: terminal, flow_reference, caller_return | ✅ Done    |
+| Subflow     | `subflow`     | Inter-flow   | Navigate to another flow (dynamic exit pins)                    | ✅ Done    |
+| Hub         | `hub`         | Intra-flow   | Convergence point for multiple paths                            | ✅ Done    |
+| Jump        | `jump`        | Intra-flow   | Jump to a Hub in same flow                                      | ✅ Done    |
+| Scene       | `scene`       | Narrative    | Screenplay slug line (INT/EXT, location, time)                  | ✅ Done    |
+| Event       | `event`       | World State  | Trigger parallel events without blocking                        | Pending   |
 
 ### Existing Node Types (Reference)
 
-| Node        | Type Key      | Purpose                                         |
-|-------------|---------------|-------------------------------------------------|
+| Node        | Type Key      | Purpose                                          |
+|-------------|---------------|--------------------------------------------------|
 | Dialogue    | `dialogue`    | Single line of dialogue with speaker + responses |
 | Condition   | `condition`   | Branch based on variable state (dynamic outputs) |
 | Instruction | `instruction` | Variable assignment via builder UI               |
@@ -289,11 +290,11 @@ data: %{
 
 Instead of a separate FlowReturn node, the Exit node has 3 modes:
 
-| Exit Mode        | Behavior                                     |
-|------------------|----------------------------------------------|
-| `terminal`       | End of flow (default)                        |
+| Exit Mode        | Behavior                                             |
+|------------------|------------------------------------------------------|
+| `terminal`       | End of flow (default)                                |
 | `flow_reference` | Navigate to another flow (like a Subflow at the end) |
-| `caller_return`  | Return to the calling flow (subroutine pattern) |
+| `caller_return`  | Return to the calling flow (subroutine pattern)      |
 
 This is simpler than a separate node type and keeps exit semantics in one place.
 
@@ -715,24 +716,24 @@ Just update the application code to handle new types.
 
 ## Implementation Order
 
-| Order  | Task                                      | Status  | Dependencies        | Testable Outcome                   |
-|--------|-------------------------------------------|---------|---------------------|------------------------------------|
-| 1      | Flow tree structure (parent_id, position) | ✅ Done  | None                | Flows organized in tree            |
-| 2      | Soft delete (deleted_at)                  | ✅ Done  | Tree structure      | Trash/restore works                |
-| 3      | Unified model (remove is_folder)          | ✅ Done  | Tree structure      | Any flow can have children+content |
-| 4      | Description field                         | ✅ Done  | None                | Flows and Pages have descriptions  |
-| 5      | Tree UI (reuse from Pages)                | ✅ Done  | Tree structure      | Sidebar shows flow tree            |
-| 6      | Entry node                                | ✅ Done  | None                | Entry node works                   |
+| Order  | Task                                      | Status  | Dependencies        | Testable Outcome                                          |
+|--------|-------------------------------------------|---------|---------------------|-----------------------------------------------------------|
+| 1      | Flow tree structure (parent_id, position) | ✅ Done  | None                | Flows organized in tree                                   |
+| 2      | Soft delete (deleted_at)                  | ✅ Done  | Tree structure      | Trash/restore works                                       |
+| 3      | Unified model (remove is_folder)          | ✅ Done  | Tree structure      | Any flow can have children+content                        |
+| 4      | Description field                         | ✅ Done  | None                | Flows and Pages have descriptions                         |
+| 5      | Tree UI (reuse from Pages)                | ✅ Done  | Tree structure      | Sidebar shows flow tree                                   |
+| 6      | Entry node                                | ✅ Done  | None                | Entry node works                                          |
 | 7      | Exit node (3 modes)                       | ✅ Done  | None                | Exit node works (terminal, flow_reference, caller_return) |
-| 8      | Hub node                                  | ✅ Done  | None                | Hub convergence works              |
-| 9      | Jump node                                 | ✅ Done  | Hub node            | Jump to Hub works                  |
-| 10     | Subflow node (was FlowJump)               | ✅ Done  | None                | Navigate between flows, dynamic exit pins |
-| 11     | Scene node                                | ✅ Done  | None                | Screenplay slug line works         |
-| 12     | Instruction node                          | ✅ Done  | None                | Variable assignment builder works  |
-| 13     | Entry "Referenced By" backlinks           | ✅ Done  | Subflow node        | Entry shows referencing subflows   |
-| 14     | Event node                                | Pending | None                | Events can be fired                |
-| 15     | Variable references in scripts            | Pending | 7.5 Block variables | #shortcut.var works                |
-| 16     | Flow versions                             | Pending | None                | Version history works              |
+| 8      | Hub node                                  | ✅ Done  | None                | Hub convergence works                                     |
+| 9      | Jump node                                 | ✅ Done  | Hub node            | Jump to Hub works                                         |
+| 10     | Subflow node (was FlowJump)               | ✅ Done  | None                | Navigate between flows, dynamic exit pins                 |
+| 11     | Scene node                                | ✅ Done  | None                | Screenplay slug line works                                |
+| 12     | Instruction node                          | ✅ Done  | None                | Variable assignment builder works                         |
+| 13     | Entry "Referenced By" backlinks           | ✅ Done  | Subflow node        | Entry shows referencing subflows                          |
+| 14     | Event node                                | Pending | None                | Events can be fired                                       |
+| 15     | Variable references in scripts            | Pending | 7.5 Block variables | #shortcut.var works                                       |
+| 16     | Flow versions                             | Pending | None                | Version history works                                     |
 
 ---
 

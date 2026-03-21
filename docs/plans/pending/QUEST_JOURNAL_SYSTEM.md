@@ -26,13 +26,13 @@ articy:draft does **not** have a first-class quest system. Quests are emergent f
 
 Quest progression uses **integer variables** as state machines:
 
-| Value | State |
-|:---:|:---|
-| 0 | Locked / Unavailable |
-| 1 | Available |
-| 2 | Active |
-| 3 | Completed |
-| 4 | Failed |
+| Value   | State                |
+|:-------:|:---------------------|
+|    0    | Locked / Unavailable |
+|    1    | Available            |
+|    2    | Active               |
+|    3    | Completed            |
+|    4    | Failed               |
 
 Instructions on output pins advance state: `Quests.DragonHunt = 2;`
 Conditions on input pins gate content: `Quests.DragonHunt == 2`
@@ -63,21 +63,21 @@ Journal text is **not** a built-in feature. It's handled through:
 
 ## What Storyarn Already Has (Equivalent Features)
 
-| articy Concept | Storyarn Equivalent | Status |
-|----------------|---------------------|--------|
-| Flow Fragments | Flows | ✅ |
-| Templates on objects | Sheets (with inheritance) | ✅ |
-| Global Variables | Sheet blocks (variables) | ✅ |
-| Variable Sets (namespaces) | Sheets (one sheet = one namespace) | ✅ |
-| Condition nodes | Condition nodes (normal + switch mode) | ✅ |
-| Instruction nodes | Instruction nodes | ✅ |
-| Nesting / submerge | Subflow nodes + flow tree hierarchy | ✅ |
-| Conditions on pins | Response conditions | ✅ |
-| Instructions on pins | Response instructions (Gap 5, pending) | 🔄 |
-| Simulation mode | Story Player + Debugger | ✅ |
-| Jump nodes | Jump → Hub nodes | ✅ |
-| Template icons/colors | Node type icons (fixed per type) | ⚠️ Partial |
-| Pin script indicators | Response condition indicator `[?]` | ⚠️ Partial |
+| articy Concept             | Storyarn Equivalent                    | Status     |
+|----------------------------|----------------------------------------|------------|
+| Flow Fragments             | Flows                                  | ✅          |
+| Templates on objects       | Sheets (with inheritance)              | ✅          |
+| Global Variables           | Sheet blocks (variables)               | ✅          |
+| Variable Sets (namespaces) | Sheets (one sheet = one namespace)     | ✅          |
+| Condition nodes            | Condition nodes (normal + switch mode) | ✅          |
+| Instruction nodes          | Instruction nodes                      | ✅          |
+| Nesting / submerge         | Subflow nodes + flow tree hierarchy    | ✅          |
+| Conditions on pins         | Response conditions                    | ✅          |
+| Instructions on pins       | Response instructions (Gap 5, pending) | 🔄         |
+| Simulation mode            | Story Player + Debugger                | ✅          |
+| Jump nodes                 | Jump → Hub nodes                       | ✅          |
+| Template icons/colors      | Node type icons (fixed per type)       | ⚠️ Partial |
+| Pin script indicators      | Response condition indicator `[?]`     | ⚠️ Partial |
 
 **Storyarn can model quests today** using flows + sheets + variables + conditions/instructions. What's missing is quest-specific UX.
 
@@ -209,16 +209,16 @@ This builds on Gap 6c (Variable Usage Index) — if we know which flows read/wri
 
 ## Comparison: articy vs Proposed Storyarn
 
-| Capability | articy:draft | Storyarn (proposed) | Improvement |
-|------------|-------------|---------------------|-------------|
-| Quest containers | Flow Fragments + Templates | Flows + quest tag | Simpler, less overhead |
-| Quest state | Integer global variables | Sheet variables (already typed) | Same |
-| Journal entries | Not built-in (template text only) | **First-class on responses + instructions** | **Major improvement** |
-| Journal preview | None | **Live journal tab in debugger** | **Major improvement** |
-| Quest hierarchy | Nesting (submerge/emerge) | Flow tree + subflows | Same |
-| Quest overview | None (navigate tree manually) | Planned dashboard (future) | Improvement |
-| Visual markers | Template icons + colors | Quest badges in flow tree | Similar |
-| Cross-references | Manual search | Variable usage index (Gap 6c) | Improvement |
+| Capability       | articy:draft                      | Storyarn (proposed)                         | Improvement            |
+|------------------|-----------------------------------|---------------------------------------------|------------------------|
+| Quest containers | Flow Fragments + Templates        | Flows + quest tag                           | Simpler, less overhead |
+| Quest state      | Integer global variables          | Sheet variables (already typed)             | Same                   |
+| Journal entries  | Not built-in (template text only) | **First-class on responses + instructions** | **Major improvement**  |
+| Journal preview  | None                              | **Live journal tab in debugger**            | **Major improvement**  |
+| Quest hierarchy  | Nesting (submerge/emerge)         | Flow tree + subflows                        | Same                   |
+| Quest overview   | None (navigate tree manually)     | Planned dashboard (future)                  | Improvement            |
+| Visual markers   | Template icons + colors           | Quest badges in flow tree                   | Similar                |
+| Cross-references | Manual search                     | Variable usage index (Gap 6c)               | Improvement            |
 
 **Storyarn's key advantage:** Journal entries as a first-class feature with live preview in the debugger. articy treats journal text as an afterthought (just template properties), forcing designers to imagine how their text maps to the in-game journal. Storyarn can show them.
 

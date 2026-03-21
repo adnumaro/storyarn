@@ -542,10 +542,10 @@ The hover toolbar for table only shows: drag handle, type badge, label edit, mov
 
 ### JS / Hooks
 
-| File | Action | Notes |
-|------|--------|-------|
-| `assets/js/hooks/block_toolbar.js` | **CREATE** | Hook for toolbar + popover management via floating-ui |
-| `assets/js/utils/floating_popover.js` | Reuse | Existing utility for body-appended popovers |
+| File                                  | Action     | Notes                                                 |
+|---------------------------------------|------------|-------------------------------------------------------|
+| `assets/js/hooks/block_toolbar.js`    | **CREATE** | Hook for toolbar + popover management via floating-ui |
+| `assets/js/utils/floating_popover.js` | Reuse      | Existing utility for body-appended popovers           |
 
 ### Helpers
 

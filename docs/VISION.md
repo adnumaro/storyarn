@@ -31,14 +31,14 @@ Storyarn (source of truth)
 
 Building a 3D engine inside Storyarn is not the goal. The complexity breakdown:
 
-| Component | Difficulty | AI Dependency |
-|---|---|---|
-| Image -> 3D pipeline (Tripo/Meshy API) | Medium | External API |
-| 3D viewer (Three.js/Babylon) | Medium-High | 0% — pure engineering |
-| Player controls | Medium | 0% |
-| Scene composition | Very High | ~50% automatable |
-| Collisions/navmesh | High | Partially automatable |
-| Flow/dialogue integration | Medium | Already exists |
+| Component                              | Difficulty  | AI Dependency         |
+|----------------------------------------|-------------|-----------------------|
+| Image -> 3D pipeline (Tripo/Meshy API) | Medium      | External API          |
+| 3D viewer (Three.js/Babylon)           | Medium-High | 0% — pure engineering |
+| Player controls                        | Medium      | 0%                    |
+| Scene composition                      | Very High   | ~50% automatable      |
+| Collisions/navmesh                     | High        | Partially automatable |
+| Flow/dialogue integration              | Medium      | Already exists        |
 
 **Verdict:** Not viable as a short-term goal. If pursued later, the approach would be:
 1. Integrate with external tools (Spine for 2D animation, Tripo/Meshy for 3D generation)
@@ -57,14 +57,14 @@ Storyarn already has ~70% of the foundation:
 
 **What's missing for a playable 2D prototype:**
 
-| Component | Difficulty | Notes |
-|---|---|---|
-| Player sprite + movement | Low-Medium | Point & click or WASD |
-| Zone collision (is_solid flag) | Low | New field on zone schema |
-| Trigger system (zone/pin -> flow) | Low | trigger_flow_id on zones/pins |
-| Dialogue overlay during play | Medium | Flow player as overlay |
-| Scene transitions | Low | Connections already define these |
-| Character animation integration | Medium | Spine runtime (see below) |
+| Component                         | Difficulty   | Notes                            |
+|-----------------------------------|--------------|----------------------------------|
+| Player sprite + movement          | Low-Medium   | Point & click or WASD            |
+| Zone collision (is_solid flag)    | Low          | New field on zone schema         |
+| Trigger system (zone/pin -> flow) | Low          | trigger_flow_id on zones/pins    |
+| Dialogue overlay during play      | Medium       | Flow player as overlay           |
+| Scene transitions                 | Low          | Connections already define these |
+| Character animation integration   | Medium       | Spine runtime (see below)        |
 
 **Target quality: Modern adventure games** (Return to Monkey Island, Broken Age).
 
@@ -84,13 +84,13 @@ For high-quality character animation, the approach is **integration, not buildin
 
 **Storyarn UI needed:**
 
-| Menu | Purpose | Complexity |
-|---|---|---|
-| Character config | Upload Spine export, set scale/speed | Low |
-| Scene placement | Drag character to scene (like pins) | Low |
-| Animation mapping | Link states to flow triggers | Medium |
-| Walkable area | Paint walkable zones (zones already exist) | Medium |
-| Interaction hotspots | Already pins/zones with triggers | Already exists |
+| Menu                 | Purpose                                    | Complexity     |
+|----------------------|--------------------------------------------|----------------|
+| Character config     | Upload Spine export, set scale/speed       | Low            |
+| Scene placement      | Drag character to scene (like pins)        | Low            |
+| Animation mapping    | Link states to flow triggers               | Medium         |
+| Walkable area        | Paint walkable zones (zones already exist) | Medium         |
+| Interaction hotspots | Already pins/zones with triggers           | Already exists |
 
 ---
 
@@ -158,32 +158,32 @@ Each system has:
 
 ### What AI Can Do Well Today
 
-| Mechanic Type | AI Viability | Why |
-|---|---|---|
-| Static UI (inventory, HUD, minimap) | High | HTML/CSS/JS, LLMs excel here |
-| Variable logic (weight, stats, cooldowns) | High | Variable system already exists, AI just configures |
-| Simple state machines (door open/closed) | High | Condition + instruction, already exists |
-| Modified movement (speed, jump) | Medium-High | Numeric parameters, well-defined |
-| Dialogue systems with branches | Already exists | Flow editor |
+| Mechanic Type                             | AI Viability   | Why                                                |
+|-------------------------------------------|----------------|----------------------------------------------------|
+| Static UI (inventory, HUD, minimap)       | High           | HTML/CSS/JS, LLMs excel here                       |
+| Variable logic (weight, stats, cooldowns) | High           | Variable system already exists, AI just configures |
+| Simple state machines (door open/closed)  | High           | Condition + instruction, already exists            |
+| Modified movement (speed, jump)           | Medium-High    | Numeric parameters, well-defined                   |
+| Dialogue systems with branches            | Already exists | Flow editor                                        |
 
 ### What AI Does Poorly Today
 
-| Mechanic Type | AI Viability | Why |
-|---|---|---|
-| Complex combat systems | Low | Too many emergent interactions, balance issues |
-| Custom physics | Low | Subtle bugs, AI can't test the "feel" |
-| NPC AI (pathfinding, behavior) | Medium-Low | Works in demo, breaks on edge cases |
-| Netcode/multiplayer | Very Low | Don't attempt |
+| Mechanic Type                  | AI Viability  | Why                                            |
+|--------------------------------|---------------|------------------------------------------------|
+| Complex combat systems         | Low           | Too many emergent interactions, balance issues |
+| Custom physics                 | Low           | Subtle bugs, AI can't test the "feel"          |
+| NPC AI (pathfinding, behavior) | Medium-Low    | Works in demo, breaks on edge cases            |
+| Netcode/multiplayer            | Very Low      | Don't attempt                                  |
 
 ### Complexity Assessment
 
-| Piece | Difficulty | Timeline |
-|---|---|---|
-| 3-5 base systems (inventory, quests, save, shop, health) | Medium-High | First milestone |
-| AI configurator from natural language | Medium | Builds on existing variable system |
-| 10-15 systems covering 80% of narrative/adventure/RPG games | High | Medium-term |
-| AI composing multiple systems + connecting variables | High | Medium-term |
-| UI editor for tweaking AI-generated config | Medium | After AI configurator |
+| Piece                                                       | Difficulty   | Timeline                           |
+|-------------------------------------------------------------|--------------|------------------------------------|
+| 3-5 base systems (inventory, quests, save, shop, health)    | Medium-High  | First milestone                    |
+| AI configurator from natural language                       | Medium       | Builds on existing variable system |
+| 10-15 systems covering 80% of narrative/adventure/RPG games | High         | Medium-term                        |
+| AI composing multiple systems + connecting variables        | High         | Medium-term                        |
+| UI editor for tweaking AI-generated config                  | Medium       | After AI configurator              |
 
 ---
 
@@ -234,12 +234,12 @@ storyarn-runtime (Rust)
 
 **Layer 3: Engine Plugins (bindings)**
 
-| Engine | Binding | Integration |
-|---|---|---|
-| Unity | C# via C FFI | `.dll`/`.so` native + C# wrapper |
-| Unreal | C++ direct | Rust -> C FFI -> C++ plugin |
-| Godot | GDExtension | Rust with gdext (official support) |
-| Bevy | Native Rust | Direct crate, trivial |
+| Engine   | Binding      | Integration                        |
+|----------|--------------|------------------------------------|
+| Unity    | C# via C FFI | `.dll`/`.so` native + C# wrapper   |
+| Unreal   | C++ direct   | Rust -> C FFI -> C++ plugin        |
+| Godot    | GDExtension  | Rust with gdext (official support) |
+| Bevy     | Native Rust  | Direct crate, trivial              |
 
 **Why Rust:**
 - One codebase, all engines — compiles to native library per platform
@@ -258,15 +258,15 @@ Instead of maintaining logic in both Elixir and Rust:
 
 ### Complexity Assessment
 
-| Piece | Difficulty |
-|---|---|
-| Export format definition | Medium (extends existing Exports context) |
-| Rust core runtime | High (replicate conditions/instructions/flows logic) |
-| Expression evaluator in Rust | Medium-High (port FormulaEngine from Elixir) |
-| Godot plugin | Medium (gdext is ergonomic) — build first |
-| WASM for web preview | Medium (Rust compiles to WASM with minimal changes) |
-| Unity plugin | High (C FFI + C# wrapper + editor UI) |
-| Unreal plugin | Very High (C++ is tedious, UE plugin system is complex) |
+| Piece                        | Difficulty                                              |
+|------------------------------|---------------------------------------------------------|
+| Export format definition     | Medium (extends existing Exports context)               |
+| Rust core runtime            | High (replicate conditions/instructions/flows logic)    |
+| Expression evaluator in Rust | Medium-High (port FormulaEngine from Elixir)            |
+| Godot plugin                 | Medium (gdext is ergonomic) — build first               |
+| WASM for web preview         | Medium (Rust compiles to WASM with minimal changes)     |
+| Unity plugin                 | High (C FFI + C# wrapper + editor UI)                   |
+| Unreal plugin                | Very High (C++ is tedious, UE plugin system is complex) |
 
 ### Recommended Build Order
 
@@ -281,24 +281,395 @@ Instead of maintaining logic in both Elixir and Rust:
 
 ## IV. Platform Features
 
-### A. Public Wiki (Fandom-Style)
+### A. AI Wiki — Conversational Game Wiki & Interactive Guide
 
-**Not Notion/Confluence. This is community-facing fandom.**
+**Not a static fandom clone. The first AI-powered wiki for games.**
 
-- Subdomain per game: `wiki.mygame.storyarn.com`
-- Auto-generated from structured data (characters, lore, maps, items)
-- Community can expand and edit (like fandom.com)
-- Designer controls what's published vs internal
-- Interactive maps with zone names, connections
-- Ad-supported on free tier
+The user asks questions in natural language and the AI responds using the project's structured data as context, enriched with images, maps, and entity references.
+
+**Core experience:**
+
+```
+Player: "Who is Elias?"
+AI Wiki: [Elias avatar] Elias is the protagonist of...
+         [tavern scene image] He is first encountered in...
+         [interactive map highlighting the zone]
+
+Player: "How do I get the castle key?" (spoilers OFF)
+AI Wiki: Hint: explore the tavern and talk to all NPCs.
+
+Player: "How do I get the castle key?" (spoilers ON)
+AI Wiki: To get the key you need to talk to Mira after...
+```
+
+**How it works:**
+
+```
+User question
+  → Embedding search over project data (RAG)
+  → Spoiler filter (if OFF, exclude quest resolutions, endings, etc.)
+  → LLM generates response with entity references
+  → Renderer enriches with images, maps, links
+  → Contextual ads inserted in layout
+```
+
+The AI doesn't generate images. It **references** entities that already have images. The LLM emits entity tags (`[character:elias]`, `[scene:tavern]`) that the renderer resolves against project data.
+
+**Spoiler control:**
+
+| Level             | What the AI can use                                           |
+|-------------------|---------------------------------------------------------------|
+| **No spoilers**   | Names, descriptions, visible locations, early-game characters |
+| **Hints**         | Above + vague quest hints without revealing resolution        |
+| **Full spoilers** | Everything — including endings, plot twists, solutions        |
+
+Designers mark content as spoiler in Storyarn (toggle `spoiler_level` on flows, nodes, or sheets).
+
+**Interactive game guide with progress tracking:**
+
+The AI wiki doubles as an interactive game guide. Users can save their progress:
+
+```
+Player: "Where did I leave off last time?"
+AI: Last session you were in the tavern after talking to Mira.
+    You haven't visited the northern cave yet.
+    [map with cave highlighted]
+    That's where you need to go next.
+```
+
+Progress data model:
+
+```
+WikiUser
+  - id
+  - game_id (which project)
+  - progress_summary (text, AI-updated after each session)
+  - last_session_at
+
+WikiConversation
+  - wiki_user_id
+  - messages (jsonb)
+  - session_date
+```
+
+The `progress_summary` is key. After each conversation, the AI generates a summary of the player's state. Next session, that summary is injected as context. No need to store full history — just the rolling summary.
+
+Progress is narrative-only, inferred from conversation. No game save sync (avoids complexity explosion).
+
+**SEO strategy — static landing + AI chat:**
+
+```
+wiki.mygame.storyarn.com/
+├── index.html         ← static landing, SEO-indexable, game intro
+├── ask                ← AI chat (main experience)
+└── guide              ← interactive guide with login for progress
+```
+
+The landing page is auto-generated once from project data: synopsis, main characters (no spoilers), screenshots, world map. Google indexes this. Users arrive via SEO and discover the AI chat.
+
+**Conversational Ads:**
+
+Ads are not banners shoved into the response. They are **contextual recommendations with transparent sponsorship disclosure**, integrated naturally into the conversation flow.
+
+**Market validation (March 2026):**
+
+| Platform | Approach | Result |
+|---|---|---|
+| **Microsoft Copilot** | Ads below AI response, contextual to full conversation | **73% higher CTR, 16% higher conversion** vs traditional search. Journey shortened 33% |
+| **ChatGPT (OpenAI)** | Ads appended to responses, matched by topic + history | Testing on free/Go tiers since Feb 2026. Ad does not alter AI response |
+| **Perplexity** | Sponsored follow-up questions in "Related" section | **Abandoned Feb 2026** — execs said ads made users "suspicious of everything" |
+| **Character.AI** | Traditional banners/interstitials shoved mid-chat | Community backlash, users leaving |
+
+**Why Perplexity failed but Storyarn won't (same mistake):** Perplexity sells *factual truth* — if users suspect the answer is ad-influenced, the product is worthless. Storyarn wiki sells *game help* — a recommendation of a similar game is orthogonal to "how do I beat the dragon." It doesn't contaminate the answer.
+
+**Why Character.AI's approach is wrong:** They use traditional ad formats (banners, interstitials, video pre-rolls) inside a conversational product. Maximum friction, zero context.
+
+**Storyarn's approach: two ad formats for two distinct moments.**
+
+**Format 1 — Conversational recommendation (after responses, every 3-4 interactions):**
+
+The AI answers the user's question first (fully, no contamination), then adds a contextual recommendation with a genuine hook and transparent disclosure.
+
+```
+Player: "How do I defeat the lake dragon?"
+
+AI: To defeat the dragon you need the ice bow from the northern
+    cave. Equip it and aim for the wings first so it can't fly.
+
+    By the way, Dragon's Dogma 2 has dragon fights with a
+    similar feel — you can actually climb on the dragon while
+    it's flying.
+
+    Fun fact: Hideaki Itsuno directed both Devil May Cry and
+    Dragon's Dogma. The idea was born from wanting to make a
+    western RPG with Japanese action game intensity.
+
+    [game screenshot/banner]
+
+    🏷️ Sponsored recommendation — but genuinely worth checking
+    out if you enjoy this kind of combat. Want to know more?
+    Just ask.
+```
+
+Key design principles:
+- **Answer first, recommend second** — the user's question is fully resolved before any ad
+- **Genuine hook** — a real, verified anecdote that's interesting independent of the ad. The AI doesn't invent hooks — they come from a curated catalog of verified facts
+- **Transparent disclosure** — "Sponsored recommendation" is explicit (legally required, but also builds trust — studies show explicit disclosure increases credibility)
+- **Conversational CTA** — "Want to know more? Just ask" instead of a cold link
+- **The recommendation is true** — the AI genuinely evaluates relevance, not just slot-filling
+
+**Format 2 — Loading ad (during tool calls, 3-5 seconds):**
+
+When the AI calls tools that require processing time (RAG search, API calls to game databases, complex queries), the wait time is used to show a short sponsored content piece.
+
+```
+AI: Let me look that up for you...
+
+    While you wait, this might interest you:
+    [3-5 second sponsored video/content]
+
+    🏷️ Sponsored — but I think you'll like it.
+    Did you? [👍] [❤️] [👎]
+```
+
+Key design principles:
+- **Zero intrusión** — the user is already waiting, this fills dead time (like loading screen tips in games)
+- **Consistent timing** — if a tool call takes 1s, pad to 3-4s. If it takes 4s, don't pad. The floor is always the same, never feels artificially slow
+- **Video format** — higher CPM than text (5-10x), more engaging during a wait
+- **Sentiment feedback** — thumbs up/down/heart provides engagement + sentiment data for advertisers (more valuable than raw clicks)
+
+**Frequency control — shared cooldown:**
+
+Both formats share a single global cooldown to prevent ad fatigue:
+
+```
+Interaction 1  → normal response
+Interaction 2  → tool call → loading ad (3s video)
+Interaction 3  → normal response
+Interaction 4  → normal response
+Interaction 5  → normal response
+Interaction 6  → conversational recommendation
+Interaction 7  → normal response
+Interaction 8  → tool call → NO loading ad (cooldown active)
+Interaction 9  → normal response
+Interaction 10 → tool call → loading ad
+```
+
+Rules:
+- Minimum 3-4 interactions between any ad (either format)
+- Never two ads in consecutive interactions
+- Maximum 1 ad per response
+- Never force an ad if no relevant match exists
+- When a tool call happens but cooldown isn't met, show a normal spinner
+
+**Legal requirements (validated March 2026):**
+
+| Jurisdiction | Requirement | How Storyarn complies |
+|---|---|---|
+| **FTC (USA)** | Sponsored content must be "clear, conspicuous, and timely" | 🏷️ "Sponsored recommendation" label on every ad |
+| **EU AI Act (Aug 2026)** | Users must know they interact with AI; AI-generated content must be identifiable | Wiki clearly states it's AI-powered; ads labeled |
+| **EU DSA** | Transparency in how content is recommended; no targeted ads to minors | Context-based targeting (no profiling); age gate possible |
+
+**Why transparency is a feature, not a tax:**
+- 86% of consumers feel deceived by undisclosed native ads (→ trust destroyed forever)
+- Explicit disclosure **increases credibility** — users perceive the author as honest
+- Native ads with disclosure generate **32% more engagement** than traditional display ads
+- 71% lose trust in brands that prioritize profit over transparency (Nielsen)
+
+The format "Sponsored recommendation — but genuinely worth checking out" is radically different from a cold "Sponsored" label. It's what a friend who works at a game store would say: "I get paid to tell you about this, but it's actually good."
+
+**Revenue model — Cost Per Engagement (CPE):**
+
+| Model | What's measured | Conversational equivalent | Relative value |
+|---|---|---|---|
+| CPM | Ad seen | AI mentions the game | Low |
+| CPC | Click on banner | User clicks store link | Medium |
+| **CPE** | **User engagement** | **User asks "tell me more"** | **High** |
+| CPA | Purchase/install | User buys via affiliate link | Highest |
+
+CPE is the sweet spot. Reference: Microsoft Copilot achieves 73% higher CTR than traditional search with contextual ads. Perplexity reported 40% of users clicked follow-up questions before they abandoned ads.
+
+**Metrics for advertisers:**
+
+```
+Dragon's Dogma 2 — Campaign Report
+├── Mentions: 12,450 (AI recommended the game)
+├── Engagements: 3,200 (users asked "tell me more")       ← leads
+├── Deep engagements: 890 (2+ follow-up questions)
+├── Click-throughs: 450 (went to Steam/trailer)
+├── Engagement rate: 25.7%
+├── Avg. questions per engaged user: 2.3
+├── Loading ad views: 8,300
+├── Loading ad sentiment: 72% 👍, 18% neutral, 10% 👎
+└── Loading ad click-throughs: 1,200
+```
+
+**How it works technically:**
+
+The LLM prompt includes an active ad catalog with **curated, verified metadata** per game:
+- Genre, platform, rating, description
+- **Verified anecdotes/hooks** (human-curated, not AI-invented) — development stories, interesting facts, critical reception highlights
+- Screenshots, trailer links, store links (with affiliate tags)
+
+The LLM chooses which ad fits the conversation context. Rules:
+- Never force an ad if not relevant
+- Maximum 1 ad per response
+- Respect shared cooldown (3-4 interactions minimum)
+- Use real product data only — never invent facts about sponsored games
+- Prefer conversational format over loading format when both are possible
+- Casual tone: "By the way...", "Fun fact:...", "Speaking of..."
+
+**Why this is different from every existing approach:**
+
+| Character.AI | Perplexity | Copilot | **Storyarn** |
+|---|---|---|---|
+| Banners mid-chat | Sponsored follow-up question | Ad block below response | Contextual recommendation + loading ad |
+| Zero context | Labeled, separate | Labeled, separate, with "ad voice" | Hook + disclosure + conversational CTA |
+| User hates it | Users got suspicious | 73% higher CTR | **Untested — but combines best of all** |
+| No disclosure design | Cold "Sponsored" label | "Sponsored" + AI explains why | "Sponsored — but genuinely worth it" |
+
+Privacy advantages (unchanged):
+- No personal data stored
+- No cross-site tracking
+- Targeting by session and context, not by profile
+- GDPR-compliant by design — no tracking cookies needed
+- Transparent: user can see why they see an ad ("Based on your conversation about tactical RPGs")
+
+**Two products, one ecosystem:**
+
+Storyarn operates as two complementary products:
+
+1. **Storyarn Platform** — the design tool (subscriptions)
+2. **Storyarn Wiki Ads** — the ad network for wiki monetization
+
+| Product | Revenue source | Customers |
+|---|---|---|
+| Storyarn Platform | Subscriptions per seat/workspace | Game designers, studios |
+| Storyarn Wiki Ads | Advertisers paying for conversational ad placements | Game publishers, related brands |
+
+**Wiki + Ads tier integration:**
+
+| Tier | Wiki | Conversational Ads | Customization | Wiki Metrics |
+|---|---|---|---|---|
+| **Free/Indie** | **Opt-in** (dev activates it) | Revenue → Storyarn | Storyarn branding | No |
+| **Indie + Ads** | Opt-in | Revenue → developer (paid add-on) | Storyarn branding | Basic |
+| **Pro** | Optional (on/off) | Revenue → developer (included) | Game branding (colors, logo) | Yes (conversation insights) |
+| **Enterprise** | Optional | Revenue → developer (included) | Full branding, custom domain | Yes + API access |
+
+**Wiki is opt-in, not mandatory.** The developer chooses when to activate their wiki (typically at or near launch). Forcing publication of project data during development would be hostile to users who protect their IP. The model mirrors Fandom's: free hosting with Storyarn-controlled ads. If the dev wants to control ads or remove them, they upgrade.
+
+**Upgrade paths:**
+- Free indie → activates wiki at launch → sees traffic → buys Ads add-on to own revenue
+- Indie + Ads → wants branding + metrics → upgrades to Pro → gets ads included + full control
+- The ad revenue ownership is a tangible, measurable incentive to upgrade
+
+**Pro tier wiki features:**
+- Custom branding: game logo, color scheme, fonts
+- Custom domain: `wiki.mygame.com` pointing to Storyarn-hosted wiki
+- Ad revenue goes to developer (Storyarn takes a % cut)
+- Conversation insights dashboard:
+  - Player sentiment analysis (frustration, confusion, excitement)
+  - Content discovery gaps (what players search for but can't find in-game)
+  - Narrative feedback (questions revealing unclear plot points, ambiguous relationships)
+  - Most asked questions by category
+
+**External wikis — aggregated from legal API sources (not scraped):**
+
+AI wikis for games NOT built with Storyarn, generated by aggregating data from public APIs and open-license sources.
+
+**Data sources with verified legal access (March 2026):**
+
+| Source | API | Content | License/Terms |
+|---|---|---|---|
+| **StrategyWiki** | MediaWiki API | **10,507 games, 852 complete guides, 56K pages** — walkthroughs, strategies | **CC-BY-SA 4.0** — commercial use allowed with attribution |
+| **Wikipedia** | MediaWiki API / REST | Synopsis, mechanics, reception, development history | **CC-BY-SA 4.0** — commercial use allowed with attribution |
+| **Wikibooks** | MediaWiki API | Additional game guides | **CC-BY-SA** |
+| **RAWG.io** | REST API | 500K+ games, descriptions, screenshots, ratings, genres | Free commercial <20K req/month, <500K pageviews |
+| **IGDB (Twitch)** | REST API | Comprehensive game metadata, covers, screenshots | Free non-commercial; **commercial requires partnership** |
+| **Steam Store** | Store API | Descriptions, reviews, prices, screenshots, requirements | API key (free) |
+| **GiantBomb** | REST API | Exhaustive game database | API key (free) |
+
+**Sources explicitly excluded (legal risk):**
+
+| Source | Reason |
+|---|---|
+| **Fandom** | CC-BY-SA text but ToS explicitly prohibit scraping with bots. Reddit sued Anthropic and Perplexity for similar violations (2025-2026). 70+ copyright lawsuits against AI companies for scraping. Not worth the risk. |
+| **IGN, EliteGuías, GameFAQs, Game8** | Editorial copyright. GameFAQs authors explicitly prohibit redistribution. |
+| **MobyGames** | API available but prohibits data redistribution |
+| **Metacritic/OpenCritic** | No public API, scraping prohibited |
+
+**How external wikis work — AI as agent with tools:**
+
+```
+User: "How do I get to the Crystal Peak in Hollow Knight?"
+
+AI internally:
+  1. Tool: StrategyWiki API → query "Hollow Knight" walkthrough → Crystal Peak section
+  2. Tool: RAWG/Steam API → game metadata, screenshots for context
+  3. LLM synthesizes a conversational response from aggregated data
+  4. [If cooldown allows] → Tool: ad catalog → relevant similar game
+  5. [If tool calls take time] → loading ad (3-5s video)
+```
+
+The AI doesn't store pre-scraped content. It queries APIs at runtime (with caching), functioning as a conversational layer over legitimate data sources. CC-BY-SA attribution is included in responses when sourcing from StrategyWiki/Wikipedia.
+
+**Quality tiers:**
+
+| Wiki type | Data quality | Source |
+|---|---|---|
+| **Native wiki** (Storyarn project) | Perfect — structured entities, relationships, spoiler tags | Project data via RAG |
+| **External wiki** (popular game) | Good — guides + metadata + LLM knowledge | StrategyWiki + APIs + LLM base knowledge |
+| **External wiki** (obscure game) | Basic — metadata only, limited guide content | APIs + LLM base knowledge |
+
+- External wikis have no owner — all ad revenue goes to Storyarn
+- Lower quality than native wikis (aggregated text vs structured entities)
+- Creates audience before customers: players discover Storyarn wikis → developers discover the platform
+- If a developer wants the premium wiki experience (structured data, spoiler control, full guide coverage), they use Storyarn to design their game — that's the only path to a native wiki
+
+**Traffic reference points (March 2026):**
+- Stardew Valley Wiki (independent): ~110M visits/month (Semrush, March 2024) — an indie game
+- Fandom total: ~780M visits/month
+- Major wikis are **leaving Fandom** (Minecraft, Hollow Knight, GTA, League of Legends — all migrated 2022-2025) due to aggressive ads
+- One successful game wiki with 500K+ active players could justify the entire wiki infrastructure
+
+**Cost model:**
+
+- ~2000-4000 context tokens + ~500-1000 response tokens per question
+- With an economical model (Haiku-tier): ~$0.001-0.003 per question
+- 1000 questions/day = $1-3/day
+- Conversational ad revenue at $5-20 CPM covers the LLM cost significantly
+- **Self-funding from day one**
+
+**Cold-start strategy — affiliate programs (validated March 2026):**
+
+Direct advertisers won't pay without traffic volume. Solve the chicken-and-egg with affiliate links from existing gaming storefronts.
+
+**Available affiliate programs:**
+
+| Platform | Commission | Cookie | Access | Notes |
+|---|---|---|---|---|
+| **GOG.com** | **6%** | 30 days | Open (via CJ Affiliate) | DRM-free games, good indie catalog |
+| **Humble Bundle** | **5-8%** (up to 15% on bundles) | 30 days | Open | Bundles are high-conversion |
+| **Green Man Gaming** | **0.5-5%** (10% on bundles) | 30 days | Open | 7,000+ games, sells Steam keys |
+| **Fanatical** | **2-5%** | — | Open | Steam/Epic keys |
+| **Epic Games** | **5%** or $5/referral | — | Support-A-Creator program | Requires "creator" status |
+| **Steam** | **No program** | — | — | No public affiliate program. Use GMG/Humble/Fanatical for Steam keys |
+
+**Phase 1 (no advertisers needed):** The AI recommends games using affiliate links from GOG, Humble, GMG. At 6% commission on a $30 game = $1.80 per sale. Low margin, but zero cost to operate — no sales team, no advertiser relationships. Validates the format and builds conversion data.
+
+**Phase 2 (organic growth):** As wiki traffic grows, track metrics (impressions, engagement rate, conversions). Build a case with real data. At this point the two ad formats (conversational + loading) are generating measurable engagement and sentiment data.
+
+**Phase 3 (direct advertisers):** With proven traffic and conversion data, approach game publishers for premium conversational ad placements at CPE rates significantly higher than affiliate commissions.
 
 **Flywheel:**
-- Designer uses Storyarn -> publishes wiki
-- Players visit wiki -> discover Storyarn
-- Ads fund free tier
-- More games -> more wikis -> more traffic
+- Indie uses Storyarn (free) → activates wiki at launch → Storyarn earns affiliate revenue from external recommendations
+- Players use the guide → conversational recommendations feel natural → higher engagement → more revenue
+- Traffic grows → affiliate data proves conversion rates → attracts direct advertisers
+- Indie sees traffic → buys Ads add-on or upgrades to Pro to own revenue
+- More games → more wikis → more traffic → more ad inventory → more attractive to advertisers
+- External wikis (from legal APIs) attract players → developers discover Storyarn → convert to native wikis
 
-**Complexity:** Low — exposing existing structured data with a public layout.
+**Complexity:** Medium — RAG over structured data + tool-based API queries + chat UI + entity renderer + conversational ad integration + loading ad system + tier-based wiki config.
 
 ### B. Auto-Generated GDD
 
@@ -356,14 +727,14 @@ Each step links back to the character in Storyarn. The designer sees the full pi
 
 Share a link, testers play in exploration mode, Storyarn records everything:
 
-| Metric | Value |
-|---|---|
-| Narrative funnel | Of 100 testers, how many reached the end, where they dropped off |
-| Decision heatmap | What % chooses each dialogue response |
-| Time-per-node | Which dialogues are read fast (boring) vs re-read (confusing/interesting) |
-| Branch discovery | What % of content was seen by at least one tester |
-| Stuck detection | Where testers loop or give up |
-| Shareable reports | Designer generates a report and shares via link |
+| Metric            | Value                                                                     |
+|-------------------|---------------------------------------------------------------------------|
+| Narrative funnel  | Of 100 testers, how many reached the end, where they dropped off          |
+| Decision heatmap  | What % chooses each dialogue response                                     |
+| Time-per-node     | Which dialogues are read fast (boring) vs re-read (confusing/interesting) |
+| Branch discovery  | What % of content was seen by at least one tester                         |
+| Stuck detection   | Where testers loop or give up                                             |
+| Shareable reports | Designer generates a report and shares via link                           |
 
 **Implementation:** Log events during exploration mode (`INSERT` per interaction) + dashboard views.
 
@@ -395,15 +766,15 @@ Export as formatted scripts for recording sessions. Actors get full context with
 
 AI analyzes the entire project and detects:
 
-| Issue | Example |
-|---|---|
-| Plot holes | Character dies in branch A but appears in branch B |
-| Dead variables | Variables set but never read |
-| Unreachable content | Dialogues that no path leads to |
-| Missing references | Characters referenced that don't exist |
-| Tone inconsistency | Different writing styles between team members |
-| Broken conditions | Conditions referencing deleted variables |
-| Circular paths | Flow loops with no exit condition |
+| Issue               | Example                                            |
+|---------------------|----------------------------------------------------|
+| Plot holes          | Character dies in branch A but appears in branch B |
+| Dead variables      | Variables set but never read                       |
+| Unreachable content | Dialogues that no path leads to                    |
+| Missing references  | Characters referenced that don't exist             |
+| Tone inconsistency  | Different writing styles between team members      |
+| Broken conditions   | Conditions referencing deleted variables           |
+| Circular paths      | Flow loops with no exit condition                  |
 
 **Why this is a must-have:** Narrative designers spend weeks manually hunting inconsistencies. This alone justifies the subscription.
 
@@ -467,22 +838,22 @@ System:
 
 By name pattern:
 
-| Pattern | Inferred Type | Confidence |
-|---|---|---|
-| `has_*`, `is_*`, `can_*`, `was_*` | boolean | High |
-| `count_*`, `num_*`, `*_count`, `health`, `level`, `age` | number | Medium |
-| `name`, `title`, `description`, `*_text` | text | Medium |
-| Everything else | Unknown | Show modal |
+| Pattern                                                 | Inferred Type   | Confidence  |
+|---------------------------------------------------------|-----------------|-------------|
+| `has_*`, `is_*`, `can_*`, `was_*`                       | boolean         | High        |
+| `count_*`, `num_*`, `*_count`, `health`, `level`, `age` | number          | Medium      |
+| `name`, `title`, `description`, `*_text`                | text            | Medium      |
+| Everything else                                         | Unknown         | Show modal  |
 
 By usage context:
 
-| Context | Inferred Type |
-|---|---|
-| Compared with `true`/`false` | boolean |
-| Compared with a number | number |
-| Operator `greater_than`, `less_than` | number |
-| Operator `contains`, `starts_with` | text |
-| Operator `is_empty`, `is_nil` | Ambiguous — show modal |
+| Context                              | Inferred Type          |
+|--------------------------------------|------------------------|
+| Compared with `true`/`false`         | boolean                |
+| Compared with a number               | number                 |
+| Operator `greater_than`, `less_than` | number                 |
+| Operator `contains`, `starts_with`   | text                   |
+| Operator `is_empty`, `is_nil`        | Ambiguous — show modal |
 
 When both agree, create without asking. When they conflict or are ambiguous, show a quick one-click confirmation modal.
 
@@ -499,21 +870,21 @@ When both agree, create without asking. When they conflict or are ambiguous, sho
 
 **Where it applies:**
 
-| Context | What Gets Created | Example |
-|---|---|---|
-| Flow → dialogue speaker | Sheet (character) | `characters.elias` |
-| Flow → condition variable | Block on existing sheet | `elias.has_key` |
-| Flow → instruction variable | Block on existing sheet | `elias.gold` → number |
-| Scene → pin reference | Sheet | `items.magic-sword` |
-| Scene → zone trigger | Flow | `chapter1.tavern-dialogue` |
-| Condition → sheet reference | Full sheet | `factions.guild` |
+| Context                     | What Gets Created       | Example                    |
+|-----------------------------|-------------------------|----------------------------|
+| Flow → dialogue speaker     | Sheet (character)       | `characters.elias`         |
+| Flow → condition variable   | Block on existing sheet | `elias.has_key`            |
+| Flow → instruction variable | Block on existing sheet | `elias.gold` → number      |
+| Scene → pin reference       | Sheet                   | `items.magic-sword`        |
+| Scene → zone trigger        | Flow                    | `chapter1.tavern-dialogue` |
+| Condition → sheet reference | Full sheet              | `factions.guild`           |
 
 **Project settings toggle:**
 
-| Mode | Behavior | Target |
-|---|---|---|
-| **Creative** (default) | Create on reference active | Indies, rapid prototyping |
-| **Strict** | Only reference existing entities, autocomplete only | AAA, large teams |
+| Mode                   | Behavior                                            | Target                    |
+|------------------------|-----------------------------------------------------|---------------------------|
+| **Creative** (default) | Create on reference active                          | Indies, rapid prototyping |
+| **Strict**             | Only reference existing entities, autocomplete only | AAA, large teams          |
 
 **Technical implementation:**
 
@@ -541,12 +912,12 @@ JS side: extend existing search inputs (combobox/searchable select):
 
 **Assessment:**
 
-| Aspect | Rating |
-|---|---|
-| User value | **Very high** — eliminates constant friction |
-| Implementation complexity | **Medium** — parsing/creation is simple, fuzzy + confirmation UX is the complex part |
-| Risk | **Low with toggle** — enterprises disable it, indies enjoy it |
-| Competitive differentiator | **High** — articy has nothing like this |
+| Aspect                     | Rating                                                                               |
+|----------------------------|--------------------------------------------------------------------------------------|
+| User value                 | **Very high** — eliminates constant friction                                         |
+| Implementation complexity  | **Medium** — parsing/creation is simple, fuzzy + confirmation UX is the complex part |
+| Risk                       | **Low with toggle** — enterprises disable it, indies enjoy it                        |
+| Competitive differentiator | **High** — articy has nothing like this                                              |
 
 ### 8. Avatar Gallery — Multi-Avatar System for Sheets
 
@@ -589,15 +960,15 @@ Single view — click any image from grid to see full-size, with editable fields
 
 **Editing capabilities per mode:**
 
-| Action | Film Strip | Gallery Grid | Gallery Single |
-|---|---|---|---|
-| Add image | Yes | Yes | No |
-| Reorder | Drag | Drag | Arrows ← → |
-| Select default | Click | Click | Button |
-| Delete | Hover → X | Hover → X | Button |
-| Edit name | No | Click inline | Input field |
-| Edit notes/metadata | No | No | Yes |
-| View full size | No | No | Yes |
+| Action              | Film Strip   | Gallery Grid   | Gallery Single   |
+|---------------------|--------------|----------------|------------------|
+| Add image           | Yes          | Yes            | No               |
+| Reorder             | Drag         | Drag           | Arrows ← →       |
+| Select default      | Click        | Click          | Button           |
+| Delete              | Hover → X    | Hover → X      | Button           |
+| Edit name           | No           | Click inline   | Input field      |
+| Edit notes/metadata | No           | No             | Yes              |
+| View full size      | No           | No             | Yes              |
 
 **In dialogue nodes:**
 
@@ -632,25 +1003,44 @@ New table (not JSON field) for: queryability, DB-level ordering, clean schema mi
 
 **Assessment:**
 
-| Aspect | Rating |
-|---|---|
-| User value | **High** — standard industry need, every narrative game uses portraits |
-| Implementation complexity | **Medium** — new table, film strip component, gallery modal |
-| Risk | **Very low** — backwards compatible, optional feature |
+| Aspect                     | Rating                                                                       |
+|----------------------------|------------------------------------------------------------------------------|
+| User value                 | **High** — standard industry need, every narrative game uses portraits       |
+| Implementation complexity  | **Medium** — new table, film strip component, gallery modal                  |
+| Risk                       | **Very low** — backwards compatible, optional feature                        |
 | Competitive differentiator | **High** — articy's AlternatePortraits is clunky, no visual preview in flows |
 
 ---
 
 ## VI. Monetization Angles
 
-| Revenue Stream | Source |
-|---|---|
-| Subscriptions | Studios paying per-seat or per-workspace |
-| Wiki ads | Free-tier wikis with ad support |
+**Two products:**
+
+| Product | Revenue Model | Customers |
+|---|---|---|
+| **Storyarn Platform** | Subscriptions (per-seat or per-workspace) | Game designers, studios |
+| **Storyarn Wiki Ads** | Advertisers pay for conversational ad placements in wikis | Game publishers, brands |
+
+**Platform revenue streams:**
+
+| Revenue Stream        | Source                                                    |
+|-----------------------|-----------------------------------------------------------|
+| Subscriptions         | Studios paying per-seat or per-workspace                  |
+| Ads add-on            | Indies paying to own their wiki ad revenue                |
 | Mechanics marketplace | Community-created mechanic configurations (revenue share) |
-| AI usage | Token-based for generation features |
-| Engine plugins | Free (drives platform adoption) |
-| Enterprise | SSO, audit logs, dedicated support |
+| AI usage              | Token-based for generation features                       |
+| Engine plugins        | Free (drives platform adoption)                           |
+| Enterprise            | SSO, audit logs, dedicated support                        |
+
+**Wiki Ads revenue streams:**
+
+| Revenue Stream             | Source                                                              |
+|----------------------------|---------------------------------------------------------------------|
+| Free-tier wiki ads         | Conversational + loading ads on opt-in wikis → 100% to Storyarn     |
+| External wiki ads          | Ads on API-aggregated wikis → 100% to Storyarn                      |
+| Pro/Enterprise wiki ads    | Conversational + loading ads → developer gets majority, Storyarn takes % cut  |
+| Affiliate commissions      | Cold-start: GOG 6%, Humble 5-8%, GMG 0.5-5% on referred sales      |
+| Advertiser partnerships    | Game publishers paying for premium CPE placements in relevant wiki chats |
 
 ---
 
@@ -662,33 +1052,40 @@ PHASE 1 — Foundation (current)
   Exploration mode improvements
   First paying users
 
-PHASE 2 — Differentiation
+PHASE 2 — Wiki & Revenue
+  AI Wiki (conversational wiki + interactive guide)
+  Conversational ads with affiliate links (cold-start, zero advertiser dependency)
+  External wikis (scraped from open sources, builds traffic)
   Playtesting analytics
+  AI content generation
+
+PHASE 3 — Differentiation
   Consistency checker (AI)
   Export format definition
-  AI content generation
   Voice direction sheets
+  Branching visualizer
+  Avatar gallery
 
-PHASE 3 — Integration
+PHASE 4 — Integration
   External tool integrations (Linear, Jira, Trello)
   Auto-generated GDD
   Production pipeline (emerges from integrations)
-  Branching visualizer
-
-PHASE 4 — Platform
-  Public wikis (fandom-style)
-  Interactive maps
   Asset brief generator
-  Live collaboration in playtesting
 
-PHASE 5 — Engine Pipeline
+PHASE 5 — Platform Growth
+  Direct advertiser partnerships (with traffic data from phase 2)
+  Live collaboration in playtesting
+  Interactive maps
+  Create on reference
+
+PHASE 6 — Engine Pipeline
   Rust runtime
   Godot plugin (validates architecture)
   WASM web preview
   Unity plugin
   Configurable mechanics (first systems)
 
-PHASE 6 — Ecosystem
+PHASE 7 — Ecosystem
   Mechanics marketplace
   Unreal plugin
   Community features
