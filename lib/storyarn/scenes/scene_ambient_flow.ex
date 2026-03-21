@@ -99,16 +99,7 @@ defmodule Storyarn.Scenes.SceneAmbientFlow do
   end
 
   defp validate_on_event_config(changeset) do
-    ref = (get_field(changeset, :trigger_config) || %{})["variable_ref"]
-
-    if is_binary(ref) and ref != "" do
-      changeset
-    else
-      add_error(
-        changeset,
-        :trigger_config,
-        dgettext("scenes", "on_event trigger requires a variable reference")
-      )
-    end
+    # Allow empty variable_ref — user picks the trigger type first, then the variable
+    changeset
   end
 end

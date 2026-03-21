@@ -351,7 +351,10 @@ defmodule StoryarnWeb.SceneLive.Show do
               "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[480px]"
             ]}
           >
-            <div :if={@element_panel_open && @selected_element != nil} class="flex flex-col flex-1 min-h-0">
+            <div
+              :if={@element_panel_open && @selected_element != nil}
+              class="flex flex-col flex-1 min-h-0"
+            >
               <.scene_element_panel
                 selected_type={@selected_type}
                 selected_element={@selected_element}
@@ -1200,6 +1203,18 @@ defmodule StoryarnWeb.SceneLive.Show do
   # Property panel update handlers — delegate to ElementHandlers
   # ---------------------------------------------------------------------------
 
+  def handle_event("update_patrol_mode", %{"id" => mode}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      params = %{
+        "id" => socket.assigns.selected_element.id,
+        "field" => "patrol_mode",
+        "value" => mode
+      }
+
+      ElementHandlers.handle_update_pin(params, socket) |> broadcast_scene_change()
+    end)
+  end
+
   def handle_event("update_pin", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_pin(params, socket) |> broadcast_scene_change()
@@ -1415,6 +1430,39 @@ defmodule StoryarnWeb.SceneLive.Show do
     end)
   end
 
+  def handle_event("update_ambient_flow_priority", %{"id" => af_id, "value" => value}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      id = MapUtils.parse_int(af_id)
+
+      case Scenes.get_ambient_flow(socket.assigns.scene.id, id) do
+        nil ->
+          {:noreply, socket}
+
+        af ->
+          priority = MapUtils.parse_int(value) || 0
+
+          case Scenes.update_ambient_flow(af, %{"priority" => priority}) do
+            {:ok, _} -> {:noreply, reload_ambient_flows(socket)}
+            {:error, _} -> {:noreply, socket}
+          end
+      end
+    end)
+  end
+
+  def handle_event("select_ambient_variable_ref:" <> af_id, %{"id" => variable_ref}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      params = %{"id" => af_id, "trigger_type" => "on_event", "variable_ref" => variable_ref}
+      {:noreply, do_update_ambient_flow_trigger(socket, params)}
+    end)
+  end
+
+  def handle_event("select_ambient_trigger_type:" <> af_id, %{"id" => trigger_type}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      params = %{"id" => af_id, "trigger_type" => trigger_type}
+      {:noreply, do_update_ambient_flow_trigger(socket, params)}
+    end)
+  end
+
   def handle_event("update_ambient_flow_trigger", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       {:noreply, do_update_ambient_flow_trigger(socket, params)}
@@ -1551,7 +1599,6 @@ defmodule StoryarnWeb.SceneLive.Show do
       ElementHandlers.handle_delete_pin(params, socket) |> broadcast_scene_change()
     end)
   end
-
 
   # ---------------------------------------------------------------------------
   # Connection handlers — delegate to ElementHandlers
@@ -1813,8 +1860,7 @@ defmodule StoryarnWeb.SceneLive.Show do
            |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})}
 
         {:error, _} ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("scenes", "Could not update pin."))}
+          {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update pin."))}
       end
     end)
   end
@@ -1835,8 +1881,7 @@ defmodule StoryarnWeb.SceneLive.Show do
            |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})}
 
         {:error, _} ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("scenes", "Could not update pin."))}
+          {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update pin."))}
       end
     end)
   end
@@ -2181,7 +2226,10 @@ defmodule StoryarnWeb.SceneLive.Show do
         dgettext("scenes", "File is too large. Maximum size is 50 MB.")
 
       :not_accepted in errors ->
-        dgettext("scenes", "File type not supported. Please upload a JPEG, PNG, GIF, or WebP image.")
+        dgettext(
+          "scenes",
+          "File type not supported. Please upload a JPEG, PNG, GIF, or WebP image."
+        )
 
       true ->
         dgettext("scenes", "Could not upload file.")

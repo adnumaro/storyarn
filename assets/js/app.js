@@ -69,6 +69,7 @@ import { GallerySortable } from "./hooks/gallery_sortable";
 import { GalleryUpload } from "./hooks/gallery_upload";
 import { ImageGallery } from "./hooks/image_gallery";
 import { InstructionBuilder } from "./hooks/instruction_builder";
+import { PopoverSelect } from "./hooks/popover_select";
 import { ReferenceSelect } from "./hooks/reference_select";
 import { RightSidebar } from "./hooks/right_sidebar";
 import { SceneCanvas } from "./hooks/scene_canvas";
@@ -140,6 +141,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     FountainImport,
     SceneCanvas,
     CanvasToolbar,
+    PopoverSelect,
     ReferenceSelect,
     RightSidebar,
     ScrollCollapse,

@@ -10,6 +10,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
   use Gettext, backend: Storyarn.Gettext
 
   alias Phoenix.LiveView.JS
+  alias StoryarnWeb.Components.SearchableSelect
 
   import StoryarnWeb.Components.ConditionBuilder
   import StoryarnWeb.Components.ExpressionEditor
@@ -369,54 +370,16 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
         </label>
         <%!-- Patrol mode --%>
         <div class="mb-2">
-          <label class="block text-[10px] text-base-content/40 mb-0.5">
-            {dgettext("scenes", "Mode")}
-          </label>
-          <div
+          <.live_component
+            module={SearchableSelect}
             id={"pin-patrol-mode-#{@pin.id}"}
-            phx-hook="SearchableSelect"
-          >
-            <button
-              data-role="trigger"
-              type="button"
-              class="btn btn-ghost btn-sm w-full justify-between border border-base-300 bg-base-100 font-normal"
-              disabled={!@can_edit}
-            >
-              <span class="text-xs">{patrol_mode_label(@pin.patrol_mode)}</span>
-              <.icon name="chevron-down" class="size-3 shrink-0 opacity-50" />
-            </button>
-            <template data-role="popover-template">
-              <div data-role="list" class="p-1">
-                <button
-                  :for={
-                    {value, label} <- [
-                      {"none", dgettext("scenes", "None")},
-                      {"loop", dgettext("scenes", "Loop")},
-                      {"ping_pong", dgettext("scenes", "Ping-pong")},
-                      {"one_way", dgettext("scenes", "One-way")}
-                    ]
-                  }
-                  type="button"
-                  data-event="update_pin"
-                  data-params={
-                    Jason.encode!(%{
-                      "id" => @pin.id,
-                      "field" => "patrol_mode",
-                      "value" => value
-                    })
-                  }
-                  data-search-text={String.downcase(label)}
-                  class={[
-                    "flex w-full items-center rounded px-2 py-1.5 text-left text-xs hover:bg-base-content/10",
-                    (@pin.patrol_mode || "none") == value &&
-                      "bg-base-content/10 font-semibold text-primary"
-                  ]}
-                >
-                  {label}
-                </button>
-              </div>
-            </template>
-          </div>
+            options={patrol_mode_options()}
+            value={@pin.patrol_mode || "none"}
+            on_select="update_patrol_mode"
+            allow_none={false}
+            label={dgettext("scenes", "Mode")}
+            disabled={!@can_edit}
+          />
         </div>
         <%!-- Speed & Pause (only when patrol mode != none) --%>
         <div :if={(@pin.patrol_mode || "none") != "none"}>
@@ -701,8 +664,12 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
   defp panel_title("annotation"), do: dgettext("scenes", "Annotation Properties")
   defp panel_title(_), do: dgettext("scenes", "Properties")
 
-  defp patrol_mode_label("loop"), do: dgettext("scenes", "Loop")
-  defp patrol_mode_label("ping_pong"), do: dgettext("scenes", "Ping-pong")
-  defp patrol_mode_label("one_way"), do: dgettext("scenes", "One-way")
-  defp patrol_mode_label(_), do: dgettext("scenes", "None")
+  defp patrol_mode_options do
+    [
+      %{id: "none", name: dgettext("scenes", "None")},
+      %{id: "loop", name: dgettext("scenes", "Loop")},
+      %{id: "ping_pong", name: dgettext("scenes", "Ping-pong")},
+      %{id: "one_way", name: dgettext("scenes", "One-way")}
+    ]
+  end
 end

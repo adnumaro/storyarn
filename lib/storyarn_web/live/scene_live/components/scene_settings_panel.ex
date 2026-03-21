@@ -8,6 +8,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
   use Gettext, backend: Storyarn.Gettext
 
   alias Phoenix.LiveView.JS
+  alias StoryarnWeb.Components.SearchableSelect
 
   attr :scene, :map, required: true
   attr :can_edit, :boolean, required: true
@@ -244,37 +245,15 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
           </div>
           <%!-- Trigger config row --%>
           <div :if={@can_edit} class="flex items-center gap-1 pl-4">
-            <div
-              id={"ambient-trigger-type-#{af.id}"}
-              phx-hook="SearchableSelect"
-              class="flex-1 min-w-0"
-            >
-              <button
-                data-role="trigger"
-                type="button"
-                class="btn btn-ghost btn-xs w-full justify-between border border-base-300 bg-base-100 font-normal"
-              >
-                <span class="text-xs">{trigger_type_label(af.trigger_type)}</span>
-                <.icon name="chevron-down" class="size-3 shrink-0 opacity-50" />
-              </button>
-              <template data-role="popover-template">
-                <div data-role="list" class="p-1">
-                  <button
-                    :for={{label, value} <- trigger_type_options()}
-                    type="button"
-                    data-event="update_ambient_flow_trigger"
-                    data-params={Jason.encode!(%{"id" => af.id, "trigger_type" => value})}
-                    data-search-text={String.downcase(label)}
-                    class={[
-                      "flex w-full items-center rounded px-2 py-1.5 text-left text-xs hover:bg-base-content/10",
-                      af.trigger_type == value &&
-                        "bg-base-content/10 font-semibold text-primary"
-                    ]}
-                  >
-                    {label}
-                  </button>
-                </div>
-              </template>
+            <div class="flex-1 min-w-0">
+              <.live_component
+                module={SearchableSelect}
+                id={"ambient-trigger-type-#{af.id}"}
+                options={searchable_trigger_type_options()}
+                value={af.trigger_type}
+                on_select={"select_ambient_trigger_type:#{af.id}"}
+                allow_none={false}
+              />
             </div>
             <input
               :if={af.trigger_type == "timed"}
@@ -289,79 +268,20 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
               phx-value-trigger_type={af.trigger_type}
               title={dgettext("scenes", "Interval (ms)")}
             />
-            <div
-              :if={af.trigger_type == "on_event"}
-              id={"ambient-variable-ref-#{af.id}"}
-              phx-hook="SearchableSelect"
-              class="flex-1 min-w-0"
-            >
-              <button
-                data-role="trigger"
-                type="button"
-                class="btn btn-ghost btn-xs w-full justify-between border border-base-300 bg-base-100 font-normal"
+            <div :if={af.trigger_type == "on_event"} class="flex-1 min-w-0">
+              <.live_component
+                module={SearchableSelect}
+                id={"ambient-variable-ref-#{af.id}"}
+                options={variable_ref_options(@project_variables)}
+                value={af.trigger_config["variable_ref"]}
+                on_select={"select_ambient_variable_ref:#{af.id}"}
+                placeholder={dgettext("scenes", "Select variable...")}
+                search_placeholder={dgettext("scenes", "Search variables...")}
               >
-                <span class="text-xs truncate">
-                  {af.trigger_config["variable_ref"] || dgettext("scenes", "Select variable…")}
-                </span>
-                <.icon name="chevron-down" class="size-3 shrink-0 opacity-50" />
-              </button>
-              <template data-role="popover-template">
-                <div class="p-2 pb-1">
-                  <input
-                    data-role="search"
-                    type="text"
-                    placeholder={dgettext("scenes", "Search variables...")}
-                    class="input input-xs input-bordered w-full"
-                    autocomplete="off"
-                  />
-                </div>
-                <div data-role="list" class="max-h-48 overflow-y-auto p-1">
-                  <button
-                    type="button"
-                    data-event="update_ambient_flow_trigger"
-                    data-params={
-                      Jason.encode!(%{
-                        "id" => af.id,
-                        "trigger_type" => af.trigger_type,
-                        "variable_ref" => ""
-                      })
-                    }
-                    data-search-text=""
-                    class="flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs text-base-content/50 cursor-pointer hover:bg-base-content/10"
-                  >
-                    <.icon name="x" class="size-3" />
-                    {dgettext("scenes", "None")}
-                  </button>
-                  <button
-                    :for={v <- @project_variables}
-                    type="button"
-                    data-event="update_ambient_flow_trigger"
-                    data-params={
-                      Jason.encode!(%{
-                        "id" => af.id,
-                        "trigger_type" => af.trigger_type,
-                        "variable_ref" => "#{v.sheet_shortcut}.#{v.variable_name}"
-                      })
-                    }
-                    data-search-text={"#{String.downcase(v.sheet_shortcut)}.#{String.downcase(v.variable_name)}"}
-                    class={[
-                      "flex items-center w-full px-2 py-1.5 rounded text-xs cursor-pointer hover:bg-base-content/10 truncate",
-                      af.trigger_config["variable_ref"] ==
-                          "#{v.sheet_shortcut}.#{v.variable_name}" &&
-                        "font-semibold text-primary"
-                    ]}
-                  >
-                    <span class="text-base-content/50">{v.sheet_shortcut}.</span>{v.variable_name}
-                  </button>
-                </div>
-                <div
-                  data-role="empty"
-                  class="px-3 py-2 text-xs text-base-content/40 italic"
-                  style="display:none"
-                >
-                  {dgettext("scenes", "No matches")}
-                </div>
-              </template>
+                <:option :let={item}>
+                  <span class="text-base-content/50">{item.prefix}</span>{item.suffix}
+                </:option>
+              </.live_component>
             </div>
             <input
               type="number"
@@ -369,9 +289,8 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
               value={af.priority}
               min="0"
               class="input input-xs input-bordered w-12"
-              phx-blur="update_ambient_flow_trigger"
+              phx-blur="update_ambient_flow_priority"
               phx-value-id={af.id}
-              phx-value-trigger_type={af.trigger_type}
               title={dgettext("scenes", "Priority (higher = first)")}
               placeholder="0"
             />
@@ -453,13 +372,20 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
     Enum.reject(project_flows, &MapSet.member?(linked_ids, &1.id))
   end
 
-  defp trigger_type_options do
+  defp searchable_trigger_type_options do
     [
-      {dgettext("scenes", "On Enter"), "on_enter"},
-      {dgettext("scenes", "Timed"), "timed"},
-      {dgettext("scenes", "On Event"), "on_event"},
-      {dgettext("scenes", "One Shot"), "one_shot"}
+      %{id: "on_enter", name: dgettext("scenes", "On Enter")},
+      %{id: "timed", name: dgettext("scenes", "Timed")},
+      %{id: "on_event", name: dgettext("scenes", "On Event")},
+      %{id: "one_shot", name: dgettext("scenes", "One Shot")}
     ]
+  end
+
+  defp variable_ref_options(variables) do
+    Enum.map(variables, fn v ->
+      ref = "#{v.sheet_shortcut}.#{v.variable_name}"
+      %{id: ref, name: ref, prefix: "#{v.sheet_shortcut}.", suffix: v.variable_name}
+    end)
   end
 
   defp trigger_type_label("on_enter"), do: dgettext("scenes", "On Enter")
