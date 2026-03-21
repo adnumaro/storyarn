@@ -43,6 +43,7 @@ import { BannerUpload } from "./hooks/banner_upload";
 import { BlockKeyboard } from "./hooks/block_keyboard";
 import { BlockMenu } from "./hooks/block_menu";
 import { BlockSelect } from "./hooks/block_select";
+import { SaveStatus } from "./hooks/save_status";
 import { CanvasDropZone } from "./hooks/canvas_drop_zone";
 import { CanvasToolbar } from "./hooks/canvas_toolbar";
 import { ColorPicker } from "./hooks/color_picker";
@@ -114,6 +115,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     BlockKeyboard,
     BlockMenu,
     BlockSelect,
+    SaveStatus,
     ColumnSortable,
     EditableBlockLabel,
     EditableShortcut,

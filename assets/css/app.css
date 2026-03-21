@@ -379,6 +379,14 @@ body.dnd-active [data-toolbar] {
   touch-action: none;
 }
 
+/* Block rendering containment — isolates reflow per block so browser
+   doesn't recalculate styles for all 1700+ elements on a single block change.
+   Note: using layout+style only (NOT paint) to avoid clipping DaisyUI dropdowns. */
+.block-wrapper,
+.column-group {
+  contain: layout style;
+}
+
 /* Side columns in block-wrapper: visual padding */
 .column-dropzone {
   min-height: 1rem;

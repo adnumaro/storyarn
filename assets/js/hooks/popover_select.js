@@ -60,15 +60,12 @@ export const PopoverSelect = {
 
     this.mode = this.el.dataset.mode || "single";
     this.searchMode = this.el.dataset.searchMode || "client";
+    this._matchWidth = this.el.hasAttribute("data-match-trigger-width");
 
-    const matchWidth = this.el.hasAttribute("data-match-trigger-width");
-    const width = matchWidth
-      ? `${Math.max(Math.round(this.trigger.getBoundingClientRect().width), 224)}px`
-      : "14rem";
-
+    // Defer getBoundingClientRect() to open time — avoids forced reflow during mount
     this._fp = createFloatingPopover(this.trigger, {
       class: "bg-base-100 border border-base-content/20 rounded-lg shadow-lg",
-      width,
+      width: "14rem",
     });
 
     this._loading = false;
@@ -95,6 +92,12 @@ export const PopoverSelect = {
   _syncContent() {
     const source = this.el.querySelector('[data-role="popover-source"]');
     if (!source || !this._fp) return;
+
+    // Skip expensive DOM cloning if the popover is closed — sync on next open
+    if (!this._fp.isOpen) {
+      this._stale = true;
+      return;
+    }
 
     const prevScroll = this.list?.scrollTop || 0;
     const wasOpen = this._fp.isOpen;
@@ -139,6 +142,18 @@ export const PopoverSelect = {
   },
 
   _onOpen() {
+    // Sync content if it was deferred while popover was closed
+    if (this._stale) {
+      this._stale = false;
+      this._syncContent();
+    }
+
+    // Measure trigger width on demand (deferred from mount to avoid forced reflow)
+    if (this._matchWidth && this._fp) {
+      const width = `${Math.max(Math.round(this.trigger.getBoundingClientRect().width), 224)}px`;
+      this._fp.el.style.width = width;
+    }
+
     this._prevSearch = "";
     if (this.search) {
       this.search.value = "";
@@ -193,6 +208,13 @@ export const PopoverSelect = {
           }
           this._pushSelect(payload);
           if (this.mode === "single") {
+            // Optimistic UI: update trigger text immediately without waiting for server
+            const label = option.textContent.trim();
+            const triggerText = this.trigger?.querySelector("span");
+            if (triggerText && label) {
+              triggerText.textContent = label;
+              triggerText.classList.remove("opacity-50");
+            }
             requestAnimationFrame(() => this._fp.close());
           }
           return;

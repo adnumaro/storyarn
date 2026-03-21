@@ -6,7 +6,6 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   import StoryarnWeb.Components.SheetComponents
-  import StoryarnWeb.Components.SaveIndicator
   import StoryarnWeb.Helpers.SaveStatusTimer
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
@@ -48,8 +47,9 @@ defmodule StoryarnWeb.SheetLive.Show do
         <div
           id="sheet-undo-redo"
           phx-hook="UndoRedo"
-          class="w-full max-w-[950px] mx-auto bg-base-200 dark:bg-base-content/[0.07] rounded-[20px] p-5 min-h-full"
+          class="relative w-full max-w-[950px] mx-auto bg-base-200 dark:bg-base-content/[0.07] rounded-[20px] p-5 min-h-full"
         >
+          <div id="save-indicator-compact" phx-hook="SaveStatus" data-saved-label={gettext("Saved")} data-saving-label={gettext("Saving...")} class="absolute top-2 right-2 z-10"></div>
           <.live_component
             module={Banner}
             id="sheet-banner"
@@ -255,7 +255,7 @@ defmodule StoryarnWeb.SheetLive.Show do
                 <.icon name="git-branch" class="size-3.5" />
                 <span>{dgettext("drafts", "Draft")}</span>
               </button>
-              <.save_indicator status={@save_status} variant={:floating} />
+              <div id="save-indicator" phx-hook="SaveStatus" data-saved-label={gettext("Saved")} data-saving-label={gettext("Saving...")} class="absolute top-2 right-0 z-10"></div>
             </div>
           </div>
 
@@ -396,6 +396,7 @@ defmodule StoryarnWeb.SheetLive.Show do
          |> assign(:can_edit, can_edit)
          |> assign(:restoration_banner, restoration_banner)
          |> assign(:save_status, :idle)
+         |> push_event("save_status", %{status: "idle"})
          |> assign(:current_tab, "content")
          |> assign(:pending_delete_id, nil)
          |> assign(:online_users, [])
@@ -472,6 +473,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       |> assign(:ancestors, [])
       |> assign(:current_tab, "content")
       |> assign(:save_status, :idle)
+      |> push_event("save_status", %{status: "idle"})
       |> assign(:children, [])
       |> assign(:blocks, [])
       |> assign(:project_variables, [])
@@ -529,6 +531,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         |> assign(:ancestors, ancestors)
         |> assign(:current_tab, "content")
         |> assign(:save_status, :idle)
+        |> push_event("save_status", %{status: "idle"})
         |> assign(:children, [])
         |> assign(:blocks, [])
         |> assign(:project_variables, [])
@@ -802,6 +805,7 @@ defmodule StoryarnWeb.SheetLive.Show do
     {:noreply,
      socket
      |> assign(:save_status, :idle)
+     |> push_event("save_status", %{status: "idle"})
      |> DraftTouchTimer.schedule_touch()}
   end
 
@@ -947,7 +951,13 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   def handle_info({:remote_change, action, payload}, socket) do
-    handle_sheet_remote_change(action, payload, socket)
+    # Skip echo from own changes (broadcast_from should prevent this but doesn't
+    # reliably in all subscription paths — guard by user_id as safety net)
+    if payload[:user_id] == socket.assigns.current_scope.user.id do
+      {:noreply, socket}
+    else
+      handle_sheet_remote_change(action, payload, socket)
+    end
   end
 
   def handle_info(:clear_collab_toast, socket) do

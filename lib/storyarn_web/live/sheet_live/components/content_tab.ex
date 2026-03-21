@@ -69,7 +69,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
       <%!-- Sortable own-block list (full-width and column groups) --%>
       <.blocks_container
-        layout_items={@layout_items}
+        layout_items_stream={@streams.layout_items}
         can_edit={@can_edit}
         editing_block_id={@editing_block_id}
         selected_block_id={@selected_block_id}
@@ -136,6 +136,11 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
   @impl true
   def update(assigns, socket) do
+    # Detect if blocks need reloading: first mount or sheet changed
+    prev_sheet_id = get_in(socket.assigns, [:sheet, Access.key(:id)])
+    new_sheet_id = get_in(assigns, [:sheet, Access.key(:id)])
+    needs_block_reload? = prev_sheet_id != new_sheet_id
+
     socket =
       socket
       |> assign(assigns)
@@ -147,49 +152,14 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       |> assign_new(:formula_editing, fn -> nil end)
       |> assign_new(:project_variables, fn -> [] end)
 
-    # Split blocks into inherited and own groups using optimized batch query
-    {inherited_groups, own_blocks} =
-      Sheets.get_sheet_blocks_grouped(socket.assigns.sheet.id)
-
-    # Enrich blocks with reference_target for reference-type blocks
-    project_id = socket.assigns.project.id
-
-    inherited_groups =
-      Enum.map(inherited_groups, fn group ->
-        %{group | blocks: ContentTabHelpers.enrich_with_references(group.blocks, project_id)}
-      end)
-
-    own_blocks = ContentTabHelpers.enrich_with_references(own_blocks, project_id)
-
-    # Annotate blocks with :is_referenced for variable_name editability
-    referenced_ids =
-      ContentTabHelpers.compute_referenced_block_ids(own_blocks, inherited_groups)
-
-    own_blocks = ContentTabHelpers.enrich_with_referenced_status(own_blocks, referenced_ids)
-
-    inherited_groups =
-      Enum.map(inherited_groups, fn group ->
-        %{
-          group
-          | blocks: ContentTabHelpers.enrich_with_referenced_status(group.blocks, referenced_ids)
-        }
-      end)
-
-    layout_items = ContentTabHelpers.group_blocks_for_layout(own_blocks)
-
-    # Batch-load table data for all table blocks (own + inherited)
-    table_data = load_table_data(own_blocks, inherited_groups, project_id)
-    gallery_data = load_gallery_data(own_blocks, inherited_groups)
-    reference_options = load_reference_options(table_data, project_id)
-
     socket =
-      socket
-      |> assign(:inherited_groups, inherited_groups)
-      |> assign(:own_blocks, own_blocks)
-      |> assign(:layout_items, layout_items)
-      |> assign(:table_data, table_data)
-      |> assign(:gallery_data, gallery_data)
-      |> assign(:reference_options, reference_options)
+      if needs_block_reload? do
+        socket
+        |> stream_configure(:layout_items, dom_id: &layout_item_dom_id/1)
+        |> reload_blocks()
+      else
+        socket
+      end
 
     {:ok, socket}
   end
@@ -223,6 +193,12 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   def handle_event("add_block", %{"type" => type}, socket) do
     Authorize.with_edit_authorization(socket, fn socket ->
       BlockCrudHandlers.handle_add_block(type, socket, content_helpers())
+    end)
+  end
+
+  def handle_event("select_block_value:" <> block_id, %{"id" => value}, socket) do
+    Authorize.with_edit_authorization(socket, fn socket ->
+      BlockCrudHandlers.handle_update_block_value(block_id, value, socket, content_helpers())
     end)
   end
 
@@ -283,12 +259,18 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     if socket.assigns.selected_block_id == id do
       {:noreply, socket}
     else
-      {:noreply, assign(socket, :selected_block_id, id)}
+      socket = stream_insert_block(socket, socket.assigns.selected_block_id)
+      socket = assign(socket, :selected_block_id, id)
+      socket = stream_insert_block(socket, id)
+      {:noreply, socket}
     end
   end
 
   def handle_event("deselect_block", _params, socket) do
-    {:noreply, assign(socket, :selected_block_id, nil)}
+    old_id = socket.assigns.selected_block_id
+    socket = assign(socket, :selected_block_id, nil)
+    socket = stream_insert_block(socket, old_id)
+    {:noreply, socket}
   end
 
   def handle_event("reorder", %{"ids" => ids, "group" => "blocks"}, socket) do
@@ -885,14 +867,16 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     prev_content = get_block_content(block_id_int, socket)
 
     case fun.() do
-      {:ok, _blocks} = result ->
+      {:ok, _blocks} ->
         new_content = get_block_content(block_id_int, socket)
 
         if prev_content != new_content do
           push_undo({:update_block_value, block_id_int, prev_content, new_content})
         end
 
-        handle_block_result(socket, result)
+        maybe_create_version(socket)
+        notify_parent(socket, :saved)
+        {:noreply, patch_block_value(socket, block_id_int, new_content)}
 
       error ->
         handle_block_result(socket, error)
@@ -903,6 +887,59 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     case Sheets.get_block_in_project(block_id, socket.assigns.project.id) do
       nil -> nil
       block -> get_in(block.value, ["content"])
+    end
+  end
+
+  defp patch_block_value(socket, block_id, value) do
+    block_id = ContentTabHelpers.to_integer(block_id)
+
+    update_value = fn block ->
+      if block.id == block_id do
+        %{block | value: Map.put(block.value || %{}, "content", value)}
+      else
+        block
+      end
+    end
+
+    own_blocks = Enum.map(socket.assigns.own_blocks, update_value)
+
+    layout_items =
+      Enum.map(socket.assigns.layout_items, fn
+        %{type: :column_group, blocks: blocks} = item ->
+          %{item | blocks: Enum.map(blocks, update_value)}
+
+        %{type: :full_width, block: block} = item ->
+          %{item | block: update_value.(block)}
+      end)
+
+    # Only rebuild inherited_groups if the changed block is actually inherited
+    {inherited_groups, inherited_changed?} =
+      if Enum.any?(socket.assigns.inherited_groups, fn group ->
+           Enum.any?(group.blocks, &(&1.id == block_id))
+         end) do
+        {Enum.map(socket.assigns.inherited_groups, fn group ->
+           %{group | blocks: Enum.map(group.blocks, update_value)}
+         end), true}
+      else
+        {socket.assigns.inherited_groups, false}
+      end
+
+    # Stream-insert only the affected layout item (surgical DOM update)
+    socket =
+      case find_layout_item_for_block(layout_items, block_id) do
+        nil -> socket
+        item -> stream_insert(socket, :layout_items, item)
+      end
+
+    socket =
+      socket
+      |> assign(:own_blocks, own_blocks)
+      |> assign(:layout_items, layout_items)
+
+    if inherited_changed? do
+      assign(socket, :inherited_groups, inherited_groups)
+    else
+      socket
     end
   end
 
@@ -918,6 +955,21 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       end)
 
     own_blocks = ContentTabHelpers.enrich_with_references(own_blocks, project_id)
+
+    # Annotate blocks with :is_referenced for variable_name editability
+    referenced_ids =
+      ContentTabHelpers.compute_referenced_block_ids(own_blocks, inherited_groups)
+
+    own_blocks = ContentTabHelpers.enrich_with_referenced_status(own_blocks, referenced_ids)
+
+    inherited_groups =
+      Enum.map(inherited_groups, fn group ->
+        %{
+          group
+          | blocks: ContentTabHelpers.enrich_with_referenced_status(group.blocks, referenced_ids)
+        }
+      end)
+
     layout_items = ContentTabHelpers.group_blocks_for_layout(own_blocks)
 
     # Batch-load table data for all table blocks (own + inherited)
@@ -932,12 +984,13 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
     |> assign(:table_data, table_data)
     |> assign(:gallery_data, gallery_data)
     |> assign(:reference_options, reference_options)
+    |> stream(:layout_items, layout_items, reset: true)
   end
 
   defp maybe_create_version(socket) do
     sheet = socket.assigns.sheet
     user_id = socket.assigns.current_user_id
-    Sheets.maybe_create_version(sheet, user_id)
+    Task.start(fn -> Sheets.maybe_create_version(sheet, user_id) end)
   end
 
   defp notify_parent(_socket, status) do
@@ -946,6 +999,27 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
 
   defp push_undo(action) do
     send(self(), {:content_tab, :push_undo, action})
+  end
+
+  # Stream helpers for layout_items
+
+  defp layout_item_dom_id(%{type: :full_width, block: block}), do: "blocks-fw-#{block.id}"
+  defp layout_item_dom_id(%{type: :column_group, group_id: gid}), do: "blocks-cg-#{gid}"
+
+  defp find_layout_item_for_block(layout_items, block_id) do
+    Enum.find(layout_items, fn
+      %{type: :full_width, block: block} -> block.id == block_id
+      %{type: :column_group, blocks: blocks} -> Enum.any?(blocks, &(&1.id == block_id))
+    end)
+  end
+
+  defp stream_insert_block(socket, nil), do: socket
+
+  defp stream_insert_block(socket, block_id) do
+    case find_layout_item_for_block(socket.assigns.layout_items, block_id) do
+      nil -> socket
+      item -> stream_insert(socket, :layout_items, item)
+    end
   end
 
   # Builds the helpers map required by InheritanceHandlers.
@@ -1082,6 +1156,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   defp content_helpers do
     %{
       reload_blocks: &reload_blocks/1,
+      patch_block_value: &patch_block_value/3,
       maybe_create_version: &maybe_create_version/1,
       notify_parent: &notify_parent/2,
       push_undo: &push_undo/1

@@ -17,6 +17,7 @@ defmodule StoryarnWeb.Helpers.SaveStatusTimer do
   def mark_saved(socket) do
     socket
     |> Phoenix.Component.assign(:save_status, :saved)
+    |> Phoenix.LiveView.push_event("save_status", %{status: "saved"})
     |> schedule_reset()
   end
 end

@@ -42,16 +42,26 @@ defmodule StoryarnWeb.Components.BlockComponents do
   attr :can_edit, :boolean, default: false
   attr :editing_block_id, :any, default: nil
   attr :selected_block_id, :any, default: nil
+  attr :is_editing, :boolean, default: nil
+  attr :is_selected, :boolean, default: nil
   attr :target, :any, default: nil
   attr :component_id, :string, default: nil
-  attr :table_data, :map, default: %{}
-  attr :gallery_data, :map, default: %{}
+  attr :table_data, :any, default: nil
+  attr :gallery_data, :any, default: nil
   attr :reference_options, :list, default: []
 
   def block_component(assigns) do
-    is_editing = assigns.editing_block_id == assigns.block.id
+    is_editing =
+      if is_boolean(assigns.is_editing),
+        do: assigns.is_editing,
+        else: assigns.editing_block_id == assigns.block.id
+
     is_inherited = assigns.block.inherited_from_block_id != nil
-    is_selected = assigns.selected_block_id == assigns.block.id
+
+    is_selected =
+      if is_boolean(assigns.is_selected),
+        do: assigns.is_selected,
+        else: assigns.selected_block_id == assigns.block.id
 
     assigns =
       assign(assigns,
@@ -156,8 +166,8 @@ defmodule StoryarnWeb.Components.BlockComponents do
               block={@block}
               can_edit={@can_edit}
               schema_locked={@is_inherited && !@block.detached}
-              columns={@table_data[@block.id][:columns] || []}
-              rows={@table_data[@block.id][:rows] || []}
+              columns={get_table_field(@table_data, @block.id, :columns)}
+              rows={get_table_field(@table_data, @block.id, :rows)}
               reference_options={@reference_options}
               target={@target}
             />
@@ -165,7 +175,7 @@ defmodule StoryarnWeb.Components.BlockComponents do
             <.gallery_block
               block={@block}
               can_edit={@can_edit}
-              gallery_images={@gallery_data[@block.id] || []}
+              gallery_images={get_gallery_images(@gallery_data, @block.id)}
               target={@target}
               component_id={@component_id}
             />
@@ -176,4 +186,14 @@ defmodule StoryarnWeb.Components.BlockComponents do
     </div>
     """
   end
+
+  # Per-block data: value is already the block's data (map or nil)
+  # Full map compat: value is %{block_id => %{columns: ..., rows: ...}}
+  defp get_table_field(nil, _block_id, _field), do: []
+  defp get_table_field(%{columns: _} = data, _block_id, field), do: data[field] || []
+  defp get_table_field(%{} = map, block_id, field), do: (map[block_id] || %{})[field] || []
+
+  defp get_gallery_images(nil, _block_id), do: []
+  defp get_gallery_images(images, _block_id) when is_list(images), do: images
+  defp get_gallery_images(%{} = map, block_id), do: map[block_id] || []
 end

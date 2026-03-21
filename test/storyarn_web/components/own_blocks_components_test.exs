@@ -130,7 +130,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponentsTest do
     test "renders container with sortable hook when can_edit is true" do
       html =
         render_component(&OwnBlocksComponents.blocks_container/1,
-          layout_items: [],
+          layout_items_stream: [],
           can_edit: true,
           editing_block_id: nil,
           target: nil,
@@ -148,7 +148,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponentsTest do
     test "renders container without sortable hook when can_edit is false" do
       html =
         render_component(&OwnBlocksComponents.blocks_container/1,
-          layout_items: [],
+          layout_items_stream: [],
           can_edit: false,
           editing_block_id: nil,
           target: nil,
@@ -164,7 +164,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponentsTest do
     test "renders container with correct phx-target reference" do
       html =
         render_component(&OwnBlocksComponents.blocks_container/1,
-          layout_items: [],
+          layout_items_stream: [],
           can_edit: true,
           editing_block_id: nil,
           target: nil,

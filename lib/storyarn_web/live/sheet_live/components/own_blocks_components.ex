@@ -4,7 +4,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
 
   Provides:
   - `own_properties_label/1`  - "Own Properties" divider shown when inherited blocks exist
-  - `blocks_container/1`      - sortable container for full-width and column-group blocks
+  - `blocks_container/1`      - sortable container for full-width and column-group blocks (stream-based)
   - `add_block_prompt/1`      - "Type / to add a block" button + block-type menu
   """
 
@@ -37,7 +37,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
   # blocks_container/1
   # ---------------------------------------------------------------------------
 
-  attr :layout_items, :list, required: true
+  attr :layout_items_stream, :any, required: true
   attr :can_edit, :boolean, required: true
   attr :editing_block_id, :any, default: nil
   attr :selected_block_id, :any, default: nil
@@ -52,80 +52,90 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
     <div
       id="blocks-container"
       class="flex flex-col gap-1 -mx-2 sm:-mx-8 md:-mx-16 -mt-2"
+      phx-update="stream"
       phx-hook={if @can_edit, do: "ColumnSortable", else: nil}
       phx-target={@target}
       data-phx-target={"##{@component_id}"}
       data-group="blocks"
       data-handle=".drag-handle"
     >
-      <%= for item <- @layout_items do %>
+      <div
+        :for={{dom_id, item} <- @layout_items_stream}
+        id={dom_id}
+        class={layout_item_class(item)}
+        {layout_item_data(item)}
+      >
         <%= case item.type do %>
           <% :full_width -> %>
-            <div class="block-wrapper flex" data-block-id={item.block.id}>
-              <div
-                class="column-dropzone w-8 shrink-0 pr-2 sm:pr-8 md:pr-16"
-                data-dropzone="left"
-                data-target-block={item.block.id}
-              >
-              </div>
-              <div
-                class="group relative w-full min-w-0 pt-2"
-                id={"block-#{item.block.id}"}
-                data-id={item.block.id}
-                data-block-type={item.block.type}
-              >
-                <.block_component
-                  block={item.block}
-                  can_edit={@can_edit}
-                  editing_block_id={@editing_block_id}
-                  selected_block_id={@selected_block_id}
-                  target={@target}
-                  component_id={@component_id}
-                  table_data={@table_data}
-                  gallery_data={@gallery_data}
-                  reference_options={@reference_options}
-                />
-              </div>
-              <div
-                class="column-dropzone w-8 shrink-0 pl-2 sm:pl-8 md:pl-16"
-                data-dropzone="right"
-                data-target-block={item.block.id}
-              >
-              </div>
+            <div
+              class="column-dropzone w-8 shrink-0 pr-2 sm:pr-8 md:pr-16"
+              data-dropzone="left"
+              data-target-block={item.block.id}
+            >
+            </div>
+            <div
+              class="group relative w-full min-w-0 pt-2"
+              id={"block-#{item.block.id}"}
+              data-id={item.block.id}
+              data-block-type={item.block.type}
+            >
+              <.block_component
+                block={item.block}
+                can_edit={@can_edit}
+                editing_block_id={@editing_block_id}
+                selected_block_id={@selected_block_id}
+                target={@target}
+                component_id={@component_id}
+                table_data={@table_data}
+                gallery_data={@gallery_data}
+                reference_options={@reference_options}
+              />
+            </div>
+            <div
+              class="column-dropzone w-8 shrink-0 pl-2 sm:pl-8 md:pl-16"
+              data-dropzone="right"
+              data-target-block={item.block.id}
+            >
             </div>
           <% :column_group -> %>
             <div
-              class={[
-                "column-group grid gap-3 px-2 sm:px-8 md:px-16",
-                ContentTabHelpers.column_grid_class(item.column_count)
-              ]}
+              :for={block <- item.blocks}
+              class="column-item group relative w-full pt-2"
+              id={"block-#{block.id}"}
+              data-id={block.id}
               data-column-group={item.group_id}
+              data-column-index={block.column_index}
             >
-              <div
-                :for={block <- item.blocks}
-                class="column-item group relative w-full pt-2"
-                id={"block-#{block.id}"}
-                data-id={block.id}
-                data-column-group={item.group_id}
-                data-column-index={block.column_index}
-              >
-                <.block_component
-                  block={block}
-                  can_edit={@can_edit}
-                  editing_block_id={@editing_block_id}
-                  selected_block_id={@selected_block_id}
-                  target={@target}
-                  component_id={@component_id}
-                  table_data={@table_data}
-                  gallery_data={@gallery_data}
-                  reference_options={@reference_options}
-                />
-              </div>
+              <.block_component
+                block={block}
+                can_edit={@can_edit}
+                editing_block_id={@editing_block_id}
+                selected_block_id={@selected_block_id}
+                target={@target}
+                component_id={@component_id}
+                table_data={@table_data}
+                gallery_data={@gallery_data}
+                reference_options={@reference_options}
+              />
             </div>
         <% end %>
-      <% end %>
+      </div>
     </div>
     """
+  end
+
+  defp layout_item_class(%{type: :full_width}), do: "block-wrapper flex"
+
+  defp layout_item_class(%{type: :column_group, column_count: count}) do
+    "column-group grid gap-3 px-2 sm:px-8 md:px-16 #{ContentTabHelpers.column_grid_class(count)}"
+  end
+
+  defp layout_item_data(%{type: :full_width, block: block}) do
+    %{"data-block-id" => block.id}
+  end
+
+  defp layout_item_data(%{type: :column_group, group_id: group_id}) do
+    %{"data-column-group" => group_id}
   end
 
   # ---------------------------------------------------------------------------

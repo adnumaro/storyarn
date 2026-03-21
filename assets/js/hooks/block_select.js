@@ -33,16 +33,19 @@ export const BlockSelect = {
   },
 
   updated() {
-    const wasOpen = this._fp?.isOpen;
+    // Skip expensive destroy+recreate if popover is closed — rebuild on next open
+    if (!this._fp?.isOpen) {
+      this._stale = true;
+      return;
+    }
+
     const prevSearch = this.search?.value || "";
     this._destroyPopover();
     this.setup();
-    if (wasOpen) {
-      this._fp.open();
-      if (this.search) {
-        this.search.value = prevSearch;
-        this.filter();
-      }
+    this._fp.open();
+    if (this.search) {
+      this.search.value = prevSearch;
+      this.filter();
     }
   },
 
@@ -54,15 +57,20 @@ export const BlockSelect = {
 
     if (!this.trigger || !this.template) return;
 
-    const width = Math.round(this.trigger.getBoundingClientRect().width);
-
+    // Defer getBoundingClientRect() to open time — avoids forced reflow during mount
     this._fp = createFloatingPopover(this.trigger, {
       class: "bg-base-200 border border-base-content/20 rounded-lg shadow-lg",
-      width: `${Math.max(width, 224)}px`,
+      width: "14rem",
     });
+    this._needsWidthMeasure = true;
 
     const content = this.template.content.cloneNode(true);
     this._fp.el.appendChild(content);
+
+    // LiveView doesn't patch <template> content (DocumentFragment),
+    // so active-state classes baked into the template become stale.
+    // Re-apply based on data-selected (which IS patched as an attribute).
+    this._applyActiveState();
 
     this.search = this._fp.el.querySelector('[data-role="search"]');
     this.list = this._fp.el.querySelector('[data-role="list"]');
@@ -75,6 +83,14 @@ export const BlockSelect = {
       if (this._fp.isOpen) {
         this._fp.close();
       } else {
+        // Rebuild if content changed while closed
+        if (this._stale) {
+          this._stale = false;
+          const prevSearch = this.search?.value || "";
+          this._destroyPopover();
+          this.setup();
+          if (this.search) this.search.value = prevSearch;
+        }
         this._fp.open();
         this._onOpen();
       }
@@ -133,6 +149,13 @@ export const BlockSelect = {
   },
 
   _onOpen() {
+    // Measure trigger width on demand (deferred from setup to avoid forced reflow)
+    if (this._needsWidthMeasure && this._fp) {
+      const width = Math.round(this.trigger.getBoundingClientRect().width);
+      this._fp.el.style.width = `${Math.max(width, 224)}px`;
+      this._needsWidthMeasure = false;
+    }
+
     if (this.search) {
       this.search.value = "";
       this.filter();
@@ -164,6 +187,22 @@ export const BlockSelect = {
     if (this.empty) {
       this.empty.style.display = visible === 0 ? "" : "none";
     }
+  },
+
+  _applyActiveState() {
+    const selected = this.el.dataset.selected;
+    if (selected === undefined || !this._fp) return;
+
+    const activeClasses = (this.el.dataset.activeClass || "")
+      .split(" ")
+      .filter(Boolean);
+    if (!activeClasses.length) return;
+
+    const buttons = this._fp.el.querySelectorAll("[data-value]");
+    buttons.forEach((btn) => {
+      const isActive = btn.dataset.value === selected;
+      activeClasses.forEach((cls) => btn.classList.toggle(cls, isActive));
+    });
   },
 
   _destroyPopover() {
