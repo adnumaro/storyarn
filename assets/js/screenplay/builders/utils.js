@@ -2,6 +2,21 @@
  * Shared utilities for screenplay builders (condition, instruction, response).
  */
 
+import { MapPin, Pentagon } from "lucide";
+import { createIconHTML } from "../../flow_canvas/node_config.js";
+
+const PIN_ICON = createIconHTML(MapPin, { size: 12 });
+const ZONE_ICON = createIconHTML(Pentagon, { size: 12 });
+
+/**
+ * Returns icon HTML for a source type, or null for sheets.
+ */
+export function sourceTypeIconHtml(sourceType) {
+  if (sourceType === "pin") return PIN_ICON;
+  if (sourceType === "zone") return ZONE_ICON;
+  return null;
+}
+
 /**
  * Groups a flat variable list into sheets with their variables.
  *
@@ -17,6 +32,7 @@ export function groupVariablesBySheet(variables) {
       sheetMap.set(key, {
         shortcut: v.sheet_shortcut,
         name: v.sheet_name || v.sheet_shortcut,
+        source_type: v.source_type || "sheet",
         vars: [],
       });
     }

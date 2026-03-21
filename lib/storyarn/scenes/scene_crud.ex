@@ -947,6 +947,112 @@ defmodule Storyarn.Scenes.SceneCrud do
     |> Repo.update!()
   end
 
+  # =============================================================================
+  # Variable Queries (for condition/instruction builders)
+  # =============================================================================
+
+  @doc """
+  Lists pin boolean properties as variable descriptors.
+  For each pin with a shortcut, emits entries for: hidden, is_playable, is_leader.
+  """
+  def list_pin_variables(project_id) do
+    from(p in ScenePin,
+      join: s in Scene,
+      on: p.scene_id == s.id,
+      where:
+        s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id) and
+          not is_nil(p.shortcut),
+      select: %{
+        id: p.id,
+        shortcut: p.shortcut,
+        label: p.label,
+        hidden: p.hidden,
+        is_playable: p.is_playable,
+        is_leader: p.is_leader
+      }
+    )
+    |> Repo.all()
+    |> Enum.flat_map(&expand_pin_variables/1)
+  end
+
+  defp expand_pin_variables(pin) do
+    base = %{
+      source_type: "pin",
+      source_id: pin.id,
+      sheet_shortcut: pin.shortcut,
+      sheet_name: pin.label || pin.shortcut,
+      block_id: nil,
+      options: nil,
+      constraints: nil
+    }
+
+    [
+      Map.merge(base, %{
+        variable_name: "hidden",
+        block_type: "boolean",
+        value: %{"content" => pin.hidden}
+      }),
+      Map.merge(base, %{
+        variable_name: "is_playable",
+        block_type: "boolean",
+        value: %{"content" => pin.is_playable}
+      }),
+      Map.merge(base, %{
+        variable_name: "is_leader",
+        block_type: "boolean",
+        value: %{"content" => pin.is_leader}
+      })
+    ]
+  end
+
+  @doc """
+  Lists zone boolean properties as variable descriptors.
+  For each zone with a shortcut, emits entries for: hidden, is_walkable.
+  """
+  def list_zone_variables(project_id) do
+    from(z in SceneZone,
+      join: s in Scene,
+      on: z.scene_id == s.id,
+      where:
+        s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id) and
+          not is_nil(z.shortcut),
+      select: %{
+        id: z.id,
+        shortcut: z.shortcut,
+        name: z.name,
+        hidden: z.hidden,
+        is_walkable: z.is_walkable
+      }
+    )
+    |> Repo.all()
+    |> Enum.flat_map(&expand_zone_variables/1)
+  end
+
+  defp expand_zone_variables(zone) do
+    base = %{
+      source_type: "zone",
+      source_id: zone.id,
+      sheet_shortcut: zone.shortcut,
+      sheet_name: zone.name || zone.shortcut,
+      block_id: nil,
+      options: nil,
+      constraints: nil
+    }
+
+    [
+      Map.merge(base, %{
+        variable_name: "hidden",
+        block_type: "boolean",
+        value: %{"content" => zone.hidden}
+      }),
+      Map.merge(base, %{
+        variable_name: "is_walkable",
+        block_type: "boolean",
+        value: %{"content" => zone.is_walkable}
+      })
+    ]
+  end
+
   defp maybe_filter_export_ids(query, :all), do: query
 
   defp maybe_filter_export_ids(query, ids) when is_list(ids) do

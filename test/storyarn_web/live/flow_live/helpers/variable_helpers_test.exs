@@ -6,6 +6,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpersTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
   defp setup_project(_context \\ %{}) do
@@ -435,6 +436,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpersTest do
       assert var.sheet_shortcut == sheet.shortcut
       assert var.variable_name == "strength"
       assert Map.has_key?(var, :constraints)
+      assert var.source_type == "sheet"
+      assert var.source_id == nil
     end
   end
 
@@ -657,6 +660,109 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpersTest do
       {_key, var} = hd(Enum.to_list(result))
 
       refute Map.has_key?(var, :formula)
+    end
+  end
+
+  describe "build_variables/1 with pin/zone variables" do
+    test "coerces pin boolean values and sets correct metadata" do
+      %{project: project} = setup_project()
+      scene = scene_fixture(project)
+
+      _pin =
+        pin_fixture(scene, %{
+          "shortcut" => "guard.west",
+          "label" => "West Guard",
+          "hidden" => false,
+          "is_playable" => true,
+          "is_leader" => false
+        })
+
+      result = VariableHelpers.build_variables(project.id)
+
+      # Verify coerced values (not raw %{"content" => ...})
+      assert result["guard.west.hidden"].value == false
+      assert result["guard.west.is_playable"].value == true
+      assert result["guard.west.is_leader"].value == false
+
+      # Verify source metadata is set
+      assert result["guard.west.hidden"].source_type == "pin"
+      assert result["guard.west.hidden"].source == :initial
+      assert result["guard.west.hidden"].block_id == nil
+    end
+
+    test "coerces zone boolean values" do
+      %{project: project} = setup_project()
+      scene = scene_fixture(project)
+
+      _zone =
+        zone_fixture(scene, %{
+          "shortcut" => "tavern.door",
+          "name" => "Tavern Door",
+          "hidden" => false,
+          "is_walkable" => true
+        })
+
+      result = VariableHelpers.build_variables(project.id)
+
+      assert result["tavern.door.hidden"].value == false
+      assert result["tavern.door.is_walkable"].value == true
+      assert result["tavern.door.hidden"].source_type == "zone"
+    end
+
+    test "sheet, pin, and zone variables coexist in the same map" do
+      %{project: project} = setup_project()
+      sheet = sheet_fixture(project, %{name: "Hero"})
+
+      _block =
+        block_fixture(sheet, %{
+          type: "number",
+          config: %{"label" => "Health"},
+          value: %{"content" => "100"}
+        })
+
+      scene = scene_fixture(project)
+      _pin = pin_fixture(scene, %{"shortcut" => "npc.guard", "label" => "Guard"})
+      _zone = zone_fixture(scene, %{"shortcut" => "area.gate", "name" => "Gate"})
+
+      result = VariableHelpers.build_variables(project.id)
+
+      # Sheet variable
+      assert result["#{sheet.shortcut}.health"].source_type == "sheet"
+      assert result["#{sheet.shortcut}.health"].value == 100
+      # Pin variable
+      assert result["npc.guard.hidden"].source_type == "pin"
+      # Zone variable
+      assert result["area.gate.is_walkable"].source_type == "zone"
+    end
+
+    test "last source wins when shortcut collides between sheet and pin" do
+      %{project: project} = setup_project()
+
+      # Sheet with shortcut "guard" and variable "hidden"
+      sheet = sheet_fixture(project, %{name: "Guard", shortcut: "guard"})
+
+      _block =
+        block_fixture(sheet, %{
+          type: "boolean",
+          config: %{"label" => "Hidden"},
+          value: %{"content" => true}
+        })
+
+      # Pin also with shortcut "guard" — its "hidden" will collide
+      scene = scene_fixture(project)
+
+      _pin =
+        pin_fixture(scene, %{
+          "shortcut" => "guard",
+          "label" => "Guard Pin",
+          "hidden" => false
+        })
+
+      result = VariableHelpers.build_variables(project.id)
+
+      # Pin variables are appended after sheet variables, so pin wins
+      assert result["guard.hidden"].source_type == "pin"
+      assert result["guard.hidden"].value == false
     end
   end
 end

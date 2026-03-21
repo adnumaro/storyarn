@@ -306,6 +306,13 @@ export function createCombobox(opts) {
       optEl.className = "combobox-option";
       if (idx === highlightedIndex) optEl.classList.add("highlighted");
 
+      if (opt.iconHtml) {
+        const iconSpan = document.createElement("span");
+        iconSpan.className = "inline-flex items-center mr-1 opacity-60";
+        iconSpan.innerHTML = opt.iconHtml;
+        optEl.appendChild(iconSpan);
+      }
+
       const labelSpan = document.createElement("span");
       labelSpan.textContent = opt.label || opt.value;
       optEl.appendChild(labelSpan);

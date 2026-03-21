@@ -38,6 +38,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Helpers.NavigationHistory
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
   alias StoryarnWeb.FlowLive.Helpers.SocketHelpers
+  alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
   alias StoryarnWeb.FlowLive.Nodes.Condition
   alias StoryarnWeb.FlowLive.Nodes.Dialogue
   alias StoryarnWeb.FlowLive.Nodes.Exit, as: ExitNode
@@ -659,7 +660,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     socket =
       start_async(socket, :load_flow_data, fn ->
         full_flow = Flows.get_flow!(project.id, flow.id, include_drafts: is_draft)
-        project_variables = Sheets.list_project_variables(project.id)
+        project_variables = VariableHelpers.list_all_variables(project.id)
 
         %{
           flow: full_flow,
@@ -1546,7 +1547,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     # Reload full flow data after version restore
     %{project: project} = socket.assigns
     full_flow = Flows.get_flow!(project.id, updated_flow.id)
-    project_variables = Sheets.list_project_variables(project.id)
+    project_variables = VariableHelpers.list_all_variables(project.id)
     flow_data = Flows.serialize_for_canvas(full_flow, project_variables: project_variables)
 
     {:noreply,

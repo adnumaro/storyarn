@@ -1151,4 +1151,179 @@ defmodule Storyarn.Scenes.SceneCrudTest do
       assert Scene.deleted?(deleted_scene)
     end
   end
+
+  # =============================================================================
+  # list_pin_variables/1
+  # =============================================================================
+
+  describe "list_pin_variables/1" do
+    test "returns empty list when project has no pins" do
+      %{project: project} = create_project()
+      _scene = scene_fixture(project)
+
+      assert SceneCrud.list_pin_variables(project.id) == []
+    end
+
+    test "returns 3 boolean variables per pin with correct structure" do
+      %{project: project} = create_project()
+      scene = scene_fixture(project)
+
+      pin =
+        pin_fixture(scene, %{
+          "shortcut" => "guard.west",
+          "label" => "West Guard",
+          "hidden" => true,
+          "is_playable" => true,
+          "is_leader" => false
+        })
+
+      vars = SceneCrud.list_pin_variables(project.id)
+
+      assert length(vars) == 3
+
+      hidden_var = Enum.find(vars, &(&1.variable_name == "hidden"))
+      assert hidden_var.source_type == "pin"
+      assert hidden_var.source_id == pin.id
+      assert hidden_var.sheet_shortcut == "guard.west"
+      assert hidden_var.sheet_name == "West Guard"
+      assert hidden_var.block_type == "boolean"
+      assert hidden_var.value == %{"content" => true}
+      assert hidden_var.block_id == nil
+      assert hidden_var.options == nil
+      assert hidden_var.constraints == nil
+
+      playable_var = Enum.find(vars, &(&1.variable_name == "is_playable"))
+      assert playable_var.value == %{"content" => true}
+
+      leader_var = Enum.find(vars, &(&1.variable_name == "is_leader"))
+      assert leader_var.value == %{"content" => false}
+    end
+
+    test "uses shortcut as sheet_name when label is nil" do
+      %{project: project} = create_project()
+      scene = scene_fixture(project)
+
+      _pin =
+        pin_fixture(scene, %{
+          "shortcut" => "npc.ghost",
+          "label" => nil
+        })
+
+      vars = SceneCrud.list_pin_variables(project.id)
+      assert hd(vars).sheet_name == "npc.ghost"
+    end
+
+    test "aggregates pins from multiple scenes" do
+      %{project: project} = create_project()
+      scene1 = scene_fixture(project, %{name: "Forest"})
+      scene2 = scene_fixture(project, %{name: "Cave"})
+
+      pin_fixture(scene1, %{"shortcut" => "forest.npc", "label" => "Elf"})
+      pin_fixture(scene2, %{"shortcut" => "cave.npc", "label" => "Goblin"})
+
+      vars = SceneCrud.list_pin_variables(project.id)
+      shortcuts = vars |> Enum.map(& &1.sheet_shortcut) |> Enum.uniq()
+      assert Enum.sort(shortcuts) == ["cave.npc", "forest.npc"]
+    end
+
+    test "excludes pins from deleted scenes" do
+      %{project: project} = create_project()
+      scene = scene_fixture(project)
+
+      _pin =
+        pin_fixture(scene, %{
+          "shortcut" => "guard.east",
+          "label" => "East Guard"
+        })
+
+      {:ok, _} = Scenes.delete_scene(scene)
+
+      assert SceneCrud.list_pin_variables(project.id) == []
+    end
+
+    test "isolates variables to the given project" do
+      %{project: project1} = create_project()
+      %{project: project2} = create_project()
+
+      scene1 = scene_fixture(project1)
+      scene2 = scene_fixture(project2)
+
+      pin_fixture(scene1, %{"shortcut" => "p1.pin", "label" => "P1"})
+      pin_fixture(scene2, %{"shortcut" => "p2.pin", "label" => "P2"})
+
+      vars = SceneCrud.list_pin_variables(project1.id)
+      assert Enum.all?(vars, &(&1.sheet_shortcut == "p1.pin"))
+    end
+  end
+
+  # =============================================================================
+  # list_zone_variables/1
+  # =============================================================================
+
+  describe "list_zone_variables/1" do
+    test "returns empty list when project has no zones" do
+      %{project: project} = create_project()
+      _scene = scene_fixture(project)
+
+      assert SceneCrud.list_zone_variables(project.id) == []
+    end
+
+    test "returns 2 boolean variables per zone with correct structure" do
+      %{project: project} = create_project()
+      scene = scene_fixture(project)
+
+      zone =
+        zone_fixture(scene, %{
+          "shortcut" => "tavern.door",
+          "name" => "Tavern Door",
+          "hidden" => false,
+          "is_walkable" => true
+        })
+
+      vars = SceneCrud.list_zone_variables(project.id)
+
+      assert length(vars) == 2
+
+      hidden_var = Enum.find(vars, &(&1.variable_name == "hidden"))
+      assert hidden_var.source_type == "zone"
+      assert hidden_var.source_id == zone.id
+      assert hidden_var.sheet_shortcut == "tavern.door"
+      assert hidden_var.sheet_name == "Tavern Door"
+      assert hidden_var.block_type == "boolean"
+      assert hidden_var.value == %{"content" => false}
+      assert hidden_var.block_id == nil
+
+      walkable_var = Enum.find(vars, &(&1.variable_name == "is_walkable"))
+      assert walkable_var.value == %{"content" => true}
+    end
+
+    test "excludes zones from deleted scenes" do
+      %{project: project} = create_project()
+      scene = scene_fixture(project)
+
+      _zone =
+        zone_fixture(scene, %{
+          "shortcut" => "tavern.door",
+          "name" => "Tavern Door"
+        })
+
+      {:ok, _} = Scenes.delete_scene(scene)
+
+      assert SceneCrud.list_zone_variables(project.id) == []
+    end
+
+    test "isolates variables to the given project" do
+      %{project: project1} = create_project()
+      %{project: project2} = create_project()
+
+      scene1 = scene_fixture(project1)
+      scene2 = scene_fixture(project2)
+
+      zone_fixture(scene1, %{"shortcut" => "p1.zone", "name" => "Z1"})
+      zone_fixture(scene2, %{"shortcut" => "p2.zone", "name" => "Z2"})
+
+      vars = SceneCrud.list_zone_variables(project1.id)
+      assert Enum.all?(vars, &(&1.sheet_shortcut == "p1.zone"))
+    end
+  end
 end

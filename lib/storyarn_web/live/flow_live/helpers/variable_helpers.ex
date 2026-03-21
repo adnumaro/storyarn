@@ -1,12 +1,23 @@
 defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpers do
   @moduledoc false
 
+  alias Storyarn.Scenes
   alias Storyarn.Shared.FormulaRuntime
   alias Storyarn.Sheets
 
+  @doc """
+  Returns the flat list of all variable descriptors (sheets + pins + zones).
+  Used by LiveViews that pass variables to condition/instruction builders.
+  """
+  def list_all_variables(project_id) do
+    Sheets.list_project_variables(project_id) ++
+      Scenes.list_pin_variables(project_id) ++
+      Scenes.list_zone_variables(project_id)
+  end
+
   def build_variables(project_id) do
     variables =
-      Sheets.list_project_variables(project_id)
+      list_all_variables(project_id)
       |> Enum.reduce(%{}, fn var, acc ->
         key = "#{var.sheet_shortcut}.#{var.variable_name}"
         {initial, formula_meta} = extract_initial_and_formula(var, key)
@@ -20,7 +31,9 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpers do
           block_id: var.block_id,
           sheet_shortcut: var.sheet_shortcut,
           variable_name: var.variable_name,
-          constraints: var[:constraints]
+          constraints: var[:constraints],
+          source_type: var[:source_type] || "sheet",
+          source_id: var[:source_id]
         }
 
         entry = if formula_meta, do: Map.put(entry, :formula, formula_meta), else: entry

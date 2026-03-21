@@ -917,13 +917,21 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   defp apply_variable_update(socket, new_variables) do
     old_variables = socket.assigns.variables
-    zones = evaluate_elements(socket.assigns.scene.zones || [], new_variables)
-    pins = evaluate_elements(socket.assigns.scene.pins || [], new_variables)
+
+    # Apply pin/zone property mutations from variable changes (e.g. SET guard.hidden = true)
+    scene = socket.assigns.scene
+    scene_pins = apply_pin_variable_mutations(scene.pins || [], new_variables)
+    scene_zones = apply_zone_variable_mutations(scene.zones || [], new_variables)
+    scene = %{scene | pins: scene_pins, zones: scene_zones}
+
+    zones = evaluate_elements(scene_zones, new_variables)
+    pins = evaluate_elements(scene_pins, new_variables)
 
     display_vars =
       Map.new(new_variables, fn {ref, v} -> {ref, Flows.evaluator_format_value(v.value)} end)
 
     socket
+    |> assign(:scene, scene)
     |> assign(:variables, new_variables)
     |> assign(:zones, zones)
     |> assign(:pins, pins)
@@ -933,6 +941,38 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
       pins: Enum.map(pins, &%{id: &1.id, visibility: &1.visibility}),
       variables: display_vars
     })
+  end
+
+  defp apply_pin_variable_mutations(pins, variables) do
+    Enum.map(pins, fn pin ->
+      case pin.shortcut do
+        nil -> pin
+        shortcut -> apply_bool_mutations(pin, shortcut, variables, ~w(hidden is_playable is_leader))
+      end
+    end)
+  end
+
+  defp apply_zone_variable_mutations(zones, variables) do
+    Enum.map(zones, fn zone ->
+      case zone.shortcut do
+        nil -> zone
+        shortcut -> apply_bool_mutations(zone, shortcut, variables, ~w(hidden is_walkable))
+      end
+    end)
+  end
+
+  defp apply_bool_mutations(element, shortcut, variables, props) do
+    Enum.reduce(props, element, fn prop, el ->
+      key = "#{shortcut}.#{prop}"
+
+      case Map.get(variables, key) do
+        %{value: val} when is_boolean(val) ->
+          Map.put(el, String.to_existing_atom(prop), val)
+
+        _ ->
+          el
+      end
+    end)
   end
 
   # ===========================================================================

@@ -581,6 +581,12 @@ defmodule Storyarn.Scenes do
   @doc "Lists active scene IDs for a project."
   defdelegate list_active_scene_ids(project_id), to: SceneCrud
 
+  @doc "Lists pin boolean properties as variable descriptors for condition/instruction builders."
+  defdelegate list_pin_variables(project_id), to: SceneCrud
+
+  @doc "Lists zone boolean properties as variable descriptors for condition/instruction builders."
+  defdelegate list_zone_variables(project_id), to: SceneCrud
+
   @doc "Lists existing scene shortcuts for a project."
   defdelegate list_scene_shortcuts(project_id), to: SceneCrud, as: :list_shortcuts
 

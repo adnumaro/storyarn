@@ -27,6 +27,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias Storyarn.Projects
   alias Storyarn.Scenes
   alias Storyarn.Shared.MapUtils
+  alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
 
   alias StoryarnWeb.Components.Sidebar.SceneTree
@@ -975,7 +976,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         project_scenes: Scenes.list_scenes(project.id),
         project_sheets: Storyarn.Sheets.list_sheets_tree(project.id),
         project_flows: Storyarn.Flows.list_flows(project.id),
-        project_variables: Storyarn.Sheets.list_project_variables(project.id)
+        project_variables: VariableHelpers.list_all_variables(project.id)
       }
     end)
   end

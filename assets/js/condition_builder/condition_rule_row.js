@@ -15,6 +15,7 @@
 
 import { ArrowRight, createElement, X } from "lucide";
 import { createCombobox } from "../instruction_builder/combobox";
+import { sourceTypeIconHtml } from "../screenplay/builders/utils.js";
 import {
   OPERATOR_LABELS as DEFAULT_OPERATOR_LABELS,
   NO_VALUE_OPERATORS,
@@ -121,6 +122,7 @@ export function createConditionRuleRow(opts) {
         label: p.name,
         displayValue: p.shortcut,
         meta: p.shortcut,
+        iconHtml: sourceTypeIconHtml(p.source_type),
       })),
       value: currentRule.sheet || "",
       displayValue: currentRule.sheet || "",

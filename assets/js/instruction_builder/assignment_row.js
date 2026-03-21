@@ -8,6 +8,7 @@
  */
 
 import { createElement, TriangleAlert, X } from "lucide";
+import { sourceTypeIconHtml } from "../screenplay/builders/utils.js";
 import { createFloatingPopover } from "../utils/floating_popover";
 import { createCombobox } from "./combobox";
 import {
@@ -208,6 +209,7 @@ export function createAssignmentRow(opts) {
           label: p.name,
           displayValue: p.shortcut,
           meta: p.shortcut,
+          iconHtml: sourceTypeIconHtml(p.source_type),
         }));
       }
 
@@ -217,6 +219,7 @@ export function createAssignmentRow(opts) {
           label: p.name,
           displayValue: p.shortcut,
           meta: p.shortcut,
+          iconHtml: sourceTypeIconHtml(p.source_type),
         }));
 
       case "variable": {
