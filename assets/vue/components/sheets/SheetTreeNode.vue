@@ -1,11 +1,7 @@
 <script setup>
-import { ref, computed, watch } from "vue"
+import { ref, computed, watch, onMounted, onUnmounted, useTemplateRef } from "vue"
+import { makeDraggable, makeDroppable } from "@vue-dnd-kit/core"
 import { FileText, ChevronRight, Trash2, FilePlus } from "lucide-vue-next"
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/vue/components/ui/collapsible"
 import {
   ContextMenu,
   ContextMenuContent,
@@ -15,6 +11,8 @@ import {
 
 const props = defineProps({
   node: { type: Object, required: true },
+  index: { type: Number, required: true },
+  siblings: { type: Array, required: true },
   selectedSheetId: { type: [String, Number], default: null },
   canEdit: { type: Boolean, default: false },
   depth: { type: Number, default: 0 },
@@ -22,7 +20,7 @@ const props = defineProps({
   sheetHref: { type: Function, required: true },
 })
 
-const emit = defineEmits(["createChild", "requestDelete"])
+const emit = defineEmits(["createChild", "requestDelete", "drop"])
 
 const hasChildren = computed(
   () => props.node.children && props.node.children.length > 0,
@@ -32,7 +30,7 @@ const isSelected = computed(
   () => props.selectedSheetId != null && String(props.node.id) === String(props.selectedSheetId),
 )
 
-// Auto-expand only if this node contains the selected sheet (recursive check)
+// ── Auto-expand ──
 function hasSelectedDescendant(node, selectedId) {
   if (!selectedId || !node.children) return false
   for (const child of node.children) {
@@ -46,11 +44,9 @@ const shouldAutoExpand = computed(() =>
   hasChildren.value && hasSelectedDescendant(props.node, props.selectedSheetId)
 )
 
-// Start collapsed by default, auto-expand only if contains selected
 const userToggled = ref(false)
 const isOpen = ref(shouldAutoExpand.value)
 
-// When searching, force expand; when search clears, restore
 watch(
   () => props.searchActive,
   (active) => {
@@ -59,44 +55,102 @@ watch(
   },
 )
 
-// Track manual toggle
-function onToggle(open) {
+function onToggle() {
   userToggled.value = true
-  isOpen.value = open
+  isOpen.value = !isOpen.value
 }
 
-const avatarUrl = computed(() => {
-  // Check for avatar_url in blocks (first gallery/reference block with an image)
-  return props.node.avatar_url || null
-})
-
+const avatarUrl = computed(() => props.node.avatar_url || null)
 const paddingLeft = computed(() => `${props.depth * 12 + 4}px`)
+
+// ── Draggable: the node row ──
+const rowRef = useTemplateRef("rowRef")
+
+const { isDragging, isDragOver: rowPlacement } = makeDraggable(
+  rowRef,
+  { activation: { distance: 5 } },
+  () => [props.index, props.siblings],
+)
+
+// Manual center zone detection (avoids dual-role routing issues)
+const pointerZone = ref(null) // "before" | "nest" | "after" | null
+const CENTER_THRESHOLD = 0.3
+
+function onPointerMove(e) {
+  const el = rowRef.value
+  if (!el || !rowPlacement.value) { pointerZone.value = null; return }
+  const rect = el.getBoundingClientRect()
+  const relY = (e.clientY - rect.top) / rect.height
+  if (relY <= CENTER_THRESHOLD) pointerZone.value = "before"
+  else if (relY >= 1 - CENTER_THRESHOLD) pointerZone.value = "after"
+  else pointerZone.value = "nest"
+}
+
+onMounted(() => document.addEventListener("pointermove", onPointerMove))
+onUnmounted(() => document.removeEventListener("pointermove", onPointerMove))
+
+watch(rowPlacement, (p) => { if (!p) pointerZone.value = null })
+
+// ── Droppable: the children container (for nesting) ──
+const childrenRef = useTemplateRef("childrenRef")
+
+const { isDragOver: childrenOver } = makeDroppable(
+  childrenRef,
+  { events: { onDrop: (e) => emit("drop", e) } },
+  () => props.node.children,
+)
+
+// Auto-expand on hover during drag (600ms)
+let autoExpandTimer = null
+
+watch(
+  [() => childrenOver.value, pointerZone],
+  ([childOver, zone]) => {
+    clearTimeout(autoExpandTimer)
+    if ((childOver || zone === "nest") && hasChildren.value && !isOpen.value) {
+      autoExpandTimer = setTimeout(() => {
+        isOpen.value = true
+      }, 600)
+    }
+  },
+)
 </script>
 
 <template>
-  <Collapsible :open="isOpen" @update:open="onToggle">
+  <div :class="{ 'opacity-30': isDragging }">
+    <!-- Drop indicator: before (sibling) -->
+    <div
+      v-if="pointerZone === 'before'"
+      class="h-0.5 bg-primary rounded-full pointer-events-none"
+      :style="{ marginLeft: paddingLeft }"
+      aria-hidden
+    />
+
     <ContextMenu>
       <ContextMenuTrigger as-child>
         <div
+          ref="rowRef"
           :class="[
-            'group flex items-center gap-1 rounded-md text-sm transition-colors',
+            'group flex items-center gap-1 rounded-md text-sm transition-colors cursor-default',
             isSelected
               ? 'bg-accent text-accent-foreground font-medium'
-              : 'text-foreground/80 hover:bg-accent/50',
+              : pointerZone === 'nest'
+                ? 'bg-primary/10 ring-1 ring-primary/30'
+                : 'text-foreground/80 hover:bg-accent/50',
           ]"
           :style="{ paddingLeft }"
         >
           <!-- Expand toggle -->
-          <CollapsibleTrigger v-if="hasChildren" as-child>
-            <button
-              type="button"
-              class="shrink-0 size-5 inline-flex items-center justify-center rounded hover:bg-accent"
-            >
-              <ChevronRight
-                :class="['size-3 transition-transform', isOpen && 'rotate-90']"
-              />
-            </button>
-          </CollapsibleTrigger>
+          <button
+            v-if="hasChildren"
+            type="button"
+            class="shrink-0 size-5 inline-flex items-center justify-center rounded hover:bg-accent"
+            @click.stop.prevent="onToggle"
+          >
+            <ChevronRight
+              :class="['size-3 transition-transform', isOpen && 'rotate-90']"
+            />
+          </button>
           <span v-else class="shrink-0 size-5" />
 
           <!-- Sheet link -->
@@ -104,7 +158,6 @@ const paddingLeft = computed(() => `${props.depth * 12 + 4}px`)
             :href="sheetHref(node)"
             class="flex-1 flex items-center gap-1.5 py-1.5 pr-2 min-w-0"
           >
-            <!-- Avatar or icon -->
             <img
               v-if="avatarUrl"
               :src="avatarUrl"
@@ -117,7 +170,6 @@ const paddingLeft = computed(() => `${props.depth * 12 + 4}px`)
         </div>
       </ContextMenuTrigger>
 
-      <!-- Context menu (only if can edit) -->
       <ContextMenuContent v-if="canEdit" class="z-[1040]">
         <ContextMenuItem class="gap-2 text-xs" @select="emit('createChild', node.id)">
           <FilePlus class="size-3.5" />
@@ -130,12 +182,26 @@ const paddingLeft = computed(() => `${props.depth * 12 + 4}px`)
       </ContextMenuContent>
     </ContextMenu>
 
-    <!-- Children (recursive) -->
-    <CollapsibleContent v-if="hasChildren">
+    <!-- Drop indicator: after (sibling) -->
+    <div
+      v-if="pointerZone === 'after'"
+      class="h-0.5 bg-primary rounded-full pointer-events-none"
+      :style="{ marginLeft: paddingLeft }"
+      aria-hidden
+    />
+
+    <!-- Children drop zone — v-show keeps DOM mounted so makeDroppable stays registered -->
+    <div
+      ref="childrenRef"
+      v-show="isOpen || !hasChildren"
+      :class="['min-h-[2px] transition-colors', childrenOver && 'bg-primary/5']"
+    >
       <SheetTreeNode
-        v-for="child in node.children"
+        v-for="(child, childIndex) in node.children"
         :key="child.id"
         :node="child"
+        :index="childIndex"
+        :siblings="node.children"
         :selected-sheet-id="selectedSheetId"
         :can-edit="canEdit"
         :depth="depth + 1"
@@ -143,7 +209,8 @@ const paddingLeft = computed(() => `${props.depth * 12 + 4}px`)
         :sheet-href="sheetHref"
         @create-child="(id) => emit('createChild', id)"
         @request-delete="(sheet) => emit('requestDelete', sheet)"
+        @drop="(e) => emit('drop', e)"
       />
-    </CollapsibleContent>
-  </Collapsible>
+    </div>
+  </div>
 </template>

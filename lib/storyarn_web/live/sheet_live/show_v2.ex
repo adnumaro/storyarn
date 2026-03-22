@@ -809,6 +809,35 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
     end
   end
 
+  def handle_event(
+        "move_to_parent",
+        %{"item_id" => id, "new_parent_id" => new_parent_id, "position" => position},
+        socket
+      ) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      sheet = Sheets.get_sheet(socket.assigns.project.id, parse_id(id))
+
+      if sheet do
+        parsed_parent = if new_parent_id in [nil, ""], do: nil, else: parse_id(new_parent_id)
+        parsed_pos = parse_id(position) || 0
+
+        case Sheets.move_sheet_to_position(sheet, parsed_parent, parsed_pos) do
+          {:ok, _} ->
+            {:noreply,
+             assign(socket, :sheets_tree,
+               prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id))
+             )}
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(socket, :error, dgettext("sheets", "Could not move sheet."))}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
   # ===========================================================================
   # Private Helpers
   # ===========================================================================
