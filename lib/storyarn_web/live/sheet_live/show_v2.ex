@@ -249,7 +249,10 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
       {:ok, project, membership} ->
         can_edit = Projects.can?(membership.role, :edit_content)
 
-        if connected?(socket), do: Collaboration.subscribe_restoration(project.id)
+        if connected?(socket) do
+          Collaboration.subscribe_restoration(project.id)
+          Collaboration.subscribe_changes({:project, project.id})
+        end
 
         {can_edit, restoration_banner} =
           check_restoration_lock(project.id, can_edit)
@@ -1454,6 +1457,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       case Sheets.create_sheet(socket.assigns.project, %{name: dgettext("sheets", "Untitled")}) do
         {:ok, new_sheet} ->
+          broadcast_project_change(socket, :tree_changed)
+
           {:noreply,
            push_navigate(socket,
              to:
@@ -1475,6 +1480,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
       case Sheets.create_sheet(socket.assigns.project, attrs) do
         {:ok, new_sheet} ->
+          broadcast_project_change(socket, :tree_changed)
+
           {:noreply,
            push_navigate(socket,
              to:
@@ -1506,7 +1513,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
            |> assign(
              :sheets_tree,
              prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id))
-           )}
+           )
+           |> broadcast_project_change(:tree_changed)}
         else
           _ ->
             {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
@@ -1536,7 +1544,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
              |> reload_blocks()
              |> assign(:sheets_tree,
                prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id))
-             )}
+             )
+             |> broadcast_project_change(:tree_changed)}
 
           {:error, _} ->
             {:noreply,
@@ -1919,11 +1928,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   end
 
   def handle_info({:remote_change, action, payload}, socket) do
-    if payload[:user_id] == socket.assigns.current_scope.user.id do
-      {:noreply, socket}
-    else
-      handle_remote_change(action, payload, socket)
-    end
+    handle_remote_change(action, payload, socket)
   end
 
   def handle_info({:table_push_undo, action}, socket) do
@@ -1960,6 +1965,12 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
       Collab.broadcast_change(socket, scope, action, extra_payload)
     end
 
+    socket
+  end
+
+  defp broadcast_project_change(socket, action, extra_payload \\ %{}) do
+    project_scope = {:project, socket.assigns.project.id}
+    Collab.broadcast_change(socket, project_scope, action, extra_payload)
     socket
   end
 
@@ -2035,6 +2046,11 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
      |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id)))
      |> push_event("sheet_updated_remote", %{name: sheet.name, shortcut: sheet.shortcut})
      |> show_collab_toast(:sheet_updated, payload)}
+  end
+
+  defp handle_remote_change(:tree_changed, _payload, socket) do
+    {:noreply,
+     assign(socket, :sheets_tree, prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id)))}
   end
 
   defp handle_remote_change(:sheet_restored, payload, socket) do
