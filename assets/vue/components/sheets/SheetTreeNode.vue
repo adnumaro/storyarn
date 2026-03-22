@@ -144,7 +144,7 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
         <div
           ref="rowRef"
           :class="[
-            'group flex items-center gap-1 rounded-md text-sm transition-colors cursor-default',
+            'group flex items-center gap-1 pr-1 rounded-md text-sm transition-colors cursor-default',
             isSelected
               ? 'bg-accent text-accent-foreground font-medium'
               : pointerZone === 'nest'
@@ -169,7 +169,7 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
           <!-- Sheet link -->
           <a
             :href="sheetHref(node)"
-            class="flex-1 flex items-center gap-1.5 py-1.5 pr-2 min-w-0"
+            class="flex-1 flex items-center gap-1.5 py-1.5 min-w-0"
           >
             <img
               v-if="avatarUrl"
@@ -180,6 +180,26 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
             <FileText v-else class="size-3.5 shrink-0 opacity-50" />
             <span class="truncate">{{ node.name }}</span>
           </a>
+
+          <!-- Hover actions -->
+          <div v-if="canEdit" class="shrink-0 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              type="button"
+              class="size-5 inline-flex items-center justify-center rounded hover:bg-accent text-muted-foreground hover:text-foreground"
+              title="Add child sheet"
+              @click.stop.prevent="emit('createChild', node.id)"
+            >
+              <FilePlus class="size-3" />
+            </button>
+            <button
+              type="button"
+              class="size-5 inline-flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+              title="Move to Trash"
+              @click.stop.prevent="emit('requestDelete', node)"
+            >
+              <Trash2 class="size-3" />
+            </button>
+          </div>
         </div>
       </ContextMenuTrigger>
 
