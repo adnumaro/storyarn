@@ -12,6 +12,7 @@ import {
 import { DnDProvider } from "@vue-dnd-kit/core"
 import AddBlockMenu from "./AddBlockMenu.vue"
 import SortableBlockList from "./SortableBlockList.vue"
+import FormulaPanel from "./blocks/FormulaPanel.vue"
 
 // Block type components (for inherited blocks, rendered without sortable)
 import TextBlock from "./blocks/TextBlock.vue"
@@ -42,6 +43,7 @@ const props = defineProps({
   canEdit: { type: Boolean, default: false },
   workspaceSlug: { type: String, default: "" },
   projectSlug: { type: String, default: "" },
+  formulaEditing: { type: Object, default: null },
 })
 
 const live = useLive()
@@ -200,5 +202,7 @@ function resolveComponent(type) {
 
       <AddBlockMenu v-if="canEdit" @select="addBlock" />
     </div>
+
+    <FormulaPanel :formula-editing="formulaEditing" />
   </DnDProvider>
 </template>

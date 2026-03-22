@@ -10,12 +10,16 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   alias StoryarnWeb.SheetLive.Handlers.{TableHandlers, UndoRedoHandlers}
 
   import StoryarnWeb.Live.Shared.TreePanelHandlers
+  import StoryarnWeb.SheetLive.Helpers.FormulaHelpers
+
+  @formula_page_size 20
 
   alias Storyarn.Assets
   alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Projects
   alias Storyarn.Sheets
+  alias Storyarn.Shared.FormulaEngine
 
   @impl true
   def render(assigns) do
@@ -64,6 +68,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
             workspace-slug={@workspace.slug}
             project-slug={@project.slug}
             can-edit={@can_edit}
+            formula-editing={build_formula_editing_for_vue(@formula_editing, @formula_search_results, @formula_search_has_more)}
           />
         </div>
       </div>
@@ -109,6 +114,11 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
          |> assign(:is_draft, false)
          |> assign(:source_shortcut, nil)
          |> assign(:pending_delete_id, nil)
+         |> assign(:formula_editing, nil)
+         |> assign(:formula_search_results, [])
+         |> assign(:formula_search_query, "")
+         |> assign(:formula_search_offset, 0)
+         |> assign(:formula_search_has_more, false)
          |> UndoRedoStack.init()}
 
       {:error, _reason} ->
@@ -887,10 +897,135 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
     end)
   end
 
-  # Formula sidebar (Phase 3 — placeholder, logs intent)
-  def handle_event("open_formula_sidebar", _params, socket) do
+  # --- Formula sidebar ---
+
+  def handle_event("open_formula_sidebar", params, socket) do
+    row_id = parse_id(params["row-id"])
+    block_id = parse_id(params["block-id"])
+    slug = params["column-slug"]
+
+    table_entry = Map.get(socket.assigns.table_data, block_id, %{columns: [], rows: []})
+    enriched_row = Enum.find(table_entry.rows, &(&1.id == row_id))
+    row = enriched_row || Sheets.get_table_row!(row_id)
+
+    all_blocks =
+      socket.assigns.blocks ++
+        Enum.flat_map(socket.assigns.inherited_groups, fn g -> g.blocks end)
+
+    table_name =
+      case Enum.find(all_blocks, &(&1.id == block_id)) do
+        nil -> nil
+        block -> block.config["label"]
+      end
+
+    column_name =
+      case Enum.find(table_entry.columns, &(&1.slug == slug)) do
+        nil -> nil
+        col -> col.name
+      end
+
     {:noreply,
-     put_flash(socket, :info, dgettext("sheets", "Formula editor coming soon."))}
+     assign(socket, :formula_editing, %{
+       row_id: row_id,
+       column_slug: slug,
+       block_id: block_id,
+       value: row.cells[slug],
+       columns: table_entry.columns,
+       table_name: table_name,
+       row_name: row.name,
+       column_name: column_name
+     })}
+  end
+
+  def handle_event("close_formula_sidebar", _params, socket) do
+    {:noreply, assign(socket, :formula_editing, nil)}
+  end
+
+  def handle_event("save_formula_expression", %{"value" => expression} = params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      current = socket.assigns.formula_editing
+      current_bindings = if is_map(current.value), do: current.value["bindings"] || %{}, else: %{}
+      raw_bindings = encode_bindings(current_bindings)
+
+      {:noreply, updated_socket} =
+        TableHandlers.handle_update_formula_cell(
+          %{
+            "row-id" => params["row-id"],
+            "column-slug" => params["column-slug"],
+            "expression" => expression,
+            "bindings" => raw_bindings
+          },
+          socket,
+          table_helpers(socket)
+        )
+
+      {:noreply, refresh_formula_editing(updated_socket)}
+    end)
+  end
+
+  def handle_event(
+        "save_formula_binding",
+        %{"binding_value" => value, "symbol" => symbol} = params,
+        socket
+      ) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      current = socket.assigns.formula_editing
+      current_value = current.value || %{}
+
+      expression = if is_map(current_value), do: current_value["expression"] || "", else: ""
+      current_bindings = if is_map(current_value), do: current_value["bindings"] || %{}, else: %{}
+
+      binding = parse_binding_value(value)
+
+      updated_bindings =
+        if binding,
+          do: Map.put(current_bindings, symbol, binding),
+          else: Map.delete(current_bindings, symbol)
+
+      raw_bindings = encode_bindings(updated_bindings)
+
+      {:noreply, updated_socket} =
+        TableHandlers.handle_update_formula_cell(
+          %{
+            "row-id" => params["row-id"],
+            "column-slug" => params["column-slug"],
+            "expression" => expression,
+            "bindings" => raw_bindings
+          },
+          socket,
+          table_helpers(socket)
+        )
+
+      {:noreply, refresh_formula_editing(updated_socket)}
+    end)
+  end
+
+  def handle_event("search_formula_bindings", %{"query" => query}, socket) do
+    {results, has_more} = search_binding_variables(socket.assigns.project.id, query, 0)
+
+    {:noreply,
+     socket
+     |> assign(:formula_search_results, results)
+     |> assign(:formula_search_query, query)
+     |> assign(:formula_search_offset, @formula_page_size)
+     |> assign(:formula_search_has_more, has_more)}
+  end
+
+  def handle_event("load_more_formula_bindings", _params, socket) do
+    query = socket.assigns.formula_search_query
+    offset = ensure_integer(socket.assigns.formula_search_offset)
+
+    {new_results, has_more} =
+      search_binding_variables(socket.assigns.project.id, query, offset)
+
+    merged = merge_search_results(socket.assigns.formula_search_results, new_results)
+    next_offset = offset + @formula_page_size
+
+    {:noreply,
+     socket
+     |> assign(:formula_search_results, merged)
+     |> assign(:formula_search_offset, next_offset)
+     |> assign(:formula_search_has_more, has_more)}
   end
 
   # Tree events (create, delete, move)
@@ -1035,13 +1170,14 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
             formula_results = Map.get(computed, row.id, %{})
 
             updated_cells =
-              Enum.reduce(formula_results, row.cells, fn {slug, %{result: result}}, cells ->
+              Enum.reduce(formula_results, row.cells, fn {slug, %{result: result} = computed_entry}, cells ->
                 current = cells[slug]
+                resolved = Map.get(computed_entry, :resolved, %{})
 
                 enriched =
                   if is_map(current),
-                    do: Map.put(current, "__result", result),
-                    else: %{"__result" => result}
+                    do: current |> Map.put("__result", result) |> Map.put("__resolved", resolved),
+                    else: %{"__result" => result, "__resolved" => resolved}
 
                 Map.put(cells, slug, enriched)
               end)
@@ -1052,6 +1188,124 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         {block_id, %{data | rows: enriched_rows}}
       end
     end)
+  end
+
+  defp refresh_formula_editing(socket) do
+    case socket.assigns.formula_editing do
+      nil ->
+        socket
+
+      %{row_id: row_id, column_slug: slug, block_id: block_id} = fe ->
+        table_entry = Map.get(socket.assigns.table_data, block_id, %{columns: [], rows: []})
+        enriched_row = Enum.find(table_entry.rows, &(&1.id == row_id))
+        row = enriched_row || Sheets.get_table_row!(row_id)
+        assign(socket, :formula_editing, %{fe | value: row.cells[slug]})
+    end
+  end
+
+  defp build_formula_editing_for_vue(nil, _search_results, _has_more), do: nil
+
+  defp build_formula_editing_for_vue(fe, search_results, has_more) do
+    cell_value = fe.value
+    expr = formula_cell_expression(cell_value)
+    symbols = formula_symbols(expr)
+
+    # Same-row columns (number + formula, excluding current column) — always small/bounded
+    same_row_options =
+      (fe.columns || [])
+      |> Enum.filter(fn c -> c.type in ["number", "formula"] and c.slug != fe.column_slug end)
+      |> Enum.map(fn c -> %{value: "same_row:" <> c.slug, label: c.name} end)
+
+    # Per-symbol current bindings
+    symbol_bindings =
+      Map.new(symbols, fn s ->
+        {s, formula_cell_binding(cell_value, s)}
+      end)
+
+    # Pre-compute LaTeX strings
+    preview_latex = formula_preview_from_cell(cell_value)
+    result_latex = formula_result_latex(cell_value)
+
+    # Validation error
+    parse_error =
+      if expr != "" do
+        case FormulaEngine.parse(expr) do
+          {:ok, _} -> nil
+          {:error, reason} -> reason
+        end
+      end
+
+    %{
+      row_id: fe.row_id,
+      column_slug: fe.column_slug,
+      block_id: fe.block_id,
+      table_name: fe.table_name,
+      row_name: fe.row_name,
+      column_name: fe.column_name,
+      expression: expr,
+      symbols: symbols,
+      symbol_bindings: symbol_bindings,
+      same_row_options: same_row_options,
+      search_results: search_results,
+      has_more: has_more || false,
+      preview_latex: preview_latex,
+      result_latex: result_latex,
+      parse_error: parse_error,
+      result: formula_cell_result(cell_value)
+    }
+  end
+
+  # Returns {grouped_results, has_more}
+  defp search_binding_variables(project_id, query, offset) do
+    all_vars = Sheets.list_project_variables(project_id)
+
+    filtered =
+      all_vars
+      |> Enum.filter(fn v -> v.block_type in ["number", "formula"] end)
+      |> then(fn vars ->
+        if query == "" do
+          vars
+        else
+          q = String.downcase(query)
+
+          Enum.filter(vars, fn v ->
+            String.contains?(String.downcase(v.variable_name), q) or
+              String.contains?(String.downcase(v.sheet_shortcut), q)
+          end)
+        end
+      end)
+
+    total = length(filtered)
+    page = filtered |> Enum.drop(offset) |> Enum.take(@formula_page_size)
+    has_more = offset + @formula_page_size < total
+
+    grouped =
+      page
+      |> Enum.group_by(fn v -> v.sheet_shortcut end)
+      |> Enum.sort_by(fn {sheet, _} -> sheet end)
+      |> Enum.map(fn {sheet_shortcut, vars} ->
+        %{
+          heading: sheet_shortcut,
+          items:
+            Enum.map(vars, fn v ->
+              %{value: sheet_shortcut <> "." <> v.variable_name, label: v.variable_name}
+            end)
+        }
+      end)
+
+    {grouped, has_more}
+  end
+
+  # Merge new page results into existing grouped results
+  defp merge_search_results(existing, new_page) do
+    existing_map = Map.new(existing, fn g -> {g.heading, g.items} end)
+
+    Enum.reduce(new_page, existing_map, fn group, acc ->
+      existing_items = Map.get(acc, group.heading, [])
+      Map.put(acc, group.heading, existing_items ++ group.items)
+    end)
+    |> Enum.sort_by(fn {heading, _} -> heading end)
+    |> Enum.map(fn {heading, items} -> %{heading: heading, items: items} end)
   end
 
   defp reload_sheet(socket) do
@@ -1302,6 +1556,10 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
   defp parse_id(id) when is_binary(id), do: String.to_integer(id)
   defp parse_id(id) when is_integer(id), do: id
+
+  @spec ensure_integer(integer()) :: integer()
+  defp ensure_integer(n) when is_integer(n), do: n
+  defp ensure_integer(_), do: 0
 
   defp normalize_column_group_id(nil), do: nil
   defp normalize_column_group_id(""), do: nil
