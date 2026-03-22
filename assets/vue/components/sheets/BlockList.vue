@@ -1,20 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, provide } from "vue";
 import { useLive } from "@/vue/composables/useLive";
-import {
-	ArrowUpRight,
-	MoreHorizontal,
-	Trash2,
-	Link2Off,
-	Link2,
-} from "lucide-vue-next";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/vue/components/ui/dropdown-menu";
+import { ArrowUpRight, Link2Off } from "lucide-vue-next";
 import { DnDProvider } from "@vue-dnd-kit/core";
 import AddBlockMenu from "./AddBlockMenu.vue";
 import SortableBlockList from "./SortableBlockList.vue";
@@ -30,6 +17,7 @@ import DateBlock from "./blocks/DateBlock.vue";
 import RichTextBlock from "./blocks/RichTextBlock.vue";
 import GalleryBlock from "./blocks/GalleryBlock.vue";
 import TableBlock from "./blocks/TableBlock.vue";
+import ReferenceBlock from "./blocks/ReferenceBlock.vue";
 
 const blockComponents = {
 	text: TextBlock,
@@ -41,6 +29,7 @@ const blockComponents = {
 	rich_text: RichTextBlock,
 	gallery: GalleryBlock,
 	table: TableBlock,
+	reference: ReferenceBlock,
 };
 
 const props = defineProps({
@@ -122,8 +111,8 @@ onUnmounted(() => {
 	document.removeEventListener("keydown", onUndoRedo);
 });
 
-function addBlock(type) {
-	live.pushEvent("add_block", { type });
+function addBlock({ type, scope }) {
+	live.pushEvent("add_block", { type, scope });
 }
 
 function deleteBlock(id) {
@@ -134,9 +123,6 @@ function detachBlock(id) {
 	live.pushEvent("detach_block", { id });
 }
 
-function reattachBlock(id) {
-	live.pushEvent("reattach_block", { id });
-}
 
 function resolveComponent(type) {
 	return blockComponents[type] || null;
@@ -170,28 +156,15 @@ function resolveComponent(type) {
             :inherited="true"
           >
             <template #menu>
-              <DropdownMenu v-if="canEdit">
-                <DropdownMenuTrigger as-child>
-                  <button class="size-6 rounded flex items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent">
-                    <MoreHorizontal class="size-4" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" class="">
-                  <DropdownMenuItem v-if="!block.detached" class="gap-2 text-xs" @select="detachBlock(block.id)">
-                    <Link2Off class="size-3.5" />
-                    Detach from parent
-                  </DropdownMenuItem>
-                  <DropdownMenuItem v-if="block.detached" class="gap-2 text-xs" @select="reattachBlock(block.id)">
-                    <Link2 class="size-3.5" />
-                    Reattach to parent
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator v-if="block.detached" />
-                  <DropdownMenuItem v-if="block.detached" class="text-destructive gap-2 text-xs" @select="deleteBlock(block.id)">
-                    <Trash2 class="size-3.5" />
-                    Delete block
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <button
+                v-if="canEdit"
+                type="button"
+                class="size-6 rounded flex items-center justify-center text-blue-500 hover:bg-blue-500/10 transition-colors"
+                title="Detach from parent"
+                @click.stop="detachBlock(block.id)"
+              >
+                <Link2Off class="size-3.5" />
+              </button>
             </template>
           </component>
         </div>

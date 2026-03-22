@@ -37,6 +37,7 @@ function saveLabel(val) {
 		value: val,
 	});
 }
+
 </script>
 
 <template>

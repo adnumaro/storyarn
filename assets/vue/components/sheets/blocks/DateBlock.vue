@@ -22,6 +22,7 @@ function saveLabel(val) {
 	});
 }
 
+
 const content = computed(() => props.block.value?.content);
 </script>
 

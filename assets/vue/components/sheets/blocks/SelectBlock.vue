@@ -29,6 +29,7 @@ function saveLabel(val) {
 	});
 }
 
+
 const content = computed(() => props.block.value?.content);
 const options = computed(() => props.block.config?.options || []);
 const placeholder = computed(

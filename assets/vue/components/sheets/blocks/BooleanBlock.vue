@@ -24,6 +24,7 @@ function saveLabel(val) {
 	});
 }
 
+
 const content = computed(() => props.block.value?.content);
 const mode = computed(() => props.block.config?.mode || "two_state");
 

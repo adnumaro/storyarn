@@ -63,7 +63,7 @@ function toggleCollapse() {
     />
 
     <!-- Header: chevron + icon + label (canManage mode) -->
-    <div v-if="canManage" class="flex items-center gap-1.5 text-sm mb-1 group/header mb-2">
+    <div class="flex items-center gap-1.5 text-sm mb-2 group/header">
       <button
         type="button"
         class="flex items-center justify-center shrink-0 cursor-pointer size-5"
@@ -78,18 +78,12 @@ function toggleCollapse() {
         :is-constant="block.is_constant"
         :required="block.required"
         :detached="block.detached"
-        class="m-0!"
+        class="w-full m-0!"
         @save="saveLabel"
       >
         <slot name="menu" />
       </BlockLabel>
     </div>
-
-    <!-- Header: read-only (inherited or viewer) -->
-    <label v-if="!canManage && label" class="text-sm text-muted-foreground/70 mb-1 flex items-center gap-1.5">
-      <Table2 class="size-3.5 text-muted-foreground/50" />
-      <span>{{ label }}</span>
-    </label>
 
     <!-- Table grid (only when not collapsed, or when not canManage) -->
     <TableGrid

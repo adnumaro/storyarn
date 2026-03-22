@@ -2,6 +2,7 @@
 import { ref, useTemplateRef, watch } from "vue";
 import { useLive } from "@/vue/composables/useLive";
 import { makeDroppable } from "@vue-dnd-kit/core";
+import { Link2 } from "lucide-vue-next";
 import DraggableBlock from "./DraggableBlock.vue";
 import SortableColumnGroup from "./SortableColumnGroup.vue";
 
@@ -15,6 +16,7 @@ import DateBlock from "./blocks/DateBlock.vue";
 import RichTextBlock from "./blocks/RichTextBlock.vue";
 import GalleryBlock from "./blocks/GalleryBlock.vue";
 import TableBlock from "./blocks/TableBlock.vue";
+import ReferenceBlock from "./blocks/ReferenceBlock.vue";
 
 const blockComponents = {
 	text: TextBlock,
@@ -26,6 +28,7 @@ const blockComponents = {
 	rich_text: RichTextBlock,
 	gallery: GalleryBlock,
 	table: TableBlock,
+	reference: ReferenceBlock,
 };
 
 const props = defineProps({
@@ -35,6 +38,10 @@ const props = defineProps({
 });
 
 const live = useLive();
+
+function reattachBlock(id) {
+	live.pushEvent("reattach_block", { id });
+}
 
 const localItems = ref([...props.layoutItems]);
 watch(
@@ -302,7 +309,18 @@ function resolveComponent(type) {
           :is="resolveComponent(item.block.type)"
           :block="item.block"
           :can-edit="canEdit"
-        />
+        >
+          <template v-if="item.block.detached" #menu>
+            <button
+              type="button"
+              class="size-6 rounded flex items-center justify-center text-blue-500 hover:bg-blue-500/10 transition-colors"
+              title="Reattach to parent"
+              @click.stop="reattachBlock(item.block.id)"
+            >
+              <Link2 class="size-3.5" />
+            </button>
+          </template>
+        </component>
       </template>
 
       <!-- Column group (horizontal sortable) -->

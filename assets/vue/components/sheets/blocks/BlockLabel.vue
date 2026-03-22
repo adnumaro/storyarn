@@ -49,6 +49,7 @@ function save() {
 	<div class="flex items-center justify-between mb-2">
 		<div class="flex items-center gap-1.5 text-sm">
 			<component :is="icon" class="size-3.5 text-muted-foreground" />
+			<Lock v-if="isConstant" class="size-3 text-red-500" />
 			<input
 				v-if="canEdit && editing"
 				ref="inputRef"
@@ -63,9 +64,7 @@ function save() {
 				:class="canEdit && 'cursor-text'"
 				@click="startEdit"
 			>{{ localLabel }}</span>
-			<Lock v-if="isConstant" class="size-3 text-muted-foreground/50" />
 			<span v-if="required" class="text-[10px] text-destructive font-medium">required</span>
-			<span v-if="detached" class="text-[10px] text-amber-500 font-medium">detached</span>
 		</div>
 		<slot />
 	</div>
