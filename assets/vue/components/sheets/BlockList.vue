@@ -39,18 +39,68 @@ const props = defineProps({
 	workspaceSlug: { type: String, default: "" },
 	projectSlug: { type: String, default: "" },
 	formulaEditing: { type: Object, default: null },
+	blockLocks: { type: Object, default: () => ({}) },
+	currentUserId: { type: Number, default: null },
 });
 
 const live = useLive();
+
+// ── Block locking ──
+let lockHeartbeatInterval = null;
+const lockedBlockId = ref(null);
+
+function isLockedByOther(blockId) {
+	const lock = props.blockLocks[String(blockId)];
+	return lock && lock.userId !== props.currentUserId;
+}
+
+function lockInfo(blockId) {
+	return props.blockLocks[String(blockId)] || null;
+}
+
+function acquireLock(blockId) {
+	if (!props.canEdit || isLockedByOther(blockId)) return;
+	lockedBlockId.value = blockId;
+	live.pushEvent("acquire_block_lock", { block_id: blockId });
+	clearInterval(lockHeartbeatInterval);
+	lockHeartbeatInterval = setInterval(() => {
+		live.pushEvent("refresh_block_lock", { block_id: blockId });
+	}, 10000);
+}
+
+function releaseLock() {
+	if (lockedBlockId.value) {
+		live.pushEvent("release_block_lock", { block_id: lockedBlockId.value });
+		lockedBlockId.value = null;
+	}
+	clearInterval(lockHeartbeatInterval);
+	lockHeartbeatInterval = null;
+}
+
+provide("blockLocks", () => props.blockLocks);
+provide("currentUserId", () => props.currentUserId);
+provide("isLockedByOther", isLockedByOther);
+provide("lockInfo", lockInfo);
 
 // ── Block selection ──
 const selectedBlockId = ref(null);
 
 function selectBlock(id) {
+	if (isLockedByOther(id)) return;
+	// Release previous lock
+	if (selectedBlockId.value && selectedBlockId.value !== id) {
+		releaseLock();
+	}
 	selectedBlockId.value = selectedBlockId.value === id ? null : id;
+	if (selectedBlockId.value && props.canEdit) {
+		acquireLock(selectedBlockId.value);
+	} else {
+		releaseLock();
+	}
 }
 
 function deselectBlock() {
+	releaseLock();
 	selectedBlockId.value = null;
 }
 
@@ -105,10 +155,18 @@ function onUndoRedo(e) {
 onMounted(() => {
 	document.addEventListener("keydown", onKeydown);
 	document.addEventListener("keydown", onUndoRedo);
+
+	live.handleEvent("block_lock_denied", ({ blockId }) => {
+		if (selectedBlockId.value === blockId) {
+			selectedBlockId.value = null;
+			lockedBlockId.value = null;
+		}
+	});
 });
 onUnmounted(() => {
 	document.removeEventListener("keydown", onKeydown);
 	document.removeEventListener("keydown", onUndoRedo);
+	releaseLock();
 });
 
 function addBlock({ type, scope }) {
@@ -147,26 +205,35 @@ function resolveComponent(type) {
         </div>
 
         <div class="border-l-2 border-blue-400/30 ml-1 pl-3 space-y-3">
-          <component
-            v-for="block in group.blocks"
-            :key="block.id"
-            :is="resolveComponent(block.type)"
-            :block="block"
-            :can-edit="canEdit"
-            :inherited="true"
-          >
-            <template #menu>
-              <button
-                v-if="canEdit"
-                type="button"
-                class="size-6 rounded flex items-center justify-center text-blue-500 hover:bg-blue-500/10 transition-colors"
-                title="Detach from parent"
-                @click.stop="detachBlock(block.id)"
-              >
-                <Link2Off class="size-3.5" />
-              </button>
-            </template>
-          </component>
+          <div v-for="block in group.blocks" :key="block.id" class="relative">
+            <component
+              :is="resolveComponent(block.type)"
+              :block="block"
+              :can-edit="canEdit && !isLockedByOther(block.id)"
+              :inherited="true"
+            >
+              <template #menu>
+                <button
+                  v-if="canEdit && !isLockedByOther(block.id)"
+                  type="button"
+                  class="size-6 rounded flex items-center justify-center text-blue-500 hover:bg-blue-500/10 transition-colors"
+                  title="Detach from parent"
+                  @click.stop="detachBlock(block.id)"
+                >
+                  <Link2Off class="size-3.5" />
+                </button>
+              </template>
+            </component>
+            <!-- Lock indicator -->
+            <div v-if="isLockedByOther(block.id)" class="absolute inset-0 rounded-lg border-2 pointer-events-none" :style="{ borderColor: lockInfo(block.id)?.userColor }" />
+            <div
+              v-if="isLockedByOther(block.id)"
+              class="absolute -top-2.5 right-2 text-[10px] px-1.5 py-0.5 rounded-full text-white leading-none"
+              :style="{ backgroundColor: lockInfo(block.id)?.userColor }"
+            >
+              {{ lockInfo(block.id)?.userEmail?.split('@')[0] }}
+            </div>
+          </div>
         </div>
       </div>
 

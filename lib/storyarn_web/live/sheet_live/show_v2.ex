@@ -81,6 +81,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         formula_editing={@formula_editing}
         formula_search_results={@formula_search_results}
         formula_search_has_more={@formula_search_has_more}
+        block_locks={@block_locks}
+        current_user_id={@current_scope.user.id}
         compact={false}
       />
     </Layouts.focus_v2>
@@ -109,6 +111,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         formula_editing={@formula_editing}
         formula_search_results={@formula_search_results}
         formula_search_has_more={@formula_search_has_more}
+        block_locks={@block_locks}
+        current_user_id={@current_scope.user.id}
         compact={true}
       />
     </div>
@@ -133,6 +137,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   attr :formula_editing, :map, default: nil
   attr :formula_search_results, :list, default: []
   attr :formula_search_has_more, :boolean, default: false
+  attr :block_locks, :map, default: %{}
+  attr :current_user_id, :integer, default: nil
   attr :compact, :boolean, default: false
 
   defp sheet_content(assigns) do
@@ -170,6 +176,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
           project-slug={@project.slug}
           can-edit={@can_edit}
           formula-editing={build_formula_editing_for_vue(@formula_editing, @formula_search_results, @formula_search_has_more)}
+          block-locks={serialize_block_locks(@block_locks)}
+          current-user-id={@current_user_id}
         />
         <.vue
           :if={@current_tab == "references"}
@@ -194,6 +202,11 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
           project-slug={@project.slug}
           can-edit={@can_edit}
           loading={is_nil(@audio_data)}
+        />
+        <.vue
+          v-component="sheets/CollabToast"
+          v-socket={@socket}
+          id="collab-toast"
         />
         <.vue
           :if={@current_tab == "history" && !@compact}
@@ -1812,6 +1825,61 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   end
 
   # ===========================================================================
+  # Block Locking
+  # ===========================================================================
+
+  def handle_event("acquire_block_lock", %{"block_id" => block_id}, socket) do
+    block_id = parse_id(block_id)
+    scope = socket.assigns[:collab_scope]
+
+    if scope do
+      user = socket.assigns.current_scope.user
+
+      case Collaboration.acquire_lock(scope, block_id, user) do
+        {:ok, _lock_info} ->
+          block_locks = Collaboration.list_locks(scope)
+          {:noreply, assign(socket, :block_locks, block_locks)}
+
+        {:error, :already_locked, lock_info} ->
+          {:noreply,
+           push_event(socket, "block_lock_denied", %{
+             blockId: block_id,
+             lockedBy: lock_info.user_email,
+             userColor: lock_info.user_color
+           })}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("release_block_lock", %{"block_id" => block_id}, socket) do
+    block_id = parse_id(block_id)
+    scope = socket.assigns[:collab_scope]
+
+    if scope do
+      user_id = socket.assigns.current_scope.user.id
+      Collaboration.release_lock(scope, block_id, user_id)
+      block_locks = Collaboration.list_locks(scope)
+      {:noreply, assign(socket, :block_locks, block_locks)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("refresh_block_lock", %{"block_id" => block_id}, socket) do
+    block_id = parse_id(block_id)
+    scope = socket.assigns[:collab_scope]
+
+    if scope do
+      user_id = socket.assigns.current_scope.user.id
+      Collaboration.refresh_lock(scope, block_id, user_id)
+    end
+
+    {:noreply, socket}
+  end
+
+  # ===========================================================================
   # Handle Info
   # ===========================================================================
 
@@ -1904,6 +1972,19 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         other
     end
   end
+
+  defp serialize_block_locks(locks) when is_map(locks) do
+    Map.new(locks, fn {entity_id, lock} ->
+      {to_string(entity_id),
+       %{
+         userId: lock.user_id,
+         userEmail: lock.user_email,
+         userColor: lock.user_color
+       }}
+    end)
+  end
+
+  defp serialize_block_locks(_), do: %{}
 
   defp show_collab_toast(socket, action, payload) do
     push_event(socket, "collab_toast", %{

@@ -1,7 +1,10 @@
 <script setup>
-import { ref, useTemplateRef, watch } from "vue";
+import { ref, inject, useTemplateRef, watch } from "vue";
 import { useLive } from "@/vue/composables/useLive";
 import { makeDroppable } from "@vue-dnd-kit/core";
+
+const isLockedByOther = inject("isLockedByOther", () => false);
+const lockInfo = inject("lockInfo", () => null);
 
 import HorizontalDraggableItem from "./HorizontalDraggableItem.vue";
 import TextBlock from "./blocks/TextBlock.vue";
@@ -97,11 +100,21 @@ function gridClass() {
       :group="columnGroup"
       @insert-full-width="(payload) => emit('insert-full-width', payload)"
     >
-      <component
-        :is="resolveComponent(block.type)"
-        :block="block"
-        :can-edit="canEdit"
-      />
+      <div class="relative">
+        <component
+          :is="resolveComponent(block.type)"
+          :block="block"
+          :can-edit="canEdit && !isLockedByOther(block.id)"
+        />
+        <div v-if="isLockedByOther(block.id)" class="absolute inset-0 rounded-lg border-2 pointer-events-none" :style="{ borderColor: lockInfo(block.id)?.userColor }" />
+        <div
+          v-if="isLockedByOther(block.id)"
+          class="absolute -top-2.5 right-2 text-[10px] px-1.5 py-0.5 rounded-full text-white leading-none"
+          :style="{ backgroundColor: lockInfo(block.id)?.userColor }"
+        >
+          {{ lockInfo(block.id)?.userEmail?.split('@')[0] }}
+        </div>
+      </div>
     </HorizontalDraggableItem>
   </div>
 </template>
