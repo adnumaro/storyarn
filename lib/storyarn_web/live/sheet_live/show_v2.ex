@@ -22,6 +22,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias Storyarn.Shared.FormulaEngine
+  alias Storyarn.Versioning
 
   @impl true
   def render(assigns) do
@@ -104,6 +105,20 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
             can-edit={@can_edit}
             loading={is_nil(@audio_data)}
           />
+          <.vue
+            :if={@current_tab == "history"}
+            v-component="sheets/HistoryTab"
+            v-socket={@socket}
+            id="history-tab"
+            versions={@history_data[:versions] || []}
+            named-versions={@history_data[:named_versions] || []}
+            auto-versions={@history_data[:auto_versions] || []}
+            has-more={@history_data[:has_more] || false}
+            can-name-version={@history_data[:can_name_version] || false}
+            current-version-id={@history_data[:current_version_id]}
+            can-edit={@can_edit}
+            loading={is_nil(@history_data)}
+          />
         </div>
       </div>
 
@@ -150,6 +165,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
          |> assign(:current_tab, "content")
          |> assign(:references_data, nil)
          |> assign(:audio_data, nil)
+         |> assign(:history_data, nil)
          |> assign(:pending_delete_id, nil)
          |> assign(:formula_editing, nil)
          |> assign(:formula_search_results, [])
@@ -223,6 +239,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         |> assign(:current_tab, "content")
         |> assign(:references_data, nil)
         |> assign(:audio_data, nil)
+        |> assign(:history_data, nil)
     end
   end
 
@@ -237,7 +254,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   # --- Tabs ---
 
   def handle_event("switch_tab", %{"tab" => tab}, socket)
-      when tab in ~w(content references audio) do
+      when tab in ~w(content references audio history) do
     socket = assign(socket, :current_tab, tab)
 
     socket =
@@ -247,6 +264,9 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
         tab == "audio" && is_nil(socket.assigns.audio_data) ->
           load_audio_data(socket)
+
+        tab == "history" && is_nil(socket.assigns.history_data) ->
+          load_history_data(socket)
 
         true ->
           socket
@@ -1372,6 +1392,239 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   end
 
   # ===========================================================================
+  # History Tab Events
+  # ===========================================================================
+
+  def handle_event("compare_version", %{"version_number" => version_number}, socket) do
+    with {:ok, number} <- parse_version_number(version_number) do
+      %{workspace: workspace, project: project, sheet: sheet} = socket.assigns
+
+      compare_url =
+        ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}/compare/#{number}"
+
+      {:noreply, push_navigate(socket, to: compare_url)}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("create_version", %{"title" => title, "description" => description}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      title = if title == "", do: nil, else: title
+      description = if description == "", do: nil, else: description
+
+      if title == nil do
+        {:noreply, put_flash(socket, :error, dgettext("versioning", "Title is required."))}
+      else
+        sheet = socket.assigns.sheet
+        user_id = socket.assigns.current_scope.user.id
+        project_id = socket.assigns.project.id
+
+        case Versioning.create_version("sheet", sheet, project_id, user_id,
+               title: title,
+               description: description
+             ) do
+          {:ok, _version} ->
+            {:noreply,
+             socket
+             |> load_history_data()
+             |> put_flash(:info, dgettext("versioning", "Version created."))}
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
+        end
+      end
+    end)
+  end
+
+  def handle_event(
+        "promote_version",
+        %{"version_number" => version_number, "title" => title, "description" => description},
+        socket
+      ) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      title = if title == "", do: nil, else: title
+      description = if description == "", do: nil, else: description
+
+      with {:ok, number} <- parse_version_number(version_number),
+           version when not is_nil(version) <-
+             Versioning.get_version("sheet", socket.assigns.sheet.id, number) do
+        case Versioning.update_version(version, %{title: title, description: description}) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> load_history_data()
+             |> put_flash(:info, dgettext("versioning", "Version named successfully."))}
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(socket, :error, dgettext("versioning", "Could not name version."))}
+        end
+      else
+        _ ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+      end
+    end)
+  end
+
+  def handle_event("delete_version", %{"version_number" => version_number}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with {:ok, number} <- parse_version_number(version_number),
+           version when not is_nil(version) <-
+             Versioning.get_version("sheet", socket.assigns.sheet.id, number) do
+        case Versioning.delete_version(version) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> load_history_data()
+             |> put_flash(:info, dgettext("versioning", "Version deleted."))}
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(socket, :error, dgettext("versioning", "Could not delete version."))}
+        end
+      else
+        _ ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+      end
+    end)
+  end
+
+  def handle_event("load_more_versions", _params, socket) do
+    history = socket.assigns.history_data
+
+    if history && history.has_more do
+      next_page = history.page + 1
+      {:noreply, load_more_history(socket, next_page)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("preview_restore", %{"version_number" => version_number}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with {:ok, number} <- parse_version_number(version_number),
+           version when not is_nil(version) <-
+             Versioning.get_version("sheet", socket.assigns.sheet.id, number) do
+        detect_and_show_restore_preview(socket, version)
+      else
+        _ ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+      end
+    end)
+  end
+
+  def handle_event("save_and_restore", %{"version_number" => version_number}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with {:ok, number} <- parse_version_number(version_number),
+           version when not is_nil(version) <-
+             Versioning.get_version("sheet", socket.assigns.sheet.id, number) do
+        sheet = socket.assigns.sheet
+        user_id = socket.assigns.current_scope.user.id
+        project_id = socket.assigns.project.id
+
+        case Versioning.create_version("sheet", sheet, project_id, user_id,
+               title:
+                 dgettext("versioning", "Before restore to v%{number}",
+                   number: version.version_number
+                 ),
+               skip_diff: true
+             ) do
+          {:ok, _} ->
+            show_conflict_preview(socket, version, true)
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               dgettext("versioning", "Could not save current state.")
+             )}
+        end
+      else
+        _ ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+      end
+    end)
+  end
+
+  def handle_event("discard_and_restore", %{"version_number" => version_number}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with {:ok, number} <- parse_version_number(version_number),
+           version when not is_nil(version) <-
+             Versioning.get_version("sheet", socket.assigns.sheet.id, number) do
+        show_conflict_preview(socket, version, true)
+      else
+        _ ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+      end
+    end)
+  end
+
+  def handle_event("confirm_restore", %{"version_number" => version_number} = params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with {:ok, number} <- parse_version_number(version_number),
+           version when not is_nil(version) <-
+             Versioning.get_version("sheet", socket.assigns.sheet.id, number) do
+        skip_pre = params["skip_pre_snapshot"] || false
+        user_id = socket.assigns.current_scope.user.id
+        sheet = socket.assigns.sheet
+
+        case Versioning.restore_version("sheet", sheet, version,
+               user_id: user_id,
+               skip_pre_snapshot: skip_pre
+             ) do
+          {:ok, _updated_entity} ->
+            project_id = socket.assigns.project.id
+            updated_sheet = Sheets.get_sheet_full!(project_id, sheet.id)
+
+            {:noreply,
+             socket
+             |> assign(:sheet, updated_sheet)
+             |> reload_blocks()
+             |> UndoRedoStack.clear()
+             |> load_history_data()
+             |> push_event("version_restored", %{
+               name: updated_sheet.name,
+               shortcut: updated_sheet.shortcut
+             })
+             |> put_flash(
+               :info,
+               dgettext("versioning", "Restored to version %{number}",
+                 number: version.version_number
+               )
+             )}
+
+          {:error, {:pre_restore_snapshot_failed, _}} ->
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               dgettext(
+                 "versioning",
+                 "Could not create safety backup before restoring. Restore aborted."
+               )
+             )}
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(socket, :error, dgettext("versioning", "Could not restore version."))}
+        end
+      else
+        _ ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+      end
+    end)
+  end
+
+  # ===========================================================================
   # Handle Info
   # ===========================================================================
 
@@ -1553,6 +1806,163 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
     |> Enum.sort_by(fn {heading, _} -> heading end)
     |> Enum.map(fn {heading, items} -> %{heading: heading, items: items} end)
   end
+
+  # ===========================================================================
+  # History Tab Data
+  # ===========================================================================
+
+  @versions_per_page 20
+
+  defp load_history_data(socket) do
+    sheet = socket.assigns.sheet
+    project_id = socket.assigns.project.id
+    workspace_id = socket.assigns.workspace.id
+
+    versions =
+      Versioning.list_versions("sheet", sheet.id,
+        limit: @versions_per_page + 1,
+        offset: 0
+      )
+
+    has_more = length(versions) > @versions_per_page
+    versions = Enum.take(versions, @versions_per_page)
+    {named, auto} = Enum.split_with(versions, &(not &1.is_auto))
+
+    can_name =
+      Billing.can_create_named_version?(project_id, workspace_id) == :ok
+
+    assign(socket, :history_data, %{
+      versions: serialize_versions(versions),
+      named_versions: serialize_versions(named),
+      auto_versions: serialize_versions(auto),
+      has_more: has_more,
+      page: 1,
+      can_name_version: can_name,
+      current_version_id: sheet.current_version_id,
+      raw_versions: versions
+    })
+  end
+
+  defp load_more_history(socket, page) do
+    sheet = socket.assigns.sheet
+    offset = (page - 1) * @versions_per_page
+
+    new_versions =
+      Versioning.list_versions("sheet", sheet.id,
+        limit: @versions_per_page + 1,
+        offset: offset
+      )
+
+    has_more = length(new_versions) > @versions_per_page
+    new_versions = Enum.take(new_versions, @versions_per_page)
+
+    history = socket.assigns.history_data
+    all_raw = history.raw_versions ++ new_versions
+    {named, auto} = Enum.split_with(all_raw, &(not &1.is_auto))
+
+    assign(socket, :history_data, %{
+      history
+      | versions: serialize_versions(all_raw),
+        named_versions: serialize_versions(named),
+        auto_versions: serialize_versions(auto),
+        has_more: has_more,
+        page: page,
+        raw_versions: all_raw
+    })
+  end
+
+  defp serialize_versions(versions) do
+    Enum.map(versions, fn v ->
+      %{
+        id: v.id,
+        versionNumber: v.version_number,
+        title: v.title,
+        description: v.description,
+        changeSummary: v.change_summary,
+        changeDetails: v.change_details,
+        isAuto: v.is_auto,
+        entityType: v.entity_type,
+        insertedAt: Calendar.strftime(v.inserted_at, "%b %d, %Y at %H:%M"),
+        createdBy:
+          if(v.created_by, do: v.created_by.display_name || v.created_by.email)
+      }
+    end)
+  end
+
+  defp detect_and_show_restore_preview(socket, version) do
+    sheet = socket.assigns.sheet
+    builder = Versioning.get_builder!("sheet")
+
+    has_unsaved =
+      case Versioning.get_latest_version("sheet", sheet.id) do
+        nil ->
+          true
+
+        latest ->
+          case Versioning.load_version_snapshot(latest) do
+            {:ok, latest_snapshot} ->
+              current_snapshot = builder.build_snapshot(sheet)
+              Versioning.snapshot_has_changes?("sheet", latest_snapshot, current_snapshot)
+
+            {:error, _} ->
+              true
+          end
+      end
+
+    if has_unsaved do
+      {:noreply,
+       push_event(socket, "show_unsaved_modal", %{
+         versionNumber: version.version_number
+       })}
+    else
+      show_conflict_preview(socket, version, true)
+    end
+  end
+
+  defp show_conflict_preview(socket, version, skip_pre_snapshot) do
+    sheet = socket.assigns.sheet
+
+    case Versioning.load_version_snapshot(version) do
+      {:ok, snapshot} ->
+        report = Versioning.detect_restore_conflicts("sheet", snapshot, sheet)
+
+        serialized_report = %{
+          hasConflicts: report.has_conflicts,
+          shortcutCollision: report.shortcut_collision,
+          resolvedShortcut: report.resolved_shortcut,
+          conflicts:
+            Enum.map(report.conflicts, fn c ->
+              %{type: to_string(c.type), id: c.id, contexts: c.contexts}
+            end),
+          autoResolved: report.auto_resolved
+        }
+
+        {:noreply,
+         push_event(socket, "show_restore_modal", %{
+           versionNumber: version.version_number,
+           report: serialized_report,
+           skipPreSnapshot: skip_pre_snapshot
+         })}
+
+      {:error, _} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("versioning", "Could not load version snapshot.")
+         )}
+    end
+  end
+
+  defp parse_version_number(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {number, ""} -> {:ok, number}
+      _ -> :error
+    end
+  end
+
+  defp parse_version_number(value) when is_integer(value), do: {:ok, value}
+  defp parse_version_number(_), do: :error
 
   # ===========================================================================
   # Audio Tab Data
