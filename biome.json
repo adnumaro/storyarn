@@ -1,5 +1,6 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.4/schema.json",
+  "root": false,
+  "$schema": "https://biomejs.dev/schemas/2.4.6/schema.json",
   "assist": {
     "actions": {
       "source": {
@@ -37,7 +38,24 @@
       "quoteStyle": "double"
     }
   },
+  "overrides": [
+    {
+      "includes": ["**/*.vue"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedVariables": "off",
+            "noUnusedImports": "off"
+          },
+          "style": {
+            "useConst": "off",
+            "useImportType": "off"
+          }
+        }
+      }
+    }
+  ],
   "files": {
-    "includes": ["js/**", "!js/expression_editor/parser_generated.terms.js"]
+    "includes": ["js/**", "vue/**", "!js/expression_editor/parser_generated.terms.js"]
   }
 }
