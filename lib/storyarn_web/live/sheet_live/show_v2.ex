@@ -7,7 +7,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   use StoryarnWeb, :live_view
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.UndoRedoStack
-  alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
+  alias StoryarnWeb.SheetLive.Handlers.{TableHandlers, UndoRedoHandlers}
 
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
@@ -59,8 +59,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
             v-component="sheets/BlockList"
             v-socket={@socket}
             id="block-list"
-            blocks={prepare_blocks_for_vue(@blocks, @gallery_data)}
-            inherited-groups={prepare_inherited_groups_for_vue(@inherited_groups, @gallery_data)}
+            blocks={prepare_blocks_for_vue(@blocks, @gallery_data, @table_data)}
+            inherited-groups={prepare_inherited_groups_for_vue(@inherited_groups, @gallery_data, @table_data)}
             workspace-slug={@workspace.slug}
             project-slug={@project.slug}
             can-edit={@can_edit}
@@ -104,6 +104,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
          |> assign(:blocks, [])
          |> assign(:inherited_groups, [])
          |> assign(:gallery_data, %{})
+         |> assign(:table_data, %{})
          |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(project.id)))
          |> assign(:is_draft, false)
          |> assign(:source_shortcut, nil)
@@ -156,11 +157,22 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
             do: Sheets.batch_load_gallery_data(gallery_block_ids),
             else: %{}
 
+        table_block_ids =
+          all_blocks |> Enum.filter(&(&1.type == "table")) |> Enum.map(& &1.id)
+
+        table_data =
+          if table_block_ids != [],
+            do:
+              Sheets.batch_load_table_data(table_block_ids)
+              |> compute_formulas(project.id),
+            else: %{}
+
         socket
         |> assign(:sheet, sheet)
         |> assign(:blocks, own_blocks)
         |> assign(:inherited_groups, inherited_groups)
         |> assign(:gallery_data, gallery_data)
+        |> assign(:table_data, table_data)
     end
   end
 
@@ -741,6 +753,146 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
     end)
   end
 
+  # --- Table blocks ---
+
+  def handle_event("add_table_column", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_add_column(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("add_table_row", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_add_row(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("update_table_cell", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_update_cell(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("toggle_table_cell_boolean", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_toggle_cell_boolean(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("select_table_cell", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_select_table_cell(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("toggle_table_collapse", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_toggle_collapse(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("rename_table_column", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_rename_column(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("rename_table_row", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_rename_row(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("delete_table_column", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_delete_column(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("delete_table_row", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_delete_row(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("reorder_table_rows", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_reorder_rows(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("resize_table_column", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_resize_column(params, socket)
+    end)
+  end
+
+  def handle_event("change_table_column_type", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_change_column_type(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("toggle_table_column_constant", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_toggle_column_constant(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("toggle_table_column_required", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_toggle_column_required(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("toggle_reference_multiple", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_toggle_reference_multiple(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("update_number_constraint", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_update_number_constraint(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("toggle_table_cell_multi_select", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_toggle_table_cell_multi_select(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("add_table_cell_option", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_add_table_cell_option(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("add_table_column_option", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_add_column_option(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("remove_table_column_option", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_remove_column_option(params, socket, table_helpers(socket))
+    end)
+  end
+
+  def handle_event("update_table_column_option", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_update_column_option(params, socket, table_helpers(socket))
+    end)
+  end
+
+  # Formula sidebar (Phase 3 — placeholder, logs intent)
+  def handle_event("open_formula_sidebar", _params, socket) do
+    {:noreply,
+     put_flash(socket, :info, dgettext("sheets", "Formula editor coming soon."))}
+  end
+
   # Tree events (create, delete, move)
   def handle_event("create_sheet", _params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
@@ -839,8 +991,68 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   end
 
   # ===========================================================================
+  # Handle Info
+  # ===========================================================================
+
+  @impl true
+  def handle_info({:table_push_undo, action}, socket) do
+    {:noreply, UndoRedoStack.push_undo(socket, action)}
+  end
+
+  # ===========================================================================
   # Private Helpers
   # ===========================================================================
+
+  defp table_helpers(_socket) do
+    pid = self()
+
+    %{
+      reload_blocks: &reload_blocks/1,
+      maybe_create_version: fn _socket -> :ok end,
+      notify_parent: fn _socket, _status -> :ok end,
+      push_undo: fn action -> send(pid, {:table_push_undo, action}) end
+    }
+  end
+
+  defp compute_formulas(table_data, project_id) do
+    alias Storyarn.Sheets.FormulaResolver
+
+    Map.new(table_data, fn {block_id, %{columns: cols, rows: rows} = data} ->
+      formula_cols = Enum.filter(cols, &(&1.type == "formula"))
+
+      if formula_cols == [] do
+        {block_id, data}
+      else
+        computed =
+          try do
+            FormulaResolver.compute_all(cols, rows, project_id)
+          rescue
+            _ -> %{}
+          end
+
+        enriched_rows =
+          Enum.map(rows, fn row ->
+            formula_results = Map.get(computed, row.id, %{})
+
+            updated_cells =
+              Enum.reduce(formula_results, row.cells, fn {slug, %{result: result}}, cells ->
+                current = cells[slug]
+
+                enriched =
+                  if is_map(current),
+                    do: Map.put(current, "__result", result),
+                    else: %{"__result" => result}
+
+                Map.put(cells, slug, enriched)
+              end)
+
+            %{row | cells: updated_cells}
+          end)
+
+        {block_id, %{data | rows: enriched_rows}}
+      end
+    end)
+  end
 
   defp reload_sheet(socket) do
     sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
@@ -857,10 +1069,22 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
     gallery_data =
       if gallery_block_ids != [], do: Sheets.batch_load_gallery_data(gallery_block_ids), else: %{}
 
+    table_block_ids = all_blocks |> Enum.filter(&(&1.type == "table")) |> Enum.map(& &1.id)
+
+    project_id = socket.assigns.project.id
+
+    table_data =
+      if table_block_ids != [],
+        do:
+          Sheets.batch_load_table_data(table_block_ids)
+          |> compute_formulas(project_id),
+        else: %{}
+
     socket
     |> assign(:blocks, own_blocks)
     |> assign(:inherited_groups, inherited_groups)
     |> assign(:gallery_data, gallery_data)
+    |> assign(:table_data, table_data)
   end
 
   defp reload_sheet_and_tree(socket) do
@@ -951,23 +1175,23 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   defp banner_url(%{banner_asset: %{} = asset}), do: Assets.display_url(asset)
   defp banner_url(_), do: nil
 
-  defp prepare_inherited_groups_for_vue(groups, gallery_data) do
+  defp prepare_inherited_groups_for_vue(groups, gallery_data, table_data) do
     Enum.map(groups, fn group ->
       %{
         sourceSheet: %{
           id: group.source_sheet.id,
           name: group.source_sheet.name
         },
-        blocks: prepare_blocks_for_vue_raw(group.blocks, gallery_data)
+        blocks: prepare_blocks_for_vue_raw(group.blocks, gallery_data, table_data)
       }
     end)
   end
 
-  defp prepare_blocks_for_vue(blocks, gallery_data) do
+  defp prepare_blocks_for_vue(blocks, gallery_data, table_data) do
     raw =
       blocks
       |> Enum.sort_by(& &1.position)
-      |> prepare_blocks_for_vue_raw(gallery_data)
+      |> prepare_blocks_for_vue_raw(gallery_data, table_data)
 
     # Group by column_group_id into layout items
     raw
@@ -987,7 +1211,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
     end)
   end
 
-  defp prepare_blocks_for_vue_raw(blocks, gallery_data) do
+  defp prepare_blocks_for_vue_raw(blocks, gallery_data, table_data) do
     Enum.map(blocks, fn b ->
       base = %{
         id: b.id,
@@ -1005,21 +1229,52 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         value: b.value || %{}
       }
 
-      if b.type == "gallery" do
-        images =
-          Map.get(gallery_data, b.id, [])
-          |> Enum.map(fn gi ->
-            %{
-              id: gi.id,
-              url: Assets.display_url(gi.asset),
-              label: gi.label,
-              description: gi.description
-            }
-          end)
+      cond do
+        b.type == "gallery" ->
+          images =
+            Map.get(gallery_data, b.id, [])
+            |> Enum.map(fn gi ->
+              %{
+                id: gi.id,
+                url: Assets.display_url(gi.asset),
+                label: gi.label,
+                description: gi.description
+              }
+            end)
 
-        Map.put(base, :gallery_images, images)
-      else
-        base
+          Map.put(base, :gallery_images, images)
+
+        b.type == "table" ->
+          td = Map.get(table_data, b.id, %{columns: [], rows: []})
+
+          columns =
+            Enum.map(td.columns, fn c ->
+              %{
+                id: c.id,
+                name: c.name,
+                slug: c.slug,
+                type: c.type,
+                position: c.position,
+                is_constant: c.is_constant,
+                required: c.required,
+                config: c.config || %{}
+              }
+            end)
+
+          rows =
+            Enum.map(td.rows, fn r ->
+              %{id: r.id, name: r.name, slug: r.slug, position: r.position, cells: r.cells || %{}}
+            end)
+
+          collapsed = get_in(b.config, ["collapsed"]) || false
+
+          base
+          |> Map.put(:columns, columns)
+          |> Map.put(:rows, rows)
+          |> Map.put(:collapsed, collapsed)
+
+        true ->
+          base
       end
     end)
   end

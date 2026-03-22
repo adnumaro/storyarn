@@ -14,6 +14,7 @@ import MultiSelectBlock from "./blocks/MultiSelectBlock.vue"
 import DateBlock from "./blocks/DateBlock.vue"
 import RichTextBlock from "./blocks/RichTextBlock.vue"
 import GalleryBlock from "./blocks/GalleryBlock.vue"
+import TableBlock from "./blocks/TableBlock.vue"
 
 const blockComponents = {
   text: TextBlock,
@@ -24,6 +25,7 @@ const blockComponents = {
   date: DateBlock,
   rich_text: RichTextBlock,
   gallery: GalleryBlock,
+  table: TableBlock,
 }
 
 const props = defineProps({
