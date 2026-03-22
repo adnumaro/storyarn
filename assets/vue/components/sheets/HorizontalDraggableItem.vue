@@ -57,13 +57,9 @@ const placement = computed(() => {
     props.items.length < 3 &&
     (fullWidthPlacement.value.left || fullWidthPlacement.value.right)
   ) {
-    console.log("[h-drag] fullWidthPlacement:", JSON.stringify(fullWidthPlacement.value), "index:", props.index)
     return fullWidthPlacement.value
   }
 
-  if (intraGroupPlacement.value) {
-    console.log("[h-drag] intraGroupPlacement:", JSON.stringify(intraGroupPlacement.value), "index:", props.index)
-  }
   return intraGroupPlacement.value
 })
 </script>

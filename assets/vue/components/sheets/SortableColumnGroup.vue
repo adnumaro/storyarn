@@ -52,9 +52,7 @@ makeDroppable(gridRef, {
   groups: [columnGroup],
   events: {
     onDrop: (e) => {
-      console.log("[column-group] onDrop fired", { hoveredDraggable: !!e.hoveredDraggable, dropZone: !!e.dropZone, draggedCount: e.draggedItems?.length })
       const result = e.helpers.suggestSort("horizontal")
-      console.log("[column-group] suggestSort:", result ? { sameList: result.sameList, targetIndex: result.targetIndex, mode: result.mode, sourceLen: result.sourceItems?.length } : null)
       if (!result) return
       localBlocks.value = result.sourceItems
       // Push reorder with column indices

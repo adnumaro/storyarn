@@ -208,14 +208,6 @@ makeDroppable(containerRef, {
       const hoveredItem = e.hoveredDraggable?.item
       const side = dropSide(e, e.hoveredDraggable?.element)
 
-      console.log("[drop] dragged:", draggedItem?.type, "hovered:", hoveredItem?.type, "side:", side)
-      if (e.hoveredDraggable?.element) {
-        const pointer = e.provider?.pointer?.value?.current
-        const rect = e.hoveredDraggable.element.getBoundingClientRect()
-        const relX = pointer ? (pointer.x - rect.left) / rect.width : "no pointer"
-        console.log("[drop] pointer:", pointer, "relX:", relX, "rect.width:", rect.width)
-      }
-
       // Case 1: Create column group (full_width + full_width side drop)
       if (
         draggedItem?.type === "full_width" &&
