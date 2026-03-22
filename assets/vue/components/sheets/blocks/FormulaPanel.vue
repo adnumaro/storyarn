@@ -120,7 +120,7 @@ function saveBinding(symbol, value) {
 				<input
 					v-model="localExpression"
 					type="text"
-					class="w-full px-2 py-1.5 text-xs bg-transparent border border-border rounded-md outline-none focus:border-ring font-mono"
+					class="w-full px-2 py-1.5 text-xs bg-background border border-border rounded-md outline-none focus:border-ring font-mono"
 					placeholder="e.g. (a + b) * 2"
 					spellcheck="false"
 					autocomplete="off"

@@ -1,10 +1,11 @@
 <script setup>
 import { computed } from "vue";
-import { ToggleLeft, Lock } from "lucide-vue-next";
+import { ToggleLeft } from "lucide-vue-next";
 import { Switch } from "@/vue/components/ui/switch";
 import { Badge } from "@/vue/components/ui/badge";
 import { Checkbox } from "@/vue/components/ui/checkbox";
 import BlockToolbar from "../BlockToolbar.vue";
+import BlockLabel from "./BlockLabel.vue";
 import { useBlockActions } from "./useBlockActions";
 
 const props = defineProps({
@@ -13,17 +14,15 @@ const props = defineProps({
 	inherited: { type: Boolean, default: false },
 });
 
-const {
-	live,
-	label,
-	editingLabel,
-	localLabel,
-	labelInput,
-	startEditLabel,
-	saveLabel,
-	isSelected,
-	onBlockClick,
-} = useBlockActions(props);
+const { live, label, isSelected, onBlockClick } = useBlockActions(props);
+
+function saveLabel(val) {
+	live.pushEvent("update_block_config", {
+		id: props.block.id,
+		field: "label",
+		value: val,
+	});
+}
 
 const content = computed(() => props.block.value?.content);
 const mode = computed(() => props.block.config?.mode || "two_state");
@@ -87,16 +86,9 @@ function cycle() {
       </template>
     </BlockToolbar>
 
-    <div class="flex items-center justify-between mb-2">
-      <div class="flex items-center gap-1.5 text-sm">
-        <ToggleLeft class="size-3.5 text-muted-foreground" />
-        <input v-if="canEdit && editingLabel" ref="labelInput" v-model="localLabel" class="font-medium bg-transparent outline-none border-none px-0 text-sm" @blur="saveLabel" @keydown.enter.prevent="saveLabel" />
-        <span v-else class="font-medium" :class="canEdit && 'cursor-text'" @click="startEditLabel">{{ label }}</span>
-        <Lock v-if="block.is_constant" class="size-3 text-muted-foreground/50" />
-        <span v-if="block.required" class="text-[10px] text-destructive font-medium">required</span>
-      </div>
+    <BlockLabel :icon="ToggleLeft" :label="label" :can-edit="canEdit" :is-constant="block.is_constant" :required="block.required" :detached="block.detached" @save="saveLabel">
       <slot name="menu" />
-    </div>
+    </BlockLabel>
 
     <!-- Two-state -->
     <div v-if="canEdit && mode === 'two_state'" class="flex items-center gap-3">

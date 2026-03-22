@@ -1,9 +1,10 @@
 <script setup>
 import { ref, computed, watch } from "vue";
 import { useLive } from "@/vue/composables/useLive";
-import { Type, Lock, MoreHorizontal, Trash2 } from "lucide-vue-next";
+import { Type } from "lucide-vue-next";
 import { Input } from "@/vue/components/ui/input";
 import BlockToolbar from "../BlockToolbar.vue";
+import BlockLabel from "./BlockLabel.vue";
 import { useBlockActions } from "./useBlockActions";
 
 const props = defineProps({
@@ -12,18 +13,7 @@ const props = defineProps({
 	inherited: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["detach", "reattach"]);
-const {
-	label,
-	editingLabel,
-	localLabel,
-	labelInput,
-	startEditLabel,
-	saveLabel,
-	isSelected,
-	onBlockClick,
-} = useBlockActions(props);
-const live = useLive();
+const { live, label, isSelected, onBlockClick } = useBlockActions(props);
 
 const content = computed(() => props.block.value?.content ?? "");
 const localText = ref(content.value);
@@ -38,6 +28,14 @@ function save() {
 			value: localText.value,
 		});
 	}
+}
+
+function saveLabel(val) {
+	live.pushEvent("update_block_config", {
+		id: props.block.id,
+		field: "label",
+		value: val,
+	});
 }
 </script>
 
@@ -73,19 +71,17 @@ function save() {
       </template>
     </BlockToolbar>
 
-    <div class="flex items-center justify-between mb-2">
-      <div class="flex items-center gap-1.5 text-sm">
-        <Type class="size-3.5 text-muted-foreground" />
-        <input v-if="canEdit && editingLabel" ref="labelInput" v-model="localLabel"
-          class="font-medium bg-transparent outline-none border-none px-0 text-sm"
-          @blur="saveLabel" @keydown.enter.prevent="saveLabel" />
-        <span v-else class="font-medium" :class="canEdit && 'cursor-text'" @click="startEditLabel">{{ label }}</span>
-        <Lock v-if="block.is_constant" class="size-3 text-muted-foreground/50" />
-        <span v-if="block.required" class="text-[10px] text-destructive font-medium">required</span>
-        <span v-if="block.detached" class="text-[10px] text-amber-500 font-medium">detached</span>
-      </div>
+    <BlockLabel
+      :icon="Type"
+      :label="label"
+      :can-edit="canEdit"
+      :is-constant="block.is_constant"
+      :required="block.required"
+      :detached="block.detached"
+      @save="saveLabel"
+    >
       <slot name="menu" />
-    </div>
+    </BlockLabel>
 
     <Input v-if="canEdit" v-model="localText" :placeholder="block.config?.placeholder || 'Enter text...'" class="h-9 w-full"
       @blur="save" @keydown.enter="save" />

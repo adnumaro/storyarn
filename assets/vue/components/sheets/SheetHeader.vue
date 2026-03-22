@@ -193,7 +193,7 @@ function updateAvatarNotes(id, value) {
           <Button
             variant="secondary"
             size="sm"
-            class="bg-card/80 hover:bg-card gap-1.5"
+            class="bg-surface/80 hover:bg-surface gap-1.5"
             @click="triggerBannerUpload"
           >
             <Image class="size-4" />
@@ -203,7 +203,7 @@ function updateAvatarNotes(id, value) {
             v-if="sheet.bannerUrl"
             variant="secondary"
             size="sm"
-            class="bg-card/80 hover:bg-card gap-1.5"
+            class="bg-surface/80 hover:bg-surface gap-1.5"
             @click="removeBanner"
           >
             <Trash2 class="size-4" />

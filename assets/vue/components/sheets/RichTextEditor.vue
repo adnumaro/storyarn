@@ -112,7 +112,7 @@ function isActive(name, attrs) {
 </script>
 
 <template>
-  <div class="rounded-md border border-input overflow-hidden">
+  <div class="rounded-md border border-input overflow-hidden bg-background">
     <!-- Toolbar (only if editable) -->
     <div v-if="editable && editor" class="flex flex-wrap items-center gap-0.5 px-1.5 py-1 border-b border-border bg-muted/30">
       <button

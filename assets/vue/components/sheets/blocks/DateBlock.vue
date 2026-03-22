@@ -1,8 +1,9 @@
 <script setup>
 import { computed } from "vue";
-import { Calendar, Lock } from "lucide-vue-next";
+import { Calendar } from "lucide-vue-next";
 import { Input } from "@/vue/components/ui/input";
 import BlockToolbar from "../BlockToolbar.vue";
+import BlockLabel from "./BlockLabel.vue";
 import { useBlockActions } from "./useBlockActions";
 
 const props = defineProps({
@@ -11,17 +12,16 @@ const props = defineProps({
 	inherited: { type: Boolean, default: false },
 });
 
-const {
-	live,
-	label,
-	editingLabel,
-	localLabel,
-	labelInput,
-	startEditLabel,
-	saveLabel,
-	isSelected,
-	onBlockClick,
-} = useBlockActions(props);
+const { live, label, isSelected, onBlockClick } = useBlockActions(props);
+
+function saveLabel(val) {
+	live.pushEvent("update_block_config", {
+		id: props.block.id,
+		field: "label",
+		value: val,
+	});
+}
+
 const content = computed(() => props.block.value?.content);
 </script>
 
@@ -43,16 +43,9 @@ const content = computed(() => props.block.value?.content);
       <template #config />
     </BlockToolbar>
 
-    <div class="flex items-center justify-between mb-2">
-      <div class="flex items-center gap-1.5 text-sm">
-        <Calendar class="size-3.5 text-muted-foreground" />
-        <input v-if="canEdit && editingLabel" ref="labelInput" v-model="localLabel" class="font-medium bg-transparent outline-none border-none px-0 text-sm" @blur="saveLabel" @keydown.enter.prevent="saveLabel" />
-        <span v-else class="font-medium" :class="canEdit && 'cursor-text'" @click="startEditLabel">{{ label }}</span>
-        <Lock v-if="block.is_constant" class="size-3 text-muted-foreground/50" />
-        <span v-if="block.required" class="text-[10px] text-destructive font-medium">required</span>
-      </div>
+    <BlockLabel :icon="Calendar" :label="label" :can-edit="canEdit" :is-constant="block.is_constant" :required="block.required" :detached="block.detached" @save="saveLabel">
       <slot name="menu" />
-    </div>
+    </BlockLabel>
 
     <Input v-if="canEdit" type="date" :model-value="content || ''" class="h-9 w-full"
       @change="(e) => live.pushEvent('update_block_value', { id: block.id, value: e.target.value || null })" />

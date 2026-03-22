@@ -4,6 +4,7 @@ import { Table2, ChevronRight, ChevronDown, Lock } from "lucide-vue-next";
 import BlockToolbar from "../BlockToolbar.vue";
 import TableGrid from "./TableGrid.vue";
 import { useBlockActions } from "./useBlockActions";
+import BlockLabel from '@/vue/components/sheets/blocks/BlockLabel.vue'
 
 const props = defineProps({
 	block: { type: Object, required: true },
@@ -14,11 +15,6 @@ const props = defineProps({
 const {
 	live,
 	label,
-	editingLabel,
-	localLabel,
-	labelInput,
-	startEditLabel,
-	saveLabel,
 	isSelected,
 	onBlockClick,
 } = useBlockActions(props);
@@ -36,6 +32,14 @@ const summary = computed(() => {
 	const r = rows.value.length;
 	return `${r} row${r !== 1 ? "s" : ""}, ${c} column${c !== 1 ? "s" : ""}`;
 });
+
+function saveLabel(val) {
+  live.pushEvent("update_block_config", {
+    id: props.block.id,
+    field: "label",
+    value: val,
+  });
+}
 
 function toggleCollapse() {
 	live.pushEvent("toggle_table_collapse", { "block-id": props.block.id });
@@ -59,31 +63,26 @@ function toggleCollapse() {
     />
 
     <!-- Header: chevron + icon + label (canManage mode) -->
-    <div v-if="canManage" class="flex items-center gap-1.5 text-sm mb-1 group/header">
+    <div v-if="canManage" class="flex items-center gap-1.5 text-sm mb-1 group/header mb-2">
       <button
         type="button"
-        class="flex items-center justify-center shrink-0 cursor-pointer"
+        class="flex items-center justify-center shrink-0 cursor-pointer size-5"
         @click.stop="toggleCollapse"
       >
         <component :is="collapsed ? ChevronRight : ChevronDown" class="size-3 text-muted-foreground/40 hover:text-muted-foreground/70" />
       </button>
-      <Table2 class="size-3.5 text-muted-foreground/50" />
-      <Lock v-if="block.is_constant" class="size-3 text-destructive" />
-      <input
-        v-if="editingLabel"
-        ref="labelInput"
-        v-model="localLabel"
-        class="font-medium bg-transparent outline-none border-none px-0 text-sm text-muted-foreground/70"
-        @blur="saveLabel"
-        @keydown.enter.prevent="saveLabel"
-      />
-      <span
-        v-else
-        class="text-muted-foreground/70 cursor-default hover:text-foreground transition-colors"
-        @click="startEditLabel"
-      >{{ label }}</span>
-      <span v-if="collapsed" class="text-muted-foreground/40">({{ summary }})</span>
-      <slot name="menu" />
+      <BlockLabel
+        :icon="Table2"
+        :label="label"
+        :can-edit="canEdit"
+        :is-constant="block.is_constant"
+        :required="block.required"
+        :detached="block.detached"
+        class="m-0!"
+        @save="saveLabel"
+      >
+        <slot name="menu" />
+      </BlockLabel>
     </div>
 
     <!-- Header: read-only (inherited or viewer) -->

@@ -166,7 +166,7 @@ const pages = computed(() => {
         <div
           v-for="stat in statCards"
           :key="stat.label"
-          class="rounded-lg border border-border bg-card p-4 space-y-2"
+          class="rounded-lg border border-border bg-surface p-4 space-y-2"
         >
           <div class="flex items-center gap-2 text-xs text-muted-foreground">
             <component :is="stat.icon" :class="['size-4', stat.color]" />
@@ -179,7 +179,7 @@ const pages = computed(() => {
       <!-- Table section -->
       <div class="space-y-2">
         <h2 class="text-sm font-medium">All Sheets</h2>
-        <div class="rounded-lg border border-border bg-card overflow-auto max-h-[60vh]">
+        <div class="rounded-lg border border-border bg-surface overflow-auto max-h-[60vh]">
           <Table>
             <TableHeader>
               <TableRow class="bg-muted/40 hover:bg-muted/40 sticky top-0 z-10">

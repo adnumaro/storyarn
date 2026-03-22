@@ -47,7 +47,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
     >
       <div
         :if={@sheet}
-        class="max-w-4xl mx-auto bg-card border border-border rounded-2xl p-6 mb-8 shadow-sm"
+        class="max-w-4xl mx-auto bg-surface border border-border rounded-2xl p-6 mb-8 shadow-sm"
       >
         <.vue
           v-component="sheets/SheetHeader"
