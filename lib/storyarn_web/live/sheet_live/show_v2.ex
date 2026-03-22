@@ -92,6 +92,18 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
             project-slug={@project.slug}
             loading={is_nil(@references_data)}
           />
+          <.vue
+            :if={@current_tab == "audio"}
+            v-component="sheets/AudioTab"
+            v-socket={@socket}
+            id="audio-tab"
+            grouped-lines={@audio_data[:grouped_lines] || []}
+            audio-assets={@audio_data[:audio_assets] || []}
+            workspace-slug={@workspace.slug}
+            project-slug={@project.slug}
+            can-edit={@can_edit}
+            loading={is_nil(@audio_data)}
+          />
         </div>
       </div>
 
@@ -137,6 +149,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
          |> assign(:source_shortcut, nil)
          |> assign(:current_tab, "content")
          |> assign(:references_data, nil)
+         |> assign(:audio_data, nil)
          |> assign(:pending_delete_id, nil)
          |> assign(:formula_editing, nil)
          |> assign(:formula_search_results, [])
@@ -209,6 +222,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         |> assign(:table_data, table_data)
         |> assign(:current_tab, "content")
         |> assign(:references_data, nil)
+        |> assign(:audio_data, nil)
     end
   end
 
@@ -223,14 +237,19 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   # --- Tabs ---
 
   def handle_event("switch_tab", %{"tab" => tab}, socket)
-      when tab in ~w(content references) do
+      when tab in ~w(content references audio) do
     socket = assign(socket, :current_tab, tab)
 
     socket =
-      if tab == "references" && is_nil(socket.assigns.references_data) do
-        load_references_data(socket)
-      else
-        socket
+      cond do
+        tab == "references" && is_nil(socket.assigns.references_data) ->
+          load_references_data(socket)
+
+        tab == "audio" && is_nil(socket.assigns.audio_data) ->
+          load_audio_data(socket)
+
+        true ->
+          socket
       end
 
     {:noreply, socket}
@@ -1310,6 +1329,48 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
     end)
   end
 
+  # --- Audio tab ---
+
+  def handle_event(
+        "select_audio",
+        %{"node-id" => node_id, "audio_asset_id" => asset_id_str},
+        socket
+      ) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      case Integer.parse(to_string(asset_id_str)) do
+        {asset_id, ""} -> update_node_audio(socket, node_id, asset_id)
+        _ -> {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("remove_audio", %{"node-id" => node_id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      update_node_audio(socket, node_id, nil)
+    end)
+  end
+
+  def handle_event(
+        "upload_audio",
+        %{
+          "filename" => filename,
+          "content_type" => content_type,
+          "data" => data,
+          "node_id" => node_id
+        },
+        socket
+      ) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with [_header, base64_data] <- String.split(data, ",", parts: 2),
+           {:ok, binary_data} <- Base.decode64(base64_data) do
+        process_audio_upload(socket, node_id, filename, content_type, binary_data)
+      else
+        _ ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid file data."))}
+      end
+    end)
+  end
+
   # ===========================================================================
   # Handle Info
   # ===========================================================================
@@ -1491,6 +1552,144 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
     end)
     |> Enum.sort_by(fn {heading, _} -> heading end)
     |> Enum.map(fn {heading, items} -> %{heading: heading, items: items} end)
+  end
+
+  # ===========================================================================
+  # Audio Tab Data
+  # ===========================================================================
+
+  defp load_audio_data(socket) do
+    %{sheet: sheet, project: project} = socket.assigns
+    nodes = Flows.list_dialogue_nodes_by_speaker(project.id, sheet.id)
+
+    voice_lines =
+      Enum.map(nodes, fn node ->
+        audio_asset = resolve_audio_asset(project.id, node.data["audio_asset_id"])
+
+        %{
+          nodeId: node.id,
+          flowId: node.flow.id,
+          flowName: node.flow.name,
+          flowShortcut: node.flow.shortcut,
+          text: truncate_html_text(node.data["text"], 80),
+          audioAsset: serialize_audio_asset(audio_asset)
+        }
+      end)
+
+    grouped_lines =
+      voice_lines
+      |> Enum.group_by(fn vl -> {vl.flowId, vl.flowName, vl.flowShortcut} end)
+      |> Enum.sort_by(fn {{_, name, _}, _} -> name end)
+      |> Enum.map(fn {{flow_id, flow_name, flow_shortcut}, lines} ->
+        %{
+          flow: %{id: flow_id, name: flow_name, shortcut: flow_shortcut},
+          lines: lines
+        }
+      end)
+
+    audio_assets =
+      Assets.list_assets(project.id, content_type: "audio/")
+      |> Enum.map(&serialize_audio_asset/1)
+
+    assign(socket, :audio_data, %{
+      grouped_lines: grouped_lines,
+      audio_assets: audio_assets
+    })
+  end
+
+  defp resolve_audio_asset(_project_id, nil), do: nil
+  defp resolve_audio_asset(_project_id, ""), do: nil
+
+  defp resolve_audio_asset(project_id, asset_id) do
+    Assets.get_asset(project_id, asset_id)
+  end
+
+  defp serialize_audio_asset(nil), do: nil
+
+  defp serialize_audio_asset(asset) do
+    %{
+      id: asset.id,
+      filename: asset.filename,
+      url: asset.url,
+      contentType: asset.content_type
+    }
+  end
+
+  defp truncate_html_text(nil, _max), do: ""
+  defp truncate_html_text("", _max), do: ""
+
+  defp truncate_html_text(html, max) do
+    text =
+      html
+      |> Floki.parse_document!()
+      |> Floki.text()
+      |> String.trim()
+
+    if String.length(text) > max do
+      String.slice(text, 0, max) <> "..."
+    else
+      text
+    end
+  end
+
+  defp update_node_audio(socket, node_id_str, audio_asset_id) do
+    {node_id, ""} = Integer.parse(to_string(node_id_str))
+    project_id = socket.assigns.project.id
+
+    # Verify the node belongs to this project via its flow
+    nodes = Flows.list_dialogue_nodes_by_speaker(project_id, socket.assigns.sheet.id)
+    line = Enum.find(nodes, &(&1.id == node_id))
+
+    if line do
+      node = Flows.get_node!(line.flow.id, node_id)
+      updated_data = Map.put(node.data, "audio_asset_id", audio_asset_id)
+
+      case Flows.update_node_data(node, updated_data) do
+        {:ok, _updated_node, _meta} ->
+          {:noreply, load_audio_data(socket)}
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update audio."))}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  defp process_audio_upload(socket, node_id, filename, content_type, binary_data) do
+    if Assets.allowed_content_type?(content_type) do
+      project = socket.assigns.project
+
+      case Billing.can_upload_asset_for_project?(project, byte_size(binary_data)) do
+        :ok ->
+          user = socket.assigns.current_scope.user
+
+          case Assets.upload_binary_and_create_asset(
+                 binary_data,
+                 %{filename: filename, content_type: content_type},
+                 project,
+                 user
+               ) do
+            {:ok, asset} ->
+              Collaboration.broadcast_change({:assets, project.id}, :asset_created, %{})
+              update_node_audio(socket, node_id, asset.id)
+
+            {:error, _reason} ->
+              {:noreply,
+               put_flash(socket, :error, dgettext("sheets", "Could not upload audio file."))}
+          end
+
+        {:error, :limit_reached, _details} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             dgettext("sheets", "Storage limit reached. Upgrade your plan.")
+           )}
+      end
+    else
+      {:noreply, put_flash(socket, :error, dgettext("sheets", "Unsupported file type."))}
+    end
   end
 
   # ===========================================================================

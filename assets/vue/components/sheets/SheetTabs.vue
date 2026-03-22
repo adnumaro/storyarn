@@ -18,7 +18,7 @@ const live = useLive();
 const tabs = [
 	{ value: "content", label: "Content", icon: LayoutList },
 	{ value: "references", label: "References", icon: Link },
-	{ value: "audio", label: "Audio", icon: Headphones, disabled: true },
+	{ value: "audio", label: "Audio", icon: Headphones },
 	{ value: "history", label: "History", icon: History, disabled: true },
 ];
 
