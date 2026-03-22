@@ -43,7 +43,7 @@ function animateIn() {
 	const el = panelRef.value;
 	if (!el) return;
 
-	el.style.opacity = "0";
+	el.style.opacity = 0;
 	el.style.transform = `translateX(${slideOffset()})`;
 	el.style.transition = "";
 	el.style.pointerEvents = "auto";
@@ -51,7 +51,7 @@ function animateIn() {
 	requestAnimationFrame(() => {
 		requestAnimationFrame(() => {
 			el.style.transition = `transform ${OPEN_DURATION}ms ${EASING}, opacity ${OPEN_DURATION}ms ${EASING}`;
-			el.style.opacity = "1";
+			el.style.opacity = 1;
 			el.style.transform = "translateX(0)";
 
 			setTimeout(() => {
@@ -68,17 +68,17 @@ function animateOut() {
 	const el = panelRef.value;
 	if (!el) return;
 
-	el.style.opacity = "1";
+	el.style.opacity = 1;
 	el.style.transform = "translateX(0)";
 
 	requestAnimationFrame(() => {
 		el.style.transition = `transform ${CLOSE_DURATION}ms ${EASING}, opacity ${CLOSE_DURATION}ms ${EASING}`;
-		el.style.opacity = "0";
+		el.style.opacity = 0;
 		el.style.transform = `translateX(${slideOffset()})`;
 
 		setTimeout(() => {
 			el.style.transition = "";
-			el.style.opacity = "";
+			el.style.opacity = 0;
 			el.style.transform = `translateX(${slideOffset()})`;
 			el.style.pointerEvents = "none";
 		}, CLOSE_DURATION);
@@ -91,10 +91,10 @@ onMounted(() => {
 	if (!el) return;
 
 	if (props.open) {
-		el.style.opacity = "1";
+		el.style.opacity = 1;
 		el.style.pointerEvents = "auto";
 	} else {
-		el.style.opacity = "0";
+		el.style.opacity = 0;
 		el.style.transform = `translateX(${slideOffset()})`;
 		el.style.pointerEvents = "none";
 	}
@@ -116,7 +116,7 @@ watch(
 	<div
 		ref="panelRef"
 		:class="[
-			'fixed top-[76px] bottom-3 z-[1010] w-64 flex flex-col v2-surface-panel overflow-hidden',
+			'fixed top-19 bottom-3 z-1010 w-64 flex flex-col v2-surface-panel overflow-hidden',
 			'max-md:transition-transform max-md:duration-200',
 			side === 'left' ? 'left-3' : 'right-3',
 			open
