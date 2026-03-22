@@ -2,13 +2,6 @@
 import { ref, useTemplateRef, watch } from "vue"
 import { useLive } from "@/vue/composables/useLive"
 import { makeDroppable } from "@vue-dnd-kit/core"
-import { MoreHorizontal, Trash2 } from "lucide-vue-next"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/vue/components/ui/dropdown-menu"
 
 import HorizontalDraggableItem from "./HorizontalDraggableItem.vue"
 import TextBlock from "./blocks/TextBlock.vue"
@@ -70,10 +63,6 @@ function resolveComponent(type) {
   return blockComponents[type] || null
 }
 
-function deleteBlock(id) {
-  live.pushEvent("delete_block", { id })
-}
-
 function gridClass() {
   if (props.columnCount === 2) return "sm:grid-cols-2"
   if (props.columnCount === 3) return "sm:grid-cols-3"
@@ -98,23 +87,7 @@ function gridClass() {
         :is="resolveComponent(block.type)"
         :block="block"
         :can-edit="canEdit"
-      >
-        <template #menu>
-          <DropdownMenu v-if="canEdit">
-            <DropdownMenuTrigger as-child>
-              <button class="size-6 rounded flex items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent">
-                <MoreHorizontal class="size-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" class="z-[1030]">
-              <DropdownMenuItem class="text-destructive gap-2 text-xs" @select="deleteBlock(block.id)">
-                <Trash2 class="size-3.5" />
-                Delete block
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </template>
-      </component>
+      />
     </HorizontalDraggableItem>
   </div>
 </template>

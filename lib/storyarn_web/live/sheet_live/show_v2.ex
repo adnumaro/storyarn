@@ -29,15 +29,20 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
       tree_panel_open={@tree_panel_open}
       tree_panel_pinned={@tree_panel_pinned}
       can_edit={@can_edit}
-      tree_props={%{
-        sheetsTree: @sheets_tree,
-        canEdit: @can_edit,
-        workspaceSlug: @workspace.slug,
-        projectSlug: @project.slug,
-        selectedSheetId: @sheet && @sheet.id
-      }}
+      tree_props={
+        %{
+          sheetsTree: @sheets_tree,
+          canEdit: @can_edit,
+          workspaceSlug: @workspace.slug,
+          projectSlug: @project.slug,
+          selectedSheetId: @sheet && @sheet.id
+        }
+      }
     >
-      <div :if={@sheet} class="max-w-4xl mx-auto">
+      <div
+        :if={@sheet}
+        class="max-w-4xl mx-auto bg-card border border-border rounded-2xl p-6 mb-8 shadow-sm"
+      >
         <.vue
           v-component="sheets/SheetHeader"
           v-socket={@socket}
@@ -47,8 +52,17 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
           is-draft={@is_draft}
           source-shortcut={@source_shortcut}
         />
-        <div class="px-4 py-8 text-muted-foreground text-sm">
-          Block editor coming in Phase 2...
+        <div class="px-4 pb-6">
+          <.vue
+            v-component="sheets/BlockList"
+            v-socket={@socket}
+            id="block-list"
+            blocks={prepare_blocks_for_vue(@blocks, @gallery_data)}
+            inherited-groups={prepare_inherited_groups_for_vue(@inherited_groups, @gallery_data)}
+            workspace-slug={@workspace.slug}
+            project-slug={@project.slug}
+            can-edit={@can_edit}
+          />
         </div>
       </div>
 
@@ -85,6 +99,9 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
          |> assign(:membership, membership)
          |> assign(:can_edit, can_edit)
          |> assign(:sheet, nil)
+         |> assign(:blocks, [])
+         |> assign(:inherited_groups, [])
+         |> assign(:gallery_data, %{})
          |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(project.id)))
          |> assign(:is_draft, false)
          |> assign(:source_shortcut, nil)
@@ -125,7 +142,22 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         )
 
       sheet ->
-        assign(socket, :sheet, sheet)
+        {inherited_groups, own_blocks} = Sheets.get_sheet_blocks_grouped(sheet.id)
+        all_blocks = Enum.flat_map(inherited_groups, & &1.blocks) ++ own_blocks
+
+        gallery_block_ids =
+          all_blocks |> Enum.filter(&(&1.type == "gallery")) |> Enum.map(& &1.id)
+
+        gallery_data =
+          if gallery_block_ids != [],
+            do: Sheets.batch_load_gallery_data(gallery_block_ids),
+            else: %{}
+
+        socket
+        |> assign(:sheet, sheet)
+        |> assign(:blocks, own_blocks)
+        |> assign(:inherited_groups, inherited_groups)
+        |> assign(:gallery_data, gallery_data)
     end
   end
 
@@ -258,8 +290,11 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
       id = parse_id(id)
 
       case Sheets.remove_avatar(id) do
-        {:ok, _} -> {:noreply, reload_sheet_and_tree(socket)}
-        {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not remove avatar."))}
+        {:ok, _} ->
+          {:noreply, reload_sheet_and_tree(socket)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not remove avatar."))}
       end
     end)
   end
@@ -302,6 +337,336 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
     end)
   end
 
+  # --- Blocks ---
+
+  def handle_event("add_block", %{"type" => type}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      case Sheets.create_block(socket.assigns.sheet, %{type: type}) do
+        {:ok, _block} ->
+          {:noreply, reload_blocks(socket)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create block."))}
+      end
+    end)
+  end
+
+  def handle_event("update_block_value", %{"id" => id, "value" => value}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        case Sheets.update_block_value(block, %{"content" => value}) do
+          {:ok, _} -> {:noreply, reload_blocks(socket)}
+          {:error, _} -> {:noreply, socket}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("toggle_multi_select", %{"id" => id, "key" => key}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        current = get_in(block.value, ["content"]) || []
+
+        new_content =
+          if key in current,
+            do: List.delete(current, key),
+            else: current ++ [key]
+
+        case Sheets.update_block_value(block, %{"content" => new_content}) do
+          {:ok, _} -> {:noreply, reload_blocks(socket)}
+          {:error, _} -> {:noreply, socket}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event(
+        "update_block_config",
+        %{"id" => id, "field" => field, "value" => value},
+        socket
+      ) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        new_config = Map.put(block.config || %{}, field, value)
+
+        case Sheets.update_block_config(block, new_config) do
+          {:ok, _} -> {:noreply, reload_blocks(socket)}
+          {:error, _} -> {:noreply, socket}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("delete_block", %{"id" => id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        case Sheets.delete_block(block) do
+          {:ok, _} ->
+            {:noreply, reload_blocks(socket)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete block."))}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("duplicate_block", %{"id" => id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        case Sheets.duplicate_block(block) do
+          {:ok, _} ->
+            {:noreply, reload_blocks(socket)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not duplicate block."))}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("reorder_column_group", %{"group_id" => _group_id, "items" => items}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      Enum.each(items, fn item ->
+        block = Sheets.get_block(parse_id(item["id"]))
+
+        if block && block.sheet_id == socket.assigns.sheet.id do
+          Sheets.update_block(block, %{column_index: item["column_index"]})
+        end
+      end)
+
+      {:noreply, reload_blocks(socket)}
+    end)
+  end
+
+  def handle_event("reorder_with_columns", %{"items" => items}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      sanitized =
+        items
+        |> Enum.map(fn item ->
+          %{
+            id: parse_id(item["id"]),
+            column_group_id: normalize_column_group_id(item["column_group_id"]),
+            column_index: item["column_index"] || 0
+          }
+        end)
+
+      case Sheets.reorder_blocks_with_columns(socket.assigns.sheet.id, sanitized) do
+        {:ok, _} ->
+          {:noreply, reload_blocks(socket)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not reorder blocks."))}
+      end
+    end)
+  end
+
+  # --- Block toolbar ---
+
+  def handle_event("toggle_constant", %{"id" => id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        Sheets.update_block(block, %{is_constant: !block.is_constant})
+        {:noreply, reload_blocks(socket)}
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("update_variable_name", %{"id" => id, "variable_name" => name}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        Sheets.update_variable_name(block, name)
+        {:noreply, reload_blocks(socket)}
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("change_block_scope", %{"id" => id, "scope" => scope}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        Sheets.update_block(block, %{scope: scope})
+        {:noreply, reload_blocks(socket)}
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("toggle_required", %{"id" => id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        Sheets.update_block(block, %{required: !block.required})
+        {:noreply, reload_blocks(socket)}
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  # --- Block reorder ---
+
+  def handle_event("reorder_blocks", %{"ids" => ids}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      int_ids = Enum.map(ids, &parse_id/1)
+      Sheets.reorder_blocks(socket.assigns.sheet.id, int_ids)
+      {:noreply, reload_blocks(socket)}
+    end)
+  end
+
+  # --- Inheritance ---
+
+  def handle_event("detach_block", %{"id" => id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        case Sheets.detach_block(block) do
+          {:ok, _} ->
+            {:noreply, reload_blocks(socket)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not detach block."))}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("reattach_block", %{"id" => id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        case Sheets.reattach_block(block) do
+          {:ok, _} ->
+            {:noreply, reload_blocks(socket)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not reattach block."))}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  # --- Gallery blocks ---
+
+  def handle_event(
+        "upload_gallery_image",
+        %{
+          "block_id" => block_id,
+          "filename" => filename,
+          "content_type" => content_type,
+          "data" => data
+        },
+        socket
+      ) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(block_id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id && block.type == "gallery" do
+        with [_header, base64_data] <- String.split(data, ",", parts: 2),
+             {:ok, binary_data} <- Base.decode64(base64_data) do
+          case Billing.can_upload_asset_for_project?(
+                 socket.assigns.project,
+                 byte_size(binary_data)
+               ) do
+            :ok ->
+              case Assets.upload_binary_and_create_asset(
+                     binary_data,
+                     %{filename: filename, content_type: content_type, purpose: :gallery},
+                     socket.assigns.project,
+                     socket.assigns.current_scope.user
+                   ) do
+                {:ok, asset} ->
+                  Sheets.add_gallery_image(block, asset.id)
+                  {:noreply, reload_blocks(socket)}
+
+                {:error, _} ->
+                  {:noreply,
+                   put_flash(socket, :error, dgettext("sheets", "Could not upload image."))}
+              end
+
+            {:error, :limit_reached, _} ->
+              {:noreply, put_flash(socket, :error, dgettext("sheets", "Storage limit reached."))}
+          end
+        else
+          _ -> {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid file data."))}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event(
+        "update_gallery_image",
+        %{"gallery_image_id" => id, "field" => field, "value" => value},
+        socket
+      ) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      case Sheets.get_gallery_image(parse_id(id)) do
+        nil ->
+          {:noreply, socket}
+
+        gi ->
+          Sheets.update_gallery_image(gi, %{String.to_existing_atom(field) => value})
+          {:noreply, reload_blocks(socket)}
+      end
+    end)
+  end
+
+  def handle_event("remove_gallery_image", %{"gallery_image_id" => id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      case Sheets.remove_gallery_image(parse_id(id)) do
+        {:ok, _} -> {:noreply, reload_blocks(socket)}
+        _ -> {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("reorder_gallery_images", %{"block_id" => block_id, "ids" => ids}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      int_ids = Enum.map(ids, &parse_id/1)
+      Sheets.reorder_gallery_images(parse_id(block_id), int_ids)
+      {:noreply, reload_blocks(socket)}
+    end)
+  end
+
   # Tree events (create, delete, move)
   def handle_event("create_sheet", _params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
@@ -309,7 +674,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         {:ok, new_sheet} ->
           {:noreply,
            push_navigate(socket,
-             to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/sheets/#{new_sheet.id}"
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/sheets/#{new_sheet.id}"
            )}
 
         {:error, :limit_reached, _} ->
@@ -329,7 +695,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         {:ok, new_sheet} ->
           {:noreply,
            push_navigate(socket,
-             to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/sheets/#{new_sheet.id}"
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/sheets/#{new_sheet.id}"
            )}
 
         {:error, :limit_reached, _} ->
@@ -354,9 +721,13 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
           {:noreply,
            socket
            |> put_flash(:info, dgettext("sheets", "Sheet moved to trash."))
-           |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id)))}
+           |> assign(
+             :sheets_tree,
+             prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id))
+           )}
         else
-          _ -> {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
+          _ ->
+            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
         end
       end)
     else
@@ -371,6 +742,22 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   defp reload_sheet(socket) do
     sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
     assign(socket, :sheet, sheet)
+  end
+
+  defp reload_blocks(socket) do
+    sheet_id = socket.assigns.sheet.id
+    {inherited_groups, own_blocks} = Sheets.get_sheet_blocks_grouped(sheet_id)
+    all_blocks = Enum.flat_map(inherited_groups, & &1.blocks) ++ own_blocks
+
+    gallery_block_ids = all_blocks |> Enum.filter(&(&1.type == "gallery")) |> Enum.map(& &1.id)
+
+    gallery_data =
+      if gallery_block_ids != [], do: Sheets.batch_load_gallery_data(gallery_block_ids), else: %{}
+
+    socket
+    |> assign(:blocks, own_blocks)
+    |> assign(:inherited_groups, inherited_groups)
+    |> assign(:gallery_data, gallery_data)
   end
 
   defp reload_sheet_and_tree(socket) do
@@ -418,7 +805,11 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
       {:error, :limit_reached, _} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("sheets", "Storage limit reached. Upgrade your plan."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("sheets", "Storage limit reached. Upgrade your plan.")
+         )}
     end
   end
 
@@ -457,6 +848,79 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   defp banner_url(%{banner_asset: %{} = asset}), do: Assets.display_url(asset)
   defp banner_url(_), do: nil
 
+  defp prepare_inherited_groups_for_vue(groups, gallery_data) do
+    Enum.map(groups, fn group ->
+      %{
+        sourceSheet: %{
+          id: group.source_sheet.id,
+          name: group.source_sheet.name
+        },
+        blocks: prepare_blocks_for_vue_raw(group.blocks, gallery_data)
+      }
+    end)
+  end
+
+  defp prepare_blocks_for_vue(blocks, gallery_data) do
+    raw =
+      blocks
+      |> Enum.sort_by(& &1.position)
+      |> prepare_blocks_for_vue_raw(gallery_data)
+
+    # Group by column_group_id into layout items
+    raw
+    |> Enum.chunk_by(& &1.column_group_id)
+    |> Enum.flat_map(fn chunk ->
+      case chunk do
+        [%{column_group_id: nil} | _] ->
+          Enum.map(chunk, fn b -> %{type: "full_width", block: b} end)
+
+        [%{column_group_id: gid} | _] when not is_nil(gid) ->
+          sorted = Enum.sort_by(chunk, & &1.column_index)
+          [%{type: "column_group", group_id: gid, blocks: sorted, column_count: length(sorted)}]
+
+        other ->
+          Enum.map(other, fn b -> %{type: "full_width", block: b} end)
+      end
+    end)
+  end
+
+  defp prepare_blocks_for_vue_raw(blocks, gallery_data) do
+    Enum.map(blocks, fn b ->
+      base = %{
+        id: b.id,
+        type: b.type,
+        position: b.position,
+        is_constant: b.is_constant,
+        variable_name: b.variable_name,
+        scope: b.scope || "self",
+        inherited: b.inherited_from_block_id != nil && !b.detached,
+        detached: b.detached || false,
+        required: b.required || false,
+        column_group_id: b.column_group_id,
+        column_index: b.column_index || 0,
+        config: b.config || %{},
+        value: b.value || %{}
+      }
+
+      if b.type == "gallery" do
+        images =
+          Map.get(gallery_data, b.id, [])
+          |> Enum.map(fn gi ->
+            %{
+              id: gi.id,
+              url: Assets.display_url(gi.asset),
+              label: gi.label,
+              description: gi.description
+            }
+          end)
+
+        Map.put(base, :gallery_images, images)
+      else
+        base
+      end
+    end)
+  end
+
   # Reused from index_v2
   defp prepare_tree(nodes) do
     Enum.map(nodes, fn node ->
@@ -480,4 +944,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
   defp parse_id(id) when is_binary(id), do: String.to_integer(id)
   defp parse_id(id) when is_integer(id), do: id
+
+  defp normalize_column_group_id(nil), do: nil
+  defp normalize_column_group_id(""), do: nil
+  defp normalize_column_group_id(id) when is_binary(id), do: id
 end
