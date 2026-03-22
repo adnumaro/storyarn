@@ -63,8 +63,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
             v-component="sheets/BlockList"
             v-socket={@socket}
             id="block-list"
-            blocks={prepare_blocks_for_vue(@blocks, @gallery_data, @table_data)}
-            inherited-groups={prepare_inherited_groups_for_vue(@inherited_groups, @gallery_data, @table_data)}
+            blocks={prepare_blocks_for_vue(@blocks, @gallery_data, @table_data, @project.id)}
+            inherited-groups={prepare_inherited_groups_for_vue(@inherited_groups, @gallery_data, @table_data, @project.id)}
             workspace-slug={@workspace.slug}
             project-slug={@project.slug}
             can-edit={@can_edit}
@@ -364,9 +364,12 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
   # --- Blocks ---
 
-  def handle_event("add_block", %{"type" => type}, socket) do
+  def handle_event("add_block", %{"type" => type} = params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      case Sheets.create_block(socket.assigns.sheet, %{type: type}) do
+      attrs = %{type: type}
+      attrs = if params["scope"], do: Map.put(attrs, :scope, params["scope"]), else: attrs
+
+      case Sheets.create_block(socket.assigns.sheet, attrs) do
         {:ok, block} ->
           snapshot = UndoRedoHandlers.block_to_snapshot(block)
 
@@ -894,6 +897,71 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   def handle_event("update_table_column_option", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       TableHandlers.handle_update_column_option(params, socket, table_helpers(socket))
+    end)
+  end
+
+  # --- Reference blocks ---
+
+  def handle_event("search_references", %{"block-id" => block_id} = params, socket) do
+    query = params["query"] || ""
+    block_id = parse_id(block_id)
+    block = Sheets.get_block(block_id)
+    allowed_types = get_in(block.config, ["allowed_types"]) || ["sheet", "flow"]
+
+    results = Sheets.search_referenceable(socket.assigns.project.id, query, allowed_types)
+
+    {:noreply,
+     push_event(socket, "reference_results", %{
+       block_id: block_id,
+       results: results
+     })}
+  end
+
+  def handle_event(
+        "select_reference",
+        %{"block-id" => block_id, "type" => target_type, "id" => target_id},
+        socket
+      ) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block_id = parse_id(block_id)
+      block = Sheets.get_block(block_id)
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        target_id_int = parse_id(target_id)
+
+        case Sheets.validate_reference_target(
+               target_type,
+               target_id_int,
+               socket.assigns.project.id
+             ) do
+          {:ok, _target} ->
+            Sheets.update_block_value(block, %{
+              "target_type" => target_type,
+              "target_id" => target_id_int
+            })
+
+            {:noreply, reload_blocks(socket)}
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(socket, :error, dgettext("sheets", "Reference target not found."))}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("clear_reference", %{"block-id" => block_id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(block_id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        Sheets.update_block_value(block, %{"target_type" => nil, "target_id" => nil})
+        {:noreply, reload_blocks(socket)}
+      else
+        {:noreply, socket}
+      end
     end)
   end
 
@@ -1429,23 +1497,23 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   defp banner_url(%{banner_asset: %{} = asset}), do: Assets.display_url(asset)
   defp banner_url(_), do: nil
 
-  defp prepare_inherited_groups_for_vue(groups, gallery_data, table_data) do
+  defp prepare_inherited_groups_for_vue(groups, gallery_data, table_data, project_id) do
     Enum.map(groups, fn group ->
       %{
         sourceSheet: %{
           id: group.source_sheet.id,
           name: group.source_sheet.name
         },
-        blocks: prepare_blocks_for_vue_raw(group.blocks, gallery_data, table_data)
+        blocks: prepare_blocks_for_vue_raw(group.blocks, gallery_data, table_data, project_id)
       }
     end)
   end
 
-  defp prepare_blocks_for_vue(blocks, gallery_data, table_data) do
+  defp prepare_blocks_for_vue(blocks, gallery_data, table_data, project_id) do
     raw =
       blocks
       |> Enum.sort_by(& &1.position)
-      |> prepare_blocks_for_vue_raw(gallery_data, table_data)
+      |> prepare_blocks_for_vue_raw(gallery_data, table_data, project_id)
 
     # Group by column_group_id into layout items
     raw
@@ -1465,7 +1533,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
     end)
   end
 
-  defp prepare_blocks_for_vue_raw(blocks, gallery_data, table_data) do
+  defp prepare_blocks_for_vue_raw(blocks, gallery_data, table_data, project_id) do
     Enum.map(blocks, fn b ->
       base = %{
         id: b.id,
@@ -1526,6 +1594,17 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
           |> Map.put(:columns, columns)
           |> Map.put(:rows, rows)
           |> Map.put(:collapsed, collapsed)
+
+        b.type == "reference" ->
+          target_type = get_in(b.value, ["target_type"])
+          target_id = get_in(b.value, ["target_id"])
+
+          reference_target =
+            if target_type && target_id && project_id do
+              Sheets.get_reference_target(target_type, target_id, project_id)
+            end
+
+          Map.put(base, :reference_target, reference_target)
 
         true ->
           base
