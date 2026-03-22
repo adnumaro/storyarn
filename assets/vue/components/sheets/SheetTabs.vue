@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from "vue";
 import { useLive } from "@/vue/composables/useLive";
 import {
 	Link,
@@ -11,16 +12,21 @@ import { Tabs, TabsList, TabsTrigger } from "@/vue/components/ui/tabs";
 const props = defineProps({
 	currentTab: { type: String, default: "content" },
 	canEdit: { type: Boolean, default: false },
+	compact: { type: Boolean, default: false },
 });
 
 const live = useLive();
 
-const tabs = [
+const allTabs = [
 	{ value: "content", label: "Content", icon: LayoutList },
 	{ value: "references", label: "References", icon: Link },
 	{ value: "audio", label: "Audio", icon: Headphones },
 	{ value: "history", label: "History", icon: History },
 ];
+
+const tabs = computed(() =>
+	props.compact ? allTabs.filter((t) => t.value !== "history") : allTabs,
+);
 
 function onTabChange(value) {
 	if (value !== props.currentTab) {

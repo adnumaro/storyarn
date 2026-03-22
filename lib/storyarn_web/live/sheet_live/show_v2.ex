@@ -9,6 +9,9 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   alias StoryarnWeb.Helpers.UndoRedoStack
   alias StoryarnWeb.SheetLive.Handlers.{TableHandlers, UndoRedoHandlers}
 
+  alias StoryarnWeb.Live.Shared.RestorationHandlers
+
+  import StoryarnWeb.Live.Shared.RestorationHandlers, only: [check_restoration_lock: 2]
   import StoryarnWeb.Live.Shared.TreePanelHandlers
   import StoryarnWeb.SheetLive.Helpers.FormulaHelpers
 
@@ -26,6 +29,14 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
   @impl true
   def render(assigns) do
+    if assigns.compact do
+      render_compact(assigns)
+    else
+      render_full(assigns)
+    end
+  end
+
+  defp render_full(assigns) do
     ~H"""
     <Layouts.focus_v2
       flash={@flash}
@@ -38,6 +49,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
       tree_panel_open={@tree_panel_open}
       tree_panel_pinned={@tree_panel_pinned}
       can_edit={@can_edit}
+      restoration_banner={@restoration_banner}
       tree_props={
         %{
           sheetsTree: @sheets_tree,
@@ -48,84 +60,159 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         }
       }
     >
-      <div
-        :if={@sheet}
-        class="max-w-4xl mx-auto bg-surface border border-border rounded-2xl p-6 mb-8 shadow-sm"
-      >
-        <.vue
-          v-component="sheets/SheetHeader"
-          v-socket={@socket}
-          id="sheet-header"
-          sheet={prepare_sheet_for_vue(@sheet)}
-          can-edit={@can_edit}
-          is-draft={@is_draft}
-          source-shortcut={@source_shortcut}
-        />
-        <div class="px-4 pb-6">
-          <.vue
-            v-component="sheets/SheetTabs"
-            v-socket={@socket}
-            id="sheet-tabs"
-            current-tab={@current_tab}
-            can-edit={@can_edit}
-          />
-          <.vue
-            :if={@current_tab == "content"}
-            v-component="sheets/BlockList"
-            v-socket={@socket}
-            id="block-list"
-            blocks={prepare_blocks_for_vue(@blocks, @gallery_data, @table_data, @project.id, @inherited_groups)}
-            inherited-groups={prepare_inherited_groups_for_vue(@inherited_groups, @gallery_data, @table_data, @project.id)}
-            workspace-slug={@workspace.slug}
-            project-slug={@project.slug}
-            can-edit={@can_edit}
-            formula-editing={build_formula_editing_for_vue(@formula_editing, @formula_search_results, @formula_search_has_more)}
-          />
-          <.vue
-            :if={@current_tab == "references"}
-            v-component="sheets/ReferencesTab"
-            v-socket={@socket}
-            id="references-tab"
-            variable-usage={@references_data[:variable_usage] || []}
-            backlinks={@references_data[:backlinks] || []}
-            scene-appearances={@references_data[:scene_appearances] || []}
-            workspace-slug={@workspace.slug}
-            project-slug={@project.slug}
-            loading={is_nil(@references_data)}
-          />
-          <.vue
-            :if={@current_tab == "audio"}
-            v-component="sheets/AudioTab"
-            v-socket={@socket}
-            id="audio-tab"
-            grouped-lines={@audio_data[:grouped_lines] || []}
-            audio-assets={@audio_data[:audio_assets] || []}
-            workspace-slug={@workspace.slug}
-            project-slug={@project.slug}
-            can-edit={@can_edit}
-            loading={is_nil(@audio_data)}
-          />
-          <.vue
-            :if={@current_tab == "history"}
-            v-component="sheets/HistoryTab"
-            v-socket={@socket}
-            id="history-tab"
-            versions={@history_data[:versions] || []}
-            named-versions={@history_data[:named_versions] || []}
-            auto-versions={@history_data[:auto_versions] || []}
-            has-more={@history_data[:has_more] || false}
-            can-name-version={@history_data[:can_name_version] || false}
-            current-version-id={@history_data[:current_version_id]}
-            can-edit={@can_edit}
-            loading={is_nil(@history_data)}
-          />
-        </div>
-      </div>
-
-      <div :if={!@sheet} class="flex justify-center py-20">
-        <div class="size-6 border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin" />
-      </div>
+      <.sheet_content
+        sheet={@sheet}
+        socket={@socket}
+        current_tab={@current_tab}
+        can_edit={@can_edit}
+        is_draft={@is_draft}
+        source_shortcut={@source_shortcut}
+        blocks={@blocks}
+        gallery_data={@gallery_data}
+        table_data={@table_data}
+        inherited_groups={@inherited_groups}
+        project={@project}
+        workspace={@workspace}
+        references_data={@references_data}
+        audio_data={@audio_data}
+        history_data={@history_data}
+        formula_editing={@formula_editing}
+        formula_search_results={@formula_search_results}
+        formula_search_has_more={@formula_search_has_more}
+        compact={false}
+      />
     </Layouts.focus_v2>
+    """
+  end
+
+  defp render_compact(assigns) do
+    ~H"""
+    <div class="h-screen overflow-y-auto bg-background p-4">
+      <.sheet_content
+        sheet={@sheet}
+        socket={@socket}
+        current_tab={@current_tab}
+        can_edit={@can_edit}
+        is_draft={@is_draft}
+        source_shortcut={@source_shortcut}
+        blocks={@blocks}
+        gallery_data={@gallery_data}
+        table_data={@table_data}
+        inherited_groups={@inherited_groups}
+        project={@project}
+        workspace={@workspace}
+        references_data={@references_data}
+        audio_data={@audio_data}
+        history_data={@history_data}
+        formula_editing={@formula_editing}
+        formula_search_results={@formula_search_results}
+        formula_search_has_more={@formula_search_has_more}
+        compact={true}
+      />
+    </div>
+    """
+  end
+
+  attr :sheet, :map, default: nil
+  attr :socket, :any, required: true
+  attr :current_tab, :string, required: true
+  attr :can_edit, :boolean, required: true
+  attr :is_draft, :boolean, default: false
+  attr :source_shortcut, :string, default: nil
+  attr :blocks, :list, default: []
+  attr :gallery_data, :map, default: %{}
+  attr :table_data, :map, default: %{}
+  attr :inherited_groups, :list, default: []
+  attr :project, :map, required: true
+  attr :workspace, :map, required: true
+  attr :references_data, :map, default: nil
+  attr :audio_data, :map, default: nil
+  attr :history_data, :map, default: nil
+  attr :formula_editing, :map, default: nil
+  attr :formula_search_results, :list, default: []
+  attr :formula_search_has_more, :boolean, default: false
+  attr :compact, :boolean, default: false
+
+  defp sheet_content(assigns) do
+    ~H"""
+    <div
+      :if={@sheet}
+      class="max-w-4xl mx-auto bg-surface border border-border rounded-2xl p-6 mb-8 shadow-sm"
+    >
+      <.vue
+        v-component="sheets/SheetHeader"
+        v-socket={@socket}
+        id="sheet-header"
+        sheet={prepare_sheet_for_vue(@sheet)}
+        can-edit={@can_edit}
+        is-draft={@is_draft}
+        source-shortcut={@source_shortcut}
+      />
+      <div class="px-4 pb-6">
+        <.vue
+          v-component="sheets/SheetTabs"
+          v-socket={@socket}
+          id="sheet-tabs"
+          current-tab={@current_tab}
+          can-edit={@can_edit}
+          compact={@compact}
+        />
+        <.vue
+          :if={@current_tab == "content"}
+          v-component="sheets/BlockList"
+          v-socket={@socket}
+          id="block-list"
+          blocks={prepare_blocks_for_vue(@blocks, @gallery_data, @table_data, @project.id, @inherited_groups)}
+          inherited-groups={prepare_inherited_groups_for_vue(@inherited_groups, @gallery_data, @table_data, @project.id)}
+          workspace-slug={@workspace.slug}
+          project-slug={@project.slug}
+          can-edit={@can_edit}
+          formula-editing={build_formula_editing_for_vue(@formula_editing, @formula_search_results, @formula_search_has_more)}
+        />
+        <.vue
+          :if={@current_tab == "references"}
+          v-component="sheets/ReferencesTab"
+          v-socket={@socket}
+          id="references-tab"
+          variable-usage={@references_data[:variable_usage] || []}
+          backlinks={@references_data[:backlinks] || []}
+          scene-appearances={@references_data[:scene_appearances] || []}
+          workspace-slug={@workspace.slug}
+          project-slug={@project.slug}
+          loading={is_nil(@references_data)}
+        />
+        <.vue
+          :if={@current_tab == "audio"}
+          v-component="sheets/AudioTab"
+          v-socket={@socket}
+          id="audio-tab"
+          grouped-lines={@audio_data[:grouped_lines] || []}
+          audio-assets={@audio_data[:audio_assets] || []}
+          workspace-slug={@workspace.slug}
+          project-slug={@project.slug}
+          can-edit={@can_edit}
+          loading={is_nil(@audio_data)}
+        />
+        <.vue
+          :if={@current_tab == "history" && !@compact}
+          v-component="sheets/HistoryTab"
+          v-socket={@socket}
+          id="history-tab"
+          versions={@history_data[:versions] || []}
+          named-versions={@history_data[:named_versions] || []}
+          auto-versions={@history_data[:auto_versions] || []}
+          has-more={@history_data[:has_more] || false}
+          can-name-version={@history_data[:can_name_version] || false}
+          current-version-id={@history_data[:current_version_id]}
+          can-edit={@can_edit}
+          loading={is_nil(@history_data)}
+        />
+      </div>
+    </div>
+
+    <div :if={!@sheet} class="flex justify-center py-20">
+      <div class="size-6 border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin" />
+    </div>
     """
   end
 
@@ -147,6 +234,11 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
       {:ok, project, membership} ->
         can_edit = Projects.can?(membership.role, :edit_content)
 
+        if connected?(socket), do: Collaboration.subscribe_restoration(project.id)
+
+        {can_edit, restoration_banner} =
+          check_restoration_lock(project.id, can_edit)
+
         {:ok,
          socket
          |> assign(focus_layout_defaults())
@@ -154,6 +246,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
          |> assign(:workspace, project.workspace)
          |> assign(:membership, membership)
          |> assign(:can_edit, can_edit)
+         |> assign(:restoration_banner, restoration_banner)
+         |> assign(:compact, false)
          |> assign(:sheet, nil)
          |> assign(:blocks, [])
          |> assign(:inherited_groups, [])
@@ -183,12 +277,16 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   end
 
   @impl true
-  def handle_params(%{"id" => sheet_id}, _url, socket) do
+  def handle_params(%{"id" => sheet_id} = params, _url, socket) do
+    compact = params["layout"] == "compact"
+
     current_sheet_id =
       case socket.assigns.sheet do
         %{id: id} -> to_string(id)
         _ -> nil
       end
+
+    socket = assign(socket, :compact, compact)
 
     if sheet_id == current_sheet_id do
       {:noreply, socket}
@@ -255,24 +353,28 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
   def handle_event("switch_tab", %{"tab" => tab}, socket)
       when tab in ~w(content references audio history) do
-    socket = assign(socket, :current_tab, tab)
+    if tab == "history" and socket.assigns.compact do
+      {:noreply, socket}
+    else
+      socket = assign(socket, :current_tab, tab)
 
-    socket =
-      cond do
-        tab == "references" && is_nil(socket.assigns.references_data) ->
-          load_references_data(socket)
+      socket =
+        cond do
+          tab == "references" && is_nil(socket.assigns.references_data) ->
+            load_references_data(socket)
 
-        tab == "audio" && is_nil(socket.assigns.audio_data) ->
-          load_audio_data(socket)
+          tab == "audio" && is_nil(socket.assigns.audio_data) ->
+            load_audio_data(socket)
 
-        tab == "history" && is_nil(socket.assigns.history_data) ->
-          load_history_data(socket)
+          tab == "history" && is_nil(socket.assigns.history_data) ->
+            load_history_data(socket)
 
-        true ->
-          socket
-      end
+          true ->
+            socket
+        end
 
-    {:noreply, socket}
+      {:noreply, socket}
+    end
   end
 
   def handle_event("switch_tab", _params, socket), do: {:noreply, socket}
@@ -1629,6 +1731,23 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   # ===========================================================================
 
   @impl true
+  def handle_info({:project_restoration_started, payload}, socket),
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_started, payload}, socket)
+
+  def handle_info({:project_restoration_completed, payload}, socket),
+    do:
+      RestorationHandlers.handle_restoration_event(
+        {:project_restoration_completed, payload},
+        socket
+      )
+
+  def handle_info({:project_restoration_failed, payload}, socket),
+    do:
+      RestorationHandlers.handle_restoration_event(
+        {:project_restoration_failed, payload},
+        socket
+      )
+
   def handle_info({:table_push_undo, action}, socket) do
     {:noreply, UndoRedoStack.push_undo(socket, action)}
   end
