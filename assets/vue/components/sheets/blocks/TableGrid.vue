@@ -422,7 +422,7 @@ function inputAttrs(col) {
                       <span class="text-[10px] font-normal text-muted-foreground/30 truncate max-w-full">{{ col.slug }}</span>
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent align="start" :side-offset="4" class="w-56 p-0 z-[1030]">
+                  <PopoverContent align="start" :side-offset="4" class="w-56 p-0">
                     <!-- Main panel -->
                     <div v-if="colDropdownPanel === 'main'" class="p-1">
                       <div class="flex items-center gap-1.5 px-2 py-1.5 mb-1">
@@ -527,7 +527,7 @@ function inputAttrs(col) {
                         <GripVertical class="size-3.5 text-muted-foreground/40" />
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent align="start" :side-offset="4" class="w-36 p-1 z-[1030]">
+                    <PopoverContent align="start" :side-offset="4" class="w-36 p-1">
                       <button
                         :disabled="rows.length <= 1"
                         class="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-sm hover:bg-accent text-destructive disabled:opacity-30 disabled:pointer-events-none"
@@ -584,7 +584,7 @@ function inputAttrs(col) {
                           <span v-else class="text-muted-foreground/40 truncate">Select...</span>
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent align="start" class="w-52 p-0 z-[1030]">
+                      <PopoverContent align="start" class="w-52 p-0">
                         <div class="p-2"><input v-model="selectSearch" placeholder="Search..." class="bg-transparent border border-border rounded px-2 py-1 text-xs w-full outline-none focus:border-ring" /></div>
                         <div class="max-h-48 overflow-y-auto px-1 pb-1">
                           <button v-if="getCellValue(row, col)" class="flex items-center gap-2 w-full px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent rounded" @click="selectCell(row, col, '')">
@@ -615,7 +615,7 @@ function inputAttrs(col) {
                           <span v-else class="text-muted-foreground/40 truncate">Select...</span>
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent align="start" class="w-52 p-0 z-[1030]">
+                      <PopoverContent align="start" class="w-52 p-0">
                         <div class="p-2"><input v-model="selectSearch" placeholder="Search..." class="bg-transparent border border-border rounded px-2 py-1 text-xs w-full outline-none focus:border-ring" /></div>
                         <div class="max-h-48 overflow-y-auto px-1 pb-1">
                           <button v-for="opt in filteredOptions(col)" :key="opt.key" class="flex items-center gap-2 w-full px-2 py-1.5 text-sm hover:bg-accent rounded" :class="(getCellValue(row, col) || []).includes(opt.key) && 'bg-primary/10'" @click="toggleMultiSelectCell(row, col, opt.key)">

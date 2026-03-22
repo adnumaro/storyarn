@@ -85,7 +85,7 @@ function onChange(val) {
 
     <Select v-if="canEdit" :model-value="content || ''" @update:model-value="onChange">
       <SelectTrigger class="h-9 w-full"><SelectValue :placeholder="placeholder" /></SelectTrigger>
-      <SelectContent class="z-[1030]">
+      <SelectContent class="">
         <SelectItem value=" "><span class="text-muted-foreground">None</span></SelectItem>
         <SelectItem v-for="opt in options" :key="opt.key" :value="opt.key">{{ opt.value }}</SelectItem>
       </SelectContent>

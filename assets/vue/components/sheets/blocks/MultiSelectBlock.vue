@@ -87,7 +87,7 @@ function toggle(key) {
           <span v-if="selectedOptions.length === 0" class="text-muted-foreground">{{ placeholder }}</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" class="w-[var(--reka-popover-trigger-width)] p-1 z-[1030]">
+      <PopoverContent align="start" class="w-[var(--reka-popover-trigger-width)] p-1">
         <div class="max-h-48 overflow-y-auto">
           <button v-for="opt in options" :key="opt.key" type="button"
             class="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors" @click="toggle(opt.key)">

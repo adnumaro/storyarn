@@ -42,7 +42,7 @@ const blockTypes = [
         Add block
       </Button>
     </DropdownMenuTrigger>
-    <DropdownMenuContent align="start" :side-offset="4" class="w-48 z-[1030]">
+    <DropdownMenuContent align="start" :side-offset="4" class="w-48">
       <DropdownMenuLabel class="text-xs">Block type</DropdownMenuLabel>
       <DropdownMenuSeparator />
       <DropdownMenuItem

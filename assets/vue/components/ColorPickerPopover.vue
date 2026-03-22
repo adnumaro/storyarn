@@ -173,7 +173,7 @@ onBeforeUnmount(() => {
       </div>
     </PopoverTrigger>
 
-    <PopoverContent align="end" :side-offset="8" class="w-[252px] p-3 z-[1030]">
+    <PopoverContent align="end" :side-offset="8" class="w-[252px] p-3">
       <!-- Container for imperatively built picker -->
       <div ref="containerRef" />
     </PopoverContent>

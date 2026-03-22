@@ -203,7 +203,7 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
         </div>
       </ContextMenuTrigger>
 
-      <ContextMenuContent v-if="canEdit" class="z-[1040]">
+      <ContextMenuContent v-if="canEdit" class="">
         <ContextMenuItem class="gap-2 text-xs" @select="emit('createChild', node.id)">
           <FilePlus class="size-3.5" />
           Add child sheet

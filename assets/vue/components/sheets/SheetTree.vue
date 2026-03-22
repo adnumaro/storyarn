@@ -265,7 +265,7 @@ function handleDrop(e) {
 
     <!-- Delete confirmation dialog -->
     <Dialog v-model:open="deleteDialogOpen">
-      <DialogContent class="z-1040">
+      <DialogContent class="">
         <DialogHeader>
           <DialogTitle>Delete sheet?</DialogTitle>
           <DialogDescription>

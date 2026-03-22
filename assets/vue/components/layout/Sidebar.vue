@@ -127,11 +127,9 @@ watch(
 	<div
 		ref="panelRef"
 		:class="[
-			'fixed top-19 bottom-3 left-3 flex flex-col v2-surface-panel overflow-hidden',
-			// Mobile: full-width, above toolbars
-			'right-3 z-[1040]',
-			// Desktop: fixed width, side-positioned, lower z
-			'md:w-64 md:z-1010',
+			'fixed top-19 bottom-3 left-3 right-3 z-40 flex flex-col v2-surface-panel overflow-hidden',
+			// Desktop: fixed width, side-positioned
+			'md:w-64',
 			side === 'right' ? 'md:left-auto md:!right-3' : '',
 		]"
 	>

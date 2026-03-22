@@ -171,7 +171,7 @@ function onDrop(e, dropIndex) {
 
     <!-- Detail modal -->
     <Dialog v-model:open="detailOpen">
-      <DialogContent v-if="detailImage" class="max-w-lg z-[1040]">
+      <DialogContent v-if="detailImage" class="max-w-lg">
         <DialogHeader>
           <DialogTitle>{{ detailImage.label || "Image" }}</DialogTitle>
         </DialogHeader>

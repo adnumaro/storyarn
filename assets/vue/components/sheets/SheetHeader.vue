@@ -244,7 +244,7 @@ function updateAvatarNotes(id, value) {
             </div>
           </button>
         </PopoverTrigger>
-        <PopoverContent v-if="canEdit" align="start" :side-offset="8" class="w-auto p-3 z-[1030]">
+        <PopoverContent v-if="canEdit" align="start" :side-offset="8" class="w-auto p-3">
           <!-- Film strip -->
           <div class="grid grid-cols-3 gap-2" style="width: 16.5rem">
             <div v-for="avatar in sheet.avatars" :key="avatar.id" class="flex flex-col items-center">

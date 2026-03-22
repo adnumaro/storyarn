@@ -103,7 +103,7 @@ function toggleTreePanel() {
           <ChevronDown class="size-3 opacity-50" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" :side-offset="8" class="w-56 z-[1030]">
+      <DropdownMenuContent align="start" :side-offset="8" class="w-56">
         <div class="px-3 py-2">
           <p class="text-sm font-medium truncate">{{ projectName }}</p>
           <a
@@ -140,7 +140,7 @@ function toggleTreePanel() {
           <ChevronDown class="size-3 opacity-50" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" :side-offset="8" class="w-48 z-[1030]">
+      <DropdownMenuContent align="start" :side-offset="8" class="w-48">
         <DropdownMenuItem v-for="tool in otherTools" :key="tool.key" as-child>
           <a :href="urls.tools[tool.key]" class="flex items-center gap-2">
             <component :is="tool.icon" class="size-4" />

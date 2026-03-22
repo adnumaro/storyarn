@@ -161,7 +161,7 @@ defmodule StoryarnWeb.Components.FocusLayoutV2 do
       <%!-- Restoration Banner --%>
       <div
         :if={@restoration_banner}
-        class="fixed top-0 left-0 right-0 z-[1030] flex justify-center pointer-events-none"
+        class="fixed top-0 left-0 right-0 z-42 flex justify-center pointer-events-none"
       >
         <div class="bg-destructive text-destructive-foreground px-4 py-2 rounded-b-lg shadow-lg flex items-center gap-2 text-sm pointer-events-auto">
           <.icon name="loader" class="size-4 animate-spin" />
@@ -176,7 +176,7 @@ defmodule StoryarnWeb.Components.FocusLayoutV2 do
       </div>
 
       <%!-- Left floating toolbar row (top-left) --%>
-      <div class="fixed top-3 left-3 z-[1020] flex items-stretch gap-2">
+      <div class="fixed top-3 left-3 z-41 flex items-stretch gap-2">
         <.vue
           v-component="layout/LeftToolbar"
           v-socket={@socket}
@@ -194,7 +194,7 @@ defmodule StoryarnWeb.Components.FocusLayoutV2 do
       </div>
 
       <%!-- Right floating toolbar row (top-right) --%>
-      <div :if={@current_user_id} class="fixed top-3 right-3 z-[1020] flex items-stretch gap-2">
+      <div :if={@current_user_id} class="fixed top-3 right-3 z-41 flex items-stretch gap-2">
         {render_slot(@top_bar_extra_right)}
         <.vue
           v-component="layout/RightToolbar"
@@ -209,7 +209,7 @@ defmodule StoryarnWeb.Components.FocusLayoutV2 do
       <%!-- Mobile overlay (closes tree panel on tap) --%>
       <div
         :if={@has_tree && @tree_content != [] && @tree_panel_open}
-        class="fixed inset-0 bg-black/30 z-[1005] md:hidden cursor-pointer"
+        class="fixed inset-0 bg-black/30 z-30 md:hidden cursor-pointer"
         phx-click="tree_panel_toggle"
       />
 

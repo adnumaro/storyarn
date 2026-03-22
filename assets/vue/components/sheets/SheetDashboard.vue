@@ -224,7 +224,7 @@ const pages = computed(() => {
                         <MoreHorizontal class="size-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" class="z-[1030]">
+                    <DropdownMenuContent align="end" class="">
                       <DropdownMenuItem class="text-destructive gap-2 text-xs" @select="requestDelete(row.id)">
                         <Trash2 class="size-3.5" />
                         Delete

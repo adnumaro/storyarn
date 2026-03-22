@@ -68,7 +68,7 @@ const displayName = computed(
           />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" :side-offset="8" class="w-56 z-[1030]">
+      <DropdownMenuContent align="end" :side-offset="8" class="w-56">
         <div class="px-3 py-2">
           <p class="text-sm font-medium truncate">{{ displayName }}</p>
           <p class="text-xs text-muted-foreground truncate">{{ currentUser.email }}</p>

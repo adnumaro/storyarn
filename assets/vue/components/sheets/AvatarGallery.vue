@@ -91,7 +91,7 @@ function onNotesBlur(id, value, original) {
 <template>
   <Dialog :open="open" @update:open="(v) => emit('update:open', v)">
     <DialogContent
-      class="max-w-xl max-h-[85vh] overflow-hidden flex flex-col p-0 gap-0 z-[1040]"
+      class="max-w-xl max-h-[85vh] overflow-hidden flex flex-col p-0 gap-0"
       :show-close-button="false"
     >
       <!-- ═══ GRID VIEW ═══ -->

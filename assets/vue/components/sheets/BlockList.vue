@@ -176,7 +176,7 @@ function resolveComponent(type) {
                     <MoreHorizontal class="size-4" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" class="z-[1030]">
+                <DropdownMenuContent align="end" class="">
                   <DropdownMenuItem v-if="!block.detached" class="gap-2 text-xs" @select="detachBlock(block.id)">
                     <Link2Off class="size-3.5" />
                     Detach from parent

@@ -101,7 +101,7 @@ const emit = defineEmits([
             <Settings class="size-4" />
           </button>
         </PopoverTrigger>
-        <PopoverContent align="center" :side-offset="8" class="w-64 p-3 z-[1030] space-y-3">
+        <PopoverContent align="center" :side-offset="8" class="w-64 p-3 space-y-3">
           <slot name="config" />
         </PopoverContent>
       </Popover>
