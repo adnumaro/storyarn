@@ -1747,16 +1747,14 @@ defmodule StoryarnWeb.FlowLive.Show do
         {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
 
       {:error, _, _reason, _changes} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("flows", "Could not create linked flow."))}
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create linked flow."))}
     end
   end
 
   defp do_set_main_flow(socket, flow) do
     case Flows.set_main_flow(flow) do
       {:ok, _} ->
-        {:noreply,
-         assign(socket, :flows_tree, Flows.list_flows_tree(socket.assigns.project.id))}
+        {:noreply, assign(socket, :flows_tree, Flows.list_flows_tree(socket.assigns.project.id))}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("flows", "Could not set main flow."))}

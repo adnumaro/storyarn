@@ -55,7 +55,11 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
       assert {:error, _changeset} = Sheets.add_avatar(sheet, asset1.id)
     end
 
-    test "allows same asset on different sheets", %{project: project, sheet: sheet, asset1: asset1} do
+    test "allows same asset on different sheets", %{
+      project: project,
+      sheet: sheet,
+      asset1: asset1
+    } do
       other_sheet = sheet_fixture(project, %{name: "Other"})
       {:ok, _} = Sheets.add_avatar(sheet, asset1.id)
       assert {:ok, _} = Sheets.add_avatar(other_sheet, asset1.id)
@@ -188,7 +192,9 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
     test "updates name with variablify and notes", %{sheet: sheet, asset1: asset1} do
       {:ok, avatar} = Sheets.add_avatar(sheet, asset1.id)
 
-      {:ok, updated} = Sheets.update_avatar(avatar, %{name: "Angry Face", notes: "Used in combat"})
+      {:ok, updated} =
+        Sheets.update_avatar(avatar, %{name: "Angry Face", notes: "Used in combat"})
+
       assert updated.name == "angry_face"
       assert updated.notes == "Used in combat"
     end

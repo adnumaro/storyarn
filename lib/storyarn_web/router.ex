@@ -91,12 +91,12 @@ defmodule StoryarnWeb.Router do
       live_session :v2_authenticated,
         on_mount: [{StoryarnWeb.UserAuth, :require_authenticated}] do
         live "/workspaces/:workspace_slug/projects/:project_slug/v2/sheets",
-          StoryarnWeb.SheetLive.IndexV2,
-          :index
+             StoryarnWeb.SheetLive.IndexV2,
+             :index
 
         live "/workspaces/:workspace_slug/projects/:project_slug/v2/sheets/:id",
-          StoryarnWeb.SheetLive.ShowV2,
-          :show
+             StoryarnWeb.SheetLive.ShowV2,
+             :show
       end
     end
   end

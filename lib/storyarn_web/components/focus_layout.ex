@@ -264,7 +264,9 @@ defmodule StoryarnWeb.Components.FocusLayout do
         >
           {@name}
         </h1>
-        <h1 :if={!(@can_edit && @name_id)} data-testid="entity-title" class="text-sm font-medium">{@name}</h1>
+        <h1 :if={!(@can_edit && @name_id)} data-testid="entity-title" class="text-sm font-medium">
+          {@name}
+        </h1>
 
         <%!-- Shortcut: static badge --%>
         <span

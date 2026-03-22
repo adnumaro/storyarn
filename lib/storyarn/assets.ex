@@ -416,7 +416,10 @@ defmodule Storyarn.Assets do
         upload_and_link_variant(webp_data, original_asset, project, user)
 
       {:error, reason} ->
-        Logger.warning("[ImageOptimization] Failed to generate WebP for asset #{original_asset.id}: #{inspect(reason)}")
+        Logger.warning(
+          "[ImageOptimization] Failed to generate WebP for asset #{original_asset.id}: #{inspect(reason)}"
+        )
+
         {:ok, original_asset}
     end
   end
@@ -434,7 +437,10 @@ defmodule Storyarn.Assets do
         link_variant_to_original(original_asset, variant)
 
       {:error, reason} ->
-        Logger.warning("[ImageOptimization] Failed to upload variant for asset #{original_asset.id}: #{inspect(reason)}")
+        Logger.warning(
+          "[ImageOptimization] Failed to upload variant for asset #{original_asset.id}: #{inspect(reason)}"
+        )
+
         {:ok, original_asset}
     end
   end
@@ -451,7 +457,10 @@ defmodule Storyarn.Assets do
         {:ok, updated_original}
 
       {:error, reason} ->
-        Logger.warning("[ImageOptimization] Failed to link variant to asset #{original_asset.id}: #{inspect(reason)}")
+        Logger.warning(
+          "[ImageOptimization] Failed to link variant to asset #{original_asset.id}: #{inspect(reason)}"
+        )
+
         {:ok, original_asset}
     end
   end

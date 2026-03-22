@@ -57,7 +57,10 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
           filename: "document.pdf"
         })
 
-      html = render_component(&SheetComponents.sheet_avatar/1, avatars: [%{is_default: true, asset: asset}])
+      html =
+        render_component(&SheetComponents.sheet_avatar/1,
+          avatars: [%{is_default: true, asset: asset}]
+        )
 
       refute html =~ "<img"
       assert html =~ "opacity-60"

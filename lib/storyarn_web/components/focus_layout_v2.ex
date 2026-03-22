@@ -51,8 +51,7 @@ defmodule StoryarnWeb.Components.FocusLayoutV2 do
 
     %{
       workspace: ~p"/workspaces/#{workspace.slug}",
-      projectSettings:
-        ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/settings",
+      projectSettings: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/settings",
       trash: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/trash",
       accountSettings: ~p"/users/settings",
       workspaces: ~p"/workspaces",
@@ -257,7 +256,9 @@ defmodule StoryarnWeb.Components.FocusLayoutV2 do
           id="client-error"
           kind={:error}
           title={gettext("We can't find the internet")}
-          phx-disconnected={show(".phx-client-error #client-error") |> Phoenix.LiveView.JS.remove_attribute("hidden")}
+          phx-disconnected={
+            show(".phx-client-error #client-error") |> Phoenix.LiveView.JS.remove_attribute("hidden")
+          }
           phx-connected={hide("#client-error") |> Phoenix.LiveView.JS.set_attribute({"hidden", ""})}
           hidden
         >
@@ -269,7 +270,9 @@ defmodule StoryarnWeb.Components.FocusLayoutV2 do
           id="server-error"
           kind={:error}
           title={gettext("Something went wrong!")}
-          phx-disconnected={show(".phx-server-error #server-error") |> Phoenix.LiveView.JS.remove_attribute("hidden")}
+          phx-disconnected={
+            show(".phx-server-error #server-error") |> Phoenix.LiveView.JS.remove_attribute("hidden")
+          }
           phx-connected={hide("#server-error") |> Phoenix.LiveView.JS.set_attribute({"hidden", ""})}
           hidden
         >

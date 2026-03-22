@@ -195,10 +195,18 @@ defmodule Storyarn.Scenes.PinCrud do
         Map.put(attrs, "shortcut", nil)
 
       label_changing?(new_label, pin.label) ->
-        Map.put(attrs, "shortcut", Shortcuts.generate_pin_shortcut(new_label, pin.scene_id, pin.id))
+        Map.put(
+          attrs,
+          "shortcut",
+          Shortcuts.generate_pin_shortcut(new_label, pin.scene_id, pin.id)
+        )
 
       shortcut_missing_for_existing_label?(pin, attrs) ->
-        Map.put(attrs, "shortcut", Shortcuts.generate_pin_shortcut(pin.label, pin.scene_id, pin.id))
+        Map.put(
+          attrs,
+          "shortcut",
+          Shortcuts.generate_pin_shortcut(pin.label, pin.scene_id, pin.id)
+        )
 
       true ->
         attrs
@@ -212,5 +220,7 @@ defmodule Storyarn.Scenes.PinCrud do
     do: is_binary(new_label) and new_label != "" and new_label != current_label
 
   defp shortcut_missing_for_existing_label?(pin, attrs),
-    do: is_nil(pin.shortcut) and is_binary(pin.label) and pin.label != "" and not Map.has_key?(attrs, "label")
+    do:
+      is_nil(pin.shortcut) and is_binary(pin.label) and pin.label != "" and
+        not Map.has_key?(attrs, "label")
 end

@@ -22,9 +22,9 @@ defmodule Storyarn.Repo.Migrations.AddExplorationVariablesPhase1 do
     end
 
     create unique_index(:scene_pins, [:scene_id, :shortcut],
-      where: "shortcut IS NOT NULL",
-      name: :scene_pins_scene_id_shortcut_index
-    )
+             where: "shortcut IS NOT NULL",
+             name: :scene_pins_scene_id_shortcut_index
+           )
 
     # -- scene_zones: add new fields --
     alter table(:scene_zones) do
@@ -33,14 +33,15 @@ defmodule Storyarn.Repo.Migrations.AddExplorationVariablesPhase1 do
     end
 
     create unique_index(:scene_zones, [:scene_id, :shortcut],
-      where: "shortcut IS NOT NULL",
-      name: :scene_zones_scene_id_shortcut_index
-    )
+             where: "shortcut IS NOT NULL",
+             name: :scene_zones_scene_id_shortcut_index
+           )
   end
 
   def down do
     drop_if_exists index(:scene_zones, [:scene_id, :shortcut],
-                     name: :scene_zones_scene_id_shortcut_index)
+                     name: :scene_zones_scene_id_shortcut_index
+                   )
 
     alter table(:scene_zones) do
       remove :shortcut
@@ -48,7 +49,8 @@ defmodule Storyarn.Repo.Migrations.AddExplorationVariablesPhase1 do
     end
 
     drop_if_exists index(:scene_pins, [:scene_id, :shortcut],
-                     name: :scene_pins_scene_id_shortcut_index)
+                     name: :scene_pins_scene_id_shortcut_index
+                   )
 
     # Restore old target fields
     alter table(:scene_pins) do

@@ -24,9 +24,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     active_blocks = from(b in Block, where: is_nil(b.deleted_at), order_by: [asc: b.position])
 
     sheet =
-      Repo.preload(sheet, [blocks: {active_blocks, [:table_columns, :table_rows]}, avatars: :asset],
-        force: true
-      )
+      Repo.preload(
+        sheet,
+        [blocks: {active_blocks, [:table_columns, :table_rows]}, avatars: :asset], force: true)
 
     default_avatar_asset_id = default_avatar_asset_id(sheet)
     asset_ids = [default_avatar_asset_id, sheet.banner_asset_id]

@@ -946,8 +946,11 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   defp apply_pin_variable_mutations(pins, variables) do
     Enum.map(pins, fn pin ->
       case pin.shortcut do
-        nil -> pin
-        shortcut -> apply_bool_mutations(pin, shortcut, variables, ~w(hidden is_playable is_leader))
+        nil ->
+          pin
+
+        shortcut ->
+          apply_bool_mutations(pin, shortcut, variables, ~w(hidden is_playable is_leader))
       end
     end)
   end

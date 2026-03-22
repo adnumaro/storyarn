@@ -754,7 +754,7 @@ defmodule Storyarn.Sheets.SheetQueries do
     Sheet
     |> where(project_id: ^project_id, id: ^sheet_id)
     |> where([s], not is_nil(s.deleted_at))
-    |> preload([avatars: :asset])
+    |> preload(avatars: :asset)
     |> Repo.one()
   end
 

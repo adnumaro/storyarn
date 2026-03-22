@@ -7,6 +7,7 @@ defmodule StoryarnWeb.SheetLive.IndexV2 do
   alias StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Live.Shared.TreePanelHandlers
+
   import StoryarnWeb.Components.DashboardComponents,
     only: [
       sort_table: 4,
@@ -40,12 +41,14 @@ defmodule StoryarnWeb.SheetLive.IndexV2 do
       tree_panel_pinned={@tree_panel_pinned}
       show_pin={false}
       can_edit={@can_edit}
-      tree_props={%{
-        sheetsTree: @sheets_tree,
-        canEdit: @can_edit,
-        workspaceSlug: @workspace.slug,
-        projectSlug: @project.slug
-      }}
+      tree_props={
+        %{
+          sheetsTree: @sheets_tree,
+          canEdit: @can_edit,
+          workspaceSlug: @workspace.slug,
+          projectSlug: @project.slug
+        }
+      }
     >
       <.vue
         v-component="sheets/SheetDashboard"
@@ -252,8 +255,11 @@ defmodule StoryarnWeb.SheetLive.IndexV2 do
          |> put_flash(:info, dgettext("sheets", "Sheet moved to trash."))
          |> reload_sheets()}
       else
-        nil -> {:noreply, put_flash(socket, :error, dgettext("sheets", "Sheet not found."))}
-        {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
+        nil ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Sheet not found."))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
       end
     end)
   end
@@ -266,7 +272,8 @@ defmodule StoryarnWeb.SheetLive.IndexV2 do
         {:ok, new_sheet} ->
           {:noreply,
            push_navigate(socket,
-             to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
            )}
 
         {:error, :limit_reached, _details} ->
@@ -286,7 +293,8 @@ defmodule StoryarnWeb.SheetLive.IndexV2 do
         {:ok, new_sheet} ->
           {:noreply,
            push_navigate(socket,
-             to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
            )}
 
         {:error, :limit_reached, _details} ->
@@ -310,9 +318,17 @@ defmodule StoryarnWeb.SheetLive.IndexV2 do
            {:ok, _sheet} <- Sheets.move_sheet_to_position(sheet, parent_id, position) do
         {:noreply, reload_sheets(socket)}
       else
-        nil -> {:noreply, put_flash(socket, :error, dgettext("sheets", "Sheet not found."))}
+        nil ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Sheet not found."))}
+
         {:error, :would_create_cycle} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Cannot move a sheet into its own children."))}
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             dgettext("sheets", "Cannot move a sheet into its own children.")
+           )}
+
         {:error, _reason} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not move sheet."))}
       end

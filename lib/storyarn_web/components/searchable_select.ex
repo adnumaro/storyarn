@@ -356,6 +356,7 @@ defmodule StoryarnWeb.Components.SearchableSelect do
 
   defp resolve_display_name(%{options: options, value: value}) when is_list(options) do
     str_val = to_string(value)
+
     case Enum.find(options, fn item -> to_string(item.id) == str_val end) do
       nil -> nil
       item -> item.name
@@ -379,6 +380,7 @@ defmodule StoryarnWeb.Components.SearchableSelect do
 
   # Multi-select name resolution
   defp resolve_multi_names(%{value: nil}), do: %{}
+
   defp resolve_multi_names(%{value: values} = assigns) when is_list(values) do
     all_items = display_items(assigns)
 

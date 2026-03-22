@@ -301,7 +301,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpersTest do
     end
 
     test "returns nil for nil url in avatar asset" do
-      assert SceneHelpers.sheet_avatar_url(%{avatars: [%{is_default: true, asset: %{url: nil}}]}) == nil
+      assert SceneHelpers.sheet_avatar_url(%{avatars: [%{is_default: true, asset: %{url: nil}}]}) ==
+               nil
     end
   end
 

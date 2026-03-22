@@ -391,7 +391,9 @@ defmodule StoryarnWeb.SheetLive.Components.AudioTab do
                     :for={asset <- @audio_assets}
                     type="button"
                     data-event="select_audio"
-                    data-params={Jason.encode!(%{"audio_asset_id" => to_string(asset.id), "node-id" => @node_id})}
+                    data-params={
+                      Jason.encode!(%{"audio_asset_id" => to_string(asset.id), "node-id" => @node_id})
+                    }
                     data-search-text={String.downcase(asset.filename)}
                     class="flex w-full items-center rounded px-2 py-1.5 text-left text-xs hover:bg-base-content/10"
                   >

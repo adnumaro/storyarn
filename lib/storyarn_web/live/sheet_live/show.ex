@@ -49,7 +49,14 @@ defmodule StoryarnWeb.SheetLive.Show do
           phx-hook="UndoRedo"
           class="relative w-full max-w-[950px] mx-auto bg-base-200 dark:bg-base-content/[0.07] rounded-[20px] p-5 min-h-full"
         >
-          <div id="save-indicator-compact" phx-hook="SaveStatus" data-saved-label={gettext("Saved")} data-saving-label={gettext("Saving...")} class="absolute top-2 right-2 z-10"></div>
+          <div
+            id="save-indicator-compact"
+            phx-hook="SaveStatus"
+            data-saved-label={gettext("Saved")}
+            data-saving-label={gettext("Saving...")}
+            class="absolute top-2 right-2 z-10"
+          >
+          </div>
           <.live_component
             module={Banner}
             id="sheet-banner"
@@ -255,7 +262,14 @@ defmodule StoryarnWeb.SheetLive.Show do
                 <.icon name="git-branch" class="size-3.5" />
                 <span>{dgettext("drafts", "Draft")}</span>
               </button>
-              <div id="save-indicator" phx-hook="SaveStatus" data-saved-label={gettext("Saved")} data-saving-label={gettext("Saving...")} class="absolute top-2 right-0 z-10"></div>
+              <div
+                id="save-indicator"
+                phx-hook="SaveStatus"
+                data-saved-label={gettext("Saved")}
+                data-saving-label={gettext("Saving...")}
+                class="absolute top-2 right-0 z-10"
+              >
+              </div>
             </div>
           </div>
 

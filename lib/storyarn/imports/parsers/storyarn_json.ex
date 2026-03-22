@@ -1040,9 +1040,14 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   # Backwards compat: old exports have target_type/target_id, new ones have flow_id
   defp resolve_pin_flow_id(pin_data, id_map) do
     cond do
-      pin_data["flow_id"] -> remap_id(id_map, :flow, pin_data["flow_id"])
-      pin_data["target_type"] == "flow" && pin_data["target_id"] -> remap_id(id_map, :flow, pin_data["target_id"])
-      true -> nil
+      pin_data["flow_id"] ->
+        remap_id(id_map, :flow, pin_data["flow_id"])
+
+      pin_data["target_type"] == "flow" && pin_data["target_id"] ->
+        remap_id(id_map, :flow, pin_data["target_id"])
+
+      true ->
+        nil
     end
   end
 
