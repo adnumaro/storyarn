@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref, onMounted, onUnmounted, useTemplateRef } from "vue"
 import { makeDraggable } from "@vue-dnd-kit/core"
+import { GripVertical, Grip } from "lucide-vue-next"
 
 const SIDE_THRESHOLD = 0.25
 
@@ -45,7 +46,7 @@ const showBottom = computed(() => isDragOver.value?.bottom && !atSide.value)
 <template>
   <div
     ref="itemRef"
-    class="group/drag relative flex items-start gap-0"
+    class="group/drag relative"
     :class="{ 'opacity-30': isDragging }"
   >
     <!-- Drop indicator: top (vertical reorder) -->
@@ -76,20 +77,16 @@ const showBottom = computed(() => isDragOver.value?.bottom && !atSide.value)
       aria-hidden
     />
 
-    <!-- Drag handle -->
+    <!-- Drag handle: block handle for full_width, group handle for column_group -->
     <div
       v-if="canEdit"
-      class="drag-handle flex items-center pt-6 pr-1 cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground opacity-0 group-hover/drag:opacity-100 transition-opacity shrink-0"
+      class="drag-handle absolute top-5 cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground opacity-0 group-hover/drag:opacity-100 transition-opacity"
+      :class="isFullWidth ? '-left-5' : '-left-10'"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/>
-        <circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/>
-      </svg>
+      <GripVertical v-if="isFullWidth" class="size-4" />
+      <Grip v-else class="size-4" />
     </div>
 
-    <!-- Content -->
-    <div class="flex-1 min-w-0 w-full overflow-hidden">
-      <slot />
-    </div>
+    <slot />
   </div>
 </template>

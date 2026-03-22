@@ -1,6 +1,7 @@
 <script setup>
 import { computed, useTemplateRef } from "vue"
 import { makeDraggable, makeDroppable } from "@vue-dnd-kit/core"
+import { GripVertical } from "lucide-vue-next"
 
 const props = defineProps({
   blockId: { type: [Number, String], required: true },
@@ -67,7 +68,7 @@ const placement = computed(() => {
 <template>
   <div
     ref="itemRef"
-    class="group/col relative"
+    class="group/col relative h-full [&>*:last-child]:h-full"
     :class="{ 'opacity-30': isDragging }"
   >
     <!-- Drop indicator: left -->
@@ -84,17 +85,12 @@ const placement = computed(() => {
       aria-hidden
     />
 
-    <!-- Column drag handle (top center, visible on hover) -->
+    <!-- Block drag handle: absolute, left of block -->
     <div
       v-if="canEdit"
-      class="column-drag-handle absolute -top-3 left-1/2 -translate-x-1/2 z-30 cursor-grab active:cursor-grabbing"
+      class="column-drag-handle absolute -left-5 top-5 cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground opacity-0 group-hover/col:opacity-100 transition-opacity"
     >
-      <div class="px-2 py-0.5 rounded bg-muted/80 text-muted-foreground/50 hover:text-muted-foreground">
-        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="5" cy="9" r="1"/><circle cx="12" cy="9" r="1"/><circle cx="19" cy="9" r="1"/>
-          <circle cx="5" cy="15" r="1"/><circle cx="12" cy="15" r="1"/><circle cx="19" cy="15" r="1"/>
-        </svg>
-      </div>
+      <GripVertical class="size-4" />
     </div>
 
     <slot />

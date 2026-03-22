@@ -82,7 +82,7 @@ function gridClass() {
 </script>
 
 <template>
-  <div ref="gridRef" :class="['grid gap-3 pt-4', gridClass()]">
+  <div ref="gridRef" :class="['grid gap-6', gridClass()]">
     <HorizontalDraggableItem
       v-for="(block, index) in localBlocks"
       :key="block.id"
