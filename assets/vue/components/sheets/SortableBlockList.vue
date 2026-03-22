@@ -310,7 +310,7 @@ function resolveComponent(type) {
           :block="item.block"
           :can-edit="canEdit"
         >
-          <template v-if="item.block.detached" #menu>
+          <template v-if="item.block.can_reattach" #menu>
             <button
               type="button"
               class="size-6 rounded flex items-center justify-center text-blue-500 hover:bg-blue-500/10 transition-colors"

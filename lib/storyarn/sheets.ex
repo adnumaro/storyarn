@@ -237,8 +237,11 @@ defmodule Storyarn.Sheets do
   @spec move_sheet_to_position(sheet(), id() | nil, integer()) ::
           {:ok, sheet()} | {:error, validation_error() | term()}
   def move_sheet_to_position(%Sheet{} = sheet, new_parent_id, new_position) do
-    with :ok <- SheetCrud.validate_parent(sheet, new_parent_id) do
-      TreeOperations.move_sheet_to_position(sheet, new_parent_id, new_position)
+    with :ok <- SheetCrud.validate_parent(sheet, new_parent_id),
+         {:ok, moved_sheet} <-
+           TreeOperations.move_sheet_to_position(sheet, new_parent_id, new_position) do
+      PropertyInheritance.recalculate_on_move(moved_sheet)
+      {:ok, moved_sheet}
     end
   end
 

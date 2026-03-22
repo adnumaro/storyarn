@@ -63,7 +63,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
             v-component="sheets/BlockList"
             v-socket={@socket}
             id="block-list"
-            blocks={prepare_blocks_for_vue(@blocks, @gallery_data, @table_data, @project.id)}
+            blocks={prepare_blocks_for_vue(@blocks, @gallery_data, @table_data, @project.id, @inherited_groups)}
             inherited-groups={prepare_inherited_groups_for_vue(@inherited_groups, @gallery_data, @table_data, @project.id)}
             workspace-slug={@workspace.slug}
             project-slug={@project.slug}
@@ -900,6 +900,77 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
     end)
   end
 
+  # --- Select option management ---
+
+  def handle_event("add_select_option", %{"block-id" => block_id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(block_id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        options = get_in(block.config, ["options"]) || []
+        new_option = %{"key" => "option_#{length(options) + 1}", "value" => ""}
+        new_config = Map.put(block.config || %{}, "options", options ++ [new_option])
+
+        case Sheets.update_block_config(block, new_config) do
+          {:ok, _} -> {:noreply, reload_blocks(socket)}
+          {:error, _} -> {:noreply, socket}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event(
+        "remove_select_option",
+        %{"block-id" => block_id, "index" => index},
+        socket
+      ) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(block_id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        options = get_in(block.config, ["options"]) || []
+        new_config = Map.put(block.config || %{}, "options", List.delete_at(options, index))
+
+        case Sheets.update_block_config(block, new_config) do
+          {:ok, _} -> {:noreply, reload_blocks(socket)}
+          {:error, _} -> {:noreply, socket}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event(
+        "update_select_option",
+        %{"block-id" => block_id, "index" => index, "field" => field, "value" => value},
+        socket
+      ) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(block_id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        options = get_in(block.config, ["options"]) || []
+
+        new_options =
+          List.update_at(options, index, fn opt ->
+            Map.put(opt || %{}, field, value)
+          end)
+
+        new_config = Map.put(block.config || %{}, "options", new_options)
+
+        case Sheets.update_block_config(block, new_config) do
+          {:ok, _} -> {:noreply, reload_blocks(socket)}
+          {:error, _} -> {:noreply, socket}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
   # --- Reference blocks ---
 
   def handle_event("search_references", %{"block-id" => block_id} = params, socket) do
@@ -1179,7 +1250,9 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         case Sheets.move_sheet_to_position(sheet, parsed_parent, parsed_pos) do
           {:ok, _} ->
             {:noreply,
-             assign(socket, :sheets_tree,
+             socket
+             |> reload_blocks()
+             |> assign(:sheets_tree,
                prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id))
              )}
 
@@ -1509,11 +1582,31 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
     end)
   end
 
-  defp prepare_blocks_for_vue(blocks, gallery_data, table_data, project_id) do
+  defp prepare_blocks_for_vue(blocks, gallery_data, table_data, project_id, inherited_groups) do
+    # Collect source block IDs from current inherited groups to determine can_reattach
+    reattachable_source_ids =
+      inherited_groups
+      |> Enum.flat_map(fn g -> Enum.map(g.blocks, & &1.inherited_from_block_id) end)
+      |> Enum.reject(&is_nil/1)
+      |> MapSet.new()
+
+    # Build a set of block IDs that can be reattached
+    can_reattach_ids =
+      blocks
+      |> Enum.filter(fn b ->
+        (b.detached || false) && b.inherited_from_block_id &&
+          MapSet.member?(reattachable_source_ids, b.inherited_from_block_id)
+      end)
+      |> Enum.map(& &1.id)
+      |> MapSet.new()
+
     raw =
       blocks
       |> Enum.sort_by(& &1.position)
       |> prepare_blocks_for_vue_raw(gallery_data, table_data, project_id)
+      |> Enum.map(fn b ->
+        Map.put(b, :can_reattach, MapSet.member?(can_reattach_ids, b.id))
+      end)
 
     # Group by column_group_id into layout items
     raw

@@ -14,8 +14,7 @@ import {
 } from "lucide-vue-next";
 import { ref } from "vue";
 import { Button } from "@/vue/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/vue/components/ui/radio-group";
-import { Label } from "@/vue/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/vue/components/ui/tabs";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -61,16 +60,14 @@ function selectBlock(type) {
     <DropdownMenuContent align="start" :side-offset="4" class="w-52">
       <!-- Scope selector -->
       <DropdownMenuLabel class="text-xs text-muted-foreground uppercase tracking-wider">Scope</DropdownMenuLabel>
-      <RadioGroup v-model="scope" class="px-2 pb-1.5 gap-1.5">
-        <div class="flex items-center gap-2">
-          <RadioGroupItem id="scope-self" value="self" />
-          <Label for="scope-self" class="text-sm font-normal cursor-pointer">This sheet only</Label>
-        </div>
-        <div class="flex items-center gap-2">
-          <RadioGroupItem id="scope-children" value="children" />
-          <Label for="scope-children" class="text-sm font-normal cursor-pointer">This sheet and all children</Label>
-        </div>
-      </RadioGroup>
+      <div class="px-2 pb-1.5">
+        <Tabs v-model="scope">
+          <TabsList class="h-7 w-full">
+            <TabsTrigger value="self" class="text-xs flex-1">This sheet only</TabsTrigger>
+            <TabsTrigger value="children" class="text-xs flex-1">All children</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
 
       <DropdownMenuSeparator />
 

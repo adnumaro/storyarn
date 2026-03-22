@@ -11,6 +11,7 @@ import {
 } from "@/vue/components/ui/popover";
 import BlockToolbar from "../BlockToolbar.vue";
 import BlockLabel from "./BlockLabel.vue";
+import OptionEditor from "./OptionEditor.vue";
 import { useBlockActions } from "./useBlockActions";
 
 const props = defineProps({
@@ -28,7 +29,6 @@ function saveLabel(val) {
 		value: val,
 	});
 }
-
 
 const content = computed(() => props.block.value?.content || []);
 const options = computed(() => props.block.config?.options || []);
@@ -63,9 +63,12 @@ function toggle(key) {
       @toggle-required="live.pushEvent('toggle_required', { id: block.id })"
     >
       <template #config>
-        <div class="space-y-1"><label class="text-xs font-medium">Placeholder</label>
+        <OptionEditor :block-id="block.id" :options="options" />
+        <div class="space-y-1">
+          <label class="text-xs font-medium">Placeholder</label>
           <Input :model-value="block.config?.placeholder || ''" placeholder="Select..." class="h-7 text-xs"
-            @blur="(e) => live.pushEvent('update_block_config', { id: block.id, field: 'placeholder', value: e.target.value })" /></div>
+            @blur="(e) => live.pushEvent('update_block_config', { id: block.id, field: 'placeholder', value: e.target.value })" />
+        </div>
       </template>
     </BlockToolbar>
 

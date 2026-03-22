@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from "vue";
-import { List } from "lucide-vue-next";
+import { CircleDot } from "lucide-vue-next";
 import {
 	Select,
 	SelectContent,
@@ -11,6 +11,7 @@ import {
 import { Input } from "@/vue/components/ui/input";
 import BlockToolbar from "../BlockToolbar.vue";
 import BlockLabel from "./BlockLabel.vue";
+import OptionEditor from "./OptionEditor.vue";
 import { useBlockActions } from "./useBlockActions";
 
 const props = defineProps({
@@ -28,7 +29,6 @@ function saveLabel(val) {
 		value: val,
 	});
 }
-
 
 const content = computed(() => props.block.value?.content);
 const options = computed(() => props.block.config?.options || []);
@@ -66,19 +66,22 @@ function onChange(val) {
       @toggle-required="live.pushEvent('toggle_required', { id: block.id })"
     >
       <template #config>
-        <div class="space-y-1"><label class="text-xs font-medium">Placeholder</label>
+        <OptionEditor :block-id="block.id" :options="options" />
+        <div class="space-y-1">
+          <label class="text-xs font-medium">Placeholder</label>
           <Input :model-value="block.config?.placeholder || ''" placeholder="Select..." class="h-7 text-xs"
-            @blur="(e) => live.pushEvent('update_block_config', { id: block.id, field: 'placeholder', value: e.target.value })" /></div>
+            @blur="(e) => live.pushEvent('update_block_config', { id: block.id, field: 'placeholder', value: e.target.value })" />
+        </div>
       </template>
     </BlockToolbar>
 
-    <BlockLabel :icon="List" :label="label" :can-edit="canEdit" :is-constant="block.is_constant" :required="block.required" :detached="block.detached" @save="saveLabel">
+    <BlockLabel :icon="CircleDot" :label="label" :can-edit="canEdit" :is-constant="block.is_constant" :required="block.required" :detached="block.detached" @save="saveLabel">
       <slot name="menu" />
     </BlockLabel>
 
     <Select v-if="canEdit" :model-value="content || ''" @update:model-value="onChange">
       <SelectTrigger class="h-9 w-full"><SelectValue :placeholder="placeholder" /></SelectTrigger>
-      <SelectContent class="">
+      <SelectContent>
         <SelectItem value=" "><span class="text-muted-foreground">None</span></SelectItem>
         <SelectItem v-for="opt in options" :key="opt.key" :value="opt.key">{{ opt.value }}</SelectItem>
       </SelectContent>

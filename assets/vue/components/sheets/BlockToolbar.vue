@@ -4,12 +4,13 @@
  * Each block type composes this and passes its own config slot content.
  */
 import { ref } from "vue";
-import { Lock, Unlock, Hash, Asterisk, Settings } from "lucide-vue-next";
+import { Lock, Unlock, Hash, Settings } from "lucide-vue-next";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/vue/components/ui/popover";
+import { Tabs, TabsList, TabsTrigger } from "@/vue/components/ui/tabs";
 
 const configOpen = ref(false);
 
@@ -42,7 +43,7 @@ const emit = defineEmits([
       <button
         v-if="showConstant"
         type="button"
-        :class="['size-7 rounded flex items-center justify-center text-muted-foreground transition-colors hover:bg-accent', isConstant && 'text-primary']"
+        :class="['size-7 rounded flex items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-foreground', isConstant && 'text-primary']"
         :title="isConstant ? 'Make variable' : 'Make constant'"
         @click="emit('toggleConstant')"
       >
@@ -62,32 +63,15 @@ const emit = defineEmits([
         />
       </div>
 
-      <!-- Scope buttons -->
-      <div v-if="showScope" class="flex items-center gap-px pl-1 border-l border-border ml-0.5">
-        <button
-          type="button"
-          :class="['px-1.5 py-0.5 text-[10px] rounded transition-colors', scope === 'self' ? 'bg-accent text-accent-foreground font-medium' : 'text-muted-foreground hover:bg-accent/50']"
-          @click="emit('changeScope', 'self')"
-        >
-          Self
-        </button>
-        <button
-          type="button"
-          :class="['px-1.5 py-0.5 text-[10px] rounded transition-colors', scope === 'children' ? 'bg-accent text-accent-foreground font-medium' : 'text-muted-foreground hover:bg-accent/50']"
-          @click="emit('changeScope', 'children')"
-        >
-          Children
-        </button>
+      <!-- Scope tabs -->
+      <div v-if="showScope" class="flex items-center gap-1 pl-1 border-l border-border ml-0.5">
+        <Tabs :model-value="scope" @update:model-value="(v) => emit('changeScope', v)">
+          <TabsList class="h-6 p-0.5">
+            <TabsTrigger value="self" class="text-[10px] px-1.5 py-0 h-5">Self</TabsTrigger>
+            <TabsTrigger value="children" class="text-[10px] px-1.5 py-0 h-5">Children</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
-        <button
-          v-if="scope === 'children'"
-          type="button"
-          :class="['size-6 rounded flex items-center justify-center transition-colors ml-0.5', required ? 'text-destructive' : 'text-muted-foreground hover:bg-accent']"
-          title="Required for children"
-          @click="emit('toggleRequired')"
-        >
-          <Asterisk class="size-4" />
-        </button>
       </div>
 
       <!-- Config gear + slot for type-specific popover -->
