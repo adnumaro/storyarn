@@ -9,6 +9,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   alias StoryarnWeb.Helpers.UndoRedoStack
   alias StoryarnWeb.SheetLive.Handlers.{TableHandlers, UndoRedoHandlers}
 
+  alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
   alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   import StoryarnWeb.Live.Shared.RestorationHandlers, only: [check_restoration_lock: 2]
@@ -50,6 +51,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
       tree_panel_pinned={@tree_panel_pinned}
       can_edit={@can_edit}
       restoration_banner={@restoration_banner}
+      online_users={@online_users}
       tree_props={
         %{
           sheetsTree: @sheets_tree,
@@ -260,6 +262,9 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
          |> assign(:references_data, nil)
          |> assign(:audio_data, nil)
          |> assign(:history_data, nil)
+         |> assign(:online_users, [])
+         |> assign(:collab_scope, nil)
+         |> assign(:block_locks, %{})
          |> assign(:pending_delete_id, nil)
          |> assign(:formula_editing, nil)
          |> assign(:formula_search_results, [])
@@ -296,6 +301,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   end
 
   defp load_sheet(socket, sheet_id) do
+    socket = teardown_sheet_collab(socket)
     %{project: project} = socket.assigns
 
     case Sheets.get_sheet_full(project.id, sheet_id) do
@@ -307,6 +313,19 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         )
 
       sheet ->
+        # Setup collaboration
+        scope = {:sheet, sheet.id}
+        user = socket.assigns.current_scope.user
+
+        if connected?(socket) do
+          Collab.setup(socket, scope, user, cursors: false, locks: true, changes: true)
+        end
+
+        {online_users, block_locks} =
+          if connected?(socket),
+            do: Collab.get_initial_state(socket, scope),
+            else: {[], %{}}
+
         {inherited_groups, own_blocks} = Sheets.get_sheet_blocks_grouped(sheet.id)
         all_blocks = Enum.flat_map(inherited_groups, & &1.blocks) ++ own_blocks
 
@@ -330,6 +349,9 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
         socket
         |> assign(:sheet, sheet)
+        |> assign(:collab_scope, scope)
+        |> assign(:online_users, online_users)
+        |> assign(:block_locks, block_locks)
         |> assign(:blocks, own_blocks)
         |> assign(:inherited_groups, inherited_groups)
         |> assign(:gallery_data, gallery_data)
@@ -396,7 +418,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
           {:noreply,
            socket
            |> assign(:sheet, Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id))
-           |> assign(:sheets_tree, sheets_tree)}
+           |> assign(:sheets_tree, sheets_tree)
+           |> broadcast_sheet_change(:sheet_updated)}
 
         {:error, _changeset} ->
           {:noreply, socket}
@@ -417,7 +440,10 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
             Sheets.maybe_create_version(updated_sheet, socket.assigns.current_scope.user.id)
           end
 
-          {:noreply, assign(socket, :sheet, updated_sheet)}
+          {:noreply,
+           socket
+           |> assign(:sheet, updated_sheet)
+           |> broadcast_sheet_change(:sheet_updated)}
 
         {:error, changeset} ->
           error_msg =
@@ -453,7 +479,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
       case Sheets.update_sheet(sheet, %{banner_asset_id: nil}) do
         {:ok, _} ->
-          {:noreply, reload_sheet(socket)}
+          {:noreply, socket |> reload_sheet() |> broadcast_sheet_change(:sheet_updated)}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not remove banner."))}
@@ -501,7 +527,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
       case Sheets.remove_avatar(id) do
         {:ok, _} ->
-          {:noreply, reload_sheet_and_tree(socket)}
+          {:noreply,
+           socket |> reload_sheet_and_tree() |> broadcast_sheet_change(:sheet_updated)}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not remove avatar."))}
@@ -516,7 +543,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
       if avatar && avatar.sheet_id == socket.assigns.sheet.id do
         Sheets.set_avatar_default(avatar)
-        {:noreply, reload_sheet_and_tree(socket)}
+        {:noreply, socket |> reload_sheet_and_tree() |> broadcast_sheet_change(:sheet_updated)}
       else
         {:noreply, socket}
       end
@@ -528,7 +555,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
       with avatar when not is_nil(avatar) <- Sheets.get_avatar(parse_id(id)),
            true <- avatar.sheet_id == socket.assigns.sheet.id do
         Sheets.update_avatar(avatar, %{name: value})
-        {:noreply, reload_sheet(socket)}
+        {:noreply, socket |> reload_sheet() |> broadcast_sheet_change(:sheet_updated)}
       else
         _ -> {:noreply, socket}
       end
@@ -540,7 +567,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
       with avatar when not is_nil(avatar) <- Sheets.get_avatar(parse_id(id)),
            true <- avatar.sheet_id == socket.assigns.sheet.id do
         Sheets.update_avatar(avatar, %{notes: value})
-        {:noreply, reload_sheet(socket)}
+        {:noreply, socket |> reload_sheet() |> broadcast_sheet_change(:sheet_updated)}
       else
         _ -> {:noreply, socket}
       end
@@ -561,7 +588,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
           {:noreply,
            socket
            |> UndoRedoStack.push_undo({:create_block, snapshot})
-           |> reload_blocks()}
+           |> reload_blocks()
+           |> broadcast_sheet_change(:block_created)}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create block."))}
@@ -581,7 +609,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
             {:noreply,
              socket
              |> UndoRedoHandlers.push_block_value_coalesced(block.id, prev, value)
-             |> reload_blocks()}
+             |> reload_blocks()
+             |> broadcast_sheet_change(:block_updated)}
 
           {:error, _} ->
             {:noreply, socket}
@@ -605,7 +634,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
             else: current ++ [key]
 
         case Sheets.update_block_value(block, %{"content" => new_content}) do
-          {:ok, _} -> {:noreply, reload_blocks(socket)}
+          {:ok, _} -> {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
           {:error, _} -> {:noreply, socket}
         end
       else
@@ -626,7 +655,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         new_config = Map.put(block.config || %{}, field, value)
 
         case Sheets.update_block_config(block, new_config) do
-          {:ok, _} -> {:noreply, reload_blocks(socket)}
+          {:ok, _} -> {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
           {:error, _} -> {:noreply, socket}
         end
       else
@@ -647,7 +676,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
             {:noreply,
              socket
              |> UndoRedoStack.push_undo({:delete_block, snapshot})
-             |> reload_blocks()}
+             |> reload_blocks()
+             |> broadcast_sheet_change(:block_deleted, %{block_id: parse_id(id)})}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete block."))}
@@ -670,7 +700,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
             {:noreply,
              socket
              |> UndoRedoStack.push_undo({:create_block, snapshot})
-             |> reload_blocks()}
+             |> reload_blocks()
+             |> broadcast_sheet_change(:block_created)}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not duplicate block."))}
@@ -684,7 +715,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   def handle_event("undo", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       case UndoRedoHandlers.handle_undo(params, socket) do
-        {:noreply, socket} -> {:noreply, reload_blocks(socket)}
+        {:noreply, socket} ->
+          {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
       end
     end)
   end
@@ -692,7 +724,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   def handle_event("redo", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       case UndoRedoHandlers.handle_redo(params, socket) do
-        {:noreply, socket} -> {:noreply, reload_blocks(socket)}
+        {:noreply, socket} ->
+          {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
       end
     end)
   end
@@ -707,7 +740,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         end
       end)
 
-      {:noreply, reload_blocks(socket)}
+      {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_reordered)}
     end)
   end
 
@@ -737,7 +770,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
           {:noreply,
            socket
            |> UndoRedoStack.push_undo({:reorder_blocks_with_columns, prev_layout, sanitized})
-           |> reload_blocks()}
+           |> reload_blocks()
+           |> broadcast_sheet_change(:block_reordered)}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not reorder blocks."))}
@@ -759,7 +793,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
             {:noreply,
              socket
              |> UndoRedoStack.push_undo({:toggle_constant, block.id, prev, !prev})
-             |> reload_blocks()}
+             |> reload_blocks()
+             |> broadcast_sheet_change(:block_updated)}
 
           {:error, _} ->
             {:noreply, socket}
@@ -776,7 +811,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
       if block && block.sheet_id == socket.assigns.sheet.id do
         Sheets.update_variable_name(block, name)
-        {:noreply, reload_blocks(socket)}
+        {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
       else
         {:noreply, socket}
       end
@@ -789,7 +824,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
       if block && block.sheet_id == socket.assigns.sheet.id do
         Sheets.update_block(block, %{scope: scope})
-        {:noreply, reload_blocks(socket)}
+        {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
       else
         {:noreply, socket}
       end
@@ -802,7 +837,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
       if block && block.sheet_id == socket.assigns.sheet.id do
         Sheets.update_block(block, %{required: !block.required})
-        {:noreply, reload_blocks(socket)}
+        {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
       else
         {:noreply, socket}
       end
@@ -821,7 +856,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
           {:noreply,
            socket
            |> UndoRedoStack.push_undo({:reorder_blocks, prev_ids, int_ids})
-           |> reload_blocks()}
+           |> reload_blocks()
+           |> broadcast_sheet_change(:block_reordered)}
 
         {:error, _} ->
           {:noreply, reload_blocks(socket)}
@@ -838,7 +874,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
       if block && block.sheet_id == socket.assigns.sheet.id do
         case Sheets.detach_block(block) do
           {:ok, _} ->
-            {:noreply, reload_blocks(socket)}
+            {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not detach block."))}
@@ -856,7 +892,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
       if block && block.sheet_id == socket.assigns.sheet.id do
         case Sheets.reattach_block(block) do
           {:ok, _} ->
-            {:noreply, reload_blocks(socket)}
+            {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not reattach block."))}
@@ -898,7 +934,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
                    ) do
                 {:ok, asset} ->
                   Sheets.add_gallery_image(block, asset.id)
-                  {:noreply, reload_blocks(socket)}
+                  {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
 
                 {:error, _} ->
                   {:noreply,
@@ -929,7 +965,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
         gi ->
           Sheets.update_gallery_image(gi, %{String.to_existing_atom(field) => value})
-          {:noreply, reload_blocks(socket)}
+          {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
       end
     end)
   end
@@ -937,7 +973,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   def handle_event("remove_gallery_image", %{"gallery_image_id" => id}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       case Sheets.remove_gallery_image(parse_id(id)) do
-        {:ok, _} -> {:noreply, reload_blocks(socket)}
+        {:ok, _} -> {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
         _ -> {:noreply, socket}
       end
     end)
@@ -947,7 +983,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       int_ids = Enum.map(ids, &parse_id/1)
       Sheets.reorder_gallery_images(parse_id(block_id), int_ids)
-      {:noreply, reload_blocks(socket)}
+      {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
     end)
   end
 
@@ -955,67 +991,89 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
   def handle_event("add_table_column", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_add_column(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_add_column(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("add_table_row", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_add_row(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_add_row(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("update_table_cell", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_update_cell(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_update_cell(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("toggle_table_cell_boolean", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_toggle_cell_boolean(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_toggle_cell_boolean(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("select_table_cell", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_select_table_cell(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_select_table_cell(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("toggle_table_collapse", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_toggle_collapse(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_toggle_collapse(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("rename_table_column", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_rename_column(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_rename_column(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("rename_table_row", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_rename_row(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_rename_row(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("delete_table_column", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_delete_column(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_delete_column(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("delete_table_row", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_delete_row(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_delete_row(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("reorder_table_rows", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_reorder_rows(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_reorder_rows(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
@@ -1027,61 +1085,81 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
   def handle_event("change_table_column_type", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_change_column_type(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_change_column_type(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("toggle_table_column_constant", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_toggle_column_constant(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_toggle_column_constant(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("toggle_table_column_required", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_toggle_column_required(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_toggle_column_required(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("toggle_reference_multiple", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_toggle_reference_multiple(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_toggle_reference_multiple(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("update_number_constraint", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_update_number_constraint(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_update_number_constraint(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("toggle_table_cell_multi_select", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_toggle_table_cell_multi_select(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_toggle_table_cell_multi_select(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("add_table_cell_option", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_add_table_cell_option(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_add_table_cell_option(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("add_table_column_option", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_add_column_option(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_add_column_option(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("remove_table_column_option", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_remove_column_option(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_remove_column_option(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
   def handle_event("update_table_column_option", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      TableHandlers.handle_update_column_option(params, socket, table_helpers(socket))
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_update_column_option(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
@@ -1097,7 +1175,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         new_config = Map.put(block.config || %{}, "options", options ++ [new_option])
 
         case Sheets.update_block_config(block, new_config) do
-          {:ok, _} -> {:noreply, reload_blocks(socket)}
+          {:ok, _} -> {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
           {:error, _} -> {:noreply, socket}
         end
       else
@@ -1119,7 +1197,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         new_config = Map.put(block.config || %{}, "options", List.delete_at(options, index))
 
         case Sheets.update_block_config(block, new_config) do
-          {:ok, _} -> {:noreply, reload_blocks(socket)}
+          {:ok, _} -> {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
           {:error, _} -> {:noreply, socket}
         end
       else
@@ -1147,7 +1225,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         new_config = Map.put(block.config || %{}, "options", new_options)
 
         case Sheets.update_block_config(block, new_config) do
-          {:ok, _} -> {:noreply, reload_blocks(socket)}
+          {:ok, _} -> {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
           {:error, _} -> {:noreply, socket}
         end
       else
@@ -1196,7 +1274,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
               "target_id" => target_id_int
             })
 
-            {:noreply, reload_blocks(socket)}
+            {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
 
           {:error, _} ->
             {:noreply,
@@ -1214,7 +1292,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
       if block && block.sheet_id == socket.assigns.sheet.id do
         Sheets.update_block_value(block, %{"target_type" => nil, "target_id" => nil})
-        {:noreply, reload_blocks(socket)}
+        {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
       else
         {:noreply, socket}
       end
@@ -1283,7 +1361,10 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
           table_helpers(socket)
         )
 
-      {:noreply, refresh_formula_editing(updated_socket)}
+      {:noreply,
+       updated_socket
+       |> refresh_formula_editing()
+       |> broadcast_sheet_change(:block_updated)}
     end)
   end
 
@@ -1320,7 +1401,10 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
           table_helpers(socket)
         )
 
-      {:noreply, refresh_formula_editing(updated_socket)}
+      {:noreply,
+       updated_socket
+       |> refresh_formula_editing()
+       |> broadcast_sheet_change(:block_updated)}
     end)
   end
 
@@ -1696,6 +1780,7 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
                name: updated_sheet.name,
                shortcut: updated_sheet.shortcut
              })
+             |> broadcast_sheet_change(:sheet_restored)
              |> put_flash(
                :info,
                dgettext("versioning", "Restored to version %{number}",
@@ -1748,8 +1833,149 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
         socket
       )
 
+  def handle_info({Storyarn.Collaboration.Presence, {:join, presence}}, socket) do
+    Collab.handle_presence_join(socket, presence)
+  end
+
+  def handle_info({Storyarn.Collaboration.Presence, {:leave, _} = event}, socket) do
+    Collab.handle_presence_leave(socket, elem(event, 1))
+  end
+
+  def handle_info({:lock_change, _action, _payload}, socket) do
+    if scope = socket.assigns[:collab_scope] do
+      block_locks = Collaboration.list_locks(scope)
+      {:noreply, assign(socket, :block_locks, block_locks)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info({:remote_change, action, payload}, socket) do
+    if payload[:user_id] == socket.assigns.current_scope.user.id do
+      {:noreply, socket}
+    else
+      handle_remote_change(action, payload, socket)
+    end
+  end
+
   def handle_info({:table_push_undo, action}, socket) do
     {:noreply, UndoRedoStack.push_undo(socket, action)}
+  end
+
+  # ===========================================================================
+  # Terminate
+  # ===========================================================================
+
+  @impl true
+  def terminate(_reason, socket) do
+    teardown_sheet_collab(socket)
+  end
+
+  # ===========================================================================
+  # Collaboration Helpers
+  # ===========================================================================
+
+  defp teardown_sheet_collab(socket) do
+    if scope = socket.assigns[:collab_scope] do
+      user_id = socket.assigns.current_scope.user.id
+      Collab.teardown(scope, user_id)
+    end
+
+    socket
+    |> assign(:collab_scope, nil)
+    |> assign(:online_users, [])
+    |> assign(:block_locks, %{})
+  end
+
+  defp broadcast_sheet_change(socket, action, extra_payload \\ %{}) do
+    if scope = socket.assigns[:collab_scope] do
+      Collab.broadcast_change(socket, scope, action, extra_payload)
+    end
+
+    socket
+  end
+
+  defp with_table_broadcast(_socket, fun) do
+    case fun.() do
+      {:noreply, updated_socket} ->
+        {:noreply, broadcast_sheet_change(updated_socket, :block_updated)}
+
+      other ->
+        other
+    end
+  end
+
+  defp show_collab_toast(socket, action, payload) do
+    push_event(socket, "collab_toast", %{
+      action: to_string(action),
+      userEmail: payload[:user_email] || "Unknown",
+      userColor: payload[:user_color] || "#666"
+    })
+  end
+
+  defp handle_remote_change(:block_updated, payload, socket) do
+    {:noreply,
+     socket
+     |> reload_blocks()
+     |> show_collab_toast(:block_updated, payload)}
+  end
+
+  defp handle_remote_change(:block_created, payload, socket) do
+    {:noreply,
+     socket
+     |> reload_blocks()
+     |> show_collab_toast(:block_created, payload)}
+  end
+
+  defp handle_remote_change(:block_deleted, payload, socket) do
+    {:noreply,
+     socket
+     |> reload_blocks()
+     |> show_collab_toast(:block_deleted, payload)}
+  end
+
+  defp handle_remote_change(:block_reordered, _payload, socket) do
+    {:noreply, reload_blocks(socket)}
+  end
+
+  defp handle_remote_change(:block_type_changed, payload, socket) do
+    {:noreply,
+     socket
+     |> reload_blocks()
+     |> show_collab_toast(:block_type_changed, payload)}
+  end
+
+  defp handle_remote_change(:sheet_updated, payload, socket) do
+    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
+
+    {:noreply,
+     socket
+     |> assign(:sheet, sheet)
+     |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id)))
+     |> push_event("sheet_updated_remote", %{name: sheet.name, shortcut: sheet.shortcut})
+     |> show_collab_toast(:sheet_updated, payload)}
+  end
+
+  defp handle_remote_change(:sheet_restored, payload, socket) do
+    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
+
+    socket =
+      socket
+      |> assign(:sheet, sheet)
+      |> reload_blocks()
+      |> UndoRedoStack.clear()
+      |> assign(:history_data, nil)
+
+    socket =
+      if socket.assigns.current_tab == "history",
+        do: load_history_data(socket),
+        else: socket
+
+    {:noreply, show_collab_toast(socket, :sheet_restored, payload)}
+  end
+
+  defp handle_remote_change(_action, _payload, socket) do
+    {:noreply, socket}
   end
 
   # ===========================================================================
@@ -2484,8 +2710,14 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
   defp update_sheet_field(socket, attrs) do
     case Sheets.update_sheet(socket.assigns.sheet, attrs) do
-      {:ok, _} -> {:noreply, reload_sheet(socket)}
-      {:error, _} -> {:noreply, socket}
+      {:ok, _} ->
+        {:noreply,
+         socket
+         |> reload_sheet()
+         |> broadcast_sheet_change(:sheet_updated)}
+
+      {:error, _} ->
+        {:noreply, socket}
     end
   end
 
@@ -2513,7 +2745,11 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
             end
 
             Collaboration.broadcast_change({:assets, project.id}, :asset_created, %{})
-            {:noreply, reload_sheet_and_tree(socket)}
+
+            {:noreply,
+             socket
+             |> reload_sheet_and_tree()
+             |> broadcast_sheet_change(:sheet_updated)}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not upload file."))}
