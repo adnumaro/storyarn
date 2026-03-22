@@ -84,8 +84,28 @@ function onKeydown(e) {
   }
 }
 
-onMounted(() => document.addEventListener("keydown", onKeydown))
-onUnmounted(() => document.removeEventListener("keydown", onKeydown))
+function onUndoRedo(e) {
+  if (!(e.metaKey || e.ctrlKey) || isInputFocused()) return
+
+  if (e.key === "z" && !e.shiftKey) {
+    e.preventDefault()
+    live.pushEvent("undo", {})
+  }
+
+  if ((e.key === "z" && e.shiftKey) || e.key === "y") {
+    e.preventDefault()
+    live.pushEvent("redo", {})
+  }
+}
+
+onMounted(() => {
+  document.addEventListener("keydown", onKeydown)
+  document.addEventListener("keydown", onUndoRedo)
+})
+onUnmounted(() => {
+  document.removeEventListener("keydown", onKeydown)
+  document.removeEventListener("keydown", onUndoRedo)
+})
 
 function addBlock(type) {
   live.pushEvent("add_block", { type })

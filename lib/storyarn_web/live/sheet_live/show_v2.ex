@@ -6,6 +6,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
   use StoryarnWeb, :live_view
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.UndoRedoStack
+  alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
 
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
@@ -105,7 +107,8 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
          |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(project.id)))
          |> assign(:is_draft, false)
          |> assign(:source_shortcut, nil)
-         |> assign(:pending_delete_id, nil)}
+         |> assign(:pending_delete_id, nil)
+         |> UndoRedoStack.init()}
 
       {:error, _reason} ->
         {:ok,
@@ -342,8 +345,13 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   def handle_event("add_block", %{"type" => type}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       case Sheets.create_block(socket.assigns.sheet, %{type: type}) do
-        {:ok, _block} ->
-          {:noreply, reload_blocks(socket)}
+        {:ok, block} ->
+          snapshot = UndoRedoHandlers.block_to_snapshot(block)
+
+          {:noreply,
+           socket
+           |> UndoRedoStack.push_undo({:create_block, snapshot})
+           |> reload_blocks()}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create block."))}
@@ -356,9 +364,17 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
       block = Sheets.get_block(parse_id(id))
 
       if block && block.sheet_id == socket.assigns.sheet.id do
+        prev = get_in(block.value, ["content"])
+
         case Sheets.update_block_value(block, %{"content" => value}) do
-          {:ok, _} -> {:noreply, reload_blocks(socket)}
-          {:error, _} -> {:noreply, socket}
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> UndoRedoHandlers.push_block_value_coalesced(block.id, prev, value)
+             |> reload_blocks()}
+
+          {:error, _} ->
+            {:noreply, socket}
         end
       else
         {:noreply, socket}
@@ -414,9 +430,14 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
       block = Sheets.get_block(parse_id(id))
 
       if block && block.sheet_id == socket.assigns.sheet.id do
+        snapshot = UndoRedoHandlers.block_to_snapshot(block)
+
         case Sheets.delete_block(block) do
           {:ok, _} ->
-            {:noreply, reload_blocks(socket)}
+            {:noreply,
+             socket
+             |> UndoRedoStack.push_undo({:delete_block, snapshot})
+             |> reload_blocks()}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete block."))}
@@ -433,14 +454,35 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
       if block && block.sheet_id == socket.assigns.sheet.id do
         case Sheets.duplicate_block(block) do
-          {:ok, _} ->
-            {:noreply, reload_blocks(socket)}
+          {:ok, new_block} ->
+            snapshot = UndoRedoHandlers.block_to_snapshot(new_block)
+
+            {:noreply,
+             socket
+             |> UndoRedoStack.push_undo({:create_block, snapshot})
+             |> reload_blocks()}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not duplicate block."))}
         end
       else
         {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("undo", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      case UndoRedoHandlers.handle_undo(params, socket) do
+        {:noreply, socket} -> {:noreply, reload_blocks(socket)}
+      end
+    end)
+  end
+
+  def handle_event("redo", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      case UndoRedoHandlers.handle_redo(params, socket) do
+        {:noreply, socket} -> {:noreply, reload_blocks(socket)}
       end
     end)
   end
@@ -471,9 +513,21 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
           }
         end)
 
-      case Sheets.reorder_blocks_with_columns(socket.assigns.sheet.id, sanitized) do
+      sheet_id = socket.assigns.sheet.id
+
+      prev_layout =
+        Sheets.list_blocks(sheet_id)
+        |> Enum.sort_by(& &1.position)
+        |> Enum.map(fn b ->
+          %{id: b.id, column_group_id: b.column_group_id, column_index: b.column_index}
+        end)
+
+      case Sheets.reorder_blocks_with_columns(sheet_id, sanitized) do
         {:ok, _} ->
-          {:noreply, reload_blocks(socket)}
+          {:noreply,
+           socket
+           |> UndoRedoStack.push_undo({:reorder_blocks_with_columns, prev_layout, sanitized})
+           |> reload_blocks()}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not reorder blocks."))}
@@ -488,8 +542,18 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
       block = Sheets.get_block(parse_id(id))
 
       if block && block.sheet_id == socket.assigns.sheet.id do
-        Sheets.update_block(block, %{is_constant: !block.is_constant})
-        {:noreply, reload_blocks(socket)}
+        prev = block.is_constant
+
+        case Sheets.update_block(block, %{is_constant: !prev}) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> UndoRedoStack.push_undo({:toggle_constant, block.id, prev, !prev})
+             |> reload_blocks()}
+
+          {:error, _} ->
+            {:noreply, socket}
+        end
       else
         {:noreply, socket}
       end
@@ -540,8 +604,18 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   def handle_event("reorder_blocks", %{"ids" => ids}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       int_ids = Enum.map(ids, &parse_id/1)
-      Sheets.reorder_blocks(socket.assigns.sheet.id, int_ids)
-      {:noreply, reload_blocks(socket)}
+      prev_ids = Sheets.list_blocks(socket.assigns.sheet.id) |> Enum.map(& &1.id)
+
+      case Sheets.reorder_blocks(socket.assigns.sheet.id, int_ids) do
+        {:ok, _} ->
+          {:noreply,
+           socket
+           |> UndoRedoStack.push_undo({:reorder_blocks, prev_ids, int_ids})
+           |> reload_blocks()}
+
+        {:error, _} ->
+          {:noreply, reload_blocks(socket)}
+      end
     end)
   end
 
