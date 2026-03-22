@@ -1,151 +1,171 @@
 <script setup>
-import { ref, computed, watch } from "vue"
-import { useLive } from "@/vue/composables/useLive"
-import { Image, Trash2, X, Plus, LayoutGrid, Star } from "lucide-vue-next"
-import { Button } from "@/vue/components/ui/button"
-import { Input } from "@/vue/components/ui/input"
+import { ref, computed, watch } from "vue";
+import { useLive } from "@/vue/composables/useLive";
+import { Image, Trash2, X, Plus, LayoutGrid, Star } from "lucide-vue-next";
+import { Button } from "@/vue/components/ui/button";
+import { Input } from "@/vue/components/ui/input";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/vue/components/ui/popover"
-import ColorPickerPopover from "@/vue/components/ColorPickerPopover.vue"
-import AvatarGallery from "./AvatarGallery.vue"
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/vue/components/ui/popover";
+import ColorPickerPopover from "@/vue/components/ColorPickerPopover.vue";
+import AvatarGallery from "./AvatarGallery.vue";
 
 const props = defineProps({
-  sheet: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  isDraft: { type: Boolean, default: false },
-  sourceShortcut: { type: String, default: null },
-})
+	sheet: { type: Object, required: true },
+	canEdit: { type: Boolean, default: false },
+	isDraft: { type: Boolean, default: false },
+	sourceShortcut: { type: String, default: null },
+});
 
-const live = useLive()
+const live = useLive();
 
 // ── Title editing ──
-const editingName = ref(false)
-const nameInput = ref(null)
-const localName = ref(props.sheet.name)
+const editingName = ref(false);
+const nameInput = ref(null);
+const localName = ref(props.sheet.name);
 
-watch(() => props.sheet.name, (v) => { localName.value = v })
+watch(
+	() => props.sheet.name,
+	(v) => {
+		localName.value = v;
+	},
+);
 
 function startEditName() {
-  if (!props.canEdit) return
-  editingName.value = true
-  setTimeout(() => nameInput.value?.focus(), 0)
+	if (!props.canEdit) return;
+	editingName.value = true;
+	setTimeout(() => nameInput.value?.focus(), 0);
 }
 
 function saveName() {
-  editingName.value = false
-  const name = localName.value?.trim()
-  if (name && name !== props.sheet.name) {
-    live.pushEvent("save_name", { name })
-  }
+	editingName.value = false;
+	const name = localName.value?.trim();
+	if (name && name !== props.sheet.name) {
+		live.pushEvent("save_name", { name });
+	}
 }
 
 function onNameKeydown(e) {
-  if (e.key === "Enter") {
-    e.preventDefault()
-    saveName()
-  }
+	if (e.key === "Enter") {
+		e.preventDefault();
+		saveName();
+	}
 }
 
 // ── Shortcut editing ──
-const editingShortcut = ref(false)
-const shortcutInput = ref(null)
-const localShortcut = ref(props.sheet.shortcut || "")
+const editingShortcut = ref(false);
+const shortcutInput = ref(null);
+const localShortcut = ref(props.sheet.shortcut || "");
 
-watch(() => props.sheet.shortcut, (v) => { localShortcut.value = v || "" })
+watch(
+	() => props.sheet.shortcut,
+	(v) => {
+		localShortcut.value = v || "";
+	},
+);
 
 function startEditShortcut() {
-  if (!props.canEdit || props.isDraft) return
-  editingShortcut.value = true
-  setTimeout(() => shortcutInput.value?.focus(), 0)
+	if (!props.canEdit || props.isDraft) return;
+	editingShortcut.value = true;
+	setTimeout(() => shortcutInput.value?.focus(), 0);
 }
 
 function saveShortcut() {
-  editingShortcut.value = false
-  const shortcut = localShortcut.value?.trim()
-  if (shortcut !== (props.sheet.shortcut || "")) {
-    live.pushEvent("save_shortcut", { shortcut: shortcut || "" })
-  }
+	editingShortcut.value = false;
+	const shortcut = localShortcut.value?.trim();
+	if (shortcut !== (props.sheet.shortcut || "")) {
+		live.pushEvent("save_shortcut", { shortcut: shortcut || "" });
+	}
 }
 
 function onShortcutKeydown(e) {
-  if (e.key === "Enter") {
-    e.preventDefault()
-    saveShortcut()
-  }
+	if (e.key === "Enter") {
+		e.preventDefault();
+		saveShortcut();
+	}
 }
 
 // ── Color picker ──
-const localColor = ref(props.sheet.color || "#3b82f6")
+const localColor = ref(props.sheet.color || "#3b82f6");
 
-watch(() => props.sheet.color, (v) => { localColor.value = v || "#3b82f6" })
+watch(
+	() => props.sheet.color,
+	(v) => {
+		localColor.value = v || "#3b82f6";
+	},
+);
 
 function onColorUpdate(color) {
-  localColor.value = color
-  live.pushEvent("set_sheet_color", { color })
+	localColor.value = color;
+	live.pushEvent("set_sheet_color", { color });
 }
 
 // ── Banner upload ──
 function triggerBannerUpload() {
-  const input = document.createElement("input")
-  input.type = "file"
-  input.accept = "image/*"
-  input.onchange = (e) => uploadFile(e.target.files[0], "upload_banner")
-  input.click()
+	const input = document.createElement("input");
+	input.type = "file";
+	input.accept = "image/*";
+	input.onchange = (e) => uploadFile(e.target.files[0], "upload_banner");
+	input.click();
 }
 
 function removeBanner() {
-  live.pushEvent("remove_banner", {})
+	live.pushEvent("remove_banner", {});
 }
 
 // ── Avatar upload ──
 function triggerAvatarUpload() {
-  const input = document.createElement("input")
-  input.type = "file"
-  input.accept = "image/*"
-  input.multiple = true
-  input.onchange = (e) => {
-    Array.from(e.target.files).forEach((file) => uploadFile(file, "upload_avatar"))
-  }
-  input.click()
+	const input = document.createElement("input");
+	input.type = "file";
+	input.accept = "image/*";
+	input.multiple = true;
+	input.onchange = (e) => {
+		Array.from(e.target.files).forEach((file) =>
+			uploadFile(file, "upload_avatar"),
+		);
+	};
+	input.click();
 }
 
 function uploadFile(file, eventName) {
-  if (!file) return
-  const reader = new FileReader()
-  reader.onload = () => {
-    live.pushEvent(eventName, {
-      filename: file.name,
-      content_type: file.type,
-      data: reader.result,
-    })
-  }
-  reader.readAsDataURL(file)
+	if (!file) return;
+	const reader = new FileReader();
+	reader.onload = () => {
+		live.pushEvent(eventName, {
+			filename: file.name,
+			content_type: file.type,
+			data: reader.result,
+		});
+	};
+	reader.readAsDataURL(file);
 }
 
 // ── Avatars ──
-const galleryOpen = ref(false)
+const galleryOpen = ref(false);
 
-const defaultAvatar = computed(() =>
-  props.sheet.avatars?.find((a) => a.is_default) || props.sheet.avatars?.[0] || null
-)
+const defaultAvatar = computed(
+	() =>
+		props.sheet.avatars?.find((a) => a.is_default) ||
+		props.sheet.avatars?.[0] ||
+		null,
+);
 
 function setDefaultAvatar(id) {
-  live.pushEvent("set_default_avatar", { id })
+	live.pushEvent("set_default_avatar", { id });
 }
 
 function removeAvatar(id) {
-  live.pushEvent("remove_avatar", { id })
+	live.pushEvent("remove_avatar", { id });
 }
 
 function updateAvatarName(id, value) {
-  live.pushEvent("gallery_update_name", { id, value })
+	live.pushEvent("gallery_update_name", { id, value });
 }
 
 function updateAvatarNotes(id, value) {
-  live.pushEvent("gallery_update_notes", { id, value })
+	live.pushEvent("gallery_update_notes", { id, value });
 }
 </script>
 

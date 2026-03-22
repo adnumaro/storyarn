@@ -7,73 +7,73 @@
  * Matches the existing CSS: .sentence-slot, .sentence-slot.filled, .sentence-slot:focus
  */
 
-import { computed, ref, nextTick } from "vue"
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
+import { computed, ref, nextTick } from "vue";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "./ui/command"
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+} from "./ui/command";
 
 const props = defineProps({
-  /** Currently selected value */
-  modelValue: { type: String, default: "" },
-  /** Flat options: [{ value, label }] */
-  options: { type: Array, default: () => [] },
-  /** Grouped options: [{ heading, items: [{ value, label }] }] */
-  groups: { type: Array, default: () => [] },
-  /** Placeholder text */
-  placeholder: { type: String, default: "..." },
-  disabled: { type: Boolean, default: false },
-  /** Allow free-text input (no dropdown, just a text input) */
-  freeText: { type: Boolean, default: false },
-  /** Input type for free-text mode */
-  inputType: { type: String, default: "text" },
-})
+	/** Currently selected value */
+	modelValue: { type: String, default: "" },
+	/** Flat options: [{ value, label }] */
+	options: { type: Array, default: () => [] },
+	/** Grouped options: [{ heading, items: [{ value, label }] }] */
+	groups: { type: Array, default: () => [] },
+	/** Placeholder text */
+	placeholder: { type: String, default: "..." },
+	disabled: { type: Boolean, default: false },
+	/** Allow free-text input (no dropdown, just a text input) */
+	freeText: { type: Boolean, default: false },
+	/** Input type for free-text mode */
+	inputType: { type: String, default: "text" },
+});
 
-const emit = defineEmits(["update:modelValue"])
+const emit = defineEmits(["update:modelValue"]);
 
-const open = ref(false)
+const open = ref(false);
 
 /** Display label for the current selection */
 const displayLabel = computed(() => {
-  if (!props.modelValue) return ""
+	if (!props.modelValue) return "";
 
-  for (const opt of props.options) {
-    if (opt.value === props.modelValue) return opt.label
-  }
-  for (const group of props.groups) {
-    for (const item of group.items) {
-      if (item.value === props.modelValue) return item.label
-    }
-  }
-  return props.modelValue
-})
+	for (const opt of props.options) {
+		if (opt.value === props.modelValue) return opt.label;
+	}
+	for (const group of props.groups) {
+		for (const item of group.items) {
+			if (item.value === props.modelValue) return item.label;
+		}
+	}
+	return props.modelValue;
+});
 
-const hasGroups = computed(() => props.groups.length > 0)
+const hasGroups = computed(() => props.groups.length > 0);
 
 function onSelect(value) {
-  emit("update:modelValue", value)
-  open.value = false
+	emit("update:modelValue", value);
+	open.value = false;
 }
 
 function onFreeTextInput(e) {
-  emit("update:modelValue", e.target.value)
+	emit("update:modelValue", e.target.value);
 }
 
 function onFreeTextBlur(e) {
-  emit("update:modelValue", e.target.value)
+	emit("update:modelValue", e.target.value);
 }
 
 /** Auto-size an input based on content */
 function autoSize(el) {
-  if (!el) return
-  const text = el.value || el.placeholder || ""
-  const charCount = Math.max(text.length, 3)
-  el.style.width = `${charCount + 2}ch`
+	if (!el) return;
+	const text = el.value || el.placeholder || "";
+	const charCount = Math.max(text.length, 3);
+	el.style.width = `${charCount + 2}ch`;
 }
 </script>
 

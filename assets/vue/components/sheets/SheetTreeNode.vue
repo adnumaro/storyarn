@@ -1,119 +1,132 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, useTemplateRef } from "vue"
-import { makeDraggable, makeDroppable } from "@vue-dnd-kit/core"
-import { FileText, ChevronRight, Trash2, FilePlus } from "lucide-vue-next"
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@/vue/components/ui/context-menu"
+	ref,
+	computed,
+	watch,
+	onMounted,
+	onUnmounted,
+	useTemplateRef,
+} from "vue";
+import { makeDraggable, makeDroppable } from "@vue-dnd-kit/core";
+import { FileText, ChevronRight, Trash2, FilePlus } from "lucide-vue-next";
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuTrigger,
+} from "@/vue/components/ui/context-menu";
 
 const props = defineProps({
-  node: { type: Object, required: true },
-  index: { type: Number, required: true },
-  siblings: { type: Array, required: true },
-  selectedSheetId: { type: [String, Number], default: null },
-  canEdit: { type: Boolean, default: false },
-  depth: { type: Number, default: 0 },
-  searchActive: { type: Boolean, default: false },
-  sheetHref: { type: Function, required: true },
-})
+	node: { type: Object, required: true },
+	index: { type: Number, required: true },
+	siblings: { type: Array, required: true },
+	selectedSheetId: { type: [String, Number], default: null },
+	canEdit: { type: Boolean, default: false },
+	depth: { type: Number, default: 0 },
+	searchActive: { type: Boolean, default: false },
+	sheetHref: { type: Function, required: true },
+});
 
-const emit = defineEmits(["createChild", "requestDelete", "drop"])
+const emit = defineEmits(["createChild", "requestDelete", "drop"]);
 
 const hasChildren = computed(
-  () => props.node.children && props.node.children.length > 0,
-)
+	() => props.node.children && props.node.children.length > 0,
+);
 
 const isSelected = computed(
-  () => props.selectedSheetId != null && String(props.node.id) === String(props.selectedSheetId),
-)
+	() =>
+		props.selectedSheetId != null &&
+		String(props.node.id) === String(props.selectedSheetId),
+);
 
 // ── Auto-expand ──
 function hasSelectedDescendant(node, selectedId) {
-  if (!selectedId || !node.children) return false
-  for (const child of node.children) {
-    if (String(child.id) === String(selectedId)) return true
-    if (hasSelectedDescendant(child, selectedId)) return true
-  }
-  return false
+	if (!selectedId || !node.children) return false;
+	for (const child of node.children) {
+		if (String(child.id) === String(selectedId)) return true;
+		if (hasSelectedDescendant(child, selectedId)) return true;
+	}
+	return false;
 }
 
-const shouldAutoExpand = computed(() =>
-  hasChildren.value && hasSelectedDescendant(props.node, props.selectedSheetId)
-)
+const shouldAutoExpand = computed(
+	() =>
+		hasChildren.value &&
+		hasSelectedDescendant(props.node, props.selectedSheetId),
+);
 
-const userToggled = ref(false)
-const isOpen = ref(shouldAutoExpand.value)
+const userToggled = ref(false);
+const isOpen = ref(shouldAutoExpand.value);
 
 watch(
-  () => props.searchActive,
-  (active) => {
-    if (active) isOpen.value = true
-    else if (!userToggled.value) isOpen.value = shouldAutoExpand.value
-  },
-)
+	() => props.searchActive,
+	(active) => {
+		if (active) isOpen.value = true;
+		else if (!userToggled.value) isOpen.value = shouldAutoExpand.value;
+	},
+);
 
 function onToggle() {
-  userToggled.value = true
-  isOpen.value = !isOpen.value
+	userToggled.value = true;
+	isOpen.value = !isOpen.value;
 }
 
-const avatarUrl = computed(() => props.node.avatar_url || null)
-const paddingLeft = computed(() => `${props.depth * 12 + 4}px`)
+const avatarUrl = computed(() => props.node.avatar_url || null);
+const paddingLeft = computed(() => `${props.depth * 12 + 4}px`);
 
 // ── Draggable: the node row ──
-const rowRef = useTemplateRef("rowRef")
+const rowRef = useTemplateRef("rowRef");
 
 const { isDragging, isDragOver: rowPlacement } = makeDraggable(
-  rowRef,
-  { activation: { distance: 5 } },
-  () => [props.index, props.siblings],
-)
+	rowRef,
+	{ activation: { distance: 5 } },
+	() => [props.index, props.siblings],
+);
 
 // Manual center zone detection (avoids dual-role routing issues)
-const pointerZone = ref(null) // "before" | "nest" | "after" | null
-const CENTER_THRESHOLD = 0.3
+const pointerZone = ref(null); // "before" | "nest" | "after" | null
+const CENTER_THRESHOLD = 0.3;
 
 function onPointerMove(e) {
-  const el = rowRef.value
-  if (!el || !rowPlacement.value) { pointerZone.value = null; return }
-  const rect = el.getBoundingClientRect()
-  const relY = (e.clientY - rect.top) / rect.height
-  if (relY <= CENTER_THRESHOLD) pointerZone.value = "before"
-  else if (relY >= 1 - CENTER_THRESHOLD) pointerZone.value = "after"
-  else pointerZone.value = "nest"
+	const el = rowRef.value;
+	if (!el || !rowPlacement.value) {
+		pointerZone.value = null;
+		return;
+	}
+	const rect = el.getBoundingClientRect();
+	const relY = (e.clientY - rect.top) / rect.height;
+	if (relY <= CENTER_THRESHOLD) pointerZone.value = "before";
+	else if (relY >= 1 - CENTER_THRESHOLD) pointerZone.value = "after";
+	else pointerZone.value = "nest";
 }
 
-onMounted(() => document.addEventListener("pointermove", onPointerMove))
-onUnmounted(() => document.removeEventListener("pointermove", onPointerMove))
+onMounted(() => document.addEventListener("pointermove", onPointerMove));
+onUnmounted(() => document.removeEventListener("pointermove", onPointerMove));
 
-watch(rowPlacement, (p) => { if (!p) pointerZone.value = null })
+watch(rowPlacement, (p) => {
+	if (!p) pointerZone.value = null;
+});
 
 // ── Droppable: the children container (for nesting) ──
-const childrenRef = useTemplateRef("childrenRef")
+const childrenRef = useTemplateRef("childrenRef");
 
 const { isDragOver: childrenOver } = makeDroppable(
-  childrenRef,
-  { events: { onDrop: (e) => emit("drop", e) } },
-  () => props.node.children,
-)
+	childrenRef,
+	{ events: { onDrop: (e) => emit("drop", e) } },
+	() => props.node.children,
+);
 
 // Auto-expand on hover during drag (600ms)
-let autoExpandTimer = null
+let autoExpandTimer = null;
 
-watch(
-  [() => childrenOver.value, pointerZone],
-  ([childOver, zone]) => {
-    clearTimeout(autoExpandTimer)
-    if ((childOver || zone === "nest") && hasChildren.value && !isOpen.value) {
-      autoExpandTimer = setTimeout(() => {
-        isOpen.value = true
-      }, 600)
-    }
-  },
-)
+watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
+	clearTimeout(autoExpandTimer);
+	if ((childOver || zone === "nest") && hasChildren.value && !isOpen.value) {
+		autoExpandTimer = setTimeout(() => {
+			isOpen.value = true;
+		}, 600);
+	}
+});
 </script>
 
 <template>

@@ -1,71 +1,71 @@
 <script setup>
-import { computed } from "vue"
-import { useLive } from "@/vue/composables/useLive"
+import { computed } from "vue";
+import { useLive } from "@/vue/composables/useLive";
 import {
-  PanelLeft,
-  Folder,
-  ChevronDown,
-  Settings,
-  Trash2,
-  LayoutDashboard,
-  FileText,
-  GitBranch,
-  Map,
-  ScrollText,
-  Image,
-  Languages,
-} from "lucide-vue-next"
+	PanelLeft,
+	Folder,
+	ChevronDown,
+	Settings,
+	Trash2,
+	LayoutDashboard,
+	FileText,
+	GitBranch,
+	Map,
+	ScrollText,
+	Image,
+	Languages,
+} from "lucide-vue-next";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/vue/components/ui/dropdown-menu"
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/vue/components/ui/dropdown-menu";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/vue/components/ui/tooltip"
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/vue/components/ui/tooltip";
 
 const props = defineProps({
-  activeTool: { type: String, required: true },
-  hasTree: { type: Boolean, default: true },
-  treePanelOpen: { type: Boolean, default: false },
-  projectName: { type: String, required: true },
-  workspaceName: { type: String, required: true },
-  showToolSwitcher: { type: Boolean, default: true },
-  isSuperAdmin: { type: Boolean, default: false },
-  urls: { type: Object, required: true },
-})
+	activeTool: { type: String, required: true },
+	hasTree: { type: Boolean, default: true },
+	treePanelOpen: { type: Boolean, default: false },
+	projectName: { type: String, required: true },
+	workspaceName: { type: String, required: true },
+	showToolSwitcher: { type: Boolean, default: true },
+	isSuperAdmin: { type: Boolean, default: false },
+	urls: { type: Object, required: true },
+});
 
-const live = useLive()
+const live = useLive();
 
 const tools = [
-  { key: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { key: "sheets", icon: FileText, label: "Sheets" },
-  { key: "flows", icon: GitBranch, label: "Flows" },
-  { key: "scenes", icon: Map, label: "Scenes" },
-  { key: "screenplays", icon: ScrollText, label: "Screenplays" },
-  { key: "assets", icon: Image, label: "Assets" },
-  { key: "localization", icon: Languages, label: "Localization" },
-]
+	{ key: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
+	{ key: "sheets", icon: FileText, label: "Sheets" },
+	{ key: "flows", icon: GitBranch, label: "Flows" },
+	{ key: "scenes", icon: Map, label: "Scenes" },
+	{ key: "screenplays", icon: ScrollText, label: "Screenplays" },
+	{ key: "assets", icon: Image, label: "Assets" },
+	{ key: "localization", icon: Languages, label: "Localization" },
+];
 
-const activeToolDef = computed(() =>
-  tools.find((t) => t.key === props.activeTool) || tools[0]
-)
+const activeToolDef = computed(
+	() => tools.find((t) => t.key === props.activeTool) || tools[0],
+);
 
 const otherTools = computed(() => {
-  const filtered = tools.filter((t) => t.key !== props.activeTool)
-  if (!props.isSuperAdmin) {
-    return filtered.filter((t) => t.key !== "screenplays")
-  }
-  return filtered
-})
+	const filtered = tools.filter((t) => t.key !== props.activeTool);
+	if (!props.isSuperAdmin) {
+		return filtered.filter((t) => t.key !== "screenplays");
+	}
+	return filtered;
+});
 
 function toggleTreePanel() {
-  live.pushEvent("tree_panel_toggle", {})
+	live.pushEvent("tree_panel_toggle", {});
 }
 </script>
 

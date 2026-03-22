@@ -1,24 +1,24 @@
 <script setup>
 import { useForwardPropsEmits } from "reka-ui";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/vue/components/ui/dialog';
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@/vue/components/ui/dialog";
 import Command from "./Command.vue";
 
 const props = defineProps({
-  open: { type: Boolean, required: false },
-  defaultOpen: { type: Boolean, required: false },
-  modal: { type: Boolean, required: false },
-  title: { type: String, required: false, default: "Command Palette" },
-  description: {
-    type: String,
-    required: false,
-    default: "Search for a command to run...",
-  },
+	open: { type: Boolean, required: false },
+	defaultOpen: { type: Boolean, required: false },
+	modal: { type: Boolean, required: false },
+	title: { type: String, required: false, default: "Command Palette" },
+	description: {
+		type: String,
+		required: false,
+		default: "Search for a command to run...",
+	},
 });
 const emits = defineEmits(["update:open"]);
 

@@ -1,32 +1,44 @@
 <script setup>
-import { ref, computed, watch } from "vue"
-import { Hash, Lock } from "lucide-vue-next"
-import { Input } from "@/vue/components/ui/input"
-import BlockToolbar from "../BlockToolbar.vue"
-import { useBlockActions } from "./useBlockActions"
+import { ref, computed, watch } from "vue";
+import { Hash, Lock } from "lucide-vue-next";
+import { Input } from "@/vue/components/ui/input";
+import BlockToolbar from "../BlockToolbar.vue";
+import { useBlockActions } from "./useBlockActions";
 
 const props = defineProps({
-  block: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  inherited: { type: Boolean, default: false },
-})
+	block: { type: Object, required: true },
+	canEdit: { type: Boolean, default: false },
+	inherited: { type: Boolean, default: false },
+});
 
-const { live, label, editingLabel, localLabel, labelInput, startEditLabel, saveLabel , isSelected, onBlockClick } = useBlockActions(props)
+const {
+	live,
+	label,
+	editingLabel,
+	localLabel,
+	labelInput,
+	startEditLabel,
+	saveLabel,
+	isSelected,
+	onBlockClick,
+} = useBlockActions(props);
 
-const content = computed(() => props.block.value?.content)
-const localNumber = ref(content.value ?? "")
-watch(content, (v) => { localNumber.value = v ?? "" })
+const content = computed(() => props.block.value?.content);
+const localNumber = ref(content.value ?? "");
+watch(content, (v) => {
+	localNumber.value = v ?? "";
+});
 
 function save() {
-  const raw = localNumber.value
-  const val = raw === "" || raw === null ? null : Number(raw)
-  if (!Number.isNaN(val) && val !== content.value) {
-    live.pushEvent("update_block_value", { id: props.block.id, value: val })
-  }
+	const raw = localNumber.value;
+	const val = raw === "" || raw === null ? null : Number(raw);
+	if (!Number.isNaN(val) && val !== content.value) {
+		live.pushEvent("update_block_value", { id: props.block.id, value: val });
+	}
 }
 
 function onKeydown(e) {
-  if (e.key === "e" || e.key === "E" || e.key === "+") e.preventDefault()
+	if (e.key === "e" || e.key === "E" || e.key === "+") e.preventDefault();
 }
 </script>
 

@@ -2,19 +2,19 @@
 import { reactiveOmit } from "@vueuse/core";
 import { ChevronRight } from "lucide-vue-next";
 import { ContextMenuSubTrigger, useForwardProps } from "reka-ui";
-import { cn } from '@/vue/lib/utils';
+import { cn } from "@/vue/lib/utils";
 
 const props = defineProps({
-  disabled: { type: Boolean, required: false },
-  textValue: { type: String, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-  inset: { type: Boolean, required: false },
+	disabled: { type: Boolean, required: false },
+	textValue: { type: String, required: false },
+	asChild: { type: Boolean, required: false },
+	as: { type: null, required: false },
+	class: {
+		type: [Boolean, null, String, Object, Array],
+		required: false,
+		skipCheck: true,
+	},
+	inset: { type: Boolean, required: false },
 });
 
 const delegatedProps = reactiveOmit(props, "class");

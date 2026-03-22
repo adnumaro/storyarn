@@ -2,24 +2,24 @@
 import { reactiveOmit } from "@vueuse/core";
 import { Search } from "lucide-vue-next";
 import { ListboxFilter, useForwardProps } from "reka-ui";
-import { cn } from '@/vue/lib/utils';
+import { cn } from "@/vue/lib/utils";
 import { useCommand } from ".";
 
 defineOptions({
-  inheritAttrs: false,
+	inheritAttrs: false,
 });
 
 const props = defineProps({
-  modelValue: { type: String, required: false },
-  autoFocus: { type: Boolean, required: false },
-  disabled: { type: Boolean, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
+	modelValue: { type: String, required: false },
+	autoFocus: { type: Boolean, required: false },
+	disabled: { type: Boolean, required: false },
+	asChild: { type: Boolean, required: false },
+	as: { type: null, required: false },
+	class: {
+		type: [Boolean, null, String, Object, Array],
+		required: false,
+		skipCheck: true,
+	},
 });
 
 const delegatedProps = reactiveOmit(props, "class");

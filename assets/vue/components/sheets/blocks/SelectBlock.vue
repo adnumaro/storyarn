@@ -1,31 +1,52 @@
 <script setup>
-import { computed } from "vue"
-import { List, Lock } from "lucide-vue-next"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/vue/components/ui/select"
-import { Input } from "@/vue/components/ui/input"
-import BlockToolbar from "../BlockToolbar.vue"
-import { useBlockActions } from "./useBlockActions"
+import { computed } from "vue";
+import { List, Lock } from "lucide-vue-next";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/vue/components/ui/select";
+import { Input } from "@/vue/components/ui/input";
+import BlockToolbar from "../BlockToolbar.vue";
+import { useBlockActions } from "./useBlockActions";
 
 const props = defineProps({
-  block: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  inherited: { type: Boolean, default: false },
-})
+	block: { type: Object, required: true },
+	canEdit: { type: Boolean, default: false },
+	inherited: { type: Boolean, default: false },
+});
 
-const { live, label, editingLabel, localLabel, labelInput, startEditLabel, saveLabel , isSelected, onBlockClick } = useBlockActions(props)
+const {
+	live,
+	label,
+	editingLabel,
+	localLabel,
+	labelInput,
+	startEditLabel,
+	saveLabel,
+	isSelected,
+	onBlockClick,
+} = useBlockActions(props);
 
-const content = computed(() => props.block.value?.content)
-const options = computed(() => props.block.config?.options || [])
-const placeholder = computed(() => props.block.config?.placeholder || "Select...")
+const content = computed(() => props.block.value?.content);
+const options = computed(() => props.block.config?.options || []);
+const placeholder = computed(
+	() => props.block.config?.placeholder || "Select...",
+);
 
 const displayValue = computed(() => {
-  if (!content.value) return null
-  const opt = options.value.find((o) => o.key === content.value)
-  return opt?.value || content.value
-})
+	if (!content.value) return null;
+	const opt = options.value.find((o) => o.key === content.value);
+	return opt?.value || content.value;
+});
 
 function onChange(val) {
-  live.pushEvent("update_block_value", { id: props.block.id, value: val === " " ? null : val })
+	live.pushEvent("update_block_value", {
+		id: props.block.id,
+		value: val === " " ? null : val,
+	});
 }
 </script>
 

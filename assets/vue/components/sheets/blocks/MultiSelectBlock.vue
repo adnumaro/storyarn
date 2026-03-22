@@ -1,33 +1,49 @@
 <script setup>
-import { computed } from "vue"
-import { ListChecks, Lock } from "lucide-vue-next"
-import { Badge } from "@/vue/components/ui/badge"
-import { Checkbox } from "@/vue/components/ui/checkbox"
-import { Input } from "@/vue/components/ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "@/vue/components/ui/popover"
-import BlockToolbar from "../BlockToolbar.vue"
-import { useBlockActions } from "./useBlockActions"
+import { computed } from "vue";
+import { ListChecks, Lock } from "lucide-vue-next";
+import { Badge } from "@/vue/components/ui/badge";
+import { Checkbox } from "@/vue/components/ui/checkbox";
+import { Input } from "@/vue/components/ui/input";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/vue/components/ui/popover";
+import BlockToolbar from "../BlockToolbar.vue";
+import { useBlockActions } from "./useBlockActions";
 
 const props = defineProps({
-  block: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  inherited: { type: Boolean, default: false },
-})
+	block: { type: Object, required: true },
+	canEdit: { type: Boolean, default: false },
+	inherited: { type: Boolean, default: false },
+});
 
-const { live, label, editingLabel, localLabel, labelInput, startEditLabel, saveLabel , isSelected, onBlockClick } = useBlockActions(props)
+const {
+	live,
+	label,
+	editingLabel,
+	localLabel,
+	labelInput,
+	startEditLabel,
+	saveLabel,
+	isSelected,
+	onBlockClick,
+} = useBlockActions(props);
 
-const content = computed(() => props.block.value?.content || [])
-const options = computed(() => props.block.config?.options || [])
-const placeholder = computed(() => props.block.config?.placeholder || "Select...")
+const content = computed(() => props.block.value?.content || []);
+const options = computed(() => props.block.config?.options || []);
+const placeholder = computed(
+	() => props.block.config?.placeholder || "Select...",
+);
 
 const selectedOptions = computed(() =>
-  (Array.isArray(content.value) ? content.value : [])
-    .map((key) => options.value.find((o) => o.key === key))
-    .filter(Boolean)
-)
+	(Array.isArray(content.value) ? content.value : [])
+		.map((key) => options.value.find((o) => o.key === key))
+		.filter(Boolean),
+);
 
 function toggle(key) {
-  live.pushEvent("toggle_multi_select", { id: props.block.id, key })
+	live.pushEvent("toggle_multi_select", { id: props.block.id, key });
 }
 </script>
 

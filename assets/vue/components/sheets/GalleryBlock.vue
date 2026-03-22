@@ -1,109 +1,109 @@
 <script setup>
-import { ref } from "vue"
-import { useLive } from "@/vue/composables/useLive"
-import { Plus, X, Trash2, GripVertical } from "lucide-vue-next"
-import { Button } from "@/vue/components/ui/button"
-import { Input } from "@/vue/components/ui/input"
-import { Textarea } from "@/vue/components/ui/textarea"
+import { ref } from "vue";
+import { useLive } from "@/vue/composables/useLive";
+import { Plus, X, Trash2, GripVertical } from "lucide-vue-next";
+import { Button } from "@/vue/components/ui/button";
+import { Input } from "@/vue/components/ui/input";
+import { Textarea } from "@/vue/components/ui/textarea";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/vue/components/ui/dialog"
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@/vue/components/ui/dialog";
 
 const props = defineProps({
-  blockId: { type: [Number, String], required: true },
-  images: { type: Array, default: () => [] },
-  canEdit: { type: Boolean, default: false },
-})
+	blockId: { type: [Number, String], required: true },
+	images: { type: Array, default: () => [] },
+	canEdit: { type: Boolean, default: false },
+});
 
-const live = useLive()
-const detailImage = ref(null)
-const detailOpen = ref(false)
+const live = useLive();
+const detailImage = ref(null);
+const detailOpen = ref(false);
 
 // ── Upload ──
 function triggerUpload() {
-  const input = document.createElement("input")
-  input.type = "file"
-  input.accept = "image/*"
-  input.multiple = true
-  input.onchange = (e) => {
-    Array.from(e.target.files).forEach((file) => {
-      const reader = new FileReader()
-      reader.onload = () => {
-        live.pushEvent("upload_gallery_image", {
-          block_id: props.blockId,
-          filename: file.name,
-          content_type: file.type,
-          data: reader.result,
-        })
-      }
-      reader.readAsDataURL(file)
-    })
-  }
-  input.click()
+	const input = document.createElement("input");
+	input.type = "file";
+	input.accept = "image/*";
+	input.multiple = true;
+	input.onchange = (e) => {
+		Array.from(e.target.files).forEach((file) => {
+			const reader = new FileReader();
+			reader.onload = () => {
+				live.pushEvent("upload_gallery_image", {
+					block_id: props.blockId,
+					filename: file.name,
+					content_type: file.type,
+					data: reader.result,
+				});
+			};
+			reader.readAsDataURL(file);
+		});
+	};
+	input.click();
 }
 
 // ── Detail modal ──
 function openDetail(image) {
-  detailImage.value = image
-  detailOpen.value = true
+	detailImage.value = image;
+	detailOpen.value = true;
 }
 
 function updateImageField(id, field, value) {
-  live.pushEvent("update_gallery_image", {
-    gallery_image_id: id,
-    field,
-    value,
-  })
+	live.pushEvent("update_gallery_image", {
+		gallery_image_id: id,
+		field,
+		value,
+	});
 }
 
 function removeImage(id) {
-  live.pushEvent("remove_gallery_image", {
-    gallery_image_id: id,
-    block_id: props.blockId,
-  })
-  if (detailImage.value?.id === id) {
-    detailOpen.value = false
-    detailImage.value = null
-  }
+	live.pushEvent("remove_gallery_image", {
+		gallery_image_id: id,
+		block_id: props.blockId,
+	});
+	if (detailImage.value?.id === id) {
+		detailOpen.value = false;
+		detailImage.value = null;
+	}
 }
 
 // ── Drag & drop reorder ──
-let dragIndex = null
+let dragIndex = null;
 
 function onDragStart(e, index) {
-  dragIndex = index
-  e.dataTransfer.effectAllowed = "move"
-  e.target.classList.add("opacity-30")
+	dragIndex = index;
+	e.dataTransfer.effectAllowed = "move";
+	e.target.classList.add("opacity-30");
 }
 
 function onDragEnd(e) {
-  e.target.classList.remove("opacity-30")
-  dragIndex = null
+	e.target.classList.remove("opacity-30");
+	dragIndex = null;
 }
 
 function onDragOver(e) {
-  e.preventDefault()
-  e.dataTransfer.dropEffect = "move"
+	e.preventDefault();
+	e.dataTransfer.dropEffect = "move";
 }
 
 function onDrop(e, dropIndex) {
-  e.preventDefault()
-  if (dragIndex === null || dragIndex === dropIndex) return
+	e.preventDefault();
+	if (dragIndex === null || dragIndex === dropIndex) return;
 
-  // Build new order
-  const ids = props.images.map((img) => img.id)
-  const [moved] = ids.splice(dragIndex, 1)
-  ids.splice(dropIndex, 0, moved)
+	// Build new order
+	const ids = props.images.map((img) => img.id);
+	const [moved] = ids.splice(dragIndex, 1);
+	ids.splice(dropIndex, 0, moved);
 
-  live.pushEvent("reorder_gallery_images", {
-    block_id: props.blockId,
-    ids,
-  })
+	live.pushEvent("reorder_gallery_images", {
+		block_id: props.blockId,
+		ids,
+	});
 
-  dragIndex = null
+	dragIndex = null;
 }
 </script>
 

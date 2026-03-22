@@ -5,81 +5,111 @@
  * Uses .condition-rule-row and .sentence-text/.sentence-slot CSS classes.
  */
 
-import { computed } from "vue"
-import { X } from "lucide-vue-next"
-import VariableCombobox from "../VariableCombobox.vue"
+import { computed } from "vue";
+import { X } from "lucide-vue-next";
+import VariableCombobox from "../VariableCombobox.vue";
 import {
-  OPERATOR_LABELS,
-  NO_VALUE_OPERATORS,
-  operatorsForType,
-} from "@/vue/lib/condition-operators"
-import { groupVariablesBySheet, findVariable } from "@/vue/lib/variables"
+	OPERATOR_LABELS,
+	NO_VALUE_OPERATORS,
+	operatorsForType,
+} from "@/vue/lib/condition-operators";
+import { groupVariablesBySheet, findVariable } from "@/vue/lib/variables";
 
 const props = defineProps({
-  rule: { type: Object, required: true },
-  variables: { type: Array, default: () => [] },
-  disabled: { type: Boolean, default: false },
-})
+	rule: { type: Object, required: true },
+	variables: { type: Array, default: () => [] },
+	disabled: { type: Boolean, default: false },
+});
 
-const emit = defineEmits(["update:rule", "remove"])
+const emit = defineEmits(["update:rule", "remove"]);
 
-const sheetsWithVariables = computed(() => groupVariablesBySheet(props.variables))
+const sheetsWithVariables = computed(() =>
+	groupVariablesBySheet(props.variables),
+);
 
 const sheetOptions = computed(() =>
-  sheetsWithVariables.value.map((s) => ({ value: s.shortcut, label: s.name })),
-)
+	sheetsWithVariables.value.map((s) => ({ value: s.shortcut, label: s.name })),
+);
 
 const variableGroups = computed(() => {
-  if (!props.rule.sheet) return []
-  const sheet = sheetsWithVariables.value.find((s) => s.shortcut === props.rule.sheet)
-  if (!sheet) return []
-  return [{ heading: sheet.name, items: sheet.vars.map((v) => ({ value: v.variable_name, label: v.variable_name })) }]
-})
+	if (!props.rule.sheet) return [];
+	const sheet = sheetsWithVariables.value.find(
+		(s) => s.shortcut === props.rule.sheet,
+	);
+	if (!sheet) return [];
+	return [
+		{
+			heading: sheet.name,
+			items: sheet.vars.map((v) => ({
+				value: v.variable_name,
+				label: v.variable_name,
+			})),
+		},
+	];
+});
 
 const variableType = computed(() => {
-  const v = findVariable(props.variables, props.rule.sheet, props.rule.variable)
-  return v ? v.block_type : null
-})
+	const v = findVariable(
+		props.variables,
+		props.rule.sheet,
+		props.rule.variable,
+	);
+	return v ? v.block_type : null;
+});
 
 const operatorOptions = computed(() => {
-  if (!variableType.value) return []
-  return operatorsForType(variableType.value).map((op) => ({ value: op, label: OPERATOR_LABELS[op] || op }))
-})
+	if (!variableType.value) return [];
+	return operatorsForType(variableType.value).map((op) => ({
+		value: op,
+		label: OPERATOR_LABELS[op] || op,
+	}));
+});
 
-const needsValue = computed(() =>
-  props.rule.operator && !NO_VALUE_OPERATORS.has(props.rule.operator),
-)
+const needsValue = computed(
+	() => props.rule.operator && !NO_VALUE_OPERATORS.has(props.rule.operator),
+);
 
 const valueOptions = computed(() => {
-  const v = findVariable(props.variables, props.rule.sheet, props.rule.variable)
-  if (v && (v.block_type === "select" || v.block_type === "multi_select") && v.options) {
-    return v.options.map((opt) => ({ value: opt.key, label: opt.value || opt.key }))
-  }
-  return []
-})
+	const v = findVariable(
+		props.variables,
+		props.rule.sheet,
+		props.rule.variable,
+	);
+	if (
+		v &&
+		(v.block_type === "select" || v.block_type === "multi_select") &&
+		v.options
+	) {
+		return v.options.map((opt) => ({
+			value: opt.key,
+			label: opt.value || opt.key,
+		}));
+	}
+	return [];
+});
 
-const isFreeTextValue = computed(() => valueOptions.value.length === 0)
+const isFreeTextValue = computed(() => valueOptions.value.length === 0);
 
 function update(field, value) {
-  const updated = { ...props.rule, [field]: value }
-  if (field === "sheet") {
-    updated.variable = null
-    updated.operator = "equals"
-    updated.value = null
-  } else if (field === "variable") {
-    const v = findVariable(props.variables, props.rule.sheet, value)
-    if (v) {
-      const ops = operatorsForType(v.block_type)
-      if (ops.length > 0) updated.operator = ops[0]
-    }
-    updated.value = null
-  } else if (field === "operator") {
-    const oldOp = props.rule.operator || "equals"
-    if (NO_VALUE_OPERATORS.has(value) !== NO_VALUE_OPERATORS.has(oldOp)) {
-      updated.value = null
-    }
-  }
-  emit("update:rule", updated)
+	const updated = { ...props.rule, [field]: value };
+	if (field === "sheet") {
+		updated.variable = null;
+		updated.operator = "equals";
+		updated.value = null;
+	} else if (field === "variable") {
+		const v = findVariable(props.variables, props.rule.sheet, value);
+		if (v) {
+			const ops = operatorsForType(v.block_type);
+			if (ops.length > 0) updated.operator = ops[0];
+		}
+		updated.value = null;
+	} else if (field === "operator") {
+		const oldOp = props.rule.operator || "equals";
+		if (NO_VALUE_OPERATORS.has(value) !== NO_VALUE_OPERATORS.has(oldOp)) {
+			updated.value = null;
+		}
+	}
+	emit("update:rule", updated);
 }
 </script>
 

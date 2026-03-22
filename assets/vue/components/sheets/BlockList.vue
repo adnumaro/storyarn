@@ -1,134 +1,145 @@
 <script setup>
-import { ref, onMounted, onUnmounted, provide } from "vue"
-import { useLive } from "@/vue/composables/useLive"
-import { ArrowUpRight, MoreHorizontal, Trash2, Link2Off, Link2 } from "lucide-vue-next"
+import { ref, onMounted, onUnmounted, provide } from "vue";
+import { useLive } from "@/vue/composables/useLive";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/vue/components/ui/dropdown-menu"
-import { DnDProvider } from "@vue-dnd-kit/core"
-import AddBlockMenu from "./AddBlockMenu.vue"
-import SortableBlockList from "./SortableBlockList.vue"
-import FormulaPanel from "./blocks/FormulaPanel.vue"
+	ArrowUpRight,
+	MoreHorizontal,
+	Trash2,
+	Link2Off,
+	Link2,
+} from "lucide-vue-next";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/vue/components/ui/dropdown-menu";
+import { DnDProvider } from "@vue-dnd-kit/core";
+import AddBlockMenu from "./AddBlockMenu.vue";
+import SortableBlockList from "./SortableBlockList.vue";
+import FormulaPanel from "./blocks/FormulaPanel.vue";
 
 // Block type components (for inherited blocks, rendered without sortable)
-import TextBlock from "./blocks/TextBlock.vue"
-import NumberBlock from "./blocks/NumberBlock.vue"
-import BooleanBlock from "./blocks/BooleanBlock.vue"
-import SelectBlock from "./blocks/SelectBlock.vue"
-import MultiSelectBlock from "./blocks/MultiSelectBlock.vue"
-import DateBlock from "./blocks/DateBlock.vue"
-import RichTextBlock from "./blocks/RichTextBlock.vue"
-import GalleryBlock from "./blocks/GalleryBlock.vue"
-import TableBlock from "./blocks/TableBlock.vue"
+import TextBlock from "./blocks/TextBlock.vue";
+import NumberBlock from "./blocks/NumberBlock.vue";
+import BooleanBlock from "./blocks/BooleanBlock.vue";
+import SelectBlock from "./blocks/SelectBlock.vue";
+import MultiSelectBlock from "./blocks/MultiSelectBlock.vue";
+import DateBlock from "./blocks/DateBlock.vue";
+import RichTextBlock from "./blocks/RichTextBlock.vue";
+import GalleryBlock from "./blocks/GalleryBlock.vue";
+import TableBlock from "./blocks/TableBlock.vue";
 
 const blockComponents = {
-  text: TextBlock,
-  number: NumberBlock,
-  boolean: BooleanBlock,
-  select: SelectBlock,
-  multi_select: MultiSelectBlock,
-  date: DateBlock,
-  rich_text: RichTextBlock,
-  gallery: GalleryBlock,
-  table: TableBlock,
-}
+	text: TextBlock,
+	number: NumberBlock,
+	boolean: BooleanBlock,
+	select: SelectBlock,
+	multi_select: MultiSelectBlock,
+	date: DateBlock,
+	rich_text: RichTextBlock,
+	gallery: GalleryBlock,
+	table: TableBlock,
+};
 
 const props = defineProps({
-  blocks: { type: Array, default: () => [] },
-  inheritedGroups: { type: Array, default: () => [] },
-  canEdit: { type: Boolean, default: false },
-  workspaceSlug: { type: String, default: "" },
-  projectSlug: { type: String, default: "" },
-  formulaEditing: { type: Object, default: null },
-})
+	blocks: { type: Array, default: () => [] },
+	inheritedGroups: { type: Array, default: () => [] },
+	canEdit: { type: Boolean, default: false },
+	workspaceSlug: { type: String, default: "" },
+	projectSlug: { type: String, default: "" },
+	formulaEditing: { type: Object, default: null },
+});
 
-const live = useLive()
+const live = useLive();
 
 // ── Block selection ──
-const selectedBlockId = ref(null)
+const selectedBlockId = ref(null);
 
 function selectBlock(id) {
-  selectedBlockId.value = selectedBlockId.value === id ? null : id
+	selectedBlockId.value = selectedBlockId.value === id ? null : id;
 }
 
 function deselectBlock() {
-  selectedBlockId.value = null
+	selectedBlockId.value = null;
 }
 
-provide("selectedBlockId", selectedBlockId)
-provide("selectBlock", selectBlock)
+provide("selectedBlockId", selectedBlockId);
+provide("selectBlock", selectBlock);
 
 function isInputFocused() {
-  const el = document.activeElement
-  if (!el) return false
-  const tag = el.tagName
-  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable
+	const el = document.activeElement;
+	if (!el) return false;
+	const tag = el.tagName;
+	return (
+		tag === "INPUT" ||
+		tag === "TEXTAREA" ||
+		tag === "SELECT" ||
+		el.isContentEditable
+	);
 }
 
 function onKeydown(e) {
-  if (!selectedBlockId.value || !props.canEdit || isInputFocused()) return
+	if (!selectedBlockId.value || !props.canEdit || isInputFocused()) return;
 
-  if (e.key === "Backspace" || e.key === "Delete") {
-    e.preventDefault()
-    live.pushEvent("delete_block", { id: selectedBlockId.value })
-    selectedBlockId.value = null
-  }
+	if (e.key === "Backspace" || e.key === "Delete") {
+		e.preventDefault();
+		live.pushEvent("delete_block", { id: selectedBlockId.value });
+		selectedBlockId.value = null;
+	}
 
-  if ((e.metaKey || e.ctrlKey) && e.key === "d") {
-    e.preventDefault()
-    live.pushEvent("duplicate_block", { id: selectedBlockId.value })
-  }
+	if ((e.metaKey || e.ctrlKey) && e.key === "d") {
+		e.preventDefault();
+		live.pushEvent("duplicate_block", { id: selectedBlockId.value });
+	}
 
-  if (e.key === "Escape") {
-    deselectBlock()
-  }
+	if (e.key === "Escape") {
+		deselectBlock();
+	}
 }
 
 function onUndoRedo(e) {
-  if (!(e.metaKey || e.ctrlKey) || isInputFocused()) return
+	if (!(e.metaKey || e.ctrlKey) || isInputFocused()) return;
 
-  if (e.key === "z" && !e.shiftKey) {
-    e.preventDefault()
-    live.pushEvent("undo", {})
-  }
+	if (e.key === "z" && !e.shiftKey) {
+		e.preventDefault();
+		live.pushEvent("undo", {});
+	}
 
-  if ((e.key === "z" && e.shiftKey) || e.key === "y") {
-    e.preventDefault()
-    live.pushEvent("redo", {})
-  }
+	if ((e.key === "z" && e.shiftKey) || e.key === "y") {
+		e.preventDefault();
+		live.pushEvent("redo", {});
+	}
 }
 
 onMounted(() => {
-  document.addEventListener("keydown", onKeydown)
-  document.addEventListener("keydown", onUndoRedo)
-})
+	document.addEventListener("keydown", onKeydown);
+	document.addEventListener("keydown", onUndoRedo);
+});
 onUnmounted(() => {
-  document.removeEventListener("keydown", onKeydown)
-  document.removeEventListener("keydown", onUndoRedo)
-})
+	document.removeEventListener("keydown", onKeydown);
+	document.removeEventListener("keydown", onUndoRedo);
+});
 
 function addBlock(type) {
-  live.pushEvent("add_block", { type })
+	live.pushEvent("add_block", { type });
 }
 
 function deleteBlock(id) {
-  live.pushEvent("delete_block", { id })
+	live.pushEvent("delete_block", { id });
 }
 
 function detachBlock(id) {
-  live.pushEvent("detach_block", { id })
+	live.pushEvent("detach_block", { id });
 }
 
 function reattachBlock(id) {
-  live.pushEvent("reattach_block", { id })
+	live.pushEvent("reattach_block", { id });
 }
 
 function resolveComponent(type) {
-  return blockComponents[type] || null
+	return blockComponents[type] || null;
 }
 </script>
 

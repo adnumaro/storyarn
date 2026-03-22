@@ -1,34 +1,44 @@
 <script setup>
-import { computed } from "vue"
-import { Table2, ChevronRight, ChevronDown, Lock } from "lucide-vue-next"
-import BlockToolbar from "../BlockToolbar.vue"
-import TableGrid from "./TableGrid.vue"
-import { useBlockActions } from "./useBlockActions"
+import { computed } from "vue";
+import { Table2, ChevronRight, ChevronDown, Lock } from "lucide-vue-next";
+import BlockToolbar from "../BlockToolbar.vue";
+import TableGrid from "./TableGrid.vue";
+import { useBlockActions } from "./useBlockActions";
 
 const props = defineProps({
-  block: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  inherited: { type: Boolean, default: false },
-})
+	block: { type: Object, required: true },
+	canEdit: { type: Boolean, default: false },
+	inherited: { type: Boolean, default: false },
+});
 
-const { live, label, editingLabel, localLabel, labelInput, startEditLabel, saveLabel, isSelected, onBlockClick } = useBlockActions(props)
+const {
+	live,
+	label,
+	editingLabel,
+	localLabel,
+	labelInput,
+	startEditLabel,
+	saveLabel,
+	isSelected,
+	onBlockClick,
+} = useBlockActions(props);
 
 // can_manage: can modify table structure (add/delete/rename columns/rows, collapse)
 // When inherited (schema_locked): structure is locked but cell values are still editable
-const canManage = computed(() => props.canEdit && !props.inherited)
+const canManage = computed(() => props.canEdit && !props.inherited);
 
-const collapsed = computed(() => props.block.collapsed || false)
-const columns = computed(() => props.block.columns || [])
-const rows = computed(() => props.block.rows || [])
+const collapsed = computed(() => props.block.collapsed || false);
+const columns = computed(() => props.block.columns || []);
+const rows = computed(() => props.block.rows || []);
 
 const summary = computed(() => {
-  const c = columns.value.length
-  const r = rows.value.length
-  return `${r} row${r !== 1 ? "s" : ""}, ${c} column${c !== 1 ? "s" : ""}`
-})
+	const c = columns.value.length;
+	const r = rows.value.length;
+	return `${r} row${r !== 1 ? "s" : ""}, ${c} column${c !== 1 ? "s" : ""}`;
+});
 
 function toggleCollapse() {
-  live.pushEvent("toggle_table_collapse", { "block-id": props.block.id })
+	live.pushEvent("toggle_table_collapse", { "block-id": props.block.id });
 }
 </script>
 

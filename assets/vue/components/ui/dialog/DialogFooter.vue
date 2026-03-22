@@ -1,15 +1,15 @@
 <script setup>
 import { DialogClose } from "reka-ui";
-import { cn } from '@/vue/lib/utils';
-import { Button } from '@/vue/components/ui/button';
+import { cn } from "@/vue/lib/utils";
+import { Button } from "@/vue/components/ui/button";
 
 const props = defineProps({
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-  showCloseButton: { type: Boolean, required: false, default: false },
+	class: {
+		type: [Boolean, null, String, Object, Array],
+		required: false,
+		skipCheck: true,
+	},
+	showCloseButton: { type: Boolean, required: false, default: false },
 });
 </script>
 

@@ -1,35 +1,35 @@
 <script setup>
 import { reactiveOmit } from "@vueuse/core";
 import {
-  SliderRange,
-  SliderRoot,
-  SliderThumb,
-  SliderTrack,
-  useForwardPropsEmits,
+	SliderRange,
+	SliderRoot,
+	SliderThumb,
+	SliderTrack,
+	useForwardPropsEmits,
 } from "reka-ui";
-import { cn } from '@/vue/lib/utils';
+import { cn } from "@/vue/lib/utils";
 
 const props = defineProps({
-  defaultValue: { type: Array, required: false },
-  modelValue: { type: [Array, null], required: false },
-  disabled: { type: Boolean, required: false },
-  orientation: { type: String, required: false },
-  dir: { type: String, required: false },
-  inverted: { type: Boolean, required: false },
-  min: { type: Number, required: false },
-  max: { type: Number, required: false },
-  step: { type: Number, required: false },
-  minStepsBetweenThumbs: { type: Number, required: false },
-  thumbAlignment: { type: String, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  name: { type: String, required: false },
-  required: { type: Boolean, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
+	defaultValue: { type: Array, required: false },
+	modelValue: { type: [Array, null], required: false },
+	disabled: { type: Boolean, required: false },
+	orientation: { type: String, required: false },
+	dir: { type: String, required: false },
+	inverted: { type: Boolean, required: false },
+	min: { type: Number, required: false },
+	max: { type: Number, required: false },
+	step: { type: Number, required: false },
+	minStepsBetweenThumbs: { type: Number, required: false },
+	thumbAlignment: { type: String, required: false },
+	asChild: { type: Boolean, required: false },
+	as: { type: null, required: false },
+	name: { type: String, required: false },
+	required: { type: Boolean, required: false },
+	class: {
+		type: [Boolean, null, String, Object, Array],
+		required: false,
+		skipCheck: true,
+	},
 });
 const emits = defineEmits(["update:modelValue", "valueCommit"]);
 

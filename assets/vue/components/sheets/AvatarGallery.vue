@@ -1,87 +1,90 @@
 <script setup>
-import { ref, watch } from "vue"
+import { ref, watch } from "vue";
 import {
-  ChevronLeft,
-  ChevronRight,
-  Image,
-  Plus,
-  Star,
-  Trash2,
-  X,
-} from "lucide-vue-next"
-import { Button } from "@/vue/components/ui/button"
-import { Input } from "@/vue/components/ui/input"
-import { Textarea } from "@/vue/components/ui/textarea"
-import { Badge } from "@/vue/components/ui/badge"
-import {
-  Dialog,
-  DialogContent,
-} from "@/vue/components/ui/dialog"
+	ChevronLeft,
+	ChevronRight,
+	Image,
+	Plus,
+	Star,
+	Trash2,
+	X,
+} from "lucide-vue-next";
+import { Button } from "@/vue/components/ui/button";
+import { Input } from "@/vue/components/ui/input";
+import { Textarea } from "@/vue/components/ui/textarea";
+import { Badge } from "@/vue/components/ui/badge";
+import { Dialog, DialogContent } from "@/vue/components/ui/dialog";
 
 const props = defineProps({
-  open: { type: Boolean, default: false },
-  avatars: { type: Array, default: () => [] },
-  canEdit: { type: Boolean, default: false },
-})
+	open: { type: Boolean, default: false },
+	avatars: { type: Array, default: () => [] },
+	canEdit: { type: Boolean, default: false },
+});
 
 const emit = defineEmits([
-  "update:open",
-  "upload",
-  "setDefault",
-  "remove",
-  "updateName",
-  "updateNotes",
-])
+	"update:open",
+	"upload",
+	"setDefault",
+	"remove",
+	"updateName",
+	"updateNotes",
+]);
 
 // ── View state ──
-const view = ref("grid") // "grid" | "single"
-const currentIndex = ref(0)
+const view = ref("grid"); // "grid" | "single"
+const currentIndex = ref(0);
 
 // Reset to grid when dialog opens
-watch(() => props.open, (open) => {
-  if (open) {
-    view.value = "grid"
-    currentIndex.value = 0
-  }
-})
+watch(
+	() => props.open,
+	(open) => {
+		if (open) {
+			view.value = "grid";
+			currentIndex.value = 0;
+		}
+	},
+);
 
 // Keep index in bounds when avatars change
-watch(() => props.avatars.length, (len) => {
-  if (currentIndex.value >= len) {
-    currentIndex.value = Math.max(0, len - 1)
-  }
-  if (len === 0 && view.value === "single") {
-    view.value = "grid"
-  }
-})
+watch(
+	() => props.avatars.length,
+	(len) => {
+		if (currentIndex.value >= len) {
+			currentIndex.value = Math.max(0, len - 1);
+		}
+		if (len === 0 && view.value === "single") {
+			view.value = "grid";
+		}
+	},
+);
 
 function openSingle(index) {
-  currentIndex.value = index
-  view.value = "single"
+	currentIndex.value = index;
+	view.value = "single";
 }
 
 function navigate(direction) {
-  const count = props.avatars.length
-  if (count <= 1) return
-  currentIndex.value = (currentIndex.value + direction + count) % count
+	const count = props.avatars.length;
+	if (count <= 1) return;
+	currentIndex.value = (currentIndex.value + direction + count) % count;
 }
 
 // ── Debounced updates ──
-const nameDebounces = {}
-const notesDebounces = {}
+const nameDebounces = {};
+const notesDebounces = {};
 
 function onNameBlur(id, value, original) {
-  clearTimeout(nameDebounces[id])
-  if (value !== (original || "")) {
-    emit("updateName", id, value)
-  }
+	clearTimeout(nameDebounces[id]);
+	if (value !== (original || "")) {
+		emit("updateName", id, value);
+	}
 }
 
 function onNotesBlur(id, value, original) {
-  clearTimeout(notesDebounces[id])
-  if (value !== (original || "")) {
-    emit("updateNotes", id, value)
-  }
+	clearTimeout(notesDebounces[id]);
+	if (value !== (original || "")) {
+		emit("updateNotes", id, value);
+	}
 }
 </script>
 

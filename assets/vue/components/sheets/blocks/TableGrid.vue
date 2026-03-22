@@ -1,292 +1,392 @@
 <script setup>
-import { ref, watch, nextTick, useTemplateRef } from "vue"
-import { useLive } from "@/vue/composables/useLive"
-import { makeDroppable } from "@vue-dnd-kit/core"
+import { ref, watch, nextTick, useTemplateRef } from "vue";
+import { useLive } from "@/vue/composables/useLive";
+import { makeDroppable } from "@vue-dnd-kit/core";
 import {
-  Plus, Trash2, ChevronDown, ChevronRight, GripVertical, X, Check,
-  Hash, Type, ToggleLeft, CircleDot, List, Calendar, Sigma, Link, Columns2,
-  Lock, Asterisk, ArrowLeftRight, Settings, SlidersHorizontal, Layers,
-  ArrowLeft,
-} from "lucide-vue-next"
-import { Checkbox } from "@/vue/components/ui/checkbox"
-import { Badge } from "@/vue/components/ui/badge"
+	Plus,
+	Trash2,
+	ChevronDown,
+	ChevronRight,
+	GripVertical,
+	X,
+	Check,
+	Hash,
+	Type,
+	ToggleLeft,
+	CircleDot,
+	List,
+	Calendar,
+	Sigma,
+	Link,
+	Columns2,
+	Lock,
+	Asterisk,
+	ArrowLeftRight,
+	Settings,
+	SlidersHorizontal,
+	Layers,
+	ArrowLeft,
+} from "lucide-vue-next";
+import { Checkbox } from "@/vue/components/ui/checkbox";
+import { Badge } from "@/vue/components/ui/badge";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/vue/components/ui/popover"
-import { Separator } from "@/vue/components/ui/separator"
-import TableDraggableRow from "./TableDraggableRow.vue"
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/vue/components/ui/popover";
+import { Separator } from "@/vue/components/ui/separator";
+import TableDraggableRow from "./TableDraggableRow.vue";
 
 const props = defineProps({
-  blockId: { type: [Number, String], required: true },
-  columns: { type: Array, default: () => [] },
-  rows: { type: Array, default: () => [] },
-  canEdit: { type: Boolean, default: false },
-  // canManage: can modify structure (columns/rows). False for inherited (schema_locked) tables.
-  canManage: { type: Boolean, default: false },
-})
+	blockId: { type: [Number, String], required: true },
+	columns: { type: Array, default: () => [] },
+	rows: { type: Array, default: () => [] },
+	canEdit: { type: Boolean, default: false },
+	// canManage: can modify structure (columns/rows). False for inherited (schema_locked) tables.
+	canManage: { type: Boolean, default: false },
+});
 
-const live = useLive()
+const live = useLive();
 
 // ── Type icons & labels ──
 const typeIcons = {
-  number: Hash, text: Type, boolean: ToggleLeft, select: CircleDot,
-  multi_select: List, date: Calendar, formula: Sigma, reference: Link,
-}
+	number: Hash,
+	text: Type,
+	boolean: ToggleLeft,
+	select: CircleDot,
+	multi_select: List,
+	date: Calendar,
+	formula: Sigma,
+	reference: Link,
+};
 const typeLabels = {
-  number: "Number", text: "Text", boolean: "Boolean", select: "Select",
-  multi_select: "Multi Select", date: "Date", reference: "Reference", formula: "Formula",
-}
-const allTypes = ["number", "text", "boolean", "select", "multi_select", "date", "reference", "formula"]
+	number: "Number",
+	text: "Text",
+	boolean: "Boolean",
+	select: "Select",
+	multi_select: "Multi Select",
+	date: "Date",
+	reference: "Reference",
+	formula: "Formula",
+};
+const allTypes = [
+	"number",
+	"text",
+	"boolean",
+	"select",
+	"multi_select",
+	"date",
+	"reference",
+	"formula",
+];
 
-function typeIcon(type) { return typeIcons[type] || Columns2 }
+function typeIcon(type) {
+	return typeIcons[type] || Columns2;
+}
 
 // ══════════════════════════════════════════════════════════════
 // Column dropdown (canManage only)
 // ══════════════════════════════════════════════════════════════
-const openColDropdownId = ref(null)
-const colDropdownPanel = ref("main")
-const colRenameValue = ref("")
-const colNewOptionValue = ref("")
-const colOptionEdits = ref({})
+const openColDropdownId = ref(null);
+const colDropdownPanel = ref("main");
+const colRenameValue = ref("");
+const colNewOptionValue = ref("");
+const colOptionEdits = ref({});
 
 function openColDropdown(col) {
-  openColDropdownId.value = col.id
-  colDropdownPanel.value = "main"
-  colRenameValue.value = col.name
-  colNewOptionValue.value = ""
-  colOptionEdits.value = {}
+	openColDropdownId.value = col.id;
+	colDropdownPanel.value = "main";
+	colRenameValue.value = col.name;
+	colNewOptionValue.value = "";
+	colOptionEdits.value = {};
 }
 
 function closeColDropdown() {
-  const col = props.columns.find(c => c.id === openColDropdownId.value)
-  if (col && colRenameValue.value.trim() && colRenameValue.value.trim() !== col.name) {
-    live.pushEvent("rename_table_column", { "column-id": col.id, value: colRenameValue.value.trim() })
-  }
-  openColDropdownId.value = null
+	const col = props.columns.find((c) => c.id === openColDropdownId.value);
+	if (
+		col &&
+		colRenameValue.value.trim() &&
+		colRenameValue.value.trim() !== col.name
+	) {
+		live.pushEvent("rename_table_column", {
+			"column-id": col.id,
+			value: colRenameValue.value.trim(),
+		});
+	}
+	openColDropdownId.value = null;
 }
 
 function saveColRename(col) {
-  const name = colRenameValue.value.trim()
-  if (name && name !== col.name) {
-    live.pushEvent("rename_table_column", { "column-id": col.id, value: name })
-  }
+	const name = colRenameValue.value.trim();
+	if (name && name !== col.name) {
+		live.pushEvent("rename_table_column", { "column-id": col.id, value: name });
+	}
 }
 
 function toggleColConstant(col) {
-  live.pushEvent("toggle_table_column_constant", { "column-id": col.id })
+	live.pushEvent("toggle_table_column_constant", { "column-id": col.id });
 }
 
 function toggleColRequired(col) {
-  live.pushEvent("toggle_table_column_required", { "column-id": col.id })
+	live.pushEvent("toggle_table_column_required", { "column-id": col.id });
 }
 
 function changeColType(col, newType) {
-  if (col.type !== newType) {
-    live.pushEvent("change_table_column_type", { "column-id": col.id, "new-type": newType })
-  }
+	if (col.type !== newType) {
+		live.pushEvent("change_table_column_type", {
+			"column-id": col.id,
+			"new-type": newType,
+		});
+	}
 }
 
 function deleteColumn(col) {
-  live.pushEvent("delete_table_column", { "column-id": col.id })
-  openColDropdownId.value = null
+	live.pushEvent("delete_table_column", { "column-id": col.id });
+	openColDropdownId.value = null;
 }
 
 function addColumnOption(col) {
-  const label = colNewOptionValue.value.trim()
-  if (!label) return
-  live.pushEvent("add_table_column_option", { "column-id": col.id, value: label })
-  colNewOptionValue.value = ""
+	const label = colNewOptionValue.value.trim();
+	if (!label) return;
+	live.pushEvent("add_table_column_option", {
+		"column-id": col.id,
+		value: label,
+	});
+	colNewOptionValue.value = "";
 }
 
 function updateColumnOption(col, index) {
-  const val = colOptionEdits.value[index]
-  if (val != null && val.trim()) {
-    live.pushEvent("update_table_column_option", { "column-id": col.id, index, value: val.trim() })
-  }
+	const val = colOptionEdits.value[index];
+	if (val != null && val.trim()) {
+		live.pushEvent("update_table_column_option", {
+			"column-id": col.id,
+			index,
+			value: val.trim(),
+		});
+	}
 }
 
 function removeColumnOption(col, key) {
-  live.pushEvent("remove_table_column_option", { "column-id": col.id, key })
+	live.pushEvent("remove_table_column_option", { "column-id": col.id, key });
 }
 
 function updateNumberConstraint(col, field, event) {
-  live.pushEvent("update_number_constraint", { "column-id": col.id, field, value: event.target.value })
+	live.pushEvent("update_number_constraint", {
+		"column-id": col.id,
+		field,
+		value: event.target.value,
+	});
 }
 
 function toggleReferenceMultiple(col) {
-  live.pushEvent("toggle_reference_multiple", { "column-id": col.id })
+	live.pushEvent("toggle_reference_multiple", { "column-id": col.id });
 }
 
 // ══════════════════════════════════════════════════════════════
 // Row rename (canManage only)
 // ══════════════════════════════════════════════════════════════
 function saveRowName(row, event) {
-  const name = event.target.value.trim()
-  if (name && name !== row.name) {
-    live.pushEvent("rename_table_row", { "row-id": row.id, value: name })
-  }
+	const name = event.target.value.trim();
+	if (name && name !== row.name) {
+		live.pushEvent("rename_table_row", { "row-id": row.id, value: name });
+	}
 }
 
 function deleteRow(row) {
-  live.pushEvent("delete_table_row", { "row-id": row.id })
+	live.pushEvent("delete_table_row", { "row-id": row.id });
 }
 
 // ══════════════════════════════════════════════════════════════
 // Row reorder via vue-dnd-kit (canManage only)
 // ══════════════════════════════════════════════════════════════
-const rowGroup = `table-rows-${props.blockId}`
-const localRows = ref([...props.rows])
-watch(() => props.rows, (v) => { localRows.value = [...v] })
+const rowGroup = `table-rows-${props.blockId}`;
+const localRows = ref([...props.rows]);
+watch(
+	() => props.rows,
+	(v) => {
+		localRows.value = [...v];
+	},
+);
 
-const tbodyRef = useTemplateRef("tbodyRef")
-makeDroppable(tbodyRef, {
-  groups: [rowGroup],
-  events: {
-    onDrop: (e) => {
-      const result = e.helpers.suggestSort("vertical")
-      if (!result) return
-      localRows.value = result.sourceItems
-      const ids = localRows.value.map(r => r.id)
-      live.pushEvent("reorder_table_rows", { block_id: props.blockId, row_ids: ids })
-    },
-  },
-}, () => localRows.value)
+const tbodyRef = useTemplateRef("tbodyRef");
+makeDroppable(
+	tbodyRef,
+	{
+		groups: [rowGroup],
+		events: {
+			onDrop: (e) => {
+				const result = e.helpers.suggestSort("vertical");
+				if (!result) return;
+				localRows.value = result.sourceItems;
+				const ids = localRows.value.map((r) => r.id);
+				live.pushEvent("reorder_table_rows", {
+					block_id: props.blockId,
+					row_ids: ids,
+				});
+			},
+		},
+	},
+	() => localRows.value,
+);
 
 // ══════════════════════════════════════════════════════════════
 // Cell editing — text/number (canEdit)
 // ══════════════════════════════════════════════════════════════
-const editingCell = ref(null)
-const editingCellValue = ref("")
-const cellInput = ref(null)
+const editingCell = ref(null);
+const editingCellValue = ref("");
+const cellInput = ref(null);
 
 function startEditCell(row, col) {
-  if (!props.canEdit) return
-  editingCell.value = { rowId: row.id, colSlug: col.slug }
-  editingCellValue.value = row.cells?.[col.slug] ?? ""
-  nextTick(() => cellInput.value?.focus())
+	if (!props.canEdit) return;
+	editingCell.value = { rowId: row.id, colSlug: col.slug };
+	editingCellValue.value = row.cells?.[col.slug] ?? "";
+	nextTick(() => cellInput.value?.focus());
 }
 
 function saveCell(row, col) {
-  editingCell.value = null
-  live.pushEvent("update_table_cell", {
-    "row-id": row.id, "column-slug": col.slug,
-    value: editingCellValue.value, type: col.type,
-  })
+	editingCell.value = null;
+	live.pushEvent("update_table_cell", {
+		"row-id": row.id,
+		"column-slug": col.slug,
+		value: editingCellValue.value,
+		type: col.type,
+	});
 }
 
 function isCellEditing(row, col) {
-  return editingCell.value?.rowId === row.id && editingCell.value?.colSlug === col.slug
+	return (
+		editingCell.value?.rowId === row.id &&
+		editingCell.value?.colSlug === col.slug
+	);
 }
 
 // ══════════════════════════════════════════════════════════════
 // Boolean toggle (canEdit)
 // ══════════════════════════════════════════════════════════════
 function toggleBoolean(row, col) {
-  live.pushEvent("toggle_table_cell_boolean", { "row-id": row.id, "column-slug": col.slug })
+	live.pushEvent("toggle_table_cell_boolean", {
+		"row-id": row.id,
+		"column-slug": col.slug,
+	});
 }
 
 // ══════════════════════════════════════════════════════════════
 // Select / Multi-select cells (canEdit)
 // ══════════════════════════════════════════════════════════════
-const selectSearch = ref("")
+const selectSearch = ref("");
 
 function selectCell(row, col, key) {
-  live.pushEvent("select_table_cell", { "row-id": row.id, "column-slug": col.slug, key })
+	live.pushEvent("select_table_cell", {
+		"row-id": row.id,
+		"column-slug": col.slug,
+		key,
+	});
 }
 
 function toggleMultiSelectCell(row, col, key) {
-  live.pushEvent("toggle_table_cell_multi_select", { "row-id": row.id, "column-slug": col.slug, key })
+	live.pushEvent("toggle_table_cell_multi_select", {
+		"row-id": row.id,
+		"column-slug": col.slug,
+		key,
+	});
 }
 
 function addCellOption(col, row) {
-  const label = selectSearch.value.trim()
-  if (!label) return
-  live.pushEvent("add_table_cell_option", {
-    "column-id": col.id, "row-id": row.id, "column-slug": col.slug, value: label,
-  })
-  selectSearch.value = ""
+	const label = selectSearch.value.trim();
+	if (!label) return;
+	live.pushEvent("add_table_cell_option", {
+		"column-id": col.id,
+		"row-id": row.id,
+		"column-slug": col.slug,
+		value: label,
+	});
+	selectSearch.value = "";
 }
 
 function filteredOptions(col) {
-  const options = col.config?.options || []
-  const q = selectSearch.value.toLowerCase()
-  if (!q) return options
-  return options.filter(o => (o.value || "").toLowerCase().includes(q))
+	const options = col.config?.options || [];
+	const q = selectSearch.value.toLowerCase();
+	if (!q) return options;
+	return options.filter((o) => (o.value || "").toLowerCase().includes(q));
 }
 
 // ══════════════════════════════════════════════════════════════
 // Add column / row (canManage only)
 // ══════════════════════════════════════════════════════════════
 function addColumn() {
-  live.pushEvent("add_table_column", { "block-id": props.blockId })
+	live.pushEvent("add_table_column", { "block-id": props.blockId });
 }
 
 function addRow() {
-  live.pushEvent("add_table_row", { "block-id": props.blockId })
+	live.pushEvent("add_table_row", { "block-id": props.blockId });
 }
 
 // ══════════════════════════════════════════════════════════════
 // Helpers
 // ══════════════════════════════════════════════════════════════
 function getCellValue(row, col) {
-  return row.cells?.[col.slug] ?? ""
+	return row.cells?.[col.slug] ?? "";
 }
 
 function getFormulaDisplay(row, col) {
-  const cell = row.cells?.[col.slug]
-  if (cell == null) return "—"
-  if (typeof cell === "object") {
-    // __result is injected by compute_formulas on the server
-    if ("__result" in cell) {
-      return cell.__result != null ? cell.__result : "—"
-    }
-    // Has expression but no computed result yet
-    return "—"
-  }
-  return cell !== "" ? cell : "—"
+	const cell = row.cells?.[col.slug];
+	if (cell == null) return "—";
+	if (typeof cell === "object") {
+		// __result is injected by compute_formulas on the server
+		if ("__result" in cell) {
+			return cell.__result != null ? cell.__result : "—";
+		}
+		// Has expression but no computed result yet
+		return "—";
+	}
+	return cell !== "" ? cell : "—";
 }
 
 function getFormulaExpression(row, col) {
-  const cell = row.cells?.[col.slug]
-  if (typeof cell === "object" && cell.expression) return cell.expression
-  return ""
+	const cell = row.cells?.[col.slug];
+	if (typeof cell === "object" && cell.expression) return cell.expression;
+	return "";
 }
 
 function findOptionLabel(options, key) {
-  if (!key) return null
-  const opt = options.find(o => o.key === key)
-  return opt?.value || null
+	if (!key) return null;
+	const opt = options.find((o) => o.key === key);
+	return opt?.value || null;
 }
 
 function resolveMultiLabels(value, options) {
-  if (!Array.isArray(value) || value.length === 0) return []
-  const map = Object.fromEntries(options.map(o => [o.key, o.value]))
-  return value.map(k => map[k] || k)
+	if (!Array.isArray(value) || value.length === 0) return [];
+	const map = Object.fromEntries(options.map((o) => [o.key, o.value]));
+	return value.map((k) => map[k] || k);
 }
 
 function formatDate(val) {
-  if (!val) return "—"
-  try {
-    const d = new Date(val + "T00:00:00")
-    return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
-  } catch { return val }
+	if (!val) return "—";
+	try {
+		const d = new Date(val + "T00:00:00");
+		return d.toLocaleDateString("en-US", {
+			year: "numeric",
+			month: "long",
+			day: "numeric",
+		});
+	} catch {
+		return val;
+	}
 }
 
 function displayValue(val, fallback) {
-  if (val == null || val === "") return fallback
-  return String(val)
+	if (val == null || val === "") return fallback;
+	return String(val);
 }
 
 function inputAttrs(col) {
-  if (col.type !== "number") return {}
-  const c = col.config || {}
-  const attrs = {}
-  if (c.min != null) attrs.min = c.min
-  if (c.max != null) attrs.max = c.max
-  attrs.step = c.step || "any"
-  return attrs
+	if (col.type !== "number") return {};
+	const c = col.config || {};
+	const attrs = {};
+	if (c.min != null) attrs.min = c.min;
+	if (c.max != null) attrs.max = c.max;
+	attrs.step = c.step || "any";
+	return attrs;
 }
 </script>
 

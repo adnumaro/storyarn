@@ -1,76 +1,83 @@
 <script setup>
-import { ref, watch, computed } from "vue"
-import { useLive } from "@/vue/composables/useLive"
-import { Sigma, X, ChevronRight, AlertCircle } from "lucide-vue-next"
-import FormulaBindingSelect from "./FormulaBindingSelect.vue"
-import katex from "katex"
+import { ref, watch, computed } from "vue";
+import { useLive } from "@/vue/composables/useLive";
+import { Sigma, X, ChevronRight, AlertCircle } from "lucide-vue-next";
+import FormulaBindingSelect from "./FormulaBindingSelect.vue";
+import katex from "katex";
 
 const props = defineProps({
-  formulaEditing: { type: Object, default: null },
-})
+	formulaEditing: { type: Object, default: null },
+});
 
-const live = useLive()
+const live = useLive();
 
 // ── Local expression state ──
-const localExpression = ref("")
-const expressionDirty = ref(false)
+const localExpression = ref("");
+const expressionDirty = ref(false);
 
 watch(
-  () => props.formulaEditing?.expression,
-  (expr) => {
-    if (!expressionDirty.value) {
-      localExpression.value = expr || ""
-    }
-  },
-  { immediate: true }
-)
+	() => props.formulaEditing?.expression,
+	(expr) => {
+		if (!expressionDirty.value) {
+			localExpression.value = expr || "";
+		}
+	},
+	{ immediate: true },
+);
 
 // ── LaTeX rendering via v-html (no refs/watchers needed) ──
 function safeRenderToString(latex) {
-  if (!latex) return ""
-  try {
-    return katex.renderToString(latex, { displayMode: true, throwOnError: false })
-  } catch {
-    return `<span class="text-sm text-muted-foreground">${latex}</span>`
-  }
+	if (!latex) return "";
+	try {
+		return katex.renderToString(latex, {
+			displayMode: true,
+			throwOnError: false,
+		});
+	} catch {
+		return `<span class="text-sm text-muted-foreground">${latex}</span>`;
+	}
 }
 
-const previewHtml = computed(() => safeRenderToString(props.formulaEditing?.preview_latex))
-const resultHtml = computed(() => safeRenderToString(props.formulaEditing?.result_latex))
+const previewHtml = computed(() =>
+	safeRenderToString(props.formulaEditing?.preview_latex),
+);
+const resultHtml = computed(() =>
+	safeRenderToString(props.formulaEditing?.result_latex),
+);
 
 // ── Actions ──
 function close() {
-  expressionDirty.value = false
-  live.pushEvent("close_formula_sidebar", {})
+	expressionDirty.value = false;
+	live.pushEvent("close_formula_sidebar", {});
 }
 
 function saveExpression() {
-  expressionDirty.value = false
-  const fe = props.formulaEditing
-  if (!fe) return
-  live.pushEvent("save_formula_expression", {
-    value: localExpression.value,
-    "row-id": fe.row_id,
-    "column-slug": fe.column_slug,
-  })
+	expressionDirty.value = false;
+	const fe = props.formulaEditing;
+	if (!fe) return;
+	live.pushEvent("save_formula_expression", {
+		value: localExpression.value,
+		"row-id": fe.row_id,
+		"column-slug": fe.column_slug,
+	});
 }
 
 function onExpressionInput() {
-  expressionDirty.value = true
+	expressionDirty.value = true;
 }
 
 function saveBinding(symbol, value) {
-  const fe = props.formulaEditing
-  if (!fe) return
-  live.pushEvent("save_formula_binding", {
-    symbol,
-    binding_value: value,
-    "row-id": fe.row_id,
-    "column-slug": fe.column_slug,
-  })
+	const fe = props.formulaEditing;
+	if (!fe) return;
+	live.pushEvent("save_formula_binding", {
+		symbol,
+		binding_value: value,
+		"row-id": fe.row_id,
+		"column-slug": fe.column_slug,
+	});
 }
 
-const isOpen = computed(() => props.formulaEditing != null)
+const isOpen = computed(() => props.formulaEditing != null);
 </script>
 
 <template>

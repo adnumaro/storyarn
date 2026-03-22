@@ -2,23 +2,23 @@
 import { reactiveOmit } from "@vueuse/core";
 import { Check } from "lucide-vue-next";
 import {
-  ContextMenuCheckboxItem,
-  ContextMenuItemIndicator,
-  useForwardPropsEmits,
+	ContextMenuCheckboxItem,
+	ContextMenuItemIndicator,
+	useForwardPropsEmits,
 } from "reka-ui";
-import { cn } from '@/vue/lib/utils';
+import { cn } from "@/vue/lib/utils";
 
 const props = defineProps({
-  modelValue: { type: [Boolean, String], required: false },
-  disabled: { type: Boolean, required: false },
-  textValue: { type: String, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
+	modelValue: { type: [Boolean, String], required: false },
+	disabled: { type: Boolean, required: false },
+	textValue: { type: String, required: false },
+	asChild: { type: Boolean, required: false },
+	as: { type: null, required: false },
+	class: {
+		type: [Boolean, null, String, Object, Array],
+		required: false,
+		skipCheck: true,
+	},
 });
 const emits = defineEmits(["select", "update:modelValue"]);
 

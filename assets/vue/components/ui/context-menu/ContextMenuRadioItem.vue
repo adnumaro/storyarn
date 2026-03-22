@@ -2,23 +2,23 @@
 import { reactiveOmit } from "@vueuse/core";
 import { Circle } from "lucide-vue-next";
 import {
-  ContextMenuItemIndicator,
-  ContextMenuRadioItem,
-  useForwardPropsEmits,
+	ContextMenuItemIndicator,
+	ContextMenuRadioItem,
+	useForwardPropsEmits,
 } from "reka-ui";
-import { cn } from '@/vue/lib/utils';
+import { cn } from "@/vue/lib/utils";
 
 const props = defineProps({
-  value: { type: null, required: true },
-  disabled: { type: Boolean, required: false },
-  textValue: { type: String, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
+	value: { type: null, required: true },
+	disabled: { type: Boolean, required: false },
+	textValue: { type: String, required: false },
+	asChild: { type: Boolean, required: false },
+	as: { type: null, required: false },
+	class: {
+		type: [Boolean, null, String, Object, Array],
+		required: false,
+		skipCheck: true,
+	},
 });
 const emits = defineEmits(["select"]);
 

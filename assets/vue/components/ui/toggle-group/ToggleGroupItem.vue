@@ -2,21 +2,21 @@
 import { reactiveOmit } from "@vueuse/core";
 import { ToggleGroupItem, useForwardProps } from "reka-ui";
 import { inject } from "vue";
-import { cn } from '@/vue/lib/utils';
-import { toggleVariants } from '@/vue/components/ui/toggle';
+import { cn } from "@/vue/lib/utils";
+import { toggleVariants } from "@/vue/components/ui/toggle";
 
 const props = defineProps({
-  value: { type: null, required: true },
-  disabled: { type: Boolean, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-  variant: { type: null, required: false },
-  size: { type: null, required: false },
+	value: { type: null, required: true },
+	disabled: { type: Boolean, required: false },
+	asChild: { type: Boolean, required: false },
+	as: { type: null, required: false },
+	class: {
+		type: [Boolean, null, String, Object, Array],
+		required: false,
+		skipCheck: true,
+	},
+	variant: { type: null, required: false },
+	size: { type: null, required: false },
 });
 
 const context = inject("toggleGroup");

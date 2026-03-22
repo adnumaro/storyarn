@@ -4,12 +4,12 @@
  */
 
 defineProps({
-  logic: { type: String, default: "all" },
-  ofLabel: { type: String, default: "of the rules" },
-  disabled: { type: Boolean, default: false },
-})
+	logic: { type: String, default: "all" },
+	ofLabel: { type: String, default: "of the rules" },
+	disabled: { type: Boolean, default: false },
+});
 
-const emit = defineEmits(["update:logic"])
+const emit = defineEmits(["update:logic"]);
 </script>
 
 <template>

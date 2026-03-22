@@ -1,20 +1,20 @@
 <script setup>
-import { useTemplateRef } from "vue"
-import { makeDroppable } from "@vue-dnd-kit/core"
+import { useTemplateRef } from "vue";
+import { makeDroppable } from "@vue-dnd-kit/core";
 
 const props = defineProps({
-  items: { type: Array, required: true },
-})
+	items: { type: Array, required: true },
+});
 
-const emit = defineEmits(["drop"])
+const emit = defineEmits(["drop"]);
 
-const rootRef = useTemplateRef("rootRef")
+const rootRef = useTemplateRef("rootRef");
 
 makeDroppable(
-  rootRef,
-  { events: { onDrop: (e) => emit("drop", e) } },
-  () => props.items,
-)
+	rootRef,
+	{ events: { onDrop: (e) => emit("drop", e) } },
+	() => props.items,
+);
 </script>
 
 <template>

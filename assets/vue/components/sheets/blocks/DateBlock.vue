@@ -1,18 +1,28 @@
 <script setup>
-import { computed } from "vue"
-import { Calendar, Lock } from "lucide-vue-next"
-import { Input } from "@/vue/components/ui/input"
-import BlockToolbar from "../BlockToolbar.vue"
-import { useBlockActions } from "./useBlockActions"
+import { computed } from "vue";
+import { Calendar, Lock } from "lucide-vue-next";
+import { Input } from "@/vue/components/ui/input";
+import BlockToolbar from "../BlockToolbar.vue";
+import { useBlockActions } from "./useBlockActions";
 
 const props = defineProps({
-  block: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  inherited: { type: Boolean, default: false },
-})
+	block: { type: Object, required: true },
+	canEdit: { type: Boolean, default: false },
+	inherited: { type: Boolean, default: false },
+});
 
-const { live, label, editingLabel, localLabel, labelInput, startEditLabel, saveLabel , isSelected, onBlockClick } = useBlockActions(props)
-const content = computed(() => props.block.value?.content)
+const {
+	live,
+	label,
+	editingLabel,
+	localLabel,
+	labelInput,
+	startEditLabel,
+	saveLabel,
+	isSelected,
+	onBlockClick,
+} = useBlockActions(props);
+const content = computed(() => props.block.value?.content);
 </script>
 
 <template>

@@ -3,33 +3,33 @@
  * Generic floating block toolbar — pure UI, no business logic.
  * Each block type composes this and passes its own config slot content.
  */
-import { ref } from "vue"
-import { Lock, Unlock, Hash, Asterisk, Settings } from "lucide-vue-next"
+import { ref } from "vue";
+import { Lock, Unlock, Hash, Asterisk, Settings } from "lucide-vue-next";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/vue/components/ui/popover"
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/vue/components/ui/popover";
 
-const configOpen = ref(false)
+const configOpen = ref(false);
 
 defineProps({
-  isConstant: { type: Boolean, default: false },
-  isVariable: { type: Boolean, default: false },
-  variableName: { type: String, default: "" },
-  scope: { type: String, default: "self" },
-  required: { type: Boolean, default: false },
-  showConstant: { type: Boolean, default: true },
-  showScope: { type: Boolean, default: true },
-  showConfig: { type: Boolean, default: true },
-})
+	isConstant: { type: Boolean, default: false },
+	isVariable: { type: Boolean, default: false },
+	variableName: { type: String, default: "" },
+	scope: { type: String, default: "self" },
+	required: { type: Boolean, default: false },
+	showConstant: { type: Boolean, default: true },
+	showScope: { type: Boolean, default: true },
+	showConfig: { type: Boolean, default: true },
+});
 
 const emit = defineEmits([
-  "toggleConstant",
-  "updateVariableName",
-  "changeScope",
-  "toggleRequired",
-])
+	"toggleConstant",
+	"updateVariableName",
+	"changeScope",
+	"toggleRequired",
+]);
 </script>
 
 <template>

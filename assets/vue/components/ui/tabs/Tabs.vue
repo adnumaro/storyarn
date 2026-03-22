@@ -1,22 +1,22 @@
 <script setup>
 import { reactiveOmit } from "@vueuse/core";
 import { TabsRoot, useForwardPropsEmits } from "reka-ui";
-import { cn } from '@/vue/lib/utils';
+import { cn } from "@/vue/lib/utils";
 
 const props = defineProps({
-  defaultValue: { type: null, required: false },
-  orientation: { type: String, required: false },
-  dir: { type: String, required: false },
-  activationMode: { type: String, required: false },
-  modelValue: { type: null, required: false },
-  unmountOnHide: { type: Boolean, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
+	defaultValue: { type: null, required: false },
+	orientation: { type: String, required: false },
+	dir: { type: String, required: false },
+	activationMode: { type: String, required: false },
+	modelValue: { type: null, required: false },
+	unmountOnHide: { type: Boolean, required: false },
+	asChild: { type: Boolean, required: false },
+	as: { type: null, required: false },
+	class: {
+		type: [Boolean, null, String, Object, Array],
+		required: false,
+		skipCheck: true,
+	},
 });
 const emits = defineEmits(["update:modelValue"]);
 

@@ -1,18 +1,18 @@
 <script setup>
 import { Primitive } from "reka-ui";
-import { cn } from '@/vue/lib/utils';
+import { cn } from "@/vue/lib/utils";
 import { buttonVariants } from ".";
 
 const props = defineProps({
-  variant: { type: null, required: false },
-  size: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false, default: "button" },
+	variant: { type: null, required: false },
+	size: { type: null, required: false },
+	class: {
+		type: [Boolean, null, String, Object, Array],
+		required: false,
+		skipCheck: true,
+	},
+	asChild: { type: Boolean, required: false },
+	as: { type: null, required: false, default: "button" },
 });
 </script>
 

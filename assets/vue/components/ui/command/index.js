@@ -13,4 +13,4 @@ export { default as CommandShortcut } from "./CommandShortcut.vue";
 export const [useCommand, provideCommandContext] = createContext("Command");
 
 export const [useCommandGroup, provideCommandGroupContext] =
-  createContext("CommandGroup");
+	createContext("CommandGroup");

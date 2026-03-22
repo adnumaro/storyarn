@@ -2,13 +2,13 @@
 import { TooltipProvider } from "reka-ui";
 
 const props = defineProps({
-  delayDuration: { type: Number, required: false, default: 0 },
-  skipDelayDuration: { type: Number, required: false },
-  disableHoverableContent: { type: Boolean, required: false },
-  disableClosingTrigger: { type: Boolean, required: false },
-  disabled: { type: Boolean, required: false },
-  ignoreNonKeyboardFocus: { type: Boolean, required: false },
-  content: { type: Object, required: false },
+	delayDuration: { type: Number, required: false, default: 0 },
+	skipDelayDuration: { type: Number, required: false },
+	disableHoverableContent: { type: Boolean, required: false },
+	disableClosingTrigger: { type: Boolean, required: false },
+	disabled: { type: Boolean, required: false },
+	ignoreNonKeyboardFocus: { type: Boolean, required: false },
+	content: { type: Object, required: false },
 });
 </script>
 

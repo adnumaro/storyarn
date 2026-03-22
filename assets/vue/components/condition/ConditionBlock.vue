@@ -3,41 +3,47 @@
  * Single condition block containing rule rows.
  */
 
-import { Plus, X } from "lucide-vue-next"
-import ConditionRule from "./ConditionRule.vue"
-import LogicToggle from "./LogicToggle.vue"
-import { generateId } from "@/vue/lib/variables"
+import { Plus, X } from "lucide-vue-next";
+import ConditionRule from "./ConditionRule.vue";
+import LogicToggle from "./LogicToggle.vue";
+import { generateId } from "@/vue/lib/variables";
 
 const props = defineProps({
-  block: { type: Object, required: true },
-  variables: { type: Array, default: () => [] },
-  disabled: { type: Boolean, default: false },
-  switchMode: { type: Boolean, default: false },
-})
+	block: { type: Object, required: true },
+	variables: { type: Array, default: () => [] },
+	disabled: { type: Boolean, default: false },
+	switchMode: { type: Boolean, default: false },
+});
 
-const emit = defineEmits(["update:block", "remove"])
+const emit = defineEmits(["update:block", "remove"]);
 
 function updateField(field, value) {
-  emit("update:block", { ...props.block, [field]: value })
+	emit("update:block", { ...props.block, [field]: value });
 }
 
 function updateRule(index, updatedRule) {
-  const rules = [...props.block.rules]
-  rules[index] = updatedRule
-  emit("update:block", { ...props.block, rules })
+	const rules = [...props.block.rules];
+	rules[index] = updatedRule;
+	emit("update:block", { ...props.block, rules });
 }
 
 function removeRule(index) {
-  const rules = props.block.rules.filter((_, i) => i !== index)
-  emit("update:block", { ...props.block, rules })
+	const rules = props.block.rules.filter((_, i) => i !== index);
+	emit("update:block", { ...props.block, rules });
 }
 
 function addRule() {
-  const rules = [
-    ...props.block.rules,
-    { id: generateId("rule"), sheet: null, variable: null, operator: "equals", value: null },
-  ]
-  emit("update:block", { ...props.block, rules })
+	const rules = [
+		...props.block.rules,
+		{
+			id: generateId("rule"),
+			sheet: null,
+			variable: null,
+			operator: "equals",
+			value: null,
+		},
+	];
+	emit("update:block", { ...props.block, rules });
 }
 </script>
 

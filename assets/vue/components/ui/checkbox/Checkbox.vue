@@ -2,25 +2,25 @@
 import { reactiveOmit } from "@vueuse/core";
 import { Check } from "lucide-vue-next";
 import { CheckboxIndicator, CheckboxRoot, useForwardPropsEmits } from "reka-ui";
-import { cn } from '@/vue/lib/utils';
+import { cn } from "@/vue/lib/utils";
 
 const props = defineProps({
-  defaultValue: { type: null, required: false },
-  modelValue: { type: null, required: false },
-  disabled: { type: Boolean, required: false },
-  value: { type: null, required: false },
-  id: { type: String, required: false },
-  trueValue: { type: null, required: false },
-  falseValue: { type: null, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  name: { type: String, required: false },
-  required: { type: Boolean, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
+	defaultValue: { type: null, required: false },
+	modelValue: { type: null, required: false },
+	disabled: { type: Boolean, required: false },
+	value: { type: null, required: false },
+	id: { type: String, required: false },
+	trueValue: { type: null, required: false },
+	falseValue: { type: null, required: false },
+	asChild: { type: Boolean, required: false },
+	as: { type: null, required: false },
+	name: { type: String, required: false },
+	required: { type: Boolean, required: false },
+	class: {
+		type: [Boolean, null, String, Object, Array],
+		required: false,
+		skipCheck: true,
+	},
 });
 const emits = defineEmits(["update:modelValue"]);
 

@@ -1,29 +1,43 @@
 <script setup>
-import { ref, computed, watch } from "vue"
-import { useLive } from "@/vue/composables/useLive"
-import { Type, Lock, MoreHorizontal, Trash2 } from "lucide-vue-next"
-import { Input } from "@/vue/components/ui/input"
-import BlockToolbar from "../BlockToolbar.vue"
-import { useBlockActions } from "./useBlockActions"
+import { ref, computed, watch } from "vue";
+import { useLive } from "@/vue/composables/useLive";
+import { Type, Lock, MoreHorizontal, Trash2 } from "lucide-vue-next";
+import { Input } from "@/vue/components/ui/input";
+import BlockToolbar from "../BlockToolbar.vue";
+import { useBlockActions } from "./useBlockActions";
 
 const props = defineProps({
-  block: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  inherited: { type: Boolean, default: false },
-})
+	block: { type: Object, required: true },
+	canEdit: { type: Boolean, default: false },
+	inherited: { type: Boolean, default: false },
+});
 
-const emit = defineEmits(["detach", "reattach"])
-const { label, editingLabel, localLabel, labelInput, startEditLabel, saveLabel, isSelected, onBlockClick } = useBlockActions(props)
-const live = useLive()
+const emit = defineEmits(["detach", "reattach"]);
+const {
+	label,
+	editingLabel,
+	localLabel,
+	labelInput,
+	startEditLabel,
+	saveLabel,
+	isSelected,
+	onBlockClick,
+} = useBlockActions(props);
+const live = useLive();
 
-const content = computed(() => props.block.value?.content ?? "")
-const localText = ref(content.value)
-watch(content, (v) => { localText.value = v })
+const content = computed(() => props.block.value?.content ?? "");
+const localText = ref(content.value);
+watch(content, (v) => {
+	localText.value = v;
+});
 
 function save() {
-  if (localText.value !== content.value) {
-    live.pushEvent("update_block_value", { id: props.block.id, value: localText.value })
-  }
+	if (localText.value !== content.value) {
+		live.pushEvent("update_block_value", {
+			id: props.block.id,
+			value: localText.value,
+		});
+	}
 }
 </script>
 

@@ -1,19 +1,23 @@
 <script setup>
-import { useTemplateRef } from "vue"
-import { makeDraggable } from "@vue-dnd-kit/core"
+import { useTemplateRef } from "vue";
+import { makeDraggable } from "@vue-dnd-kit/core";
 
 const props = defineProps({
-  index: { type: Number, required: true },
-  items: { type: Array, required: true },
-  group: { type: String, required: true },
-})
+	index: { type: Number, required: true },
+	items: { type: Array, required: true },
+	group: { type: String, required: true },
+});
 
-const rowRef = useTemplateRef("rowRef")
+const rowRef = useTemplateRef("rowRef");
 
-const { isDragging, isDragOver } = makeDraggable(rowRef, {
-  dragHandle: ".row-drag-handle",
-  groups: [props.group],
-}, () => [props.index, props.items])
+const { isDragging, isDragOver } = makeDraggable(
+	rowRef,
+	{
+		dragHandle: ".row-drag-handle",
+		groups: [props.group],
+	},
+	() => [props.index, props.items],
+);
 </script>
 
 <template>

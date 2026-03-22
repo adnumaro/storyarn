@@ -8,116 +8,131 @@
  * Infinite scroll: scroll listener on CommandList $el, with pendingLoad
  * guard unlocked only after DOM settles (scroll position restored).
  */
-import { ref, computed, watch, nextTick, onBeforeUpdate, onBeforeUnmount } from "vue"
-import { useLive } from "@/vue/composables/useLive"
-import { useServerSearch } from "@/vue/composables/useServerSearch"
-import { Popover, PopoverContent, PopoverTrigger } from "@/vue/components/ui/popover"
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/vue/components/ui/command"
+	ref,
+	computed,
+	watch,
+	nextTick,
+	onBeforeUpdate,
+	onBeforeUnmount,
+} from "vue";
+import { useLive } from "@/vue/composables/useLive";
+import { useServerSearch } from "@/vue/composables/useServerSearch";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/vue/components/ui/popover";
+import {
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+} from "@/vue/components/ui/command";
 
 const props = defineProps({
-  modelValue: { type: String, default: "" },
-  sameRowOptions: { type: Array, default: () => [] },
-  searchResults: { type: Array, default: () => [] },
-  hasMore: { type: Boolean, default: false },
-})
+	modelValue: { type: String, default: "" },
+	sameRowOptions: { type: Array, default: () => [] },
+	searchResults: { type: Array, default: () => [] },
+	hasMore: { type: Boolean, default: false },
+});
 
-const emit = defineEmits(["update:modelValue"])
+const emit = defineEmits(["update:modelValue"]);
 
-const open = ref(false)
-const live = useLive()
-const pendingLoad = ref(false)
-const listRef = ref(null)
-let savedScrollTop = 0
+const open = ref(false);
+const live = useLive();
+const pendingLoad = ref(false);
+const listRef = ref(null);
+let savedScrollTop = 0;
 
 const { query, loading, search, reset } = useServerSearch({
-  searchEvent: "search_formula_bindings",
-  debounceMs: 250,
-})
+	searchEvent: "search_formula_bindings",
+	debounceMs: 250,
+});
 
 function getListEl() {
-  return listRef.value?.$el ?? listRef.value
+	return listRef.value?.$el ?? listRef.value;
 }
 
 function onScroll() {
-  if (!props.hasMore || pendingLoad.value) return
-  const el = getListEl()
-  if (!el) return
-  if (el.scrollHeight - el.scrollTop - el.clientHeight < 40) {
-    pendingLoad.value = true
-    live.pushEvent("load_more_formula_bindings", {})
-  }
+	if (!props.hasMore || pendingLoad.value) return;
+	const el = getListEl();
+	if (!el) return;
+	if (el.scrollHeight - el.scrollTop - el.clientHeight < 40) {
+		pendingLoad.value = true;
+		live.pushEvent("load_more_formula_bindings", {});
+	}
 }
 
 // Save scroll position before Vue re-renders
 onBeforeUpdate(() => {
-  const el = getListEl()
-  if (el) savedScrollTop = el.scrollTop
-})
+	const el = getListEl();
+	if (el) savedScrollTop = el.scrollTop;
+});
 
 // After new results arrive: restore scroll, then unlock
-watch(() => props.searchResults, () => {
-  nextTick(() => {
-    const el = getListEl()
-    if (el && savedScrollTop > 0) {
-      el.scrollTop = savedScrollTop
-    }
-    pendingLoad.value = false
-  })
-})
+watch(
+	() => props.searchResults,
+	() => {
+		nextTick(() => {
+			const el = getListEl();
+			if (el && savedScrollTop > 0) {
+				el.scrollTop = savedScrollTop;
+			}
+			pendingLoad.value = false;
+		});
+	},
+);
 
 // Attach scroll listener when popover opens
 watch(open, (v) => {
-  if (v) {
-    pendingLoad.value = false
-    savedScrollTop = 0
-    reset()
-    search("")
-    nextTick(() => {
-      const el = getListEl()
-      if (el) el.addEventListener("scroll", onScroll)
-    })
-  } else {
-    const el = getListEl()
-    if (el) el.removeEventListener("scroll", onScroll)
-  }
-})
+	if (v) {
+		pendingLoad.value = false;
+		savedScrollTop = 0;
+		reset();
+		search("");
+		nextTick(() => {
+			const el = getListEl();
+			if (el) el.addEventListener("scroll", onScroll);
+		});
+	} else {
+		const el = getListEl();
+		if (el) el.removeEventListener("scroll", onScroll);
+	}
+});
 
 onBeforeUnmount(() => {
-  const el = getListEl()
-  if (el) el.removeEventListener("scroll", onScroll)
-})
+	const el = getListEl();
+	if (el) el.removeEventListener("scroll", onScroll);
+});
 
 // Display label for the currently selected binding
 const displayLabel = computed(() => {
-  if (!props.modelValue) return ""
-  for (const opt of props.sameRowOptions) {
-    if (opt.value === props.modelValue) return opt.label
-  }
-  for (const group of props.searchResults) {
-    for (const item of group.items) {
-      if (item.value === props.modelValue) return item.label
-    }
-  }
-  if (props.modelValue.startsWith("same_row:")) return props.modelValue.slice(9)
-  return props.modelValue
-})
+	if (!props.modelValue) return "";
+	for (const opt of props.sameRowOptions) {
+		if (opt.value === props.modelValue) return opt.label;
+	}
+	for (const group of props.searchResults) {
+		for (const item of group.items) {
+			if (item.value === props.modelValue) return item.label;
+		}
+	}
+	if (props.modelValue.startsWith("same_row:"))
+		return props.modelValue.slice(9);
+	return props.modelValue;
+});
 
 function onSelect(value) {
-  emit("update:modelValue", value)
-  open.value = false
+	emit("update:modelValue", value);
+	open.value = false;
 }
 
 function onSearchInput(q) {
-  pendingLoad.value = false
-  savedScrollTop = 0
-  search(q)
+	pendingLoad.value = false;
+	savedScrollTop = 0;
+	search(q);
 }
 </script>
 

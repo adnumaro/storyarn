@@ -1,46 +1,52 @@
 <script setup>
-import { computed, ref, onMounted, onUnmounted, useTemplateRef } from "vue"
-import { makeDraggable } from "@vue-dnd-kit/core"
-import { GripVertical, Grip } from "lucide-vue-next"
+import { computed, ref, onMounted, onUnmounted, useTemplateRef } from "vue";
+import { makeDraggable } from "@vue-dnd-kit/core";
+import { GripVertical, Grip } from "lucide-vue-next";
 
-const SIDE_THRESHOLD = 0.25
+const SIDE_THRESHOLD = 0.25;
 
 const props = defineProps({
-  canEdit: { type: Boolean, default: false },
-  index: { type: Number, required: true },
-  items: { type: Array, required: true },
-})
+	canEdit: { type: Boolean, default: false },
+	index: { type: Number, required: true },
+	items: { type: Array, required: true },
+});
 
-const itemRef = useTemplateRef("itemRef")
+const itemRef = useTemplateRef("itemRef");
 
-const { isDragging, isDragOver } = makeDraggable(itemRef, {
-  dragHandle: ".drag-handle",
-  groups: ["blocks-vertical"],
-}, () => [props.index, props.items])
+const { isDragging, isDragOver } = makeDraggable(
+	itemRef,
+	{
+		dragHandle: ".drag-handle",
+		groups: ["blocks-vertical"],
+	},
+	() => [props.index, props.items],
+);
 
-const isFullWidth = computed(() => props.items[props.index]?.type === "full_width")
+const isFullWidth = computed(
+	() => props.items[props.index]?.type === "full_width",
+);
 
-const pointerRelX = ref(0.5)
+const pointerRelX = ref(0.5);
 
 function onPointerMove(e) {
-  const el = itemRef.value
-  if (!el || !isDragOver.value) return
-  const rect = el.getBoundingClientRect()
-  pointerRelX.value = (e.clientX - rect.left) / rect.width
+	const el = itemRef.value;
+	if (!el || !isDragOver.value) return;
+	const rect = el.getBoundingClientRect();
+	pointerRelX.value = (e.clientX - rect.left) / rect.width;
 }
 
-onMounted(() => document.addEventListener("pointermove", onPointerMove))
-onUnmounted(() => document.removeEventListener("pointermove", onPointerMove))
+onMounted(() => document.addEventListener("pointermove", onPointerMove));
+onUnmounted(() => document.removeEventListener("pointermove", onPointerMove));
 
 const atSide = computed(() => {
-  if (!isDragOver.value || !isFullWidth.value) return null
-  if (pointerRelX.value <= SIDE_THRESHOLD) return "left"
-  if (pointerRelX.value >= 1 - SIDE_THRESHOLD) return "right"
-  return null
-})
+	if (!isDragOver.value || !isFullWidth.value) return null;
+	if (pointerRelX.value <= SIDE_THRESHOLD) return "left";
+	if (pointerRelX.value >= 1 - SIDE_THRESHOLD) return "right";
+	return null;
+});
 
-const showTop = computed(() => isDragOver.value?.top && !atSide.value)
-const showBottom = computed(() => isDragOver.value?.bottom && !atSide.value)
+const showTop = computed(() => isDragOver.value?.top && !atSide.value);
+const showBottom = computed(() => isDragOver.value?.bottom && !atSide.value);
 </script>
 
 <template>

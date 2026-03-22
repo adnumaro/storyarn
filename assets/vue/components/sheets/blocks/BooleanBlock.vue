@@ -1,41 +1,52 @@
 <script setup>
-import { computed } from "vue"
-import { ToggleLeft, Lock } from "lucide-vue-next"
-import { Switch } from "@/vue/components/ui/switch"
-import { Badge } from "@/vue/components/ui/badge"
-import { Checkbox } from "@/vue/components/ui/checkbox"
-import BlockToolbar from "../BlockToolbar.vue"
-import { useBlockActions } from "./useBlockActions"
+import { computed } from "vue";
+import { ToggleLeft, Lock } from "lucide-vue-next";
+import { Switch } from "@/vue/components/ui/switch";
+import { Badge } from "@/vue/components/ui/badge";
+import { Checkbox } from "@/vue/components/ui/checkbox";
+import BlockToolbar from "../BlockToolbar.vue";
+import { useBlockActions } from "./useBlockActions";
 
 const props = defineProps({
-  block: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  inherited: { type: Boolean, default: false },
-})
+	block: { type: Object, required: true },
+	canEdit: { type: Boolean, default: false },
+	inherited: { type: Boolean, default: false },
+});
 
-const { live, label, editingLabel, localLabel, labelInput, startEditLabel, saveLabel , isSelected, onBlockClick } = useBlockActions(props)
+const {
+	live,
+	label,
+	editingLabel,
+	localLabel,
+	labelInput,
+	startEditLabel,
+	saveLabel,
+	isSelected,
+	onBlockClick,
+} = useBlockActions(props);
 
-const content = computed(() => props.block.value?.content)
-const mode = computed(() => props.block.config?.mode || "two_state")
+const content = computed(() => props.block.value?.content);
+const mode = computed(() => props.block.config?.mode || "two_state");
 
 const booleanLabel = computed(() => {
-  const cfg = props.block.config || {}
-  if (content.value === true) return cfg.true_label || "Yes"
-  if (content.value === false) return cfg.false_label || "No"
-  return cfg.neutral_label || "—"
-})
+	const cfg = props.block.config || {};
+	if (content.value === true) return cfg.true_label || "Yes";
+	if (content.value === false) return cfg.false_label || "No";
+	return cfg.neutral_label || "—";
+});
 
 const booleanChecked = computed({
-  get: () => content.value === true,
-  set: (val) => live.pushEvent("update_block_value", { id: props.block.id, value: val }),
-})
+	get: () => content.value === true,
+	set: (val) =>
+		live.pushEvent("update_block_value", { id: props.block.id, value: val }),
+});
 
 function cycle() {
-  let next
-  if (content.value === true) next = false
-  else if (content.value === false) next = null
-  else next = true
-  live.pushEvent("update_block_value", { id: props.block.id, value: next })
+	let next;
+	if (content.value === true) next = false;
+	else if (content.value === false) next = null;
+	else next = true;
+	live.pushEvent("update_block_value", { id: props.block.id, value: next });
 }
 </script>
 

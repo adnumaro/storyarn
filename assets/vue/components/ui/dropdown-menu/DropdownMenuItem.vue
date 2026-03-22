@@ -1,20 +1,20 @@
 <script setup>
 import { reactiveOmit } from "@vueuse/core";
 import { DropdownMenuItem, useForwardProps } from "reka-ui";
-import { cn } from '@/vue/lib/utils';
+import { cn } from "@/vue/lib/utils";
 
 const props = defineProps({
-  disabled: { type: Boolean, required: false },
-  textValue: { type: String, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-  inset: { type: Boolean, required: false },
-  variant: { type: String, required: false, default: "default" },
+	disabled: { type: Boolean, required: false },
+	textValue: { type: String, required: false },
+	asChild: { type: Boolean, required: false },
+	as: { type: null, required: false },
+	class: {
+		type: [Boolean, null, String, Object, Array],
+		required: false,
+		skipCheck: true,
+	},
+	inset: { type: Boolean, required: false },
+	variant: { type: String, required: false, default: "default" },
 });
 
 const delegatedProps = reactiveOmit(props, "inset", "variant", "class");

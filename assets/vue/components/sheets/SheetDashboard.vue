@@ -1,118 +1,143 @@
 <script setup>
-import { computed } from "vue"
-import { useLive } from "@/vue/composables/useLive"
+import { computed } from "vue";
+import { useLive } from "@/vue/composables/useLive";
 import {
-  FileText,
-  Layers,
-  Variable,
-  Link,
-  TextCursorInput,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  MoreHorizontal,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  AlertTriangle,
-  Info,
-} from "lucide-vue-next"
-import { Button } from "@/vue/components/ui/button"
+	FileText,
+	Layers,
+	Variable,
+	Link,
+	TextCursorInput,
+	ArrowUpDown,
+	ArrowUp,
+	ArrowDown,
+	MoreHorizontal,
+	Trash2,
+	ChevronLeft,
+	ChevronRight,
+	AlertTriangle,
+	Info,
+} from "lucide-vue-next";
+import { Button } from "@/vue/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/vue/components/ui/dropdown-menu"
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/vue/components/ui/dropdown-menu";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/vue/components/ui/table"
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/vue/components/ui/table";
 
 const props = defineProps({
-  stats: { type: Object, default: null },
-  tableData: { type: Array, default: () => [] },
-  sortBy: { type: String, default: "name" },
-  sortDir: { type: String, default: "asc" },
-  page: { type: Number, default: 1 },
-  totalPages: { type: Number, default: 1 },
-  total: { type: Number, default: 0 },
-  issues: { type: Array, default: () => [] },
-  canEdit: { type: Boolean, default: false },
-  workspaceSlug: { type: String, required: true },
-  projectSlug: { type: String, required: true },
-})
+	stats: { type: Object, default: null },
+	tableData: { type: Array, default: () => [] },
+	sortBy: { type: String, default: "name" },
+	sortDir: { type: String, default: "asc" },
+	page: { type: Number, default: 1 },
+	totalPages: { type: Number, default: 1 },
+	total: { type: Number, default: 0 },
+	issues: { type: Array, default: () => [] },
+	canEdit: { type: Boolean, default: false },
+	workspaceSlug: { type: String, required: true },
+	projectSlug: { type: String, required: true },
+});
 
-const live = useLive()
+const live = useLive();
 
 function sheetHref(row) {
-  return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/v2/sheets/${row.id}`
+	return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/v2/sheets/${row.id}`;
 }
 
 function sortBy(column) {
-  live.pushEvent("sort_sheets", { column })
+	live.pushEvent("sort_sheets", { column });
 }
 
 function goToPage(page) {
-  live.pushEvent("page_sheets", { page })
+	live.pushEvent("page_sheets", { page });
 }
 
 function requestDelete(id) {
-  live.pushEvent("set_pending_delete_sheet", { id })
-  live.pushEvent("confirm_delete_sheet", {})
+	live.pushEvent("set_pending_delete_sheet", { id });
+	live.pushEvent("confirm_delete_sheet", {});
 }
 
 function sortIcon(column) {
-  if (props.sortBy !== column) return ArrowUpDown
-  return props.sortDir === "asc" ? ArrowUp : ArrowDown
+	if (props.sortBy !== column) return ArrowUpDown;
+	return props.sortDir === "asc" ? ArrowUp : ArrowDown;
 }
 
 function formatRelativeTime(dateStr) {
-  if (!dateStr) return "—"
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diffMs = now - date
-  const diffMin = Math.floor(diffMs / 60000)
-  const diffHr = Math.floor(diffMs / 3600000)
-  const diffDay = Math.floor(diffMs / 86400000)
+	if (!dateStr) return "—";
+	const date = new Date(dateStr);
+	const now = new Date();
+	const diffMs = now - date;
+	const diffMin = Math.floor(diffMs / 60000);
+	const diffHr = Math.floor(diffMs / 3600000);
+	const diffDay = Math.floor(diffMs / 86400000);
 
-  if (diffMin < 1) return "just now"
-  if (diffMin < 60) return `${diffMin}m ago`
-  if (diffHr < 24) return `${diffHr}h ago`
-  if (diffDay < 30) return `${diffDay}d ago`
-  return date.toLocaleDateString()
+	if (diffMin < 1) return "just now";
+	if (diffMin < 60) return `${diffMin}m ago`;
+	if (diffHr < 24) return `${diffHr}h ago`;
+	if (diffDay < 30) return `${diffDay}d ago`;
+	return date.toLocaleDateString();
 }
 
 const statCards = computed(() => {
-  if (!props.stats) return []
-  return [
-    { icon: FileText, label: "Sheets", value: props.stats.sheet_count, color: "text-primary" },
-    { icon: Layers, label: "Blocks", value: props.stats.block_count, color: "text-blue-400" },
-    { icon: Variable, label: "Variables", value: props.stats.variable_count, color: "text-violet-400" },
-    { icon: Link, label: "Vars in use", value: props.stats.variables_in_use, color: "text-amber-400" },
-    { icon: TextCursorInput, label: "Words", value: props.stats.word_count, color: "text-emerald-400" },
-  ]
-})
+	if (!props.stats) return [];
+	return [
+		{
+			icon: FileText,
+			label: "Sheets",
+			value: props.stats.sheet_count,
+			color: "text-primary",
+		},
+		{
+			icon: Layers,
+			label: "Blocks",
+			value: props.stats.block_count,
+			color: "text-blue-400",
+		},
+		{
+			icon: Variable,
+			label: "Variables",
+			value: props.stats.variable_count,
+			color: "text-violet-400",
+		},
+		{
+			icon: Link,
+			label: "Vars in use",
+			value: props.stats.variables_in_use,
+			color: "text-amber-400",
+		},
+		{
+			icon: TextCursorInput,
+			label: "Words",
+			value: props.stats.word_count,
+			color: "text-emerald-400",
+		},
+	];
+});
 
 const columns = [
-  { key: "name", label: "Name", align: "left" },
-  { key: "block_count", label: "Blocks", align: "right" },
-  { key: "variable_count", label: "Variables", align: "right" },
-  { key: "word_count", label: "Words", align: "right" },
-  { key: "updated_at", label: "Modified", align: "right" },
-]
+	{ key: "name", label: "Name", align: "left" },
+	{ key: "block_count", label: "Blocks", align: "right" },
+	{ key: "variable_count", label: "Variables", align: "right" },
+	{ key: "word_count", label: "Words", align: "right" },
+	{ key: "updated_at", label: "Modified", align: "right" },
+];
 
 const pages = computed(() => {
-  const result = []
-  for (let i = 1; i <= props.totalPages; i++) {
-    result.push(i)
-  }
-  return result
-})
+	const result = [];
+	for (let i = 1; i <= props.totalPages; i++) {
+		result.push(i);
+	}
+	return result;
+});
 </script>
 
 <template>

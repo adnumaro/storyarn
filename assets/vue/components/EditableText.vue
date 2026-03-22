@@ -1,53 +1,53 @@
 <script setup>
-import { ref, watch, nextTick } from "vue"
+import { ref, watch, nextTick } from "vue";
 
 const props = defineProps({
-  modelValue: { type: String, default: "" },
-  placeholder: { type: String, default: "Untitled" },
-  tag: { type: String, default: "span" },
-  inputClass: { type: String, default: "" },
-  displayClass: { type: String, default: "" },
-  disabled: { type: Boolean, default: false },
-})
+	modelValue: { type: String, default: "" },
+	placeholder: { type: String, default: "Untitled" },
+	tag: { type: String, default: "span" },
+	inputClass: { type: String, default: "" },
+	displayClass: { type: String, default: "" },
+	disabled: { type: Boolean, default: false },
+});
 
-const emit = defineEmits(["update:modelValue", "save"])
+const emit = defineEmits(["update:modelValue", "save"]);
 
-const editing = ref(false)
-const inputEl = ref(null)
-const localValue = ref(props.modelValue)
+const editing = ref(false);
+const inputEl = ref(null);
+const localValue = ref(props.modelValue);
 
 watch(
-  () => props.modelValue,
-  (v) => (localValue.value = v),
-)
+	() => props.modelValue,
+	(v) => (localValue.value = v),
+);
 
 function startEdit() {
-  if (props.disabled) return
-  editing.value = true
-  nextTick(() => {
-    inputEl.value?.focus()
-    inputEl.value?.select()
-  })
+	if (props.disabled) return;
+	editing.value = true;
+	nextTick(() => {
+		inputEl.value?.focus();
+		inputEl.value?.select();
+	});
 }
 
 function save() {
-  editing.value = false
-  const trimmed = localValue.value.trim()
-  if (trimmed !== props.modelValue) {
-    emit("update:modelValue", trimmed)
-    emit("save", trimmed)
-  }
+	editing.value = false;
+	const trimmed = localValue.value.trim();
+	if (trimmed !== props.modelValue) {
+		emit("update:modelValue", trimmed);
+		emit("save", trimmed);
+	}
 }
 
 function onKeydown(e) {
-  if (e.key === "Enter") {
-    e.preventDefault()
-    save()
-  }
-  if (e.key === "Escape") {
-    localValue.value = props.modelValue
-    editing.value = false
-  }
+	if (e.key === "Enter") {
+		e.preventDefault();
+		save();
+	}
+	if (e.key === "Escape") {
+		localValue.value = props.modelValue;
+		editing.value = false;
+	}
 }
 </script>
 

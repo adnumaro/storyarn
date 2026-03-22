@@ -1,18 +1,28 @@
 <script setup>
-import { computed } from "vue"
-import { FileText, Lock } from "lucide-vue-next"
-import BlockToolbar from "../BlockToolbar.vue"
-import RichTextEditor from "../RichTextEditor.vue"
-import { useBlockActions } from "./useBlockActions"
+import { computed } from "vue";
+import { FileText, Lock } from "lucide-vue-next";
+import BlockToolbar from "../BlockToolbar.vue";
+import RichTextEditor from "../RichTextEditor.vue";
+import { useBlockActions } from "./useBlockActions";
 
 const props = defineProps({
-  block: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  inherited: { type: Boolean, default: false },
-})
+	block: { type: Object, required: true },
+	canEdit: { type: Boolean, default: false },
+	inherited: { type: Boolean, default: false },
+});
 
-const { live, label, editingLabel, localLabel, labelInput, startEditLabel, saveLabel , isSelected, onBlockClick } = useBlockActions(props)
-const content = computed(() => props.block.value?.content || "")
+const {
+	live,
+	label,
+	editingLabel,
+	localLabel,
+	labelInput,
+	startEditLabel,
+	saveLabel,
+	isSelected,
+	onBlockClick,
+} = useBlockActions(props);
+const content = computed(() => props.block.value?.content || "");
 </script>
 
 <template>

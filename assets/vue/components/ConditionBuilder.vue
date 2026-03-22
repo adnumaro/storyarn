@@ -4,96 +4,148 @@
  * Wraps in .condition-builder for sentence-flow CSS.
  */
 
-import { computed, ref, watch } from "vue"
-import { Plus, Group } from "lucide-vue-next"
-import ConditionBlock from "./condition/ConditionBlock.vue"
-import ConditionGroup from "./condition/ConditionGroup.vue"
-import LogicToggle from "./condition/LogicToggle.vue"
-import { generateId } from "@/vue/lib/variables"
+import { computed, ref, watch } from "vue";
+import { Plus, Group } from "lucide-vue-next";
+import ConditionBlock from "./condition/ConditionBlock.vue";
+import ConditionGroup from "./condition/ConditionGroup.vue";
+import LogicToggle from "./condition/LogicToggle.vue";
+import { generateId } from "@/vue/lib/variables";
 
 const props = defineProps({
-  condition: { type: [Object, Array, null], default: null },
-  variables: { type: Array, default: () => [] },
-  disabled: { type: Boolean, default: false },
-  switchMode: { type: Boolean, default: false },
-})
+	condition: { type: [Object, Array, null], default: null },
+	variables: { type: Array, default: () => [] },
+	disabled: { type: Boolean, default: false },
+	switchMode: { type: Boolean, default: false },
+});
 
-const emit = defineEmits(["update:condition"])
+const emit = defineEmits(["update:condition"]);
 
 function ensureBlockFormat(condition) {
-  if (!condition) return { logic: "all", blocks: [] }
-  if (condition.blocks) return condition
-  const rules = condition.rules || []
-  if (rules.length === 0) return { logic: "all", blocks: [] }
-  return {
-    logic: "all",
-    blocks: [{ id: generateId("block"), type: "block", logic: condition.logic || "all", rules: [...rules] }],
-  }
+	if (!condition) return { logic: "all", blocks: [] };
+	if (condition.blocks) return condition;
+	const rules = condition.rules || [];
+	if (rules.length === 0) return { logic: "all", blocks: [] };
+	return {
+		logic: "all",
+		blocks: [
+			{
+				id: generateId("block"),
+				type: "block",
+				logic: condition.logic || "all",
+				rules: [...rules],
+			},
+		],
+	};
 }
 
-const internalCondition = ref(ensureBlockFormat(props.condition))
-watch(() => props.condition, (v) => { internalCondition.value = ensureBlockFormat(v) }, { deep: true })
+const internalCondition = ref(ensureBlockFormat(props.condition));
+watch(
+	() => props.condition,
+	(v) => {
+		internalCondition.value = ensureBlockFormat(v);
+	},
+	{ deep: true },
+);
 
-const selectionMode = ref(false)
-const selectedBlockIds = ref(new Set())
-const blocks = computed(() => internalCondition.value.blocks || [])
-const standAloneBlockCount = computed(() => blocks.value.filter((b) => b.type === "block").length)
+const selectionMode = ref(false);
+const selectedBlockIds = ref(new Set());
+const blocks = computed(() => internalCondition.value.blocks || []);
+const standAloneBlockCount = computed(
+	() => blocks.value.filter((b) => b.type === "block").length,
+);
 
-function emitUpdate() { emit("update:condition", { ...internalCondition.value }) }
+function emitUpdate() {
+	emit("update:condition", { ...internalCondition.value });
+}
 
 function updateTopLogic(logic) {
-  internalCondition.value = { ...internalCondition.value, logic }
-  emitUpdate()
+	internalCondition.value = { ...internalCondition.value, logic };
+	emitUpdate();
 }
 
 function updateBlock(index, updatedBlock) {
-  const b = [...blocks.value]; b[index] = updatedBlock
-  internalCondition.value = { ...internalCondition.value, blocks: b }
-  emitUpdate()
+	const b = [...blocks.value];
+	b[index] = updatedBlock;
+	internalCondition.value = { ...internalCondition.value, blocks: b };
+	emitUpdate();
 }
 
 function removeBlock(index) {
-  internalCondition.value = { ...internalCondition.value, blocks: blocks.value.filter((_, i) => i !== index) }
-  emitUpdate()
+	internalCondition.value = {
+		...internalCondition.value,
+		blocks: blocks.value.filter((_, i) => i !== index),
+	};
+	emitUpdate();
 }
 
 function addBlock() {
-  const newBlock = { id: generateId("block"), type: "block", logic: "all", rules: [{ id: generateId("rule"), sheet: null, variable: null, operator: "equals", value: null }] }
-  if (props.switchMode) newBlock.label = ""
-  internalCondition.value = { ...internalCondition.value, blocks: [...blocks.value, newBlock] }
-  emitUpdate()
+	const newBlock = {
+		id: generateId("block"),
+		type: "block",
+		logic: "all",
+		rules: [
+			{
+				id: generateId("rule"),
+				sheet: null,
+				variable: null,
+				operator: "equals",
+				value: null,
+			},
+		],
+	};
+	if (props.switchMode) newBlock.label = "";
+	internalCondition.value = {
+		...internalCondition.value,
+		blocks: [...blocks.value, newBlock],
+	};
+	emitUpdate();
 }
 
 function ungroupGroup(index) {
-  const inner = blocks.value[index].blocks || []
-  const b = [...blocks.value]; b.splice(index, 1, ...inner)
-  internalCondition.value = { ...internalCondition.value, blocks: b }
-  emitUpdate()
+	const inner = blocks.value[index].blocks || [];
+	const b = [...blocks.value];
+	b.splice(index, 1, ...inner);
+	internalCondition.value = { ...internalCondition.value, blocks: b };
+	emitUpdate();
 }
 
-function enterSelectionMode() { selectionMode.value = true; selectedBlockIds.value = new Set() }
-function cancelSelectionMode() { selectionMode.value = false; selectedBlockIds.value = new Set() }
+function enterSelectionMode() {
+	selectionMode.value = true;
+	selectedBlockIds.value = new Set();
+}
+function cancelSelectionMode() {
+	selectionMode.value = false;
+	selectedBlockIds.value = new Set();
+}
 
 function toggleBlockSelection(blockId) {
-  const ids = new Set(selectedBlockIds.value)
-  ids.has(blockId) ? ids.delete(blockId) : ids.add(blockId)
-  selectedBlockIds.value = ids
+	const ids = new Set(selectedBlockIds.value);
+	ids.has(blockId) ? ids.delete(blockId) : ids.add(blockId);
+	selectedBlockIds.value = ids;
 }
 
 function groupSelectedBlocks() {
-  if (selectedBlockIds.value.size < 2) return
-  const selected = [], remaining = []
-  let insertIdx = -1
-  blocks.value.forEach((block, i) => {
-    if (block.type === "block" && selectedBlockIds.value.has(block.id)) {
-      selected.push(block); if (insertIdx === -1) insertIdx = i
-    } else remaining.push(block)
-  })
-  if (selected.length < 2) return
-  remaining.splice(insertIdx, 0, { id: generateId("group"), type: "group", logic: "all", blocks: selected })
-  internalCondition.value = { ...internalCondition.value, blocks: remaining }
-  selectionMode.value = false; selectedBlockIds.value = new Set()
-  emitUpdate()
+	if (selectedBlockIds.value.size < 2) return;
+	const selected = [],
+		remaining = [];
+	let insertIdx = -1;
+	blocks.value.forEach((block, i) => {
+		if (block.type === "block" && selectedBlockIds.value.has(block.id)) {
+			selected.push(block);
+			if (insertIdx === -1) insertIdx = i;
+		} else remaining.push(block);
+	});
+	if (selected.length < 2) return;
+	remaining.splice(insertIdx, 0, {
+		id: generateId("group"),
+		type: "group",
+		logic: "all",
+		blocks: selected,
+	});
+	internalCondition.value = { ...internalCondition.value, blocks: remaining };
+	selectionMode.value = false;
+	selectedBlockIds.value = new Set();
+	emitUpdate();
 }
 </script>
 

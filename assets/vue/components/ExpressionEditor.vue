@@ -7,113 +7,140 @@
  * Reuses the existing createExpressionEditor from the JS codebase.
  */
 
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue"
-import ConditionBuilder from "./ConditionBuilder.vue"
-import InstructionBuilder from "./InstructionBuilder.vue"
-import { serializeCondition, serializeAssignments } from "@/vue/lib/expression-serializer"
-import { createExpressionEditor } from "@/js/expression_editor/setup.js"
-import { formatExpression } from "@/js/expression_editor/formatter.js"
-import { parseCondition, parseAssignments } from "@/js/expression_editor/parser.js"
+import {
+	ref,
+	computed,
+	watch,
+	onMounted,
+	onBeforeUnmount,
+	nextTick,
+} from "vue";
+import ConditionBuilder from "./ConditionBuilder.vue";
+import InstructionBuilder from "./InstructionBuilder.vue";
+import {
+	serializeCondition,
+	serializeAssignments,
+} from "@/vue/lib/expression-serializer";
+import { createExpressionEditor } from "@/js/expression_editor/setup.js";
+import { formatExpression } from "@/js/expression_editor/formatter.js";
+import {
+	parseCondition,
+	parseAssignments,
+} from "@/js/expression_editor/parser.js";
 
 const props = defineProps({
-  mode: { type: String, required: true, validator: (v) => ["condition", "instruction"].includes(v) },
-  condition: { type: [Object, null], default: null },
-  assignments: { type: Array, default: () => [] },
-  variables: { type: Array, default: () => [] },
-  disabled: { type: Boolean, default: false },
-  switchMode: { type: Boolean, default: false },
-})
+	mode: {
+		type: String,
+		required: true,
+		validator: (v) => ["condition", "instruction"].includes(v),
+	},
+	condition: { type: [Object, null], default: null },
+	assignments: { type: Array, default: () => [] },
+	variables: { type: Array, default: () => [] },
+	disabled: { type: Boolean, default: false },
+	switchMode: { type: Boolean, default: false },
+});
 
-const emit = defineEmits(["update:condition", "update:assignments"])
+const emit = defineEmits(["update:condition", "update:assignments"]);
 
-const activeTab = ref("builder")
-const codeContainer = ref(null)
-let editorInstance = null
-let isFormatting = false
-let formatTimer = null
+const activeTab = ref("builder");
+const codeContainer = ref(null);
+let editorInstance = null;
+let isFormatting = false;
+let formatTimer = null;
 
-const cmMode = computed(() => props.mode === "condition" ? "expression" : "assignments")
+const cmMode = computed(() =>
+	props.mode === "condition" ? "expression" : "assignments",
+);
 
 /** Serialize current data to DSL text for the code editor */
 const serializedText = computed(() => {
-  if (props.mode === "condition") return serializeCondition(props.condition) || ""
-  return serializeAssignments(props.assignments) || ""
-})
+	if (props.mode === "condition")
+		return serializeCondition(props.condition) || "";
+	return serializeAssignments(props.assignments) || "";
+});
 
 function mountEditor() {
-  if (!codeContainer.value || editorInstance) return
+	if (!codeContainer.value || editorInstance) return;
 
-  editorInstance = createExpressionEditor({
-    container: codeContainer.value,
-    content: serializedText.value,
-    mode: cmMode.value,
-    editable: !props.disabled,
-    placeholderText: props.mode === "condition" ? "mc.jaime.health > 50" : "mc.jaime.health = 50",
-    variables: props.variables,
-    onChange: (text) => {
-      if (isFormatting) return
-      pushParsedData(text)
-    },
-  })
+	editorInstance = createExpressionEditor({
+		container: codeContainer.value,
+		content: serializedText.value,
+		mode: cmMode.value,
+		editable: !props.disabled,
+		placeholderText:
+			props.mode === "condition"
+				? "mc.jaime.health > 50"
+				: "mc.jaime.health = 50",
+		variables: props.variables,
+		onChange: (text) => {
+			if (isFormatting) return;
+			pushParsedData(text);
+		},
+	});
 
-  // Auto-format on mount
-  if (serializedText.value) formatCode()
+	// Auto-format on mount
+	if (serializedText.value) formatCode();
 }
 
 function destroyEditor() {
-  editorInstance?.destroy()
-  editorInstance = null
-  clearTimeout(formatTimer)
+	editorInstance?.destroy();
+	editorInstance = null;
+	clearTimeout(formatTimer);
 }
 
 function formatCode() {
-  if (!editorInstance) return
-  const text = editorInstance.getContent()
-  const formatted = formatExpression(text, cmMode.value)
-  if (formatted === text) return
+	if (!editorInstance) return;
+	const text = editorInstance.getContent();
+	const formatted = formatExpression(text, cmMode.value);
+	if (formatted === text) return;
 
-  isFormatting = true
-  clearTimeout(formatTimer)
-  editorInstance.setContent(formatted)
-  formatTimer = setTimeout(() => { isFormatting = false }, 350)
+	isFormatting = true;
+	clearTimeout(formatTimer);
+	editorInstance.setContent(formatted);
+	formatTimer = setTimeout(() => {
+		isFormatting = false;
+	}, 350);
 }
 
 function pushParsedData(text) {
-  if (props.mode === "condition") {
-    const result = parseCondition(text, props.variables)
-    if (result.errors.length > 0) return
-    emit("update:condition", result.condition || { logic: "all", rules: [] })
-  } else {
-    const result = parseAssignments(text, props.variables)
-    if (result.errors.length > 0) return
-    const assignments = (result.assignments || []).map(
-      ({ ref_from, ref_to, value_ref_from, value_ref_to, ...a }) => a,
-    )
-    emit("update:assignments", assignments)
-  }
+	if (props.mode === "condition") {
+		const result = parseCondition(text, props.variables);
+		if (result.errors.length > 0) return;
+		emit("update:condition", result.condition || { logic: "all", rules: [] });
+	} else {
+		const result = parseAssignments(text, props.variables);
+		if (result.errors.length > 0) return;
+		const assignments = (result.assignments || []).map(
+			({ ref_from, ref_to, value_ref_from, value_ref_to, ...a }) => a,
+		);
+		emit("update:assignments", assignments);
+	}
 }
 
 // When switching to code tab, mount editor and sync content
 watch(activeTab, async (tab) => {
-  if (tab === "code") {
-    await nextTick()
-    if (!editorInstance) {
-      mountEditor()
-    } else {
-      // Sync content from builder
-      const text = serializedText.value
-      const formatted = formatExpression(text, cmMode.value)
-      isFormatting = true
-      clearTimeout(formatTimer)
-      editorInstance.setContent(formatted || text)
-      formatTimer = setTimeout(() => { isFormatting = false }, 350)
-    }
-  }
-})
+	if (tab === "code") {
+		await nextTick();
+		if (!editorInstance) {
+			mountEditor();
+		} else {
+			// Sync content from builder
+			const text = serializedText.value;
+			const formatted = formatExpression(text, cmMode.value);
+			isFormatting = true;
+			clearTimeout(formatTimer);
+			editorInstance.setContent(formatted || text);
+			formatTimer = setTimeout(() => {
+				isFormatting = false;
+			}, 350);
+		}
+	}
+});
 
 onBeforeUnmount(() => {
-  destroyEditor()
-})
+	destroyEditor();
+});
 </script>
 
 <template>

@@ -1,28 +1,44 @@
 <script setup>
-import { ref, watch } from "vue"
-import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover"
+import { ref, watch } from "vue";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "../components/ui/popover";
 
 const props = defineProps({
-  modelValue: { type: String, default: "#8b5cf6" },
-  presets: {
-    type: Array,
-    default: () => [
-      "#ef4444", "#f97316", "#f59e0b", "#eab308",
-      "#84cc16", "#22c55e", "#14b8a6", "#06b6d4",
-      "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7",
-      "#d946ef", "#ec4899", "#f43f5e", "#6b7280",
-    ],
-  },
-  disabled: { type: Boolean, default: false },
-})
+	modelValue: { type: String, default: "#8b5cf6" },
+	presets: {
+		type: Array,
+		default: () => [
+			"#ef4444",
+			"#f97316",
+			"#f59e0b",
+			"#eab308",
+			"#84cc16",
+			"#22c55e",
+			"#14b8a6",
+			"#06b6d4",
+			"#3b82f6",
+			"#6366f1",
+			"#8b5cf6",
+			"#a855f7",
+			"#d946ef",
+			"#ec4899",
+			"#f43f5e",
+			"#6b7280",
+		],
+	},
+	disabled: { type: Boolean, default: false },
+});
 
-const emit = defineEmits(["update:modelValue"])
+const emit = defineEmits(["update:modelValue"]);
 
-const open = ref(false)
+const open = ref(false);
 
 function selectColor(color) {
-  emit("update:modelValue", color)
-  open.value = false
+	emit("update:modelValue", color);
+	open.value = false;
 }
 </script>
 

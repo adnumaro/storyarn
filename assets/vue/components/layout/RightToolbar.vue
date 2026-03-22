@@ -1,38 +1,39 @@
 <script setup>
-import { computed } from "vue"
-import { User, LayoutDashboard } from "lucide-vue-next"
+import { computed } from "vue";
+import { User, LayoutDashboard } from "lucide-vue-next";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/vue/components/ui/dropdown-menu"
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/vue/components/ui/dropdown-menu";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/vue/components/ui/tooltip"
-import UserAvatar from "./UserAvatar.vue"
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/vue/components/ui/tooltip";
+import UserAvatar from "./UserAvatar.vue";
 
 const props = defineProps({
-  currentUser: { type: Object, required: true },
-  onlineUsers: { type: Array, default: () => [] },
-  urls: { type: Object, required: true },
-})
+	currentUser: { type: Object, required: true },
+	onlineUsers: { type: Array, default: () => [] },
+	urls: { type: Object, required: true },
+});
 
 const otherUsers = computed(() =>
-  props.onlineUsers
-    .filter((u) => u.userId !== props.currentUser.id)
-    .slice(0, 5)
-)
+	props.onlineUsers
+		.filter((u) => u.userId !== props.currentUser.id)
+		.slice(0, 5),
+);
 
-const displayName = computed(() =>
-  props.currentUser.displayName ||
-  props.currentUser.email?.split("@")[0] ||
-  ""
-)
+const displayName = computed(
+	() =>
+		props.currentUser.displayName ||
+		props.currentUser.email?.split("@")[0] ||
+		"",
+);
 </script>
 
 <template>

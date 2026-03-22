@@ -1,82 +1,113 @@
 <script setup>
-import { watch, onBeforeUnmount } from "vue"
-import { useEditor, EditorContent } from "@tiptap/vue-3"
-import StarterKit from "@tiptap/starter-kit"
-import Placeholder from "@tiptap/extension-placeholder"
+import { watch, onBeforeUnmount } from "vue";
+import { useEditor, EditorContent } from "@tiptap/vue-3";
+import StarterKit from "@tiptap/starter-kit";
+import Placeholder from "@tiptap/extension-placeholder";
 import {
-  Bold,
-  Italic,
-  Strikethrough,
-  Heading1,
-  Heading2,
-  Heading3,
-  List,
-  ListOrdered,
-  Quote,
-  Minus,
-} from "lucide-vue-next"
+	Bold,
+	Italic,
+	Strikethrough,
+	Heading1,
+	Heading2,
+	Heading3,
+	List,
+	ListOrdered,
+	Quote,
+	Minus,
+} from "lucide-vue-next";
 
 const props = defineProps({
-  content: { type: String, default: "" },
-  editable: { type: Boolean, default: false },
-  placeholder: { type: String, default: "Write something..." },
-})
+	content: { type: String, default: "" },
+	editable: { type: Boolean, default: false },
+	placeholder: { type: String, default: "Write something..." },
+});
 
-const emit = defineEmits(["update"])
+const emit = defineEmits(["update"]);
 
-let debounceTimer = null
+let debounceTimer = null;
 
 const editor = useEditor({
-  content: props.content || "",
-  editable: props.editable,
-  extensions: [
-    StarterKit,
-    Placeholder.configure({ placeholder: props.placeholder }),
-  ],
-  editorProps: {
-    attributes: {
-      class: "prose prose-sm dark:prose-invert max-w-none outline-none min-h-[80px] px-3 py-2",
-    },
-  },
-  onUpdate: ({ editor }) => {
-    clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(() => {
-      emit("update", editor.getHTML())
-    }, 500)
-  },
-  onBlur: ({ editor }) => {
-    clearTimeout(debounceTimer)
-    emit("update", editor.getHTML())
-  },
-})
+	content: props.content || "",
+	editable: props.editable,
+	extensions: [
+		StarterKit,
+		Placeholder.configure({ placeholder: props.placeholder }),
+	],
+	editorProps: {
+		attributes: {
+			class:
+				"prose prose-sm dark:prose-invert max-w-none outline-none min-h-[80px] px-3 py-2",
+		},
+	},
+	onUpdate: ({ editor }) => {
+		clearTimeout(debounceTimer);
+		debounceTimer = setTimeout(() => {
+			emit("update", editor.getHTML());
+		}, 500);
+	},
+	onBlur: ({ editor }) => {
+		clearTimeout(debounceTimer);
+		emit("update", editor.getHTML());
+	},
+});
 
-watch(() => props.content, (newContent) => {
-  if (editor.value && !editor.value.isFocused && newContent !== editor.value.getHTML()) {
-    editor.value.commands.setContent(newContent || "", false)
-  }
-})
+watch(
+	() => props.content,
+	(newContent) => {
+		if (
+			editor.value &&
+			!editor.value.isFocused &&
+			newContent !== editor.value.getHTML()
+		) {
+			editor.value.commands.setContent(newContent || "", false);
+		}
+	},
+);
 
-watch(() => props.editable, (editable) => {
-  editor.value?.setEditable(editable)
-})
+watch(
+	() => props.editable,
+	(editable) => {
+		editor.value?.setEditable(editable);
+	},
+);
 
 onBeforeUnmount(() => {
-  clearTimeout(debounceTimer)
-})
+	clearTimeout(debounceTimer);
+});
 
-function toggleBold() { editor.value?.chain().focus().toggleBold().run() }
-function toggleItalic() { editor.value?.chain().focus().toggleItalic().run() }
-function toggleStrike() { editor.value?.chain().focus().toggleStrike().run() }
-function toggleH1() { editor.value?.chain().focus().toggleHeading({ level: 1 }).run() }
-function toggleH2() { editor.value?.chain().focus().toggleHeading({ level: 2 }).run() }
-function toggleH3() { editor.value?.chain().focus().toggleHeading({ level: 3 }).run() }
-function toggleBulletList() { editor.value?.chain().focus().toggleBulletList().run() }
-function toggleOrderedList() { editor.value?.chain().focus().toggleOrderedList().run() }
-function toggleBlockquote() { editor.value?.chain().focus().toggleBlockquote().run() }
-function setHorizontalRule() { editor.value?.chain().focus().setHorizontalRule().run() }
+function toggleBold() {
+	editor.value?.chain().focus().toggleBold().run();
+}
+function toggleItalic() {
+	editor.value?.chain().focus().toggleItalic().run();
+}
+function toggleStrike() {
+	editor.value?.chain().focus().toggleStrike().run();
+}
+function toggleH1() {
+	editor.value?.chain().focus().toggleHeading({ level: 1 }).run();
+}
+function toggleH2() {
+	editor.value?.chain().focus().toggleHeading({ level: 2 }).run();
+}
+function toggleH3() {
+	editor.value?.chain().focus().toggleHeading({ level: 3 }).run();
+}
+function toggleBulletList() {
+	editor.value?.chain().focus().toggleBulletList().run();
+}
+function toggleOrderedList() {
+	editor.value?.chain().focus().toggleOrderedList().run();
+}
+function toggleBlockquote() {
+	editor.value?.chain().focus().toggleBlockquote().run();
+}
+function setHorizontalRule() {
+	editor.value?.chain().focus().setHorizontalRule().run();
+}
 
 function isActive(name, attrs) {
-  return editor.value?.isActive(name, attrs) ?? false
+	return editor.value?.isActive(name, attrs) ?? false;
 }
 </script>
 

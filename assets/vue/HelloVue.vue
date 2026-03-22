@@ -1,25 +1,25 @@
 <script setup>
-import { ref } from "vue"
-import { Button } from "./components/ui/button"
-import { Input } from "./components/ui/input"
-import { Switch } from "./components/ui/switch"
-import { Badge } from "./components/ui/badge"
+import { ref } from "vue";
+import { Button } from "./components/ui/button";
+import { Input } from "./components/ui/input";
+import { Switch } from "./components/ui/switch";
+import { Badge } from "./components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./components/ui/select"
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "./components/ui/select";
 
 const props = defineProps({
-  message: { type: String, default: "LiveVue + shadcn-vue works!" },
-})
+	message: { type: String, default: "LiveVue + shadcn-vue works!" },
+});
 
-const selectedFaction = ref("neutral")
-const selectedTags = ref("fire")
-const isPlayable = ref(false)
+const selectedFaction = ref("neutral");
+const selectedTags = ref("fire");
+const isPlayable = ref(false);
 </script>
 
 <template>

@@ -1,9 +1,9 @@
 <script setup>
-import { Check, Loader2 } from "lucide-vue-next"
+import { Check, Loader2 } from "lucide-vue-next";
 
 const props = defineProps({
-  status: { type: String, default: "idle" }, // "idle" | "saving" | "saved"
-})
+	status: { type: String, default: "idle" }, // "idle" | "saving" | "saved"
+});
 </script>
 
 <template>

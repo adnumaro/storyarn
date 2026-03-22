@@ -3,40 +3,53 @@
  * Condition group — colored left border, group-level AND/OR, ungroup action.
  */
 
-import { Plus, Ungroup } from "lucide-vue-next"
-import ConditionBlock from "./ConditionBlock.vue"
-import LogicToggle from "./LogicToggle.vue"
-import { generateId } from "@/vue/lib/variables"
+import { Plus, Ungroup } from "lucide-vue-next";
+import ConditionBlock from "./ConditionBlock.vue";
+import LogicToggle from "./LogicToggle.vue";
+import { generateId } from "@/vue/lib/variables";
 
 const props = defineProps({
-  group: { type: Object, required: true },
-  variables: { type: Array, default: () => [] },
-  disabled: { type: Boolean, default: false },
-})
+	group: { type: Object, required: true },
+	variables: { type: Array, default: () => [] },
+	disabled: { type: Boolean, default: false },
+});
 
-const emit = defineEmits(["update:group", "ungroup"])
+const emit = defineEmits(["update:group", "ungroup"]);
 
 function updateBlock(index, updatedBlock) {
-  const blocks = [...props.group.blocks]
-  blocks[index] = updatedBlock
-  emit("update:group", { ...props.group, blocks })
+	const blocks = [...props.group.blocks];
+	blocks[index] = updatedBlock;
+	emit("update:group", { ...props.group, blocks });
 }
 
 function removeBlock(index) {
-  const blocks = props.group.blocks.filter((_, i) => i !== index)
-  emit("update:group", { ...props.group, blocks })
+	const blocks = props.group.blocks.filter((_, i) => i !== index);
+	emit("update:group", { ...props.group, blocks });
 }
 
 function addBlock() {
-  const blocks = [
-    ...props.group.blocks,
-    { id: generateId("block"), type: "block", logic: "all", rules: [{ id: generateId("rule"), sheet: null, variable: null, operator: "equals", value: null }] },
-  ]
-  emit("update:group", { ...props.group, blocks })
+	const blocks = [
+		...props.group.blocks,
+		{
+			id: generateId("block"),
+			type: "block",
+			logic: "all",
+			rules: [
+				{
+					id: generateId("rule"),
+					sheet: null,
+					variable: null,
+					operator: "equals",
+					value: null,
+				},
+			],
+		},
+	];
+	emit("update:group", { ...props.group, blocks });
 }
 
 function updateLogic(newLogic) {
-  emit("update:group", { ...props.group, logic: newLogic })
+	emit("update:group", { ...props.group, logic: newLogic });
 }
 </script>
 

@@ -7,19 +7,19 @@
  *   const { onlineUsers, isUserOnline } = usePresence(props)
  */
 
-import { computed } from "vue"
+import { computed } from "vue";
 
 export function usePresence(props) {
-  const onlineUsers = computed(() => props.onlineUsers || [])
+	const onlineUsers = computed(() => props.onlineUsers || []);
 
-  function isUserOnline(userId) {
-    return onlineUsers.value.some((u) => u.id === userId)
-  }
+	function isUserOnline(userId) {
+		return onlineUsers.value.some((u) => u.id === userId);
+	}
 
-  function userColor(userId) {
-    const user = onlineUsers.value.find((u) => u.id === userId)
-    return user?.color || "#888"
-  }
+	function userColor(userId) {
+		const user = onlineUsers.value.find((u) => u.id === userId);
+		return user?.color || "#888";
+	}
 
-  return { onlineUsers, isUserOnline, userColor }
+	return { onlineUsers, isUserOnline, userColor };
 }
