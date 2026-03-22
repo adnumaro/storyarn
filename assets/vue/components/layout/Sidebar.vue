@@ -5,16 +5,21 @@
  * Used by TreePanel (left) and FormulaPanel (right).
  * Mirrors the v1 hook animation: slide + fade, 280ms in / 180ms out.
  *
+ * Desktop (≥ md): fixed w-64, positioned left-3 or right-3, JS animation.
+ * Mobile (< md): full-width overlay (left-3 right-3), above toolbars,
+ *   CSS transition for slide in/out.
+ *
  * Props:
  *   side: "left" | "right"
  *   open: boolean
  *
  * Slots:
- *   header — rendered inside the header bar (before close button)
+ *   header — rendered inside the header bar
  *   default — scrollable content area
  *   footer — optional footer bar with border-top
  */
 import { ref, watch, nextTick, onMounted } from "vue";
+import { onClickOutside } from "@vueuse/core";
 
 const props = defineProps({
 	side: {
@@ -29,6 +34,13 @@ const emit = defineEmits(["close"]);
 
 const panelRef = ref(null);
 
+// Close on click outside (right sidebar only)
+onClickOutside(panelRef, () => {
+	if (props.side === "right" && props.open) {
+		emit("close");
+	}
+});
+
 // ── Animation constants (matching v1 TreePanel hook) ──
 const OPEN_DURATION = 280;
 const CLOSE_DURATION = 180;
@@ -39,7 +51,6 @@ function slideOffset() {
 }
 
 function animateIn() {
-	if (window.innerWidth < 1280) return;
 	const el = panelRef.value;
 	if (!el) return;
 
@@ -64,7 +75,6 @@ function animateIn() {
 }
 
 function animateOut() {
-	if (window.innerWidth < 1280) return;
 	const el = panelRef.value;
 	if (!el) return;
 
@@ -110,20 +120,19 @@ watch(
 		});
 	},
 );
+
 </script>
 
 <template>
 	<div
 		ref="panelRef"
 		:class="[
-			'fixed top-19 bottom-3 z-1010 w-64 flex flex-col v2-surface-panel overflow-hidden',
-			'max-md:transition-transform max-md:duration-200',
-			side === 'left' ? 'left-3' : 'right-3',
-			open
-				? 'max-md:translate-x-0'
-				: side === 'left'
-					? 'max-md:-translate-x-[calc(100%+0.75rem)]'
-					: 'max-md:translate-x-[calc(100%+0.75rem)]',
+			'fixed top-19 bottom-3 left-3 flex flex-col v2-surface-panel overflow-hidden',
+			// Mobile: full-width, above toolbars
+			'right-3 z-[1040]',
+			// Desktop: fixed width, side-positioned, lower z
+			'md:w-64 md:z-1010',
+			side === 'right' ? 'md:left-auto md:!right-3' : '',
 		]"
 	>
 		<!-- Header -->
@@ -139,7 +148,7 @@ watch(
 			<slot />
 		</div>
 
-		<!-- Footer -->
+		<!-- Footer (desktop only) -->
 		<div
 			v-if="$slots.footer"
 			class="hidden md:flex items-center justify-end gap-1 px-2 py-1.5 border-t border-border"

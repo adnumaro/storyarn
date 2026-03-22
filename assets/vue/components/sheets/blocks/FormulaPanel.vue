@@ -82,7 +82,7 @@ function saveBinding(symbol, value) {
 </script>
 
 <template>
-	<Sidebar side="right" :open="isOpen">
+	<Sidebar side="right" :open="isOpen" @close="close">
 		<template #header>
 			<div class="flex items-center gap-2 px-3 py-2.5">
 				<Sigma class="size-3.5 text-primary" />
