@@ -1,16 +1,21 @@
 <script setup>
 import {
 	Type,
+	AlignLeft,
 	Hash,
-	ToggleLeft,
-	List,
+	CircleDot,
 	ListChecks,
 	Calendar,
-	FileText,
+	ToggleLeft,
+	Link,
 	Table2,
+	Image,
 	Plus,
 } from "lucide-vue-next";
+import { ref } from "vue";
 import { Button } from "@/vue/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/vue/components/ui/radio-group";
+import { Label } from "@/vue/components/ui/label";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -22,16 +27,27 @@ import {
 
 const emit = defineEmits(["select"]);
 
-const blockTypes = [
+const scope = ref("self");
+
+const basicBlocks = [
 	{ type: "text", label: "Text", icon: Type },
+	{ type: "rich_text", label: "Rich Text", icon: AlignLeft },
 	{ type: "number", label: "Number", icon: Hash },
-	{ type: "boolean", label: "Boolean", icon: ToggleLeft },
-	{ type: "select", label: "Select", icon: List },
+	{ type: "select", label: "Select", icon: CircleDot },
 	{ type: "multi_select", label: "Multi Select", icon: ListChecks },
 	{ type: "date", label: "Date", icon: Calendar },
-	{ type: "rich_text", label: "Rich Text", icon: FileText },
-	{ type: "table", label: "Table", icon: Table2 },
+	{ type: "boolean", label: "Boolean", icon: ToggleLeft },
+	{ type: "reference", label: "Reference", icon: Link },
 ];
+
+const structuredBlocks = [
+	{ type: "table", label: "Table", icon: Table2 },
+	{ type: "gallery", label: "Gallery", icon: Image },
+];
+
+function selectBlock(type) {
+	emit("select", { type, scope: scope.value });
+}
 </script>
 
 <template>
@@ -42,16 +58,45 @@ const blockTypes = [
         Add block
       </Button>
     </DropdownMenuTrigger>
-    <DropdownMenuContent align="start" :side-offset="4" class="w-48">
-      <DropdownMenuLabel class="text-xs">Block type</DropdownMenuLabel>
+    <DropdownMenuContent align="start" :side-offset="4" class="w-52">
+      <!-- Scope selector -->
+      <DropdownMenuLabel class="text-xs text-muted-foreground uppercase tracking-wider">Scope</DropdownMenuLabel>
+      <RadioGroup v-model="scope" class="px-2 pb-1.5 gap-1.5">
+        <div class="flex items-center gap-2">
+          <RadioGroupItem id="scope-self" value="self" />
+          <Label for="scope-self" class="text-sm font-normal cursor-pointer">This sheet only</Label>
+        </div>
+        <div class="flex items-center gap-2">
+          <RadioGroupItem id="scope-children" value="children" />
+          <Label for="scope-children" class="text-sm font-normal cursor-pointer">This sheet and all children</Label>
+        </div>
+      </RadioGroup>
+
       <DropdownMenuSeparator />
+
+      <!-- Basic Blocks -->
+      <DropdownMenuLabel class="text-xs text-muted-foreground uppercase tracking-wider">Basic Blocks</DropdownMenuLabel>
       <DropdownMenuItem
-        v-for="bt in blockTypes"
+        v-for="bt in basicBlocks"
         :key="bt.type"
-        class="gap-2 text-xs"
-        @select="emit('select', bt.type)"
+        class="gap-2 text-sm"
+        @select="selectBlock(bt.type)"
       >
-        <component :is="bt.icon" class="size-3.5" />
+        <component :is="bt.icon" class="size-4 opacity-70" />
+        {{ bt.label }}
+      </DropdownMenuItem>
+
+      <DropdownMenuSeparator />
+
+      <!-- Structured Data -->
+      <DropdownMenuLabel class="text-xs text-muted-foreground uppercase tracking-wider">Structured Data</DropdownMenuLabel>
+      <DropdownMenuItem
+        v-for="bt in structuredBlocks"
+        :key="bt.type"
+        class="gap-2 text-sm"
+        @select="selectBlock(bt.type)"
+      >
+        <component :is="bt.icon" class="size-4 opacity-70" />
         {{ bt.label }}
       </DropdownMenuItem>
     </DropdownMenuContent>
