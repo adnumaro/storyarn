@@ -93,6 +93,10 @@ defmodule StoryarnWeb.Router do
         live "/workspaces/:workspace_slug/projects/:project_slug/v2/sheets",
           StoryarnWeb.SheetLive.IndexV2,
           :index
+
+        live "/workspaces/:workspace_slug/projects/:project_slug/v2/sheets/:id",
+          StoryarnWeb.SheetLive.ShowV2,
+          :show
       end
     end
   end

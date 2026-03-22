@@ -24,7 +24,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/vue/components/ui/dropdown-menu"
-import { Separator } from "@/vue/components/ui/separator"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/vue/components/ui/table"
 
 const props = defineProps({
   stats: { type: Object, default: null },
@@ -43,7 +50,7 @@ const props = defineProps({
 const live = useLive()
 
 function sheetHref(row) {
-  return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/sheets/${row.id}`
+  return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/v2/sheets/${row.id}`
 }
 
 function sortBy(column) {
@@ -92,11 +99,11 @@ const statCards = computed(() => {
 })
 
 const columns = [
-  { key: "name", label: "Name", align: "left", hideClass: "" },
-  { key: "block_count", label: "Blocks", align: "right", hideClass: "" },
-  { key: "variable_count", label: "Variables", align: "right", hideClass: "hidden sm:table-cell" },
-  { key: "word_count", label: "Words", align: "right", hideClass: "hidden md:table-cell" },
-  { key: "updated_at", label: "Modified", align: "right", hideClass: "hidden md:table-cell" },
+  { key: "name", label: "Name", align: "left" },
+  { key: "block_count", label: "Blocks", align: "right" },
+  { key: "variable_count", label: "Variables", align: "right" },
+  { key: "word_count", label: "Words", align: "right" },
+  { key: "updated_at", label: "Modified", align: "right" },
 ]
 
 const pages = computed(() => {
@@ -147,69 +154,62 @@ const pages = computed(() => {
       <!-- Table section -->
       <div class="space-y-2">
         <h2 class="text-sm font-medium">All Sheets</h2>
-        <div class="rounded-lg border border-border bg-card overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-border bg-muted/40">
-                  <th
-                    v-for="col in columns"
-                    :key="col.key"
-                    :class="[
-                      'px-3 py-2 font-medium text-xs text-muted-foreground uppercase',
-                      col.align === 'right' ? 'text-right' : 'text-left',
-                      col.hideClass,
-                    ]"
-                  >
-                    <button
-                      type="button"
-                      class="inline-flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
-                      :class="col.align === 'right' && 'ml-auto'"
-                      @click="sortBy(col.key)"
-                    >
-                      {{ col.label }}
-                      <component :is="sortIcon(col.key)" class="size-3" />
-                    </button>
-                  </th>
-                  <th v-if="canEdit" class="w-10" />
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="row in tableData"
-                  :key="row.id"
-                  class="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
+        <div class="rounded-lg border border-border bg-card overflow-auto max-h-[60vh]">
+          <Table>
+            <TableHeader>
+              <TableRow class="bg-muted/40 hover:bg-muted/40 sticky top-0 z-10">
+                <TableHead
+                  v-for="col in columns"
+                  :key="col.key"
+                  :class="[
+                    'font-medium text-xs text-muted-foreground uppercase',
+                    col.align === 'right' ? 'text-right' : 'text-left',
+                  ]"
                 >
-                  <td class="px-3 py-2">
-                    <a :href="sheetHref(row)" class="font-medium hover:underline">
-                      {{ row.name }}
-                    </a>
-                  </td>
-                  <td class="px-3 py-2 text-right tabular-nums">{{ row.block_count }}</td>
-                  <td class="px-3 py-2 text-right tabular-nums hidden sm:table-cell">{{ row.variable_count }}</td>
-                  <td class="px-3 py-2 text-right tabular-nums hidden md:table-cell">{{ row.word_count }}</td>
-                  <td class="px-3 py-2 text-right text-muted-foreground text-xs hidden md:table-cell">
-                    {{ formatRelativeTime(row.updated_at) }}
-                  </td>
-                  <td v-if="canEdit" class="px-2 py-2 text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger as-child>
-                        <Button variant="ghost" size="icon-sm" class="size-7">
-                          <MoreHorizontal class="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" class="z-[1030]">
-                        <DropdownMenuItem class="text-destructive gap-2 text-xs" @select="requestDelete(row.id)">
-                          <Trash2 class="size-3.5" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                    :class="col.align === 'right' && 'ml-auto'"
+                    @click="sortBy(col.key)"
+                  >
+                    {{ col.label }}
+                    <component :is="sortIcon(col.key)" class="size-3" />
+                  </button>
+                </TableHead>
+                <TableHead v-if="canEdit" class="w-10" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-for="row in tableData" :key="row.id">
+                <TableCell>
+                  <a :href="sheetHref(row)" class="font-medium hover:underline">
+                    {{ row.name }}
+                  </a>
+                </TableCell>
+                <TableCell class="text-right tabular-nums">{{ row.block_count }}</TableCell>
+                <TableCell class="text-right tabular-nums">{{ row.variable_count }}</TableCell>
+                <TableCell class="text-right tabular-nums">{{ row.word_count }}</TableCell>
+                <TableCell class="text-right text-muted-foreground text-xs">
+                  {{ formatRelativeTime(row.updated_at) }}
+                </TableCell>
+                <TableCell v-if="canEdit" class="text-right w-10">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger as-child>
+                      <Button variant="ghost" size="icon-sm" class="size-7">
+                        <MoreHorizontal class="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" class="z-[1030]">
+                      <DropdownMenuItem class="text-destructive gap-2 text-xs" @select="requestDelete(row.id)">
+                        <Trash2 class="size-3.5" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </div>
 
         <!-- Pagination -->

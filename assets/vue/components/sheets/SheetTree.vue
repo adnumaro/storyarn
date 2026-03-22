@@ -28,7 +28,7 @@ const deleteDialogOpen = ref(false)
 const pendingDeleteSheet = ref(null)
 
 function sheetHref(sheet) {
-  return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/sheets/${sheet.id}`
+  return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/v2/sheets/${sheet.id}`
 }
 
 function matchesSearch(node, query) {
@@ -124,7 +124,7 @@ function confirmDelete() {
 
     <!-- Delete confirmation dialog -->
     <Dialog v-model:open="deleteDialogOpen">
-      <DialogContent class="z-[1040]">
+      <DialogContent class="z-1040">
         <DialogHeader>
           <DialogTitle>Delete sheet?</DialogTitle>
           <DialogDescription>

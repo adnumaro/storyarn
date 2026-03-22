@@ -33,5 +33,16 @@ export default defineConfig({
     },
     modules: [path.resolve(__dirname, ".."), "node_modules"],
   },
-  plugins: [tailwindcss(), vue(), liveVuePlugin()],
+  plugins: [
+    tailwindcss(),
+    vue({
+      template: {
+        compilerOptions: {
+          // Treat vanilla-colorful custom elements as native
+          isCustomElement: (tag) => tag.startsWith("hex-"),
+        },
+      },
+    }),
+    liveVuePlugin(),
+  ],
 })
