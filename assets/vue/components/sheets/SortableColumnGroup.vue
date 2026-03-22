@@ -7,6 +7,7 @@ const isLockedByOther = inject("isLockedByOther", () => false);
 const lockInfo = inject("lockInfo", () => null);
 
 import HorizontalDraggableItem from "./HorizontalDraggableItem.vue";
+import UserAvatar from "@/vue/components/layout/UserAvatar.vue";
 import TextBlock from "./blocks/TextBlock.vue";
 import NumberBlock from "./blocks/NumberBlock.vue";
 import BooleanBlock from "./blocks/BooleanBlock.vue";
@@ -105,15 +106,16 @@ function gridClass() {
           :is="resolveComponent(block.type)"
           :block="block"
           :can-edit="canEdit && !isLockedByOther(block.id)"
-        />
-        <div v-if="isLockedByOther(block.id)" class="absolute inset-0 rounded-lg border-2 pointer-events-none" :style="{ borderColor: lockInfo(block.id)?.userColor }" />
-        <div
-          v-if="isLockedByOther(block.id)"
-          class="absolute -top-2.5 right-2 text-[10px] px-1.5 py-0.5 rounded-full text-white leading-none"
-          :style="{ backgroundColor: lockInfo(block.id)?.userColor }"
         >
-          {{ lockInfo(block.id)?.userEmail?.split('@')[0] }}
-        </div>
+          <template v-if="isLockedByOther(block.id)" #menu>
+            <UserAvatar
+              :email="lockInfo(block.id)?.userEmail"
+              :color="lockInfo(block.id)?.userColor"
+              size="xs"
+            />
+          </template>
+        </component>
+        <div v-if="isLockedByOther(block.id)" class="absolute inset-0 rounded-lg border-2 pointer-events-none" :style="{ borderColor: lockInfo(block.id)?.userColor }" />
       </div>
     </HorizontalDraggableItem>
   </div>

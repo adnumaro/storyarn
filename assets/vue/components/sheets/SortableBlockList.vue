@@ -5,6 +5,7 @@ import { makeDroppable } from "@vue-dnd-kit/core";
 import { Link2 } from "lucide-vue-next";
 import DraggableBlock from "./DraggableBlock.vue";
 import SortableColumnGroup from "./SortableColumnGroup.vue";
+import UserAvatar from "@/vue/components/layout/UserAvatar.vue";
 
 const isLockedByOther = inject("isLockedByOther", () => false);
 const lockInfo = inject("lockInfo", () => null);
@@ -314,26 +315,27 @@ function resolveComponent(type) {
             :block="item.block"
             :can-edit="canEdit && !isLockedByOther(item.block.id)"
           >
-            <template v-if="item.block.can_reattach && !isLockedByOther(item.block.id)" #menu>
-              <button
-                type="button"
-                class="size-6 rounded flex items-center justify-center text-blue-500 hover:bg-blue-500/10 transition-colors"
-                title="Reattach to parent"
-                @click.stop="reattachBlock(item.block.id)"
-              >
-                <Link2 class="size-3.5" />
-              </button>
+            <template #menu>
+              <div class="flex items-center gap-0.5">
+                <button
+                  v-if="item.block.can_reattach && !isLockedByOther(item.block.id)"
+                  type="button"
+                  class="size-6 rounded flex items-center justify-center text-blue-500 hover:bg-blue-500/10 transition-colors"
+                  title="Reattach to parent"
+                  @click.stop="reattachBlock(item.block.id)"
+                >
+                  <Link2 class="size-3.5" />
+                </button>
+                <UserAvatar
+                  v-if="isLockedByOther(item.block.id)"
+                  :email="lockInfo(item.block.id)?.userEmail"
+                  :color="lockInfo(item.block.id)?.userColor"
+                  size="xs"
+                />
+              </div>
             </template>
           </component>
-          <!-- Lock indicator -->
           <div v-if="isLockedByOther(item.block.id)" class="absolute inset-0 rounded-lg border-2 pointer-events-none" :style="{ borderColor: lockInfo(item.block.id)?.userColor }" />
-          <div
-            v-if="isLockedByOther(item.block.id)"
-            class="absolute -top-2.5 right-2 text-[10px] px-1.5 py-0.5 rounded-full text-white leading-none"
-            :style="{ backgroundColor: lockInfo(item.block.id)?.userColor }"
-          >
-            {{ lockInfo(item.block.id)?.userEmail?.split('@')[0] }}
-          </div>
         </div>
       </template>
 

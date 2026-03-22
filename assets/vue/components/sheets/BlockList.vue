@@ -6,6 +6,7 @@ import { DnDProvider } from "@vue-dnd-kit/core";
 import AddBlockMenu from "./AddBlockMenu.vue";
 import SortableBlockList from "./SortableBlockList.vue";
 import FormulaPanel from "./blocks/FormulaPanel.vue";
+import UserAvatar from "@/vue/components/layout/UserAvatar.vue";
 
 // Block type components (for inherited blocks, rendered without sortable)
 import TextBlock from "./blocks/TextBlock.vue";
@@ -213,26 +214,26 @@ function resolveComponent(type) {
               :inherited="true"
             >
               <template #menu>
-                <button
-                  v-if="canEdit && !isLockedByOther(block.id)"
-                  type="button"
-                  class="size-6 rounded flex items-center justify-center text-blue-500 hover:bg-blue-500/10 transition-colors"
-                  title="Detach from parent"
-                  @click.stop="detachBlock(block.id)"
-                >
-                  <Link2Off class="size-3.5" />
-                </button>
+                <div class="flex items-center gap-0.5">
+                  <button
+                    v-if="canEdit && !isLockedByOther(block.id)"
+                    type="button"
+                    class="size-6 rounded flex items-center justify-center text-blue-500 hover:bg-blue-500/10 transition-colors"
+                    title="Detach from parent"
+                    @click.stop="detachBlock(block.id)"
+                  >
+                    <Link2Off class="size-3.5" />
+                  </button>
+                  <UserAvatar
+                    v-if="isLockedByOther(block.id)"
+                    :email="lockInfo(block.id)?.userEmail"
+                    :color="lockInfo(block.id)?.userColor"
+                    size="xs"
+                  />
+                </div>
               </template>
             </component>
-            <!-- Lock indicator -->
             <div v-if="isLockedByOther(block.id)" class="absolute inset-0 rounded-lg border-2 pointer-events-none" :style="{ borderColor: lockInfo(block.id)?.userColor }" />
-            <div
-              v-if="isLockedByOther(block.id)"
-              class="absolute -top-2.5 right-2 text-[10px] px-1.5 py-0.5 rounded-full text-white leading-none"
-              :style="{ backgroundColor: lockInfo(block.id)?.userColor }"
-            >
-              {{ lockInfo(block.id)?.userEmail?.split('@')[0] }}
-            </div>
           </div>
         </div>
       </div>

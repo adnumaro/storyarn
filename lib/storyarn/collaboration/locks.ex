@@ -120,6 +120,14 @@ defmodule Storyarn.Collaboration.Locks do
           acquire_new_lock(key, user, now, expires_at)
       end
 
+    case result do
+      {:ok, lock_info} ->
+        broadcast_lock_acquired(scope, entity_id, lock_info)
+
+      _ ->
+        :ok
+    end
+
     {:reply, result, state}
   end
 
@@ -127,8 +135,9 @@ defmodule Storyarn.Collaboration.Locks do
     key = {scope, entity_id}
 
     case :ets.lookup(@table_name, key) do
-      [{^key, %{user_id: ^user_id}}] ->
+      [{^key, %{user_id: ^user_id} = lock_info}] ->
         :ets.delete(@table_name, key)
+        broadcast_lock_released(scope, entity_id, lock_info)
         {:reply, :ok, state}
 
       [{^key, _lock_info}] ->
@@ -142,8 +151,9 @@ defmodule Storyarn.Collaboration.Locks do
   def handle_call({:release_all, scope, user_id}, _from, state) do
     :ets.foldl(
       fn
-        {{^scope, _entity_id} = key, %{user_id: ^user_id}}, _acc ->
+        {{^scope, entity_id} = key, %{user_id: ^user_id} = lock_info}, _acc ->
           :ets.delete(@table_name, key)
+          broadcast_lock_released(scope, entity_id, lock_info)
 
         _, acc ->
           acc
@@ -299,6 +309,32 @@ defmodule Storyarn.Collaboration.Locks do
     end
 
     length(expired)
+  end
+
+  defp broadcast_lock_acquired(scope, entity_id, lock_info) do
+    Phoenix.PubSub.broadcast(
+      Storyarn.PubSub,
+      "#{elem(scope, 0)}:#{elem(scope, 1)}:locks",
+      {:lock_change, :lock_acquired,
+       %{
+         entity_id: entity_id,
+         user_id: lock_info.user_id,
+         user_email: lock_info.user_email
+       }}
+    )
+  end
+
+  defp broadcast_lock_released(scope, entity_id, lock_info) do
+    Phoenix.PubSub.broadcast(
+      Storyarn.PubSub,
+      "#{elem(scope, 0)}:#{elem(scope, 1)}:locks",
+      {:lock_change, :lock_released,
+       %{
+         entity_id: entity_id,
+         user_id: lock_info.user_id,
+         user_email: lock_info.user_email
+       }}
+    )
   end
 
   defp schedule_cleanup do
