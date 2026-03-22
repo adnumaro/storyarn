@@ -1,6 +1,8 @@
 import { h } from "vue"
 import { createLiveVue, findComponent } from "live_vue"
 
+let appCounter = 0
+
 export default createLiveVue({
   resolve: (name) => {
     const components = {
@@ -11,6 +13,7 @@ export default createLiveVue({
   },
   setup: ({ createApp, component, props, slots, plugin, el }) => {
     const app = createApp({ render: () => h(component, props, slots) })
+    app.config.idPrefix = `vue-${appCounter++}`
     app.use(plugin)
     app.mount(el)
     return app
