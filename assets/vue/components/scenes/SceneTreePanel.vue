@@ -22,6 +22,8 @@ const props = defineProps({
 	activeLayerId: { type: [Number, String], default: null },
 	editMode: { type: Boolean, default: true },
 	hasScene: { type: Boolean, default: false },
+	// When false, only show SceneTree without tabs (used by index)
+	hasLayers: { type: Boolean, default: true },
 });
 
 const activeTab = ref("layers");
@@ -29,8 +31,8 @@ const activeTab = ref("layers");
 
 <template>
   <div class="flex flex-col h-full">
-    <!-- Tabs -->
-    <Tabs v-model="activeTab" class="flex flex-col h-full">
+    <!-- With layers: tabs Layers/Scenes (show.ex) -->
+    <Tabs v-if="hasLayers" v-model="activeTab" class="flex flex-col h-full">
       <div class="px-2 pt-1 pb-2">
         <TabsList class="w-full">
           <TabsTrigger value="layers" class="flex-1 gap-1 text-xs">
@@ -67,5 +69,16 @@ const activeTab = ref("layers");
         />
       </TabsContent>
     </Tabs>
+
+    <!-- Without layers: SceneTree only (index.ex) -->
+    <div v-else class="flex-1 overflow-y-auto">
+      <SceneTree
+        :scenes-tree="scenesTree"
+        :selected-scene-id="selectedSceneId"
+        :can-edit="canEdit"
+        :workspace-slug="workspaceSlug"
+        :project-slug="projectSlug"
+      />
+    </div>
   </div>
 </template>

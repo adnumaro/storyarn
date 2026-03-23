@@ -34,7 +34,7 @@ function getPinIcon(iconName) {
 </script>
 
 <template>
-  <div v-if="legendData.hasEntries" id="scene-legend" class="relative">
+  <div v-if="legendData.hasEntries" class="relative">
     <!-- Toggle button (always visible) -->
     <button
       type="button"

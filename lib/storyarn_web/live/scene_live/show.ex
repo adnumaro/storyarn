@@ -101,6 +101,15 @@ defmodule StoryarnWeb.SceneLive.Show do
           scene-name={@scene.name}
           scene-shortcut={@scene.shortcut}
         />
+        <.vue
+          :if={@scene}
+          v-component="scenes/SearchPanel"
+          v-socket={@socket}
+          id="scene-search-panel"
+          search-query={@search_query}
+          search-filter={@search_filter}
+          search-results={@search_results}
+        />
       </:top_bar_extra>
       <%= if @scene do %>
         <div class="h-full relative">

@@ -48,7 +48,8 @@ defmodule StoryarnWeb.SceneLive.Index do
           scenesTree: @scenes_tree,
           canEdit: @can_edit,
           workspaceSlug: @workspace.slug,
-          projectSlug: @project.slug
+          projectSlug: @project.slug,
+          hasLayers: false
         }
       }
     >

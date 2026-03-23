@@ -13,6 +13,12 @@ import { getHooks } from "live_vue"
 import liveVueApp from "../vue"
 import topbar from "topbar"
 
+// V1 hooks needed by scene canvas (Leaflet-based, framework-independent)
+import { CanvasDropZone } from "./hooks/canvas_drop_zone"
+import { CanvasToolbar } from "./hooks/canvas_toolbar"
+import { RightSidebar } from "./hooks/right_sidebar"
+import { SceneCanvas } from "./hooks/scene_canvas"
+
 const csrfToken = document
   .querySelector("meta[name='csrf-token']")
   .getAttribute("content")
@@ -22,6 +28,10 @@ const liveSocket = new LiveSocket("/live", Socket, {
   params: { _csrf_token: csrfToken },
   hooks: {
     ...getHooks(liveVueApp),
+    CanvasDropZone,
+    CanvasToolbar,
+    RightSidebar,
+    SceneCanvas,
   },
 })
 
