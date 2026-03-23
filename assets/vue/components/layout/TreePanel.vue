@@ -8,6 +8,9 @@ const treeComponents = {
 	sheets: defineAsyncComponent(
 		() => import("@/vue/components/sheets/SheetTree.vue"),
 	),
+	scenes: defineAsyncComponent(
+		() => import("@/vue/components/scenes/SceneTree.vue"),
+	),
 };
 
 const props = defineProps({
