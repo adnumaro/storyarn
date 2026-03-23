@@ -12,6 +12,7 @@ defmodule StoryarnWeb.SheetLive.Show do
     BlockHandlers,
     GalleryHandlers,
     HeaderHandlers,
+    HistoryHandlers,
     ReferenceHandlers,
     SelectOptionHandlers,
     TableHandlers,
@@ -33,7 +34,6 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Projects
   alias Storyarn.Sheets
-  alias Storyarn.Versioning
 
   @impl true
   def render(assigns) do
@@ -977,239 +977,34 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_event("upload_audio", params, socket),
     do: AudioHandlers.handle_upload(params, socket, content_helpers())
 
-  # ===========================================================================
-  # History Tab Events
-  # ===========================================================================
+  # --- History (versions, restore) ---
 
-  def handle_event("compare_version", %{"version_number" => version_number}, socket) do
-    with {:ok, number} <- parse_version_number(version_number) do
-      %{workspace: workspace, project: project, sheet: sheet} = socket.assigns
+  def handle_event("compare_version", params, socket),
+    do: HistoryHandlers.handle_compare(params, socket, history_helpers())
 
-      compare_url =
-        ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}/compare/#{number}"
+  def handle_event("create_version", params, socket),
+    do: HistoryHandlers.handle_create(params, socket, history_helpers())
 
-      {:noreply, push_navigate(socket, to: compare_url)}
-    else
-      _ -> {:noreply, socket}
-    end
-  end
+  def handle_event("promote_version", params, socket),
+    do: HistoryHandlers.handle_promote(params, socket, history_helpers())
 
-  def handle_event("create_version", %{"title" => title, "description" => description}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      title = if title == "", do: nil, else: title
-      description = if description == "", do: nil, else: description
+  def handle_event("delete_version", params, socket),
+    do: HistoryHandlers.handle_delete(params, socket, history_helpers())
 
-      if title == nil do
-        {:noreply, put_flash(socket, :error, dgettext("versioning", "Title is required."))}
-      else
-        sheet = socket.assigns.sheet
-        user_id = socket.assigns.current_scope.user.id
-        project_id = socket.assigns.project.id
+  def handle_event("load_more_versions", params, socket),
+    do: HistoryHandlers.handle_load_more(params, socket, history_helpers())
 
-        case Versioning.create_version("sheet", sheet, project_id, user_id,
-               title: title,
-               description: description
-             ) do
-          {:ok, _version} ->
-            {:noreply,
-             socket
-             |> load_history_data()
-             |> put_flash(:info, dgettext("versioning", "Version created."))}
+  def handle_event("preview_restore", params, socket),
+    do: HistoryHandlers.handle_preview_restore(params, socket, history_helpers())
 
-          {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
-        end
-      end
-    end)
-  end
+  def handle_event("save_and_restore", params, socket),
+    do: HistoryHandlers.handle_save_and_restore(params, socket, history_helpers())
 
-  def handle_event(
-        "promote_version",
-        %{"version_number" => version_number, "title" => title, "description" => description},
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      title = if title == "", do: nil, else: title
-      description = if description == "", do: nil, else: description
+  def handle_event("discard_and_restore", params, socket),
+    do: HistoryHandlers.handle_discard_and_restore(params, socket, history_helpers())
 
-      with {:ok, number} <- parse_version_number(version_number),
-           version when not is_nil(version) <-
-             Versioning.get_version("sheet", socket.assigns.sheet.id, number) do
-        case Versioning.update_version(version, %{title: title, description: description}) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> load_history_data()
-             |> put_flash(:info, dgettext("versioning", "Version named successfully."))}
-
-          {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("versioning", "Could not name version."))}
-        end
-      else
-        _ ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
-      end
-    end)
-  end
-
-  def handle_event("delete_version", %{"version_number" => version_number}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with {:ok, number} <- parse_version_number(version_number),
-           version when not is_nil(version) <-
-             Versioning.get_version("sheet", socket.assigns.sheet.id, number) do
-        case Versioning.delete_version(version) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> load_history_data()
-             |> put_flash(:info, dgettext("versioning", "Version deleted."))}
-
-          {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("versioning", "Could not delete version."))}
-        end
-      else
-        _ ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
-      end
-    end)
-  end
-
-  def handle_event("load_more_versions", _params, socket) do
-    history = socket.assigns.history_data
-
-    if history && history.has_more do
-      next_page = history.page + 1
-      {:noreply, load_more_history(socket, next_page)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_event("preview_restore", %{"version_number" => version_number}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with {:ok, number} <- parse_version_number(version_number),
-           version when not is_nil(version) <-
-             Versioning.get_version("sheet", socket.assigns.sheet.id, number) do
-        detect_and_show_restore_preview(socket, version)
-      else
-        _ ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
-      end
-    end)
-  end
-
-  def handle_event("save_and_restore", %{"version_number" => version_number}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with {:ok, number} <- parse_version_number(version_number),
-           version when not is_nil(version) <-
-             Versioning.get_version("sheet", socket.assigns.sheet.id, number) do
-        sheet = socket.assigns.sheet
-        user_id = socket.assigns.current_scope.user.id
-        project_id = socket.assigns.project.id
-
-        case Versioning.create_version("sheet", sheet, project_id, user_id,
-               title:
-                 dgettext("versioning", "Before restore to v%{number}",
-                   number: version.version_number
-                 ),
-               skip_diff: true
-             ) do
-          {:ok, _} ->
-            show_conflict_preview(socket, version, true)
-
-          {:error, _} ->
-            {:noreply,
-             put_flash(
-               socket,
-               :error,
-               dgettext("versioning", "Could not save current state.")
-             )}
-        end
-      else
-        _ ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
-      end
-    end)
-  end
-
-  def handle_event("discard_and_restore", %{"version_number" => version_number}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with {:ok, number} <- parse_version_number(version_number),
-           version when not is_nil(version) <-
-             Versioning.get_version("sheet", socket.assigns.sheet.id, number) do
-        show_conflict_preview(socket, version, true)
-      else
-        _ ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
-      end
-    end)
-  end
-
-  def handle_event("confirm_restore", %{"version_number" => version_number} = params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with {:ok, number} <- parse_version_number(version_number),
-           version when not is_nil(version) <-
-             Versioning.get_version("sheet", socket.assigns.sheet.id, number) do
-        skip_pre = params["skip_pre_snapshot"] || false
-        user_id = socket.assigns.current_scope.user.id
-        sheet = socket.assigns.sheet
-
-        case Versioning.restore_version("sheet", sheet, version,
-               user_id: user_id,
-               skip_pre_snapshot: skip_pre
-             ) do
-          {:ok, _updated_entity} ->
-            project_id = socket.assigns.project.id
-            updated_sheet = Sheets.get_sheet_full!(project_id, sheet.id)
-
-            {:noreply,
-             socket
-             |> assign(:sheet, updated_sheet)
-             |> reload_blocks()
-             |> UndoRedoStack.clear()
-             |> load_history_data()
-             |> push_event("version_restored", %{
-               name: updated_sheet.name,
-               shortcut: updated_sheet.shortcut
-             })
-             |> broadcast_sheet_change(:sheet_restored)
-             |> put_flash(
-               :info,
-               dgettext("versioning", "Restored to version %{number}",
-                 number: version.version_number
-               )
-             )}
-
-          {:error, {:pre_restore_snapshot_failed, _}} ->
-            {:noreply,
-             put_flash(
-               socket,
-               :error,
-               dgettext(
-                 "versioning",
-                 "Could not create safety backup before restoring. Restore aborted."
-               )
-             )}
-
-          {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("versioning", "Could not restore version."))}
-        end
-      else
-        _ ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
-      end
-    end)
-  end
+  def handle_event("confirm_restore", params, socket),
+    do: HistoryHandlers.handle_confirm_restore(params, socket, history_helpers())
 
   # ===========================================================================
   # Block Locking
@@ -1444,6 +1239,14 @@ defmodule StoryarnWeb.SheetLive.Show do
   # Private Helpers
   # ===========================================================================
 
+  defp history_helpers do
+    %{
+      reload_blocks: &reload_blocks/1,
+      broadcast: &broadcast_sheet_change/2,
+      clear_undo: &UndoRedoStack.clear/1
+    }
+  end
+
   defp content_helpers do
     %{
       reload_blocks: &reload_blocks/1,
@@ -1560,6 +1363,4 @@ defmodule StoryarnWeb.SheetLive.Show do
     |> reload_sheet()
     |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id)))
   end
-  
-
 end
