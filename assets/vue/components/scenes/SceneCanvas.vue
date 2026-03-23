@@ -1,5 +1,6 @@
 <script setup>
 import { ref, toRef } from "vue";
+import { useConnections } from "./composables/useConnections";
 import { useKonvaStage } from "./composables/useKonvaStage";
 import { usePins } from "./composables/usePins";
 import { useZones } from "./composables/useZones";
@@ -49,6 +50,13 @@ const { zoneConfigs } = useZones({
 	layers: toRef(props, "layers"),
 	entityLocks: toRef(props, "entityLocks"),
 	currentUserId: toRef(props, "currentUserId"),
+	percentToPixel,
+});
+
+const { connectionConfigs } = useConnections({
+	connections: toRef(props, "connections"),
+	pins: toRef(props, "pins"),
+	layers: toRef(props, "layers"),
 	percentToPixel,
 });
 
@@ -123,6 +131,50 @@ const LABEL_COLOR = "#d1d5db";
               listening: false,
             }"
           />
+        </v-group>
+      </v-layer>
+
+      <!-- Connection layer (between zones and pins) -->
+      <v-layer>
+        <v-group v-for="conn in connectionConfigs" :key="'conn-' + conn.id">
+          <!-- Main line -->
+          <v-line
+            :config="{
+              points: conn.points,
+              stroke: conn.stroke,
+              strokeWidth: conn.strokeWidth,
+              dash: conn.dash,
+              opacity: conn.opacity,
+              listening: false,
+            }"
+          />
+
+          <!-- Forward arrowhead -->
+          <v-line
+            v-if="conn.forwardArrow"
+            :config="{
+              points: conn.forwardArrow,
+              fill: conn.arrowFill,
+              closed: true,
+              opacity: conn.opacity,
+              listening: false,
+            }"
+          />
+
+          <!-- Reverse arrowhead (bidirectional) -->
+          <v-line
+            v-if="conn.reverseArrow"
+            :config="{
+              points: conn.reverseArrow,
+              fill: conn.arrowFill,
+              closed: true,
+              opacity: conn.opacity,
+              listening: false,
+            }"
+          />
+
+          <!-- Label -->
+          <v-text v-if="conn.labelConfig" :config="conn.labelConfig" />
         </v-group>
       </v-layer>
 
