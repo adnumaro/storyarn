@@ -6,11 +6,11 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   import StoryarnWeb.Live.Shared.TreePanelHandlers
+
+  # V1 components — kept temporarily until Phase 3B-3D + Phase 4 replace them
   import StoryarnWeb.SceneLive.V1.Components.Dock
   import StoryarnWeb.SceneLive.V1.Components.LayerBar
   import StoryarnWeb.SceneLive.V1.Components.Legend
-  import StoryarnWeb.SceneLive.V1.Components.SceneHeader
-  import StoryarnWeb.SceneLive.V1.Components.SceneSearchPanel
   import StoryarnWeb.Components.CanvasToolbar
   import StoryarnWeb.SceneLive.V1.Components.FloatingToolbar
   import StoryarnWeb.SceneLive.V1.Components.SceneElementPanel
@@ -30,8 +30,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
 
-  alias StoryarnWeb.Components.Sidebar.SceneTree
-
+  import StoryarnWeb.SceneLive.Helpers.PropsSerializer, only: [prepare_scenes_tree: 1]
   import StoryarnWeb.SceneLive.Helpers.SceneHelpers
   import StoryarnWeb.SceneLive.Helpers.SceneSerializer
 
@@ -61,88 +60,43 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <Layouts.focus_v2
       flash={@flash}
+      socket={@socket}
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
       active_tool={:scenes}
       has_tree={true}
+      canvas_mode={true}
       tree_panel_open={@tree_panel_open}
       tree_panel_pinned={@tree_panel_pinned}
       can_edit={@can_edit}
-      canvas_mode={true}
       restoration_banner={@restoration_banner}
       online_users={@online_users}
-      my_drafts={@my_drafts}
-      renaming_draft={@renaming_draft}
+      tree_props={
+        %{
+          scenesTree: @scenes_tree,
+          canEdit: @can_edit,
+          workspaceSlug: @workspace.slug,
+          projectSlug: @project.slug,
+          selectedSceneId: @scene && @scene.id
+        }
+      }
     >
-      <:tree_content>
-        <div role="tablist" class="tabs tabs-border tabs-sm mb-6">
-          <button
-            role="tab"
-            class={["tab", @tree_panel_tab == "scenes" && "tab-active"]}
-            phx-click="switch_tree_tab"
-            phx-value-tab="scenes"
-          >
-            <.icon name="map" class="size-3.5 mr-1" />{dgettext("scenes", "Scenes")}
-          </button>
-          <button
-            role="tab"
-            class={["tab", @tree_panel_tab == "layers" && "tab-active"]}
-            phx-click="switch_tree_tab"
-            phx-value-tab="layers"
-          >
-            <.icon name="layers" class="size-3.5 mr-1" />{dgettext("scenes", "Layers")}
-          </button>
-        </div>
-        <div :if={@tree_panel_tab == "scenes"}>
-          <SceneTree.scenes_section
-            scenes_tree={@scenes_tree}
-            workspace={@workspace}
-            project={@project}
-            selected_scene_id={@scene && to_string(@scene.id)}
-            can_edit={@can_edit}
-          />
-        </div>
-        <div :if={@tree_panel_tab == "layers" && @scene}>
-          <.layer_panel
-            layers={@layers}
-            active_layer_id={@active_layer_id}
-            renaming_layer_id={@renaming_layer_id}
-            can_edit={@can_edit}
-            edit_mode={@edit_mode}
-          />
-        </div>
-      </:tree_content>
       <:top_bar_extra>
-        <DraftComponents.draft_banner is_draft={@is_draft} />
-        <%= if @scene do %>
-          <.map_info_bar
-            scene={@scene}
-            ancestors={@ancestors}
-            workspace={@workspace}
-            project={@project}
-            can_edit={@can_edit}
-            referencing_flows={@referencing_flows}
-          />
-          <.map_search_panel
-            search_query={@search_query}
-            search_filter={@search_filter}
-            search_results={@search_results}
-          />
-        <% end %>
+        <.vue
+          :if={@scene}
+          v-component="scenes/SceneToolbar"
+          v-socket={@socket}
+          id="scene-toolbar"
+          active-tool={to_string(@active_tool)}
+          edit-mode={@edit_mode}
+          can-edit={@can_edit}
+          scene-name={@scene.name}
+          scene-shortcut={@scene.shortcut}
+        />
       </:top_bar_extra>
-      <:top_bar_extra_right>
-        <%= if @scene do %>
-          <.map_actions
-            can_edit={@can_edit}
-            edit_mode={@edit_mode}
-            is_draft={@is_draft}
-          />
-        <% end %>
-      </:top_bar_extra_right>
-      <SceneTree.delete_modal :if={@can_edit} />
       <%= if @scene do %>
         <div class="h-full relative">
           <%!-- Canvas fills the entire area --%>
@@ -246,16 +200,6 @@ defmodule StoryarnWeb.SceneLive.Show do
               </div>
             </div>
           </div>
-
-          <%!-- Bottom dock (edit mode only) --%>
-          <.dock
-            :if={@edit_mode}
-            active_tool={@active_tool}
-            pending_sheet={@pending_sheet_for_pin}
-            workspace={@workspace}
-            project={@project}
-            scene={@scene}
-          />
 
           <%!-- Version History Panel --%>
           <.right_sidebar
@@ -470,7 +414,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         icon="alert-triangle"
         on_confirm={JS.push("confirm_delete_layer")}
       />
-    </Layouts.focus>
+    </Layouts.focus_v2>
     """
   end
 
@@ -627,7 +571,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           # Defaults — scene loaded in handle_params
           |> assign(:scene, nil)
           |> assign(:ancestors, [])
-          |> assign(:scenes_tree, Scenes.list_scenes_tree(project.id))
+          |> assign(:scenes_tree, prepare_scenes_tree(Scenes.list_scenes_tree(project.id)))
           |> assign(:layers, [])
           |> assign(:zones, [])
           |> assign(:pins, [])
@@ -1853,7 +1797,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_async(:load_sidebar_data, {:ok, data}, socket) do
     {:noreply,
      socket
-     |> assign(:scenes_tree, data.scenes_tree)
+     |> assign(:scenes_tree, prepare_scenes_tree(data.scenes_tree))
      |> assign(:project_scenes, data.project_scenes)
      |> assign(:project_sheets, data.project_sheets)
      |> assign(:project_flows, data.project_flows)

@@ -1,22 +1,21 @@
 <script setup>
-import { computed } from "vue";
-import { useLive } from "@/vue/composables/useLive";
 import {
-	FileText,
-	Layers,
-	Variable,
-	Link,
-	TextCursorInput,
-	ArrowUpDown,
-	ArrowUp,
+	AlertTriangle,
 	ArrowDown,
-	MoreHorizontal,
-	Trash2,
+	ArrowUp,
+	ArrowUpDown,
 	ChevronLeft,
 	ChevronRight,
-	AlertTriangle,
+	FileText,
 	Info,
+	Layers,
+	Link,
+	MoreHorizontal,
+	TextCursorInput,
+	Trash2,
+	Variable,
 } from "lucide-vue-next";
+import { computed } from "vue";
 import { Button } from "@/vue/components/ui/button";
 import {
 	DropdownMenu,
@@ -32,6 +31,8 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/vue/components/ui/table";
+import { useLive } from "@/vue/composables/useLive";
+import { formatRelativeTime } from "@/vue/lib/date-utils";
 
 const props = defineProps({
 	stats: { type: Object, default: null },
@@ -69,22 +70,6 @@ function requestDelete(id) {
 function sortIcon(column) {
 	if (props.sortBy !== column) return ArrowUpDown;
 	return props.sortDir === "asc" ? ArrowUp : ArrowDown;
-}
-
-function formatRelativeTime(dateStr) {
-	if (!dateStr) return "—";
-	const date = new Date(dateStr);
-	const now = new Date();
-	const diffMs = now - date;
-	const diffMin = Math.floor(diffMs / 60000);
-	const diffHr = Math.floor(diffMs / 3600000);
-	const diffDay = Math.floor(diffMs / 86400000);
-
-	if (diffMin < 1) return "just now";
-	if (diffMin < 60) return `${diffMin}m ago`;
-	if (diffHr < 24) return `${diffHr}h ago`;
-	if (diffDay < 30) return `${diffDay}d ago`;
-	return date.toLocaleDateString();
 }
 
 const statCards = computed(() => {

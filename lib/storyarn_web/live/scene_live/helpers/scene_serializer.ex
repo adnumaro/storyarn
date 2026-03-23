@@ -9,6 +9,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
 
   alias Storyarn.Scenes
 
+  import StoryarnWeb.SceneLive.Helpers.PropsSerializer, only: [prepare_scenes_tree: 1]
+
   def build_scene_data(map, can_edit) do
     %{
       id: map.id,
@@ -48,7 +50,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
   end
 
   def reload_scenes_tree(socket) do
-    assign(socket, :scenes_tree, Scenes.list_scenes_tree_with_elements(socket.assigns.project.id))
+    tree = Scenes.list_scenes_tree_with_elements(socket.assigns.project.id)
+    assign(socket, :scenes_tree, prepare_scenes_tree(tree))
   end
 
   def serialize_layer(layer) do
