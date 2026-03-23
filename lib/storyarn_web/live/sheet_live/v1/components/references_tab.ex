@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Components.ReferencesTab do
+defmodule StoryarnWeb.SheetLive.V1.Components.ReferencesTab do
   @moduledoc """
   LiveComponent for the References tab in the sheet editor.
   Contains VariableUsageSection and BacklinksSection sub-components.
@@ -6,9 +6,9 @@ defmodule StoryarnWeb.SheetLive.Components.ReferencesTab do
 
   use StoryarnWeb, :live_component
 
-  alias StoryarnWeb.SheetLive.Components.BacklinksSection
-  alias StoryarnWeb.SheetLive.Components.SceneAppearancesSection
-  alias StoryarnWeb.SheetLive.Components.VariableUsageSection
+  alias StoryarnWeb.SheetLive.V1.Components.BacklinksSection
+  alias StoryarnWeb.SheetLive.V1.Components.SceneAppearancesSection
+  alias StoryarnWeb.SheetLive.V1.Components.VariableUsageSection
 
   @impl true
   def render(assigns) do

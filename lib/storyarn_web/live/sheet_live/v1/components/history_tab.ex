@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Components.HistoryTab do
+defmodule StoryarnWeb.SheetLive.V1.Components.HistoryTab do
   @moduledoc """
   LiveComponent for the History tab in the sheet editor.
   Contains VersionsSection (and future Activity/Comments sections).

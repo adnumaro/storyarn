@@ -1,35 +1,37 @@
 defmodule StoryarnWeb.SheetLive.Show do
-  @moduledoc false
+  @moduledoc """
+  V2 Sheet editor — Phase 1: Header only (banner, avatar, title, color).
+  Same backend logic as SheetLive.Show, Vue + shadcn UI.
+  """
 
   use StoryarnWeb, :live_view
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.UndoRedoStack
+  alias StoryarnWeb.SheetLive.Handlers.{
+    AudioHandlers,
+    GalleryHandlers,
+    HeaderHandlers,
+    ReferenceHandlers,
+    SelectOptionHandlers,
+    TableHandlers,
+    UndoRedoHandlers
+  }
+
+  alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
   alias StoryarnWeb.Live.Shared.RestorationHandlers
 
-  import StoryarnWeb.Components.SheetComponents
-  import StoryarnWeb.Helpers.SaveStatusTimer
+  import StoryarnWeb.Live.Shared.RestorationHandlers, only: [check_restoration_lock: 2]
   import StoryarnWeb.Live.Shared.TreePanelHandlers
-
-  alias StoryarnWeb.Components.DraftComponents
-  alias StoryarnWeb.Helpers.DraftTouchTimer
-  alias StoryarnWeb.Live.Shared.DraftHandlers
+  import StoryarnWeb.SheetLive.Helpers.AudioDataHelpers
+  import StoryarnWeb.SheetLive.Helpers.FormulaHelpers
+  import StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers
+  import StoryarnWeb.SheetLive.Helpers.PropsSerializer
+  import StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers
 
   alias Storyarn.Collaboration
-  alias Storyarn.Drafts
   alias Storyarn.Projects
   alias Storyarn.Sheets
-  alias StoryarnWeb.Components.Sidebar.SheetTree
-  alias StoryarnWeb.Helpers.UndoRedoStack
-  alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
-  alias StoryarnWeb.SheetLive.Components.AudioTab
-  alias StoryarnWeb.SheetLive.Components.Banner
-  alias StoryarnWeb.SheetLive.Components.ContentTab
-  alias StoryarnWeb.SheetLive.Components.HistoryTab
-  alias StoryarnWeb.SheetLive.Components.ReferencesTab
-  alias StoryarnWeb.SheetLive.Components.SheetAvatar
-  alias StoryarnWeb.SheetLive.Components.SheetTitle
-  alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
-  alias StoryarnWeb.SheetLive.Helpers.V1.ReferenceHelpers
-  alias StoryarnWeb.SheetLive.Helpers.V1.SheetTreeHelpers
+  alias Storyarn.Versioning
 
   @impl true
   def render(assigns) do
@@ -40,141 +42,11 @@ defmodule StoryarnWeb.SheetLive.Show do
     end
   end
 
-  defp render_compact(assigns) do
-    ~H"""
-    <div class="h-screen overflow-y-auto bg-base-100 p-4">
-      <%= if @sheet do %>
-        <div
-          id="sheet-undo-redo"
-          phx-hook="UndoRedo"
-          class="relative w-full max-w-[950px] mx-auto bg-base-200 dark:bg-base-content/[0.07] rounded-[20px] p-5 min-h-full"
-        >
-          <div
-            id="save-indicator-compact"
-            phx-hook="SaveStatus"
-            data-saved-label={gettext("Saved")}
-            data-saving-label={gettext("Saving...")}
-            class="absolute top-2 right-2 z-10"
-          >
-          </div>
-          <.live_component
-            module={Banner}
-            id="sheet-banner"
-            sheet={@sheet}
-            project={@project}
-            current_user={@current_scope.user}
-            can_edit={@can_edit}
-          />
-
-          <div class="flex items-start gap-4 mb-8">
-            <.live_component
-              module={SheetAvatar}
-              id="sheet-avatar"
-              sheet={@sheet}
-              project={@project}
-              current_user={@current_scope.user}
-              can_edit={@can_edit}
-            />
-            <div class="flex-1">
-              <.live_component
-                module={SheetTitle}
-                id="sheet-title"
-                sheet={@sheet}
-                project={@project}
-                current_user_id={@current_scope.user.id}
-                can_edit={@can_edit}
-                is_draft={@is_draft}
-                source_shortcut={@source_shortcut}
-              />
-            </div>
-          </div>
-
-          <div :if={!@sheet_data_loaded} class="flex justify-center py-12">
-            <span class="loading loading-spinner loading-lg text-base-content/30"></span>
-          </div>
-
-          <div :if={@sheet_data_loaded}>
-            <div role="tablist" class="tabs tabs-border mb-6">
-              <button
-                role="tab"
-                class={["tab", @current_tab == "content" && "tab-active"]}
-                phx-click="switch_tab"
-                phx-value-tab="content"
-              >
-                <.icon name="file-text" class="size-4 mr-2" />
-                {dgettext("sheets", "Content")}
-              </button>
-              <button
-                role="tab"
-                class={["tab", @current_tab == "references" && "tab-active"]}
-                phx-click="switch_tab"
-                phx-value-tab="references"
-              >
-                <.icon name="link" class="size-4 mr-2" />
-                {dgettext("sheets", "References")}
-              </button>
-              <button
-                role="tab"
-                class={["tab", @current_tab == "audio" && "tab-active"]}
-                phx-click="switch_tab"
-                phx-value-tab="audio"
-              >
-                <.icon name="volume-2" class="size-4 mr-2" />
-                {dgettext("sheets", "Audio")}
-              </button>
-            </div>
-
-            <.live_component
-              :if={@current_tab == "content"}
-              module={ContentTab}
-              id="content-tab"
-              workspace={@workspace}
-              project={@project}
-              sheet={@sheet}
-              blocks={@blocks}
-              children={@children}
-              can_edit={@can_edit}
-              current_user_id={@current_scope.user.id}
-              current_scope={@current_scope}
-              project_variables={@project_variables}
-              block_locks={@block_locks}
-            />
-
-            <.live_component
-              :if={@current_tab == "references"}
-              module={ReferencesTab}
-              id="references-tab"
-              project={@project}
-              workspace={@workspace}
-              sheet={@sheet}
-              blocks={@blocks}
-            />
-
-            <.live_component
-              :if={@current_tab == "audio"}
-              module={AudioTab}
-              id="audio-tab"
-              project={@project}
-              workspace={@workspace}
-              sheet={@sheet}
-              can_edit={@can_edit}
-              current_user={@current_scope.user}
-            />
-          </div>
-        </div>
-      <% else %>
-        <div class="flex justify-center py-12">
-          <span class="loading loading-spinner loading-lg text-base-content/30"></span>
-        </div>
-      <% end %>
-    </div>
-    """
-  end
-
   defp render_full(assigns) do
     ~H"""
-    <Layouts.focus
+    <Layouts.focus_v2
       flash={@flash}
+      socket={@socket}
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
@@ -183,203 +55,190 @@ defmodule StoryarnWeb.SheetLive.Show do
       tree_panel_open={@tree_panel_open}
       tree_panel_pinned={@tree_panel_pinned}
       can_edit={@can_edit}
-      online_users={@online_users}
       restoration_banner={@restoration_banner}
-      my_drafts={@my_drafts}
-      renaming_draft={@renaming_draft}
+      online_users={@online_users}
+      tree_props={
+        %{
+          sheetsTree: @sheets_tree,
+          canEdit: @can_edit,
+          workspaceSlug: @workspace.slug,
+          projectSlug: @project.slug,
+          selectedSheetId: @sheet && @sheet.id
+        }
+      }
     >
-      <:top_bar_extra>
-        <DraftComponents.draft_banner is_draft={@is_draft} />
-        <.sheet_breadcrumb
-          :if={@ancestors != []}
-          ancestors={@ancestors}
-          workspace={@workspace}
-          project={@project}
-        />
-      </:top_bar_extra>
-      <:tree_content>
-        <SheetTree.sheets_section
-          sheets_tree={@sheets_tree}
-          workspace={@workspace}
-          project={@project}
-          selected_sheet_id={@sheet && to_string(@sheet.id)}
-          can_edit={@can_edit}
-        />
-      </:tree_content>
-      <SheetTree.delete_modal :if={@can_edit} />
-      <DraftComponents.discard_draft_modal is_draft={@is_draft} />
-      <DraftComponents.merge_review_modal is_draft={@is_draft} merge_summary={@merge_summary} />
-      <%= if @sheet do %>
-        <div
-          id="sheet-undo-redo"
-          phx-hook="UndoRedo"
-          class="w-full max-w-[950px] mx-auto bg-base-200 dark:bg-base-content/[0.07] rounded-[20px] p-5 min-h-full"
-        >
-          <%!-- Banner --%>
-          <.live_component
-            module={Banner}
-            id="sheet-banner"
-            sheet={@sheet}
-            project={@project}
-            current_user={@current_scope.user}
-            can_edit={@can_edit}
-          />
-
-          <%!-- Sheet Header --%>
-          <div class="relative">
-            <div class="flex items-start gap-4 mb-8">
-              <%!-- Avatar with edit options --%>
-              <.live_component
-                module={SheetAvatar}
-                id="sheet-avatar"
-                sheet={@sheet}
-                project={@project}
-                current_user={@current_scope.user}
-                can_edit={@can_edit}
-              />
-              <div class="flex-1">
-                <.live_component
-                  module={SheetTitle}
-                  id="sheet-title"
-                  sheet={@sheet}
-                  project={@project}
-                  current_user_id={@current_scope.user.id}
-                  can_edit={@can_edit}
-                  is_draft={@is_draft}
-                  source_shortcut={@source_shortcut}
-                />
-              </div>
-            </div>
-            <%!-- Save indicator + draft button (positioned at header level) --%>
-            <div class="absolute top-0 right-0 flex items-center gap-2">
-              <button
-                :if={@can_edit && !@is_draft}
-                type="button"
-                phx-click="create_draft"
-                class="btn btn-ghost btn-xs gap-1.5 text-base-content/60"
-                title={dgettext("drafts", "Create a private draft copy")}
-              >
-                <.icon name="git-branch" class="size-3.5" />
-                <span>{dgettext("drafts", "Draft")}</span>
-              </button>
-              <div
-                id="save-indicator"
-                phx-hook="SaveStatus"
-                data-saved-label={gettext("Saved")}
-                data-saving-label={gettext("Saving...")}
-                class="absolute top-2 right-0 z-10"
-              >
-              </div>
-            </div>
-          </div>
-
-          <%!-- Loading state while async data loads --%>
-          <div :if={!@sheet_data_loaded} class="flex justify-center py-12">
-            <span class="loading loading-spinner loading-lg text-base-content/30"></span>
-          </div>
-
-          <div :if={@sheet_data_loaded}>
-            <%!-- Tabs Navigation --%>
-            <div role="tablist" class="tabs tabs-border mb-6">
-              <button
-                role="tab"
-                class={["tab", @current_tab == "content" && "tab-active"]}
-                phx-click="switch_tab"
-                phx-value-tab="content"
-              >
-                <.icon name="file-text" class="size-4 mr-2" />
-                {dgettext("sheets", "Content")}
-              </button>
-              <button
-                role="tab"
-                class={["tab", @current_tab == "references" && "tab-active"]}
-                phx-click="switch_tab"
-                phx-value-tab="references"
-              >
-                <.icon name="link" class="size-4 mr-2" />
-                {dgettext("sheets", "References")}
-              </button>
-              <button
-                role="tab"
-                class={["tab", @current_tab == "audio" && "tab-active"]}
-                phx-click="switch_tab"
-                phx-value-tab="audio"
-              >
-                <.icon name="volume-2" class="size-4 mr-2" />
-                {dgettext("sheets", "Audio")}
-              </button>
-              <button
-                role="tab"
-                class={["tab", @current_tab == "history" && "tab-active"]}
-                phx-click="switch_tab"
-                phx-value-tab="history"
-              >
-                <.icon name="clock" class="size-4 mr-2" />
-                {dgettext("sheets", "History")}
-              </button>
-            </div>
-
-            <%!-- Tab Content: Content (LiveComponent) --%>
-            <.live_component
-              :if={@current_tab == "content"}
-              module={ContentTab}
-              id="content-tab"
-              workspace={@workspace}
-              project={@project}
-              sheet={@sheet}
-              blocks={@blocks}
-              children={@children}
-              can_edit={@can_edit}
-              current_user_id={@current_scope.user.id}
-              current_scope={@current_scope}
-              project_variables={@project_variables}
-              block_locks={@block_locks}
-            />
-
-            <%!-- Tab Content: References (LiveComponent) --%>
-            <.live_component
-              :if={@current_tab == "references"}
-              module={ReferencesTab}
-              id="references-tab"
-              project={@project}
-              workspace={@workspace}
-              sheet={@sheet}
-              blocks={@blocks}
-            />
-
-            <%!-- Tab Content: Audio (LiveComponent) --%>
-            <.live_component
-              :if={@current_tab == "audio"}
-              module={AudioTab}
-              id="audio-tab"
-              project={@project}
-              workspace={@workspace}
-              sheet={@sheet}
-              can_edit={@can_edit}
-              current_user={@current_scope.user}
-            />
-
-            <%!-- Tab Content: History (LiveComponent) --%>
-            <.live_component
-              :if={@current_tab == "history"}
-              module={HistoryTab}
-              id="history-tab"
-              project={@project}
-              sheet={@sheet}
-              can_edit={@can_edit}
-              current_user_id={@current_scope.user.id}
-              workspace_id={@workspace.id}
-            />
-          </div>
-        </div>
-      <% else %>
-        <div class="flex justify-center py-12">
-          <span class="loading loading-spinner loading-lg text-base-content/30"></span>
-        </div>
-      <% end %>
-    </Layouts.focus>
+      <.sheet_content
+        sheet={@sheet}
+        socket={@socket}
+        current_tab={@current_tab}
+        can_edit={@can_edit}
+        is_draft={@is_draft}
+        source_shortcut={@source_shortcut}
+        blocks={@blocks}
+        gallery_data={@gallery_data}
+        table_data={@table_data}
+        inherited_groups={@inherited_groups}
+        project={@project}
+        workspace={@workspace}
+        references_data={@references_data}
+        audio_data={@audio_data}
+        history_data={@history_data}
+        formula_editing={@formula_editing}
+        formula_search_results={@formula_search_results}
+        formula_search_has_more={@formula_search_has_more}
+        block_locks={@block_locks}
+        current_user_id={@current_scope.user.id}
+        compact={false}
+      />
+    </Layouts.focus_v2>
     """
   end
+
+  defp render_compact(assigns) do
+    ~H"""
+    <div class="h-screen overflow-y-auto bg-background p-4">
+      <.sheet_content
+        sheet={@sheet}
+        socket={@socket}
+        current_tab={@current_tab}
+        can_edit={@can_edit}
+        is_draft={@is_draft}
+        source_shortcut={@source_shortcut}
+        blocks={@blocks}
+        gallery_data={@gallery_data}
+        table_data={@table_data}
+        inherited_groups={@inherited_groups}
+        project={@project}
+        workspace={@workspace}
+        references_data={@references_data}
+        audio_data={@audio_data}
+        history_data={@history_data}
+        formula_editing={@formula_editing}
+        formula_search_results={@formula_search_results}
+        formula_search_has_more={@formula_search_has_more}
+        block_locks={@block_locks}
+        current_user_id={@current_scope.user.id}
+        compact={true}
+      />
+    </div>
+    """
+  end
+
+  attr :sheet, :map, default: nil
+  attr :socket, :any, required: true
+  attr :current_tab, :string, required: true
+  attr :can_edit, :boolean, required: true
+  attr :is_draft, :boolean, default: false
+  attr :source_shortcut, :string, default: nil
+  attr :blocks, :list, default: []
+  attr :gallery_data, :map, default: %{}
+  attr :table_data, :map, default: %{}
+  attr :inherited_groups, :list, default: []
+  attr :project, :map, required: true
+  attr :workspace, :map, required: true
+  attr :references_data, :map, default: nil
+  attr :audio_data, :map, default: nil
+  attr :history_data, :map, default: nil
+  attr :formula_editing, :map, default: nil
+  attr :formula_search_results, :list, default: []
+  attr :formula_search_has_more, :boolean, default: false
+  attr :block_locks, :map, default: %{}
+  attr :current_user_id, :integer, default: nil
+  attr :compact, :boolean, default: false
+
+  defp sheet_content(assigns) do
+    ~H"""
+    <div
+      :if={@sheet}
+      class="max-w-4xl mx-auto bg-surface border border-border rounded-2xl p-6 mb-8 shadow-sm"
+    >
+      <.vue
+        v-component="sheets/SheetHeader"
+        v-socket={@socket}
+        id="sheet-header"
+        sheet={prepare_sheet_for_vue(@sheet)}
+        can-edit={@can_edit}
+        is-draft={@is_draft}
+        source-shortcut={@source_shortcut}
+      />
+      <div class="px-4 pb-6">
+        <.vue
+          v-component="sheets/SheetTabs"
+          v-socket={@socket}
+          id="sheet-tabs"
+          current-tab={@current_tab}
+          can-edit={@can_edit}
+          compact={@compact}
+        />
+        <.vue
+          :if={@current_tab == "content"}
+          v-component="sheets/BlockList"
+          v-socket={@socket}
+          id="block-list"
+          blocks={prepare_blocks_for_vue(@blocks, @gallery_data, @table_data, @project.id, @inherited_groups)}
+          inherited-groups={prepare_inherited_groups_for_vue(@inherited_groups, @gallery_data, @table_data, @project.id)}
+          workspace-slug={@workspace.slug}
+          project-slug={@project.slug}
+          can-edit={@can_edit}
+          formula-editing={build_formula_editing_for_vue(@formula_editing, @formula_search_results, @formula_search_has_more)}
+          block-locks={serialize_block_locks(@block_locks)}
+          current-user-id={@current_user_id}
+        />
+        <.vue
+          :if={@current_tab == "references"}
+          v-component="sheets/ReferencesTab"
+          v-socket={@socket}
+          id="references-tab"
+          variable-usage={@references_data[:variable_usage] || []}
+          backlinks={@references_data[:backlinks] || []}
+          scene-appearances={@references_data[:scene_appearances] || []}
+          workspace-slug={@workspace.slug}
+          project-slug={@project.slug}
+          loading={is_nil(@references_data)}
+        />
+        <.vue
+          :if={@current_tab == "audio"}
+          v-component="sheets/AudioTab"
+          v-socket={@socket}
+          id="audio-tab"
+          grouped-lines={@audio_data[:grouped_lines] || []}
+          audio-assets={@audio_data[:audio_assets] || []}
+          workspace-slug={@workspace.slug}
+          project-slug={@project.slug}
+          can-edit={@can_edit}
+          loading={is_nil(@audio_data)}
+        />
+        <.vue
+          v-component="sheets/CollabToast"
+          v-socket={@socket}
+          id="collab-toast"
+        />
+        <.vue
+          :if={@current_tab == "history" && !@compact}
+          v-component="sheets/HistoryTab"
+          v-socket={@socket}
+          id="history-tab"
+          versions={@history_data[:versions] || []}
+          named-versions={@history_data[:named_versions] || []}
+          auto-versions={@history_data[:auto_versions] || []}
+          has-more={@history_data[:has_more] || false}
+          can-name-version={@history_data[:can_name_version] || false}
+          current-version-id={@history_data[:current_version_id]}
+          can-edit={@can_edit}
+          loading={is_nil(@history_data)}
+        />
+      </div>
+    </div>
+
+    <div :if={!@sheet} class="flex justify-center py-20">
+      <div class="size-6 border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin" />
+    </div>
+    """
+  end
+
+  # ===========================================================================
+  # Mount & Lifecycle
+  # ===========================================================================
 
   @impl true
   def mount(
@@ -395,45 +254,45 @@ defmodule StoryarnWeb.SheetLive.Show do
       {:ok, project, membership} ->
         can_edit = Projects.can?(membership.role, :edit_content)
 
-        if connected?(socket), do: Collaboration.subscribe_restoration(project.id)
+        if connected?(socket) do
+          Collaboration.subscribe_restoration(project.id)
+          Collaboration.subscribe_changes({:project, project.id})
+        end
 
         {can_edit, restoration_banner} =
-          RestorationHandlers.check_restoration_lock(project.id, can_edit)
+          check_restoration_lock(project.id, can_edit)
 
         {:ok,
          socket
          |> assign(focus_layout_defaults())
-         |> assign(:compact, false)
          |> assign(:project, project)
          |> assign(:workspace, project.workspace)
          |> assign(:membership, membership)
          |> assign(:can_edit, can_edit)
          |> assign(:restoration_banner, restoration_banner)
-         |> assign(:save_status, :idle)
-         |> push_event("save_status", %{status: "idle"})
+         |> assign(:compact, false)
+         |> assign(:sheet, nil)
+         |> assign(:blocks, [])
+         |> assign(:inherited_groups, [])
+         |> assign(:gallery_data, %{})
+         |> assign(:table_data, %{})
+         |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(project.id)))
+         |> assign(:is_draft, false)
+         |> assign(:source_shortcut, nil)
          |> assign(:current_tab, "content")
-         |> assign(:pending_delete_id, nil)
+         |> assign(:references_data, nil)
+         |> assign(:audio_data, nil)
+         |> assign(:history_data, nil)
          |> assign(:online_users, [])
          |> assign(:collab_scope, nil)
          |> assign(:block_locks, %{})
-         |> assign(:collab_toast, nil)
-         # Defaults — sheet loaded in handle_params
-         |> assign(:sheet, nil)
-         |> assign(:ancestors, [])
-         |> assign(:sheets_tree, Sheets.list_sheets_tree(project.id))
-         |> assign(:children, [])
-         |> assign(:blocks, [])
-         |> assign(:sheet_data_loaded, false)
-         |> assign(:is_draft, false)
-         |> assign(:draft, nil)
-         |> assign(:source_shortcut, nil)
-         |> assign(:merge_summary, nil)
-         |> assign(:renaming_draft, nil)
-         |> assign(:_draft_touch_ref, nil)
-         |> assign(
-           :my_drafts,
-           Drafts.list_my_drafts(project.id, socket.assigns.current_scope.user.id)
-         )}
+         |> assign(:pending_delete_id, nil)
+         |> assign(:formula_editing, nil)
+         |> assign(:formula_search_results, [])
+         |> assign(:formula_search_query, "")
+         |> assign(:formula_search_offset, 0)
+         |> assign(:formula_search_has_more, false)
+         |> UndoRedoStack.init()}
 
       {:error, _reason} ->
         {:ok,
@@ -444,10 +303,6 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   @impl true
-  def handle_params(%{"id" => _sheet_id, "draft_id" => draft_id}, _url, socket) do
-    {:noreply, load_draft_sheet(socket, draft_id)}
-  end
-
   def handle_params(%{"id" => sheet_id} = params, _url, socket) do
     compact = params["layout"] == "compact"
 
@@ -466,324 +321,1223 @@ defmodule StoryarnWeb.SheetLive.Show do
     end
   end
 
-  defp load_draft_sheet(socket, draft_id) do
-    %{project: project, current_scope: scope} = socket.assigns
-
-    with draft when not is_nil(draft) <- Drafts.get_my_draft(draft_id, scope.user.id, project.id),
-         true <- draft.entity_type == "sheet" and draft.status == "active",
-         entity when not is_nil(entity) <- Drafts.get_draft_entity(draft) do
-      # Skip collaboration for drafts
-      has_tree = socket.assigns.sheets_tree != []
-
-      # Load original sheet's shortcut so the draft can display it read-only
-      source_shortcut =
-        case Sheets.get_sheet(project.id, draft.source_entity_id) do
-          nil -> nil
-          source -> source.shortcut
-        end
-
-      socket
-      |> assign(:sheet, entity)
-      |> assign(:ancestors, [])
-      |> assign(:current_tab, "content")
-      |> assign(:save_status, :idle)
-      |> push_event("save_status", %{status: "idle"})
-      |> assign(:children, [])
-      |> assign(:blocks, [])
-      |> assign(:project_variables, [])
-      |> assign(:sheet_data_loaded, false)
-      |> assign(:is_draft, true)
-      |> assign(:draft, draft)
-      |> assign(:source_shortcut, source_shortcut)
-      |> start_async(:load_sheet_data, fn ->
-        load_sheet_async_data(entity, project, has_tree)
-      end)
-    else
-      _ ->
-        socket
-        |> put_flash(:error, dgettext("sheets", "Draft not found."))
-        |> push_navigate(
-          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets"
-        )
-    end
-  end
-
   defp load_sheet(socket, sheet_id) do
-    %{project: project} = socket.assigns
-
-    # Teardown previous sheet collaboration
     socket = teardown_sheet_collab(socket)
+    %{project: project} = socket.assigns
 
     case Sheets.get_sheet_full(project.id, sheet_id) do
       nil ->
         socket
         |> put_flash(:error, dgettext("sheets", "Sheet not found."))
         |> push_navigate(
-          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets"
+          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/v2/sheets"
         )
 
       sheet ->
-        # Load ancestors synchronously so the breadcrumb is present on the first
-        # render and does not flash in after the async bundle completes.
-        ancestors =
-          case Sheets.get_sheet_with_ancestors(project.id, sheet.id) do
-            nil -> []
-            list -> List.delete_at(list, -1)
-          end
-
-        has_tree = socket.assigns.sheets_tree != []
-
-        # Setup collaboration for new sheet
+        # Setup collaboration
         scope = {:sheet, sheet.id}
         user = socket.assigns.current_scope.user
 
-        Collab.setup(socket, scope, user, cursors: false, locks: true, changes: true)
-        {online_users, block_locks} = Collab.get_initial_state(socket, scope)
+        if connected?(socket) do
+          Collab.setup(socket, scope, user, cursors: false, locks: true, changes: true)
+        end
+
+        {online_users, block_locks} =
+          if connected?(socket),
+            do: Collab.get_initial_state(socket, scope),
+            else: {[], %{}}
+
+        {inherited_groups, own_blocks} = Sheets.get_sheet_blocks_grouped(sheet.id)
+        all_blocks = Enum.flat_map(inherited_groups, & &1.blocks) ++ own_blocks
+
+        gallery_block_ids =
+          all_blocks |> Enum.filter(&(&1.type == "gallery")) |> Enum.map(& &1.id)
+
+        gallery_data =
+          if gallery_block_ids != [],
+            do: Sheets.batch_load_gallery_data(gallery_block_ids),
+            else: %{}
+
+        table_block_ids =
+          all_blocks |> Enum.filter(&(&1.type == "table")) |> Enum.map(& &1.id)
+
+        table_data =
+          if table_block_ids != [],
+            do:
+              Sheets.batch_load_table_data(table_block_ids)
+              |> compute_formulas(project.id),
+            else: %{}
 
         socket
         |> assign(:sheet, sheet)
-        |> assign(:ancestors, ancestors)
-        |> assign(:current_tab, "content")
-        |> assign(:save_status, :idle)
-        |> push_event("save_status", %{status: "idle"})
-        |> assign(:children, [])
-        |> assign(:blocks, [])
-        |> assign(:project_variables, [])
-        |> assign(:sheet_data_loaded, false)
         |> assign(:collab_scope, scope)
         |> assign(:online_users, online_users)
         |> assign(:block_locks, block_locks)
-        |> start_async(:load_sheet_data, fn ->
-          load_sheet_async_data(sheet, project, has_tree)
-        end)
+        |> assign(:blocks, own_blocks)
+        |> assign(:inherited_groups, inherited_groups)
+        |> assign(:gallery_data, gallery_data)
+        |> assign(:table_data, table_data)
+        |> assign(:current_tab, "content")
+        |> assign(:references_data, nil)
+        |> assign(:audio_data, nil)
+        |> assign(:history_data, nil)
     end
   end
 
-  defp load_sheet_async_data(sheet, project, has_tree) do
-    data = %{
-      children: Sheets.get_children(sheet.id),
-      blocks: ReferenceHelpers.load_blocks_with_references(sheet.id, project.id),
-      project_variables: Sheets.list_project_variables(project.id)
-    }
-
-    if has_tree, do: data, else: Map.put(data, :sheets_tree, Sheets.list_sheets_tree(project.id))
-  end
-
   # ===========================================================================
-  # Async Loading
+  # Event Handlers: Header
   # ===========================================================================
 
   @impl true
-  def handle_async(:load_sheet_data, {:ok, data}, socket) do
-    socket =
-      socket
-      |> assign(:children, data.children)
-      |> assign(:blocks, data.blocks)
-      |> assign(:project_variables, data.project_variables)
-      |> assign(:sheet_data_loaded, true)
-      |> UndoRedoStack.init()
-
-    # Only update tree if included (first load)
-    socket =
-      if data[:sheets_tree], do: assign(socket, :sheets_tree, data.sheets_tree), else: socket
-
-    {:noreply, socket}
-  end
-
-  def handle_async(:load_sheet_data, {:exit, _reason}, socket) do
-    {:noreply,
-     socket
-     |> put_flash(:error, dgettext("sheets", "Could not load sheet data."))
-     |> assign(:sheet_data_loaded, true)}
-  end
-
-  # ===========================================================================
-  # Event Handlers: Tabs
-  # ===========================================================================
-
-  @impl true
-  # Tree panel events (from FocusLayout)
   def handle_event("tree_panel_" <> _ = event, params, socket),
     do: handle_tree_panel_event(event, params, socket)
 
+  # --- Tabs ---
+
   def handle_event("switch_tab", %{"tab" => tab}, socket)
-      when tab in ["content", "references", "audio", "history"] do
-    # In compact mode, history tab is not available
+      when tab in ~w(content references audio history) do
     if tab == "history" and socket.assigns.compact do
       {:noreply, socket}
     else
-      {:noreply, assign(socket, :current_tab, tab)}
+      socket = assign(socket, :current_tab, tab)
+
+      socket =
+        cond do
+          tab == "references" && is_nil(socket.assigns.references_data) ->
+            load_references_data(socket)
+
+          tab == "audio" && is_nil(socket.assigns.audio_data) ->
+            load_audio_data(socket)
+
+          tab == "history" && is_nil(socket.assigns.history_data) ->
+            load_history_data(socket)
+
+          true ->
+            socket
+        end
+
+      {:noreply, socket}
     end
   end
 
-  # ===========================================================================
-  # Event Handlers: Undo/Redo
-  # ===========================================================================
+  def handle_event("switch_tab", _params, socket), do: {:noreply, socket}
+
+  # --- Header (title, shortcut, color, banner, avatars) ---
+
+  def handle_event("save_name", params, socket),
+    do: HeaderHandlers.handle_save_name(params, socket, header_helpers())
+
+  def handle_event("save_shortcut", params, socket),
+    do: HeaderHandlers.handle_save_shortcut(params, socket, header_helpers())
+
+  def handle_event("set_sheet_color", params, socket),
+    do: HeaderHandlers.handle_set_color(params, socket, header_helpers())
+
+  def handle_event("clear_sheet_color", params, socket),
+    do: HeaderHandlers.handle_clear_color(params, socket, header_helpers())
+
+  def handle_event("remove_banner", params, socket),
+    do: HeaderHandlers.handle_remove_banner(params, socket, header_helpers())
+
+  def handle_event("upload_banner", params, socket),
+    do: HeaderHandlers.handle_upload_banner(params, socket, header_helpers())
+
+  def handle_event("upload_avatar", params, socket),
+    do: HeaderHandlers.handle_upload_avatar(params, socket, header_helpers())
+
+  def handle_event("remove_avatar", params, socket),
+    do: HeaderHandlers.handle_remove_avatar(params, socket, header_helpers())
+
+  def handle_event("set_default_avatar", params, socket),
+    do: HeaderHandlers.handle_set_default_avatar(params, socket, header_helpers())
+
+  def handle_event("gallery_update_name", params, socket),
+    do: HeaderHandlers.handle_gallery_update_name(params, socket, header_helpers())
+
+  def handle_event("gallery_update_notes", params, socket),
+    do: HeaderHandlers.handle_gallery_update_notes(params, socket, header_helpers())
+
+  # --- Blocks ---
+
+  def handle_event("add_block", %{"type" => type} = params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      attrs = %{type: type}
+      attrs = if params["scope"], do: Map.put(attrs, :scope, params["scope"]), else: attrs
+
+      case Sheets.create_block(socket.assigns.sheet, attrs) do
+        {:ok, block} ->
+          snapshot = UndoRedoHandlers.block_to_snapshot(block)
+
+          {:noreply,
+           socket
+           |> UndoRedoStack.push_undo({:create_block, snapshot})
+           |> reload_blocks()
+           |> broadcast_sheet_change(:block_created)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create block."))}
+      end
+    end)
+  end
+
+  def handle_event("update_block_value", %{"id" => id, "value" => value}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        prev = get_in(block.value, ["content"])
+
+        case Sheets.update_block_value(block, %{"content" => value}) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> UndoRedoHandlers.push_block_value_coalesced(block.id, prev, value)
+             |> reload_blocks()
+             |> broadcast_sheet_change(:block_updated)}
+
+          {:error, _} ->
+            {:noreply, socket}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("toggle_multi_select", %{"id" => id, "key" => key}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        current = get_in(block.value, ["content"]) || []
+
+        new_content =
+          if key in current,
+            do: List.delete(current, key),
+            else: current ++ [key]
+
+        case Sheets.update_block_value(block, %{"content" => new_content}) do
+          {:ok, _} -> {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
+          {:error, _} -> {:noreply, socket}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event(
+        "update_block_config",
+        %{"id" => id, "field" => field, "value" => value},
+        socket
+      ) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        new_config = Map.put(block.config || %{}, field, value)
+
+        case Sheets.update_block_config(block, new_config) do
+          {:ok, _} -> {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
+          {:error, _} -> {:noreply, socket}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("delete_block", %{"id" => id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        snapshot = UndoRedoHandlers.block_to_snapshot(block)
+
+        case Sheets.delete_block(block) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> UndoRedoStack.push_undo({:delete_block, snapshot})
+             |> reload_blocks()
+             |> broadcast_sheet_change(:block_deleted, %{block_id: parse_id(id)})}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete block."))}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("duplicate_block", %{"id" => id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        case Sheets.duplicate_block(block) do
+          {:ok, new_block} ->
+            snapshot = UndoRedoHandlers.block_to_snapshot(new_block)
+
+            {:noreply,
+             socket
+             |> UndoRedoStack.push_undo({:create_block, snapshot})
+             |> reload_blocks()
+             |> broadcast_sheet_change(:block_created)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not duplicate block."))}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
 
   def handle_event("undo", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      UndoRedoHandlers.handle_undo(params, socket)
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      case UndoRedoHandlers.handle_undo(params, socket) do
+        {:noreply, socket} ->
+          {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
+      end
     end)
   end
 
   def handle_event("redo", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      UndoRedoHandlers.handle_redo(params, socket)
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      case UndoRedoHandlers.handle_redo(params, socket) do
+        {:noreply, socket} ->
+          {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
+      end
     end)
   end
 
-  # ===========================================================================
-  # Event Handlers: Sheet Tree
-  # ===========================================================================
+  def handle_event("reorder_column_group", %{"group_id" => _group_id, "items" => items}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      Enum.each(items, fn item ->
+        block = Sheets.get_block(parse_id(item["id"]))
 
-  def handle_event("create_draft", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{sheet: sheet} = socket.assigns
+        if block && block.sheet_id == socket.assigns.sheet.id do
+          Sheets.update_block(block, %{column_index: item["column_index"]})
+        end
+      end)
 
-      DraftHandlers.handle_create_draft(socket, "sheet", sheet.id, fn s, draft ->
-        %{project: project} = s.assigns
+      {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_reordered)}
+    end)
+  end
 
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}/drafts/#{draft.id}"
+  def handle_event("reorder_with_columns", %{"items" => items}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      sanitized =
+        items
+        |> Enum.map(fn item ->
+          %{
+            id: parse_id(item["id"]),
+            column_group_id: normalize_column_group_id(item["column_group_id"]),
+            column_index: item["column_index"] || 0
+          }
+        end)
+
+      sheet_id = socket.assigns.sheet.id
+
+      prev_layout =
+        Sheets.list_blocks(sheet_id)
+        |> Enum.sort_by(& &1.position)
+        |> Enum.map(fn b ->
+          %{id: b.id, column_group_id: b.column_group_id, column_index: b.column_index}
+        end)
+
+      case Sheets.reorder_blocks_with_columns(sheet_id, sanitized) do
+        {:ok, _} ->
+          {:noreply,
+           socket
+           |> UndoRedoStack.push_undo({:reorder_blocks_with_columns, prev_layout, sanitized})
+           |> reload_blocks()
+           |> broadcast_sheet_change(:block_reordered)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not reorder blocks."))}
+      end
+    end)
+  end
+
+  # --- Block toolbar ---
+
+  def handle_event("toggle_constant", %{"id" => id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        prev = block.is_constant
+
+        case Sheets.update_block(block, %{is_constant: !prev}) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> UndoRedoStack.push_undo({:toggle_constant, block.id, prev, !prev})
+             |> reload_blocks()
+             |> broadcast_sheet_change(:block_updated)}
+
+          {:error, _} ->
+            {:noreply, socket}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("update_variable_name", %{"id" => id, "variable_name" => name}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        Sheets.update_variable_name(block, name)
+        {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("change_block_scope", %{"id" => id, "scope" => scope}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        Sheets.update_block(block, %{scope: scope})
+        {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("toggle_required", %{"id" => id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        Sheets.update_block(block, %{required: !block.required})
+        {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  # --- Block reorder ---
+
+  def handle_event("reorder_blocks", %{"ids" => ids}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      int_ids = Enum.map(ids, &parse_id/1)
+      prev_ids = Sheets.list_blocks(socket.assigns.sheet.id) |> Enum.map(& &1.id)
+
+      case Sheets.reorder_blocks(socket.assigns.sheet.id, int_ids) do
+        {:ok, _} ->
+          {:noreply,
+           socket
+           |> UndoRedoStack.push_undo({:reorder_blocks, prev_ids, int_ids})
+           |> reload_blocks()
+           |> broadcast_sheet_change(:block_reordered)}
+
+        {:error, _} ->
+          {:noreply, reload_blocks(socket)}
+      end
+    end)
+  end
+
+  # --- Inheritance ---
+
+  def handle_event("detach_block", %{"id" => id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        case Sheets.detach_block(block) do
+          {:ok, _} ->
+            {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not detach block."))}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("reattach_block", %{"id" => id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      block = Sheets.get_block(parse_id(id))
+
+      if block && block.sheet_id == socket.assigns.sheet.id do
+        case Sheets.reattach_block(block) do
+          {:ok, _} ->
+            {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not reattach block."))}
+        end
+      else
+        {:noreply, socket}
+      end
+    end)
+  end
+
+  # --- Gallery blocks ---
+
+  def handle_event("upload_gallery_image", params, socket),
+    do: GalleryHandlers.handle_upload(params, socket, content_helpers())
+
+  def handle_event("update_gallery_image", params, socket),
+    do: GalleryHandlers.handle_update(params, socket, content_helpers())
+
+  def handle_event("remove_gallery_image", params, socket),
+    do: GalleryHandlers.handle_remove(params, socket, content_helpers())
+
+  def handle_event("reorder_gallery_images", params, socket),
+    do: GalleryHandlers.handle_reorder(params, socket, content_helpers())
+
+  # --- Table blocks ---
+
+  def handle_event("add_table_column", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_add_column(params, socket, table_helpers(socket))
       end)
     end)
   end
 
-  def handle_event("discard_draft", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{project: project, draft: draft} = socket.assigns
-
-      DraftHandlers.handle_discard_draft(
-        socket,
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{draft.source_entity_id}"
-      )
-    end)
-  end
-
-  def handle_event("load_merge_summary", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_load_merge_summary(socket)
-    end)
-  end
-
-  def handle_event("merge_draft", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{draft: draft} = socket.assigns
-
-      DraftHandlers.handle_merge_draft(socket, fn s ->
-        %{project: p} = s.assigns
-
-        ~p"/workspaces/#{p.workspace.slug}/projects/#{p.slug}/sheets/#{draft.source_entity_id}"
+  def handle_event("add_table_row", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_add_row(params, socket, table_helpers(socket))
       end)
     end)
   end
 
-  def handle_event("rename_draft_inline", %{"draft-id" => draft_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_rename_draft_inline(socket, draft_id)
+  def handle_event("update_table_cell", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_update_cell(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
-  def handle_event("submit_rename_draft", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_submit_rename_draft(socket, params)
+  def handle_event("toggle_table_cell_boolean", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_toggle_cell_boolean(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
-  def handle_event("cancel_rename_draft", _params, socket) do
-    {:noreply, assign(socket, :renaming_draft, nil)}
-  end
-
-  def handle_event("discard_draft_from_list", %{"draft_id" => draft_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_discard_draft_from_list(socket, draft_id)
+  def handle_event("select_table_cell", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_select_table_cell(params, socket, table_helpers(socket))
+      end)
     end)
   end
 
-  def handle_event("set_pending_delete_sheet", %{"id" => id}, socket) do
-    handle_set_pending_delete(socket, id)
+  def handle_event("toggle_table_collapse", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_toggle_collapse(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("rename_table_column", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_rename_column(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("rename_table_row", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_rename_row(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("delete_table_column", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_delete_column(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("delete_table_row", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_delete_row(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("reorder_table_rows", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_reorder_rows(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("resize_table_column", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      TableHandlers.handle_resize_column(params, socket)
+    end)
+  end
+
+  def handle_event("change_table_column_type", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_change_column_type(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("toggle_table_column_constant", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_toggle_column_constant(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("toggle_table_column_required", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_toggle_column_required(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("toggle_reference_multiple", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_toggle_reference_multiple(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("update_number_constraint", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_update_number_constraint(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("toggle_table_cell_multi_select", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_toggle_table_cell_multi_select(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("add_table_cell_option", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_add_table_cell_option(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("add_table_column_option", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_add_column_option(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("remove_table_column_option", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_remove_column_option(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  def handle_event("update_table_column_option", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with_table_broadcast(socket, fn ->
+        TableHandlers.handle_update_column_option(params, socket, table_helpers(socket))
+      end)
+    end)
+  end
+
+  # --- Select option management ---
+
+  def handle_event("add_select_option", params, socket),
+    do: SelectOptionHandlers.handle_add(params, socket, content_helpers())
+
+  def handle_event("remove_select_option", params, socket),
+    do: SelectOptionHandlers.handle_remove(params, socket, content_helpers())
+
+  def handle_event("update_select_option", params, socket),
+    do: SelectOptionHandlers.handle_update(params, socket, content_helpers())
+
+  # --- Reference blocks ---
+
+  def handle_event("search_references", params, socket),
+    do: ReferenceHandlers.handle_search(params, socket, content_helpers())
+
+  def handle_event("select_reference", params, socket),
+    do: ReferenceHandlers.handle_select(params, socket, content_helpers())
+
+  def handle_event("clear_reference", params, socket),
+    do: ReferenceHandlers.handle_clear(params, socket, content_helpers())
+
+  # --- Formula sidebar ---
+
+  def handle_event("open_formula_sidebar", params, socket) do
+    row_id = parse_id(params["row-id"])
+    block_id = parse_id(params["block-id"])
+    slug = params["column-slug"]
+
+    table_entry = Map.get(socket.assigns.table_data, block_id, %{columns: [], rows: []})
+    enriched_row = Enum.find(table_entry.rows, &(&1.id == row_id))
+    row = enriched_row || Sheets.get_table_row!(row_id)
+
+    all_blocks =
+      socket.assigns.blocks ++
+        Enum.flat_map(socket.assigns.inherited_groups, fn g -> g.blocks end)
+
+    table_name =
+      case Enum.find(all_blocks, &(&1.id == block_id)) do
+        nil -> nil
+        block -> block.config["label"]
+      end
+
+    column_name =
+      case Enum.find(table_entry.columns, &(&1.slug == slug)) do
+        nil -> nil
+        col -> col.name
+      end
+
+    {:noreply,
+     assign(socket, :formula_editing, %{
+       row_id: row_id,
+       column_slug: slug,
+       block_id: block_id,
+       value: row.cells[slug],
+       columns: table_entry.columns,
+       table_name: table_name,
+       row_name: row.name,
+       column_name: column_name
+     })}
+  end
+
+  def handle_event("close_formula_sidebar", _params, socket) do
+    {:noreply, assign(socket, :formula_editing, nil)}
+  end
+
+  def handle_event("save_formula_expression", %{"value" => expression} = params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      current = socket.assigns.formula_editing
+      current_bindings = if is_map(current.value), do: current.value["bindings"] || %{}, else: %{}
+      raw_bindings = encode_bindings(current_bindings)
+
+      {:noreply, updated_socket} =
+        TableHandlers.handle_update_formula_cell(
+          %{
+            "row-id" => params["row-id"],
+            "column-slug" => params["column-slug"],
+            "expression" => expression,
+            "bindings" => raw_bindings
+          },
+          socket,
+          table_helpers(socket)
+        )
+
+      {:noreply,
+       updated_socket
+       |> refresh_formula_editing()
+       |> broadcast_sheet_change(:block_updated)}
+    end)
+  end
+
+  def handle_event(
+        "save_formula_binding",
+        %{"binding_value" => value, "symbol" => symbol} = params,
+        socket
+      ) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      current = socket.assigns.formula_editing
+      current_value = current.value || %{}
+
+      expression = if is_map(current_value), do: current_value["expression"] || "", else: ""
+      current_bindings = if is_map(current_value), do: current_value["bindings"] || %{}, else: %{}
+
+      binding = parse_binding_value(value)
+
+      updated_bindings =
+        if binding,
+          do: Map.put(current_bindings, symbol, binding),
+          else: Map.delete(current_bindings, symbol)
+
+      raw_bindings = encode_bindings(updated_bindings)
+
+      {:noreply, updated_socket} =
+        TableHandlers.handle_update_formula_cell(
+          %{
+            "row-id" => params["row-id"],
+            "column-slug" => params["column-slug"],
+            "expression" => expression,
+            "bindings" => raw_bindings
+          },
+          socket,
+          table_helpers(socket)
+        )
+
+      {:noreply,
+       updated_socket
+       |> refresh_formula_editing()
+       |> broadcast_sheet_change(:block_updated)}
+    end)
+  end
+
+  def handle_event("search_formula_bindings", %{"query" => query}, socket) do
+    {results, has_more} = search_binding_variables(socket.assigns.project.id, query, 0)
+
+    {:noreply,
+     socket
+     |> assign(:formula_search_results, results)
+     |> assign(:formula_search_query, query)
+     |> assign(:formula_search_offset, formula_page_size())
+     |> assign(:formula_search_has_more, has_more)}
+  end
+
+  def handle_event("load_more_formula_bindings", _params, socket) do
+    query = socket.assigns.formula_search_query
+    offset = ensure_integer(socket.assigns.formula_search_offset)
+
+    {new_results, has_more} =
+      search_binding_variables(socket.assigns.project.id, query, offset)
+
+    merged = merge_search_results(socket.assigns.formula_search_results, new_results)
+    next_offset = offset + formula_page_size()
+
+    {:noreply,
+     socket
+     |> assign(:formula_search_results, merged)
+     |> assign(:formula_search_offset, next_offset)
+     |> assign(:formula_search_has_more, has_more)}
+  end
+
+  # Tree events (create, delete, move)
+  def handle_event("create_sheet", _params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      case Sheets.create_sheet(socket.assigns.project, %{name: dgettext("sheets", "Untitled")}) do
+        {:ok, new_sheet} ->
+          broadcast_project_change(socket, :tree_changed)
+
+          {:noreply,
+           push_navigate(socket,
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/sheets/#{new_sheet.id}"
+           )}
+
+        {:error, :limit_reached, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
+      end
+    end)
+  end
+
+  def handle_event("create_child_sheet", %{"parent_id" => parent_id}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      attrs = %{name: dgettext("sheets", "New Sheet"), parent_id: parent_id}
+
+      case Sheets.create_sheet(socket.assigns.project, attrs) do
+        {:ok, new_sheet} ->
+          broadcast_project_change(socket, :tree_changed)
+
+          {:noreply,
+           push_navigate(socket,
+             to:
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/sheets/#{new_sheet.id}"
+           )}
+
+        {:error, :limit_reached, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
+      end
+    end)
+  end
+
+  def handle_event(event, %{"id" => id}, socket)
+      when event in ~w(set_pending_delete_sheet) do
+    {:noreply, assign(socket, :pending_delete_id, id)}
   end
 
   def handle_event("confirm_delete_sheet", _params, socket) do
-    handle_confirm_delete(socket, fn socket, id ->
-      Authorize.with_authorization(socket, :edit_content, &SheetTreeHelpers.delete_sheet(&1, id))
-    end)
-  end
-
-  def handle_event("delete_sheet", %{"id" => sheet_id}, socket) do
-    Authorize.with_authorization(
-      socket,
-      :edit_content,
-      &SheetTreeHelpers.delete_sheet(&1, sheet_id)
-    )
+    if id = socket.assigns[:pending_delete_id] do
+      Authorize.with_authorization(socket, :edit_content, fn socket ->
+        with %{} = sheet <- Sheets.get_sheet(socket.assigns.project.id, id),
+             {:ok, _} <- Sheets.delete_sheet(sheet) do
+          {:noreply,
+           socket
+           |> put_flash(:info, dgettext("sheets", "Sheet moved to trash."))
+           |> assign(
+             :sheets_tree,
+             prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id))
+           )
+           |> broadcast_project_change(:tree_changed)}
+        else
+          _ ->
+            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
+        end
+      end)
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_event(
         "move_to_parent",
-        %{"item_id" => sheet_id, "new_parent_id" => parent_id, "position" => position},
+        %{"item_id" => id, "new_parent_id" => new_parent_id, "position" => position},
         socket
       ) do
-    Authorize.with_authorization(
-      socket,
-      :edit_content,
-      &SheetTreeHelpers.move_sheet(&1, sheet_id, parent_id, position)
-    )
-  end
-
-  def handle_event("create_child_sheet", %{"parent-id" => parent_id}, socket) do
-    Authorize.with_authorization(
-      socket,
-      :edit_content,
-      &SheetTreeHelpers.create_child_sheet(&1, parent_id)
-    )
-  end
-
-  def handle_event("create_sheet", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      handle_create_entity(
-        socket,
-        %{name: dgettext("sheets", "Untitled")},
-        &Sheets.create_sheet/2,
-        &sheet_path/2,
-        dgettext("sheets", "Could not create sheet."),
-        patch: true,
-        reload_tree_fn: &reload_sheets_tree/1
-      )
-    end)
-  end
-
-  # Sheet color (from ColorPicker hook — pushes to parent LV, not LiveComponent)
-  def handle_event("set_sheet_color", %{"color" => color}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      update_sheet_color(socket, color)
+      sheet = Sheets.get_sheet(socket.assigns.project.id, parse_id(id))
+
+      if sheet do
+        parsed_parent = if new_parent_id in [nil, ""], do: nil, else: parse_id(new_parent_id)
+        parsed_pos = parse_id(position) || 0
+
+        case Sheets.move_sheet_to_position(sheet, parsed_parent, parsed_pos) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> reload_blocks()
+             |> assign(:sheets_tree,
+               prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id))
+             )
+             |> broadcast_project_change(:tree_changed)}
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(socket, :error, dgettext("sheets", "Could not move sheet."))}
+        end
+      else
+        {:noreply, socket}
+      end
     end)
   end
 
-  def handle_event("clear_sheet_color", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      update_sheet_color(socket, nil)
-    end)
-  end
+  # --- Audio tab ---
 
-  defp update_sheet_color(socket, color) do
-    sheet = socket.assigns.sheet
-    prev_color = sheet.color
+  def handle_event("select_audio", params, socket),
+    do: AudioHandlers.handle_select(params, socket, content_helpers())
 
-    case Sheets.update_sheet(sheet, %{color: color}) do
-      {:ok, _updated_sheet} ->
-        updated_sheet =
-          Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
+  def handle_event("remove_audio", params, socket),
+    do: AudioHandlers.handle_remove(params, socket, content_helpers())
 
-        broadcast_sheet_change(socket, :sheet_updated)
+  def handle_event("upload_audio", params, socket),
+    do: AudioHandlers.handle_upload(params, socket, content_helpers())
 
-        {:noreply,
-         socket
-         |> assign(:sheet, updated_sheet)
-         |> UndoRedoStack.push_undo({:update_sheet_color, prev_color, color})
-         |> mark_saved()}
+  # ===========================================================================
+  # History Tab Events
+  # ===========================================================================
 
-      {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update color."))}
+  def handle_event("compare_version", %{"version_number" => version_number}, socket) do
+    with {:ok, number} <- parse_version_number(version_number) do
+      %{workspace: workspace, project: project, sheet: sheet} = socket.assigns
+
+      compare_url =
+        ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}/compare/#{number}"
+
+      {:noreply, push_navigate(socket, to: compare_url)}
+    else
+      _ -> {:noreply, socket}
     end
+  end
+
+  def handle_event("create_version", %{"title" => title, "description" => description}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      title = if title == "", do: nil, else: title
+      description = if description == "", do: nil, else: description
+
+      if title == nil do
+        {:noreply, put_flash(socket, :error, dgettext("versioning", "Title is required."))}
+      else
+        sheet = socket.assigns.sheet
+        user_id = socket.assigns.current_scope.user.id
+        project_id = socket.assigns.project.id
+
+        case Versioning.create_version("sheet", sheet, project_id, user_id,
+               title: title,
+               description: description
+             ) do
+          {:ok, _version} ->
+            {:noreply,
+             socket
+             |> load_history_data()
+             |> put_flash(:info, dgettext("versioning", "Version created."))}
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
+        end
+      end
+    end)
+  end
+
+  def handle_event(
+        "promote_version",
+        %{"version_number" => version_number, "title" => title, "description" => description},
+        socket
+      ) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      title = if title == "", do: nil, else: title
+      description = if description == "", do: nil, else: description
+
+      with {:ok, number} <- parse_version_number(version_number),
+           version when not is_nil(version) <-
+             Versioning.get_version("sheet", socket.assigns.sheet.id, number) do
+        case Versioning.update_version(version, %{title: title, description: description}) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> load_history_data()
+             |> put_flash(:info, dgettext("versioning", "Version named successfully."))}
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(socket, :error, dgettext("versioning", "Could not name version."))}
+        end
+      else
+        _ ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+      end
+    end)
+  end
+
+  def handle_event("delete_version", %{"version_number" => version_number}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with {:ok, number} <- parse_version_number(version_number),
+           version when not is_nil(version) <-
+             Versioning.get_version("sheet", socket.assigns.sheet.id, number) do
+        case Versioning.delete_version(version) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> load_history_data()
+             |> put_flash(:info, dgettext("versioning", "Version deleted."))}
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(socket, :error, dgettext("versioning", "Could not delete version."))}
+        end
+      else
+        _ ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+      end
+    end)
+  end
+
+  def handle_event("load_more_versions", _params, socket) do
+    history = socket.assigns.history_data
+
+    if history && history.has_more do
+      next_page = history.page + 1
+      {:noreply, load_more_history(socket, next_page)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("preview_restore", %{"version_number" => version_number}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with {:ok, number} <- parse_version_number(version_number),
+           version when not is_nil(version) <-
+             Versioning.get_version("sheet", socket.assigns.sheet.id, number) do
+        detect_and_show_restore_preview(socket, version)
+      else
+        _ ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+      end
+    end)
+  end
+
+  def handle_event("save_and_restore", %{"version_number" => version_number}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with {:ok, number} <- parse_version_number(version_number),
+           version when not is_nil(version) <-
+             Versioning.get_version("sheet", socket.assigns.sheet.id, number) do
+        sheet = socket.assigns.sheet
+        user_id = socket.assigns.current_scope.user.id
+        project_id = socket.assigns.project.id
+
+        case Versioning.create_version("sheet", sheet, project_id, user_id,
+               title:
+                 dgettext("versioning", "Before restore to v%{number}",
+                   number: version.version_number
+                 ),
+               skip_diff: true
+             ) do
+          {:ok, _} ->
+            show_conflict_preview(socket, version, true)
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               dgettext("versioning", "Could not save current state.")
+             )}
+        end
+      else
+        _ ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+      end
+    end)
+  end
+
+  def handle_event("discard_and_restore", %{"version_number" => version_number}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with {:ok, number} <- parse_version_number(version_number),
+           version when not is_nil(version) <-
+             Versioning.get_version("sheet", socket.assigns.sheet.id, number) do
+        show_conflict_preview(socket, version, true)
+      else
+        _ ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+      end
+    end)
+  end
+
+  def handle_event("confirm_restore", %{"version_number" => version_number} = params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      with {:ok, number} <- parse_version_number(version_number),
+           version when not is_nil(version) <-
+             Versioning.get_version("sheet", socket.assigns.sheet.id, number) do
+        skip_pre = params["skip_pre_snapshot"] || false
+        user_id = socket.assigns.current_scope.user.id
+        sheet = socket.assigns.sheet
+
+        case Versioning.restore_version("sheet", sheet, version,
+               user_id: user_id,
+               skip_pre_snapshot: skip_pre
+             ) do
+          {:ok, _updated_entity} ->
+            project_id = socket.assigns.project.id
+            updated_sheet = Sheets.get_sheet_full!(project_id, sheet.id)
+
+            {:noreply,
+             socket
+             |> assign(:sheet, updated_sheet)
+             |> reload_blocks()
+             |> UndoRedoStack.clear()
+             |> load_history_data()
+             |> push_event("version_restored", %{
+               name: updated_sheet.name,
+               shortcut: updated_sheet.shortcut
+             })
+             |> broadcast_sheet_change(:sheet_restored)
+             |> put_flash(
+               :info,
+               dgettext("versioning", "Restored to version %{number}",
+                 number: version.version_number
+               )
+             )}
+
+          {:error, {:pre_restore_snapshot_failed, _}} ->
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               dgettext(
+                 "versioning",
+                 "Could not create safety backup before restoring. Restore aborted."
+               )
+             )}
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(socket, :error, dgettext("versioning", "Could not restore version."))}
+        end
+      else
+        _ ->
+          {:noreply,
+           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+      end
+    end)
+  end
+
+  # ===========================================================================
+  # Block Locking
+  # ===========================================================================
+
+  def handle_event("acquire_block_lock", %{"block_id" => block_id}, socket) do
+    block_id = parse_id(block_id)
+    scope = socket.assigns[:collab_scope]
+
+    if scope do
+      user = socket.assigns.current_scope.user
+
+      case Collaboration.acquire_lock(scope, block_id, user) do
+        {:ok, _lock_info} ->
+          block_locks = Collaboration.list_locks(scope)
+          {:noreply, assign(socket, :block_locks, block_locks)}
+
+        {:error, :already_locked, lock_info} ->
+          {:noreply,
+           push_event(socket, "block_lock_denied", %{
+             blockId: block_id,
+             lockedBy: lock_info.user_email,
+             userColor: lock_info.user_color
+           })}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("release_block_lock", %{"block_id" => block_id}, socket) do
+    block_id = parse_id(block_id)
+    scope = socket.assigns[:collab_scope]
+
+    if scope do
+      user_id = socket.assigns.current_scope.user.id
+      Collaboration.release_lock(scope, block_id, user_id)
+      block_locks = Collaboration.list_locks(scope)
+      {:noreply, assign(socket, :block_locks, block_locks)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("refresh_block_lock", %{"block_id" => block_id}, socket) do
+    block_id = parse_id(block_id)
+    scope = socket.assigns[:collab_scope]
+
+    if scope do
+      user_id = socket.assigns.current_scope.user.id
+      Collaboration.refresh_lock(scope, block_id, user_id)
+    end
+
+    {:noreply, socket}
   end
 
   # ===========================================================================
@@ -792,13 +1546,8 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   @impl true
   def handle_info({:project_restoration_started, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_started, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_started, payload}, socket)
 
-  @impl true
   def handle_info({:project_restoration_completed, payload}, socket),
     do:
       RestorationHandlers.handle_restoration_event(
@@ -806,150 +1555,12 @@ defmodule StoryarnWeb.SheetLive.Show do
         socket
       )
 
-  @impl true
   def handle_info({:project_restoration_failed, payload}, socket),
     do:
       RestorationHandlers.handle_restoration_event(
         {:project_restoration_failed, payload},
         socket
       )
-
-  @impl true
-  def handle_info(:reset_save_status, socket) do
-    {:noreply,
-     socket
-     |> assign(:save_status, :idle)
-     |> push_event("save_status", %{status: "idle"})
-     |> DraftTouchTimer.schedule_touch()}
-  end
-
-  def handle_info(:touch_draft, socket), do: DraftHandlers.handle_touch_draft(socket)
-
-  # Handle messages from ContentTab LiveComponent
-  def handle_info({:content_tab, :saved}, socket) do
-    # Broadcast generic block change to other users
-    if scope = socket.assigns[:collab_scope] do
-      Collab.broadcast_change(socket, scope, :block_updated, %{})
-    end
-
-    {:noreply, mark_saved(socket)}
-  end
-
-  # Handle messages from VersionsSection LiveComponent
-  def handle_info({:versions_section, :version_created, %{version: _version}}, socket) do
-    {:noreply, mark_saved(socket)}
-  end
-
-  def handle_info({:versions_section, :version_restored, %{entity: sheet, version: _}}, socket) do
-    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
-
-    broadcast_sheet_change(socket, :sheet_restored)
-
-    {:noreply,
-     socket
-     |> reload_sheet_state(sheet)
-     |> UndoRedoStack.clear()
-     |> push_event("restore_sheet_content", %{
-       name: sheet.name,
-       shortcut: sheet.shortcut || ""
-     })
-     |> mark_saved()}
-  end
-
-  def handle_info({:versions_section, :version_deleted, %{version: _}}, socket) do
-    {:noreply, mark_saved(socket)}
-  end
-
-  def handle_info({:versions_section, :compare_version, %{version: version}}, socket) do
-    %{workspace: workspace, project: project, sheet: sheet} = socket.assigns
-
-    compare_url =
-      ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}/compare/#{version.version_number}"
-
-    {:noreply, push_navigate(socket, to: compare_url)}
-  end
-
-  def handle_info({:versions_section, :flash, %{kind: kind, message: message}}, socket) do
-    {:noreply, put_flash(socket, kind, message)}
-  end
-
-  # Handle messages from Banner LiveComponent
-  def handle_info({:banner, :sheet_updated, sheet}, socket) do
-    broadcast_sheet_change(socket, :sheet_updated)
-
-    {:noreply,
-     socket
-     |> assign(:sheet, sheet)
-     |> mark_saved()}
-  end
-
-  def handle_info({:banner, :error, message}, socket) do
-    {:noreply, put_flash(socket, :error, message)}
-  end
-
-  # Handle messages from AudioTab LiveComponent
-  def handle_info({:audio_tab, :error, message}, socket) do
-    {:noreply, put_flash(socket, :error, message)}
-  end
-
-  # Handle messages from SheetAvatar LiveComponent
-  def handle_info({:sheet_avatar, :sheet_updated, sheet, sheets_tree}, socket) do
-    broadcast_sheet_change(socket, :sheet_updated)
-
-    {:noreply,
-     socket
-     |> assign(:sheet, sheet)
-     |> assign(:sheets_tree, sheets_tree)
-     |> mark_saved()}
-  end
-
-  def handle_info({:sheet_avatar, :error, message}, socket) do
-    {:noreply, put_flash(socket, :error, message)}
-  end
-
-  # Handle messages from SheetTitle LiveComponent
-  def handle_info({:sheet_title, :name_saved, sheet, sheets_tree}, socket) do
-    prev_name = socket.assigns.sheet.name
-    broadcast_sheet_change(socket, :sheet_updated)
-
-    ancestors =
-      case Sheets.get_sheet_with_ancestors(socket.assigns.project.id, sheet.id) do
-        nil -> []
-        list -> List.delete_at(list, -1)
-      end
-
-    {:noreply,
-     socket
-     |> assign(:sheet, sheet)
-     |> assign(:sheets_tree, sheets_tree)
-     |> assign(:ancestors, ancestors)
-     |> UndoRedoHandlers.push_name_coalesced(prev_name, sheet.name)
-     |> mark_saved()}
-  end
-
-  def handle_info({:sheet_title, :shortcut_saved, sheet}, socket) do
-    prev_shortcut = socket.assigns.sheet.shortcut
-    broadcast_sheet_change(socket, :sheet_updated)
-
-    {:noreply,
-     socket
-     |> assign(:sheet, sheet)
-     |> UndoRedoHandlers.push_shortcut_coalesced(prev_shortcut, sheet.shortcut)
-     |> mark_saved()}
-  end
-
-  def handle_info({:sheet_title, :error, message}, socket) do
-    {:noreply, put_flash(socket, :error, message)}
-  end
-
-  # Handle undo action push from ContentTab LiveComponent
-  def handle_info({:content_tab, :push_undo, action}, socket) do
-    {:noreply, route_undo_push(socket, action)}
-  end
-
-  # ===========================================================================
-  # Handle Info: Collaboration
-  # ===========================================================================
 
   def handle_info({Storyarn.Collaboration.Presence, {:join, presence}}, socket) do
     Collab.handle_presence_join(socket, presence)
@@ -960,35 +1571,25 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   def handle_info({:lock_change, _action, _payload}, socket) do
-    block_locks = Collaboration.list_locks(socket.assigns.collab_scope)
-    {:noreply, assign(socket, :block_locks, block_locks)}
-  end
-
-  def handle_info({:remote_change, action, payload}, socket) do
-    # Skip echo from own changes (broadcast_from should prevent this but doesn't
-    # reliably in all subscription paths — guard by user_id as safety net)
-    if payload[:user_id] == socket.assigns.current_scope.user.id do
-      {:noreply, socket}
+    if scope = socket.assigns[:collab_scope] do
+      block_locks = Collaboration.list_locks(scope)
+      {:noreply, assign(socket, :block_locks, block_locks)}
     else
-      handle_sheet_remote_change(action, payload, socket)
+      {:noreply, socket}
     end
   end
 
-  def handle_info(:clear_collab_toast, socket) do
-    {:noreply, assign(socket, :collab_toast, nil)}
+  def handle_info({:remote_change, action, payload}, socket) do
+    handle_remote_change(action, payload, socket)
   end
 
-  defp route_undo_push(socket, {:update_block_value, block_id, prev, new}) do
-    UndoRedoHandlers.push_block_value_coalesced(socket, block_id, prev, new)
+  def handle_info({:table_push_undo, action}, socket) do
+    {:noreply, UndoRedoStack.push_undo(socket, action)}
   end
 
-  defp route_undo_push(socket, {:update_table_cell, block_id, row_id, col_slug, prev, new}) do
-    UndoRedoHandlers.push_cell_coalesced(socket, block_id, row_id, col_slug, prev, new)
-  end
-
-  defp route_undo_push(socket, action) do
-    UndoRedoStack.push_undo(socket, action)
-  end
+  # ===========================================================================
+  # Terminate
+  # ===========================================================================
 
   @impl true
   def terminate(_reason, socket) do
@@ -996,7 +1597,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   # ===========================================================================
-  # Private Functions: Collaboration
+  # Collaboration Helpers
   # ===========================================================================
 
   defp teardown_sheet_collab(socket) do
@@ -1006,121 +1607,236 @@ defmodule StoryarnWeb.SheetLive.Show do
     end
 
     socket
+    |> assign(:collab_scope, nil)
+    |> assign(:online_users, [])
+    |> assign(:block_locks, %{})
   end
 
-  defp handle_sheet_remote_change(:block_updated, _payload, socket) do
-    blocks =
-      ReferenceHelpers.load_blocks_with_references(
-        socket.assigns.sheet.id,
-        socket.assigns.project.id
-      )
-
-    {:noreply, assign(socket, :blocks, blocks)}
-  end
-
-  defp handle_sheet_remote_change(:block_created, _payload, socket) do
-    blocks =
-      ReferenceHelpers.load_blocks_with_references(
-        socket.assigns.sheet.id,
-        socket.assigns.project.id
-      )
-
-    {:noreply, assign(socket, :blocks, blocks)}
-  end
-
-  defp handle_sheet_remote_change(:block_deleted, %{block_id: block_id}, socket) do
-    blocks = Enum.reject(socket.assigns.blocks, &(&1.id == block_id))
-    {:noreply, assign(socket, :blocks, blocks)}
-  end
-
-  defp handle_sheet_remote_change(:block_reordered, _payload, socket) do
-    blocks =
-      ReferenceHelpers.load_blocks_with_references(
-        socket.assigns.sheet.id,
-        socket.assigns.project.id
-      )
-
-    {:noreply, assign(socket, :blocks, blocks)}
-  end
-
-  defp handle_sheet_remote_change(:block_type_changed, _payload, socket) do
-    blocks =
-      ReferenceHelpers.load_blocks_with_references(
-        socket.assigns.sheet.id,
-        socket.assigns.project.id
-      )
-
-    {:noreply, assign(socket, :blocks, blocks)}
-  end
-
-  defp handle_sheet_remote_change(:sheet_updated, _payload, socket) do
-    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
-
-    # Push name/shortcut to JS hooks (contenteditable has phx-update="ignore")
-    socket =
-      socket
-      |> assign(:sheet, sheet)
-      |> push_event("restore_page_content", %{
-        name: sheet.name,
-        shortcut: sheet.shortcut
-      })
-
-    {:noreply, socket}
-  end
-
-  defp handle_sheet_remote_change(:sheet_restored, _payload, socket) do
-    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
-
-    {:noreply,
-     socket
-     |> reload_sheet_state(sheet)
-     |> push_event("restore_sheet_content", %{
-       name: sheet.name,
-       shortcut: sheet.shortcut || ""
-     })}
-  end
-
-  defp handle_sheet_remote_change(:entity_merged, _payload, socket) do
-    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
-
-    {:noreply,
-     socket
-     |> reload_sheet_state(sheet)
-     |> push_event("restore_sheet_content", %{
-       name: sheet.name,
-       shortcut: sheet.shortcut || ""
-     })}
-  end
-
-  defp handle_sheet_remote_change(_action, _payload, socket) do
-    {:noreply, socket}
-  end
-
-  # ===========================================================================
-  # Private Functions
-  # ===========================================================================
-
-  defp broadcast_sheet_change(socket, action) do
+  defp broadcast_sheet_change(socket, action, extra_payload \\ %{}) do
     if scope = socket.assigns[:collab_scope] do
-      Collab.broadcast_change(socket, scope, action, %{})
+      Collab.broadcast_change(socket, scope, action, extra_payload)
+    end
+
+    socket
+  end
+
+  defp broadcast_project_change(socket, action, extra_payload \\ %{}) do
+    project_scope = {:project, socket.assigns.project.id}
+    Collab.broadcast_change(socket, project_scope, action, extra_payload)
+    socket
+  end
+
+  defp with_table_broadcast(_socket, fun) do
+    case fun.() do
+      {:noreply, updated_socket} ->
+        {:noreply, broadcast_sheet_change(updated_socket, :block_updated)}
+
+      other ->
+        other
     end
   end
 
-  defp sheet_path(socket, sheet) do
-    ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{sheet.id}"
+  defp show_collab_toast(socket, action, payload) do
+    push_event(socket, "collab_toast", %{
+      action: to_string(action),
+      userEmail: payload[:user_email] || "Unknown",
+      userColor: payload[:user_color] || "#666"
+    })
   end
 
-  defp reload_sheet_state(socket, sheet) do
-    blocks = ReferenceHelpers.load_blocks_with_references(sheet.id, socket.assigns.project.id)
-    sheets_tree = Sheets.list_sheets_tree(socket.assigns.project.id)
+  defp handle_remote_change(:block_updated, payload, socket) do
+    {:noreply,
+     socket
+     |> reload_blocks()
+     |> show_collab_toast(:block_updated, payload)}
+  end
+
+  defp handle_remote_change(:block_created, payload, socket) do
+    {:noreply,
+     socket
+     |> reload_blocks()
+     |> show_collab_toast(:block_created, payload)}
+  end
+
+  defp handle_remote_change(:block_deleted, payload, socket) do
+    {:noreply,
+     socket
+     |> reload_blocks()
+     |> show_collab_toast(:block_deleted, payload)}
+  end
+
+  defp handle_remote_change(:block_reordered, _payload, socket) do
+    {:noreply, reload_blocks(socket)}
+  end
+
+  defp handle_remote_change(:block_type_changed, payload, socket) do
+    {:noreply,
+     socket
+     |> reload_blocks()
+     |> show_collab_toast(:block_type_changed, payload)}
+  end
+
+  defp handle_remote_change(:sheet_updated, payload, socket) do
+    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
+
+    {:noreply,
+     socket
+     |> assign(:sheet, sheet)
+     |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id)))
+     |> push_event("sheet_updated_remote", %{name: sheet.name, shortcut: sheet.shortcut})
+     |> show_collab_toast(:sheet_updated, payload)}
+  end
+
+  defp handle_remote_change(:tree_changed, _payload, socket) do
+    {:noreply,
+     assign(socket, :sheets_tree, prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id)))}
+  end
+
+  defp handle_remote_change(:sheet_restored, payload, socket) do
+    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
+
+    socket =
+      socket
+      |> assign(:sheet, sheet)
+      |> reload_blocks()
+      |> UndoRedoStack.clear()
+      |> assign(:history_data, nil)
+
+    socket =
+      if socket.assigns.current_tab == "history",
+        do: load_history_data(socket),
+        else: socket
+
+    {:noreply, show_collab_toast(socket, :sheet_restored, payload)}
+  end
+
+  defp handle_remote_change(_action, _payload, socket) do
+    {:noreply, socket}
+  end
+
+  # ===========================================================================
+  # Private Helpers
+  # ===========================================================================
+
+  defp content_helpers do
+    %{
+      reload_blocks: &reload_blocks/1,
+      broadcast: &broadcast_sheet_change/2,
+      parse_id: &parse_id/1
+    }
+  end
+
+  defp header_helpers do
+    %{
+      reload_sheet: &reload_sheet/1,
+      reload_sheet_and_tree: &reload_sheet_and_tree/1,
+      broadcast: &broadcast_sheet_change/2,
+      parse_id: &parse_id/1,
+      prepare_tree: fn project_id ->
+        prepare_tree(Sheets.list_sheets_tree(project_id))
+      end
+    }
+  end
+
+  defp table_helpers(_socket) do
+    pid = self()
+
+    %{
+      reload_blocks: &reload_blocks/1,
+      maybe_create_version: fn _socket -> :ok end,
+      notify_parent: fn _socket, _status -> :ok end,
+      push_undo: fn action -> send(pid, {:table_push_undo, action}) end
+    }
+  end
+
+  defp compute_formulas(table_data, project_id) do
+    alias Storyarn.Sheets.FormulaResolver
+
+    Map.new(table_data, fn {block_id, %{columns: cols, rows: rows} = data} ->
+      formula_cols = Enum.filter(cols, &(&1.type == "formula"))
+
+      if formula_cols == [] do
+        {block_id, data}
+      else
+        computed =
+          try do
+            FormulaResolver.compute_all(cols, rows, project_id)
+          rescue
+            _ -> %{}
+          end
+
+        enriched_rows =
+          Enum.map(rows, fn row ->
+            formula_results = Map.get(computed, row.id, %{})
+
+            updated_cells =
+              Enum.reduce(formula_results, row.cells, fn {slug, %{result: result} = computed_entry}, cells ->
+                current = cells[slug]
+                resolved = Map.get(computed_entry, :resolved, %{})
+
+                enriched =
+                  if is_map(current),
+                    do: current |> Map.put("__result", result) |> Map.put("__resolved", resolved),
+                    else: %{"__result" => result, "__resolved" => resolved}
+
+                Map.put(cells, slug, enriched)
+              end)
+
+            %{row | cells: updated_cells}
+          end)
+
+        {block_id, %{data | rows: enriched_rows}}
+      end
+    end)
+  end
+
+  defp reload_sheet(socket) do
+    sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
+    assign(socket, :sheet, sheet)
+  end
+
+  defp reload_blocks(socket) do
+    sheet_id = socket.assigns.sheet.id
+    {inherited_groups, own_blocks} = Sheets.get_sheet_blocks_grouped(sheet_id)
+    all_blocks = Enum.flat_map(inherited_groups, & &1.blocks) ++ own_blocks
+
+    gallery_block_ids = all_blocks |> Enum.filter(&(&1.type == "gallery")) |> Enum.map(& &1.id)
+
+    gallery_data =
+      if gallery_block_ids != [], do: Sheets.batch_load_gallery_data(gallery_block_ids), else: %{}
+
+    table_block_ids = all_blocks |> Enum.filter(&(&1.type == "table")) |> Enum.map(& &1.id)
+
+    project_id = socket.assigns.project.id
+
+    table_data =
+      if table_block_ids != [],
+        do:
+          Sheets.batch_load_table_data(table_block_ids)
+          |> compute_formulas(project_id),
+        else: %{}
 
     socket
-    |> assign(:sheet, sheet)
-    |> assign(:blocks, blocks)
-    |> assign(:sheets_tree, sheets_tree)
+    |> assign(:blocks, own_blocks)
+    |> assign(:inherited_groups, inherited_groups)
+    |> assign(:gallery_data, gallery_data)
+    |> assign(:table_data, table_data)
   end
 
-  defp reload_sheets_tree(socket) do
-    assign(socket, :sheets_tree, Sheets.list_sheets_tree(socket.assigns.project.id))
+  defp reload_sheet_and_tree(socket) do
+    socket
+    |> reload_sheet()
+    |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id)))
   end
+  
+  defp parse_id(id) when is_binary(id), do: String.to_integer(id)
+  defp parse_id(id) when is_integer(id), do: id
+
+  @spec ensure_integer(integer()) :: integer()
+  defp ensure_integer(n) when is_integer(n), do: n
+  defp ensure_integer(_), do: 0
+
+  defp normalize_column_group_id(nil), do: nil
+  defp normalize_column_group_id(""), do: nil
+  defp normalize_column_group_id(id) when is_binary(id), do: id
 end

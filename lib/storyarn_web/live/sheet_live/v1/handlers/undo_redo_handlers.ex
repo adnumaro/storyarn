@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
+defmodule StoryarnWeb.SheetLive.Handlers.V1.UndoRedoHandlers do
   @moduledoc """
   Undo/redo action dispatch for the Sheet editor.
   Uses shared stack management from UndoRedoStack.
@@ -12,6 +12,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
 
   alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.UndoRedoStack
+  alias StoryarnWeb.SheetLive.Helpers.V1.ReferenceHelpers
 
   # ===========================================================================
   # Public dispatch
@@ -800,7 +801,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
     sheet_id = socket.assigns.sheet.id
 
     sheet = Sheets.get_sheet_full!(project_id, sheet_id)
-    blocks = load_blocks_with_references(sheet_id, project_id)
+    blocks = ReferenceHelpers.load_blocks_with_references(sheet_id, project_id)
     sheets_tree = Sheets.list_sheets_tree(project_id)
     ancestors = Sheets.get_sheet_with_ancestors(project_id, sheet_id) || [sheet]
 
@@ -857,19 +858,5 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
       {:ok, _} -> {:cont, :ok}
       {:error, _} -> {:halt, {:error, :restore_failed}}
     end
-  end
-
-  defp load_blocks_with_references(sheet_id, project_id) do
-    Sheets.list_blocks(sheet_id)
-    |> Enum.map(fn block ->
-      if block.type == "reference" do
-        target_type = get_in(block.value, ["target_type"])
-        target_id = get_in(block.value, ["target_id"])
-        reference_target = Sheets.get_reference_target(target_type, target_id, project_id)
-        Map.put(block, :reference_target, reference_target)
-      else
-        Map.put(block, :reference_target, nil)
-      end
-    end)
   end
 end

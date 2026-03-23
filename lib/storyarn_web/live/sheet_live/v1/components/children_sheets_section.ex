@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Components.ChildrenSheetsSection do
+defmodule StoryarnWeb.SheetLive.V1.Components.ChildrenSheetsSection do
   @moduledoc """
   Sub-component for rendering the "Subsheets" section at the bottom of the sheet content tab.
 

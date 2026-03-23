@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Components.AudioTab do
+defmodule StoryarnWeb.SheetLive.V1.Components.AudioTab do
   @moduledoc """
   LiveComponent for the Audio tab in the sheet editor.
   Shows all dialogue nodes where this sheet is the speaker, with audio status.

@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
+defmodule StoryarnWeb.SheetLive.V1.Components.OwnBlocksComponents do
   @moduledoc """
   Sub-components for rendering the "own properties" section of the sheet content tab.
 

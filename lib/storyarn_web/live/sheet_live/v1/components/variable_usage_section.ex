@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Components.VariableUsageSection do
+defmodule StoryarnWeb.SheetLive.V1.Components.VariableUsageSection do
   @moduledoc """
   LiveComponent that shows which flow nodes read/write each variable on a sheet.
   Lazy-loads usage data on first render.

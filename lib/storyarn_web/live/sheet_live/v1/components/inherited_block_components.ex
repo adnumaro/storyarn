@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Components.InheritedBlockComponents do
+defmodule StoryarnWeb.SheetLive.V1.Components.InheritedBlockComponents do
   @moduledoc """
   Sub-components for rendering inherited (parent-sourced) blocks in the sheet content tab.
 

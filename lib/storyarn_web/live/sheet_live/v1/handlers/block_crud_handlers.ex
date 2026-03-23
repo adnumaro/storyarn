@@ -17,7 +17,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.V1.BlockCrudHandlers do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Sheets
-  alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
+  alias StoryarnWeb.SheetLive.Handlers.V1.UndoRedoHandlers
   alias StoryarnWeb.SheetLive.Helpers.V1.ContentTabHelpers
 
   # ---------------------------------------------------------------------------

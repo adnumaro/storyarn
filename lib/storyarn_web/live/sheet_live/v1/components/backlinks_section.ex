@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Components.BacklinksSection do
+defmodule StoryarnWeb.SheetLive.V1.Components.BacklinksSection do
   @moduledoc """
   LiveComponent for displaying backlinks to a sheet.
   Shows sheets and flows that reference the current sheet.

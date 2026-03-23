@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Components.ContentTab do
+defmodule StoryarnWeb.SheetLive.V1.Components.ContentTab do
   @moduledoc """
   LiveComponent for the Content tab in the sheet editor.
   Handles all block-related events: add, update, delete, reorder, configure.
@@ -7,17 +7,17 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   use StoryarnWeb, :live_component
   alias StoryarnWeb.Helpers.Authorize
 
-  import StoryarnWeb.SheetLive.Components.InheritedBlockComponents
-  import StoryarnWeb.SheetLive.Components.ChildrenSheetsSection
-  import StoryarnWeb.SheetLive.Components.OwnBlocksComponents
-  import StoryarnWeb.SheetLive.Helpers.FormulaHelpers
+  import StoryarnWeb.SheetLive.V1.Components.InheritedBlockComponents
+  import StoryarnWeb.SheetLive.V1.Components.ChildrenSheetsSection
+  import StoryarnWeb.SheetLive.V1.Components.OwnBlocksComponents
+  import StoryarnWeb.SheetLive.Helpers.V1.FormulaHelpers
 
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Handlers.V1.BlockCrudHandlers
   alias StoryarnWeb.SheetLive.Handlers.V1.BlockToolbarHandlers
   alias StoryarnWeb.SheetLive.Handlers.V1.GalleryHandlers
   alias StoryarnWeb.SheetLive.Handlers.V1.InheritanceHandlers
-  alias StoryarnWeb.SheetLive.Handlers.TableHandlers
+  alias StoryarnWeb.SheetLive.Handlers.V1.TableHandlers
   alias StoryarnWeb.SheetLive.Helpers.V1.BlockHelpers
   alias StoryarnWeb.SheetLive.Helpers.V1.ContentTabHelpers
   alias StoryarnWeb.SheetLive.Helpers.V1.ReferenceHelpers
@@ -99,7 +99,7 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
       <%!-- Propagation Modal --%>
       <.live_component
         :if={@propagation_block}
-        module={StoryarnWeb.SheetLive.Components.PropagationModal}
+        module={StoryarnWeb.SheetLive.V1.Components.PropagationModal}
         id="propagation-modal"
         block={@propagation_block}
         sheet={@sheet}

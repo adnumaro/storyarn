@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Components.SceneAppearancesSection do
+defmodule StoryarnWeb.SheetLive.V1.Components.SceneAppearancesSection do
   @moduledoc """
   LiveComponent for displaying map appearances of a sheet.
   Shows maps where the current sheet is referenced via pins or zones.

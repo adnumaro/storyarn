@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Components.PropagationModal do
+defmodule StoryarnWeb.SheetLive.V1.Components.PropagationModal do
   @moduledoc """
   LiveComponent for the property propagation modal.
 

@@ -1,12 +1,21 @@
 defmodule StoryarnWeb.SheetLive.Index do
-  @moduledoc false
+  @moduledoc """
+  V2 Sheets dashboard — same logic as SheetLive.Index, Vue + shadcn UI.
+  """
 
   use StoryarnWeb, :live_view
   alias StoryarnWeb.Helpers.Authorize
 
-  import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
   import StoryarnWeb.Live.Shared.TreePanelHandlers
-  import StoryarnWeb.Components.DashboardComponents
+
+  import StoryarnWeb.Components.DashboardComponents,
+    only: [
+      sort_table: 4,
+      paginate: 2,
+      handle_sort: 5,
+      handle_page: 4,
+      reload_dashboard: 6
+    ]
 
   use StoryarnWeb.Live.Shared.DashboardHandlers
 
@@ -15,13 +24,13 @@ defmodule StoryarnWeb.SheetLive.Index do
   alias Storyarn.Projects
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
-  alias StoryarnWeb.Components.Sidebar.SheetTree
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <Layouts.focus_v2
       flash={@flash}
+      socket={@socket}
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
@@ -32,225 +41,32 @@ defmodule StoryarnWeb.SheetLive.Index do
       tree_panel_pinned={@tree_panel_pinned}
       show_pin={false}
       can_edit={@can_edit}
+      tree_props={
+        %{
+          sheetsTree: @sheets_tree,
+          canEdit: @can_edit,
+          workspaceSlug: @workspace.slug,
+          projectSlug: @project.slug
+        }
+      }
     >
-      <:tree_content>
-        <SheetTree.sheets_section
-          sheets_tree={@sheets_tree}
-          workspace={@workspace}
-          project={@project}
-          can_edit={@can_edit}
-        />
-      </:tree_content>
-      <SheetTree.delete_modal :if={@can_edit} />
-      <div class="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        <.header>
-          {dgettext("sheets", "Sheets")}
-          <:subtitle>
-            {dgettext("sheets", "Create and organize your project's content")}
-          </:subtitle>
-        </.header>
-
-        <.empty_state :if={@sheets == []} icon="file-text">
-          {dgettext("sheets", "No sheets yet. Create your first sheet to get started.")}
-        </.empty_state>
-
-        <div :if={@sheets != [] and is_nil(@dashboard_stats)} class="flex justify-center py-12">
-          <span class="loading loading-spinner loading-md text-base-content/40"></span>
-        </div>
-
-        <div :if={@dashboard_stats} class="space-y-6">
-          <%!-- Stats row --%>
-          <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
-            <.stat_card
-              icon="file-text"
-              label={dgettext("sheets", "Sheets")}
-              value={@dashboard_stats.sheet_count}
-            />
-            <.stat_card
-              icon="layers"
-              label={dgettext("sheets", "Blocks")}
-              value={@dashboard_stats.block_count}
-            />
-            <.stat_card
-              icon="variable"
-              label={dgettext("sheets", "Variables")}
-              value={@dashboard_stats.variable_count}
-            />
-            <.stat_card
-              icon="link"
-              label={dgettext("sheets", "Vars in use")}
-              value={@dashboard_stats.variables_in_use}
-            />
-            <.stat_card
-              icon="text-cursor-input"
-              label={dgettext("sheets", "Words")}
-              value={@dashboard_stats.word_count}
-              tooltip={
-                dgettext(
-                  "sheets",
-                  "Counts sheet names, text block content, and table row names (excluding inherited)"
-                )
-              }
-            />
-          </div>
-
-          <%!-- Sheet table --%>
-          <.dashboard_section title={dgettext("sheets", "All Sheets")}>
-            <.dashboard_table_wrapper>
-              <.sheet_table
-                rows={@sheet_table_data}
-                sort_by={@sort_by}
-                sort_dir={@sort_dir}
-                workspace={@workspace}
-                project={@project}
-                can_edit={@can_edit}
-              />
-            </.dashboard_table_wrapper>
-            <.pagination
-              page={@page}
-              total_pages={@total_pages}
-              total={length(@all_sheet_table_data)}
-              event="page_sheets"
-            />
-          </.dashboard_section>
-
-          <%!-- Issues --%>
-          <.dashboard_section :if={@sheet_issues != []} title={dgettext("sheets", "Issues")}>
-            <.issue_list issues={@sheet_issues} />
-          </.dashboard_section>
-        </div>
-
-        <.confirm_modal
-          :if={@can_edit}
-          id="delete-sheet-confirm"
-          title={dgettext("sheets", "Delete sheet?")}
-          message={dgettext("sheets", "Are you sure you want to delete this sheet?")}
-          confirm_text={dgettext("sheets", "Delete")}
-          confirm_variant="error"
-          icon="alert-triangle"
-          on_confirm={JS.push("confirm_delete")}
-        />
-      </div>
-    </Layouts.focus>
-    """
-  end
-
-  # ===========================================================================
-  # Sheet Table
-  # ===========================================================================
-
-  attr :rows, :list, required: true
-  attr :sort_by, :string, required: true
-  attr :sort_dir, :atom, required: true
-  attr :workspace, :map, required: true
-  attr :project, :map, required: true
-  attr :can_edit, :boolean, default: false
-
-  defp sheet_table(assigns) do
-    ~H"""
-    <table class="table table-sm w-full">
-      <thead class="dashboard-table-head sticky top-0 z-10">
-        <tr class="text-xs text-base-content/50 uppercase">
-          <th class="font-medium">
-            <button
-              type="button"
-              phx-click="sort_sheets"
-              phx-value-column="name"
-              class="flex items-center gap-1 hover:text-base-content"
-            >
-              {dgettext("sheets", "Name")}
-              <.sort_indicator column="name" sort_by={@sort_by} sort_dir={@sort_dir} />
-            </button>
-          </th>
-          <th class="font-medium text-right">
-            <button
-              type="button"
-              phx-click="sort_sheets"
-              phx-value-column="block_count"
-              class="flex items-center gap-1 ml-auto hover:text-base-content"
-            >
-              {dgettext("sheets", "Blocks")}
-              <.sort_indicator column="block_count" sort_by={@sort_by} sort_dir={@sort_dir} />
-            </button>
-          </th>
-          <th class="font-medium text-right hidden sm:table-cell">
-            <button
-              type="button"
-              phx-click="sort_sheets"
-              phx-value-column="variable_count"
-              class="flex items-center gap-1 ml-auto hover:text-base-content"
-            >
-              {dgettext("sheets", "Variables")}
-              <.sort_indicator column="variable_count" sort_by={@sort_by} sort_dir={@sort_dir} />
-            </button>
-          </th>
-          <th class="font-medium text-right hidden md:table-cell">
-            <button
-              type="button"
-              phx-click="sort_sheets"
-              phx-value-column="word_count"
-              class="flex items-center gap-1 ml-auto hover:text-base-content"
-            >
-              {dgettext("sheets", "Words")}
-              <.sort_indicator column="word_count" sort_by={@sort_by} sort_dir={@sort_dir} />
-            </button>
-          </th>
-          <th class="font-medium text-right hidden md:table-cell">
-            <button
-              type="button"
-              phx-click="sort_sheets"
-              phx-value-column="updated_at"
-              class="flex items-center gap-1 ml-auto hover:text-base-content"
-            >
-              {dgettext("sheets", "Modified")}
-              <.sort_indicator column="updated_at" sort_by={@sort_by} sort_dir={@sort_dir} />
-            </button>
-          </th>
-          <th :if={@can_edit} class="w-10"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr :for={row <- @rows} class="hover:bg-base-200/50">
-          <td>
-            <.link
-              navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{row.id}"}
-              class="font-medium hover:underline"
-            >
-              {row.name}
-            </.link>
-          </td>
-          <td class="text-right tabular-nums">{row.block_count}</td>
-          <td class="text-right tabular-nums hidden sm:table-cell">{row.variable_count}</td>
-          <td class="text-right tabular-nums hidden md:table-cell">{row.word_count}</td>
-          <td class="text-right text-base-content/50 text-xs hidden md:table-cell">
-            {format_relative_time(row.updated_at)}
-          </td>
-          <td :if={@can_edit} class="text-right">
-            <div phx-hook="TableRowMenu" id={"sheet-menu-#{row.id}"}>
-              <button type="button" data-role="trigger" class="btn btn-ghost btn-xs btn-square">
-                <.icon name="more-horizontal" class="size-4" />
-              </button>
-              <template data-role="popover-template">
-                <ul class="menu menu-sm">
-                  <li>
-                    <button
-                      type="button"
-                      class="text-error"
-                      data-event="set_pending_delete"
-                      data-params={Jason.encode!(%{id: row.id})}
-                      data-modal-id="delete-sheet-confirm"
-                    >
-                      <.icon name="trash-2" class="size-4" />
-                      {dgettext("sheets", "Delete")}
-                    </button>
-                  </li>
-                </ul>
-              </template>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+      <.vue
+        v-component="sheets/SheetDashboard"
+        v-socket={@socket}
+        id="sheet-dashboard"
+        stats={@dashboard_stats}
+        table-data={@sheet_table_data}
+        sort-by={@sort_by}
+        sort-dir={to_string(@sort_dir)}
+        page={@page}
+        total-pages={@total_pages}
+        total={length(@all_sheet_table_data)}
+        issues={@sheet_issues}
+        can-edit={@can_edit}
+        workspace-slug={@workspace.slug}
+        project-slug={@project.slug}
+      />
+    </Layouts.focus_v2>
     """
   end
 
@@ -282,7 +98,7 @@ defmodule StoryarnWeb.SheetLive.Index do
           |> assign(:workspace, project.workspace)
           |> assign(:membership, membership)
           |> assign(:can_edit, can_edit)
-          |> assign(:sheets_tree, sheets_tree)
+          |> assign(:sheets_tree, prepare_tree(sheets_tree))
           |> assign(:sheets, sheets)
           |> assign(:dashboard_stats, nil)
           |> assign(:all_sheet_table_data, [])
@@ -308,12 +124,10 @@ defmodule StoryarnWeb.SheetLive.Index do
   end
 
   @impl true
-  def handle_params(_params, _url, socket) do
-    {:noreply, socket}
-  end
+  def handle_params(_params, _url, socket), do: {:noreply, socket}
 
   # ===========================================================================
-  # Dashboard loading
+  # Dashboard loading (async)
   # ===========================================================================
 
   def handle_info(:load_dashboard_data, socket) do
@@ -338,9 +152,7 @@ defmodule StoryarnWeb.SheetLive.Index do
      |> assign(:sheet_issues, data.formatted_issues)}
   end
 
-  def handle_async(:load_dashboard_data, {:exit, _reason}, socket) do
-    {:noreply, socket}
-  end
+  def handle_async(:load_dashboard_data, {:exit, _reason}, socket), do: {:noreply, socket}
 
   defp load_dashboard_data_async(project_id, workspace, project, sort_by, sort_dir) do
     sheets = Sheets.list_all_sheets(project_id)
@@ -407,7 +219,6 @@ defmodule StoryarnWeb.SheetLive.Index do
   # ===========================================================================
 
   @impl true
-  # Tree panel events (from FocusLayout)
   def handle_event("tree_panel_" <> _ = event, params, socket),
     do: handle_tree_panel_event(event, params, socket)
 
@@ -474,7 +285,7 @@ defmodule StoryarnWeb.SheetLive.Index do
     end)
   end
 
-  def handle_event("create_child_sheet", %{"parent-id" => parent_id}, socket) do
+  def handle_event("create_child_sheet", %{"parent_id" => parent_id}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       attrs = %{name: dgettext("sheets", "New Sheet"), parent_id: parent_id}
 
@@ -539,11 +350,32 @@ defmodule StoryarnWeb.SheetLive.Index do
       :sheet_issues,
       fn s ->
         s
-        |> assign(:sheets_tree, Sheets.list_sheets_tree(project_id))
+        |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(project_id)))
         |> assign(:sheets, Sheets.list_all_sheets(project_id))
       end
     )
   end
+
+  # Transforms the Ecto tree into plain maps with avatar_url for Vue serialization
+  defp prepare_tree(nodes) do
+    Enum.map(nodes, fn node ->
+      %{
+        id: node.id,
+        name: node.name,
+        avatar_url: extract_avatar_url(node),
+        children: prepare_tree(Map.get(node, :children, []))
+      }
+    end)
+  end
+
+  defp extract_avatar_url(%{avatars: avatars}) when is_list(avatars) do
+    case Enum.find(avatars, & &1.is_default) || List.first(avatars) do
+      %{asset: %{url: url}} when is_binary(url) -> url
+      _ -> nil
+    end
+  end
+
+  defp extract_avatar_url(_), do: nil
 
   defp sheet_sort_columns do
     %{
@@ -578,7 +410,7 @@ defmodule StoryarnWeb.SheetLive.Index do
         end
 
       %{
-        severity: severity,
+        severity: to_string(severity),
         message: message,
         href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{issue.sheet_id}"
       }

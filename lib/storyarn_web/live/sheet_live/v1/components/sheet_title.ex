@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Components.SheetTitle do
+defmodule StoryarnWeb.SheetLive.V1.Components.SheetTitle do
   @moduledoc """
   LiveComponent for the sheet title and shortcut editing.
   Handles inline editing with auto-save.

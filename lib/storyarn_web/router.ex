@@ -91,11 +91,11 @@ defmodule StoryarnWeb.Router do
       live_session :v2_authenticated,
         on_mount: [{StoryarnWeb.UserAuth, :require_authenticated}] do
         live "/workspaces/:workspace_slug/projects/:project_slug/v2/sheets",
-             StoryarnWeb.SheetLive.IndexV2,
+             StoryarnWeb.SheetLive.Index,
              :index
 
         live "/workspaces/:workspace_slug/projects/:project_slug/v2/sheets/:id",
-             StoryarnWeb.SheetLive.ShowV2,
+             StoryarnWeb.SheetLive.Show,
              :show
       end
     end
@@ -217,16 +217,16 @@ defmodule StoryarnWeb.Router do
            ExportImportLive.Index,
            :index
 
-      # Sheets (character sheets, location sheets, etc.)
-      live "/workspaces/:workspace_slug/projects/:project_slug/sheets", SheetLive.Index, :index
-      live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id", SheetLive.Show, :show
+      # Sheets (character sheets, location sheets, etc.) — V1
+      live "/workspaces/:workspace_slug/projects/:project_slug/sheets", SheetLive.V1.Index, :index
+      live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id", SheetLive.V1.Show, :show
 
       live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/drafts/:draft_id",
-           SheetLive.Show,
+           SheetLive.V1.Show,
            :draft
 
       live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/edit",
-           SheetLive.Show,
+           SheetLive.V1.Show,
            :edit
 
       live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/compare/:version_number",

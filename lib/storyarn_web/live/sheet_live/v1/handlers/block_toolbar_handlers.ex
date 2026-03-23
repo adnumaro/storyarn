@@ -19,7 +19,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.V1.BlockToolbarHandlers do
 
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Handlers.V1.InheritanceHandlers
-  alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
+  alias StoryarnWeb.SheetLive.Handlers.V1.UndoRedoHandlers
   alias StoryarnWeb.SheetLive.Helpers.V1.ContentTabHelpers
 
   # ---------------------------------------------------------------------------

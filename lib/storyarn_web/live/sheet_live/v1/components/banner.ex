@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Components.Banner do
+defmodule StoryarnWeb.SheetLive.V1.Components.Banner do
   @moduledoc """
   LiveComponent for the sheet banner.
   Handles banner display, upload, and removal.

@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Components.SheetAvatar do
+defmodule StoryarnWeb.SheetLive.V1.Components.SheetAvatar do
   @moduledoc """
   LiveComponent for sheet avatar management.
   Film strip popover + JS ImageGallery hook overlay for detailed editing.
