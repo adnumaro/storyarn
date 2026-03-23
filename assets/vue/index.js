@@ -1,5 +1,6 @@
-import { h } from "vue";
 import { createLiveVue, findComponent } from "live_vue";
+import { h } from "vue";
+import VueKonva from "vue-konva";
 
 let appCounter = 0;
 
@@ -15,6 +16,7 @@ export default createLiveVue({
 		const app = createApp({ render: () => h(component, props, slots) });
 		app.config.idPrefix = `vue-${appCounter++}`;
 		app.use(plugin);
+		app.use(VueKonva);
 		app.mount(el);
 		return app;
 	},

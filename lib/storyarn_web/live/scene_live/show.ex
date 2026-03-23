@@ -36,6 +36,11 @@ defmodule StoryarnWeb.SceneLive.Show do
       prepare_layers_for_vue: 1,
       prepare_legend_groups: 3,
       prepare_scene_for_vue: 1,
+      prepare_pins_for_vue: 1,
+      prepare_zones_for_vue: 1,
+      prepare_connections_for_vue: 1,
+      prepare_annotations_for_vue: 1,
+      serialize_entity_locks: 1,
       prepare_ambient_flows_for_vue: 1,
       prepare_project_flows_for_vue: 1
     ]
@@ -128,18 +133,23 @@ defmodule StoryarnWeb.SceneLive.Show do
             }
             phx-hook="CanvasDropZone"
           >
-            <div
+            <.vue
+              v-component="scenes/SceneCanvas"
+              v-socket={@socket}
               id={"scene-canvas-#{@scene.id}"}
-              phx-hook="SceneCanvas"
-              phx-update="ignore"
-              data-scene={Jason.encode!(@scene_data)}
-              data-i18n={Jason.encode!(@canvas_i18n)}
-              data-current-user-id={@current_scope.user.id}
-              data-locks={Jason.encode!(@entity_locks)}
               class="w-full h-full"
-            >
-              <div id="scene-canvas-container" class="w-full h-full"></div>
-            </div>
+              scene-data={prepare_scene_for_vue(@scene)}
+              pins={prepare_pins_for_vue(@pins)}
+              zones={prepare_zones_for_vue(@zones)}
+              connections={prepare_connections_for_vue(@connections)}
+              annotations={prepare_annotations_for_vue(@annotations)}
+              layers={prepare_layers_for_vue(@layers)}
+              active-tool={to_string(@active_tool)}
+              edit-mode={@edit_mode}
+              can-edit={@can_edit}
+              current-user-id={@current_scope.user.id}
+              entity-locks={serialize_entity_locks(@entity_locks)}
+            />
 
             <%!-- Hidden file input for background upload --%>
             <form

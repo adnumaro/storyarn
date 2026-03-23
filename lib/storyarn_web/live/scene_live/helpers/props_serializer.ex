@@ -278,6 +278,27 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
 
   def serialize_entity_locks(_), do: %{}
 
+  # ---- Ambient Flows ----
+
+  def prepare_ambient_flows_for_vue(flows) do
+    Enum.map(flows, fn af ->
+      %{
+        id: af.id,
+        flowId: af.flow_id,
+        flowName: af.flow.name,
+        triggerType: af.trigger_type,
+        triggerConfig: af.trigger_config,
+        priority: af.priority,
+        enabled: af.enabled,
+        position: af.position
+      }
+    end)
+  end
+
+  def prepare_project_flows_for_vue(flows) do
+    Enum.map(flows, fn f -> %{id: f.id, name: f.name} end)
+  end
+
   # ---- Private helpers ----
 
   defp background_url(%{background_asset: %{} = asset}), do: Assets.display_url(asset)
