@@ -46,6 +46,9 @@ export function useAnnotations({
 	entityLocks,
 	currentUserId,
 	percentToPixel,
+	selectedType,
+	selectedId,
+	isSelectMode,
 }) {
 	const hiddenLayerIds = computed(() => {
 		const set = new Set();
@@ -105,6 +108,10 @@ export function useAnnotations({
 					textWidth: w - dims.padLeft - dims.padRight,
 					isLockedByOther,
 					lockBadge: isLockedByOther ? renderLockBadge() : null,
+					isSelected:
+						selectedType?.value === "annotation" &&
+						selectedId?.value === ann.id,
+					listening: isSelectMode?.value ?? false,
 				};
 			}),
 	);

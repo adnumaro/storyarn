@@ -20,6 +20,9 @@ export function useZones({
 	entityLocks,
 	currentUserId,
 	percentToPixel,
+	selectedType,
+	selectedId,
+	isSelectMode,
 }) {
 	const hiddenLayerIds = computed(() => {
 		const set = new Set();
@@ -66,6 +69,10 @@ export function useZones({
 				const isLockedByOther =
 					!!lock && String(lock.userId) !== String(currentUserId.value);
 
+				const isSelected =
+					selectedType?.value === "zone" && selectedId?.value === zone.id;
+				const baseOpacity = zone.opacity ?? 0.3;
+
 				return {
 					id: zone.id,
 					name: zone.name,
@@ -74,13 +81,15 @@ export function useZones({
 					centroidY,
 					fill: zone.fillColor || DEFAULT_FILL_COLOR,
 					stroke: zone.borderColor || DEFAULT_BORDER_COLOR,
-					strokeWidth: zone.borderWidth ?? 2,
-					dash: DASH_PATTERNS[zone.borderStyle] || null,
-					opacity: zone.opacity ?? 0.3,
+					strokeWidth: isSelected ? 4 : (zone.borderWidth ?? 2),
+					dash: isSelected ? null : DASH_PATTERNS[zone.borderStyle] || null,
+					opacity: isSelected ? Math.min(baseOpacity + 0.2, 0.6) : baseOpacity,
 					isLockedByOther,
 					lockBadge: isLockedByOther ? renderLockBadge() : null,
 					lockBadgeX: maxX - 4,
 					lockBadgeY: minY - 10,
+					isSelected,
+					listening: isSelectMode?.value ?? false,
 				};
 			}),
 	);

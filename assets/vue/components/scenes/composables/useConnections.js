@@ -17,7 +17,15 @@ const DASH_PATTERNS = {
  * Composable for computing connection render configs.
  * Handles pin position lookup, waypoint conversion, arrowheads, and label placement.
  */
-export function useConnections({ connections, pins, layers, percentToPixel }) {
+export function useConnections({
+	connections,
+	pins,
+	layers,
+	percentToPixel,
+	selectedType,
+	selectedId,
+	isSelectMode,
+}) {
 	// Pin pixel positions keyed by id
 	const pinPositions = computed(() => {
 		const map = {};
@@ -130,17 +138,23 @@ export function useConnections({ connections, pins, layers, percentToPixel }) {
 				}
 			}
 
+			const isSelected =
+				selectedType?.value === "connection" && selectedId?.value === conn.id;
+
 			result.push({
 				id: conn.id,
 				points,
 				stroke: color,
-				strokeWidth,
+				strokeWidth: isSelected ? Math.max(strokeWidth, 4) : strokeWidth,
 				dash: DASH_PATTERNS[conn.lineStyle] || null,
-				opacity: DEFAULT_OPACITY,
+				opacity: isSelected ? 1 : DEFAULT_OPACITY,
 				forwardArrow,
 				reverseArrow,
 				arrowFill: color,
 				labelConfig,
+				isSelected,
+				listening: isSelectMode?.value ?? false,
+				hitStrokeWidth: 20,
 			});
 		}
 

@@ -4,6 +4,7 @@ import { useAnnotations } from "./composables/useAnnotations";
 import { useConnections } from "./composables/useConnections";
 import { useKonvaStage } from "./composables/useKonvaStage";
 import { usePins } from "./composables/usePins";
+import { useSelection } from "./composables/useSelection";
 import { useZones } from "./composables/useZones";
 
 const props = defineProps({
@@ -21,6 +22,7 @@ const props = defineProps({
 });
 
 const containerRef = ref(null);
+const activeToolRef = toRef(props, "activeTool");
 
 const {
 	stageConfig,
@@ -34,9 +36,20 @@ const {
 } = useKonvaStage({
 	containerRef,
 	sceneData: toRef(props, "sceneData"),
-	activeTool: toRef(props, "activeTool"),
+	activeTool: activeToolRef,
 	editMode: toRef(props, "editMode"),
 });
+
+const {
+	selectedType,
+	selectedId,
+	isSelectMode,
+	handleElementClick,
+	handleStageClick,
+	SELECTION_COLOR,
+} = useSelection({ activeTool: activeToolRef });
+
+const selectionRefs = { selectedType, selectedId, isSelectMode };
 
 const { pinConfigs } = usePins({
 	pins: toRef(props, "pins"),
@@ -44,6 +57,7 @@ const { pinConfigs } = usePins({
 	entityLocks: toRef(props, "entityLocks"),
 	currentUserId: toRef(props, "currentUserId"),
 	percentToPixel,
+	...selectionRefs,
 });
 
 const { zoneConfigs } = useZones({
@@ -52,6 +66,7 @@ const { zoneConfigs } = useZones({
 	entityLocks: toRef(props, "entityLocks"),
 	currentUserId: toRef(props, "currentUserId"),
 	percentToPixel,
+	...selectionRefs,
 });
 
 const { annotationConfigs } = useAnnotations({
@@ -60,6 +75,7 @@ const { annotationConfigs } = useAnnotations({
 	entityLocks: toRef(props, "entityLocks"),
 	currentUserId: toRef(props, "currentUserId"),
 	percentToPixel,
+	...selectionRefs,
 });
 
 const { connectionConfigs } = useConnections({
@@ -67,6 +83,7 @@ const { connectionConfigs } = useConnections({
 	pins: toRef(props, "pins"),
 	layers: toRef(props, "layers"),
 	percentToPixel,
+	...selectionRefs,
 });
 
 function clipCircle(radius) {
@@ -80,7 +97,7 @@ const LABEL_COLOR = "#d1d5db";
 
 <template>
   <div ref="containerRef" class="w-full h-full" :style="{ cursor: cursorStyle }">
-    <v-stage ref="stageRef" :config="stageConfig" @wheel="handleWheel">
+    <v-stage ref="stageRef" :config="stageConfig" @wheel="handleWheel" @click="handleStageClick">
       <!-- Background layer -->
       <v-layer>
         <v-image v-if="backgroundConfig" :config="backgroundConfig" />
@@ -90,9 +107,14 @@ const LABEL_COLOR = "#d1d5db";
         </template>
       </v-layer>
 
-      <!-- Zone layer (below pins) -->
+      <!-- Zone layer -->
       <v-layer>
-        <v-group v-for="zone in zoneConfigs" :key="'zone-' + zone.id">
+        <v-group
+          v-for="zone in zoneConfigs"
+          :key="'zone-' + zone.id"
+          :config="{ listening: zone.listening }"
+          @click="(e) => handleElementClick('zone', zone.id, e)"
+        >
           <!-- Zone polygon -->
           <v-line
             :config="{
@@ -103,7 +125,6 @@ const LABEL_COLOR = "#d1d5db";
               dash: zone.dash,
               opacity: zone.opacity,
               closed: true,
-              listening: false,
             }"
           />
 
@@ -143,9 +164,14 @@ const LABEL_COLOR = "#d1d5db";
         </v-group>
       </v-layer>
 
-      <!-- Connection layer (between zones and pins) -->
+      <!-- Connection layer -->
       <v-layer>
-        <v-group v-for="conn in connectionConfigs" :key="'conn-' + conn.id">
+        <v-group
+          v-for="conn in connectionConfigs"
+          :key="'conn-' + conn.id"
+          :config="{ listening: conn.listening }"
+          @click="(e) => handleElementClick('connection', conn.id, e)"
+        >
           <!-- Main line -->
           <v-line
             :config="{
@@ -154,7 +180,7 @@ const LABEL_COLOR = "#d1d5db";
               strokeWidth: conn.strokeWidth,
               dash: conn.dash,
               opacity: conn.opacity,
-              listening: false,
+              hitStrokeWidth: conn.hitStrokeWidth,
             }"
           />
 
@@ -192,8 +218,20 @@ const LABEL_COLOR = "#d1d5db";
         <v-group
           v-for="pin in pinConfigs"
           :key="'pin-' + pin.id"
-          :config="{ x: pin.x, y: pin.y }"
+          :config="{ x: pin.x, y: pin.y, listening: pin.listening }"
+          @click="(e) => handleElementClick('pin', pin.id, e)"
         >
+          <!-- Selection ring -->
+          <v-circle
+            v-if="pin.isSelected"
+            :config="{
+              radius: pin.radius + 5,
+              stroke: SELECTION_COLOR,
+              strokeWidth: 3,
+              listening: false,
+            }"
+          />
+
           <!-- Icon pin (pre-rendered Lucide icon circle) -->
           <v-image
             v-if="pin.iconCanvas"
@@ -258,6 +296,7 @@ const LABEL_COLOR = "#d1d5db";
               width: 100,
               ellipsis: true,
               wrap: 'none',
+              listening: false,
             }"
           />
 
@@ -270,18 +309,34 @@ const LABEL_COLOR = "#d1d5db";
               y: -pin.radius - 4,
               width: 14,
               height: 14,
+              listening: false,
             }"
           />
         </v-group>
       </v-layer>
 
-      <!-- Annotation layer (above pins) -->
+      <!-- Annotation layer -->
       <v-layer>
         <v-group
           v-for="ann in annotationConfigs"
           :key="'ann-' + ann.id"
-          :config="{ x: ann.x, y: ann.y }"
+          :config="{ x: ann.x, y: ann.y, listening: ann.listening }"
+          @click="(e) => handleElementClick('annotation', ann.id, e)"
         >
+          <!-- Selection border -->
+          <v-rect
+            v-if="ann.isSelected"
+            :config="{
+              x: -3,
+              y: -3,
+              width: ann.width + 6,
+              height: ann.height + 6,
+              stroke: SELECTION_COLOR,
+              strokeWidth: 2,
+              listening: false,
+            }"
+          />
+
           <!-- Note body (clipped rectangle with folded corner) -->
           <v-line
             :config="{
@@ -289,7 +344,6 @@ const LABEL_COLOR = "#d1d5db";
               fill: ann.color,
               opacity: ann.bgOpacity,
               closed: true,
-              listening: false,
             }"
           />
 
@@ -334,8 +388,6 @@ const LABEL_COLOR = "#d1d5db";
           />
         </v-group>
       </v-layer>
-
-      <!-- Phases 4F-4G: selection, interaction -->
     </v-stage>
   </div>
 </template>

@@ -1,0 +1,65 @@
+import { computed, onMounted, ref } from "vue";
+import { useLive } from "@/vue/composables/useLive";
+
+const SELECTION_COLOR = "#6366f1";
+
+/**
+ * Composable managing element selection state, click handlers, and server sync.
+ * Selection is optimistic — visual highlight appears immediately on click,
+ * server confirms asynchronously.
+ */
+export function useSelection({ activeTool }) {
+	const live = useLive();
+	const selectedType = ref(null);
+	const selectedId = ref(null);
+
+	const isSelectMode = computed(() => activeTool.value === "select");
+
+	function handleElementClick(type, id, e) {
+		if (!isSelectMode.value) return;
+		// Stop propagation so stage click doesn't deselect
+		if (e) e.cancelBubble = true;
+
+		// Optimistic: update local state immediately
+		selectedType.value = type;
+		selectedId.value = id;
+
+		// Notify server
+		live.pushEvent("select_element", { type, id: String(id) });
+	}
+
+	function handleStageClick(e) {
+		if (!isSelectMode.value) return;
+		// Only deselect if clicking on the stage itself (empty canvas)
+		const stage = e.target.getStage();
+		if (e.target !== stage) return;
+
+		if (selectedType.value !== null) {
+			selectedType.value = null;
+			selectedId.value = null;
+			live.pushEvent("deselect", {});
+		}
+	}
+
+	// Listen for server-driven selection (e.g., from SearchPanel focus)
+	onMounted(() => {
+		live.handleEvent("element_selected", ({ type, id }) => {
+			selectedType.value = type;
+			selectedId.value = Number(id);
+		});
+
+		live.handleEvent("element_deselected", () => {
+			selectedType.value = null;
+			selectedId.value = null;
+		});
+	});
+
+	return {
+		selectedType,
+		selectedId,
+		isSelectMode,
+		handleElementClick,
+		handleStageClick,
+		SELECTION_COLOR,
+	};
+}

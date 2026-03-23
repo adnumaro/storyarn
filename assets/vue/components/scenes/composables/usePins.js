@@ -25,6 +25,9 @@ export function usePins({
 	entityLocks,
 	currentUserId,
 	percentToPixel,
+	selectedType,
+	selectedId,
+	isSelectMode,
 }) {
 	const hiddenLayerIds = computed(() => {
 		const set = new Set();
@@ -105,6 +108,9 @@ export function usePins({
 					label: pin.label,
 					isLockedByOther,
 					lockBadge: isLockedByOther ? renderLockBadge() : null,
+					isSelected:
+						selectedType?.value === "pin" && selectedId?.value === pin.id,
+					listening: isSelectMode?.value ?? false,
 				};
 			}),
 	);
