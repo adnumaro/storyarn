@@ -1,5 +1,6 @@
 <script setup>
 import { ref, toRef } from "vue";
+import { useAnnotations } from "./composables/useAnnotations";
 import { useConnections } from "./composables/useConnections";
 import { useKonvaStage } from "./composables/useKonvaStage";
 import { usePins } from "./composables/usePins";
@@ -47,6 +48,14 @@ const { pinConfigs } = usePins({
 
 const { zoneConfigs } = useZones({
 	zones: toRef(props, "zones"),
+	layers: toRef(props, "layers"),
+	entityLocks: toRef(props, "entityLocks"),
+	currentUserId: toRef(props, "currentUserId"),
+	percentToPixel,
+});
+
+const { annotationConfigs } = useAnnotations({
+	annotations: toRef(props, "annotations"),
 	layers: toRef(props, "layers"),
 	entityLocks: toRef(props, "entityLocks"),
 	currentUserId: toRef(props, "currentUserId"),
@@ -266,7 +275,67 @@ const LABEL_COLOR = "#d1d5db";
         </v-group>
       </v-layer>
 
-      <!-- Phases 4D-4G: connections, annotations, selection -->
+      <!-- Annotation layer (above pins) -->
+      <v-layer>
+        <v-group
+          v-for="ann in annotationConfigs"
+          :key="'ann-' + ann.id"
+          :config="{ x: ann.x, y: ann.y }"
+        >
+          <!-- Note body (clipped rectangle with folded corner) -->
+          <v-line
+            :config="{
+              points: ann.bodyPoints,
+              fill: ann.color,
+              opacity: ann.bgOpacity,
+              closed: true,
+              listening: false,
+            }"
+          />
+
+          <!-- Fold triangle (full opacity for depth effect) -->
+          <v-line
+            :config="{
+              points: ann.foldPoints,
+              fill: ann.color,
+              closed: true,
+              listening: false,
+            }"
+          />
+
+          <!-- Text -->
+          <v-text
+            :config="{
+              text: ann.text,
+              fill: '#111827',
+              fontSize: ann.fontSize,
+              fontStyle: '600',
+              fontFamily: 'system-ui, sans-serif',
+              lineHeight: 1.3,
+              width: ann.textWidth,
+              x: ann.padLeft,
+              y: ann.padTop,
+              wrap: 'word',
+              listening: false,
+            }"
+          />
+
+          <!-- Lock badge -->
+          <v-image
+            v-if="ann.lockBadge"
+            :config="{
+              image: ann.lockBadge,
+              x: ann.width - 18,
+              y: -4,
+              width: 14,
+              height: 14,
+              listening: false,
+            }"
+          />
+        </v-group>
+      </v-layer>
+
+      <!-- Phases 4F-4G: selection, interaction -->
     </v-stage>
   </div>
 </template>
