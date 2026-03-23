@@ -9,6 +9,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias StoryarnWeb.Helpers.UndoRedoStack
   alias StoryarnWeb.SheetLive.Handlers.{
     AudioHandlers,
+    BlockHandlers,
     GalleryHandlers,
     HeaderHandlers,
     ReferenceHandlers,
@@ -29,6 +30,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   import StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers
 
   alias Storyarn.Collaboration
+  alias Storyarn.Shared.MapUtils
   alias Storyarn.Projects
   alias Storyarn.Sheets
   alias Storyarn.Versioning
@@ -457,334 +459,58 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_event("gallery_update_notes", params, socket),
     do: HeaderHandlers.handle_gallery_update_notes(params, socket, header_helpers())
 
-  # --- Blocks ---
+  # --- Blocks (CRUD, toolbar, reorder, inheritance) ---
 
-  def handle_event("add_block", %{"type" => type} = params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      attrs = %{type: type}
-      attrs = if params["scope"], do: Map.put(attrs, :scope, params["scope"]), else: attrs
+  def handle_event("add_block", params, socket),
+    do: BlockHandlers.handle_add(params, socket, content_helpers())
 
-      case Sheets.create_block(socket.assigns.sheet, attrs) do
-        {:ok, block} ->
-          snapshot = UndoRedoHandlers.block_to_snapshot(block)
+  def handle_event("update_block_value", params, socket),
+    do: BlockHandlers.handle_update_value(params, socket, content_helpers())
 
-          {:noreply,
-           socket
-           |> UndoRedoStack.push_undo({:create_block, snapshot})
-           |> reload_blocks()
-           |> broadcast_sheet_change(:block_created)}
+  def handle_event("toggle_multi_select", params, socket),
+    do: BlockHandlers.handle_toggle_multi_select(params, socket, content_helpers())
 
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create block."))}
-      end
-    end)
-  end
+  def handle_event("update_block_config", params, socket),
+    do: BlockHandlers.handle_update_config(params, socket, content_helpers())
 
-  def handle_event("update_block_value", %{"id" => id, "value" => value}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      block = Sheets.get_block(parse_id(id))
+  def handle_event("delete_block", params, socket),
+    do: BlockHandlers.handle_delete(params, socket, content_helpers())
 
-      if block && block.sheet_id == socket.assigns.sheet.id do
-        prev = get_in(block.value, ["content"])
+  def handle_event("duplicate_block", params, socket),
+    do: BlockHandlers.handle_duplicate(params, socket, content_helpers())
 
-        case Sheets.update_block_value(block, %{"content" => value}) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> UndoRedoHandlers.push_block_value_coalesced(block.id, prev, value)
-             |> reload_blocks()
-             |> broadcast_sheet_change(:block_updated)}
+  def handle_event("undo", params, socket),
+    do: BlockHandlers.handle_undo(params, socket, content_helpers())
 
-          {:error, _} ->
-            {:noreply, socket}
-        end
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
+  def handle_event("redo", params, socket),
+    do: BlockHandlers.handle_redo(params, socket, content_helpers())
 
-  def handle_event("toggle_multi_select", %{"id" => id, "key" => key}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      block = Sheets.get_block(parse_id(id))
+  def handle_event("reorder_column_group", params, socket),
+    do: BlockHandlers.handle_reorder_column_group(params, socket, content_helpers())
 
-      if block && block.sheet_id == socket.assigns.sheet.id do
-        current = get_in(block.value, ["content"]) || []
+  def handle_event("reorder_with_columns", params, socket),
+    do: BlockHandlers.handle_reorder_with_columns(params, socket, content_helpers())
 
-        new_content =
-          if key in current,
-            do: List.delete(current, key),
-            else: current ++ [key]
+  def handle_event("toggle_constant", params, socket),
+    do: BlockHandlers.handle_toggle_constant(params, socket, content_helpers())
 
-        case Sheets.update_block_value(block, %{"content" => new_content}) do
-          {:ok, _} -> {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
-          {:error, _} -> {:noreply, socket}
-        end
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
+  def handle_event("update_variable_name", params, socket),
+    do: BlockHandlers.handle_update_variable_name(params, socket, content_helpers())
 
-  def handle_event(
-        "update_block_config",
-        %{"id" => id, "field" => field, "value" => value},
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      block = Sheets.get_block(parse_id(id))
+  def handle_event("change_block_scope", params, socket),
+    do: BlockHandlers.handle_change_scope(params, socket, content_helpers())
 
-      if block && block.sheet_id == socket.assigns.sheet.id do
-        new_config = Map.put(block.config || %{}, field, value)
+  def handle_event("toggle_required", params, socket),
+    do: BlockHandlers.handle_toggle_required(params, socket, content_helpers())
 
-        case Sheets.update_block_config(block, new_config) do
-          {:ok, _} -> {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
-          {:error, _} -> {:noreply, socket}
-        end
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
+  def handle_event("reorder_blocks", params, socket),
+    do: BlockHandlers.handle_reorder(params, socket, content_helpers())
 
-  def handle_event("delete_block", %{"id" => id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      block = Sheets.get_block(parse_id(id))
+  def handle_event("detach_block", params, socket),
+    do: BlockHandlers.handle_detach(params, socket, content_helpers())
 
-      if block && block.sheet_id == socket.assigns.sheet.id do
-        snapshot = UndoRedoHandlers.block_to_snapshot(block)
-
-        case Sheets.delete_block(block) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> UndoRedoStack.push_undo({:delete_block, snapshot})
-             |> reload_blocks()
-             |> broadcast_sheet_change(:block_deleted, %{block_id: parse_id(id)})}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete block."))}
-        end
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
-
-  def handle_event("duplicate_block", %{"id" => id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      block = Sheets.get_block(parse_id(id))
-
-      if block && block.sheet_id == socket.assigns.sheet.id do
-        case Sheets.duplicate_block(block) do
-          {:ok, new_block} ->
-            snapshot = UndoRedoHandlers.block_to_snapshot(new_block)
-
-            {:noreply,
-             socket
-             |> UndoRedoStack.push_undo({:create_block, snapshot})
-             |> reload_blocks()
-             |> broadcast_sheet_change(:block_created)}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not duplicate block."))}
-        end
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
-
-  def handle_event("undo", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      case UndoRedoHandlers.handle_undo(params, socket) do
-        {:noreply, socket} ->
-          {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
-      end
-    end)
-  end
-
-  def handle_event("redo", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      case UndoRedoHandlers.handle_redo(params, socket) do
-        {:noreply, socket} ->
-          {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
-      end
-    end)
-  end
-
-  def handle_event("reorder_column_group", %{"group_id" => _group_id, "items" => items}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      Enum.each(items, fn item ->
-        block = Sheets.get_block(parse_id(item["id"]))
-
-        if block && block.sheet_id == socket.assigns.sheet.id do
-          Sheets.update_block(block, %{column_index: item["column_index"]})
-        end
-      end)
-
-      {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_reordered)}
-    end)
-  end
-
-  def handle_event("reorder_with_columns", %{"items" => items}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      sanitized =
-        items
-        |> Enum.map(fn item ->
-          %{
-            id: parse_id(item["id"]),
-            column_group_id: normalize_column_group_id(item["column_group_id"]),
-            column_index: item["column_index"] || 0
-          }
-        end)
-
-      sheet_id = socket.assigns.sheet.id
-
-      prev_layout =
-        Sheets.list_blocks(sheet_id)
-        |> Enum.sort_by(& &1.position)
-        |> Enum.map(fn b ->
-          %{id: b.id, column_group_id: b.column_group_id, column_index: b.column_index}
-        end)
-
-      case Sheets.reorder_blocks_with_columns(sheet_id, sanitized) do
-        {:ok, _} ->
-          {:noreply,
-           socket
-           |> UndoRedoStack.push_undo({:reorder_blocks_with_columns, prev_layout, sanitized})
-           |> reload_blocks()
-           |> broadcast_sheet_change(:block_reordered)}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not reorder blocks."))}
-      end
-    end)
-  end
-
-  # --- Block toolbar ---
-
-  def handle_event("toggle_constant", %{"id" => id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      block = Sheets.get_block(parse_id(id))
-
-      if block && block.sheet_id == socket.assigns.sheet.id do
-        prev = block.is_constant
-
-        case Sheets.update_block(block, %{is_constant: !prev}) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> UndoRedoStack.push_undo({:toggle_constant, block.id, prev, !prev})
-             |> reload_blocks()
-             |> broadcast_sheet_change(:block_updated)}
-
-          {:error, _} ->
-            {:noreply, socket}
-        end
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
-
-  def handle_event("update_variable_name", %{"id" => id, "variable_name" => name}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      block = Sheets.get_block(parse_id(id))
-
-      if block && block.sheet_id == socket.assigns.sheet.id do
-        Sheets.update_variable_name(block, name)
-        {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
-
-  def handle_event("change_block_scope", %{"id" => id, "scope" => scope}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      block = Sheets.get_block(parse_id(id))
-
-      if block && block.sheet_id == socket.assigns.sheet.id do
-        Sheets.update_block(block, %{scope: scope})
-        {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
-
-  def handle_event("toggle_required", %{"id" => id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      block = Sheets.get_block(parse_id(id))
-
-      if block && block.sheet_id == socket.assigns.sheet.id do
-        Sheets.update_block(block, %{required: !block.required})
-        {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
-
-  # --- Block reorder ---
-
-  def handle_event("reorder_blocks", %{"ids" => ids}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      int_ids = Enum.map(ids, &parse_id/1)
-      prev_ids = Sheets.list_blocks(socket.assigns.sheet.id) |> Enum.map(& &1.id)
-
-      case Sheets.reorder_blocks(socket.assigns.sheet.id, int_ids) do
-        {:ok, _} ->
-          {:noreply,
-           socket
-           |> UndoRedoStack.push_undo({:reorder_blocks, prev_ids, int_ids})
-           |> reload_blocks()
-           |> broadcast_sheet_change(:block_reordered)}
-
-        {:error, _} ->
-          {:noreply, reload_blocks(socket)}
-      end
-    end)
-  end
-
-  # --- Inheritance ---
-
-  def handle_event("detach_block", %{"id" => id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      block = Sheets.get_block(parse_id(id))
-
-      if block && block.sheet_id == socket.assigns.sheet.id do
-        case Sheets.detach_block(block) do
-          {:ok, _} ->
-            {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not detach block."))}
-        end
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
-
-  def handle_event("reattach_block", %{"id" => id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      block = Sheets.get_block(parse_id(id))
-
-      if block && block.sheet_id == socket.assigns.sheet.id do
-        case Sheets.reattach_block(block) do
-          {:ok, _} ->
-            {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not reattach block."))}
-        end
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
+  def handle_event("reattach_block", params, socket),
+    do: BlockHandlers.handle_reattach(params, socket, content_helpers())
 
   # --- Gallery blocks ---
 
@@ -1001,8 +727,8 @@ defmodule StoryarnWeb.SheetLive.Show do
   # --- Formula sidebar ---
 
   def handle_event("open_formula_sidebar", params, socket) do
-    row_id = parse_id(params["row-id"])
-    block_id = parse_id(params["block-id"])
+    row_id = MapUtils.parse_int(params["row-id"])
+    block_id = MapUtils.parse_int(params["block-id"])
     slug = params["column-slug"]
 
     table_entry = Map.get(socket.assigns.table_data, block_id, %{columns: [], rows: []})
@@ -1120,7 +846,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   def handle_event("load_more_formula_bindings", _params, socket) do
     query = socket.assigns.formula_search_query
-    offset = ensure_integer(socket.assigns.formula_search_offset)
+    offset = Storyarn.Shared.MapUtils.ensure_integer(socket.assigns.formula_search_offset)
 
     {new_results, has_more} =
       search_binding_variables(socket.assigns.project.id, query, offset)
@@ -1214,11 +940,11 @@ defmodule StoryarnWeb.SheetLive.Show do
         socket
       ) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      sheet = Sheets.get_sheet(socket.assigns.project.id, parse_id(id))
+      sheet = Sheets.get_sheet(socket.assigns.project.id, MapUtils.parse_int(id))
 
       if sheet do
-        parsed_parent = if new_parent_id in [nil, ""], do: nil, else: parse_id(new_parent_id)
-        parsed_pos = parse_id(position) || 0
+        parsed_parent = if new_parent_id in [nil, ""], do: nil, else: MapUtils.parse_int(new_parent_id)
+        parsed_pos = MapUtils.parse_int(position) || 0
 
         case Sheets.move_sheet_to_position(sheet, parsed_parent, parsed_pos) do
           {:ok, _} ->
@@ -1490,7 +1216,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   # ===========================================================================
 
   def handle_event("acquire_block_lock", %{"block_id" => block_id}, socket) do
-    block_id = parse_id(block_id)
+    block_id = MapUtils.parse_int(block_id)
     scope = socket.assigns[:collab_scope]
 
     if scope do
@@ -1515,7 +1241,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   def handle_event("release_block_lock", %{"block_id" => block_id}, socket) do
-    block_id = parse_id(block_id)
+    block_id = MapUtils.parse_int(block_id)
     scope = socket.assigns[:collab_scope]
 
     if scope do
@@ -1529,7 +1255,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   def handle_event("refresh_block_lock", %{"block_id" => block_id}, socket) do
-    block_id = parse_id(block_id)
+    block_id = MapUtils.parse_int(block_id)
     scope = socket.assigns[:collab_scope]
 
     if scope do
@@ -1722,7 +1448,13 @@ defmodule StoryarnWeb.SheetLive.Show do
     %{
       reload_blocks: &reload_blocks/1,
       broadcast: &broadcast_sheet_change/2,
-      parse_id: &parse_id/1
+      broadcast_with_payload: &broadcast_sheet_change/3,
+      parse_id: &MapUtils.parse_int/1,
+      push_undo: fn socket, action -> UndoRedoStack.push_undo(socket, action) end,
+      block_to_snapshot: &UndoRedoHandlers.block_to_snapshot/1,
+      push_block_value_coalesced: &UndoRedoHandlers.push_block_value_coalesced/4,
+      handle_undo: &UndoRedoHandlers.handle_undo/2,
+      handle_redo: &UndoRedoHandlers.handle_redo/2
     }
   end
 
@@ -1731,7 +1463,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       reload_sheet: &reload_sheet/1,
       reload_sheet_and_tree: &reload_sheet_and_tree/1,
       broadcast: &broadcast_sheet_change/2,
-      parse_id: &parse_id/1,
+      parse_id: &MapUtils.parse_int/1,
       prepare_tree: fn project_id ->
         prepare_tree(Sheets.list_sheets_tree(project_id))
       end
@@ -1829,14 +1561,5 @@ defmodule StoryarnWeb.SheetLive.Show do
     |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id)))
   end
   
-  defp parse_id(id) when is_binary(id), do: String.to_integer(id)
-  defp parse_id(id) when is_integer(id), do: id
 
-  @spec ensure_integer(integer()) :: integer()
-  defp ensure_integer(n) when is_integer(n), do: n
-  defp ensure_integer(_), do: 0
-
-  defp normalize_column_group_id(nil), do: nil
-  defp normalize_column_group_id(""), do: nil
-  defp normalize_column_group_id(id) when is_binary(id), do: id
 end
