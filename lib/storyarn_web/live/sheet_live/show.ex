@@ -14,9 +14,11 @@ defmodule StoryarnWeb.SheetLive.Show do
     GalleryHandlers,
     HeaderHandlers,
     HistoryHandlers,
+    LockHandlers,
     ReferenceHandlers,
     SelectOptionHandlers,
     TableHandlers,
+    TreeHandlers,
     UndoRedoHandlers
   }
 
@@ -745,110 +747,22 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_event("load_more_formula_bindings", params, socket),
     do: FormulaHandlers.handle_load_more(params, socket, formula_handler_helpers())
 
-  # Tree events (create, delete, move)
-  def handle_event("create_sheet", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      case Sheets.create_sheet(socket.assigns.project, %{name: dgettext("sheets", "Untitled")}) do
-        {:ok, new_sheet} ->
-          broadcast_project_change(socket, :tree_changed)
+  # --- Tree (create, delete, move) ---
 
-          {:noreply,
-           push_navigate(socket,
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/sheets/#{new_sheet.id}"
-           )}
+  def handle_event("create_sheet", params, socket),
+    do: TreeHandlers.handle_create(params, socket, tree_helpers())
 
-        {:error, :limit_reached, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
+  def handle_event("create_child_sheet", params, socket),
+    do: TreeHandlers.handle_create_child(params, socket, tree_helpers())
 
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
-      end
-    end)
-  end
+  def handle_event("set_pending_delete_sheet", params, socket),
+    do: TreeHandlers.handle_set_pending_delete(params, socket, tree_helpers())
 
-  def handle_event("create_child_sheet", %{"parent_id" => parent_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      attrs = %{name: dgettext("sheets", "New Sheet"), parent_id: parent_id}
+  def handle_event("confirm_delete_sheet", params, socket),
+    do: TreeHandlers.handle_confirm_delete(params, socket, tree_helpers())
 
-      case Sheets.create_sheet(socket.assigns.project, attrs) do
-        {:ok, new_sheet} ->
-          broadcast_project_change(socket, :tree_changed)
-
-          {:noreply,
-           push_navigate(socket,
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/sheets/#{new_sheet.id}"
-           )}
-
-        {:error, :limit_reached, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
-      end
-    end)
-  end
-
-  def handle_event(event, %{"id" => id}, socket)
-      when event in ~w(set_pending_delete_sheet) do
-    {:noreply, assign(socket, :pending_delete_id, id)}
-  end
-
-  def handle_event("confirm_delete_sheet", _params, socket) do
-    if id = socket.assigns[:pending_delete_id] do
-      Authorize.with_authorization(socket, :edit_content, fn socket ->
-        with %{} = sheet <- Sheets.get_sheet(socket.assigns.project.id, id),
-             {:ok, _} <- Sheets.delete_sheet(sheet) do
-          {:noreply,
-           socket
-           |> put_flash(:info, dgettext("sheets", "Sheet moved to trash."))
-           |> assign(
-             :sheets_tree,
-             prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id))
-           )
-           |> broadcast_project_change(:tree_changed)}
-        else
-          _ ->
-            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
-        end
-      end)
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_event(
-        "move_to_parent",
-        %{"item_id" => id, "new_parent_id" => new_parent_id, "position" => position},
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      sheet = Sheets.get_sheet(socket.assigns.project.id, MapUtils.parse_int(id))
-
-      if sheet do
-        parsed_parent = if new_parent_id in [nil, ""], do: nil, else: MapUtils.parse_int(new_parent_id)
-        parsed_pos = MapUtils.parse_int(position) || 0
-
-        case Sheets.move_sheet_to_position(sheet, parsed_parent, parsed_pos) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> reload_blocks()
-             |> assign(:sheets_tree,
-               prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id))
-             )
-             |> broadcast_project_change(:tree_changed)}
-
-          {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("sheets", "Could not move sheet."))}
-        end
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
+  def handle_event("move_to_parent", params, socket),
+    do: TreeHandlers.handle_move(params, socket, tree_helpers())
 
   # --- Audio tab ---
 
@@ -890,60 +804,16 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_event("confirm_restore", params, socket),
     do: HistoryHandlers.handle_confirm_restore(params, socket, history_helpers())
 
-  # ===========================================================================
-  # Block Locking
-  # ===========================================================================
+  # --- Block locking ---
 
-  def handle_event("acquire_block_lock", %{"block_id" => block_id}, socket) do
-    block_id = MapUtils.parse_int(block_id)
-    scope = socket.assigns[:collab_scope]
+  def handle_event("acquire_block_lock", params, socket),
+    do: LockHandlers.handle_acquire(params, socket)
 
-    if scope do
-      user = socket.assigns.current_scope.user
+  def handle_event("release_block_lock", params, socket),
+    do: LockHandlers.handle_release(params, socket)
 
-      case Collaboration.acquire_lock(scope, block_id, user) do
-        {:ok, _lock_info} ->
-          block_locks = Collaboration.list_locks(scope)
-          {:noreply, assign(socket, :block_locks, block_locks)}
-
-        {:error, :already_locked, lock_info} ->
-          {:noreply,
-           push_event(socket, "block_lock_denied", %{
-             blockId: block_id,
-             lockedBy: lock_info.user_email,
-             userColor: lock_info.user_color
-           })}
-      end
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_event("release_block_lock", %{"block_id" => block_id}, socket) do
-    block_id = MapUtils.parse_int(block_id)
-    scope = socket.assigns[:collab_scope]
-
-    if scope do
-      user_id = socket.assigns.current_scope.user.id
-      Collaboration.release_lock(scope, block_id, user_id)
-      block_locks = Collaboration.list_locks(scope)
-      {:noreply, assign(socket, :block_locks, block_locks)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_event("refresh_block_lock", %{"block_id" => block_id}, socket) do
-    block_id = MapUtils.parse_int(block_id)
-    scope = socket.assigns[:collab_scope]
-
-    if scope do
-      user_id = socket.assigns.current_scope.user.id
-      Collaboration.refresh_lock(scope, block_id, user_id)
-    end
-
-    {:noreply, socket}
-  end
+  def handle_event("refresh_block_lock", params, socket),
+    do: LockHandlers.handle_refresh(params, socket)
 
   # ===========================================================================
   # Handle Info
@@ -1122,6 +992,13 @@ defmodule StoryarnWeb.SheetLive.Show do
   # ===========================================================================
   # Private Helpers
   # ===========================================================================
+
+  defp tree_helpers do
+    %{
+      reload_blocks: &reload_blocks/1,
+      broadcast_project: &broadcast_project_change/2
+    }
+  end
 
   defp formula_handler_helpers do
     %{
