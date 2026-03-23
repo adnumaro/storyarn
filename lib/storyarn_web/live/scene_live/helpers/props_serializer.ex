@@ -178,6 +178,91 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
     end)
   end
 
+  # ---- Legend groups (server-side aggregation) ----
+
+  @pin_type_labels %{
+    "location" => "Location",
+    "character" => "Character",
+    "event" => "Event",
+    "custom" => "Custom"
+  }
+
+  @pin_type_icons %{
+    "location" => "map-pin",
+    "character" => "user",
+    "event" => "zap",
+    "custom" => "star"
+  }
+
+  @line_style_labels %{
+    "solid" => "Solid",
+    "dashed" => "Dashed",
+    "dotted" => "Dotted"
+  }
+
+  def prepare_legend_groups(pins, zones, connections) do
+    pin_groups = group_pins(pins)
+    zone_groups = group_zones(zones)
+    connection_groups = group_connections(connections)
+
+    %{
+      pinGroups: pin_groups,
+      zoneGroups: zone_groups,
+      connectionGroups: connection_groups,
+      hasEntries: pin_groups != [] or zone_groups != [] or connection_groups != []
+    }
+  end
+
+  defp group_pins(pins) do
+    pins
+    |> Enum.group_by(fn pin -> {pin.pin_type, pin.color} end)
+    |> Enum.map(fn {{pin_type, color}, items} ->
+      %{
+        icon: Map.get(@pin_type_icons, pin_type, "map-pin"),
+        label: Map.get(@pin_type_labels, pin_type, pin_type),
+        color: color,
+        count: length(items)
+      }
+    end)
+    |> Enum.sort_by(& &1.label)
+  end
+
+  defp group_zones(zones) do
+    zones
+    |> Enum.group_by(fn zone -> zone.fill_color || "#3b82f6" end)
+    |> Enum.map(fn {color, items} ->
+      avg_opacity = Enum.reduce(items, 0, fn z, acc -> acc + (z.opacity || 0.3) end) / max(length(items), 1)
+      hex = round(avg_opacity * 255) |> Integer.to_string(16) |> String.pad_leading(2, "0")
+
+      %{
+        color: color,
+        opacityHex: hex,
+        label: color,
+        count: length(items)
+      }
+    end)
+    |> Enum.sort_by(& &1.color)
+  end
+
+  defp group_connections(connections) do
+    connections
+    |> Enum.group_by(fn conn -> {conn.line_style, conn.color || "#6b7280"} end)
+    |> Enum.map(fn {{line_style, color}, items} ->
+      %{
+        lineStyle: line_style,
+        color: color,
+        label: Map.get(@line_style_labels, line_style, line_style),
+        dashArray: line_dash(line_style),
+        count: length(items)
+      }
+    end)
+    |> Enum.sort_by(& &1.label)
+  end
+
+  defp line_dash("dashed"), do: "4,3"
+  defp line_dash("dotted"), do: "2,3"
+  defp line_dash(_), do: "none"
+
   # ---- Entity Locks ----
 
   def serialize_entity_locks(locks) when is_map(locks) do

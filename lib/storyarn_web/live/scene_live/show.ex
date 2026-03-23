@@ -30,7 +30,8 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
 
-  import StoryarnWeb.SceneLive.Helpers.PropsSerializer, only: [prepare_scenes_tree: 1]
+  import StoryarnWeb.SceneLive.Helpers.PropsSerializer,
+    only: [prepare_scenes_tree: 1, prepare_layers_for_vue: 1, prepare_legend_groups: 3]
   import StoryarnWeb.SceneLive.Helpers.SceneHelpers
   import StoryarnWeb.SceneLive.Helpers.SceneSerializer
 
@@ -80,7 +81,11 @@ defmodule StoryarnWeb.SceneLive.Show do
           canEdit: @can_edit,
           workspaceSlug: @workspace.slug,
           projectSlug: @project.slug,
-          selectedSceneId: @scene && @scene.id
+          selectedSceneId: @scene && @scene.id,
+          layers: prepare_layers_for_vue(@layers),
+          activeLayerId: @active_layer_id,
+          editMode: @edit_mode,
+          hasScene: @scene != nil
         }
       }
     >
@@ -258,11 +263,12 @@ defmodule StoryarnWeb.SceneLive.Show do
           <%!-- Bottom-right controls: reset zoom + legend --%>
           <div class="absolute bottom-3 right-3 z-[1000] flex items-end gap-2">
             <div id="scene-controls-slot" phx-update="ignore"></div>
-            <.legend
-              pins={@pins}
-              zones={@zones}
-              connections={@connections}
-              legend_open={@legend_open}
+            <.vue
+              v-component="scenes/Legend"
+              v-socket={@socket}
+              id="scene-legend"
+              legend-data={prepare_legend_groups(@pins, @zones, @connections)}
+              legend-open={@legend_open}
             />
           </div>
 
