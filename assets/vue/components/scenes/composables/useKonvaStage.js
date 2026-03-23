@@ -215,20 +215,20 @@ export function useKonvaStage({
 
 	// ---------- Coordinate conversion ----------
 
-	function canvasSize() {
+	const canvasBounds = computed(() => {
 		const bg = backgroundConfig.value;
 		if (bg) return { w: bg.width, h: bg.height, ox: bg.x, oy: bg.y };
 		const grid = gridRectConfig.value;
 		return { w: grid.width, h: grid.height, ox: grid.x, oy: grid.y };
-	}
+	});
 
 	function percentToPixel(pctX, pctY) {
-		const { w, h, ox, oy } = canvasSize();
+		const { w, h, ox, oy } = canvasBounds.value;
 		return { x: ox + (pctX / 100) * w, y: oy + (pctY / 100) * h };
 	}
 
 	function pixelToPercent(pixelX, pixelY) {
-		const { w, h, ox, oy } = canvasSize();
+		const { w, h, ox, oy } = canvasBounds.value;
 		return { x: ((pixelX - ox) / w) * 100, y: ((pixelY - oy) / h) * 100 };
 	}
 
@@ -241,6 +241,7 @@ export function useKonvaStage({
 		cursorStyle,
 		handleWheel,
 		fitToView,
+		canvasBounds,
 		percentToPixel,
 		pixelToPercent,
 	};
