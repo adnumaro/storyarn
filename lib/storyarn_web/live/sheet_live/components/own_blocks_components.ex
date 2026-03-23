@@ -14,7 +14,7 @@ defmodule StoryarnWeb.SheetLive.Components.OwnBlocksComponents do
   import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
   import StoryarnWeb.Components.BlockComponents, only: [block_component: 1, block_menu: 1]
 
-  alias StoryarnWeb.SheetLive.Helpers.ContentTabHelpers
+  alias StoryarnWeb.SheetLive.Helpers.V1.ContentTabHelpers
 
   # ---------------------------------------------------------------------------
   # own_properties_label/1

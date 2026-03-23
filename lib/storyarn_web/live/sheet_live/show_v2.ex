@@ -7,7 +7,15 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   use StoryarnWeb, :live_view
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.UndoRedoStack
-  alias StoryarnWeb.SheetLive.Handlers.{TableHandlers, UndoRedoHandlers}
+  alias StoryarnWeb.SheetLive.Handlers.{
+    AudioHandlers,
+    GalleryHandlers,
+    HeaderHandlers,
+    ReferenceHandlers,
+    SelectOptionHandlers,
+    TableHandlers,
+    UndoRedoHandlers
+  }
 
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
   alias StoryarnWeb.Live.Shared.RestorationHandlers
@@ -419,178 +427,40 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
   def handle_event("switch_tab", _params, socket), do: {:noreply, socket}
 
-  # --- Title / Shortcut ---
+  # --- Header (title, shortcut, color, banner, avatars) ---
 
-  def handle_event("save_name", %{"name" => name}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      sheet = socket.assigns.sheet
+  def handle_event("save_name", params, socket),
+    do: HeaderHandlers.handle_save_name(params, socket, header_helpers())
 
-      case Sheets.update_sheet(sheet, %{name: name}) do
-        {:ok, updated_sheet} ->
-          sheets_tree = prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id))
+  def handle_event("save_shortcut", params, socket),
+    do: HeaderHandlers.handle_save_shortcut(params, socket, header_helpers())
 
-          if name != sheet.name do
-            Sheets.maybe_create_version(updated_sheet, socket.assigns.current_scope.user.id)
-          end
+  def handle_event("set_sheet_color", params, socket),
+    do: HeaderHandlers.handle_set_color(params, socket, header_helpers())
 
-          {:noreply,
-           socket
-           |> assign(:sheet, Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id))
-           |> assign(:sheets_tree, sheets_tree)
-           |> broadcast_sheet_change(:sheet_updated)}
+  def handle_event("clear_sheet_color", params, socket),
+    do: HeaderHandlers.handle_clear_color(params, socket, header_helpers())
 
-        {:error, _changeset} ->
-          {:noreply, socket}
-      end
-    end)
-  end
+  def handle_event("remove_banner", params, socket),
+    do: HeaderHandlers.handle_remove_banner(params, socket, header_helpers())
 
-  def handle_event("save_shortcut", %{"shortcut" => shortcut}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      sheet = socket.assigns.sheet
-      shortcut = if shortcut == "", do: nil, else: shortcut
+  def handle_event("upload_banner", params, socket),
+    do: HeaderHandlers.handle_upload_banner(params, socket, header_helpers())
 
-      case Sheets.update_sheet(sheet, %{shortcut: shortcut}) do
-        {:ok, _updated_sheet} ->
-          updated_sheet = Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id)
+  def handle_event("upload_avatar", params, socket),
+    do: HeaderHandlers.handle_upload_avatar(params, socket, header_helpers())
 
-          if shortcut != sheet.shortcut do
-            Sheets.maybe_create_version(updated_sheet, socket.assigns.current_scope.user.id)
-          end
+  def handle_event("remove_avatar", params, socket),
+    do: HeaderHandlers.handle_remove_avatar(params, socket, header_helpers())
 
-          {:noreply,
-           socket
-           |> assign(:sheet, updated_sheet)
-           |> broadcast_sheet_change(:sheet_updated)}
+  def handle_event("set_default_avatar", params, socket),
+    do: HeaderHandlers.handle_set_default_avatar(params, socket, header_helpers())
 
-        {:error, changeset} ->
-          error_msg =
-            case changeset.errors[:shortcut] do
-              {msg, _opts} -> dgettext("sheets", "Shortcut %{error}", error: msg)
-              nil -> dgettext("sheets", "Could not save shortcut.")
-            end
+  def handle_event("gallery_update_name", params, socket),
+    do: HeaderHandlers.handle_gallery_update_name(params, socket, header_helpers())
 
-          {:noreply, put_flash(socket, :error, error_msg)}
-      end
-    end)
-  end
-
-  # --- Color ---
-
-  def handle_event("set_sheet_color", %{"color" => color}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      update_sheet_field(socket, %{color: color})
-    end)
-  end
-
-  def handle_event("clear_sheet_color", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      update_sheet_field(socket, %{color: nil})
-    end)
-  end
-
-  # --- Banner ---
-
-  def handle_event("remove_banner", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      sheet = socket.assigns.sheet
-
-      case Sheets.update_sheet(sheet, %{banner_asset_id: nil}) do
-        {:ok, _} ->
-          {:noreply, socket |> reload_sheet() |> broadcast_sheet_change(:sheet_updated)}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not remove banner."))}
-      end
-    end)
-  end
-
-  def handle_event(
-        "upload_banner",
-        %{"filename" => filename, "content_type" => content_type, "data" => data},
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with [_header, base64_data] <- String.split(data, ",", parts: 2),
-           {:ok, binary_data} <- Base.decode64(base64_data) do
-        upload_asset(socket, filename, content_type, binary_data, :banner)
-      else
-        _ ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid file data."))}
-      end
-    end)
-  end
-
-  # --- Avatars ---
-
-  def handle_event(
-        "upload_avatar",
-        %{"filename" => filename, "content_type" => content_type, "data" => data},
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with [_header, base64_data] <- String.split(data, ",", parts: 2),
-           {:ok, binary_data} <- Base.decode64(base64_data) do
-        upload_asset(socket, filename, content_type, binary_data, :avatar)
-      else
-        _ ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid file data."))}
-      end
-    end)
-  end
-
-  def handle_event("remove_avatar", %{"id" => id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      id = parse_id(id)
-
-      case Sheets.remove_avatar(id) do
-        {:ok, _} ->
-          {:noreply,
-           socket |> reload_sheet_and_tree() |> broadcast_sheet_change(:sheet_updated)}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not remove avatar."))}
-      end
-    end)
-  end
-
-  def handle_event("set_default_avatar", %{"id" => id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      id = parse_id(id)
-      avatar = Sheets.get_avatar(id)
-
-      if avatar && avatar.sheet_id == socket.assigns.sheet.id do
-        Sheets.set_avatar_default(avatar)
-        {:noreply, socket |> reload_sheet_and_tree() |> broadcast_sheet_change(:sheet_updated)}
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
-
-  def handle_event("gallery_update_name", %{"id" => id, "value" => value}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with avatar when not is_nil(avatar) <- Sheets.get_avatar(parse_id(id)),
-           true <- avatar.sheet_id == socket.assigns.sheet.id do
-        Sheets.update_avatar(avatar, %{name: value})
-        {:noreply, socket |> reload_sheet() |> broadcast_sheet_change(:sheet_updated)}
-      else
-        _ -> {:noreply, socket}
-      end
-    end)
-  end
-
-  def handle_event("gallery_update_notes", %{"id" => id, "value" => value}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with avatar when not is_nil(avatar) <- Sheets.get_avatar(parse_id(id)),
-           true <- avatar.sheet_id == socket.assigns.sheet.id do
-        Sheets.update_avatar(avatar, %{notes: value})
-        {:noreply, socket |> reload_sheet() |> broadcast_sheet_change(:sheet_updated)}
-      else
-        _ -> {:noreply, socket}
-      end
-    end)
-  end
+  def handle_event("gallery_update_notes", params, socket),
+    do: HeaderHandlers.handle_gallery_update_notes(params, socket, header_helpers())
 
   # --- Blocks ---
 
@@ -923,87 +793,17 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
   # --- Gallery blocks ---
 
-  def handle_event(
-        "upload_gallery_image",
-        %{
-          "block_id" => block_id,
-          "filename" => filename,
-          "content_type" => content_type,
-          "data" => data
-        },
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      block = Sheets.get_block(parse_id(block_id))
+  def handle_event("upload_gallery_image", params, socket),
+    do: GalleryHandlers.handle_upload(params, socket, content_helpers())
 
-      if block && block.sheet_id == socket.assigns.sheet.id && block.type == "gallery" do
-        with [_header, base64_data] <- String.split(data, ",", parts: 2),
-             {:ok, binary_data} <- Base.decode64(base64_data) do
-          case Billing.can_upload_asset_for_project?(
-                 socket.assigns.project,
-                 byte_size(binary_data)
-               ) do
-            :ok ->
-              case Assets.upload_binary_and_create_asset(
-                     binary_data,
-                     %{filename: filename, content_type: content_type, purpose: :gallery},
-                     socket.assigns.project,
-                     socket.assigns.current_scope.user
-                   ) do
-                {:ok, asset} ->
-                  Sheets.add_gallery_image(block, asset.id)
-                  {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
+  def handle_event("update_gallery_image", params, socket),
+    do: GalleryHandlers.handle_update(params, socket, content_helpers())
 
-                {:error, _} ->
-                  {:noreply,
-                   put_flash(socket, :error, dgettext("sheets", "Could not upload image."))}
-              end
+  def handle_event("remove_gallery_image", params, socket),
+    do: GalleryHandlers.handle_remove(params, socket, content_helpers())
 
-            {:error, :limit_reached, _} ->
-              {:noreply, put_flash(socket, :error, dgettext("sheets", "Storage limit reached."))}
-          end
-        else
-          _ -> {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid file data."))}
-        end
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
-
-  def handle_event(
-        "update_gallery_image",
-        %{"gallery_image_id" => id, "field" => field, "value" => value},
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      case Sheets.get_gallery_image(parse_id(id)) do
-        nil ->
-          {:noreply, socket}
-
-        gi ->
-          Sheets.update_gallery_image(gi, %{String.to_existing_atom(field) => value})
-          {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
-      end
-    end)
-  end
-
-  def handle_event("remove_gallery_image", %{"gallery_image_id" => id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      case Sheets.remove_gallery_image(parse_id(id)) do
-        {:ok, _} -> {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
-        _ -> {:noreply, socket}
-      end
-    end)
-  end
-
-  def handle_event("reorder_gallery_images", %{"block_id" => block_id, "ids" => ids}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      int_ids = Enum.map(ids, &parse_id/1)
-      Sheets.reorder_gallery_images(parse_id(block_id), int_ids)
-      {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
-    end)
-  end
+  def handle_event("reorder_gallery_images", params, socket),
+    do: GalleryHandlers.handle_reorder(params, socket, content_helpers())
 
   # --- Table blocks ---
 
@@ -1183,139 +983,25 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
   # --- Select option management ---
 
-  def handle_event("add_select_option", %{"block-id" => block_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      block = Sheets.get_block(parse_id(block_id))
+  def handle_event("add_select_option", params, socket),
+    do: SelectOptionHandlers.handle_add(params, socket, content_helpers())
 
-      if block && block.sheet_id == socket.assigns.sheet.id do
-        options = get_in(block.config, ["options"]) || []
-        new_option = %{"key" => "option_#{length(options) + 1}", "value" => ""}
-        new_config = Map.put(block.config || %{}, "options", options ++ [new_option])
+  def handle_event("remove_select_option", params, socket),
+    do: SelectOptionHandlers.handle_remove(params, socket, content_helpers())
 
-        case Sheets.update_block_config(block, new_config) do
-          {:ok, _} -> {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
-          {:error, _} -> {:noreply, socket}
-        end
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
-
-  def handle_event(
-        "remove_select_option",
-        %{"block-id" => block_id, "index" => index},
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      block = Sheets.get_block(parse_id(block_id))
-
-      if block && block.sheet_id == socket.assigns.sheet.id do
-        options = get_in(block.config, ["options"]) || []
-        new_config = Map.put(block.config || %{}, "options", List.delete_at(options, index))
-
-        case Sheets.update_block_config(block, new_config) do
-          {:ok, _} -> {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
-          {:error, _} -> {:noreply, socket}
-        end
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
-
-  def handle_event(
-        "update_select_option",
-        %{"block-id" => block_id, "index" => index, "field" => field, "value" => value},
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      block = Sheets.get_block(parse_id(block_id))
-
-      if block && block.sheet_id == socket.assigns.sheet.id do
-        options = get_in(block.config, ["options"]) || []
-
-        new_options =
-          List.update_at(options, index, fn opt ->
-            Map.put(opt || %{}, field, value)
-          end)
-
-        new_config = Map.put(block.config || %{}, "options", new_options)
-
-        case Sheets.update_block_config(block, new_config) do
-          {:ok, _} -> {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
-          {:error, _} -> {:noreply, socket}
-        end
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
+  def handle_event("update_select_option", params, socket),
+    do: SelectOptionHandlers.handle_update(params, socket, content_helpers())
 
   # --- Reference blocks ---
 
-  def handle_event("search_references", %{"block-id" => block_id} = params, socket) do
-    query = params["query"] || ""
-    block_id = parse_id(block_id)
-    block = Sheets.get_block(block_id)
-    allowed_types = get_in(block.config, ["allowed_types"]) || ["sheet", "flow"]
+  def handle_event("search_references", params, socket),
+    do: ReferenceHandlers.handle_search(params, socket, content_helpers())
 
-    results = Sheets.search_referenceable(socket.assigns.project.id, query, allowed_types)
+  def handle_event("select_reference", params, socket),
+    do: ReferenceHandlers.handle_select(params, socket, content_helpers())
 
-    {:noreply,
-     push_event(socket, "reference_results", %{
-       block_id: block_id,
-       results: results
-     })}
-  end
-
-  def handle_event(
-        "select_reference",
-        %{"block-id" => block_id, "type" => target_type, "id" => target_id},
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      block_id = parse_id(block_id)
-      block = Sheets.get_block(block_id)
-
-      if block && block.sheet_id == socket.assigns.sheet.id do
-        target_id_int = parse_id(target_id)
-
-        case Sheets.validate_reference_target(
-               target_type,
-               target_id_int,
-               socket.assigns.project.id
-             ) do
-          {:ok, _target} ->
-            Sheets.update_block_value(block, %{
-              "target_type" => target_type,
-              "target_id" => target_id_int
-            })
-
-            {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
-
-          {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("sheets", "Reference target not found."))}
-        end
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
-
-  def handle_event("clear_reference", %{"block-id" => block_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      block = Sheets.get_block(parse_id(block_id))
-
-      if block && block.sheet_id == socket.assigns.sheet.id do
-        Sheets.update_block_value(block, %{"target_type" => nil, "target_id" => nil})
-        {:noreply, socket |> reload_blocks() |> broadcast_sheet_change(:block_updated)}
-      else
-        {:noreply, socket}
-      end
-    end)
-  end
+  def handle_event("clear_reference", params, socket),
+    do: ReferenceHandlers.handle_clear(params, socket, content_helpers())
 
   # --- Formula sidebar ---
 
@@ -1561,45 +1247,14 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
 
   # --- Audio tab ---
 
-  def handle_event(
-        "select_audio",
-        %{"node-id" => node_id, "audio_asset_id" => asset_id_str},
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      case Integer.parse(to_string(asset_id_str)) do
-        {asset_id, ""} -> update_node_audio(socket, node_id, asset_id)
-        _ -> {:noreply, socket}
-      end
-    end)
-  end
+  def handle_event("select_audio", params, socket),
+    do: AudioHandlers.handle_select(params, socket, content_helpers())
 
-  def handle_event("remove_audio", %{"node-id" => node_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      update_node_audio(socket, node_id, nil)
-    end)
-  end
+  def handle_event("remove_audio", params, socket),
+    do: AudioHandlers.handle_remove(params, socket, content_helpers())
 
-  def handle_event(
-        "upload_audio",
-        %{
-          "filename" => filename,
-          "content_type" => content_type,
-          "data" => data,
-          "node_id" => node_id
-        },
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with [_header, base64_data] <- String.split(data, ",", parts: 2),
-           {:ok, binary_data} <- Base.decode64(base64_data) do
-        process_audio_upload(socket, node_id, filename, content_type, binary_data)
-      else
-        _ ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid file data."))}
-      end
-    end)
-  end
+  def handle_event("upload_audio", params, socket),
+    do: AudioHandlers.handle_upload(params, socket, content_helpers())
 
   # ===========================================================================
   # History Tab Events
@@ -2067,6 +1722,28 @@ defmodule StoryarnWeb.SheetLive.ShowV2 do
   # ===========================================================================
   # Private Helpers
   # ===========================================================================
+
+  defp content_helpers do
+    %{
+      reload_blocks: &reload_blocks/1,
+      broadcast: &broadcast_sheet_change/2,
+      parse_id: &parse_id/1
+    }
+  end
+
+  defp header_helpers do
+    %{
+      reload_sheet: &reload_sheet/1,
+      reload_sheet_and_tree: &reload_sheet_and_tree/1,
+      broadcast: &broadcast_sheet_change/2,
+      upload_asset: &upload_asset/5,
+      update_sheet_field: &update_sheet_field/2,
+      parse_id: &parse_id/1,
+      prepare_tree: fn project_id ->
+        prepare_tree(Sheets.list_sheets_tree(project_id))
+      end
+    }
+  end
 
   defp table_helpers(_socket) do
     pid = self()

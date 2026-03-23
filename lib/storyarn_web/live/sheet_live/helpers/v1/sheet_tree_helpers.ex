@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers do
+defmodule StoryarnWeb.SheetLive.Helpers.V1.SheetTreeHelpers do
   @moduledoc """
   Sheet tree operation helpers for the sheet editor.
   """

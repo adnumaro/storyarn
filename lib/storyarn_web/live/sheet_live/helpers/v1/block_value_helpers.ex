@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Helpers.BlockValueHelpers do
+defmodule StoryarnWeb.SheetLive.Helpers.V1.BlockValueHelpers do
   @moduledoc """
   Value-returning block helpers for LiveComponent usage.
 
@@ -10,7 +10,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockValueHelpers do
 
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
-  alias StoryarnWeb.SheetLive.Helpers.ReferenceHelpers
+  alias StoryarnWeb.SheetLive.Helpers.V1.ReferenceHelpers
 
   @doc """
   Toggles a multi-select option.

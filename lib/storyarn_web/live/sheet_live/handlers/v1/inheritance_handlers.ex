@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Handlers.InheritanceHandlers do
+defmodule StoryarnWeb.SheetLive.Handlers.V1.InheritanceHandlers do
   @moduledoc """
   Handles inheritance and propagation events for the ContentTab LiveComponent.
 
@@ -17,7 +17,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.InheritanceHandlers do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Sheets
-  alias StoryarnWeb.SheetLive.Helpers.ContentTabHelpers
+  alias StoryarnWeb.SheetLive.Helpers.V1.ContentTabHelpers
 
   # ---------------------------------------------------------------------------
   # detach_inherited_block

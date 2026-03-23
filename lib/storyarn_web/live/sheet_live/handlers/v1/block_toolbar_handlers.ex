@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Handlers.BlockToolbarHandlers do
+defmodule StoryarnWeb.SheetLive.Handlers.V1.BlockToolbarHandlers do
   @moduledoc """
   Handles toolbar action events for the ContentTab LiveComponent.
 
@@ -18,9 +18,9 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockToolbarHandlers do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Sheets
-  alias StoryarnWeb.SheetLive.Handlers.InheritanceHandlers
+  alias StoryarnWeb.SheetLive.Handlers.V1.InheritanceHandlers
   alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
-  alias StoryarnWeb.SheetLive.Helpers.ContentTabHelpers
+  alias StoryarnWeb.SheetLive.Helpers.V1.ContentTabHelpers
 
   # ---------------------------------------------------------------------------
   # duplicate_block

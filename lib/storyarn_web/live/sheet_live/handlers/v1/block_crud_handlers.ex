@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers do
+defmodule StoryarnWeb.SheetLive.Handlers.V1.BlockCrudHandlers do
   @moduledoc """
   Handles block CRUD and column-layout events for the ContentTab LiveComponent.
 
@@ -18,7 +18,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers do
 
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
-  alias StoryarnWeb.SheetLive.Helpers.ContentTabHelpers
+  alias StoryarnWeb.SheetLive.Helpers.V1.ContentTabHelpers
 
   # ---------------------------------------------------------------------------
   # add_block

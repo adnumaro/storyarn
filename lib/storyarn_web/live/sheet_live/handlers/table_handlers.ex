@@ -19,7 +19,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   alias Storyarn.Shared.FormulaEngine
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
-  alias StoryarnWeb.SheetLive.Helpers.ContentTabHelpers
+  alias StoryarnWeb.SheetLive.Helpers.V1.ContentTabHelpers
 
   # ===========================================================================
   # Column resize (silent — no save indicator flash)

@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Helpers.ContentTabHelpers do
+defmodule StoryarnWeb.SheetLive.Helpers.V1.ContentTabHelpers do
   @moduledoc """
   Pure, stateless helper functions for the ContentTab LiveComponent.
 

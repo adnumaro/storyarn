@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Helpers.ReferenceHelpers do
+defmodule StoryarnWeb.SheetLive.Helpers.V1.ReferenceHelpers do
   @moduledoc false
 
   import Phoenix.Component

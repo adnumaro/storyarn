@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
+defmodule StoryarnWeb.SheetLive.Helpers.V1.BlockHelpers do
   @moduledoc """
   Block operation helpers for the sheet editor.
   """
@@ -283,7 +283,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.BlockHelpers do
   # Delegated to BlockValueHelpers module
   # ===========================================================================
 
-  alias StoryarnWeb.SheetLive.Helpers.BlockValueHelpers
+  alias StoryarnWeb.SheetLive.Helpers.V1.BlockValueHelpers
 
   defdelegate toggle_multi_select_value(socket, block_id, key), to: BlockValueHelpers
   defdelegate handle_multi_select_enter_value(socket, block_id, value), to: BlockValueHelpers

@@ -28,8 +28,8 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias StoryarnWeb.SheetLive.Components.SheetAvatar
   alias StoryarnWeb.SheetLive.Components.SheetTitle
   alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
-  alias StoryarnWeb.SheetLive.Helpers.ReferenceHelpers
-  alias StoryarnWeb.SheetLive.Helpers.SheetTreeHelpers
+  alias StoryarnWeb.SheetLive.Helpers.V1.ReferenceHelpers
+  alias StoryarnWeb.SheetLive.Helpers.V1.SheetTreeHelpers
 
   @impl true
   def render(assigns) do

@@ -13,14 +13,14 @@ defmodule StoryarnWeb.SheetLive.Components.ContentTab do
   import StoryarnWeb.SheetLive.Helpers.FormulaHelpers
 
   alias Storyarn.Sheets
-  alias StoryarnWeb.SheetLive.Handlers.BlockCrudHandlers
-  alias StoryarnWeb.SheetLive.Handlers.BlockToolbarHandlers
-  alias StoryarnWeb.SheetLive.Handlers.GalleryHandlers
-  alias StoryarnWeb.SheetLive.Handlers.InheritanceHandlers
+  alias StoryarnWeb.SheetLive.Handlers.V1.BlockCrudHandlers
+  alias StoryarnWeb.SheetLive.Handlers.V1.BlockToolbarHandlers
+  alias StoryarnWeb.SheetLive.Handlers.V1.GalleryHandlers
+  alias StoryarnWeb.SheetLive.Handlers.V1.InheritanceHandlers
   alias StoryarnWeb.SheetLive.Handlers.TableHandlers
-  alias StoryarnWeb.SheetLive.Helpers.BlockHelpers
-  alias StoryarnWeb.SheetLive.Helpers.ContentTabHelpers
-  alias StoryarnWeb.SheetLive.Helpers.ReferenceHelpers
+  alias StoryarnWeb.SheetLive.Helpers.V1.BlockHelpers
+  alias StoryarnWeb.SheetLive.Helpers.V1.ContentTabHelpers
+  alias StoryarnWeb.SheetLive.Helpers.V1.ReferenceHelpers
 
   @impl true
   def render(assigns) do

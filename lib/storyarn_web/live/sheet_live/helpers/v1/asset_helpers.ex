@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SheetLive.Helpers.AssetHelpers do
+defmodule StoryarnWeb.SheetLive.Helpers.V1.AssetHelpers do
   @moduledoc false
 
   import Phoenix.Component

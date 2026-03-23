@@ -12,7 +12,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
 
   alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.UndoRedoStack
-  alias StoryarnWeb.SheetLive.Helpers.ReferenceHelpers
+  alias StoryarnWeb.SheetLive.Helpers.V1.ReferenceHelpers
 
   # ===========================================================================
   # Public dispatch
