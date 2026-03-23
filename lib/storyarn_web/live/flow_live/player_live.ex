@@ -23,7 +23,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
   alias StoryarnWeb.FlowLive.Player.{PlayerEngine, Slide}
-  alias StoryarnWeb.SceneLive.Helpers.Serializer, as: MapSerializer
+  alias StoryarnWeb.SceneLive.V1.Helpers.Serializer, as: MapSerializer
 
   # ===========================================================================
   # Render

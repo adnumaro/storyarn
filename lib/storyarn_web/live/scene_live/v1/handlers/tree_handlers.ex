@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
+defmodule StoryarnWeb.SceneLive.V1.Handlers.TreeHandlers do
   @moduledoc """
   Tree/navigation handlers for the scene LiveView.
   """
@@ -13,8 +13,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
   alias Storyarn.Scenes
   alias Storyarn.Shared.MapUtils
 
-  import StoryarnWeb.SceneLive.Helpers.SceneHelpers
-  import StoryarnWeb.SceneLive.Helpers.Serializer
+  import StoryarnWeb.SceneLive.V1.Helpers.SceneHelpers
+  import StoryarnWeb.SceneLive.V1.Helpers.Serializer
 
   def handle_create_scene(_params, socket) do
     case Scenes.create_scene(socket.assigns.project, %{name: dgettext("scenes", "Untitled")}) do

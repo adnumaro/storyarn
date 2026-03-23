@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Components.SceneSearchPanel do
+defmodule StoryarnWeb.SceneLive.V1.Components.SceneSearchPanel do
   @moduledoc """
   Search panel component for the map editor.
 
@@ -9,7 +9,7 @@ defmodule StoryarnWeb.SceneLive.Components.SceneSearchPanel do
   use Gettext, backend: Storyarn.Gettext
 
   import StoryarnWeb.Components.CoreComponents
-  import StoryarnWeb.SceneLive.Helpers.SceneHelpers, only: [search_result_icon: 1]
+  import StoryarnWeb.SceneLive.V1.Helpers.SceneHelpers, only: [search_result_icon: 1]
 
   attr :search_query, :string, required: true
   attr :search_filter, :string, required: true

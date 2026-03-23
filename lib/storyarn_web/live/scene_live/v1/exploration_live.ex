@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.ExplorationLive do
+defmodule StoryarnWeb.SceneLive.V1.ExplorationLive do
   @moduledoc """
   Full-screen exploration mode player for maps.
 
@@ -28,7 +28,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
   alias StoryarnWeb.FlowLive.Player.PlayerEngine
   alias StoryarnWeb.FlowLive.Player.Slide
-  alias StoryarnWeb.SceneLive.Helpers.Serializer
+  alias StoryarnWeb.SceneLive.V1.Helpers.Serializer
 
   # ===========================================================================
   # Render

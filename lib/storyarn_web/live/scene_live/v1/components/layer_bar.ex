@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Components.LayerBar do
+defmodule StoryarnWeb.SceneLive.V1.Components.LayerBar do
   @moduledoc """
   Layer bar component for the map editor.
 

@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
+defmodule StoryarnWeb.SceneLive.V1.Handlers.CollaborationHandlers do
   @moduledoc """
   Collaboration event handlers for the scene editor.
 
@@ -12,7 +12,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
   alias Storyarn.Collaboration
   alias Storyarn.Scenes
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
-  import StoryarnWeb.SceneLive.Helpers.Serializer
+  import StoryarnWeb.SceneLive.V1.Helpers.Serializer
 
   # ===========================================================================
   # Client events (handle_event dispatches)

@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers do
+defmodule StoryarnWeb.SceneLive.V1.Handlers.CanvasEventHandlers do
   @moduledoc """
   Canvas UI event handlers for the scene LiveView.
 
@@ -15,8 +15,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers do
   alias Storyarn.Scenes
 
   import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
-  import StoryarnWeb.SceneLive.Helpers.SceneHelpers
-  import StoryarnWeb.SceneLive.Helpers.Serializer
+  import StoryarnWeb.SceneLive.V1.Helpers.SceneHelpers
+  import StoryarnWeb.SceneLive.V1.Helpers.Serializer
 
   @spec handle_save_name(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}

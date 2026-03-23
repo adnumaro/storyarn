@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Components.SceneHeader do
+defmodule StoryarnWeb.SceneLive.V1.Components.SceneHeader do
   @moduledoc """
   Header bar component for the scene editor.
 

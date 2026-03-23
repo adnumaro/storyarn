@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Components.CollectionItemsEditor do
+defmodule StoryarnWeb.SceneLive.V1.Components.CollectionItemsEditor do
   @moduledoc """
   Editor component for collection zone items.
 

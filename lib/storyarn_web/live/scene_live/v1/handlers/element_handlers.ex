@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
+defmodule StoryarnWeb.SceneLive.V1.Handlers.ElementHandlers do
   @moduledoc """
   Element (pin/zone/connection/annotation) handlers for the scene LiveView.
   """
@@ -9,12 +9,12 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Scenes
-  import StoryarnWeb.SceneLive.Helpers.SceneHelpers
-  import StoryarnWeb.SceneLive.Helpers.Serializer
+  import StoryarnWeb.SceneLive.V1.Helpers.SceneHelpers
+  import StoryarnWeb.SceneLive.V1.Helpers.Serializer
 
   import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
 
-  import StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers,
+  import StoryarnWeb.SceneLive.V1.Handlers.UndoRedoHandlers,
     only: [push_undo: 2, push_undo_coalesced: 2]
 
   # ---------------------------------------------------------------------------

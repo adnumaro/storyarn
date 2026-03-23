@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Helpers.Serializer do
+defmodule StoryarnWeb.SceneLive.V1.Helpers.Serializer do
   @moduledoc """
   Scene data serialization helpers.
   """

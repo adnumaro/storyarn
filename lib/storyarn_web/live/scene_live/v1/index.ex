@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Index do
+defmodule StoryarnWeb.SceneLive.V1.Index do
   @moduledoc false
 
   use StoryarnWeb, :live_view
@@ -141,7 +141,7 @@ defmodule StoryarnWeb.SceneLive.Index do
           on_cancel={JS.patch(~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/scenes")}
         >
           <.live_component
-            module={StoryarnWeb.SceneLive.Form}
+            module={StoryarnWeb.SceneLive.V1.Form}
             id="new-scene-form"
             project={@project}
             title={dgettext("scenes", "New Scene")}
@@ -361,7 +361,7 @@ defmodule StoryarnWeb.SceneLive.Index do
   end
 
   @impl true
-  def handle_info({StoryarnWeb.SceneLive.Form, {:saved, scene}}, socket) do
+  def handle_info({StoryarnWeb.SceneLive.V1.Form, {:saved, scene}}, socket) do
     {:noreply,
      socket
      |> put_flash(:info, dgettext("scenes", "Scene created successfully."))

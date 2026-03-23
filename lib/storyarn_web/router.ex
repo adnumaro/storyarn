@@ -273,16 +273,16 @@ defmodule StoryarnWeb.Router do
            :compare
 
       # Scenes (world builder)
-      live "/workspaces/:workspace_slug/projects/:project_slug/scenes", SceneLive.Index, :index
-      live "/workspaces/:workspace_slug/projects/:project_slug/scenes/new", SceneLive.Index, :new
-      live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id", SceneLive.Show, :show
+      live "/workspaces/:workspace_slug/projects/:project_slug/scenes", SceneLive.V1.Index, :index
+      live "/workspaces/:workspace_slug/projects/:project_slug/scenes/new", SceneLive.V1.Index, :new
+      live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id", SceneLive.V1.Show, :show
 
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/drafts/:draft_id",
-           SceneLive.Show,
+           SceneLive.V1.Show,
            :draft
 
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/explore",
-           SceneLive.ExplorationLive,
+           SceneLive.V1.ExplorationLive,
            :explore
 
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/compare/:version_number",

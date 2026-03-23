@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Components.Legend do
+defmodule StoryarnWeb.SceneLive.V1.Components.Legend do
   @moduledoc """
   Auto-generated legend component for the map canvas.
 

@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
+defmodule StoryarnWeb.SceneLive.V1.Components.FloatingToolbar do
   @moduledoc """
   FigJam-style floating toolbar positioned above the selected map element.
 
@@ -14,9 +14,9 @@ defmodule StoryarnWeb.SceneLive.Components.FloatingToolbar do
 
   import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.Components.ToolbarColorPicker
-  import StoryarnWeb.SceneLive.Components.ToolbarWidgets
+  import StoryarnWeb.SceneLive.V1.Components.ToolbarWidgets
 
-  import StoryarnWeb.SceneLive.Helpers.SceneHelpers,
+  import StoryarnWeb.SceneLive.V1.Helpers.SceneHelpers,
     only: [action_type_icon: 1, action_type_label: 1, action_type_description: 1]
 
   @pin_types ~w(location character event custom)

@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Components.Dock do
+defmodule StoryarnWeb.SceneLive.V1.Components.Dock do
   @moduledoc """
   Bottom dock component for the scene canvas editor.
   Renders the tool palette for Edit mode using the shared CanvasDock.

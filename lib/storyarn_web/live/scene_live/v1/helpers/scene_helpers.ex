@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
+defmodule StoryarnWeb.SceneLive.V1.Helpers.SceneHelpers do
   @moduledoc """
   Pure utility helpers for the map LiveView.
   """

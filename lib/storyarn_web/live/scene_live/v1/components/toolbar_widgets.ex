@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Components.ToolbarWidgets do
+defmodule StoryarnWeb.SceneLive.V1.Components.ToolbarWidgets do
   @moduledoc """
   Shared widget components for the floating map toolbar.
 
@@ -13,7 +13,7 @@ defmodule StoryarnWeb.SceneLive.Components.ToolbarWidgets do
 
   import StoryarnWeb.Components.CoreComponents
   import StoryarnWeb.Components.ToolbarColorPicker
-  import StoryarnWeb.SceneLive.Helpers.SceneHelpers, only: [flatten_sheets: 1]
+  import StoryarnWeb.SceneLive.V1.Helpers.SceneHelpers, only: [flatten_sheets: 1]
 
   # ---------------------------------------------------------------------------
   # Stroke Picker (style + width + color in one popover — for zones & connections)

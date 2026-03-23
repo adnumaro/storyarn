@@ -9,7 +9,7 @@ defmodule StoryarnWeb.FlowLive.Components.FlowToolbar do
   alias Phoenix.LiveView.JS
   import StoryarnWeb.FlowLive.Components.NodeTypeHelpers, only: [node_type_icon: 1]
   import StoryarnWeb.Components.ToolbarColorPicker
-  import StoryarnWeb.SceneLive.Components.ToolbarWidgets, only: [toolbar_size_picker: 1]
+  import StoryarnWeb.SceneLive.V1.Components.ToolbarWidgets, only: [toolbar_size_picker: 1]
 
   attr :node, :map, required: true
   attr :form, :any, required: true

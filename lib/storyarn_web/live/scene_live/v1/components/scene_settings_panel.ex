@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Components.SceneSettingsPanel do
+defmodule StoryarnWeb.SceneLive.V1.Components.SceneSettingsPanel do
   @moduledoc """
   Right sidebar panel for scene settings (background image, scale, dimensions).
   Uses the same SceneElementPanel hook for slide-in/out animations.

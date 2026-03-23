@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Form do
+defmodule StoryarnWeb.SceneLive.V1.Form do
   @moduledoc false
 
   use StoryarnWeb, :live_component

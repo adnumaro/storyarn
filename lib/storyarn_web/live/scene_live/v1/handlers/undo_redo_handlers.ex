@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
+defmodule StoryarnWeb.SceneLive.V1.Handlers.UndoRedoHandlers do
   @moduledoc """
   Undo/redo handlers for the scene LiveView.
 
@@ -13,10 +13,10 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers do
 
   alias Storyarn.Scenes
   alias StoryarnWeb.Helpers.UndoRedoStack
-  alias StoryarnWeb.SceneLive.Handlers.ElementHandlers
-  import StoryarnWeb.SceneLive.Helpers.Serializer
+  alias StoryarnWeb.SceneLive.V1.Handlers.ElementHandlers
+  import StoryarnWeb.SceneLive.V1.Helpers.Serializer
 
-  import StoryarnWeb.SceneLive.Helpers.SceneHelpers,
+  import StoryarnWeb.SceneLive.V1.Helpers.SceneHelpers,
     only: [replace_in_list: 2, maybe_update_selected_element: 3]
 
   # ---------------------------------------------------------------------------

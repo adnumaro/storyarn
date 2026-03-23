@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
+defmodule StoryarnWeb.SceneLive.V1.Handlers.LayerHandlers do
   @moduledoc """
   Layer management handlers for the scene LiveView.
   """
@@ -10,9 +10,9 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
 
   alias Storyarn.Scenes
   import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
-  import StoryarnWeb.SceneLive.Helpers.SceneHelpers
-  import StoryarnWeb.SceneLive.Helpers.Serializer
-  import StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers, only: [push_undo: 2]
+  import StoryarnWeb.SceneLive.V1.Helpers.SceneHelpers
+  import StoryarnWeb.SceneLive.V1.Helpers.Serializer
+  import StoryarnWeb.SceneLive.V1.Handlers.UndoRedoHandlers, only: [push_undo: 2]
 
   def handle_create_layer(_params, socket) do
     case Scenes.create_layer(socket.assigns.scene.id, %{name: dgettext("scenes", "New Layer")}) do

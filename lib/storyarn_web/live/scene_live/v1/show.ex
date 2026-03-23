@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Show do
+defmodule StoryarnWeb.SceneLive.V1.Show do
   @moduledoc false
 
   use StoryarnWeb, :live_view
@@ -6,15 +6,15 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   import StoryarnWeb.Live.Shared.TreePanelHandlers
-  import StoryarnWeb.SceneLive.Components.Dock
-  import StoryarnWeb.SceneLive.Components.LayerBar
-  import StoryarnWeb.SceneLive.Components.Legend
-  import StoryarnWeb.SceneLive.Components.SceneHeader
-  import StoryarnWeb.SceneLive.Components.SceneSearchPanel
+  import StoryarnWeb.SceneLive.V1.Components.Dock
+  import StoryarnWeb.SceneLive.V1.Components.LayerBar
+  import StoryarnWeb.SceneLive.V1.Components.Legend
+  import StoryarnWeb.SceneLive.V1.Components.SceneHeader
+  import StoryarnWeb.SceneLive.V1.Components.SceneSearchPanel
   import StoryarnWeb.Components.CanvasToolbar
-  import StoryarnWeb.SceneLive.Components.FloatingToolbar
-  import StoryarnWeb.SceneLive.Components.SceneElementPanel
-  import StoryarnWeb.SceneLive.Components.SceneSettingsPanel
+  import StoryarnWeb.SceneLive.V1.Components.FloatingToolbar
+  import StoryarnWeb.SceneLive.V1.Components.SceneElementPanel
+  import StoryarnWeb.SceneLive.V1.Components.SceneSettingsPanel
   import StoryarnWeb.Components.RightSidebar
 
   alias StoryarnWeb.Components.DraftComponents
@@ -32,15 +32,15 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   alias StoryarnWeb.Components.Sidebar.SceneTree
 
-  import StoryarnWeb.SceneLive.Helpers.SceneHelpers
-  import StoryarnWeb.SceneLive.Helpers.Serializer
+  import StoryarnWeb.SceneLive.V1.Helpers.SceneHelpers
+  import StoryarnWeb.SceneLive.V1.Helpers.Serializer
 
-  alias StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers
-  alias StoryarnWeb.SceneLive.Handlers.CollaborationHandlers
-  alias StoryarnWeb.SceneLive.Handlers.ElementHandlers
-  alias StoryarnWeb.SceneLive.Handlers.LayerHandlers
-  alias StoryarnWeb.SceneLive.Handlers.TreeHandlers
-  alias StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers
+  alias StoryarnWeb.SceneLive.V1.Handlers.CanvasEventHandlers
+  alias StoryarnWeb.SceneLive.V1.Handlers.CollaborationHandlers
+  alias StoryarnWeb.SceneLive.V1.Handlers.ElementHandlers
+  alias StoryarnWeb.SceneLive.V1.Handlers.LayerHandlers
+  alias StoryarnWeb.SceneLive.V1.Handlers.TreeHandlers
+  alias StoryarnWeb.SceneLive.V1.Handlers.UndoRedoHandlers
 
   @lock_heartbeat_interval 10_000
 

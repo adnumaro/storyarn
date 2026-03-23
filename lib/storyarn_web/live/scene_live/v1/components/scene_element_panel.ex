@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
+defmodule StoryarnWeb.SceneLive.V1.Components.SceneElementPanel do
   @moduledoc """
   Sliding right-side panel for scene element properties.
 
@@ -15,8 +15,8 @@ defmodule StoryarnWeb.SceneLive.Components.SceneElementPanel do
 
   import StoryarnWeb.Components.ConditionBuilder
   import StoryarnWeb.Components.ExpressionEditor
-  import StoryarnWeb.SceneLive.Components.CollectionItemsEditor
-  import StoryarnWeb.SceneLive.Components.ToolbarWidgets
+  import StoryarnWeb.SceneLive.V1.Components.CollectionItemsEditor
+  import StoryarnWeb.SceneLive.V1.Components.ToolbarWidgets
 
   attr :selected_type, :string, required: true
   attr :selected_element, :map, required: true
