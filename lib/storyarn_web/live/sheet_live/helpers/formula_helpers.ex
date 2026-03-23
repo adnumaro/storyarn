@@ -251,4 +251,49 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpers do
   end
 
   def formula_page_size, do: @formula_page_size
+
+  @doc """
+  Computes formula results for all table blocks and enriches row cells
+  with `__result` and `__resolved` keys.
+  """
+  def compute_formulas(table_data, project_id) do
+    alias Storyarn.Sheets.FormulaResolver
+
+    Map.new(table_data, fn {block_id, %{columns: cols, rows: rows} = data} ->
+      formula_cols = Enum.filter(cols, &(&1.type == "formula"))
+
+      if formula_cols == [] do
+        {block_id, data}
+      else
+        computed =
+          try do
+            FormulaResolver.compute_all(cols, rows, project_id)
+          rescue
+            _ -> %{}
+          end
+
+        enriched_rows =
+          Enum.map(rows, fn row ->
+            formula_results = Map.get(computed, row.id, %{})
+
+            updated_cells =
+              Enum.reduce(formula_results, row.cells, fn {slug, %{result: result} = computed_entry}, cells ->
+                current = cells[slug]
+                resolved = Map.get(computed_entry, :resolved, %{})
+
+                enriched =
+                  if is_map(current),
+                    do: current |> Map.put("__result", result) |> Map.put("__resolved", resolved),
+                    else: %{"__result" => result, "__resolved" => resolved}
+
+                Map.put(cells, slug, enriched)
+              end)
+
+            %{row | cells: updated_cells}
+          end)
+
+        {block_id, %{data | rows: enriched_rows}}
+      end
+    end)
+  end
 end

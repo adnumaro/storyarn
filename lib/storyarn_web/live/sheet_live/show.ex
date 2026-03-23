@@ -10,6 +10,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias StoryarnWeb.SheetLive.Handlers.{
     AudioHandlers,
     BlockHandlers,
+    FormulaHandlers,
     GalleryHandlers,
     HeaderHandlers,
     HistoryHandlers,
@@ -726,140 +727,23 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   # --- Formula sidebar ---
 
-  def handle_event("open_formula_sidebar", params, socket) do
-    row_id = MapUtils.parse_int(params["row-id"])
-    block_id = MapUtils.parse_int(params["block-id"])
-    slug = params["column-slug"]
+  def handle_event("open_formula_sidebar", params, socket),
+    do: FormulaHandlers.handle_open(params, socket, formula_handler_helpers())
 
-    table_entry = Map.get(socket.assigns.table_data, block_id, %{columns: [], rows: []})
-    enriched_row = Enum.find(table_entry.rows, &(&1.id == row_id))
-    row = enriched_row || Sheets.get_table_row!(row_id)
+  def handle_event("close_formula_sidebar", params, socket),
+    do: FormulaHandlers.handle_close(params, socket, formula_handler_helpers())
 
-    all_blocks =
-      socket.assigns.blocks ++
-        Enum.flat_map(socket.assigns.inherited_groups, fn g -> g.blocks end)
+  def handle_event("save_formula_expression", params, socket),
+    do: FormulaHandlers.handle_save_expression(params, socket, formula_handler_helpers())
 
-    table_name =
-      case Enum.find(all_blocks, &(&1.id == block_id)) do
-        nil -> nil
-        block -> block.config["label"]
-      end
+  def handle_event("save_formula_binding", params, socket),
+    do: FormulaHandlers.handle_save_binding(params, socket, formula_handler_helpers())
 
-    column_name =
-      case Enum.find(table_entry.columns, &(&1.slug == slug)) do
-        nil -> nil
-        col -> col.name
-      end
+  def handle_event("search_formula_bindings", params, socket),
+    do: FormulaHandlers.handle_search(params, socket, formula_handler_helpers())
 
-    {:noreply,
-     assign(socket, :formula_editing, %{
-       row_id: row_id,
-       column_slug: slug,
-       block_id: block_id,
-       value: row.cells[slug],
-       columns: table_entry.columns,
-       table_name: table_name,
-       row_name: row.name,
-       column_name: column_name
-     })}
-  end
-
-  def handle_event("close_formula_sidebar", _params, socket) do
-    {:noreply, assign(socket, :formula_editing, nil)}
-  end
-
-  def handle_event("save_formula_expression", %{"value" => expression} = params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      current = socket.assigns.formula_editing
-      current_bindings = if is_map(current.value), do: current.value["bindings"] || %{}, else: %{}
-      raw_bindings = encode_bindings(current_bindings)
-
-      {:noreply, updated_socket} =
-        TableHandlers.handle_update_formula_cell(
-          %{
-            "row-id" => params["row-id"],
-            "column-slug" => params["column-slug"],
-            "expression" => expression,
-            "bindings" => raw_bindings
-          },
-          socket,
-          table_helpers(socket)
-        )
-
-      {:noreply,
-       updated_socket
-       |> refresh_formula_editing()
-       |> broadcast_sheet_change(:block_updated)}
-    end)
-  end
-
-  def handle_event(
-        "save_formula_binding",
-        %{"binding_value" => value, "symbol" => symbol} = params,
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      current = socket.assigns.formula_editing
-      current_value = current.value || %{}
-
-      expression = if is_map(current_value), do: current_value["expression"] || "", else: ""
-      current_bindings = if is_map(current_value), do: current_value["bindings"] || %{}, else: %{}
-
-      binding = parse_binding_value(value)
-
-      updated_bindings =
-        if binding,
-          do: Map.put(current_bindings, symbol, binding),
-          else: Map.delete(current_bindings, symbol)
-
-      raw_bindings = encode_bindings(updated_bindings)
-
-      {:noreply, updated_socket} =
-        TableHandlers.handle_update_formula_cell(
-          %{
-            "row-id" => params["row-id"],
-            "column-slug" => params["column-slug"],
-            "expression" => expression,
-            "bindings" => raw_bindings
-          },
-          socket,
-          table_helpers(socket)
-        )
-
-      {:noreply,
-       updated_socket
-       |> refresh_formula_editing()
-       |> broadcast_sheet_change(:block_updated)}
-    end)
-  end
-
-  def handle_event("search_formula_bindings", %{"query" => query}, socket) do
-    {results, has_more} = search_binding_variables(socket.assigns.project.id, query, 0)
-
-    {:noreply,
-     socket
-     |> assign(:formula_search_results, results)
-     |> assign(:formula_search_query, query)
-     |> assign(:formula_search_offset, formula_page_size())
-     |> assign(:formula_search_has_more, has_more)}
-  end
-
-  def handle_event("load_more_formula_bindings", _params, socket) do
-    query = socket.assigns.formula_search_query
-    offset = Storyarn.Shared.MapUtils.ensure_integer(socket.assigns.formula_search_offset)
-
-    {new_results, has_more} =
-      search_binding_variables(socket.assigns.project.id, query, offset)
-
-    merged = merge_search_results(socket.assigns.formula_search_results, new_results)
-    next_offset = offset + formula_page_size()
-
-    {:noreply,
-     socket
-     |> assign(:formula_search_results, merged)
-     |> assign(:formula_search_offset, next_offset)
-     |> assign(:formula_search_has_more, has_more)}
-  end
+  def handle_event("load_more_formula_bindings", params, socket),
+    do: FormulaHandlers.handle_load_more(params, socket, formula_handler_helpers())
 
   # Tree events (create, delete, move)
   def handle_event("create_sheet", _params, socket) do
@@ -1239,6 +1123,14 @@ defmodule StoryarnWeb.SheetLive.Show do
   # Private Helpers
   # ===========================================================================
 
+  defp formula_handler_helpers do
+    %{
+      handle_formula_cell: &TableHandlers.handle_update_formula_cell/3,
+      table_helpers: &table_helpers/1,
+      broadcast: &broadcast_sheet_change/2
+    }
+  end
+
   defp history_helpers do
     %{
       reload_blocks: &reload_blocks/1,
@@ -1282,47 +1174,6 @@ defmodule StoryarnWeb.SheetLive.Show do
       notify_parent: fn _socket, _status -> :ok end,
       push_undo: fn action -> send(pid, {:table_push_undo, action}) end
     }
-  end
-
-  defp compute_formulas(table_data, project_id) do
-    alias Storyarn.Sheets.FormulaResolver
-
-    Map.new(table_data, fn {block_id, %{columns: cols, rows: rows} = data} ->
-      formula_cols = Enum.filter(cols, &(&1.type == "formula"))
-
-      if formula_cols == [] do
-        {block_id, data}
-      else
-        computed =
-          try do
-            FormulaResolver.compute_all(cols, rows, project_id)
-          rescue
-            _ -> %{}
-          end
-
-        enriched_rows =
-          Enum.map(rows, fn row ->
-            formula_results = Map.get(computed, row.id, %{})
-
-            updated_cells =
-              Enum.reduce(formula_results, row.cells, fn {slug, %{result: result} = computed_entry}, cells ->
-                current = cells[slug]
-                resolved = Map.get(computed_entry, :resolved, %{})
-
-                enriched =
-                  if is_map(current),
-                    do: current |> Map.put("__result", result) |> Map.put("__resolved", resolved),
-                    else: %{"__result" => result, "__resolved" => resolved}
-
-                Map.put(cells, slug, enriched)
-              end)
-
-            %{row | cells: updated_cells}
-          end)
-
-        {block_id, %{data | rows: enriched_rows}}
-      end
-    end)
   end
 
   defp reload_sheet(socket) do
