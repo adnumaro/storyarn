@@ -1,21 +1,5 @@
 <script setup>
-import {
-	Cable,
-	Circle,
-	Download,
-	Eye,
-	Hand,
-	MapPin,
-	MousePointer,
-	Pencil,
-	PenTool,
-	Ruler,
-	Settings,
-	Square,
-	StickyNote,
-	Triangle,
-} from "lucide-vue-next";
-import { computed } from "vue";
+import { Download, Eye, Pencil, Settings } from "lucide-vue-next";
 import EditableText from "@/vue/components/EditableText.vue";
 import { Button } from "@/vue/components/ui/button";
 import {
@@ -24,11 +8,9 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/vue/components/ui/dropdown-menu";
-import { ToggleGroup, ToggleGroupItem } from "@/vue/components/ui/toggle-group";
 import { useLive } from "@/vue/composables/useLive";
 
 const props = defineProps({
-	activeTool: { type: String, default: "select" },
 	editMode: { type: Boolean, default: true },
 	canEdit: { type: Boolean, default: false },
 	sceneName: { type: String, default: "" },
@@ -36,27 +18,6 @@ const props = defineProps({
 });
 
 const live = useLive();
-
-const tools = [
-	{ id: "select", icon: MousePointer, label: "Select (Shift+V)" },
-	{ id: "pan", icon: Hand, label: "Pan (Shift+H)" },
-	{ id: "rectangle", icon: Square, label: "Rectangle (Shift+R)" },
-	{ id: "triangle", icon: Triangle, label: "Triangle (Shift+T)" },
-	{ id: "circle", icon: Circle, label: "Circle (Shift+C)" },
-	{ id: "freeform", icon: PenTool, label: "Freeform (Shift+F)" },
-	{ id: "pin", icon: MapPin, label: "Pin (Shift+P)" },
-	{ id: "annotation", icon: StickyNote, label: "Annotation (Shift+N)" },
-	{ id: "connector", icon: Cable, label: "Connector (Shift+L)" },
-	{ id: "ruler", icon: Ruler, label: "Ruler (Shift+M)" },
-];
-
-const currentTool = computed(() => props.activeTool);
-
-function setTool(tool) {
-	if (tool) {
-		live.pushEvent("set_tool", { type: tool });
-	}
-}
 
 function saveName(name) {
 	live.pushEvent("save_name", { name });
@@ -92,28 +53,6 @@ function openSettings() {
       <span v-if="sceneShortcut" class="text-xs text-muted-foreground">
         #{{ sceneShortcut }}
       </span>
-    </div>
-
-    <!-- Tool palette (edit mode only) -->
-    <div v-if="canEdit && editMode" class="v2-surface-panel px-1.5 py-1">
-      <ToggleGroup
-        type="single"
-        :model-value="currentTool"
-        class="gap-0.5"
-        @update:model-value="setTool"
-      >
-        <ToggleGroupItem
-          v-for="tool in tools"
-          :key="tool.id"
-          :value="tool.id"
-          :aria-label="tool.label"
-          :title="tool.label"
-          class="size-7 p-0"
-          size="sm"
-        >
-          <component :is="tool.icon" class="size-3.5" />
-        </ToggleGroupItem>
-      </ToggleGroup>
     </div>
 
     <!-- Actions -->

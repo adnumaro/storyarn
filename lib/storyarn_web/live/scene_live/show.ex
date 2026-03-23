@@ -8,13 +8,13 @@ defmodule StoryarnWeb.SceneLive.Show do
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
   # V1 components — kept temporarily until Phase 3B-3D + Phase 4 replace them
-  import StoryarnWeb.SceneLive.V1.Components.Dock
+  # V1 Dock removed — replaced by Vue SceneDock (Phase 3D)
   import StoryarnWeb.SceneLive.V1.Components.LayerBar
   import StoryarnWeb.SceneLive.V1.Components.Legend
   import StoryarnWeb.Components.CanvasToolbar
   import StoryarnWeb.SceneLive.V1.Components.FloatingToolbar
   import StoryarnWeb.SceneLive.V1.Components.SceneElementPanel
-  import StoryarnWeb.SceneLive.V1.Components.SceneSettingsPanel
+  # V1 SceneSettingsPanel removed — replaced by Vue SettingsPanel (Phase 3D)
   import StoryarnWeb.Components.RightSidebar
 
   alias StoryarnWeb.Components.DraftComponents
@@ -31,7 +31,14 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
 
   import StoryarnWeb.SceneLive.Helpers.PropsSerializer,
-    only: [prepare_scenes_tree: 1, prepare_layers_for_vue: 1, prepare_legend_groups: 3]
+    only: [
+      prepare_scenes_tree: 1,
+      prepare_layers_for_vue: 1,
+      prepare_legend_groups: 3,
+      prepare_scene_for_vue: 1,
+      prepare_ambient_flows_for_vue: 1,
+      prepare_project_flows_for_vue: 1
+    ]
   import StoryarnWeb.SceneLive.Helpers.SceneHelpers
   import StoryarnWeb.SceneLive.Helpers.SceneSerializer
 
@@ -95,7 +102,6 @@ defmodule StoryarnWeb.SceneLive.Show do
           v-component="scenes/SceneToolbar"
           v-socket={@socket}
           id="scene-toolbar"
-          active-tool={to_string(@active_tool)}
           edit-mode={@edit_mode}
           can-edit={@can_edit}
           scene-name={@scene.name}
@@ -269,6 +275,21 @@ defmodule StoryarnWeb.SceneLive.Show do
             </div>
           </div>
 
+          <%!-- Bottom dock (edit mode only) --%>
+          <.vue
+            :if={@edit_mode}
+            v-component="scenes/SceneDock"
+            v-socket={@socket}
+            id="scene-dock"
+            active-tool={to_string(@active_tool)}
+            edit-mode={@edit_mode}
+            compact={false}
+            pending-sheet={@pending_sheet_for_pin && %{name: @pending_sheet_for_pin.name}}
+            workspace-slug={@workspace.slug}
+            project-slug={@project.slug}
+            scene-id={@scene.id}
+          />
+
           <%!-- Bottom-right controls: reset zoom + legend --%>
           <div class="absolute bottom-3 right-3 z-[1000] flex items-end gap-2">
             <div id="scene-controls-slot" phx-update="ignore"></div>
@@ -334,35 +355,17 @@ defmodule StoryarnWeb.SceneLive.Show do
             </div>
           </div>
 
-          <%!-- Scene Settings Sidebar --%>
-          <div
-            id="scene-settings-panel"
-            phx-hook="RightSidebar"
-            data-right-panel
-            data-open-event="open_scene_settings"
-            data-close-event="close_scene_settings"
-            class={[
-              "fixed flex flex-col overflow-hidden right-sidebar",
-              "inset-0 z-[1060] bg-base-100",
-              "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[320px]"
-            ]}
-          >
-            <div :if={@scene_settings_open && @can_edit && @edit_mode}>
-              <.scene_settings_panel
-                scene={@scene}
-                can_edit={@can_edit}
-                bg_upload_input_id={@uploads[:background] && @uploads.background.ref}
-                ambient_flows={@ambient_flows}
-                project_flows={@project_flows}
-              />
-            </div>
-            <div
-              :if={!(@scene_settings_open && @can_edit && @edit_mode)}
-              class="flex items-center justify-center h-full"
-            >
-              <span class="loading loading-spinner loading-md text-base-content/40"></span>
-            </div>
-          </div>
+          <%!-- Scene Settings Sidebar (Vue Sidebar component) --%>
+          <.vue
+            v-component="scenes/SettingsPanel"
+            v-socket={@socket}
+            id="scene-settings-vue"
+            scene={prepare_scene_for_vue(@scene)}
+            can-edit={@can_edit}
+            ambient-flows={prepare_ambient_flows_for_vue(@ambient_flows)}
+            project-flows={prepare_project_flows_for_vue(@project_flows)}
+            scene-settings-open={@scene_settings_open && @can_edit && @edit_mode}
+          />
         </div>
 
         <%!-- Pin icon upload overlay (fixed, outside canvas overflow) --%>
@@ -470,14 +473,18 @@ defmodule StoryarnWeb.SceneLive.Show do
         </div>
 
         <%!-- Bottom dock --%>
-        <.dock
+        <.vue
           :if={@edit_mode}
-          active_tool={@active_tool}
-          pending_sheet={@pending_sheet_for_pin}
-          workspace={@workspace}
-          project={@project}
-          scene={@scene}
+          v-component="scenes/SceneDock"
+          v-socket={@socket}
+          id="scene-dock-compact"
+          active-tool={to_string(@active_tool)}
+          edit-mode={@edit_mode}
           compact={true}
+          pending-sheet={@pending_sheet_for_pin && %{name: @pending_sheet_for_pin.name}}
+          workspace-slug={@workspace.slug}
+          project-slug={@project.slug}
+          scene-id={@scene.id}
         />
 
         <%!-- Bottom-right controls: zoom + legend --%>

@@ -159,6 +159,71 @@
 }
 
 /* ================================================================
+   Dock — floating bottom tool palette for canvas editors (v2)
+   1:1 port of .dock-btn / .dock-item / .dock-tooltip from app.css
+   ================================================================ */
+
+.v2-dock-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  color: hsl(var(--foreground));
+  border: none;
+  background: transparent;
+}
+
+.v2-dock-btn:hover {
+  background-color: hsl(var(--accent));
+}
+
+.v2-dock-btn-active {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+/* Hover bounce animation — items pop up out of the dock */
+.v2-dock-item {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.v2-dock-item:hover {
+  transform: translateY(-3px);
+}
+
+/* Hover mega-tooltip (delayed appearance) */
+.v2-dock-tooltip {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  padding: 10px 12px;
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s 0.4s;
+  z-index: 10;
+}
+
+.v2-dock-item:hover .v2-dock-tooltip {
+  opacity: 1;
+}
+
+/* Hide tooltip when dropdown/popover is open */
+.v2-dock-item:focus-within .v2-dock-tooltip {
+  opacity: 0;
+  transition-delay: 0s;
+}
+
+/* ================================================================
    Sentence-Flow UI — shared by ConditionBuilder & InstructionBuilder
    Uses shadcn CSS variables (--color-foreground, --color-border, etc.)
    ================================================================ */
