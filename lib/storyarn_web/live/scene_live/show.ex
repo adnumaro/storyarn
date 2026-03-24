@@ -63,9 +63,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   def render(%{compact: true, scene: nil} = assigns) do
     ~H"""
     <Layouts.compare flash={@flash}>
-      <div class="h-full flex items-center justify-center">
-        <span class="loading loading-spinner loading-lg text-base-content/30"></span>
-      </div>
+      <div class="h-full"></div>
     </Layouts.compare>
     """
   end
@@ -172,17 +170,17 @@ defmodule StoryarnWeb.SceneLive.Show do
               <label
                 for={@uploads.background.ref}
                 class="pointer-events-auto cursor-pointer group flex flex-col items-center gap-3
-                     p-8 rounded-xl border-2 border-dashed border-base-content/15
-                     hover:border-primary/40 hover:bg-base-100/50 transition-colors"
+                     p-8 rounded-xl border-2 border-dashed border-foreground/15
+                     hover:border-primary/40 hover:bg-background/50 transition-colors"
               >
                 <.icon
                   name="image-plus"
                   class="size-10 opacity-20 group-hover:opacity-50 transition-opacity"
                 />
-                <span class="text-sm text-base-content/40 group-hover:text-base-content/60 transition-colors">
+                <span class="text-sm text-foreground/40 group-hover:text-foreground/60 transition-colors">
                   {dgettext("scenes", "Upload background image")}
                 </span>
-                <span class="text-xs text-base-content/25">
+                <span class="text-xs text-foreground/25">
                   {dgettext("scenes", "or drag & drop")}
                 </span>
               </label>
@@ -216,15 +214,15 @@ defmodule StoryarnWeb.SceneLive.Show do
                 )
             }
             class="absolute bottom-20 left-1/2 -translate-x-1/2 z-20
-                 bg-base-100 rounded-lg border border-base-300 shadow-lg px-4 py-2 flex items-center gap-3"
+                 bg-background rounded-lg border border-border shadow-lg px-4 py-2 flex items-center gap-3"
           >
             <.icon name="upload" class="size-4 animate-pulse text-primary" />
             <div class="w-40">
-              <div class="text-xs text-base-content/60 mb-1 flex min-w-0">
+              <div class="text-xs text-muted-foreground mb-1 flex min-w-0">
                 <span class="truncate">{Path.rootname(entry.client_name)}</span>
                 <span class="flex-shrink-0">{Path.extname(entry.client_name)}</span>
               </div>
-              <div class="w-full bg-base-300 rounded-full h-1.5">
+              <div class="w-full bg-muted rounded-full h-1.5">
                 <div
                   class="bg-primary h-1.5 rounded-full transition-all"
                   style={"width: #{entry.progress}%"}
@@ -252,9 +250,8 @@ defmodule StoryarnWeb.SceneLive.Show do
             scene-id={@scene.id}
           />
 
-          <%!-- Bottom-right controls: reset zoom + legend --%>
+          <%!-- Bottom-right: legend --%>
           <div class="absolute bottom-3 right-3 z-20 flex items-end gap-2">
-            <div id="scene-controls-slot" phx-update="ignore"></div>
             <.vue
               v-component="scenes/Legend"
               v-socket={@socket}
@@ -263,8 +260,6 @@ defmodule StoryarnWeb.SceneLive.Show do
               legend-open={@legend_open}
             />
           </div>
-
-          <%!-- V1 floating toolbar removed — V2 uses Vue SceneFloatingToolbar --%>
 
           <%!-- Element Properties Sidebar (Vue) --%>
           <.vue
@@ -294,11 +289,8 @@ defmodule StoryarnWeb.SceneLive.Show do
           />
         </div>
 
-        <%!-- V1 pin icon upload removed — Vue PinProperties handles upload via pushEvent --%>
       <% else %>
-        <div class="h-full flex items-center justify-center">
-          <span class="loading loading-spinner loading-lg text-base-content/30"></span>
-        </div>
+        <div class="h-full"></div>
       <% end %>
 
       <%!-- Confirm modals --%>
@@ -423,7 +415,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         data-close-event="close_element_panel"
         class={[
           "fixed flex flex-col overflow-hidden right-sidebar",
-          "inset-0 z-[1060] bg-base-100",
+          "inset-0 z-[1060] bg-background",
           "xl:inset-auto xl:right-3 xl:top-3 xl:bottom-3 xl:w-[480px]"
         ]}
       >
@@ -444,7 +436,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           :if={!(@element_panel_open && @selected_element != nil)}
           class="flex items-center justify-center h-full"
         >
-          <span class="loading loading-spinner loading-md text-base-content/40"></span>
+          <.icon name="loader-2" class="size-5 animate-spin text-muted-foreground" />
         </div>
       </div>
     </Layouts.compare>
@@ -2163,34 +2155,4 @@ defmodule StoryarnWeb.SceneLive.Show do
     end
   end
 
-  attr :sheets, :list, required: true
-
-  defp sheet_picker_list(assigns) do
-    ~H"""
-    <button
-      :for={sheet <- @sheets}
-      type="button"
-      phx-click="start_pin_from_sheet"
-      phx-value-sheet-id={sheet.id}
-      class="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-base-200 text-left"
-    >
-      <div class="size-7 rounded-full bg-base-300 flex items-center justify-center shrink-0 overflow-hidden">
-        <img
-          :if={sheet_avatar_url(sheet)}
-          src={sheet_avatar_url(sheet)}
-          class="size-7 rounded-full object-cover"
-        />
-        <span :if={!sheet_avatar_url(sheet)} class="text-xs font-medium text-base-content/60">
-          {String.slice(sheet.name, 0, 2)}
-        </span>
-      </div>
-      <div class="min-w-0 flex-1">
-        <div class="text-sm truncate">{sheet.name}</div>
-        <div :if={sheet.shortcut} class="text-xs text-base-content/50 truncate">
-          #{sheet.shortcut}
-        </div>
-      </div>
-    </button>
-    """
-  end
 end
