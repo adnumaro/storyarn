@@ -41,6 +41,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       prepare_connections_for_vue: 1,
       prepare_annotations_for_vue: 1,
       serialize_entity_locks: 1,
+      serialize_selected_element: 2,
       prepare_ambient_flows_for_vue: 1,
       prepare_project_flows_for_vue: 1
     ]
@@ -231,38 +232,7 @@ defmodule StoryarnWeb.SceneLive.Show do
             </div>
           </div>
 
-          <%!-- Version History Panel --%>
-          <.right_sidebar
-            id="scene-versions-panel"
-            title={dgettext("scenes", "Version History")}
-            open_event="open_versions_panel"
-            close_event="close_versions_panel"
-            width="320px"
-            loading={!@versions_panel_open}
-          >
-            <:actions>
-              <button
-                :if={@can_edit && @versions_panel_open}
-                type="button"
-                class="btn btn-ghost btn-xs btn-square"
-                phx-click="show_create_version_modal"
-              >
-                <.icon name="plus" class="size-4" />
-              </button>
-            </:actions>
-            <.live_component
-              :if={@versions_panel_open}
-              module={StoryarnWeb.Components.VersionsSection}
-              id="scene-versions-section"
-              entity={@scene}
-              entity_type="scene"
-              project_id={@project.id}
-              current_user_id={@current_scope.user.id}
-              can_edit={@can_edit}
-              current_version_id={@scene.current_version_id}
-              workspace_id={@workspace.id}
-            />
-          </.right_sidebar>
+          <%!-- TODO: Version History Panel — migrate to Vue Sidebar --%>
 
           <%!-- Sheet picker overlay --%>
           <div
@@ -314,42 +284,16 @@ defmodule StoryarnWeb.SceneLive.Show do
 
           <%!-- V1 floating toolbar removed — V2 uses Vue SceneFloatingToolbar --%>
 
-          <%!-- Element Properties Sidebar --%>
-          <div
-            id="scene-element-panel"
-            phx-hook="RightSidebar"
-            data-right-panel
-            data-open-event="open_element_panel"
-            data-close-event="close_element_panel"
-            class={[
-              "fixed flex flex-col overflow-hidden right-sidebar",
-              "inset-0 z-[1060] bg-base-100",
-              "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[480px]"
-            ]}
-          >
-            <div
-              :if={@element_panel_open && @selected_element != nil}
-              class="flex flex-col flex-1 min-h-0"
-            >
-              <.scene_element_panel
-                selected_type={@selected_type}
-                selected_element={@selected_element}
-                can_edit={not Map.get(@selected_element || %{}, :locked, false)}
-                project_id={@project.id}
-                project_scenes={@project_scenes}
-                project_sheets={@project_sheets}
-                project_flows={@project_flows}
-                project_variables={@project_variables}
-                panel_sections={@panel_sections}
-              />
-            </div>
-            <div
-              :if={!(@element_panel_open && @selected_element != nil)}
-              class="flex items-center justify-center h-full"
-            >
-              <span class="loading loading-spinner loading-md text-base-content/40"></span>
-            </div>
-          </div>
+          <%!-- Element Properties Sidebar (Vue) --%>
+          <.vue
+            v-component="scenes/ElementPropertiesPanel"
+            v-socket={@socket}
+            id="scene-element-panel-vue"
+            selected-type={@selected_type}
+            selected-element={serialize_selected_element(@selected_type, @selected_element)}
+            can-edit={not Map.get(@selected_element || %{}, :locked, false)}
+            element-panel-open={@element_panel_open}
+          />
 
           <%!-- Scene Settings Sidebar (Vue Sidebar component) --%>
           <.vue
