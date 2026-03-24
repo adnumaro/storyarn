@@ -8,6 +8,7 @@ import { useDrag } from "./composables/useDrag";
 import { useKonvaStage } from "./composables/useKonvaStage";
 import { usePins } from "./composables/usePins";
 import { useSelection } from "./composables/useSelection";
+import { useZoneDrawing } from "./composables/useZoneDrawing";
 import { useZones } from "./composables/useZones";
 import SceneFloatingToolbar from "./SceneFloatingToolbar.vue";
 
@@ -60,13 +61,35 @@ const { handleCreationClick } = useCanvasCreation({
 });
 
 const {
+	isDrawing: isDrawingZone,
+	drawingOverlay,
+	handleZoneCreationClick,
+	onStageMouseMove,
+	onStageDblClick,
+} = useZoneDrawing({
+	stageRef,
+	stageConfig,
+	pixelToPercent,
+	percentToPixel,
+	activeTool: activeToolRef,
+	...editRefs,
+});
+
+// Unified creation click: try pin/annotation first, then zone
+function onCreationClick(e) {
+	if (handleCreationClick(e)) return true;
+	if (handleZoneCreationClick(e)) return true;
+	return false;
+}
+
+const {
 	selectedType,
 	selectedId,
 	isSelectMode,
 	handleElementClick,
 	handleStageClick,
 	SELECTION_COLOR,
-} = useSelection({ activeTool: activeToolRef, onCreationClick: handleCreationClick });
+} = useSelection({ activeTool: activeToolRef, onCreationClick });
 
 const selectionRefs = { selectedType, selectedId, isSelectMode };
 
@@ -186,7 +209,7 @@ const LABEL_COLOR = "#d1d5db";
 
 <template>
   <div ref="containerRef" class="w-full h-full relative" :style="{ cursor: cursorStyle }">
-    <v-stage ref="stageRef" :config="stageConfig" @wheel="handleWheel" @click="handleStageClick">
+    <v-stage ref="stageRef" :config="stageConfig" @wheel="handleWheel" @click="handleStageClick" @mousemove="onStageMouseMove" @dblclick="onStageDblClick">
       <!-- Background layer (static, no hit detection needed) -->
       <v-layer :config="{ listening: false }">
         <v-image v-if="backgroundConfig" :config="backgroundConfig" />
@@ -446,6 +469,45 @@ const LABEL_COLOR = "#d1d5db";
             }"
           />
         </v-group>
+      </v-layer>
+
+      <!-- Drawing overlay layer (freeform zone creation) -->
+      <v-layer v-if="drawingOverlay" :config="{ listening: false }">
+        <v-line
+          :config="{
+            points: drawingOverlay.ghostPoints,
+            fill: 'rgba(99,102,241,0.15)',
+            stroke: '#6366f1',
+            strokeWidth: 2,
+            dash: [6, 4],
+            closed: drawingOverlay.ghostPoints.length >= 6,
+            listening: false,
+          }"
+        />
+        <v-line
+          v-if="drawingOverlay.previewLine"
+          :config="{
+            points: drawingOverlay.previewLine,
+            stroke: '#6366f1',
+            strokeWidth: 1,
+            dash: [4, 4],
+            listening: false,
+          }"
+        />
+        <v-line
+          v-if="drawingOverlay.closeLine"
+          :config="{
+            points: drawingOverlay.closeLine,
+            stroke: '#22c55e',
+            strokeWidth: 2,
+            listening: false,
+          }"
+        />
+        <v-circle
+          v-for="(vc, i) in drawingOverlay.vertexConfigs"
+          :key="'dv-' + i"
+          :config="vc"
+        />
       </v-layer>
     </v-stage>
 
