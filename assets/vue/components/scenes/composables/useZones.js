@@ -1,5 +1,6 @@
 import { computed } from "vue";
 import { renderLockBadge } from "../lib/pin-icons";
+import { useHiddenLayerIds } from "./useLayerVisibility";
 
 const DEFAULT_FILL_COLOR = "#3b82f6";
 const DEFAULT_BORDER_COLOR = "#1e40af";
@@ -24,13 +25,7 @@ export function useZones({
 	selectedId,
 	isSelectMode,
 }) {
-	const hiddenLayerIds = computed(() => {
-		const set = new Set();
-		for (const layer of layers.value) {
-			if (!layer.visible) set.add(layer.id);
-		}
-		return set;
-	});
+	const hiddenLayerIds = useHiddenLayerIds(layers);
 
 	const visibleZones = computed(() =>
 		zones.value.filter(
@@ -90,6 +85,7 @@ export function useZones({
 					lockBadgeY: minY - 10,
 					isSelected,
 					listening: isSelectMode?.value ?? false,
+					hitStrokeWidth: 20,
 				};
 			}),
 	);

@@ -1,5 +1,6 @@
 import { computed } from "vue";
 import { renderLockBadge } from "../lib/pin-icons";
+import { useHiddenLayerIds } from "./useLayerVisibility";
 
 const FOLD_SIZE = 12;
 const DEFAULT_COLOR = "#fbbf24";
@@ -49,14 +50,10 @@ export function useAnnotations({
 	selectedType,
 	selectedId,
 	isSelectMode,
+	editMode,
+	canEdit,
 }) {
-	const hiddenLayerIds = computed(() => {
-		const set = new Set();
-		for (const layer of layers.value) {
-			if (!layer.visible) set.add(layer.id);
-		}
-		return set;
-	});
+	const hiddenLayerIds = useHiddenLayerIds(layers);
 
 	const visibleAnnotations = computed(() =>
 		annotations.value.filter(
@@ -113,6 +110,13 @@ export function useAnnotations({
 						selectedType?.value === "annotation" &&
 						selectedId?.value === ann.id,
 					listening: isSelectMode?.value ?? false,
+					draggable: !!(
+						isSelectMode?.value &&
+						editMode?.value &&
+						canEdit?.value &&
+						!ann.locked &&
+						!isLockedByOther
+					),
 				};
 			}),
 	);

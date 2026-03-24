@@ -3,6 +3,7 @@ import { computed, ref, toRef } from "vue";
 import { useAnnotationEditing } from "./composables/useAnnotationEditing";
 import { useAnnotations } from "./composables/useAnnotations";
 import { useConnections } from "./composables/useConnections";
+import { useDrag } from "./composables/useDrag";
 import { useKonvaStage } from "./composables/useKonvaStage";
 import { usePins } from "./composables/usePins";
 import { useSelection } from "./composables/useSelection";
@@ -35,6 +36,8 @@ const {
 	cursorStyle,
 	handleWheel,
 	percentToPixel,
+	pixelToPercent,
+	stagePointerToWorld,
 } = useKonvaStage({
 	containerRef,
 	sceneData: toRef(props, "sceneData"),
@@ -52,6 +55,15 @@ const {
 } = useSelection({ activeTool: activeToolRef });
 
 const selectionRefs = { selectedType, selectedId, isSelectMode };
+const editRefs = {
+	editMode: toRef(props, "editMode"),
+	canEdit: toRef(props, "canEdit"),
+};
+
+const { isDragging, dragOverrides, onDragStart, onDragMove, onDragEnd } =
+	useDrag({
+		pixelToPercent,
+	});
 
 const { pinConfigs } = usePins({
 	pins: toRef(props, "pins"),
@@ -60,6 +72,7 @@ const { pinConfigs } = usePins({
 	currentUserId: toRef(props, "currentUserId"),
 	percentToPixel,
 	...selectionRefs,
+	...editRefs,
 });
 
 const { zoneConfigs } = useZones({
@@ -78,6 +91,7 @@ const { annotationConfigs } = useAnnotations({
 	currentUserId: toRef(props, "currentUserId"),
 	percentToPixel,
 	...selectionRefs,
+	...editRefs,
 });
 
 const { connectionConfigs } = useConnections({
@@ -86,6 +100,7 @@ const { connectionConfigs } = useConnections({
 	layers: toRef(props, "layers"),
 	percentToPixel,
 	...selectionRefs,
+	dragOverrides,
 });
 
 const { startEditing, isEditingAnnotation, getDisplayText } =
@@ -162,8 +177,8 @@ const LABEL_COLOR = "#d1d5db";
 <template>
   <div ref="containerRef" class="w-full h-full relative" :style="{ cursor: cursorStyle }">
     <v-stage ref="stageRef" :config="stageConfig" @wheel="handleWheel" @click="handleStageClick">
-      <!-- Background layer -->
-      <v-layer>
+      <!-- Background layer (static, no hit detection needed) -->
+      <v-layer :config="{ listening: false }">
         <v-image v-if="backgroundConfig" :config="backgroundConfig" />
         <template v-else>
           <v-rect :config="gridRectConfig" />
@@ -171,7 +186,7 @@ const LABEL_COLOR = "#d1d5db";
         </template>
       </v-layer>
 
-      <!-- Zone layer -->
+      <!-- Zones + Connections layer (non-draggable interactive elements) -->
       <v-layer>
         <v-group
           v-for="zone in zoneConfigs"
@@ -189,10 +204,13 @@ const LABEL_COLOR = "#d1d5db";
               dash: zone.dash,
               opacity: zone.opacity,
               closed: true,
+              hitStrokeWidth: zone.hitStrokeWidth,
               shadowColor: zone.isSelected ? SELECTION_COLOR : undefined,
               shadowBlur: zone.isSelected ? 10 : 0,
               shadowOpacity: zone.isSelected ? 0.8 : 0,
               shadowEnabled: zone.isSelected,
+              shadowForStrokeEnabled: false,
+              perfectDrawEnabled: false,
             }"
           />
           <v-text
@@ -211,6 +229,7 @@ const LABEL_COLOR = "#d1d5db";
               shadowColor: 'black',
               shadowBlur: 3,
               shadowOpacity: 0.8,
+              shadowForStrokeEnabled: false,
               listening: false,
             }"
           />
@@ -226,57 +245,41 @@ const LABEL_COLOR = "#d1d5db";
             }"
           />
         </v-group>
-      </v-layer>
-
-      <!-- Connection layer -->
-      <v-layer>
         <v-group
           v-for="conn in connectionConfigs"
           :key="'conn-' + conn.id"
           :config="{ listening: conn.listening }"
           @click="(e) => handleElementClick('connection', conn.id, e)"
         >
-          <v-line
+          <v-arrow
             :config="{
               points: conn.points,
               stroke: conn.stroke,
+              fill: conn.fill,
               strokeWidth: conn.strokeWidth,
               dash: conn.dash,
               opacity: conn.opacity,
+              pointerLength: conn.pointerLength,
+              pointerWidth: conn.pointerWidth,
+              pointerAtBeginning: conn.pointerAtBeginning,
+              pointerAtEnding: conn.pointerAtEnding,
               hitStrokeWidth: conn.hitStrokeWidth,
-            }"
-          />
-          <v-line
-            v-if="conn.forwardArrow"
-            :config="{
-              points: conn.forwardArrow,
-              fill: conn.arrowFill,
-              closed: true,
-              opacity: conn.opacity,
-              listening: false,
-            }"
-          />
-          <v-line
-            v-if="conn.reverseArrow"
-            :config="{
-              points: conn.reverseArrow,
-              fill: conn.arrowFill,
-              closed: true,
-              opacity: conn.opacity,
-              listening: false,
             }"
           />
           <v-text v-if="conn.labelConfig" :config="conn.labelConfig" />
         </v-group>
       </v-layer>
 
-      <!-- Pin layer -->
+      <!-- Pin layer (draggable) -->
       <v-layer>
         <v-group
           v-for="pin in pinConfigs"
           :key="'pin-' + pin.id"
-          :config="{ x: pin.x, y: pin.y, listening: pin.listening }"
+          :config="{ x: pin.x, y: pin.y, listening: pin.listening, draggable: pin.draggable }"
           @click="(e) => handleElementClick('pin', pin.id, e)"
+          @dragstart="(e) => onDragStart('pin', pin.id, e)"
+          @dragmove="(e) => onDragMove('pin', pin.id, e)"
+          @dragend="(e) => onDragEnd('pin', pin.id, e)"
         >
           <v-circle
             v-if="pin.isSelected"
@@ -317,6 +320,8 @@ const LABEL_COLOR = "#d1d5db";
                 shadowBlur: 6,
                 shadowOpacity: 0.3,
                 shadowOffsetY: 2,
+                shadowForStrokeEnabled: false,
+                perfectDrawEnabled: false,
               }"
             />
             <v-group :config="{ clipFunc: clipCircle(pin.radius) }">
@@ -361,14 +366,17 @@ const LABEL_COLOR = "#d1d5db";
         </v-group>
       </v-layer>
 
-      <!-- Annotation layer -->
+      <!-- Annotation layer (draggable) -->
       <v-layer>
         <v-group
           v-for="ann in annotationConfigs"
           :key="'ann-' + ann.id"
-          :config="{ x: ann.x, y: ann.y, listening: ann.listening }"
+          :config="{ x: ann.x, y: ann.y, listening: ann.listening, draggable: ann.draggable }"
           @click="(e) => handleElementClick('annotation', ann.id, e)"
           @dblclick="(e) => handleAnnotationDblClick(ann, e)"
+          @dragstart="(e) => onDragStart('annotation', ann.id, e)"
+          @dragmove="(e) => onDragMove('annotation', ann.id, e)"
+          @dragend="(e) => onDragEnd('annotation', ann.id, e)"
         >
           <v-rect
             v-if="ann.isSelected"
@@ -388,6 +396,7 @@ const LABEL_COLOR = "#d1d5db";
               fill: ann.color,
               opacity: ann.bgOpacity,
               closed: true,
+              perfectDrawEnabled: false,
             }"
           />
           <v-line
@@ -396,6 +405,7 @@ const LABEL_COLOR = "#d1d5db";
               fill: ann.color,
               closed: true,
               listening: false,
+              perfectDrawEnabled: false,
             }"
           />
           <v-text

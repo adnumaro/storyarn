@@ -232,6 +232,15 @@ export function useKonvaStage({
 		return { x: ((pixelX - ox) / w) * 100, y: ((pixelY - oy) / h) * 100 };
 	}
 
+	function stagePointerToWorld(stage) {
+		const pointer = stage.getPointerPosition();
+		if (!pointer) return null;
+		return {
+			x: (pointer.x - stageConfig.x) / stageConfig.scaleX,
+			y: (pointer.y - stageConfig.y) / stageConfig.scaleY,
+		};
+	}
+
 	return {
 		stageConfig,
 		stageRef,
@@ -244,5 +253,6 @@ export function useKonvaStage({
 		canvasBounds,
 		percentToPixel,
 		pixelToPercent,
+		stagePointerToWorld,
 	};
 }

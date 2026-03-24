@@ -7,6 +7,7 @@ import {
 	renderPinIcon,
 } from "../lib/pin-icons";
 import { useImageLoader } from "./useImageLoader";
+import { useHiddenLayerIds } from "./useLayerVisibility";
 
 /**
  * Composable for computing pin render configs from raw pin data.
@@ -28,14 +29,10 @@ export function usePins({
 	selectedType,
 	selectedId,
 	isSelectMode,
+	editMode,
+	canEdit,
 }) {
-	const hiddenLayerIds = computed(() => {
-		const set = new Set();
-		for (const layer of layers.value) {
-			if (!layer.visible) set.add(layer.id);
-		}
-		return set;
-	});
+	const hiddenLayerIds = useHiddenLayerIds(layers);
 
 	const visiblePins = computed(() =>
 		pins.value.filter((pin) => {
@@ -111,6 +108,13 @@ export function usePins({
 					isSelected:
 						selectedType?.value === "pin" && selectedId?.value === pin.id,
 					listening: isSelectMode?.value ?? false,
+					draggable: !!(
+						isSelectMode?.value &&
+						editMode?.value &&
+						canEdit?.value &&
+						!pin.locked &&
+						!isLockedByOther
+					),
 				};
 			}),
 	);

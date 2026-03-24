@@ -1,11 +1,14 @@
 import { computed } from "vue";
+import { PIN_SIZES } from "../lib/pin-icons";
+import { useHiddenLayerIds } from "./useLayerVisibility";
 
 const DEFAULT_COLOR = "#ffffff";
 const DEFAULT_WIDTH = 3;
 const DEFAULT_OPACITY = 1;
-const ARROW_SIZE = 16;
-const ARROW_ANGLE = Math.PI / 6; // 30 degrees half-angle
+const ARROW_POINTER_LENGTH = 8;
+const ARROW_POINTER_WIDTH = 12;
 const LABEL_COLOR = "#d1d5db";
+const EDGE_GAP = 4;
 
 const DASH_PATTERNS = {
 	solid: null,
@@ -25,24 +28,31 @@ export function useConnections({
 	selectedType,
 	selectedId,
 	isSelectMode,
+	dragOverrides,
 }) {
-	// Pin pixel positions keyed by id
+	// Pin pixel positions keyed by id — uses drag overrides for real-time connection updates
 	const pinPositions = computed(() => {
+		const overrides = dragOverrides?.value || {};
 		const map = {};
 		for (const pin of pins.value) {
-			map[pin.id] = percentToPixel(pin.positionX, pin.positionY);
+			// If pin is being dragged, use the live pixel position from drag
+			map[pin.id] =
+				overrides[pin.id] || percentToPixel(pin.positionX, pin.positionY);
 		}
 		return map;
 	});
 
-	// Hidden layer IDs
-	const hiddenLayerIds = computed(() => {
-		const set = new Set();
-		for (const layer of layers.value) {
-			if (!layer.visible) set.add(layer.id);
+	// Pin radii keyed by id — used to offset arrow endpoints to circle edge
+	const pinRadii = computed(() => {
+		const map = {};
+		for (const pin of pins.value) {
+			const dims = PIN_SIZES[pin.size || "md"] || PIN_SIZES.md;
+			map[pin.id] = dims.diameter / 2;
 		}
-		return set;
+		return map;
 	});
+
+	const hiddenLayerIds = useHiddenLayerIds(layers);
 
 	// Pin visibility by id (true if pin's layer is visible or pin has no layer)
 	const pinVisible = computed(() => {
@@ -66,15 +76,21 @@ export function useConnections({
 			const toVis = pinVisible.value[conn.toPinId] !== false;
 			if (!fromVis && !toVis) continue;
 
-			// Build points: [from, ...waypoints, to]
-			const pixelPath = [fromPos];
+			// Build pixel path: [from, ...waypoints, to] (center-to-center)
+			const rawPath = [fromPos];
 			const waypoints = conn.waypoints || [];
 			for (const wp of waypoints) {
-				pixelPath.push(percentToPixel(wp.x, wp.y));
+				rawPath.push(percentToPixel(wp.x, wp.y));
 			}
-			pixelPath.push(toPos);
+			rawPath.push(toPos);
 
-			// Flat points for Konva v-line
+			// Offset endpoints from pin center to circle edge so arrowheads are visible
+			// (following Konva "Connected Objects" pattern: getConnectorPoints)
+			const fromRadius = pinRadii.value[conn.fromPinId] || 0;
+			const toRadius = pinRadii.value[conn.toPinId] || 0;
+			const pixelPath = offsetEndpoints(rawPath, fromRadius, toRadius);
+
+			// Flat points for Konva v-arrow
 			const points = [];
 			for (const p of pixelPath) {
 				points.push(p.x, p.y);
@@ -82,36 +98,6 @@ export function useConnections({
 
 			const color = conn.color || DEFAULT_COLOR;
 			const strokeWidth = conn.lineWidth || DEFAULT_WIDTH;
-
-			// Forward arrow (into toPin)
-			const lastSeg =
-				pixelPath.length >= 2
-					? {
-							fromX: pixelPath[pixelPath.length - 2].x,
-							fromY: pixelPath[pixelPath.length - 2].y,
-							toX: toPos.x,
-							toY: toPos.y,
-						}
-					: null;
-			const forwardArrow = lastSeg
-				? computeArrowHead(
-						lastSeg.toX,
-						lastSeg.toY,
-						lastSeg.fromX,
-						lastSeg.fromY,
-					)
-				: null;
-
-			// Reverse arrow (into fromPin, only if bidirectional)
-			let reverseArrow = null;
-			if (conn.bidirectional && pixelPath.length >= 2) {
-				reverseArrow = computeArrowHead(
-					fromPos.x,
-					fromPos.y,
-					pixelPath[1].x,
-					pixelPath[1].y,
-				);
-			}
 
 			// Label at path midpoint
 			let labelConfig = null;
@@ -145,12 +131,14 @@ export function useConnections({
 				id: conn.id,
 				points,
 				stroke: color,
+				fill: color,
 				strokeWidth: isSelected ? Math.max(strokeWidth, 4) : strokeWidth,
 				dash: DASH_PATTERNS[conn.lineStyle] || null,
 				opacity: isSelected ? 1 : DEFAULT_OPACITY,
-				forwardArrow,
-				reverseArrow,
-				arrowFill: color,
+				pointerLength: ARROW_POINTER_LENGTH,
+				pointerWidth: ARROW_POINTER_WIDTH,
+				pointerAtBeginning: !!conn.bidirectional,
+				pointerAtEnding: true,
 				labelConfig,
 				isSelected,
 				listening: isSelectMode?.value ?? false,
@@ -167,38 +155,46 @@ export function useConnections({
 // --- Geometry helpers ---
 
 /**
- * Compute arrowhead triangle points (flat array for Konva v-line closed).
- * Tip is offset back from (tipX, tipY) along the approach direction so it
- * sits at the pin edge rather than behind the pin icon.
+ * Offset the first and last point of a path inward so they sit on the edge of
+ * the pin circles instead of at their centers. This makes arrowheads visible
+ * instead of being hidden behind the pin.
+ * Follows the Konva "Connected Objects" demo pattern.
  */
-const ARROW_OFFSET = 18;
+function offsetEndpoints(path, fromRadius, toRadius) {
+	if (path.length < 2) return path;
 
-function computeArrowHead(tipX, tipY, fromX, fromY) {
-	const dx = tipX - fromX;
-	const dy = tipY - fromY;
-	const len = Math.sqrt(dx * dx + dy * dy);
-	if (len < 1) return null;
+	const result = path.slice();
 
-	// Unit vector from approach to tip
-	const ux = dx / len;
-	const uy = dy / len;
+	// Offset start point: move along the direction toward the second point
+	if (fromRadius > 0) {
+		const first = path[0];
+		const second = path[1];
+		const dx = second.x - first.x;
+		const dy = second.y - first.y;
+		const dist = Math.sqrt(dx * dx + dy * dy);
+		if (dist > 0) {
+			const offset = (fromRadius + EDGE_GAP) / dist;
+			result[0] = { x: first.x + dx * offset, y: first.y + dy * offset };
+		}
+	}
 
-	// Offset tip back along approach direction
-	const tx = tipX - ux * ARROW_OFFSET;
-	const ty = tipY - uy * ARROW_OFFSET;
+	// Offset end point: move along the direction toward the second-to-last point
+	if (toRadius > 0) {
+		const last = path[path.length - 1];
+		const prev = path[path.length - 2];
+		const dx = prev.x - last.x;
+		const dy = prev.y - last.y;
+		const dist = Math.sqrt(dx * dx + dy * dy);
+		if (dist > 0) {
+			const offset = (toRadius + EDGE_GAP) / dist;
+			result[result.length - 1] = {
+				x: last.x + dx * offset,
+				y: last.y + dy * offset,
+			};
+		}
+	}
 
-	const angle = Math.atan2(dy, dx);
-	const left = angle + Math.PI - ARROW_ANGLE;
-	const right = angle + Math.PI + ARROW_ANGLE;
-
-	return [
-		tx,
-		ty,
-		tx + ARROW_SIZE * Math.cos(left),
-		ty + ARROW_SIZE * Math.sin(left),
-		tx + ARROW_SIZE * Math.cos(right),
-		ty + ARROW_SIZE * Math.sin(right),
-	];
+	return result;
 }
 
 /**
