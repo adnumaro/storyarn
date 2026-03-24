@@ -34,13 +34,26 @@ const props = defineProps({
 const emit = defineEmits(["close"]);
 
 const panelRef = ref(null);
+let animationTimer = null;
+
+function cancelPendingAnimation() {
+	if (animationTimer) {
+		clearTimeout(animationTimer);
+		animationTimer = null;
+	}
+}
 
 // Close on click outside (right sidebar only)
-onClickOutside(panelRef, () => {
-	if (props.side === "right" && props.open) {
-		emit("close");
-	}
-});
+// Ignore clicks on floating toolbar and popover portals
+onClickOutside(
+	panelRef,
+	() => {
+		if (props.side === "right" && props.open) {
+			emit("close");
+		}
+	},
+	{ ignore: [".v2-surface-panel", "[data-radix-popper-content-wrapper]"] },
+);
 
 // ── Animation constants (matching v1 TreePanel hook) ──
 const OPEN_DURATION = 280;
@@ -52,6 +65,7 @@ function slideOffset() {
 }
 
 function animateIn() {
+	cancelPendingAnimation();
 	const el = panelRef.value;
 	if (!el) return;
 
@@ -66,16 +80,18 @@ function animateIn() {
 			el.style.opacity = 1;
 			el.style.transform = "translateX(0)";
 
-			setTimeout(() => {
+			animationTimer = setTimeout(() => {
 				el.style.transition = "";
 				el.style.opacity = "";
 				el.style.transform = "";
+				animationTimer = null;
 			}, OPEN_DURATION);
 		});
 	});
 }
 
 function animateOut() {
+	cancelPendingAnimation();
 	const el = panelRef.value;
 	if (!el) return;
 
@@ -87,11 +103,12 @@ function animateOut() {
 		el.style.opacity = 0;
 		el.style.transform = `translateX(${slideOffset()})`;
 
-		setTimeout(() => {
+		animationTimer = setTimeout(() => {
 			el.style.transition = "";
 			el.style.opacity = 0;
 			el.style.transform = `translateX(${slideOffset()})`;
 			el.style.pointerEvents = "none";
+			animationTimer = null;
 		}, CLOSE_DURATION);
 	});
 }

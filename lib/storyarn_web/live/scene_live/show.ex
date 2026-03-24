@@ -1066,6 +1066,17 @@ defmodule StoryarnWeb.SceneLive.Show do
      |> assign(:scene_settings_open, false)}
   end
 
+  def handle_event("toggle_element_panel", _params, socket) do
+    if socket.assigns.element_panel_open do
+      {:noreply, assign(socket, :element_panel_open, false)}
+    else
+      {:noreply,
+       socket
+       |> assign(:element_panel_open, true)
+       |> assign(:scene_settings_open, false)}
+    end
+  end
+
   def handle_event("close_element_panel", _params, socket) do
     {:noreply, assign(socket, :element_panel_open, false)}
   end

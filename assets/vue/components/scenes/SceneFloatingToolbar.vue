@@ -125,8 +125,8 @@ function toggleAnnotationLock() {
 	);
 }
 
-function openElementPanel() {
-	live.pushEvent("open_element_panel", {});
+function toggleElementPanel() {
+	live.pushEvent("toggle_element_panel", {});
 }
 
 function onLabelBlur(event, updateEvent) {
@@ -223,7 +223,7 @@ function onLabelBlur(event, updateEvent) {
         type="button"
         class="v2-toolbar-btn"
         title="Properties"
-        @click="openElementPanel"
+        @click="toggleElementPanel"
       >
         <Settings class="size-3.5" />
       </button>
@@ -305,7 +305,7 @@ function onLabelBlur(event, updateEvent) {
         type="button"
         class="v2-toolbar-btn"
         title="Properties"
-        @click="openElementPanel"
+        @click="toggleElementPanel"
       >
         <Settings class="size-3.5" />
       </button>
