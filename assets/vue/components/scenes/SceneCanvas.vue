@@ -8,6 +8,7 @@ import { useDrag } from "./composables/useDrag";
 import { useKonvaStage } from "./composables/useKonvaStage";
 import { usePins } from "./composables/usePins";
 import { useSelection } from "./composables/useSelection";
+import { useVertexEditor } from "./composables/useVertexEditor";
 import { useZoneDrag } from "./composables/useZoneDrag";
 import { useZoneDrawing } from "./composables/useZoneDrawing";
 import { useZones } from "./composables/useZones";
@@ -127,6 +128,26 @@ const { pinConfigs } = usePins({
 	...editRefs,
 });
 
+const {
+	editingZoneId,
+	editingVertices,
+	isEditing: isEditingVertices,
+	startEditing: startVertexEditing,
+	stopEditing: stopVertexEditing,
+	onVertexDragMove,
+	onVertexDragEnd,
+	onVertexClick,
+	insertVertex,
+	vertexEditorConfigs,
+} = useVertexEditor({
+	stageConfig,
+	pixelToPercent,
+	percentToPixel,
+	zones: toRef(props, "zones"),
+	selectedType,
+	selectedId,
+});
+
 const { zoneConfigs } = useZones({
 	zones: toRef(props, "zones"),
 	layers: toRef(props, "layers"),
@@ -135,6 +156,8 @@ const { zoneConfigs } = useZones({
 	percentToPixel,
 	...selectionRefs,
 	zoneDragOverride,
+	editingZoneId,
+	editingVertices,
 });
 
 const { annotationConfigs } = useAnnotations({
@@ -166,6 +189,12 @@ function handleAnnotationDblClick(annConfig, e) {
 	if (!props.canEdit || !props.editMode) return;
 	if (e) e.cancelBubble = true;
 	startEditing(annConfig);
+}
+
+function handleZoneDblClick(zoneId, e) {
+	if (!props.canEdit || !props.editMode) return;
+	if (e) e.cancelBubble = true;
+	startVertexEditing(zoneId);
 }
 
 function handleStageMouseMove(e) {
@@ -251,6 +280,7 @@ const LABEL_COLOR = "#d1d5db";
           :key="'zone-' + zone.id"
           :config="{ listening: zone.listening }"
           @click="(e) => handleElementClick('zone', zone.id, e)"
+          @dblclick="(e) => handleZoneDblClick(zone.id, e)"
           @mousedown="(e) => onZoneMouseDown(zone.id, e)"
         >
           <!-- Zone polygon -->
@@ -495,6 +525,41 @@ const LABEL_COLOR = "#d1d5db";
             }"
           />
         </v-group>
+      </v-layer>
+
+      <!-- Vertex editor layer (zone vertex editing on dblclick) -->
+      <v-layer v-if="vertexEditorConfigs">
+        <!-- Midpoint anchors (click to insert vertex) -->
+        <v-circle
+          v-for="(mp, i) in vertexEditorConfigs.midpointAnchors"
+          :key="'mp-' + i"
+          :config="{
+            x: mp.x,
+            y: mp.y,
+            radius: mp.radius,
+            fill: mp.fill,
+            stroke: mp.stroke,
+            strokeWidth: mp.strokeWidth,
+          }"
+          @click="(e) => insertVertex(mp.afterIndex, e)"
+        />
+        <!-- Vertex anchors (drag to reshape, ctrl+click to remove) -->
+        <v-circle
+          v-for="(va, i) in vertexEditorConfigs.vertexAnchors"
+          :key="'va-' + i"
+          :config="{
+            x: va.x,
+            y: va.y,
+            radius: va.radius,
+            fill: va.fill,
+            stroke: va.stroke,
+            strokeWidth: va.strokeWidth,
+            draggable: true,
+          }"
+          @dragmove="(e) => onVertexDragMove(va.index, e)"
+          @dragend="onVertexDragEnd"
+          @click="(e) => onVertexClick(va.index, e)"
+        />
       </v-layer>
 
       <!-- Drawing overlay layer (freeform zone creation) -->

@@ -25,6 +25,8 @@ export function useZones({
 	selectedId,
 	isSelectMode,
 	zoneDragOverride,
+	editingZoneId,
+	editingVertices,
 }) {
 	const hiddenLayerIds = useHiddenLayerIds(layers);
 
@@ -39,10 +41,13 @@ export function useZones({
 			.slice()
 			.sort((a, b) => (a.position || 0) - (b.position || 0))
 			.map((zone) => {
-				// Use drag override vertices if this zone is being dragged
+				// Use vertex editor or drag override vertices when active
+				const isVertexEditing =
+					editingZoneId?.value === zone.id && editingVertices?.value?.length;
 				const override = zoneDragOverride?.value;
-				const vertices =
-					override && override.id === zone.id
+				const vertices = isVertexEditing
+					? editingVertices.value
+					: override && override.id === zone.id
 						? override.vertices
 						: zone.vertices || [];
 				const pixelCoords = vertices.map((v) => percentToPixel(v.x, v.y));
