@@ -44,6 +44,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       serialize_selected_element: 2,
       prepare_ambient_flows_for_vue: 1,
       prepare_project_flows_for_vue: 1,
+      prepare_project_scenes_for_vue: 1,
       prepare_project_sheets_for_vue: 1
     ]
   import StoryarnWeb.SceneLive.Helpers.SceneHelpers
@@ -296,6 +297,7 @@ defmodule StoryarnWeb.SceneLive.Show do
             element-panel-open={@element_panel_open}
             project-sheets={prepare_project_sheets_for_vue(@project_sheets)}
             project-flows={prepare_project_flows_for_vue(@project_flows)}
+            project-scenes={prepare_project_scenes_for_vue(@project_scenes)}
             project-variables={@project_variables}
           />
 

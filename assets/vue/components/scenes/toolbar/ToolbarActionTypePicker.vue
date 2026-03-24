@@ -1,0 +1,95 @@
+<script setup>
+import {
+	BarChart3,
+	Compass,
+	Footprints,
+	PackageOpen,
+	Zap,
+} from "lucide-vue-next";
+import { ref } from "vue";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/vue/components/ui/popover";
+
+const ACTION_TYPES = [
+	{
+		value: "none",
+		label: "Navigation",
+		icon: Compass,
+		desc: "Clicking navigates or opens a link",
+	},
+	{
+		value: "walkable",
+		label: "Walkable Area",
+		icon: Footprints,
+		desc: "Defines traversable ground",
+	},
+	{
+		value: "instruction",
+		label: "Action",
+		icon: Zap,
+		desc: "Sets variables when triggered",
+	},
+	{
+		value: "display",
+		label: "Display",
+		icon: BarChart3,
+		desc: "Shows a variable value on the map",
+	},
+	{
+		value: "collection",
+		label: "Collection",
+		icon: PackageOpen,
+		desc: "Opens a collection modal with items",
+	},
+];
+
+const props = defineProps({
+	actionType: { type: String, default: "none" },
+	disabled: { type: Boolean, default: false },
+});
+
+const emit = defineEmits(["update:actionType"]);
+const open = ref(false);
+
+function select(value) {
+	emit("update:actionType", value);
+	open.value = false;
+}
+
+const current = () =>
+	ACTION_TYPES.find((t) => t.value === props.actionType) || ACTION_TYPES[0];
+</script>
+
+<template>
+  <Popover v-model:open="open">
+    <PopoverTrigger as-child>
+      <button
+        type="button"
+        class="v2-toolbar-btn gap-1"
+        :disabled="disabled"
+        title="Action type"
+      >
+        <component :is="current().icon" class="size-3.5" />
+      </button>
+    </PopoverTrigger>
+    <PopoverContent class="w-56 p-1" :side-offset="8" side="top">
+      <button
+        v-for="opt in ACTION_TYPES"
+        :key="opt.value"
+        type="button"
+        class="flex items-start gap-2 w-full px-2 py-1.5 rounded text-left cursor-pointer transition-colors"
+        :class="opt.value === actionType ? 'bg-accent' : 'hover:bg-accent/50'"
+        @click="select(opt.value)"
+      >
+        <component :is="opt.icon" class="size-3.5 mt-0.5 shrink-0" />
+        <div>
+          <div class="text-xs font-medium">{{ opt.label }}</div>
+          <div class="text-[10px] text-muted-foreground">{{ opt.desc }}</div>
+        </div>
+      </button>
+    </PopoverContent>
+  </Popover>
+</template>

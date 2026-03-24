@@ -3,6 +3,7 @@ import { ArrowLeftRight, Settings, Tag } from "lucide-vue-next";
 import { computed, nextTick, ref, watch } from "vue";
 import { useLive } from "@/vue/composables/useLive";
 import {
+	ToolbarActionTypePicker,
 	ToolbarColorPicker,
 	ToolbarLayerPicker,
 	ToolbarLockToggle,
@@ -18,6 +19,7 @@ const props = defineProps({
 	annotations: { type: Array, default: () => [] },
 	connections: { type: Array, default: () => [] },
 	pins: { type: Array, default: () => [] },
+	zones: { type: Array, default: () => [] },
 	layers: { type: Array, default: () => [] },
 	canEdit: { type: Boolean, default: false },
 	editMode: { type: Boolean, default: true },
@@ -51,6 +53,11 @@ const selectedConnection = computed(() => {
 const selectedPin = computed(() => {
 	if (props.selectedType !== "pin") return null;
 	return props.pins.find((p) => p.id === props.selectedId) || null;
+});
+
+const selectedZone = computed(() => {
+	if (props.selectedType !== "zone") return null;
+	return props.zones.find((z) => z.id === props.selectedId) || null;
 });
 
 function updatePosition() {
@@ -311,6 +318,87 @@ function onLabelBlur(event, updateEvent) {
       </button>
     </template>
 
-    <!-- Future: zone toolbar -->
+    <!-- Zone toolbar -->
+    <template v-if="selectedType === 'zone' && selectedZone">
+      <!-- Action type -->
+      <ToolbarActionTypePicker
+        :action-type="selectedZone.actionType || 'none'"
+        :disabled="selectedZone.locked"
+        @update:action-type="(t) => live.pushEvent('update_zone_action_type', { 'zone-id': String(selectedId), 'action-type': t })"
+      />
+
+      <!-- Name -->
+      <input
+        type="text"
+        :value="selectedZone.name || ''"
+        class="v2-toolbar-input w-20"
+        placeholder="Name"
+        :disabled="selectedZone.locked"
+        @blur="(e) => updateField('update_zone', 'name', e.target.value)"
+        @keydown.enter="$event.target.blur()"
+      />
+      <ToolbarSeparator />
+
+      <!-- Fill color + Opacity -->
+      <ToolbarColorPicker
+        :color="selectedZone.fillColor || '#3b82f6'"
+        :disabled="selectedZone.locked"
+        @update:color="(c) => updateField('update_zone', 'fill_color', c)"
+      >
+        <template #extra>
+          <div class="pt-2 border-t border-border mt-2">
+            <label class="text-xs font-medium text-foreground/70">Opacity</label>
+            <div class="flex items-center gap-2 mt-1">
+              <input
+                type="range" min="0" max="1" step="0.05"
+                :value="selectedZone.opacity ?? 0.3"
+                class="flex-1 h-1 accent-primary"
+                :disabled="selectedZone.locked"
+                @input="(e) => updateField('update_zone', 'opacity', e.target.value)"
+              />
+              <span class="text-xs font-mono w-8 text-right">{{ Math.round((selectedZone.opacity ?? 0.3) * 100) }}%</span>
+            </div>
+          </div>
+        </template>
+      </ToolbarColorPicker>
+
+      <!-- Border -->
+      <ToolbarStrokePicker
+        :line-style="selectedZone.borderStyle || 'solid'"
+        :line-width="selectedZone.borderWidth || 2"
+        :color="selectedZone.borderColor || '#1e40af'"
+        :disabled="selectedZone.locked"
+        @update:line-style="(v) => updateField('update_zone', 'border_style', v)"
+        @update:line-width="(v) => updateField('update_zone', 'border_width', v)"
+        @update:color="(v) => updateField('update_zone', 'border_color', v)"
+      />
+      <ToolbarSeparator />
+
+      <!-- Layer -->
+      <ToolbarLayerPicker
+        :layer-id="selectedZone.layerId"
+        :layers="layers"
+        :disabled="selectedZone.locked"
+        @update:layer-id="(id) => updateField('update_zone', 'layer_id', id)"
+      />
+
+      <!-- Lock -->
+      <ToolbarLockToggle
+        :locked="selectedZone.locked || false"
+        :disabled="!canEdit"
+        @toggle="toggleField('update_zone', 'locked', selectedZone.locked)"
+      />
+      <ToolbarSeparator />
+
+      <!-- Settings cog -->
+      <button
+        type="button"
+        class="v2-toolbar-btn"
+        title="Properties"
+        @click="toggleElementPanel"
+      >
+        <Settings class="size-3.5" />
+      </button>
+    </template>
   </div>
 </template>

@@ -52,7 +52,7 @@ onClickOutside(
 			emit("close");
 		}
 	},
-	{ ignore: [".v2-surface-panel", "[data-radix-popper-content-wrapper]"] },
+	{ ignore: [".v2-surface-panel", "[data-radix-popper-content-wrapper]", "[data-reka-popper-content-wrapper]"] },
 );
 
 // ── Animation constants (matching v1 TreePanel hook) ──

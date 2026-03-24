@@ -431,6 +431,7 @@ const LABEL_COLOR = "#d1d5db";
       :annotations="annotations"
       :connections="connections"
       :pins="pins"
+      :zones="zones"
       :layers="layers"
       :can-edit="canEdit"
       :edit-mode="editMode"

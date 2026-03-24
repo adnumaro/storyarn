@@ -5,6 +5,7 @@ import Sidebar from "@/vue/components/layout/Sidebar.vue";
 import { useLive } from "@/vue/composables/useLive";
 import ConnectionProperties from "./properties/ConnectionProperties.vue";
 import PinProperties from "./properties/PinProperties.vue";
+import ZoneProperties from "./properties/ZoneProperties.vue";
 
 const TITLES = {
 	zone: "Zone Properties",
@@ -20,6 +21,7 @@ const props = defineProps({
 	elementPanelOpen: { type: Boolean, default: false },
 	projectSheets: { type: Array, default: () => [] },
 	projectFlows: { type: Array, default: () => [] },
+	projectScenes: { type: Array, default: () => [] },
 	projectVariables: { type: Array, default: () => [] },
 });
 
@@ -60,13 +62,21 @@ function close() {
         :project-variables="projectVariables"
       />
 
+      <ZoneProperties
+        v-else-if="selectedType === 'zone'"
+        :element="selectedElement"
+        :can-edit="canEdit"
+        :project-scenes="projectScenes"
+        :project-sheets="projectSheets"
+        :project-flows="projectFlows"
+        :project-variables="projectVariables"
+      />
+
       <ConnectionProperties
         v-else-if="selectedType === 'connection'"
         :element="selectedElement"
         :can-edit="canEdit"
       />
-
-      <!-- ZoneProperties will be added in phase 4J -->
     </div>
   </Sidebar>
 </template>

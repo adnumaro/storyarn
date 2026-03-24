@@ -1,3 +1,4 @@
+export { default as ToolbarActionTypePicker } from "./ToolbarActionTypePicker.vue";
 export { default as ToolbarColorPicker } from "./ToolbarColorPicker.vue";
 export { default as ToolbarLayerPicker } from "./ToolbarLayerPicker.vue";
 export { default as ToolbarLockToggle } from "./ToolbarLockToggle.vue";

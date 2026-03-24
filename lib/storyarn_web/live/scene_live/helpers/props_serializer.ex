@@ -299,6 +299,10 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
     Enum.map(flows, fn f -> %{id: f.id, name: f.name} end)
   end
 
+  def prepare_project_scenes_for_vue(scenes) do
+    Enum.map(scenes, fn s -> %{id: s.id, name: s.name} end)
+  end
+
   def prepare_project_sheets_for_vue(sheets) do
     sheets
     |> flatten_sheet_tree()
