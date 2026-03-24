@@ -179,6 +179,7 @@ const LABEL_COLOR = "#d1d5db";
           :config="{ listening: zone.listening }"
           @click="(e) => handleElementClick('zone', zone.id, e)"
         >
+          <!-- Zone polygon -->
           <v-line
             :config="{
               points: zone.points,
@@ -188,6 +189,10 @@ const LABEL_COLOR = "#d1d5db";
               dash: zone.dash,
               opacity: zone.opacity,
               closed: true,
+              shadowColor: zone.isSelected ? SELECTION_COLOR : undefined,
+              shadowBlur: zone.isSelected ? 10 : 0,
+              shadowOpacity: zone.isSelected ? 0.8 : 0,
+              shadowEnabled: zone.isSelected,
             }"
           />
           <v-text
