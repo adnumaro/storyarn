@@ -29,7 +29,6 @@ const props = defineProps({
 		validator: (v) => ["left", "right"].includes(v),
 	},
 	open: { type: Boolean, default: false },
-	width: { type: String, default: "w-64" },
 });
 
 const emit = defineEmits(["close"]);
@@ -129,9 +128,7 @@ watch(
 		ref="panelRef"
 		:class="[
 			'fixed top-19 bottom-3 left-3 right-3 z-40 flex flex-col v2-surface-panel overflow-hidden',
-			// Desktop: fixed width, side-positioned
-			`md:${props.width}`,
-			side === 'right' ? 'md:left-auto md:!right-3' : '',
+			side === 'right' ? 'right-sidebar' : 'left-sidebar',
 		]"
 	>
 		<!-- Header -->

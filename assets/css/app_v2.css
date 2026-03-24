@@ -123,6 +123,19 @@
 }
 
 
+/* Sidebar positioning and widths */
+@media (min-width: 768px) {
+  .left-sidebar {
+    width: 18rem;
+    right: auto;
+  }
+
+  .right-sidebar {
+    width: 24rem;
+    left: auto;
+  }
+}
+
 /* ================================================================
    Focus Layout — floating toolbar and panel chrome (v2 equivalent of
    .surface-panel and .toolbar-btn from app.css / DaisyUI)

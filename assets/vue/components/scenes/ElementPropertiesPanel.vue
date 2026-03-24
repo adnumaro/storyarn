@@ -35,7 +35,7 @@ function close() {
 </script>
 
 <template>
-  <Sidebar side="right" :open="isOpen" width="w-80" @close="close">
+  <Sidebar side="right" :open="isOpen" @close="close">
     <template #header>
       <div class="flex items-center gap-2 px-3 py-2.5">
         <span class="font-medium text-sm flex-1">{{ TITLES[selectedType] || 'Properties' }}</span>
