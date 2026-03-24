@@ -551,6 +551,7 @@ const LABEL_COLOR = "#d1d5db";
       :stage-config="stageConfig"
       :element-position="selectedElementPosition"
       :container-width="stageConfig.width"
+      :is-dragging="isDragging || isDraggingZone"
     />
   </div>
 </template>

@@ -26,6 +26,7 @@ const props = defineProps({
 	stageConfig: { type: Object, required: true },
 	elementPosition: { type: Object, default: null },
 	containerWidth: { type: Number, default: 800 },
+	isDragging: { type: Boolean, default: false },
 });
 
 const live = useLive();
@@ -144,7 +145,8 @@ function onLabelBlur(event, updateEvent) {
   <div
     v-if="visible"
     ref="toolbarRef"
-    class="absolute z-30 v2-surface-panel px-1.5 py-1 flex items-center gap-0.5"
+    class="absolute z-30 v2-surface-panel px-1.5 py-1 flex items-center gap-0.5 transition-opacity duration-200"
+    :class="isDragging ? 'opacity-0 pointer-events-none delay-0' : 'opacity-100 delay-400'"
     :style="toolbarStyle"
   >
     <!-- Annotation toolbar -->
