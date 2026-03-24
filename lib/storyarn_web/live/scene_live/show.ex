@@ -312,21 +312,7 @@ defmodule StoryarnWeb.SceneLive.Show do
             />
           </div>
 
-          <%!-- Floating element toolbar --%>
-          <.canvas_toolbar
-            id="scene-floating-toolbar"
-            canvas_id={"scene-canvas-#{@scene.id}"}
-            visible={@selected_element != nil && @can_edit && @edit_mode}
-            z_class="z-[1050]"
-          >
-            <.floating_toolbar
-              selected_type={@selected_type}
-              selected_element={@selected_element}
-              layers={@layers}
-              can_edit={not Map.get(@selected_element || %{}, :locked, false)}
-              can_toggle_lock={true}
-            />
-          </.canvas_toolbar>
+          <%!-- V1 floating toolbar removed — V2 uses Vue SceneFloatingToolbar --%>
 
           <%!-- Element Properties Sidebar --%>
           <div
