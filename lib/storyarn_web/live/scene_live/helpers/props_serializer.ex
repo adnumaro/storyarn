@@ -330,6 +330,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
 
   defp pin_avatar_url(_), do: nil
 
-  defp pin_icon_asset_url(%{icon_asset: %{} = asset}), do: Assets.display_url(asset)
+  defp pin_icon_asset_url(%{icon_asset: %Storyarn.Assets.Asset{} = asset}),
+    do: Assets.display_url(asset)
+
   defp pin_icon_asset_url(_), do: nil
 end

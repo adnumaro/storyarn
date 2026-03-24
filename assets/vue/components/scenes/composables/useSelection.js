@@ -8,7 +8,7 @@ const SELECTION_COLOR = "#6366f1";
  * Selection is optimistic — visual highlight appears immediately on click,
  * server confirms asynchronously.
  */
-export function useSelection({ activeTool }) {
+export function useSelection({ activeTool, onCreationClick }) {
 	const live = useLive();
 	const selectedType = ref(null);
 	const selectedId = ref(null);
@@ -29,8 +29,11 @@ export function useSelection({ activeTool }) {
 	}
 
 	function handleStageClick(e) {
+		// Creation tools get first priority (pin, annotation)
+		if (onCreationClick?.(e)) return;
+
+		// Select mode: deselect on empty canvas click
 		if (!isSelectMode.value) return;
-		// Only deselect if clicking on the stage itself (empty canvas)
 		const stage = e.target.getStage();
 		if (e.target !== stage) return;
 

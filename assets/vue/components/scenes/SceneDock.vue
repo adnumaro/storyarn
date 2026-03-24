@@ -12,10 +12,17 @@ import {
 	Square,
 	StickyNote,
 	Triangle,
-	User,
 	X,
 } from "lucide-vue-next";
-import { ref } from "vue";
+import { nextTick, ref } from "vue";
+import {
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+} from "@/vue/components/ui/command";
 import {
 	Popover,
 	PopoverContent,
@@ -28,6 +35,7 @@ const props = defineProps({
 	editMode: { type: Boolean, default: true },
 	compact: { type: Boolean, default: false },
 	pendingSheet: { type: Object, default: null },
+	projectSheets: { type: Array, default: () => [] },
 	workspaceSlug: { type: String, required: true },
 	projectSlug: { type: String, required: true },
 	sceneId: { type: [String, Number], required: true },
@@ -37,6 +45,7 @@ const live = useLive();
 
 const shapesOpen = ref(false);
 const pinsOpen = ref(false);
+const sheetPickerOpen = ref(false);
 
 const shapeTools = [
 	{ id: "rectangle", icon: Square, title: "Rectangle" },
@@ -59,12 +68,18 @@ function setTool(type) {
 	pinsOpen.value = false;
 }
 
-function showSheetPicker() {
-	live.pushEvent("show_sheet_picker", {});
+async function openSheetPicker() {
 	pinsOpen.value = false;
+	await nextTick();
+	sheetPickerOpen.value = true;
 }
 
-function cancelSheetPicker() {
+function selectSheet(sheetId) {
+	sheetPickerOpen.value = false;
+	live.pushEvent("start_pin_from_sheet", { "sheet-id": sheetId });
+}
+
+function cancelPendingSheet() {
 	live.pushEvent("cancel_sheet_picker", {});
 }
 
@@ -157,9 +172,10 @@ const playUrl = `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug
         </div>
       </div>
 
-      <!-- Pins dropdown -->
+      <!-- Pins dropdown / Sheet picker -->
       <div class="v2-dock-item group relative">
-        <Popover v-model:open="pinsOpen">
+        <!-- Pin menu (Free Pin / From Sheet) -->
+        <Popover v-if="!sheetPickerOpen" v-model:open="pinsOpen">
           <PopoverTrigger as-child>
             <button
               type="button"
@@ -188,9 +204,9 @@ const playUrl = `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug
               <button
                 type="button"
                 class="w-full flex items-start gap-2.5 px-2.5 py-2 rounded-lg text-sm text-start cursor-pointer hover:bg-accent transition-colors"
-                @click="showSheetPicker"
+                @click="openSheetPicker"
               >
-                <User class="size-4 mt-0.5 shrink-0" />
+                <MapPin class="size-4 mt-0.5 shrink-0" />
                 <div>
                   <div class="font-medium">From Sheet</div>
                   <div class="text-xs text-muted-foreground">Link a character or item</div>
@@ -199,7 +215,37 @@ const playUrl = `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug
             </div>
           </PopoverContent>
         </Popover>
-        <div v-if="!pinsOpen" class="v2-dock-tooltip">
+        <!-- Sheet picker (replaces pin menu when open) -->
+        <Popover v-else v-model:open="sheetPickerOpen">
+          <PopoverTrigger as-child>
+            <button
+              type="button"
+              class="v2-dock-btn v2-dock-btn-active"
+            >
+              <MapPin class="size-5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent side="top" :side-offset="12" class="w-56 p-0">
+            <Command>
+              <CommandInput placeholder="Search sheets..." />
+              <CommandList>
+                <CommandEmpty>No sheets found</CommandEmpty>
+                <CommandGroup>
+                  <CommandItem
+                    v-for="sheet in projectSheets"
+                    :key="sheet.id"
+                    :value="sheet.name"
+                    @select="selectSheet(sheet.id)"
+                  >
+                    <span class="truncate">{{ sheet.name }}</span>
+                    <span v-if="sheet.shortcut" class="ml-auto text-xs text-muted-foreground">#{{ sheet.shortcut }}</span>
+                  </CommandItem>
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+        <div v-if="!pinsOpen && !sheetPickerOpen" class="v2-dock-tooltip">
           <div class="text-sm font-semibold mb-0.5">Pin</div>
           <div class="text-xs text-muted-foreground leading-relaxed">
             Place markers on the map, optionally linked to a sheet
@@ -321,7 +367,7 @@ const playUrl = `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug
       <button
         type="button"
         class="v2-dock-btn !size-5 !rounded-md"
-        @click="cancelSheetPicker"
+        @click="cancelPendingSheet"
       >
         <X class="size-3" />
       </button>

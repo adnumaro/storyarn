@@ -236,27 +236,6 @@ defmodule StoryarnWeb.SceneLive.Show do
 
           <%!-- TODO: Version History Panel — migrate to Vue Sidebar --%>
 
-          <%!-- Sheet picker overlay --%>
-          <div
-            :if={@show_sheet_picker}
-            id="sheet-picker"
-            class="absolute bottom-32 left-1/2 -translate-x-1/2 z-20 w-72 bg-base-100 rounded-lg border border-base-300 shadow-lg overflow-hidden"
-          >
-            <div class="p-2 border-b border-base-300 flex items-center justify-between">
-              <span class="text-xs font-medium">{dgettext("scenes", "Select a sheet")}</span>
-              <button
-                type="button"
-                phx-click="cancel_sheet_picker"
-                class="btn btn-ghost btn-xs btn-square"
-              >
-                <.icon name="x" class="size-3" />
-              </button>
-            </div>
-            <div class="max-h-60 overflow-y-auto p-1">
-              <.sheet_picker_list sheets={flatten_sheets(@project_sheets)} />
-            </div>
-          </div>
-
           <%!-- Bottom dock (edit mode only) --%>
           <.vue
             :if={@edit_mode}
@@ -267,6 +246,7 @@ defmodule StoryarnWeb.SceneLive.Show do
             edit-mode={@edit_mode}
             compact={false}
             pending-sheet={@pending_sheet_for_pin && %{name: @pending_sheet_for_pin.name}}
+            project-sheets={prepare_project_sheets_for_vue(@project_sheets)}
             workspace-slug={@workspace.slug}
             project-slug={@project.slug}
             scene-id={@scene.id}

@@ -2,6 +2,7 @@
 import { computed, ref, toRef } from "vue";
 import { useAnnotationEditing } from "./composables/useAnnotationEditing";
 import { useAnnotations } from "./composables/useAnnotations";
+import { useCanvasCreation } from "./composables/useCanvasCreation";
 import { useConnections } from "./composables/useConnections";
 import { useDrag } from "./composables/useDrag";
 import { useKonvaStage } from "./composables/useKonvaStage";
@@ -45,6 +46,19 @@ const {
 	editMode: toRef(props, "editMode"),
 });
 
+const editRefs = {
+	editMode: toRef(props, "editMode"),
+	canEdit: toRef(props, "canEdit"),
+};
+
+const { handleCreationClick } = useCanvasCreation({
+	stageRef,
+	stageConfig,
+	pixelToPercent,
+	activeTool: activeToolRef,
+	...editRefs,
+});
+
 const {
 	selectedType,
 	selectedId,
@@ -52,13 +66,9 @@ const {
 	handleElementClick,
 	handleStageClick,
 	SELECTION_COLOR,
-} = useSelection({ activeTool: activeToolRef });
+} = useSelection({ activeTool: activeToolRef, onCreationClick: handleCreationClick });
 
 const selectionRefs = { selectedType, selectedId, isSelectMode };
-const editRefs = {
-	editMode: toRef(props, "editMode"),
-	canEdit: toRef(props, "canEdit"),
-};
 
 const { isDragging, dragOverrides, onDragStart, onDragMove, onDragEnd } =
 	useDrag({
