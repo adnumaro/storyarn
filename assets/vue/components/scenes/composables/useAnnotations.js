@@ -106,6 +106,7 @@ export function useAnnotations({
 					bodyPoints,
 					foldPoints,
 					textWidth: w - dims.padLeft - dims.padRight,
+					locked: !!ann.locked,
 					isLockedByOther,
 					lockBadge: isLockedByOther ? renderLockBadge() : null,
 					isSelected:

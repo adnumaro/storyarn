@@ -1,11 +1,13 @@
 <script setup>
-import { ref, toRef } from "vue";
+import { computed, ref, toRef } from "vue";
+import { useAnnotationEditing } from "./composables/useAnnotationEditing";
 import { useAnnotations } from "./composables/useAnnotations";
 import { useConnections } from "./composables/useConnections";
 import { useKonvaStage } from "./composables/useKonvaStage";
 import { usePins } from "./composables/usePins";
 import { useSelection } from "./composables/useSelection";
 import { useZones } from "./composables/useZones";
+import SceneFloatingToolbar from "./SceneFloatingToolbar.vue";
 
 const props = defineProps({
 	sceneData: { type: Object, default: null },
@@ -86,6 +88,68 @@ const { connectionConfigs } = useConnections({
 	...selectionRefs,
 });
 
+const { startEditing, isEditingAnnotation, getDisplayText } =
+	useAnnotationEditing({
+		containerRef,
+		stageConfig,
+	});
+
+function handleAnnotationDblClick(annConfig, e) {
+	if (!props.canEdit || !props.editMode) return;
+	if (e) e.cancelBubble = true;
+	startEditing(annConfig);
+}
+
+// Compute selected element position for toolbar positioning
+const selectedElementPosition = computed(() => {
+	if (!selectedType.value || !selectedId.value) return null;
+
+	if (selectedType.value === "annotation") {
+		const ann = annotationConfigs.value.find((a) => a.id === selectedId.value);
+		if (ann)
+			return { x: ann.x, y: ann.y, width: ann.width, height: ann.height };
+	}
+	if (selectedType.value === "pin") {
+		const pin = pinConfigs.value.find((p) => p.id === selectedId.value);
+		if (pin)
+			return {
+				x: pin.x - pin.radius,
+				y: pin.y - pin.radius,
+				width: pin.diameter,
+				height: pin.diameter,
+			};
+	}
+	if (selectedType.value === "zone") {
+		const zone = zoneConfigs.value.find((z) => z.id === selectedId.value);
+		if (zone && zone.points.length >= 4) {
+			const xs = [];
+			const ys = [];
+			for (let i = 0; i < zone.points.length; i += 2) {
+				xs.push(zone.points[i]);
+				ys.push(zone.points[i + 1]);
+			}
+			const minX = Math.min(...xs);
+			const minY = Math.min(...ys);
+			return {
+				x: minX,
+				y: minY,
+				width: Math.max(...xs) - minX,
+				height: Math.max(...ys) - minY,
+			};
+		}
+	}
+	if (selectedType.value === "connection") {
+		const conn = connectionConfigs.value.find((c) => c.id === selectedId.value);
+		if (conn && conn.points.length >= 4) {
+			const midIdx = Math.floor(conn.points.length / 2);
+			const midX = (conn.points[midIdx - 2] + conn.points[midIdx]) / 2;
+			const midY = (conn.points[midIdx - 1] + conn.points[midIdx + 1]) / 2;
+			return { x: midX, y: midY, width: 0, height: 0 };
+		}
+	}
+	return null;
+});
+
 function clipCircle(radius) {
 	return (ctx) => {
 		ctx.arc(0, 0, radius, 0, Math.PI * 2);
@@ -96,7 +160,7 @@ const LABEL_COLOR = "#d1d5db";
 </script>
 
 <template>
-  <div ref="containerRef" class="w-full h-full" :style="{ cursor: cursorStyle }">
+  <div ref="containerRef" class="w-full h-full relative" :style="{ cursor: cursorStyle }">
     <v-stage ref="stageRef" :config="stageConfig" @wheel="handleWheel" @click="handleStageClick">
       <!-- Background layer -->
       <v-layer>
@@ -115,7 +179,6 @@ const LABEL_COLOR = "#d1d5db";
           :config="{ listening: zone.listening }"
           @click="(e) => handleElementClick('zone', zone.id, e)"
         >
-          <!-- Zone polygon -->
           <v-line
             :config="{
               points: zone.points,
@@ -127,8 +190,6 @@ const LABEL_COLOR = "#d1d5db";
               closed: true,
             }"
           />
-
-          <!-- Zone label at centroid -->
           <v-text
             v-if="zone.name"
             :config="{
@@ -148,8 +209,6 @@ const LABEL_COLOR = "#d1d5db";
               listening: false,
             }"
           />
-
-          <!-- Lock badge -->
           <v-image
             v-if="zone.lockBadge"
             :config="{
@@ -172,7 +231,6 @@ const LABEL_COLOR = "#d1d5db";
           :config="{ listening: conn.listening }"
           @click="(e) => handleElementClick('connection', conn.id, e)"
         >
-          <!-- Main line -->
           <v-line
             :config="{
               points: conn.points,
@@ -183,8 +241,6 @@ const LABEL_COLOR = "#d1d5db";
               hitStrokeWidth: conn.hitStrokeWidth,
             }"
           />
-
-          <!-- Forward arrowhead -->
           <v-line
             v-if="conn.forwardArrow"
             :config="{
@@ -195,8 +251,6 @@ const LABEL_COLOR = "#d1d5db";
               listening: false,
             }"
           />
-
-          <!-- Reverse arrowhead (bidirectional) -->
           <v-line
             v-if="conn.reverseArrow"
             :config="{
@@ -207,8 +261,6 @@ const LABEL_COLOR = "#d1d5db";
               listening: false,
             }"
           />
-
-          <!-- Label -->
           <v-text v-if="conn.labelConfig" :config="conn.labelConfig" />
         </v-group>
       </v-layer>
@@ -221,7 +273,6 @@ const LABEL_COLOR = "#d1d5db";
           :config="{ x: pin.x, y: pin.y, listening: pin.listening }"
           @click="(e) => handleElementClick('pin', pin.id, e)"
         >
-          <!-- Selection ring -->
           <v-circle
             v-if="pin.isSelected"
             :config="{
@@ -231,8 +282,6 @@ const LABEL_COLOR = "#d1d5db";
               listening: false,
             }"
           />
-
-          <!-- Icon pin (pre-rendered Lucide icon circle) -->
           <v-image
             v-if="pin.iconCanvas"
             :config="{
@@ -243,8 +292,6 @@ const LABEL_COLOR = "#d1d5db";
               height: pin.iconCanvas.height,
             }"
           />
-
-          <!-- Initials pin (pre-rendered initials circle) -->
           <v-image
             v-else-if="pin.initialsCanvas"
             :config="{
@@ -255,8 +302,6 @@ const LABEL_COLOR = "#d1d5db";
               height: pin.initialsCanvas.height,
             }"
           />
-
-          <!-- Avatar/asset image pin -->
           <template v-else-if="pin.image">
             <v-circle
               :config="{
@@ -281,8 +326,6 @@ const LABEL_COLOR = "#d1d5db";
               />
             </v-group>
           </template>
-
-          <!-- Label below pin -->
           <v-text
             v-if="pin.label"
             :config="{
@@ -299,8 +342,6 @@ const LABEL_COLOR = "#d1d5db";
               listening: false,
             }"
           />
-
-          <!-- Lock badge -->
           <v-image
             v-if="pin.lockBadge"
             :config="{
@@ -322,8 +363,8 @@ const LABEL_COLOR = "#d1d5db";
           :key="'ann-' + ann.id"
           :config="{ x: ann.x, y: ann.y, listening: ann.listening }"
           @click="(e) => handleElementClick('annotation', ann.id, e)"
+          @dblclick="(e) => handleAnnotationDblClick(ann, e)"
         >
-          <!-- Selection border -->
           <v-rect
             v-if="ann.isSelected"
             :config="{
@@ -336,8 +377,6 @@ const LABEL_COLOR = "#d1d5db";
               listening: false,
             }"
           />
-
-          <!-- Note body (clipped rectangle with folded corner) -->
           <v-line
             :config="{
               points: ann.bodyPoints,
@@ -346,8 +385,6 @@ const LABEL_COLOR = "#d1d5db";
               closed: true,
             }"
           />
-
-          <!-- Fold triangle (full opacity for depth effect) -->
           <v-line
             :config="{
               points: ann.foldPoints,
@@ -356,11 +393,10 @@ const LABEL_COLOR = "#d1d5db";
               listening: false,
             }"
           />
-
-          <!-- Text -->
           <v-text
+            v-if="!isEditingAnnotation(ann.id)"
             :config="{
-              text: ann.text,
+              text: getDisplayText(ann.id, ann.text),
               fill: '#111827',
               fontSize: ann.fontSize,
               fontStyle: '600',
@@ -373,8 +409,6 @@ const LABEL_COLOR = "#d1d5db";
               listening: false,
             }"
           />
-
-          <!-- Lock badge -->
           <v-image
             v-if="ann.lockBadge"
             :config="{
@@ -389,5 +423,18 @@ const LABEL_COLOR = "#d1d5db";
         </v-group>
       </v-layer>
     </v-stage>
+
+    <!-- Floating toolbar (HTML overlay above canvas) -->
+    <SceneFloatingToolbar
+      :selected-type="selectedType"
+      :selected-id="selectedId"
+      :annotations="annotations"
+      :layers="layers"
+      :can-edit="canEdit"
+      :edit-mode="editMode"
+      :stage-config="stageConfig"
+      :element-position="selectedElementPosition"
+      :container-width="stageConfig.width"
+    />
   </div>
 </template>

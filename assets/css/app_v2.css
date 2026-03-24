@@ -158,6 +158,12 @@
   background-color: hsl(var(--accent));
 }
 
+.v2-toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* ================================================================
    Dock — floating bottom tool palette for canvas editors (v2)
    1:1 port of .dock-btn / .dock-item / .dock-tooltip from app.css
