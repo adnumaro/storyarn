@@ -13,7 +13,7 @@ const emit = defineEmits(["toggle"]);
 
 <template>
   <div class="flex items-center justify-between">
-    <label class="text-xs font-medium text-muted-foreground flex items-center gap-1">
+    <label class="text-xs font-medium text-foreground/70 flex items-center gap-1">
       <component :is="icon" v-if="icon" class="size-3" />
       {{ label }}
     </label>

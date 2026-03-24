@@ -22,7 +22,7 @@ const displayValue = computed(() => {
 <template>
   <div class="space-y-1">
     <div class="flex items-center justify-between">
-      <label v-if="label" class="text-xs font-medium text-muted-foreground">{{ label }}</label>
+      <label v-if="label" class="text-xs font-medium text-foreground/70">{{ label }}</label>
       <span class="text-xs font-mono text-muted-foreground">{{ displayValue }}</span>
     </div>
     <input

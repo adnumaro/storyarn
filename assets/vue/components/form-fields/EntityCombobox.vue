@@ -40,7 +40,7 @@ function select(id) {
 
 <template>
   <div>
-    <label v-if="label" class="block text-xs font-medium text-muted-foreground mb-1">
+    <label v-if="label" class="block text-xs font-medium text-foreground/70 mb-1">
       {{ label }}
     </label>
     <Popover v-model:open="open">

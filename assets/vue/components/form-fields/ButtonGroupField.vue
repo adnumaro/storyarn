@@ -12,7 +12,7 @@ const emit = defineEmits(["update"]);
 
 <template>
   <div class="space-y-1.5">
-    <label v-if="label" class="block text-xs font-medium text-muted-foreground flex items-center gap-1">
+    <label v-if="label" class="block text-xs font-medium text-foreground/70 flex items-center gap-1">
       <component :is="icon" v-if="icon" class="size-3" />
       {{ label }}
     </label>

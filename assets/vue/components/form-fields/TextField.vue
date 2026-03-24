@@ -11,7 +11,7 @@ const emit = defineEmits(["update"]);
 
 <template>
   <div class="space-y-1">
-    <label v-if="label" class="block text-xs font-medium text-muted-foreground">{{ label }}</label>
+    <label v-if="label" class="block text-xs font-medium text-foreground/70">{{ label }}</label>
     <input
       type="text"
       :value="value"
