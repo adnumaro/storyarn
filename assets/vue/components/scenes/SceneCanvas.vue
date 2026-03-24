@@ -430,6 +430,7 @@ const LABEL_COLOR = "#d1d5db";
       :selected-id="selectedId"
       :annotations="annotations"
       :connections="connections"
+      :pins="pins"
       :layers="layers"
       :can-edit="canEdit"
       :edit-mode="editMode"

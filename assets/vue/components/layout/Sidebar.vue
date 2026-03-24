@@ -18,8 +18,9 @@
  *   default — scrollable content area
  *   footer — optional footer bar with border-top
  */
-import { ref, watch, nextTick, onMounted } from "vue";
+
 import { onClickOutside } from "@vueuse/core";
+import { nextTick, onMounted, ref, watch } from "vue";
 
 const props = defineProps({
 	side: {
@@ -28,6 +29,7 @@ const props = defineProps({
 		validator: (v) => ["left", "right"].includes(v),
 	},
 	open: { type: Boolean, default: false },
+	width: { type: String, default: "w-64" },
 });
 
 const emit = defineEmits(["close"]);
@@ -120,7 +122,6 @@ watch(
 		});
 	},
 );
-
 </script>
 
 <template>
@@ -129,7 +130,7 @@ watch(
 		:class="[
 			'fixed top-19 bottom-3 left-3 right-3 z-40 flex flex-col v2-surface-panel overflow-hidden',
 			// Desktop: fixed width, side-positioned
-			'md:w-64',
+			`md:${props.width}`,
 			side === 'right' ? 'md:left-auto md:!right-3' : '',
 		]"
 	>

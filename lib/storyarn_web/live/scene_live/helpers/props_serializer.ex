@@ -299,6 +299,19 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
     Enum.map(flows, fn f -> %{id: f.id, name: f.name} end)
   end
 
+  def prepare_project_sheets_for_vue(sheets) do
+    sheets
+    |> flatten_sheet_tree()
+    |> Enum.map(fn s -> %{id: s.id, name: s.name, shortcut: s.shortcut} end)
+  end
+
+  defp flatten_sheet_tree(sheets) do
+    Enum.flat_map(sheets, fn sheet ->
+      children = Map.get(sheet, :children, [])
+      [sheet | flatten_sheet_tree(children)]
+    end)
+  end
+
   # ---- Private helpers ----
 
   defp background_url(%{background_asset: %{} = asset}), do: Assets.display_url(asset)

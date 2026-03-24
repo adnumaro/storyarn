@@ -15,6 +15,14 @@ export default createLiveVue({
 	setup: ({ createApp, component, props, slots, plugin, el }) => {
 		const app = createApp({ render: () => h(component, props, slots) });
 		app.config.idPrefix = `vue-${appCounter++}`;
+		// Suppress vue-konva false-positive warnings about event listeners on v-group/v-layer
+		// vue-konva handles Konva events internally via .on() — Vue's attribute inheritance doesn't apply
+		const origWarn = app.config.warnHandler;
+		app.config.warnHandler = (msg, vm, trace) => {
+			if (msg.includes("Extraneous non-emits event listeners")) return;
+			if (origWarn) origWarn(msg, vm, trace);
+			else console.warn(`[Vue warn]: ${msg}${trace}`);
+		};
 		app.use(plugin);
 		app.use(VueKonva);
 		app.mount(el);

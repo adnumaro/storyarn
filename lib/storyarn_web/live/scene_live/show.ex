@@ -15,7 +15,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   import StoryarnWeb.SceneLive.V1.Components.FloatingToolbar
   import StoryarnWeb.SceneLive.V1.Components.SceneElementPanel
   # V1 SceneSettingsPanel removed — replaced by Vue SettingsPanel (Phase 3D)
-  import StoryarnWeb.Components.RightSidebar
+  # V1 RightSidebar removed — Version History migrating to Vue
 
   alias StoryarnWeb.Components.DraftComponents
   alias StoryarnWeb.Helpers.DraftTouchTimer
@@ -43,7 +43,8 @@ defmodule StoryarnWeb.SceneLive.Show do
       serialize_entity_locks: 1,
       serialize_selected_element: 2,
       prepare_ambient_flows_for_vue: 1,
-      prepare_project_flows_for_vue: 1
+      prepare_project_flows_for_vue: 1,
+      prepare_project_sheets_for_vue: 1
     ]
   import StoryarnWeb.SceneLive.Helpers.SceneHelpers
   import StoryarnWeb.SceneLive.Helpers.SceneSerializer
@@ -165,7 +166,7 @@ defmodule StoryarnWeb.SceneLive.Show do
             <%!-- Empty canvas — upload prompt --%>
             <div
               :if={!background_set?(@scene) && @can_edit && @edit_mode && @uploads[:background]}
-              class="absolute inset-0 flex items-center justify-center z-[500] pointer-events-none"
+              class="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
             >
               <label
                 for={@uploads.background.ref}
@@ -190,7 +191,7 @@ defmodule StoryarnWeb.SceneLive.Show do
             <div
               :if={@can_edit && @edit_mode}
               id="canvas-drop-indicator"
-              class="hidden absolute inset-0 z-[999] bg-primary/5 border-2 border-dashed border-primary/30
+              class="hidden absolute inset-0 z-10 bg-primary/5 border-2 border-dashed border-primary/30
                    flex items-center justify-center pointer-events-none"
             >
               <div class="text-center">
@@ -213,7 +214,7 @@ defmodule StoryarnWeb.SceneLive.Show do
                   else: []
                 )
             }
-            class="absolute bottom-20 left-1/2 -translate-x-1/2 z-[1000]
+            class="absolute bottom-20 left-1/2 -translate-x-1/2 z-20
                  bg-base-100 rounded-lg border border-base-300 shadow-lg px-4 py-2 flex items-center gap-3"
           >
             <.icon name="upload" class="size-4 animate-pulse text-primary" />
@@ -238,7 +239,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           <div
             :if={@show_sheet_picker}
             id="sheet-picker"
-            class="absolute bottom-32 left-1/2 -translate-x-1/2 z-[1001] w-72 bg-base-100 rounded-lg border border-base-300 shadow-lg overflow-hidden"
+            class="absolute bottom-32 left-1/2 -translate-x-1/2 z-20 w-72 bg-base-100 rounded-lg border border-base-300 shadow-lg overflow-hidden"
           >
             <div class="p-2 border-b border-base-300 flex items-center justify-between">
               <span class="text-xs font-medium">{dgettext("scenes", "Select a sheet")}</span>
@@ -271,7 +272,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           />
 
           <%!-- Bottom-right controls: reset zoom + legend --%>
-          <div class="absolute bottom-3 right-3 z-[1000] flex items-end gap-2">
+          <div class="absolute bottom-3 right-3 z-20 flex items-end gap-2">
             <div id="scene-controls-slot" phx-update="ignore"></div>
             <.vue
               v-component="scenes/Legend"
@@ -293,6 +294,9 @@ defmodule StoryarnWeb.SceneLive.Show do
             selected-element={serialize_selected_element(@selected_type, @selected_element)}
             can-edit={not Map.get(@selected_element || %{}, :locked, false)}
             element-panel-open={@element_panel_open}
+            project-sheets={prepare_project_sheets_for_vue(@project_sheets)}
+            project-flows={prepare_project_flows_for_vue(@project_flows)}
+            project-variables={@project_variables}
           />
 
           <%!-- Scene Settings Sidebar (Vue Sidebar component) --%>
@@ -308,34 +312,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           />
         </div>
 
-        <%!-- Pin icon upload overlay (fixed, outside canvas overflow) --%>
-        <div
-          :if={@show_pin_icon_upload && @selected_type == "pin" && @project && @current_scope}
-          id="pin-icon-upload-panel"
-          class="fixed top-16 right-4 z-[1030] w-64 bg-base-200 border border-base-300 rounded-lg
-               shadow-lg p-3"
-        >
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-medium">{dgettext("scenes", "Upload Icon")}</span>
-            <button
-              type="button"
-              phx-click="toggle_pin_icon_upload"
-              class="btn btn-ghost btn-xs btn-square"
-            >
-              <.icon name="x" class="size-3" />
-            </button>
-          </div>
-          <.live_component
-            module={StoryarnWeb.Components.AssetUpload}
-            id="pin-icon-upload"
-            project={@project}
-            current_user={@current_scope.user}
-            on_upload={fn asset -> send(self(), {:pin_icon_uploaded, asset}) end}
-            accept={~w(image/jpeg image/png image/gif image/webp image/svg+xml)}
-            max_entries={1}
-            max_file_size={524_288}
-          />
-        </div>
+        <%!-- V1 pin icon upload removed — Vue PinProperties handles upload via pushEvent --%>
       <% else %>
         <div class="h-full flex items-center justify-center">
           <span class="loading loading-spinner loading-lg text-base-content/30"></span>
@@ -1123,6 +1100,35 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_event("update_pin", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ElementHandlers.handle_update_pin(params, socket) |> broadcast_scene_change()
+    end)
+  end
+
+  def handle_event("upload_pin_icon", %{"filename" => filename, "content_type" => ct, "data" => data}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      with %{__struct__: Scenes.ScenePin} = pin <- socket.assigns[:selected_element],
+           [_header, base64] <- String.split(data, ",", parts: 2),
+           {:ok, binary} <- Base.decode64(base64),
+           {:ok, asset} <-
+             Assets.upload_binary_and_create_asset(
+               binary,
+               %{filename: filename, content_type: ct},
+               socket.assigns.project,
+               socket.assigns.current_scope.user
+             ),
+           {:ok, updated} <- Scenes.update_pin(pin, %{"icon_asset_id" => asset.id}) do
+        updated = Scenes.preload_pin_associations(updated)
+
+        {:noreply,
+         socket
+         |> assign(:selected_element, updated)
+         |> update_pin_in_list(updated)
+         |> push_event("pin_updated", serialize_pin(updated))
+         |> put_flash(:info, dgettext("scenes", "Pin icon updated."))}
+        |> broadcast_scene_change()
+      else
+        _ ->
+          {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not upload pin icon."))}
+      end
     end)
   end
 

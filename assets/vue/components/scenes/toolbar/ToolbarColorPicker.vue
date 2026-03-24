@@ -67,6 +67,7 @@ function onCustomColor(e) {
           </label>
         </div>
       </div>
+      <slot name="extra" />
     </PopoverContent>
   </Popover>
 </template>

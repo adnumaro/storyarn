@@ -9,6 +9,7 @@ import {
 	ToolbarSeparator,
 	ToolbarSizePicker,
 	ToolbarStrokePicker,
+	ToolbarTypePicker,
 } from "./toolbar";
 
 const props = defineProps({
@@ -16,6 +17,7 @@ const props = defineProps({
 	selectedId: { type: [Number, null], default: null },
 	annotations: { type: Array, default: () => [] },
 	connections: { type: Array, default: () => [] },
+	pins: { type: Array, default: () => [] },
 	layers: { type: Array, default: () => [] },
 	canEdit: { type: Boolean, default: false },
 	editMode: { type: Boolean, default: true },
@@ -44,6 +46,11 @@ const selectedAnnotation = computed(() => {
 const selectedConnection = computed(() => {
 	if (props.selectedType !== "connection") return null;
 	return props.connections.find((c) => c.id === props.selectedId) || null;
+});
+
+const selectedPin = computed(() => {
+	if (props.selectedType !== "pin") return null;
+	return props.pins.find((p) => p.id === props.selectedId) || null;
 });
 
 function updatePosition() {
@@ -131,7 +138,7 @@ function onLabelBlur(event, updateEvent) {
   <div
     v-if="visible"
     ref="toolbarRef"
-    class="absolute z-[1050] v2-surface-panel px-1.5 py-1 flex items-center gap-0.5"
+    class="absolute z-30 v2-surface-panel px-1.5 py-1 flex items-center gap-0.5"
     :style="toolbarStyle"
   >
     <!-- Annotation toolbar -->
@@ -222,6 +229,88 @@ function onLabelBlur(event, updateEvent) {
       </button>
     </template>
 
-    <!-- Future: pin, zone toolbars -->
+    <!-- Pin toolbar -->
+    <template v-if="selectedType === 'pin' && selectedPin">
+      <!-- Label -->
+      <input
+        type="text"
+        :value="selectedPin.label || ''"
+        class="v2-toolbar-input w-20"
+        placeholder="Label"
+        :disabled="selectedPin.locked"
+        @blur="(e) => updateField('update_pin', 'label', e.target.value)"
+        @keydown.enter="$event.target.blur()"
+      />
+      <ToolbarSeparator />
+
+      <!-- Type -->
+      <ToolbarTypePicker
+        :type="selectedPin.pinType || 'location'"
+        :disabled="selectedPin.locked"
+        @update:type="(t) => updateField('update_pin', 'pin_type', t)"
+      />
+
+      <!-- Color + Opacity -->
+      <ToolbarColorPicker
+        :color="selectedPin.color || '#3b82f6'"
+        :disabled="selectedPin.locked"
+        @update:color="(c) => updateField('update_pin', 'color', c)"
+      >
+        <template #extra>
+          <div class="pt-2 border-t border-border mt-2">
+            <label class="text-xs font-medium text-muted-foreground">Opacity</label>
+            <div class="flex items-center gap-2 mt-1">
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                :value="selectedPin.opacity ?? 1"
+                class="flex-1 h-1 accent-primary"
+                :disabled="selectedPin.locked"
+                @input="(e) => updateField('update_pin', 'opacity', e.target.value)"
+              />
+              <span class="text-xs font-mono w-8 text-right">{{ Math.round((selectedPin.opacity ?? 1) * 100) }}%</span>
+            </div>
+          </div>
+        </template>
+      </ToolbarColorPicker>
+
+      <!-- Size -->
+      <ToolbarSizePicker
+        :size="selectedPin.size || 'md'"
+        :disabled="selectedPin.locked"
+        @update:size="(s) => updateField('update_pin', 'size', s)"
+      />
+      <ToolbarSeparator />
+
+      <!-- Layer -->
+      <ToolbarLayerPicker
+        :layer-id="selectedPin.layerId"
+        :layers="layers"
+        :disabled="selectedPin.locked"
+        @update:layer-id="(id) => updateField('update_pin', 'layer_id', id)"
+      />
+
+      <!-- Lock -->
+      <ToolbarLockToggle
+        :locked="selectedPin.locked || false"
+        :disabled="!canEdit"
+        @toggle="toggleField('update_pin', 'locked', selectedPin.locked)"
+      />
+      <ToolbarSeparator />
+
+      <!-- Settings cog -->
+      <button
+        type="button"
+        class="v2-toolbar-btn"
+        title="Properties"
+        @click="openElementPanel"
+      >
+        <Settings class="size-3.5" />
+      </button>
+    </template>
+
+    <!-- Future: zone toolbar -->
   </div>
 </template>
