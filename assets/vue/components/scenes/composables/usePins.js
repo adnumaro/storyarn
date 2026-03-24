@@ -26,6 +26,7 @@ export function usePins({
 	entityLocks,
 	currentUserId,
 	percentToPixel,
+	activeTool,
 	selectedType,
 	selectedId,
 	isSelectMode,
@@ -107,7 +108,9 @@ export function usePins({
 					lockBadge: isLockedByOther ? renderLockBadge() : null,
 					isSelected:
 						selectedType?.value === "pin" && selectedId?.value === pin.id,
-					listening: isSelectMode?.value ?? false,
+					listening:
+					(isSelectMode?.value || activeTool?.value === "connector") ??
+					false,
 					draggable: !!(
 						isSelectMode?.value &&
 						editMode?.value &&

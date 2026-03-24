@@ -3,6 +3,7 @@ import { computed, ref, toRef } from "vue";
 import { useAnnotationEditing } from "./composables/useAnnotationEditing";
 import { useAnnotations } from "./composables/useAnnotations";
 import { useCanvasCreation } from "./composables/useCanvasCreation";
+import { useConnectionDrawing } from "./composables/useConnectionDrawing";
 import { useConnections } from "./composables/useConnections";
 import { useDrag } from "./composables/useDrag";
 import { useKonvaStage } from "./composables/useKonvaStage";
@@ -77,10 +78,31 @@ const {
 	...editRefs,
 });
 
-// Unified creation click: try pin/annotation first, then zone
+const {
+	sourcePinId,
+	hoveredPinId,
+	isDrawingConnection,
+	handlePinClickForConnection,
+	handleStageClickForConnection,
+	onMouseMove: onConnectionMouseMove,
+	previewLine: connectionPreviewLine,
+	SOURCE_HIGHLIGHT_COLOR,
+	TARGET_HIGHLIGHT_COLOR,
+	PREVIEW_STROKE,
+} = useConnectionDrawing({
+	stageRef,
+	stageConfig,
+	percentToPixel,
+	activeTool: activeToolRef,
+	...editRefs,
+	pins: toRef(props, "pins"),
+});
+
+// Unified creation click: try pin/annotation first, then zone, then connection cancel
 function onCreationClick(e) {
 	if (handleCreationClick(e)) return true;
 	if (handleZoneCreationClick(e)) return true;
+	if (handleStageClickForConnection(e)) return true;
 	return false;
 }
 
@@ -124,6 +146,7 @@ const { pinConfigs } = usePins({
 	entityLocks: toRef(props, "entityLocks"),
 	currentUserId: toRef(props, "currentUserId"),
 	percentToPixel,
+	activeTool: activeToolRef,
 	...selectionRefs,
 	...editRefs,
 });
@@ -197,8 +220,15 @@ function handleZoneDblClick(zoneId, e) {
 	startVertexEditing(zoneId);
 }
 
+function handlePinClick(pinId, e) {
+	if (handlePinClickForConnection(pinId, e)) return;
+	handleElementClick("pin", pinId, e);
+}
+
 function handleStageMouseMove(e) {
+	if (isDragging.value) return;
 	onStageMouseMove(e);
+	onConnectionMouseMove();
 	onZoneDragMove();
 }
 
@@ -365,7 +395,7 @@ const LABEL_COLOR = "#d1d5db";
           v-for="pin in pinConfigs"
           :key="'pin-' + pin.id"
           :config="{ x: pin.x, y: pin.y, listening: pin.listening, draggable: pin.draggable }"
-          @click="(e) => handleElementClick('pin', pin.id, e)"
+          @click="(e) => handlePinClick(pin.id, e)"
           @dragstart="(e) => onDragStart('pin', pin.id, e)"
           @dragmove="(e) => onDragMove('pin', pin.id, e)"
           @dragend="(e) => onDragEnd('pin', pin.id, e)"
@@ -376,6 +406,27 @@ const LABEL_COLOR = "#d1d5db";
               radius: pin.radius + 5,
               stroke: SELECTION_COLOR,
               strokeWidth: 3,
+              listening: false,
+            }"
+          />
+          <!-- Connection drawing: source highlight -->
+          <v-circle
+            v-if="sourcePinId === pin.id"
+            :config="{
+              radius: pin.radius + 6,
+              stroke: SOURCE_HIGHLIGHT_COLOR,
+              strokeWidth: 2,
+              dash: [6, 3],
+              listening: false,
+            }"
+          />
+          <!-- Connection drawing: target hover highlight -->
+          <v-circle
+            v-if="hoveredPinId === pin.id"
+            :config="{
+              radius: pin.radius + 6,
+              stroke: TARGET_HIGHLIGHT_COLOR,
+              strokeWidth: 2,
               listening: false,
             }"
           />
@@ -559,6 +610,19 @@ const LABEL_COLOR = "#d1d5db";
           @dragmove="(e) => onVertexDragMove(va.index, e)"
           @dragend="onVertexDragEnd"
           @click="(e) => onVertexClick(va.index, e)"
+        />
+      </v-layer>
+
+      <!-- Connection drawing preview line -->
+      <v-layer v-if="connectionPreviewLine" :config="{ listening: false }">
+        <v-line
+          :config="{
+            points: connectionPreviewLine,
+            stroke: PREVIEW_STROKE,
+            strokeWidth: 2,
+            dash: [8, 4],
+            listening: false,
+          }"
         />
       </v-layer>
 
