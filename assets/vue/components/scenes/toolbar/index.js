@@ -3,3 +3,4 @@ export { default as ToolbarLayerPicker } from "./ToolbarLayerPicker.vue";
 export { default as ToolbarLockToggle } from "./ToolbarLockToggle.vue";
 export { default as ToolbarSeparator } from "./ToolbarSeparator.vue";
 export { default as ToolbarSizePicker } from "./ToolbarSizePicker.vue";
+export { default as ToolbarStrokePicker } from "./ToolbarStrokePicker.vue";

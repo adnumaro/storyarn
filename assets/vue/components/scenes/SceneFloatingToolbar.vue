@@ -1,4 +1,5 @@
 <script setup>
+import { ArrowLeftRight, Settings, Tag } from "lucide-vue-next";
 import { computed, nextTick, ref, watch } from "vue";
 import { useLive } from "@/vue/composables/useLive";
 import {
@@ -7,12 +8,14 @@ import {
 	ToolbarLockToggle,
 	ToolbarSeparator,
 	ToolbarSizePicker,
+	ToolbarStrokePicker,
 } from "./toolbar";
 
 const props = defineProps({
 	selectedType: { type: String, default: null },
 	selectedId: { type: [Number, null], default: null },
 	annotations: { type: Array, default: () => [] },
+	connections: { type: Array, default: () => [] },
 	layers: { type: Array, default: () => [] },
 	canEdit: { type: Boolean, default: false },
 	editMode: { type: Boolean, default: true },
@@ -36,6 +39,11 @@ const visible = computed(
 const selectedAnnotation = computed(() => {
 	if (props.selectedType !== "annotation") return null;
 	return props.annotations.find((a) => a.id === props.selectedId) || null;
+});
+
+const selectedConnection = computed(() => {
+	if (props.selectedType !== "connection") return null;
+	return props.connections.find((c) => c.id === props.selectedId) || null;
 });
 
 function updatePosition() {
@@ -92,13 +100,30 @@ function updateField(event, field, value) {
 	});
 }
 
-function toggleLock() {
+function toggleField(event, field, currentValue) {
+	if (!props.selectedId) return;
+	live.pushEvent(event, {
+		id: String(props.selectedId),
+		field,
+		toggle: String(!currentValue),
+	});
+}
+
+function toggleAnnotationLock() {
 	if (!selectedAnnotation.value) return;
 	updateField(
 		"update_annotation",
 		"locked",
 		!selectedAnnotation.value.locked ? "true" : "false",
 	);
+}
+
+function openElementPanel() {
+	live.pushEvent("open_element_panel", {});
+}
+
+function onLabelBlur(event, updateEvent) {
+	updateField(updateEvent, "label", event.target.value);
 }
 </script>
 
@@ -131,10 +156,72 @@ function toggleLock() {
       <ToolbarLockToggle
         :locked="selectedAnnotation.locked || false"
         :disabled="!canEdit"
-        @toggle="toggleLock"
+        @toggle="toggleAnnotationLock"
       />
     </template>
 
-    <!-- Future: pin, zone, connection toolbars -->
+    <!-- Connection toolbar -->
+    <template v-if="selectedType === 'connection' && selectedConnection">
+      <!-- Label input -->
+      <input
+        type="text"
+        :value="selectedConnection.label || ''"
+        class="v2-toolbar-input w-24"
+        placeholder="Label"
+        :disabled="!canEdit"
+        @blur="(e) => onLabelBlur(e, 'update_connection')"
+        @keydown.enter="$event.target.blur()"
+      />
+      <ToolbarSeparator />
+
+      <!-- Stroke picker (style + width + color) -->
+      <ToolbarStrokePicker
+        :line-style="selectedConnection.lineStyle || 'solid'"
+        :line-width="selectedConnection.lineWidth || 2"
+        :color="selectedConnection.color || '#ffffff'"
+        :disabled="!canEdit"
+        @update:line-style="(v) => updateField('update_connection', 'line_style', v)"
+        @update:line-width="(v) => updateField('update_connection', 'line_width', v)"
+        @update:color="(v) => updateField('update_connection', 'color', v)"
+      />
+      <ToolbarSeparator />
+
+      <!-- Show Label toggle -->
+      <button
+        type="button"
+        class="v2-toolbar-btn px-1.5"
+        :class="{ '!bg-accent': selectedConnection.showLabel }"
+        title="Show Label"
+        :disabled="!canEdit"
+        @click="toggleField('update_connection', 'show_label', selectedConnection.showLabel)"
+      >
+        <Tag class="size-3" />
+      </button>
+
+      <!-- Bidirectional toggle -->
+      <button
+        type="button"
+        class="v2-toolbar-btn px-1.5"
+        :class="{ '!bg-accent': selectedConnection.bidirectional }"
+        title="Bidirectional"
+        :disabled="!canEdit"
+        @click="toggleField('update_connection', 'bidirectional', selectedConnection.bidirectional)"
+      >
+        <ArrowLeftRight class="size-3" />
+      </button>
+      <ToolbarSeparator />
+
+      <!-- Settings cog -->
+      <button
+        type="button"
+        class="v2-toolbar-btn"
+        title="Properties"
+        @click="openElementPanel"
+      >
+        <Settings class="size-3.5" />
+      </button>
+    </template>
+
+    <!-- Future: pin, zone toolbars -->
   </div>
 </template>

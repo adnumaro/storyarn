@@ -164,6 +164,28 @@
   pointer-events: none;
 }
 
+/* Compact text input for floating toolbar (label fields) */
+.v2-toolbar-input {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.75rem;
+  color: hsl(var(--foreground));
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.v2-toolbar-input:focus {
+  border-color: hsl(var(--ring));
+}
+.v2-toolbar-input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+.v2-toolbar-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ================================================================
    Dock — floating bottom tool palette for canvas editors (v2)
    1:1 port of .dock-btn / .dock-item / .dock-tooltip from app.css
