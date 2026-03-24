@@ -152,7 +152,7 @@ defmodule Storyarn.Scenes.SceneZone do
             add_error(changeset, :vertices, "must have at least 3 points")
 
           not all_valid_coordinates?(vertices) ->
-            add_error(changeset, :vertices, "all coordinates must have x and y between 0 and 100")
+            add_error(changeset, :vertices, "all coordinates must have numeric x and y values")
 
           true ->
             changeset
@@ -203,7 +203,6 @@ defmodule Storyarn.Scenes.SceneZone do
     x = point["x"] || point[:x]
     y = point["y"] || point[:y]
 
-    is_number(x) && x >= 0 && x <= 100 &&
-      is_number(y) && y >= 0 && y <= 100
+    is_number(x) && is_number(y)
   end
 end

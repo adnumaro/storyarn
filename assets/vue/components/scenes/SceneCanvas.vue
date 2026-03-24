@@ -8,6 +8,7 @@ import { useDrag } from "./composables/useDrag";
 import { useKonvaStage } from "./composables/useKonvaStage";
 import { usePins } from "./composables/usePins";
 import { useSelection } from "./composables/useSelection";
+import { useZoneDrag } from "./composables/useZoneDrag";
 import { useZoneDrawing } from "./composables/useZoneDrawing";
 import { useZones } from "./composables/useZones";
 import SceneFloatingToolbar from "./SceneFloatingToolbar.vue";
@@ -98,6 +99,24 @@ const { isDragging, dragOverrides, onDragStart, onDragMove, onDragEnd } =
 		pixelToPercent,
 	});
 
+const {
+	isDraggingZone,
+	zoneDragOverride,
+	onZoneMouseDown,
+	onZoneDragMove,
+	onZoneDragEnd,
+} = useZoneDrag({
+	stageRef,
+	stageConfig,
+	pixelToPercent,
+	zones: toRef(props, "zones"),
+	selectedType,
+	selectedId,
+	...editRefs,
+	entityLocks: toRef(props, "entityLocks"),
+	currentUserId: toRef(props, "currentUserId"),
+});
+
 const { pinConfigs } = usePins({
 	pins: toRef(props, "pins"),
 	layers: toRef(props, "layers"),
@@ -115,6 +134,7 @@ const { zoneConfigs } = useZones({
 	currentUserId: toRef(props, "currentUserId"),
 	percentToPixel,
 	...selectionRefs,
+	zoneDragOverride,
 });
 
 const { annotationConfigs } = useAnnotations({
@@ -146,6 +166,11 @@ function handleAnnotationDblClick(annConfig, e) {
 	if (!props.canEdit || !props.editMode) return;
 	if (e) e.cancelBubble = true;
 	startEditing(annConfig);
+}
+
+function handleStageMouseMove(e) {
+	onStageMouseMove(e);
+	onZoneDragMove();
 }
 
 // Compute selected element position for toolbar positioning
@@ -209,7 +234,7 @@ const LABEL_COLOR = "#d1d5db";
 
 <template>
   <div ref="containerRef" class="w-full h-full relative" :style="{ cursor: cursorStyle }">
-    <v-stage ref="stageRef" :config="stageConfig" @wheel="handleWheel" @click="handleStageClick" @mousemove="onStageMouseMove" @dblclick="onStageDblClick">
+    <v-stage ref="stageRef" :config="stageConfig" @wheel="handleWheel" @click="handleStageClick" @mousemove="handleStageMouseMove" @mouseup="onZoneDragEnd" @dblclick="onStageDblClick">
       <!-- Background layer (static, no hit detection needed) -->
       <v-layer :config="{ listening: false }">
         <v-image v-if="backgroundConfig" :config="backgroundConfig" />
@@ -226,6 +251,7 @@ const LABEL_COLOR = "#d1d5db";
           :key="'zone-' + zone.id"
           :config="{ listening: zone.listening }"
           @click="(e) => handleElementClick('zone', zone.id, e)"
+          @mousedown="(e) => onZoneMouseDown(zone.id, e)"
         >
           <!-- Zone polygon -->
           <v-line

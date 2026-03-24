@@ -70,16 +70,15 @@ function updatePosition() {
 	const scale = props.stageConfig.scaleX;
 	const screenX = pos.x * scale + props.stageConfig.x;
 	const screenY = pos.y * scale + props.stageConfig.y;
+	const screenW = (pos.width || 0) * scale;
+	const screenH = (pos.height || 0) * scale;
 
 	const el = toolbarRef.value;
 	const toolbarW = el?.offsetWidth || 200;
 	const toolbarH = el?.offsetHeight || 36;
 
-	let left = screenX - toolbarW / 2 + (pos.width * scale) / 2;
-	let top = screenY - toolbarH - 12;
-
-	left = Math.max(8, Math.min(left, props.containerWidth - toolbarW - 8));
-	if (top < 8) top = screenY + (pos.height || 0) * scale + 12;
+	const left = screenX + screenW / 2 - toolbarW / 2;
+	const top = screenY - toolbarH - 12;
 
 	toolbarStyle.value = {
 		display: "flex",

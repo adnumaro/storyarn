@@ -24,6 +24,7 @@ export function useZones({
 	selectedType,
 	selectedId,
 	isSelectMode,
+	zoneDragOverride,
 }) {
 	const hiddenLayerIds = useHiddenLayerIds(layers);
 
@@ -38,7 +39,12 @@ export function useZones({
 			.slice()
 			.sort((a, b) => (a.position || 0) - (b.position || 0))
 			.map((zone) => {
-				const vertices = zone.vertices || [];
+				// Use drag override vertices if this zone is being dragged
+				const override = zoneDragOverride?.value;
+				const vertices =
+					override && override.id === zone.id
+						? override.vertices
+						: zone.vertices || [];
 				const pixelCoords = vertices.map((v) => percentToPixel(v.x, v.y));
 
 				// Flat points array for Konva v-line: [x1, y1, x2, y2, ...]

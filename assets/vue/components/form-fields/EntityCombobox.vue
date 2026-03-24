@@ -17,7 +17,7 @@ import {
 
 const props = defineProps({
 	options: { type: Array, default: () => [] },
-	selectedId: { type: [Number, null], default: null },
+	selectedId: { type: [Number, String, null], default: null },
 	label: { type: String, default: "" },
 	placeholder: { type: String, default: "Select..." },
 	disabled: { type: Boolean, default: false },

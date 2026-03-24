@@ -119,13 +119,13 @@ defmodule Storyarn.Scenes.SceneConnection do
         if Enum.all?(waypoints, &valid_waypoint?/1) do
           changeset
         else
-          add_error(changeset, :waypoints, "all waypoints must have x and y between 0 and 100")
+          add_error(changeset, :waypoints, "all waypoints must have numeric x and y values")
         end
     end
   end
 
   defp valid_waypoint?(%{"x" => x, "y" => y})
-       when is_number(x) and is_number(y) and x >= 0 and x <= 100 and y >= 0 and y <= 100,
+       when is_number(x) and is_number(y),
        do: true
 
   defp valid_waypoint?(_), do: false

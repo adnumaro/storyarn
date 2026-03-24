@@ -126,8 +126,6 @@ defmodule Storyarn.Scenes.ScenePin do
       :patrol_pause_ms
     ])
     |> validate_required([:position_x, :position_y])
-    |> validate_number(:position_x, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
-    |> validate_number(:position_y, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
     |> validate_inclusion(:pin_type, @valid_pin_types)
     |> validate_inclusion(:size, @valid_sizes)
     |> validate_inclusion(:condition_effect, @valid_condition_effects)
@@ -158,7 +156,5 @@ defmodule Storyarn.Scenes.ScenePin do
     pin
     |> cast(attrs, [:position_x, :position_y])
     |> validate_required([:position_x, :position_y])
-    |> validate_number(:position_x, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
-    |> validate_number(:position_y, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
   end
 end

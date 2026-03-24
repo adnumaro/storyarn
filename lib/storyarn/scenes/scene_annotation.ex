@@ -64,8 +64,6 @@ defmodule Storyarn.Scenes.SceneAnnotation do
     ])
     |> validate_required([:text, :position_x, :position_y])
     |> validate_length(:text, min: 1, max: 500)
-    |> validate_number(:position_x, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
-    |> validate_number(:position_y, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
     |> validate_inclusion(:font_size, @valid_font_sizes)
     |> validate_length(:color, max: 20)
     |> validate_color(:color)
@@ -76,7 +74,5 @@ defmodule Storyarn.Scenes.SceneAnnotation do
     annotation
     |> cast(attrs, [:position_x, :position_y])
     |> validate_required([:position_x, :position_y])
-    |> validate_number(:position_x, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
-    |> validate_number(:position_y, greater_than_or_equal_to: 0, less_than_or_equal_to: 100)
   end
 end
