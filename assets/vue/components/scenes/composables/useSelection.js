@@ -1,7 +1,8 @@
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useLive } from "@/vue/composables/useLive";
 
 const SELECTION_COLOR = "#6366f1";
+const DELETE_KEYS = new Set(["Delete", "Backspace"]);
 
 /**
  * Composable managing element selection state, click handlers, and server sync.
@@ -44,6 +45,17 @@ export function useSelection({ activeTool, onCreationClick }) {
 		}
 	}
 
+	// Delete selected element on Delete/Backspace (skip if typing in an input)
+	function onKeyDown(e) {
+		if (!DELETE_KEYS.has(e.key)) return;
+		if (!selectedType.value) return;
+		const tag = e.target.tagName;
+		if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable)
+			return;
+		e.preventDefault();
+		live.pushEvent("delete_selected", {});
+	}
+
 	// Listen for server-driven selection (e.g., from SearchPanel focus)
 	onMounted(() => {
 		live.handleEvent("element_selected", ({ type, id }) => {
@@ -55,6 +67,12 @@ export function useSelection({ activeTool, onCreationClick }) {
 			selectedType.value = null;
 			selectedId.value = null;
 		});
+
+		window.addEventListener("keydown", onKeyDown);
+	});
+
+	onUnmounted(() => {
+		window.removeEventListener("keydown", onKeyDown);
 	});
 
 	return {
