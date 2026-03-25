@@ -1017,9 +1017,15 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
 
     case Scenes.update_connection_waypoints(conn, %{"waypoints" => waypoints}) do
       {:ok, updated} ->
+        connections =
+          Enum.map(socket.assigns.connections, fn c ->
+            if c.id == updated.id, do: updated, else: c
+          end)
+
         {:noreply,
          socket
          |> push_undo({:update_connection_waypoints, conn.id, prev_waypoints, waypoints})
+         |> assign(:connections, connections)
          |> assign(:selected_element, updated)
          |> assign(:_broadcast, {:connection_updated, %{id: updated.id}})
          |> push_event("connection_updated", serialize_connection(updated))}

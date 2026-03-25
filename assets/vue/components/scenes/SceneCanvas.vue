@@ -10,6 +10,7 @@ import { useKonvaStage } from "./composables/useKonvaStage";
 import { usePins } from "./composables/usePins";
 import { useSelection } from "./composables/useSelection";
 import { useVertexEditor } from "./composables/useVertexEditor";
+import { useWaypointEditor } from "./composables/useWaypointEditor";
 import { useZoneDrag } from "./composables/useZoneDrag";
 import { useZoneDrawing } from "./composables/useZoneDrawing";
 import { useZones } from "./composables/useZones";
@@ -193,6 +194,15 @@ const { annotationConfigs } = useAnnotations({
 	...editRefs,
 });
 
+// Waypoint edit override for live connection path preview during editing
+const waypointEditOverride = computed(() => {
+	if (!editingWaypointConnectionId.value) return null;
+	return {
+		connectionId: editingWaypointConnectionId.value,
+		waypoints: editingWaypoints.value,
+	};
+});
+
 const { connectionConfigs } = useConnections({
 	connections: toRef(props, "connections"),
 	pins: toRef(props, "pins"),
@@ -200,6 +210,26 @@ const { connectionConfigs } = useConnections({
 	percentToPixel,
 	...selectionRefs,
 	dragOverrides,
+	waypointEditOverride,
+});
+
+const {
+	editingConnectionId: editingWaypointConnectionId,
+	editingWaypoints,
+	isEditing: isEditingWaypoints,
+	startEditing: startWaypointEditing,
+	stopEditing: stopWaypointEditing,
+	onWaypointDragMove,
+	onWaypointDragEnd,
+	onWaypointClick,
+	insertWaypoint,
+	waypointEditorConfigs,
+} = useWaypointEditor({
+	connections: toRef(props, "connections"),
+	pins: toRef(props, "pins"),
+	pixelToPercent,
+	percentToPixel,
+	...selectionRefs,
 });
 
 const { startEditing, isEditingAnnotation, getDisplayText } =
@@ -212,6 +242,12 @@ function handleAnnotationDblClick(annConfig, e) {
 	if (!props.canEdit || !props.editMode) return;
 	if (e) e.cancelBubble = true;
 	startEditing(annConfig);
+}
+
+function handleConnectionDblClick(connectionId, e) {
+	if (!props.canEdit || !props.editMode) return;
+	if (e) e.cancelBubble = true;
+	startWaypointEditing(connectionId);
 }
 
 function handleZoneDblClick(zoneId, e) {
@@ -369,6 +405,7 @@ const LABEL_COLOR = "#d1d5db";
           :key="'conn-' + conn.id"
           :config="{ listening: conn.listening }"
           @click="(e) => handleElementClick('connection', conn.id, e)"
+          @dblclick="(e) => handleConnectionDblClick(conn.id, e)"
         >
           <v-arrow
             :config="{
@@ -613,6 +650,41 @@ const LABEL_COLOR = "#d1d5db";
         />
       </v-layer>
 
+      <!-- Waypoint editor layer (connection waypoint editing on dblclick) -->
+      <v-layer v-if="waypointEditorConfigs">
+        <!-- Midpoint anchors (click to insert waypoint) -->
+        <v-circle
+          v-for="(mp, i) in waypointEditorConfigs.midpointAnchors"
+          :key="'wmp-' + i"
+          :config="{
+            x: mp.x,
+            y: mp.y,
+            radius: mp.radius,
+            fill: mp.fill,
+            stroke: mp.stroke,
+            strokeWidth: mp.strokeWidth,
+          }"
+          @click="(e) => insertWaypoint(mp.segmentIndex, e)"
+        />
+        <!-- Waypoint anchors (drag to reshape, ctrl+click to remove) -->
+        <v-circle
+          v-for="(wa, i) in waypointEditorConfigs.waypointAnchors"
+          :key="'wa-' + i"
+          :config="{
+            x: wa.x,
+            y: wa.y,
+            radius: wa.radius,
+            fill: wa.fill,
+            stroke: wa.stroke,
+            strokeWidth: wa.strokeWidth,
+            draggable: true,
+          }"
+          @dragmove="(e) => onWaypointDragMove(wa.index, e)"
+          @dragend="onWaypointDragEnd"
+          @click="(e) => onWaypointClick(wa.index, e)"
+        />
+      </v-layer>
+
       <!-- Connection drawing preview line -->
       <v-layer v-if="connectionPreviewLine" :config="{ listening: false }">
         <v-line
@@ -680,7 +752,7 @@ const LABEL_COLOR = "#d1d5db";
       :stage-config="stageConfig"
       :element-position="selectedElementPosition"
       :container-width="stageConfig.width"
-      :is-dragging="isDragging || isDraggingZone"
+      :is-dragging="isDragging || isDraggingZone || isEditingWaypoints"
     />
   </div>
 </template>

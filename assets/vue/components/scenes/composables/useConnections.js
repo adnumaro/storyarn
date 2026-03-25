@@ -29,6 +29,7 @@ export function useConnections({
 	selectedId,
 	isSelectMode,
 	dragOverrides,
+	waypointEditOverride,
 }) {
 	// Pin pixel positions keyed by id — uses drag overrides for real-time connection updates
 	const pinPositions = computed(() => {
@@ -77,8 +78,14 @@ export function useConnections({
 			if (!fromVis && !toVis) continue;
 
 			// Build pixel path: [from, ...waypoints, to] (center-to-center)
+			// Use live-edited waypoints if this connection is being edited
+			const override = waypointEditOverride?.value;
+			const waypoints =
+				override && override.connectionId === conn.id
+					? override.waypoints
+					: conn.waypoints || [];
+
 			const rawPath = [fromPos];
-			const waypoints = conn.waypoints || [];
 			for (const wp of waypoints) {
 				rawPath.push(percentToPixel(wp.x, wp.y));
 			}
