@@ -1,4 +1,5 @@
 <script setup>
+import CollectionModal from "./CollectionModal.vue";
 import ExplorationCanvas from "./ExplorationCanvas.vue";
 import ExplorationToolbar from "./ExplorationToolbar.vue";
 import FlowOverlay from "./FlowOverlay.vue";
@@ -49,6 +50,13 @@ const props = defineProps({
         :show-continue="showFlowContinue"
       />
     </div>
+
+    <!-- Collection modal -->
+    <CollectionModal
+      :open="collectionMode"
+      :zone="collectionZone"
+      :items="collectionItems"
+    />
 
     <!-- Session prompt -->
     <SessionPromptModal
