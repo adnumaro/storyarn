@@ -55,7 +55,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         collection-mode={@collection_mode}
         collection-zone={@collection_zone}
         collection-items={@collection_items}
-        active-flow-slide={@active_flow && @active_flow.slide}
+        active-flow-slide={@active_flow && serialize_slide(@active_flow.slide)}
         active-flow-name={@active_flow && @active_flow.flow.name}
         show-flow-continue={@active_flow && show_flow_continue?(@active_flow)}
       />
@@ -71,6 +71,34 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
       sceneName: session.scene && session.scene.name,
       updatedAt: Calendar.strftime(session.updated_at, "%b %d, %Y at %H:%M")
     }
+  end
+
+  defp serialize_slide(nil), do: nil
+
+  defp serialize_slide(slide) do
+    base = %{
+      type: to_string(slide.type),
+      text: slide[:text],
+      stageDirections: slide[:stage_directions],
+      speakerName: slide[:speaker_name],
+      speakerInitials: slide[:speaker_initials],
+      speakerColor: slide[:speaker_color],
+      speakerAvatarUrl: slide[:speaker_avatar_url],
+      setting: slide[:setting],
+      locationName: slide[:location_name],
+      subLocation: slide[:sub_location],
+      timeOfDay: slide[:time_of_day],
+      description: slide[:description],
+      nodeId: slide[:node_id]
+    }
+
+    responses =
+      (slide[:responses] || [])
+      |> Enum.map(fn r ->
+        %{id: r.id, text: r.text, valid: r.valid, number: r.number}
+      end)
+
+    Map.put(base, :responses, responses)
   end
 
   # ===========================================================================
@@ -285,6 +313,8 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     %{engine_state: state} = socket.assigns.active_flow
     nodes = socket.assigns.flow_nodes
     connections = socket.assigns.flow_connections
+    sheets_map = socket.assigns.flow_sheets_map
+    project_id = socket.assigns.project.id
 
     case PlayerEngine.step_until_interactive(state, nodes, connections) do
       {:flow_jump, new_state, target_flow_id, _skipped} ->
@@ -297,7 +327,13 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         handle_flow_finished(socket, new_state)
 
       {_status, new_state, _skipped} ->
-        {:noreply, update_flow_slide(socket, new_state)}
+        case build_slide_or_advance(new_state, nodes, connections, sheets_map, project_id) do
+          {:finished, final_state} ->
+            handle_flow_finished(socket, final_state)
+
+          {:content, ready_state, _slide} ->
+            {:noreply, update_flow_slide(socket, ready_state)}
+        end
     end
   end
 
@@ -533,23 +569,28 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
             {:error, put_flash(socket, :error, reason)}
 
           {:ok, engine_state} ->
-            node = Map.get(nodes_map, engine_state.current_node_id)
-            slide = Slide.build(node, engine_state, sheets_map, project.id)
+            case build_slide_or_advance(engine_state, nodes_map, connections, sheets_map, project.id) do
+              {:finished, final_state} ->
+                # Flow completed with no interactive content — apply variables silently
+                new_variables = FormulaRuntime.recompute_formulas(final_state.variables)
+                {:ok, apply_variable_update(socket, new_variables)}
 
-            {:ok,
-             socket
-             |> assign(:flow_mode, true)
-             |> assign(:flow_nodes, nodes_map)
-             |> assign(:flow_connections, connections)
-             |> assign(:flow_sheets_map, sheets_map)
-             |> push_event("patrol_pause", %{})
-             |> pause_ambient_flow()
-             |> assign(:active_flow, %{
-               flow_id: flow.id,
-               flow: flow,
-               engine_state: engine_state,
-               slide: slide
-             })}
+              {:content, ready_state, slide} ->
+                {:ok,
+                 socket
+                 |> assign(:flow_mode, true)
+                 |> assign(:flow_nodes, nodes_map)
+                 |> assign(:flow_connections, connections)
+                 |> assign(:flow_sheets_map, sheets_map)
+                 |> push_event("patrol_pause", %{})
+                 |> pause_ambient_flow()
+                 |> assign(:active_flow, %{
+                   flow_id: flow.id,
+                   flow: flow,
+                   engine_state: ready_state,
+                   slide: slide
+                 })}
+            end
         end
     end
   end
@@ -735,6 +776,48 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
       Slide.build(node, new_state, socket.assigns.flow_sheets_map, socket.assigns.project.id)
 
     assign(socket, :active_flow, %{af | engine_state: new_state, slide: slide})
+  end
+
+  # Builds a slide from the current engine state. If the slide has no renderable
+  # content (type :empty), auto-advances the engine until it finds a node with
+  # content or the flow finishes. Returns {:content, state, slide} or {:finished, state}.
+  @max_empty_advances 50
+
+  defp build_slide_or_advance(engine_state, nodes_map, connections, sheets_map, project_id) do
+    do_build_slide_or_advance(engine_state, nodes_map, connections, sheets_map, project_id, 0)
+  end
+
+  defp do_build_slide_or_advance(state, _nodes, _conns, _sheets, _pid, attempts)
+       when attempts >= @max_empty_advances do
+    {:finished, state}
+  end
+
+  defp do_build_slide_or_advance(state, nodes_map, connections, sheets_map, project_id, attempts) do
+    node = Map.get(nodes_map, state.current_node_id)
+    slide = Slide.build(node, state, sheets_map, project_id)
+
+    if slide.type in [:dialogue, :outcome, :slug_line] do
+      {:content, state, slide}
+    else
+      # Empty slide — advance past it
+      case PlayerEngine.step_until_interactive(state, nodes_map, connections) do
+        {:finished, new_state, _} ->
+          # Try one more time with the final node (might be an exit/outcome)
+          final_node = Map.get(nodes_map, new_state.current_node_id)
+          final_slide = Slide.build(final_node, new_state, sheets_map, project_id)
+
+          if final_slide.type in [:dialogue, :outcome, :slug_line] do
+            {:content, new_state, final_slide}
+          else
+            {:finished, new_state}
+          end
+
+        {_status, new_state, _} ->
+          do_build_slide_or_advance(
+            new_state, nodes_map, connections, sheets_map, project_id, attempts + 1
+          )
+      end
+    end
   end
 
   defp update_active_flow(socket, new_state, nodes, connections) do

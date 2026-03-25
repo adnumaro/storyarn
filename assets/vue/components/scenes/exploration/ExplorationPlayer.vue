@@ -1,6 +1,7 @@
 <script setup>
 import ExplorationCanvas from "./ExplorationCanvas.vue";
 import ExplorationToolbar from "./ExplorationToolbar.vue";
+import FlowOverlay from "./FlowOverlay.vue";
 import SessionPromptModal from "./SessionPromptModal.vue";
 
 const props = defineProps({
@@ -30,14 +31,22 @@ const props = defineProps({
     />
 
     <div class="flex-1 relative overflow-hidden">
-      <!-- Canvas (dimmed when flow active) -->
-      <div :class="['w-full h-full', flowMode && 'opacity-30 pointer-events-none']">
+      <!-- Canvas -->
+      <div class="w-full h-full">
         <ExplorationCanvas
           :scene-data="sceneData"
           :exploration-data="explorationData"
           :show-zones="showZones"
         />
       </div>
+
+      <!-- Flow overlay -->
+      <FlowOverlay
+        v-if="flowMode && activeFlowSlide"
+        :slide="activeFlowSlide"
+        :flow-name="activeFlowName"
+        :show-continue="showFlowContinue"
+      />
     </div>
 
     <!-- Session prompt -->
