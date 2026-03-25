@@ -110,7 +110,6 @@ defmodule StoryarnWeb.SceneLive.Show do
           v-component="scenes/SceneToolbar"
           v-socket={@socket}
           id="scene-toolbar"
-          edit-mode={@edit_mode}
           can-edit={@can_edit}
           scene-name={@scene.name}
           scene-shortcut={@scene.shortcut}
@@ -125,6 +124,16 @@ defmodule StoryarnWeb.SceneLive.Show do
           search-results={@search_results}
         />
       </:top_bar_extra>
+      <:top_bar_extra_right>
+        <.vue
+          :if={@scene}
+          v-component="scenes/SceneActions"
+          v-socket={@socket}
+          id="scene-actions"
+          edit-mode={@edit_mode}
+          can-edit={@can_edit}
+        />
+      </:top_bar_extra_right>
       <%= if @scene do %>
         <div class="h-full relative">
           <%!-- Canvas fills the entire area --%>

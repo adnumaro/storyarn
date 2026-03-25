@@ -72,10 +72,10 @@ function getIcon(type) {
 </script>
 
 <template>
-  <div class="relative">
+  <div class="relative h-full">
     <!-- Input pill -->
-    <div class="v2-surface-panel">
-      <div class="flex items-center gap-2 px-3 py-1.5">
+    <div class="v2-surface-panel h-full">
+      <div class="flex items-center gap-2 px-3 h-full">
         <Search class="size-4 text-muted-foreground/60 shrink-0" />
         <input
           v-model="localQuery"
