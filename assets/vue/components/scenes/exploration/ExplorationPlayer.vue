@@ -37,6 +37,7 @@ const props = defineProps({
           :scene-data="sceneData"
           :exploration-data="explorationData"
           :show-zones="showZones"
+          :flow-mode="flowMode"
         />
       </div>
 

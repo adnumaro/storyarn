@@ -1,16 +1,18 @@
 <script setup>
-import { computed, ref, toRef } from "vue";
+import { computed, onMounted, ref, toRef } from "vue";
 import { useConnections } from "../composables/useConnections";
 import { useKonvaStage } from "../composables/useKonvaStage";
 import { usePins } from "../composables/usePins";
 import { useZones } from "../composables/useZones";
 import { useLive } from "@/vue/composables/useLive";
 import { useExplorationInteraction } from "./composables/useExplorationInteraction";
+import { useMovement } from "./composables/useMovement";
 
 const props = defineProps({
 	sceneData: { type: Object, default: null },
 	explorationData: { type: Object, required: true },
 	showZones: { type: Boolean, default: false },
+	flowMode: { type: Boolean, default: false },
 });
 
 const containerRef = ref(null);
@@ -24,10 +26,12 @@ const {
 	cursorStyle,
 	handleWheel,
 	percentToPixel,
+	pixelToPercent,
+	stagePointerToWorld,
 } = useKonvaStage({
 	containerRef,
 	sceneData: toRef(props, "sceneData"),
-	activeTool: ref("pan"),
+	activeTool: ref("select"),
 	editMode: ref(false),
 });
 
@@ -71,6 +75,95 @@ const {
 	explorationZones: allZones,
 	explorationPins: allPins,
 	showZones: toRef(props, "showZones"),
+});
+
+// --- Pin node refs for direct Konva updates ---
+const pinNodeRefs = {};
+
+function setPinRef(pinId, el) {
+	if (el) {
+		pinNodeRefs[pinId] = el;
+	}
+}
+
+function getPinNode(pinId) {
+	const ref = pinNodeRefs[pinId];
+	return ref?.getNode?.() || null;
+}
+
+// --- Movement ---
+const {
+	handleStageClick: movementClick,
+	getPositions,
+	restorePositions,
+} = useMovement({
+	explorationPins: allPins,
+	explorationZones: allZones,
+	flowMode: toRef(props, "flowMode"),
+	percentToPixel,
+	getPinNode,
+});
+
+// --- Container click: movement (DOM level for reliable click detection) ---
+function onContainerClick(e) {
+	const rect = containerRef.value?.getBoundingClientRect();
+	if (!rect) return;
+
+	// Screen → stage local → world (account for pan/zoom)
+	const stageX = e.clientX - rect.left;
+	const stageY = e.clientY - rect.top;
+	const worldX = (stageX - stageConfig.x) / stageConfig.scaleX;
+	const worldY = (stageY - stageConfig.y) / stageConfig.scaleY;
+
+	const pct = pixelToPercent(worldX, worldY);
+	const result = movementClick(pct.x, pct.y);
+
+	if (result) {
+		showClickFeedback(e, result === "walkable");
+	}
+}
+
+// --- Click feedback rings ---
+function showClickFeedback(evt, walkable) {
+	const ring = document.createElement("div");
+	ring.style.position = "fixed";
+	ring.style.left = `${evt.clientX}px`;
+	ring.style.top = `${evt.clientY}px`;
+	ring.style.transform = "translate(-50%, -50%)";
+	ring.style.zIndex = "9999";
+	ring.style.pointerEvents = "none";
+	ring.style.borderRadius = "50%";
+
+	if (walkable) {
+		ring.style.width = "24px";
+		ring.style.height = "24px";
+		ring.style.border = "2px solid rgba(74, 222, 128, 0.8)";
+		ring.style.animation = "exploration-ring-expand 0.5s ease-out forwards";
+	} else {
+		ring.style.width = "16px";
+		ring.style.height = "16px";
+		ring.style.border = "2px solid rgba(248, 113, 113, 0.8)";
+		ring.style.animation = "exploration-ring-blocked 0.3s ease-out forwards";
+	}
+
+	document.body.appendChild(ring);
+	ring.addEventListener("animationend", () => ring.remove());
+}
+
+// --- Server events: position save/restore ---
+onMounted(() => {
+	live.handleEvent("request_positions", () => {
+		const pos = getPositions();
+		live.pushEvent("report_positions", {
+			leader: pos.leader,
+			party: pos.party,
+			camera: null,
+		});
+	});
+
+	live.handleEvent("restore_positions", ({ leader, party }) => {
+		restorePositions(leader, party);
+	});
 });
 
 // --- Composables in read-only mode ---
@@ -125,7 +218,6 @@ function getZoneFill(zone) {
 	if (!raw) return { fill: "transparent", opacity: 0 };
 	const override = zoneShowOverride(raw);
 	if (override) return override;
-	// Default: zones are invisible in exploration (only visible with show-zones)
 	return { fill: "transparent", opacity: 0 };
 }
 
@@ -137,7 +229,7 @@ const LABEL_COLOR = "#d1d5db";
 </script>
 
 <template>
-  <div ref="containerRef" class="w-full h-full relative" :style="{ cursor: cursorStyle }">
+  <div ref="containerRef" class="w-full h-full relative" :style="{ cursor: cursorStyle }" @click="onContainerClick">
     <v-stage ref="stageRef" :config="stageConfig" @wheel="handleWheel">
       <!-- Background layer -->
       <v-layer :config="{ listening: false }">
@@ -214,6 +306,7 @@ const LABEL_COLOR = "#d1d5db";
         <v-group
           v-for="pin in pinConfigs"
           :key="'pin-' + pin.id"
+          :ref="(el) => setPinRef(pin.id, el)"
           :config="{
             x: pin.x,
             y: pin.y,
@@ -289,3 +382,15 @@ const LABEL_COLOR = "#d1d5db";
     </v-stage>
   </div>
 </template>
+
+<style>
+@keyframes exploration-ring-expand {
+  from { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+  to { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+}
+@keyframes exploration-ring-blocked {
+  0% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }
+  50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.6; }
+  100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+}
+</style>
