@@ -52,7 +52,7 @@ function close() {
       </div>
     </template>
 
-    <div v-if="selectedElement" class="px-3 py-2">
+    <div v-if="selectedElement" class="py-2">
       <PinProperties
         v-if="selectedType === 'pin'"
         :element="selectedElement"
