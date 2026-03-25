@@ -4,8 +4,11 @@ import { useConnections } from "../composables/useConnections";
 import { useKonvaStage } from "../composables/useKonvaStage";
 import { usePins } from "../composables/usePins";
 import { useZones } from "../composables/useZones";
+import SpeechBubble from "./SpeechBubble.vue";
+import SubtitleBar from "./SubtitleBar.vue";
 import { useLive } from "@/vue/composables/useLive";
 import { useExplorationInteraction } from "./composables/useExplorationInteraction";
+import { useAmbientDisplay } from "./composables/useAmbientDisplay";
 import { useMovement } from "./composables/useMovement";
 import { usePatrols } from "./composables/usePatrols";
 
@@ -113,6 +116,11 @@ const {
 	explorationPins: allPins,
 	percentToPixel,
 	getPinNode,
+});
+
+// --- Ambient display ---
+const { bubble, subtitle } = useAmbientDisplay({
+	handleEvent: live.handleEvent,
 });
 
 // --- Container click: movement (DOM level for reliable click detection) ---
@@ -394,6 +402,16 @@ const LABEL_COLOR = "#d1d5db";
         </v-group>
       </v-layer>
     </v-stage>
+
+    <!-- Ambient: speech bubble over pin -->
+    <SpeechBubble
+      :bubble="bubble"
+      :get-pin-node="getPinNode"
+      :stage-ref="stageRef"
+    />
+
+    <!-- Ambient: subtitle bar -->
+    <SubtitleBar :subtitle="subtitle" />
   </div>
 </template>
 
