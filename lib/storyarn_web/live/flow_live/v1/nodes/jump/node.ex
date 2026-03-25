@@ -1,0 +1,24 @@
+defmodule StoryarnWeb.FlowLive.V1.Nodes.Jump.Node do
+  @moduledoc """
+  Jump node type definition.
+
+  References a Hub node by target_hub_id to create non-linear flow paths.
+  """
+
+  use Gettext, backend: Storyarn.Gettext
+
+  def type, do: "jump"
+  def icon_name, do: "log-out"
+  def label, do: dgettext("flows", "Jump")
+  def description, do: dgettext("flows", "Jump to a hub in any flow")
+
+  def default_data, do: %{"target_hub_id" => ""}
+
+  def extract_form_data(data) do
+    %{"target_hub_id" => data["target_hub_id"] || ""}
+  end
+
+  def on_select(_node, socket), do: socket
+  def on_double_click(_node), do: :toolbar
+  def duplicate_data_cleanup(data), do: data
+end
