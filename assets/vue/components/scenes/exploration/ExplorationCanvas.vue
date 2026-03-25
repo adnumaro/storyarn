@@ -4,6 +4,8 @@ import { useConnections } from "../composables/useConnections";
 import { useKonvaStage } from "../composables/useKonvaStage";
 import { usePins } from "../composables/usePins";
 import { useZones } from "../composables/useZones";
+import { useLive } from "@/vue/composables/useLive";
+import { useExplorationInteraction } from "./composables/useExplorationInteraction";
 
 const props = defineProps({
 	sceneData: { type: Object, default: null },
@@ -12,6 +14,7 @@ const props = defineProps({
 });
 
 const containerRef = ref(null);
+const live = useLive();
 
 // --- Stage (pan/zoom/background) ---
 const {
@@ -35,15 +38,40 @@ const emptyObj = ref({});
 const emptyArr = ref([]);
 
 // --- Filter visible elements from exploration data ---
+const allZones = computed(() => props.explorationData?.zones || []);
+const allPins = computed(() => props.explorationData?.pins || []);
+
 const visiblePins = computed(() =>
-	(props.explorationData?.pins || []).filter((p) => p.visibility !== "hide"),
+	allPins.value.filter((p) => p.visibility !== "hide"),
 );
 const visibleZones = computed(() =>
-	(props.explorationData?.zones || []).filter((z) => z.visibility !== "hide"),
+	allZones.value.filter((z) => z.visibility !== "hide"),
 );
 const connections = computed(
 	() => props.explorationData?.connections || [],
 );
+
+// --- Visibility lookup maps ---
+const zoneVisibility = computed(() =>
+	Object.fromEntries(allZones.value.map((z) => [z.id, z.visibility])),
+);
+const pinVisibility = computed(() =>
+	Object.fromEntries(allPins.value.map((p) => [p.id, p.visibility])),
+);
+
+// --- Interaction ---
+const {
+	handleZoneClick,
+	handlePinClick,
+	zoneShowOverride,
+	clickableZoneIds,
+	clickablePinIds,
+} = useExplorationInteraction({
+	pushEvent: live.pushEvent,
+	explorationZones: allZones,
+	explorationPins: allPins,
+	showZones: toRef(props, "showZones"),
+});
 
 // --- Composables in read-only mode ---
 const { pinConfigs } = usePins({
@@ -92,8 +120,17 @@ function clipCircle(radius) {
 	};
 }
 
-function elementOpacity(config, visibility) {
-	return visibility === "disable" ? 0.3 : (config.opacity ?? 1);
+function getZoneFill(zone) {
+	const raw = allZones.value.find((z) => z.id === zone.id);
+	if (!raw) return { fill: "transparent", opacity: 0 };
+	const override = zoneShowOverride(raw);
+	if (override) return override;
+	// Default: zones are invisible in exploration (only visible with show-zones)
+	return { fill: "transparent", opacity: 0 };
+}
+
+function getElementOpacity(id, visMap, fallback) {
+	return visMap[id] === "disable" ? 0.3 : fallback;
 }
 
 const LABEL_COLOR = "#d1d5db";
@@ -108,21 +145,23 @@ const LABEL_COLOR = "#d1d5db";
       </v-layer>
 
       <!-- Zones + Connections layer -->
-      <v-layer :config="{ listening: false }">
+      <v-layer>
         <v-group
           v-for="zone in zoneConfigs"
           :key="'zone-' + zone.id"
-          :config="{ listening: false }"
+          :config="{ listening: clickableZoneIds.has(zone.id) }"
+          @click="() => handleZoneClick(zone.id)"
         >
           <v-line
             :config="{
               points: zone.points,
-              fill: zone.fill,
+              fill: getZoneFill(zone).fill,
               stroke: zone.stroke,
               strokeWidth: zone.strokeWidth,
               dash: zone.dash,
-              opacity: elementOpacity(zone, visibleZones.find(z => z.id === zone.id)?.visibility),
+              opacity: getElementOpacity(zone.id, zoneVisibility, getZoneFill(zone).opacity),
               closed: true,
+              hitStrokeWidth: zone.hitStrokeWidth,
               perfectDrawEnabled: false,
             }"
           />
@@ -171,16 +210,17 @@ const LABEL_COLOR = "#d1d5db";
       </v-layer>
 
       <!-- Pins layer -->
-      <v-layer :config="{ listening: false }">
+      <v-layer>
         <v-group
           v-for="pin in pinConfigs"
           :key="'pin-' + pin.id"
           :config="{
             x: pin.x,
             y: pin.y,
-            listening: false,
-            opacity: elementOpacity(pin, visiblePins.find(p => p.id === pin.id)?.visibility),
+            listening: clickablePinIds.has(pin.id),
+            opacity: getElementOpacity(pin.id, pinVisibility, pin.opacity ?? 1),
           }"
+          @click="() => handlePinClick(pin.id)"
         >
           <v-image
             v-if="pin.iconCanvas"
