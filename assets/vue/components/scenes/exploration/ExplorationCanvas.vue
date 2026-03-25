@@ -7,6 +7,7 @@ import { useZones } from "../composables/useZones";
 import { useLive } from "@/vue/composables/useLive";
 import { useExplorationInteraction } from "./composables/useExplorationInteraction";
 import { useMovement } from "./composables/useMovement";
+import { usePatrols } from "./composables/usePatrols";
 
 const props = defineProps({
 	sceneData: { type: Object, default: null },
@@ -104,6 +105,16 @@ const {
 	getPinNode,
 });
 
+// --- Patrols ---
+const {
+	pause: pausePatrols,
+	resume: resumePatrols,
+} = usePatrols({
+	explorationPins: allPins,
+	percentToPixel,
+	getPinNode,
+});
+
 // --- Container click: movement (DOM level for reliable click detection) ---
 function onContainerClick(e) {
 	const rect = containerRef.value?.getBoundingClientRect();
@@ -164,6 +175,9 @@ onMounted(() => {
 	live.handleEvent("restore_positions", ({ leader, party }) => {
 		restorePositions(leader, party);
 	});
+
+	live.handleEvent("patrol_pause", () => pausePatrols());
+	live.handleEvent("patrol_resume", () => resumePatrols());
 });
 
 // --- Composables in read-only mode ---
