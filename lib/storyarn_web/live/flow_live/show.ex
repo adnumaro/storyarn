@@ -52,42 +52,10 @@ defmodule StoryarnWeb.FlowLive.Show do
   @lock_heartbeat_interval 10_000
 
   @impl true
-  def render(%{loading: true} = assigns) do
-    ~H"""
-    <Layouts.focus
-      flash={@flash}
-      current_scope={@current_scope}
-      project={@project}
-      workspace={@workspace}
-      active_tool={:flows}
-      has_tree={@flows_tree != []}
-      tree_panel_open={@tree_panel_open}
-      tree_panel_pinned={@tree_panel_pinned}
-      can_edit={@can_edit}
-      canvas_mode={true}
-      restoration_banner={@restoration_banner}
-      my_drafts={@my_drafts}
-      renaming_draft={@renaming_draft}
-    >
-      <:tree_content>
-        <FlowTree.flows_section
-          flows_tree={@flows_tree}
-          workspace={@workspace}
-          project={@project}
-          selected_flow_id={@flow && to_string(@flow.id)}
-          can_edit={@can_edit}
-        />
-      </:tree_content>
-      <FlowTree.delete_modal :if={@can_edit} />
-      <div id={"flow-loader-#{@flow && @flow.id}"} phx-hook="FlowLoader" class="hidden"></div>
-    </Layouts.focus>
-    """
-  end
-
   def render(%{compact: true, loading: true} = assigns) do
     ~H"""
     <Layouts.compare flash={@flash}>
-      <div id={"flow-loader-#{@flow && @flow.id}"} phx-hook="FlowLoader" class="hidden"></div>
+      <div class="h-full"></div>
     </Layouts.compare>
     """
   end
@@ -98,218 +66,36 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <Layouts.focus_v2
       flash={@flash}
+      socket={@socket}
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
       active_tool={:flows}
-      has_tree={true}
+      has_tree={false}
+      canvas_mode={true}
       tree_panel_open={@tree_panel_open}
       tree_panel_pinned={@tree_panel_pinned}
       can_edit={@can_edit}
-      online_users={@online_users}
-      canvas_mode={true}
       restoration_banner={@restoration_banner}
-      my_drafts={@my_drafts}
-      renaming_draft={@renaming_draft}
+      online_users={assigns[:online_users] || []}
     >
-      <:top_bar_extra>
-        <DraftComponents.draft_banner is_draft={@is_draft} />
-        <.flow_info_bar
-          flow={@flow}
-          can_edit={@can_edit}
-          save_status={@save_status}
-          nav_history={@nav_history}
-          scene_name={@scene_name}
-          scene_inherited={@scene_inherited}
-          available_scenes={@available_scenes}
-          flow_word_count={@flow_word_count}
-          flow_error_nodes={@flow_error_nodes}
-          flow_info_nodes={@flow_info_nodes}
-          is_draft={@is_draft}
-        />
-      </:top_bar_extra>
-      <:tree_content>
-        <FlowTree.flows_section
-          flows_tree={@flows_tree}
-          workspace={@workspace}
-          project={@project}
-          selected_flow_id={@flow && to_string(@flow.id)}
-          can_edit={@can_edit}
-        />
-      </:tree_content>
-      <FlowTree.delete_modal :if={@can_edit} />
-      <DraftComponents.discard_draft_modal is_draft={@is_draft} />
-      <DraftComponents.merge_review_modal is_draft={@is_draft} merge_summary={@merge_summary} />
-      <div class="h-full relative">
-        <%!-- Canvas fills the entire area --%>
-        <div class="absolute inset-0 flex flex-col">
-          <div class="flex-1 relative bg-base-200">
-            <div
-              id={"flow-canvas-#{@flow.id}"}
-              phx-hook="FlowCanvas"
-              phx-update="ignore"
-              class="absolute inset-0"
-              data-flow={Jason.encode!(@flow_data)}
-              data-sheets={Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))}
-              data-locks={Jason.encode!(@node_locks)}
-              data-user-id={@current_scope.user.id}
-              data-user-color={Collaboration.user_color(@current_scope.user.id)}
-              data-labels={Jason.encode!(flow_canvas_labels())}
-            >
-            </div>
-
-            <%!-- Floating Toolbar --%>
-            <.canvas_toolbar
-              id="flow-floating-toolbar"
-              canvas_id={"flow-canvas-#{@flow.id}"}
-              visible={@selected_node != nil && @editing_mode in [:toolbar, :annotation]}
-            >
-              <%= if @editing_mode == :annotation do %>
-                <.annotation_toolbar node={@selected_node} can_edit={@can_edit} />
-              <% else %>
-                <.node_toolbar
-                  node={@selected_node}
-                  form={@node_form}
-                  can_edit={@can_edit}
-                  all_sheets={@all_sheets}
-                  gallery_by_sheet={@gallery_by_sheet}
-                  flow_hubs={@flow_hubs}
-                  available_flows={@available_flows}
-                  available_scenes={assigns[:available_scenes] || []}
-                  flow_search_has_more={@flow_search_has_more}
-                  flow_search_deep={@flow_search_deep}
-                  subflow_exits={@subflow_exits}
-                  referencing_jumps={@referencing_jumps}
-                  referencing_flows={@referencing_flows}
-                  project_scenes={@project_scenes}
-                  node_select_loading={@node_select_loading}
-                />
-              <% end %>
-            </.canvas_toolbar>
-
-            <%!-- Bottom dock --%>
-            <.flow_dock
-              flow={@flow}
-              workspace={@workspace}
-              project={@project}
-              can_edit={@can_edit}
-              debug_panel_open={@debug_panel_open}
-            />
-
-            <%!-- Version History Panel --%>
-            <.right_sidebar
-              id="flow-versions-panel"
-              title={dgettext("flows", "Version History")}
-              open_event="open_versions_panel"
-              close_event="close_versions_panel"
-              width="320px"
-              loading={!@versions_panel_open}
-            >
-              <:actions>
-                <button
-                  :if={@can_edit && @versions_panel_open}
-                  type="button"
-                  class="btn btn-ghost btn-xs btn-square"
-                  phx-click="show_create_version_modal"
-                >
-                  <.icon name="plus" class="size-4" />
-                </button>
-              </:actions>
-              <.live_component
-                :if={@versions_panel_open}
-                module={StoryarnWeb.Components.VersionsSection}
-                id="flow-versions-section"
-                entity={@flow}
-                entity_type="flow"
-                project_id={@project.id}
-                current_user_id={@current_scope.user.id}
-                can_edit={@can_edit}
-                current_version_id={@flow.current_version_id}
-                workspace_id={@workspace.id}
-              />
-            </.right_sidebar>
-          </div>
-
-          <.debug_panel
-            :if={@debug_panel_open && @debug_state}
-            debug_state={@debug_state}
-            debug_active_tab={@debug_active_tab}
-            debug_nodes={@debug_nodes}
-            debug_auto_playing={@debug_auto_playing}
-            debug_speed={@debug_speed}
-            debug_editing_var={@debug_editing_var}
-            debug_var_filter={@debug_var_filter}
-            debug_var_changed_only={@debug_var_changed_only}
-            debug_current_flow_name={@flow.name}
-            debug_step_limit_reached={@debug_step_limit_reached}
-          />
-        </div>
-
-        <%!-- Collaboration Toast --%>
-        <.collab_toast
-          :if={@collab_toast}
-          action={@collab_toast.action}
-          user_email={@collab_toast.user_email}
-          user_color={@collab_toast.user_color}
-        />
-      </div>
-
-      <%!-- Builder Sidebar (condition / instruction nodes) --%>
-      <div
-        id="builder-sidebar"
-        phx-hook="RightSidebar"
-        data-right-panel
-        data-open-event="open_builder"
-        data-close-event="close_builder"
-        class={[
-          "fixed flex flex-col overflow-hidden right-sidebar",
-          "inset-0 z-[1030] bg-base-100",
-          "xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[480px]"
-        ]}
-      >
-        <div :if={@selected_node && @editing_mode == :builder}>
-          <.builder_content
-            node={@selected_node}
-            form={@node_form}
-            can_edit={@can_edit}
-            project_variables={@project_variables}
-            panel_sections={@panel_sections}
-          />
-        </div>
-        <div
-          :if={!(@selected_node && @editing_mode == :builder)}
-          class="flex items-center justify-center h-full"
-        >
-          <span class="loading loading-spinner loading-md text-base-content/40"></span>
-        </div>
-      </div>
-
-      <%!-- Screenplay Editor sidebar --%>
-      <.live_component
-        :if={@selected_node && @editing_mode in [:screenplay, :editor]}
-        module={ScreenplayEditor}
-        id={"screenplay-editor-#{@selected_node.id}"}
-        node={@selected_node}
-        can_edit={@can_edit}
-        all_sheets={@all_sheets}
-        project_variables={@project_variables}
-        project={@project}
-        current_user={@current_scope.user}
-        panel_sections={@panel_sections}
+      <.vue
+        v-component="flows/FlowEditor"
+        v-socket={@socket}
+        id={"flow-editor-#{@flow && @flow.id || "new"}"}
+        class="w-full h-full"
+        flow-data={if @loading, do: nil, else: Jason.encode!(@flow_data)}
+        sheets-map={if @loading, do: nil, else: Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))}
+        labels={Jason.encode!(flow_canvas_labels())}
+        loading={@loading}
+        readonly={!@can_edit}
+        user-id={@current_scope.user.id}
+        user-color={Collaboration.user_color(@current_scope.user.id)}
+        canvas-id={"flow-canvas-#{@flow && @flow.id || "new"}"}
       />
-
-      <%!-- Preview Modal --%>
-      <.live_component
-        module={StoryarnWeb.FlowLive.PreviewComponent}
-        id="flow-preview"
-        show={@preview_show}
-        start_node={@preview_node}
-        project={@project}
-        sheets_map={FormHelpers.sheets_map(@all_sheets)}
-      />
-    </Layouts.focus>
+    </Layouts.focus_v2>
     """
   end
 
@@ -608,9 +394,35 @@ defmodule StoryarnWeb.FlowLive.Show do
             :ok
         end
 
-        socket
-        |> assign(:loading, true)
-        |> assign(:flow, flow)
+        socket =
+          socket
+          |> assign(:loading, true)
+          |> assign(:flow, flow)
+
+        # V2: start async load directly (V1 defers via FlowLoader hook)
+        if connected?(socket) do
+          is_draft = socket.assigns.is_draft
+          project = socket.assigns.project
+
+          start_async(socket, :load_flow_data, fn ->
+            full_flow = Flows.get_flow!(project.id, flow.id, include_drafts: is_draft)
+            project_variables = VariableHelpers.list_all_variables(project.id)
+
+            %{
+              flow: full_flow,
+              flow_data:
+                Flows.serialize_for_canvas(full_flow, project_variables: project_variables),
+              all_sheets: Sheets.list_all_sheets(project.id),
+              gallery_by_sheet: Sheets.batch_load_gallery_data_by_sheet(project.id),
+              flow_hubs: Flows.list_hubs(flow.id),
+              project_variables: project_variables,
+              flows_tree: Flows.list_flows_tree(project.id),
+              available_scenes: Scenes.list_scenes(project.id)
+            }
+          end)
+        else
+          socket
+        end
     end
   end
 

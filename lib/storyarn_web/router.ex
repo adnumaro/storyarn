@@ -276,16 +276,16 @@ defmodule StoryarnWeb.Router do
            ProjectLive.Trash,
            :index
 
-      # Flows (visual narrative editor)
-      live "/workspaces/:workspace_slug/projects/:project_slug/flows", FlowLive.Index, :index
-      live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id", FlowLive.Show, :show
+      # Flows (visual narrative editor) — V1
+      live "/workspaces/:workspace_slug/projects/:project_slug/flows", FlowLive.V1.Index, :index
+      live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id", FlowLive.V1.Show, :show
 
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/drafts/:draft_id",
-           FlowLive.Show,
+           FlowLive.V1.Show,
            :draft
 
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/play",
-           FlowLive.PlayerLive,
+           FlowLive.V1.PlayerLive,
            :play
 
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/compare/:version_number",
