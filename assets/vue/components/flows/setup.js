@@ -70,14 +70,17 @@ export function createPlugins(container, hook) {
     VuePresets.classic.setup({
       customize: {
         node(context) {
-          // Return FlowNode Vue component — rete-vue-plugin passes { data, emit } as props
+          if (!context.payload) return null;
           return FlowNode;
         },
         socket(context) {
+          if (!context.payload) return null;
           return FlowSocket;
         },
         connection(context) {
-          // TODO: magnetic connection variant (Phase 7)
+          if (!context.payload) return null;
+          // Skip magnetic connection preview (rendered by connection plugin internally)
+          if (context.payload.isMagnetic) return null;
           return FlowConnection;
         },
       },

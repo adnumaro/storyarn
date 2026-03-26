@@ -1,4 +1,6 @@
 <script setup>
+import { computed } from "vue";
+import { Box, Square } from "lucide-vue-next";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
@@ -10,7 +12,7 @@ const props = defineProps({
 	color: { type: String, required: true },
 });
 
-const refs = (props.data.nodeData?.referencing_flows || []);
+const refs = computed(() => props.data.nodeData?.referencing_flows || []);
 </script>
 
 <template>
@@ -19,11 +21,15 @@ const refs = (props.data.nodeData?.referencing_flows || []);
     <div
       v-for="ref in refs"
       :key="ref.flow_id"
-      class="text-[11px] text-muted-foreground px-3 py-2 max-w-[200px] border-b border-border/30 break-words"
+      class="text-[11px] text-muted-foreground px-3 py-2 max-w-[200px] border-b border-border/10 break-words"
     >
-      <span class="line-clamp-4 leading-[1.4]">
-        {{ ref.flow_name }}{{ ref.flow_shortcut ? ` (#${ref.flow_shortcut})` : '' }}
-      </span>
+      <div class="line-clamp-4 leading-[1.4]">
+        <span class="inline-flex items-center gap-1 align-middle">
+          <Square v-if="ref.node_type === 'exit'" class="size-3 shrink-0" />
+          <Box v-else class="size-3 shrink-0" />
+          {{ ref.flow_name }}{{ ref.flow_shortcut ? ` (#${ref.flow_shortcut})` : '' }}
+        </span>
+      </div>
     </div>
     <NodeSockets :data="data" :emit="emit" />
   </NodeShell>

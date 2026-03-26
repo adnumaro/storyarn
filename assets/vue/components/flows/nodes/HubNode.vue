@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import { ArrowUpRight } from "lucide-vue-next";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
@@ -22,8 +23,13 @@ const jumpCount = computed(() => {
 <template>
   <NodeShell :color="color" :selected="data.selected">
     <NodeHeader :color="color" :icon="config.icon" :label="config.label" />
-    <div v-if="jumpCount > 0" class="text-[11px] text-muted-foreground px-3 py-2 max-w-[200px] border-b border-border/30">
-      → {{ jumpCount }} jump{{ jumpCount !== 1 ? 's' : '' }}
+    <div class="text-[11px] text-muted-foreground px-3 py-2 max-w-[200px] border-b border-border/10 break-words">
+      <div class="line-clamp-4 leading-[1.4]">
+        <span class="inline-flex items-center gap-1">
+          <ArrowUpRight class="size-3" />
+          {{ jumpCount }} jump{{ jumpCount !== 1 ? 's' : '' }}
+        </span>
+      </div>
     </div>
     <NodeSockets :data="data" :emit="emit" />
   </NodeShell>
