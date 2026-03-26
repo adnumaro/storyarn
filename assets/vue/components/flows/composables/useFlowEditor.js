@@ -484,6 +484,7 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 
 		_nodeMoveQueue = Promise.resolve();
 		handleEvent("node_moved", (data) => {
+			if (!_nodeMoveQueue) return;
 			_nodeMoveQueue = _nodeMoveQueue
 				.then(() => {
 					if (!_area || _destroyed) return;
@@ -492,12 +493,22 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 				.catch(() => {});
 		});
 
-		handleEvent("node_added", (data) => _editorHandlers.handleNodeAdded(data));
-		handleEvent("node_removed", (data) => _editorHandlers.handleNodeRemoved(data));
-		handleEvent("node_restored", (data) => _editorHandlers.handleNodeRestored(data));
+		handleEvent("node_added", (data) => {
+			if (_destroyed) return;
+			_editorHandlers.handleNodeAdded(data);
+		});
+		handleEvent("node_removed", (data) => {
+			if (_destroyed) return;
+			_editorHandlers.handleNodeRemoved(data);
+		});
+		handleEvent("node_restored", (data) => {
+			if (_destroyed) return;
+			_editorHandlers.handleNodeRestored(data);
+		});
 
 		_nodeUpdateQueue = Promise.resolve();
 		handleEvent("node_updated", (data) => {
+			if (!_nodeUpdateQueue) return;
 			_nodeUpdateQueue = _nodeUpdateQueue
 				.then(() => {
 					if (!_area || _destroyed) return;

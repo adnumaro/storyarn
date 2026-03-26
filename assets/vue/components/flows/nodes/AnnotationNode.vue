@@ -37,9 +37,10 @@ const sizeClass = computed(() => {
 .annotation-wrapper {
   position: relative;
   width: 200px;
-  min-height: 120px;
+  height: 120px;
   cursor: default;
   border-radius: 2px;
+  overflow: hidden;
 }
 
 .annotation-bg {

@@ -53,6 +53,8 @@ export function createPlugins(container, hook) {
 
   const render = new VuePlugin({
     setup(context) {
+      // Guard: context can be null for some internal plugin renders
+      if (!context) return createApp({ render: () => null });
       const app = createApp(context);
       app.provide(FLOW_CONTEXT_KEY, flowContext);
       return app;
