@@ -11,6 +11,7 @@ import { ConnectionPlugin, Presets as ConnectionPresets } from "rete-connection-
 import { ContextMenuPlugin } from "rete-context-menu-plugin";
 import { HistoryPlugin } from "rete-history-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
+import { createApp, reactive } from "vue";
 import { Presets as VuePresets, VuePlugin } from "rete-vue-plugin";
 
 import FlowConnection from "./components/FlowConnection.vue";
@@ -20,6 +21,10 @@ import FlowSocket from "./components/FlowSocket.vue";
 import { createContextMenuItems } from "@/js/flow_canvas/context_menu_items.js";
 import { createFlowHistoryPreset } from "@/js/flow_canvas/history_preset.js";
 import { useMagneticConnection } from "@/js/flow_canvas/magnetic-connection/index.js";
+
+// Shared reactive state injected into every node/socket/connection Vue app instance.
+// Keys match the provide/inject keys used by FlowNode.vue.
+export const FLOW_CONTEXT_KEY = Symbol("flowContext");
 
 /**
  * Creates and configures all Rete.js plugins with Vue renderer.
@@ -37,7 +42,22 @@ export function createPlugins(container, hook) {
   const history = new HistoryPlugin({ timing: 200 });
   const arrange = new AutoArrangePlugin();
   const minimap = new MinimapPlugin();
-  const render = new VuePlugin();
+  // Shared reactive context available to all node/socket/connection Vue instances
+  const flowContext = reactive({
+    sheetsMap: hook.sheetsMap || {},
+    hubsMap: hook.hubsMap || {},
+    labels: hook.labels || {},
+    lod: "full",
+  });
+  hook._flowContext = flowContext;
+
+  const render = new VuePlugin({
+    setup(context) {
+      const app = createApp(context);
+      app.provide(FLOW_CONTEXT_KEY, flowContext);
+      return app;
+    },
+  });
 
   // Configure auto-arrange plugin
   arrange.addPreset(ArrangePresets.classic.setup());

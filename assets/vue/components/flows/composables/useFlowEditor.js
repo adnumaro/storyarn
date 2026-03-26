@@ -167,6 +167,9 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 		editor.value = _editor;
 		area.value = _area;
 
+		// Sync shared reactive context with initial data
+		syncFlowContext();
+
 		// LOD
 		const nodeCount = flowData.nodes?.length || 0;
 		const initialLod = nodeCount >= 50 ? "simplified" : "full";
@@ -357,6 +360,7 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 			}
 		}
 		hookProxy._hubsMap = map;
+		syncFlowContext();
 
 		const ts = Date.now();
 		for (const [, node] of _nodeMap) {
@@ -365,6 +369,16 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 				await _area.update("node", node.id);
 			}
 		}
+	}
+
+	// --- Sync reactive flow context (used by Vue node components via inject) ---
+
+	function syncFlowContext() {
+		const ctx = hookProxy._flowContext;
+		if (!ctx) return;
+		ctx.sheetsMap = hookProxy._sheetsMap || {};
+		ctx.hubsMap = hookProxy._hubsMap || {};
+		ctx.labels = hookProxy._labels || {};
 	}
 
 	// --- Area pipes (drag, selection, connections) ---
