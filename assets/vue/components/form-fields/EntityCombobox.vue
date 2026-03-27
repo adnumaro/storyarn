@@ -21,6 +21,14 @@ const props = defineProps({
 	label: { type: String, default: "" },
 	placeholder: { type: String, default: "Select..." },
 	disabled: { type: Boolean, default: false },
+	variant: { type: String, default: "default" },
+});
+
+const triggerClass = computed(() => {
+	if (props.variant === "ghost") {
+		return "w-full flex items-center justify-between text-left text-[13px] font-medium bg-transparent border-none text-inherit cursor-pointer p-0 outline-none disabled:opacity-50 disabled:cursor-not-allowed";
+	}
+	return "w-full flex items-center justify-between text-left text-sm px-2 py-1.5 rounded-md border border-input bg-background dark:bg-card shadow-xs hover:dark:bg-card/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 });
 
 const emit = defineEmits(["update:selectedId"]);
@@ -28,7 +36,8 @@ const open = ref(false);
 
 const selectedName = computed(() => {
 	if (!props.selectedId) return null;
-	const opt = props.options.find((o) => o.id === props.selectedId);
+	const id = String(props.selectedId);
+	const opt = props.options.find((o) => String(o.id) === id);
 	return opt?.name || null;
 });
 
@@ -47,13 +56,13 @@ function select(id) {
       <PopoverTrigger as-child>
         <button
           type="button"
-          class="w-full flex items-center justify-between text-left text-sm px-2 py-1.5 rounded-md border border-input bg-background dark:bg-card shadow-xs hover:dark:bg-card/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          :class="triggerClass"
           :disabled="disabled"
         >
-          <span :class="selectedName ? '' : 'text-muted-foreground'">
+          <span class="overflow-hidden text-ellipsis whitespace-nowrap" :class="selectedName ? '' : (variant === 'ghost' ? 'opacity-60' : 'text-muted-foreground')">
             {{ selectedName || placeholder }}
           </span>
-          <ChevronsUpDown class="size-3 text-muted-foreground shrink-0 ml-2" />
+          <ChevronsUpDown class="size-3 shrink-0 ml-1" :class="variant === 'ghost' ? 'opacity-60' : 'text-muted-foreground'" />
         </button>
       </PopoverTrigger>
       <PopoverContent class="p-0" :side-offset="4" align="start">
@@ -73,7 +82,7 @@ function select(id) {
                 @select="select(opt.id)"
               >
                 {{ opt.name }}
-                <Check v-if="opt.id === selectedId" class="size-3 ml-auto" />
+                <Check v-if="String(opt.id) === String(selectedId)" class="size-3 ml-auto" />
               </CommandItem>
             </CommandGroup>
           </CommandList>

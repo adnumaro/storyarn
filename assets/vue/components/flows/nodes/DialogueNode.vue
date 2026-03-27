@@ -3,6 +3,7 @@ import { computed, inject, nextTick, ref, watch } from "vue";
 import { Ref } from "rete-vue-plugin";
 import { previewText, stripHtml } from "../lib/render-helpers.js";
 import { FLOW_CONTEXT_KEY } from "../setup.js";
+import EntityCombobox from "@/vue/components/form-fields/EntityCombobox.vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 
@@ -119,8 +120,8 @@ function autoResize(e) {
 	e.target.style.height = `${e.target.scrollHeight}px`;
 }
 
-function onSpeakerSelect(e) {
-	save("speaker_sheet_id", e.target.value || null);
+function onSpeakerSelect(id) {
+	save("speaker_sheet_id", id);
 }
 </script>
 
@@ -130,27 +131,22 @@ function onSpeakerSelect(e) {
     :selected="data.selected"
     :extra-class="hasContent || editing ? 'dialogue min-w-[280px] max-w-[350px]' : 'dialogue'"
   >
-    <!-- EDIT MODE HEADER: speaker selector button -->
+    <!-- EDIT MODE HEADER: speaker combobox -->
     <template v-if="editing">
       <div
         class="header px-3 py-2 rounded-t-[10px] flex items-center gap-2 text-white font-medium text-[13px]"
         :style="`background: linear-gradient(to right, ${color} 40%, color-mix(in oklch, ${color} 85%, white) 100%)`"
+        @pointerdown.stop
       >
         <span class="flex items-center shrink-0" v-html="config.icon" />
-        <select
-          class="inline-speaker-select"
-          :value="String(nodeData.speaker_sheet_id || '')"
-          @change="onSpeakerSelect"
-          @pointerdown.stop
-          @keydown.stop
-        >
-          <option value="">{{ labels.no_speaker || config.label }}</option>
-          <option
-            v-for="s in speakerOptions"
-            :key="s.id"
-            :value="String(s.id)"
-          >{{ s.name }}</option>
-        </select>
+        <EntityCombobox
+          class="flex-1 min-w-0"
+          variant="ghost"
+          :options="speakerOptions"
+          :selected-id="nodeData.speaker_sheet_id || null"
+          :placeholder="labels.no_speaker || config.label"
+          @update:selected-id="onSpeakerSelect"
+        />
       </div>
     </template>
 
@@ -267,27 +263,6 @@ function onSpeakerSelect(e) {
 </template>
 
 <style scoped>
-.inline-speaker-select {
-  flex: 1;
-  min-width: 0;
-  background: transparent;
-  border: none;
-  color: white;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  outline: none;
-  padding: 0;
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-.inline-speaker-select option {
-  background: var(--color-background, #0a0a0a);
-  color: var(--color-foreground, #fafafa);
-}
-
 .inline-input {
   width: 100%;
   background: transparent;
