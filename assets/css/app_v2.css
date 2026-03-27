@@ -123,6 +123,11 @@
 }
 
 
+/* Hide RightSidebar hook panels until opened (same rule as app.css for V1) */
+[phx-hook="RightSidebar"]:not([data-panel-open]) {
+  display: none;
+}
+
 /* Sidebar positioning and widths */
 @media (min-width: 768px) {
   .left-sidebar {

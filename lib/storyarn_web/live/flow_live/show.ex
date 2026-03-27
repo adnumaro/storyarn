@@ -9,13 +9,10 @@ defmodule StoryarnWeb.FlowLive.Show do
   import StoryarnWeb.FlowLive.Components.BuilderPanel
   import StoryarnWeb.FlowLive.Components.DebugPanel
   import StoryarnWeb.FlowLive.Components.FlowDock
-  import StoryarnWeb.FlowLive.Components.FlowHeader
   import StoryarnWeb.Components.CanvasToolbar
-  import StoryarnWeb.Components.RightSidebar
   import StoryarnWeb.FlowLive.Components.FlowToolbar
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
-  alias StoryarnWeb.Components.Sidebar.FlowTree
   alias StoryarnWeb.FlowLive.Components.ScreenplayEditor
 
   alias StoryarnWeb.Components.DraftComponents
@@ -46,7 +43,9 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Nodes.SlugLine
   alias StoryarnWeb.FlowLive.Nodes.Subflow
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
+  alias StoryarnWeb.Helpers.VersionHistoryHelpers
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
+  alias Storyarn.Versioning
 
   # Node types are now rendered by flow_dock.ex
   @lock_heartbeat_interval 10_000
@@ -73,27 +72,195 @@ defmodule StoryarnWeb.FlowLive.Show do
       project={@project}
       workspace={@workspace}
       active_tool={:flows}
-      has_tree={false}
+      has_tree={true}
       canvas_mode={true}
       tree_panel_open={@tree_panel_open}
       tree_panel_pinned={@tree_panel_pinned}
       can_edit={@can_edit}
       restoration_banner={@restoration_banner}
       online_users={assigns[:online_users] || []}
+      tree_props={
+        %{
+          flowsTree: @flows_tree,
+          canEdit: @can_edit,
+          workspaceSlug: @workspace.slug,
+          projectSlug: @project.slug,
+          selectedFlowId: @flow && @flow.id
+        }
+      }
     >
-      <.vue
-        v-component="flows/FlowEditor"
-        v-socket={@socket}
-        id={"flow-editor-#{@flow && @flow.id || "new"}"}
-        class="w-full h-full"
-        flow-data={if @loading, do: nil, else: Jason.encode!(@flow_data)}
-        sheets-map={if @loading, do: nil, else: Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))}
-        labels={Jason.encode!(flow_canvas_labels())}
-        loading={@loading}
-        readonly={!@can_edit}
-        user-id={@current_scope.user.id}
-        user-color={Collaboration.user_color(@current_scope.user.id)}
-        canvas-id={"flow-canvas-#{@flow && @flow.id || "new"}"}
+      <:top_bar_extra>
+        <DraftComponents.draft_banner :if={@flow} is_draft={@is_draft} />
+        <.vue
+          :if={@flow}
+          v-component="flows/FlowHeader"
+          v-socket={@socket}
+          id="flow-header"
+          flow-name={@flow.name}
+          flow-shortcut={@flow.shortcut}
+          is-main={@flow.is_main}
+          can-edit={@can_edit}
+          save-status={to_string(@save_status)}
+          is-draft={@is_draft}
+          back-entry={@nav_history && NavigationHistory.peek_back(@nav_history)}
+          forward-entry={@nav_history && NavigationHistory.peek_forward(@nav_history)}
+          flow-word-count={@flow_word_count}
+          flow-error-nodes={@flow_error_nodes}
+          flow-info-nodes={@flow_info_nodes}
+          scene-name={@scene_name}
+          scene-inherited={@scene_inherited}
+          available-scenes={Enum.map(@available_scenes, &Map.take(&1, [:id, :name]))}
+        />
+      </:top_bar_extra>
+      <DraftComponents.discard_draft_modal is_draft={@is_draft} />
+      <DraftComponents.merge_review_modal :if={@flow} is_draft={@is_draft} merge_summary={@merge_summary} />
+      <div class="h-full relative">
+        <div class="absolute inset-0 flex flex-col">
+          <div class="flex-1 relative">
+            <%!-- Vue canvas --%>
+            <.vue
+              v-component="flows/FlowEditor"
+              v-socket={@socket}
+              id={"flow-editor-#{@flow && @flow.id || "new"}"}
+              class="w-full h-full"
+              flow-data={if @loading, do: nil, else: Jason.encode!(@flow_data)}
+              sheets-map={if @loading, do: nil, else: Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))}
+              labels={Jason.encode!(flow_canvas_labels())}
+              loading={@loading}
+              readonly={!@can_edit}
+              user-id={@current_scope.user.id}
+              user-color={Collaboration.user_color(@current_scope.user.id)}
+              canvas-id={"flow-canvas-#{@flow && @flow.id || "new"}"}
+            />
+
+            <%!-- Floating Toolbar --%>
+            <.canvas_toolbar
+              :if={@flow}
+              id="flow-floating-toolbar"
+              canvas_id={"flow-canvas-#{@flow.id}"}
+              visible={@selected_node != nil && @editing_mode in [:toolbar, :annotation]}
+            >
+              <%= if @editing_mode == :annotation do %>
+                <.annotation_toolbar node={@selected_node} can_edit={@can_edit} />
+              <% else %>
+                <.node_toolbar
+                  node={@selected_node}
+                  form={@node_form}
+                  can_edit={@can_edit}
+                  all_sheets={@all_sheets}
+                  gallery_by_sheet={@gallery_by_sheet}
+                  flow_hubs={@flow_hubs}
+                  available_flows={@available_flows}
+                  available_scenes={assigns[:available_scenes] || []}
+                  flow_search_has_more={@flow_search_has_more}
+                  flow_search_deep={@flow_search_deep}
+                  subflow_exits={@subflow_exits}
+                  referencing_jumps={@referencing_jumps}
+                  referencing_flows={@referencing_flows}
+                  project_scenes={@project_scenes}
+                  node_select_loading={@node_select_loading}
+                />
+              <% end %>
+            </.canvas_toolbar>
+
+            <%!-- Bottom dock (Vue) --%>
+            <.vue
+              :if={@flow}
+              v-component="flows/FlowDock"
+              v-socket={@socket}
+              id="flow-dock"
+              can-edit={@can_edit}
+              compact={false}
+              debug-panel-open={@debug_panel_open}
+              workspace-slug={@workspace.slug}
+              project-slug={@project.slug}
+              flow-id={@flow.id}
+            />
+
+            <%!-- Version History Panel (Vue) --%>
+            <.vue
+              v-component="flows/FlowVersionHistoryPanel"
+              v-socket={@socket}
+              id="flow-versions-panel"
+              open={@versions_panel_open}
+              versions={(@history_data && @history_data[:versions]) || []}
+              named-versions={(@history_data && @history_data[:named_versions]) || []}
+              auto-versions={(@history_data && @history_data[:auto_versions]) || []}
+              has-more={(@history_data && @history_data[:has_more]) || false}
+              can-name-version={(@history_data && @history_data[:can_name_version]) || false}
+              current-version-id={@history_data && @history_data[:current_version_id]}
+              can-edit={@can_edit}
+              loading={@versions_panel_open && is_nil(@history_data)}
+            />
+          </div>
+
+          <.debug_panel
+            :if={@flow && @debug_panel_open && @debug_state}
+            debug_state={@debug_state}
+            debug_active_tab={@debug_active_tab}
+            debug_nodes={@debug_nodes}
+            debug_auto_playing={@debug_auto_playing}
+            debug_speed={@debug_speed}
+            debug_editing_var={@debug_editing_var}
+            debug_var_filter={@debug_var_filter}
+            debug_var_changed_only={@debug_var_changed_only}
+            debug_current_flow_name={@flow.name}
+            debug_step_limit_reached={@debug_step_limit_reached}
+          />
+        </div>
+
+        <%!-- Collaboration Toast --%>
+        <.collab_toast
+          :if={@collab_toast}
+          action={@collab_toast.action}
+          user_email={@collab_toast.user_email}
+          user_color={@collab_toast.user_color}
+        />
+      </div>
+
+      <%!-- Builder Sidebar (condition / instruction nodes) --%>
+      <div
+        :if={@flow}
+        id="builder-sidebar"
+        phx-hook="RightSidebar"
+        data-right-panel
+        data-open-event="open_builder"
+        data-close-event="close_builder"
+        class={[
+          "fixed flex flex-col overflow-hidden right-sidebar",
+          "inset-0 z-[1030] bg-base-100",
+          "xl:inset-auto xl:right-3 xl:top-3 xl:bottom-3 xl:w-[480px]"
+        ]}
+      >
+        <div :if={@selected_node && @editing_mode == :builder}>
+          <.builder_content
+            node={@selected_node}
+            form={@node_form}
+            can_edit={@can_edit}
+            project_variables={@project_variables}
+            panel_sections={@panel_sections}
+          />
+        </div>
+        <div
+          :if={!(@selected_node && @editing_mode == :builder)}
+          class="flex items-center justify-center h-full"
+        >
+          <span class="loading loading-spinner loading-md text-base-content/40"></span>
+        </div>
+      </div>
+
+      <%!-- Screenplay Editor sidebar --%>
+      <.live_component
+        :if={@flow && @selected_node && @editing_mode in [:screenplay, :editor]}
+        module={ScreenplayEditor}
+        id={"screenplay-editor-#{@selected_node.id}"}
+        node={@selected_node}
+        can_edit={@can_edit}
+        all_sheets={@all_sheets}
+        project_variables={@project_variables}
+        project={@project}
+        current_user={@current_scope.user}
+        panel_sections={@panel_sections}
       />
     </Layouts.focus_v2>
     """
@@ -249,6 +416,36 @@ defmodule StoryarnWeb.FlowLive.Show do
           |> assign(:flow_word_count, 0)
           |> assign(:flow_error_nodes, [])
           |> assign(:flow_info_nodes, [])
+          |> assign(:save_status, :idle)
+          |> assign(:selected_node, nil)
+          |> assign(:node_form, nil)
+          |> assign(:editing_mode, nil)
+          |> assign(:debug_panel_open, false)
+          |> assign(:debug_state, nil)
+          |> assign(:debug_active_tab, "console")
+          |> assign(:debug_nodes, %{})
+          |> assign(:debug_auto_playing, false)
+          |> assign(:debug_speed, 800)
+          |> assign(:debug_editing_var, nil)
+          |> assign(:debug_var_filter, "")
+          |> assign(:debug_var_changed_only, false)
+          |> assign(:debug_step_limit_reached, false)
+          |> assign(:collab_toast, nil)
+          |> assign(:versions_panel_open, false)
+          |> assign(:history_data, nil)
+          |> assign(:all_sheets, [])
+          |> assign(:gallery_by_sheet, %{})
+          |> assign(:flow_hubs, [])
+          |> assign(:available_flows, [])
+          |> assign(:flow_search_has_more, false)
+          |> assign(:flow_search_deep, false)
+          |> assign(:subflow_exits, [])
+          |> assign(:referencing_jumps, [])
+          |> assign(:referencing_flows, [])
+          |> assign(:project_scenes, [])
+          |> assign(:node_select_loading, false)
+          |> assign(:panel_sections, %{})
+          |> assign(:project_variables, [])
           |> assign(:is_draft, false)
           |> assign(:draft, nil)
           |> assign(:merge_summary, nil)
@@ -449,6 +646,19 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("open_versions_panel", _params, socket) do
+    socket =
+      if is_nil(socket.assigns.history_data) do
+        VersionHistoryHelpers.load_history_data(
+          socket,
+          "flow",
+          socket.assigns.flow,
+          socket.assigns.project.id,
+          socket.assigns.workspace.id
+        )
+      else
+        socket
+      end
+
     {:noreply, assign(socket, :versions_panel_open, true)}
   end
 
@@ -456,13 +666,195 @@ defmodule StoryarnWeb.FlowLive.Show do
     {:noreply, assign(socket, :versions_panel_open, false)}
   end
 
-  def handle_event("show_create_version_modal", _params, socket) do
-    send_update(StoryarnWeb.Components.VersionsSection,
-      id: "flow-versions-section",
-      action: :show_create_version_modal
-    )
+  # ---------------------------------------------------------------------------
+  # Version History handlers (Vue FlowVersionHistoryPanel)
+  # ---------------------------------------------------------------------------
 
-    {:noreply, socket}
+  def handle_event("create_version", %{"title" => title, "description" => description}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      title = if title == "", do: nil, else: title
+      description = if description == "", do: nil, else: description
+
+      if title == nil do
+        {:noreply, put_flash(socket, :error, dgettext("versioning", "Title is required."))}
+      else
+        flow = socket.assigns.flow
+        user_id = socket.assigns.current_scope.user.id
+        project_id = socket.assigns.project.id
+
+        case Versioning.create_version("flow", flow, project_id, user_id,
+               title: title,
+               description: description
+             ) do
+          {:ok, _version} ->
+            {:noreply,
+             socket
+             |> reload_history_data()
+             |> put_flash(:info, dgettext("versioning", "Version created."))}
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
+        end
+      end
+    end)
+  end
+
+  def handle_event("promote_version", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      %{"version_number" => vn, "title" => title, "description" => description} = params
+      title = if title == "", do: nil, else: title
+      description = if description == "", do: nil, else: description
+
+      with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
+           version when not is_nil(version) <-
+             Versioning.get_version("flow", socket.assigns.flow.id, number) do
+        case Versioning.update_version(version, %{title: title, description: description}) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> reload_history_data()
+             |> put_flash(:info, dgettext("versioning", "Version named successfully."))}
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(socket, :error, dgettext("versioning", "Could not name version."))}
+        end
+      else
+        _ -> {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+      end
+    end)
+  end
+
+  def handle_event("delete_version", %{"version_number" => vn}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
+           version when not is_nil(version) <-
+             Versioning.get_version("flow", socket.assigns.flow.id, number) do
+        case Versioning.delete_version(version) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> reload_history_data()
+             |> put_flash(:info, dgettext("versioning", "Version deleted."))}
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(socket, :error, dgettext("versioning", "Could not delete version."))}
+        end
+      else
+        _ -> {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+      end
+    end)
+  end
+
+  def handle_event("load_more_versions", _params, socket) do
+    history = socket.assigns.history_data
+
+    if history do
+      next_page = (history[:page] || 1) + 1
+
+      {:noreply,
+       VersionHistoryHelpers.load_more_history(socket, "flow", socket.assigns.flow.id, next_page)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("preview_restore", %{"version_number" => vn}, socket) do
+    with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
+         version when not is_nil(version) <-
+           Versioning.get_version("flow", socket.assigns.flow.id, number) do
+      VersionHistoryHelpers.detect_and_show_restore_preview(
+        socket,
+        "flow",
+        socket.assigns.flow,
+        version
+      )
+    else
+      _ -> {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+    end
+  end
+
+  def handle_event("save_and_restore", %{"version_number" => vn}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
+           version when not is_nil(version) <-
+             Versioning.get_version("flow", socket.assigns.flow.id, number) do
+        flow = socket.assigns.flow
+        project_id = socket.assigns.project.id
+        user_id = socket.assigns.current_scope.user.id
+
+        Versioning.create_version("flow", flow, project_id, user_id,
+          title: dgettext("versioning", "Before restore to v%{n}", n: number)
+        )
+
+        VersionHistoryHelpers.show_conflict_preview(socket, "flow", flow, version, true)
+      else
+        _ -> {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("discard_and_restore", %{"version_number" => vn}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
+           version when not is_nil(version) <-
+             Versioning.get_version("flow", socket.assigns.flow.id, number) do
+        VersionHistoryHelpers.show_conflict_preview(
+          socket,
+          "flow",
+          socket.assigns.flow,
+          version,
+          true
+        )
+      else
+        _ -> {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("confirm_restore", %{"version_number" => vn} = params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
+           version when not is_nil(version) <-
+             Versioning.get_version("flow", socket.assigns.flow.id, number) do
+        skip = params["skip_pre_snapshot"] == true
+
+        case Versioning.restore_version(version, "flow", socket.assigns.flow,
+               skip_pre_snapshot: skip
+             ) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> push_event("version_restored", %{})
+             |> put_flash(:info, dgettext("versioning", "Version restored."))
+             |> push_navigate(
+               to:
+                 ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{socket.assigns.flow.id}"
+             )}
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(socket, :error, dgettext("versioning", "Could not restore version."))}
+        end
+      else
+        _ -> {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("compare_version", %{"version_number" => vn}, socket) do
+    with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn) do
+      %{workspace: workspace, project: project, flow: flow} = socket.assigns
+
+      compare_url =
+        ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{flow.id}/compare/#{number}"
+
+      {:noreply, push_navigate(socket, to: compare_url)}
+    else
+      _ -> {:noreply, socket}
+    end
   end
 
   # Triggered by the FlowLoader hook after the browser has painted the spinner.
@@ -1192,6 +1584,16 @@ defmodule StoryarnWeb.FlowLive.Show do
     assign(socket, :flows_tree, Flows.list_flows_tree(socket.assigns.project.id))
   end
 
+  defp reload_history_data(socket) do
+    VersionHistoryHelpers.load_history_data(
+      socket,
+      "flow",
+      socket.assigns.flow,
+      socket.assigns.project.id,
+      socket.assigns.workspace.id
+    )
+  end
+
   # ===========================================================================
   # Handle Info (thin delegation)
   # ===========================================================================
@@ -1248,6 +1650,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:preview_show, false)
       |> assign(:preview_node, nil)
       |> assign(:versions_panel_open, false)
+      |> assign(:history_data, nil)
       |> then(fn s ->
         if s.assigns.is_draft, do: s, else: assign(s, :collab_scope, {:flow, flow.id})
       end)
@@ -1342,53 +1745,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info({:load_node_select_data, node}, socket) do
     socket = NodeTypeRegistry.on_select(node.type, node, socket)
     {:noreply, assign(socket, :node_select_loading, false)}
-  end
-
-  # Handle messages from VersionsSection LiveComponent
-  def handle_info({:versions_section, :version_created, %{version: _}}, socket) do
-    {:noreply, socket}
-  end
-
-  def handle_info(
-        {:versions_section, :version_restored, %{entity: updated_flow, version: _}},
-        socket
-      ) do
-    # Cancel any pending auto-snapshot (stale after restore)
-    socket = StoryarnWeb.Helpers.AutoSnapshot.cancel(socket)
-
-    # Reload full flow data after version restore
-    %{project: project} = socket.assigns
-    full_flow = Flows.get_flow!(project.id, updated_flow.id)
-    project_variables = VariableHelpers.list_all_variables(project.id)
-    flow_data = Flows.serialize_for_canvas(full_flow, project_variables: project_variables)
-
-    {:noreply,
-     socket
-     |> assign(:flow, full_flow)
-     |> assign(:flow_data, flow_data)
-     |> assign(:flow_hubs, Flows.list_hubs(full_flow.id))
-     |> assign(:versions_panel_open, false)
-     |> SocketHelpers.assign_flow_stats(full_flow, flow_data)
-     |> push_event("flow_updated", flow_data)
-     |> push_event("panel-close", %{to: "#flow-versions-panel"})
-     |> CollaborationHelpers.broadcast_change(:flow_refresh, %{})}
-  end
-
-  def handle_info({:versions_section, :version_deleted, %{version: _}}, socket) do
-    {:noreply, socket}
-  end
-
-  def handle_info({:versions_section, :compare_version, %{version: version}}, socket) do
-    %{workspace: workspace, project: project, flow: flow} = socket.assigns
-
-    compare_url =
-      ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{flow.id}/compare/#{version.version_number}"
-
-    {:noreply, push_navigate(socket, to: compare_url)}
-  end
-
-  def handle_info({:versions_section, :flash, %{kind: kind, message: message}}, socket) do
-    {:noreply, put_flash(socket, kind, message)}
   end
 
   def handle_info({:node_updated, updated_node}, socket),
