@@ -5,7 +5,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/vue/components/ui/popover";
-import { COLOR_SWATCHES } from "./color-swatches";
+import { COLOR_SWATCHES } from "@/vue/components/shared/toolbar/color-swatches";
 
 const STYLES = ["solid", "dashed", "dotted"];
 const DASH_MAP = { solid: "none", dashed: "6,3", dotted: "2,2" };
