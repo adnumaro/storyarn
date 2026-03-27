@@ -67,6 +67,7 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 	let _lastNodeClickTime = 0;
 	let _lastClickedNodeId = null;
 	let _destroyed = false;
+	let _canvasClickController = null;
 
 	// Expose as a "hook-like" object for handler modules that expect `hook.pushEvent`, etc.
 	const hookProxy = {
@@ -125,6 +126,61 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 		minimapToggle: null,
 	};
 
+	// --- Inline edit ---
+
+	function enterInlineEdit(reteNodeId) {
+		exitInlineEdit();
+		const node = _editor.getNode(reteNodeId);
+		if (!node) return;
+		const type = node.nodeType;
+		if (type !== "dialogue" && type !== "annotation") return;
+
+		const ctx = hookProxy._flowContext;
+		if (!ctx) return;
+		ctx.editingNodeId = reteNodeId;
+	}
+
+	function exitInlineEdit() {
+		const ctx = hookProxy._flowContext;
+		if (!ctx || !ctx.editingNodeId) return;
+
+		// Blur active input/textarea inside the node so blur handlers fire and save
+		const nodeView = _area?.nodeViews.get(ctx.editingNodeId);
+		if (nodeView) {
+			const focused = nodeView.element.querySelector("textarea:focus, input:focus");
+			if (focused) focused.blur();
+		}
+
+		ctx.editingNodeId = null;
+	}
+
+	function handleInlineEditSave(reteNodeId, field, value) {
+		const node = _editor.getNode(reteNodeId);
+		if (!node) return;
+
+		if (field === "text" && node.nodeType === "annotation") {
+			node.nodeData = { ...node.nodeData, text: value };
+			pushEvent("update_node_field", { field: "text", value });
+		} else if (field === "text") {
+			// Dialogue: wrap plain text in <p> tags for rich text storage
+			const escaped = value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+			const content = escaped
+				? escaped.split("\n").map((line) => `<p>${line || "<br>"}</p>`).join("")
+				: "";
+			node.nodeData = { ...node.nodeData, text: content };
+			pushEvent("update_node_text", { id: node.nodeId, content });
+		} else if (field === "speaker_sheet_id") {
+			const newSpeakerId = value || null;
+			node.nodeData = { ...node.nodeData, speaker_sheet_id: newSpeakerId };
+			node._updateTs = Date.now();
+			_area.update("node", node.id);
+			pushEvent("update_node_field", { field: "speaker_sheet_id", value: newSpeakerId });
+		} else {
+			node.nodeData = { ...node.nodeData, [field]: value };
+			pushEvent("update_node_field", { field, value });
+		}
+	}
+
 	// --- Init ---
 
 	async function init(containerEl, flowData, opts = {}) {
@@ -169,6 +225,24 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 
 		// Sync shared reactive context with initial data
 		syncFlowContext();
+
+		// Wire inline edit save callback for node components
+		hookProxy._flowContext.onInlineEditSave = handleInlineEditSave;
+
+		// Canvas click — exit inline edit when clicking empty space
+		_canvasClickController = new AbortController();
+		containerEl.addEventListener(
+			"pointerdown",
+			(e) => {
+				if (e.button !== 0) return;
+				// Check if click landed on a node element
+				const nodeEl = e.target.closest("[data-testid='node']");
+				if (!nodeEl && hookProxy._flowContext?.editingNodeId) {
+					exitInlineEdit();
+				}
+			},
+			{ signal: _canvasClickController.signal },
+		);
 
 		// LOD
 		const nodeCount = flowData.nodes?.length || 0;
@@ -429,7 +503,13 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 					_selectedNodeId = node.nodeId;
 
 					if (isDoubleClick) {
-						pushEvent("node_double_clicked", { id: node.nodeId });
+						const reteNode = _editor.getNode(context.data.id);
+						const type = reteNode?.nodeType;
+						if (type === "dialogue" || type === "annotation") {
+							enterInlineEdit(context.data.id);
+						} else {
+							pushEvent("node_double_clicked", { id: node.nodeId });
+						}
 					} else {
 						pushEvent("node_selected", { id: node.nodeId });
 					}
@@ -534,6 +614,7 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 
 	function destroy() {
 		_destroyed = true;
+		_canvasClickController?.abort();
 		hookProxy._eventBindingsController?.abort();
 		_lodController?.destroy();
 		_cursorHandler?.destroy();

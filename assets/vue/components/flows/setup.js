@@ -48,6 +48,8 @@ export function createPlugins(container, hook) {
     hubsMap: hook.hubsMap || {},
     labels: hook.labels || {},
     lod: "full",
+    editingNodeId: null,
+    onInlineEditSave: null,
   });
   hook._flowContext = flowContext;
 

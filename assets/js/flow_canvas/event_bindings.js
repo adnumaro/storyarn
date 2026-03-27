@@ -16,6 +16,18 @@ export function enterInlineEdit(hook, reteNodeId) {
   // Exit any existing inline edit first
   exitInlineEdit(hook);
 
+  // V2 (Vue): use flowContext reactive state instead of Lit element property
+  if (hook._flowContext) {
+    const node = hook.editor.getNode(reteNodeId);
+    if (!node) return;
+    const type = node.nodeType;
+    if (type !== "dialogue" && type !== "annotation") return;
+    hook._flowContext.editingNodeId = reteNodeId;
+    hook._inlineEditingNodeId = reteNodeId;
+    return;
+  }
+
+  // V1 (Lit): set editing property on storyarn-node element
   const nodeView = hook.area.nodeViews.get(reteNodeId);
   const el = nodeView?.element?.querySelector("storyarn-node");
   if (!el) return;
@@ -35,11 +47,22 @@ export function exitInlineEdit(hook) {
   hook._speakerPopover?.destroy();
   hook._speakerPopover = null;
 
+  // V2 (Vue): blur inputs in regular DOM and clear flowContext state
+  if (hook._flowContext) {
+    const nodeView = hook.area?.nodeViews.get(hook._inlineEditingNodeId);
+    if (nodeView) {
+      const focused = nodeView.element.querySelector("textarea:focus, input:focus");
+      if (focused) focused.blur();
+    }
+    hook._flowContext.editingNodeId = null;
+    hook._inlineEditingNodeId = null;
+    return;
+  }
+
+  // V1 (Lit): blur inside shadow DOM and clear Lit element property
   const nodeView = hook.area.nodeViews.get(hook._inlineEditingNodeId);
   const el = nodeView?.element?.querySelector("storyarn-node");
   if (el) {
-    // Blur the active input/textarea inside shadow DOM so its @blur handler
-    // fires and saves data BEFORE we remove the editing UI
     const focused = el.shadowRoot?.activeElement;
     if (focused && (focused.tagName === "TEXTAREA" || focused.tagName === "INPUT")) {
       focused.blur();

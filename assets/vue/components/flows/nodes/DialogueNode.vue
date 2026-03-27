@@ -1,7 +1,8 @@
 <script setup>
-import { computed } from "vue";
+import { computed, inject, nextTick, ref, watch } from "vue";
 import { Ref } from "rete-vue-plugin";
-import { previewText } from "../lib/render-helpers.js";
+import { previewText, stripHtml } from "../lib/render-helpers.js";
+import { FLOW_CONTEXT_KEY } from "../setup.js";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 
@@ -11,9 +12,14 @@ const props = defineProps({
 	config: { type: Object, required: true },
 	color: { type: String, required: true },
 	sheetsMap: { type: Object, default: () => ({}) },
+	labels: { type: Object, default: () => ({}) },
 });
 
+const ctx = inject(FLOW_CONTEXT_KEY, { editingNodeId: null, onInlineEditSave: null, sheetsMap: {} });
+const dialogueRef = ref(null);
+
 const nodeData = computed(() => props.data.nodeData || {});
+const editing = computed(() => ctx.editingNodeId === props.data.id);
 
 const speaker = computed(() => {
 	const sheetId = nodeData.value.speaker_sheet_id;
@@ -37,6 +43,7 @@ const defaultAvatarUrl = computed(() => speaker.value?.avatar_url || null);
 const stageDirections = computed(() => nodeData.value.stage_directions || "");
 const menuText = computed(() => nodeData.value.menu_text || "");
 const preview = computed(() => previewText(nodeData.value.text));
+const plainText = computed(() => stripHtml(nodeData.value.text));
 const hasTextContent = computed(() => stageDirections.value || menuText.value || preview.value);
 const hasAudio = computed(() => !!nodeData.value.audio_asset_id);
 
@@ -48,6 +55,19 @@ const hasContent = computed(() => hasTextContent.value || hasVisual.value || res
 const inputs = computed(() => Object.entries(props.data?.inputs || {}));
 const outputs = computed(() => Object.entries(props.data?.outputs || {}));
 const responses = computed(() => nodeData.value.responses || []);
+
+// Speaker list for inline edit dropdown
+const speakerOptions = computed(() => {
+	const map = ctx.sheetsMap || props.sheetsMap || {};
+	return Object.values(map);
+});
+
+// Autofocus dialogue textarea when entering edit mode
+watch(editing, (val) => {
+	if (val) {
+		nextTick(() => dialogueRef.value?.focus());
+	}
+});
 
 function formatOutputLabel(key) {
 	const resp = responses.value.find((r) => r.id === key);
@@ -64,29 +84,89 @@ function getOutputBadges(key) {
 	if ((resp.instruction_assignments || []).length > 0) badges.push({ type: "indicator", color: "#ec4899", title: "Has instructions" });
 	return badges;
 }
+
+function save(field, value) {
+	ctx.onInlineEditSave?.(props.data.id, field, value);
+}
+
+function onStageDirectionsBlur(e) {
+	const val = e.target.value.trim();
+	if (val !== stageDirections.value) save("stage_directions", val);
+}
+
+function onMenuTextBlur(e) {
+	const val = e.target.value.trim();
+	if (val !== menuText.value) save("menu_text", val);
+}
+
+function onDialogueBlur(e) {
+	const val = e.target.value.trim();
+	if (val !== plainText.value) save("text", val);
+}
+
+function onInputKeydown(e) {
+	e.stopPropagation();
+	if (e.key === "Enter") e.target.blur();
+}
+
+function onTextareaKeydown(e) {
+	e.stopPropagation();
+	if (e.key === "Escape") e.target.blur();
+}
+
+function autoResize(e) {
+	e.target.style.height = "auto";
+	e.target.style.height = `${e.target.scrollHeight}px`;
+}
+
+function onSpeakerSelect(e) {
+	save("speaker_sheet_id", e.target.value || null);
+}
 </script>
 
 <template>
   <NodeShell
     :color="color"
     :selected="data.selected"
-    :extra-class="hasContent ? 'dialogue min-w-[280px] max-w-[350px]' : 'dialogue'"
+    :extra-class="hasContent || editing ? 'dialogue min-w-[280px] max-w-[350px]' : 'dialogue'"
   >
-    <!-- Header: icon + speaker name (no avatar in header) -->
-    <NodeHeader :color="color" :icon="config.icon" :label="speakerName">
+    <!-- EDIT MODE HEADER: speaker selector button -->
+    <template v-if="editing">
+      <div
+        class="header px-3 py-2 rounded-t-[10px] flex items-center gap-2 text-white font-medium text-[13px]"
+        :style="`background: linear-gradient(to right, ${color} 40%, color-mix(in oklch, ${color} 85%, white) 100%)`"
+      >
+        <span class="flex items-center shrink-0" v-html="config.icon" />
+        <select
+          class="inline-speaker-select"
+          :value="String(nodeData.speaker_sheet_id || '')"
+          @change="onSpeakerSelect"
+          @pointerdown.stop
+          @keydown.stop
+        >
+          <option value="">{{ labels.no_speaker || config.label }}</option>
+          <option
+            v-for="s in speakerOptions"
+            :key="s.id"
+            :value="String(s.id)"
+          >{{ s.name }}</option>
+        </select>
+      </div>
+    </template>
+
+    <!-- VIEW MODE HEADER -->
+    <NodeHeader v-else :color="color" :icon="config.icon" :label="speakerName">
       <span v-if="hasAudio" class="ml-auto opacity-80 text-xs" title="Has audio">🔊</span>
     </NodeHeader>
 
-    <!-- Visual strip: avatar -->
+    <!-- Visual strip: avatar (shared between modes) -->
     <template v-if="hasVisual">
-      <!-- Override avatar (specific avatar_id) — full width -->
       <img
         v-if="overrideAvatarUrl"
         :src="overrideAvatarUrl"
         alt=""
         class="block w-[calc(100%-24px)] max-h-[200px] object-contain rounded-lg mx-3 mt-3"
       />
-      <!-- Default avatar — centered in colored bg -->
       <div
         v-else-if="defaultAvatarUrl"
         class="flex items-center justify-center px-3 pt-3"
@@ -94,7 +174,6 @@ function getOutputBadges(key) {
       >
         <img :src="defaultAvatarUrl" alt="" class="size-16 rounded-lg object-cover shadow-md" />
       </div>
-      <!-- Speaker exists but no avatar — empty colored bg -->
       <div
         v-else-if="speaker"
         class="flex items-center justify-center px-3 pt-3"
@@ -102,8 +181,38 @@ function getOutputBadges(key) {
       />
     </template>
 
-    <!-- Body: stage directions + menu text + preview -->
-    <div v-if="hasTextContent" class="px-3.5 pt-2.5 pb-3">
+    <!-- EDIT MODE BODY -->
+    <div v-if="editing" class="px-3.5 pt-2.5 pb-3">
+      <input
+        class="inline-input"
+        :placeholder="labels.stage_directions || 'Stage directions…'"
+        :value="stageDirections"
+        @blur="onStageDirectionsBlur"
+        @keydown="onInputKeydown"
+        @pointerdown.stop
+      />
+      <input
+        class="inline-input inline-input-menu"
+        :placeholder="labels.menu_text || 'Menu text…'"
+        :value="menuText"
+        @blur="onMenuTextBlur"
+        @keydown="onInputKeydown"
+        @pointerdown.stop
+      />
+      <textarea
+        ref="dialogueRef"
+        class="inline-textarea"
+        :placeholder="labels.dialogue_text || 'Dialogue text…'"
+        :value="plainText"
+        @blur="onDialogueBlur"
+        @keydown="onTextareaKeydown"
+        @input="autoResize"
+        @pointerdown.stop
+      />
+    </div>
+
+    <!-- VIEW MODE BODY -->
+    <div v-else-if="hasTextContent" class="px-3.5 pt-2.5 pb-3">
       <div v-if="stageDirections" class="italic text-muted-foreground/55 text-xs mb-1 break-words">
         {{ stageDirections }}
       </div>
@@ -156,3 +265,62 @@ function getOutputBadges(key) {
     </div>
   </NodeShell>
 </template>
+
+<style scoped>
+.inline-speaker-select {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: white;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.inline-speaker-select option {
+  background: var(--color-background, #0a0a0a);
+  color: var(--color-foreground, #fafafa);
+}
+
+.inline-input {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--color-border, #27272a);
+  font-style: italic;
+  font-size: 12px;
+  padding: 2px 0;
+  margin-bottom: 4px;
+  outline: none;
+  font-family: inherit;
+  color: var(--color-muted-foreground, #a1a1aa);
+}
+
+.inline-input-menu {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--color-primary, #3b82f6);
+  opacity: 0.7;
+}
+
+.inline-textarea {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  font-size: 14px;
+  padding: 0;
+  resize: none;
+  outline: none;
+  line-height: 1.625;
+  overflow: hidden;
+  font-family: inherit;
+  color: var(--color-foreground, #fafafa);
+  opacity: 0.85;
+}
+</style>

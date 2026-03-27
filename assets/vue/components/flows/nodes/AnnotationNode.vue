@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from "vue";
+import { computed, inject, nextTick, ref, watch } from "vue";
+import { FLOW_CONTEXT_KEY } from "../setup.js";
 
 const props = defineProps({
 	data: { type: Object, required: true },
@@ -8,10 +9,14 @@ const props = defineProps({
 	color: { type: String, required: true },
 });
 
+const ctx = inject(FLOW_CONTEXT_KEY, { editingNodeId: null, onInlineEditSave: null });
+const textareaRef = ref(null);
+
 const nodeData = computed(() => props.data.nodeData || {});
 const text = computed(() => nodeData.value.text || "");
 const annColor = computed(() => nodeData.value.color || "#fbbf24");
 const selected = computed(() => props.data.selected || false);
+const editing = computed(() => ctx.editingNodeId === props.data.id);
 
 const sizeClass = computed(() => {
 	const fs = nodeData.value.font_size || "md";
@@ -19,6 +24,25 @@ const sizeClass = computed(() => {
 	if (fs === "lg") return "annotation-lg";
 	return "annotation-md";
 });
+
+// Autofocus textarea when entering edit mode
+watch(editing, (val) => {
+	if (val) {
+		nextTick(() => textareaRef.value?.focus());
+	}
+});
+
+function onBlur(e) {
+	const val = e.target.value;
+	if (val !== text.value) {
+		ctx.onInlineEditSave?.(props.data.id, "text", val);
+	}
+}
+
+function onKeydown(e) {
+	e.stopPropagation();
+	if (e.key === "Escape") e.target.blur();
+}
 </script>
 
 <template>
@@ -28,7 +52,22 @@ const sizeClass = computed(() => {
     data-testid="node"
   >
     <div class="annotation-bg" />
-    <div class="annotation-text">{{ text || '…' }}</div>
+
+    <!-- Edit mode -->
+    <textarea
+      v-if="editing"
+      ref="textareaRef"
+      class="annotation-text annotation-edit-textarea"
+      :value="text"
+      placeholder="…"
+      @blur="onBlur"
+      @keydown="onKeydown"
+      @pointerdown.stop
+    />
+
+    <!-- View mode -->
+    <div v-else class="annotation-text">{{ text || '…' }}</div>
+
     <div class="annotation-fold" />
   </div>
 </template>
@@ -59,6 +98,17 @@ const sizeClass = computed(() => {
   white-space: pre-wrap;
   word-break: break-word;
   color: rgba(0, 0, 0, 0.75);
+}
+
+.annotation-edit-textarea {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: 0;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  cursor: text;
 }
 
 .annotation-fold {
