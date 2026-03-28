@@ -42,7 +42,7 @@ function findNodeElement(area, reteId) {
 	return view.element.querySelector("[data-testid='node']");
 }
 
-export function createFlowNavigation(area, nodeMap, pushEvent) {
+export function navigation(area, nodeMap, pushEvent) {
 	let highlightedElements = [];
 	let highlightTimer = null;
 

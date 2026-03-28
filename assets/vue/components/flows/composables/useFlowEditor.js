@@ -11,15 +11,15 @@ import { ClassicPreset } from "rete";
 import { AreaExtensions } from "rete-area-plugin";
 
 import { FlowNode } from "../lib/flow-node.js";
-import { createCursorHandler } from "@/js/flow_canvas/handlers/cursor_handler.js";
-import { createDebugHandler } from "@/js/flow_canvas/handlers/debug_handler.js";
-import { createKeyboardHandler } from "@/js/flow_canvas/handlers/keyboard_handler.js";
-import { createLockHandler } from "@/js/flow_canvas/handlers/lock_handler.js";
-import { createEditorHandlers } from "./useEditorHandlers.js";
-import { createFlowNavigation } from "./useNavigation.js";
-import { buildBatchPositions } from "@/js/flow_canvas/history_preset.js";
-import { createLodController } from "@/js/flow_canvas/lod_controller.js";
-import { createMinimapToggle } from "@/js/flow_canvas/minimap_toggle.js";
+import { buildBatchPositions } from "../lib/batch-positions.js";
+import { cursors } from "../services/cursors.js";
+import { debug } from "../services/debug.js";
+import { editorHandlers } from "../services/editorHandlers.js";
+import { keyboard } from "../services/keyboard.js";
+import { locks } from "../services/locks.js";
+import { lod } from "../services/lod.js";
+import { minimapToggle } from "../services/minimapToggle.js";
+import { navigation } from "../services/navigation.js";
 
 import { createPlugins, finalizeSetup } from "../setup.js";
 
@@ -248,11 +248,11 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 
 		// Create handlers (skip collab/mutation in readonly)
 		if (!hookProxy._readonly) {
-			_editorHandlers = createEditorHandlers(hookProxy);
-			_cursorHandler = createCursorHandler(hookProxy);
-			_lockHandler = createLockHandler(hookProxy);
-			_navigationHandler = createFlowNavigation(_area, _nodeMap, pushEvent);
-			_debugHandler = createDebugHandler(hookProxy);
+			_editorHandlers = editorHandlers(hookProxy);
+			_cursorHandler = cursors(hookProxy);
+			_lockHandler = locks(hookProxy);
+			_navigationHandler = navigation(_area, _nodeMap, pushEvent);
+			_debugHandler = debug(hookProxy);
 
 			hookProxy.editorHandlers = _editorHandlers;
 			hookProxy.cursorHandler = _cursorHandler;
@@ -303,7 +303,7 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 		// LOD
 		const nodeCount = flowData.nodes?.length || 0;
 		const initialLod = nodeCount >= 50 ? "simplified" : "full";
-		_lodController = createLodController(hookProxy, initialLod);
+		_lodController = lod(_area, hookProxy, initialLod);
 		hookProxy.lodController = _lodController;
 
 		// 3-phase load

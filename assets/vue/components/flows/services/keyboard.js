@@ -9,7 +9,7 @@ function isEditable(el) {
 	return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
 }
 
-export function createKeyboardHandler(hook, lockHandler) {
+export function keyboard(hook, lockHandler) {
 	function enterInlineEdit(reteNodeId) {
 		const node = hook.editor.getNode(reteNodeId);
 		if (!node) return;

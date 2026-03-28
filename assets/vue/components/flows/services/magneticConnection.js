@@ -3,14 +3,70 @@
  * so users don't need to aim precisely at sockets.
  *
  * Based on Rete.js magnetic-connection example (MIT License).
- * Adapted for Storyarn's Lit-based rendering.
+ * Self-contained composable with inlined math/utils helpers.
  */
 
 import { AreaPlugin } from "rete-area-plugin";
 import { createPseudoconnection } from "rete-connection-plugin";
 import { getElementCenter } from "rete-render-utils";
-import { findNearestPoint, isInsideRect } from "./math.js";
-import { getNodeRect } from "./utils.js";
+
+// -- Inlined from math.js --
+
+/**
+ * Find the nearest point to a target within a maximum distance.
+ * @param {Array<{x: number, y: number}>} points
+ * @param {{x: number, y: number}} target
+ * @param {number} maxDistance
+ * @returns {Object|undefined}
+ */
+function findNearestPoint(points, target, maxDistance) {
+  const result = points.reduce((nearest, point) => {
+    const dist = Math.sqrt((point.x - target.x) ** 2 + (point.y - target.y) ** 2);
+
+    if (dist > maxDistance) return nearest;
+    if (nearest === null || dist < nearest.distance) return { point, distance: dist };
+    return nearest;
+  }, null);
+
+  return result?.point;
+}
+
+/**
+ * Check if a point is inside a rect (with margin).
+ * @param {{left: number, top: number, right: number, bottom: number}} rect
+ * @param {{x: number, y: number}} point
+ * @param {number} margin
+ * @returns {boolean}
+ */
+function isInsideRect(rect, point, margin) {
+  return (
+    point.y > rect.top - margin &&
+    point.x > rect.left - margin &&
+    point.x < rect.right + margin &&
+    point.y < rect.bottom + margin
+  );
+}
+
+// -- Inlined from utils.js --
+
+/**
+ * Get bounding rect of a node from its data and view.
+ * @param {Object} node - Node instance (must have width/height)
+ * @param {Object} view - NodeView from area.nodeViews
+ * @returns {{left: number, top: number, right: number, bottom: number}}
+ */
+function getNodeRect(node, view) {
+  const { x, y } = view.position;
+
+  return {
+    left: x,
+    top: y,
+    right: x + (node.width || 200),
+    bottom: y + (node.height || 100),
+  };
+}
+
+// -- Composable --
 
 /**
  * Enables magnetic connection behavior on a ConnectionPlugin.
@@ -26,7 +82,7 @@ import { getNodeRect } from "./utils.js";
  * @param {number} [props.margin=50] - How far from a node to start looking for sockets
  * @param {number} [props.distance=50] - Maximum snap distance to a socket
  */
-export function useMagneticConnection(connection, props) {
+export function magneticConnection(connection, props) {
   const area = connection.parentScope(AreaPlugin);
   const editor = area.parentScope();
   const sockets = new Map();

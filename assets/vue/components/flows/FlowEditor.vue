@@ -2,7 +2,10 @@
 import { onMounted, ref, watch } from "vue";
 import { useLive } from "@/vue/composables/useLive";
 import { useFlowEditor } from "./composables/useFlowEditor";
+import FlowContextMenu from "./components/FlowContextMenu.vue";
+import FlowCursors from "./components/FlowCursors.vue";
 import FlowFloatingToolbar from "./FlowFloatingToolbar.vue";
+import FlowMinimapToggle from "./components/FlowMinimapToggle.vue";
 
 const props = defineProps({
 	flowData: { type: String, default: null },
@@ -29,7 +32,7 @@ const containerRef = ref(null);
 const live = useLive();
 let initialized = false;
 
-const { init, toolbarState } = useFlowEditor({
+const { init, toolbarState, editor, area } = useFlowEditor({
 	pushEvent: live.pushEvent,
 	handleEvent: live.handleEvent,
 });
@@ -59,7 +62,6 @@ onMounted(() => {
 	if (props.flowData) initCanvas();
 });
 
-// Parse JSON toolbar data props
 function safeParse(json) {
 	try { return JSON.parse(json); } catch { return []; }
 }
@@ -75,6 +77,7 @@ function safeParse(json) {
       :id="canvasId"
       class="w-full h-full"
     />
+
     <FlowFloatingToolbar
       v-if="!readonly"
       :toolbar-state="toolbarState"
@@ -88,6 +91,26 @@ function safeParse(json) {
       :referencing-flows="safeParse(referencingFlows)"
       :node-select-loading="nodeSelectLoading"
       :flow-search-has-more="flowSearchHasMore"
+    />
+
+    <FlowContextMenu
+      :container-el="containerRef"
+      :can-edit="!readonly"
+      :selected-node-id="toolbarState.nodeId"
+      :selected-node-type="toolbarState.nodeType"
+    />
+
+    <FlowCursors
+      v-if="!readonly && area"
+      :area-transform="area?.area?.transform || { x: 0, y: 0, k: 1 }"
+      :current-user-id="userId"
+      :container-el="containerRef"
+    />
+
+    <FlowMinimapToggle
+      v-if="area && editor"
+      :area="area"
+      :editor="editor"
     />
   </div>
 </template>

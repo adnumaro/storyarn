@@ -8,7 +8,6 @@ import { NodeEditor } from "rete";
 import { AreaExtensions, AreaPlugin } from "rete-area-plugin";
 import { Presets as ArrangePresets, AutoArrangePlugin } from "rete-auto-arrange-plugin";
 import { ConnectionPlugin, Presets as ConnectionPresets } from "rete-connection-plugin";
-import { ContextMenuPlugin } from "rete-context-menu-plugin";
 import { HistoryPlugin } from "rete-history-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
 import { createApp, reactive } from "vue";
@@ -18,9 +17,8 @@ import FlowConnection from "./components/FlowConnection.vue";
 import FlowNode from "./components/FlowNode.vue";
 import FlowSocket from "./components/FlowSocket.vue";
 
-import { createContextMenuItems } from "@/js/flow_canvas/context_menu_items.js";
-import { createFlowHistoryPreset } from "@/js/flow_canvas/history_preset.js";
-import { useMagneticConnection } from "@/js/flow_canvas/magnetic-connection/index.js";
+import { historyPreset } from "./services/historyPreset.js";
+import { useMagneticConnection } from "./composables/useMagneticConnection.js";
 
 // Shared reactive state injected into every node/socket/connection Vue app instance.
 // Keys match the provide/inject keys used by FlowNode.vue.
@@ -36,9 +34,6 @@ export function createPlugins(container, hook) {
   const editor = new NodeEditor();
   const area = new AreaPlugin(container);
   const connection = new ConnectionPlugin();
-  const contextMenu = hook.readonly
-    ? null
-    : new ContextMenuPlugin({ items: createContextMenuItems(hook) });
   const history = new HistoryPlugin({ timing: 200 });
   const arrange = new AutoArrangePlugin();
   const minimap = new MinimapPlugin();
@@ -91,21 +86,6 @@ export function createPlugins(container, hook) {
       },
     }),
   );
-
-  // Context menu render preset — uses raw HTML (framework-agnostic)
-  // This is identical to V1 since it creates DOM elements directly.
-  render.addPreset({
-    update(context) {
-      if (context.data.type === "contextmenu") {
-        return { items: context.data.items, onHide: context.data.onHide };
-      }
-    },
-    render(context) {
-      if (context.data.type === "contextmenu") {
-        return renderContextMenu(context.data);
-      }
-    },
-  });
 
   // Minimap render preset
   render.addPreset(VuePresets.minimap.setup({ size: 200 }));
@@ -164,11 +144,10 @@ export function createPlugins(container, hook) {
     },
   });
 
-  if (contextMenu) area.use(contextMenu);
   area.use(arrange);
 
   if (!hook.readonly) {
-    history.addPreset(createFlowHistoryPreset(hook));
+    history.addPreset(historyPreset(hook));
   }
 
   return { editor, area, connection, history, arrange, minimap, render };
@@ -194,55 +173,6 @@ export async function finalizeSetup(area, editor, hasNodes) {
   }
 }
 
-// --- Context menu rendering (framework-agnostic DOM) ---
-
-function renderContextMenu({ items, onHide }) {
-  const container = document.createElement("div");
-  container.className = "flow-context-menu";
-  renderMenuItems(container, items, onHide);
-  return container;
-}
-
-function renderMenuItems(parent, items, onHide) {
-  for (const item of items) {
-    if (item.subitems?.length) {
-      const wrapper = document.createElement("div");
-      wrapper.className = "flow-cm-parent";
-
-      const btn = document.createElement("button");
-      btn.className = "flow-cm-item has-sub";
-      btn.addEventListener("pointerdown", (e) => e.stopPropagation());
-      if (item.icon) {
-        btn.insertAdjacentHTML("beforeend", `<span class="flow-cm-icon">${item.icon}</span>`);
-      }
-      btn.insertAdjacentText("beforeend", item.label);
-      wrapper.appendChild(btn);
-
-      const sub = document.createElement("div");
-      sub.className = "flow-cm-submenu";
-      renderMenuItems(sub, item.subitems, onHide);
-      wrapper.appendChild(sub);
-
-      parent.appendChild(wrapper);
-    } else {
-      const btn = document.createElement("button");
-      btn.className = `flow-cm-item ${item.key === "delete" ? "danger" : ""}`;
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        item.handler();
-        onHide();
-      });
-      btn.addEventListener("pointerdown", (e) => e.stopPropagation());
-      btn.addEventListener("wheel", (e) => e.stopPropagation());
-      if (item.icon) {
-        btn.insertAdjacentHTML("beforeend", `<span class="flow-cm-icon">${item.icon}</span>`);
-      }
-      btn.insertAdjacentText("beforeend", item.label);
-      parent.appendChild(btn);
-    }
-  }
-}
-
 // Inject global rete styles (V2: uses Tailwind v4 CSS variables)
 const reteStyles = document.createElement("style");
 reteStyles.textContent = `
@@ -255,80 +185,6 @@ reteStyles.textContent = `
     background-image:
       radial-gradient(circle at center, color-mix(in oklch, var(--color-foreground, #fafafa) 8%, transparent) 1.5px, transparent 1.5px);
     background-size: 24px 24px;
-  }
-
-  .flow-context-menu {
-    background-color: var(--color-background, #0a0a0a);
-    border: 1px solid var(--color-border, #27272a);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-    padding: 4px 0;
-    min-width: 180px;
-    margin-top: -10px;
-    margin-left: -90px;
-  }
-
-  .flow-cm-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 6px 12px;
-    font-size: 13px;
-    line-height: 1.4;
-    text-align: left;
-    color: var(--color-foreground, #fafafa);
-    background: none;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.1s;
-  }
-
-  .flow-cm-icon {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    opacity: 0.6;
-  }
-
-  .flow-cm-item:hover {
-    background-color: var(--color-accent, #27272a);
-  }
-
-  .flow-cm-item.danger {
-    color: var(--color-destructive, #f87171);
-  }
-
-  .flow-cm-item.danger:hover {
-    background-color: color-mix(in oklch, var(--color-destructive, #f87171) 10%, transparent);
-  }
-
-  .flow-cm-item.has-sub::after {
-    content: '\\25B8';
-    margin-left: auto;
-    padding-left: 12px;
-    opacity: 0.4;
-  }
-
-  .flow-cm-parent {
-    position: relative;
-  }
-
-  .flow-cm-submenu {
-    display: none;
-    position: absolute;
-    left: 100%;
-    top: -4px;
-    background-color: var(--color-background, #0a0a0a);
-    border: 1px solid var(--color-border, #27272a);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-    padding: 4px 0;
-    min-width: 150px;
-  }
-
-  .flow-cm-parent:hover > .flow-cm-submenu {
-    display: block;
   }
 `;
 document.head.appendChild(reteStyles);

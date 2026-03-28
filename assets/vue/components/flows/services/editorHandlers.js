@@ -15,12 +15,12 @@ import {
 	FlowMetaAction,
 	NODE_DATA_COALESCE_MS,
 	NodeDataAction,
-} from "@/js/flow_canvas/history_preset.js";
+} from "./historyPreset.js";
 
 /**
  * @param {Object} hook - The hookProxy from useFlowEditor
  */
-export function createEditorHandlers(hook) {
+export function editorHandlers(hook) {
 	return {
 		init() {
 			hook._throttleTimers = {};

@@ -1,5 +1,5 @@
 /**
- * Custom history preset for the flow canvas.
+ * Custom history preset for the flow canvas (Vue composable version).
  *
  * Tracks drag (node translate), connection add/remove, and node deletion.
  * Node deletion uses server-side soft-delete: undo sends restore_node,
@@ -91,19 +91,19 @@ class RemoveConnectionAction {
  * Undo/redo action for node deletion.
  * Undo sends restore_node to server; redo sends delete_node.
  */
-class DeleteNodeAction {
-  constructor(hook, nodeId) {
-    this.hook = hook;
+export class DeleteNodeAction {
+  constructor(hookProxy, nodeId) {
+    this.hookProxy = hookProxy;
     this.nodeId = nodeId;
   }
 
   async undo() {
-    this.hook.pushEvent("restore_node", { id: this.nodeId });
+    this.hookProxy.pushEvent("restore_node", { id: this.nodeId });
   }
 
   async redo() {
-    this.hook._historyTriggeredDelete = this.nodeId;
-    this.hook.pushEvent("delete_node", { id: this.nodeId });
+    this.hookProxy._historyTriggeredDelete = this.nodeId;
+    this.hookProxy.pushEvent("delete_node", { id: this.nodeId });
   }
 }
 
@@ -111,19 +111,19 @@ class DeleteNodeAction {
  * Undo/redo action for node creation.
  * Undo deletes the node; redo restores it.
  */
-class CreateNodeAction {
-  constructor(hook, nodeId) {
-    this.hook = hook;
+export class CreateNodeAction {
+  constructor(hookProxy, nodeId) {
+    this.hookProxy = hookProxy;
     this.nodeId = nodeId;
   }
 
   async undo() {
-    this.hook._historyTriggeredDelete = this.nodeId;
-    this.hook.pushEvent("delete_node", { id: this.nodeId });
+    this.hookProxy._historyTriggeredDelete = this.nodeId;
+    this.hookProxy.pushEvent("delete_node", { id: this.nodeId });
   }
 
   async redo() {
-    this.hook.pushEvent("restore_node", { id: this.nodeId });
+    this.hookProxy.pushEvent("restore_node", { id: this.nodeId });
   }
 }
 
@@ -131,25 +131,25 @@ class CreateNodeAction {
  * Undo/redo action for flow metadata (name, shortcut) changes.
  * Undo restores the previous value; redo restores the new one.
  */
-const FLOW_META_COALESCE_MS = 2000;
+export const FLOW_META_COALESCE_MS = 2000;
 
-class FlowMetaAction {
-  constructor(hook, field, prevValue, newValue) {
-    this.hook = hook;
+export class FlowMetaAction {
+  constructor(hookProxy, field, prevValue, newValue) {
+    this.hookProxy = hookProxy;
     this.field = field;
     this.prevValue = prevValue;
     this.newValue = newValue;
   }
 
   async undo() {
-    this.hook.pushEvent("restore_flow_meta", {
+    this.hookProxy.pushEvent("restore_flow_meta", {
       field: this.field,
       value: this.prevValue,
     });
   }
 
   async redo() {
-    this.hook.pushEvent("restore_flow_meta", {
+    this.hookProxy.pushEvent("restore_flow_meta", {
       field: this.field,
       value: this.newValue,
     });
@@ -160,25 +160,25 @@ class FlowMetaAction {
  * Undo/redo action for node data (property) changes.
  * Undo restores the previous data snapshot; redo restores the new one.
  */
-const NODE_DATA_COALESCE_MS = 1000;
+export const NODE_DATA_COALESCE_MS = 1000;
 
-class NodeDataAction {
-  constructor(hook, nodeId, prevData, newData) {
-    this.hook = hook;
+export class NodeDataAction {
+  constructor(hookProxy, nodeId, prevData, newData) {
+    this.hookProxy = hookProxy;
     this.nodeId = nodeId;
     this.prevData = prevData;
     this.newData = newData;
   }
 
   async undo() {
-    this.hook.pushEvent("restore_node_data", {
+    this.hookProxy.pushEvent("restore_node_data", {
       id: this.nodeId,
       data: this.prevData,
     });
   }
 
   async redo() {
-    this.hook.pushEvent("restore_node_data", {
+    this.hookProxy.pushEvent("restore_node_data", {
       id: this.nodeId,
       data: this.newData,
     });
@@ -191,7 +191,7 @@ class NodeDataAction {
  * @param {Map<string, {x: number, y: number}>} positionsMap
  * @returns {Array<{id: number, position_x: number, position_y: number}>}
  */
-function buildBatchPositions(positionsMap) {
+export function buildBatchPositions(positionsMap) {
   const result = [];
   for (const [reteNodeId, pos] of positionsMap) {
     const serverId = reteNodeId.replace("node-", "");
@@ -208,8 +208,8 @@ function buildBatchPositions(positionsMap) {
  * Both operations push batch_update_positions to persist.
  */
 class AutoLayoutAction {
-  constructor(hook, prevPositions, newPositions) {
-    this.hook = hook;
+  constructor(hookProxy, prevPositions, newPositions) {
+    this.hookProxy = hookProxy;
     this.prevPositions = prevPositions;
     this.newPositions = newPositions;
   }
@@ -223,19 +223,19 @@ class AutoLayoutAction {
   }
 
   async _applyPositions(positions) {
-    this.hook.enterLoadingFromServer();
+    this.hookProxy.enterLoadingFromServer();
     try {
       for (const [reteNodeId, pos] of positions) {
-        const view = this.hook.area.nodeViews.get(reteNodeId);
+        const view = this.hookProxy.area.nodeViews.get(reteNodeId);
         if (view) {
-          await this.hook.area.translate(reteNodeId, pos);
+          await this.hookProxy.area.translate(reteNodeId, pos);
         }
       }
     } finally {
-      this.hook.exitLoadingFromServer();
+      this.hookProxy.exitLoadingFromServer();
     }
 
-    this.hook.pushEvent("batch_update_positions", {
+    this.hookProxy.pushEvent("batch_update_positions", {
       positions: buildBatchPositions(positions),
     });
   }
@@ -243,10 +243,10 @@ class AutoLayoutAction {
 
 /**
  * Creates a custom history preset for the flow canvas.
- * @param {Object} hook - The FlowCanvas hook instance (for isLoadingFromServer)
+ * @param {Object} hookProxy - The hookProxy from useFlowEditor (exposes pushEvent, area, isLoadingFromServer, etc.)
  * @returns {{ connect: (history: HistoryPlugin) => void }}
  */
-export function createFlowHistoryPreset(hook) {
+export function historyPreset(hookProxy) {
   return {
     connect(history) {
       const area = history.parentScope();
@@ -261,7 +261,7 @@ export function createFlowHistoryPreset(hook) {
 
       // --- Connection tracking (editor pipe) ---
       editor.addPipe((context) => {
-        if (hook.isLoadingFromServer) return context;
+        if (hookProxy.isLoadingFromServer) return context;
 
         if (context.type === "connectioncreated") {
           const connection = editor.getConnection(context.data.id);
@@ -303,7 +303,7 @@ export function createFlowHistoryPreset(hook) {
         }
 
         if (context.type === "nodetranslated") {
-          if (hook.isLoadingFromServer) return context;
+          if (hookProxy.isLoadingFromServer) return context;
 
           const { id, position, previous } = context.data;
 
@@ -330,13 +330,4 @@ export function createFlowHistoryPreset(hook) {
   };
 }
 
-export {
-  AutoLayoutAction,
-  buildBatchPositions,
-  CreateNodeAction,
-  DeleteNodeAction,
-  FlowMetaAction,
-  FLOW_META_COALESCE_MS,
-  NodeDataAction,
-  NODE_DATA_COALESCE_MS,
-};
+export { AutoLayoutAction };
