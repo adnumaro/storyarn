@@ -13,7 +13,7 @@ const props = defineProps({
 	condition: { type: Object, default: null },
 	assignments: { type: Array, default: () => [] },
 	switchMode: { type: Boolean, default: false },
-	projectVariables: { type: [Array, String], default: "[]" },
+	projectVariables: { default: "[]" },
 	canEdit: { type: Boolean, default: false },
 });
 
