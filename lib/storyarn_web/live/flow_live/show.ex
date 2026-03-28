@@ -59,7 +59,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def render(assigns) do
     ~H"""
-    <Layouts.focus_v2
+    <Layouts.focus
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -226,7 +226,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         all-sheets={Enum.map(@all_sheets, &%{id: &1.id, name: &1.name})}
         project-variables={Jason.encode!(@project_variables)}
       />
-    </Layouts.focus_v2>
+    </Layouts.focus>
     """
   end
 

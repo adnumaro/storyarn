@@ -9,7 +9,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus_v2
+    <Layouts.focus
       socket={@socket}
       flash={@flash}
       current_scope={@current_scope}
@@ -31,7 +31,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
         type-counts={@type_counts}
         back-url={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization"}
       />
-    </Layouts.focus_v2>
+    </Layouts.focus>
     """
   end
 

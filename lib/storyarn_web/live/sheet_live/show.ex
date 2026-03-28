@@ -49,7 +49,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   defp render_full(assigns) do
     ~H"""
-    <Layouts.focus_v2
+    <Layouts.focus
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -95,7 +95,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         current_user_id={@current_scope.user.id}
         compact={false}
       />
-    </Layouts.focus_v2>
+    </Layouts.focus>
     """
   end
 

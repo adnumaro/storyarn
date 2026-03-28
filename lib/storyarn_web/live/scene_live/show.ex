@@ -67,7 +67,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def render(assigns) do
     ~H"""
-    <Layouts.focus_v2
+    <Layouts.focus
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -339,7 +339,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         icon="alert-triangle"
         on_confirm={JS.push("confirm_delete_layer")}
       />
-    </Layouts.focus_v2>
+    </Layouts.focus>
     """
   end
 

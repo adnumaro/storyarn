@@ -17,7 +17,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus_v2
+    <Layouts.focus
       flash={@flash}
       current_scope={@current_scope}
       project={@project}
@@ -319,7 +319,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
           on_confirm={JS.push("remove_language", value: %{id: lang.id})}
         />
       </div>
-    </Layouts.focus_v2>
+    </Layouts.focus>
     """
   end
 

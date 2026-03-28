@@ -18,7 +18,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus_v2
+    <Layouts.focus
       socket={@socket}
       flash={@flash}
       current_scope={@current_scope}
@@ -47,7 +47,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
         project-slug={@project.slug}
         loading={is_nil(@stats)}
       />
-    </Layouts.focus_v2>
+    </Layouts.focus>
     """
   end
 

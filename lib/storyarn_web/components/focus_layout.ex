@@ -1,335 +1,27 @@
 defmodule StoryarnWeb.Components.FocusLayout do
   @moduledoc """
-  Focus layout sub-components for the FigJam-inspired full-screen layout.
+  Focus layout — LiveVue + shadcn-vue.
 
-  Components:
-  - `left_toolbar/1` — Floating horizontal pill (top-left): back, tree toggle, project name, tool switcher, trash
-  - `right_toolbar/1` — Floating horizontal pill (top-right): presence dots, settings gear, user avatar
-  - `tree_panel/1` — ~240px pinnable panel below the left toolbar
-  - `tool_switcher_dropdown/1` — Dropdown with all 6 project tools
+  The HEEx acts as orchestrator — each toolbar/panel is a Vue component
+  receiving only the props it needs.
   """
 
-  use Phoenix.Component
-  use StoryarnWeb, :verified_routes
+  use StoryarnWeb, :html
   use Gettext, backend: Storyarn.Gettext
 
-  import StoryarnWeb.Components.CoreComponents
-  import StoryarnWeb.Components.MemberComponents, only: [user_avatar: 1]
-  import StoryarnWeb.Components.TreeComponents, only: [tree_link: 1]
-
-  alias StoryarnWeb.Components.Sidebar.DraftList
-
   # ============================================================================
-  # Tool definitions
+  # Tool path helpers (reused from v1, needed to build URL maps)
   # ============================================================================
 
   @tools [
-    %{key: :dashboard, icon: "layout-dashboard", section: "dashboard"},
-    %{key: :sheets, icon: "file-text", section: "sheets"},
-    %{key: :flows, icon: "git-branch", section: "flows"},
-    %{key: :scenes, icon: "map", section: "scenes"},
-    %{key: :screenplays, icon: "scroll-text", section: "screenplays"},
-    %{key: :assets, icon: "image", section: "assets"},
-    %{key: :localization, icon: "languages", section: "localization"}
+    %{key: :dashboard, section: "dashboard"},
+    %{key: :sheets, section: "sheets"},
+    %{key: :flows, section: "flows"},
+    %{key: :scenes, section: "scenes"},
+    %{key: :screenplays, section: "screenplays"},
+    %{key: :assets, section: "assets"},
+    %{key: :localization, section: "localization"}
   ]
-
-  @tool_icons Map.new(@tools, fn t -> {t.key, t.icon} end)
-
-  defp tool_icon(key), do: Map.get(@tool_icons, key, "layout-grid")
-
-  defp tool_label(:dashboard), do: dgettext("projects", "Dashboard")
-  defp tool_label(:sheets), do: dgettext("sheets", "Sheets")
-  defp tool_label(:flows), do: dgettext("flows", "Flows")
-  defp tool_label(:scenes), do: dgettext("scenes", "Scenes")
-  defp tool_label(:screenplays), do: dgettext("screenplays", "Screenplays")
-  defp tool_label(:assets), do: dgettext("assets", "Assets")
-  defp tool_label(:localization), do: dgettext("localization", "Localization")
-  defp tool_label(_), do: ""
-
-  # ============================================================================
-  # Left Toolbar (horizontal, top-left)
-  # ============================================================================
-
-  @doc """
-  Renders the left floating horizontal toolbar (top-left pill).
-
-  Contains: tree toggle, tool switcher.
-  """
-  attr :active_tool, :atom, required: true
-  attr :has_tree, :boolean, default: true
-  attr :tree_panel_open, :boolean, default: false
-  attr :workspace, :map, required: true
-  attr :project, :map, required: true
-  attr :is_super_admin, :boolean, default: false
-  attr :show_tool_switcher, :boolean, default: true
-
-  def left_toolbar(assigns) do
-    assigns = assign(assigns, :active_icon, tool_icon(assigns.active_tool))
-
-    ~H"""
-    <nav class="flex items-center gap-1 px-1 py-1 surface-panel">
-      <%!-- Tree panel toggle --%>
-      <button
-        :if={@has_tree}
-        type="button"
-        phx-click="tree_panel_toggle"
-        class={[
-          "toolbar-btn btn-square tooltip tooltip-bottom tooltip-bottom-start",
-          @tree_panel_open && "bg-base-300"
-        ]}
-        data-tip={if @tree_panel_open, do: gettext("Hide panel"), else: gettext("Show panel")}
-      >
-        <.icon name="panel-left" class="size-4" />
-      </button>
-
-      <div :if={@has_tree} class="w-px h-5 bg-base-300"></div>
-
-      <%!-- Project name dropdown --%>
-      <div class="dropdown dropdown-bottom">
-        <button tabindex="0" class="toolbar-btn gap-1.5 font-medium max-w-52">
-          <.icon name="folder" class="size-4 opacity-60 shrink-0" />
-          <span class="hidden xl:inline truncate text-sm toolbar-collapsible">{@project.name}</span>
-          <.icon name="chevron-down" class="size-3 opacity-50" />
-        </button>
-        <div
-          tabindex="0"
-          class="dropdown-content bg-base-200 border border-base-300 rounded-lg shadow-sm w-max max-w-72 z-[60] mt-3"
-        >
-          <div class="px-4 py-3">
-            <p class="text-sm font-medium truncate">{@project.name}</p>
-            <.link
-              navigate={~p"/workspaces/#{@workspace.slug}"}
-              class="text-xs text-base-content/50 truncate hover:text-base-content/70"
-            >
-              {@workspace.name}
-            </.link>
-          </div>
-          <div class="border-t border-base-300"></div>
-          <ul class="menu p-1 text-sm">
-            <li>
-              <.link navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings"}>
-                <.icon name="settings" class="size-5" />
-                {gettext("Project settings")}
-              </.link>
-            </li>
-            <li class="border-t border-base-300 mt-1 pt-1">
-              <.link navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/trash"}>
-                <.icon name="trash-2" class="size-5" />
-                {gettext("Trash")}
-              </.link>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      <%!-- Tool switcher: icon + label, opens dropdown to switch tools --%>
-      <div :if={@show_tool_switcher} class="dropdown dropdown-bottom">
-        <button
-          type="button"
-          tabindex="0"
-          class="toolbar-btn gap-1.5"
-        >
-          <.icon name={@active_icon} class="size-4" />
-          <span class="hidden xl:inline text-sm font-medium">{tool_label(@active_tool)}</span>
-          <.icon name="chevron-down" class="size-3 opacity-50" />
-        </button>
-        <.tool_switcher_dropdown
-          active_tool={@active_tool}
-          workspace={@workspace}
-          project={@project}
-          is_super_admin={@is_super_admin}
-        />
-      </div>
-    </nav>
-    """
-  end
-
-  # ============================================================================
-  # Right Toolbar (horizontal, top-right)
-  # ============================================================================
-
-  @doc """
-  Renders the right floating horizontal toolbar (top-right pill).
-
-  Contains: presence dots, settings gear, user avatar.
-  """
-  attr :workspace, :map, required: true
-  attr :project, :map, required: true
-  attr :online_users, :list, default: []
-  attr :current_user_id, :integer, required: true
-  attr :current_scope, :map, default: nil
-
-  def right_toolbar(assigns) do
-    other_users =
-      Enum.reject(assigns.online_users, &(&1.user_id == assigns.current_user_id))
-
-    assigns = assign(assigns, :other_users, Enum.take(other_users, 5))
-
-    ~H"""
-    <nav class="flex items-center gap-1 px-1 py-1 surface-panel">
-      <%!-- Online users --%>
-      <div :if={@other_users != []} class="flex -space-x-1 mx-1.5">
-        <div
-          :for={user <- @other_users}
-          class="tooltip tooltip-bottom"
-          data-tip={user.display_name || user.email}
-        >
-          <.user_avatar
-            user={%{display_name: user.display_name, email: user.email}}
-            size="xs"
-            class="ring-2 ring-base-200"
-          />
-        </div>
-      </div>
-
-      <%!-- User avatar --%>
-      <div class="dropdown dropdown-end">
-        <button tabindex="0" class="toolbar-btn btn-circle">
-          <.user_avatar user={@current_scope.user} size="sm" />
-        </button>
-        <div
-          tabindex="0"
-          class="dropdown-content bg-base-200 border border-base-300 rounded-lg shadow-sm w-max max-w-72 z-[60] mt-3"
-        >
-          <%!-- User info (non-selectable) --%>
-          <div class="px-4 py-3">
-            <p class="text-sm font-medium truncate">
-              {user_display_name(assigns)}
-            </p>
-            <p class="text-xs text-base-content/50 truncate">
-              {user_email(assigns)}
-            </p>
-          </div>
-          <div class="border-t border-base-300"></div>
-          <%!-- Menu items --%>
-          <ul class="menu p-1 text-sm">
-            <li>
-              <.link navigate={~p"/users/settings"}>
-                <.icon name="user" class="size-5" />
-                {gettext("Account settings")}
-              </.link>
-            </li>
-            <li>
-              <.link navigate={~p"/workspaces"}>
-                <.icon name="layout-dashboard" class="size-5" />
-                {gettext("All workspaces")}
-              </.link>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </nav>
-    """
-  end
-
-  # ============================================================================
-  # Entity Title Pill (shared by flow and scene headers)
-  # ============================================================================
-
-  @doc """
-  Renders the entity name + shortcut pill in the top toolbar.
-
-  Both the name and shortcut can be made editable (for flows) or read-only (for scenes).
-  Extra content (badges, popovers) can be placed via the `:extra` slot.
-  Breadcrumbs or other prefix content can go in the `:before` slot.
-  """
-  attr :name, :string, required: true
-  attr :shortcut, :string, default: nil
-  attr :can_edit, :boolean, default: false
-  attr :name_id, :string, default: nil
-  attr :name_placeholder, :string, default: "Untitled"
-  attr :name_data, :string, default: nil
-  attr :shortcut_id, :string, default: nil
-  attr :shortcut_placeholder, :string, default: "add-shortcut"
-
-  slot :before
-  slot :extra
-
-  def entity_title_pill(assigns) do
-    ~H"""
-    <div class="hidden lg:flex items-center gap-2 surface-panel px-3">
-      {render_slot(@before)}
-      <div class="flex items-baseline gap-1.5">
-        <%!-- Name --%>
-        <h1
-          :if={@can_edit && @name_id}
-          id={@name_id}
-          data-testid="entity-title"
-          class="text-sm font-medium outline-none rounded px-1 -mx-1 empty:before:content-[attr(data-placeholder)] empty:before:text-base-content/30"
-          contenteditable="true"
-          
-          phx-update="ignore"
-          data-placeholder={@name_placeholder}
-          data-name={@name_data || @name}
-        >
-          {@name}
-        </h1>
-        <h1 :if={!(@can_edit && @name_id)} data-testid="entity-title" class="text-sm font-medium">
-          {@name}
-        </h1>
-
-        <%!-- Shortcut: static badge --%>
-        <span
-          :if={@shortcut && !(@can_edit && @shortcut_id)}
-          class="hidden xl:inline badge badge-ghost font-mono text-xs badge-xs"
-        >
-          #{@shortcut}
-        </span>
-
-        <%!-- Shortcut: editable badge (flow) --%>
-        <span
-          :if={@can_edit && @shortcut_id}
-          class="hidden xl:inline badge badge-ghost font-mono text-xs badge-xs gap-0 px-1.5"
-        >
-          <span class="select-none">#</span><span
-            id={@shortcut_id}
-            class="outline-none"
-            contenteditable="true"
-            
-            phx-update="ignore"
-            data-placeholder={@shortcut_placeholder}
-            data-shortcut={@shortcut || ""}
-          >{@shortcut}</span>
-        </span>
-      </div>
-      {render_slot(@extra)}
-    </div>
-    """
-  end
-
-  # ============================================================================
-  # Tool Switcher Dropdown
-  # ============================================================================
-
-  attr :active_tool, :atom, required: true
-  attr :workspace, :map, required: true
-  attr :project, :map, required: true
-  attr :is_super_admin, :boolean, default: false
-
-  def tool_switcher_dropdown(assigns) do
-    tools =
-      if assigns.is_super_admin do
-        @tools
-      else
-        Enum.reject(@tools, &(&1.key == :screenplays))
-      end
-
-    assigns = assign(assigns, :tools, tools)
-
-    ~H"""
-    <ul
-      tabindex="0"
-      class="dropdown-content menu bg-base-200 border border-base-300 rounded-lg shadow-sm w-52 z-[60] mt-3 text-sm"
-    >
-      <li :for={tool <- @tools} :if={tool.key != @active_tool}>
-        <.link navigate={tool_path(@workspace, @project, tool.section)}>
-          <.icon name={tool.icon} class="size-5" />
-          {tool_label(tool.key)}
-        </.link>
-      </li>
-    </ul>
-    """
-  end
 
   defp tool_path(ws, proj, "dashboard"), do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}"
   defp tool_path(ws, proj, "sheets"), do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/sheets"
@@ -345,158 +37,247 @@ defmodule StoryarnWeb.Components.FocusLayout do
   defp tool_path(ws, proj, "localization"),
     do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/localization"
 
+  @doc """
+  Builds the URL map that Vue components need for navigation.
+
+  Since Vue can't use `~p` sigils, we pre-build all URLs server-side.
+  """
+  def build_urls(workspace, project) do
+    tool_urls =
+      Map.new(@tools, fn t ->
+        {Atom.to_string(t.key), tool_path(workspace, project, t.section)}
+      end)
+
+    %{
+      workspace: ~p"/workspaces/#{workspace.slug}",
+      projectSettings: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/settings",
+      trash: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/trash",
+      accountSettings: ~p"/users/settings",
+      workspaces: ~p"/workspaces",
+      tools: tool_urls
+    }
+  end
+
   # ============================================================================
-  # Tree Panel
+  # Focus V2 Layout
   # ============================================================================
 
   @doc """
-  Renders the pinnable tree panel below the left toolbar on the left side.
+  Renders the v2 focus layout — full-screen content with Vue floating toolbars
+  and pinnable tree panel.
 
-  Shows tool name header, search slot, tree content slot, and pin/close footer.
+  Same API as `Layouts.focus/1` but using Vue components instead of DaisyUI.
   """
-  attr :active_tool, :atom, required: true
-  attr :on_dashboard, :boolean, default: false
-  attr :tree_panel_open, :boolean, default: false
-  attr :tree_panel_pinned, :boolean, default: true
-  attr :show_pin, :boolean, default: true
-  attr :can_edit, :boolean, default: false
-  attr :workspace, :map, required: true
-  attr :project, :map, required: true
-  attr :my_drafts, :list, default: []
-  attr :renaming_draft, :map, default: nil
+  attr :flash, :map, required: true
 
-  slot :tree_content, required: true
+  attr :current_scope, :map,
+    default: nil,
+    doc: "the current scope"
 
-  def tree_panel(assigns) do
+  attr :project, :map, required: true, doc: "the current project"
+  attr :workspace, :map, required: true, doc: "the workspace the project belongs to"
+
+  attr :active_tool, :atom,
+    default: :sheets,
+    doc: "active tool (:sheets, :flows, :screenplays, :scenes, :assets, :localization)"
+
+  attr :has_tree, :boolean, default: true, doc: "whether this page has a tree panel"
+  attr :tree_panel_open, :boolean, default: false, doc: "whether the tree panel is open"
+  attr :tree_panel_pinned, :boolean, default: false, doc: "whether the tree panel is pinned"
+  attr :show_pin, :boolean, default: true, doc: "whether to show pin/close in tree panel footer"
+  attr :can_edit, :boolean, default: false, doc: "whether the user can edit content"
+  attr :online_users, :list, default: [], doc: "list of online user presence maps"
+
+  attr :restoration_banner, :map,
+    default: nil,
+    doc: "when set, shows a restoration-in-progress banner"
+
+  attr :on_dashboard, :boolean,
+    default: false,
+    doc: "whether the current page is the tool dashboard"
+
+  attr :show_tool_switcher, :boolean,
+    default: true,
+    doc: "whether to show the tool switcher dropdown"
+
+  attr :canvas_mode, :boolean,
+    default: false,
+    doc: "when true, main area has no padding/scroll (canvas views)"
+
+  attr :socket, :any, required: true, doc: "the LiveView socket (needed for LiveVue)"
+
+  attr :tree_props, :map, default: %{}, doc: "props passed to the tree component inside TreePanel"
+
+  slot :tree_content, doc: "tree panel content (tree component)"
+  slot :top_bar_extra, doc: "extra content rendered next to the left toolbar (same row)"
+  slot :top_bar_extra_right, doc: "extra content rendered next to the right toolbar (same row)"
+  slot :content_header, doc: "optional header above main content"
+  slot :inner_block, required: true
+
+  def focus(assigns) do
+    current_user_id =
+      case assigns.current_scope do
+        %{user: %{id: id}} -> id
+        _ -> nil
+      end
+
+    is_super_admin =
+      case assigns.current_scope do
+        %{user: %{is_super_admin: true}} -> true
+        _ -> false
+      end
+
+    current_user =
+      case assigns.current_scope do
+        %{user: user} ->
+          %{
+            id: user.id,
+            email: user.email,
+            displayName: user.display_name,
+            isSuperAdmin: is_super_admin
+          }
+
+        _ ->
+          %{id: nil, email: "", displayName: "", isSuperAdmin: false}
+      end
+
+    urls = build_urls(assigns.workspace, assigns.project)
+
+    # Dashboard URL for tree panel header
+    dashboard_url =
+      tool_path(assigns.workspace, assigns.project, to_string(assigns.active_tool))
+
+    assigns =
+      assigns
+      |> assign(:current_user_id, current_user_id)
+      |> assign(:is_super_admin, is_super_admin)
+      |> assign(:current_user, current_user)
+      |> assign(:urls, urls)
+      |> assign(:dashboard_url, dashboard_url)
+
     ~H"""
-    <div
-      id="tree-panel"
-      
-      data-tool={to_string(@active_tool)}
-      data-pinned={to_string(@tree_panel_pinned)}
-      data-open={to_string(@tree_panel_open)}
-      class={[
-        "fixed left-3 top-[76px] bottom-3 z-[1010] w-64 flex flex-col surface-panel overflow-hidden",
-        "max-md:transition-transform max-md:duration-200",
-        if(@tree_panel_open,
-          do: "max-md:translate-x-0",
-          else: "max-md:-translate-x-[calc(100%+0.75rem)] md:opacity-0 md:pointer-events-none"
-        )
-      ]}
-    >
-      <%!-- Navigation header --%>
-      <div class="px-2 pt-2 pb-2 border-b border-base-300 space-y-1">
-        <.tree_link
-          label={tool_label(@active_tool) <> " " <> gettext("dashboard")}
-          href={tool_path(@workspace, @project, to_string(@active_tool))}
-          icon="layout-dashboard"
-          active={@on_dashboard}
-        />
-      </div>
-
-      <%!-- Tree content (scrollable) --%>
-      <div class="flex-1 overflow-y-auto p-2">
-        {render_slot(@tree_content)}
-        <DraftList.drafts_section
-          :if={@my_drafts != []}
-          my_drafts={@my_drafts}
-          workspace={@workspace}
-          project={@project}
-          renaming_draft={@renaming_draft}
-        />
-      </div>
-
-      <%!-- Footer: Pin / Close (hidden on mobile) --%>
-      <div class="hidden md:flex items-center justify-end gap-1 px-2 py-1.5 border-t border-base-300">
-        <button
-          :if={@show_pin}
-          type="button"
-          phx-click="tree_panel_pin"
-          class={[
-            "btn btn-ghost btn-xs gap-1",
-            @tree_panel_pinned && "text-primary"
-          ]}
-          title={if @tree_panel_pinned, do: gettext("Unpin panel"), else: gettext("Pin panel")}
-        >
-          <.icon name="pin" class="size-3" />
-          <span class="text-xs">
-            {if @tree_panel_pinned, do: gettext("Pinned"), else: gettext("Pin")}
+    <div id="layout-wrapper" class="h-screen w-screen overflow-hidden relative bg-background">
+      <%!-- Restoration Banner --%>
+      <div
+        :if={@restoration_banner}
+        class="fixed top-0 left-0 right-0 z-42 flex justify-center pointer-events-none"
+      >
+        <div class="bg-destructive text-destructive-foreground px-4 py-2 rounded-b-lg shadow-lg flex items-center gap-2 text-sm pointer-events-auto">
+          <.icon name="loader" class="size-4 animate-spin" />
+          <span>
+            {dgettext(
+              "projects",
+              "Project is being restored by %{user}. Editing is temporarily disabled.",
+              user: @restoration_banner.user_email
+            )}
           </span>
-        </button>
-        <button
-          :if={@show_pin}
-          type="button"
-          phx-click="tree_panel_toggle"
-          class="btn btn-ghost btn-xs btn-square"
-          title={gettext("Close panel")}
+        </div>
+      </div>
+
+      <%!-- Left floating toolbar row (top-left) --%>
+      <div class="fixed top-3 left-3 z-41 flex items-stretch gap-2">
+        <.vue
+          v-component="layout/LeftToolbar"
+          v-socket={@socket}
+          id="left-toolbar"
+          active-tool={to_string(@active_tool)}
+          has-tree={@has_tree}
+          tree-panel-open={@tree_panel_open}
+          project-name={@project.name}
+          workspace-name={@workspace.name}
+          show-tool-switcher={@show_tool_switcher}
+          is-super-admin={@is_super_admin}
+          urls={@urls}
+        />
+        {render_slot(@top_bar_extra)}
+      </div>
+
+      <%!-- Right floating toolbar row (top-right) --%>
+      <div :if={@current_user_id} class="fixed top-3 right-3 z-41 flex items-stretch gap-2">
+        {render_slot(@top_bar_extra_right)}
+        <.vue
+          v-component="layout/RightToolbar"
+          v-socket={@socket}
+          id="right-toolbar"
+          current-user={@current_user}
+          online-users={@online_users}
+          urls={@urls}
+        />
+      </div>
+
+      <%!-- Mobile overlay (closes tree panel on tap) --%>
+      <div
+        :if={@has_tree && @tree_content != [] && @tree_panel_open}
+        class="fixed inset-0 bg-black/30 z-30 md:hidden cursor-pointer"
+        phx-click="tree_panel_toggle"
+      />
+
+      <%!-- Tree panel --%>
+      <.vue
+        :if={@has_tree}
+        v-component="layout/TreePanel"
+        v-socket={@socket}
+        id="tree-panel"
+        tree-panel-open={@tree_panel_open}
+        tree-panel-pinned={@tree_panel_pinned}
+        show-pin={@show_pin}
+        active-tool={to_string(@active_tool)}
+        dashboard-url={@dashboard_url}
+        on-dashboard={@on_dashboard}
+        tree-props={@tree_props}
+      />
+
+      <%!-- Main content area --%>
+      <main
+        id="main-content"
+        class={[
+          "h-full",
+          if(@canvas_mode,
+            do: "overflow-hidden",
+            else: [
+              "overflow-y-auto pt-[76px] pb-4 px-4 transition-[padding-left] duration-200",
+              @has_tree && @tree_panel_open && "md:pl-[280px]"
+            ]
+          )
+        ]}
+      >
+        <div :if={@content_header != []} class="mb-4">
+          {render_slot(@content_header)}
+        </div>
+        {render_slot(@inner_block)}
+      </main>
+
+      <div id="flash-group" aria-live="polite">
+        <.flash kind={:info} flash={@flash} />
+        <.flash kind={:error} flash={@flash} />
+
+        <.flash
+          id="client-error"
+          kind={:error}
+          title={gettext("We can't find the internet")}
+          phx-disconnected={
+            show(".phx-client-error #client-error") |> Phoenix.LiveView.JS.remove_attribute("hidden")
+          }
+          phx-connected={hide("#client-error") |> Phoenix.LiveView.JS.set_attribute({"hidden", ""})}
+          hidden
         >
-          <.icon name="x" class="size-3" />
-        </button>
-      </div>
-    </div>
-    """
-  end
+          {gettext("Attempting to reconnect")}
+          <.icon name="refresh-cw" class="ml-1 size-3 motion-safe:animate-spin" />
+        </.flash>
 
-  defp user_display_name(%{current_scope: %{user: %{display_name: name}}})
-       when is_binary(name) and name != "",
-       do: name
-
-  defp user_display_name(%{current_scope: %{user: %{email: email}}}) when is_binary(email) do
-    email |> String.split("@") |> List.first()
-  end
-
-  defp user_display_name(_), do: ""
-
-  defp user_email(%{current_scope: %{user: %{email: email}}}) when is_binary(email), do: email
-  defp user_email(_), do: ""
-
-  defp tools, do: @tools
-
-  # ============================================================================
-  # Dashboard Navigation (sidebar for project dashboard)
-  # ============================================================================
-
-  attr :workspace, :map, required: true
-  attr :project, :map, required: true
-  attr :is_super_admin, :boolean, default: false
-
-  def dashboard_nav(assigns) do
-    hidden =
-      [:dashboard, :localization] ++ if(assigns.is_super_admin, do: [], else: [:screenplays])
-
-    assigns = assign(assigns, :nav_tools, Enum.reject(tools(), &(&1.key in hidden)))
-
-    ~H"""
-    <div class="space-y-4">
-      <div>
-        <div class="text-xs text-base-content/50 uppercase tracking-wider px-2 mb-1">
-          {gettext("Tools")}
-        </div>
-        <div class="space-y-0.5">
-          <.tree_link
-            :for={tool <- @nav_tools}
-            label={tool_label(tool.key)}
-            href={tool_path(@workspace, @project, to_string(tool.section))}
-            icon={tool.icon}
-          />
-        </div>
-      </div>
-      <div>
-        <div class="text-xs text-base-content/50 uppercase tracking-wider px-2 mb-1">
-          {gettext("Production")}
-        </div>
-        <div class="space-y-0.5">
-          <.tree_link
-            label={tool_label(:localization)}
-            href={tool_path(@workspace, @project, "localization")}
-            icon="languages"
-          />
-          <.tree_link
-            label={gettext("Export & Import")}
-            href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings/export-import"}
-            icon="arrow-left-right"
-          />
-        </div>
+        <.flash
+          id="server-error"
+          kind={:error}
+          title={gettext("Something went wrong!")}
+          phx-disconnected={
+            show(".phx-server-error #server-error") |> Phoenix.LiveView.JS.remove_attribute("hidden")
+          }
+          phx-connected={hide("#server-error") |> Phoenix.LiveView.JS.set_attribute({"hidden", ""})}
+          hidden
+        >
+          {gettext("Attempting to reconnect")}
+          <.icon name="refresh-cw" class="ml-1 size-3 motion-safe:animate-spin" />
+        </.flash>
       </div>
     </div>
     """

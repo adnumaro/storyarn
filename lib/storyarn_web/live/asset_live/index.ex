@@ -12,7 +12,7 @@ defmodule StoryarnWeb.AssetLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus_v2
+    <Layouts.focus
       socket={@socket}
       flash={@flash}
       current_scope={@current_scope}
@@ -59,7 +59,7 @@ defmodule StoryarnWeb.AssetLive.Index do
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
       />
-    </Layouts.focus_v2>
+    </Layouts.focus>
     """
   end
 
