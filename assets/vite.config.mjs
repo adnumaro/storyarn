@@ -21,7 +21,7 @@ export default defineConfig({
     manifest: false,
     ssrManifest: false,
     rollupOptions: {
-      input: ["js/app_v2.js", "css/app_v2.css"],
+      input: ["js/app.js", "css/app.css"],
     },
     outDir: "../priv/static",
     emptyOutDir: false,
