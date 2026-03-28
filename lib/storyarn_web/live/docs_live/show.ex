@@ -114,16 +114,21 @@ defmodule StoryarnWeb.DocsLive.Show do
       next={@next}
       sidebar_open={@sidebar_open}
     >
-      <div :if={@guide} class="docs-content">
-        {Phoenix.HTML.raw(HtmlSanitizer.sanitize_html(@guide.body))}
-      </div>
-
-      <div :if={!@guide} class="text-center py-20">
-        <.icon name="book-open" class="size-12 text-base-content/30 mx-auto mb-4" />
-        <p class="text-base-content/50">{gettext("No documentation available yet.")}</p>
-      </div>
+      <.vue
+        v-component="docs/DocsShow"
+        v-socket={@socket}
+        id="docs-show-vue"
+        guide-body={if @guide, do: HtmlSanitizer.sanitize_html(@guide.body)}
+        translations={docs_translations()}
+      />
     </Layouts.docs>
     """
+  end
+
+  defp docs_translations do
+    %{
+      noDocsAvailable: gettext("No documentation available yet.")
+    }
   end
 
   # Use current Gettext locale if docs exist for it, otherwise fall back to English.

@@ -34,19 +34,19 @@ defmodule StoryarnWeb.LocalizationLive.Index do
             navigate={
               ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/report"
             }
-            class="btn btn-ghost btn-sm gap-1.5"
+            class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors gap-1.5"
           >
             <.icon name="bar-chart-3" class="size-4" />
             <span class="hidden xl:inline">{dgettext("localization", "Report")}</span>
           </.link>
-          <div :if={@selected_locale} class="dropdown dropdown-end">
-            <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-1.5">
+          <div :if={@selected_locale} class="relative">
+            <div tabindex="0" role="button" class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors gap-1.5">
               <.icon name="download" class="size-4" />
               <span class="hidden xl:inline">{dgettext("localization", "Export")}</span>
             </div>
             <ul
               tabindex="0"
-              class="dropdown-content menu bg-base-100 rounded-box z-50 w-40 p-2 shadow-lg border border-base-300 mt-2"
+              class="absolute top-full mt-1 menu bg-background rounded-box z-50 w-40 p-2 shadow-lg border border-border mt-2"
             >
               <li>
                 <a href={
@@ -68,7 +68,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
             :if={@has_provider}
             phx-click="translate_batch"
             phx-disable-with={dgettext("localization", "Translating...")}
-            class="btn btn-primary btn-sm gap-1.5"
+            class="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors gap-1.5"
           >
             <.icon name="languages" class="size-4" />
             <span class="hidden xl:inline">{dgettext("localization", "Translate All Pending")}</span>
@@ -101,17 +101,17 @@ defmodule StoryarnWeb.LocalizationLive.Index do
           <div
             :if={@progress}
             id="localization-progress-summary"
-            class="rounded-[1.5rem] border border-base-300 bg-base-200/60 p-4"
+            class="rounded-[1.5rem] border border-border bg-muted/60 p-4"
           >
             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div class="space-y-1">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-base-content/50">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   {dgettext("localization", "Progress")}
                 </p>
                 <h2 class="text-lg font-semibold">
                   {dgettext("localization", "Final translations")}
                 </h2>
-                <p class="text-sm text-base-content/60">
+                <p class="text-sm text-muted-foreground">
                   {dgettext(
                     "localization",
                     "Measure the strings that are ready to ship in the active language."
@@ -124,7 +124,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
                   value={@progress.final}
                   max={max(@progress.total, 1)}
                 />
-                <div class="flex items-center justify-between text-sm text-base-content/70">
+                <div class="flex items-center justify-between text-sm text-muted-foreground">
                   <span>
                     {dgettext("localization", "%{done} / %{total} final",
                       done: @progress.final,
@@ -180,7 +180,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
             <%!-- Search --%>
             <form id="localization-search-form" phx-change="search" class="flex-1">
-              <label class="input input-sm input-bordered flex items-center gap-2">
+              <label class="h-8 rounded-md border border-input bg-background px-2 text-sm input-bordered flex items-center gap-2">
                 <.icon name="search" class="size-4 opacity-50" />
                 <input
                   id="localization-search-input"
@@ -202,7 +202,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
           <%!-- Translation table --%>
           <div :if={@texts != []} class="overflow-x-auto">
-            <table class="table table-sm">
+            <table class="w-full text-sm">
               <thead>
                 <tr>
                   <th class="w-12">{dgettext("localization", "Type")}</th>
@@ -217,7 +217,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
                 <tr :for={text <- @texts} class="hover">
                   <td>
                     <span
-                      class="badge badge-ghost badge-sm"
+                      class="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground badge-sm"
                       title={source_type_label(text.source_type)}
                     >
                       <.icon name={source_type_icon(text.source_type)} class="size-3" />
@@ -238,7 +238,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
                     </div>
                     <span
                       :if={text.machine_translated}
-                      class="badge badge-xs badge-outline opacity-60"
+                      class="text-[10px] px-1 rounded bg-muted text-muted-foreground badge-outline opacity-60"
                     >
                       {dgettext("localization", "MT")}
                     </span>
@@ -252,7 +252,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
                       navigate={
                         ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/#{text.id}"
                       }
-                      class="btn btn-ghost btn-xs"
+                      class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors btn-xs"
                     >
                       <.icon name="pencil" class="size-3.5" />
                     </.link>
@@ -260,7 +260,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
                       :if={@has_provider && !text.translated_text}
                       phx-click="translate_single"
                       phx-value-id={text.id}
-                      class="btn btn-ghost btn-xs"
+                      class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors btn-xs"
                       title={dgettext("localization", "Translate with DeepL")}
                     >
                       <.icon name="sparkles" class="size-3.5" />
@@ -275,21 +275,21 @@ defmodule StoryarnWeb.LocalizationLive.Index do
           <div :if={@total_count > @page_size} class="flex justify-center mt-4">
             <div class="join">
               <button
-                class="join-item btn btn-sm"
+                class="join-item inline-flex items-center justify-center h-8 px-3 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={@page == 1}
                 phx-click="change_page"
                 phx-value-page={@page - 1}
               >
                 «
               </button>
-              <button class="join-item btn btn-sm btn-disabled">
+              <button class="join-item inline-flex items-center justify-center h-8 px-3 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 btn-disabled">
                 {dgettext("localization", "Page %{page} of %{total}",
                   page: @page,
                   total: ceil(@total_count / @page_size)
                 )}
               </button>
               <button
-                class="join-item btn btn-sm"
+                class="join-item inline-flex items-center justify-center h-8 px-3 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={@page * @page_size >= @total_count}
                 phx-click="change_page"
                 phx-value-page={@page + 1}
@@ -327,7 +327,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
   defp status_badge(assigns) do
     ~H"""
-    <span class={["badge badge-sm", status_class(@status)]}>
+    <span class={["text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground", status_class(@status)]}>
       {status_label(@status)}
     </span>
     """

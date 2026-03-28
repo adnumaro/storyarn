@@ -4,7 +4,7 @@
       <h1 class="text-3xl sm:text-4xl font-bold tracking-tight">
         {gettext("Contact")}
       </h1>
-      <p class="mt-4 text-base-content/60 text-lg leading-relaxed">
+      <p class="mt-4 text-muted-foreground text-lg leading-relaxed">
         {gettext(
           "Have questions about Storyarn, want to report a bug, or just want to say hi? Reach out to us."
         )}
@@ -12,12 +12,12 @@
     </div>
 
     <div class="mt-12 grid sm:grid-cols-2 gap-8 max-w-2xl">
-      <div class="rounded-xl border border-base-300/50 bg-base-200/30 p-6">
+      <div class="rounded-xl border border-border/50 bg-muted/30 p-6">
         <div class="flex items-center justify-center size-11 rounded-xl bg-primary/10 text-primary mb-4">
           <.icon name="mail" class="size-5" />
         </div>
         <h2 class="font-semibold text-lg">{gettext("Email")}</h2>
-        <p class="mt-2 text-base-content/60 leading-relaxed">
+        <p class="mt-2 text-muted-foreground leading-relaxed">
           {gettext("For general inquiries, feedback, or support.")}
         </p>
         <a
@@ -28,12 +28,12 @@
         </a>
       </div>
 
-      <div class="rounded-xl border border-base-300/50 bg-base-200/30 p-6">
+      <div class="rounded-xl border border-border/50 bg-muted/30 p-6">
         <div class="flex items-center justify-center size-11 rounded-xl bg-accent/10 text-accent mb-4">
           <.icon name="message-circle" class="size-5" />
         </div>
         <h2 class="font-semibold text-lg">{gettext("Discord")}</h2>
-        <p class="mt-2 text-base-content/60 leading-relaxed">
+        <p class="mt-2 text-muted-foreground leading-relaxed">
           {gettext("Join the community to chat with other narrative designers.")}
         </p>
         <a
@@ -49,14 +49,14 @@
     </div>
   </section>
 
-  <footer class="border-t border-base-300/50">
-    <div class="max-w-5xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-base-content/40">
+  <footer class="border-t border-border/50">
+    <div class="max-w-5xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
       <span>{gettext("Storyarn — Open narrative design platform")}</span>
       <div class="flex items-center gap-6">
-        <.link navigate={~p"/docs"} class="hover:text-base-content transition-colors">
+        <.link navigate={~p"/docs"} class="hover:text-foreground transition-colors">
           {gettext("Docs")}
         </.link>
-        <.link navigate={~p"/contact"} class="hover:text-base-content transition-colors">
+        <.link navigate={~p"/contact"} class="hover:text-foreground transition-colors">
           {gettext("Contact")}
         </.link>
       </div>

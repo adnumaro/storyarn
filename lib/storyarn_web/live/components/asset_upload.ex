@@ -54,14 +54,14 @@ defmodule StoryarnWeb.Components.AssetUpload do
           <.live_file_input upload={@uploads.asset} class="hidden" />
 
           <div :if={@visible_entries == []}>
-            <.icon name="cloud-upload" class="size-12 mx-auto text-base-content/30 mb-2" />
-            <p class="text-base-content/70 mb-2">
+            <.icon name="cloud-upload" class="size-12 mx-auto text-foreground/30 mb-2" />
+            <p class="text-muted-foreground mb-2">
               {dgettext("assets", "Drag and drop files here, or")}
             </p>
-            <label for={@uploads.asset.ref} class="btn btn-primary btn-sm cursor-pointer">
+            <label for={@uploads.asset.ref} class="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer">
               {dgettext("assets", "Browse Files")}
             </label>
-            <p class="text-xs text-base-content/50 mt-2">
+            <p class="text-xs text-muted-foreground mt-2">
               {dgettext("assets", "Max file size: %{size}MB", size: div(@max_file_size, 1024 * 1024))}
             </p>
           </div>
@@ -79,7 +79,7 @@ defmodule StoryarnWeb.Components.AssetUpload do
         <div :if={@visible_entries != []} class="mt-4 flex justify-end gap-2">
           <button
             type="button"
-            class="btn btn-ghost btn-sm"
+            class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors"
             phx-click="cancel_all"
             phx-target={@myself}
           >
@@ -87,7 +87,7 @@ defmodule StoryarnWeb.Components.AssetUpload do
           </button>
           <button
             type="submit"
-            class="btn btn-primary btn-sm"
+            class="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
             disabled={not upload_valid?(@visible_entries)}
           >
             {dgettext("assets", "Upload")}
@@ -100,7 +100,7 @@ defmodule StoryarnWeb.Components.AssetUpload do
         <div class="grid grid-cols-4 gap-2">
           <div
             :for={asset <- @uploaded_assets}
-            class="relative aspect-square bg-base-200 rounded overflow-hidden"
+            class="relative aspect-square bg-muted rounded overflow-hidden"
           >
             <img
               :if={Assets.image?(asset)}
@@ -109,7 +109,7 @@ defmodule StoryarnWeb.Components.AssetUpload do
               class="w-full h-full object-cover"
             />
             <div :if={not Assets.image?(asset)} class="flex items-center justify-center h-full">
-              <.icon name="file" class="size-8 text-base-content/50" />
+              <.icon name="file" class="size-8 text-muted-foreground" />
             </div>
           </div>
         </div>
@@ -124,16 +124,16 @@ defmodule StoryarnWeb.Components.AssetUpload do
 
   defp upload_entry(assigns) do
     ~H"""
-    <div class="flex items-center gap-3 p-2 bg-base-200 rounded">
-      <div class="relative w-16 h-16 flex-shrink-0 bg-base-300 rounded overflow-hidden">
+    <div class="flex items-center gap-3 p-2 bg-muted rounded">
+      <div class="relative w-16 h-16 flex-shrink-0 bg-border rounded overflow-hidden">
         <.live_img_preview :if={image?(@entry)} entry={@entry} class="w-full h-full object-cover" />
         <div :if={not image?(@entry)} class="flex items-center justify-center h-full">
-          <.icon name="file" class="size-6 text-base-content/50" />
+          <.icon name="file" class="size-6 text-muted-foreground" />
         </div>
       </div>
       <div class="flex-1 min-w-0">
         <p class="text-sm font-medium truncate">{@entry.client_name}</p>
-        <p class="text-xs text-base-content/50">
+        <p class="text-xs text-muted-foreground">
           {format_size(@entry.client_size)}
         </p>
         <div class="mt-1">
@@ -141,14 +141,14 @@ defmodule StoryarnWeb.Components.AssetUpload do
         </div>
         <p
           :for={err <- Phoenix.Component.upload_errors(@uploads.asset, @entry)}
-          class="text-xs text-error mt-1"
+          class="text-xs text-destructive mt-1"
         >
           {error_to_string(err)}
         </p>
       </div>
       <button
         type="button"
-        class="btn btn-ghost btn-xs"
+        class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors btn-xs"
         phx-click="cancel_upload"
         phx-value-ref={@entry.ref}
         phx-target={@myself}

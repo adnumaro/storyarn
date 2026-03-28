@@ -82,14 +82,14 @@ defmodule StoryarnWeb.Components.SheetComponents do
     <div class="hidden lg:flex items-center gap-1 surface-panel px-3 py-1.5">
       <span
         :for={{ancestor, idx} <- Enum.with_index(@ancestors)}
-        class="flex items-center gap-1 text-xs text-base-content/60"
+        class="flex items-center gap-1 text-xs text-muted-foreground"
       >
         <span :if={idx > 0} class="opacity-50">/</span>
         <.link
           navigate={
             ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{ancestor.id}"
           }
-          class="hover:text-base-content flex items-center gap-1 truncate max-w-[120px]"
+          class="hover:text-foreground flex items-center gap-1 truncate max-w-[120px]"
         >
           <.sheet_avatar avatars={ancestor.avatars} name={ancestor.name} size="sm" />
           {ancestor.name}

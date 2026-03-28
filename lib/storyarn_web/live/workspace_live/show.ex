@@ -5,8 +5,6 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   use StoryarnWeb, :live_view
   use Gettext, backend: Storyarn.Gettext
 
-  import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
-
   alias Storyarn.Billing
   alias Storyarn.Projects
   alias Storyarn.Workspaces
@@ -27,7 +25,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
          |> assign(:current_workspace, workspace)
          |> assign(:membership, membership)
          |> assign(:all_projects, projects)
-         |> assign(:projects, projects)
+         |> assign(:projects, format_projects(projects, workspace))
          |> assign(:search_query, "")
          |> assign(:can_create_project, can_create_project)}
 
@@ -61,102 +59,18 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
       workspaces={@workspaces}
       current_workspace={@current_workspace}
     >
-      <%!-- Workspace Banner --%>
-      <header class="relative">
-        <div class={[
-          "h-48 overflow-hidden rounded-xl",
-          !@workspace.banner_url && "bg-gradient-to-r from-primary/20 to-secondary/20"
-        ]}>
-          <img
-            :if={@workspace.banner_url}
-            src={@workspace.banner_url}
-            alt=""
-            class="w-full h-full object-cover"
-          />
-        </div>
-
-        <div class="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-base-100/90 to-transparent">
-          <div class="flex items-end justify-between">
-            <div>
-              <h1 class="text-3xl font-bold">{@workspace.name}</h1>
-              <p :if={@workspace.description} class="text-base-content/70 mt-1 max-w-2xl">
-                {@workspace.description}
-              </p>
-            </div>
-            <.link
-              :if={@membership.role in ["owner", "admin"]}
-              navigate={~p"/users/settings/workspaces/#{@workspace.slug}/general"}
-              class="btn btn-ghost btn-sm"
-            >
-              <.icon name="settings" class="size-4" />
-            </.link>
-          </div>
-        </div>
-      </header>
-
-      <%!-- Toolbar --%>
-      <div class="pt-4 pb-2 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <input
-            type="text"
-            placeholder={dgettext("workspaces", "Search projects...")}
-            class="input input-sm input-bordered w-64"
-            phx-change="search"
-            phx-debounce="300"
-            name="search"
-            value={@search_query}
-          />
-        </div>
-
-        <.link
-          :if={@membership.role in ["owner", "admin", "member"] and @can_create_project}
-          patch={~p"/workspaces/#{@workspace.slug}/projects/new"}
-          class="btn btn-primary btn-sm"
-        >
-          <.icon name="plus" class="size-4" />
-          {dgettext("workspaces", "New Project")}
-        </.link>
-        <div
-          :if={@membership.role in ["owner", "admin", "member"] and not @can_create_project}
-          class="tooltip tooltip-left"
-          data-tip={dgettext("workspaces", "Project limit reached for your plan")}
-        >
-          <button class="btn btn-primary btn-sm btn-disabled" disabled>
-            <.icon name="plus" class="size-4" />
-            {dgettext("workspaces", "New Project")}
-          </button>
-        </div>
-      </div>
-
-      <%!-- Projects Grid --%>
-      <div class="pt-2">
-        <div
-          :if={@projects != []}
-          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-        >
-          <.project_card
-            :for={project_data <- @projects}
-            project={project_data.project}
-            workspace={@workspace}
-          />
-        </div>
-
-        <.empty_state
-          :if={@projects == [] and @search_query == ""}
-          icon="folder-open"
-          title={dgettext("workspaces", "No projects yet")}
-        >
-          {dgettext("workspaces", "Create your first project to get started")}
-        </.empty_state>
-
-        <.empty_state
-          :if={@projects == [] and @search_query != ""}
-          icon="search"
-          title={dgettext("workspaces", "No projects found")}
-        >
-          {dgettext("workspaces", "Try a different search term")}
-        </.empty_state>
-      </div>
+      <.vue
+        v-component="workspace/WorkspaceShow"
+        v-socket={@socket}
+        id="workspace-show"
+        workspace={%{name: @workspace.name, description: @workspace.description, banner_url: @workspace.banner_url}}
+        membership={%{role: @membership.role}}
+        projects={@projects}
+        search-query={@search_query}
+        can-create-project={@can_create_project}
+        new-project-url={~p"/workspaces/#{@workspace.slug}/projects/new"}
+        settings-url={~p"/users/settings/workspaces/#{@workspace.slug}/general"}
+      />
 
       <.modal
         :if={@live_action == :new_project}
@@ -178,54 +92,15 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     """
   end
 
-  attr :project, :map, required: true
-  attr :workspace, :map, required: true
-
-  defp project_card(assigns) do
-    ~H"""
-    <.link
-      navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets"}
-      class="card bg-base-200 hover:bg-base-300 transition-colors cursor-pointer"
-    >
-      <div class="card-body p-4">
-        <div class="text-xs text-base-content/50">
-          {Calendar.strftime(@project.inserted_at, "%b %d, %Y")}
-        </div>
-
-        <h3 class="card-title text-base">{@project.name}</h3>
-
-        <p :if={@project.description} class="text-sm text-base-content/70 line-clamp-2">
-          {@project.description}
-        </p>
-
-        <div class="flex items-center justify-between mt-2">
-          <div class="avatar-group -space-x-2">
-            <!-- TODO: Show project members avatars -->
-          </div>
-          <span class="text-xs text-base-content/50">
-            {time_ago(@project.updated_at)}
-          </span>
-        </div>
-      </div>
-    </.link>
-    """
-  end
-
-  defp time_ago(datetime) do
-    diff = DateTime.diff(DateTime.utc_now(), datetime, :second)
-
-    cond do
-      diff < 60 -> dgettext("workspaces", "just now")
-      diff < 3600 -> dgettext("workspaces", "%{count} min ago", count: div(diff, 60))
-      diff < 86_400 -> dgettext("workspaces", "%{count} hours ago", count: div(diff, 3600))
-      true -> dgettext("workspaces", "%{count} days ago", count: div(diff, 86_400))
-    end
-  end
-
   @impl true
   def handle_event("search", %{"search" => query}, socket) do
     filtered = filter_projects(socket.assigns.all_projects, query)
-    {:noreply, assign(socket, projects: filtered, search_query: query)}
+
+    {:noreply,
+     assign(socket,
+       projects: format_projects(filtered, socket.assigns.workspace),
+       search_query: query
+     )}
   end
 
   defp filter_projects(projects, query) when query in [nil, ""], do: projects
@@ -236,6 +111,21 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     Enum.filter(projects, fn %{project: project} ->
       String.contains?(String.downcase(project.name), downcased) or
         (project.description && String.contains?(String.downcase(project.description), downcased))
+    end)
+  end
+
+  defp format_projects(projects, workspace) do
+    Enum.map(projects, fn %{project: project} ->
+      %{
+        project: %{
+          id: project.id,
+          name: project.name,
+          description: project.description,
+          inserted_at_formatted: Calendar.strftime(project.inserted_at, "%b %d, %Y"),
+          updated_at: project.updated_at && DateTime.to_iso8601(project.updated_at)
+        },
+        href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets"
+      }
     end)
   end
 

@@ -133,7 +133,7 @@ defmodule StoryarnWeb.Components.Sidebar.SceneTree do
       can_drag={false}
       link_type={:patch}
     />
-    <div :if={@total_count > length(@items)} class="text-xs text-base-content/40 pl-8 py-0.5">
+    <div :if={@total_count > length(@items)} class="text-xs text-muted-foreground pl-8 py-0.5">
       {@more_text}
     </div>
     """

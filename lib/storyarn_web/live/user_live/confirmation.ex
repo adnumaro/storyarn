@@ -9,9 +9,13 @@ defmodule StoryarnWeb.UserLive.Confirmation do
   def render(assigns) do
     ~H"""
     <Layouts.auth flash={@flash} current_scope={@current_scope}>
-      <div class="mx-auto max-w-sm">
+      <%!-- Confirmation uses phx-trigger-action for native form submission,
+           which requires HEEx forms. The Vue component handles display only. --%>
+      <div class="mx-auto max-w-sm space-y-4">
         <div class="text-center">
-          <.header>{dgettext("identity", "Welcome %{email}", email: @user.email)}</.header>
+          <h1 class="text-2xl font-bold tracking-tight">
+            {dgettext("identity", "Welcome %{email}", email: @user.email)}
+          </h1>
         </div>
 
         <.form
@@ -28,13 +32,13 @@ defmodule StoryarnWeb.UserLive.Confirmation do
             name={@form[:remember_me].name}
             value="true"
             phx-disable-with={dgettext("identity", "Confirming...")}
-            class="btn btn-primary w-full"
+            class="w-full"
           >
             {dgettext("identity", "Confirm and stay logged in")}
           </.button>
           <.button
             phx-disable-with={dgettext("identity", "Confirming...")}
-            class="btn btn-primary btn-soft w-full mt-2"
+            class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors btn-soft btn-sm w-full mt-2"
           >
             {dgettext("identity", "Confirm and log in only this time")}
           </.button>
@@ -53,7 +57,7 @@ defmodule StoryarnWeb.UserLive.Confirmation do
           <%= if @current_scope do %>
             <.button
               phx-disable-with={dgettext("identity", "Logging in...")}
-              class="btn btn-primary w-full"
+              class="w-full"
             >
               {dgettext("identity", "Log in")}
             </.button>
@@ -62,25 +66,28 @@ defmodule StoryarnWeb.UserLive.Confirmation do
               name={@form[:remember_me].name}
               value="true"
               phx-disable-with={dgettext("identity", "Logging in...")}
-              class="btn btn-primary w-full"
+              class="w-full"
             >
               {dgettext("identity", "Keep me logged in on this device")}
             </.button>
             <.button
               phx-disable-with={dgettext("identity", "Logging in...")}
-              class="btn btn-primary btn-soft w-full mt-2"
+              class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors btn-soft btn-sm w-full mt-2"
             >
               {dgettext("identity", "Log me in only this time")}
             </.button>
           <% end %>
         </.form>
 
-        <p :if={!@user.confirmed_at} class="alert alert-outline mt-8">
+        <div
+          :if={!@user.confirmed_at}
+          class="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground mt-8"
+        >
           {dgettext(
             "identity",
             "Tip: If you prefer passwords, you can enable them in the user settings."
           )}
-        </p>
+        </div>
       </div>
     </Layouts.auth>
     """

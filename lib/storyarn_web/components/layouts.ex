@@ -59,7 +59,7 @@ defmodule StoryarnWeb.Layouts do
     <div
       id="app-layout"
       
-      class="h-screen w-screen overflow-hidden relative bg-base-100"
+      class="h-screen w-screen overflow-hidden relative bg-background"
     >
       <%!-- Hidden checkbox for mobile sidebar toggle --%>
       <input id="app-sidebar-check" type="checkbox" class="peer hidden" />
@@ -69,16 +69,16 @@ defmodule StoryarnWeb.Layouts do
         <nav class="flex items-center gap-1 px-1 py-1 surface-panel w-60">
           <%!-- Mobile sidebar toggle --%>
           <div class="contents md:hidden">
-            <label for="app-sidebar-check" class="toolbar-btn btn-square cursor-pointer">
+            <label for="app-sidebar-check" class="inline-flex items-center justify-center size-8 rounded-md hover:bg-accent transition-colors cursor-pointer">
               <.icon name="panel-left" class="size-4" />
             </label>
-            <div class="w-px h-5 bg-base-300"></div>
+            <div class="w-px h-5 bg-border"></div>
           </div>
 
           <%!-- User dropdown --%>
           <div
             :if={@current_scope && @current_scope.user}
-            class="dropdown dropdown-bottom flex flex-1 min-w-0"
+            class="relative flex flex-1 min-w-0"
           >
             <button tabindex="0" class="toolbar-btn gap-1.5 font-medium flex-1 min-w-0">
               <.user_avatar user={@current_scope.user} size="xs" />
@@ -89,7 +89,7 @@ defmodule StoryarnWeb.Layouts do
             </button>
             <div
               tabindex="0"
-              class="dropdown-content bg-base-200 border border-base-300 rounded-lg shadow-sm w-max max-w-72 z-[60] mt-3"
+              class="absolute top-full bg-muted border border-border rounded-lg shadow-sm w-max max-w-72 z-[60] mt-3"
             >
               <div class="px-4 py-3">
                 <p class="text-sm font-medium truncate">
@@ -97,12 +97,12 @@ defmodule StoryarnWeb.Layouts do
                 </p>
                 <p
                   :if={@current_scope.user.display_name}
-                  class="text-xs text-base-content/50 truncate"
+                  class="text-xs text-muted-foreground truncate"
                 >
                   {@current_scope.user.email}
                 </p>
               </div>
-              <div class="border-t border-base-300"></div>
+              <div class="border-t border-border"></div>
               <ul class="menu p-1 text-sm">
                 <li>
                   <.link navigate={~p"/users/settings"}>
@@ -153,7 +153,7 @@ defmodule StoryarnWeb.Layouts do
       >
         <nav class="flex-1 overflow-y-auto p-2 space-y-5">
           <div>
-            <h3 class="text-xs font-semibold uppercase text-base-content/50 px-2 mb-2">
+            <h3 class="text-xs font-semibold uppercase text-muted-foreground px-2 mb-2">
               {gettext("Workspaces")}
             </h3>
             <ul class="space-y-0.5">
@@ -163,9 +163,9 @@ defmodule StoryarnWeb.Layouts do
                   class={[
                     "flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm",
                     @current_workspace && @current_workspace.id == workspace.id &&
-                      "bg-base-content/5 font-medium",
+                      "bg-accent font-medium",
                     !(@current_workspace && @current_workspace.id == workspace.id) &&
-                      "hover:bg-base-content/5"
+                      "hover:bg-accent"
                   ]}
                 >
                   <span
@@ -179,10 +179,10 @@ defmodule StoryarnWeb.Layouts do
           </div>
         </nav>
 
-        <div class="p-2 border-t border-base-300">
+        <div class="p-2 border-t border-border">
           <.link
             navigate={~p"/workspaces/new"}
-            class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm hover:bg-base-content/5"
+            class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm hover:bg-accent"
           >
             <.icon name="plus" class="size-4" />
             {gettext("New workspace")}
@@ -228,7 +228,7 @@ defmodule StoryarnWeb.Layouts do
 
   def compare(assigns) do
     ~H"""
-    <div class="h-screen w-screen overflow-hidden relative bg-base-100">
+    <div class="h-screen w-screen overflow-hidden relative bg-background">
       <%!-- Floating button to reopen panel when collapsed --%>
       <button
         :if={@panel != [] && !@panel_open}
@@ -237,7 +237,7 @@ defmodule StoryarnWeb.Layouts do
         class="fixed top-3 left-3 z-[1020] surface-panel p-1"
         title={gettext("Show panel")}
       >
-        <span class="toolbar-btn btn-square">
+        <span class="inline-flex items-center justify-center size-8 rounded-md hover:bg-accent transition-colors">
           <.icon name="panel-left" class="size-4" />
         </span>
       </button>
@@ -256,17 +256,17 @@ defmodule StoryarnWeb.Layouts do
         ]}
       >
         <%!-- Panel header with title + collapse button --%>
-        <div class="flex items-center justify-between px-2.5 py-2 border-b border-base-300">
+        <div class="flex items-center justify-between px-2.5 py-2 border-b border-border">
           <span
             :if={@panel_title}
-            class="text-xs font-medium text-base-content/60 flex items-center gap-1.5"
+            class="text-xs font-medium text-muted-foreground flex items-center gap-1.5"
           >
             {@panel_title}
           </span>
           <button
             type="button"
             phx-click="tree_panel_toggle"
-            class="btn btn-ghost btn-xs btn-square"
+            class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
             title={gettext("Close panel")}
           >
             <.icon name="panel-left-close" class="size-3.5" />
@@ -371,7 +371,7 @@ defmodule StoryarnWeb.Layouts do
         class={[
           "navbar w-[min(calc(100%-48px),1280px)]",
           @theme == "dark" &&
-            "z-[120] rounded-full border border-base-content/8 bg-base-100/70 px-5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.28)]"
+            "z-[120] rounded-full border border-border bg-background/70 px-5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.28)]"
         ]}
         style={
           @theme == "dark" &&
@@ -396,32 +396,32 @@ defmodule StoryarnWeb.Layouts do
           <%!-- Desktop nav --%>
           <div class="hidden min-w-0 flex-1 items-center justify-between gap-6 xl:flex">
             <div class="flex min-w-0 items-center gap-1">
-              <a href="#features" class="btn btn-ghost">
+              <a href="#features" class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
                 {gettext("Features")}
               </a>
-              <a href="#discover" class="btn btn-ghost">
+              <a href="#discover" class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
                 {gettext("Discover")}
               </a>
-              <a href="#workflow" class="btn btn-ghost">
+              <a href="#workflow" class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
                 {gettext("Workflow")}
               </a>
-              <.link navigate={~p"/docs"} class="btn btn-ghost">
+              <.link navigate={~p"/docs"} class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
                 {gettext("Docs")}
               </.link>
-              <.link navigate={~p"/contact"} class="btn btn-ghost">
+              <.link navigate={~p"/contact"} class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
                 {gettext("Contact")}
               </.link>
             </div>
             <div class="flex flex-none items-center gap-1">
               <%= if @current_scope && @current_scope.user do %>
-                <.link navigate={~p"/workspaces"} class="btn btn-ghost">
+                <.link navigate={~p"/workspaces"} class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
                   {gettext("Dashboard")}
                 </.link>
               <% else %>
-                <a href="#waitlist" class="btn btn-primary">
+                <a href="#waitlist" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
                   {gettext("Request access")}
                 </a>
-                <.link navigate={~p"/users/log-in"} class="btn btn-ghost">
+                <.link navigate={~p"/users/log-in"} class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
                   {gettext("Log in")}
                 </.link>
               <% end %>
@@ -431,7 +431,7 @@ defmodule StoryarnWeb.Layouts do
           <div class="ml-auto flex-none xl:hidden">
             <button
               phx-click={JS.toggle(to: "#mobile-nav", in: "fade-in", out: "fade-out")}
-              class="btn btn-ghost btn-square btn-sm"
+              class="inline-flex items-center justify-center size-8 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
               aria-label={gettext("Menu")}
             >
               <.icon name="menu" class="size-5" />
@@ -445,16 +445,16 @@ defmodule StoryarnWeb.Layouts do
         id="mobile-nav"
         class={[
           "hidden fixed inset-0 z-[140] w-screen max-w-none xl:hidden",
-          @theme == "dark" && "bg-base-100/96 backdrop-blur-xl"
+          @theme == "dark" && "bg-background/96 backdrop-blur-xl"
         ]}
         style="z-index: 140;"
         phx-click-away={JS.hide(to: "#mobile-nav", transition: "fade-out")}
       >
         <div class="flex min-h-screen">
-          <aside class="flex min-h-screen w-full justify-center bg-base-100/98 px-5 pb-8 pt-5">
+          <aside class="flex min-h-screen w-full justify-center bg-background/98 px-5 pb-8 pt-5">
             <div class="flex min-h-full w-full max-w-[420px] flex-col">
               <div class="flex items-center justify-between gap-4">
-                <.link navigate="/" class="flex items-center text-base-content">
+                <.link navigate="/" class="flex items-center text-foreground">
                   <img
                     src={~p"/images/logos/logo-name-black.png"}
                     alt="Storyarn"
@@ -468,7 +468,7 @@ defmodule StoryarnWeb.Layouts do
                 </.link>
                 <button
                   phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
-                  class="btn btn-ghost btn-square btn-sm"
+                  class="inline-flex items-center justify-center size-8 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
                   aria-label={gettext("Close")}
                 >
                   <.icon name="x" class="size-5" />
@@ -478,58 +478,58 @@ defmodule StoryarnWeb.Layouts do
               <div class="mt-8 grid gap-2">
                 <a
                   href="#features"
-                  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-base-content transition-colors hover:bg-base-content/5"
+                  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-accent"
                   phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
                 >
-                  <.icon name="sparkles" class="size-5 text-base-content/45" />
+                  <.icon name="sparkles" class="size-5 text-foreground/45" />
                   {gettext("Features")}
                 </a>
                 <a
                   href="#discover"
-                  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-base-content transition-colors hover:bg-base-content/5"
+                  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-accent"
                   phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
                 >
-                  <.icon name="panels-top-left" class="size-5 text-base-content/45" />
+                  <.icon name="panels-top-left" class="size-5 text-foreground/45" />
                   {gettext("Discover")}
                 </a>
                 <a
                   href="#workflow"
-                  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-base-content transition-colors hover:bg-base-content/5"
+                  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-accent"
                   phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
                 >
-                  <.icon name="git-branch" class="size-5 text-base-content/45" />
+                  <.icon name="git-branch" class="size-5 text-foreground/45" />
                   {gettext("Workflow")}
                 </a>
                 <.link
                   navigate={~p"/docs"}
-                  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-base-content transition-colors hover:bg-base-content/5"
+                  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-accent"
                 >
-                  <.icon name="book-open" class="size-5 text-base-content/45" />
+                  <.icon name="book-open" class="size-5 text-foreground/45" />
                   {gettext("Docs")}
                 </.link>
                 <.link
                   navigate={~p"/contact"}
-                  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-base-content transition-colors hover:bg-base-content/5"
+                  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-accent"
                 >
-                  <.icon name="mail" class="size-5 text-base-content/45" />
+                  <.icon name="mail" class="size-5 text-foreground/45" />
                   {gettext("Contact")}
                 </.link>
               </div>
 
-              <div class="mt-auto grid gap-3 border-t border-base-content/8 pt-5">
+              <div class="mt-auto grid gap-3 border-t border-border pt-5">
                 <%= if @current_scope && @current_scope.user do %>
-                  <.link navigate={~p"/workspaces"} class="btn btn-primary btn-block rounded-2xl">
+                  <.link navigate={~p"/workspaces"} class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors btn-block rounded-2xl">
                     {gettext("Dashboard")}
                   </.link>
                 <% else %>
                   <a
                     href="#waitlist"
-                    class="btn btn-primary btn-block rounded-2xl"
+                    class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors btn-block rounded-2xl"
                     phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
                   >
                     {gettext("Request access")}
                   </a>
-                  <.link navigate={~p"/users/log-in"} class="btn btn-ghost btn-block rounded-2xl">
+                  <.link navigate={~p"/users/log-in"} class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors btn-block rounded-2xl">
                     {gettext("Log in")}
                   </.link>
                 <% end %>
@@ -611,7 +611,7 @@ defmodule StoryarnWeb.Layouts do
     <div
       id="settings-layout"
       
-      class="h-screen w-screen overflow-hidden relative bg-base-100"
+      class="h-screen w-screen overflow-hidden relative bg-background"
     >
       <%!-- Hidden checkbox for mobile sidebar toggle (must be first child for peer-*) --%>
       <input id="settings-sidebar-check" type="checkbox" class="peer hidden" />
@@ -621,10 +621,10 @@ defmodule StoryarnWeb.Layouts do
         <nav class="flex items-center gap-1 px-1 py-1 surface-panel w-60">
           <%!-- Mobile sidebar toggle (hidden on desktop) --%>
           <div class="contents md:hidden">
-            <label for="settings-sidebar-check" class="toolbar-btn btn-square cursor-pointer">
+            <label for="settings-sidebar-check" class="inline-flex items-center justify-center size-8 rounded-md hover:bg-accent transition-colors cursor-pointer">
               <.icon name="panel-left" class="size-4" />
             </label>
-            <div class="w-px h-5 bg-base-300"></div>
+            <div class="w-px h-5 bg-border"></div>
           </div>
 
           <.link navigate="/" class="toolbar-btn gap-1.5">
@@ -646,10 +646,10 @@ defmodule StoryarnWeb.Layouts do
         "transition-transform duration-200",
         "-translate-x-[calc(100%+0.75rem)] peer-checked:translate-x-0 md:translate-x-0"
       ]}>
-        <div class="px-2 pt-2 pb-2 border-b border-base-300">
+        <div class="px-2 pt-2 pb-2 border-b border-border">
           <.link
             navigate={@resolved_back_path}
-            class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-base-content/70 hover:bg-base-content/5"
+            class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-muted-foreground hover:bg-accent"
           >
             <.icon name="chevron-left" class="size-4" />
             {@resolved_back_label}
@@ -658,7 +658,7 @@ defmodule StoryarnWeb.Layouts do
 
         <nav class="flex-1 overflow-y-auto p-2 space-y-5">
           <div :for={section <- @resolved_sections}>
-            <h3 class="text-xs font-semibold uppercase text-base-content/50 px-2 mb-2">
+            <h3 class="text-xs font-semibold uppercase text-muted-foreground px-2 mb-2">
               {section.label}
             </h3>
             <ul class="space-y-0.5">
@@ -667,8 +667,8 @@ defmodule StoryarnWeb.Layouts do
                   navigate={item.path}
                   class={[
                     "flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm",
-                    @current_path == item.path && "bg-base-content/5 font-medium",
-                    @current_path != item.path && "hover:bg-base-content/5"
+                    @current_path == item.path && "bg-accent font-medium",
+                    @current_path != item.path && "hover:bg-accent"
                   ]}
                 >
                   <.icon name={item.icon} class="size-4" />
@@ -784,9 +784,9 @@ defmodule StoryarnWeb.Layouts do
     ~H"""
     <div class="h-screen flex flex-col overflow-hidden">
       <%!-- Header --%>
-      <header class="navbar px-4 sm:px-6 lg:px-8 border-b border-base-300 bg-base-100 shrink-0">
+      <header class="navbar px-4 sm:px-6 lg:px-8 border-b border-border bg-background shrink-0">
         <div class="flex-none md:hidden">
-          <button phx-click="toggle_sidebar" class="btn btn-square btn-ghost btn-sm">
+          <button phx-click="toggle_sidebar" class="inline-flex items-center justify-center size-9 rounded-md hover:bg-accent btn-ghost btn-sm">
             <.icon name="menu" class="size-5" />
           </button>
         </div>
@@ -797,7 +797,7 @@ defmodule StoryarnWeb.Layouts do
           </.link>
           <.link
             navigate={~p"/docs"}
-            class="text-xs font-medium text-base-content/50 hover:text-base-content transition-colors self-start mt-1"
+            class="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors self-start mt-1"
           >
             {gettext("docs")}
           </.link>
@@ -805,11 +805,11 @@ defmodule StoryarnWeb.Layouts do
         <div class="flex-none flex items-center gap-2">
           <.theme_toggle />
           <%= if @current_scope && @current_scope.user do %>
-            <.link navigate={~p"/workspaces"} class="btn btn-ghost btn-sm">
+            <.link navigate={~p"/workspaces"} class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors">
               {gettext("Dashboard")}
             </.link>
           <% else %>
-            <.link navigate={~p"/users/log-in"} class="btn btn-ghost btn-sm">
+            <.link navigate={~p"/users/log-in"} class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors">
               {gettext("Log in")}
             </.link>
           <% end %>
@@ -828,7 +828,7 @@ defmodule StoryarnWeb.Layouts do
 
         <%!-- Sidebar --%>
         <aside class={[
-          "w-60 border-r border-base-300 bg-base-100 overflow-y-auto shrink-0",
+          "w-60 border-r border-border bg-background overflow-y-auto shrink-0",
           "fixed inset-y-0 left-0 z-50 pt-4 transition-transform lg:relative lg:translate-x-0 lg:z-auto lg:pt-6",
           if(@sidebar_open, do: "translate-x-0", else: "-translate-x-full")
         ]}>
@@ -851,7 +851,7 @@ defmodule StoryarnWeb.Layouts do
                 {@guide.category_label}
               </p>
               <h1 class="text-3xl font-bold">{@guide.title}</h1>
-              <p :if={@guide.description} class="text-base-content/60 mt-2">
+              <p :if={@guide.description} class="text-muted-foreground mt-2">
                 {@guide.description}
               </p>
             </div>
@@ -862,7 +862,7 @@ defmodule StoryarnWeb.Layouts do
             <%!-- Prev/Next navigation --%>
             <nav
               :if={@prev || @next}
-              class="flex items-center justify-between mt-12 pt-8 border-t border-base-300"
+              class="flex items-center justify-between mt-12 pt-8 border-t border-border"
             >
               <div>
                 <.link
@@ -870,7 +870,7 @@ defmodule StoryarnWeb.Layouts do
                   navigate={~p"/docs/#{@prev.category}/#{@prev.slug}"}
                   class="group flex flex-col items-start"
                 >
-                  <span class="text-xs text-base-content/40 group-hover:text-base-content/60">
+                  <span class="text-xs text-muted-foreground group-hover:text-muted-foreground">
                     <.icon name="arrow-left" class="size-3 inline" />
                     {gettext("Previous")}
                   </span>
@@ -883,7 +883,7 @@ defmodule StoryarnWeb.Layouts do
                   navigate={~p"/docs/#{@next.category}/#{@next.slug}"}
                   class="group flex flex-col items-end"
                 >
-                  <span class="text-xs text-base-content/40 group-hover:text-base-content/60">
+                  <span class="text-xs text-muted-foreground group-hover:text-muted-foreground">
                     {gettext("Next")}
                     <.icon name="arrow-right" class="size-3 inline" />
                   </span>
@@ -900,10 +900,10 @@ defmodule StoryarnWeb.Layouts do
             class="hidden xl:block fixed top-16 right-0 w-56 py-8 pr-4 pl-2 overflow-y-auto"
             style="max-height: calc(100vh - 4rem)"
           >
-            <p class="text-xs font-semibold uppercase tracking-wider text-base-content/50 mb-3">
+            <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
               {gettext("On this page")}
             </p>
-            <nav class="border-l border-base-300">
+            <nav class="border-l border-border">
               <a
                 :for={entry <- @guide.toc}
                 href={"##{entry.id}"}
@@ -911,7 +911,7 @@ defmodule StoryarnWeb.Layouts do
                 class={[
                   "docs-toc-link block text-sm leading-relaxed transition-colors hover:text-primary",
                   if(entry.level == 3, do: "pl-5", else: "pl-3"),
-                  "text-base-content/50"
+                  "text-muted-foreground"
                 ]}
               >
                 {entry.text}

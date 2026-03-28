@@ -58,8 +58,8 @@ defmodule StoryarnWeb.Components.TreeComponents do
     >
       <div class={[
         "group/item flex items-center rounded-lg",
-        @active && "bg-base-content/5 font-medium",
-        !@active && "hover:bg-base-content/5"
+        @active && "bg-accent font-medium",
+        !@active && "hover:bg-accent"
       ]}>
         <%!-- Expand/collapse toggle --%>
         <button
@@ -92,13 +92,13 @@ defmodule StoryarnWeb.Components.TreeComponents do
           >
             <.tree_icon icon={@icon} icon_text={@icon_text} avatar_url={@avatar_url} color={@color} />
             <span class="truncate">{@label}</span>
-            <span :if={@badge} class="badge badge-xs badge-ghost ml-auto shrink-0">{@badge}</span>
+            <span :if={@badge} class="text-[10px] px-1.5 py-0 rounded-full bg-muted text-muted-foreground ml-auto shrink-0">{@badge}</span>
           </.link>
         <% else %>
           <div class="flex-1 min-w-0 flex items-center gap-2 px-2 py-1 text-sm truncate">
             <.tree_icon icon={@icon} icon_text={@icon_text} avatar_url={@avatar_url} color={@color} />
             <span class="truncate">{@label}</span>
-            <span :if={@badge} class="badge badge-xs badge-ghost ml-auto shrink-0">{@badge}</span>
+            <span :if={@badge} class="text-[10px] px-1.5 py-0 rounded-full bg-muted text-muted-foreground ml-auto shrink-0">{@badge}</span>
           </div>
         <% end %>
 
@@ -161,8 +161,8 @@ defmodule StoryarnWeb.Components.TreeComponents do
     >
       <div class={[
         "group/item flex items-center rounded-lg",
-        @active && "bg-base-content/5 font-medium",
-        !@active && "hover:bg-base-content/5"
+        @active && "bg-accent font-medium",
+        !@active && "hover:bg-accent"
       ]}>
         <%!-- Spacer to align with tree_node (expand/collapse area) --%>
         <span class="w-5 shrink-0"></span>
@@ -220,7 +220,7 @@ defmodule StoryarnWeb.Components.TreeComponents do
   def tree_section(assigns) do
     ~H"""
     <div class={[
-      "text-xs font-semibold uppercase text-base-content/50 px-2 py-2 tracking-wide",
+      "text-xs font-semibold uppercase text-muted-foreground px-2 py-2 tracking-wide",
       @class
     ]}>
       {@label}
@@ -254,8 +254,8 @@ defmodule StoryarnWeb.Components.TreeComponents do
       patch={@link_type == :patch && @href}
       class={[
         "flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm",
-        @active && "bg-base-content/5 font-medium",
-        !@active && "hover:bg-base-content/5",
+        @active && "bg-accent font-medium",
+        !@active && "hover:bg-accent",
         @class
       ]}
     >

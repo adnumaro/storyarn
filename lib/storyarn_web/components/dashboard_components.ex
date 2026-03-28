@@ -34,9 +34,9 @@ defmodule StoryarnWeb.Components.DashboardComponents do
   def stat_card(assigns) do
     ~H"""
     <.link :if={@href} navigate={@href} class="group h-full">
-      <div class="card h-full border border-base-300/80 bg-gradient-to-br from-base-200/95 via-base-200/90 to-primary/8 p-3.5 shadow-sm backdrop-blur-sm transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:border-base-content/15 hover:shadow-md sm:p-4 dark:border-base-content/10 dark:from-base-content/[0.11] dark:via-base-content/[0.08] dark:to-primary/10">
+      <div class="rounded-lg h-full border border-border/80 bg-gradient-to-br from-muted via-muted to-primary/8 p-3.5 shadow-sm backdrop-blur-sm transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:border-border hover:shadow-md sm:p-4 dark:border-border dark:from-muted dark:via-muted dark:to-primary/10">
         <div class="flex h-full flex-col gap-4">
-          <div class="flex items-center gap-2 text-sm text-base-content/60">
+          <div class="flex items-center gap-2 text-sm text-muted-foreground">
             <div class="rounded-md bg-primary/10 p-1.5">
               <.icon name={@icon} class="size-4 text-primary" />
             </div>
@@ -48,10 +48,10 @@ defmodule StoryarnWeb.Components.DashboardComponents do
     </.link>
     <div
       :if={!@href}
-      class="card h-full border border-base-300/80 bg-gradient-to-br from-base-200/95 via-base-200/90 to-primary/8 p-3.5 shadow-sm backdrop-blur-sm sm:p-4 dark:border-base-content/10 dark:from-base-content/[0.11] dark:via-base-content/[0.08] dark:to-primary/10"
+      class="rounded-lg h-full border border-border/80 bg-gradient-to-br from-muted via-muted to-primary/8 p-3.5 shadow-sm backdrop-blur-sm sm:p-4 dark:border-border dark:from-muted dark:via-muted dark:to-primary/10"
     >
       <div class="flex h-full flex-col gap-4">
-        <div class="flex items-center gap-2 text-sm text-base-content/60">
+        <div class="flex items-center gap-2 text-sm text-muted-foreground">
           <div class="rounded-md bg-primary/10 p-1.5">
             <.icon name={@icon} class="size-4 text-primary" />
           </div>
@@ -59,7 +59,7 @@ defmodule StoryarnWeb.Components.DashboardComponents do
             <span class="truncate">{@label}</span>
             <span
               :if={@tooltip}
-              class="tooltip tooltip-bottom inline-flex shrink-0 cursor-help"
+              class="group relative inline-flex shrink-0 cursor-help"
               data-tip={@tooltip}
             >
               <.icon name="info" class="size-3.5 opacity-50" />
@@ -96,8 +96,8 @@ defmodule StoryarnWeb.Components.DashboardComponents do
 
     ~H"""
     <div class="space-y-1">
-      <h3 :if={@title} class="text-sm font-medium text-base-content/70 mb-3">{@title}</h3>
-      <p :if={@items == [] && @empty_message} class="text-sm text-base-content/50 py-4 text-center">
+      <h3 :if={@title} class="text-sm font-medium text-muted-foreground mb-3">{@title}</h3>
+      <p :if={@items == [] && @empty_message} class="text-sm text-muted-foreground py-4 text-center">
         {@empty_message}
       </p>
       <div :for={item <- @items} class="flex items-center gap-3 py-1.5">
@@ -112,14 +112,14 @@ defmodule StoryarnWeb.Components.DashboardComponents do
           <span :if={!Map.get(item, :href)} class="text-sm truncate block">{item.label}</span>
         </div>
         <div class="w-32 flex items-center gap-2">
-          <div class="flex-1 bg-base-300 rounded-full h-2">
+          <div class="flex-1 bg-border rounded-full h-2">
             <div
               class="bg-primary rounded-full h-2 transition-all"
               style={"width: #{round(item.value / @max_value * 100)}%"}
             >
             </div>
           </div>
-          <span class="text-xs text-base-content/60 w-8 text-right tabular-nums">{item.value}</span>
+          <span class="text-xs text-muted-foreground w-8 text-right tabular-nums">{item.value}</span>
         </div>
       </div>
     </div>
@@ -146,17 +146,17 @@ defmodule StoryarnWeb.Components.DashboardComponents do
   def issue_list(assigns) do
     ~H"""
     <div class="space-y-1">
-      <h3 :if={@title} class="text-sm font-medium text-base-content/70 mb-3">{@title}</h3>
-      <p :if={@issues == [] && @empty_message} class="text-sm text-base-content/50 py-4 text-center">
+      <h3 :if={@title} class="text-sm font-medium text-muted-foreground mb-3">{@title}</h3>
+      <p :if={@issues == [] && @empty_message} class="text-sm text-muted-foreground py-4 text-center">
         {@empty_message}
       </p>
       <.link
         :for={issue <- @issues}
         navigate={issue.href}
-        class="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-base-200 transition-colors group"
+        class="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-muted transition-colors group"
       >
         <span class={[
-          "badge badge-sm",
+          "text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground",
           issue.severity == :error && "badge-error",
           issue.severity == :warning && "badge-warning",
           issue.severity == :info && "badge-info"
@@ -166,7 +166,7 @@ defmodule StoryarnWeb.Components.DashboardComponents do
         <span class="text-sm flex-1">{issue.message}</span>
         <.icon
           name="arrow-right"
-          class="size-4 text-base-content/30 group-hover:text-base-content/60 transition-colors"
+          class="size-4 text-foreground/30 group-hover:text-muted-foreground transition-colors"
         />
       </.link>
     </div>
@@ -200,7 +200,7 @@ defmodule StoryarnWeb.Components.DashboardComponents do
         <.link :if={@href} navigate={@href} class="text-sm hover:underline">{@label}</.link>
         <span :if={!@href} class="text-sm">{@label}</span>
       </div>
-      <div class="flex-1 bg-base-300 rounded-full h-2.5">
+      <div class="flex-1 bg-border rounded-full h-2.5">
         <div
           class={[
             "rounded-full h-2.5 transition-all",
@@ -212,10 +212,10 @@ defmodule StoryarnWeb.Components.DashboardComponents do
         >
         </div>
       </div>
-      <span class="text-xs text-base-content/60 w-12 text-right tabular-nums">
+      <span class="text-xs text-muted-foreground w-12 text-right tabular-nums">
         {round(@percentage)}%
       </span>
-      <span :if={@detail} class="text-xs text-base-content/40 w-24 text-right">
+      <span :if={@detail} class="text-xs text-muted-foreground w-24 text-right">
         {@detail}
       </span>
     </div>
@@ -235,7 +235,7 @@ defmodule StoryarnWeb.Components.DashboardComponents do
 
   def dashboard_section(assigns) do
     ~H"""
-    <section class={["card bg-base-100 border border-base-300 p-5", @class]}>
+    <section class={["card bg-background border border-border p-5", @class]}>
       <h2 class="text-base font-semibold mb-4">{@title}</h2>
       {render_slot(@inner_block)}
     </section>
@@ -254,7 +254,7 @@ defmodule StoryarnWeb.Components.DashboardComponents do
 
   def dashboard_table_wrapper(assigns) do
     ~H"""
-    <div class="overflow-auto max-h-[32rem] -mx-5 rounded-xl bg-base-200/90 backdrop-blur-sm dark:bg-base-content/[0.07]">
+    <div class="overflow-auto max-h-[32rem] -mx-5 rounded-xl bg-muted/90 backdrop-blur-sm dark:bg-muted">
       {render_slot(@inner_block)}
     </div>
     """
@@ -325,7 +325,7 @@ defmodule StoryarnWeb.Components.DashboardComponents do
   def pagination(assigns) do
     ~H"""
     <div :if={@total_pages > 1} class="flex items-center justify-between pt-3 px-1">
-      <span class="text-xs text-base-content/50">
+      <span class="text-xs text-muted-foreground">
         {gettext("%{total} items", total: @total)}
       </span>
       <div class="flex items-center gap-1">
@@ -334,11 +334,11 @@ defmodule StoryarnWeb.Components.DashboardComponents do
           phx-click={@event}
           phx-value-page={@page - 1}
           disabled={@page <= 1}
-          class="btn btn-ghost btn-xs btn-square"
+          class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
         >
           <.icon name="chevron-left" class="size-4" />
         </button>
-        <span class="text-xs text-base-content/60 px-2 tabular-nums">
+        <span class="text-xs text-muted-foreground px-2 tabular-nums">
           {@page} / {@total_pages}
         </span>
         <button
@@ -346,7 +346,7 @@ defmodule StoryarnWeb.Components.DashboardComponents do
           phx-click={@event}
           phx-value-page={@page + 1}
           disabled={@page >= @total_pages}
-          class="btn btn-ghost btn-xs btn-square"
+          class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
         >
           <.icon name="chevron-right" class="size-4" />
         </button>

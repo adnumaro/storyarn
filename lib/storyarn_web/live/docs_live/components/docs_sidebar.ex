@@ -18,21 +18,21 @@ defmodule StoryarnWeb.DocsLive.Components.DocsSidebar do
         <form phx-change="search" phx-submit="search" class="relative">
           <.icon
             name="search"
-            class="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"
+            class="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
           />
           <input
             type="text"
             value={@search_query}
             placeholder={gettext("Search docs...")}
             name="query"
-            class="input input-sm input-bordered w-full pl-9 pr-8"
+            class="h-8 rounded-md border border-input bg-background px-2 text-sm input-bordered w-full pl-9 pr-8"
             autocomplete="off"
           />
           <button
             :if={@search_query != ""}
             type="button"
             phx-click="clear_search"
-            class="absolute right-2 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content"
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
             <.icon name="x" class="size-4" />
           </button>
@@ -40,7 +40,7 @@ defmodule StoryarnWeb.DocsLive.Components.DocsSidebar do
       </div>
 
       <div :if={@search_results} class="mb-4">
-        <p class="text-xs text-base-content/50 mb-2 px-3">
+        <p class="text-xs text-muted-foreground mb-2 px-3">
           {ngettext("%{count} result", "%{count} results", length(@search_results),
             count: length(@search_results)
           )}
@@ -49,10 +49,10 @@ defmodule StoryarnWeb.DocsLive.Components.DocsSidebar do
           <li :for={result <- @search_results}>
             <.link
               navigate={~p"/docs/#{result.category}/#{result.slug}"}
-              class="block px-3 py-2 rounded-lg text-sm hover:bg-base-200 truncate"
+              class="block px-3 py-2 rounded-lg text-sm hover:bg-muted truncate"
             >
-              <span class="text-base-content">{result.title}</span>
-              <span class="text-xs text-base-content/40 ml-1">{result.category_label}</span>
+              <span class="text-foreground">{result.title}</span>
+              <span class="text-xs text-muted-foreground ml-1">{result.category_label}</span>
             </.link>
           </li>
         </ul>
@@ -62,19 +62,19 @@ defmodule StoryarnWeb.DocsLive.Components.DocsSidebar do
         <button
           phx-click="toggle_category"
           phx-value-category={category}
-          class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm font-semibold text-base-content hover:bg-base-200 transition-colors"
+          class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm font-semibold text-foreground hover:bg-muted transition-colors"
         >
           <span>{label}</span>
           <.icon
             name={
               if expanded?(category, @expanded_categories), do: "chevron-down", else: "chevron-right"
             }
-            class="size-4 text-base-content/40"
+            class="size-4 text-muted-foreground"
           />
         </button>
         <ul
           :if={expanded?(category, @expanded_categories)}
-          class="mt-0.5 ml-3 border-l border-base-300 space-y-0.5"
+          class="mt-0.5 ml-3 border-l border-border space-y-0.5"
         >
           <li :for={g <- guides_for(@guides, category)}>
             <.link
@@ -84,7 +84,7 @@ defmodule StoryarnWeb.DocsLive.Components.DocsSidebar do
                 if(active?(@guide, g),
                   do: "border-primary text-primary font-medium",
                   else:
-                    "border-transparent text-base-content/70 hover:text-base-content hover:border-base-content/20"
+                    "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
                 )
               ]}
             >

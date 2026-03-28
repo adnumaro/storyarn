@@ -5,7 +5,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
   use StoryarnWeb, :live_view
   alias StoryarnWeb.Helpers.Authorize
 
-  import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
   alias Storyarn.Billing
   alias Storyarn.Projects
   alias Storyarn.Versioning
@@ -68,110 +67,72 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
         {gettext("Recover deleted projects from their snapshots")}
       </:subtitle>
 
-      <div class="space-y-4">
-        <div :if={@deleted_projects == []} class="py-12">
-          <.empty_state
-            icon="trash-2"
-            title={gettext("No deleted projects")}
-          >
-            {gettext("Deleted projects with available snapshots will appear here.")}
-          </.empty_state>
-        </div>
-
-        <div :for={project <- @deleted_projects} class="border border-base-300 rounded-lg">
-          <button
-            type="button"
-            class="w-full flex items-center justify-between p-4 hover:bg-base-content/5 transition-colors"
-            phx-click="toggle_project"
-            phx-value-id={project.id}
-          >
-            <div class="flex items-center gap-3">
-              <.icon name="folder" class="size-5 opacity-60" />
-              <div class="text-left">
-                <div class="font-medium">{project.name}</div>
-                <div class="text-sm opacity-60">
-                  {gettext("Deleted %{time_ago}",
-                    time_ago: format_time_ago(project.deleted_at)
-                  )}
-                  <span :if={project.deleted_by}>
-                    {gettext("by %{email}", email: project.deleted_by.email)}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div class="flex items-center gap-3">
-              <span class="badge badge-sm badge-ghost">
-                {ngettext(
-                  "%{count} snapshot",
-                  "%{count} snapshots",
-                  project.snapshot_count,
-                  count: project.snapshot_count
-                )}
-              </span>
-              <.icon
-                name={if @expanded_project_id == project.id, do: "chevron-up", else: "chevron-down"}
-                class="size-4 opacity-60"
-              />
-            </div>
-          </button>
-
-          <div
-            :if={@expanded_project_id == project.id}
-            class="border-t border-base-300 p-4 space-y-3"
-          >
-            <div :if={@snapshots == []} class="text-sm opacity-60 py-4 text-center">
-              {gettext("No snapshots available for this project.")}
-            </div>
-
-            <div
-              :for={snapshot <- @snapshots}
-              class="flex items-center justify-between p-3 bg-base-200/50 rounded-lg"
-            >
-              <div>
-                <div class="font-medium text-sm">
-                  {snapshot.title || gettext("Snapshot v%{number}", number: snapshot.version_number)}
-                </div>
-                <div class="text-xs opacity-60 mt-0.5">
-                  {Calendar.strftime(snapshot.inserted_at, "%b %d, %Y at %H:%M")}
-                  <span :if={snapshot.entity_counts}>
-                    — {format_entity_counts(snapshot.entity_counts)}
-                  </span>
-                </div>
-              </div>
-              <.button
-                variant="primary"
-                phx-click={show_modal("recover-confirm-#{snapshot.id}")}
-                disabled={@recovering}
-                class="btn-sm"
-              >
-                <.icon name="rotate-ccw" class="size-3.5" />
-                {gettext("Recover")}
-              </.button>
-
-              <.confirm_modal
-                id={"recover-confirm-#{snapshot.id}"}
-                title={gettext("Recover project?")}
-                message={
-                  gettext(
-                    "This will create a new project from snapshot v%{number}. The recovered project will appear in your workspace.",
-                    number: snapshot.version_number
-                  )
-                }
-                confirm_text={gettext("Recover")}
-                confirm_variant="primary"
-                icon="rotate-ccw"
-                on_confirm={
-                  JS.push("recover_project",
-                    value: %{snapshot_id: snapshot.id, project_id: project.id}
-                  )
-                }
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+      <.vue
+        v-component="settings/WorkspaceDeletedProjects"
+        v-socket={@socket}
+        id="settings-deleted-projects-vue"
+        deleted-projects={serialize_deleted_projects(@deleted_projects)}
+        expanded-project-id={@expanded_project_id}
+        snapshots={serialize_snapshots(@snapshots)}
+        recovering={@recovering}
+        translations={deleted_projects_translations()}
+      />
     </Layouts.settings>
     """
+  end
+
+  defp serialize_deleted_projects(projects) do
+    Enum.map(projects, fn project ->
+      %{
+        id: project.id,
+        name: project.name,
+        deleted_time_ago:
+          gettext("Deleted %{time_ago}", time_ago: format_time_ago(project.deleted_at)),
+        deleted_by_text:
+          if(project.deleted_by,
+            do: gettext("by %{email}", email: project.deleted_by.email)
+          ),
+        snapshot_count: project.snapshot_count
+      }
+    end)
+  end
+
+  defp serialize_snapshots(snapshots) do
+    Enum.map(snapshots, fn snapshot ->
+      %{
+        id: snapshot.id,
+        title: snapshot.title,
+        version_number: snapshot.version_number,
+        formatted_date: Calendar.strftime(snapshot.inserted_at, "%b %d, %Y at %H:%M"),
+        entity_counts: snapshot.entity_counts
+      }
+    end)
+  end
+
+  defp deleted_projects_translations do
+    %{
+      noDeletedProjects: gettext("No deleted projects"),
+      noDeletedProjectsDescription:
+        gettext("Deleted projects with available snapshots will appear here."),
+      snapshot: gettext("snapshot"),
+      snapshots: gettext("snapshots"),
+      noSnapshots: gettext("No snapshots available for this project."),
+      snapshotPrefix: gettext("Snapshot v"),
+      recover: gettext("Recover"),
+      recoverTitle: gettext("Recover project?"),
+      recoverMessage:
+        gettext(
+          "This will create a new project from snapshot v%{number}. The recovered project will appear in your workspace.",
+          number: "%{number}"
+        ),
+      cancel: gettext("Cancel"),
+      sheet: gettext("sheet"),
+      sheets: gettext("sheets"),
+      flow: gettext("flow"),
+      flows: gettext("flows"),
+      scene: gettext("scene"),
+      scenes: gettext("scenes")
+    }
   end
 
   @impl true
@@ -274,33 +235,4 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
     end
   end
 
-  defp format_entity_counts(counts) do
-    parts = []
-
-    parts =
-      if counts["sheets"] && counts["sheets"] > 0,
-        do: [
-          ngettext("%{count} sheet", "%{count} sheets", counts["sheets"], count: counts["sheets"])
-          | parts
-        ],
-        else: parts
-
-    parts =
-      if counts["flows"] && counts["flows"] > 0,
-        do: [
-          ngettext("%{count} flow", "%{count} flows", counts["flows"], count: counts["flows"])
-          | parts
-        ],
-        else: parts
-
-    parts =
-      if counts["scenes"] && counts["scenes"] > 0,
-        do: [
-          ngettext("%{count} scene", "%{count} scenes", counts["scenes"], count: counts["scenes"])
-          | parts
-        ],
-        else: parts
-
-    parts |> Enum.reverse() |> Enum.join(", ")
-  end
 end

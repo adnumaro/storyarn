@@ -29,20 +29,20 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
             </div>
             <div>
               <h3 class="font-semibold text-lg">{@speaker || dgettext("flows", "Narrator")}</h3>
-              <p class="text-xs text-base-content/60">
+              <p class="text-xs text-muted-foreground">
                 {dgettext("flows", "Node %{id}", id: @current_node.id)}
               </p>
             </div>
           </div>
 
           <%!-- Dialogue text --%>
-          <div class="prose prose-sm max-w-none bg-base-200 rounded-lg p-4">
+          <div class="prose prose-sm max-w-none bg-muted rounded-lg p-4">
             {raw(sanitize_and_interpolate(@current_node.data["text"] || ""))}
           </div>
 
           <%!-- Response buttons --%>
           <div :if={@responses != []} class="space-y-2">
-            <p class="text-sm font-medium text-base-content/70">{dgettext("flows", "Responses:")}</p>
+            <p class="text-sm font-medium text-muted-foreground">{dgettext("flows", "Responses:")}</p>
             <div class="flex flex-col gap-2">
               <button
                 :for={response <- @responses}
@@ -50,12 +50,12 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
                 phx-click="select_response"
                 phx-value-response-id={response["id"]}
                 phx-target={@myself}
-                class="btn btn-outline btn-sm justify-start text-left h-auto py-2"
+                class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md border border-input hover:bg-accent btn-sm justify-start text-left h-auto py-2"
               >
                 <span class="flex-1">{raw(sanitize_and_interpolate(response["text"] || ""))}</span>
                 <span
                   :if={response["condition"]}
-                  class="badge badge-warning badge-xs ml-2"
+                  class="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 badge-xs ml-2"
                   title={response["condition"]}
                 >
                   ?
@@ -70,7 +70,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
               type="button"
               phx-click="continue"
               phx-target={@myself}
-              class="btn btn-primary btn-sm w-full"
+              class="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors w-full"
             >
               {dgettext("flows", "Continue")}
               <.icon name="arrow-right" class="size-4 ml-1" />
@@ -79,20 +79,20 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
 
           <%!-- End of flow --%>
           <div :if={@responses == [] && !@has_next} class="pt-2">
-            <div class="alert alert-info">
+            <div class="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 text-blue-700 dark:text-blue-300">
               <.icon name="info" class="size-5" />
               <span>{dgettext("flows", "End of dialogue branch")}</span>
             </div>
           </div>
 
           <%!-- Navigation --%>
-          <div class="flex justify-between pt-4 border-t border-base-300">
+          <div class="flex justify-between pt-4 border-t border-border">
             <button
               :if={@history != []}
               type="button"
               phx-click="go_back"
               phx-target={@myself}
-              class="btn btn-ghost btn-sm"
+              class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors"
             >
               <.icon name="arrow-left" class="size-4 mr-1" />
               {dgettext("flows", "Back")}
@@ -103,7 +103,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
               type="button"
               phx-click="close_preview"
               phx-target={@myself}
-              class="btn btn-ghost btn-sm"
+              class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors"
             >
               {dgettext("flows", "Close")}
             </button>
@@ -111,7 +111,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
         </div>
 
         <div :if={!@current_node && @show} class="text-center py-8">
-          <p class="text-base-content/60">{dgettext("flows", "No node selected for preview.")}</p>
+          <p class="text-muted-foreground">{dgettext("flows", "No node selected for preview.")}</p>
         </div>
       </.modal>
     </div>
@@ -363,7 +363,7 @@ defmodule StoryarnWeb.FlowLive.PreviewComponent do
 
   defp interpolate_variables(text) when is_binary(text) do
     Regex.replace(~r/\{(\w+)\}/, text, fn _, var_name ->
-      "<span class=\"badge badge-ghost badge-sm font-mono\">[#{var_name}]</span>"
+      "<span class=\"text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground badge-sm font-mono\">[#{var_name}]</span>"
     end)
   end
 end

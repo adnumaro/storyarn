@@ -27,7 +27,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
         <% else %>
           <%!-- Named Versions --%>
           <div :if={@named_versions != []} class="space-y-2 mb-6">
-            <h3 class="text-sm font-medium text-base-content/70 flex items-center gap-1.5">
+            <h3 class="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
               <.icon name="bookmark" class="size-4" />
               {dgettext("versioning", "Named Versions")}
             </h3>
@@ -47,7 +47,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
           <div :if={@auto_versions != []}>
             <button
               type="button"
-              class="text-sm text-base-content/60 flex items-center gap-1.5 mb-2 hover:text-base-content/80 transition-colors"
+              class="text-sm text-muted-foreground flex items-center gap-1.5 mb-2 hover:text-foreground/80 transition-colors"
               phx-click="toggle_auto_versions"
               phx-target={@myself}
             >
@@ -80,7 +80,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
           <button
             :if={@has_more_versions}
             type="button"
-            class="btn btn-ghost btn-sm w-full mt-4"
+            class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors w-full mt-4"
             phx-click="load_more_versions"
             phx-target={@myself}
           >
@@ -746,17 +746,17 @@ defmodule StoryarnWeb.Components.VersionsSection do
   defp loading_placeholder(assigns) do
     ~H"""
     <div class="flex items-center justify-center p-8">
-      <span class="loading loading-spinner loading-md"></span>
+      <span class="size-5 border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin"></span>
     </div>
     """
   end
 
   defp empty_versions_state(assigns) do
     ~H"""
-    <div class="bg-base-200/50 rounded-lg p-8 text-center">
-      <.icon name="clock" class="size-12 mx-auto text-base-content/30 mb-4" />
-      <p class="text-base-content/70 mb-2">{dgettext("versioning", "No versions yet")}</p>
-      <p class="text-sm text-base-content/50">
+    <div class="bg-muted/50 rounded-lg p-8 text-center">
+      <.icon name="clock" class="size-12 mx-auto text-foreground/30 mb-4" />
+      <p class="text-muted-foreground mb-2">{dgettext("versioning", "No versions yet")}</p>
+      <p class="text-sm text-muted-foreground">
         {dgettext("versioning", "Create a version to save the current state.")}
       </p>
     </div>
@@ -776,13 +776,13 @@ defmodule StoryarnWeb.Components.VersionsSection do
     <div class={[
       "flex items-start gap-2.5 p-3 rounded-lg group",
       @is_current && "bg-primary/10 border border-primary/30",
-      !@is_current && "hover:bg-base-200/50"
+      !@is_current && "hover:bg-muted/50"
     ]}>
       <div class={[
         "flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium mt-0.5",
         @is_current && "bg-primary text-primary-content",
         @variant == :named && !@is_current && "bg-accent/20 text-accent",
-        @variant == :auto && !@is_current && "bg-base-300"
+        @variant == :auto && !@is_current && "bg-border"
       ]}>
         <%= if @variant == :named do %>
           <.icon name="bookmark" class="size-3.5" />
@@ -796,16 +796,16 @@ defmodule StoryarnWeb.Components.VersionsSection do
             <span class={[
               "text-sm truncate",
               @variant == :named && "font-medium",
-              @variant == :auto && "text-base-content/70"
+              @variant == :auto && "text-muted-foreground"
             ]}>
               {@version.title || @version.change_summary || dgettext("versioning", "No summary")}
             </span>
-            <span :if={@is_current} class="badge badge-primary badge-xs flex-shrink-0">
+            <span :if={@is_current} class="text-[10px] px-1.5 py-0 rounded-full bg-primary text-primary-foreground flex-shrink-0">
               {dgettext("versioning", "Current")}
             </span>
             <span
               :if={@variant == :named}
-              class="badge badge-accent badge-xs badge-outline flex-shrink-0"
+              class="text-xs px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-700 badge-xs badge-outline flex-shrink-0"
             >
               v{@version.version_number}
             </span>
@@ -813,7 +813,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
           <div class="flex-shrink-0 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               type="button"
-              class="btn btn-ghost btn-xs btn-square tooltip"
+              class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors tooltip"
               data-tip={dgettext("versioning", "Compare with current")}
               phx-click="compare_version"
               phx-value-version={@version.version_number}
@@ -824,7 +824,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
             <button
               :if={@can_edit && @variant == :auto && @can_name_version}
               type="button"
-              class="btn btn-ghost btn-xs btn-square tooltip"
+              class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors tooltip"
               data-tip={dgettext("versioning", "Name this version")}
               phx-click="show_promote_modal"
               phx-value-version={@version.version_number}
@@ -835,7 +835,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
             <button
               :if={@can_edit && !@is_current}
               type="button"
-              class="btn btn-ghost btn-xs btn-square tooltip"
+              class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors tooltip"
               data-tip={dgettext("versioning", "Restore this version")}
               phx-click="preview_restore"
               phx-value-version={@version.version_number}
@@ -846,7 +846,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
             <button
               :if={@can_edit}
               type="button"
-              class="btn btn-ghost btn-xs btn-square tooltip text-error"
+              class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors tooltip text-destructive"
               data-tip={dgettext("versioning", "Delete version")}
               phx-click={
                 JS.push("set_pending_delete_version",
@@ -862,13 +862,13 @@ defmodule StoryarnWeb.Components.VersionsSection do
         </div>
         <p
           :if={@variant == :named && @version.description}
-          class="text-xs text-base-content/70 mt-0.5"
+          class="text-xs text-muted-foreground mt-0.5"
         >
           {@version.description}
         </p>
         <p
           :if={@version.change_summary && @version.change_summary != @version.title}
-          class="text-xs text-base-content/50 mt-0.5 line-clamp-2"
+          class="text-xs text-muted-foreground mt-0.5 line-clamp-2"
         >
           {@version.change_summary}
         </p>
@@ -881,10 +881,10 @@ defmodule StoryarnWeb.Components.VersionsSection do
           }
           target={@target}
         />
-        <div class="text-xs text-base-content/60 mt-0.5">
+        <div class="text-xs text-muted-foreground mt-0.5">
           <span>{format_version_date(@version.inserted_at)}</span>
         </div>
-        <div :if={@version.created_by} class="text-xs text-base-content/60 truncate">
+        <div :if={@version.created_by} class="text-xs text-muted-foreground truncate">
           {dgettext("versioning", "by")} {@version.created_by.display_name ||
             @version.created_by.email}
         </div>
@@ -907,7 +907,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
           type="text"
           name="title"
           id="version-title"
-          class="input input-bordered w-full"
+          class="h-9 rounded-md border border-input bg-background px-3 text-sm w-full"
           placeholder={dgettext("versioning", "e.g., Before major refactor")}
           required
           autofocus
@@ -927,16 +927,16 @@ defmodule StoryarnWeb.Components.VersionsSection do
           placeholder={dgettext("versioning", "Describe what this version captures...")}
         ></textarea>
       </div>
-      <div class="modal-action">
+      <div class="flex justify-end gap-2 mt-4">
         <button
           type="button"
-          class="btn btn-ghost"
+          class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
           phx-click="hide_create_version_modal"
           phx-target={@target}
         >
           {dgettext("versioning", "Cancel")}
         </button>
-        <button type="submit" class="btn btn-primary">
+        <button type="submit" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
           <.icon name="save" class="size-4" />
           {dgettext("versioning", "Create Version")}
         </button>
@@ -951,7 +951,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
   defp promote_version_form(assigns) do
     ~H"""
     <h3 class="font-bold text-lg mb-4">{dgettext("versioning", "Name This Version")}</h3>
-    <p class="text-sm text-base-content/70 mb-4">
+    <p class="text-sm text-muted-foreground mb-4">
       {dgettext("versioning", "Give this auto-save a name to make it a milestone.")}
     </p>
     <form id="promote-version-form" phx-submit="promote_version" phx-target={@target}>
@@ -964,7 +964,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
           type="text"
           name="title"
           id="promote-version-title"
-          class="input input-bordered w-full"
+          class="h-9 rounded-md border border-input bg-background px-3 text-sm w-full"
           placeholder={
             @version.change_summary || dgettext("versioning", "e.g., Before major refactor")
           }
@@ -986,16 +986,16 @@ defmodule StoryarnWeb.Components.VersionsSection do
           placeholder={dgettext("versioning", "Describe what this version captures...")}
         ></textarea>
       </div>
-      <div class="modal-action">
+      <div class="flex justify-end gap-2 mt-4">
         <button
           type="button"
-          class="btn btn-ghost"
+          class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
           phx-click="hide_promote_modal"
           phx-target={@target}
         >
           {dgettext("versioning", "Cancel")}
         </button>
-        <button type="submit" class="btn btn-primary">
+        <button type="submit" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
           <.icon name="bookmark-plus" class="size-4" />
           {dgettext("versioning", "Name Version")}
         </button>
@@ -1010,11 +1010,11 @@ defmodule StoryarnWeb.Components.VersionsSection do
   defp unsaved_changes_content(assigns) do
     ~H"""
     <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
-      <.icon name="alert-triangle" class="size-5 text-warning" />
+      <.icon name="alert-triangle" class="size-5 text-amber-600 dark:text-amber-400" />
       {dgettext("versioning", "Unsaved changes")}
     </h3>
 
-    <p class="text-base-content/70 mb-2">
+    <p class="text-muted-foreground mb-2">
       {dgettext(
         "versioning",
         "You have changes that aren't saved in any version. Restoring to v%{number} will overwrite them.",
@@ -1022,14 +1022,14 @@ defmodule StoryarnWeb.Components.VersionsSection do
       )}
     </p>
 
-    <p class="text-sm text-base-content/50 mb-6">
+    <p class="text-sm text-muted-foreground mb-6">
       {dgettext("versioning", "What would you like to do with your current changes?")}
     </p>
 
     <div class="flex flex-col gap-2">
       <button
         type="button"
-        class="btn btn-primary w-full justify-start gap-2"
+        class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors w-full justify-start gap-2"
         phx-click="save_and_restore"
         phx-target={@target}
       >
@@ -1038,7 +1038,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
       </button>
       <button
         type="button"
-        class="btn btn-warning btn-outline w-full justify-start gap-2"
+        class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md bg-amber-500 text-white hover:bg-amber-600 btn-outline w-full justify-start gap-2"
         phx-click="discard_and_restore"
         phx-target={@target}
       >
@@ -1047,7 +1047,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
       </button>
       <button
         type="button"
-        class="btn btn-ghost w-full justify-start gap-2"
+        class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors w-full justify-start gap-2"
         phx-click="cancel_restore"
         phx-target={@target}
       >
@@ -1071,7 +1071,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
     <%= if @preview.report.has_conflicts do %>
       <div class="space-y-3 mb-4">
         <%!-- Shortcut collision --%>
-        <div :if={@preview.report.shortcut_collision} class="alert alert-warning">
+        <div :if={@preview.report.shortcut_collision} class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-700 dark:text-amber-300">
           <.icon name="alert-triangle" class="size-4" />
           <span>
             {dgettext("versioning", "Shortcut collision — will be renamed to \"%{shortcut}\"",
@@ -1082,17 +1082,17 @@ defmodule StoryarnWeb.Components.VersionsSection do
 
         <%!-- Missing references --%>
         <div :if={@preview.report.conflicts != []} class="space-y-2">
-          <p class="text-sm font-medium text-warning">
+          <p class="text-sm font-medium text-amber-600 dark:text-amber-400">
             <.icon name="alert-triangle" class="size-4 inline" />
             {dgettext("versioning", "Some referenced entities no longer exist:")}
           </p>
 
           <div
             :for={conflict <- @preview.report.conflicts}
-            class="bg-base-200/50 rounded-lg p-3"
+            class="bg-muted/50 rounded-lg p-3"
           >
             <div class="flex items-center gap-2 text-sm font-medium">
-              <.icon name={conflict_type_icon(conflict.type)} class="size-4 text-warning" />
+              <.icon name={conflict_type_icon(conflict.type)} class="size-4 text-amber-600 dark:text-amber-400" />
               <span>
                 {dgettext("versioning", "Missing %{type} (ID: %{id})",
                   type: conflict_type_label(conflict.type),
@@ -1100,13 +1100,13 @@ defmodule StoryarnWeb.Components.VersionsSection do
                 )}
               </span>
             </div>
-            <ul class="mt-1 ml-6 text-xs text-base-content/60 list-disc">
+            <ul class="mt-1 ml-6 text-xs text-muted-foreground list-disc">
               <li :for={context <- conflict.contexts}>{context}</li>
             </ul>
           </div>
         </div>
 
-        <p class="text-sm text-base-content/70">
+        <p class="text-sm text-muted-foreground">
           <%= if @preview.skip_pre_snapshot do %>
             {dgettext(
               "versioning",
@@ -1121,7 +1121,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
         </p>
       </div>
     <% else %>
-      <p class="text-base-content/70 mb-4">
+      <p class="text-muted-foreground mb-4">
         {dgettext("versioning", "This will restore the entity to version %{number}.",
           number: @preview.version.version_number
         )}
@@ -1133,19 +1133,19 @@ defmodule StoryarnWeb.Components.VersionsSection do
       :if={@preview.report.auto_resolved != []}
       class="bg-info/10 border border-info/20 rounded-lg p-3 mb-4"
     >
-      <p class="text-sm font-medium text-info mb-1">
+      <p class="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">
         <.icon name="info" class="size-4 inline" />
         {dgettext("versioning", "Auto-resolved:")}
       </p>
-      <ul class="text-xs text-base-content/70 list-disc ml-5">
+      <ul class="text-xs text-muted-foreground list-disc ml-5">
         <li :for={item <- @preview.report.auto_resolved}>{item}</li>
       </ul>
     </div>
 
-    <div class="modal-action">
+    <div class="flex justify-end gap-2 mt-4">
       <button
         type="button"
-        class="btn btn-ghost"
+        class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
         phx-click="cancel_restore"
         phx-target={@target}
       >
@@ -1182,7 +1182,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
     <div class="mt-1">
       <button
         type="button"
-        class="text-[11px] text-base-content/40 hover:text-base-content/60 transition-colors flex items-center gap-0.5"
+        class="text-[11px] text-muted-foreground hover:text-muted-foreground transition-colors flex items-center gap-0.5"
         phx-click="toggle_changelog"
         phx-value-version={@version_number}
         phx-target={@target}
@@ -1204,7 +1204,7 @@ defmodule StoryarnWeb.Components.VersionsSection do
           ]}>
             {change_action_icon(change["action"])}
           </span>
-          <span class="text-base-content/60 leading-4">{change["detail"]}</span>
+          <span class="text-muted-foreground leading-4">{change["detail"]}</span>
         </div>
       </div>
     </div>
@@ -1214,13 +1214,13 @@ defmodule StoryarnWeb.Components.VersionsSection do
   defp change_stats_badge(assigns) do
     ~H"""
     <span class="flex items-center gap-1.5">
-      <span :if={@stats["added"] > 0} class="text-success">
+      <span :if={@stats["added"] > 0} class="text-green-600 dark:text-green-400">
         +{@stats["added"]}
       </span>
-      <span :if={@stats["modified"] > 0} class="text-warning">
+      <span :if={@stats["modified"] > 0} class="text-amber-600 dark:text-amber-400">
         ~{@stats["modified"]}
       </span>
-      <span :if={@stats["removed"] > 0} class="text-error">
+      <span :if={@stats["removed"] > 0} class="text-destructive">
         -{@stats["removed"]}
       </span>
     </span>
@@ -1232,10 +1232,10 @@ defmodule StoryarnWeb.Components.VersionsSection do
   defp change_action_icon("removed"), do: "-"
   defp change_action_icon(_), do: "?"
 
-  defp change_action_color("added"), do: "text-success"
-  defp change_action_color("modified"), do: "text-warning"
-  defp change_action_color("removed"), do: "text-error"
-  defp change_action_color(_), do: "text-base-content/50"
+  defp change_action_color("added"), do: "text-green-600 dark:text-green-400"
+  defp change_action_color("modified"), do: "text-amber-600 dark:text-amber-400"
+  defp change_action_color("removed"), do: "text-destructive"
+  defp change_action_color(_), do: "text-muted-foreground"
 
   defp conflict_type_icon(:asset), do: "image"
   defp conflict_type_icon(:sheet), do: "file-text"

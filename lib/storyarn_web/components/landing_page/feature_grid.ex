@@ -93,14 +93,14 @@ defmodule StoryarnWeb.Components.LandingPage.FeatureGrid do
         <div class="lp-features-grid">
           <article
             :for={{{feature, color}, _idx} <- @features}
-            class="lp-feature-card p-5 sm:p-6 rounded-3xl border border-base-content/8 bg-base-200/60"
+            class="lp-feature-card p-5 sm:p-6 rounded-3xl border border-border bg-muted/60"
             data-feature-card
           >
             <em class={"inline-flex items-center justify-center min-w-[46px] min-h-[46px] rounded-xl mb-4 not-italic text-#{color} bg-#{color}/10"}>
               <.icon name={feature.icon} class="size-5" />
             </em>
-            <h3 class="mb-3 text-xl tracking-tight font-bold text-base-content">{feature.title}</h3>
-            <p class="text-base-content/60 leading-relaxed">{feature.desc}</p>
+            <h3 class="mb-3 text-xl tracking-tight font-bold text-foreground">{feature.title}</h3>
+            <p class="text-muted-foreground leading-relaxed">{feature.desc}</p>
           </article>
         </div>
       </div>
@@ -116,11 +116,11 @@ defmodule StoryarnWeb.Components.LandingPage.FeatureGrid do
     <div class="lp-features-copy" data-feature-intro>
       <h2
         id="features-title"
-        class="text-[clamp(2.2rem,3vw,3.8rem)] leading-[0.97] tracking-[-0.06em] font-bold text-base-content"
+        class="text-[clamp(2.2rem,3vw,3.8rem)] leading-[0.97] tracking-[-0.06em] font-bold text-foreground"
       >
         {widont(@title)}
       </h2>
-      <p class="max-w-[36rem] text-base-content/60 leading-relaxed text-base">
+      <p class="max-w-[36rem] text-muted-foreground leading-relaxed text-base">
         {widont(@description)}
       </p>
     </div>

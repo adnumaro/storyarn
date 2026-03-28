@@ -25,7 +25,7 @@ defmodule StoryarnWeb.AssetLive.Index do
       <:top_bar_extra_right :if={@can_edit}>
         <div class="flex items-center px-1.5 py-1 surface-panel">
           <label class={[
-            "btn btn-ghost btn-sm gap-1.5",
+            "inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors gap-1.5",
             @uploading && "btn-disabled"
           ]}>
             <.icon name="upload" class="size-4" />

@@ -62,7 +62,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerSlide do
   def player_slide(%{slide: %{type: :empty}} = assigns) do
     ~H"""
     <div class="player-slide player-slide-empty">
-      <p class="text-base-content/40">{dgettext("flows", "No content to display.")}</p>
+      <p class="text-muted-foreground">{dgettext("flows", "No content to display.")}</p>
     </div>
     """
   end

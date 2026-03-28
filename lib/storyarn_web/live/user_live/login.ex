@@ -10,50 +10,15 @@ defmodule StoryarnWeb.UserLive.Login do
   def render(assigns) do
     ~H"""
     <Layouts.auth flash={@flash} current_scope={@current_scope}>
-      <div class="mx-auto max-w-sm space-y-4">
-        <div class="text-center">
-          <.header>
-            <p>{dgettext("identity", "Log in")}</p>
-            <:subtitle>
-              {dgettext("identity", "Enter your email and we'll send you a login link.")}
-            </:subtitle>
-          </.header>
-        </div>
-
-        <div :if={local_mail_adapter?()} class="alert alert-info">
-          <.icon name="info" class="size-6 shrink-0" />
-          <div>
-            <p>{dgettext("identity", "You are running the local mail adapter.")}</p>
-            <p>
-              {dgettext("identity", "To see sent emails, visit")} <.link
-                href="/dev/mailbox"
-                class="underline"
-              >{dgettext("identity", "the mailbox sheet")}</.link>.
-            </p>
-          </div>
-        </div>
-
-        <.form
-          :let={f}
-          for={@form}
-          id="login_form_magic"
-          action={~p"/users/log-in"}
-          phx-submit="submit_magic"
-        >
-          <.input
-            readonly={!!@current_scope}
-            field={f[:email]}
-            type="email"
-            label={dgettext("identity", "Email")}
-            autocomplete="email"
-            required
-            phx-mounted={JS.focus()}
-          />
-          <.button class="btn btn-primary w-full">
-            {dgettext("identity", "Log in with email")} <span aria-hidden="true">→</span>
-          </.button>
-        </.form>
-      </div>
+      <.vue
+        v-component="auth/Login"
+        v-socket={@socket}
+        id="login-vue"
+        email={@form.params["email"] || ""}
+        readonly={!!@current_scope}
+        local-mail-adapter={local_mail_adapter?()}
+        login-action={~p"/users/log-in"}
+      />
     </Layouts.auth>
     """
   end

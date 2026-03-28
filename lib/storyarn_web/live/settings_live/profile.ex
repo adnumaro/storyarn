@@ -4,8 +4,6 @@ defmodule StoryarnWeb.SettingsLive.Profile do
   """
   use StoryarnWeb, :live_view
 
-  import StoryarnWeb.Components.UIComponents, only: [form_actions: 1]
-
   alias Storyarn.Accounts
 
   on_mount {StoryarnWeb.UserAuth, :require_sudo_mode}
@@ -60,70 +58,32 @@ defmodule StoryarnWeb.SettingsLive.Profile do
         {dgettext("settings", "Manage your personal information and email address")}
       </:subtitle>
 
-      <div class="space-y-8">
-        <%!-- Profile Section --%>
-        <section>
-          <h3 class="text-lg font-semibold mb-4">{dgettext("settings", "Personal Information")}</h3>
-          <.form
-            for={@profile_form}
-            id="profile_form"
-            phx-submit="update_profile"
-            phx-change="validate_profile"
-            class="space-y-4"
-          >
-            <.input
-              field={@profile_form[:display_name]}
-              type="text"
-              label={dgettext("settings", "Display Name")}
-              placeholder={dgettext("settings", "How you want to be called")}
-            />
-            <.input
-              field={@profile_form[:locale]}
-              type="select"
-              label={dgettext("settings", "Language")}
-              prompt={dgettext("settings", "Auto-detect from browser")}
-              options={[{"English", "en"}, {"Español", "es"}]}
-            />
-            <.form_actions>
-              <.button variant="primary" phx-disable-with={dgettext("settings", "Saving...")}>
-                {dgettext("settings", "Save Profile")}
-              </.button>
-            </.form_actions>
-          </.form>
-        </section>
-
-        <div class="divider" />
-
-        <%!-- Email Section --%>
-        <section>
-          <h3 class="text-lg font-semibold mb-4">{dgettext("settings", "Email Address")}</h3>
-          <p class="text-sm text-base-content/70 mb-4">
-            {dgettext("settings", "Your email is used for login and notifications.")}
-          </p>
-          <.form
-            for={@email_form}
-            id="email_form"
-            phx-submit="update_email"
-            phx-change="validate_email"
-            class="space-y-4"
-          >
-            <.input
-              field={@email_form[:email]}
-              type="email"
-              label={dgettext("settings", "Email")}
-              autocomplete="username"
-              required
-            />
-            <.form_actions>
-              <.button variant="primary" phx-disable-with={dgettext("settings", "Changing...")}>
-                {dgettext("settings", "Change Email")}
-              </.button>
-            </.form_actions>
-          </.form>
-        </section>
-      </div>
+      <.vue
+        v-component="settings/Profile"
+        v-socket={@socket}
+        id="settings-profile-vue"
+        profile-form={@profile_form}
+        email-form={@email_form}
+        current-email={@current_email}
+        translations={profile_translations()}
+      />
     </Layouts.settings>
     """
+  end
+
+  defp profile_translations do
+    %{
+      personalInfo: dgettext("settings", "Personal Information"),
+      displayName: dgettext("settings", "Display Name"),
+      displayNamePlaceholder: dgettext("settings", "How you want to be called"),
+      language: dgettext("settings", "Language"),
+      autoDetect: dgettext("settings", "Auto-detect from browser"),
+      saveProfile: dgettext("settings", "Save Profile"),
+      emailAddress: dgettext("settings", "Email Address"),
+      emailDescription: dgettext("settings", "Your email is used for login and notifications."),
+      email: dgettext("settings", "Email"),
+      changeEmail: dgettext("settings", "Change Email")
+    }
   end
 
   @impl true

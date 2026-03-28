@@ -17,14 +17,14 @@ defmodule StoryarnWeb.AssetLive.Components.AssetComponents do
     ~H"""
     <div
       class={[
-        "card bg-base-100 border shadow-sm hover:shadow-md transition-shadow cursor-pointer overflow-hidden",
+        "card bg-background border shadow-sm hover:shadow-md transition-shadow cursor-pointer overflow-hidden",
         @selected && "border-primary ring-2 ring-primary/20",
-        !@selected && "border-base-300"
+        !@selected && "border-border"
       ]}
       phx-click="select_asset"
       phx-value-id={@asset.id}
     >
-      <figure class="h-32 bg-base-200 flex items-center justify-center">
+      <figure class="h-32 bg-muted flex items-center justify-center">
         <img
           :if={Assets.image?(@asset)}
           src={@asset.url}
@@ -32,18 +32,18 @@ defmodule StoryarnWeb.AssetLive.Components.AssetComponents do
           class="w-full h-full object-cover"
         />
         <div :if={Assets.audio?(@asset)} class="text-center">
-          <.icon name="music" class="size-10 text-base-content/30" />
+          <.icon name="music" class="size-10 text-foreground/30" />
         </div>
         <div :if={!Assets.image?(@asset) and !Assets.audio?(@asset)} class="text-center">
-          <.icon name="file" class="size-10 text-base-content/30" />
+          <.icon name="file" class="size-10 text-foreground/30" />
         </div>
       </figure>
 
-      <div class="card-body p-3">
+      <div class="p-4 p-3">
         <p class="text-sm font-medium truncate" title={@asset.filename}>{@asset.filename}</p>
-        <div class="flex items-center justify-between text-xs text-base-content/60">
+        <div class="flex items-center justify-between text-xs text-muted-foreground">
           <span>{format_size(@asset.size)}</span>
-          <span class={["badge badge-xs", type_badge_class(@asset)]}>{type_label(@asset)}</span>
+          <span class={["text-[10px] px-1 rounded bg-muted text-muted-foreground", type_badge_class(@asset)]}>{type_label(@asset)}</span>
         </div>
       </div>
     </div>
@@ -65,15 +65,15 @@ defmodule StoryarnWeb.AssetLive.Components.AssetComponents do
     assigns = assign(assigns, :total_usages, total_usages)
 
     ~H"""
-    <div class="w-80 flex-shrink-0 border border-base-300 rounded-lg bg-base-100 p-4 space-y-4 self-start">
+    <div class="w-80 flex-shrink-0 border border-border rounded-lg bg-background p-4 space-y-4 self-start">
       <div class="flex items-center justify-between">
         <h3 class="font-semibold text-sm">{dgettext("assets", "Details")}</h3>
-        <button type="button" phx-click="deselect_asset" class="btn btn-ghost btn-xs btn-square">
+        <button type="button" phx-click="deselect_asset" class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
           <.icon name="x" class="size-4" />
         </button>
       </div>
 
-      <div class="rounded-lg overflow-hidden bg-base-200">
+      <div class="rounded-lg overflow-hidden bg-muted">
         <img
           :if={Assets.image?(@asset)}
           src={@asset.url}
@@ -89,43 +89,43 @@ defmodule StoryarnWeb.AssetLive.Components.AssetComponents do
           :if={!Assets.image?(@asset) and !Assets.audio?(@asset)}
           class="p-6 flex items-center justify-center"
         >
-          <.icon name="file" class="size-12 text-base-content/30" />
+          <.icon name="file" class="size-12 text-foreground/30" />
         </div>
       </div>
 
       <dl class="text-sm space-y-2">
         <div>
-          <dt class="text-base-content/50">{dgettext("assets", "Filename")}</dt>
+          <dt class="text-muted-foreground">{dgettext("assets", "Filename")}</dt>
           <dd class="font-medium break-all">{@asset.filename}</dd>
         </div>
         <div>
-          <dt class="text-base-content/50">{dgettext("assets", "Type")}</dt>
+          <dt class="text-muted-foreground">{dgettext("assets", "Type")}</dt>
           <dd>{@asset.content_type}</dd>
         </div>
         <div>
-          <dt class="text-base-content/50">{dgettext("assets", "Size")}</dt>
+          <dt class="text-muted-foreground">{dgettext("assets", "Size")}</dt>
           <dd>{format_size(@asset.size)}</dd>
         </div>
         <div>
-          <dt class="text-base-content/50">{dgettext("assets", "Uploaded")}</dt>
+          <dt class="text-muted-foreground">{dgettext("assets", "Uploaded")}</dt>
           <dd>{Calendar.strftime(@asset.inserted_at, "%b %d, %Y")}</dd>
         </div>
       </dl>
 
-      <div class="border-t border-base-300 pt-4">
+      <div class="border-t border-border pt-4">
         <h4 class="text-sm font-medium mb-2 flex items-center gap-2">
           <.icon name="link" class="size-4" />
           {dgettext("assets", "Usage")}
-          <span class="badge badge-xs">{@total_usages}</span>
+          <span class="text-[10px] px-1 rounded bg-muted text-muted-foreground">{@total_usages}</span>
         </h4>
 
-        <div :if={@total_usages == 0} class="text-sm text-base-content/50">
+        <div :if={@total_usages == 0} class="text-sm text-muted-foreground">
           {dgettext("assets", "Not used anywhere")}
         </div>
 
         <ul :if={@total_usages > 0} class="text-sm space-y-1">
           <li :for={usage <- @usages.flow_nodes} class="flex items-center gap-2">
-            <.icon name="git-branch" class="size-3 text-base-content/50" />
+            <.icon name="git-branch" class="size-3 text-muted-foreground" />
             <.link
               navigate={
                 ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{usage.flow_id}"
@@ -136,7 +136,7 @@ defmodule StoryarnWeb.AssetLive.Components.AssetComponents do
             </.link>
           </li>
           <li :for={sheet <- @usages.sheet_avatars} class="flex items-center gap-2">
-            <.icon name="user" class="size-3 text-base-content/50" />
+            <.icon name="user" class="size-3 text-muted-foreground" />
             <.link
               navigate={
                 ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{sheet.id}"
@@ -144,11 +144,11 @@ defmodule StoryarnWeb.AssetLive.Components.AssetComponents do
               class="text-primary hover:underline truncate"
             >
               {sheet.name}
-              <span class="text-base-content/40">({dgettext("assets", "avatar")})</span>
+              <span class="text-muted-foreground">({dgettext("assets", "avatar")})</span>
             </.link>
           </li>
           <li :for={sheet <- @usages.sheet_banners} class="flex items-center gap-2">
-            <.icon name="image" class="size-3 text-base-content/50" />
+            <.icon name="image" class="size-3 text-muted-foreground" />
             <.link
               navigate={
                 ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets/#{sheet.id}"
@@ -156,16 +156,16 @@ defmodule StoryarnWeb.AssetLive.Components.AssetComponents do
               class="text-primary hover:underline truncate"
             >
               {sheet.name}
-              <span class="text-base-content/40">({dgettext("assets", "banner")})</span>
+              <span class="text-muted-foreground">({dgettext("assets", "banner")})</span>
             </.link>
           </li>
         </ul>
       </div>
 
-      <div :if={@can_edit} class="border-t border-base-300 pt-4">
+      <div :if={@can_edit} class="border-t border-border pt-4">
         <button
           type="button"
-          class="btn btn-error btn-sm btn-outline w-full"
+          class="inline-flex items-center justify-center px-4 py-2 text-sm rounded-md bg-destructive text-white hover:bg-destructive/90 transition-colors btn-sm btn-outline w-full"
           phx-click={show_modal("delete-asset-confirm")}
         >
           <.icon name="trash-2" class="size-4" />

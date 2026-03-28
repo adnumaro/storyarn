@@ -15,14 +15,14 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
     ~H"""
     <Layouts.public flash={@flash}>
       <div class="max-w-lg mx-auto text-center py-12">
-        <.icon name="x-circle" class="size-16 mx-auto text-error mb-6" />
+        <.icon name="x-circle" class="size-16 mx-auto text-destructive mb-6" />
         <.header>
           {dgettext("projects", "Invalid Invitation")}
           <:subtitle>
             {dgettext("projects", "This invitation link is invalid or has expired.")}
           </:subtitle>
         </.header>
-        <.link navigate={~p"/"} class="btn btn-primary mt-8">
+        <.link navigate={~p"/"} class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mt-8">
           {dgettext("projects", "Go to Homepage")}
         </.link>
       </div>

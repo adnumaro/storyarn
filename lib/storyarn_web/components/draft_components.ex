@@ -13,14 +13,14 @@ defmodule StoryarnWeb.Components.DraftComponents do
       :if={@is_draft}
       class="bg-warning/20 border-b border-warning px-4 py-1.5 text-sm flex items-center gap-2"
     >
-      <.icon name="git-branch" class="size-4 text-warning" />
+      <.icon name="git-branch" class="size-4 text-amber-600 dark:text-amber-400" />
       <span class="flex-1">
         {dgettext("drafts", "Editing draft — changes don't affect the original")}
       </span>
       <button
         type="button"
         phx-click={JS.push("load_merge_summary")}
-        class="btn btn-ghost btn-xs text-success"
+        class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors btn-xs text-green-600 dark:text-green-400"
       >
         <.icon name="git-merge" class="size-3.5" />
         {dgettext("drafts", "Merge")}
@@ -28,7 +28,7 @@ defmodule StoryarnWeb.Components.DraftComponents do
       <button
         type="button"
         phx-click={show_modal("discard-draft-confirm")}
-        class="btn btn-ghost btn-xs text-error"
+        class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors btn-xs text-destructive"
       >
         {dgettext("drafts", "Discard")}
       </button>
@@ -69,11 +69,11 @@ defmodule StoryarnWeb.Components.DraftComponents do
       <div class="space-y-4">
         <div class="flex items-center gap-3">
           <div class="bg-success/20 rounded-full p-2">
-            <.icon name="git-merge" class="size-5 text-success" />
+            <.icon name="git-merge" class="size-5 text-green-600 dark:text-green-400" />
           </div>
           <div>
             <h3 class="text-lg font-semibold">{dgettext("drafts", "Merge Draft")}</h3>
-            <p class="text-sm text-base-content/60">
+            <p class="text-sm text-muted-foreground">
               {dgettext("drafts", "This will replace the original with your draft's content.")}
             </p>
           </div>
@@ -82,14 +82,14 @@ defmodule StoryarnWeb.Components.DraftComponents do
         <div :if={@merge_summary} class="space-y-3">
           <div
             :if={@merge_summary.draft_changes != ""}
-            class="bg-base-200 rounded-lg p-3 text-sm"
+            class="bg-muted rounded-lg p-3 text-sm"
           >
             <div class="font-medium mb-1">{dgettext("drafts", "Changes in this draft")}</div>
-            <p class="text-base-content/70">{@merge_summary.draft_changes}</p>
+            <p class="text-muted-foreground">{@merge_summary.draft_changes}</p>
           </div>
           <div
             :if={@merge_summary.draft_changes == ""}
-            class="bg-base-200 rounded-lg p-3 text-sm text-base-content/60"
+            class="bg-muted rounded-lg p-3 text-sm text-muted-foreground"
           >
             {dgettext("drafts", "No changes detected.")}
           </div>
@@ -98,11 +98,11 @@ defmodule StoryarnWeb.Components.DraftComponents do
             :if={@merge_summary.original_versions_since_fork > 0}
             class="bg-warning/10 border border-warning/30 rounded-lg p-3 text-sm"
           >
-            <div class="flex items-center gap-2 text-warning">
+            <div class="flex items-center gap-2 text-amber-600 dark:text-amber-400">
               <.icon name="alert-triangle" class="size-4" />
               <span class="font-medium">{dgettext("drafts", "Original has diverged")}</span>
             </div>
-            <p class="text-base-content/70 mt-1">
+            <p class="text-muted-foreground mt-1">
               {dngettext(
                 "drafts",
                 "The original has %{count} new version since this draft was created. Merging will overwrite those changes. A safety snapshot will be created first.",
@@ -115,21 +115,21 @@ defmodule StoryarnWeb.Components.DraftComponents do
         </div>
 
         <div :if={is_nil(@merge_summary)} class="flex justify-center py-4">
-          <span class="loading loading-spinner loading-md"></span>
+          <span class="size-5 border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin"></span>
         </div>
 
         <div class="flex justify-end gap-2 pt-2">
           <button
             type="button"
             phx-click={hide_modal("merge-review-modal")}
-            class="btn btn-ghost btn-sm"
+            class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors"
           >
             {dgettext("drafts", "Cancel")}
           </button>
           <button
             type="button"
             phx-click={JS.push("merge_draft") |> hide_modal("merge-review-modal")}
-            class="btn btn-success btn-sm"
+            class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md bg-green-600 text-white hover:bg-green-700 btn-sm"
             disabled={is_nil(@merge_summary)}
           >
             <.icon name="git-merge" class="size-4" />

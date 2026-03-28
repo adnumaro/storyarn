@@ -11,16 +11,16 @@ defmodule StoryarnWeb.Components.LandingPage.CtaWaitlist do
     <section class="py-8 pb-24 scroll-mt-32" id="cta">
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
         <div
-          class="lp-cta-band relative overflow-hidden p-10 rounded-[2rem] border border-base-content/8 bg-base-200/80"
+          class="lp-cta-band relative overflow-hidden p-10 rounded-[2rem] border border-border bg-muted/80"
           data-reveal
           id="waitlist"
         >
           <div class="relative z-1 flex flex-col lg:flex-row items-end justify-between gap-6">
             <div>
-              <h2 class="mb-3 text-[clamp(2rem,3vw,3.4rem)] leading-[0.96] tracking-[-0.06em] font-bold text-base-content">
+              <h2 class="mb-3 text-[clamp(2rem,3vw,3.4rem)] leading-[0.96] tracking-[-0.06em] font-bold text-foreground">
                 {widont(gettext("Start building your next narrative"))}
               </h2>
-              <p class="mb-2 max-w-[40rem] text-base-content/60 leading-relaxed">
+              <p class="mb-2 max-w-[40rem] text-muted-foreground leading-relaxed">
                 {widont(
                   gettext(
                     "We're onboarding a small group of narrative designers and game studios. Join the waitlist — we'll reach out when your spot opens."
@@ -42,14 +42,14 @@ defmodule StoryarnWeb.Components.LandingPage.CtaWaitlist do
                   name="waitlist[email]"
                   placeholder={gettext("you@studio.com")}
                   required
-                  class="input input-bordered flex-1 min-w-[200px] bg-base-100"
+                  class="h-9 rounded-md border border-input bg-background px-3 text-sm flex-1 min-w-[200px] bg-background"
                 />
-                <button type="submit" class="btn btn-primary gap-2">
+                <button type="submit" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors gap-2">
                   {gettext("Join the waitlist")}
                   <.icon name="arrow-right" class="size-4" />
                 </button>
               </form>
-              <p class="mt-3 text-base-content/30 text-xs">
+              <p class="mt-3 text-foreground/30 text-xs">
                 {gettext("No spam. We'll only email you when it's time.")}
               </p>
             </div>

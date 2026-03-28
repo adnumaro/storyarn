@@ -52,7 +52,7 @@ defmodule StoryarnWeb.Components.LandingPage.Hero do
           </div>
 
           <div class="mt-5 sm:mt-7">
-            <h1 class="text-[clamp(2.6rem,7.2vw,5.8rem)] leading-[0.88] tracking-[-0.07em] font-bold text-base-content">
+            <h1 class="text-[clamp(2.6rem,7.2vw,5.8rem)] leading-[0.88] tracking-[-0.07em] font-bold text-foreground">
               {gettext("Craft worlds.")}
               <span class="block mt-1.5 brand-logotype text-[1em]">
                 {gettext("Weave stories.")}
@@ -60,19 +60,19 @@ defmodule StoryarnWeb.Components.LandingPage.Hero do
             </h1>
           </div>
 
-          <p class="mx-auto mt-6 max-w-[46rem] text-base-content/60 text-sm sm:text-lg leading-relaxed">
+          <p class="mx-auto mt-6 max-w-[46rem] text-muted-foreground text-sm sm:text-lg leading-relaxed">
             {gettext(
               "The narrative design platform where characters, dialogue, worlds, and localization live in one connected project — from first draft to engine-ready export."
             )}
           </p>
 
           <div class="mt-8 flex flex-wrap justify-center gap-3.5">
-            <a href="#discover" class="btn btn-primary btn-lg">
+            <a href="#discover" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors btn-lg">
               {gettext("Explore Storyarn")}
             </a>
             <a
               href="#workflow"
-              class="btn btn-ghost btn-lg border border-base-content/10"
+              class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors btn-lg border border-border"
             >
               {gettext("See workflow")}
             </a>

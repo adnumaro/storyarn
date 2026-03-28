@@ -35,11 +35,11 @@ defmodule StoryarnWeb.Components.CollaborationComponents do
       <div class="flex -space-x-2">
         <div
           :for={user <- Enum.take(@other_users, 5)}
-          class="avatar placeholder tooltip tooltip-bottom"
+          class="avatar placeholder group relative"
           data-tip={user.display_name || user.email}
         >
           <div
-            class="size-8 rounded-full ring-2 bg-base-300 text-base-content"
+            class="size-8 rounded-full ring-2 bg-border text-foreground"
             style={"ring-color: #{user.color};"}
           >
             <span class="text-xs">{get_initials(user)}</span>
@@ -47,7 +47,7 @@ defmodule StoryarnWeb.Components.CollaborationComponents do
         </div>
         <div
           :if={length(@other_users) > 5}
-          class="avatar placeholder tooltip tooltip-bottom"
+          class="avatar placeholder group relative"
           data-tip={
             ngettext(
               "%{count} more user",
@@ -57,12 +57,12 @@ defmodule StoryarnWeb.Components.CollaborationComponents do
             )
           }
         >
-          <div class="size-8 rounded-full bg-base-300 text-base-content text-xs ring-2 ring-base-content/20">
+          <div class="size-8 rounded-full bg-border text-foreground text-xs ring-2 ring-border">
             +{length(@other_users) - 5}
           </div>
         </div>
       </div>
-      <span class="text-xs text-base-content/60 ml-1">
+      <span class="text-xs text-muted-foreground ml-1">
         {ngettext("%{count} collaborator", "%{count} collaborators", length(@other_users),
           count: length(@other_users)
         )}
@@ -131,7 +131,7 @@ defmodule StoryarnWeb.Components.CollaborationComponents do
           </div>
           <div class="text-sm">
             <span class="font-medium">{get_email_name(@user_email)}</span>
-            <span class="text-base-content/70">{@message}</span>
+            <span class="text-muted-foreground">{@message}</span>
           </div>
         </div>
       </div>
@@ -173,7 +173,7 @@ defmodule StoryarnWeb.Components.CollaborationComponents do
     ~H"""
     <div
       :if={@lock}
-      class="absolute -top-2 -right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs bg-base-100 shadow-sm border border-base-300"
+      class="absolute -top-2 -right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs bg-background shadow-sm border border-border"
       style={"border-color: #{@lock.user_color};"}
     >
       <.icon name="lock" class="size-3" style={"color: #{@lock.user_color};"} />

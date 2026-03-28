@@ -18,53 +18,14 @@ defmodule StoryarnWeb.UserLive.ConfirmAccess do
   def render(assigns) do
     ~H"""
     <Layouts.auth flash={@flash} current_scope={@current_scope}>
-      <div class="mx-auto max-w-sm space-y-6">
-        <div class="text-center space-y-3">
-          <div class="flex justify-center">
-            <div class="rounded-full bg-warning/10 p-3">
-              <.icon name="shield" class="size-8 text-warning" />
-            </div>
-          </div>
-          <.header>
-            <p>{dgettext("identity", "Confirm access")}</p>
-            <:subtitle>
-              {dgettext(
-                "identity",
-                "This is a protected area. To continue, please verify your identity by requesting a new login link."
-              )}
-            </:subtitle>
-          </.header>
-        </div>
-
-        <.form
-          :let={f}
-          for={@form}
-          id="confirm_access_form"
-          action={~p"/users/log-in"}
-          phx-submit="submit_magic"
-        >
-          <.input
-            readonly
-            field={f[:email]}
-            type="email"
-            label={dgettext("identity", "Email")}
-            autocomplete="email"
-            required
-          />
-          <.button class="btn btn-primary w-full">
-            {dgettext("identity", "Send verification link")} <span aria-hidden="true">→</span>
-          </.button>
-        </.form>
-
-        <div class="text-center">
-          <.link
-            navigate={~p"/workspaces"}
-            class="text-sm text-base-content/60 hover:text-base-content"
-          >
-            {dgettext("identity", "Go back")}
-          </.link>
-        </div>
-      </div>
+      <.vue
+        v-component="auth/ConfirmAccess"
+        v-socket={@socket}
+        id="confirm-access-vue"
+        email={@form.params["email"] || ""}
+        login-action={~p"/users/log-in"}
+        back-url={~p"/workspaces"}
+      />
     </Layouts.auth>
     """
   end

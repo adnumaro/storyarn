@@ -104,12 +104,12 @@ defmodule StoryarnWeb.Components.MemberComponents do
       |> assign(:can_change_role, can_change_role)
 
     ~H"""
-    <div class="flex items-center justify-between p-3 rounded-lg border border-base-300">
+    <div class="flex items-center justify-between p-3 rounded-lg border border-border">
       <div class="flex items-center gap-3">
         <.user_avatar user={@member.user} />
         <div>
           <p class="font-medium">{@display_name}</p>
-          <p :if={@show_email} class="text-sm text-base-content/70">
+          <p :if={@show_email} class="text-sm text-muted-foreground">
             {@member.user.email}
           </p>
         </div>
@@ -117,7 +117,7 @@ defmodule StoryarnWeb.Components.MemberComponents do
       <div class="flex items-center gap-2">
         <%= if @can_change_role do %>
           <form phx-change={@on_role_change} phx-value-member-id={@member.id}>
-            <select name="role" class="select select-bordered select-sm w-28">
+            <select name="role" class="h-8 rounded-md border border-input bg-background px-2 text-sm w-28">
               <option
                 :for={{label, value} <- @role_options}
                 value={value}
@@ -133,7 +133,7 @@ defmodule StoryarnWeb.Components.MemberComponents do
         <button
           :if={@can_remove}
           type="button"
-          class="btn btn-ghost btn-sm text-error"
+          class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors text-destructive"
           phx-click={show_modal("remove-member-#{@member.id}")}
         >
           <.icon name="x" class="size-4" />
@@ -173,23 +173,23 @@ defmodule StoryarnWeb.Components.MemberComponents do
     assigns = assign(assigns, :inviter_name, inviter_name)
 
     ~H"""
-    <div class="flex items-center justify-between p-3 rounded-lg border border-base-300 bg-base-200/50">
+    <div class="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/50">
       <div class="flex items-center gap-3">
         <.user_avatar email={@invitation.email} />
         <div>
           <p class="font-medium">{@invitation.email}</p>
-          <p class="text-xs text-base-content/50">
+          <p class="text-xs text-muted-foreground">
             {gettext("Invited by")} {@inviter_name}
           </p>
         </div>
       </div>
       <div class="flex items-center gap-2">
         <.role_badge role={@invitation.role} />
-        <span class="badge badge-ghost badge-sm">{gettext("Pending")}</span>
+        <span class="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground badge-sm">{gettext("Pending")}</span>
         <button
           :if={@can_revoke && @on_revoke}
           type="button"
-          class="btn btn-ghost btn-sm text-error"
+          class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors text-destructive"
           phx-click={show_modal("revoke-invitation-#{@invitation.id}")}
         >
           <.icon name="x" class="size-4" />

@@ -14,16 +14,16 @@ defmodule StoryarnWeb.Components.LandingPage.Spotlights do
       data-section-step
     >
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
-        <div class="p-8 rounded-[2rem] border border-base-content/8 bg-base-200/60" data-reveal>
+        <div class="p-8 rounded-[2rem] border border-border bg-muted/60" data-reveal>
           <div class="grid grid-cols-1 lg:grid-cols-[1.1fr_minmax(320px,0.72fr)] gap-6 items-start">
             <div class="grid gap-4">
-              <span class="text-base-content/70 text-xs font-bold tracking-widest uppercase">
+              <span class="text-muted-foreground text-xs font-bold tracking-widest uppercase">
                 {gettext("Exploration Mode")}
               </span>
-              <h3 class="text-[clamp(2rem,4vw,3.6rem)] leading-[0.94] tracking-[-0.05em] font-bold text-base-content">
+              <h3 class="text-[clamp(2rem,4vw,3.6rem)] leading-[0.94] tracking-[-0.05em] font-bold text-foreground">
                 {widont(gettext("Turn scene design into a playable prototype."))}
               </h3>
-              <p class="text-base-content/60 leading-relaxed">
+              <p class="text-muted-foreground leading-relaxed">
                 {widont(
                   gettext(
                     "Zones, pins, camera behavior, state, and flow triggers come together in one surface — explore it, test it, and show it to the team."
@@ -31,23 +31,23 @@ defmodule StoryarnWeb.Components.LandingPage.Spotlights do
                 )}
               </p>
               <ul class="grid gap-3 list-none p-0">
-                <li class="p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3 text-base-content/70 leading-relaxed">
+                <li class="p-3.5 rounded-2xl border border-border bg-muted text-muted-foreground leading-relaxed">
                   {gettext(
                     "Replace static documents and slide decks with something the team can actually walk through."
                   )}
                 </li>
-                <li class="p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3 text-base-content/70 leading-relaxed">
+                <li class="p-3.5 rounded-2xl border border-border bg-muted text-muted-foreground leading-relaxed">
                   {gettext(
                     "A natural fit for any genre that relies on spatial narrative and world exploration."
                   )}
                 </li>
-                <li class="p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3 text-base-content/70 leading-relaxed">
+                <li class="p-3.5 rounded-2xl border border-border bg-muted text-muted-foreground leading-relaxed">
                   {gettext("Useful for internal demos, publisher pitches, and early playtest loops.")}
                 </li>
               </ul>
             </div>
             <div class="flex justify-end items-start">
-              <span class="badge badge-ghost badge-sm">
+              <span class="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground badge-sm">
                 {gettext("Playable prototyping")}
               </span>
             </div>
@@ -78,7 +78,7 @@ defmodule StoryarnWeb.Components.LandingPage.Spotlights do
       data-section-step
     >
       <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
-        <div class="p-8 rounded-[2rem] border border-base-content/8 bg-base-200/60" data-reveal>
+        <div class="p-8 rounded-[2rem] border border-border bg-muted/60" data-reveal>
           <div class="grid grid-cols-1 lg:grid-cols-[minmax(320px,0.72fr)_1.1fr] gap-6 items-start">
             <.version_visual />
             <.version_copy />
@@ -106,13 +106,13 @@ defmodule StoryarnWeb.Components.LandingPage.Spotlights do
   defp version_copy(assigns) do
     ~H"""
     <div class="grid gap-4">
-      <span class="text-base-content/70 text-xs font-bold tracking-widest uppercase">
+      <span class="text-muted-foreground text-xs font-bold tracking-widest uppercase">
         {gettext("Version History")}
       </span>
-      <h3 class="text-[clamp(2rem,4vw,3.6rem)] leading-[0.94] tracking-[-0.05em] font-bold text-base-content">
+      <h3 class="text-[clamp(2rem,4vw,3.6rem)] leading-[0.94] tracking-[-0.05em] font-bold text-foreground">
         {widont(gettext("Versioning that feels safe, not technical."))}
       </h3>
-      <p class="text-base-content/60 leading-relaxed">
+      <p class="text-muted-foreground leading-relaxed">
         {widont(
           gettext(
             "Version history for sheets, flows, and scenes — designed for narrative teams, not engineers. The goal is simple: experiment without fear."
@@ -120,13 +120,13 @@ defmodule StoryarnWeb.Components.LandingPage.Spotlights do
         )}
       </p>
       <ul class="grid gap-3 list-none p-0">
-        <li class="p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3 text-base-content/70 leading-relaxed">
+        <li class="p-3.5 rounded-2xl border border-border bg-muted text-muted-foreground leading-relaxed">
           {gettext("Named versions, safe restore, and private drafts for experimentation.")}
         </li>
-        <li class="p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3 text-base-content/70 leading-relaxed">
+        <li class="p-3.5 rounded-2xl border border-border bg-muted text-muted-foreground leading-relaxed">
           {gettext("Built around one feeling: \"I can always go back.\"")}
         </li>
-        <li class="p-3.5 rounded-2xl border border-base-content/8 bg-base-content/3 text-base-content/70 leading-relaxed">
+        <li class="p-3.5 rounded-2xl border border-border bg-muted text-muted-foreground leading-relaxed">
           {gettext("A capability almost no other narrative tool offers.")}
         </li>
       </ul>

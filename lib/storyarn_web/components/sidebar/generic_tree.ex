@@ -74,11 +74,11 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
           type="text"
           data-tree-search-input
           placeholder={@search_placeholder}
-          class="input input-sm input-bordered w-full"
+          class="h-8 rounded-md border border-input bg-background px-2 text-sm input-bordered w-full"
         />
       </div>
 
-      <div :if={@tree == []} class="text-sm text-base-content/50 px-4 py-2">
+      <div :if={@tree == []} class="text-sm text-muted-foreground px-4 py-2">
         {@empty_text}
       </div>
 
@@ -119,7 +119,7 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
         type="button"
         phx-click={@create_event}
         data-testid={"create-#{@entity_type}"}
-        class="btn btn-ghost btn-sm w-full gap-1.5 mt-1 text-base-content/50 hover:text-base-content"
+        class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors w-full gap-1.5 mt-1 text-muted-foreground hover:text-foreground"
       >
         <.icon name="plus" class="size-4" />
         {@create_label}
@@ -245,7 +245,7 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
             id={"#{@entity_type}-create-child-#{@entity_id_str}"}
             phx-click={@create_child_event}
             phx-value-parent-id={@entity.id}
-            class="btn btn-ghost btn-xs btn-square"
+            class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
             title={@create_child_title}
           >
             <.icon name="plus" class="size-3" />
@@ -304,7 +304,7 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
             id={"#{@entity_type}-create-child-#{@entity_id_str}"}
             phx-click={@create_child_event}
             phx-value-parent-id={@entity.id}
-            class="btn btn-ghost btn-xs btn-square"
+            class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
             title={@create_child_title}
           >
             <.icon name="plus" class="size-3" />
@@ -338,25 +338,25 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
 
   defp entity_menu(assigns) do
     ~H"""
-    <div class="dropdown dropdown-end">
+    <div class="relative">
       <button
         type="button"
         id={"#{@entity_type}-#{@entity_id}-menu-button"}
         tabindex="0"
-        class="btn btn-ghost btn-xs btn-square"
+        class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
       >
         <.icon name="more-horizontal" class="size-4" />
       </button>
       <ul
         tabindex="0"
-        class="dropdown-content menu menu-sm bg-base-100 rounded-box shadow-lg border border-base-300 w-40 z-50"
+        class="absolute top-full mt-1 menu menu-sm bg-background rounded-box shadow-lg border border-border w-40 z-50"
       >
         {render_slot(@extra_menu_items, @entity)}
         <li>
           <button
             type="button"
             id={"#{@entity_type}-#{@entity_id}-delete-button"}
-            class="text-error"
+            class="text-destructive"
             phx-click={
               JS.push(@set_pending_delete_event, value: %{id: @entity_id})
               |> show_modal(@delete_modal_id)

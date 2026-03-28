@@ -21,12 +21,12 @@ defmodule StoryarnWeb.Components.Sidebar.DraftList do
     assigns = assign(assigns, :count, length(assigns.my_drafts))
 
     ~H"""
-    <div :if={@count > 0} class="border-t border-base-300 pt-2 mt-2">
+    <div :if={@count > 0} class="border-t border-border pt-2 mt-2">
       <details open>
-        <summary class="flex items-center gap-1.5 cursor-pointer select-none px-1 py-1 text-xs font-medium text-base-content/60 hover:text-base-content/80">
+        <summary class="flex items-center gap-1.5 cursor-pointer select-none px-1 py-1 text-xs font-medium text-muted-foreground hover:text-foreground/80">
           <.icon name="git-branch" class="size-3.5" />
           <span class="flex-1">{dgettext("drafts", "My Drafts")}</span>
-          <span class="badge badge-xs badge-ghost">{@count}</span>
+          <span class="text-[10px] px-1 rounded bg-muted text-muted-foreground badge-ghost">{@count}</span>
         </summary>
         <ul class="mt-1 space-y-0.5">
           <li :for={draft <- @my_drafts}>
@@ -58,7 +58,7 @@ defmodule StoryarnWeb.Components.Sidebar.DraftList do
       |> assign(:display_source_name, assigns.draft.source_name || dgettext("drafts", "Deleted"))
 
     ~H"""
-    <div class="group flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-base-300/50 text-sm">
+    <div class="group flex items-center gap-1.5 px-1.5 py-1 rounded hover:bg-border/50 text-sm">
       <.icon name={@icon} class="size-3.5 opacity-50 shrink-0" />
       <%= if @renaming do %>
         <form phx-submit="submit_rename_draft" class="flex-1 flex items-center gap-1">
@@ -67,12 +67,12 @@ defmodule StoryarnWeb.Components.Sidebar.DraftList do
             type="text"
             name="name"
             value={@draft.name}
-            class="input input-xs input-bordered flex-1 min-w-0"
+            class="h-7 rounded-md border border-input bg-background px-2 text-xs input-bordered flex-1 min-w-0"
             autofocus
             phx-key="Escape"
             phx-keydown={JS.push("cancel_rename_draft")}
           />
-          <button type="submit" class="btn btn-ghost btn-xs btn-square">
+          <button type="submit" class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
             <.icon name="check" class="size-3" />
           </button>
         </form>
@@ -82,7 +82,7 @@ defmodule StoryarnWeb.Components.Sidebar.DraftList do
         </.link>
         <span
           :if={@stale?}
-          class="badge badge-xs badge-warning shrink-0"
+          class="text-[10px] px-1 rounded bg-muted text-muted-foreground badge-warning shrink-0"
           title={dgettext("drafts", "Stale draft")}
         >
           {dgettext("drafts", "stale")}
@@ -92,7 +92,7 @@ defmodule StoryarnWeb.Components.Sidebar.DraftList do
             type="button"
             phx-click="rename_draft_inline"
             phx-value-draft-id={@draft.id}
-            class="btn btn-ghost btn-xs btn-square"
+            class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
             title={dgettext("drafts", "Rename")}
           >
             <.icon name="pencil" class="size-3" />
@@ -100,13 +100,13 @@ defmodule StoryarnWeb.Components.Sidebar.DraftList do
           <button
             type="button"
             phx-click={show_modal("discard-draft-list-#{@draft.id}")}
-            class="btn btn-ghost btn-xs btn-square text-error"
+            class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors text-destructive"
             title={dgettext("drafts", "Discard")}
           >
             <.icon name="trash-2" class="size-3" />
           </button>
         </div>
-        <span class="text-xs text-base-content/40 shrink-0 group-hover:hidden">{@relative_time}</span>
+        <span class="text-xs text-muted-foreground shrink-0 group-hover:hidden">{@relative_time}</span>
       <% end %>
 
       <.confirm_modal
@@ -120,7 +120,7 @@ defmodule StoryarnWeb.Components.Sidebar.DraftList do
       />
     </div>
     <div class="px-1.5 mb-1">
-      <span class="text-xs text-base-content/40">
+      <span class="text-xs text-muted-foreground">
         {dgettext("drafts", "from")} <span class="font-medium">{@display_source_name}</span>
       </span>
     </div>

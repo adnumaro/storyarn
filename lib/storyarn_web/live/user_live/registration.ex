@@ -3,8 +3,6 @@ defmodule StoryarnWeb.UserLive.Registration do
 
   use StoryarnWeb, :live_view
 
-  import StoryarnWeb.Components.UIComponents, only: [oauth_buttons: 1]
-
   alias Storyarn.Accounts
   alias Storyarn.Accounts.User
   alias Storyarn.RateLimiter
@@ -13,42 +11,13 @@ defmodule StoryarnWeb.UserLive.Registration do
   def render(assigns) do
     ~H"""
     <Layouts.auth flash={@flash} current_scope={@current_scope}>
-      <div class="mx-auto max-w-sm">
-        <div class="text-center">
-          <.header>
-            {dgettext("identity", "Register for an account")}
-            <:subtitle>
-              {dgettext("identity", "Already registered?")}
-              <.link navigate={~p"/users/log-in"} class="font-semibold text-brand hover:underline">
-                {dgettext("identity", "Log in")}
-              </.link>
-              {dgettext("identity", "to your account now.")}
-            </:subtitle>
-          </.header>
-        </div>
-
-        <.oauth_buttons class="mb-4" />
-
-        <div class="divider">{dgettext("identity", "or register with email")}</div>
-
-        <.form for={@form} id="registration_form" phx-submit="save" phx-change="validate">
-          <.input
-            field={@form[:email]}
-            type="email"
-            label={dgettext("identity", "Email")}
-            autocomplete="username"
-            required
-            phx-mounted={JS.focus()}
-          />
-
-          <.button
-            phx-disable-with={dgettext("identity", "Creating account...")}
-            class="btn btn-primary w-full"
-          >
-            {dgettext("identity", "Create an account")}
-          </.button>
-        </.form>
-      </div>
+      <.vue
+        v-component="auth/Registration"
+        v-socket={@socket}
+        id="registration-vue"
+        form={@form}
+        login-url={~p"/users/log-in"}
+      />
     </Layouts.auth>
     """
   end

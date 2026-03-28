@@ -59,15 +59,15 @@ defmodule StoryarnWeb.Components.LandingPage.WorkflowGrid do
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <article
             :for={{step, idx} <- @steps}
-            class="relative pt-16 px-5 pb-6 rounded-3xl border border-base-content/8 bg-base-200/60"
+            class="relative pt-16 px-5 pb-6 rounded-3xl border border-border bg-muted/60"
             data-reveal
             data-reveal-delay={"#{idx * 100}"}
           >
-            <span class="absolute left-5 top-5 text-base-content/20 text-3xl font-extrabold tracking-tight">
+            <span class="absolute left-5 top-5 text-foreground/20 text-3xl font-extrabold tracking-tight">
               {step.num}
             </span>
-            <h3 class="mb-3 text-lg tracking-tight font-bold text-base-content">{step.title}</h3>
-            <p class="text-base-content/60 leading-relaxed">{step.desc}</p>
+            <h3 class="mb-3 text-lg tracking-tight font-bold text-foreground">{step.title}</h3>
+            <p class="text-muted-foreground leading-relaxed">{step.desc}</p>
           </article>
         </div>
       </div>
@@ -81,10 +81,10 @@ defmodule StoryarnWeb.Components.LandingPage.WorkflowGrid do
   defp section_header(assigns) do
     ~H"""
     <div class="grid gap-4 mb-8 max-w-[56rem]" data-reveal>
-      <h2 class="text-[clamp(2.2rem,3vw,3.8rem)] leading-[0.97] tracking-[-0.06em] font-bold text-base-content">
+      <h2 class="text-[clamp(2.2rem,3vw,3.8rem)] leading-[0.97] tracking-[-0.06em] font-bold text-foreground">
         {widont(@title)}
       </h2>
-      <p class="max-w-[36rem] text-base-content/60 leading-relaxed text-base">
+      <p class="max-w-[36rem] text-muted-foreground leading-relaxed text-base">
         {widont(@description)}
       </p>
     </div>

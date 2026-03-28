@@ -26,7 +26,7 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerOutcome do
       </h2>
 
       <div :if={@slide.outcome_tags != []} class="player-outcome-tags">
-        <span :for={tag <- @slide.outcome_tags} class="badge badge-outline badge-sm">
+        <span :for={tag <- @slide.outcome_tags} class="text-xs px-1.5 py-0.5 rounded border border-border text-muted-foreground badge-sm">
           {tag}
         </span>
       </div>
@@ -49,13 +49,13 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerOutcome do
       </div>
 
       <div class="player-outcome-actions">
-        <button type="button" class="btn btn-primary btn-sm gap-2" phx-click="restart">
+        <button type="button" class="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors gap-2" phx-click="restart">
           <.icon name="rotate-ccw" class="size-4" />
           {dgettext("flows", "Play again")}
         </button>
         <.link
           navigate={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows/#{@flow.id}"}
-          class="btn btn-ghost btn-sm gap-2"
+          class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors gap-2"
         >
           <.icon name="arrow-left" class="size-4" />
           {dgettext("flows", "Back to editor")}

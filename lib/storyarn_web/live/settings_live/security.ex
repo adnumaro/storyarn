@@ -4,8 +4,6 @@ defmodule StoryarnWeb.SettingsLive.Security do
   """
   use StoryarnWeb, :live_view
 
-  import StoryarnWeb.Components.UIComponents, only: [form_actions: 1]
-
   alias Storyarn.Accounts
 
   on_mount {StoryarnWeb.UserAuth, :require_sudo_mode}
@@ -39,67 +37,33 @@ defmodule StoryarnWeb.SettingsLive.Security do
       <:title>{dgettext("settings", "Security")}</:title>
       <:subtitle>{dgettext("settings", "Manage your password and account security")}</:subtitle>
 
-      <div class="space-y-8">
-        <%!-- Password Section --%>
-        <section>
-          <h3 class="text-lg font-semibold mb-4">{dgettext("settings", "Change Password")}</h3>
-          <p class="text-sm text-base-content/70 mb-4">
-            {dgettext("settings", "Choose a strong password that you don't use elsewhere.")}
-          </p>
-          <.form
-            for={@password_form}
-            id="password_form"
-            action={~p"/users/update-password"}
-            method="post"
-            phx-change="validate_password"
-            phx-submit="update_password"
-            phx-trigger-action={@trigger_submit}
-            class="space-y-4"
-          >
-            <input
-              name={@password_form[:email].name}
-              type="hidden"
-              id="hidden_user_email"
-              autocomplete="username"
-              value={@current_email}
-            />
-            <.input
-              field={@password_form[:password]}
-              type="password"
-              label={dgettext("settings", "New password")}
-              autocomplete="new-password"
-              required
-            />
-            <.input
-              field={@password_form[:password_confirmation]}
-              type="password"
-              label={dgettext("settings", "Confirm new password")}
-              autocomplete="new-password"
-            />
-            <.form_actions>
-              <.button variant="primary" phx-disable-with={dgettext("settings", "Saving...")}>
-                {dgettext("settings", "Update Password")}
-              </.button>
-            </.form_actions>
-          </.form>
-        </section>
-
-        <div class="divider" />
-
-        <%!-- Sessions Section (future) --%>
-        <section>
-          <h3 class="text-lg font-semibold mb-4">{dgettext("settings", "Active Sessions")}</h3>
-          <p class="text-sm text-base-content/70 mb-4">
-            {dgettext("settings", "You are currently logged in on this device.")}
-          </p>
-          <div class="alert alert-info">
-            <.icon name="info" class="size-5" />
-            <span>{dgettext("settings", "Session management coming soon.")}</span>
-          </div>
-        </section>
-      </div>
+      <.vue
+        v-component="settings/Security"
+        v-socket={@socket}
+        id="settings-security-vue"
+        password-form={@password_form}
+        current-email={@current_email}
+        trigger-submit={@trigger_submit}
+        password-action={~p"/users/update-password"}
+        translations={security_translations()}
+      />
     </Layouts.settings>
     """
+  end
+
+  defp security_translations do
+    %{
+      changePassword: dgettext("settings", "Change Password"),
+      passwordDescription:
+        dgettext("settings", "Choose a strong password that you don't use elsewhere."),
+      newPassword: dgettext("settings", "New password"),
+      confirmPassword: dgettext("settings", "Confirm new password"),
+      updatePassword: dgettext("settings", "Update Password"),
+      activeSessions: dgettext("settings", "Active Sessions"),
+      sessionsDescription:
+        dgettext("settings", "You are currently logged in on this device."),
+      sessionsComingSoon: dgettext("settings", "Session management coming soon.")
+    }
   end
 
   @impl true

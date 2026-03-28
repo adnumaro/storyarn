@@ -20,7 +20,7 @@ defmodule StoryarnWeb.Components.LanguagePicker do
 
   attr :button_class, :string,
     default:
-      "btn btn-ghost btn-sm w-full justify-between border border-base-300 bg-base-100 font-normal"
+      "inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors w-full justify-between border border-border bg-background font-normal"
 
   attr :disabled, :boolean, default: false
 
@@ -56,7 +56,7 @@ defmodule StoryarnWeb.Components.LanguagePicker do
             data-role="search"
             type="text"
             placeholder={@search_placeholder}
-            class="input input-xs input-bordered w-full"
+            class="h-7 rounded-md border border-input bg-background px-2 text-xs input-bordered w-full"
             autocomplete="off"
           />
         </div>
@@ -67,7 +67,7 @@ defmodule StoryarnWeb.Components.LanguagePicker do
             data-event={@event}
             data-params={option.params}
             data-search-text={option.search_text}
-            class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-base-content/10"
+            class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-accent"
           >
             <LocaleMark.locale_mark locale_code={option.value} class="h-4 w-4 text-[0.7rem]" />
             <span class="min-w-0 truncate">{option.label}</span>
@@ -75,7 +75,7 @@ defmodule StoryarnWeb.Components.LanguagePicker do
         </div>
         <div
           data-role="empty"
-          class="px-3 py-2 text-xs text-base-content/40 italic"
+          class="px-3 py-2 text-xs text-muted-foreground italic"
           style="display:none"
         >
           {@empty_label}

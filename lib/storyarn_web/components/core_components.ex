@@ -279,7 +279,7 @@ defmodule StoryarnWeb.Components.CoreComponents do
   # Helper used by inputs to generate form errors
   defp error(assigns) do
     ~H"""
-    <p class="mt-1.5 flex gap-2 items-center text-sm text-error">
+    <p class="mt-1.5 flex gap-2 items-center text-sm text-destructive">
       <.icon name="alert-circle" class="size-5" />
       {render_slot(@inner_block)}
     </p>
@@ -300,7 +300,7 @@ defmodule StoryarnWeb.Components.CoreComponents do
         <h1 class="text-lg font-semibold leading-8">
           {render_slot(@inner_block)}
         </h1>
-        <p :if={@subtitle != []} class="text-sm text-base-content/70">
+        <p :if={@subtitle != []} class="text-sm text-muted-foreground">
           {render_slot(@subtitle)}
         </p>
       </div>
@@ -341,7 +341,7 @@ defmodule StoryarnWeb.Components.CoreComponents do
       end
 
     ~H"""
-    <table class="table table-zebra">
+    <table class="w-full text-sm">
       <thead>
         <tr>
           <th :for={col <- @col}>{col[:label]}</th>
@@ -456,7 +456,7 @@ defmodule StoryarnWeb.Components.CoreComponents do
 
   def block_label(assigns) do
     ~H"""
-    <label :if={@label != ""} class="text-sm text-base-content/70 mb-1 flex items-center gap-1">
+    <label :if={@label != ""} class="text-sm text-muted-foreground mb-1 flex items-center gap-1">
       <.icon
         :if={block_type_icon(@block_type)}
         name={block_type_icon(@block_type)}
@@ -464,7 +464,7 @@ defmodule StoryarnWeb.Components.CoreComponents do
       />
       <span
         :if={@is_constant}
-        class="text-error tooltip tooltip-right"
+        class="text-destructive "
         data-tip={gettext("Constant")}
       >
         <.icon name="lock" class="size-3" />
@@ -477,7 +477,7 @@ defmodule StoryarnWeb.Components.CoreComponents do
         data-label={@label}
         data-block-id={@block_id}
         data-phx-target={@target}
-        class="cursor-default hover:text-base-content transition-colors"
+        class="cursor-default hover:text-foreground transition-colors"
       >
         {@label}
       </span>
@@ -512,7 +512,7 @@ defmodule StoryarnWeb.Components.CoreComponents do
     <div class="mb-4">
       <.link
         navigate={@navigate}
-        class="text-sm font-semibold leading-6 text-base-content/70 hover:text-base-content inline-flex items-center gap-1"
+        class="text-sm font-semibold leading-6 text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
       >
         <.icon name="arrow-left" class="size-3" />
         {render_slot(@inner_block)}
@@ -557,14 +557,14 @@ defmodule StoryarnWeb.Components.CoreComponents do
     >
       <div
         id={"#{@id}-container"}
-        class="modal-box relative"
+        class="rounded-lg bg-background p-6 shadow-lg relative"
         phx-click-away={@on_cancel |> hide_modal(@id)}
         phx-key="escape"
         phx-window-keydown={@on_cancel |> hide_modal(@id)}
       >
         <button
           type="button"
-          class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+          class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 btn-circle btn-ghost absolute right-2 top-2"
           aria-label={gettext("close")}
           phx-click={@on_cancel |> hide_modal(@id)}
         >
@@ -604,7 +604,7 @@ defmodule StoryarnWeb.Components.CoreComponents do
   attr :on_confirm, JS, required: true
   attr :on_cancel, JS, default: %JS{}
   attr :icon, :string, default: nil
-  attr :icon_class, :string, default: "text-error"
+  attr :icon_class, :string, default: "text-destructive"
 
   def confirm_modal(assigns) do
     ~H"""
@@ -615,7 +615,7 @@ defmodule StoryarnWeb.Components.CoreComponents do
     >
       <div
         id={"#{@id}-container"}
-        class="modal-box max-w-sm"
+        class="rounded-lg bg-background p-6 shadow-lg max-w-sm"
         phx-click-away={@on_cancel |> hide_modal(@id)}
         phx-key="escape"
         phx-window-keydown={@on_cancel |> hide_modal(@id)}
@@ -626,11 +626,11 @@ defmodule StoryarnWeb.Components.CoreComponents do
           </div>
           <h3 class="font-bold text-lg">{@title}</h3>
         </div>
-        <p :if={@message} class="text-base-content/70 mb-6">{@message}</p>
-        <div class="modal-action justify-end gap-2">
+        <p :if={@message} class="text-muted-foreground mb-6">{@message}</p>
+        <div class="flex justify-end gap-2 mt-4 justify-end gap-2">
           <button
             type="button"
-            class="btn btn-ghost"
+            class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
             phx-click={@on_cancel |> hide_modal(@id)}
           >
             {@cancel_text}
