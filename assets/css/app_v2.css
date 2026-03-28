@@ -197,6 +197,21 @@
   border-color: hsl(var(--primary));
 }
 
+/* Flow node navigation highlight pulse */
+.nav-highlight {
+  animation: nav-pulse 0.6s ease-in-out 4;
+}
+
+@keyframes nav-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 3px var(--highlight-color), 0 0 12px 2px var(--highlight-color);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--highlight-color) 50%, transparent),
+                0 0 20px 4px color-mix(in srgb, var(--highlight-color) 30%, transparent);
+  }
+}
+
 /* Compact text input for floating toolbar (label fields) */
 .v2-toolbar-input {
   background: transparent;

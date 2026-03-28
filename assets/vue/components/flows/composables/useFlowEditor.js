@@ -11,15 +11,12 @@ import { ClassicPreset } from "rete";
 import { AreaExtensions } from "rete-area-plugin";
 
 import { FlowNode } from "../lib/flow-node.js";
-import { needsRebuild as checkNeedsRebuild } from "../lib/node-configs.js";
-import {
-	createCursorHandler,
-	createDebugHandler,
-	createEditorHandlers,
-	createKeyboardHandler,
-	createLockHandler,
-	createNavigationHandler,
-} from "@/js/flow_canvas/handlers/index.js";
+import { createCursorHandler } from "@/js/flow_canvas/handlers/cursor_handler.js";
+import { createDebugHandler } from "@/js/flow_canvas/handlers/debug_handler.js";
+import { createKeyboardHandler } from "@/js/flow_canvas/handlers/keyboard_handler.js";
+import { createLockHandler } from "@/js/flow_canvas/handlers/lock_handler.js";
+import { createEditorHandlers } from "./useEditorHandlers.js";
+import { createFlowNavigation } from "./useNavigation.js";
 import { buildBatchPositions } from "@/js/flow_canvas/history_preset.js";
 import { createLodController } from "@/js/flow_canvas/lod_controller.js";
 import { createMinimapToggle } from "@/js/flow_canvas/minimap_toggle.js";
@@ -138,23 +135,6 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 		floatingToolbar: null,
 		lodController: null,
 		minimapToggle: null,
-		// V2: use Vue-native needsRebuild (no Lit dependency)
-		needsRebuild: checkNeedsRebuild,
-		// V2 (Vue): update node data without area.update.
-		// area.update destroys socket DOM elements (Vue re-mount), breaking
-		// connection SVG paths. Instead, mutate nodeData and bump a reactive
-		// counter on flowContext so Vue node components re-render via inject.
-		onNodeDataUpdated(node, nodeData) {
-			console.log("[onNodeDataUpdated] before", { nodeId: node.nodeId, oldVersion: hookProxy._flowContext?.nodeDataVersion });
-			node.nodeData = { ...nodeData };
-			const ctx = hookProxy._flowContext;
-			if (ctx) {
-				ctx.nodeDataVersion = (ctx.nodeDataVersion || 0) + 1;
-				console.log("[onNodeDataUpdated] bumped version to", ctx.nodeDataVersion);
-			} else {
-				console.log("[onNodeDataUpdated] NO flowContext!");
-			}
-		},
 	};
 
 	// --- Toolbar positioning ---
@@ -271,7 +251,7 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 			_editorHandlers = createEditorHandlers(hookProxy);
 			_cursorHandler = createCursorHandler(hookProxy);
 			_lockHandler = createLockHandler(hookProxy);
-			_navigationHandler = createNavigationHandler(hookProxy);
+			_navigationHandler = createFlowNavigation(_area, _nodeMap, pushEvent);
 			_debugHandler = createDebugHandler(hookProxy);
 
 			hookProxy.editorHandlers = _editorHandlers;
