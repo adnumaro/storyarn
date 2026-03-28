@@ -10,44 +10,15 @@ defmodule StoryarnWeb.FlowLive.Form do
   def render(assigns) do
     ~H"""
     <div>
-      <.header>
-        {@title}
-      </.header>
-
-      <.form
-        for={@form}
-        id="flow-form"
-        phx-target={@myself}
-        phx-change="validate"
-        phx-submit="save"
-      >
-        <.input
-          field={@form[:name]}
-          type="text"
-          label={dgettext("flows", "Name")}
-          placeholder={dgettext("flows", "Main Story")}
-          required
-        />
-        <.input
-          field={@form[:description]}
-          type="textarea"
-          label={dgettext("flows", "Description")}
-          placeholder={dgettext("flows", "Describe the purpose of this flow...")}
-          rows={3}
-        />
-        <div class="modal-action">
-          <.link patch={@navigate} class="btn btn-ghost">
-            {dgettext("flows", "Cancel")}
-          </.link>
-          <.button
-            id="create-flow-btn"
-            variant="primary"
-            phx-disable-with={dgettext("flows", "Creating...")}
-          >
-            {dgettext("flows", "Create Flow")}
-          </.button>
-        </div>
-      </.form>
+      <.vue
+        v-component="flows/FlowForm"
+        v-socket={@socket}
+        id="flow-form-vue"
+        form={@form}
+        title={@title}
+        submit-label={dgettext("flows", "Create Flow")}
+        cancel-url={@navigate}
+      />
     </div>
     """
   end

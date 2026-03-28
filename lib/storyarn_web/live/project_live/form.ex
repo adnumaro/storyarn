@@ -10,40 +10,15 @@ defmodule StoryarnWeb.ProjectLive.Form do
   def render(assigns) do
     ~H"""
     <div>
-      <.header>
-        {@title}
-      </.header>
-
-      <.form
-        for={@form}
-        id="project-form"
-        phx-target={@myself}
-        phx-change="validate"
-        phx-submit="save"
-      >
-        <.input
-          field={@form[:name]}
-          type="text"
-          label={dgettext("projects", "Project Name")}
-          placeholder={dgettext("projects", "My Narrative Project")}
-          required
-        />
-        <.input
-          field={@form[:description]}
-          type="textarea"
-          label={dgettext("projects", "Description")}
-          placeholder={dgettext("projects", "A brief description of your project")}
-          rows={3}
-        />
-        <div class="modal-action">
-          <.link patch={@navigate} class="btn btn-ghost">
-            {dgettext("projects", "Cancel")}
-          </.link>
-          <.button variant="primary" phx-disable-with={dgettext("projects", "Saving...")}>
-            {dgettext("projects", "Create Project")}
-          </.button>
-        </div>
-      </.form>
+      <.vue
+        v-component="project/ProjectForm"
+        v-socket={@socket}
+        id="project-form-vue"
+        form={@form}
+        title={@title}
+        submit-label={if @action == :new, do: dgettext("projects", "Create Project"), else: dgettext("projects", "Save")}
+        cancel-url={@navigate}
+      />
     </div>
     """
   end
@@ -80,7 +55,6 @@ defmodule StoryarnWeb.ProjectLive.Form do
   end
 
   defp create_project(socket, project_params) do
-    # Add workspace_id if workspace is provided
     project_params =
       if workspace = socket.assigns[:workspace] do
         Map.put(project_params, "workspace_id", workspace.id)

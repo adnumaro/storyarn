@@ -2,12 +2,9 @@ defmodule StoryarnWeb.ProjectLive.Trash do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
 
-  import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
-  import StoryarnWeb.Components.SheetComponents, only: [sheet_avatar: 1]
+  alias StoryarnWeb.Helpers.Authorize
   alias Storyarn.Projects
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
 
   @impl true
@@ -22,150 +19,25 @@ defmodule StoryarnWeb.ProjectLive.Trash do
       active_tool={:sheets}
       has_tree={false}
     >
-      <div class="max-w-3xl mx-auto">
-        <.header>
-          {dgettext("projects", "Trash")}
-          <:subtitle>
-            {dgettext(
-              "projects",
-              "Deleted sheets are kept for 30 days before being permanently removed."
-            )}
-          </:subtitle>
-          <:actions>
-            <.button
-              :if={@can_manage && @trashed_sheets != []}
-              variant="error"
-              phx-click={show_modal("empty-trash-confirm")}
-            >
-              <.icon name="trash-2" class="size-4 mr-2" />
-              {dgettext("projects", "Empty Trash")}
-            </.button>
-          </:actions>
-        </.header>
-
-        <div class="mt-8">
-          <%= if @trashed_sheets == [] do %>
-            <.empty_state
-              icon="trash-2"
-              title={dgettext("projects", "Trash is empty")}
-            >
-              {dgettext("projects", "Deleted sheets will appear here.")}
-            </.empty_state>
-          <% else %>
-            <div class="space-y-2">
-              <.trash_item
-                :for={sheet <- @trashed_sheets}
-                sheet={sheet}
-                can_manage={@can_manage}
-              />
-            </div>
-          <% end %>
-        </div>
-      </div>
-
-      <%!-- Confirmation modals --%>
-      <.confirm_modal
-        id="delete-sheet-confirm"
-        title={dgettext("projects", "Delete permanently?")}
-        message={
-          dgettext(
-            "projects",
-            "This sheet will be permanently deleted. This action cannot be undone."
-          )
-        }
-        confirm_text={dgettext("projects", "Delete")}
-        cancel_text={dgettext("projects", "Cancel")}
-        confirm_variant="error"
-        icon="alert-triangle"
-        on_confirm={JS.push("confirm_delete_permanently")}
-      />
-
-      <.confirm_modal
-        id="empty-trash-confirm"
-        title={dgettext("projects", "Empty trash?")}
-        message={
-          dgettext(
-            "projects",
-            "All items in trash will be permanently deleted. This action cannot be undone."
-          )
-        }
-        confirm_text={dgettext("projects", "Empty Trash")}
-        cancel_text={dgettext("projects", "Cancel")}
-        confirm_variant="error"
-        icon="alert-triangle"
-        on_confirm={JS.push("empty_trash")}
+      <.vue
+        v-component="project/ProjectTrash"
+        v-socket={@socket}
+        id="project-trash-vue"
+        trashed-sheets={serialize_trashed_sheets(@trashed_sheets)}
+        can-manage={@can_manage}
       />
     </Layouts.focus_v2>
     """
   end
 
-  attr :sheet, :map, required: true
-  attr :can_manage, :boolean, default: false
-
-  defp trash_item(assigns) do
-    ~H"""
-    <div class="flex items-center justify-between p-4 bg-base-200 rounded-lg">
-      <div class="flex items-center gap-3 min-w-0">
-        <div class="flex-shrink-0">
-          <.sheet_avatar avatars={@sheet.avatars} name={@sheet.name} size="xl" />
-        </div>
-        <div class="min-w-0">
-          <p class="font-medium truncate">{@sheet.name}</p>
-          <p class="text-sm text-base-content/60">
-            {dgettext("projects", "Deleted %{time_ago}", time_ago: format_time_ago(@sheet.deleted_at))}
-          </p>
-        </div>
-      </div>
-
-      <div :if={@can_manage} class="flex items-center gap-2 flex-shrink-0">
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm"
-          phx-click="restore_sheet"
-          phx-value-id={@sheet.id}
-        >
-          <.icon name="undo-2" class="size-4 mr-1" />
-          {dgettext("projects", "Restore")}
-        </button>
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm text-error hover:bg-error/10"
-          phx-click={
-            JS.push("show_delete_confirm", value: %{id: @sheet.id})
-            |> show_modal("delete-sheet-confirm")
-          }
-        >
-          <.icon name="trash-2" class="size-4 mr-1" />
-          {dgettext("projects", "Delete")}
-        </button>
-      </div>
-    </div>
-    """
-  end
-
-  defp format_time_ago(datetime) do
-    now = TimeHelpers.now()
-    diff = DateTime.diff(now, datetime, :second)
-
-    cond do
-      diff < 60 ->
-        dgettext("projects", "just now")
-
-      diff < 3600 ->
-        minutes = div(diff, 60)
-
-        dngettext("projects", "%{count} minute ago", "%{count} minutes ago", minutes,
-          count: minutes
-        )
-
-      diff < 86_400 ->
-        hours = div(diff, 3600)
-        dngettext("projects", "%{count} hour ago", "%{count} hours ago", hours, count: hours)
-
-      true ->
-        days = div(diff, 86_400)
-        dngettext("projects", "%{count} day ago", "%{count} days ago", days, count: days)
-    end
+  defp serialize_trashed_sheets(sheets) do
+    Enum.map(sheets, fn sheet ->
+      %{
+        id: sheet.id,
+        name: sheet.name,
+        deleted_at: sheet.deleted_at && DateTime.to_iso8601(sheet.deleted_at)
+      }
+    end)
   end
 
   @impl true

@@ -4,9 +4,6 @@ defmodule StoryarnWeb.AssetLive.Index do
   use StoryarnWeb, :live_view
   alias StoryarnWeb.Helpers.Authorize
 
-  import StoryarnWeb.AssetLive.Components.AssetComponents
-  import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
-
   alias Storyarn.Assets
   alias Storyarn.Billing
   alias Storyarn.Collaboration
@@ -41,82 +38,27 @@ defmodule StoryarnWeb.AssetLive.Index do
               type="file"
               accept="image/*,audio/*"
               class="hidden"
-              
+
               id="asset-upload-input"
             />
           </label>
         </div>
       </:top_bar_extra_right>
-      <div class="max-w-4xl mx-auto mt-4">
-        <%!-- Filter tabs + Search --%>
-        <div class="flex items-center justify-between mb-4 gap-4">
-          <div role="tablist" class="tabs tabs-border">
-            <button
-              :for={{type, label, count} <- filter_tabs(@type_counts)}
-              role="tab"
-              class={["tab", @filter == type && "tab-active"]}
-              phx-click="filter_assets"
-              phx-value-type={type}
-            >
-              {label}
-              <span class="badge badge-sm ml-1">{count}</span>
-            </button>
-          </div>
-
-          <form phx-change="search_assets" class="flex-shrink-0">
-            <label class="input input-sm input-bordered flex items-center gap-2">
-              <.icon name="search" class="size-4 opacity-50" />
-              <input
-                type="text"
-                name="search"
-                value={@search}
-                placeholder={dgettext("assets", "Search files...")}
-                phx-debounce="300"
-                class="grow"
-              />
-            </label>
-          </form>
-        </div>
-
-        <.empty_state :if={@assets == []} icon="image">
-          {dgettext("assets", "No assets yet. Upload files to get started.")}
-        </.empty_state>
-
-        <%!-- Asset grid + detail panel --%>
-        <div :if={@assets != []} class="flex gap-6">
-          <div class={[
-            "grid gap-4 flex-1",
-            @selected_asset && "grid-cols-2 sm:grid-cols-2",
-            !@selected_asset && "grid-cols-2 sm:grid-cols-3 md:grid-cols-4"
-          ]}>
-            <.asset_card
-              :for={asset <- @assets}
-              asset={asset}
-              selected={@selected_asset && @selected_asset.id == asset.id}
-            />
-          </div>
-
-          <.detail_panel
-            :if={@selected_asset}
-            asset={@selected_asset}
-            usages={@asset_usages}
-            workspace={@workspace}
-            project={@project}
-            can_edit={@can_edit}
-          />
-        </div>
-
-        <.confirm_modal
-          :if={@can_edit}
-          id="delete-asset-confirm"
-          title={dgettext("assets", "Delete asset?")}
-          message={delete_confirm_message(@asset_usages)}
-          confirm_text={dgettext("assets", "Delete")}
-          confirm_variant="error"
-          icon="alert-triangle"
-          on_confirm={JS.push("confirm_delete_asset")}
-        />
-      </div>
+      <.vue
+        v-component="assets/AssetIndex"
+        v-socket={@socket}
+        id="asset-index"
+        assets={serialize_assets(@assets)}
+        filter={@filter}
+        search={@search}
+        type-counts={@type_counts}
+        selected-asset={serialize_asset(@selected_asset)}
+        asset-usages={serialize_usages(@asset_usages)}
+        uploading={@uploading}
+        can-edit={@can_edit}
+        workspace-slug={@workspace.slug}
+        project-slug={@project.slug}
+      />
     </Layouts.focus_v2>
     """
   end
@@ -406,18 +348,6 @@ defmodule StoryarnWeb.AssetLive.Index do
   # Private: View Helpers
   # ===========================================================================
 
-  defp filter_tabs(type_counts) do
-    total = type_counts |> Map.values() |> Enum.sum()
-    image_count = Map.get(type_counts, "image", 0)
-    audio_count = Map.get(type_counts, "audio", 0)
-
-    [
-      {"all", dgettext("assets", "All"), total},
-      {"image", dgettext("assets", "Images"), image_count},
-      {"audio", dgettext("assets", "Audio"), audio_count}
-    ]
-  end
-
   defp broadcast_asset_change(project_id, action) do
     Collaboration.broadcast_change_from(self(), {:assets, project_id}, action, %{})
   end
@@ -440,20 +370,39 @@ defmodule StoryarnWeb.AssetLive.Index do
     end
   end
 
-  defp delete_confirm_message(usages) do
-    total =
-      length(usages.flow_nodes) + length(usages.sheet_avatars) + length(usages.sheet_banners)
+  # ===========================================================================
+  # Private: Serializers (Ecto → Vue props)
+  # ===========================================================================
 
-    if total > 0 do
-      dngettext(
-        "assets",
-        "This asset is used in %{count} place. Are you sure you want to delete it?",
-        "This asset is used in %{count} places. Are you sure you want to delete it?",
-        total,
-        count: total
-      )
-    else
-      dgettext("assets", "Are you sure you want to delete this asset? This cannot be undone.")
-    end
+  defp serialize_assets(assets), do: Enum.map(assets, &serialize_asset/1)
+
+  defp serialize_asset(nil), do: nil
+
+  defp serialize_asset(asset) do
+    %{
+      id: asset.id,
+      filename: asset.filename,
+      contentType: asset.content_type,
+      size: asset.size,
+      url: asset.url,
+      insertedAt: asset.inserted_at
+    }
+  end
+
+  defp serialize_usages(usages) do
+    %{
+      flowNodes:
+        Enum.map(usages.flow_nodes, fn u ->
+          %{flowId: u.flow_id, flowName: u.flow_name}
+        end),
+      sheetAvatars:
+        Enum.map(usages.sheet_avatars, fn s ->
+          %{id: s.id, name: s.name}
+        end),
+      sheetBanners:
+        Enum.map(usages.sheet_banners, fn s ->
+          %{id: s.id, name: s.name}
+        end)
+    }
   end
 end

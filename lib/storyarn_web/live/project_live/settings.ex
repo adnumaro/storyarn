@@ -4,12 +4,6 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   use StoryarnWeb, :live_view
   alias StoryarnWeb.Helpers.Authorize
 
-  import StoryarnWeb.Components.MemberComponents
-  # TODO: migrate color picker to Vue
-
-  import StoryarnWeb.Components.UIComponents,
-    only: [danger_zone: 1, empty_state: 1, form_actions: 1, theme_toggle: 1]
-
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
   alias Storyarn.Billing
@@ -17,8 +11,6 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   alias Storyarn.Localization
   alias Storyarn.Projects
   alias Storyarn.Versioning
-  alias StoryarnWeb.Components.LanguagePicker
-  alias StoryarnWeb.Components.LocaleMark
 
   # ===========================================================================
   # Render
@@ -38,620 +30,114 @@ defmodule StoryarnWeb.ProjectLive.Settings do
       <:title>{section_title(@live_action)}</:title>
       <:subtitle>{section_subtitle(@live_action)}</:subtitle>
 
-      <.section_content
-        live_action={@live_action}
-        project_form={@project_form}
-        source_language={@source_language}
-        members={@members}
-        current_scope={@current_scope}
-        invite_form={@invite_form}
-        theme_primary={@theme_primary}
-        theme_accent={@theme_accent}
-        has_custom_theme={@has_custom_theme}
-        provider_form={@provider_form}
-        has_api_key={@has_api_key}
-        provider_usage={@provider_usage}
-        snapshots={@snapshots}
-        snapshot_form={@snapshot_form}
-        can_create_snapshot={@can_create_snapshot}
-        restoration_in_progress={@restoration_in_progress}
-        version_control_form={@version_control_form}
-        version_usage={@version_usage}
-      />
-
-      <.confirm_modal
-        id="repair-refs-confirm"
-        title={dgettext("projects", "Repair variable references?")}
-        message={dgettext("projects", "This will update node data across the entire project.")}
-        confirm_text={dgettext("projects", "Continue")}
-        on_confirm={JS.push("repair_variable_references")}
-      />
-
-      <.confirm_modal
-        id="delete-project-confirm"
-        title={dgettext("projects", "Delete project?")}
-        message={dgettext("projects", "This action cannot be undone.")}
-        confirm_text={dgettext("projects", "Delete")}
-        confirm_variant="error"
-        icon="alert-triangle"
-        on_confirm={JS.push("delete_project")}
+      <.vue
+        v-component="project/ProjectSettings"
+        v-socket={@socket}
+        id="project-settings"
+        section={to_string(@live_action)}
+        project-name={@project.name}
+        project-description={@project.description || ""}
+        source-language={serialize_source_language(@source_language)}
+        source-language-name={Localization.language_name(@source_language.locale_code)}
+        theme-primary={@theme_primary}
+        theme-accent={@theme_accent}
+        has-custom-theme={@has_custom_theme}
+        provider-api-endpoint={provider_endpoint(@provider_form)}
+        has-api-key={@has_api_key}
+        provider-usage={serialize_provider_usage(@provider_usage)}
+        members={serialize_members(@members)}
+        current-user-id={@current_scope.user.id}
+        snapshots={serialize_snapshots(@snapshots)}
+        can-create-snapshot={@can_create_snapshot}
+        restoration-in-progress={@restoration_in_progress}
+        workspace-slug={@workspace.slug}
+        project-slug={@project.slug}
+        auto-snapshots-enabled={version_control_value(@version_control_form, :auto_snapshots_enabled)}
+        auto-version-flows={version_control_value(@version_control_form, :auto_version_flows)}
+        auto-version-scenes={version_control_value(@version_control_form, :auto_version_scenes)}
+        auto-version-sheets={version_control_value(@version_control_form, :auto_version_sheets)}
+        version-usage={serialize_version_usage(@version_usage)}
       />
     </Layouts.settings>
     """
   end
 
   # ===========================================================================
-  # Section content
+  # Serialization helpers for Vue props
   # ===========================================================================
 
-  defp section_content(%{live_action: :general} = assigns) do
-    ~H"""
-    <div class="space-y-8">
-      <%!-- Project Details --%>
-      <section>
-        <.form
-          for={@project_form}
-          id="project-form"
-          phx-submit="update_project"
-          phx-change="validate_project"
-        >
-          <.input
-            field={@project_form[:name]}
-            type="text"
-            label={dgettext("projects", "Project Name")}
-            required
-          />
-          <.input
-            field={@project_form[:description]}
-            type="textarea"
-            label={dgettext("projects", "Description")}
-            rows={3}
-          />
-          <.form_actions>
-            <.button variant="primary" phx-disable-with={dgettext("projects", "Saving...")}>
-              {dgettext("projects", "Save Changes")}
-            </.button>
-          </.form_actions>
-        </.form>
-      </section>
+  defp serialize_source_language(nil), do: nil
 
-      <div class="divider" />
-
-      <%!-- Localization --%>
-      <section class="space-y-4">
-        <div>
-          <h3 class="text-lg font-semibold mb-1">{dgettext("projects", "Source language")}</h3>
-          <p class="text-sm opacity-70">
-            {dgettext(
-              "projects",
-              "Defines the base locale used for source texts and translation workflows in this project."
-            )}
-          </p>
-        </div>
-
-        <div class="card bg-base-200 p-4 space-y-4">
-          <div
-            id="project-source-language-option"
-            class="rounded-2xl border border-base-300 bg-base-100/80 p-3"
-          >
-            <div class="flex items-center gap-3">
-              <LocaleMark.locale_mark locale_code={@source_language.locale_code} />
-              <div class="min-w-0">
-                <div class="truncate text-sm font-semibold">
-                  {Localization.language_name(@source_language.locale_code)}
-                </div>
-                <div class="text-xs text-base-content/60">
-                  {@source_language.locale_code}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <LanguagePicker.language_picker
-            id="project-source-language-picker"
-            event="change_source_language"
-            options={LanguagePicker.source_language_options(@source_language)}
-            placeholder={dgettext("projects", "Change source language...")}
-            search_placeholder={dgettext("projects", "Search languages...")}
-            empty_label={dgettext("projects", "No matches")}
-            button_icon="languages"
-          />
-        </div>
-      </section>
-
-      <div class="divider" />
-
-      <%!-- Appearance --%>
-      <section>
-        <h3 class="text-lg font-semibold mb-4">{dgettext("settings", "Appearance")}</h3>
-        <div class="flex items-center gap-3">
-          <.theme_toggle />
-        </div>
-      </section>
-
-      <div class="divider" />
-
-      <%!-- Theme --%>
-      <section>
-        <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Project Theme")}</h3>
-        <div class="card bg-base-200 p-4">
-          <div class="flex gap-8 items-start">
-            <div>
-              <label class="text-sm font-medium mb-2 block">
-                {dgettext("projects", "Primary")}
-              </label>
-              <div class="flex items-center gap-3">
-                <.vue v-component="ColorPickerPopover" v-socket={@socket}
-                  id="theme-primary"
-                  color={@theme_primary}
-                  event="update_theme_primary"
-                />
-                <code class="text-xs opacity-60">{@theme_primary}</code>
-              </div>
-            </div>
-            <div>
-              <label class="text-sm font-medium mb-2 block">
-                {dgettext("projects", "Accent")}
-              </label>
-              <div class="flex items-center gap-3">
-                <.vue v-component="ColorPickerPopover" v-socket={@socket}
-                  id="theme-accent"
-                  color={@theme_accent}
-                  event="update_theme_accent"
-                />
-                <code class="text-xs opacity-60">{@theme_accent}</code>
-              </div>
-            </div>
-          </div>
-          <.form_actions>
-            <.button :if={@has_custom_theme} phx-click="reset_theme">
-              {dgettext("projects", "Reset to Default")}
-            </.button>
-            <.button variant="primary" phx-click="save_theme">
-              {dgettext("projects", "Apply Theme")}
-            </.button>
-          </.form_actions>
-        </div>
-      </section>
-
-      <div class="divider" />
-
-      <%!-- Maintenance --%>
-      <section>
-        <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Maintenance")}</h3>
-        <div class="card bg-base-200 p-4">
-          <p class="text-sm mb-3">
-            {dgettext(
-              "projects",
-              "If you renamed sheet shortcuts or variable names, flow nodes may reference old names. Use this to repair them."
-            )}
-          </p>
-          <.form_actions>
-            <.button variant="primary" phx-click={show_modal("repair-refs-confirm")}>
-              {dgettext("projects", "Repair variable references")}
-            </.button>
-          </.form_actions>
-        </div>
-      </section>
-
-      <div class="divider" />
-
-      <.danger_zone
-        message={
-          dgettext(
-            "projects",
-            "Once you delete a project, there is no going back. Please be certain."
-          )
-        }
-        on_click={show_modal("delete-project-confirm")}
-      >
-        {dgettext("projects", "Delete Project")}
-      </.danger_zone>
-    </div>
-    """
+  defp serialize_source_language(lang) do
+    %{localeCode: lang.locale_code}
   end
 
-  defp section_content(%{live_action: :localization} = assigns) do
-    ~H"""
-    <div>
-      <div class="card bg-base-200 p-4">
-        <h4 class="font-medium mb-3">{dgettext("projects", "Translation Provider (DeepL)")}</h4>
+  defp provider_endpoint(nil), do: "https://api-free.deepl.com"
 
-        <.form
-          for={@provider_form}
-          id="provider-config-form"
-          phx-submit="save_provider_config"
-        >
-          <.input
-            field={@provider_form[:api_key_encrypted]}
-            type="password"
-            label={dgettext("projects", "API Key")}
-            placeholder={if @has_api_key, do: "••••••••", else: ""}
-          />
-          <.input
-            field={@provider_form[:api_endpoint]}
-            type="select"
-            label={dgettext("projects", "API Tier")}
-            options={[
-              {dgettext("projects", "Free (api-free.deepl.com)"), "https://api-free.deepl.com"},
-              {dgettext("projects", "Pro (api.deepl.com)"), "https://api.deepl.com"}
-            ]}
-          />
-          <.form_actions>
-            <.button
-              :if={@has_api_key}
-              type="button"
-              phx-click="test_provider_connection"
-              phx-disable-with={dgettext("projects", "Testing...")}
-            >
-              {dgettext("projects", "Test Connection")}
-            </.button>
-            <.button variant="primary" phx-disable-with={dgettext("projects", "Saving...")}>
-              {dgettext("projects", "Save")}
-            </.button>
-          </.form_actions>
-        </.form>
-
-        <div :if={@provider_usage} class="mt-3 text-sm opacity-70">
-          {dgettext("projects", "Usage: %{used} / %{limit} characters",
-            used: format_number(@provider_usage.character_count),
-            limit: format_number(@provider_usage.character_limit)
-          )}
-        </div>
-      </div>
-    </div>
-    """
+  defp provider_endpoint(form) do
+    case form[:api_endpoint] do
+      %{value: val} when is_binary(val) -> val
+      _ -> "https://api-free.deepl.com"
+    end
   end
 
-  defp section_content(%{live_action: :members} = assigns) do
-    ~H"""
-    <div class="space-y-6">
-      <div class="space-y-3">
-        <.member_row
-          :for={member <- @members}
-          member={member}
-          current_user_id={@current_scope.user.id}
-          can_manage={true}
-          on_remove="remove_member"
-        />
-      </div>
+  defp serialize_provider_usage(nil), do: nil
 
-      <div class="card bg-base-200 p-4">
-        <h4 class="font-medium mb-3">{dgettext("projects", "Request member invitation")}</h4>
-        <p class="text-sm opacity-70 mb-3">
-          {dgettext("projects", "Invitation requests are reviewed by an admin before being sent.")}
-        </p>
-        <.form for={@invite_form} id="invite-form" phx-submit="send_invitation">
-          <div class="flex gap-3 items-end">
-            <div class="flex-1">
-              <.input
-                field={@invite_form[:email]}
-                type="email"
-                label={dgettext("projects", "Email address")}
-                placeholder="colleague@example.com"
-                required
-              />
-            </div>
-            <div class="w-32">
-              <.input
-                field={@invite_form[:role]}
-                type="select"
-                label={dgettext("projects", "Role")}
-                options={[
-                  {dgettext("projects", "Editor"), "editor"},
-                  {dgettext("projects", "Viewer"), "viewer"}
-                ]}
-              />
-            </div>
-          </div>
-          <.form_actions>
-            <.button variant="primary">
-              {dgettext("projects", "Request Invitation")}
-            </.button>
-          </.form_actions>
-        </.form>
-      </div>
-    </div>
-    """
+  defp serialize_provider_usage(usage) do
+    %{
+      characterCount: usage.character_count,
+      characterLimit: usage.character_limit
+    }
   end
 
-  defp section_content(%{live_action: :snapshots} = assigns) do
-    ~H"""
-    <div class="space-y-6">
-      <%!-- Restoration In Progress Banner --%>
-      <div :if={@restoration_in_progress} class="alert alert-warning">
-        <.icon name="loader" class="size-5 animate-spin" />
-        <span>
-          {dgettext("projects", "A restoration is in progress. Please wait for it to complete.")}
-        </span>
-        <button phx-click="clear_stale_lock" class="btn btn-xs btn-ghost">
-          {dgettext("projects", "Clear stale lock")}
-        </button>
-      </div>
-
-      <%!-- Create Snapshot --%>
-      <section>
-        <div class="card bg-base-200 p-4">
-          <.form for={@snapshot_form} id="snapshot-form" phx-submit="create_snapshot">
-            <.input
-              field={@snapshot_form[:title]}
-              type="text"
-              label={dgettext("projects", "Snapshot Title")}
-              placeholder={dgettext("projects", "e.g., Before playtest v2")}
-            />
-            <.input
-              field={@snapshot_form[:description]}
-              type="textarea"
-              label={dgettext("projects", "Description")}
-              rows={2}
-            />
-            <.form_actions>
-              <.button
-                variant="primary"
-                phx-disable-with={dgettext("projects", "Creating...")}
-                disabled={!@can_create_snapshot || @restoration_in_progress}
-              >
-                <.icon name="archive" class="size-4" />
-                {dgettext("projects", "Create Snapshot")}
-              </.button>
-            </.form_actions>
-          </.form>
-          <p :if={!@can_create_snapshot} class="text-sm text-error mt-2">
-            {dgettext("projects", "Snapshot limit reached for your plan.")}
-          </p>
-        </div>
-      </section>
-
-      <div class="divider" />
-
-      <%!-- Snapshot List --%>
-      <section>
-        <h3 class="text-lg font-semibold mb-4">{dgettext("projects", "Snapshots")}</h3>
-
-        <.empty_state
-          :if={@snapshots == []}
-          icon="archive"
-          title={dgettext("projects", "No snapshots yet")}
-        >
-          {dgettext(
-            "projects",
-            "Create a snapshot to save a point-in-time backup of your entire project."
-          )}
-        </.empty_state>
-
-        <div :if={@snapshots != []} class="space-y-3">
-          <div
-            :for={snapshot <- @snapshots}
-            class="card bg-base-200 p-4"
-          >
-            <div class="flex items-start justify-between gap-4">
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
-                  <span class="badge badge-sm badge-ghost">
-                    v{snapshot.version_number}
-                  </span>
-                  <span class="font-medium truncate">
-                    {snapshot.title || dgettext("projects", "Untitled Snapshot")}
-                  </span>
-                </div>
-                <p :if={snapshot.description} class="text-sm opacity-70 mt-1">
-                  {snapshot.description}
-                </p>
-                <div class="flex flex-wrap gap-3 mt-2 text-xs opacity-60">
-                  <span :if={snapshot.created_by}>
-                    {snapshot.created_by.email}
-                  </span>
-                  <span>
-                    {Calendar.strftime(snapshot.inserted_at, "%b %d, %Y %H:%M UTC")}
-                  </span>
-                  <span>
-                    {format_snapshot_size(snapshot.snapshot_size_bytes)}
-                  </span>
-                  <span :for={{type, count} <- sorted_entity_counts(snapshot.entity_counts)}>
-                    {count} {type}
-                  </span>
-                </div>
-              </div>
-              <div class="flex gap-2 shrink-0">
-                <.button
-                  href={
-                    ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/snapshots/#{snapshot.id}/download"
-                  }
-                  class="btn-xs btn-outline btn-ghost"
-                >
-                  <.icon name="download" class="size-3" />
-                  {dgettext("projects", "Download")}
-                </.button>
-                <button
-                  phx-click={show_modal("restore-snapshot-#{snapshot.id}")}
-                  class="btn btn-xs btn-outline"
-                  disabled={@restoration_in_progress}
-                >
-                  <.icon name="rotate-ccw" class="size-3" />
-                  {dgettext("projects", "Restore")}
-                </button>
-                <button
-                  phx-click={show_modal("delete-snapshot-#{snapshot.id}")}
-                  class="btn btn-xs btn-outline btn-error"
-                  disabled={@restoration_in_progress}
-                >
-                  <.icon name="trash-2" class="size-3" />
-                </button>
-              </div>
-            </div>
-
-            <.confirm_modal
-              id={"restore-snapshot-#{snapshot.id}"}
-              title={dgettext("projects", "Restore project snapshot?")}
-              message={
-                dgettext(
-                  "projects",
-                  "This will overwrite all current project data with the state from this snapshot. A safety snapshot will be created before restoring."
-                )
-              }
-              confirm_text={dgettext("projects", "Restore")}
-              confirm_variant="warning"
-              icon="rotate-ccw"
-              on_confirm={JS.push("restore_snapshot", value: %{id: snapshot.id})}
-            />
-
-            <.confirm_modal
-              id={"delete-snapshot-#{snapshot.id}"}
-              title={dgettext("projects", "Delete snapshot?")}
-              message={
-                dgettext(
-                  "projects",
-                  "This will permanently delete this snapshot. This action cannot be undone."
-                )
-              }
-              confirm_text={dgettext("projects", "Delete")}
-              confirm_variant="error"
-              icon="trash-2"
-              on_confirm={JS.push("delete_snapshot", value: %{id: snapshot.id})}
-            />
-          </div>
-        </div>
-      </section>
-    </div>
-    """
+  defp serialize_members(members) do
+    Enum.map(members, fn m ->
+      %{
+        id: m.id,
+        role: m.role,
+        email: m.user.email,
+        display_name: m.user.display_name
+      }
+    end)
   end
 
-  defp section_content(%{live_action: :version_control} = assigns) do
-    ~H"""
-    <div class="space-y-8">
-      <.form
-        for={@version_control_form}
-        id="version-control-form"
-        phx-submit="save_version_control"
-      >
-        <%!-- Auto Daily Snapshots --%>
-        <section>
-          <h3 class="text-lg font-semibold mb-4">
-            {dgettext("projects", "Automatic Snapshots")}
-          </h3>
-          <div class="card bg-base-200 p-4">
-            <label class="flex items-center gap-3 cursor-pointer">
-              <input type="hidden" name="version_control[auto_snapshots_enabled]" value="false" />
-              <input
-                type="checkbox"
-                name="version_control[auto_snapshots_enabled]"
-                value="true"
-                checked={@version_control_form[:auto_snapshots_enabled].value}
-                class="checkbox checkbox-sm"
-              />
-              <div>
-                <span class="font-medium">
-                  {dgettext("projects", "Enable daily automatic snapshots")}
-                </span>
-                <p class="text-sm opacity-70">
-                  {dgettext(
-                    "projects",
-                    "Creates a daily backup at 3:00 AM UTC when changes are detected."
-                  )}
-                </p>
-              </div>
-            </label>
-          </div>
-        </section>
-
-        <div class="divider" />
-
-        <%!-- Per-Entity Auto-Versioning --%>
-        <section>
-          <h3 class="text-lg font-semibold mb-4">
-            {dgettext("projects", "Auto-Versioning")}
-          </h3>
-          <p class="text-sm opacity-70 mb-4">
-            {dgettext(
-              "projects",
-              "Automatically create version snapshots when editing entities."
-            )}
-          </p>
-          <div class="card bg-base-200 p-4 space-y-3">
-            <label class="flex items-center gap-3 cursor-pointer">
-              <input type="hidden" name="version_control[auto_version_flows]" value="false" />
-              <input
-                type="checkbox"
-                name="version_control[auto_version_flows]"
-                value="true"
-                checked={@version_control_form[:auto_version_flows].value}
-                class="checkbox checkbox-sm"
-              />
-              <span>{dgettext("projects", "Flows")}</span>
-            </label>
-            <label class="flex items-center gap-3 cursor-pointer">
-              <input type="hidden" name="version_control[auto_version_scenes]" value="false" />
-              <input
-                type="checkbox"
-                name="version_control[auto_version_scenes]"
-                value="true"
-                checked={@version_control_form[:auto_version_scenes].value}
-                class="checkbox checkbox-sm"
-              />
-              <span>{dgettext("projects", "Scenes")}</span>
-            </label>
-            <label class="flex items-center gap-3">
-              <input type="hidden" name="version_control[auto_version_sheets]" value="false" />
-              <input
-                type="checkbox"
-                name="version_control[auto_version_sheets]"
-                value="true"
-                checked={@version_control_form[:auto_version_sheets].value}
-                class="checkbox checkbox-sm"
-              />
-              <span>{dgettext("projects", "Sheets")}</span>
-            </label>
-          </div>
-        </section>
-
-        <.form_actions>
-          <.button variant="primary" phx-disable-with={dgettext("projects", "Saving...")}>
-            {dgettext("projects", "Save Changes")}
-          </.button>
-        </.form_actions>
-      </.form>
-
-      <div :if={@version_usage} class="divider" />
-
-      <%!-- Usage Breakdown --%>
-      <section :if={@version_usage}>
-        <h3 class="text-lg font-semibold mb-4">
-          {dgettext("projects", "Usage")}
-        </h3>
-        <div class="space-y-4">
-          <.usage_bar
-            label={dgettext("projects", "Project Snapshots")}
-            used={@version_usage.project_snapshots.used}
-            limit={@version_usage.project_snapshots.limit}
-          />
-          <.usage_bar
-            label={dgettext("projects", "Named Versions")}
-            used={@version_usage.named_versions.used}
-            limit={@version_usage.named_versions.limit}
-          />
-        </div>
-      </section>
-    </div>
-    """
+  defp serialize_snapshots(snapshots) do
+    Enum.map(snapshots, fn s ->
+      %{
+        id: s.id,
+        title: s.title,
+        description: s.description,
+        versionNumber: s.version_number,
+        insertedAt: s.inserted_at && DateTime.to_iso8601(s.inserted_at),
+        snapshotSizeBytes: s.snapshot_size_bytes,
+        entityCounts: s.entity_counts,
+        createdByEmail: s.created_by && s.created_by.email
+      }
+    end)
   end
 
-  defp usage_bar(assigns) do
-    pct =
-      if assigns.limit && assigns.limit > 0,
-        do: min(round(assigns.used / assigns.limit * 100), 100),
-        else: 0
+  defp version_control_value(nil, _field), do: false
 
-    assigns = assign(assigns, :pct, pct)
+  defp version_control_value(form, field) do
+    case form[field] do
+      %{value: val} -> val == true || val == "true"
+      _ -> false
+    end
+  end
 
-    ~H"""
-    <div>
-      <div class="flex justify-between text-sm mb-1">
-        <span>{@label}</span>
-        <span class="opacity-70">{@used} / {@limit || "∞"}</span>
-      </div>
-      <progress class="progress progress-primary w-full" value={@pct} max="100" />
-    </div>
-    """
+  defp serialize_version_usage(nil), do: nil
+
+  defp serialize_version_usage(usage) do
+    %{
+      projectSnapshots: %{
+        used: usage.project_snapshots.used,
+        limit: usage.project_snapshots.limit
+      },
+      namedVersions: %{
+        used: usage.named_versions.used,
+        limit: usage.named_versions.limit
+      }
+    }
   end
 
   # ===========================================================================
@@ -1085,16 +571,6 @@ defmodule StoryarnWeb.ProjectLive.Settings do
 
   defp section_subtitle(:version_control),
     do: dgettext("projects", "Configure automatic snapshots and auto-versioning")
-
-  @entity_type_order ~w(sheets flows scenes languages localized_texts glossary_entries)
-  defp sorted_entity_counts(counts) when is_map(counts) do
-    for type <- @entity_type_order,
-        count = Map.get(counts, type, 0),
-        count > 0,
-        do: {type, count}
-  end
-
-  defp sorted_entity_counts(_), do: []
 
   defp maybe_subscribe_restoration(socket, project_id) do
     if connected?(socket), do: Collaboration.subscribe_restoration(project_id)
