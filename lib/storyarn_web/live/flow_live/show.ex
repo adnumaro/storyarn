@@ -131,37 +131,21 @@ defmodule StoryarnWeb.FlowLive.Show do
               user-id={@current_scope.user.id}
               user-color={Collaboration.user_color(@current_scope.user.id)}
               canvas-id={"flow-canvas-#{@flow && @flow.id || "new"}"}
+              flow-hubs={Jason.encode!(@flow_hubs)}
+              available-flows={Jason.encode!(Enum.map(@available_flows, &Map.take(&1, [:id, :name])))}
+              all-sheets={Jason.encode!(Enum.map(@all_sheets, fn s ->
+                avatars = if is_list(s.avatars), do: Enum.map(s.avatars, fn a ->
+                  %{id: a.id, name: a.name, position: a.position, asset: %{url: a.asset && a.asset.url}}
+                end), else: []
+                %{id: s.id, name: s.name, color: s.color, avatars: avatars}
+              end))}
+              available-scenes={Jason.encode!(Enum.map(@available_scenes, &Map.take(&1, [:id, :name])))}
+              subflow-exits={Jason.encode!(@subflow_exits)}
+              referencing-jumps={Jason.encode!(@referencing_jumps)}
+              referencing-flows={Jason.encode!(@referencing_flows)}
+              node-select-loading={@node_select_loading}
+              flow-search-has-more={@flow_search_has_more}
             />
-
-            <%!-- Floating Toolbar --%>
-            <.canvas_toolbar
-              :if={@flow}
-              id="flow-floating-toolbar"
-              canvas_id={"flow-canvas-#{@flow.id}"}
-              visible={@selected_node != nil && @editing_mode in [:toolbar, :annotation]}
-            >
-              <%= if @editing_mode == :annotation do %>
-                <.annotation_toolbar node={@selected_node} can_edit={@can_edit} />
-              <% else %>
-                <.node_toolbar
-                  node={@selected_node}
-                  form={@node_form}
-                  can_edit={@can_edit}
-                  all_sheets={@all_sheets}
-                  gallery_by_sheet={@gallery_by_sheet}
-                  flow_hubs={@flow_hubs}
-                  available_flows={@available_flows}
-                  available_scenes={assigns[:available_scenes] || []}
-                  flow_search_has_more={@flow_search_has_more}
-                  flow_search_deep={@flow_search_deep}
-                  subflow_exits={@subflow_exits}
-                  referencing_jumps={@referencing_jumps}
-                  referencing_flows={@referencing_flows}
-                  project_scenes={@project_scenes}
-                  node_select_loading={@node_select_loading}
-                />
-              <% end %>
-            </.canvas_toolbar>
 
             <%!-- Bottom dock (Vue) --%>
             <.vue

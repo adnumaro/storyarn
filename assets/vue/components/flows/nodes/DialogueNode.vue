@@ -1,5 +1,6 @@
 <script setup>
 import { computed, inject, nextTick, ref, watch } from "vue";
+import { MessageSquare } from "lucide-vue-next";
 import { Ref } from "rete-vue-plugin";
 import { previewText, stripHtml } from "../lib/render-helpers.js";
 import { FLOW_CONTEXT_KEY } from "../setup.js";
@@ -138,7 +139,7 @@ function onSpeakerSelect(id) {
         :style="`background: linear-gradient(to right, ${color} 40%, color-mix(in oklch, ${color} 85%, white) 100%)`"
         @pointerdown.stop
       >
-        <span class="flex items-center shrink-0" v-html="config.icon" />
+        <MessageSquare class="size-4 shrink-0" />
         <EntityCombobox
           class="flex-1 min-w-0"
           variant="ghost"
@@ -151,7 +152,7 @@ function onSpeakerSelect(id) {
     </template>
 
     <!-- VIEW MODE HEADER -->
-    <NodeHeader v-else :color="color" :icon="config.icon" :label="speakerName">
+    <NodeHeader v-else :color="color" :icon="MessageSquare" :label="speakerName">
       <span v-if="hasAudio" class="ml-auto opacity-80 text-xs" title="Has audio">🔊</span>
     </NodeHeader>
 

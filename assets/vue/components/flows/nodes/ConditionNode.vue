@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from "vue";
-import { TriangleAlert } from "lucide-vue-next";
+import { GitBranch, TriangleAlert } from "lucide-vue-next";
 import { Ref } from "rete-vue-plugin";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
@@ -143,7 +143,7 @@ function getOutputBadges(key) {
 
 <template>
   <NodeShell :color="color" :selected="data.selected">
-    <NodeHeader :color="color" :icon="config.icon" :label="config.label" />
+    <NodeHeader :color="color" :icon="GitBranch" :label="config.label" />
 
     <!-- Summary preview -->
     <div class="text-[11px] text-muted-foreground px-3 py-2 max-w-[200px] border-b border-border/10 break-words">

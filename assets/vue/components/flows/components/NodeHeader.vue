@@ -4,7 +4,7 @@ import { headerStyle } from "../lib/render-helpers.js";
 
 const props = defineProps({
 	color: { type: String, default: "#3b82f6" },
-	icon: { type: String, default: "" },
+	icon: { type: [Object, Function, null], default: null },
 	label: { type: String, default: "" },
 	avatarUrl: { type: String, default: null },
 });
@@ -23,7 +23,7 @@ const bgStyle = computed(() => headerStyle(props.color));
       alt=""
       class="size-8 rounded-full object-cover shrink-0"
     />
-    <span v-else class="flex items-center shrink-0" v-html="icon" />
+    <component v-else-if="icon" :is="icon" class="size-4 shrink-0" />
     <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ label }}</span>
     <slot />
   </div>

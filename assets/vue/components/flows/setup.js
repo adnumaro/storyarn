@@ -50,6 +50,7 @@ export function createPlugins(container, hook) {
     lod: "full",
     editingNodeId: null,
     onInlineEditSave: null,
+    nodeDataVersion: 0,
   });
   hook._flowContext = flowContext;
 

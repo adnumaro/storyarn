@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from "vue";
-import { ArrowRight } from "lucide-vue-next";
+import { ArrowRight, LogOut } from "lucide-vue-next";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
@@ -24,7 +24,7 @@ const hasError = computed(() => !nodeData.value.target_hub_id);
 
 <template>
   <NodeShell :color="color" :selected="data.selected">
-    <NodeHeader :color="color" :icon="config.icon" :label="config.label">
+    <NodeHeader :color="color" :icon="LogOut" :label="config.label">
       <div
         v-if="hasError"
         class="ml-auto inline-flex items-center justify-center size-3.5 text-[10px] font-bold rounded-full bg-destructive text-destructive-foreground"

@@ -6,11 +6,12 @@
  * node size sync, hub map rebuild, event bindings, auto-layout, and cleanup.
  */
 
-import { onUnmounted, ref, shallowRef } from "vue";
+import { onUnmounted, reactive, ref, shallowRef } from "vue";
 import { ClassicPreset } from "rete";
 import { AreaExtensions } from "rete-area-plugin";
 
-import { FlowNode } from "@/js/flow_canvas/flow_node.js";
+import { FlowNode } from "../lib/flow-node.js";
+import { needsRebuild as checkNeedsRebuild } from "../lib/node-configs.js";
 import {
 	createCursorHandler,
 	createDebugHandler,
@@ -34,6 +35,19 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 	const editor = shallowRef(null);
 	const area = shallowRef(null);
 	const loading = ref(true);
+
+	// Reactive toolbar positioning — updated on node pick, drag, zoom, pan
+	const toolbarState = reactive({
+		visible: false,
+		nodeId: null,
+		reteNodeId: null,
+		nodeType: null,
+		nodeData: null,
+		x: 0,
+		y: 0,
+		width: 0,
+		height: 0,
+	});
 
 	// Internal state (not reactive — performance-critical)
 	let _editor = null;
@@ -124,7 +138,68 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 		floatingToolbar: null,
 		lodController: null,
 		minimapToggle: null,
+		// V2: use Vue-native needsRebuild (no Lit dependency)
+		needsRebuild: checkNeedsRebuild,
+		// V2 (Vue): update node data without area.update.
+		// area.update destroys socket DOM elements (Vue re-mount), breaking
+		// connection SVG paths. Instead, mutate nodeData and bump a reactive
+		// counter on flowContext so Vue node components re-render via inject.
+		onNodeDataUpdated(node, nodeData) {
+			console.log("[onNodeDataUpdated] before", { nodeId: node.nodeId, oldVersion: hookProxy._flowContext?.nodeDataVersion });
+			node.nodeData = { ...nodeData };
+			const ctx = hookProxy._flowContext;
+			if (ctx) {
+				ctx.nodeDataVersion = (ctx.nodeDataVersion || 0) + 1;
+				console.log("[onNodeDataUpdated] bumped version to", ctx.nodeDataVersion);
+			} else {
+				console.log("[onNodeDataUpdated] NO flowContext!");
+			}
+		},
 	};
+
+	// --- Toolbar positioning ---
+
+	function updateToolbarPosition() {
+		if (!_area || !toolbarState.reteNodeId) {
+			toolbarState.visible = false;
+			return;
+		}
+		const view = _area.nodeViews.get(toolbarState.reteNodeId);
+		if (!view) {
+			toolbarState.visible = false;
+			return;
+		}
+		const transform = _area.area.transform;
+		const pos = view.position;
+		const node = _editor.getNode(toolbarState.reteNodeId);
+
+		toolbarState.x = pos.x * transform.k + transform.x;
+		toolbarState.y = pos.y * transform.k + transform.y;
+		toolbarState.width = (node?.width || 180) * transform.k;
+		toolbarState.height = (node?.height || 40) * transform.k;
+		toolbarState.visible = true;
+	}
+
+	function selectNodeForToolbar(reteNodeId) {
+		const node = _editor.getNode(reteNodeId);
+		if (!node) {
+			clearToolbar();
+			return;
+		}
+		toolbarState.reteNodeId = reteNodeId;
+		toolbarState.nodeId = node.nodeId;
+		toolbarState.nodeType = node.nodeType;
+		toolbarState.nodeData = node.nodeData;
+		updateToolbarPosition();
+	}
+
+	function clearToolbar() {
+		toolbarState.visible = false;
+		toolbarState.reteNodeId = null;
+		toolbarState.nodeId = null;
+		toolbarState.nodeType = null;
+		toolbarState.nodeData = null;
+	}
 
 	// --- Inline edit ---
 
@@ -229,16 +304,17 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 		// Wire inline edit save callback for node components
 		hookProxy._flowContext.onInlineEditSave = handleInlineEditSave;
 
-		// Canvas click — exit inline edit when clicking empty space
+		// Canvas click — exit inline edit + clear toolbar when clicking empty space
 		_canvasClickController = new AbortController();
 		containerEl.addEventListener(
 			"pointerdown",
 			(e) => {
 				if (e.button !== 0) return;
-				// Check if click landed on a node element
 				const nodeEl = e.target.closest("[data-testid='node']");
-				if (!nodeEl && hookProxy._flowContext?.editingNodeId) {
-					exitInlineEdit();
+				if (!nodeEl) {
+					if (hookProxy._flowContext?.editingNodeId) exitInlineEdit();
+					clearToolbar();
+					_selectedNodeId = null;
 				}
 			},
 			{ signal: _canvasClickController.signal },
@@ -472,12 +548,16 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 			return;
 		}
 
-		// Node drag
+		// Node drag + toolbar reposition
 		_area.addPipe((context) => {
 			if (context.type === "nodetranslated" && !hookProxy.isLoadingFromServer) {
 				const node = _editor.getNode(context.data.id);
 				if (node?.nodeId) {
 					_editorHandlers.throttleNodeMoved(node.nodeId, context.data.position);
+				}
+				// Reposition toolbar if dragging the selected node
+				if (context.data.id === toolbarState.reteNodeId) {
+					updateToolbarPosition();
 				}
 			}
 			if (context.type === "nodedragged") {
@@ -485,6 +565,10 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 				if (node?.nodeId) {
 					_editorHandlers.flushNodeMoved(node.nodeId);
 				}
+			}
+			// Reposition toolbar on zoom/pan
+			if (context.type === "zoomed" || context.type === "translated") {
+				if (toolbarState.reteNodeId) updateToolbarPosition();
 			}
 			return context;
 		});
@@ -511,6 +595,7 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 							pushEvent("node_double_clicked", { id: node.nodeId });
 						}
 					} else {
+						selectNodeForToolbar(context.data.id);
 						pushEvent("node_selected", { id: node.nodeId });
 					}
 				}
@@ -590,9 +675,16 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 		handleEvent("node_updated", (data) => {
 			if (!_nodeUpdateQueue) return;
 			_nodeUpdateQueue = _nodeUpdateQueue
-				.then(() => {
+				.then(async () => {
 					if (!_area || _destroyed) return;
-					return _editorHandlers.handleNodeUpdated(data);
+					await _editorHandlers.handleNodeUpdated(data);
+					// Sync toolbar if the updated node is the one selected
+					if (toolbarState.nodeId && String(data.id) === String(toolbarState.nodeId)) {
+						const reteNode = _nodeMap.get(data.id);
+						if (reteNode) {
+							toolbarState.nodeData = { ...reteNode.nodeData };
+						}
+					}
 				})
 				.catch(() => {});
 		});
@@ -635,6 +727,7 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 		editor,
 		area,
 		loading,
+		toolbarState,
 		init,
 		addNodeToEditor,
 		addConnectionToEditor,

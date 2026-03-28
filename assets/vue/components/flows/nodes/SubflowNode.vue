@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from "vue";
-import { ArrowRight, CornerDownLeft, Square } from "lucide-vue-next";
+import { ArrowRight, Box, CornerDownLeft, Square } from "lucide-vue-next";
 import { Ref } from "rete-vue-plugin";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
@@ -37,7 +37,7 @@ function getExitInfo(key) {
 
 <template>
   <NodeShell :color="color" :selected="data.selected">
-    <NodeHeader :color="color" :icon="config.icon" :label="config.label">
+    <NodeHeader :color="color" :icon="Box" :label="config.label">
       <div
         v-if="hasError"
         class="ml-auto inline-flex items-center justify-center size-3.5 text-[10px] font-bold rounded-full bg-destructive text-destructive-foreground"

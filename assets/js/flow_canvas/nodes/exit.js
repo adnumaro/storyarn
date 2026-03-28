@@ -97,11 +97,4 @@ export default {
     return data.outcome_color || "#22c55e";
   },
 
-  needsRebuild(oldData, newData) {
-    if (oldData?.exit_mode !== newData.exit_mode) return true;
-    if (oldData?.referenced_flow_id !== newData.referenced_flow_id) return true;
-    if (oldData?.outcome_color !== newData.outcome_color) return true;
-    if (JSON.stringify(oldData?.outcome_tags) !== JSON.stringify(newData.outcome_tags)) return true;
-    return false;
-  },
 };

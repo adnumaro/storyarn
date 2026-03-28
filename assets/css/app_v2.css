@@ -182,6 +182,21 @@
   pointer-events: none;
 }
 
+.v2-toolbar-input {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 0.125rem 0.25rem;
+  outline: none;
+  font-family: inherit;
+  color: hsl(var(--foreground));
+  max-width: 120px;
+}
+
+.v2-toolbar-input:focus {
+  border-color: hsl(var(--primary));
+}
+
 /* Compact text input for floating toolbar (label fields) */
 .v2-toolbar-input {
   background: transparent;

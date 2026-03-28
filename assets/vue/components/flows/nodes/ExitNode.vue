@@ -10,9 +10,10 @@ const props = defineProps({
 	emit: { type: Function, required: true },
 	config: { type: Object, required: true },
 	color: { type: String, required: true },
+	nodeDataOverride: { type: Object, default: null },
 });
 
-const nodeData = computed(() => props.data.nodeData || {});
+const nodeData = computed(() => props.nodeDataOverride || props.data.nodeData || {});
 const exitMode = computed(() => nodeData.value.exit_mode || "terminal");
 const label = computed(() => nodeData.value.label || "Exit");
 const tags = computed(() => nodeData.value.outcome_tags || []);
@@ -39,7 +40,7 @@ const tagsText = computed(() => {
 
 <template>
   <NodeShell :color="color" :selected="data.selected">
-    <NodeHeader :color="color" :icon="config.icon" :label="config.label">
+    <NodeHeader :color="color" :icon="ArrowRightToLine" :label="config.label">
       <div
         v-if="hasError"
         class="ml-auto inline-flex items-center justify-center size-3.5 text-[10px] font-bold rounded-full bg-destructive text-destructive-foreground"

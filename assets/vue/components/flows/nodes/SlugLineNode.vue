@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import { Clapperboard } from "lucide-vue-next";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
@@ -58,7 +59,7 @@ const hasContent = computed(() => slugLine.value || description.value || hasVisu
     :selected="data.selected"
     :extra-class="hasContent ? 'slug-line min-w-[200px] max-w-[280px]' : ''"
   >
-    <NodeHeader :color="color" :icon="config.icon" :label="headerLabel">
+    <NodeHeader :color="color" :icon="Clapperboard" :label="headerLabel">
       <div
         v-if="hasError"
         class="ml-auto inline-flex items-center justify-center size-3.5 text-[10px] font-bold rounded-full bg-destructive text-destructive-foreground"

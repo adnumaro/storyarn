@@ -249,13 +249,16 @@ export function createEditorHandlers(hook) {
       }
 
       // Check per-type needsRebuild
-      const def = getNodeDef(existingNode.nodeType);
-      const shouldRebuild = def?.needsRebuild?.(existingNode.nodeData, nodeData) || false;
+      const shouldRebuild = hook.needsRebuild
+        ? hook.needsRebuild(existingNode.nodeType, existingNode.nodeData, nodeData)
+        : (getNodeDef(existingNode.nodeType)?.needsRebuild?.(existingNode.nodeData, nodeData) || false);
 
       if (shouldRebuild) {
         await this.rebuildNode(id, existingNode, nodeData);
+      } else if (hook.onNodeDataUpdated) {
+        hook.onNodeDataUpdated(existingNode, nodeData);
       } else {
-        // Update nodeData with new reference to trigger Lit re-render
+        // V1 (Lit): update nodeData and trigger Lit re-render via area.update
         existingNode.nodeData = { ...nodeData };
         existingNode._updateTs = Date.now();
         await hook.area.update("node", existingNode.id);

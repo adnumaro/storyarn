@@ -1,6 +1,6 @@
 <script setup>
 import { computed, inject } from "vue";
-import { NODE_CONFIGS } from "@/js/flow_canvas/node_config.js";
+import { NODE_CONFIGS } from "../lib/node-configs.js";
 import { resolveNodeColor } from "../lib/render-helpers.js";
 import { FLOW_CONTEXT_KEY } from "../setup.js";
 
@@ -39,15 +39,25 @@ const nodeType = computed(() => props.data?.nodeType || "dialogue");
 const config = computed(() => NODE_CONFIGS[nodeType.value] || NODE_CONFIGS.dialogue);
 const nodeComponent = computed(() => NODE_COMPONENTS[nodeType.value] || DialogueNode);
 
-const nodeColor = computed(() =>
-	resolveNodeColor(
+// nodeDataVersion from flowContext triggers recomputation when server updates
+// nodeData (which is markRaw'd and invisible to Vue reactivity)
+const nodeColor = computed(() => {
+	const v = ctx.nodeDataVersion;
+	console.log("[FlowNode] nodeColor recompute", { nodeType: nodeType.value, version: v, color: props.data?.nodeData?.outcome_color });
+	return resolveNodeColor(
 		nodeType.value,
 		props.data?.nodeData,
 		config.value.color,
 		ctx.sheetsMap,
 		ctx.hubsMap,
-	),
-);
+	);
+});
+
+// Reactive snapshot of nodeData — recomputes when nodeDataVersion bumps
+const reactiveNodeData = computed(() => {
+	void ctx.nodeDataVersion;
+	return props.data?.nodeData || {};
+});
 </script>
 
 <template>
@@ -60,5 +70,6 @@ const nodeColor = computed(() =>
     :sheets-map="ctx.sheetsMap"
     :hubs-map="ctx.hubsMap"
     :labels="ctx.labels"
+    :node-data-override="reactiveNodeData"
   />
 </template>

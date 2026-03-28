@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from "vue";
-import { TriangleAlert } from "lucide-vue-next";
+import { TriangleAlert, Zap } from "lucide-vue-next";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
@@ -58,7 +58,7 @@ const hasStaleRefs = computed(() => nodeData.value.has_stale_refs);
 
 <template>
   <NodeShell :color="color" :selected="data.selected">
-    <NodeHeader :color="color" :icon="config.icon" :label="config.label">
+    <NodeHeader :color="color" :icon="Zap" :label="config.label">
       <div
         v-if="hasWarnings"
         class="ml-auto inline-flex items-center justify-center size-3.5 text-[10px] font-bold rounded-full bg-destructive text-destructive-foreground"

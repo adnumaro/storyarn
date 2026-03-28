@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from "vue";
-import { Box, Square } from "lucide-vue-next";
+import { Box, Play, Square } from "lucide-vue-next";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
@@ -17,7 +17,7 @@ const refs = computed(() => props.data.nodeData?.referencing_flows || []);
 
 <template>
   <NodeShell :color="color" :selected="data.selected">
-    <NodeHeader :color="color" :icon="config.icon" :label="config.label" />
+    <NodeHeader :color="color" :icon="Play" :label="config.label" />
     <div
       v-for="ref in refs"
       :key="ref.flow_id"
