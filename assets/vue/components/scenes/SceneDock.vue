@@ -93,7 +93,7 @@ const playUrl = `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug
 <template>
   <div v-if="editMode">
     <div
-      class="absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-1 v2-surface-panel px-2 py-2"
+      class="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 v2-surface-panel px-2 py-2"
     >
       <!-- Navigation group -->
       <div class="v2-dock-item group relative">
@@ -358,7 +358,7 @@ const playUrl = `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug
     <!-- Pending sheet indicator -->
     <div
       v-if="pendingSheet"
-      class="absolute bottom-24 left-1/2 -translate-x-1/2 z-[1000] bg-primary/10 border border-primary/30 rounded-lg px-3 py-1.5 text-xs flex items-center gap-2"
+      class="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 bg-primary/10 border border-primary/30 rounded-lg px-3 py-1.5 text-xs flex items-center gap-2"
     >
       <MapPin class="size-3.5" />
       <span>

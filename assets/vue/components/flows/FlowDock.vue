@@ -78,7 +78,7 @@ const playUrl = `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug
 <template>
   <div v-if="canEdit">
     <div
-      class="absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-1 v2-surface-panel px-2 py-2"
+      class="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 v2-surface-panel px-2 py-2"
     >
       <!-- Annotation -->
       <div class="v2-dock-item group relative">

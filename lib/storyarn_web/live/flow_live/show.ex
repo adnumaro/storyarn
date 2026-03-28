@@ -202,36 +202,20 @@ defmodule StoryarnWeb.FlowLive.Show do
         />
       </div>
 
-      <%!-- Builder Sidebar (condition / instruction nodes) --%>
-      <div
-        :if={@flow}
-        id="builder-sidebar"
-        phx-hook="RightSidebar"
-        data-right-panel
-        data-open-event="open_builder"
-        data-close-event="close_builder"
-        class={[
-          "fixed flex flex-col overflow-hidden right-sidebar",
-          "inset-0 z-[1030] bg-base-100",
-          "xl:inset-auto xl:right-3 xl:top-3 xl:bottom-3 xl:w-[480px]"
-        ]}
-      >
-        <div :if={@selected_node && @editing_mode == :builder}>
-          <.builder_content
-            node={@selected_node}
-            form={@node_form}
-            can_edit={@can_edit}
-            project_variables={@project_variables}
-            panel_sections={@panel_sections}
-          />
-        </div>
-        <div
-          :if={!(@selected_node && @editing_mode == :builder)}
-          class="flex items-center justify-center h-full"
-        >
-          <span class="loading loading-spinner loading-md text-base-content/40"></span>
-        </div>
-      </div>
+      <%!-- Builder Sidebar (Vue) --%>
+      <.vue
+        v-component="flows/FlowBuilderPanel"
+        v-socket={@socket}
+        id="flow-builder-panel"
+        open={@editing_mode == :builder && @selected_node != nil}
+        node-type={@selected_node && @selected_node.type}
+        node-id={@selected_node && @selected_node.id}
+        condition={@selected_node && @selected_node.data["condition"]}
+        assignments={@selected_node && (@selected_node.data["assignments"] || [])}
+        switch-mode={@selected_node && @selected_node.data["switch_mode"] == true}
+        project-variables={Jason.encode!(@project_variables)}
+        can-edit={@can_edit}
+      />
 
       <%!-- Screenplay Editor sidebar --%>
       <.live_component
