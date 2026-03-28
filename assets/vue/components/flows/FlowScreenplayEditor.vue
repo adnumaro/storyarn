@@ -26,12 +26,16 @@ const props = defineProps({
 	node: { type: Object, default: null },
 	canEdit: { type: Boolean, default: false },
 	allSheets: { type: Array, default: () => [] },
-	projectVariables: { type: Array, default: () => [] },
+	projectVariables: { default: () => [] },
 });
 
 const live = useLive();
 const activeTab = ref("text");
 
+const parsedVariables = computed(() => {
+	if (Array.isArray(props.projectVariables)) return props.projectVariables;
+	try { return JSON.parse(props.projectVariables); } catch { return []; }
+});
 const nodeData = computed(() => props.node?.data || {});
 const speakerId = computed(() => nodeData.value.speaker_sheet_id || null);
 const speakerOptions = computed(() => props.allSheets.map((s) => ({ id: s.id, name: s.name })));
@@ -199,7 +203,7 @@ function updateResponseAssignments(responseId, assignments) {
               <div class="mt-2">
                 <ConditionBuilder
                   :condition="resp.condition"
-                  :variables="projectVariables"
+                  :variables="parsedVariables"
                   :disabled="!canEdit"
                   @update:condition="(c) => updateResponseCondition(resp.id, c)"
                 />
@@ -212,7 +216,7 @@ function updateResponseAssignments(responseId, assignments) {
               <div class="mt-2">
                 <InstructionBuilder
                   :assignments="resp.instruction_assignments || []"
-                  :variables="projectVariables"
+                  :variables="parsedVariables"
                   :disabled="!canEdit"
                   @update:assignments="(a) => updateResponseAssignments(resp.id, a)"
                 />
