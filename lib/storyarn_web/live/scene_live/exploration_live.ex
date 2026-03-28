@@ -138,7 +138,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
          socket
          |> put_flash(:error, dgettext("scenes", "Scene not found."))
          |> redirect(
-           to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/v2/scenes"
+           to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
          )}
 
       scene ->
@@ -226,7 +226,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
       true ->
         path =
-          ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/scenes/#{socket.assigns.scene.id}"
+          ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{socket.assigns.scene.id}"
 
         {:noreply, push_navigate(socket, to: path)}
     end
@@ -395,7 +395,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
           true ->
             path =
-              ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/scenes/#{socket.assigns.scene.id}"
+              ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{socket.assigns.scene.id}"
 
             {:noreply, push_navigate(socket, to: path)}
         end
@@ -458,7 +458,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         |> assign(:variables, variables)
         |> push_navigate(
           to:
-            ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/scenes/#{session.scene_id}/explore"
+            ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{session.scene_id}/explore"
         )
     end
   end
@@ -502,7 +502,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   defp handle_element_target(%{"target_type" => "scene", "target_id" => target_scene_id}, socket)
        when not is_nil(target_scene_id) and target_scene_id != "" do
     path =
-      ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/scenes/#{target_scene_id}/explore"
+      ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{target_scene_id}/explore"
 
     push_navigate(socket, to: path)
   end
@@ -734,7 +734,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         socket = assign(socket, :variables, new_variables)
 
         path =
-          ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/scenes/#{scene_id}/explore"
+          ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{scene_id}/explore"
 
         {:noreply, push_navigate(socket, to: path)}
 

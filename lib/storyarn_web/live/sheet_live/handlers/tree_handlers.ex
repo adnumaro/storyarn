@@ -23,7 +23,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TreeHandlers do
           {:noreply,
            push_navigate(socket,
              to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/sheets/#{new_sheet.id}"
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
            )}
 
         {:error, :limit_reached, _} ->
@@ -46,7 +46,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TreeHandlers do
           {:noreply,
            push_navigate(socket,
              to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/sheets/#{new_sheet.id}"
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
            )}
 
         {:error, :limit_reached, _} ->

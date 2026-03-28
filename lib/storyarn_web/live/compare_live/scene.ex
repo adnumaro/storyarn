@@ -137,7 +137,7 @@ defmodule StoryarnWeb.CompareLive.Scene do
         ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}?layout=compact"
 
       version_url =
-        ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/versions/scene/#{scene.id}/#{version.version_number}"
+        "#version-viewer-pending"
 
       {:noreply,
        socket

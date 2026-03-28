@@ -66,7 +66,7 @@ defmodule StoryarnWeb.Components.TreeComponents do
           :if={@has_children}
           type="button"
           class="flex items-center justify-center w-5 h-5 rounded shrink-0"
-          phx-hook="TreeToggle"
+          
           id={"tree-toggle-#{@id}"}
           data-node-id={@id}
           data-expanded={to_string(@expanded)}

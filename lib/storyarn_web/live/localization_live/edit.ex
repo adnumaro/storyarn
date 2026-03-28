@@ -12,7 +12,8 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <Layouts.focus_v2
+      socket={@socket}
       flash={@flash}
       current_scope={@current_scope}
       project={@project}
@@ -117,7 +118,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
           </span>
         </div>
       </div>
-    </Layouts.focus>
+    </Layouts.focus_v2>
     """
   end
 

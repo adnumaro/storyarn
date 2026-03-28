@@ -35,7 +35,7 @@ defmodule StoryarnWeb.Components.LanguagePicker do
       |> assign(:options_with_params, build_options(assigns))
 
     ~H"""
-    <div id={@id} phx-hook="SearchableSelect">
+    <div id={@id} >
       <button
         data-role="trigger"
         type="button"

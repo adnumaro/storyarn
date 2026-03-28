@@ -7,15 +7,6 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
-  # V1 components — kept temporarily until Phase 3B-3D + Phase 4 replace them
-  # V1 Dock removed — replaced by Vue SceneDock (Phase 3D)
-  import StoryarnWeb.SceneLive.V1.Components.LayerBar
-  import StoryarnWeb.SceneLive.V1.Components.Legend
-  import StoryarnWeb.Components.CanvasToolbar
-  import StoryarnWeb.SceneLive.V1.Components.FloatingToolbar
-  import StoryarnWeb.SceneLive.V1.Components.SceneElementPanel
-  # V1 SceneSettingsPanel removed — replaced by Vue SettingsPanel (Phase 3D)
-  # V1 RightSidebar removed — Version History migrating to Vue
 
   alias StoryarnWeb.Components.DraftComponents
   alias StoryarnWeb.Helpers.DraftTouchTimer
@@ -143,7 +134,7 @@ defmodule StoryarnWeb.SceneLive.Show do
             phx-drop-target={
               @can_edit && @edit_mode && @uploads[:background] && @uploads.background.ref
             }
-            phx-hook="CanvasDropZone"
+            
           >
             <.vue
               v-component="scenes/SceneCanvas"
@@ -354,41 +345,26 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   defp render_compact(assigns) do
     ~H"""
-    <Layouts.compare
-      flash={@flash}
-      panel_title={dgettext("scenes", "Layers")}
-      panel_open={@tree_panel_open}
-    >
-      <:panel>
-        <.layer_panel
-          layers={@layers}
-          active_layer_id={@active_layer_id}
-          renaming_layer_id={@renaming_layer_id}
-          can_edit={@can_edit}
-          edit_mode={@edit_mode}
-        />
-      </:panel>
+    <Layouts.compare flash={@flash}>
       <div class="h-full relative">
-        <%!-- Canvas fills the entire area --%>
-        <div
-          id="scene-canvas-wrapper"
-          class="absolute inset-0 overflow-hidden"
-        >
-          <div
-            id={"scene-canvas-#{@scene.id}"}
-            phx-hook="SceneCanvas"
-            phx-update="ignore"
-            data-scene={Jason.encode!(@scene_data)}
-            data-i18n={Jason.encode!(@canvas_i18n)}
-            data-current-user-id={@current_scope.user.id}
-            data-locks={Jason.encode!(@entity_locks)}
-            class="w-full h-full"
-          >
-            <div id="scene-canvas-container" class="w-full h-full"></div>
-          </div>
-        </div>
+        <.vue
+          v-component="scenes/SceneCanvas"
+          v-socket={@socket}
+          id={"scene-canvas-compact-#{@scene.id}"}
+          class="w-full h-full"
+          scene-data={prepare_scene_for_vue(@scene)}
+          pins={prepare_pins_for_vue(@pins)}
+          zones={prepare_zones_for_vue(@zones)}
+          connections={prepare_connections_for_vue(@connections)}
+          annotations={prepare_annotations_for_vue(@annotations)}
+          layers={prepare_layers_for_vue(@layers)}
+          active-tool={to_string(@active_tool)}
+          edit-mode={@edit_mode}
+          can-edit={@can_edit}
+          current-user-id={@current_scope.user.id}
+          entity-locks={serialize_entity_locks(@entity_locks)}
+        />
 
-        <%!-- Bottom dock --%>
         <.vue
           :if={@edit_mode}
           v-component="scenes/SceneDock"
@@ -402,67 +378,6 @@ defmodule StoryarnWeb.SceneLive.Show do
           project-slug={@project.slug}
           scene-id={@scene.id}
         />
-
-        <%!-- Bottom-right controls: zoom + legend --%>
-        <div class="absolute bottom-3 right-3 z-[1000] flex items-end gap-2">
-          <div id="scene-controls-slot" phx-update="ignore"></div>
-          <.legend
-            pins={@pins}
-            zones={@zones}
-            connections={@connections}
-            legend_open={@legend_open}
-          />
-        </div>
-
-        <%!-- Floating element toolbar --%>
-        <.canvas_toolbar
-          id="scene-floating-toolbar"
-          canvas_id={"scene-canvas-#{@scene.id}"}
-          visible={@selected_element != nil && @can_edit && @edit_mode}
-          z_class="z-[1050]"
-        >
-          <.floating_toolbar
-            selected_type={@selected_type}
-            selected_element={@selected_element}
-            layers={@layers}
-            can_edit={not Map.get(@selected_element || %{}, :locked, false)}
-            can_toggle_lock={true}
-          />
-        </.canvas_toolbar>
-      </div>
-
-      <%!-- Element Properties Sidebar (outside canvas container to avoid z-index conflicts) --%>
-      <div
-        id="scene-element-panel"
-        phx-hook="RightSidebar"
-        data-right-panel
-        data-open-event="open_element_panel"
-        data-close-event="close_element_panel"
-        class={[
-          "fixed flex flex-col overflow-hidden right-sidebar",
-          "inset-0 z-[1060] bg-background",
-          "xl:inset-auto xl:right-3 xl:top-3 xl:bottom-3 xl:w-[480px]"
-        ]}
-      >
-        <div :if={@element_panel_open && @selected_element != nil}>
-          <.scene_element_panel
-            selected_type={@selected_type}
-            selected_element={@selected_element}
-            can_edit={not Map.get(@selected_element || %{}, :locked, false)}
-            project_id={@project.id}
-            project_scenes={@project_scenes}
-            project_sheets={@project_sheets}
-            project_flows={@project_flows}
-            project_variables={@project_variables}
-            panel_sections={@panel_sections}
-          />
-        </div>
-        <div
-          :if={!(@element_panel_open && @selected_element != nil)}
-          class="flex items-center justify-center h-full"
-        >
-          <.icon name="loader-2" class="size-5 animate-spin text-muted-foreground" />
-        </div>
       </div>
     </Layouts.compare>
     """
@@ -627,7 +542,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         socket
         |> put_flash(:error, dgettext("scenes", "Scene not found."))
         |> push_navigate(
-          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/v2/scenes"
+          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
         )
 
       scene ->
@@ -849,7 +764,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         socket
         |> put_flash(:error, dgettext("scenes", "Draft not found."))
         |> push_navigate(
-          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/v2/scenes"
+          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
         )
     end
   end
@@ -1883,7 +1798,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
       DraftHandlers.handle_discard_draft(
         socket,
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/v2/scenes"
+        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
       )
     end)
   end
@@ -1901,7 +1816,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       DraftHandlers.handle_merge_draft(socket, fn s ->
         %{project: p} = s.assigns
 
-        ~p"/workspaces/#{p.workspace.slug}/projects/#{p.slug}/v2/scenes/#{draft.source_entity_id}"
+        ~p"/workspaces/#{p.workspace.slug}/projects/#{p.slug}/scenes/#{draft.source_entity_id}"
       end)
     end)
   end

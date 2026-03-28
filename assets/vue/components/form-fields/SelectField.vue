@@ -6,17 +6,28 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/vue/components/ui/select";
+import { useLive } from "@/vue/composables/useLive";
 
-defineProps({
+const props = defineProps({
 	label: { type: String, default: "" },
 	icon: { type: [Object, Function, null], default: null },
 	options: { type: Array, required: true },
 	value: { type: [String, Number], default: "" },
 	placeholder: { type: String, default: "Select..." },
 	disabled: { type: Boolean, default: false },
+	event: { type: String, default: null },
+	paramKey: { type: String, default: "value" },
 });
 
 const emit = defineEmits(["update"]);
+const live = useLive();
+
+function onChange(v) {
+	emit("update", v);
+	if (props.event) {
+		live.pushEvent(props.event, { [props.paramKey]: v });
+	}
+}
 </script>
 
 <template>
@@ -25,7 +36,7 @@ const emit = defineEmits(["update"]);
       <component :is="icon" v-if="icon" class="size-3" />
       {{ label }}
     </label>
-    <Select :model-value="String(value)" :disabled="disabled" @update:model-value="(v) => emit('update', v)">
+    <Select :model-value="String(value)" :disabled="disabled" @update:model-value="onChange">
       <SelectTrigger class="w-full h-8 text-xs">
         <SelectValue :placeholder="placeholder" />
       </SelectTrigger>

@@ -123,7 +123,7 @@
 }
 
 
-/* Hide RightSidebar hook panels until opened (same rule as app.css for V1) */
+/* Hide RightSidebar hook panels until opened */
 [phx-hook="RightSidebar"]:not([data-panel-open]) {
   display: none;
 }
@@ -142,8 +142,7 @@
 }
 
 /* ================================================================
-   Focus Layout — floating toolbar and panel chrome (v2 equivalent of
-   .surface-panel and .toolbar-btn from app.css / DaisyUI)
+   Focus Layout — floating toolbar and panel chrome
    ================================================================ */
 
 /* Frosted glass panel shared by all floating UI chrome */
@@ -235,8 +234,7 @@
 }
 
 /* ================================================================
-   Dock — floating bottom tool palette for canvas editors (v2)
-   1:1 port of .dock-btn / .dock-item / .dock-tooltip from app.css
+   Dock — floating bottom tool palette for canvas editors
    ================================================================ */
 
 .v2-dock-btn {

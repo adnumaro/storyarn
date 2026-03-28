@@ -59,7 +59,7 @@ defmodule StoryarnWeb.Layouts do
     ~H"""
     <div
       id="app-layout"
-      phx-hook="SettingsSidebar"
+      
       class="h-screen w-screen overflow-hidden relative bg-base-100"
     >
       <%!-- Hidden checkbox for mobile sidebar toggle --%>
@@ -367,7 +367,7 @@ defmodule StoryarnWeb.Layouts do
       <%!-- Main content area --%>
       <main
         id="main-content"
-        phx-hook={unless(@canvas_mode, do: "ScrollCollapse")}
+        
         class={[
           "h-full",
           if(@canvas_mode,
@@ -799,7 +799,7 @@ defmodule StoryarnWeb.Layouts do
     ~H"""
     <div
       id="settings-layout"
-      phx-hook="SettingsSidebar"
+      
       class="h-screen w-screen overflow-hidden relative bg-base-100"
     >
       <%!-- Hidden checkbox for mobile sidebar toggle (must be first child for peer-*) --%>
@@ -1032,7 +1032,7 @@ defmodule StoryarnWeb.Layouts do
         </aside>
 
         <%!-- Content --%>
-        <main id="docs-main" class="flex-1 overflow-y-auto" phx-hook="DocsScrollSpy">
+        <main id="docs-main" class="flex-1 overflow-y-auto" >
           <div class="max-w-4xl mx-auto px-4 sm:px-8 py-8 xl:mr-56">
             <%!-- Guide header --%>
             <div :if={@guide} class="mb-8">

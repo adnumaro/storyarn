@@ -15,7 +15,8 @@ defmodule StoryarnWeb.AssetLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <Layouts.focus_v2
+      socket={@socket}
       flash={@flash}
       current_scope={@current_scope}
       project={@project}
@@ -40,7 +41,7 @@ defmodule StoryarnWeb.AssetLive.Index do
               type="file"
               accept="image/*,audio/*"
               class="hidden"
-              phx-hook="AssetUpload"
+              
               id="asset-upload-input"
             />
           </label>
@@ -116,7 +117,7 @@ defmodule StoryarnWeb.AssetLive.Index do
           on_confirm={JS.push("confirm_delete_asset")}
         />
       </div>
-    </Layouts.focus>
+    </Layouts.focus_v2>
     """
   end
 

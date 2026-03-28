@@ -137,7 +137,7 @@ defmodule StoryarnWeb.CompareLive.Flow do
         ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{flow.id}?layout=compact"
 
       version_url =
-        ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/versions/flow/#{flow.id}/#{version.version_number}"
+        "#version-viewer-pending"
 
       {:noreply,
        socket

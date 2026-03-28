@@ -6,14 +6,8 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   import StoryarnWeb.Components.CollaborationComponents
-  import StoryarnWeb.FlowLive.Components.BuilderPanel
-  import StoryarnWeb.FlowLive.Components.DebugPanel
-  import StoryarnWeb.FlowLive.Components.FlowDock
-  import StoryarnWeb.Components.CanvasToolbar
-  import StoryarnWeb.FlowLive.Components.FlowToolbar
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
-  alias StoryarnWeb.FlowLive.Components.ScreenplayEditor
 
   alias StoryarnWeb.Components.DraftComponents
   alias StoryarnWeb.Live.Shared.DraftHandlers
@@ -178,18 +172,22 @@ defmodule StoryarnWeb.FlowLive.Show do
             />
           </div>
 
-          <.debug_panel
-            :if={@flow && @debug_panel_open && @debug_state}
-            debug_state={@debug_state}
-            debug_active_tab={@debug_active_tab}
-            debug_nodes={@debug_nodes}
-            debug_auto_playing={@debug_auto_playing}
-            debug_speed={@debug_speed}
-            debug_editing_var={@debug_editing_var}
-            debug_var_filter={@debug_var_filter}
-            debug_var_changed_only={@debug_var_changed_only}
-            debug_current_flow_name={@flow.name}
-            debug_step_limit_reached={@debug_step_limit_reached}
+          <%!-- Debug Panel (Vue) --%>
+          <.vue
+            v-component="flows/FlowDebugPanel"
+            v-socket={@socket}
+            id="flow-debug-panel"
+            open={@debug_panel_open && @debug_state != nil}
+            debug-state={@debug_state}
+            debug-active-tab={@debug_active_tab}
+            debug-nodes={@debug_nodes}
+            debug-auto-playing={@debug_auto_playing}
+            debug-speed={@debug_speed}
+            debug-editing-var={@debug_editing_var}
+            debug-var-filter={@debug_var_filter}
+            debug-var-changed-only={@debug_var_changed_only}
+            debug-current-flow-name={@flow && @flow.name}
+            debug-step-limit-reached={@debug_step_limit_reached}
           />
         </div>
 
@@ -217,18 +215,16 @@ defmodule StoryarnWeb.FlowLive.Show do
         can-edit={@can_edit}
       />
 
-      <%!-- Screenplay Editor sidebar --%>
-      <.live_component
-        :if={@flow && @selected_node && @editing_mode in [:screenplay, :editor]}
-        module={ScreenplayEditor}
-        id={"screenplay-editor-#{@selected_node.id}"}
-        node={@selected_node}
-        can_edit={@can_edit}
-        all_sheets={@all_sheets}
-        project_variables={@project_variables}
-        project={@project}
-        current_user={@current_scope.user}
-        panel_sections={@panel_sections}
+      <%!-- Screenplay Editor sidebar (Vue) --%>
+      <.vue
+        v-component="flows/FlowScreenplayEditor"
+        v-socket={@socket}
+        id="flow-screenplay-editor"
+        open={@editing_mode in [:screenplay, :editor] && @selected_node != nil}
+        node={@selected_node && %{id: @selected_node.id, data: @selected_node.data}}
+        can-edit={@can_edit}
+        all-sheets={Enum.map(@all_sheets, &%{id: &1.id, name: &1.name})}
+        project-variables={Jason.encode!(@project_variables)}
       />
     </Layouts.focus_v2>
     """
@@ -238,108 +234,35 @@ defmodule StoryarnWeb.FlowLive.Show do
     ~H"""
     <Layouts.compare flash={@flash}>
       <div class="h-full relative">
-        <%!-- Canvas fills the entire area --%>
-        <div class="absolute inset-0 flex flex-col">
-          <div class="flex-1 relative bg-base-200">
-            <div
-              id={"flow-canvas-#{@flow.id}"}
-              phx-hook="FlowCanvas"
-              phx-update="ignore"
-              class="absolute inset-0"
-              data-flow={Jason.encode!(@flow_data)}
-              data-sheets={Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))}
-              data-locks={Jason.encode!(@node_locks)}
-              data-user-id={@current_scope.user.id}
-              data-user-color={Collaboration.user_color(@current_scope.user.id)}
-              data-labels={Jason.encode!(flow_canvas_labels())}
-            >
-            </div>
-
-            <%!-- Floating Toolbar --%>
-            <.canvas_toolbar
-              id="flow-floating-toolbar"
-              canvas_id={"flow-canvas-#{@flow.id}"}
-              visible={@selected_node != nil && @editing_mode in [:toolbar, :annotation]}
-            >
-              <%= if @editing_mode == :annotation do %>
-                <.annotation_toolbar node={@selected_node} can_edit={@can_edit} />
-              <% else %>
-                <.node_toolbar
-                  node={@selected_node}
-                  form={@node_form}
-                  can_edit={@can_edit}
-                  all_sheets={@all_sheets}
-                  gallery_by_sheet={@gallery_by_sheet}
-                  flow_hubs={@flow_hubs}
-                  available_flows={@available_flows}
-                  available_scenes={assigns[:available_scenes] || []}
-                  flow_search_has_more={@flow_search_has_more}
-                  flow_search_deep={@flow_search_deep}
-                  subflow_exits={@subflow_exits}
-                  referencing_jumps={@referencing_jumps}
-                  referencing_flows={@referencing_flows}
-                  project_scenes={@project_scenes}
-                  node_select_loading={@node_select_loading}
-                />
-              <% end %>
-            </.canvas_toolbar>
-
-            <%!-- Bottom dock --%>
-            <.flow_dock
-              flow={@flow}
-              workspace={@workspace}
-              project={@project}
-              can_edit={@can_edit}
-              debug_panel_open={@debug_panel_open}
-              compact={true}
-            />
-          </div>
-        </div>
+        <.vue
+          v-component="flows/FlowEditor"
+          v-socket={@socket}
+          id={"flow-editor-compact-#{@flow.id}"}
+          class="w-full h-full"
+          flow-data={Jason.encode!(@flow_data)}
+          sheets-map={Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))}
+          labels={Jason.encode!(flow_canvas_labels())}
+          loading={false}
+          readonly={!@can_edit}
+          user-id={@current_scope.user.id}
+          user-color={Collaboration.user_color(@current_scope.user.id)}
+          canvas-id={"flow-canvas-#{@flow.id}"}
+          flow-hubs={Jason.encode!(@flow_hubs)}
+          available-flows={Jason.encode!(Enum.map(@available_flows, &Map.take(&1, [:id, :name])))}
+          all-sheets={Jason.encode!(Enum.map(@all_sheets, fn s ->
+            avatars = if is_list(s.avatars), do: Enum.map(s.avatars, fn a ->
+              %{id: a.id, name: a.name, position: a.position, asset: %{url: a.asset && a.asset.url}}
+            end), else: []
+            %{id: s.id, name: s.name, color: s.color, avatars: avatars}
+          end))}
+          available-scenes={Jason.encode!(Enum.map(@available_scenes, &Map.take(&1, [:id, :name])))}
+          subflow-exits={Jason.encode!(@subflow_exits)}
+          referencing-jumps={Jason.encode!(@referencing_jumps)}
+          referencing-flows={Jason.encode!(@referencing_flows)}
+          node-select-loading={@node_select_loading}
+          flow-search-has-more={@flow_search_has_more}
+        />
       </div>
-
-      <%!-- Builder Sidebar (condition / instruction nodes) --%>
-      <div
-        id="builder-sidebar"
-        phx-hook="RightSidebar"
-        data-right-panel
-        data-open-event="open_builder"
-        data-close-event="close_builder"
-        class={[
-          "fixed flex flex-col overflow-hidden right-sidebar",
-          "inset-0 z-[1030] bg-base-100",
-          "xl:inset-auto xl:right-3 xl:top-3 xl:bottom-3 xl:w-[480px]"
-        ]}
-      >
-        <div :if={@selected_node && @editing_mode == :builder}>
-          <.builder_content
-            node={@selected_node}
-            form={@node_form}
-            can_edit={@can_edit}
-            project_variables={@project_variables}
-            panel_sections={@panel_sections}
-          />
-        </div>
-        <div
-          :if={!(@selected_node && @editing_mode == :builder)}
-          class="flex items-center justify-center h-full"
-        >
-          <span class="loading loading-spinner loading-md text-base-content/40"></span>
-        </div>
-      </div>
-
-      <%!-- Screenplay Editor sidebar --%>
-      <.live_component
-        :if={@selected_node && @editing_mode in [:screenplay, :editor]}
-        module={ScreenplayEditor}
-        id={"screenplay-editor-#{@selected_node.id}"}
-        node={@selected_node}
-        can_edit={@can_edit}
-        all_sheets={@all_sheets}
-        project_variables={@project_variables}
-        project={@project}
-        current_user={@current_scope.user}
-        panel_sections={@panel_sections}
-      />
     </Layouts.compare>
     """
   end

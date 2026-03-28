@@ -13,7 +13,8 @@ defmodule StoryarnWeb.ProjectLive.Trash do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <Layouts.focus_v2
+      socket={@socket}
       flash={@flash}
       current_scope={@current_scope}
       project={@project}
@@ -94,7 +95,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
         icon="alert-triangle"
         on_confirm={JS.push("empty_trash")}
       />
-    </Layouts.focus>
+    </Layouts.focus_v2>
     """
   end
 

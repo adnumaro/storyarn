@@ -472,7 +472,7 @@ defmodule StoryarnWeb.Components.CoreComponents do
       <span
         :if={@can_edit && @block_id}
         id={"block-label-#{@block_id}"}
-        phx-hook="EditableBlockLabel"
+        
         phx-update="ignore"
         data-label={@label}
         data-block-id={@block_id}

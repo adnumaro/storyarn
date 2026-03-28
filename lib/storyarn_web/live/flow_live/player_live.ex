@@ -23,7 +23,6 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
   alias StoryarnWeb.FlowLive.Player.{PlayerEngine, Slide}
-  alias StoryarnWeb.SceneLive.V1.Helpers.Serializer, as: MapSerializer
 
   # ===========================================================================
   # Render
@@ -32,12 +31,12 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div id="story-player" class="player-layout" phx-hook="StoryPlayer">
+    <div id="story-player" class="player-layout" >
       <div class="player-main relative">
         <%!-- Scene backdrop (dimmed map background) --%>
         <div :if={@scene_backdrop} class="scene-backdrop scene-backdrop-transition">
           <img
-            src={MapSerializer.background_url(@scene_backdrop)}
+            src={@scene_backdrop && @scene_backdrop.background_url}
             alt=""
             class="scene-backdrop-img"
             draggable="false"

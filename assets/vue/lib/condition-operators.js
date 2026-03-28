@@ -1,7 +1,5 @@
 /**
- * Condition operator definitions for the Vue condition builder.
- *
- * Ported from assets/js/condition_builder/condition_sentence_templates.js.
+ * Condition operator definitions for the condition builder.
  * Mirrors Storyarn.Flows.Condition — operators_for_type/1 and operator_label/1.
  */
 

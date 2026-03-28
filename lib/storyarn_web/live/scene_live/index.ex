@@ -271,7 +271,7 @@ defmodule StoryarnWeb.SceneLive.Index do
           {:noreply,
            push_navigate(socket,
              to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/scenes/#{new_scene.id}"
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{new_scene.id}"
            )}
 
         {:error, :limit_reached, _details} ->
@@ -292,7 +292,7 @@ defmodule StoryarnWeb.SceneLive.Index do
           {:noreply,
            push_navigate(socket,
              to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/scenes/#{new_scene.id}"
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{new_scene.id}"
            )}
 
         {:error, :limit_reached, _details} ->
@@ -387,7 +387,7 @@ defmodule StoryarnWeb.SceneLive.Index do
         severity: to_string(severity),
         message: message,
         href:
-          ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/v2/scenes/#{issue.scene_id}"
+          ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{issue.scene_id}"
       }
     end)
   end

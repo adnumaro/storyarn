@@ -12,13 +12,10 @@ import { AreaExtensions } from "rete-area-plugin";
 
 import { FlowNode } from "../lib/flow-node.js";
 import { buildBatchPositions } from "../lib/batch-positions.js";
-import { cursors } from "../services/cursors.js";
 import { debug } from "../services/debug.js";
 import { editorHandlers } from "../services/editorHandlers.js";
 import { keyboard } from "../services/keyboard.js";
-import { locks } from "../services/locks.js";
 import { lod } from "../services/lod.js";
-import { minimapToggle } from "../services/minimapToggle.js";
 import { navigation } from "../services/navigation.js";
 
 import { createPlugins, finalizeSetup } from "../setup.js";
@@ -66,13 +63,10 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 	let _nodeUpdateQueue = Promise.resolve();
 
 	let _editorHandlers = null;
-	let _cursorHandler = null;
-	let _lockHandler = null;
 	let _navigationHandler = null;
 	let _debugHandler = null;
 	let _keyboardHandler = null;
 	let _lodController = null;
-	let _minimapToggle = null;
 
 	let _selectedNodeId = null;
 	let _lastNodeClickTime = 0;
@@ -127,14 +121,10 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 		_speakerPopover: null,
 		_eventBindingsController: null,
 		editorHandlers: null,
-		cursorHandler: null,
-		lockHandler: null,
 		navigationHandler: null,
 		debugHandler: null,
 		keyboardHandler: null,
-		floatingToolbar: null,
 		lodController: null,
-		minimapToggle: null,
 	};
 
 	// --- Toolbar positioning ---
@@ -249,19 +239,13 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 		// Create handlers (skip collab/mutation in readonly)
 		if (!hookProxy._readonly) {
 			_editorHandlers = editorHandlers(hookProxy);
-			_cursorHandler = cursors(hookProxy);
-			_lockHandler = locks(hookProxy);
 			_navigationHandler = navigation(_area, _nodeMap, pushEvent);
 			_debugHandler = debug(hookProxy);
 
 			hookProxy.editorHandlers = _editorHandlers;
-			hookProxy.cursorHandler = _cursorHandler;
-			hookProxy.lockHandler = _lockHandler;
 			hookProxy.navigationHandler = _navigationHandler;
 			hookProxy.debugHandler = _debugHandler;
 
-			_cursorHandler.init();
-			_lockHandler.init();
 			_editorHandlers.init();
 		}
 
@@ -303,7 +287,7 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 		// LOD
 		const nodeCount = flowData.nodes?.length || 0;
 		const initialLod = nodeCount >= 50 ? "simplified" : "full";
-		_lodController = lod(_area, hookProxy, initialLod);
+		_lodController = lod(_area, hookProxy);
 		hookProxy.lodController = _lodController;
 
 		// 3-phase load
@@ -334,10 +318,6 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 			_area.use(_minimap);
 		}
 
-		_minimapToggle = createMinimapToggle(hookProxy);
-		_minimapToggle.init();
-		hookProxy.minimapToggle = _minimapToggle;
-
 		// Event bindings
 		setupAreaPipes();
 		setupServerEvents();
@@ -354,7 +334,7 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 
 		// Keyboard
 		if (!hookProxy._readonly) {
-			_keyboardHandler = createKeyboardHandler(hookProxy, _lockHandler);
+			_keyboardHandler = keyboard(hookProxy, null);
 			_keyboardHandler.init();
 			hookProxy.keyboardHandler = _keyboardHandler;
 		}
@@ -689,13 +669,10 @@ export function useFlowEditor({ pushEvent, handleEvent }) {
 		_canvasClickController?.abort();
 		hookProxy._eventBindingsController?.abort();
 		_lodController?.destroy();
-		_cursorHandler?.destroy();
-		_lockHandler?.destroy();
 		_keyboardHandler?.destroy();
 		_editorHandlers?.destroy();
 		_navigationHandler?.destroy();
 		_debugHandler?.destroy();
-		_minimapToggle?.destroy();
 		_nodeMoveQueue = null;
 		_nodeUpdateQueue = null;
 		if (_area) _area.destroy();

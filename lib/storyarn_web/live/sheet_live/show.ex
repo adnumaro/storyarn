@@ -335,7 +335,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         socket
         |> put_flash(:error, dgettext("sheets", "Sheet not found."))
         |> push_navigate(
-          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/v2/sheets"
+          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets"
         )
 
       sheet ->

@@ -1,7 +1,5 @@
 /**
- * Variable utilities for the Vue builders.
- *
- * Ported from assets/js/screenplay/builders/utils.js.
+ * Variable utilities for condition and instruction builders.
  */
 
 /**

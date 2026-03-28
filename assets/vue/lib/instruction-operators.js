@@ -1,7 +1,5 @@
 /**
- * Instruction operator definitions for the Vue instruction builder.
- *
- * Ported from assets/js/instruction_builder/sentence_templates.js.
+ * Instruction operator definitions for the instruction builder.
  */
 
 /**

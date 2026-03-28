@@ -5,13 +5,10 @@ defmodule StoryarnWeb.ProjectLive.Show do
 
   use StoryarnWeb, :live_view
 
-  import StoryarnWeb.Components.DashboardComponents
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
   use StoryarnWeb.Live.Shared.DashboardHandlers
   alias StoryarnWeb.Live.Shared.RestorationHandlers
-
-  alias StoryarnWeb.Components.FocusLayout
 
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
@@ -21,135 +18,36 @@ defmodule StoryarnWeb.ProjectLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <Layouts.focus_v2
+      socket={@socket}
       flash={@flash}
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
       active_tool={:dashboard}
-      has_tree={true}
+      has_tree={false}
       tree_panel_open={@tree_panel_open}
       tree_panel_pinned={@tree_panel_pinned}
       on_dashboard={true}
       can_edit={@can_manage}
       restoration_banner={@restoration_banner}
     >
-      <:tree_content>
-        <FocusLayout.dashboard_nav
-          workspace={@workspace}
-          project={@project}
-          is_super_admin={@current_scope.user.is_super_admin == true}
-        />
-      </:tree_content>
-      <div class="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        <%!-- Loading State --%>
-        <div :if={is_nil(@stats)} class="flex items-center justify-center py-12">
-          <span class="loading loading-spinner loading-lg text-primary"></span>
-        </div>
-
-        <%!-- Dashboard Content --%>
-        <div :if={@stats} class="space-y-6">
-          <%!-- Section 1: Stats --%>
-          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <.stat_card
-              icon="file-text"
-              label={dgettext("projects", "Sheets")}
-              value={@stats.sheet_count}
-              href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets"}
-            />
-            <.stat_card
-              icon="variable"
-              label={dgettext("projects", "Variables")}
-              value={@stats.variable_count}
-              href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets"}
-            />
-            <.stat_card
-              icon="git-branch"
-              label={dgettext("projects", "Flows")}
-              value={@stats.flow_count}
-              href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows"}
-            />
-            <.stat_card
-              icon="message-square"
-              label={dgettext("projects", "Dialogue Lines")}
-              value={@stats.dialogue_count}
-              href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows"}
-            />
-            <.stat_card
-              icon="map"
-              label={dgettext("projects", "Scenes")}
-              value={@stats.scene_count}
-              href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/scenes"}
-            />
-            <.stat_card
-              icon="text"
-              label={dgettext("projects", "Words")}
-              value={@stats.total_word_count}
-            />
-          </div>
-
-          <%!-- Section 2: Content Breakdown --%>
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <.dashboard_section title={dgettext("projects", "Node Distribution")}>
-              <.ranked_list
-                items={format_node_distribution(@node_dist)}
-                empty_message={dgettext("projects", "No flow nodes yet")}
-              />
-            </.dashboard_section>
-
-            <.dashboard_section title={dgettext("projects", "Top Speakers")}>
-              <.ranked_list
-                items={format_speakers(@speakers, @workspace.slug, @project.slug)}
-                empty_message={dgettext("projects", "No dialogue with speakers yet")}
-              />
-            </.dashboard_section>
-          </div>
-
-          <%!-- Section 3: Issues --%>
-          <.dashboard_section title={dgettext("projects", "Issues & Warnings")}>
-            <.issue_list
-              issues={@issues}
-              empty_message={dgettext("projects", "No issues detected")}
-            />
-          </.dashboard_section>
-
-          <%!-- Section 4: Localization Progress (conditional) --%>
-          <.dashboard_section
-            :if={@localization != []}
-            title={dgettext("projects", "Localization Progress")}
-          >
-            <div class="space-y-1">
-              <.progress_row
-                :for={lang <- @localization}
-                label={lang.name}
-                percentage={lang.percentage}
-                detail={"#{lang.final} / #{lang.total}"}
-                href={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization"}
-              />
-            </div>
-          </.dashboard_section>
-
-          <%!-- Section 5: Recent Activity --%>
-          <.dashboard_section title={dgettext("projects", "Recent Activity")}>
-            <div :if={@activity == []} class="text-sm text-base-content/50 py-4 text-center">
-              {dgettext("projects", "No activity yet")}
-            </div>
-            <div :for={item <- @activity} class="flex items-center gap-3 py-2">
-              <.icon name={activity_icon(item.type)} class="size-4 text-base-content/40" />
-              <span class="text-sm flex-1">
-                <span class="font-medium">{item.name}</span>
-                <span class="text-base-content/50">
-                  · {activity_type_label(item.type)}
-                </span>
-              </span>
-              <span class="text-xs text-base-content/40">
-                {format_relative_time(item.updated_at)}
-              </span>
-            </div>
-          </.dashboard_section>
-        </div>
-      </div>
-    </Layouts.focus>
+      <.vue
+        v-component="project/ProjectDashboard"
+        v-socket={@socket}
+        id="project-dashboard"
+        stats={@stats}
+        node-dist={@node_dist || []}
+        speakers={@speakers || []}
+        issues={@issues || []}
+        localization={@localization}
+        activity={@activity}
+        can-edit={@can_manage}
+        workspace-slug={@workspace.slug}
+        project-slug={@project.slug}
+        loading={is_nil(@stats)}
+      />
+    </Layouts.focus_v2>
     """
   end
 
@@ -271,43 +169,52 @@ defmodule StoryarnWeb.ProjectLive.Show do
     {:noreply,
      socket
      |> assign(:stats, stats)
-     |> assign(:node_dist, node_dist)
-     |> assign(:speakers, speakers)
-     |> assign(:issues, issues)
+     |> assign(:node_dist, format_node_distribution(node_dist))
+     |> assign(:speakers, format_speakers(speakers, ws, ps))
+     |> assign(:issues, format_issues(issues))
      |> assign(:localization, localization)
-     |> assign(:activity, activity)}
+     |> assign(:activity, format_activity(activity))}
   end
 
   # ===========================================================================
-  # Formatters
+  # Formatters (serialize for Vue)
   # ===========================================================================
 
   defp format_node_distribution(node_dist) when is_map(node_dist) do
+    total = node_dist |> Map.values() |> Enum.sum() |> max(1)
+
     node_dist
     |> Enum.map(fn {type, count} ->
-      %{label: node_type_label(type), value: count}
+      %{
+        label: node_type_label(type),
+        count: count,
+        percentage: round(count / total * 100)
+      }
     end)
-    |> Enum.sort_by(& &1.value, :desc)
+    |> Enum.sort_by(& &1.count, :desc)
   end
 
   defp format_node_distribution(_), do: []
 
-  defp node_type_label("dialogue"), do: dgettext("flows", "Dialogue")
-  defp node_type_label("condition"), do: dgettext("flows", "Condition")
-  defp node_type_label("instruction"), do: dgettext("flows", "Instruction")
-  defp node_type_label("hub"), do: dgettext("flows", "Hub")
-  defp node_type_label("jump"), do: dgettext("flows", "Jump")
-  defp node_type_label("slug_line"), do: dgettext("flows", "Slug Line")
-  defp node_type_label("subflow"), do: dgettext("flows", "Subflow")
-  defp node_type_label("entry"), do: dgettext("flows", "Entry")
-  defp node_type_label("exit"), do: dgettext("flows", "Exit")
-  defp node_type_label(type), do: type
+  @node_type_labels %{
+    "dialogue" => "Dialogue",
+    "condition" => "Condition",
+    "instruction" => "Instruction",
+    "hub" => "Hub",
+    "jump" => "Jump",
+    "slug_line" => "Slug Line",
+    "subflow" => "Subflow",
+    "entry" => "Entry",
+    "exit" => "Exit"
+  }
+
+  defp node_type_label(type), do: Map.get(@node_type_labels, type, type)
 
   defp format_speakers(speakers, workspace_slug, project_slug) when is_list(speakers) do
     Enum.map(speakers, fn s ->
       %{
-        label: s.sheet_name || dgettext("projects", "Unknown Speaker"),
-        value: s.line_count,
+        name: s.sheet_name || "Unknown Speaker",
+        count: s.line_count,
         href:
           if(s.sheet_id,
             do: "/workspaces/#{workspace_slug}/projects/#{project_slug}/sheets/#{s.sheet_id}",
@@ -319,15 +226,27 @@ defmodule StoryarnWeb.ProjectLive.Show do
 
   defp format_speakers(_, _, _), do: []
 
-  defp activity_icon("sheet"), do: "file-text"
-  defp activity_icon("flow"), do: "git-branch"
-  defp activity_icon("scene"), do: "map"
-  defp activity_icon("screenplay"), do: "scroll-text"
-  defp activity_icon(_), do: "clock"
+  defp format_issues(issues) when is_list(issues) do
+    Enum.map(issues, fn issue ->
+      %{
+        severity: to_string(issue.severity),
+        message: issue.message,
+        href: issue.href
+      }
+    end)
+  end
 
-  defp activity_type_label("sheet"), do: dgettext("projects", "Sheet")
-  defp activity_type_label("flow"), do: dgettext("projects", "Flow")
-  defp activity_type_label("scene"), do: dgettext("projects", "Scene")
-  defp activity_type_label("screenplay"), do: dgettext("projects", "Screenplay")
-  defp activity_type_label(type), do: type
+  defp format_issues(_), do: []
+
+  defp format_activity(activity) when is_list(activity) do
+    Enum.map(activity, fn item ->
+      %{
+        name: item.name,
+        type: item.type,
+        updated_at: item.updated_at && DateTime.to_iso8601(item.updated_at)
+      }
+    end)
+  end
+
+  defp format_activity(_), do: []
 end

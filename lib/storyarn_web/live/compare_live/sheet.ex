@@ -138,7 +138,7 @@ defmodule StoryarnWeb.CompareLive.Sheet do
         ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}?layout=compact"
 
       version_url =
-        ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/versions/sheet/#{sheet.id}/#{version.version_number}"
+        "#version-viewer-pending"
 
       {:noreply,
        socket

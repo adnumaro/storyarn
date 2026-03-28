@@ -24,7 +24,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
          |> reload_scenes_tree()
          |> push_patch(
            to:
-             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/scenes/#{new_scene.id}"
+             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{new_scene.id}"
          )}
 
       {:error, :limit_reached, _details} ->
@@ -45,7 +45,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
          |> reload_scenes_tree()
          |> push_patch(
            to:
-             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/scenes/#{new_scene.id}"
+             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{new_scene.id}"
          )}
 
       {:error, :limit_reached, _details} ->
@@ -89,7 +89,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
        |> reload_scenes_tree()
        |> push_patch(
          to:
-           ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/scenes/#{child_scene.id}"
+           ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{child_scene.id}"
        )}
     else
       nil ->
@@ -139,7 +139,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
         {:noreply,
          push_patch(socket,
            to:
-             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{project.slug}/v2/scenes/#{id}"
+             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{project.slug}/scenes/#{id}"
          )}
     end
   end
@@ -222,7 +222,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
            )
            |> push_patch(
              to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/scenes/#{child_scene.id}"
+               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{child_scene.id}"
            )}
 
         {:error, :limit_reached, _details} ->
@@ -255,7 +255,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
     if to_string(deleted_scene_id) == to_string(socket.assigns.scene.id) do
       push_navigate(socket,
         to:
-          ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/v2/scenes"
+          ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes"
       )
     else
       reload_scenes_tree(socket)

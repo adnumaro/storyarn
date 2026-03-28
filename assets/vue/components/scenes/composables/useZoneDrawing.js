@@ -1,6 +1,6 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useLive } from "@/vue/composables/useLive";
-import { getShapePreset } from "@/js/scene_canvas/shape_presets";
+import { getShapePreset } from "../lib/shape-presets.js";
 
 const PRESET_TOOLS = new Set(["rectangle", "triangle", "circle"]);
 const CLOSE_THRESHOLD_PX = 12;

@@ -257,7 +257,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
           data-testid="entity-title"
           class="text-sm font-medium outline-none rounded px-1 -mx-1 empty:before:content-[attr(data-placeholder)] empty:before:text-base-content/30"
           contenteditable="true"
-          phx-hook="EditableTitle"
+          
           phx-update="ignore"
           data-placeholder={@name_placeholder}
           data-name={@name_data || @name}
@@ -285,7 +285,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
             id={@shortcut_id}
             class="outline-none"
             contenteditable="true"
-            phx-hook="EditableShortcut"
+            
             phx-update="ignore"
             data-placeholder={@shortcut_placeholder}
             data-shortcut={@shortcut || ""}
@@ -371,7 +371,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
     ~H"""
     <div
       id="tree-panel"
-      phx-hook="TreePanel"
+      
       data-tool={to_string(@active_tool)}
       data-pinned={to_string(@tree_panel_pinned)}
       data-open={to_string(@tree_panel_open)}

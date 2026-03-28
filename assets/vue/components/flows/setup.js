@@ -18,7 +18,7 @@ import FlowNode from "./components/FlowNode.vue";
 import FlowSocket from "./components/FlowSocket.vue";
 
 import { historyPreset } from "./services/historyPreset.js";
-import { useMagneticConnection } from "./composables/useMagneticConnection.js";
+import { magneticConnection } from "./services/magneticConnection.js";
 
 // Shared reactive state injected into every node/socket/connection Vue app instance.
 // Keys match the provide/inject keys used by FlowNode.vue.
@@ -114,7 +114,7 @@ export function createPlugins(container, hook) {
   area.use(render);
 
   // Magnetic connection (same as V1)
-  useMagneticConnection(connection, {
+  magneticConnection(connection, {
     async createConnection(from, to) {
       if (hook.readonly) return;
       if (from.side === to.side) return;

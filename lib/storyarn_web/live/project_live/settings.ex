@@ -5,7 +5,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
   alias StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.MemberComponents
-  import StoryarnWeb.Components.ColorPicker
+  # TODO: migrate color picker to Vue
 
   import StoryarnWeb.Components.UIComponents,
     only: [danger_zone: 1, empty_state: 1, form_actions: 1, theme_toggle: 1]
@@ -181,7 +181,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
                 {dgettext("projects", "Primary")}
               </label>
               <div class="flex items-center gap-3">
-                <.color_picker
+                <.vue v-component="ColorPickerPopover" v-socket={@socket}
                   id="theme-primary"
                   color={@theme_primary}
                   event="update_theme_primary"
@@ -194,7 +194,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
                 {dgettext("projects", "Accent")}
               </label>
               <div class="flex items-center gap-3">
-                <.color_picker
+                <.vue v-component="ColorPickerPopover" v-socket={@socket}
                   id="theme-accent"
                   color={@theme_accent}
                   event="update_theme_accent"

@@ -5,12 +5,9 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   alias StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
-  import StoryarnWeb.Live.Shared.TreePanelHandlers
+  import StoryarnWeb.Live.Shared.TreePanelHandlers, only: [focus_layout_defaults: 0]
   alias Storyarn.Localization
   alias Storyarn.Projects
-  alias StoryarnWeb.Components.LanguagePicker
-  alias StoryarnWeb.Components.LocaleMark
-  alias StoryarnWeb.Components.PopoverSelect
 
   import StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers
   alias StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers
@@ -20,28 +17,17 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <Layouts.focus_v2
       flash={@flash}
       current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
+      socket={@socket}
       active_tool={:localization}
       on_dashboard={true}
-      has_tree={true}
-      tree_panel_open={@tree_panel_open}
-      tree_panel_pinned={@tree_panel_pinned}
-      show_pin={false}
+      has_tree={false}
       can_edit={@can_edit}
     >
-      <:tree_content>
-        <.localization_sidebar
-          source_language={@source_language}
-          languages={@languages}
-          target_languages={@target_languages}
-          selected_locale={@selected_locale}
-          can_edit={@can_edit}
-        />
-      </:tree_content>
       <:top_bar_extra_right :if={@can_edit && @target_languages != []}>
         <div class="flex items-center gap-1 px-1.5 py-1 surface-panel">
           <.link
@@ -157,24 +143,39 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
           <%!-- Filters row --%>
           <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <PopoverSelect.popover_select
+            <.vue
+              v-component="form-fields/SelectField"
+              v-socket={@socket}
               id="localization-status-filter"
-              event="change_filter"
-              param_key="status"
-              options={status_filter_options()}
-              selected_value={@filter_status}
-              selected_label={selected_status_filter_label(@filter_status)}
+              options={[
+                %{value: "", label: dgettext("localization", "All statuses")},
+                %{value: "pending", label: dgettext("localization", "Pending")},
+                %{value: "draft", label: dgettext("localization", "Draft")},
+                %{value: "in_progress", label: dgettext("localization", "In progress")},
+                %{value: "review", label: dgettext("localization", "Review")},
+                %{value: "final", label: dgettext("localization", "Final")}
+              ]}
+              value={@filter_status || ""}
               placeholder={dgettext("localization", "All statuses")}
-            />
-
-            <PopoverSelect.popover_select
-              id="localization-source-type-filter"
               event="change_filter"
-              param_key="source_type"
-              options={source_type_filter_options()}
-              selected_value={@filter_source_type}
-              selected_label={selected_source_type_filter_label(@filter_source_type)}
+              param-key="status"
+            />
+            <.vue
+              v-component="form-fields/SelectField"
+              v-socket={@socket}
+              id="localization-source-type-filter"
+              options={[
+                %{value: "", label: dgettext("localization", "All types")},
+                %{value: "flow_node", label: dgettext("localization", "Flow node")},
+                %{value: "block", label: dgettext("localization", "Block")},
+                %{value: "sheet", label: dgettext("localization", "Sheet")},
+                %{value: "flow", label: dgettext("localization", "Flow")},
+                %{value: "scene", label: dgettext("localization", "Scene")}
+              ]}
+              value={@filter_source_type || ""}
               placeholder={dgettext("localization", "All types")}
+              event="change_filter"
+              param-key="source_type"
             />
 
             <%!-- Search --%>
@@ -318,7 +319,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
           on_confirm={JS.push("remove_language", value: %{id: lang.id})}
         />
       </div>
-    </Layouts.focus>
+    </Layouts.focus_v2>
     """
   end
 
@@ -329,167 +330,6 @@ defmodule StoryarnWeb.LocalizationLive.Index do
     <span class={["badge badge-sm", status_class(@status)]}>
       {status_label(@status)}
     </span>
-    """
-  end
-
-  attr :source_language, :map, default: nil
-  attr :languages, :list, default: []
-  attr :target_languages, :list, default: []
-  attr :selected_locale, :string, default: nil
-  attr :can_edit, :boolean, default: false
-
-  defp localization_sidebar(assigns) do
-    ~H"""
-    <div id="localization-sidebar" class="space-y-6">
-      <section :if={@source_language} id="localization-sidebar-source-language" class="space-y-2">
-        <p class="px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-base-content/50">
-          {dgettext("localization", "Source language")}
-        </p>
-        <div
-          id="localization-source-language-option"
-          class="flex items-center gap-2 rounded-[1rem] border border-primary/30 bg-primary/10 p-2"
-        >
-          <div class="flex min-w-0 flex-1 items-center gap-3">
-            <LocaleMark.locale_mark locale_code={@source_language.locale_code} />
-            <span class="min-w-0">
-              <span class="block truncate text-sm font-medium text-base-content">
-                {@source_language.name}
-              </span>
-            </span>
-          </div>
-        </div>
-        <LanguagePicker.language_picker
-          :if={@can_edit}
-          id="localization-source-language-picker"
-          event="change_source_language"
-          options={LanguagePicker.source_language_options(@source_language)}
-          placeholder={dgettext("localization", "Change source language...")}
-          search_placeholder={dgettext("localization", "Search languages...")}
-          empty_label={dgettext("localization", "No matches")}
-          button_icon="languages"
-        />
-      </section>
-
-      <section id="localization-sidebar-language-selector" class="space-y-2">
-        <div class="flex items-center justify-between px-1">
-          <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-base-content/50">
-            {dgettext("localization", "Target languages")}
-          </p>
-          <span :if={@target_languages != []} class="badge badge-ghost badge-xs">
-            {length(@target_languages)}
-          </span>
-        </div>
-
-        <div
-          :if={@target_languages == []}
-          class="rounded-[1.25rem] border border-dashed border-base-300 bg-base-200/40 p-3 text-sm text-base-content/60"
-        >
-          {dgettext("localization", "No target languages yet.")}
-        </div>
-
-        <div :if={@target_languages != []} class="space-y-2">
-          <div
-            :for={lang <- @target_languages}
-            id={"localization-language-option-#{lang.id}"}
-            class={[
-              "flex items-center gap-2 rounded-[1rem] border p-2 transition-colors",
-              if(lang.locale_code == @selected_locale,
-                do: "border-primary/30 bg-primary/10",
-                else: "border-base-300 bg-base-100 hover:bg-base-200/70"
-              )
-            ]}
-          >
-            <button
-              id={"select-locale-#{lang.locale_code}"}
-              type="button"
-              phx-click="change_locale"
-              phx-value-locale={lang.locale_code}
-              class="flex min-w-0 flex-1 items-center gap-3 text-left"
-            >
-              <LocaleMark.locale_mark
-                locale_code={lang.locale_code}
-                class={if(lang.locale_code == @selected_locale, do: nil, else: "opacity-90")}
-              />
-              <span class="min-w-0">
-                <span class="block truncate text-sm font-medium text-base-content">
-                  {lang.name}
-                </span>
-              </span>
-            </button>
-
-            <button
-              :if={@can_edit}
-              type="button"
-              phx-click={show_modal("remove-language-#{lang.id}")}
-              class="btn btn-ghost btn-xs btn-square text-base-content/50 hover:text-error"
-              title={dgettext("localization", "Remove language")}
-            >
-              <.icon name="x" class="size-3.5" />
-            </button>
-          </div>
-        </div>
-
-        <.add_language_picker
-          :if={@can_edit}
-          languages={@languages}
-          source_language={@source_language}
-        />
-
-        <button
-          :if={@can_edit && @target_languages != []}
-          id="localization-sync-button"
-          type="button"
-          phx-click="sync_texts"
-          phx-disable-with={dgettext("localization", "Syncing...")}
-          class="btn btn-ghost btn-sm w-full justify-start gap-2"
-          title={
-            dgettext(
-              "localization",
-              "Re-extract all translatable content from flows, sheets, and blocks"
-            )
-          }
-        >
-          <.icon name="refresh-cw" class="size-4" />
-          {dgettext("localization", "Sync")}
-        </button>
-      </section>
-    </div>
-    """
-  end
-
-  attr :languages, :list, default: []
-  attr :source_language, :map, default: nil
-
-  defp add_language_picker(assigns) do
-    picker_options = language_picker_options(assigns)
-
-    assigns =
-      assigns
-      |> assign(:picker_options, picker_options)
-      |> assign(:picker_disabled, picker_options == [])
-
-    ~H"""
-    <div>
-      <div :if={!@picker_disabled}>
-        <LanguagePicker.language_picker
-          id="localization-language-picker"
-          event="add_target_language"
-          options={@picker_options}
-          placeholder={dgettext("localization", "Add language")}
-          search_placeholder={dgettext("localization", "Search languages...")}
-          empty_label={dgettext("localization", "No matches")}
-          button_icon="plus"
-        />
-      </div>
-
-      <div
-        :if={@picker_disabled}
-        id="localization-language-picker"
-        class="rounded-[1rem] border border-dashed border-base-300 bg-base-200/40 px-3 py-2 text-sm text-base-content/60"
-      >
-        {dgettext("localization", "All available languages are already added.")}
-      </div>
-    </div>
     """
   end
 
@@ -525,7 +365,6 @@ defmodule StoryarnWeb.LocalizationLive.Index do
         socket =
           socket
           |> assign(focus_layout_defaults())
-          |> assign(:tree_panel_open, true)
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
           |> assign(:membership, membership)
@@ -551,10 +390,6 @@ defmodule StoryarnWeb.LocalizationLive.Index do
          |> redirect(to: ~p"/workspaces")}
     end
   end
-
-  @impl true
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: handle_tree_panel_event(event, params, socket)
 
   @impl true
   def handle_event("change_locale", %{"locale" => locale}, socket) do
@@ -651,26 +486,6 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       dgettext("localization", "You don't have permission to perform this action.")
     )
   end
-
-  defp status_filter_options do
-    [
-      {dgettext("localization", "All statuses"), ""}
-      | Enum.map(~w(pending draft in_progress review final), &{status_label(&1), &1})
-    ]
-  end
-
-  defp source_type_filter_options do
-    [
-      {dgettext("localization", "All types"), ""}
-      | Enum.map(~w(flow_node block sheet flow scene), &{source_type_label(&1), &1})
-    ]
-  end
-
-  defp selected_status_filter_label(nil), do: dgettext("localization", "All statuses")
-  defp selected_status_filter_label(status), do: status_label(status)
-
-  defp selected_source_type_filter_label(nil), do: dgettext("localization", "All types")
-  defp selected_source_type_filter_label(source_type), do: source_type_label(source_type)
 
   defp maybe_assign_filter(socket, assign_key, params, param_key) do
     if Map.has_key?(params, param_key) do
