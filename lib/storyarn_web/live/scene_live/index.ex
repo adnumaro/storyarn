@@ -30,7 +30,7 @@ defmodule StoryarnWeb.SceneLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <Layouts.app
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -69,7 +69,7 @@ defmodule StoryarnWeb.SceneLive.Index do
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
       />
-    </Layouts.focus>
+    </Layouts.app>
     """
   end
 

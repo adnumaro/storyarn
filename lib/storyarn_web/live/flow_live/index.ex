@@ -27,7 +27,7 @@ defmodule StoryarnWeb.FlowLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <Layouts.app
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -66,7 +66,7 @@ defmodule StoryarnWeb.FlowLive.Index do
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
       />
-    </Layouts.focus>
+    </Layouts.app>
     """
   end
 
@@ -228,7 +228,7 @@ defmodule StoryarnWeb.FlowLive.Index do
   # ===========================================================================
 
   @impl true
-  # Tree panel events (from FocusLayout)
+  # Tree panel events (from AppLayout)
   def handle_event("tree_panel_" <> _ = event, params, socket),
     do: handle_tree_panel_event(event, params, socket)
 

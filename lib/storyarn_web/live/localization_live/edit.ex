@@ -12,7 +12,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <Layouts.app
       socket={@socket}
       flash={@flash}
       current_scope={@current_scope}
@@ -32,7 +32,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
         can-edit={@can_edit}
         back-url={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization"}
       />
-    </Layouts.focus>
+    </Layouts.app>
     """
   end
 

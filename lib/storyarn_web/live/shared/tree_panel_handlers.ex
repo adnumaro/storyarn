@@ -2,7 +2,7 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlers do
   @moduledoc """
   Shared event handlers for the focus layout tree panel.
 
-  Import this module in any LiveView that uses `Layouts.focus` to get
+  Import this module in any LiveView that uses `Layouts.app` to get
   tree panel toggle, pin, and tool switching event handlers.
 
   ## Usage

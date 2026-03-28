@@ -6,7 +6,6 @@ defmodule StoryarnWeb.Layouts do
   use StoryarnWeb, :html
   use Gettext, backend: Storyarn.Gettext
 
-  import StoryarnWeb.Components.MemberComponents, only: [user_avatar: 1]
   import StoryarnWeb.Components.UIComponents, only: [theme_toggle: 1]
   import StoryarnWeb.DocsLive.Components.DocsSidebar
 
@@ -31,178 +30,8 @@ defmodule StoryarnWeb.Layouts do
     """
   end
 
-  @doc """
-  Renders the main app layout with sidebar.
-
-  This layout is used for authenticated sheets that show workspace navigation.
-
-  ## Examples
-
-      <Layouts.app flash={@flash} current_scope={@current_scope} workspaces={@workspaces}>
-        <h1>Content</h1>
-      </Layouts.app>
-
-  """
-  attr :flash, :map, required: true, doc: "the map of flash messages"
-
-  attr :current_scope, :map,
-    default: nil,
-    doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
-
-  attr :workspaces, :list, default: [], doc: "list of workspaces for the sidebar"
-  attr :current_workspace, :map, default: nil, doc: "the currently selected workspace"
-
-  slot :inner_block, required: true
-
-  def app(assigns) do
-    ~H"""
-    <div
-      id="app-layout"
-      
-      class="h-screen w-screen overflow-hidden relative bg-background"
-    >
-      <%!-- Hidden checkbox for mobile sidebar toggle --%>
-      <input id="app-sidebar-check" type="checkbox" class="peer hidden" />
-
-      <%!-- Left floating toolbar (top-left) --%>
-      <div class="fixed top-3 left-3 z-[1020] flex items-stretch gap-2">
-        <nav class="flex items-center gap-1 px-1 py-1 surface-panel w-60">
-          <%!-- Mobile sidebar toggle --%>
-          <div class="contents md:hidden">
-            <label for="app-sidebar-check" class="inline-flex items-center justify-center size-8 rounded-md hover:bg-accent transition-colors cursor-pointer">
-              <.icon name="panel-left" class="size-4" />
-            </label>
-            <div class="w-px h-5 bg-border"></div>
-          </div>
-
-          <%!-- User dropdown --%>
-          <div
-            :if={@current_scope && @current_scope.user}
-            class="relative flex flex-1 min-w-0"
-          >
-            <button tabindex="0" class="toolbar-btn gap-1.5 font-medium flex-1 min-w-0">
-              <.user_avatar user={@current_scope.user} size="xs" />
-              <span class="text-sm truncate">
-                {@current_scope.user.display_name || @current_scope.user.email}
-              </span>
-              <.icon name="chevron-down" class="size-3 opacity-50" />
-            </button>
-            <div
-              tabindex="0"
-              class="absolute top-full bg-muted border border-border rounded-lg shadow-sm w-max max-w-72 z-[60] mt-3"
-            >
-              <div class="px-4 py-3">
-                <p class="text-sm font-medium truncate">
-                  {@current_scope.user.display_name || @current_scope.user.email}
-                </p>
-                <p
-                  :if={@current_scope.user.display_name}
-                  class="text-xs text-muted-foreground truncate"
-                >
-                  {@current_scope.user.email}
-                </p>
-              </div>
-              <div class="border-t border-border"></div>
-              <ul class="menu p-1 text-sm">
-                <li>
-                  <.link navigate={~p"/users/settings"}>
-                    <.icon name="user" class="size-5" />
-                    {gettext("Account settings")}
-                  </.link>
-                </li>
-                <li>
-                  <button
-                    phx-click={JS.dispatch("phx:set-theme")}
-                    data-phx-theme="toggle"
-                    class="gap-2 justify-between"
-                  >
-                    <span class="flex items-center gap-2">
-                      <.icon name="moon" class="size-5 dark:hidden" />
-                      <.icon name="sun" class="size-5 hidden dark:block" />
-                      {gettext("Dark mode")}
-                    </span>
-                  </button>
-                </li>
-                <div class="divider my-1"></div>
-                <li>
-                  <.link href={~p"/users/log-out"} method="delete">
-                    <.icon name="log-out" class="size-5" />
-                    {gettext("Log out")}
-                  </.link>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </nav>
-      </div>
-
-      <%!-- Mobile overlay (closes sidebar on tap) --%>
-      <label
-        for="app-sidebar-check"
-        class="fixed inset-0 bg-black/30 z-[1005] hidden peer-checked:block peer-checked:md:hidden cursor-pointer"
-      />
-
-      <%!-- Workspace sidebar (floating panel) --%>
-      <div
-        :if={@current_scope && @current_scope.user}
-        class={[
-          "fixed left-3 top-[76px] bottom-3 z-[1010] w-60 flex flex-col surface-panel overflow-hidden",
-          "transition-transform duration-200",
-          "-translate-x-[calc(100%+0.75rem)] peer-checked:translate-x-0 md:translate-x-0"
-        ]}
-      >
-        <nav class="flex-1 overflow-y-auto p-2 space-y-5">
-          <div>
-            <h3 class="text-xs font-semibold uppercase text-muted-foreground px-2 mb-2">
-              {gettext("Workspaces")}
-            </h3>
-            <ul class="space-y-0.5">
-              <li :for={workspace <- @workspaces}>
-                <.link
-                  navigate={~p"/workspaces/#{workspace.slug}"}
-                  class={[
-                    "flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm",
-                    @current_workspace && @current_workspace.id == workspace.id &&
-                      "bg-accent font-medium",
-                    !(@current_workspace && @current_workspace.id == workspace.id) &&
-                      "hover:bg-accent"
-                  ]}
-                >
-                  <span
-                    class="w-2 h-2 rounded-full shrink-0"
-                    style={"background: #{workspace.color || "#6366f1"}"}
-                  />
-                  <span class="truncate">{workspace.name}</span>
-                </.link>
-              </li>
-            </ul>
-          </div>
-        </nav>
-
-        <div class="p-2 border-t border-border">
-          <.link
-            navigate={~p"/workspaces/new"}
-            class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm hover:bg-accent"
-          >
-            <.icon name="plus" class="size-4" />
-            {gettext("New workspace")}
-          </.link>
-        </div>
-      </div>
-
-      <%!-- Main content area --%>
-      <main class="h-full overflow-y-auto pt-[76px] pb-4 px-4 md:pl-[264px]">
-        {render_slot(@inner_block)}
-      </main>
-
-      <.flash_group flash={@flash} />
-    </div>
-    """
-  end
-
-
-  # Focus layout — delegates to FocusLayout module (Vue + shadcn-vue)
-  defdelegate focus(assigns), to: StoryarnWeb.Components.FocusLayout
+  # App layout — delegates to AppLayout module (Vue + shadcn-vue)
+  defdelegate app(assigns), to: StoryarnWeb.Components.AppLayout
 
   @doc """
   Renders a chromeless canvas layout for version comparison mode.
@@ -551,7 +380,7 @@ defmodule StoryarnWeb.Layouts do
   @doc """
   Renders a fullscreen settings layout with floating toolbars and sidebar.
 
-  Visually consistent with `Layouts.focus` — floating surface-panel toolbars
+  Visually consistent with `Layouts.app` — floating surface-panel toolbars
   and sidebar, fullscreen background.
 
   Accepts optional `back_path`, `back_label`, and `sidebar_sections` to customize

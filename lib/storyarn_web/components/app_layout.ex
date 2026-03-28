@@ -1,7 +1,8 @@
-defmodule StoryarnWeb.Components.FocusLayout do
+defmodule StoryarnWeb.Components.AppLayout do
   @moduledoc """
-  Focus layout — LiveVue + shadcn-vue.
+  App layout — LiveVue + shadcn-vue.
 
+  The primary application layout used by all authenticated project pages.
   The HEEx acts as orchestrator — each toolbar/panel is a Vue component
   receiving only the props it needs.
   """
@@ -59,14 +60,14 @@ defmodule StoryarnWeb.Components.FocusLayout do
   end
 
   # ============================================================================
-  # Focus V2 Layout
+  # App Layout
   # ============================================================================
 
   @doc """
-  Renders the v2 focus layout — full-screen content with Vue floating toolbars
+  Renders the app layout — full-screen content with Vue floating toolbars
   and pinnable tree panel.
 
-  Same API as `Layouts.focus/1` but using Vue components instead of DaisyUI.
+  Used as `Layouts.app` for all authenticated project pages.
   """
   attr :flash, :map, required: true
 
@@ -74,8 +75,8 @@ defmodule StoryarnWeb.Components.FocusLayout do
     default: nil,
     doc: "the current scope"
 
-  attr :project, :map, required: true, doc: "the current project"
-  attr :workspace, :map, required: true, doc: "the workspace the project belongs to"
+  attr :project, :map, default: nil, doc: "the current project (nil for workspace-level pages)"
+  attr :workspace, :map, default: nil, doc: "the workspace the project belongs to"
 
   attr :active_tool, :atom,
     default: :sheets,
@@ -114,7 +115,7 @@ defmodule StoryarnWeb.Components.FocusLayout do
   slot :content_header, doc: "optional header above main content"
   slot :inner_block, required: true
 
-  def focus(assigns) do
+  def app(assigns) do
     current_user_id =
       case assigns.current_scope do
         %{user: %{id: id}} -> id
@@ -141,11 +142,16 @@ defmodule StoryarnWeb.Components.FocusLayout do
           %{id: nil, email: "", displayName: "", isSuperAdmin: false}
       end
 
-    urls = build_urls(assigns.workspace, assigns.project)
+    urls =
+      if assigns.workspace && assigns.project,
+        do: build_urls(assigns.workspace, assigns.project),
+        else: %{}
 
     # Dashboard URL for tree panel header
     dashboard_url =
-      tool_path(assigns.workspace, assigns.project, to_string(assigns.active_tool))
+      if assigns.workspace && assigns.project,
+        do: tool_path(assigns.workspace, assigns.project, to_string(assigns.active_tool)),
+        else: nil
 
     assigns =
       assigns
@@ -183,8 +189,8 @@ defmodule StoryarnWeb.Components.FocusLayout do
           active-tool={to_string(@active_tool)}
           has-tree={@has_tree}
           tree-panel-open={@tree_panel_open}
-          project-name={@project.name}
-          workspace-name={@workspace.name}
+          project-name={@project && @project.name}
+          workspace-name={@workspace && @workspace.name}
           show-tool-switcher={@show_tool_switcher}
           is-super-admin={@is_super_admin}
           urls={@urls}

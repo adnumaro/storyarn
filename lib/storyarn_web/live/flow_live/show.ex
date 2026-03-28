@@ -59,7 +59,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <Layouts.app
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -226,7 +226,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         all-sheets={Enum.map(@all_sheets, &%{id: &1.id, name: &1.name})}
         project-variables={Jason.encode!(@project_variables)}
       />
-    </Layouts.focus>
+    </Layouts.app>
     """
   end
 
@@ -528,7 +528,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   # ===========================================================================
 
   @impl true
-  # Tree panel events (from FocusLayout)
+  # Tree panel events (from AppLayout)
   def handle_event("tree_panel_" <> _ = event, params, socket),
     do: handle_tree_panel_event(event, params, socket)
 

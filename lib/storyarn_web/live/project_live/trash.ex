@@ -10,7 +10,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <Layouts.app
       socket={@socket}
       flash={@flash}
       current_scope={@current_scope}
@@ -26,7 +26,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
         trashed-sheets={serialize_trashed_sheets(@trashed_sheets)}
         can-manage={@can_manage}
       />
-    </Layouts.focus>
+    </Layouts.app>
     """
   end
 

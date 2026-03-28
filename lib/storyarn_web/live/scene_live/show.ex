@@ -67,7 +67,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def render(assigns) do
     ~H"""
-    <Layouts.focus
+    <Layouts.app
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
@@ -339,7 +339,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         icon="alert-triangle"
         on_confirm={JS.push("confirm_delete_layer")}
       />
-    </Layouts.focus>
+    </Layouts.app>
     """
   end
 
@@ -811,7 +811,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   @valid_tools ~w(select pan rectangle triangle circle freeform pin annotation connector ruler)
 
   @impl true
-  # Tree panel events (from FocusLayout)
+  # Tree panel events (from AppLayout)
   def handle_event("tree_panel_" <> _ = event, params, socket),
     do: handle_tree_panel_event(event, params, socket)
 

@@ -137,7 +137,7 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
   the panel uses `backdrop-blur`, which creates a new containing block and
   traps `position: fixed` dialogs inside the sidebar.
 
-  Render this in the LiveView's main content area (inside `Layouts.focus`
+  Render this in the LiveView's main content area (inside `Layouts.app`
   but outside `:tree_content`).
   """
   attr :entity_type, :string, required: true

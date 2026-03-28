@@ -22,7 +22,7 @@ defmodule StoryarnWeb.LayoutsTest do
     %{id: 1, email: "t@t.com", display_name: "Test User"}
   end
 
-  defp base_focus_assigns(overrides) do
+  defp base_app_assigns(overrides) do
     defaults = %{
       flash: %{},
       current_scope: %{user: user_map()},
@@ -35,7 +35,7 @@ defmodule StoryarnWeb.LayoutsTest do
       can_edit: false,
       online_users: [],
       canvas_mode: false,
-      inner_block: inner_block("<p>Focus content</p>")
+      inner_block: inner_block("<p>App content</p>")
     }
 
     Map.merge(defaults, overrides)
@@ -169,59 +169,107 @@ defmodule StoryarnWeb.LayoutsTest do
   # ── app/1 ───────────────────────────────────────────────────────────
 
   describe "app/1" do
-    test "renders app layout with inner content" do
+    test "renders content_header slot when provided" do
       html =
-        render_component(&Layouts.app/1,
-          flash: %{},
-          current_scope: %{user: user_map()},
-          workspaces: [],
-          current_workspace: nil,
-          inner_block: inner_block("<p>Dashboard content</p>")
+        render_component(
+          &Layouts.app/1,
+          base_app_assigns(%{
+            content_header: slot(:content_header, "<h1>My Sheet Title</h1>"),
+            inner_block: inner_block("<p>Main content</p>")
+          })
         )
 
-      assert html =~ "Dashboard content"
+      assert html =~ "My Sheet Title"
+      assert html =~ "Main content"
     end
 
-    test "renders sidebar structure" do
+    test "handles nil current_scope (no user)" do
       html =
-        render_component(&Layouts.app/1,
-          flash: %{},
-          current_scope: %{user: user_map()},
-          workspaces: [],
-          current_workspace: nil,
-          inner_block: inner_block("<p>App</p>")
+        render_component(
+          &Layouts.app/1,
+          base_app_assigns(%{
+            current_scope: nil,
+            inner_block: inner_block("<p>No user</p>")
+          })
         )
 
-      assert html =~ "app-layout"
-      assert html =~ "app-sidebar-check"
+      assert html =~ "No user"
     end
 
-    test "renders mobile hamburger menu" do
+    test "hides right toolbar when no user" do
       html =
-        render_component(&Layouts.app/1,
-          flash: %{},
-          current_scope: %{user: user_map()},
-          workspaces: [],
-          current_workspace: nil,
-          inner_block: inner_block("<p>App</p>")
+        render_component(
+          &Layouts.app/1,
+          base_app_assigns(%{current_scope: nil})
         )
 
-      assert html =~ "menu"
-      assert html =~ "md:hidden"
+      # Right toolbar is conditional on current_user_id
+      assert html =~ "App content"
     end
 
-    test "does not render sidebar when no user" do
+    test "renders canvas mode without padding" do
       html =
-        render_component(&Layouts.app/1,
-          flash: %{},
-          current_scope: nil,
-          workspaces: [],
-          current_workspace: nil,
-          inner_block: inner_block("<p>No sidebar</p>")
+        render_component(
+          &Layouts.app/1,
+          base_app_assigns(%{canvas_mode: true})
         )
 
-      assert html =~ "No sidebar"
-      assert html =~ "app-layout"
+      assert html =~ "overflow-hidden"
+      refute html =~ "overflow-y-auto pt-[76px]"
+    end
+
+    test "renders non-canvas mode with padding" do
+      html =
+        render_component(
+          &Layouts.app/1,
+          base_app_assigns(%{canvas_mode: false})
+        )
+
+      assert html =~ "overflow-y-auto"
+      assert html =~ "pt-[76px]"
+    end
+
+    test "adds left padding when tree panel is open" do
+      html =
+        render_component(
+          &Layouts.app/1,
+          base_app_assigns(%{
+            has_tree: true,
+            tree_panel_open: true,
+            canvas_mode: false
+          })
+        )
+
+      assert html =~ "md:pl-[280px]"
+    end
+
+    test "no left padding when tree panel is closed" do
+      html =
+        render_component(
+          &Layouts.app/1,
+          base_app_assigns(%{
+            has_tree: true,
+            tree_panel_open: false,
+            canvas_mode: false
+          })
+        )
+
+      refute html =~ "md:pl-[280px]"
+    end
+
+    test "no left padding in canvas mode even when tree is open" do
+      html =
+        render_component(
+          &Layouts.app/1,
+          base_app_assigns(%{
+            has_tree: true,
+            tree_panel_open: true,
+            canvas_mode: true
+          })
+        )
+
+      # Canvas mode uses overflow-hidden, no padding logic
+      refute html =~ "md:pl-[280px]"
     end
   end
 
@@ -327,112 +375,6 @@ defmodule StoryarnWeb.LayoutsTest do
     end
   end
 
-  # ── focus/1 ─────────────────────────────────────────────────────────
-
-  describe "focus/1" do
-    test "renders content_header slot when provided" do
-      html =
-        render_component(
-          &Layouts.focus/1,
-          base_focus_assigns(%{
-            content_header: slot(:content_header, "<h1>My Sheet Title</h1>"),
-            inner_block: inner_block("<p>Main content</p>")
-          })
-        )
-
-      assert html =~ "My Sheet Title"
-      assert html =~ "Main content"
-    end
-
-    test "handles nil current_scope (no user)" do
-      html =
-        render_component(
-          &Layouts.focus/1,
-          base_focus_assigns(%{
-            current_scope: nil,
-            inner_block: inner_block("<p>No user</p>")
-          })
-        )
-
-      assert html =~ "No user"
-    end
-
-    test "hides right toolbar when no user" do
-      html =
-        render_component(
-          &Layouts.focus/1,
-          base_focus_assigns(%{current_scope: nil})
-        )
-
-      # Right toolbar is conditional on current_user_id
-      assert html =~ "Focus content"
-    end
-
-    test "renders canvas mode without padding" do
-      html =
-        render_component(
-          &Layouts.focus/1,
-          base_focus_assigns(%{canvas_mode: true})
-        )
-
-      assert html =~ "overflow-hidden"
-      refute html =~ "overflow-y-auto pt-[76px]"
-    end
-
-    test "renders non-canvas mode with padding" do
-      html =
-        render_component(
-          &Layouts.focus/1,
-          base_focus_assigns(%{canvas_mode: false})
-        )
-
-      assert html =~ "overflow-y-auto"
-      assert html =~ "pt-[76px]"
-    end
-
-    test "adds left padding when tree panel is open" do
-      html =
-        render_component(
-          &Layouts.focus/1,
-          base_focus_assigns(%{
-            has_tree: true,
-            tree_panel_open: true,
-            canvas_mode: false
-          })
-        )
-
-      assert html =~ "md:pl-[280px]"
-    end
-
-    test "no left padding when tree panel is closed" do
-      html =
-        render_component(
-          &Layouts.focus/1,
-          base_focus_assigns(%{
-            has_tree: true,
-            tree_panel_open: false,
-            canvas_mode: false
-          })
-        )
-
-      refute html =~ "md:pl-[280px]"
-    end
-
-    test "no left padding in canvas mode even when tree is open" do
-      html =
-        render_component(
-          &Layouts.focus/1,
-          base_focus_assigns(%{
-            has_tree: true,
-            tree_panel_open: true,
-            canvas_mode: true
-          })
-        )
-
-      # Canvas mode uses overflow-hidden, no padding logic
-      refute html =~ "md:pl-[280px]"
-    end
-  end
 
   # ── flash_group/1 ───────────────────────────────────────────────────
 

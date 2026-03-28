@@ -55,9 +55,12 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     ~H"""
     <Layouts.app
       flash={@flash}
+      socket={@socket}
       current_scope={@current_scope}
-      workspaces={@workspaces}
-      current_workspace={@current_workspace}
+      workspace={@workspace}
+      has_tree={false}
+      show_tool_switcher={false}
+      active_tool={:dashboard}
     >
       <.vue
         v-component="workspace/WorkspaceShow"
