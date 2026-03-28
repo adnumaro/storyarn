@@ -40,7 +40,7 @@ watch(
 );
 
 function sceneHref(scene) {
-	return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/v2/scenes/${scene.id}`;
+	return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/scenes/${scene.id}`;
 }
 
 function matchesSearch(node, query) {

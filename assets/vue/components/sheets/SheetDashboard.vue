@@ -51,7 +51,7 @@ const props = defineProps({
 const live = useLive();
 
 function sheetHref(row) {
-	return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/v2/sheets/${row.id}`;
+	return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/sheets/${row.id}`;
 }
 
 function sortBy(column) {

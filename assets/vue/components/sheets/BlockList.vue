@@ -197,7 +197,7 @@ function resolveComponent(type) {
           <ArrowUpRight class="size-3 text-blue-400" />
           <span>Inherited from</span>
           <a
-            :href="`/workspaces/${workspaceSlug}/projects/${projectSlug}/v2/sheets/${group.sourceSheet.id}`"
+            :href="`/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets/${group.sourceSheet.id}`"
             class="text-primary hover:underline font-medium normal-case"
           >
             {{ group.sourceSheet.name }}

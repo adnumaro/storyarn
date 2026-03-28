@@ -87,7 +87,7 @@ function openVersions() {
 	live.pushEvent("open_versions_panel", {});
 }
 
-const playUrl = `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/v2/scenes/${props.sceneId}/explore`;
+const playUrl = `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/scenes/${props.sceneId}/explore`;
 </script>
 
 <template>

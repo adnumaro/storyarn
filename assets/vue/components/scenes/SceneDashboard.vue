@@ -50,7 +50,7 @@ const props = defineProps({
 const live = useLive();
 
 function sceneHref(row) {
-	return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/v2/scenes/${row.id}`;
+	return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/scenes/${row.id}`;
 }
 
 function handleSort(column) {

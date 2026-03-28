@@ -40,7 +40,7 @@ watch(
 );
 
 function sheetHref(sheet) {
-	return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/v2/sheets/${sheet.id}`;
+	return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/sheets/${sheet.id}`;
 }
 
 function matchesSearch(node, query) {
