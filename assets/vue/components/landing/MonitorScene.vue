@@ -23,7 +23,7 @@ const SCREEN_IMAGES = [
 const SUB_STEPS = [
 	{ rotY: -0.4, rotZ: 0.02, posX: 0.6, posY: -0.2 },
 	{ rotY: 0.4, rotZ: -0.02, posX: -0.6, posY: -0.2 },
-	{ rotY: 0, rotZ: 0, posX: 0, posY: -0.8 },
+	{ rotY: 0, rotZ: 0, posX: 0, posY: -0.3 },
 ];
 
 const BASE_CAM_Z = 4.2;
