@@ -1,0 +1,75 @@
+assets/vue/components/landing/shaders/portalShader.js
+  0970978eb9097c46 1-159
+lib/storyarn_web/components/layouts.ex
+  0970978eb9097c46 183,189,192
+assets/vue/components/landing/FeatureGrid.vue
+  0970978eb9097c46 1-68,70-72,74-78,80-91,93-105
+assets/vue/components/landing/LandingPage.vue
+  0970978eb9097c46 1-42
+assets/vue/components/landing/CtaWaitlist.vue
+  09808a11819a95c7 3,13
+  0970978eb9097c46 1-2,4-12,14-36,38-43,45-46,48-52,54-81
+assets/vue/components/landing/LandingFooter.vue
+  0970978eb9097c46 1-63
+assets/vue/components/landing/composables/useRevealOnScroll.js
+  0970978eb9097c46 1-36
+assets/vue/components/landing/VersionSpotlight.vue
+  0970978eb9097c46 1-51
+assets/vue/components/landing/ExplorationSpotlight.vue
+  0970978eb9097c46 1-27,29-43,45-51
+assets/vue/components/landing/DiscoverMonitor.vue
+  09808a11819a95c7 3-5,7-9,18,33-35
+  0970978eb9097c46 1-2,6,10-17,19-32,36-41
+assets/vue/components/landing/DiscoverSection.vue
+  09808a11819a95c7 2,12-13,15-16,43-85,92,94-98,100,102-103,105-106,109-113,115-152,160-161,170-176,181,184-186,205,207-209,269
+  0970978eb9097c46 1,3-11,14,17-42,86-91,93,99,101,104,107-108,114,153-159,162-169,177-180,182-183,187-204,206,210-268,270-310
+lib/storyarn_web/router.ex
+  0970978eb9097c46 260
+assets/vite.config.mjs
+  09808a11819a95c7 3,42-44
+assets/vue/components/landing/HeroSection.vue
+  0970978eb9097c46 1-69,71-109,111-135,137-146,148-295
+assets/vue/components/landing/MonitorScene.vue
+  09808a11819a95c7 1-234
+lib/storyarn_web/live/landing_live/index.ex
+  0970978eb9097c46 1-240
+assets/vue/components/landing/WorkflowGrid.vue
+  0970978eb9097c46 1-83
+assets/vue/components/landing/PortalRing.vue
+  0970978eb9097c46 1-124,126-190
+mix.exs
+  0970978eb9097c46 144-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "edb72ddc998e7f6afc8976399f427a47b36ac7bf",
+  "prompts": {
+    "0970978eb9097c46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37b8057c-cb36-4ecb-97c1-67359d1f3913",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 2000,
+      "total_deletions": 139,
+      "accepted_lines": 1606,
+      "overriden_lines": 14
+    },
+    "09808a11819a95c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c0163a8-cf35-4677-a65d-bb0643826eb8",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 414,
+      "total_deletions": 337,
+      "accepted_lines": 370,
+      "overriden_lines": 0
+    }
+  }
+}
