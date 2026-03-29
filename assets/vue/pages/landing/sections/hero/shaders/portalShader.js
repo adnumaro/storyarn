@@ -21,6 +21,7 @@ export const fragmentShader = /* glsl */ `
   uniform vec2 uResolution;
   uniform vec2 uPortalCenter;
   uniform float uPortalMaxWidth;
+  uniform float uDpr;
 
   varying vec2 vUv;
 
@@ -72,7 +73,8 @@ export const fragmentShader = /* glsl */ `
 
   void main() {
     float portalHalfWidth = max(uPortalMaxWidth * 0.5, 1.0);
-    vec2 uv = (gl_FragCoord.xy - uPortalCenter) / portalHalfWidth;
+    vec2 cssCoord = gl_FragCoord.xy / uDpr;
+    vec2 uv = (cssCoord - uPortalCenter) / portalHalfWidth;
     uv.y *= 1.08;
 
     // Apply scroll zoom
