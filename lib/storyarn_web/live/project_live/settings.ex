@@ -31,7 +31,7 @@ defmodule StoryarnWeb.ProjectLive.Settings do
       <:subtitle>{section_subtitle(@live_action)}</:subtitle>
 
       <.vue
-        v-component="project/ProjectSettings"
+        v-component="pages/workspaces/projects/settings/index"
         v-socket={@socket}
         id="project-settings"
         section={to_string(@live_action)}

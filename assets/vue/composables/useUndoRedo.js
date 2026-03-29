@@ -10,7 +10,7 @@
  *   undo() // dispatches the reverse action
  */
 
-import { ref, computed } from "vue";
+import { computed, ref } from "vue";
 import { useLive } from "./useLive";
 
 export function useUndoRedo(options = {}) {

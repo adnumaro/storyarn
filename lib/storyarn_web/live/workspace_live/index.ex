@@ -24,7 +24,7 @@ defmodule StoryarnWeb.WorkspaceLive.Index do
   def render(assigns) do
     ~H"""
     <.vue
-      v-component="workspace/WorkspaceIndex"
+      v-component="pages/workspaces/loading"
       v-socket={@socket}
       id="workspace-index"
     />

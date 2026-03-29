@@ -11,9 +11,9 @@
  *   })
  */
 
+import { useDebounceFn } from "@vueuse/core";
 import { ref } from "vue";
 import { useLive } from "./useLive";
-import { useDebounceFn } from "@vueuse/core";
 
 export function useServerSearch(options = {}) {
 	const {

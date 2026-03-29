@@ -19,7 +19,6 @@ defmodule StoryarnWeb.Components.AppLayout do
     %{key: :sheets, section: "sheets"},
     %{key: :flows, section: "flows"},
     %{key: :scenes, section: "scenes"},
-    %{key: :screenplays, section: "screenplays"},
     %{key: :assets, section: "assets"},
     %{key: :localization, section: "localization"}
   ]
@@ -28,9 +27,6 @@ defmodule StoryarnWeb.Components.AppLayout do
   defp tool_path(ws, proj, "sheets"), do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/sheets"
   defp tool_path(ws, proj, "flows"), do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/flows"
   defp tool_path(ws, proj, "scenes"), do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/scenes"
-
-  defp tool_path(ws, proj, "screenplays"),
-    do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/screenplays"
 
   defp tool_path(ws, proj, "assets"),
     do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/assets"

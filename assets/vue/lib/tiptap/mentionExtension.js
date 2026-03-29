@@ -8,7 +8,11 @@ import { VueRenderer } from "@tiptap/vue-3";
 import MentionList from "./MentionList.vue";
 
 function escapeAttr(str) {
-	return (str || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+	return (str || "")
+		.replace(/&/g, "&amp;")
+		.replace(/"/g, "&quot;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;");
 }
 
 /**
@@ -17,7 +21,11 @@ function escapeAttr(str) {
  * @param {Function} [opts.pushEventTo] — LiveView pushEventTo (optional)
  * @param {string} [opts.phxTarget] — target selector for pushEventTo
  */
-export function createMentionExtension({ pushEvent, pushEventTo, phxTarget } = {}) {
+export function createMentionExtension({
+	pushEvent,
+	pushEventTo,
+	phxTarget,
+} = {}) {
 	let mentionDebounce = null;
 	let mentionResolve = null;
 
@@ -37,17 +45,23 @@ export function createMentionExtension({ pushEvent, pushEventTo, phxTarget } = {
 						const blockEnd = $from.end();
 						const blockPos = $from.before();
 
-						editor.chain().focus().command(({ tr, dispatch }) => {
-							if (dispatch) {
-								const nameText = editor.schema.text((item.name || item.label || "").toUpperCase());
-								tr.replaceWith(blockStart, blockEnd, nameText);
-								tr.setNodeMarkup(blockPos, undefined, {
-									...blockNode.attrs,
-									sheetId: String(item.id),
-								});
-							}
-							return true;
-						}).run();
+						editor
+							.chain()
+							.focus()
+							.command(({ tr, dispatch }) => {
+								if (dispatch) {
+									const nameText = editor.schema.text(
+										(item.name || item.label || "").toUpperCase(),
+									);
+									tr.replaceWith(blockStart, blockEnd, nameText);
+									tr.setNodeMarkup(blockPos, undefined, {
+										...blockNode.attrs,
+										sheetId: String(item.id),
+									});
+								}
+								return true;
+							})
+							.run();
 
 						const elementId = blockNode.attrs.elementId;
 						if (elementId) {
@@ -59,10 +73,18 @@ export function createMentionExtension({ pushEvent, pushEventTo, phxTarget } = {
 						return;
 					}
 
-					editor.chain().focus().deleteRange(range).insertContent([
-						{ type: "mention", attrs: { id: item.id, label: item.label || item.name } },
-						{ type: "text", text: " " },
-					]).run();
+					editor
+						.chain()
+						.focus()
+						.deleteRange(range)
+						.insertContent([
+							{
+								type: "mention",
+								attrs: { id: item.id, label: item.label || item.name },
+							},
+							{ type: "text", text: " " },
+						])
+						.run();
 				},
 
 				items: ({ query }) => {
@@ -71,17 +93,20 @@ export function createMentionExtension({ pushEvent, pushEventTo, phxTarget } = {
 						if (mentionResolve) mentionResolve([]);
 
 						const wrappedResolve = (serverItems) => {
-							resolve((serverItems || []).map((item) => ({
-								...item,
-								label: item.label || item.name,
-							})));
+							resolve(
+								(serverItems || []).map((item) => ({
+									...item,
+									label: item.label || item.name,
+								})),
+							);
 						};
 						mentionResolve = wrappedResolve;
 
 						mentionDebounce = setTimeout(() => {
-							const push = phxTarget && pushEventTo
-								? (ev, payload) => pushEventTo(phxTarget, ev, payload)
-								: pushEvent;
+							const push =
+								phxTarget && pushEventTo
+									? (ev, payload) => pushEventTo(phxTarget, ev, payload)
+									: pushEvent;
 							push("mention_suggestions", { query });
 
 							setTimeout(() => {
@@ -99,7 +124,10 @@ export function createMentionExtension({ pushEvent, pushEventTo, phxTarget } = {
 
 					return {
 						onStart(props) {
-							component = new VueRenderer(MentionList, { props, editor: props.editor });
+							component = new VueRenderer(MentionList, {
+								props,
+								editor: props.editor,
+							});
 							if (!props.clientRect) return;
 							const rect = props.clientRect();
 							if (!rect) return;
@@ -116,30 +144,44 @@ export function createMentionExtension({ pushEvent, pushEventTo, phxTarget } = {
 							}
 						},
 						onKeyDown(props) {
-							if (props.event.key === "Escape") { component?.destroy(); return true; }
+							if (props.event.key === "Escape") {
+								component?.destroy();
+								return true;
+							}
 							return component?.ref?.onKeyDown(props) || false;
 						},
-						onExit() { component?.destroy(); },
+						onExit() {
+							component?.destroy();
+						},
 					};
 				},
 			},
 
 			renderHTML({ node }) {
-				return ["span", {
-					class: "mention",
-					"data-type": escapeAttr(node.attrs.type || "sheet"),
-					"data-id": escapeAttr(node.attrs.id),
-					"data-label": escapeAttr(node.attrs.label),
-					contenteditable: "false",
-				}, `#${escapeAttr(node.attrs.label || "")}`];
+				return [
+					"span",
+					{
+						class: "mention",
+						"data-type": escapeAttr(node.attrs.type || "sheet"),
+						"data-id": escapeAttr(node.attrs.id),
+						"data-label": escapeAttr(node.attrs.label),
+						contenteditable: "false",
+					},
+					`#${escapeAttr(node.attrs.label || "")}`,
+				];
 			},
 
 			parseHTML() {
-				return [{ tag: "span.mention", getAttrs: (dom) => ({
-					id: dom.getAttribute("data-id"),
-					label: dom.getAttribute("data-label"),
-					type: dom.getAttribute("data-type"),
-				}) }];
+				return [
+					{
+						tag: "span.mention",
+						getAttrs: (dom) => ({
+							id: dom.getAttribute("data-id"),
+							label: dom.getAttribute("data-label"),
+							type: dom.getAttribute("data-type"),
+						}),
+					},
+				];
 			},
 		}),
 

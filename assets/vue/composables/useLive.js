@@ -23,7 +23,7 @@ export function useLive() {
 				);
 				callback?.({});
 			},
-			handleEvent: (event, callback) => {
+			handleEvent: (event, _callback) => {
 				console.warn(
 					`[useLive] handleEvent("${event}") registered outside LiveView`,
 				);

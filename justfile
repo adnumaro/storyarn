@@ -9,19 +9,19 @@ default:
 
 # Lint JS with Biome
 js-lint:
-    cd assets && npx biome lint js/
+    cd assets && npx biome lint vue/
 
 # Format JS with Biome
 js-format:
-    cd assets && npx biome format --write js/
+    cd assets && npx biome format --write vue/
 
 # Check JS (lint + format) with Biome
 js-check:
-    cd assets && npx biome check js/
+    cd assets && npx biome check vue/
 
 # Check and auto-fix JS with Biome
 js-fix:
-    cd assets && npx biome check --write js/
+    cd assets && npx biome check --write vue/
 
 # Build Lezer grammar
 js-grammar:

@@ -11,7 +11,7 @@ defmodule StoryarnWeb.FlowLive.Form do
     ~H"""
     <div>
       <.vue
-        v-component="flows/FlowForm"
+        v-component="pages/workspaces/projects/flows/components/FlowForm"
         v-socket={@socket}
         id="flow-form-vue"
         form={@form}

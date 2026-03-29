@@ -15,7 +15,7 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
     ~H"""
     <Layouts.public flash={@flash}>
       <.vue
-        v-component="workspace/WorkspaceInvitation"
+        v-component="pages/workspaces/invitations"
         v-socket={@socket}
         id="workspace-invitation"
         homepage-url={~p"/"}

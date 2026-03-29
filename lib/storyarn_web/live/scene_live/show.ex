@@ -98,7 +98,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       <:top_bar_extra>
         <.vue
           :if={@scene}
-          v-component="scenes/SceneToolbar"
+          v-component="pages/workspaces/projects/scenes/components/SceneToolbar"
           v-socket={@socket}
           id="scene-toolbar"
           can-edit={@can_edit}
@@ -107,7 +107,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         />
         <.vue
           :if={@scene}
-          v-component="scenes/SearchPanel"
+          v-component="pages/workspaces/projects/scenes/components/SearchPanel"
           v-socket={@socket}
           id="scene-search-panel"
           search-query={@search_query}
@@ -118,7 +118,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       <:top_bar_extra_right>
         <.vue
           :if={@scene}
-          v-component="scenes/SceneActions"
+          v-component="pages/workspaces/projects/scenes/components/SceneActions"
           v-socket={@socket}
           id="scene-actions"
           edit-mode={@edit_mode}
@@ -137,7 +137,7 @@ defmodule StoryarnWeb.SceneLive.Show do
             
           >
             <.vue
-              v-component="scenes/SceneCanvas"
+              v-component="pages/workspaces/projects/scenes/components/SceneCanvas"
               v-socket={@socket}
               id={"scene-canvas-#{@scene.id}"}
               class="w-full h-full"
@@ -236,7 +236,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
           <%!-- Version History Sidebar (Vue) --%>
           <.vue
-            v-component="scenes/VersionHistoryPanel"
+            v-component="pages/workspaces/projects/scenes/components/VersionHistoryPanel"
             v-socket={@socket}
             id="scene-versions-panel"
             open={@versions_panel_open}
@@ -253,7 +253,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           <%!-- Bottom dock (edit mode only) --%>
           <.vue
             :if={@edit_mode}
-            v-component="scenes/SceneDock"
+            v-component="pages/workspaces/projects/scenes/components/SceneDock"
             v-socket={@socket}
             id="scene-dock"
             active-tool={to_string(@active_tool)}
@@ -269,7 +269,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           <%!-- Bottom-right: legend --%>
           <div class="absolute bottom-3 right-3 z-20 flex items-end gap-2">
             <.vue
-              v-component="scenes/Legend"
+              v-component="pages/workspaces/projects/scenes/components/Legend"
               v-socket={@socket}
               id="scene-legend"
               legend-data={prepare_legend_groups(@pins, @zones, @connections)}
@@ -279,7 +279,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
           <%!-- Element Properties Sidebar (Vue) --%>
           <.vue
-            v-component="scenes/ElementPropertiesPanel"
+            v-component="pages/workspaces/projects/scenes/components/ElementPropertiesPanel"
             v-socket={@socket}
             id="scene-element-panel-vue"
             selected-type={@selected_type}
@@ -294,7 +294,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
           <%!-- Scene Settings Sidebar (Vue Sidebar component) --%>
           <.vue
-            v-component="scenes/SettingsPanel"
+            v-component="pages/workspaces/projects/scenes/components/SettingsPanel"
             v-socket={@socket}
             id="scene-settings-vue"
             scene={prepare_scene_for_vue(@scene)}
@@ -348,7 +348,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     <Layouts.compare flash={@flash}>
       <div class="h-full relative">
         <.vue
-          v-component="scenes/SceneCanvas"
+          v-component="pages/workspaces/projects/scenes/components/SceneCanvas"
           v-socket={@socket}
           id={"scene-canvas-compact-#{@scene.id}"}
           class="w-full h-full"
@@ -367,7 +367,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
         <.vue
           :if={@edit_mode}
-          v-component="scenes/SceneDock"
+          v-component="pages/workspaces/projects/scenes/components/SceneDock"
           v-socket={@socket}
           id="scene-dock-compact"
           active-tool={to_string(@active_tool)}

@@ -23,7 +23,7 @@ defmodule StoryarnWeb.WorkspaceLive.New do
     ~H"""
     <Layouts.app flash={@flash} socket={@socket} current_scope={@current_scope} has_tree={false} show_tool_switcher={false} active_tool={:dashboard}>
       <.vue
-        v-component="workspace/WorkspaceNew"
+        v-component="pages/workspaces/new"
         v-socket={@socket}
         id="workspace-new"
         form={@form}

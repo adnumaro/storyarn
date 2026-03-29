@@ -20,7 +20,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
       can_edit={@can_edit}
     >
       <.vue
-        v-component="localization/LocalizationReport"
+        v-component="pages/workspaces/projects/localization/components/LocalizationReport"
         v-socket={@socket}
         id="localization-report"
         language-progress={serialize_language_progress(@language_progress)}

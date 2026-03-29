@@ -33,7 +33,7 @@ function formatValue(value) {
 	if (value == null) return "?";
 	const str = String(value);
 	// If it parses as a number, use it raw
-	if (str !== "" && !isNaN(Number(str))) return str;
+	if (str !== "" && !Number.isNaN(Number(str))) return str;
 	// Otherwise quote it
 	const escaped = str.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 	return `"${escaped}"`;
