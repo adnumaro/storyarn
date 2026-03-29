@@ -1,6 +1,6 @@
 <script setup>
+import { LayoutDashboard, User } from "lucide-vue-next";
 import { computed } from "vue";
-import { User, LayoutDashboard } from "lucide-vue-next";
 import {
 	DropdownMenu,
 	DropdownMenuContent,

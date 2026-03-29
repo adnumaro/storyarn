@@ -1,12 +1,12 @@
 <script setup>
-import { computed } from "@/vue/index.js";
 import { ToggleLeft } from "lucide-vue-next";
-import { Switch } from "@/vue/components/ui/switch/index.js";
+import { computed } from "vue";
 import { Badge } from "@/vue/components/ui/badge/index.js";
 import { Checkbox } from "@/vue/components/ui/checkbox/index.js";
+import { Switch } from "@/vue/components/ui/switch/index.js";
+import { useBlockActions } from "../../composables/useBlockActions.js";
+import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
-import BlockLabel from "./BlockLabel.vue";
-import { useBlockActions } from "./useBlockActions.js";
 
 const props = defineProps({
 	block: { type: Object, required: true },
@@ -23,7 +23,6 @@ function saveLabel(val) {
 		value: val,
 	});
 }
-
 
 const content = computed(() => props.block.value?.content);
 const mode = computed(() => props.block.config?.mode || "two_state");

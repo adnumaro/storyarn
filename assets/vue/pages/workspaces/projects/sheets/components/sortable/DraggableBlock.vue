@@ -1,7 +1,7 @@
 <script setup>
-import { computed, ref, onMounted, onUnmounted, useTemplateRef } from "@/vue/index.js";
 import { makeDraggable } from "@vue-dnd-kit/core";
-import { GripVertical, Grip } from "lucide-vue-next";
+import { Grip, GripVertical } from "lucide-vue-next";
+import { computed, onMounted, onUnmounted, ref, useTemplateRef } from "vue";
 
 const SIDE_THRESHOLD = 0.25;
 

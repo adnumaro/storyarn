@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from "@/vue/index.js";
 import { Ref } from "rete-vue-plugin";
+import { computed } from "vue";
 
 const props = defineProps({
 	data: { type: Object, required: true },
@@ -9,7 +9,9 @@ const props = defineProps({
 
 const inputs = computed(() => Object.entries(props.data?.inputs || {}));
 const outputs = computed(() => Object.entries(props.data?.outputs || {}));
-const isSimple = computed(() => inputs.value.length <= 1 && outputs.value.length <= 1);
+const isSimple = computed(
+	() => inputs.value.length <= 1 && outputs.value.length <= 1,
+);
 </script>
 
 <template>

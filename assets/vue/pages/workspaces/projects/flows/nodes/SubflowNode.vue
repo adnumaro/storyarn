@@ -1,7 +1,7 @@
 <script setup>
-import { computed } from "@/vue/index.js";
 import { ArrowRight, Box, CornerDownLeft, Square } from "lucide-vue-next";
 import { Ref } from "rete-vue-plugin";
+import { computed } from "vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 
@@ -16,9 +16,13 @@ const nodeData = computed(() => props.data.nodeData || {});
 const refFlowName = computed(() => nodeData.value.referenced_flow_name);
 const refFlowShortcut = computed(() => nodeData.value.referenced_flow_shortcut);
 const hasRef = computed(() => !!nodeData.value.referenced_flow_id);
-const hasError = computed(() => !hasRef.value || nodeData.value.stale_reference);
+const hasError = computed(
+	() => !hasRef.value || nodeData.value.stale_reference,
+);
 const errorTitle = computed(() =>
-	nodeData.value.stale_reference ? "Referenced flow was deleted" : "No flow referenced",
+	nodeData.value.stale_reference
+		? "Referenced flow was deleted"
+		: "No flow referenced",
 );
 
 // Sockets

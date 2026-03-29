@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "@/vue/index.js";
+import { computed } from "vue";
 
 const props = defineProps({
 	path: { type: String, default: "" },

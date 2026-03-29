@@ -1,6 +1,6 @@
 <script setup>
-import { computed, ref } from "vue";
 import { FolderOpen, Plus, Search, Settings } from "lucide-vue-next";
+import { computed, ref } from "vue";
 import { Button } from "@/vue/components/ui/button/index.js";
 import { Input } from "@/vue/components/ui/input/index.js";
 import { Separator } from "@/vue/components/ui/separator/index.js";

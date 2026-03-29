@@ -1,10 +1,10 @@
 <script setup>
-import { computed } from "@/vue/index.js";
 import { FileText } from "lucide-vue-next";
-import BlockToolbar from "../BlockToolbar.vue";
-import BlockLabel from "./BlockLabel.vue";
-import RichTextEditor from "../RichTextEditor.vue";
-import { useBlockActions } from "./useBlockActions.js";
+import { computed } from "vue";
+import { useBlockActions } from "../../../composables/useBlockActions.js";
+import BlockLabel from "../../BlockLabel.vue";
+import BlockToolbar from "../../BlockToolbar.vue";
+import RichTextEditor from "./RichTextEditor.vue";
 
 const props = defineProps({
 	block: { type: Object, required: true },
@@ -21,7 +21,6 @@ function saveLabel(val) {
 		value: val,
 	});
 }
-
 
 const content = computed(() => props.block.value?.content || "");
 </script>

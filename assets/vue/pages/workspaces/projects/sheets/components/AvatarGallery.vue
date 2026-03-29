@@ -1,5 +1,4 @@
 <script setup>
-import { ref, watch } from "@/vue/index.js";
 import {
 	ChevronLeft,
 	ChevronRight,
@@ -9,11 +8,12 @@ import {
 	Trash2,
 	X,
 } from "lucide-vue-next";
+import { ref, watch } from "vue";
+import { Badge } from "@/vue/components/ui/badge/index.js";
 import { Button } from "@/vue/components/ui/button/index.js";
+import { Dialog, DialogContent } from "@/vue/components/ui/dialog/index.js";
 import { Input } from "@/vue/components/ui/input/index.js";
 import { Textarea } from "@/vue/components/ui/textarea/index.js";
-import { Badge } from "@/vue/components/ui/badge/index.js";
-import { Dialog, DialogContent } from "@/vue/components/ui/dialog/index.js";
 
 const props = defineProps({
 	open: { type: Boolean, default: false },

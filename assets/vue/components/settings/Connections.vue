@@ -1,74 +1,75 @@
 <script setup>
+import { Link } from "lucide-vue-next";
 import { ref } from "vue";
-import { useLive } from "@/vue/composables/useLive";
 import { Button } from "@/vue/components/ui/button";
+import {
+	Dialog,
+	DialogClose,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/vue/components/ui/dialog";
 import { Separator } from "@/vue/components/ui/separator";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from "@/vue/components/ui/dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
 } from "@/vue/components/ui/tooltip";
-import { Link } from "lucide-vue-next";
+import { useLive } from "@/vue/composables/useLive";
 
 const props = defineProps({
-  identities: { type: Array, required: true },
-  hasPassword: { type: Boolean, required: true },
-  translations: { type: Object, required: true },
+	identities: { type: Array, required: true },
+	hasPassword: { type: Boolean, required: true },
+	translations: { type: Object, required: true },
 });
 
 const live = useLive();
 
 const providers = [
-  { key: "github", label: "GitHub" },
-  { key: "google", label: "Google" },
-  { key: "discord", label: "Discord" },
+	{ key: "github", label: "GitHub" },
+	{ key: "google", label: "Google" },
+	{ key: "discord", label: "Discord" },
 ];
 
 const unlinkDialogOpen = ref(false);
 const unlinkProvider = ref(null);
 
 function findIdentity(provider) {
-  return props.identities.find((i) => i.provider === provider) || null;
+	return props.identities.find((i) => i.provider === provider) || null;
 }
 
 function openUnlinkDialog(provider) {
-  unlinkProvider.value = provider;
-  unlinkDialogOpen.value = true;
+	unlinkProvider.value = provider;
+	unlinkDialogOpen.value = true;
 }
 
 function confirmUnlink() {
-  if (unlinkProvider.value) {
-    // Navigate to the unlink endpoint via a form submission
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = `/auth/${unlinkProvider.value}/unlink`;
+	if (unlinkProvider.value) {
+		// Navigate to the unlink endpoint via a form submission
+		const form = document.createElement("form");
+		form.method = "POST";
+		form.action = `/auth/${unlinkProvider.value}/unlink`;
 
-    const csrfInput = document.createElement("input");
-    csrfInput.type = "hidden";
-    csrfInput.name = "_csrf_token";
-    csrfInput.value = document.querySelector("meta[name=csrf-token]")?.content || "";
-    form.appendChild(csrfInput);
+		const csrfInput = document.createElement("input");
+		csrfInput.type = "hidden";
+		csrfInput.name = "_csrf_token";
+		csrfInput.value =
+			document.querySelector("meta[name=csrf-token]")?.content || "";
+		form.appendChild(csrfInput);
 
-    const methodInput = document.createElement("input");
-    methodInput.type = "hidden";
-    methodInput.name = "_method";
-    methodInput.value = "delete";
-    form.appendChild(methodInput);
+		const methodInput = document.createElement("input");
+		methodInput.type = "hidden";
+		methodInput.name = "_method";
+		methodInput.value = "delete";
+		form.appendChild(methodInput);
 
-    document.body.appendChild(form);
-    form.submit();
-  }
-  unlinkDialogOpen.value = false;
+		document.body.appendChild(form);
+		form.submit();
+	}
+	unlinkDialogOpen.value = false;
 }
 </script>
 

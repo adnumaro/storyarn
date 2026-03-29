@@ -1,22 +1,22 @@
 <script setup>
-import { ref, inject, useTemplateRef, watch } from "@/vue/index.js";
-import { useLive } from "@/vue/composables/useLive.js";
 import { makeDroppable } from "@vue-dnd-kit/core";
+import { inject, ref, useTemplateRef, watch } from "vue";
+import { useLive } from "@/vue/composables/useLive.js";
 
 const isLockedByOther = inject("isLockedByOther", () => false);
 const lockInfo = inject("lockInfo", () => null);
 
-import HorizontalDraggableItem from "./HorizontalDraggableItem.vue";
 import UserAvatar from "@/vue/components/layout/UserAvatar.vue";
-import TextBlock from "./blocks/TextBlock.vue";
-import NumberBlock from "./blocks/NumberBlock.vue";
-import BooleanBlock from "./blocks/BooleanBlock.vue";
-import SelectBlock from "./blocks/SelectBlock.vue";
-import MultiSelectBlock from "./blocks/MultiSelectBlock.vue";
-import DateBlock from "./blocks/DateBlock.vue";
-import RichTextBlock from "./blocks/RichTextBlock.vue";
-import GalleryBlock from "./blocks/GalleryBlock.vue";
-import TableBlock from "./blocks/TableBlock.vue";
+import BooleanBlock from "../blocks/BooleanBlock.vue";
+import DateBlock from "../blocks/DateBlock.vue";
+import GalleryBlock from "../blocks/galleryBlock/GalleryBlock.vue";
+import MultiSelectBlock from "../blocks/MultiSelectBlock.vue";
+import NumberBlock from "../blocks/NumberBlock.vue";
+import RichTextBlock from "../blocks/richText/RichTextBlock.vue";
+import SelectBlock from "../blocks/SelectBlock.vue";
+import TableBlock from "../blocks/table/TableBlock.vue";
+import TextBlock from "../blocks/table/TextBlock.vue";
+import HorizontalDraggableItem from "./HorizontalDraggableItem.vue";
 
 const blockComponents = {
 	text: TextBlock,

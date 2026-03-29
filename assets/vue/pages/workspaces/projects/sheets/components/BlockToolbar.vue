@@ -3,8 +3,9 @@
  * Generic floating block toolbar — pure UI, no business logic.
  * Each block type composes this and passes its own config slot content.
  */
-import { ref } from "@/vue/index.js";
-import { Lock, Unlock, Hash, Settings } from "lucide-vue-next";
+
+import { Hash, Lock, Settings, Unlock } from "lucide-vue-next";
+import { ref } from "vue";
 import {
 	Popover,
 	PopoverContent,

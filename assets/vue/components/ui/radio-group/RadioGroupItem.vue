@@ -2,21 +2,21 @@
 import { reactiveOmit } from "@vueuse/core";
 import { CircleIcon } from "lucide-vue-next";
 import { RadioGroupIndicator, RadioGroupItem, useForwardProps } from "reka-ui";
-import { cn } from '@/vue/lib/utils';
+import { cn } from "@/vue/lib/utils";
 
 const props = defineProps({
-  id: { type: String, required: false },
-  value: { type: null, required: false },
-  disabled: { type: Boolean, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  name: { type: String, required: false },
-  required: { type: Boolean, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
+	id: { type: String, required: false },
+	value: { type: null, required: false },
+	disabled: { type: Boolean, required: false },
+	asChild: { type: Boolean, required: false },
+	as: { type: null, required: false },
+	name: { type: String, required: false },
+	required: { type: Boolean, required: false },
+	class: {
+		type: [Boolean, null, String, Object, Array],
+		required: false,
+		skipCheck: true,
+	},
 });
 
 const delegatedProps = reactiveOmit(props, "class");

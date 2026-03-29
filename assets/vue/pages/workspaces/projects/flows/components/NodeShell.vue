@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "@/vue/index.js";
+import { computed } from "vue";
 
 const props = defineProps({
 	color: { type: String, default: "#3b82f6" },

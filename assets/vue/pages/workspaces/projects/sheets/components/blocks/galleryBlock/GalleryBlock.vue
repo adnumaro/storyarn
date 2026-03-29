@@ -1,9 +1,9 @@
 <script setup>
 import { Image } from "lucide-vue-next";
-import BlockToolbar from "../BlockToolbar.vue";
-import BlockLabel from "./BlockLabel.vue";
-import GalleryBlockContent from "../GalleryBlock.vue";
-import { useBlockActions } from "./useBlockActions.js";
+import { useBlockActions } from "../../../composables/useBlockActions.js";
+import BlockLabel from "../../BlockLabel.vue";
+import BlockToolbar from "../../BlockToolbar.vue";
+import GalleryBlockContent from "./GalleryBlockContent.vue";
 
 const props = defineProps({
 	block: { type: Object, required: true },
@@ -20,7 +20,6 @@ function saveLabel(val) {
 		value: val,
 	});
 }
-
 </script>
 
 <template>

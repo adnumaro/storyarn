@@ -1,10 +1,10 @@
 <script setup>
-import { ref, watch, computed } from "@/vue/index.js";
-import { useLive } from "@/vue/composables/useLive.js";
-import { Sigma, X, ChevronRight, AlertCircle } from "lucide-vue-next";
-import Sidebar from "@/vue/components/layout/Sidebar.vue";
-import FormulaBindingSelect from "./FormulaBindingSelect.vue";
 import katex from "katex";
+import { AlertCircle, ChevronRight, Sigma, X } from "lucide-vue-next";
+import { computed, ref, watch } from "vue";
+import Sidebar from "@/vue/components/layout/Sidebar.vue";
+import { useLive } from "@/vue/composables/useLive.js";
+import FormulaBindingSelect from "./FormulaBindingSelect.vue";
 
 const props = defineProps({
 	formulaEditing: { type: Object, default: null },

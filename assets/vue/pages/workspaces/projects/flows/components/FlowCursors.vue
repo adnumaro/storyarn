@@ -1,6 +1,6 @@
 <script setup>
 import { MousePointer2 } from "lucide-vue-next";
-import { onMounted, onUnmounted, reactive, ref } from "@/vue/index.js";
+import { onMounted, onUnmounted, reactive, ref } from "vue";
 import { useLive } from "@/vue/composables/useLive.js";
 
 const props = defineProps({
@@ -57,13 +57,16 @@ live.handleEvent("cursor_update", (data) => {
 
 	// Fade after inactivity
 	if (fadeTimers.has(data.user_id)) clearTimeout(fadeTimers.get(data.user_id));
-	fadeTimers.set(data.user_id, setTimeout(() => {
-		const c = cursors.get(data.user_id);
-		if (c) {
-			c.opacity = 0.3;
-			cursors.set(data.user_id, { ...c });
-		}
-	}, FADE_MS));
+	fadeTimers.set(
+		data.user_id,
+		setTimeout(() => {
+			const c = cursors.get(data.user_id);
+			if (c) {
+				c.opacity = 0.3;
+				cursors.set(data.user_id, { ...c });
+			}
+		}, FADE_MS),
+	);
 });
 
 live.handleEvent("cursor_leave", (data) => {

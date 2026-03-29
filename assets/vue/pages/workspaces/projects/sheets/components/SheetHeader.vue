@@ -1,7 +1,7 @@
 <script setup>
-import { ref, computed, watch } from "@/vue/index.js";
-import { useLive } from "@/vue/composables/useLive.js";
-import { Image, Trash2, X, Plus, LayoutGrid, Star } from "lucide-vue-next";
+import { Image, LayoutGrid, Plus, Star, Trash2, X } from "lucide-vue-next";
+import { computed, ref, watch } from "vue";
+import ColorPickerPopover from "@/vue/components/ColorPickerPopover.vue";
 import { Button } from "@/vue/components/ui/button/index.js";
 import { Input } from "@/vue/components/ui/input/index.js";
 import {
@@ -9,7 +9,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/vue/components/ui/popover/index.js";
-import ColorPickerPopover from "@/vue/components/ColorPickerPopover.vue";
+import { useLive } from "@/vue/composables/useLive.js";
 import AvatarGallery from "./AvatarGallery.vue";
 
 const props = defineProps({

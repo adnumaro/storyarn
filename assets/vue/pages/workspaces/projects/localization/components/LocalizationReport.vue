@@ -1,5 +1,4 @@
 <script setup>
-import { computed } from "vue";
 import {
 	ArrowLeft,
 	Box,
@@ -9,6 +8,7 @@ import {
 	MessageSquare,
 	Square,
 } from "lucide-vue-next";
+import { computed } from "vue";
 import { Badge } from "@/vue/components/ui/badge";
 import { Button } from "@/vue/components/ui/button";
 import { Progress } from "@/vue/components/ui/progress";
@@ -53,10 +53,22 @@ const typeCountEntries = computed(() => {
 });
 
 const voStats = computed(() => [
-	{ label: "None", value: props.voProgress.none, color: "text-muted-foreground" },
+	{
+		label: "None",
+		value: props.voProgress.none,
+		color: "text-muted-foreground",
+	},
 	{ label: "Needed", value: props.voProgress.needed, color: "text-yellow-500" },
-	{ label: "Recorded", value: props.voProgress.recorded, color: "text-blue-400" },
-	{ label: "Approved", value: props.voProgress.approved, color: "text-emerald-500" },
+	{
+		label: "Recorded",
+		value: props.voProgress.recorded,
+		color: "text-blue-400",
+	},
+	{
+		label: "Approved",
+		value: props.voProgress.approved,
+		color: "text-emerald-500",
+	},
 ]);
 
 function typeIcon(type) {

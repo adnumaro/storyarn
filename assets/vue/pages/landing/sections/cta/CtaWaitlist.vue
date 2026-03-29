@@ -1,10 +1,10 @@
 <script setup>
-import { ref } from "vue";
 import { useLiveVue } from "live_vue";
 import { ArrowRight } from "lucide-vue-next";
+import { ref } from "vue";
 import { Button } from "@/vue/components/ui/button/index.js";
 import { Input } from "@/vue/components/ui/input/index.js";
-import { useRevealOnScroll } from "../composables/useRevealOnScroll.js";
+import { useRevealOnScroll } from "../../composables/useRevealOnScroll.js";
 
 const props = defineProps({
 	translations: { type: Object, required: true },

@@ -1,9 +1,9 @@
 <script setup>
 import { GitBranch, X, Zap } from "lucide-vue-next";
-import { computed } from "@/vue/index.js";
-import Sidebar from "@/vue/components/layout/Sidebar.vue";
+import { computed } from "vue";
 import ConditionBuilder from "@/vue/components/ConditionBuilder.vue";
 import InstructionBuilder from "@/vue/components/InstructionBuilder.vue";
+import Sidebar from "@/vue/components/layout/Sidebar.vue";
 import { useLive } from "@/vue/composables/useLive.js";
 
 const props = defineProps({
@@ -21,7 +21,11 @@ const live = useLive();
 
 const parsedVariables = computed(() => {
 	if (Array.isArray(props.projectVariables)) return props.projectVariables;
-	try { return JSON.parse(props.projectVariables); } catch { return []; }
+	try {
+		return JSON.parse(props.projectVariables);
+	} catch {
+		return [];
+	}
 });
 
 const title = computed(() => {

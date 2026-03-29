@@ -4,8 +4,9 @@
  * Handles TresCanvas setup, mobile/a11y detection.
  * The actual 3D scene lives in MonitorScene.vue.
  */
-import { ref, onMounted } from "vue";
+
 import { TresCanvas } from "@tresjs/core";
+import { onMounted, ref } from "vue";
 import MonitorScene from "./MonitorScene.vue";
 
 const props = defineProps({
@@ -15,11 +16,16 @@ const props = defineProps({
 
 const isMobile = ref(false);
 const reducedMotion = ref(false);
-const dpr = ref(typeof window !== "undefined" ? Math.min(window.devicePixelRatio, 2) : 1);
+const dpr = ref(
+	typeof window !== "undefined" ? Math.min(window.devicePixelRatio, 2) : 1,
+);
 
 onMounted(() => {
-	isMobile.value = /Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 768;
-	reducedMotion.value = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+	isMobile.value =
+		/Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 768;
+	reducedMotion.value = window.matchMedia(
+		"(prefers-reduced-motion: reduce)",
+	).matches;
 });
 </script>
 

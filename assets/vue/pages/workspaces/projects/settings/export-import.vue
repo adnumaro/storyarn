@@ -16,7 +16,10 @@ import { Badge } from "@/vue/components/ui/badge/index.js";
 import { Button } from "@/vue/components/ui/button/index.js";
 import { Checkbox } from "@/vue/components/ui/checkbox/index.js";
 import { Label } from "@/vue/components/ui/label/index.js";
-import { RadioGroup, RadioGroupItem } from "@/vue/components/ui/radio-group/index.js";
+import {
+	RadioGroup,
+	RadioGroupItem,
+} from "@/vue/components/ui/radio-group/index.js";
 import { Separator } from "@/vue/components/ui/separator/index.js";
 import {
 	Table,

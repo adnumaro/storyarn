@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from "@/vue/index.js";
 import { ArrowRight, ArrowRightToLine, CornerDownLeft } from "lucide-vue-next";
+import { computed } from "vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
@@ -13,7 +13,9 @@ const props = defineProps({
 	nodeDataOverride: { type: Object, default: null },
 });
 
-const nodeData = computed(() => props.nodeDataOverride || props.data.nodeData || {});
+const nodeData = computed(
+	() => props.nodeDataOverride || props.data.nodeData || {},
+);
 const exitMode = computed(() => nodeData.value.exit_mode || "terminal");
 const label = computed(() => nodeData.value.label || "Exit");
 const tags = computed(() => nodeData.value.outcome_tags || []);
@@ -22,18 +24,22 @@ const refFlowShortcut = computed(() => nodeData.value.referenced_flow_shortcut);
 
 // Error indicators
 const hasError = computed(() => {
-	if (exitMode.value === "flow_reference" && !nodeData.value.referenced_flow_id) return true;
+	if (exitMode.value === "flow_reference" && !nodeData.value.referenced_flow_id)
+		return true;
 	if (nodeData.value.stale_reference) return true;
 	return false;
 });
 const errorTitle = computed(() =>
-	nodeData.value.stale_reference ? "Referenced flow was deleted" : "No flow referenced",
+	nodeData.value.stale_reference
+		? "Referenced flow was deleted"
+		: "No flow referenced",
 );
 
 // Tags text
 const tagsText = computed(() => {
 	if (tags.value.length === 0) return "";
-	if (tags.value.length > 3) return `${tags.value.slice(0, 3).join(", ")} +${tags.value.length - 3}`;
+	if (tags.value.length > 3)
+		return `${tags.value.slice(0, 3).join(", ")} +${tags.value.length - 3}`;
 	return tags.value.join(", ");
 });
 </script>

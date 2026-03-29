@@ -1,5 +1,4 @@
 <script setup>
-import { ref, watch } from "vue";
 import {
 	AlertTriangle,
 	Archive,
@@ -12,23 +11,10 @@ import {
 	Trash2,
 	Wrench,
 } from "lucide-vue-next";
-
-import { useLive } from "@/vue/composables/useLive.js";
-import { Button } from "@/vue/components/ui/button/index.js";
-import { Input } from "@/vue/components/ui/input/index.js";
-import { Label } from "@/vue/components/ui/label/index.js";
-import { Textarea } from "@/vue/components/ui/textarea/index.js";
+import { ref, watch } from "vue";
+import ColorPickerPopover from "@/vue/components/ColorPickerPopover.vue";
 import { Badge } from "@/vue/components/ui/badge/index.js";
-import { Switch } from "@/vue/components/ui/switch/index.js";
-import { Separator } from "@/vue/components/ui/separator/index.js";
-import { Progress } from "@/vue/components/ui/progress/index.js";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/vue/components/ui/select/index.js";
+import { Button } from "@/vue/components/ui/button/index.js";
 import {
 	Dialog,
 	DialogContent,
@@ -37,8 +23,20 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/vue/components/ui/dialog/index.js";
-
-import ColorPickerPopover from "@/vue/components/ColorPickerPopover.vue";
+import { Input } from "@/vue/components/ui/input/index.js";
+import { Label } from "@/vue/components/ui/label/index.js";
+import { Progress } from "@/vue/components/ui/progress/index.js";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/vue/components/ui/select/index.js";
+import { Separator } from "@/vue/components/ui/separator/index.js";
+import { Switch } from "@/vue/components/ui/switch/index.js";
+import { Textarea } from "@/vue/components/ui/textarea/index.js";
+import { useLive } from "@/vue/composables/useLive.js";
 
 const props = defineProps({
 	section: { type: String, required: true },

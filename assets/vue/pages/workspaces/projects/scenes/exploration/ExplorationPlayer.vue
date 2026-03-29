@@ -1,12 +1,12 @@
 <script setup>
 import { toRef } from "vue";
+import { useLive } from "@/vue/composables/useLive";
 import CollectionModal from "./CollectionModal.vue";
 import { useExplorationKeyboard } from "./composables/useExplorationKeyboard";
 import ExplorationCanvas from "./ExplorationCanvas.vue";
 import ExplorationToolbar from "./ExplorationToolbar.vue";
 import FlowOverlay from "./FlowOverlay.vue";
 import SessionPromptModal from "./SessionPromptModal.vue";
-import { useLive } from "@/vue/composables/useLive";
 
 const props = defineProps({
 	sceneData: { type: Object, required: true },

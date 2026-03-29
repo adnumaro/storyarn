@@ -1,16 +1,16 @@
 <script setup>
-import { ref } from "@/vue/index.js";
-import { useLive } from "@/vue/composables/useLive.js";
-import { Plus, X, Trash2, GripVertical } from "lucide-vue-next";
+import { GripVertical, Plus, Trash2, X } from "lucide-vue-next";
+import { ref } from "vue";
 import { Button } from "@/vue/components/ui/button/index.js";
-import { Input } from "@/vue/components/ui/input/index.js";
-import { Textarea } from "@/vue/components/ui/textarea/index.js";
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
 } from "@/vue/components/ui/dialog/index.js";
+import { Input } from "@/vue/components/ui/input/index.js";
+import { Textarea } from "@/vue/components/ui/textarea/index.js";
+import { useLive } from "@/vue/composables/useLive.js";
 
 const props = defineProps({
 	blockId: { type: [Number, String], required: true },

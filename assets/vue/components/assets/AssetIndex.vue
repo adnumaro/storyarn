@@ -1,5 +1,4 @@
 <script setup>
-import { ref, computed } from "vue";
 import {
 	File,
 	GitBranch,
@@ -12,8 +11,9 @@ import {
 	User,
 	X,
 } from "lucide-vue-next";
-import { Button } from "@/vue/components/ui/button";
+import { computed, ref } from "vue";
 import { Badge } from "@/vue/components/ui/badge";
+import { Button } from "@/vue/components/ui/button";
 import { Input } from "@/vue/components/ui/input";
 import { useLive } from "@/vue/composables/useLive";
 

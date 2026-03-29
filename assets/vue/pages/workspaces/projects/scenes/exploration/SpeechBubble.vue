@@ -29,9 +29,13 @@ function updatePosition() {
 	};
 }
 
-watch(() => props.bubble, (b) => {
-	if (b) requestAnimationFrame(updatePosition);
-}, { immediate: true });
+watch(
+	() => props.bubble,
+	(b) => {
+		if (b) requestAnimationFrame(updatePosition);
+	},
+	{ immediate: true },
+);
 
 const visible = computed(() => props.bubble != null);
 </script>

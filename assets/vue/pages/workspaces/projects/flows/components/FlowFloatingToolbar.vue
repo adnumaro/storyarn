@@ -16,11 +16,19 @@ import {
 	Volume2,
 	Zap,
 } from "lucide-vue-next";
-import { computed, nextTick, ref, watch } from "@/vue/index.js";
-import { ToolbarColorPicker, ToolbarSeparator, ToolbarSizePicker } from "@/vue/components/shared/toolbar/index.js";
-import { ToolbarAvatarPicker, ToolbarExitModePicker, ToolbarSearchableSelect } from "./toolbar/index.js";
+import { computed, nextTick, ref, watch } from "vue";
+import {
+	ToolbarColorPicker,
+	ToolbarSeparator,
+	ToolbarSizePicker,
+} from "@/vue/components/shared/toolbar/index.js";
 import { Badge } from "@/vue/components/ui/badge/index.js";
 import { useLive } from "@/vue/composables/useLive.js";
+import {
+	ToolbarAvatarPicker,
+	ToolbarExitModePicker,
+	ToolbarSearchableSelect,
+} from "../toolbar/index.js";
 
 const props = defineProps({
 	toolbarState: { type: Object, required: true },
@@ -150,7 +158,9 @@ function selectAvatar(avatarId) {
 
 // ── Computed data for complex types ──
 
-const hubOptions = computed(() => props.flowHubs.map((h) => [h.hub_id, h.hub_id]));
+const hubOptions = computed(() =>
+	props.flowHubs.map((h) => [h.hub_id, h.hub_id]),
+);
 const selectedHubLabel = computed(() => {
 	const target = nodeData.value.target_hub_id;
 	if (!target) return null;
@@ -158,7 +168,9 @@ const selectedHubLabel = computed(() => {
 	return hub?.hub_id || null;
 });
 
-const flowOptions = computed(() => props.availableFlows.map((f) => [f.name, f.id]));
+const flowOptions = computed(() =>
+	props.availableFlows.map((f) => [f.name, f.id]),
+);
 const selectedFlowName = computed(() => {
 	const refId = nodeData.value.referenced_flow_id;
 	if (!refId) return null;
@@ -174,7 +186,11 @@ const selectedLocationName = computed(() => {
 	return sheet?.name || null;
 });
 
-const intExtOptions = [["INT/EXT", "int_ext"], ["INT", "int"], ["EXT", "ext"]];
+const intExtOptions = [
+	["INT/EXT", "int_ext"],
+	["INT", "int"],
+	["EXT", "ext"],
+];
 const intExtLabel = computed(() => {
 	const v = nodeData.value.int_ext;
 	if (v === "int") return "INT";
@@ -183,14 +199,21 @@ const intExtLabel = computed(() => {
 	return null;
 });
 
-const timeOptions = [["Day", "day"], ["Night", "night"], ["Morning", "morning"], ["Evening", "evening"], ["Continuous", "continuous"]];
+const timeOptions = [
+	["Day", "day"],
+	["Night", "night"],
+	["Morning", "morning"],
+	["Evening", "evening"],
+	["Continuous", "continuous"],
+];
 const timeLabel = computed(() => {
 	const v = nodeData.value.time_of_day;
 	return v ? v.charAt(0).toUpperCase() + v.slice(1) : null;
 });
 
 const speakerAvatars = computed(() => {
-	const sheetId = nodeData.value.speaker_sheet_id || nodeData.value.location_sheet_id;
+	const sheetId =
+		nodeData.value.speaker_sheet_id || nodeData.value.location_sheet_id;
 	if (!sheetId) return [];
 	const sheet = props.allSheets.find((s) => String(s.id) === String(sheetId));
 	if (!sheet?.avatars) return [];

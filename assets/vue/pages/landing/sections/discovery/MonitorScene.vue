@@ -3,11 +3,12 @@
  * 3D monitor scene rendered inside a TresCanvas.
  * Displays rotating screenshots with GSAP-driven transitions.
  */
-import { shallowRef, watch, onMounted } from "vue";
+
 import { useLoop } from "@tresjs/core";
-import * as THREE from "three";
 import { gsap } from "gsap";
-import { RoundedBoxGeometry } from 'three/addons'
+import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/addons";
+import { onMounted, shallowRef, watch } from "vue";
 
 const props = defineProps({
 	activeStep: { type: Number, default: 0 },
@@ -50,14 +51,28 @@ const screenBZ = bodyDepth / 2 + 0.006;
 const insetZ = bodyDepth / 2 + 0.003;
 
 // Screen materials — imperative for direct texture control
-const screenMatA = new THREE.MeshBasicMaterial({ transparent: true, opacity: 1, toneMapped: false });
-const screenMatB = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, toneMapped: false });
+const screenMatA = new THREE.MeshBasicMaterial({
+	transparent: true,
+	opacity: 1,
+	toneMapped: false,
+});
+const screenMatB = new THREE.MeshBasicMaterial({
+	transparent: true,
+	opacity: 0,
+	toneMapped: false,
+});
 
 // Pre-built screen meshes — avoids TresJS primitive-as-material issues
-const screenMeshA = new THREE.Mesh(new THREE.PlaneGeometry(screenW, screenH), screenMatA);
+const screenMeshA = new THREE.Mesh(
+	new THREE.PlaneGeometry(screenW, screenH),
+	screenMatA,
+);
 screenMeshA.position.set(0, 0, screenAZ);
 
-const screenMeshB = new THREE.Mesh(new THREE.PlaneGeometry(screenW, screenH), screenMatB);
+const screenMeshB = new THREE.Mesh(
+	new THREE.PlaneGeometry(screenW, screenH),
+	screenMatB,
+);
 screenMeshB.position.set(0, 0, screenBZ);
 
 // Other geometry
@@ -155,13 +170,29 @@ watch(
 		});
 
 		// Position & rotation — all on the same timeline
-		stepTimeline.to(group.rotation, { y: target.rotY, z: target.rotZ, duration, ease: "power3.inOut" }, 0);
-		stepTimeline.to(group.position, { x: target.posX, y: target.posY, duration, ease: "power3.inOut" }, 0);
+		stepTimeline.to(
+			group.rotation,
+			{ y: target.rotY, z: target.rotZ, duration, ease: "power3.inOut" },
+			0,
+		);
+		stepTimeline.to(
+			group.position,
+			{ x: target.posX, y: target.posY, duration, ease: "power3.inOut" },
+			0,
+		);
 
 		// Texture crossfade
 		if (tex) {
-			stepTimeline.to(screenMatA, { opacity: 0, duration, ease: "power2.inOut" }, 0);
-			stepTimeline.to(screenMatB, { opacity: 1, duration, ease: "power2.inOut" }, 0);
+			stepTimeline.to(
+				screenMatA,
+				{ opacity: 0, duration, ease: "power2.inOut" },
+				0,
+			);
+			stepTimeline.to(
+				screenMatB,
+				{ opacity: 1, duration, ease: "power2.inOut" },
+				0,
+			);
 		}
 
 		prevStep = index;

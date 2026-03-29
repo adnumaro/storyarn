@@ -1,28 +1,28 @@
 <script setup>
-import { ref, computed } from "@/vue/index.js";
 import {
-	Database,
-	Eye,
-	Pencil,
+	AlertTriangle,
 	ArrowRight,
 	ArrowUpRight,
-	Link,
-	Map,
-	FileText,
-	GitBranch,
 	BookOpen,
-	Zap,
-	Circle,
-	AlertTriangle,
 	ChevronDown,
 	ChevronRight,
+	Circle,
+	Database,
+	Eye,
+	FileText,
+	GitBranch,
+	Link,
+	Map,
+	Pencil,
+	Zap,
 } from "lucide-vue-next";
+import { computed, ref } from "vue";
+import { Badge } from "@/vue/components/ui/badge/index.js";
 import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@/vue/components/ui/collapsible/index.js";
-import { Badge } from "@/vue/components/ui/badge/index.js";
 
 const props = defineProps({
 	variableUsage: { type: Array, default: () => [] },

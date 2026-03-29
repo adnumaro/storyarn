@@ -24,8 +24,6 @@ const props = defineProps({
 	projectVariables: { type: Array, default: () => [] },
 });
 
-console.log("PinProperties props", props.element);
-
 const live = useLive();
 
 function update(field, value) {

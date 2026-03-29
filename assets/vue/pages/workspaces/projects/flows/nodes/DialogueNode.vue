@@ -1,12 +1,12 @@
 <script setup>
-import { computed, inject, nextTick, ref, watch } from "@/vue/index.js";
 import { MessageSquare } from "lucide-vue-next";
 import { Ref } from "rete-vue-plugin";
-import { previewText, stripHtml } from "../lib/render-helpers.js";
-import { FLOW_CONTEXT_KEY } from "../setup.js";
+import { computed, inject, nextTick, ref, watch } from "vue";
 import EntityCombobox from "../../../../../components/form-fields/EntityCombobox.vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
+import { previewText, stripHtml } from "../lib/render-helpers.js";
+import { FLOW_CONTEXT_KEY } from "../setup.js";
 
 const props = defineProps({
 	data: { type: Object, required: true },
@@ -17,7 +17,11 @@ const props = defineProps({
 	labels: { type: Object, default: () => ({}) },
 });
 
-const ctx = inject(FLOW_CONTEXT_KEY, { editingNodeId: null, onInlineEditSave: null, sheetsMap: {} });
+const ctx = inject(FLOW_CONTEXT_KEY, {
+	editingNodeId: null,
+	onInlineEditSave: null,
+	sheetsMap: {},
+});
 const dialogueRef = ref(null);
 
 const nodeData = computed(() => props.data.nodeData || {});
@@ -46,12 +50,18 @@ const stageDirections = computed(() => nodeData.value.stage_directions || "");
 const menuText = computed(() => nodeData.value.menu_text || "");
 const preview = computed(() => previewText(nodeData.value.text));
 const plainText = computed(() => stripHtml(nodeData.value.text));
-const hasTextContent = computed(() => stageDirections.value || menuText.value || preview.value);
+const hasTextContent = computed(
+	() => stageDirections.value || menuText.value || preview.value,
+);
 const hasAudio = computed(() => !!nodeData.value.audio_asset_id);
 
 // Visual strip: override avatar, default avatar, colored bg, or nothing
-const hasVisual = computed(() => overrideAvatarUrl.value || defaultAvatarUrl.value || speaker.value);
-const hasContent = computed(() => hasTextContent.value || hasVisual.value || responses.value.length > 0);
+const hasVisual = computed(
+	() => overrideAvatarUrl.value || defaultAvatarUrl.value || speaker.value,
+);
+const hasContent = computed(
+	() => hasTextContent.value || hasVisual.value || responses.value.length > 0,
+);
 
 // Sockets
 const inputs = computed(() => Object.entries(props.data?.inputs || {}));
@@ -81,9 +91,20 @@ function getOutputBadges(key) {
 	if (!resp) return [];
 	const badges = [];
 	if (!resp.text) badges.push({ type: "error", title: "Empty response text" });
-	if (resp.has_type_warnings) badges.push({ type: "error", title: "Type mismatch" });
-	if (resp.condition) badges.push({ type: "indicator", color: "#eab308", title: "Has condition" });
-	if ((resp.instruction_assignments || []).length > 0) badges.push({ type: "indicator", color: "#ec4899", title: "Has instructions" });
+	if (resp.has_type_warnings)
+		badges.push({ type: "error", title: "Type mismatch" });
+	if (resp.condition)
+		badges.push({
+			type: "indicator",
+			color: "#eab308",
+			title: "Has condition",
+		});
+	if ((resp.instruction_assignments || []).length > 0)
+		badges.push({
+			type: "indicator",
+			color: "#ec4899",
+			title: "Has instructions",
+		});
 	return badges;
 }
 

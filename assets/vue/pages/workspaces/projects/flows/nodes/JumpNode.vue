@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from "@/vue/index.js";
 import { ArrowRight, LogOut } from "lucide-vue-next";
+import { computed } from "vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
@@ -18,7 +18,9 @@ const targetHub = computed(() => {
 	const id = nodeData.value.target_hub_id;
 	return id ? props.hubsMap[id] : null;
 });
-const targetLabel = computed(() => targetHub.value?.label || nodeData.value.target_hub_id || "");
+const targetLabel = computed(
+	() => targetHub.value?.label || nodeData.value.target_hub_id || "",
+);
 const hasError = computed(() => !nodeData.value.target_hub_id);
 </script>
 

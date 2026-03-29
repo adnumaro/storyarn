@@ -1,28 +1,28 @@
 <script setup>
 import {
-	Type,
 	AlignLeft,
-	Hash,
-	CircleDot,
-	ListChecks,
 	Calendar,
-	ToggleLeft,
-	Link,
-	Table2,
+	CircleDot,
+	Hash,
 	Image,
+	Link,
+	ListChecks,
 	Plus,
+	Table2,
+	ToggleLeft,
+	Type,
 } from "lucide-vue-next";
-import { ref } from "@/vue/index.js";
+import { ref } from "vue";
 import { Button } from "@/vue/components/ui/button/index.js";
-import { Tabs, TabsList, TabsTrigger } from "@/vue/components/ui/tabs/index.js";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
-	DropdownMenuSeparator,
 	DropdownMenuLabel,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/vue/components/ui/dropdown-menu/index.js";
+import { Tabs, TabsList, TabsTrigger } from "@/vue/components/ui/tabs/index.js";
 
 const emit = defineEmits(["select"]);
 

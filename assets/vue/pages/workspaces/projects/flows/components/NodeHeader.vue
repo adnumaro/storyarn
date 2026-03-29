@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "@/vue/index.js";
+import { computed } from "vue";
 import { headerStyle } from "../lib/render-helpers.js";
 
 const props = defineProps({

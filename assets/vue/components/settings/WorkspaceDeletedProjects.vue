@@ -1,25 +1,31 @@
 <script setup>
-import { ref, computed } from "vue";
-import { useLive } from "@/vue/composables/useLive";
-import { Button } from "@/vue/components/ui/button";
-import { Badge } from "@/vue/components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
+	ChevronDown,
+	ChevronUp,
+	Folder,
+	RotateCcw,
+	Trash2,
+} from "lucide-vue-next";
+import { computed, ref } from "vue";
+import { Badge } from "@/vue/components/ui/badge";
+import { Button } from "@/vue/components/ui/button";
+import {
+	Dialog,
+	DialogClose,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
 } from "@/vue/components/ui/dialog";
-import { Folder, ChevronUp, ChevronDown, RotateCcw, Trash2 } from "lucide-vue-next";
+import { useLive } from "@/vue/composables/useLive";
 
 const props = defineProps({
-  deletedProjects: { type: Array, required: true },
-  expandedProjectId: { type: [Number, null], default: null },
-  snapshots: { type: Array, default: () => [] },
-  recovering: { type: Boolean, default: false },
-  translations: { type: Object, required: true },
+	deletedProjects: { type: Array, required: true },
+	expandedProjectId: { type: [Number, null], default: null },
+	snapshots: { type: Array, default: () => [] },
+	recovering: { type: Boolean, default: false },
+	translations: { type: Object, required: true },
 });
 
 const live = useLive();
@@ -29,38 +35,44 @@ const recoverSnapshot = ref(null);
 const recoverProjectId = ref(null);
 
 function toggleProject(projectId) {
-  live.pushEvent("toggle_project", { id: String(projectId) });
+	live.pushEvent("toggle_project", { id: String(projectId) });
 }
 
 function openRecoverDialog(snapshot, projectId) {
-  recoverSnapshot.value = snapshot;
-  recoverProjectId.value = projectId;
-  recoverDialogOpen.value = true;
+	recoverSnapshot.value = snapshot;
+	recoverProjectId.value = projectId;
+	recoverDialogOpen.value = true;
 }
 
 function confirmRecover() {
-  if (recoverSnapshot.value && recoverProjectId.value) {
-    live.pushEvent("recover_project", {
-      snapshot_id: recoverSnapshot.value.id,
-      project_id: recoverProjectId.value,
-    });
-  }
-  recoverDialogOpen.value = false;
+	if (recoverSnapshot.value && recoverProjectId.value) {
+		live.pushEvent("recover_project", {
+			snapshot_id: recoverSnapshot.value.id,
+			project_id: recoverProjectId.value,
+		});
+	}
+	recoverDialogOpen.value = false;
 }
 
 function formatEntityCounts(counts) {
-  if (!counts) return "";
-  const parts = [];
-  if (counts.sheets && counts.sheets > 0) {
-    parts.push(`${counts.sheets} ${counts.sheets === 1 ? props.translations.sheet : props.translations.sheets}`);
-  }
-  if (counts.flows && counts.flows > 0) {
-    parts.push(`${counts.flows} ${counts.flows === 1 ? props.translations.flow : props.translations.flows}`);
-  }
-  if (counts.scenes && counts.scenes > 0) {
-    parts.push(`${counts.scenes} ${counts.scenes === 1 ? props.translations.scene : props.translations.scenes}`);
-  }
-  return parts.join(", ");
+	if (!counts) return "";
+	const parts = [];
+	if (counts.sheets && counts.sheets > 0) {
+		parts.push(
+			`${counts.sheets} ${counts.sheets === 1 ? props.translations.sheet : props.translations.sheets}`,
+		);
+	}
+	if (counts.flows && counts.flows > 0) {
+		parts.push(
+			`${counts.flows} ${counts.flows === 1 ? props.translations.flow : props.translations.flows}`,
+		);
+	}
+	if (counts.scenes && counts.scenes > 0) {
+		parts.push(
+			`${counts.scenes} ${counts.scenes === 1 ? props.translations.scene : props.translations.scenes}`,
+		);
+	}
+	return parts.join(", ");
 }
 </script>
 

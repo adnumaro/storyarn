@@ -14,7 +14,7 @@ import {
 	ref,
 	useTemplateRef,
 	watch,
-} from "@/vue/index.js";
+} from "vue";
 import {
 	ContextMenu,
 	ContextMenuContent,

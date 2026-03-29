@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from "vue";
 import { ProgressIndicator, ProgressRoot } from "reka-ui";
+import { computed } from "vue";
 import { cn } from "@/vue/lib/utils";
 
 const props = defineProps({

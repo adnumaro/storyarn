@@ -1,7 +1,7 @@
 <script setup>
 import { DnDProvider } from "@vue-dnd-kit/core";
 import { Plus } from "lucide-vue-next";
-import { computed, ref, watch } from "@/vue/index.js";
+import { computed, ref, watch } from "vue";
 import { Button } from "@/vue/components/ui/button/index.js";
 import {
 	Dialog,

@@ -1,19 +1,19 @@
 <script setup>
 import { computed, ref, toRef } from "vue";
-import { useAnnotationEditing } from "./composables/useAnnotationEditing";
-import { useAnnotations } from "./composables/useAnnotations";
-import { useCanvasCreation } from "./composables/useCanvasCreation";
-import { useConnectionDrawing } from "./composables/useConnectionDrawing";
-import { useConnections } from "./composables/useConnections";
-import { useDrag } from "./composables/useDrag";
-import { useKonvaStage } from "./composables/useKonvaStage";
-import { usePins } from "./composables/usePins";
-import { useSelection } from "./composables/useSelection";
-import { useVertexEditor } from "./composables/useVertexEditor";
-import { useWaypointEditor } from "./composables/useWaypointEditor";
-import { useZoneDrag } from "./composables/useZoneDrag";
-import { useZoneDrawing } from "./composables/useZoneDrawing";
-import { useZones } from "./composables/useZones";
+import { useAnnotationEditing } from "../composables/useAnnotationEditing";
+import { useAnnotations } from "../composables/useAnnotations";
+import { useCanvasCreation } from "../composables/useCanvasCreation";
+import { useConnectionDrawing } from "../composables/useConnectionDrawing";
+import { useConnections } from "../composables/useConnections";
+import { useDrag } from "../composables/useDrag";
+import { useKonvaStage } from "../composables/useKonvaStage";
+import { usePins } from "../composables/usePins";
+import { useSelection } from "../composables/useSelection";
+import { useVertexEditor } from "../composables/useVertexEditor";
+import { useWaypointEditor } from "../composables/useWaypointEditor";
+import { useZoneDrag } from "../composables/useZoneDrag";
+import { useZoneDrawing } from "../composables/useZoneDrawing";
+import { useZones } from "../composables/useZones";
 import SceneFloatingToolbar from "./SceneFloatingToolbar.vue";
 
 const props = defineProps({

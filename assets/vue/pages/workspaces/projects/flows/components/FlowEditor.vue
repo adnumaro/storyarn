@@ -1,11 +1,11 @@
 <script setup>
-import { onMounted, ref, watch } from "@/vue/index.js";
+import { onMounted, ref, watch } from "vue";
 import { useLive } from "@/vue/composables/useLive.js";
-import { useFlowEditor } from "./composables/useFlowEditor.js";
-import FlowContextMenu from "./components/FlowContextMenu.vue";
-import FlowCursors from "./components/FlowCursors.vue";
+import { useFlowEditor } from "../composables/useFlowEditor.js";
+import FlowContextMenu from "./FlowContextMenu.vue";
+import FlowCursors from "./FlowCursors.vue";
 import FlowFloatingToolbar from "./FlowFloatingToolbar.vue";
-import FlowMinimapToggle from "./components/FlowMinimapToggle.vue";
+import FlowMinimapToggle from "./FlowMinimapToggle.vue";
 
 const props = defineProps({
 	flowData: { type: String, default: null },
@@ -54,16 +54,23 @@ async function initCanvas() {
 	});
 }
 
-watch(() => props.flowData, (val) => {
-	if (val && !initialized) initCanvas();
-});
+watch(
+	() => props.flowData,
+	(val) => {
+		if (val && !initialized) initCanvas();
+	},
+);
 
 onMounted(() => {
 	if (props.flowData) initCanvas();
 });
 
 function safeParse(json) {
-	try { return JSON.parse(json); } catch { return []; }
+	try {
+		return JSON.parse(json);
+	} catch {
+		return [];
+	}
 }
 </script>
 

@@ -3,11 +3,11 @@ import { Settings, X } from "lucide-vue-next";
 import { computed } from "vue";
 import Sidebar from "@/vue/components/layout/Sidebar.vue";
 import { useLive } from "@/vue/composables/useLive";
-import AmbientFlowsSection from "./settings/AmbientFlowsSection.vue";
-import BackgroundSection from "./settings/BackgroundSection.vue";
-import DimensionsSection from "./settings/DimensionsSection.vue";
-import DisplayModeSection from "./settings/DisplayModeSection.vue";
-import ScaleSection from "./settings/ScaleSection.vue";
+import AmbientFlowsSection from "../settings/AmbientFlowsSection.vue";
+import BackgroundSection from "../settings/BackgroundSection.vue";
+import DimensionsSection from "../settings/DimensionsSection.vue";
+import DisplayModeSection from "../settings/DisplayModeSection.vue";
+import ScaleSection from "../settings/ScaleSection.vue";
 
 const props = defineProps({
 	scene: { type: Object, default: null },

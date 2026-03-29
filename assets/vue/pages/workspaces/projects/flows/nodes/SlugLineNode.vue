@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from "@/vue/index.js";
 import { Clapperboard } from "lucide-vue-next";
+import { computed } from "vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
@@ -50,7 +50,9 @@ const slugLine = computed(() => {
 });
 
 const description = computed(() => nodeData.value.description || "");
-const hasContent = computed(() => slugLine.value || description.value || hasVisual.value);
+const hasContent = computed(
+	() => slugLine.value || description.value || hasVisual.value,
+);
 </script>
 
 <template>

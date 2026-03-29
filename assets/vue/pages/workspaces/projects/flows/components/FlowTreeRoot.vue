@@ -1,6 +1,6 @@
 <script setup>
 import { makeDroppable } from "@vue-dnd-kit/core";
-import { useTemplateRef } from "@/vue/index.js";
+import { useTemplateRef } from "vue";
 
 const props = defineProps({
 	items: { type: Array, required: true },

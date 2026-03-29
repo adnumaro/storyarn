@@ -3,32 +3,32 @@ import { useLiveForm } from "live_vue";
 import { Button } from "@/vue/components/ui/button";
 import { Input } from "@/vue/components/ui/input";
 import { Label } from "@/vue/components/ui/label";
-import { Separator } from "@/vue/components/ui/separator";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from "@/vue/components/ui/select";
+import { Separator } from "@/vue/components/ui/separator";
 
 const props = defineProps({
-  profileForm: { type: Object, required: true },
-  emailForm: { type: Object, required: true },
-  currentEmail: { type: String, required: true },
-  translations: { type: Object, required: true },
+	profileForm: { type: Object, required: true },
+	emailForm: { type: Object, required: true },
+	currentEmail: { type: String, required: true },
+	translations: { type: Object, required: true },
 });
 
 const profileForm = useLiveForm(() => props.profileForm, {
-  changeEvent: "validate_profile",
-  submitEvent: "update_profile",
-  debounceInMiliseconds: 300,
+	changeEvent: "validate_profile",
+	submitEvent: "update_profile",
+	debounceInMiliseconds: 300,
 });
 
 const emailForm = useLiveForm(() => props.emailForm, {
-  changeEvent: "validate_email",
-  submitEvent: "update_email",
-  debounceInMiliseconds: 300,
+	changeEvent: "validate_email",
+	submitEvent: "update_email",
+	debounceInMiliseconds: 300,
 });
 
 const displayName = profileForm.field("display_name");

@@ -4,21 +4,21 @@
  * Uses .assignment-row, .sentence-text, .sentence-slot, .operator-selector CSS.
  */
 
+import { ArrowLeftRight, X } from "lucide-vue-next";
 import { computed, ref } from "vue";
-import { X, ArrowLeftRight } from "lucide-vue-next";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import VariableCombobox from "../VariableCombobox.vue";
 import {
-	getTemplate,
-	expandTemplateForVariableRef,
-	NO_VALUE_OPERATORS,
 	ALL_OPERATORS,
-	OPERATOR_VERBS,
+	expandTemplateForVariableRef,
+	getTemplate,
+	NO_VALUE_OPERATORS,
 	OPERATOR_DROPDOWN_LABELS,
+	OPERATOR_VERBS,
 	operatorsForType,
 	typesForOperator,
 } from "@/vue/lib/instruction-operators";
-import { groupVariablesBySheet, findVariable } from "@/vue/lib/variables";
+import { findVariable, groupVariablesBySheet } from "@/vue/lib/variables";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import VariableCombobox from "../VariableCombobox.vue";
 
 const props = defineProps({
 	assignment: { type: Object, required: true },

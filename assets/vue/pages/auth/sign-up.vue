@@ -1,6 +1,6 @@
 <script setup>
-import { ref, onMounted } from "vue";
 import { useLiveForm } from "live_vue";
+import { onMounted, ref } from "vue";
 import { Button } from "@/vue/components/ui/button/index.js";
 import { Input } from "@/vue/components/ui/input/index.js";
 import { Label } from "@/vue/components/ui/label/index.js";
@@ -25,9 +25,12 @@ onMounted(() => {
 	emailInput.value?.focus();
 });
 
-const githubHref = props.oauthAction === "link" ? "/auth/github/link" : "/auth/github";
-const googleHref = props.oauthAction === "link" ? "/auth/google/link" : "/auth/google";
-const discordHref = props.oauthAction === "link" ? "/auth/discord/link" : "/auth/discord";
+const githubHref =
+	props.oauthAction === "link" ? "/auth/github/link" : "/auth/github";
+const googleHref =
+	props.oauthAction === "link" ? "/auth/google/link" : "/auth/google";
+const discordHref =
+	props.oauthAction === "link" ? "/auth/discord/link" : "/auth/discord";
 </script>
 
 <template>

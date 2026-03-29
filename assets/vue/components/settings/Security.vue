@@ -1,27 +1,27 @@
 <script setup>
-import { ref } from "vue";
 import { useLiveForm } from "live_vue";
-import { useLive } from "@/vue/composables/useLive";
+import { Info } from "lucide-vue-next";
+import { ref } from "vue";
 import { Button } from "@/vue/components/ui/button";
 import { Input } from "@/vue/components/ui/input";
 import { Label } from "@/vue/components/ui/label";
 import { Separator } from "@/vue/components/ui/separator";
-import { Info } from "lucide-vue-next";
+import { useLive } from "@/vue/composables/useLive";
 
 const props = defineProps({
-  passwordForm: { type: Object, required: true },
-  currentEmail: { type: String, required: true },
-  triggerSubmit: { type: Boolean, default: false },
-  passwordAction: { type: String, required: true },
-  translations: { type: Object, required: true },
+	passwordForm: { type: Object, required: true },
+	currentEmail: { type: String, required: true },
+	triggerSubmit: { type: Boolean, default: false },
+	passwordAction: { type: String, required: true },
+	translations: { type: Object, required: true },
 });
 
 const live = useLive();
 
 const passwordForm = useLiveForm(() => props.passwordForm, {
-  changeEvent: "validate_password",
-  submitEvent: "update_password",
-  debounceInMiliseconds: 300,
+	changeEvent: "validate_password",
+	submitEvent: "update_password",
+	debounceInMiliseconds: 300,
 });
 
 const password = passwordForm.field("password");
@@ -32,18 +32,22 @@ const hiddenFormRef = ref(null);
 
 // Watch for triggerSubmit from server
 const checkTriggerSubmit = () => {
-  if (props.triggerSubmit && hiddenFormRef.value) {
-    hiddenFormRef.value.submit();
-  }
+	if (props.triggerSubmit && hiddenFormRef.value) {
+		hiddenFormRef.value.submit();
+	}
 };
 
 // Use a watcher effect
 import { watch } from "vue";
-watch(() => props.triggerSubmit, (val) => {
-  if (val && hiddenFormRef.value) {
-    hiddenFormRef.value.submit();
-  }
-});
+
+watch(
+	() => props.triggerSubmit,
+	(val) => {
+		if (val && hiddenFormRef.value) {
+			hiddenFormRef.value.submit();
+		}
+	},
+);
 </script>
 
 <template>

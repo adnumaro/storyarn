@@ -1,6 +1,6 @@
 <script setup>
-import { useTemplateRef } from "@/vue/index.js";
 import { makeDraggable } from "@vue-dnd-kit/core";
+import { useTemplateRef } from "vue";
 
 const props = defineProps({
 	index: { type: Number, required: true },

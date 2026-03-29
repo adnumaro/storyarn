@@ -1,14 +1,14 @@
 <script setup>
+import { makeDraggable, makeDroppable } from "@vue-dnd-kit/core";
+import { ChevronRight, FilePlus, FileText, Trash2 } from "lucide-vue-next";
 import {
-	ref,
 	computed,
-	watch,
 	onMounted,
 	onUnmounted,
+	ref,
 	useTemplateRef,
-} from "@/vue/index.js";
-import { makeDraggable, makeDroppable } from "@vue-dnd-kit/core";
-import { FileText, ChevronRight, Trash2, FilePlus } from "lucide-vue-next";
+	watch,
+} from "vue";
 import {
 	ContextMenu,
 	ContextMenuContent,

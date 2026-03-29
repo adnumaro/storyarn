@@ -6,19 +6,24 @@
  * Three tabs: Text, Responses, Settings.
  */
 
-import { BookOpen, MessageSquare, Settings, X } from "lucide-vue-next";
-import { computed, ref, watch } from "@/vue/index.js";
-import { useEditor, EditorContent } from "@tiptap/vue-3";
-import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
-import Sidebar from "@/vue/components/layout/Sidebar.vue";
-import EntityCombobox from "../../../../components/form-fields/EntityCombobox.vue";
+import StarterKit from "@tiptap/starter-kit";
+import { EditorContent, useEditor } from "@tiptap/vue-3";
+import { BookOpen, MessageSquare, Settings, X } from "lucide-vue-next";
+import { computed, ref, watch } from "vue";
 import ConditionBuilder from "@/vue/components/ConditionBuilder.vue";
+import EntityCombobox from "@/vue/components/form-fields/EntityCombobox.vue";
 import InstructionBuilder from "@/vue/components/InstructionBuilder.vue";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/vue/components/ui/tabs/index.js";
+import Sidebar from "@/vue/components/layout/Sidebar.vue";
 import { Button } from "@/vue/components/ui/button/index.js";
 import { Input } from "@/vue/components/ui/input/index.js";
 import { Label } from "@/vue/components/ui/label/index.js";
+import {
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from "@/vue/components/ui/tabs/index.js";
 import { useLive } from "@/vue/composables/useLive.js";
 
 const props = defineProps({
@@ -34,11 +39,17 @@ const activeTab = ref("text");
 
 const parsedVariables = computed(() => {
 	if (Array.isArray(props.projectVariables)) return props.projectVariables;
-	try { return JSON.parse(props.projectVariables); } catch { return []; }
+	try {
+		return JSON.parse(props.projectVariables);
+	} catch {
+		return [];
+	}
 });
 const nodeData = computed(() => props.node?.data || {});
 const speakerId = computed(() => nodeData.value.speaker_sheet_id || null);
-const speakerOptions = computed(() => props.allSheets.map((s) => ({ id: s.id, name: s.name })));
+const speakerOptions = computed(() =>
+	props.allSheets.map((s) => ({ id: s.id, name: s.name })),
+);
 const responses = computed(() => nodeData.value.responses || []);
 
 // TipTap editor for dialogue text
@@ -62,30 +73,45 @@ const editor = useEditor({
 });
 
 // Sync editor content when node changes
-watch(() => nodeData.value.text, (newText) => {
-	if (editor.value && newText !== editor.value.getHTML()) {
-		editor.value.commands.setContent(newText || "", false);
-	}
-});
+watch(
+	() => nodeData.value.text,
+	(newText) => {
+		if (editor.value && newText !== editor.value.getHTML()) {
+			editor.value.commands.setContent(newText || "", false);
+		}
+	},
+);
 
 function close() {
 	live.pushEvent("close_editor", {});
 }
 
 function updateSpeaker(sheetId) {
-	live.pushEvent("update_node_field", { field: "speaker_sheet_id", value: sheetId });
+	live.pushEvent("update_node_field", {
+		field: "speaker_sheet_id",
+		value: sheetId,
+	});
 }
 
 function updateStageDirections(e) {
-	live.pushEvent("update_node_field", { field: "stage_directions", value: e.target.value });
+	live.pushEvent("update_node_field", {
+		field: "stage_directions",
+		value: e.target.value,
+	});
 }
 
 function updateMenuText(e) {
-	live.pushEvent("update_node_field", { field: "menu_text", value: e.target.value });
+	live.pushEvent("update_node_field", {
+		field: "menu_text",
+		value: e.target.value,
+	});
 }
 
 function updateTechnicalId(e) {
-	live.pushEvent("update_node_field", { field: "technical_id", value: e.target.value });
+	live.pushEvent("update_node_field", {
+		field: "technical_id",
+		value: e.target.value,
+	});
 }
 
 function addResponse() {
@@ -101,11 +127,17 @@ function updateResponseText(responseId, text) {
 }
 
 function updateResponseCondition(responseId, condition) {
-	live.pushEvent("update_response_condition", { response_id: responseId, condition });
+	live.pushEvent("update_response_condition", {
+		response_id: responseId,
+		condition,
+	});
 }
 
 function updateResponseAssignments(responseId, assignments) {
-	live.pushEvent("update_response_assignments", { response_id: responseId, assignments });
+	live.pushEvent("update_response_assignments", {
+		response_id: responseId,
+		assignments,
+	});
 }
 </script>
 

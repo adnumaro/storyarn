@@ -17,7 +17,7 @@ import {
 	Trash2,
 	Zap,
 } from "lucide-vue-next";
-import { computed, nextTick, onMounted, onUnmounted, ref } from "@/vue/index.js";
+import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { useLive } from "@/vue/composables/useLive.js";
 
 const props = defineProps({
@@ -44,7 +44,9 @@ const NODE_TYPES = [
 	{ type: "slug_line", icon: Clapperboard, label: "Slug Line" },
 ];
 
-const isNodeMenu = computed(() => props.selectedNodeId != null && visible.value);
+const isNodeMenu = computed(
+	() => props.selectedNodeId != null && visible.value,
+);
 
 function onContextMenu(e) {
 	e.preventDefault();

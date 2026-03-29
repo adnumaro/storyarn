@@ -1,16 +1,16 @@
 <script setup>
 import { computed, onMounted, ref, toRef } from "vue";
+import { useLive } from "@/vue/composables/useLive";
 import { useConnections } from "../composables/useConnections";
 import { useKonvaStage } from "../composables/useKonvaStage";
 import { usePins } from "../composables/usePins";
 import { useZones } from "../composables/useZones";
-import SpeechBubble from "./SpeechBubble.vue";
-import SubtitleBar from "./SubtitleBar.vue";
-import { useLive } from "@/vue/composables/useLive";
-import { useExplorationInteraction } from "./composables/useExplorationInteraction";
 import { useAmbientDisplay } from "./composables/useAmbientDisplay";
+import { useExplorationInteraction } from "./composables/useExplorationInteraction";
 import { useMovement } from "./composables/useMovement";
 import { usePatrols } from "./composables/usePatrols";
+import SpeechBubble from "./SpeechBubble.vue";
+import SubtitleBar from "./SubtitleBar.vue";
 
 const props = defineProps({
 	sceneData: { type: Object, default: null },
@@ -55,9 +55,7 @@ const visiblePins = computed(() =>
 const visibleZones = computed(() =>
 	allZones.value.filter((z) => z.visibility !== "hide"),
 );
-const connections = computed(
-	() => props.explorationData?.connections || [],
-);
+const connections = computed(() => props.explorationData?.connections || []);
 
 // --- Visibility lookup maps ---
 const zoneVisibility = computed(() =>
@@ -109,10 +107,7 @@ const {
 });
 
 // --- Patrols ---
-const {
-	pause: pausePatrols,
-	resume: resumePatrols,
-} = usePatrols({
+const { pause: pausePatrols, resume: resumePatrols } = usePatrols({
 	explorationPins: allPins,
 	percentToPixel,
 	getPinNode,

@@ -1,6 +1,6 @@
 <script setup>
 import { Lock } from "lucide-vue-next";
-import { computed } from "@/vue/index.js";
+import { computed } from "vue";
 
 const props = defineProps({
 	locks: { type: Object, default: () => ({}) },

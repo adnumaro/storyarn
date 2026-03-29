@@ -9,7 +9,12 @@ const props = defineProps({
 
 const selectedIndex = ref(0);
 
-watch(() => props.items, () => { selectedIndex.value = 0; });
+watch(
+	() => props.items,
+	() => {
+		selectedIndex.value = 0;
+	},
+);
 
 function selectItem(index) {
 	const item = props.items[index];
@@ -18,7 +23,8 @@ function selectItem(index) {
 
 function onKeyDown({ event }) {
 	if (event.key === "ArrowUp") {
-		selectedIndex.value = (selectedIndex.value - 1 + props.items.length) % props.items.length;
+		selectedIndex.value =
+			(selectedIndex.value - 1 + props.items.length) % props.items.length;
 		return true;
 	}
 	if (event.key === "ArrowDown") {

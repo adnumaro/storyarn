@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from "vue";
 import { ChevronRight, CornerDownLeft, MapIcon } from "lucide-vue-next";
+import { computed } from "vue";
 import { useLive } from "@/vue/composables/useLive";
 
 const props = defineProps({

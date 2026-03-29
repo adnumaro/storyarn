@@ -1,7 +1,7 @@
 <script setup>
-import { ref, shallowRef, onMounted, onUnmounted, computed } from "vue";
 import { TresCanvas } from "@tresjs/core";
 import * as THREE from "three";
+import { computed, onMounted, onUnmounted, ref, shallowRef } from "vue";
 import PortalScene from "./PortalScene.vue";
 
 const props = defineProps({
@@ -24,8 +24,12 @@ const uniforms = shallowRef({
 	uPortalMaxWidth: { value: 1000 },
 });
 
-const powerPreference = computed(() => (isMobile.value ? "low-power" : "high-performance"));
-const pixelRatio = computed(() => (isMobile.value ? 1 : Math.min(window.devicePixelRatio, 2)));
+const powerPreference = computed(() =>
+	isMobile.value ? "low-power" : "high-performance",
+);
+const pixelRatio = computed(() =>
+	isMobile.value ? 1 : Math.min(window.devicePixelRatio, 2),
+);
 
 // Public API for scroll animation to control
 function setIntensity(v) {
@@ -38,8 +42,11 @@ function setScale(v) {
 defineExpose({ setIntensity, setScale });
 
 onMounted(() => {
-	isMobile.value = /Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 768;
-	reducedMotion.value = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+	isMobile.value =
+		/Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 768;
+	reducedMotion.value = window.matchMedia(
+		"(prefers-reduced-motion: reduce)",
+	).matches;
 
 	// Mobile: skip WebGL entirely
 	if (isMobile.value) {
@@ -97,7 +104,10 @@ function updatePortalPosition() {
 			2220,
 		);
 
-		u.uPortalCenter.value.set(localCenterX, height - localCenterY - portalYOffset);
+		u.uPortalCenter.value.set(
+			localCenterX,
+			height - localCenterY - portalYOffset,
+		);
 		u.uPortalMaxWidth.value = maxPortalWidth;
 	} else {
 		u.uPortalCenter.value.set(width * 0.5, height * 0.5);

@@ -1,6 +1,6 @@
 <script setup>
 import { Image, X } from "lucide-vue-next";
-import { ref } from "@/vue/index.js";
+import { ref } from "vue";
 import {
 	Popover,
 	PopoverContent,

@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from "@/vue/index.js";
 import { TriangleAlert, Zap } from "lucide-vue-next";
+import { computed } from "vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
@@ -27,7 +27,11 @@ function formatAssignment(assignment) {
 	if (op === "clear") return `Clear ${ref}`;
 
 	let valueDisplay;
-	if (assignment.value_type === "variable_ref" && assignment.value_sheet && assignment.value) {
+	if (
+		assignment.value_type === "variable_ref" &&
+		assignment.value_sheet &&
+		assignment.value
+	) {
 		valueDisplay = `${assignment.value_sheet}.${assignment.value}`;
 	} else {
 		valueDisplay = assignment.value || "?";
@@ -50,8 +54,8 @@ const summary = computed(() => {
 		.join("\n");
 });
 
-const hasWarnings = computed(() =>
-	nodeData.value.has_stale_refs || nodeData.value.has_type_warnings,
+const hasWarnings = computed(
+	() => nodeData.value.has_stale_refs || nodeData.value.has_type_warnings,
 );
 const hasStaleRefs = computed(() => nodeData.value.has_stale_refs);
 </script>

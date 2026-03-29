@@ -11,7 +11,7 @@ import {
 	ToolbarSizePicker,
 	ToolbarStrokePicker,
 	ToolbarTypePicker,
-} from "./toolbar";
+} from "../toolbar";
 
 const props = defineProps({
 	selectedType: { type: String, default: null },

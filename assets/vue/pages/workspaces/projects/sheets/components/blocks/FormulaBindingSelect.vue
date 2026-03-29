@@ -9,20 +9,13 @@
  * guard unlocked only after DOM settles (scroll position restored).
  */
 import {
-	ref,
 	computed,
-	watch,
 	nextTick,
-	onBeforeUpdate,
 	onBeforeUnmount,
-} from "@/vue/index.js";
-import { useLive } from "@/vue/composables/useLive.js";
-import { useServerSearch } from "@/vue/composables/useServerSearch.js";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/vue/components/ui/popover/index.js";
+	onBeforeUpdate,
+	ref,
+	watch,
+} from "vue";
 import {
 	Command,
 	CommandEmpty,
@@ -31,6 +24,13 @@ import {
 	CommandItem,
 	CommandList,
 } from "@/vue/components/ui/command/index.js";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/vue/components/ui/popover/index.js";
+import { useLive } from "@/vue/composables/useLive.js";
+import { useServerSearch } from "@/vue/composables/useServerSearch.js";
 
 const props = defineProps({
 	modelValue: { type: String, default: "" },

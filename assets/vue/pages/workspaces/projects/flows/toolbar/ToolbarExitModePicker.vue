@@ -1,6 +1,11 @@
 <script setup>
-import { ArrowRight, ArrowRightToLine, ChevronDown, Undo2 } from "lucide-vue-next";
-import { computed, ref } from "@/vue/index.js";
+import {
+	ArrowRight,
+	ArrowRightToLine,
+	ChevronDown,
+	Undo2,
+} from "lucide-vue-next";
+import { computed, ref } from "vue";
 import {
 	Popover,
 	PopoverContent,
@@ -8,9 +13,24 @@ import {
 } from "@/vue/components/ui/popover/index.js";
 
 const EXIT_MODES = [
-	{ value: "terminal", icon: ArrowRightToLine, label: "Terminal", description: "End of flow — no continuation" },
-	{ value: "flow_reference", icon: ArrowRight, label: "Flow Reference", description: "Continue to another flow" },
-	{ value: "caller_return", icon: Undo2, label: "Caller Return", description: "Return to the calling flow" },
+	{
+		value: "terminal",
+		icon: ArrowRightToLine,
+		label: "Terminal",
+		description: "End of flow — no continuation",
+	},
+	{
+		value: "flow_reference",
+		icon: ArrowRight,
+		label: "Flow Reference",
+		description: "Continue to another flow",
+	},
+	{
+		value: "caller_return",
+		icon: Undo2,
+		label: "Caller Return",
+		description: "Return to the calling flow",
+	},
 ];
 
 const props = defineProps({
@@ -21,7 +41,9 @@ const props = defineProps({
 const emit = defineEmits(["update:mode"]);
 const open = ref(false);
 
-const current = computed(() => EXIT_MODES.find((m) => m.value === props.mode) || EXIT_MODES[0]);
+const current = computed(
+	() => EXIT_MODES.find((m) => m.value === props.mode) || EXIT_MODES[0],
+);
 
 function selectMode(value) {
 	emit("update:mode", value);

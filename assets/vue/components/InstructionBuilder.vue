@@ -7,8 +7,8 @@
  * are reflected immediately without waiting for LiveView prop updates.
  */
 
-import { ref, watch } from "vue";
 import { Plus } from "lucide-vue-next";
+import { ref, watch } from "vue";
 import AssignmentRow from "./instruction/AssignmentRow.vue";
 
 const props = defineProps({

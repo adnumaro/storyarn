@@ -1,7 +1,7 @@
 <script setup>
-import { computed, useTemplateRef } from "@/vue/index.js";
 import { makeDraggable, makeDroppable } from "@vue-dnd-kit/core";
 import { GripVertical } from "lucide-vue-next";
+import { computed, useTemplateRef } from "vue";
 
 const props = defineProps({
 	blockId: { type: [Number, String], required: true },

@@ -1,6 +1,6 @@
 <script setup>
 import { ChevronDown } from "lucide-vue-next";
-import { computed, ref } from "@/vue/index.js";
+import { computed, ref } from "vue";
 import {
 	Command,
 	CommandEmpty,

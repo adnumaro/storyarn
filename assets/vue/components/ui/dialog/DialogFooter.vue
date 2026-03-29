@@ -1,7 +1,7 @@
 <script setup>
 import { DialogClose } from "reka-ui";
-import { cn } from "@/vue/lib/utils";
 import { Button } from "@/vue/components/ui/button";
+import { cn } from "@/vue/lib/utils";
 
 const props = defineProps({
 	class: {

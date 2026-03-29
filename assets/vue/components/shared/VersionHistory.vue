@@ -1,40 +1,40 @@
 <script setup>
 import {
-	Clock,
+	AlertTriangle,
 	Bookmark,
 	BookmarkPlus,
 	ChevronDown,
 	ChevronRight,
+	CircleAlert,
+	Clock,
 	Columns2,
-	RotateCcw,
-	Trash2,
-	Plus,
-	Save,
-	X,
-	AlertTriangle,
-	Info,
-	Loader2,
-	Image,
 	FileText,
 	GitBranch,
+	Image,
+	Info,
+	Loader2,
 	Map,
+	Plus,
 	Puzzle,
-	CircleAlert,
+	RotateCcw,
+	Save,
+	Trash2,
+	X,
 } from "lucide-vue-next";
 import { Badge } from "@/vue/components/ui/badge";
 import { Button } from "@/vue/components/ui/button";
+import {
+	Dialog,
+	DialogClose,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/vue/components/ui/dialog";
 import { Input } from "@/vue/components/ui/input";
 import { Label } from "@/vue/components/ui/label";
 import { Textarea } from "@/vue/components/ui/textarea";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogDescription,
-	DialogFooter,
-	DialogClose,
-} from "@/vue/components/ui/dialog";
 import { useLive } from "@/vue/composables/useLive";
 import { useVersionHistory } from "./useVersionHistory";
 

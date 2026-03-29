@@ -5,8 +5,9 @@
  *
  * Default slot: rendered after the label row (e.g. menu button).
  */
-import { ref, nextTick, watch } from "@/vue/index.js";
+
 import { Lock } from "lucide-vue-next";
+import { nextTick, ref, watch } from "vue";
 
 const props = defineProps({
 	icon: { type: [Object, Function], required: true },

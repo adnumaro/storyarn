@@ -1,10 +1,9 @@
 <script setup>
-import { ref } from "vue";
 import { ArrowLeft, Sparkles } from "lucide-vue-next";
+import { ref } from "vue";
+import { Badge } from "@/vue/components/ui/badge";
 import { Button } from "@/vue/components/ui/button";
 import { Label } from "@/vue/components/ui/label";
-import { Textarea } from "@/vue/components/ui/textarea";
-import { Badge } from "@/vue/components/ui/badge";
 import {
 	Select,
 	SelectContent,
@@ -12,6 +11,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/vue/components/ui/select";
+import { Textarea } from "@/vue/components/ui/textarea";
 import { useLive } from "@/vue/composables/useLive";
 
 const props = defineProps({
@@ -24,9 +24,13 @@ const props = defineProps({
 
 const live = useLive();
 
-const translatedText = ref(props.form.params?.translated_text || props.text.translated_text || "");
+const translatedText = ref(
+	props.form.params?.translated_text || props.text.translated_text || "",
+);
 const status = ref(props.form.params?.status || props.text.status || "pending");
-const translatorNotes = ref(props.form.params?.translator_notes || props.text.translator_notes || "");
+const translatorNotes = ref(
+	props.form.params?.translator_notes || props.text.translator_notes || "",
+);
 const saving = ref(false);
 const translating = ref(false);
 
@@ -40,15 +44,19 @@ const statusOptions = [
 
 function saveTranslation() {
 	saving.value = true;
-	live.pushEvent("save_translation", {
-		localized_text: {
-			translated_text: translatedText.value,
-			status: status.value,
-			translator_notes: translatorNotes.value,
+	live.pushEvent(
+		"save_translation",
+		{
+			localized_text: {
+				translated_text: translatedText.value,
+				status: status.value,
+				translator_notes: translatorNotes.value,
+			},
 		},
-	}, () => {
-		saving.value = false;
-	});
+		() => {
+			saving.value = false;
+		},
+	);
 }
 
 function translateWithDeepL() {
@@ -60,9 +68,11 @@ function translateWithDeepL() {
 
 // Update local state when server pushes new text data
 live.handleEvent("text_updated", (payload) => {
-	if (payload.translated_text !== undefined) translatedText.value = payload.translated_text;
+	if (payload.translated_text !== undefined)
+		translatedText.value = payload.translated_text;
 	if (payload.status !== undefined) status.value = payload.status;
-	if (payload.translator_notes !== undefined) translatorNotes.value = payload.translator_notes;
+	if (payload.translator_notes !== undefined)
+		translatorNotes.value = payload.translator_notes;
 });
 
 function formatDateTime(datetime) {

@@ -2,8 +2,9 @@
 /**
  * Color picker using vanilla-colorful web components inside shadcn Popover.
  */
-import { ref, watch, onBeforeUnmount } from "vue";
+
 import { ChevronDown, Pipette } from "lucide-vue-next";
+import { onBeforeUnmount, ref, watch } from "vue";
 import {
 	Popover,
 	PopoverContent,
@@ -31,7 +32,12 @@ const hexInputRef = ref(null);
 const isOpen = ref(false);
 let debounceTimer = null;
 
-watch(() => props.color, (v) => { localColor.value = v; });
+watch(
+	() => props.color,
+	(v) => {
+		localColor.value = v;
+	},
+);
 
 function pushColor(hex) {
 	localColor.value = hex;
@@ -66,14 +72,18 @@ async function pickFromScreen() {
 		const dropper = new EyeDropper();
 		const result = await dropper.open();
 		setColor(result.sRGBHex);
-	} catch { /* cancelled */ }
+	} catch {
+		/* cancelled */
+	}
 }
 
 function onPopoverOpen(open) {
 	isOpen.value = open;
 }
 
-onBeforeUnmount(() => { clearTimeout(debounceTimer); });
+onBeforeUnmount(() => {
+	clearTimeout(debounceTimer);
+});
 </script>
 
 <template>

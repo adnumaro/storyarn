@@ -1,6 +1,6 @@
 <script setup>
-import { ref } from "vue";
 import { Play, X } from "lucide-vue-next";
+import { ref } from "vue";
 import PortalRing from "./PortalRing.vue";
 
 const props = defineProps({

@@ -4,9 +4,9 @@
  */
 
 import { Plus, Ungroup } from "lucide-vue-next";
+import { generateId } from "@/vue/lib/variables";
 import ConditionBlock from "./ConditionBlock.vue";
 import LogicToggle from "./LogicToggle.vue";
-import { generateId } from "@/vue/lib/variables";
 
 const props = defineProps({
 	group: { type: Object, required: true },

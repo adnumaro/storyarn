@@ -15,7 +15,7 @@ import {
 	TextCursorInput,
 	Trash2,
 } from "lucide-vue-next";
-import { computed } from "@/vue/index.js";
+import { computed } from "vue";
 import { Badge } from "@/vue/components/ui/badge/index.js";
 import { Button } from "@/vue/components/ui/button/index.js";
 import {
@@ -110,10 +110,30 @@ const statCards = computed(() => {
 const columns = [
 	{ key: "name", label: "Name", align: "left" },
 	{ key: "node_count", label: "Nodes", align: "right" },
-	{ key: "dialogue_count", label: "Dialogue", align: "right", hiddenClass: "hidden sm:table-cell" },
-	{ key: "condition_count", label: "Conditions", align: "right", hiddenClass: "hidden sm:table-cell" },
-	{ key: "word_count", label: "Words", align: "right", hiddenClass: "hidden md:table-cell" },
-	{ key: "updated_at", label: "Modified", align: "right", hiddenClass: "hidden md:table-cell" },
+	{
+		key: "dialogue_count",
+		label: "Dialogue",
+		align: "right",
+		hiddenClass: "hidden sm:table-cell",
+	},
+	{
+		key: "condition_count",
+		label: "Conditions",
+		align: "right",
+		hiddenClass: "hidden sm:table-cell",
+	},
+	{
+		key: "word_count",
+		label: "Words",
+		align: "right",
+		hiddenClass: "hidden md:table-cell",
+	},
+	{
+		key: "updated_at",
+		label: "Modified",
+		align: "right",
+		hiddenClass: "hidden md:table-cell",
+	},
 ];
 
 const pages = computed(() => {

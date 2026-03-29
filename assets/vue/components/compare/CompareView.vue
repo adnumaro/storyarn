@@ -1,5 +1,10 @@
 <script setup>
-import { ArrowLeft, Columns2, ChevronLeft, ChevronRight } from "lucide-vue-next";
+import {
+	ArrowLeft,
+	ChevronLeft,
+	ChevronRight,
+	Columns2,
+} from "lucide-vue-next";
 import { Button } from "@/vue/components/ui/button";
 
 const props = defineProps({

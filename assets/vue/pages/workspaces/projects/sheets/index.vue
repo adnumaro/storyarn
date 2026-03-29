@@ -15,7 +15,7 @@ import {
 	Trash2,
 	Variable,
 } from "lucide-vue-next";
-import { computed } from "@/vue/index.js";
+import { computed } from "vue";
 import { Button } from "@/vue/components/ui/button/index.js";
 import {
 	DropdownMenu,

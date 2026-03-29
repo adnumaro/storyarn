@@ -2,8 +2,8 @@
 import { reactiveOmit } from "@vueuse/core";
 import { ToggleGroupItem, useForwardProps } from "reka-ui";
 import { inject } from "vue";
-import { cn } from "@/vue/lib/utils";
 import { toggleVariants } from "@/vue/components/ui/toggle";
+import { cn } from "@/vue/lib/utils";
 
 const props = defineProps({
 	value: { type: null, required: true },

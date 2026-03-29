@@ -1,40 +1,40 @@
 <script setup>
-import { ref, watch, nextTick, useTemplateRef } from "@/vue/index.js";
-import { useLive } from "@/vue/composables/useLive.js";
 import { makeDroppable } from "@vue-dnd-kit/core";
 import {
-	Plus,
-	Trash2,
+	ArrowLeft,
+	ArrowLeftRight,
+	Asterisk,
+	Calendar,
+	Check,
 	ChevronDown,
 	ChevronRight,
-	GripVertical,
-	X,
-	Check,
-	Hash,
-	Type,
-	ToggleLeft,
 	CircleDot,
-	List,
-	Calendar,
-	Sigma,
-	Link,
 	Columns2,
-	Lock,
-	Asterisk,
-	ArrowLeftRight,
-	Settings,
-	SlidersHorizontal,
+	GripVertical,
+	Hash,
 	Layers,
-	ArrowLeft,
+	Link,
+	List,
+	Lock,
+	Plus,
+	Settings,
+	Sigma,
+	SlidersHorizontal,
+	ToggleLeft,
+	Trash2,
+	Type,
+	X,
 } from "lucide-vue-next";
-import { Checkbox } from "@/vue/components/ui/checkbox/index.js";
+import { nextTick, ref, useTemplateRef, watch } from "vue";
 import { Badge } from "@/vue/components/ui/badge/index.js";
+import { Checkbox } from "@/vue/components/ui/checkbox/index.js";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/vue/components/ui/popover/index.js";
 import { Separator } from "@/vue/components/ui/separator/index.js";
+import { useLive } from "@/vue/composables/useLive.js";
 import TableDraggableRow from "./TableDraggableRow.vue";
 
 const props = defineProps({

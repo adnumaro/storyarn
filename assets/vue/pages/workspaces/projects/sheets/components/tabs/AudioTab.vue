@@ -1,37 +1,37 @@
 <script setup>
-import { ref, computed, watch } from "@/vue/index.js";
-import { useLive } from "@/vue/composables/useLive.js";
 import {
-	GitBranch,
-	Volume2,
-	VolumeX,
 	ArrowUpRight,
-	Upload,
-	X,
+	ChevronDown,
+	GitBranch,
+	Headphones,
 	Loader2,
 	Search,
-	Headphones,
-	ChevronDown,
+	Upload,
+	Volume2,
+	VolumeX,
+	X,
 } from "lucide-vue-next";
+import { computed, ref, watch } from "vue";
 import { Badge } from "@/vue/components/ui/badge/index.js";
+import { Button } from "@/vue/components/ui/button/index.js";
 import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@/vue/components/ui/collapsible/index.js";
-import { Button } from "@/vue/components/ui/button/index.js";
-import {
-	Popover,
-	PopoverTrigger,
-	PopoverContent,
-} from "@/vue/components/ui/popover/index.js";
 import {
 	Command,
-	CommandInput,
-	CommandList,
-	CommandItem,
 	CommandEmpty,
+	CommandInput,
+	CommandItem,
+	CommandList,
 } from "@/vue/components/ui/command/index.js";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/vue/components/ui/popover/index.js";
+import { useLive } from "@/vue/composables/useLive.js";
 
 const props = defineProps({
 	groupedLines: { type: Array, default: () => [] },
@@ -55,9 +55,7 @@ const totalLines = computed(() =>
 const filteredAssets = computed(() => {
 	if (!searchQuery.value) return props.audioAssets;
 	const q = searchQuery.value.toLowerCase();
-	return props.audioAssets.filter((a) =>
-		a.filename.toLowerCase().includes(q),
-	);
+	return props.audioAssets.filter((a) => a.filename.toLowerCase().includes(q));
 });
 
 // Reset uploading state when props update with new audio data

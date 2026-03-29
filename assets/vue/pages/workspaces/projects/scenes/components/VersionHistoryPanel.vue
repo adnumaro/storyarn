@@ -1,8 +1,8 @@
 <script setup>
 import { History, X } from "lucide-vue-next";
-import { useLive } from "@/vue/composables/useLive";
 import Sidebar from "@/vue/components/layout/Sidebar.vue";
 import VersionHistory from "@/vue/components/shared/VersionHistory.vue";
+import { useLive } from "@/vue/composables/useLive";
 
 const props = defineProps({
 	versions: { type: Array, default: () => [] },

@@ -7,8 +7,7 @@
  * Matches the existing CSS: .sentence-slot, .sentence-slot.filled, .sentence-slot:focus
  */
 
-import { computed, ref, nextTick } from "vue";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { computed, nextTick, ref } from "vue";
 import {
 	Command,
 	CommandEmpty,
@@ -17,6 +16,7 @@ import {
 	CommandItem,
 	CommandList,
 } from "./ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
 const props = defineProps({
 	/** Currently selected value */

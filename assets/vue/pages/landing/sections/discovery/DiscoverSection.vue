@@ -1,8 +1,16 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from "vue";
+import {
+	computed,
+	defineAsyncComponent,
+	onMounted,
+	onUnmounted,
+	ref,
+} from "vue";
 import { useRevealOnScroll } from "../../composables/useRevealOnScroll.js";
 
-const DiscoverMonitor = defineAsyncComponent(() => import("./DiscoverMonitor.vue"));
+const DiscoverMonitor = defineAsyncComponent(
+	() => import("./DiscoverMonitor.vue"),
+);
 
 const props = defineProps({
 	translations: { type: Object, required: true },
@@ -10,7 +18,9 @@ const props = defineProps({
 
 const activeTab = ref(0);
 const sectionRef = ref(null);
-const { elementRef: revealRef, isRevealed } = useRevealOnScroll({ threshold: 0.1 });
+const { elementRef: revealRef, isRevealed } = useRevealOnScroll({
+	threshold: 0.1,
+});
 
 const TOTAL_STEPS = 3;
 let scrollLocked = false;
@@ -63,7 +73,10 @@ function onScroll() {
 	}
 
 	const progress = scrolled / scrollableHeight;
-	activeTab.value = Math.min(Math.floor(progress * TOTAL_STEPS), TOTAL_STEPS - 1);
+	activeTab.value = Math.min(
+		Math.floor(progress * TOTAL_STEPS),
+		TOTAL_STEPS - 1,
+	);
 }
 
 function scrollToTab(index) {

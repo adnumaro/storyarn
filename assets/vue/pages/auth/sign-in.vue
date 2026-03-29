@@ -1,6 +1,6 @@
 <script setup>
-import { ref, onMounted } from "vue";
 import { Info } from "lucide-vue-next";
+import { onMounted, ref } from "vue";
 import { Button } from "@/vue/components/ui/button/index.js";
 import { Input } from "@/vue/components/ui/input/index.js";
 import { Label } from "@/vue/components/ui/label/index.js";

@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from "vue";
 import { Database, GitBranch, Play, Upload } from "lucide-vue-next";
+import { computed } from "vue";
 import { useRevealOnScroll } from "../composables/useRevealOnScroll.js";
 
 const props = defineProps({

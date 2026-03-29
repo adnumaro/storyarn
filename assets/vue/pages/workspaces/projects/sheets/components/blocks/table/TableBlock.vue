@@ -1,10 +1,10 @@
 <script setup>
-import { computed } from "@/vue/index.js";
-import { Table2, ChevronRight, ChevronDown, Lock } from "lucide-vue-next";
-import BlockToolbar from "../BlockToolbar.vue";
+import { ChevronDown, ChevronRight, Lock, Table2 } from "lucide-vue-next";
+import { computed } from "vue";
+import { useBlockActions } from "../../../composables/useBlockActions.js";
+import BlockLabel from "../../BlockLabel.vue";
+import BlockToolbar from "../../BlockToolbar.vue";
 import TableGrid from "./TableGrid.vue";
-import { useBlockActions } from "./useBlockActions.js";
-import BlockLabel from '@/vue/pages/workspaces/projects/sheets/blocks/BlockLabel.vue'
 
 const props = defineProps({
 	block: { type: Object, required: true },
@@ -12,12 +12,7 @@ const props = defineProps({
 	inherited: { type: Boolean, default: false },
 });
 
-const {
-	live,
-	label,
-	isSelected,
-	onBlockClick,
-} = useBlockActions(props);
+const { live, label, isSelected, onBlockClick } = useBlockActions(props);
 
 // can_manage: can modify table structure (add/delete/rename columns/rows, collapse)
 // When inherited (schema_locked): structure is locked but cell values are still editable
@@ -34,11 +29,11 @@ const summary = computed(() => {
 });
 
 function saveLabel(val) {
-  live.pushEvent("update_block_config", {
-    id: props.block.id,
-    field: "label",
-    value: val,
-  });
+	live.pushEvent("update_block_config", {
+		id: props.block.id,
+		field: "label",
+		value: val,
+	});
 }
 
 function toggleCollapse() {

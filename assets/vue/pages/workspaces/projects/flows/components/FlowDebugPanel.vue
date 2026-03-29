@@ -14,12 +14,17 @@ import {
 	Square,
 	StepBack,
 } from "lucide-vue-next";
-import { computed, ref } from "@/vue/index.js";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/vue/components/ui/tabs/index.js";
-import { Button } from "@/vue/components/ui/button/index.js";
-import { Slider } from "@/vue/components/ui/slider/index.js";
-import { Input } from "@/vue/components/ui/input/index.js";
+import { computed, ref } from "vue";
 import { Badge } from "@/vue/components/ui/badge/index.js";
+import { Button } from "@/vue/components/ui/button/index.js";
+import { Input } from "@/vue/components/ui/input/index.js";
+import { Slider } from "@/vue/components/ui/slider/index.js";
+import {
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from "@/vue/components/ui/tabs/index.js";
 import { useLive } from "@/vue/composables/useLive.js";
 
 const props = defineProps({
@@ -64,10 +69,18 @@ function formatSpeed(ms) {
 	return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`;
 }
 
-function step() { live.pushEvent("debug_step", {}); }
-function stepBack() { live.pushEvent("debug_step_back", {}); }
-function reset() { live.pushEvent("debug_reset", {}); }
-function stop() { live.pushEvent("debug_stop", {}); }
+function step() {
+	live.pushEvent("debug_step", {});
+}
+function stepBack() {
+	live.pushEvent("debug_step_back", {});
+}
+function reset() {
+	live.pushEvent("debug_reset", {});
+}
+function stop() {
+	live.pushEvent("debug_stop", {});
+}
 function togglePlay() {
 	live.pushEvent(props.debugAutoPlaying ? "debug_pause" : "debug_play", {});
 }

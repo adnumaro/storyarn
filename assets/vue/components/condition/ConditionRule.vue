@@ -5,15 +5,15 @@
  * Uses .condition-rule-row and .sentence-text/.sentence-slot CSS classes.
  */
 
-import { computed } from "vue";
 import { X } from "lucide-vue-next";
-import VariableCombobox from "../VariableCombobox.vue";
+import { computed } from "vue";
 import {
-	OPERATOR_LABELS,
 	NO_VALUE_OPERATORS,
+	OPERATOR_LABELS,
 	operatorsForType,
 } from "@/vue/lib/condition-operators";
-import { groupVariablesBySheet, findVariable } from "@/vue/lib/variables";
+import { findVariable, groupVariablesBySheet } from "@/vue/lib/variables";
+import VariableCombobox from "../VariableCombobox.vue";
 
 const props = defineProps({
 	rule: { type: Object, required: true },

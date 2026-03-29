@@ -1,13 +1,8 @@
 <script setup>
-import { computed } from "@/vue/index.js";
-import { useLive } from "@/vue/composables/useLive.js";
-import {
-	Link,
-	Headphones,
-	History,
-	LayoutList,
-} from "lucide-vue-next";
+import { Headphones, History, LayoutList, Link } from "lucide-vue-next";
+import { computed } from "vue";
 import { Tabs, TabsList, TabsTrigger } from "@/vue/components/ui/tabs/index.js";
+import { useLive } from "@/vue/composables/useLive.js";
 
 const props = defineProps({
 	currentTab: { type: String, default: "content" },

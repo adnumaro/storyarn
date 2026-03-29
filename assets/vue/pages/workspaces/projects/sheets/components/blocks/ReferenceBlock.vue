@@ -1,13 +1,6 @@
 <script setup>
-import { ref, computed, watch, nextTick, onBeforeUpdate } from "@/vue/index.js";
-import { Link, FileText, GitBranch, X, AlertCircle } from "lucide-vue-next";
-import { useLive } from "@/vue/composables/useLive.js";
-import { useServerSearch } from "@/vue/composables/useServerSearch.js";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/vue/components/ui/popover/index.js";
+import { AlertCircle, FileText, GitBranch, Link, X } from "lucide-vue-next";
+import { computed, nextTick, onBeforeUpdate, ref, watch } from "vue";
 import {
 	Command,
 	CommandEmpty,
@@ -16,9 +9,16 @@ import {
 	CommandItem,
 	CommandList,
 } from "@/vue/components/ui/command/index.js";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/vue/components/ui/popover/index.js";
+import { useLive } from "@/vue/composables/useLive.js";
+import { useServerSearch } from "@/vue/composables/useServerSearch.js";
+import { useBlockActions } from "../../composables/useBlockActions.js";
+import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
-import BlockLabel from "./BlockLabel.vue";
-import { useBlockActions } from "./useBlockActions.js";
 
 const props = defineProps({
 	block: { type: Object, required: true },
@@ -32,9 +32,7 @@ const targetType = computed(() => props.block.value?.target_type);
 const targetId = computed(() => props.block.value?.target_id);
 const referenceTarget = computed(() => props.block.reference_target);
 const hasReference = computed(() => targetType.value && targetId.value);
-const isDeleted = computed(
-	() => hasReference.value && !referenceTarget.value,
-);
+const isDeleted = computed(() => hasReference.value && !referenceTarget.value);
 
 function saveLabel(val) {
 	live.pushEvent("update_block_config", {

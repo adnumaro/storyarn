@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from "@/vue/index.js";
 import { ListChecks } from "lucide-vue-next";
+import { computed } from "vue";
 import { Badge } from "@/vue/components/ui/badge/index.js";
 import { Checkbox } from "@/vue/components/ui/checkbox/index.js";
 import { Input } from "@/vue/components/ui/input/index.js";
@@ -9,10 +9,10 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/vue/components/ui/popover/index.js";
+import { useBlockActions } from "../../composables/useBlockActions.js";
+import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
-import BlockLabel from "./BlockLabel.vue";
-import OptionEditor from "./OptionEditor.vue";
-import { useBlockActions } from "./useBlockActions.js";
+import OptionEditor from "../OptionEditor.vue";
 
 const props = defineProps({
 	block: { type: Object, required: true },

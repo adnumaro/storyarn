@@ -1,20 +1,20 @@
 <script setup>
-import { watch, onBeforeUnmount } from "@/vue/index.js";
-import { useEditor, EditorContent } from "@tiptap/vue-3";
-import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
+import StarterKit from "@tiptap/starter-kit";
+import { EditorContent, useEditor } from "@tiptap/vue-3";
 import {
 	Bold,
-	Italic,
-	Strikethrough,
 	Heading1,
 	Heading2,
 	Heading3,
+	Italic,
 	List,
 	ListOrdered,
-	Quote,
 	Minus,
+	Quote,
+	Strikethrough,
 } from "lucide-vue-next";
+import { onBeforeUnmount, watch } from "vue";
 
 const props = defineProps({
 	content: { type: String, default: "" },

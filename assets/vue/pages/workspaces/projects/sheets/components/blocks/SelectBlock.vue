@@ -1,6 +1,7 @@
 <script setup>
-import { computed } from "@/vue/index.js";
 import { CircleDot } from "lucide-vue-next";
+import { computed } from "vue";
+import { Input } from "@/vue/components/ui/input/index.js";
 import {
 	Select,
 	SelectContent,
@@ -8,11 +9,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/vue/components/ui/select/index.js";
-import { Input } from "@/vue/components/ui/input/index.js";
+import { useBlockActions } from "../../composables/useBlockActions.js";
+import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
-import BlockLabel from "./BlockLabel.vue";
-import OptionEditor from "./OptionEditor.vue";
-import { useBlockActions } from "./useBlockActions.js";
+import OptionEditor from "../OptionEditor.vue";
 
 const props = defineProps({
 	block: { type: Object, required: true },

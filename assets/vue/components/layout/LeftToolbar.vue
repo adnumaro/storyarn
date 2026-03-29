@@ -1,20 +1,19 @@
 <script setup>
-import { computed } from "vue";
-import { useLive } from "@/vue/composables/useLive";
 import {
-	PanelLeft,
-	Folder,
 	ChevronDown,
-	Settings,
-	Trash2,
-	LayoutDashboard,
 	FileText,
+	Folder,
 	GitBranch,
-	Map,
-	ScrollText,
 	Image,
 	Languages,
+	LayoutDashboard,
+	Map,
+	PanelLeft,
+	ScrollText,
+	Settings,
+	Trash2,
 } from "lucide-vue-next";
+import { computed } from "vue";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -28,6 +27,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/vue/components/ui/tooltip";
+import { useLive } from "@/vue/composables/useLive";
 
 const props = defineProps({
 	activeTool: { type: String, required: true },

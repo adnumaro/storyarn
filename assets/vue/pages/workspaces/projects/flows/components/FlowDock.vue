@@ -13,7 +13,7 @@ import {
 	StickyNote,
 	Zap,
 } from "lucide-vue-next";
-import { ref } from "@/vue/index.js";
+import { ref } from "vue";
 import {
 	Popover,
 	PopoverContent,
@@ -37,20 +37,60 @@ const logicOpen = ref(false);
 const navigationOpen = ref(false);
 
 const narrativeNodes = [
-	{ type: "dialogue", icon: MessageSquare, title: "Dialogue", description: "Character speech and player responses" },
-	{ type: "slug_line", icon: Clapperboard, title: "Slug Line", description: "Scene heading or location marker" },
+	{
+		type: "dialogue",
+		icon: MessageSquare,
+		title: "Dialogue",
+		description: "Character speech and player responses",
+	},
+	{
+		type: "slug_line",
+		icon: Clapperboard,
+		title: "Slug Line",
+		description: "Scene heading or location marker",
+	},
 ];
 
 const logicNodes = [
-	{ type: "condition", icon: GitBranch, title: "Condition", description: "Branch based on variable conditions" },
-	{ type: "instruction", icon: Zap, title: "Instruction", description: "Set or modify variable values" },
+	{
+		type: "condition",
+		icon: GitBranch,
+		title: "Condition",
+		description: "Branch based on variable conditions",
+	},
+	{
+		type: "instruction",
+		icon: Zap,
+		title: "Instruction",
+		description: "Set or modify variable values",
+	},
 ];
 
 const navigationNodes = [
-	{ type: "exit", icon: ArrowRightToLine, title: "Exit", description: "End point of a flow" },
-	{ type: "hub", icon: LogIn, title: "Hub", description: "Named junction for jump targets" },
-	{ type: "jump", icon: LogOut, title: "Jump", description: "Jump to a hub in any flow" },
-	{ type: "subflow", icon: Box, title: "Subflow", description: "Embed another flow as a node" },
+	{
+		type: "exit",
+		icon: ArrowRightToLine,
+		title: "Exit",
+		description: "End point of a flow",
+	},
+	{
+		type: "hub",
+		icon: LogIn,
+		title: "Hub",
+		description: "Named junction for jump targets",
+	},
+	{
+		type: "jump",
+		icon: LogOut,
+		title: "Jump",
+		description: "Jump to a hub in any flow",
+	},
+	{
+		type: "subflow",
+		icon: Box,
+		title: "Subflow",
+		description: "Embed another flow as a node",
+	},
 ];
 
 function addNode(type) {

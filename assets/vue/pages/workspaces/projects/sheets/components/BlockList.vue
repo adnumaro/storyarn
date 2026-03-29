@@ -1,24 +1,23 @@
 <script setup>
-import { ref, onMounted, onUnmounted, provide } from "@/vue/index.js";
-import { useLive } from "@/vue/composables/useLive.js";
-import { ArrowUpRight, Link2Off } from "lucide-vue-next";
 import { DnDProvider } from "@vue-dnd-kit/core";
-import AddBlockMenu from "./AddBlockMenu.vue";
-import SortableBlockList from "./SortableBlockList.vue";
-import FormulaPanel from "./blocks/FormulaPanel.vue";
+import { ArrowUpRight, Link2Off } from "lucide-vue-next";
+import { onMounted, onUnmounted, provide, ref } from "vue";
 import UserAvatar from "@/vue/components/layout/UserAvatar.vue";
-
-// Block type components (for inherited blocks, rendered without sortable)
-import TextBlock from "./blocks/TextBlock.vue";
-import NumberBlock from "./blocks/NumberBlock.vue";
+import { useLive } from "@/vue/composables/useLive.js";
+import AddBlockMenu from "./AddBlockMenu.vue";
 import BooleanBlock from "./blocks/BooleanBlock.vue";
-import SelectBlock from "./blocks/SelectBlock.vue";
-import MultiSelectBlock from "./blocks/MultiSelectBlock.vue";
 import DateBlock from "./blocks/DateBlock.vue";
-import RichTextBlock from "./blocks/RichTextBlock.vue";
-import GalleryBlock from "./blocks/GalleryBlock.vue";
-import TableBlock from "./blocks/TableBlock.vue";
+import FormulaPanel from "./blocks/FormulaPanel.vue";
+import GalleryBlock from "./blocks/galleryBlock/GalleryBlock.vue";
+import MultiSelectBlock from "./blocks/MultiSelectBlock.vue";
+import NumberBlock from "./blocks/NumberBlock.vue";
 import ReferenceBlock from "./blocks/ReferenceBlock.vue";
+import RichTextBlock from "./blocks/richText/RichTextBlock.vue";
+import SelectBlock from "./blocks/SelectBlock.vue";
+import TableBlock from "./blocks/table/TableBlock.vue";
+// Block type components (for inherited blocks, rendered without sortable)
+import TextBlock from "./blocks/table/TextBlock.vue";
+import SortableBlockList from "./sortable/SortableBlockList.vue";
 
 const blockComponents = {
 	text: TextBlock,
@@ -181,7 +180,6 @@ function deleteBlock(id) {
 function detachBlock(id) {
 	live.pushEvent("detach_block", { id });
 }
-
 
 function resolveComponent(type) {
 	return blockComponents[type] || null;

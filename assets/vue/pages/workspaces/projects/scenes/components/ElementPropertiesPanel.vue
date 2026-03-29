@@ -3,9 +3,9 @@ import { X } from "lucide-vue-next";
 import { computed } from "vue";
 import Sidebar from "@/vue/components/layout/Sidebar.vue";
 import { useLive } from "@/vue/composables/useLive";
-import ConnectionProperties from "./properties/ConnectionProperties.vue";
-import PinProperties from "./properties/PinProperties.vue";
-import ZoneProperties from "./properties/ZoneProperties.vue";
+import ConnectionProperties from "../properties/ConnectionProperties.vue";
+import PinProperties from "../properties/PinProperties.vue";
+import ZoneProperties from "../properties/ZoneProperties.vue";
 
 const TITLES = {
 	zone: "Zone Properties",

@@ -1,7 +1,7 @@
 <script setup>
-import { computed } from "@/vue/index.js";
 import { GitBranch, TriangleAlert } from "lucide-vue-next";
 import { Ref } from "rete-vue-plugin";
+import { computed } from "vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 
@@ -19,10 +19,22 @@ const hasStaleRefs = computed(() => nodeData.value.has_stale_refs);
 
 function getOperatorSymbol(operator) {
 	const symbols = {
-		equals: "=", not_equals: "≠", greater_than: ">", greater_than_or_equal: ">=",
-		less_than: "<", less_than_or_equal: "<=", contains: "∋", starts_with: "^=",
-		ends_with: "$=", is_empty: "is empty", is_true: "is true", is_false: "is false",
-		is_nil: "is nil", not_contains: "∌", before: "<", after: ">",
+		equals: "=",
+		not_equals: "≠",
+		greater_than: ">",
+		greater_than_or_equal: ">=",
+		less_than: "<",
+		less_than_or_equal: "<=",
+		contains: "∋",
+		starts_with: "^=",
+		ends_with: "$=",
+		is_empty: "is empty",
+		is_true: "is true",
+		is_false: "is false",
+		is_nil: "is nil",
+		not_contains: "∌",
+		before: "<",
+		after: ">",
 	};
 	return symbols[operator] || operator;
 }
@@ -55,7 +67,9 @@ function isRuleComplete(rule) {
 	const hasOperator = rule.operator && rule.operator !== "";
 	const noValueOps = ["is_empty", "is_true", "is_false", "is_nil"];
 	const needsValue = !noValueOps.includes(rule.operator);
-	const hasValue = !needsValue || (rule.value !== null && rule.value !== undefined && rule.value !== "");
+	const hasValue =
+		!needsValue ||
+		(rule.value !== null && rule.value !== undefined && rule.value !== "");
 	return hasSheet && hasVariable && hasOperator && hasValue;
 }
 
@@ -78,8 +92,10 @@ const summary = computed(() => {
 	// Block format
 	if (condition?.blocks) {
 		const blocks = condition.blocks;
-		if (blocks.length === 0) return switchMode ? "No conditions" : "No condition";
-		if (switchMode) return `${blocks.length} output${blocks.length > 1 ? "s" : ""} + default`;
+		if (blocks.length === 0)
+			return switchMode ? "No conditions" : "No condition";
+		if (switchMode)
+			return `${blocks.length} output${blocks.length > 1 ? "s" : ""} + default`;
 		const ruleCount = countRulesInBlocks(blocks);
 		const logic = condition.logic === "all" ? "AND" : "OR";
 		return `${ruleCount} rule${ruleCount !== 1 ? "s" : ""} in ${blocks.length} block${blocks.length !== 1 ? "s" : ""} (${logic})`;
@@ -90,7 +106,8 @@ const summary = computed(() => {
 		return switchMode ? "No conditions" : "No condition";
 	}
 	const rules = condition.rules;
-	if (switchMode) return `${rules.length} output${rules.length > 1 ? "s" : ""} + default`;
+	if (switchMode)
+		return `${rules.length} output${rules.length > 1 ? "s" : ""} + default`;
 	const logic = condition.logic === "all" ? "AND" : "OR";
 	if (rules.length === 1) return formatRule(rules[0]);
 	return `${rules.length} rules (${logic})`;

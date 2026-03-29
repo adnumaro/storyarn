@@ -1,26 +1,26 @@
 <script setup>
-import { ref, inject, useTemplateRef, watch } from "@/vue/index.js";
-import { useLive } from "@/vue/composables/useLive.js";
 import { makeDroppable } from "@vue-dnd-kit/core";
 import { Link2 } from "lucide-vue-next";
+import { inject, ref, useTemplateRef, watch } from "vue";
+import UserAvatar from "@/vue/components/layout/UserAvatar.vue";
+import { useLive } from "@/vue/composables/useLive.js";
 import DraggableBlock from "./DraggableBlock.vue";
 import SortableColumnGroup from "./SortableColumnGroup.vue";
-import UserAvatar from "@/vue/components/layout/UserAvatar.vue";
 
 const isLockedByOther = inject("isLockedByOther", () => false);
 const lockInfo = inject("lockInfo", () => null);
 
+import BooleanBlock from "../blocks/BooleanBlock.vue";
+import DateBlock from "../blocks/DateBlock.vue";
+import GalleryBlock from "../blocks/galleryBlock/GalleryBlock.vue";
+import MultiSelectBlock from "../blocks/MultiSelectBlock.vue";
+import NumberBlock from "../blocks/NumberBlock.vue";
+import ReferenceBlock from "../blocks/ReferenceBlock.vue";
+import RichTextBlock from "../blocks/richText/RichTextBlock.vue";
+import SelectBlock from "../blocks/SelectBlock.vue";
+import TableBlock from "../blocks/table/TableBlock.vue";
 // Block type components
-import TextBlock from "./blocks/TextBlock.vue";
-import NumberBlock from "./blocks/NumberBlock.vue";
-import BooleanBlock from "./blocks/BooleanBlock.vue";
-import SelectBlock from "./blocks/SelectBlock.vue";
-import MultiSelectBlock from "./blocks/MultiSelectBlock.vue";
-import DateBlock from "./blocks/DateBlock.vue";
-import RichTextBlock from "./blocks/RichTextBlock.vue";
-import GalleryBlock from "./blocks/GalleryBlock.vue";
-import TableBlock from "./blocks/TableBlock.vue";
-import ReferenceBlock from "./blocks/ReferenceBlock.vue";
+import TextBlock from "../blocks/table/TextBlock.vue";
 
 const blockComponents = {
 	text: TextBlock,

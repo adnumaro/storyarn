@@ -1,13 +1,13 @@
 <script setup>
-import { computed } from "vue";
 import {
-	Table2,
-	GitBranch,
-	Map,
 	Bug,
+	GitBranch,
 	Languages,
+	Map,
 	Package,
+	Table2,
 } from "lucide-vue-next";
+import { computed } from "vue";
 import { useRevealOnScroll } from "../composables/useRevealOnScroll.js";
 
 const props = defineProps({

@@ -13,14 +13,14 @@ import {
 	TriangleAlert,
 	X,
 } from "lucide-vue-next";
-import { computed, ref } from "@/vue/index.js";
+import { computed, ref } from "vue";
+import EditableText from "@/vue/components/EditableText.vue";
 import { Badge } from "@/vue/components/ui/badge/index.js";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/vue/components/ui/popover/index.js";
-import EditableText from "@/vue/components/EditableText.vue";
 import { useLive } from "@/vue/composables/useLive.js";
 
 const props = defineProps({

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, inject, nextTick, ref, watch } from "@/vue/index.js";
+import { computed, inject, nextTick, ref, watch } from "vue";
 import { FLOW_CONTEXT_KEY } from "../setup.js";
 
 const props = defineProps({
@@ -9,7 +9,10 @@ const props = defineProps({
 	color: { type: String, required: true },
 });
 
-const ctx = inject(FLOW_CONTEXT_KEY, { editingNodeId: null, onInlineEditSave: null });
+const ctx = inject(FLOW_CONTEXT_KEY, {
+	editingNodeId: null,
+	onInlineEditSave: null,
+});
 const textareaRef = ref(null);
 
 const nodeData = computed(() => props.data.nodeData || {});

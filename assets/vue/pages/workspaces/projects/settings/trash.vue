@@ -1,6 +1,6 @@
 <script setup>
+import { AlertTriangle, Trash2, Undo2 } from "lucide-vue-next";
 import { ref } from "vue";
-import { Trash2, Undo2, AlertTriangle } from "lucide-vue-next";
 import { Button } from "@/vue/components/ui/button/index.js";
 import {
 	Dialog,

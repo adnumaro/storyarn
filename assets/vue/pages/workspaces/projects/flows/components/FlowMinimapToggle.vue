@@ -1,7 +1,7 @@
 <script setup>
 import { LayoutGrid, Maximize2 } from "lucide-vue-next";
-import { ref } from "@/vue/index.js";
 import { AreaExtensions } from "rete-area-plugin";
+import { ref } from "vue";
 
 const props = defineProps({
 	area: { type: Object, default: null },

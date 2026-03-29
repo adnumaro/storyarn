@@ -4,12 +4,12 @@
  * Wraps in .condition-builder for sentence-flow CSS.
  */
 
+import { Group, Plus } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
-import { Plus, Group } from "lucide-vue-next";
+import { generateId } from "@/vue/lib/variables";
 import ConditionBlock from "./condition/ConditionBlock.vue";
 import ConditionGroup from "./condition/ConditionGroup.vue";
 import LogicToggle from "./condition/LogicToggle.vue";
-import { generateId } from "@/vue/lib/variables";
 
 const props = defineProps({
 	condition: { type: [Object, Array, null], default: null },
