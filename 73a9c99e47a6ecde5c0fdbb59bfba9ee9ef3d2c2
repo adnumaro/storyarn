@@ -1,0 +1,27 @@
+assets/vue/components/landing/DiscoverSection.vue
+  09808a11819a95c7 16,46-47,73-75,77-79,82-85
+assets/vue/components/landing/DiscoverMonitor.vue
+  09808a11819a95c7 34
+assets/vue/components/landing/MonitorScene.vue
+  09808a11819a95c7 24-26,29,37-38,40,48-54,56-63,69,71-78,92-94,105,116,118-130,134-142,144-154,157-159,161-164,175-177,188,206-208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "73a9c99e47a6ecde5c0fdbb59bfba9ee9ef3d2c2",
+  "prompts": {
+    "09808a11819a95c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c0163a8-cf35-4677-a65d-bb0643826eb8",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 206,
+      "total_deletions": 224,
+      "accepted_lines": 109,
+      "overriden_lines": 0
+    }
+  }
+}
