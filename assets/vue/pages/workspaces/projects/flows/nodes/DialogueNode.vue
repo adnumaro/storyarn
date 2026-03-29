@@ -7,6 +7,7 @@ import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import { previewText, stripHtml } from "../lib/render-helpers.js";
 import { FLOW_CONTEXT_KEY } from "../setup.js";
+import DialogueAudioPreview from "./DialogueAudioPreview.vue";
 
 const props = defineProps({
 	data: { type: Object, required: true },
@@ -53,7 +54,6 @@ const plainText = computed(() => stripHtml(nodeData.value.text));
 const hasTextContent = computed(
 	() => stageDirections.value || menuText.value || preview.value,
 );
-const hasAudio = computed(() => !!nodeData.value.audio_asset_id);
 
 // Visual strip: override avatar, default avatar, colored bg, or nothing
 const hasVisual = computed(
@@ -174,7 +174,7 @@ function onSpeakerSelect(id) {
 
     <!-- VIEW MODE HEADER -->
     <NodeHeader v-else :color="color" :icon="MessageSquare" :label="speakerName">
-      <span v-if="hasAudio" class="ml-auto opacity-80 text-xs" title="Has audio">🔊</span>
+      <DialogueAudioPreview :audio-asset-id="nodeData.audio_asset_id" />
     </NodeHeader>
 
     <!-- Visual strip: avatar (shared between modes) -->
