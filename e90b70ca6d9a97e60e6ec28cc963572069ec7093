@@ -1,0 +1,23 @@
+assets/vue/components/landing/MonitorScene.vue
+  09808a11819a95c7 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "e90b70ca6d9a97e60e6ec28cc963572069ec7093",
+  "prompts": {
+    "09808a11819a95c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c0163a8-cf35-4677-a65d-bb0643826eb8",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 3,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
