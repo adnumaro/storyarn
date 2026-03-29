@@ -31,8 +31,7 @@ onMounted(() => {
 				:antialias="true"
 				power-preference="high-performance"
 				:dpr="dpr"
-				clear-color="#000000"
-				window-size
+				:clear-alpha="0"
 			>
 				<MonitorScene :active-step="activeStep" :is-visible="isVisible" />
 			</TresCanvas>

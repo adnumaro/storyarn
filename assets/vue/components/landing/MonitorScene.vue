@@ -21,24 +21,23 @@ const SCREEN_IMAGES = [
 ];
 
 const SUB_STEPS = [
-	{ rotY: -0.58, rotZ: 0.03, posX: 0.75, camZ: 0, yOffset: 0 },
-	{ rotY: 0.58, rotZ: -0.03, posX: -0.75, camZ: 0, yOffset: 0 },
-	{ rotY: 0, rotZ: 0, posX: 0, camZ: -1.8, yOffset: -1 },
+	{ rotY: -0.4, rotZ: 0.02, posX: 0.6, posY: -0.2 },
+	{ rotY: 0.4, rotZ: -0.02, posX: -0.6, posY: -0.2 },
+	{ rotY: 0, rotZ: 0, posX: 0, posY: -0.8 },
 ];
 
-const BASE_CAM_Z = 4.8;
+const BASE_CAM_Z = 4.2;
 const FOV = 40;
 
-// Refs to Three.js instances (via TresJS template refs)
 const groupRef = shallowRef(null);
 const cameraRef = shallowRef(null);
-const screenMatARef = shallowRef(null);
-const screenMatBRef = shallowRef(null);
 
 const textures = shallowRef([]);
 let prevStep = 0;
+let stepTimeline = null;
+let pendingTex = null; // texture that B is fading into
 
-// --- Geometry (created once, shared across renders) ---
+// --- Geometry & Materials ---
 const screenW = 3.2;
 const screenH = 2.0;
 const bezelPad = 0.08;
@@ -46,24 +45,37 @@ const bezelW = screenW + bezelPad * 2;
 const bezelH = screenH + bezelPad * 2;
 const bodyDepth = 0.18;
 
-const bodyGeo = new RoundedBoxGeometry(bezelW, bezelH, bodyDepth, 3, 0.04);
-const insetGeo = new THREE.PlaneGeometry(screenW + 0.02, screenH + 0.02);
-const screenGeoA = new THREE.PlaneGeometry(screenW, screenH);
-const screenGeoB = new THREE.PlaneGeometry(screenW, screenH);
-
-// --- Initial position for step 0 ---
-const step0 = SUB_STEPS[0];
-const fovRad = (FOV * Math.PI) / 180;
-const initialVisibleH = 2 * Math.tan(fovRad / 2) * BASE_CAM_Z;
-const initialY = -(initialVisibleH / 2) + 1.6;
-
-// Screen layer Z positions (relative to body front)
 const screenAZ = bodyDepth / 2 + 0.005;
 const screenBZ = bodyDepth / 2 + 0.006;
 const insetZ = bodyDepth / 2 + 0.003;
 
-// --- Texture loading ---
+// Screen materials — imperative for direct texture control
+const screenMatA = new THREE.MeshBasicMaterial({ transparent: true, opacity: 1, toneMapped: false });
+const screenMatB = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, toneMapped: false });
+
+// Pre-built screen meshes — avoids TresJS primitive-as-material issues
+const screenMeshA = new THREE.Mesh(new THREE.PlaneGeometry(screenW, screenH), screenMatA);
+screenMeshA.position.set(0, 0, screenAZ);
+
+const screenMeshB = new THREE.Mesh(new THREE.PlaneGeometry(screenW, screenH), screenMatB);
+screenMeshB.position.set(0, 0, screenBZ);
+
+// Other geometry
+const bodyGeo = new RoundedBoxGeometry(bezelW, bezelH, bodyDepth, 3, 0.04);
+const insetGeo = new THREE.PlaneGeometry(screenW + 0.02, screenH + 0.02);
+
+const step0 = SUB_STEPS[0];
+
+// --- Texture loading + initial position ---
 onMounted(() => {
+	// Set initial position/rotation imperatively so TresJS template props
+	// don't fight GSAP animations on re-render.
+	const group = groupRef.value;
+	if (group) {
+		group.position.set(step0.posX, step0.posY, 0);
+		group.rotation.set(0, step0.rotY, step0.rotZ);
+	}
+
 	const loader = new THREE.TextureLoader();
 	const loaded = [];
 
@@ -77,10 +89,9 @@ onMounted(() => {
 				loaded[i] = tex;
 				textures.value = [...loaded];
 
-				// Apply first texture as soon as it loads
-				if (i === 0 && screenMatARef.value) {
-					screenMatARef.value.map = tex;
-					screenMatARef.value.needsUpdate = true;
+				if (i === 0) {
+					screenMatA.map = tex;
+					screenMatA.needsUpdate = true;
 				}
 			},
 			undefined,
@@ -91,80 +102,66 @@ onMounted(() => {
 	});
 });
 
-// --- Render loop (keeps TresJS rendering continuously) ---
+// --- Render loop ---
 const { onBeforeRender } = useLoop();
-onBeforeRender(({ delta }) => {
-	// Intentionally minimal — GSAP drives all animations.
-	// This callback keeps the render loop alive.
-});
+onBeforeRender(() => {});
 
 // --- Step transitions ---
-function computeMonitorY(camZ, yOffset) {
-	const visibleHeight = 2 * Math.tan(fovRad / 2) * camZ;
-	return -(visibleHeight / 2) + 1.6 + yOffset;
-}
-
 watch(
 	() => props.activeStep,
 	(index) => {
 		const group = groupRef.value;
 		const camera = cameraRef.value;
 		if (!group || !camera || index < 0 || index >= SUB_STEPS.length) return;
+		if (index === prevStep) return;
+
+		// Kill ALL in-flight animations before starting new ones
+		if (stepTimeline) {
+			stepTimeline.kill();
+			// Complete the interrupted swap: A should show what B was fading to
+			if (pendingTex) {
+				screenMatA.map = pendingTex;
+				screenMatA.needsUpdate = true;
+			}
+			screenMatA.opacity = 1;
+			screenMatB.opacity = 0;
+			stepTimeline = null;
+			pendingTex = null;
+		}
 
 		const target = SUB_STEPS[index];
-		const targetCamZ = BASE_CAM_Z + target.camZ;
-		const monitorY = computeMonitorY(targetCamZ, target.yOffset);
-
-		// Rotation
-		gsap.to(group.rotation, {
-			y: target.rotY,
-			z: target.rotZ,
-			duration: 0.8,
-			ease: "power3.inOut",
-		});
-
-		// Position (X + Y)
-		gsap.to(group.position, {
-			x: target.posX,
-			y: monitorY,
-			duration: 0.8,
-			ease: "power3.inOut",
-		});
-
-		// Camera Z
-		gsap.to(camera.position, {
-			z: targetCamZ,
-			duration: 0.8,
-			ease: "power3.inOut",
-		});
-
-		// Crossfade screen textures
-		const matA = screenMatARef.value;
-		const matB = screenMatBRef.value;
 		const tex = textures.value[index];
+		const duration = 0.8;
 
-		if (prevStep !== index && tex && matA && matB) {
-			matB.map = tex;
-			matB.needsUpdate = true;
-			matB.opacity = 0;
+		// Prepare crossfade: A is visible with current texture, B gets new texture
+		if (tex) {
+			pendingTex = tex;
+			screenMatB.map = tex;
+			screenMatB.needsUpdate = true;
+			screenMatB.opacity = 0;
+		}
 
-			gsap.to(matB, {
-				opacity: 1,
-				duration: 0.8,
-				ease: "power2.inOut",
-				onComplete() {
-					matA.map = tex;
-					matA.needsUpdate = true;
-					matA.opacity = 1;
-					matB.opacity = 0;
-				},
-			});
+		stepTimeline = gsap.timeline({
+			onComplete() {
+				if (tex) {
+					screenMatA.map = tex;
+					screenMatA.needsUpdate = true;
+					screenMatA.opacity = 1;
+					screenMatB.opacity = 0;
+				}
+				stepTimeline = null;
+				pendingTex = null;
+			},
+		});
 
-			gsap.to(matA, {
-				opacity: 0,
-				duration: 0.8,
-				ease: "power2.inOut",
-			});
+		// Position & rotation — all on the same timeline
+		stepTimeline.to(group.rotation, { y: target.rotY, z: target.rotZ, duration, ease: "power3.inOut" }, 0);
+		stepTimeline.to(group.position, { x: target.posX, y: target.posY, duration, ease: "power3.inOut" }, 0);
+
+		// Texture crossfade
+		if (tex) {
+			stepTimeline.to(screenMatA, { opacity: 0, duration, ease: "power2.inOut" }, 0);
+			stepTimeline.to(screenMatB, { opacity: 1, duration, ease: "power2.inOut" }, 0);
 		}
 
 		prevStep = index;
@@ -173,25 +170,22 @@ watch(
 </script>
 
 <template>
-	<!-- Camera -->
 	<TresPerspectiveCamera
 		ref="cameraRef"
-		:args="[FOV, 1, 0.1, 100]"
+		:fov="FOV"
+		:near="0.1"
+		:far="100"
 		:position="[0, 0, BASE_CAM_Z]"
 	/>
 
-	<!-- Lighting -->
 	<TresAmbientLight :intensity="0.4" />
 	<TresDirectionalLight :position="[2, 3, 5]" :intensity="0.8" />
 	<TresDirectionalLight :position="[-3, -1, 3]" :intensity="0.15" color="#22d3ee" />
 
-	<!-- Monitor group -->
 	<TresGroup
 		ref="groupRef"
-		:rotation="[0, step0.rotY, step0.rotZ]"
-		:position="[step0.posX, initialY, 0]"
 	>
-		<!-- Body (rounded box) -->
+		<!-- Body -->
 		<TresMesh>
 			<primitive :object="bodyGeo" />
 			<TresMeshPhysicalMaterial
@@ -209,26 +203,8 @@ watch(
 			<TresMeshStandardMaterial color="#0a0a14" :roughness="0.9" :metalness="0.1" />
 		</TresMesh>
 
-		<!-- Screen A (primary) -->
-		<TresMesh :position="[0, 0, screenAZ]">
-			<primitive :object="screenGeoA" />
-			<TresMeshBasicMaterial
-				ref="screenMatARef"
-				:tone-mapped="false"
-				:transparent="true"
-				:opacity="1"
-			/>
-		</TresMesh>
-
-		<!-- Screen B (crossfade overlay) -->
-		<TresMesh :position="[0, 0, screenBZ]">
-			<primitive :object="screenGeoB" />
-			<TresMeshBasicMaterial
-				ref="screenMatBRef"
-				:tone-mapped="false"
-				:transparent="true"
-				:opacity="0"
-			/>
-		</TresMesh>
+		<!-- Screen A + B (pre-built meshes with imperative materials) -->
+		<primitive :object="screenMeshA" />
+		<primitive :object="screenMeshB" />
 	</TresGroup>
 </template>

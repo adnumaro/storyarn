@@ -13,6 +13,7 @@ const sectionRef = ref(null);
 const { elementRef: revealRef, isRevealed } = useRevealOnScroll({ threshold: 0.1 });
 
 const TOTAL_STEPS = 3;
+let scrollLocked = false;
 
 const features = computed(() => [
 	{
@@ -42,13 +43,13 @@ const features = computed(() => [
 ]);
 
 function onScroll() {
+	if (scrollLocked) return;
+
 	const section = sectionRef.value;
 	if (!section) return;
 
 	const rect = section.getBoundingClientRect();
-	// How far we've scrolled into the section (0 at top, full height at bottom)
 	const scrolled = -rect.top;
-	// Total scrollable distance (section height minus one viewport)
 	const scrollableHeight = section.offsetHeight - window.innerHeight;
 
 	if (scrolled <= 0 || scrollableHeight <= 0) {
@@ -69,10 +70,19 @@ function scrollToTab(index) {
 	const section = sectionRef.value;
 	if (!section) return;
 
+	activeTab.value = index;
+	scrollLocked = true;
+
 	const scrollableHeight = section.offsetHeight - window.innerHeight;
-	const targetScroll = section.offsetTop + (index / TOTAL_STEPS) * scrollableHeight;
+	// Scroll to the center of this step's zone so onScroll agrees when lock releases
+	const targetProgress = (index + 0.5) / TOTAL_STEPS;
+	const targetScroll = section.offsetTop + targetProgress * scrollableHeight;
 
 	window.scrollTo({ top: targetScroll, behavior: "smooth" });
+
+	setTimeout(() => {
+		scrollLocked = false;
+	}, 900);
 }
 
 onMounted(() => {
@@ -181,9 +191,6 @@ onUnmounted(() => {
 	inset: 0;
 	z-index: 0;
 	pointer-events: none;
-	/* Creates a new containing block so TresCanvas's position:fixed
-	   canvas behaves as position:absolute within this wrapper */
-	transform: translateZ(0);
 }
 
 .discover-canvas-wrap::after {
