@@ -14,6 +14,14 @@ import { useWaypointEditor } from "../composables/useWaypointEditor";
 import { useZoneDrag } from "../composables/useZoneDrag";
 import { useZoneDrawing } from "../composables/useZoneDrawing";
 import { useZones } from "../composables/useZones";
+import AnnotationLayer from "./layers/AnnotationLayer.vue";
+import BackgroundLayer from "./layers/BackgroundLayer.vue";
+import ConnectionPreviewLayer from "./layers/ConnectionPreviewLayer.vue";
+import DrawingOverlayLayer from "./layers/DrawingOverlayLayer.vue";
+import PinLayer from "./layers/PinLayer.vue";
+import VertexEditorLayer from "./layers/VertexEditorLayer.vue";
+import WaypointEditorLayer from "./layers/WaypointEditorLayer.vue";
+import ZoneConnectionLayer from "./layers/ZoneConnectionLayer.vue";
 import SceneFloatingToolbar from "./SceneFloatingToolbar.vue";
 
 const props = defineProps({
@@ -331,411 +339,80 @@ const LABEL_COLOR = "#d1d5db";
   <div ref="containerRef" class="w-full h-full relative" :style="{ cursor: cursorStyle }">
     <v-stage ref="stageRef" :config="stageConfig" @wheel="handleWheel" @click="handleStageClick" @mousemove="handleStageMouseMove" @mouseup="onZoneDragEnd" @dblclick="onStageDblClick">
       <!-- Background layer (static, no hit detection needed) -->
-      <v-layer :config="{ listening: false }">
-        <v-image v-if="backgroundConfig" :config="backgroundConfig" />
-        <template v-else>
-          <v-rect :config="gridRectConfig" />
-          <v-line v-for="(line, i) in gridLines" :key="'grid-' + i" :config="line" />
-        </template>
-      </v-layer>
+      <BackgroundLayer
+        :background-config="backgroundConfig"
+        :grid-rect-config="gridRectConfig"
+        :grid-lines="gridLines"
+      />
 
       <!-- Zones + Connections layer (non-draggable interactive elements) -->
-      <v-layer>
-        <v-group
-          v-for="zone in zoneConfigs"
-          :key="'zone-' + zone.id"
-          :config="{ listening: zone.listening }"
-          @click="(e) => handleElementClick('zone', zone.id, e)"
-          @dblclick="(e) => handleZoneDblClick(zone.id, e)"
-          @mousedown="(e) => onZoneMouseDown(zone.id, e)"
-        >
-          <!-- Zone polygon -->
-          <v-line
-            :config="{
-              points: zone.points,
-              fill: zone.fill,
-              stroke: zone.stroke,
-              strokeWidth: zone.strokeWidth,
-              dash: zone.dash,
-              opacity: zone.opacity,
-              closed: true,
-              hitStrokeWidth: zone.hitStrokeWidth,
-              shadowColor: zone.isSelected ? SELECTION_COLOR : undefined,
-              shadowBlur: zone.isSelected ? 10 : 0,
-              shadowOpacity: zone.isSelected ? 0.8 : 0,
-              shadowEnabled: zone.isSelected,
-              shadowForStrokeEnabled: false,
-              perfectDrawEnabled: false,
-            }"
-          />
-          <v-text
-            v-if="zone.name"
-            :config="{
-              text: zone.name,
-              fill: LABEL_COLOR,
-              fontSize: 12,
-              fontStyle: '600',
-              align: 'center',
-              x: zone.centroidX - 50,
-              y: zone.centroidY - 8,
-              width: 100,
-              ellipsis: true,
-              wrap: 'none',
-              shadowColor: 'black',
-              shadowBlur: 3,
-              shadowOpacity: 0.8,
-              shadowForStrokeEnabled: false,
-              listening: false,
-            }"
-          />
-          <v-image
-            v-if="zone.lockBadge"
-            :config="{
-              image: zone.lockBadge,
-              x: zone.lockBadgeX,
-              y: zone.lockBadgeY,
-              width: 14,
-              height: 14,
-              listening: false,
-            }"
-          />
-        </v-group>
-        <v-group
-          v-for="conn in connectionConfigs"
-          :key="'conn-' + conn.id"
-          :config="{ listening: conn.listening }"
-          @click="(e) => handleElementClick('connection', conn.id, e)"
-          @dblclick="(e) => handleConnectionDblClick(conn.id, e)"
-        >
-          <v-arrow
-            :config="{
-              points: conn.points,
-              stroke: conn.stroke,
-              fill: conn.fill,
-              strokeWidth: conn.strokeWidth,
-              dash: conn.dash,
-              opacity: conn.opacity,
-              pointerLength: conn.pointerLength,
-              pointerWidth: conn.pointerWidth,
-              pointerAtBeginning: conn.pointerAtBeginning,
-              pointerAtEnding: conn.pointerAtEnding,
-              hitStrokeWidth: conn.hitStrokeWidth,
-            }"
-          />
-          <v-text v-if="conn.labelConfig" :config="conn.labelConfig" />
-        </v-group>
-      </v-layer>
+      <ZoneConnectionLayer
+        :zone-configs="zoneConfigs"
+        :connection-configs="connectionConfigs"
+        :selection-color="SELECTION_COLOR"
+        :label-color="LABEL_COLOR"
+        @zone-click="(id, e) => handleElementClick('zone', id, e)"
+        @zone-dblclick="handleZoneDblClick"
+        @zone-mousedown="onZoneMouseDown"
+        @connection-click="(id, e) => handleElementClick('connection', id, e)"
+        @connection-dblclick="handleConnectionDblClick"
+      />
 
       <!-- Pin layer (draggable) -->
-      <v-layer>
-        <v-group
-          v-for="pin in pinConfigs"
-          :key="'pin-' + pin.id"
-          :config="{ x: pin.x, y: pin.y, listening: pin.listening, draggable: pin.draggable }"
-          @click="(e) => handlePinClick(pin.id, e)"
-          @dragstart="(e) => onDragStart('pin', pin.id, e)"
-          @dragmove="(e) => onDragMove('pin', pin.id, e)"
-          @dragend="(e) => onDragEnd('pin', pin.id, e)"
-        >
-          <v-circle
-            v-if="pin.isSelected"
-            :config="{
-              radius: pin.radius + 5,
-              stroke: SELECTION_COLOR,
-              strokeWidth: 3,
-              listening: false,
-            }"
-          />
-          <!-- Connection drawing: source highlight -->
-          <v-circle
-            v-if="sourcePinId === pin.id"
-            :config="{
-              radius: pin.radius + 6,
-              stroke: SOURCE_HIGHLIGHT_COLOR,
-              strokeWidth: 2,
-              dash: [6, 3],
-              listening: false,
-            }"
-          />
-          <!-- Connection drawing: target hover highlight -->
-          <v-circle
-            v-if="hoveredPinId === pin.id"
-            :config="{
-              radius: pin.radius + 6,
-              stroke: TARGET_HIGHLIGHT_COLOR,
-              strokeWidth: 2,
-              listening: false,
-            }"
-          />
-          <v-image
-            v-if="pin.iconCanvas"
-            :config="{
-              image: pin.iconCanvas,
-              x: -pin.iconCanvas.width / 2,
-              y: -pin.iconCanvas.height / 2,
-              width: pin.iconCanvas.width,
-              height: pin.iconCanvas.height,
-            }"
-          />
-          <v-image
-            v-else-if="pin.initialsCanvas"
-            :config="{
-              image: pin.initialsCanvas,
-              x: -pin.initialsCanvas.width / 2,
-              y: -pin.initialsCanvas.height / 2,
-              width: pin.initialsCanvas.width,
-              height: pin.initialsCanvas.height,
-            }"
-          />
-          <template v-else-if="pin.image">
-            <v-circle
-              :config="{
-                radius: pin.radius,
-                fill: pin.color,
-                opacity: pin.opacity,
-                shadowColor: 'black',
-                shadowBlur: 6,
-                shadowOpacity: 0.3,
-                shadowOffsetY: 2,
-                shadowForStrokeEnabled: false,
-                perfectDrawEnabled: false,
-              }"
-            />
-            <v-group :config="{ clipFunc: clipCircle(pin.radius) }">
-              <v-image
-                :config="{
-                  image: pin.image,
-                  x: -pin.radius,
-                  y: -pin.radius,
-                  width: pin.diameter,
-                  height: pin.diameter,
-                }"
-              />
-            </v-group>
-          </template>
-          <v-text
-            v-if="pin.label"
-            :config="{
-              text: pin.label,
-              fill: LABEL_COLOR,
-              fontSize: 11,
-              fontStyle: '600',
-              align: 'center',
-              x: -50,
-              y: pin.radius + 6,
-              width: 100,
-              ellipsis: true,
-              wrap: 'none',
-              listening: false,
-            }"
-          />
-          <v-image
-            v-if="pin.lockBadge"
-            :config="{
-              image: pin.lockBadge,
-              x: pin.radius - 10,
-              y: -pin.radius - 4,
-              width: 14,
-              height: 14,
-              listening: false,
-            }"
-          />
-        </v-group>
-      </v-layer>
+      <PinLayer
+        :pin-configs="pinConfigs"
+        :source-pin-id="sourcePinId"
+        :hovered-pin-id="hoveredPinId"
+        :selection-color="SELECTION_COLOR"
+        :source-highlight-color="SOURCE_HIGHLIGHT_COLOR"
+        :target-highlight-color="TARGET_HIGHLIGHT_COLOR"
+        :label-color="LABEL_COLOR"
+        :clip-circle="clipCircle"
+        @pin-click="handlePinClick"
+        @dragstart="onDragStart"
+        @dragmove="onDragMove"
+        @dragend="onDragEnd"
+      />
 
       <!-- Annotation layer (draggable) -->
-      <v-layer>
-        <v-group
-          v-for="ann in annotationConfigs"
-          :key="'ann-' + ann.id"
-          :config="{ x: ann.x, y: ann.y, listening: ann.listening, draggable: ann.draggable }"
-          @click="(e) => handleElementClick('annotation', ann.id, e)"
-          @dblclick="(e) => handleAnnotationDblClick(ann, e)"
-          @dragstart="(e) => onDragStart('annotation', ann.id, e)"
-          @dragmove="(e) => onDragMove('annotation', ann.id, e)"
-          @dragend="(e) => onDragEnd('annotation', ann.id, e)"
-        >
-          <v-rect
-            v-if="ann.isSelected"
-            :config="{
-              x: -3,
-              y: -3,
-              width: ann.width + 6,
-              height: ann.height + 6,
-              stroke: SELECTION_COLOR,
-              strokeWidth: 2,
-              listening: false,
-            }"
-          />
-          <v-line
-            :config="{
-              points: ann.bodyPoints,
-              fill: ann.color,
-              opacity: ann.bgOpacity,
-              closed: true,
-              perfectDrawEnabled: false,
-            }"
-          />
-          <v-line
-            :config="{
-              points: ann.foldPoints,
-              fill: ann.color,
-              closed: true,
-              listening: false,
-              perfectDrawEnabled: false,
-            }"
-          />
-          <v-text
-            v-if="!isEditingAnnotation(ann.id)"
-            :config="{
-              text: getDisplayText(ann.id, ann.text),
-              fill: '#111827',
-              fontSize: ann.fontSize,
-              fontStyle: '600',
-              fontFamily: 'system-ui, sans-serif',
-              lineHeight: 1.3,
-              width: ann.textWidth,
-              x: ann.padLeft,
-              y: ann.padTop,
-              wrap: 'word',
-              listening: false,
-            }"
-          />
-          <v-image
-            v-if="ann.lockBadge"
-            :config="{
-              image: ann.lockBadge,
-              x: ann.width - 18,
-              y: -4,
-              width: 14,
-              height: 14,
-              listening: false,
-            }"
-          />
-        </v-group>
-      </v-layer>
+      <AnnotationLayer
+        :annotation-configs="annotationConfigs"
+        :selection-color="SELECTION_COLOR"
+        :is-editing-annotation="isEditingAnnotation"
+        :get-display-text="getDisplayText"
+        @annotation-click="(id, e) => handleElementClick('annotation', id, e)"
+        @annotation-dblclick="handleAnnotationDblClick"
+        @dragstart="onDragStart"
+        @dragmove="onDragMove"
+        @dragend="onDragEnd"
+      />
 
       <!-- Vertex editor layer (zone vertex editing on dblclick) -->
-      <v-layer v-if="vertexEditorConfigs">
-        <!-- Midpoint anchors (click to insert vertex) -->
-        <v-circle
-          v-for="(mp, i) in vertexEditorConfigs.midpointAnchors"
-          :key="'mp-' + i"
-          :config="{
-            x: mp.x,
-            y: mp.y,
-            radius: mp.radius,
-            fill: mp.fill,
-            stroke: mp.stroke,
-            strokeWidth: mp.strokeWidth,
-          }"
-          @click="(e) => insertVertex(mp.afterIndex, e)"
-        />
-        <!-- Vertex anchors (drag to reshape, ctrl+click to remove) -->
-        <v-circle
-          v-for="(va, i) in vertexEditorConfigs.vertexAnchors"
-          :key="'va-' + i"
-          :config="{
-            x: va.x,
-            y: va.y,
-            radius: va.radius,
-            fill: va.fill,
-            stroke: va.stroke,
-            strokeWidth: va.strokeWidth,
-            draggable: true,
-          }"
-          @dragmove="(e) => onVertexDragMove(va.index, e)"
-          @dragend="onVertexDragEnd"
-          @click="(e) => onVertexClick(va.index, e)"
-        />
-      </v-layer>
+      <VertexEditorLayer
+        :vertex-editor-configs="vertexEditorConfigs"
+        @insert-vertex="insertVertex"
+        @vertex-dragmove="onVertexDragMove"
+        @vertex-dragend="onVertexDragEnd"
+        @vertex-click="onVertexClick"
+      />
 
       <!-- Waypoint editor layer (connection waypoint editing on dblclick) -->
-      <v-layer v-if="waypointEditorConfigs">
-        <!-- Midpoint anchors (click to insert waypoint) -->
-        <v-circle
-          v-for="(mp, i) in waypointEditorConfigs.midpointAnchors"
-          :key="'wmp-' + i"
-          :config="{
-            x: mp.x,
-            y: mp.y,
-            radius: mp.radius,
-            fill: mp.fill,
-            stroke: mp.stroke,
-            strokeWidth: mp.strokeWidth,
-          }"
-          @click="(e) => insertWaypoint(mp.segmentIndex, e)"
-        />
-        <!-- Waypoint anchors (drag to reshape, ctrl+click to remove) -->
-        <v-circle
-          v-for="(wa, i) in waypointEditorConfigs.waypointAnchors"
-          :key="'wa-' + i"
-          :config="{
-            x: wa.x,
-            y: wa.y,
-            radius: wa.radius,
-            fill: wa.fill,
-            stroke: wa.stroke,
-            strokeWidth: wa.strokeWidth,
-            draggable: true,
-          }"
-          @dragmove="(e) => onWaypointDragMove(wa.index, e)"
-          @dragend="onWaypointDragEnd"
-          @click="(e) => onWaypointClick(wa.index, e)"
-        />
-      </v-layer>
+      <WaypointEditorLayer
+        :waypoint-editor-configs="waypointEditorConfigs"
+        @insert-waypoint="insertWaypoint"
+        @waypoint-dragmove="onWaypointDragMove"
+        @waypoint-dragend="onWaypointDragEnd"
+        @waypoint-click="onWaypointClick"
+      />
 
       <!-- Connection drawing preview line -->
-      <v-layer v-if="connectionPreviewLine" :config="{ listening: false }">
-        <v-line
-          :config="{
-            points: connectionPreviewLine,
-            stroke: PREVIEW_STROKE,
-            strokeWidth: 2,
-            dash: [8, 4],
-            listening: false,
-          }"
-        />
-      </v-layer>
+      <ConnectionPreviewLayer
+        :connection-preview-line="connectionPreviewLine"
+        :preview-stroke="PREVIEW_STROKE"
+      />
 
       <!-- Drawing overlay layer (freeform zone creation) -->
-      <v-layer v-if="drawingOverlay" :config="{ listening: false }">
-        <v-line
-          :config="{
-            points: drawingOverlay.ghostPoints,
-            fill: 'rgba(99,102,241,0.15)',
-            stroke: '#6366f1',
-            strokeWidth: 2,
-            dash: [6, 4],
-            closed: drawingOverlay.ghostPoints.length >= 6,
-            listening: false,
-          }"
-        />
-        <v-line
-          v-if="drawingOverlay.previewLine"
-          :config="{
-            points: drawingOverlay.previewLine,
-            stroke: '#6366f1',
-            strokeWidth: 1,
-            dash: [4, 4],
-            listening: false,
-          }"
-        />
-        <v-line
-          v-if="drawingOverlay.closeLine"
-          :config="{
-            points: drawingOverlay.closeLine,
-            stroke: '#22c55e',
-            strokeWidth: 2,
-            listening: false,
-          }"
-        />
-        <v-circle
-          v-for="(vc, i) in drawingOverlay.vertexConfigs"
-          :key="'dv-' + i"
-          :config="vc"
-        />
-      </v-layer>
+      <DrawingOverlayLayer :drawing-overlay="drawingOverlay" />
     </v-stage>
 
     <!-- Floating toolbar (HTML overlay above canvas) -->
