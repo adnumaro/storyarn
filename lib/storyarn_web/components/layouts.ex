@@ -180,25 +180,16 @@ defmodule StoryarnWeb.Layouts do
 
   attr :theme, :string,
     default: nil,
-    doc: "optional daisyUI theme override for the public layout subtree"
+    doc: "optional theme override ('dark' forces dark mode on the public layout subtree)"
 
   slot :inner_block, required: true
 
   def public(assigns) do
     ~H"""
-    <div
-      class={["min-h-screen flex flex-col", @theme == "dark" && "landing-shell"]}
-      data-theme={@theme}
-      style={@theme && "color-scheme: #{@theme};"}
-    >
-      <div :if={@theme == "dark"} id="landing-loader" class="lp-loader">
-        <div class="lp-loader-bar">
-          <div class="lp-loader-fill"></div>
-        </div>
-      </div>
+    <div class={["min-h-screen flex flex-col", @theme == "dark" && "dark"]}>
       <header
         class={[
-          "navbar w-[min(calc(100%-48px),1280px)]",
+          "w-[min(calc(100%-48px),1280px)]",
           @theme == "dark" &&
             "z-[120] rounded-full border border-border bg-background/70 px-5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.28)]"
         ]}

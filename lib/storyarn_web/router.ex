@@ -26,7 +26,6 @@ defmodule StoryarnWeb.Router do
   scope "/", StoryarnWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
     get "/contact", PageController, :contact
     post "/waitlist", PageController, :join_waitlist
   end
@@ -258,6 +257,7 @@ defmodule StoryarnWeb.Router do
             {@user_auth_hook, :mount_current_scope},
             {@user_auth_hook, :load_workspaces}
           ] do
+      live "/", LandingLive.Index, :index
       live "/users/register", UserLive.Registration, :new
       live "/users/log-in", UserLive.Login, :new
       live "/users/log-in/:token", UserLive.Confirmation, :new

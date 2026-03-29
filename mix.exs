@@ -141,11 +141,10 @@ defmodule Storyarn.MixProject do
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "test.e2e": ["assets.build", "test test/e2e --include e2e"],
-      "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
-      "assets.build": ["compile", "tailwind storyarn", "esbuild storyarn"],
+      "assets.setup": ["tailwind.install --if-missing"],
+      "assets.build": ["compile", "tailwind storyarn"],
       "assets.deploy": [
         "tailwind storyarn --minify",
-        "esbuild storyarn --minify",
         "phx.digest"
       ],
       precommit: [

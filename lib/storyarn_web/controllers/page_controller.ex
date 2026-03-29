@@ -3,19 +3,6 @@ defmodule StoryarnWeb.PageController do
 
   alias Storyarn.Accounts
   alias Storyarn.RateLimiter
-  alias Storyarn.Workspaces
-
-  def home(conn, _params) do
-    case conn.assigns do
-      %{current_scope: %{user: %Storyarn.Accounts.User{} = user}} ->
-        redirect_to_workspace(conn, user)
-
-      _ ->
-        conn
-        |> assign(:landing_page, true)
-        |> render(:home)
-    end
-  end
 
   def contact(conn, _params) do
     render(conn, :contact)
@@ -64,15 +51,5 @@ defmodule StoryarnWeb.PageController do
 
   defp format_ip(conn) do
     conn.remote_ip |> :inet.ntoa() |> to_string()
-  end
-
-  defp redirect_to_workspace(conn, user) do
-    case Workspaces.get_default_workspace(user) do
-      %Workspaces.Workspace{slug: slug} ->
-        redirect(conn, to: ~p"/workspaces/#{slug}")
-
-      nil ->
-        redirect(conn, to: ~p"/workspaces/new")
-    end
   end
 end

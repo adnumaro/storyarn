@@ -25,7 +25,6 @@ config :storyarn, StoryarnWeb.Endpoint,
   debug_errors: true,
   secret_key_base: "is1dQ2K6QVxn1UOnW8D8mKFpVfq7eRlcMkiAxyGdi7qOVmc3DgicHUOXWXo8twvQ",
   watchers: [
-    esbuild: {Esbuild, :install_and_run, [:storyarn, ~w(--sourcemap=inline --watch)]},
     tailwind: {Tailwind, :install_and_run, [:storyarn, ~w(--watch)]},
     vite: {PhoenixVite.Npm, :run, [:vite, ~w(dev)]}
   ],

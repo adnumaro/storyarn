@@ -50,16 +50,6 @@ config :storyarn, :admin_email, "adan@storyarn.com"
 # Configure Swoosh API client (needed for Resend in production)
 config :swoosh, :api_client, Swoosh.ApiClient.Req
 
-# Configure esbuild (the version is required)
-config :esbuild,
-  version: "0.25.4",
-  storyarn: [
-    args:
-      ~w(js/landing.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
-    cd: Path.expand("../assets", __DIR__),
-    env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
-  ]
-
 # Configure tailwind (the version is required)
 config :tailwind,
   version: "4.1.7",

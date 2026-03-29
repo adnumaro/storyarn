@@ -1,5 +1,6 @@
 import { defineConfig } from "vite"
 import vue from "@vitejs/plugin-vue"
+import { templateCompilerOptions } from "@tresjs/core"
 import tailwindcss from "@tailwindcss/vite"
 import liveVuePlugin from "live_vue/vitePlugin"
 import path from "path"
@@ -38,8 +39,9 @@ export default defineConfig({
     vue({
       template: {
         compilerOptions: {
-          // Treat vanilla-colorful custom elements as native
-          isCustomElement: (tag) => tag.startsWith("hex-"),
+          isCustomElement: (tag) =>
+            tag.startsWith("hex-") ||
+            templateCompilerOptions.template.compilerOptions.isCustomElement(tag),
         },
       },
     }),
