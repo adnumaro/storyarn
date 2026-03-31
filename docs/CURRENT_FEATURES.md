@@ -91,21 +91,21 @@
 - **Locale detection plug** (`StoryarnWeb.Plugs.Locale`) — priority: URL param (`?locale=es`) → session (`:locale` key) → `Accept-Language` header (first tag, region stripped) → default `"en"`; writes resolved locale back to session for persistence
 - **13 translation domains** — one per feature area:
 
-| Domain | Scope | Approx. strings |
-|---|---|---|
-| `default` | Generic UI, layouts, flash, core components | 57 |
-| `errors` | Ecto changeset validation errors | 24 |
-| `identity` | Auth, login, registration, sessions | 56 |
-| `flows` | Flow editor — nodes, connections, sidebar, debugger, player | 285 |
-| `scenes` | Scene canvas — pins, zones, annotations, toolbar, settings | 214 |
-| `sheets` | Sheet editor — blocks, variables, versions | 220 |
-| `projects` | Projects — CRUD, membership, invitations, trash | 111 |
-| `workspaces` | Workspaces — CRUD, membership, invitations | 90 |
-| `localization` | Content localization feature (game text translation) | 93 |
-| `screenplays` | Screenplay editor — elements, toolbar, export | 74 |
-| `settings` | User/workspace settings pages | 42 |
-| `assets` | Asset library — uploads, management | 45 |
-| `emails` | Email notification templates | 5 |
+| Domain         | Scope                                                       | Approx. strings |
+| -------------- | ----------------------------------------------------------- | --------------- |
+| `default`      | Generic UI, layouts, flash, core components                 | 57              |
+| `errors`       | Ecto changeset validation errors                            | 24              |
+| `identity`     | Auth, login, registration, sessions                         | 56              |
+| `flows`        | Flow editor — nodes, connections, sidebar, debugger, player | 285             |
+| `scenes`       | Scene canvas — pins, zones, annotations, toolbar, settings  | 214             |
+| `sheets`       | Sheet editor — blocks, variables, versions                  | 220             |
+| `projects`     | Projects — CRUD, membership, invitations, trash             | 111             |
+| `workspaces`   | Workspaces — CRUD, membership, invitations                  | 90              |
+| `localization` | Content localization feature (game text translation)        | 93              |
+| `screenplays`  | Screenplay editor — elements, toolbar, export               | 74              |
+| `settings`     | User/workspace settings pages                               | 42              |
+| `assets`       | Asset library — uploads, management                         | 45              |
+| `emails`       | Email notification templates                                | 5               |
 
 - **Spanish coverage** — ~98.7% (~1,299 of ~1,316 strings translated); 16 real gaps across `scenes` (10), `localization` (3), `sheets` (3)
 - **Client-side i18n** — no JS i18n library; translated strings injected from server via `data-i18n` JSON attribute (used by scene canvas hooks for context menu labels, with English string fallbacks); flow canvas renders translated text via server-rendered HTML
@@ -148,17 +148,17 @@
 
 Ten block types:
 
-| Type           | Variable-capable  | Config                                       | Value                                  |
-|----------------|:-----------------:|----------------------------------------------|----------------------------------------|
-| `text`         |        Yes        | label, placeholder                           | string content                         |
-| `rich_text`    |        Yes        | label                                        | HTML content (TipTap with `@mentions`) |
-| `number`       |        Yes        | label, placeholder                           | numeric content                        |
-| `select`       |        Yes        | label, placeholder, options `[{key, value}]` | selected key                           |
-| `multi_select` |        Yes        | label, placeholder, options `[{key, value}]` | array of keys                          |
-| `boolean`      |        Yes        | label, mode (`two_state`)                    | true/false/nil                         |
-| `date`         |        Yes        | label                                        | date value                             |
-| `table`        |        Yes        | label, typed columns                         | rows with cell data (see below)        |
-| `reference`    |        No         | label, allowed_types `["sheet","flow"]`      | target_type + target_id                |
+| Type           | Variable-capable | Config                                       | Value                                  |
+| -------------- | :--------------: | -------------------------------------------- | -------------------------------------- |
+| `text`         |       Yes        | label, placeholder                           | string content                         |
+| `rich_text`    |       Yes        | label                                        | HTML content (TipTap with `@mentions`) |
+| `number`       |       Yes        | label, placeholder                           | numeric content                        |
+| `select`       |       Yes        | label, placeholder, options `[{key, value}]` | selected key                           |
+| `multi_select` |       Yes        | label, placeholder, options `[{key, value}]` | array of keys                          |
+| `boolean`      |       Yes        | label, mode (`two_state`)                    | true/false/nil                         |
+| `date`         |       Yes        | label                                        | date value                             |
+| `table`        |       Yes        | label, typed columns                         | rows with cell data (see below)        |
+| `reference`    |        No        | label, allowed_types `["sheet","flow"]`      | target_type + target_id                |
 
 - **Variable exposure** — blocks are variables unless type is `reference` OR `is_constant: true`
 - **Variable name** — auto-generated from label via slugify (e.g., "Health Points" → `health_points`); unique per sheet (suffixed `_2`, `_3` on collision)
@@ -169,6 +169,7 @@ Ten block types:
 - **Column layout** — blocks can be grouped into 2 or 3-column layouts; groups dissolve when fewer than 2 blocks remain
 
 **Table block details:**
+
 - Columns with typed fields (`number`, `text`, `boolean`, `select`, `multi_select`, `date`, `reference`)
 - Rows with auto-generated row IDs and cell data per column
 - Automatic slug generation from column names
@@ -202,6 +203,7 @@ Ten block types:
 ### 2.5 Tabs
 
 **Content Tab:**
+
 - Inherited properties section (grouped by source sheet)
 - Own properties section with drag-and-drop reordering
 - Add block type picker with scope selector
@@ -210,15 +212,18 @@ Ten block types:
 - Children sheets section (links to child sheets)
 
 **References Tab:**
+
 - **Variable usage** — for each variable block: shows where it's read and written across all flows; links to flow + node; "Outdated" badge for stale references
 - **Backlinks** — sheets, flows, and screenplays that reference this sheet; source type icons, deep-links to source (including `?element=id` for screenplays)
 
 **Audio Tab:**
+
 - All dialogue nodes across the project where this sheet is the speaker
 - Grouped by flow (sorted alphabetically)
 - Per voice line: text preview (80 chars), deep-link to flow editor (`?node=id`), audio player if attached, upload/select/remove audio controls
 
 **History Tab:**
+
 - Version list with create, restore, delete actions
 - Create version modal with title/description fields
 - Confirm modals for destructive actions
@@ -268,6 +273,7 @@ Ten block types:
 **Entry** — auto-created, one per flow (cannot delete or duplicate); green Play icon; no inputs, 1 output; shows referencing flows (subflow/exit nodes from other flows)
 
 **Exit** — at least one required per flow; Square icon; 1 input, no outputs (terminal); three exit modes:
+
 - `terminal` — flow ends here
 - `flow_reference` — routes to another flow (circular reference detection)
 - `caller_return` — returns to caller subflow
@@ -276,6 +282,7 @@ Ten block types:
 - **Technical ID** — auto-generatable: `{flow_slug}_{label}_{exit_count}`
 
 **Dialogue** — blue MessageSquare icon (or speaker's sheet color); 1 input, dynamic outputs (one per response or single "output"); data:
+
 - **Speaker** — links to a sheet; node takes sheet's color; avatar shown in header
 - **Text** — rich HTML via TipTap with `@mention` support for sheets/flows
 - **Stage directions** — plain text, italic/mono styling
@@ -286,12 +293,14 @@ Ten block types:
 - **Responses** — ordered list of `{id, text, condition, instruction}`; `[?]` badge on response pin when condition is set; connections auto-migrate when first response added or last removed
 
 **Condition** — amber GitBranch icon; 1 input, dynamic outputs; two modes:
+
 - **Standard** — 2 outputs: true + false; logic: ALL (AND) or ANY (OR)
 - **Switch** — N outputs (one per rule with label) + default; toggleable from sidebar
 - **Rule structure** — sheet, variable, operator, value; operators vary by block type (text: equals/contains/starts_with/etc., number: comparison operators, boolean: is_true/is_false/is_nil, select: equals/not_equals/is_nil, multi_select: contains/not_contains/is_empty, date: equals/before/after)
 - **Stale reference detection** — warning icon when referenced variable is deleted or renamed
 
 **Instruction** — green Zap icon; 1 input, 1 output (pass-through); assignment list with operators:
+
 - `number`: set, add, subtract
 - `boolean`: set_true, set_false, toggle
 - `text/rich_text`: set, clear
@@ -300,6 +309,7 @@ Ten block types:
 - **Stale reference detection** — warning icon when referenced variable is stale
 
 **Hub** — purple LogIn icon (or custom color); 1 input, 1 output; named anchor point:
+
 - **Hub ID** — unique within flow, auto-generated if blank
 - **Label** and **color** (hex)
 - Hub ID rename cascades to all referencing jump nodes
@@ -307,11 +317,13 @@ Ten block types:
 - Canvas shows jump count nav link (zooms to all referencing jumps)
 
 **Jump** — purple LogOut icon (inherits hub's color); 1 input, no outputs (terminal on canvas):
+
 - **Target hub** — dropdown of all hubs in flow
 - Canvas shows hub label as nav link (click zooms to hub)
 - Error badge if no target set
 
 **Scene** — cyan Clapperboard icon (or location sheet color); 1 input, 1 output (pass-through):
+
 - **Location** — links to a sheet as the location
 - **INT/EXT** — `int`, `ext`, `int_ext`, `ext_int`
 - **Sub-location** (e.g., "MAIN LOBBY") and **time of day** (e.g., "NIGHT")
@@ -320,6 +332,7 @@ Ten block types:
 - Canvas shows slug line formatted as `"INT. MAIN LOBBY - NIGHT"` in bold uppercase
 
 **Subflow** — indigo Box icon; 1 input, dynamic outputs (one per exit in referenced flow, excluding `flow_reference` exits):
+
 - **Referenced flow** — picker with circular reference detection and self-reference prevention
 - Dynamic output pins named `exit_{id}` with labels
 - Canvas shows nav link with flow name + shortcut
@@ -356,16 +369,17 @@ Rete.js History plugin (`rete-history-plugin`) with `timing: 200` ms and a custo
 
 **Action types:**
 
-| Action | Captured data | Undo | Redo | Server event |
-|---|---|---|---|---|
-| `DragAction` | `nodeId`, `prev {x,y}`, `next {x,y}` | `area.translate(nodeId, prev)` → triggers existing `node_moved` debounce pipeline (300ms) | `area.translate(nodeId, next)` → same pipeline | `node_moved` (indirect, via `nodetranslated` handler) |
-| `AddConnectionAction` | Full connection snapshot | `editor.removeConnection(id)` → `connection_deleted` | `editor.addConnection(conn)` → `connection_created` (skipped if either endpoint node deleted) | `connection_deleted` / `connection_created` |
-| `RemoveConnectionAction` | Full connection snapshot | `editor.addConnection(conn)` → `connection_created` (skipped if either endpoint node deleted) | `editor.removeConnection(id)` → `connection_deleted` | `connection_created` / `connection_deleted` |
-| `DeleteNodeAction` | Hook ref, database node ID | Pushes `restore_node` → server clears `deleted_at`, re-adds node + valid connections via `node_restored` event; idempotent (`{:ok, :already_active}` if already restored) | Sets `_historyTriggeredDelete` flag, pushes `delete_node` → server soft-deletes; flag prevents double-recording in history | `restore_node` / `delete_node` |
+| Action                   | Captured data                        | Undo                                                                                                                                                                      | Redo                                                                                                                       | Server event                                          |
+| ------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `DragAction`             | `nodeId`, `prev {x,y}`, `next {x,y}` | `area.translate(nodeId, prev)` → triggers existing `node_moved` debounce pipeline (300ms)                                                                                 | `area.translate(nodeId, next)` → same pipeline                                                                             | `node_moved` (indirect, via `nodetranslated` handler) |
+| `AddConnectionAction`    | Full connection snapshot             | `editor.removeConnection(id)` → `connection_deleted`                                                                                                                      | `editor.addConnection(conn)` → `connection_created` (skipped if either endpoint node deleted)                              | `connection_deleted` / `connection_created`           |
+| `RemoveConnectionAction` | Full connection snapshot             | `editor.addConnection(conn)` → `connection_created` (skipped if either endpoint node deleted)                                                                             | `editor.removeConnection(id)` → `connection_deleted`                                                                       | `connection_created` / `connection_deleted`           |
+| `DeleteNodeAction`       | Hook ref, database node ID           | Pushes `restore_node` → server clears `deleted_at`, re-adds node + valid connections via `node_restored` event; idempotent (`{:ok, :already_active}` if already restored) | Sets `_historyTriggeredDelete` flag, pushes `delete_node` → server soft-deletes; flag prevents double-recording in history | `restore_node` / `delete_node`                        |
 
 **Drag coalescing:** When a `nodetranslated` event fires while the node is in the `picked` set (user actively dragging), the preset checks `history.getRecent(400)` for an existing `DragAction` on the same node. If found, updates its `next` position and resets its timestamp instead of creating a new entry. Programmatic translates (from undo/redo or server-push) are skipped because the node is not in `picked`.
 
 **History suppression during bulk loads** — two complementary mechanisms:
+
 1. `isLoadingFromServer` reference counter — all preset pipe handlers check this flag and skip recording when > 0
 2. Deferred plugin registration — `area.use(history)` is called only **after** all initial nodes and connections are loaded, so the preset pipes don't even exist during first load
 
@@ -380,7 +394,7 @@ All canvas shortcuts are blocked when focus is in `INPUT`, `TEXTAREA`, `SELECT`,
 **Canvas shortcuts** (blocked in text inputs):
 
 | Shortcut                      | Action                                     | Condition                          |
-|-------------------------------|--------------------------------------------|------------------------------------|
+| ----------------------------- | ------------------------------------------ | ---------------------------------- |
 | Ctrl/Cmd+Z                    | Undo                                       | —                                  |
 | Ctrl/Cmd+Y / Ctrl/Cmd+Shift+Z | Redo                                       | —                                  |
 | Delete / Backspace            | Delete selected node                       | Node selected, not locked by other |
@@ -390,7 +404,7 @@ All canvas shortcuts are blocked when focus is in `INPUT`, `TEXTAREA`, `SELECT`,
 **Debug shortcuts** (always fire, requires debug session active via `[data-debug-active]`):
 
 | Shortcut         | Action                   |
-|------------------|--------------------------|
+| ---------------- | ------------------------ |
 | Ctrl/Cmd+Shift+D | Toggle debug mode on/off |
 | F10              | Step forward             |
 | F9               | Step back                |
@@ -399,10 +413,10 @@ All canvas shortcuts are blocked when focus is in `INPUT`, `TEXTAREA`, `SELECT`,
 
 **Global app shortcuts** (defined in `theme.js`, fire app-wide outside text inputs):
 
-| Shortcut   | Action                    |
-|------------|---------------------------|
-| D          | Toggle dark/light theme   |
-| E          | Navigate to user settings |
+| Shortcut | Action                    |
+| -------- | ------------------------- |
+| D        | Toggle dark/light theme   |
+| E        | Navigate to user settings |
 
 Note: There are no toolbar buttons for undo/redo — keyboard-only access. Multi-select (`Ctrl+Click`) accumulates selection but Delete/Duplicate operate on single selected node only. Copy/paste is not supported in the flow canvas (available in scenes only).
 
@@ -423,11 +437,13 @@ Note: There are no toolbar buttons for undo/redo — keyboard-only access. Multi
 ### 3.8 Debug Mode
 
 **Session:**
+
 - Toggle with "Debug" button or Ctrl/Cmd+Shift+D
 - Session persisted across cross-flow navigation via ETS-backed store
 - Resizable docked panel at bottom (drag handle, default 280px)
 
 **Engine:**
+
 - Pure functional evaluator — no DB access during execution
 - Variables initialized from all project variables
 - Step statuses: paused → ok → waiting_input → finished | error
@@ -436,6 +452,7 @@ Note: There are no toolbar buttons for undo/redo — keyboard-only access. Multi
 - Breakpoints per node (MapSet); auto-pause on breakpoint during auto-play
 
 **Controls:**
+
 - Play/Pause (auto-step at configurable speed: 200ms–3000ms)
 - Step Forward / Step Back (via state snapshots)
 - Reset / Stop
@@ -443,12 +460,14 @@ Note: There are no toolbar buttons for undo/redo — keyboard-only access. Multi
 - Start node selector
 
 **Panel Tabs:**
+
 1. **Console** — timestamped log entries (info/warning/error), response choices when waiting for input
 2. **Variables** — filterable table with variable key, type, initial/previous/current values; inline editing (click to edit, type-aware inputs); "Changed Only" filter; color-coded by source (instruction=amber, user_override=blue)
 3. **History** — timeline of variable changes (timestamp, node, old→new, source badge)
 4. **Path** — execution path with step numbers, depth-indented for subflows, breakpoint dots, node type icons, outcome labels, flow separator bars
 
 **Canvas Visual Feedback:**
+
 - Pulsing highlight on active node
 - Amber pulse when waiting for input
 - Red indicator on error
@@ -489,6 +508,7 @@ Full-screen cinematic playback mode for flows. Route: `/workspaces/:ws/projects/
 **Architecture:** `PlayerLive` (layout: false) → `PlayerEngine` (auto-advance loop) → `Slide` (pure render-data builder) → components (`PlayerSlide`, `PlayerChoices`, `PlayerToolbar`, `PlayerOutcome`).
 
 **Engine (`PlayerEngine.step_until_interactive/3`):**
+
 - Thin loop wrapper over `Evaluator.Engine.step/3` — the same pure-functional state machine used by the debugger
 - Auto-advances through non-interactive nodes: `entry`, `hub`, `condition`, `instruction`, `jump`, `subflow`
 - Stops at: `dialogue` (`:waiting_input`), `exit` (`:finished`), errors, and cross-flow signals (`:flow_jump`, `:flow_return`)
@@ -498,7 +518,7 @@ Full-screen cinematic playback mode for flows. Route: `/workspaces/:ws/projects/
 **Slide types:**
 
 | Type        | Node        | Fields                                                                                                                                                          |
-|-------------|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ----------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `:dialogue` | `dialogue`  | Speaker name/initials/color (resolved from sheet), sanitized+interpolated text, stage directions, menu text, responses (id, text, valid, number, has_condition) |
 | `:scene`    | `scene`     | Setting (INT/EXT), location name (from sheet), sub-location, time of day, sanitized+interpolated description                                                    |
 | `:outcome`  | `exit`      | Label (falls back to strip_html of text, then "The End"), outcome color, outcome tags, step count, variables changed count, choices made count                  |
@@ -509,6 +529,7 @@ Full-screen cinematic playback mode for flows. Route: `/workspaces/:ws/projects/
 **HTML sanitization:** Shared `HtmlSanitizer` module — allows 27 tags (p, br, em, strong, b, i, u, s, span, a, ul, ol, li, blockquote, code, pre, sub, sup, del, h1–h6, div). Strips `on*` event handlers, `style`/`srcdoc`/`formaction` attributes, and `javascript:` URIs. Disallowed tags unwrapped (children preserved). HTML comments removed.
 
 **Two player modes:**
+
 - **Player** (default, `eye` icon) — mimics end-user experience; invalid (condition-blocked) responses hidden
 - **Analysis** (`scan-eye` icon) — shows ALL responses; invalid ones greyed out with red badge, disabled; `shield-question` icon on conditioned responses
 
@@ -521,7 +542,7 @@ Full-screen cinematic playback mode for flows. Route: `/workspaces/:ws/projects/
 **Keyboard shortcuts** (`StoryPlayer` JS hook, global `keydown` listener):
 
 | Key                        | Action                            |
-|----------------------------|-----------------------------------|
+| -------------------------- | --------------------------------- |
 | Space / Enter / ArrowRight | Continue (advance to next node)   |
 | ArrowLeft / Backspace      | Go back (step back)               |
 | 1–9                        | Select Nth visible response       |
@@ -544,6 +565,7 @@ Full-screen cinematic playback mode for flows. Route: `/workspaces/:ws/projects/
 ### 4.1 Two Editing Modes
 
 **Fullscreen Dialogue Editor (flow-embedded):**
+
 - Overlays the flow editor viewport when a dialogue node is double-clicked
 - Speaker selector dropdown (all project sheets, uppercase names)
 - Stage directions input (plain text, italic)
@@ -553,6 +575,7 @@ Full-screen cinematic playback mode for flows. Route: `/workspaces/:ws/projects/
 - Keyboard: Esc closes, Tab from TipTap → stage directions focus
 
 **Full Screenplay Editor (standalone tool):**
+
 - Dedicated page at `/workspaces/:ws/projects/:proj/screenplays/:id`
 - Single TipTap instance with industry-standard formatting
 - Courier Prime monospace font
@@ -564,6 +587,7 @@ Full-screen cinematic playback mode for flows. Route: `/workspaces/:ws/projects/
 18 element types in three categories:
 
 **Standard screenplay:**
+
 - `scene_heading` — INT./EXT. location line (uppercase, bold)
 - `action` — narrative description (default block type)
 - `character` — character name (uppercase, 211px left margin)
@@ -573,11 +597,13 @@ Full-screen cinematic playback mode for flows. Route: `/workspaces/:ws/projects/
 - `dual_dialogue` — two-column simultaneous dialogue
 
 **Interactive (map to flow nodes):**
+
 - `conditional` — inline condition builder widget
 - `instruction` — inline instruction builder widget
 - `response` — inline response/choice list builder
 
 **Flow navigation / utility:**
+
 - `hub_marker` — hub reference marker
 - `jump_marker` — jump target marker
 - `note` — writer's note (amber border, not exported)
@@ -588,7 +614,7 @@ Full-screen cinematic playback mode for flows. Route: `/workspaces/:ws/projects/
 ### 4.3 Keyboard Shortcuts & Smart Typing
 
 | Key                          | Behavior                                                                                                                                         |
-|------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Enter                        | Split block, create next block with smart type progression (scene_heading→action, character→dialogue, dialogue→action, transition→scene_heading) |
 | Tab                          | Cycle block type forward: action → sceneHeading → character → dialogue → parenthetical → transition                                              |
 | Shift+Tab                    | Cycle backward                                                                                                                                   |
@@ -599,15 +625,16 @@ Full-screen cinematic playback mode for flows. Route: `/workspaces/:ws/projects/
 
 Type `/` in an empty block to open a filtered command menu:
 
-*Screenplay:* Scene Heading, Action, Character, Dialogue, Parenthetical, Transition
-*Interactive:* Condition, Instruction, Responses
-*Utility:* Note, Section, Page Break
+_Screenplay:_ Scene Heading, Action, Character, Dialogue, Parenthetical, Transition
+_Interactive:_ Condition, Instruction, Responses
+_Utility:_ Note, Section, Page Break
 
 Keyboard navigation (Arrow Up/Down, Enter to select, Escape to close).
 
 ### 4.5 Auto-Detection
 
 Input rules automatically convert block types as the user types:
+
 - `INT. `, `EXT. `, `INT./EXT. `, `I/E. `, `EST. ` → scene heading
 - `FADE IN:`, `FADE OUT.`, `CUT TO:`, `DISSOLVE TO:`, etc. → transition
 - `(text)` in dialogue → parenthetical
@@ -647,6 +674,7 @@ Input rules automatically convert block types as the user types:
 **Instruction:** inline assignment builder with variable picker, operator, value; natural language rendering
 
 **Response:** choice list builder with:
+
 - Add/remove choices with text inputs
 - Per-choice condition toggle (embedded condition builder)
 - Per-choice instruction toggle (embedded instruction builder)
@@ -661,6 +689,7 @@ Input rules automatically convert block types as the user types:
 ### 4.11 Bidirectional Flow Sync
 
 **Screenplay → Flow (`sync_to_flow`):**
+
 1. Loads full page tree (screenplay + linked child pages, up to depth 20)
 2. Groups elements into dialogue groups and maps to flow node types
 3. Diffs against existing synced nodes (create/update/delete)
@@ -669,6 +698,7 @@ Input rules automatically convert block types as the user types:
 6. Updates `linked_node_id` on each element
 
 **Flow → Screenplay (`sync_from_flow`):**
+
 1. DFS traversal from entry node to linearize the graph
 2. Reverse-maps each node type to element attributes
 3. Diffs existing elements (create/update/delete)
@@ -676,6 +706,7 @@ Input rules automatically convert block types as the user types:
 5. Recursively syncs branching paths into linked child pages
 
 **Link status indicators in toolbar:**
+
 - Unlinked: "Create Flow" button
 - Linked: flow name badge (clickable), "To Flow" push, "From Flow" pull, unlink
 - Flow deleted: warning badge + unlink
@@ -684,6 +715,7 @@ Input rules automatically convert block types as the user types:
 ### 4.12 Fountain Format
 
 **Export:**
+
 - Downloads `.fountain` file (slugified filename)
 - Title page → Fountain key-value header
 - Standard elements → industry-standard Fountain formatting
@@ -692,6 +724,7 @@ Input rules automatically convert block types as the user types:
 - Dual dialogue uses `^` suffix convention
 
 **Import:**
+
 - File picker accepting `.fountain` and `.txt`
 - Parses title page, scene headings, characters, dialogue, parentheticals, transitions, actions, notes, sections, page breaks
 - Detects indent profile (Final Draft export compatibility)
@@ -786,19 +819,19 @@ Input rules automatically convert block types as the user types:
 
 ### 5.7 Upload
 
-- **Assets page** — `AssetUpload` hook; accepts image/* and audio/*; max 20 MB
+- **Assets page** — `AssetUpload` hook; accepts image/_ and audio/_; max 20 MB
 - **Button states** — "Upload" / "Uploading..." with disabled state
 - Server-side: base64 decode → MIME validation → key generation → storage upload → DB record → auto-select new asset → refresh counts
 
 ### 5.8 File Size Limits
 
-| Context                    | Accepts        | Max Size   |
-|----------------------------|----------------|------------|
-| Asset library (general)    | Images + Audio | 20 MB      |
-| Audio picker (flow editor) | Audio only     | 20 MB      |
-| Audio tab (sheet)          | Audio only     | 20 MB      |
-| Sheet avatar               | Images only    | 5 MB       |
-| Sheet banner               | Images only    | 10 MB      |
+| Context                    | Accepts        | Max Size |
+| -------------------------- | -------------- | -------- |
+| Asset library (general)    | Images + Audio | 20 MB    |
+| Audio picker (flow editor) | Audio only     | 20 MB    |
+| Audio tab (sheet)          | Audio only     | 20 MB    |
+| Sheet avatar               | Images only    | 5 MB     |
+| Sheet banner               | Images only    | 10 MB    |
 
 ### 5.9 Sheet Integration
 
@@ -838,6 +871,7 @@ Input rules automatically convert block types as the user types:
 **Layers** — ordered visibility groups; every scene auto-creates a default layer; each layer has: name, visible toggle, position, fog of war settings (fog_enabled, fog_color, fog_opacity). Cannot delete last layer; deleting a layer nullifies `layer_id` on its elements.
 
 **Zones** — polygonal regions defined by 3–100 vertices (percentage coords). Four drawing shapes:
+
 - **Rectangle** — drag bounding box → 4 vertices
 - **Triangle** — drag base → 3 vertices
 - **Circle** — drag radius → approximated as 32-point polygon
@@ -862,19 +896,19 @@ Zone fields: name (max 200), vertices, fill_color, opacity (0–1), border_color
 
 Bottom dock in edit mode, 10 tools in 5 groups:
 
-| Tool           | Shortcut  | Description                                                          |
-|----------------|-----------|----------------------------------------------------------------------|
-| Select         | Shift+V   | Click to select, drag to move                                        |
-| Pan            | Shift+H   | Drag scene, scroll to zoom                                           |
-| Rectangle zone | Shift+R   | Draw rectangular zone                                                |
-| Triangle zone  | Shift+T   | Draw triangular zone                                                 |
-| Circle zone    | Shift+C   | Draw circular zone                                                   |
-| Freeform zone  | Shift+F   | Click polygon points, close to finish                                |
-| Free Pin       | Shift+P   | Click canvas to place pin                                            |
-| From Sheet     | —         | Open sheet picker, then click to place character pin linked to sheet |
-| Annotation     | Shift+N   | Click canvas to place text note (auto-focuses for inline editing)    |
-| Connector      | Shift+L   | Click source pin, then target pin to create connection               |
-| Ruler          | Shift+M   | Click two points to measure distance                                 |
+| Tool           | Shortcut | Description                                                          |
+| -------------- | -------- | -------------------------------------------------------------------- |
+| Select         | Shift+V  | Click to select, drag to move                                        |
+| Pan            | Shift+H  | Drag scene, scroll to zoom                                           |
+| Rectangle zone | Shift+R  | Draw rectangular zone                                                |
+| Triangle zone  | Shift+T  | Draw triangular zone                                                 |
+| Circle zone    | Shift+C  | Draw circular zone                                                   |
+| Freeform zone  | Shift+F  | Click polygon points, close to finish                                |
+| Free Pin       | Shift+P  | Click canvas to place pin                                            |
+| From Sheet     | —        | Open sheet picker, then click to place character pin linked to sheet |
+| Annotation     | Shift+N  | Click canvas to place text note (auto-focuses for inline editing)    |
+| Connector      | Shift+L  | Click source pin, then target pin to create connection               |
+| Ruler          | Shift+M  | Click two points to measure distance                                 |
 
 Dock hidden in view mode.
 
@@ -897,6 +931,7 @@ Two preset rows: vivid (12 Tailwind colors + black) and pastel (11 pastels + whi
 ### 6.7 Layer System
 
 Top-left layer bar overlay on canvas:
+
 - Visibility toggle (eye/eye-off) per layer
 - Click layer name to set as active (new elements assigned to active layer)
 - Fog of War indicator (cloud-fog icon) when enabled
@@ -906,6 +941,7 @@ Top-left layer bar overlay on canvas:
 ### 6.8 Zone → Child Scene Drill-Down
 
 Double-click a named zone → `create_child_scene_from_zone`:
+
 1. Zone must have a name (error if blank)
 2. `ZoneImageExtractor` crops parent's background to zone's bounding box, upscales to min 1000px, sharpens (sigma=1.5), saves as WebP asset
 3. Creates child scene with: zone name, parent_id, extracted background, computed dimensions, proportional scale_value
@@ -919,7 +955,7 @@ If no background image, creates 1000x1000px child scene without background. Chil
 All shortcuts require edit mode and are blocked in text inputs.
 
 | Shortcut                      | Action                                               |
-|-------------------------------|------------------------------------------------------|
+| ----------------------------- | ---------------------------------------------------- |
 | Delete / Backspace            | Delete selected element                              |
 | Escape                        | Deselect; cancel in-progress zone/connection drawing |
 | Ctrl/Cmd+Z                    | Undo                                                 |
@@ -936,7 +972,7 @@ Server-side undo/redo. Stacks stored in socket assigns, max depth 50 each.
 **Tracked operations** (delete only):
 
 | Operation         | Undo                                 | Redo                         |
-|-------------------|--------------------------------------|------------------------------|
+| ----------------- | ------------------------------------ | ---------------------------- |
 | Delete pin        | Recreates pin with all fields        | Re-deletes the recreated pin |
 | Delete zone       | Recreates zone with all fields       | Re-deletes                   |
 | Delete connection | Recreates connection with all fields | Re-deletes                   |
@@ -967,6 +1003,7 @@ Zones, pins, and annotations can be locked via the floating toolbar toggle. Lock
 ### 6.14 Search Panel
 
 Top-left below layer bar:
+
 - Search input with 300ms debounce, case-insensitive match on label/name/text
 - Type filter tabs (when query non-empty): All / Pins / Zones / Notes / Lines
 - Results list (clickable to focus + select)
@@ -975,6 +1012,7 @@ Top-left below layer bar:
 ### 6.15 Legend
 
 Auto-generated bottom-right panel. Groups:
+
 - **Pins** by `(pin_type, color)` — icon + type label + count
 - **Zones** by `fill_color` — swatch + count
 - **Connections** by `(line_style, color)` — line preview + count
@@ -984,6 +1022,7 @@ Only shown when scene has at least one element. Click to expand/collapse.
 ### 6.16 Ruler Tool
 
 Click two points to measure distance. Displays:
+
 - Orange dashed line with circle markers at endpoints
 - Midpoint label: real-world distance if scale configured (e.g., "42 km"), otherwise percentage of scene width
 - Multiple measurements simultaneously; Escape or tool switch clears all
@@ -997,6 +1036,7 @@ Click two points to measure distance. Displays:
 ### 6.18 Scene Settings
 
 Gear icon in header opens floating panel:
+
 - **Background Image:** upload (JPEG/PNG/GIF/WebP, no SVG), change, remove
 - **Scene Scale:** scale_value (number) + scale_unit (string) — defines "1 scene width = N units" for ruler
 - **Dimensions:** read-only width x height px display
@@ -1015,6 +1055,7 @@ Gear icon in header opens floating panel:
 ### 6.20 Hierarchical Scene Tree
 
 Sidebar tree with:
+
 - Expand/collapse nodes
 - Up to 10 zones + 10 pins previewed per scene; overflow as "N more zones…" / "N more pins…"
 - Drag-to-reorder among siblings
@@ -1081,10 +1122,12 @@ Content localization system for translating game text (dialogue, descriptions, l
 ### 7.1 Core Data Model
 
 **ProjectLanguage** — one record per locale per project:
+
 - `locale_code` (BCP 47, 2–10 chars, e.g., "en", "zh-CN"), `name` (display name, 1–100), `is_source` (boolean, exactly one per project enforced via partial unique index), `position` (sort order)
 - Unique constraint: `(project_id, locale_code)`
 
 **LocalizedText** — one row per translatable field per locale:
+
 - **Source fields:** `source_type` (one of: `flow_node`, `block`, `sheet`, `flow`), `source_id`, `source_field` (e.g., `text`, `response.r1_123.text`), `source_text` (original content, may contain HTML), `source_text_hash` (SHA-256 for change detection), `word_count` (auto-computed, HTML stripped). Note: `screenplay` is defined as a valid source_type in the schema but screenplay text extraction is not yet implemented.
 - **Translation fields:** `locale_code`, `translated_text`, `status` (workflow: `pending` → `draft` → `in_progress` → `review` → `final`), `machine_translated` (boolean), `last_translated_at`, `translated_by_id` (user FK)
 - **Review fields:** `translator_notes`, `reviewer_notes`, `last_reviewed_at`, `reviewed_by_id` (user FK)
@@ -1094,10 +1137,12 @@ Content localization system for translating game text (dialogue, descriptions, l
 - **Auto-downgrade rule:** when `upsert_text` detects `source_text_hash` changed and current status is `final`, it auto-downgrades to `review`
 
 **GlossaryEntry** — per-project terminology definitions:
+
 - `source_term`, `source_locale`, `target_term` (nil = use source as-is), `target_locale`, `context` (usage notes), `do_not_translate` (boolean, for proper nouns)
 - Unique constraint: `(project_id, source_term, source_locale, target_locale)`
 
 **ProviderConfig** — machine translation provider settings:
+
 - `provider` ("deepl" only currently), `api_key_encrypted` (Cloak encryption), `api_endpoint` (free vs pro), `is_active`, `settings` (JSON), `deepl_glossary_ids` (map of language-pair → DeepL glossary ID)
 - Unique constraint: `(project_id, provider)`
 
@@ -1107,16 +1152,16 @@ Content localization system for translating game text (dialogue, descriptions, l
 
 **Triggers and extracted fields:**
 
-| Entity | Trigger | Fields extracted |
-|---|---|---|
-| Dialogue node | Node create/update | `text` (rich HTML), `stage_directions`, `menu_text`, per-response `response.<id>.text` |
-| Scene node | Node create/update | `description` |
-| Exit node | Node create/update | `label` |
-| Flow | Flow create/update | `name`, `description` |
-| Sheet | Sheet create/update | `name`, `description` |
-| Text block | Block create/update | `config.label`, `value.content` |
-| Select block | Block create/update | `config.label`, per-option `config.options.<key>` |
-| Other blocks | Block create/update | `config.label` only |
+| Entity        | Trigger             | Fields extracted                                                                       |
+| ------------- | ------------------- | -------------------------------------------------------------------------------------- |
+| Dialogue node | Node create/update  | `text` (rich HTML), `stage_directions`, `menu_text`, per-response `response.<id>.text` |
+| Scene node    | Node create/update  | `description`                                                                          |
+| Exit node     | Node create/update  | `label`                                                                                |
+| Flow          | Flow create/update  | `name`, `description`                                                                  |
+| Sheet         | Sheet create/update | `name`, `description`                                                                  |
+| Text block    | Block create/update | `config.label`, `value.content`                                                        |
+| Select block  | Block create/update | `config.label`, per-option `config.options.<key>`                                      |
+| Other blocks  | Block create/update | `config.label` only                                                                    |
 
 **Cleanup:** Entity deletions trigger `delete_texts_for_source/2`. Response removal triggers `delete_texts_for_source_field/3` to clean orphaned field-level rows.
 
@@ -1179,12 +1224,14 @@ Route: `/workspaces/:ws/projects/:proj/localization/:id`
 ### 7.8 Export/Import
 
 **Export:**
+
 - **Excel (.xlsx)** — `export_xlsx/2` generates binary Excel file; includes ID, source_type, source_field, source_text, translated_text, status columns
 - **CSV** — `export_csv/2` generates CSV string; same columns
 - **Filtered exports** — export controller accepts optional `status` and `source_type` query params for filtered downloads
 - **Download** — via `LocalizationExportController`; sets content-type + `content-disposition: attachment`; filename: `{project-slug}_translations_{locale}.xlsx`
 
 **Import:**
+
 - **CSV import** — `import_csv/1` reads ID column, updates `translated_text` and `status` columns by `localized_text.id`
 - No upload UI yet — function exists in `ExportImport` module but no LiveView form wired
 

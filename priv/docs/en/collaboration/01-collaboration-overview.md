@@ -1,9 +1,10 @@
 %{
-  title: "Real-time Collaboration",
-  category_label: "Collaboration",
-  order: 1,
-  description: "Work together with your team in real time -- presence, cursors, and locking."
+title: "Real-time Collaboration",
+category_label: "Collaboration",
+order: 1,
+description: "Work together with your team in real time -- presence, cursors, and locking."
 }
+
 ---
 
 Storyarn is built for teams. The {accent}Flow Editor{/accent} supports full real-time collaboration -- you can see who is online, follow their cursors across the canvas, and edit nodes without conflicts thanks to automatic locking.
@@ -75,8 +76,8 @@ A lighter variant of each color (300-weight) is also available for subtle elemen
 
 Collaboration respects the project role hierarchy. All roles can see presence, cursors, and toasts. Only users with edit permissions (Owner, Editor) can acquire locks and make changes. Viewers see everything in real time but cannot modify anything -- lock acquisition is denied server-side, not just hidden in the UI.
 
-| Role | Sees presence | Sees cursors | Can edit nodes |
-|------|:---:|:---:|:---:|
-| **Owner** | Yes | Yes | Yes |
-| **Editor** | Yes | Yes | Yes |
-| **Viewer** | Yes | Yes | No |
+| Role       | Sees presence | Sees cursors | Can edit nodes |
+| ---------- | :-----------: | :----------: | :------------: |
+| **Owner**  |      Yes      |     Yes      |      Yes       |
+| **Editor** |      Yes      |     Yes      |      Yes       |
+| **Viewer** |      Yes      |     Yes      |       No       |

@@ -1,0 +1,63 @@
+<script setup>
+import { ArrowLeft, Save, Scan } from "lucide-vue-next";
+import { Button } from "@components/ui/button";
+import { useLive } from "@composables/useLive";
+
+const props = defineProps({
+  sceneName: { type: String, default: "" },
+  activeFlowName: { type: String, default: null },
+  flowMode: { type: Boolean, default: false },
+  showZones: { type: Boolean, default: false },
+});
+
+const live = useLive();
+
+function exit() {
+  live.pushEvent("exit_exploration", {});
+}
+
+function save() {
+  live.pushEvent("save_session", {});
+}
+
+function toggleZones() {
+  live.pushEvent("toggle_show_zones", {});
+}
+</script>
+
+<template>
+  <div
+    class="flex items-center h-10 px-2 bg-background/80 backdrop-blur-sm border-b border-border shrink-0"
+  >
+    <!-- Left: Exit -->
+    <div class="flex items-center gap-1">
+      <Button variant="ghost" size="sm" @click="exit">
+        <ArrowLeft class="size-4" />
+        Exit
+      </Button>
+    </div>
+
+    <!-- Center: Scene name + flow name -->
+    <div class="flex-1 flex items-center justify-center gap-2 min-w-0">
+      <span class="text-sm font-medium truncate">{{ sceneName }}</span>
+      <span v-if="flowMode && activeFlowName" class="text-xs opacity-50 truncate">
+        — {{ activeFlowName }}
+      </span>
+    </div>
+
+    <!-- Right: Save + Show zones -->
+    <div class="flex items-center gap-1">
+      <Button variant="ghost" size="icon-sm" title="Save progress" @click="save">
+        <Save class="size-4" />
+      </Button>
+      <Button
+        :variant="showZones ? 'secondary' : 'ghost'"
+        size="icon-sm"
+        title="Show zones"
+        @click="toggleZones"
+      >
+        <Scan class="size-4" />
+      </Button>
+    </div>
+  </div>
+</template>

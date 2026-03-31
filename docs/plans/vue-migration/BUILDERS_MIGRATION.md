@@ -3,6 +3,7 @@
 ## Current Architecture
 
 Both builders use the same pattern:
+
 - **Elixir component** (`condition_builder.ex` / `instruction_builder.ex`) — thin HEEx wrapper with `phx-hook` + `phx-update="ignore"`, passes all data via `data-*` attributes
 - **LiveView hook** (`condition_builder.js` / `instruction_builder.js`) — reads `data-*`, instantiates core builder, handles `handleEvent` for collaboration
 - **Core builder** (`condition_builder_core.js` / `instruction_builder_core.js`) — imperative DOM rendering, framework-agnostic, accepts `pushEvent` callback
@@ -33,22 +34,23 @@ InstructionBuilder (741 lines total):
 ## Data Structures
 
 ### Condition (block format)
+
 ```json
 {
-  "logic": "all",           // "all" | "any" — top-level logic
+  "logic": "all", // "all" | "any" — top-level logic
   "blocks": [
     {
       "id": "block_abc123",
-      "type": "block",       // "block" | "group"
-      "logic": "all",        // inner logic for this block's rules
-      "label": "",           // only in switch_mode
+      "type": "block", // "block" | "group"
+      "logic": "all", // inner logic for this block's rules
+      "label": "", // only in switch_mode
       "rules": [
         {
           "id": "rule_xyz789",
-          "sheet": "main-characters",     // sheet shortcut or null
-          "variable": "health_points",    // variable name
-          "operator": "greater_than",     // see operator list below
-          "value": "50"                   // comparison value
+          "sheet": "main-characters", // sheet shortcut or null
+          "variable": "health_points", // variable name
+          "operator": "greater_than", // see operator list below
+          "value": "50" // comparison value
         }
       ]
     },
@@ -56,48 +58,54 @@ InstructionBuilder (741 lines total):
       "id": "group_def456",
       "type": "group",
       "logic": "any",
-      "blocks": [/* nested blocks */]
+      "blocks": [
+        /* nested blocks */
+      ]
     }
   ]
 }
 ```
 
 ### Operators (context-dependent by variable type)
-| Variable Type | Available Operators |
-|---------------|-------------------|
+
+| Variable Type | Available Operators                                                                            |
+| ------------- | ---------------------------------------------------------------------------------------------- |
 | number        | equals, not_equals, greater_than, greater_than_or_equal, less_than, less_than_or_equal, is_nil |
-| text          | equals, not_equals, contains, not_contains, starts_with, ends_with, is_empty, is_nil |
-| boolean       | is_true, is_false, is_nil |
-| select        | equals, not_equals, is_nil |
-| multi_select  | contains, not_contains, is_nil |
-| date          | equals, not_equals, before, after, is_nil |
+| text          | equals, not_equals, contains, not_contains, starts_with, ends_with, is_empty, is_nil           |
+| boolean       | is_true, is_false, is_nil                                                                      |
+| select        | equals, not_equals, is_nil                                                                     |
+| multi_select  | contains, not_contains, is_nil                                                                 |
+| date          | equals, not_equals, before, after, is_nil                                                      |
 
 ### Assignment
+
 ```json
 [
   {
     "id": "assign_abc123",
     "sheet": "main-characters",
     "variable": "health_points",
-    "operation": "add",          // "set" | "add" | "subtract" | "multiply" | "toggle"
+    "operation": "add", // "set" | "add" | "subtract" | "multiply" | "toggle"
     "value": "10"
   }
 ]
 ```
 
 ### Operations (context-dependent by variable type)
-| Variable Type | Available Operations |
-|---------------|---------------------|
+
+| Variable Type | Available Operations         |
+| ------------- | ---------------------------- |
 | number        | set, add, subtract, multiply |
-| text          | set |
-| boolean       | set, toggle |
-| select        | set |
-| multi_select  | set, add, subtract |
-| date          | set |
+| text          | set                          |
+| boolean       | set, toggle                  |
+| select        | set                          |
+| multi_select  | set, add, subtract           |
+| date          | set                          |
 
 ## Variable Data Format
 
 Variables are passed as a flat list, each with:
+
 ```json
 {
   "ref": "main-characters.health_points",
@@ -115,6 +123,7 @@ The builders group these by `sheet_shortcut` for the combobox UI.
 ## Combobox Behavior
 
 Both builders use a custom combobox (not a native select):
+
 1. **Two-level selection**: first select sheet, then select variable within that sheet
 2. **Searchable**: filter variables by typing
 3. **Grouped display**: variables grouped by sheet with sheet headers
@@ -124,6 +133,7 @@ Both builders use a custom combobox (not a native select):
 ## Features to Port
 
 ### ConditionBuilder
+
 - [ ] Block format with nested groups
 - [ ] Logic toggle (all/any) at top level and per block
 - [ ] Rule rows with sheet → variable → operator → value comboboxes
@@ -141,6 +151,7 @@ Both builders use a custom combobox (not a native select):
 - [ ] Translations for all UI strings
 
 ### InstructionBuilder
+
 - [ ] Assignment rows with sheet → variable → operation → value
 - [ ] Operation filtering by variable type
 - [ ] Value input hidden for "toggle" operation
@@ -155,7 +166,9 @@ Both builders use a custom combobox (not a native select):
 ## Migration Strategy
 
 ### Option A: Port to Vue (recommended)
+
 Rewrite both builders as Vue components using shadcn-vue primitives:
+
 - `ConditionBuilder.vue` — main component
 - `ConditionBlock.vue` — single block with rules
 - `ConditionGroup.vue` — grouped blocks
@@ -165,14 +178,18 @@ Rewrite both builders as Vue components using shadcn-vue primitives:
 - `AssignmentRow.vue` — single assignment row
 
 ### Option B: Wrap existing JS (faster, less clean)
+
 Create Vue wrappers that mount the existing imperative JS builders in `onMounted`:
+
 - `ConditionBuilderWrapper.vue` — mounts `createConditionBuilder()` in a ref div
 - `InstructionBuilderWrapper.vue` — mounts `createInstructionBuilder()` in a ref div
 
 Option B is faster but creates a dependency on the old JS code. Option A is cleaner for the long-term Vue migration.
 
 ### Shared Component: VariableCombobox
+
 Both builders need the same variable selection UI. Create once, use in both:
+
 - Uses shadcn `Command` (cmdk) for searchable, grouped selection
 - Two-step: sheet group → variable within sheet
 - Shows variable type icon/badge
@@ -181,6 +198,7 @@ Both builders need the same variable selection UI. Create once, use in both:
 ## Storybook Stories Needed
 
 Each component needs a Phoenix Storybook story to verify:
+
 1. **ConditionBuilder** — empty, single rule, multiple blocks, grouped blocks, switch mode, read-only
 2. **InstructionBuilder** — empty, single assignment, multiple, read-only
 3. **VariableCombobox** — with various variable types, search, selection
@@ -189,6 +207,7 @@ Each component needs a Phoenix Storybook story to verify:
 ## Used In
 
 ### ConditionBuilder
+
 - Flow editor: condition nodes (switch_mode=true for multi-output)
 - Flow editor: response conditions on dialogue choices
 - Scene editor: zone conditions (hide/disable)
@@ -196,6 +215,7 @@ Each component needs a Phoenix Storybook story to verify:
 - Screenplay editor: inline condition blocks (TipTap NodeView)
 
 ### InstructionBuilder
+
 - Flow editor: instruction nodes
 - Scene editor: zone actions (on-enter assignments)
 - Screenplay editor: inline instruction blocks (TipTap NodeView)

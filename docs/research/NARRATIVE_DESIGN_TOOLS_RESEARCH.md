@@ -4,6 +4,7 @@
 > **Scope:** Analysis of narrative design tools for game development, focusing on dialogue systems, branching narratives, templates, and collaboration features.
 
 > **Changelog:**
+>
 > - **February 2026:** Major update with verified research findings. Added new market entrants (StoryFlow Editor, Drafft, Arrow), updated pricing for all tools, added AI-powered dialogue platforms, expanded Disco Elysium section with ZA/UM corporate developments and spiritual successors, added Baldur's Gate 3 case study, updated engine support (Godot ecosystem growth), added AI integration analysis across tools. Updated articy:draft X (now cross-platform, subscription-only), Arcweave (25K+ users, AI tools), Yarn Spinner (multi-engine, Story Solver), Chat Mapper (acquired, rebranded).
 > - **February 2024:** Initial research document.
 
@@ -29,18 +30,18 @@
 
 ### Main Players
 
-| Tool             | Type                | Price Model                          | Primary Engine Support        |
-|------------------|---------------------|--------------------------------------|-------------------------------|
-| articy:draft X   | Visual/Integrated   | Subscription (Free tier available)   | Unity, Unreal                 |
-| Arcweave         | Cloud-based Visual  | Freemium (from $15/mo)              | Unity, Unreal, Godot          |
-| Yarn Spinner     | Text-based + Visual | Free/Open Source                     | Unity, Godot, Unreal (alpha)  |
-| Ink/Inky         | Text-based          | Free/Open Source                     | Unity, Unreal                 |
-| Twine            | Web-based Visual    | Free/Open Source                     | Custom export                 |
-| Chat Mapper      | Desktop Visual      | One-time license ($99 Indie)         | Unity                         |
-| NarrativeFlow    | Desktop Visual      | Paid                                 | Multiple engines              |
-| StoryFlow Editor | Desktop Visual      | $19.99 one-time                      | Unity, Unreal, Godot          |
-| Drafft           | Desktop Visual      | Free beta                            | JSON export                   |
-| Arrow            | Desktop Visual      | Free/Open Source (MIT)               | Godot native                  |
+| Tool             | Type                | Price Model                        | Primary Engine Support       |
+| ---------------- | ------------------- | ---------------------------------- | ---------------------------- |
+| articy:draft X   | Visual/Integrated   | Subscription (Free tier available) | Unity, Unreal                |
+| Arcweave         | Cloud-based Visual  | Freemium (from $15/mo)             | Unity, Unreal, Godot         |
+| Yarn Spinner     | Text-based + Visual | Free/Open Source                   | Unity, Godot, Unreal (alpha) |
+| Ink/Inky         | Text-based          | Free/Open Source                   | Unity, Unreal                |
+| Twine            | Web-based Visual    | Free/Open Source                   | Custom export                |
+| Chat Mapper      | Desktop Visual      | One-time license ($99 Indie)       | Unity                        |
+| NarrativeFlow    | Desktop Visual      | Paid                               | Multiple engines             |
+| StoryFlow Editor | Desktop Visual      | $19.99 one-time                    | Unity, Unreal, Godot         |
+| Drafft           | Desktop Visual      | Free beta                          | JSON export                  |
+| Arrow            | Desktop Visual      | Free/Open Source (MIT)             | Godot native                 |
 
 ### Industry Adoption
 
@@ -59,6 +60,7 @@
 **Overview:** Professional narrative design tool developed by Articy Software GmbH. Acts as a centralized database for creating, managing, and planning branching stories, dialogues, quests, characters, and other narrative elements.
 
 **Strengths:**
+
 - Comprehensive game development tool with visual flowchart system
 - Powerful template system for custom properties
 - Global and local variables support
@@ -71,6 +73,7 @@
 - Version 4.2 (August 2025) added VO Extension plugin, Toolbar Extensions, SSO for Perforce
 
 **Weaknesses:**
+
 - Performance issues on large projects (reported by Disco Elysium developers)
 - Collaboration features difficult to set up, requires version control knowledge
 - Complex interface overwhelming for beginners
@@ -82,6 +85,7 @@
 **Student Pricing:** EUR 24.99/year for non-commercial use.
 
 **User Complaints (from Steam and forums):**
+
 - Request for default templates for all dialogue fragments
 - API documentation is confusing and incomplete
 - Limited import system for external assets
@@ -91,6 +95,7 @@
 **Overview:** Browser-based cloud platform for creating and managing complex branching narratives with real-time collaboration. Now 25,000+ users globally with enterprise clients (EA, Netflix, Microsoft, Amazon). Raised $850K in seed funding (December 2023).
 
 **Strengths:**
+
 - Genuine real-time collaboration (multiple users simultaneously)
 - Cloud-based, accessible from anywhere
 - Free plugins for Unity, Unreal, and Godot
@@ -102,6 +107,7 @@
 - Localization (beta) and Version History (beta) — announced Gamescom 2025
 
 **Weaknesses:**
+
 - Requires continuous internet connection
 - Limited free version (200 items per project in Basic plan)
 - Undo/Redo functionality issues: refreshing page loses all previous undos
@@ -110,6 +116,7 @@
 - Pro: $15/month (yearly) or $18/month (monthly) per member
 
 **User Feedback (from Arcweave forums):**
+
 - Requests for Import/Export options to create "snapshots"
 - Missing Link Elements feature (connecting elements without long lines)
 - No story simulation like Chat Mapper/Twine
@@ -119,6 +126,7 @@
 **Overview:** Dialogue tool originally developed by Secret Lab (Night in the Woods). Uses a simple scripting language called Yarn, inspired by film/theater scripts.
 
 **Strengths:**
+
 - Free and open-source
 - Simple scripting language, easy to learn
 - Good visualization of dialogue trees
@@ -128,6 +136,7 @@
 - Version 3.1 (December 2025): async dialogue runners, option fallthrough, Text Animator
 
 **Weaknesses:**
+
 - Visualization is passive, not interactive editing
 - Still requires writing in linear markup/code
 - Not a true visual authoring tool
@@ -140,6 +149,7 @@
 **Overview:** Narrative scripting language developed by Inkle Studios. Powerful and elegant text-based system.
 
 **Strengths:**
+
 - Extremely powerful for complex narratives
 - Free and open-source
 - Elegant, pure writing experience
@@ -148,6 +158,7 @@
 - Version 1.2.0 "Highland release"
 
 **Weaknesses:**
+
 - Requires programming mindset
 - No visual flow representation
 - Limited UI, primarily code-based
@@ -155,18 +166,21 @@
 - Integration setup can be challenging
 
 **Ecosystem Update:**
+
 - **Dink** (December 2025) — third-party dialogue pipeline for VO production (HTML/PDF/Word export), streamlining the voice-over workflow from Ink scripts.
 - **ink-unity-integration** updated January 2026 with latest runtime compatibility.
 
 ### 2.5 Other Notable Tools
 
 **Twine:**
+
 - Free, open-source, beginner-friendly
 - Web-based, no installation required
 - Difficult to collaborate in teams
 - No line comments for feedback
 
 **Chat Mapper:**
+
 - Acquired by LearnBrite (2015), pivoted toward e-learning/training
 - Rebranded as "Chat Mapper AI"
 - Conversation Simulator for testing
@@ -176,6 +190,7 @@
 - "What's New" page not updated since 2016 — appears to be in maintenance mode for game development
 
 **NarrativeFlow:**
+
 - Attach properties (VO files, images, animations) to nodes
 - Script view for document-like editing
 - Works with multiple engines
@@ -183,6 +198,7 @@
 ### 2.6 New Market Entrants (2025-2026)
 
 **StoryFlow Editor:**
+
 - Node-based visual editor launched on Steam (November 2025)
 - 56 node types including logic gates
 - 4 variable types (booleans, integers, floats, strings) with global/local scope
@@ -192,18 +208,21 @@
 - $19.99 one-time, Windows/macOS/Linux
 
 **Drafft:**
+
 - Combines branching dialogue trees, GDDs, and scripts in one tool
 - Real-time collaboration, JSON export
 - Offline-first, privacy-focused
 - Currently in beta, pricing TBD
 
 **Arrow v3:**
+
 - Free, open-source (MIT), built on Godot v4
 - Non-binary branching gates, character tags
 - Available as Progressive Web App
 - Godot-native, making it a natural fit for Godot-based projects
 
 **AI-Powered Dialogue Platforms:**
+
 - **Convai:** AI NPCs with multimodal perception, integrations with Unreal/Unity/Three.js. Enables real-time conversational AI characters that can perceive and respond to game environments.
 - **Charisma.ai:** AI storytelling using proprietary LLMs, trusted by Warner Bros, Sky, and BBC. Provides a platform for creating interactive narratives with AI-driven characters.
 
@@ -226,6 +245,7 @@ Anticipating player options is "phenomenally labor intensive." Each option and i
 ### 3.3 Consistency and Logic
 
 Major challenges include:
+
 - Maintaining consistency (spelling NPC names the same in every branch)
 - Tracking variables (does the game remember the player was rude earlier?)
 - Handling logic checks (what happens if the player already bribed the guard?)
@@ -234,6 +254,7 @@ Major challenges include:
 ### 3.4 Collaboration Friction
 
 Common frustrations:
+
 - Writers asking programmers to make dozens of changes (slow, frustrating)
 - Writers learning to edit code (risky, error-prone)
 - Localization causing version control to explode with merge conflicts "becoming hourly events"
@@ -266,6 +287,7 @@ The emergence of AI tools in narrative design is beginning to address some of th
 articy:draft offers a comprehensive template system where users can define custom properties for different dialogue types (quest dialogues, shop interactions, tutorials, etc.). The addition of searchable dropdowns in articy:draft X partially addresses the complexity of managing large template lists.
 
 **Reported Limitations:**
+
 - Only allows one template instance per object
 - Same input data forced to duplicate templates
 - No object instances with customized values in object lists
@@ -275,6 +297,7 @@ articy:draft offers a comprehensive template system where users can define custo
 ### 4.2 General Industry Approach
 
 Most tools handle custom properties differently:
+
 - **Arcweave:** Components system for reusable property sets. AI Element Generator can auto-generate components from descriptions.
 - **Yarn Spinner:** Tags and metadata in script
 - **Ink:** Variables and tags inline
@@ -283,6 +306,7 @@ Most tools handle custom properties differently:
 ### 4.3 User Needs
 
 Based on forum discussions and reviews:
+
 - Ability to define project-specific fields
 - Inheritance from character/speaker to their dialogues
 - Quick application of presets without complex setup
@@ -297,6 +321,7 @@ Based on forum discussions and reviews:
 **Arcweave** leads in this area with browser-based real-time editing. Multiple team members can work simultaneously on the same project. Arcweave has strengthened its lead with Version History (beta) and Localization (beta), both announced at Gamescom 2025.
 
 **articy:draft X** offers version control integration but requires:
+
 - Knowledge of version control systems
 - Local network setup
 - More complex configuration
@@ -307,6 +332,7 @@ Based on forum discussions and reviews:
 ### 5.2 What Teams Need
 
 According to industry research, creative teams need:
+
 - Real-time text and content editing for multiple collaborators
 - Seamless communication through in-project comments and notifications
 - Version tracking to prevent lost work
@@ -327,6 +353,7 @@ According to industry research, creative teams need:
 ### 6.1 Scale of the Problem
 
 In larger games like Darktide (Fatshark):
+
 - ~11,000 strings for UI
 - ~5,000 strings for dialogue
 - 12 languages supported
@@ -375,6 +402,7 @@ AI localization is reducing costs from approximately $10/1000 words to a project
 State machines are used to control game behavior including animations, AI, dialogue, and interactions. They define different states and transitions between them.
 
 Best practices:
+
 - Use descriptive names and comments
 - Group states into categories or hierarchies
 - Consider substates (nested within another state)
@@ -410,14 +438,17 @@ This technique has "a tendency to cause ripples—which is a polite way of sayin
 ### 8.2 Integration Challenges
 
 **Unity:**
+
 - Map JSON entries into ScriptableObjects or C# classes
 - Many tools focus primarily on Unity
 
 **Unreal:**
+
 - Data Assets or Data Tables for blueprint-friendly access
 - Plugin updates can introduce breaking changes
 
 **Godot:**
+
 - Godot has become a significantly more important integration target in 2025-2026:
   - **Arcweave:** Official Godot plugin
   - **Yarn Spinner:** Godot support via C# bindings
@@ -463,6 +494,7 @@ Disco Elysium used articy:draft for its dialogue system. According to writer Hel
 ### 9.3 Technical Challenges
 
 Other developers noted:
+
 - articy:draft has "its own set of problems specifically awful performance on huge projects"
 - "Getting it all debugged, loop-free and free of tons of logical errors is very hard"
 - Given the number of variables, developers consider the Disco Elysium team "geniuses"
@@ -524,25 +556,25 @@ Larian Studios' Baldur's Gate 3 provides an important counterpoint to Disco Elys
 
 ### 10.1 articy:draft X
 
-| Plan              | Price                                      | Notes                        |
-|-------------------|--------------------------------------------|------------------------------|
-| FREE              | EUR 0                                      | 700 objects limit            |
-| Single User       | EUR 7.97/month or EUR 79.99/year           | Includes VAT                 |
-| Student           | EUR 24.99/year                             | Non-commercial               |
-| Team Basic        | EUR 56/month or EUR 50/month (yearly)      | 2 users                      |
-| Team Professional | EUR 68/month or EUR 61/month (yearly)      | 3 users + 2 viewers          |
-| Team Premium      | EUR 113/month or EUR 102/month (yearly)    | 4 users + 5 viewers          |
+| Plan              | Price                                   | Notes               |
+| ----------------- | --------------------------------------- | ------------------- |
+| FREE              | EUR 0                                   | 700 objects limit   |
+| Single User       | EUR 7.97/month or EUR 79.99/year        | Includes VAT        |
+| Student           | EUR 24.99/year                          | Non-commercial      |
+| Team Basic        | EUR 56/month or EUR 50/month (yearly)   | 2 users             |
+| Team Professional | EUR 68/month or EUR 61/month (yearly)   | 3 users + 2 viewers |
+| Team Premium      | EUR 113/month or EUR 102/month (yearly) | 4 users + 5 viewers |
 
 **Note:** No perpetual license for articy:draft X. articy:draft 3 is still available on Steam with a perpetual license but only receives critical bug fixes.
 
 ### 10.2 Arcweave
 
-| Plan         | Price                                        | Limits                                      |
-|--------------|----------------------------------------------|---------------------------------------------|
-| Basic (Free) | EUR 0                                        | 3 projects, 200 items each, unlimited members |
-| Pro          | $15/month (yearly) or $18/month (monthly)    | Per member, unlimited projects              |
-| Team         | $25/month (yearly) or $30/month (monthly)    | Per member, API access, custom roles        |
-| Enterprise   | Custom                                       | Custom                                      |
+| Plan         | Price                                     | Limits                                        |
+| ------------ | ----------------------------------------- | --------------------------------------------- |
+| Basic (Free) | EUR 0                                     | 3 projects, 200 items each, unlimited members |
+| Pro          | $15/month (yearly) or $18/month (monthly) | Per member, unlimited projects                |
+| Team         | $25/month (yearly) or $30/month (monthly) | Per member, API access, custom roles          |
+| Enterprise   | Custom                                    | Custom                                        |
 
 ### 10.3 Free Options
 

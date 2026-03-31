@@ -1,9 +1,10 @@
 %{
-  title: "What is Storyarn?",
-  category_label: "Welcome",
-  order: 1,
-  description: "An overview of Storyarn and what it can do for your narrative projects."
+title: "What is Storyarn?",
+category_label: "Welcome",
+order: 1,
+description: "An overview of Storyarn and what it can do for your narrative projects."
 }
+
 ---
 
 Storyarn is a **narrative design platform** for game designers and interactive storytellers. It brings all your narrative work into one place — characters, dialogue, world maps, scripts, and translations.

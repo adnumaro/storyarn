@@ -26,13 +26,13 @@ articy:draft does **not** have a first-class quest system. Quests are emergent f
 
 Quest progression uses **integer variables** as state machines:
 
-| Value   | State                |
-|:-------:|:---------------------|
-|    0    | Locked / Unavailable |
-|    1    | Available            |
-|    2    | Active               |
-|    3    | Completed            |
-|    4    | Failed               |
+| Value | State                |
+| :---: | :------------------- |
+|   0   | Locked / Unavailable |
+|   1   | Available            |
+|   2   | Active               |
+|   3   | Completed            |
+|   4   | Failed               |
 
 Instructions on output pins advance state: `Quests.DragonHunt = 2;`
 Conditions on input pins gate content: `Quests.DragonHunt == 2`
@@ -40,6 +40,7 @@ Conditions on input pins gate content: `Quests.DragonHunt == 2`
 ### How journal entries work in articy
 
 Journal text is **not** a built-in feature. It's handled through:
+
 - Template text properties on quest Flow Fragments (description, success text)
 - Global variable changes that the game engine interprets as journal updates
 - No in-tool journal preview or quest log view
@@ -64,18 +65,18 @@ Journal text is **not** a built-in feature. It's handled through:
 ## What Storyarn Already Has (Equivalent Features)
 
 | articy Concept             | Storyarn Equivalent                    | Status     |
-|----------------------------|----------------------------------------|------------|
-| Flow Fragments             | Flows                                  | ✅          |
-| Templates on objects       | Sheets (with inheritance)              | ✅          |
-| Global Variables           | Sheet blocks (variables)               | ✅          |
-| Variable Sets (namespaces) | Sheets (one sheet = one namespace)     | ✅          |
-| Condition nodes            | Condition nodes (normal + switch mode) | ✅          |
-| Instruction nodes          | Instruction nodes                      | ✅          |
-| Nesting / submerge         | Subflow nodes + flow tree hierarchy    | ✅          |
-| Conditions on pins         | Response conditions                    | ✅          |
+| -------------------------- | -------------------------------------- | ---------- |
+| Flow Fragments             | Flows                                  | ✅         |
+| Templates on objects       | Sheets (with inheritance)              | ✅         |
+| Global Variables           | Sheet blocks (variables)               | ✅         |
+| Variable Sets (namespaces) | Sheets (one sheet = one namespace)     | ✅         |
+| Condition nodes            | Condition nodes (normal + switch mode) | ✅         |
+| Instruction nodes          | Instruction nodes                      | ✅         |
+| Nesting / submerge         | Subflow nodes + flow tree hierarchy    | ✅         |
+| Conditions on pins         | Response conditions                    | ✅         |
 | Instructions on pins       | Response instructions (Gap 5, pending) | 🔄         |
-| Simulation mode            | Story Player + Debugger                | ✅          |
-| Jump nodes                 | Jump → Hub nodes                       | ✅          |
+| Simulation mode            | Story Player + Debugger                | ✅         |
+| Jump nodes                 | Jump → Hub nodes                       | ✅         |
 | Template icons/colors      | Node type icons (fixed per type)       | ⚠️ Partial |
 | Pin script indicators      | Response condition indicator `[?]`     | ⚠️ Partial |
 
@@ -133,6 +134,7 @@ Each response card gains an optional journal section (collapsible, similar to co
 **In the Story Player / Debugger:**
 
 When a response with a journal entry is selected, the debugger console shows:
+
 ```
 📖 Journal [update]: "Pharod asked me to find the Bronze Sphere..."
 ```
@@ -140,6 +142,7 @@ When a response with a journal entry is selected, the debugger console shows:
 A dedicated "Journal" tab in the debug panel shows accumulated entries in chronological order — a live quest log preview.
 
 **Files affected:**
+
 - `lib/storyarn_web/live/flow_live/nodes/dialogue/node.ex` — journal field in response data
 - `lib/storyarn_web/live/flow_live/components/screenplay_editor.ex` — journal UI in response cards
 - `lib/storyarn/flows/evaluator/node_evaluators/dialogue_node_evaluator.ex` — process journal on response selection
@@ -165,6 +168,7 @@ Standalone instruction nodes can also trigger journal entries (useful when multi
 ```
 
 **Files affected:**
+
 - `lib/storyarn_web/live/flow_live/nodes/instruction/node.ex` — journal field
 - `lib/storyarn_web/live/flow_live/nodes/instruction/config_sidebar.ex` — journal UI
 - `lib/storyarn/flows/evaluator/node_evaluators/instruction_evaluator.ex` — process journal
@@ -188,6 +192,7 @@ Instead of a heavy template system, a lightweight approach: flows can be **tagge
 ```
 
 **Visual differentiation:**
+
 - Quest flows get a badge/icon in the flow tree sidebar (e.g., `⚔` for main, `◇` for side)
 - Quest flows with a linked state variable show the current state in the tree (if debugging)
 
@@ -196,6 +201,7 @@ Instead of a heavy template system, a lightweight approach: flows can be **tagge
 ### 4. Quest Overview (Future)
 
 A dashboard view showing all quest flows in the project with:
+
 - Quest name, type, linked state variable
 - Current state (if in debug/player mode)
 - Journal entries collected so far
@@ -210,7 +216,7 @@ This builds on Gap 6c (Variable Usage Index) — if we know which flows read/wri
 ## Comparison: articy vs Proposed Storyarn
 
 | Capability       | articy:draft                      | Storyarn (proposed)                         | Improvement            |
-|------------------|-----------------------------------|---------------------------------------------|------------------------|
+| ---------------- | --------------------------------- | ------------------------------------------- | ---------------------- |
 | Quest containers | Flow Fragments + Templates        | Flows + quest tag                           | Simpler, less overhead |
 | Quest state      | Integer global variables          | Sheet variables (already typed)             | Same                   |
 | Journal entries  | Not built-in (template text only) | **First-class on responses + instructions** | **Major improvement**  |
@@ -229,6 +235,7 @@ This builds on Gap 6c (Variable Usage Index) — if we know which flows read/wri
 ### For the Stress Test (COMPLEX_NARRATIVE_STRESS_TEST.md)
 
 Torment's 1,800+ journal entries are stored in the extracted data as `transition.journal`. During import:
+
 - Store journal text as the `journal.text` field on the corresponding response
 - Set `journal.type` based on heuristics (first mention = "start", variable increment = "update", quest variable set to max = "complete")
 - The debugger's journal tab shows entries as they accumulate during playthrough
@@ -236,17 +243,20 @@ Torment's 1,800+ journal entries are stored in the extracted data as `transition
 ### Phased Implementation
 
 **Phase 1: Journal entries (core value)**
+
 - Journal field on responses (data model + UI in full editor)
 - Journal field on instruction nodes
 - Journal tab in debugger/Story Player
 - Effort: Medium
 
 **Phase 2: Quest flow designation**
+
 - Quest tag + metadata on flows
 - Visual badges in flow tree
 - Effort: Low
 
 **Phase 3: Quest overview dashboard (future)**
+
 - Dedicated view aggregating all quest flows
 - Cross-reference integration with variable usage index
 - Effort: Medium

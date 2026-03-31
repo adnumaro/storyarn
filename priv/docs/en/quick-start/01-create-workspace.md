@@ -1,9 +1,10 @@
 %{
-  title: "Create a Workspace",
-  category_label: "Quick Start",
-  order: 1,
-  description: "Set up your workspace and create your first project in under 5 minutes."
+title: "Create a Workspace",
+category_label: "Quick Start",
+order: 1,
+description: "Set up your workspace and create your first project in under 5 minutes."
 }
+
 ---
 
 A {accent}workspace{/accent} is your team's home base. It holds all your projects and controls who has access to them.

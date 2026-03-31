@@ -1,9 +1,9 @@
-import { defineConfig } from "vite"
-import vue from "@vitejs/plugin-vue"
-import { templateCompilerOptions } from "@tresjs/core"
-import tailwindcss from "@tailwindcss/vite"
-import liveVuePlugin from "live_vue/vitePlugin"
-import path from "path"
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
+import { templateCompilerOptions } from "@tresjs/core";
+import tailwindcss from "@tailwindcss/vite";
+import liveVuePlugin from "live_vue/vitePlugin";
+import path from "path";
 
 export default defineConfig({
   root: ".",
@@ -30,6 +30,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname),
+      "@app": path.resolve(__dirname, "app"),
+      "@components": path.resolve(__dirname, "app", "components"),
+      "@pages": path.resolve(__dirname, "app", "pages"),
+      "@composables": path.resolve(__dirname, "app", "composables"),
+      "@lib": path.resolve(__dirname, "app", "lib"),
       "phoenix-colocated": `${process.env.MIX_BUILD_PATH}/phoenix-colocated`,
     },
     modules: [path.resolve(__dirname, ".."), "node_modules"],
@@ -47,4 +52,4 @@ export default defineConfig({
     }),
     liveVuePlugin(),
   ],
-})
+});

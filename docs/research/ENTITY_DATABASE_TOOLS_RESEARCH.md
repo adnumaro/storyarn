@@ -4,6 +4,7 @@
 > **Scope:** Analysis of how narrative design and worldbuilding tools handle entity databases (characters, items, locations, bestiary, etc.)
 
 > **Changelog (February 2026):**
+>
 > - Added AI-Powered tools category (Summon Worlds, Deep Realms, Inworld AI)
 > - Updated articy:draft X with macOS support, VO Extension, pricing tiers
 > - Updated Arcweave with AI Assistant, localization, version history, embeddable Play Mode
@@ -37,13 +38,13 @@
 
 ### Tool Categories
 
-| Category             | Tools                                    | Primary Use Case                  |
-|----------------------|------------------------------------------|-----------------------------------|
-| **Narrative Design** | articy:draft, Arcweave                   | Game dialogue + entity database   |
-| **Worldbuilding**    | World Anvil, LegendKeeper, Campfire      | Writers, DMs, world documentation |
-| **General Wiki**     | Notion, Obsidian, Confluence             | Flexible, multi-purpose           |
-| **TTRPG Specific**   | D&D Beyond, Roll20, Foundry VTT         | Character sheets, bestiaries      |
-| **AI-Powered**       | Summon Worlds, Deep Realms, Inworld AI   | AI character/world generation     |
+| Category             | Tools                                  | Primary Use Case                  |
+| -------------------- | -------------------------------------- | --------------------------------- |
+| **Narrative Design** | articy:draft, Arcweave                 | Game dialogue + entity database   |
+| **Worldbuilding**    | World Anvil, LegendKeeper, Campfire    | Writers, DMs, world documentation |
+| **General Wiki**     | Notion, Obsidian, Confluence           | Flexible, multi-purpose           |
+| **TTRPG Specific**   | D&D Beyond, Roll20, Foundry VTT        | Character sheets, bestiaries      |
+| **AI-Powered**       | Summon Worlds, Deep Realms, Inworld AI | AI character/world generation     |
 
 ### Target Audiences
 
@@ -62,12 +63,14 @@
 Entities represent game objects and can be used for all sorts of object types like characters, enemies, items, but also abstract things like weather or time. Entities are set up with templates making them extremely flexible.
 
 **Template System:**
+
 - Templates add custom properties to basic articy:draft objects
 - Can create objects directly from templates or assign templates later
 - Templates are type-locked (entity template can only be used on entities)
 - Supported on: Flow elements, Entities, Locations, Assets, Documents
 
 **Property Types:**
+
 - Basic types: String, Number, Boolean
 - Slots: Single object reference
 - Strips: List of object references
@@ -76,23 +79,27 @@ Entities represent game objects and can be used for all sorts of object types li
 - Constraints: Min/max values, validation
 
 **Reference System:**
+
 - Reference strips on most object sheets
 - Can hold assets and other entities
 - Automatic reference tracking (where entity is used as speaker, in flows, etc.)
 - Double-click to navigate to linked object
 
 **Recent Updates (2025):**
+
 - **macOS Support (April 2025):** articy:draft X is now available on macOS, ending its Windows-only limitation
 - **VO Extension Plugin (August 2025, version 4.2):** Integrates with ElevenLabs for voice-over generation directly within the tool
 - **Toolbar Extensions:** Customizable toolbar for frequently used actions
 - **Searchable Dropdowns:** Improved UX for template properties with many options
 
 **Pricing:**
+
 - Free tier: up to 700 objects
 - Single user: EUR 7.97/month
 - Student license: EUR 24.99/year
 
 **Known Limitations:**
+
 - Template is fixed to one type only
 - Cannot use same template twice on one object
 - Entities with custom color don't update when template color changes
@@ -100,6 +107,7 @@ Entities represent game objects and can be used for all sorts of object types li
 - Template editor locks other articy:draft sections while editing
 
 **User Feedback (Steam):**
+
 - Users request relationship linking between entities (Father-Son, etc.)
 - Solution requires manual Strip/Slot configuration in templates
 - Complex relationship networks are cumbersome to set up
@@ -110,12 +118,14 @@ Entities represent game objects and can be used for all sorts of object types li
 Components function as flexible containers for representing story objects. They store information about narrative elements such as characters, locations, items, weapons, spells, emotions, and statistics.
 
 **Attribute Types:**
+
 - String
 - Rich text
 - Component list (references to other components)
 - Asset list
 
 **Key Features:**
+
 - Custom folder organization
 - Drag-and-drop attachment to elements (dialogue nodes)
 - Visual references in Play Mode
@@ -124,6 +134,7 @@ Components function as flexible containers for representing story objects. They 
 - References panel showing all usages
 
 **Recent Updates (2025-2026):**
+
 - **AI Assistant:** Content generation and QA capabilities integrated into the editor
 - **Localization Support (Beta):** Multi-language project support
 - **Version History (Beta):** Track and revert changes over time
@@ -132,12 +143,14 @@ Components function as flexible containers for representing story objects. They 
 - Arcweave exhibited at devcom/gamescom 2025, growing industry presence
 
 **Integration with Flow:**
+
 - Components attach directly to elements
 - Create visual references during plot points
 - Attachments render in Play Mode
 - Can be reordered within elements
 
 **Limitations:**
+
 - Still no inheritance between components
 - Still no template system (each component is unique)
 - Cannot define "component types" with shared schemas
@@ -148,17 +161,20 @@ Components function as flexible containers for representing story objects. They 
 A worldbuilding toolset that helps create, organize and store world settings with wiki-like articles, interactive maps, historical timelines, and RPG Campaign Manager.
 
 **Template System:**
+
 - Over 25 worldbuilding templates
 - Templates for: Characters, Locations, Items, Organizations, Species, Languages, Religions, Magic Systems, etc.
 - Easy-to-use fields for tracking everything about a character
 
 **Character Features:**
+
 - Year of birth, relatives, alignment, hobbies
 - Fields can interact with rest of the world
 - Interactive character sheets for 100+ RPG systems
 - Support for D&D, Pathfinder, Call of Cthulhu, etc.
 
 **Worldbuilding Features:**
+
 - Timelines with eras
 - Family trees
 - Diplomatic relationships
@@ -166,6 +182,7 @@ A worldbuilding toolset that helps create, organize and store world settings wit
 - Secrets and spoiler markers
 
 **Recent Updates (2025-2026):**
+
 - **New World Dashboard (October 2025):** Redesigned overview for worlds
 - **New Articles & Categories Manager (October 2025):** Improved navigation and management
 - **Folders for All Content Types (September 2025):** Consistent folder organization across the platform
@@ -174,12 +191,14 @@ A worldbuilding toolset that helps create, organize and store world settings wit
 - **Manual Save Button Returned (January 2026):** Restored by popular demand after auto-save-only period
 
 **Pricing:**
+
 - Free: $0 (limited features and storage)
 - Master: $5-7/month
 - Grandmaster: $12-15/month
 - Sage: $25+/month
 
 **User Feedback:**
+
 - "Too complicated, dozens of features I didn't need"
 - "Sharp learning curve"
 - "Has a complicated UI"
@@ -190,12 +209,14 @@ A worldbuilding toolset that helps create, organize and store world settings wit
 
 **Module System:**
 18 separate modules that can be purchased individually:
+
 - Characters, Manuscript, Locations, Maps, Research, Timeline
 - Arcs, Relationships, Encyclopedia, Magic, Species
 - Cultures, Items, Systems, Languages, Religions, Philosophies
 - (Module count has grown from 17 to 18 as of 2026)
 
 **Character Features:**
+
 - Essential info: name, age, personality traits
 - Backstory, relationships, custom panels
 - Character grouping by factions
@@ -203,21 +224,25 @@ A worldbuilding toolset that helps create, organize and store world settings wit
 - Visual relationship maps and family trees
 
 **Key Differentiators:**
+
 - Modules interconnect automatically
 - Relationships and Arcs connect to Characters module
 - Custom calendars with seasons, holidays, lunar patterns
 - Publishing platform integration
 
 **Platform Availability:**
+
 - Campfire Pro (legacy desktop app) has been sunset
 - Modern Campfire Writing platform available on browser, desktop, and mobile
 
 **2026 Features:**
+
 - Enhanced writing stats
 - Index Card View for visual story planning
 - Sidebar tagging for quick organization
 
 **Pricing (CORRECTED):**
+
 - $12.50/month (or less with annual billing) for **all modules combined** (not per module)
 - Individual modules cost $0.25-$1/month each when purchased separately
 - $375/lifetime for **all modules**
@@ -229,6 +254,7 @@ A worldbuilding toolset that helps create, organize and store world settings wit
 Focuses on streamlined, distraction-free writing with auto-linking wiki pages. Still in Open Beta but significantly more mature than initial launch.
 
 **Features:**
+
 - Free-form whiteboards
 - Real-time multiplayer
 - Reusable templates
@@ -238,16 +264,19 @@ Focuses on streamlined, distraction-free writing with auto-linking wiki pages. S
 - Global tag management
 
 **Recent Updates (2025-2026):**
+
 - **Major Map Tool Overhaul (January 2026):** Pins, regions, paths, labels, measuring tool, multiplayer cursors on maps
 - **Meter Block (December 2025):** Track numerical values directly on wiki pages (e.g., HP bars, progress trackers)
 - **Project Filter Tool & Multi-Select (January 2026):** Bulk operations and advanced filtering across project content
 
 **Pricing:**
+
 - $9/month or $90/year
 - 14-day free trial
 - Unlimited free guests (collaborators can view/comment for free)
 
 **User Feedback:**
+
 - "Polished, shareable, intuitive"
 - "Not made for mobile"
 - "Currently in beta, may have bugs" (though stability has improved significantly)
@@ -259,6 +288,7 @@ Focuses on streamlined, distraction-free writing with auto-linking wiki pages. S
 All-in-one productivity tool blending note-taking, project management, and database functionality. Has undergone significant transformation in 2025-2026 with AI integration and architectural improvements.
 
 **Game Design Usage:**
+
 - Character profile databases
 - Item/inventory tracking
 - Location wikis
@@ -266,6 +296,7 @@ All-in-one productivity tool blending note-taking, project management, and datab
 - Story arc timelines
 
 **Strengths:**
+
 - Full creative control
 - Build system for specific needs
 - Easy to learn
@@ -273,6 +304,7 @@ All-in-one productivity tool blending note-taking, project management, and datab
 - Templates marketplace
 
 **Major Updates (2025-2026):**
+
 - **Offline Mode (August 2025):** Full offline support with auto-download of workspace content -- this was a long-requested feature
 - **Notion Calendar:** Native calendar function now exists as a built-in feature
 - **Notion 2.52 "Everything is Database" (July 2025):** Feed view, row-level permissions for granular access control
@@ -283,6 +315,7 @@ All-in-one productivity tool blending note-taking, project management, and datab
 - **Conditional Coloring:** Now supports formulas, relations, and rollups for dynamic visual formatting
 
 **Limitations:**
+
 - Enterprise-focused, getting clunky
 - Can't integrate directly into code repositories
 - Tables can't perform advanced calculations like Excel
@@ -295,6 +328,7 @@ All-in-one productivity tool blending note-taking, project management, and datab
 Local app with interlinked notes, like building your own Wikipedia.
 
 **Features:**
+
 - Cross-linked notes (graph view)
 - Plain text markdown files
 - Extensive plugin system
@@ -304,6 +338,7 @@ Local app with interlinked notes, like building your own Wikipedia.
 
 **Bases Core Plugin (Obsidian 1.9-1.10, August 2025):**
 This is a fundamental change to Obsidian's capabilities. The Bases plugin adds **native database functionality** without requiring third-party plugins:
+
 - Editable tables built from markdown note properties
 - Property filtering and sorting
 - Dynamic card views
@@ -314,11 +349,13 @@ This is a fundamental change to Obsidian's capabilities. The Bases plugin adds *
 This significantly changes Obsidian's positioning -- it is no longer accurate to say it requires plugins for structured data. Obsidian now supports structured databases natively while retaining its local-first, markdown-based philosophy.
 
 **For Worldbuilding:**
+
 - Increasingly capable out of the box with Bases
 - Can be as simple or feature-heavy as wanted
 - Progressive structure: start with notes, add properties as needed, create database views later
 
 **Limitations:**
+
 - Learning curve (though less steep for database features with Bases)
 - Plugin functionality doesn't work with publishing
 - Remote backup costs extra
@@ -328,33 +365,39 @@ This significantly changes Obsidian's positioning -- it is no longer accurate to
 The TTRPG tool landscape has seen major upheaval in this period.
 
 **D&D 2024 Revised Rules:**
+
 - 384-page Player's Handbook
 - 12 classes, 48 subclasses
 - Ability scores now tied to backgrounds (not race)
 - Full integration into D&D Beyond digital tools
 
 **Sigil VTT Cancelled (October 2025):**
+
 - Wizards of the Coast cancelled its ambitious virtual tabletop project
 - 90% of the development team was laid off
 - Existing content scheduled for deletion after October 2026
 - Major blow to D&D Beyond's roadmap for integrated play
 
 **Maps VTT (Continues):**
+
 - Separate, simpler VTT product that continues development
 - 3D Dice Rolling feature
 - Rules Assistant for automated rule lookups
 
 **Roll20 & Demiplane:**
+
 - Roll20 acquired Demiplane (May/June 2024), consolidating two major platforms
 - New Elite Subscription tier for premium features
 - New tabletop engine in development for modernized gameplay
 
 **Foundry VTT v13:**
+
 - Complete UI overhaul with dark/light mode
 - Full D&D 2024 rules support
 - Remains the gold standard for self-hosted, extensible VTTs
 
 **Daggerheart (May 2025):**
+
 - New TTRPG by Darrington Press (Critical Role's publishing arm)
 - Sold out worldwide at launch
 - Represents growing diversification beyond D&D in the TTRPG space
@@ -364,18 +407,21 @@ The TTRPG tool landscape has seen major upheaval in this period.
 A new wave of tools leveraging generative AI for worldbuilding and narrative design has emerged.
 
 **Summon Worlds:**
+
 - AI-powered worldbuilding for characters, locations, and items
 - Character chat functionality (converse with your created characters)
 - Voice generation for characters
 - Targets game designers, writers, and DMs who want rapid prototyping
 
 **Deep Realms:**
+
 - AI lore and history generation
 - AI-assisted map creation
 - Branching logic engine for interactive narratives
 - Pricing: $9-29/month depending on tier
 
 **Inworld AI:**
+
 - Production-ready AI NPCs for shipping games
 - 200ms response times for real-time character interactions
 - Used in commercially released games
@@ -403,12 +449,14 @@ Templates/
 ```
 
 **Characteristics:**
+
 - Templates are defined in a separate "Template Design" area
 - Each template is locked to one object type
 - Objects can be created from templates or assigned later
 - Properties defined: name, icon, color, custom fields
 
 **Property Features:**
+
 - Slots: Reference single object
 - Strips: Reference multiple objects
 - Constraints: Validation rules (min/max, required)
@@ -429,6 +477,7 @@ Components/
 ```
 
 **Characteristics:**
+
 - No formal template system
 - Each component is unique
 - Folder organization is manual
@@ -447,6 +496,7 @@ Articles/
 ```
 
 **Characteristics:**
+
 - Many preset article types with built-in fields
 - Custom categories possible
 - Fields designed for worldbuilding (relatives, affiliations)
@@ -465,6 +515,7 @@ Modules/
 ```
 
 **Characteristics:**
+
 - Separate modules for different entity types
 - Modules interconnect automatically
 - Each module has predefined schema
@@ -480,6 +531,7 @@ Databases/
 ```
 
 **Characteristics:**
+
 - Complete flexibility
 - User defines all schemas
 - No guidance or presets
@@ -497,6 +549,7 @@ Obsidian Bases/
 ```
 
 **Characteristics:**
+
 - Native database views built from markdown note properties
 - `.base` file format defines database configuration
 - Table view, card view, and formula views available
@@ -512,14 +565,17 @@ Obsidian Bases/
 ### 4.1 articy:draft Relationships
 
 **Problem Reported (Steam):**
+
 > "How do I link entities in relationships? Char A and Char B are father-son. I can store this in a template field, but it only works with a single pair. For multiple relationships (A-B Father-Son, A-C Husband-Wife, B-C Mother-Son), I need multiple sets."
 
 **Solution:**
+
 - Use Strip features in templates
 - Create bi-directional references manually
 - Calculated Strips for dynamic queries
 
 **Automatic References:**
+
 - References tab shows where entity is used
 - Speakers in dialogues
 - Location placements
@@ -559,28 +615,33 @@ AI-powered tools are beginning to offer automatic relationship detection and sug
 ### 5.1 Common Frustrations
 
 **Complexity & Learning Curve:**
+
 - World Anvil: "Too complicated, dozens of features I didn't need"
 - World Anvil: "Sharp learning curve could be a barrier"
 - articy:draft: "Complex interface may overwhelm beginners"
 - General: "Extensive functionalities may be overwhelming"
 
 **Flexibility vs Structure:**
+
 - Too rigid: Preset templates don't fit all use cases
 - Too flexible: No guidance, users build everything from scratch
 - Ideal: Guidance with customization options
 - This tension is being partially addressed by AI tools that can generate structured schemas from freeform content
 
 **Relationship Management:**
+
 - articy:draft: Complex to set up bi-directional relationships
 - Most tools: Relationships are manual, not automatically bi-directional
 - Users want: Easy character relationship mapping
 
 **Data Portability:**
+
 - World Anvil: Export features limited to paid tiers
 - Notion: Can't integrate directly with game engines
 - articy:draft: Proprietary format, complex export rules
 
 **Offline Access:**
+
 - World Anvil: No offline mode
 - Arcweave: Requires internet connection
 - Users want: Local copies of their work
@@ -588,28 +649,33 @@ AI-powered tools are beginning to offer automatic relationship detection and sug
 ### 5.2 What Users Praise
 
 **World Anvil:**
+
 - Extensive templates for worldbuilding
 - RPG system integration
 - Large community
 
 **Notion:**
+
 - Flexibility
 - Easy to learn basics
 - Free tier generosity
 - Offline mode (added August 2025)
 
 **LegendKeeper:**
+
 - Distraction-free writing
 - Auto-linking
 - Clean interface
 
 **Obsidian:**
+
 - Local files
 - Plugin extensibility
 - Free
 - Native database views with Bases (since August 2025)
 
 **articy:draft:**
+
 - Integration with game engines
 - Professional-grade features
 - Entity + Flow in one tool
@@ -632,22 +698,23 @@ Many game designers use Notion or wiki-like platforms because:
 
 ### 6.2 Comparison: Wiki vs Game-Specific Tools
 
-| Aspect             | Wiki Tools (Notion)       | Wiki Tools (Obsidian)     | Game Tools (articy:draft)  |
-|--------------------|---------------------------|---------------------------|----------------------------|
-| Learning curve     | Low                       | Low-Medium                | High                       |
-| Structure          | User-defined              | User-defined (Bases)      | Preset templates           |
-| Game engine export | Manual                    | Manual                    | Built-in                   |
-| Flow integration   | None                      | None                      | Native                     |
-| Price              | Free/Low                  | Free                      | Free tier / Paid           |
-| Collaboration      | Easy                      | Via Sync (paid)           | Complex                    |
-| Offline            | Yes (auto-download)       | Yes (local-first)         | Yes (desktop)              |
-| Native databases   | Yes                       | Yes (Bases core plugin)   | Yes (templates)            |
+| Aspect             | Wiki Tools (Notion) | Wiki Tools (Obsidian)   | Game Tools (articy:draft) |
+| ------------------ | ------------------- | ----------------------- | ------------------------- |
+| Learning curve     | Low                 | Low-Medium              | High                      |
+| Structure          | User-defined        | User-defined (Bases)    | Preset templates          |
+| Game engine export | Manual              | Manual                  | Built-in                  |
+| Flow integration   | None                | None                    | Native                    |
+| Price              | Free/Low            | Free                    | Free tier / Paid          |
+| Collaboration      | Easy                | Via Sync (paid)         | Complex                   |
+| Offline            | Yes (auto-download) | Yes (local-first)       | Yes (desktop)             |
+| Native databases   | Yes                 | Yes (Bases core plugin) | Yes (templates)           |
 
 ### 6.3 Key Insight
 
 > Users want **wiki simplicity** with **game tool integration**.
 
 The ideal tool would:
+
 - Feel like Notion (organic, flexible, low learning curve)
 - Export like articy:draft (game engine ready)
 - Connect to flows (entities as speakers, items in conditions)
@@ -663,12 +730,14 @@ This insight has become **more validated** since the original research. The conv
 Based on industry standards, character sheets typically include:
 
 **Visual Elements:**
+
 - Full-body, full-color image
 - Additional poses/attitudes
 - Expression sheet (3-6 emotions)
 - Costume variations
 
 **Written Information:**
+
 - Name and aliases
 - Brief personality description
 - Backstory
@@ -677,6 +746,7 @@ Based on industry standards, character sheets typically include:
 - Voice/Speech patterns
 
 **Technical Data (for games):**
+
 - Stats/Attributes
 - Abilities
 - Inventory
@@ -686,6 +756,7 @@ Based on industry standards, character sheets typically include:
 ### 7.2 Item Sheets
 
 **Common Properties:**
+
 - Name, Description
 - Category/Type
 - Rarity
@@ -700,6 +771,7 @@ Based on industry standards, character sheets typically include:
 ### 7.3 Location Sheets
 
 **Common Properties:**
+
 - Name, Description
 - Type (city, dungeon, building)
 - Climate/Environment
@@ -714,6 +786,7 @@ Based on industry standards, character sheets typically include:
 ### 7.4 Bestiary Sheets
 
 **Common Properties:**
+
 - Name, Description
 - Type/Category
 - Stats (HP, Attack, Defense)
@@ -728,18 +801,21 @@ Based on industry standards, character sheets typically include:
 ### 7.5 Workflow Requirements
 
 **Documentation Phase:**
+
 - Easy entry of basic information
 - Flexible fields (not all characters need all fields)
 - Quick navigation between related entities
 - Search and filter
 
 **Design Phase:**
+
 - Connect entities to flows
 - Track where entities are used
 - Version history
 - Collaboration
 
 **Production Phase:**
+
 - Export to game engine
 - Localization support
 - Asset linking (images, audio)
@@ -756,11 +832,13 @@ Game development has moved away from deep inheritance hierarchies toward composi
 > "ECS prioritizes composition over inheritance. Every entity is defined not by a type hierarchy, but by the components associated with it."
 
 **Problem with Inheritance:**
+
 - Monster -> FlyingMonster -> SpellFlyingMonster creates rigid hierarchies
 - Adding new capability requires new class
 - Diamond inheritance problems
 
 **ECS Solution:**
+
 - Entity = Collection of components
 - FlyingMonster = Entity + Health + Damage + Flying
 - SpellFlyingMonster = Entity + Health + Damage + Flying + Spellcasting
@@ -771,16 +849,19 @@ Game development has moved away from deep inheritance hierarchies toward composi
 ### 8.2 Database Inheritance Strategies
 
 **Table Per Hierarchy (TPH):**
+
 - Single table with discriminator column
 - All properties in one table, nulls for unused
 - Simple queries, some wasted space
 
 **Table Per Type (TPT):**
+
 - Separate table for each entity type
 - Foreign key to parent table
 - Normalized, but requires joins
 
 **Table Per Concrete Type (TPC):**
+
 - Each concrete class has own table
 - No base table
 - Good for leaf-type queries

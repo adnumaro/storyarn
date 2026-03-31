@@ -9,7 +9,7 @@
 Centralizes ALL name-to-identifier conversions. Handles Unicode transliteration (accents → ASCII), lowercasing, and character filtering.
 
 | Function                 | Input → Output                                                                         | Used For                                    |
-|--------------------------|----------------------------------------------------------------------------------------|---------------------------------------------|
+| ------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------- |
 | `slugify/1`              | `"My Workspace!"` → `"my-workspace"`                                                   | URL slugs (separator: `-`)                  |
 | `variablify/1`           | `"Health Points"` → `"health_points"`                                                  | Variable names (separator: `_`)             |
 | `shortcutify/1`          | `"MC.Jaime"` → `"mc.jaime"`                                                            | Sheet/flow/map shortcuts (separator: `.`)   |
@@ -38,7 +38,7 @@ NameNormalizer.shortcutify("MC.Jaime")  # => "mc.jaime"
 Shortcut lifecycle management shared by ALL CRUD modules (FlowCrud, SheetCrud, SceneCrud, ScreenplayCrud).
 
 | Function                              | Purpose                                                                |
-|---------------------------------------|------------------------------------------------------------------------|
+| ------------------------------------- | ---------------------------------------------------------------------- |
 | `maybe_generate_shortcut/4`           | Auto-generates shortcut from name if not present in attrs              |
 | `name_changing?/2`                    | Returns true if attrs contain a new, non-empty name                    |
 | `missing_shortcut?/1`                 | Returns true if entity shortcut is nil/empty                           |
@@ -65,7 +65,7 @@ attrs = ShortcutHelpers.maybe_generate_shortcut_on_update(entity, attrs, &genera
 Generic tree manipulation for ANY entity with `parent_id` + `position` fields. Used by sheets, flows, scenes, screenplays.
 
 | Function                     | Purpose                                               |
-|------------------------------|-------------------------------------------------------|
+| ---------------------------- | ----------------------------------------------------- |
 | `reorder/5`                  | Reorder siblings within a parent (transactional)      |
 | `move_to_position/5`         | Move entity to new parent at position                 |
 | `next_position/3`            | Get next available position for new child             |
@@ -89,7 +89,7 @@ TreeOperations.next_position(Map, project_id, parent_id)
 Recursive soft-delete for hierarchical entities. Sets `deleted_at` timestamp on entity and all descendants.
 
 | Function                   | Purpose                                 |
-|----------------------------|-----------------------------------------|
+| -------------------------- | --------------------------------------- |
 | `soft_delete_children/3-4` | Recursively soft-delete all children    |
 | `list_deleted/2`           | List soft-deleted entities for trash UI |
 
@@ -111,7 +111,7 @@ deleted = SoftDelete.list_deleted(Flow, project_id)
 Centralized Ecto validators. Do NOT write custom regex for these.
 
 | Function                  | Purpose                                                             | Pattern                                      |
-|---------------------------|---------------------------------------------------------------------|----------------------------------------------|
+| ------------------------- | ------------------------------------------------------------------- | -------------------------------------------- |
 | `validate_shortcut/1-2`   | Shortcut format (1-50 chars), optional `opts` for custom `:message` | `^[a-z0-9][a-z0-9.\-]*[a-z0-9]$\|^[a-z0-9]$` |
 | `validate_email_format/1` | Email format                                                        | `^[^@,;\s]+@[^@,;\s]+$`                      |
 | `shortcut_format/0`       | Returns shortcut regex                                              | For reference                                |
@@ -131,11 +131,11 @@ changeset
 
 Map transformation and parsing utilities for handling mixed atom/string key maps from forms and JSON.
 
-| Function             | Purpose                                                                              |
-|----------------------|--------------------------------------------------------------------------------------|
-| `stringify_keys/1`   | Convert top-level atom keys to strings (NOT recursive — nested maps keep their keys) |
-| `parse_int/1`        | Safe integer parsing: `"42"` → `42`, `42` → `42`, `nil` → `nil`                      |
-| `parse_to_number/1`  | Parse any value to float for formulas: `"42"` → `42.0`, `nil` → `0.0`                |
+| Function            | Purpose                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------ |
+| `stringify_keys/1`  | Convert top-level atom keys to strings (NOT recursive — nested maps keep their keys) |
+| `parse_int/1`       | Safe integer parsing: `"42"` → `42`, `42` → `42`, `nil` → `nil`                      |
+| `parse_to_number/1` | Parse any value to float for formulas: `"42"` → `42.0`, `nil` → `0.0`                |
 
 ```elixir
 MapUtils.stringify_keys(%{name: "test", nested: %{key: "val"}})
@@ -157,7 +157,7 @@ MapUtils.parse_to_number(nil)   # => 0.0
 SQL injection prevention for LIKE queries.
 
 | Function                | Purpose                                          |
-|-------------------------|--------------------------------------------------|
+| ----------------------- | ------------------------------------------------ |
 | `sanitize_like_query/1` | Escapes `%`, `_`, `\` in user input before ILIKE |
 
 ```elixir
@@ -171,9 +171,9 @@ where(query, [q], ilike(q.name, ^"%#{sanitized}%"))
 
 **File:** `lib/storyarn/shared/time_helpers.ex`
 
-| Function   | Purpose                                             |
-|------------|-----------------------------------------------------|
-| `now/0`    | `DateTime.utc_now() \|> DateTime.truncate(:second)` |
+| Function | Purpose                                             |
+| -------- | --------------------------------------------------- |
+| `now/0`  | `DateTime.utc_now() \|> DateTime.truncate(:second)` |
 
 **ALWAYS use this** instead of inline `DateTime.utc_now()` with truncation.
 
@@ -186,7 +186,7 @@ where(query, [q], ilike(q.name, ^"%#{sanitized}%"))
 Cryptographic token generation for invitations and auth tokens.
 
 | Function               | Purpose                                                  |
-|------------------------|----------------------------------------------------------|
+| ---------------------- | -------------------------------------------------------- |
 | `build_hashed_token/0` | Returns `{encoded_token, hashed_token}` for invite links |
 | `decode_and_hash/1`    | Verifies user-provided token                             |
 
@@ -211,7 +211,7 @@ field :api_key_encrypted, Storyarn.Shared.EncryptedBinary
 HTML sanitizer with XSS protection. **ALWAYS use when rendering `raw()` content.**
 
 | Function          | Purpose                                                |
-|-------------------|--------------------------------------------------------|
+| ----------------- | ------------------------------------------------------ |
 | `sanitize_html/1` | Strips unsafe tags/attributes, blocks javascript: URIs |
 
 Allowlist: `p br em strong b i u s span a ul ol li blockquote code pre sub sup del h1-h6 div`
@@ -261,7 +261,7 @@ Actions: `:edit_content`, `:manage_project`, `:manage_members`, `:manage_workspa
 Schedules a delayed reset of the save status indicator for LiveViews.
 
 | Function             | Purpose                                                                                    |
-|----------------------|--------------------------------------------------------------------------------------------|
+| -------------------- | ------------------------------------------------------------------------------------------ |
 | `schedule_reset/1-2` | Sends `:reset_save_status` after `timeout_ms` (default 4000ms). Returns socket for piping. |
 
 ```elixir
@@ -282,7 +282,9 @@ Body-appended popover using `@floating-ui/dom`. Escapes overflow containers.
 import { createFloatingPopover } from "../utils/floating_popover";
 const fp = createFloatingPopover(triggerEl, { placement: "bottom-start" });
 fp.el.appendChild(content);
-fp.open(); fp.close(); fp.destroy();
+fp.open();
+fp.close();
+fp.destroy();
 ```
 
 ### `assets/js/flow_canvas/node_config.js`
@@ -290,7 +292,7 @@ fp.open(); fp.close(); fp.destroy();
 Icon utilities for Lucide icons in different rendering contexts.
 
 | Function                         | Context                | Output                  |
-|----------------------------------|------------------------|-------------------------|
+| -------------------------------- | ---------------------- | ----------------------- |
 | `createIconHTML(Icon, { size })` | Shadow DOM / innerHTML | HTML string             |
 | `createIconSvg(Icon)`            | Node headers           | SVG with stroke styling |
 

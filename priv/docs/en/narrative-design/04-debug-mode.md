@@ -1,9 +1,10 @@
 %{
-  title: "Debug Mode",
-  category_label: "Narrative Design",
-  order: 4,
-  description: "Test and verify your flows with the built-in debugger."
+title: "Debug Mode",
+category_label: "Narrative Design",
+order: 4,
+description: "Test and verify your flows with the built-in debugger."
 }
+
 ---
 
 The flow editor includes a built-in {accent}debugger{/accent} that lets you simulate how a flow executes -- step by step, with full visibility into variable values, decision paths, and execution history. This is something no other narrative design tool offers: you can verify your entire branching logic without leaving the editor, without exporting, and without a game engine.
@@ -29,13 +30,13 @@ The debugger initializes at the flow's **Entry** node, loading all project varia
 
 The control bar sits at the top of the debug panel with the following actions:
 
-| Button | Action | What it does |
-|--------|--------|-------------|
+| Button       | Action        | What it does                                                                                |
+| ------------ | ------------- | ------------------------------------------------------------------------------------------- |
 | Play / Pause | **Auto-play** | Auto-advances the flow at the configured speed, pausing at dialogue choices and breakpoints |
-| Step | **Step** | Advances exactly one node forward |
-| Step Back | **Step Back** | Rewinds to the previous state (undo the last step) |
-| Reset | **Reset** | Restarts the session from the start node, resetting all variables to their initial values |
-| Stop | **Stop** | Ends the debug session and closes the panel |
+| Step         | **Step**      | Advances exactly one node forward                                                           |
+| Step Back    | **Step Back** | Rewinds to the previous state (undo the last step)                                          |
+| Reset        | **Reset**     | Restarts the session from the start node, resetting all variables to their initial values   |
+| Stop         | **Stop**      | Ends the debug session and closes the panel                                                 |
 
 When the debugger reaches a **dialogue node with responses**, it stops and presents the available choices as buttons in the console. Responses whose conditions are not met appear greyed out and disabled. Click a valid response to continue execution along that path.
 
@@ -96,13 +97,13 @@ When the debugger is waiting for a response, the available choices appear at the
 
 A live table of **every variable** in the project, with five columns:
 
-| Column | Shows |
-|--------|-------|
-| **Variable** | The full reference (sheet shortcut + variable name) |
-| **Type** | The variable's block type (number, boolean, text, select, etc.) |
-| **Initial** | The value when the debug session started |
-| **Previous** | The value before the most recent change |
-| **Current** | The live value right now |
+| Column       | Shows                                                           |
+| ------------ | --------------------------------------------------------------- |
+| **Variable** | The full reference (sheet shortcut + variable name)             |
+| **Type**     | The variable's block type (number, boolean, text, select, etc.) |
+| **Initial**  | The value when the debug session started                        |
+| **Previous** | The value before the most recent change                         |
+| **Current**  | The live value right now                                        |
 
 Changed variables are highlighted -- values modified by instructions appear in **yellow**, and values you manually override appear in **blue**. A diamond indicator marks variables whose current value differs from their initial value.
 
@@ -176,7 +177,7 @@ After changing a variable, you can **reset** and re-run the flow to see how it b
 
 When the debugger steps into a **subflow node**, it automatically navigates to the referenced flow and continues execution inside it. A **breadcrumb bar** appears above the controls showing the call stack:
 
-> *Parent Flow > Sub Flow > Current*
+> _Parent Flow > Sub Flow > Current_
 
 The debugger maintains the full state across flow boundaries -- variables, execution history, console log, and breakpoints all persist. When a subflow reaches an Exit node with "Return to caller" mode, the debugger navigates back to the parent flow and continues from the subflow node's output pin.
 

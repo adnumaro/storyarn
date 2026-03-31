@@ -14,6 +14,7 @@ lib/storyarn/{context}/
 ```
 
 **Rules:**
+
 - Facade exposes public API via `defdelegate` to submodules
 - LiveViews call `Context.function()`, NEVER `Context.SubModule.function()`
 - Submodules can call each other within the same context
@@ -21,26 +22,26 @@ lib/storyarn/{context}/
 
 ### Contexts and their submodules
 
-| Context       | Facade                   | Key Submodules                                                                                                                                                              |
-|---------------|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Accounts      | `Storyarn.Accounts`      | `Users`, `Registration`, `OAuth`, `Sessions`, `MagicLinks`, `Emails`, `Passwords`, `Profiles`                                                                               |
-| Workspaces    | `Storyarn.Workspaces`    | `WorkspaceCrud`, `Memberships`, `Invitations` (schemas: `WorkspaceMembership`, `WorkspaceInvitation`)                                                                       |
-| Projects      | `Storyarn.Projects`      | `ProjectCrud`, `Memberships`, `Invitations` (schemas: `ProjectMembership`, `ProjectInvitation`)                                                                             |
-| Sheets        | `Storyarn.Sheets`        | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `PropertyInheritance`, `ReferenceTracker`, `Versioning`, `TreeOperations`                                            |
-| Flows         | `Storyarn.Flows`         | `FlowCrud`, `NodeCrud` (-> `NodeCreate`, `NodeUpdate`, `NodeDelete`), `ConnectionCrud`, `TreeOperations`, `VariableReferenceTracker`, `HubColors`                           |
-| Scenes        | `Storyarn.Scenes`        | `SceneCrud`, `LayerCrud`, `ZoneCrud`, `PinCrud`, `ConnectionCrud`, `AnnotationCrud`, `TreeOperations`                                                                       |
-| Screenplays   | `Storyarn.Screenplays`   | `ScreenplayCrud`, `ElementCrud`, `ScreenplayQueries`, `TreeOperations`, `ElementGrouping`, `FlowSync`, `LinkedPageCrud`, `AutoDetect`, `Export.Fountain`, `Import.Fountain` |
-| Localization  | `Storyarn.Localization`* | `LanguageCrud`, `TextCrud`, `TextExtractor`, `BatchTranslator`, `GlossaryCrud`, `Reports`, `ExportImport`                                                                   |
-| Collaboration | `Storyarn.Collaboration` | `Colors`, `Presence`, `Locks`, `CursorTracker`                                                                                                                              |
-| Assets        | `Storyarn.Assets`        | `Asset` (schema), `Storage` (behaviour), `Storage.Local`, `Storage.R2`, `ImageProcessor`                                                                                    |
-| Billing       | `Storyarn.Billing`       | `Plan`, `Subscription`, `SubscriptionCrud`, `Limits`                                                                                                                         |
-| Docs          | `Storyarn.Docs`          | `Guide`, `GuideBuilder`                                                                                                                                                      |
-| Exports       | `Storyarn.Exports`       | `DataCollector`, `ExportOptions`, `Serializer`, `SerializerRegistry`, `Validator`, `ExpressionTranspiler`                                                                    |
-| Imports       | `Storyarn.Imports`       | Parsers                                                                                                                                                                      |
-| Versioning    | `Storyarn.Versioning`    | `EntityVersion`, `VersionCrud`, `SnapshotBuilder`, `SnapshotStorage`                                                                                                         |
-| Shortcuts     | `Storyarn.Shortcuts`     | Centralized shortcut generation for all entity types                                                                                                                         |
+| Context       | Facade                    | Key Submodules                                                                                                                                                              |
+| ------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accounts      | `Storyarn.Accounts`       | `Users`, `Registration`, `OAuth`, `Sessions`, `MagicLinks`, `Emails`, `Passwords`, `Profiles`                                                                               |
+| Workspaces    | `Storyarn.Workspaces`     | `WorkspaceCrud`, `Memberships`, `Invitations` (schemas: `WorkspaceMembership`, `WorkspaceInvitation`)                                                                       |
+| Projects      | `Storyarn.Projects`       | `ProjectCrud`, `Memberships`, `Invitations` (schemas: `ProjectMembership`, `ProjectInvitation`)                                                                             |
+| Sheets        | `Storyarn.Sheets`         | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `PropertyInheritance`, `ReferenceTracker`, `Versioning`, `TreeOperations`                                            |
+| Flows         | `Storyarn.Flows`          | `FlowCrud`, `NodeCrud` (-> `NodeCreate`, `NodeUpdate`, `NodeDelete`), `ConnectionCrud`, `TreeOperations`, `VariableReferenceTracker`, `HubColors`                           |
+| Scenes        | `Storyarn.Scenes`         | `SceneCrud`, `LayerCrud`, `ZoneCrud`, `PinCrud`, `ConnectionCrud`, `AnnotationCrud`, `TreeOperations`                                                                       |
+| Screenplays   | `Storyarn.Screenplays`    | `ScreenplayCrud`, `ElementCrud`, `ScreenplayQueries`, `TreeOperations`, `ElementGrouping`, `FlowSync`, `LinkedPageCrud`, `AutoDetect`, `Export.Fountain`, `Import.Fountain` |
+| Localization  | `Storyarn.Localization`\* | `LanguageCrud`, `TextCrud`, `TextExtractor`, `BatchTranslator`, `GlossaryCrud`, `Reports`, `ExportImport`                                                                   |
+| Collaboration | `Storyarn.Collaboration`  | `Colors`, `Presence`, `Locks`, `CursorTracker`                                                                                                                              |
+| Assets        | `Storyarn.Assets`         | `Asset` (schema), `Storage` (behaviour), `Storage.Local`, `Storage.R2`, `ImageProcessor`                                                                                    |
+| Billing       | `Storyarn.Billing`        | `Plan`, `Subscription`, `SubscriptionCrud`, `Limits`                                                                                                                        |
+| Docs          | `Storyarn.Docs`           | `Guide`, `GuideBuilder`                                                                                                                                                     |
+| Exports       | `Storyarn.Exports`        | `DataCollector`, `ExportOptions`, `Serializer`, `SerializerRegistry`, `Validator`, `ExpressionTranspiler`                                                                   |
+| Imports       | `Storyarn.Imports`        | Parsers                                                                                                                                                                     |
+| Versioning    | `Storyarn.Versioning`     | `EntityVersion`, `VersionCrud`, `SnapshotBuilder`, `SnapshotStorage`                                                                                                        |
+| Shortcuts     | `Storyarn.Shortcuts`      | Centralized shortcut generation for all entity types                                                                                                                        |
 
-*Localization facade lives at `lib/storyarn/localization/localization.ex` (non-standard path).
+\*Localization facade lives at `lib/storyarn/localization/localization.ex` (non-standard path).
 
 ---
 
@@ -155,6 +156,7 @@ lib/storyarn_web/live/{domain}_live/
 ```
 
 **Rules:**
+
 - `show.ex` dispatches to handler modules — avoid growing past 300 lines
 - Handler modules receive `(params, socket)` and return `{:noreply, socket}`
 - Helpers are pure functions (no socket mutation)
@@ -235,7 +237,7 @@ Topic format: `"flow:{flow_id}:{channel}"` where channel is `presence`, `changes
 All user-facing text uses domain-specific Gettext:
 
 | Domain       | Function                                    | Example               |
-|--------------|---------------------------------------------|-----------------------|
+| ------------ | ------------------------------------------- | --------------------- |
 | Generic      | `gettext("Saved")`                          | Default domain        |
 | Sheets       | `dgettext("sheets", "Untitled")`            | Sheet-specific        |
 | Flows        | `dgettext("flows", "Add node")`             | Flow-specific         |
@@ -252,17 +254,20 @@ All user-facing text uses domain-specific Gettext:
 ## Ecto Query Patterns
 
 ### Soft-delete filtering (ALWAYS add):
+
 ```elixir
 from(e in Entity, where: is_nil(e.deleted_at))
 ```
 
 ### Search with LIKE (ALWAYS sanitize):
+
 ```elixir
 sanitized = SearchHelpers.sanitize_like_query(query)
 from(e in Entity, where: ilike(e.name, ^"%#{sanitized}%"))
 ```
 
 ### Tree building (in-memory from flat list):
+
 ```elixir
 def list_tree(project_id) do
   entities = list_all(project_id)
@@ -279,6 +284,7 @@ end
 ```
 
 ### Preload strategy:
+
 - **List operations:** Minimal preloads (just what's needed for display)
 - **Get/show operations:** Full preloads for the detail view
 - **Canvas operations:** Aggressive preloads in single query to avoid N+1

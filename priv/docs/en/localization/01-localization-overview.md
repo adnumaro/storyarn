@@ -1,9 +1,10 @@
 %{
-  title: "Localization Overview",
-  category_label: "Localization",
-  order: 1,
-  description: "Translate your project into multiple languages with extraction, DeepL, and glossaries."
+title: "Localization Overview",
+category_label: "Localization",
+order: 1,
+description: "Translate your project into multiple languages with extraction, DeepL, and glossaries."
 }
+
 ---
 
 Storyarn's localization system gives you full control over translating your narrative content -- from dialogue lines and response options to sheet names and block labels. It handles {accent}automatic text extraction{/accent}, machine translation via DeepL, glossary enforcement, voice-over tracking, and detailed progress reports.
@@ -25,12 +26,12 @@ Open **Localization** in your project sidebar. Your project's source language is
 
 Click **Sync** to scan your entire project and extract every piece of translatable text. The extractor pulls content from four source types:
 
-| Source | What gets extracted |
-|--------|-------------------|
+| Source         | What gets extracted                                                                                        |
+| -------------- | ---------------------------------------------------------------------------------------------------------- |
 | **Flow nodes** | Dialogue text, stage directions, menu text, individual response texts, slug line descriptions, exit labels |
-| **Sheets** | Sheet name, sheet description |
-| **Blocks** | Block labels, text content values, select option labels |
-| **Flows** | Flow name, flow description |
+| **Sheets**     | Sheet name, sheet description                                                                              |
+| **Blocks**     | Block labels, text content values, select option labels                                                    |
+| **Flows**      | Flow name, flow description                                                                                |
 
 Each extracted text gets a SHA-256 hash of its source content. When you re-sync, Storyarn detects changes -- if the source text has been modified since the last translation, the system can flag it for re-translation. Extraction is idempotent: running it multiple times never creates duplicates thanks to upsert logic.
 
@@ -57,13 +58,13 @@ Under the hood, DeepL translation is {accent}HTML-aware{/accent}: rich text from
 
 Every text entry follows a {accent}five-stage workflow{/accent}:
 
-| Status | Meaning |
-|--------|---------|
-| **Pending** | Extracted but not yet translated |
-| **Draft** | Machine-translated or first pass complete |
-| **In Progress** | Translator is actively working on it |
-| **Review** | Translation complete, awaiting review |
-| **Final** | Approved and ready for export |
+| Status          | Meaning                                   |
+| --------------- | ----------------------------------------- |
+| **Pending**     | Extracted but not yet translated          |
+| **Draft**       | Machine-translated or first pass complete |
+| **In Progress** | Translator is actively working on it      |
+| **Review**      | Translation complete, awaiting review     |
+| **Final**       | Approved and ready for export             |
 
 Machine translations are automatically set to **Draft** status. If the source text changes after translation, the system can detect the hash mismatch for re-review.
 
@@ -81,13 +82,13 @@ Filter the translation table by language, status, and source type. Search across
 
 The glossary ensures {accent}consistent terminology{/accent} across all translations. Each entry maps a source term to a target term for a specific language pair.
 
-| Field | Purpose |
-|-------|---------|
-| **Source term** | The term in your source language |
-| **Target term** | The required translation |
-| **Source locale / Target locale** | The language pair this entry applies to |
-| **Context** | Usage notes for translators |
-| **Do not translate** | When enabled, the term is kept as-is (proper nouns, brand names) |
+| Field                             | Purpose                                                          |
+| --------------------------------- | ---------------------------------------------------------------- |
+| **Source term**                   | The term in your source language                                 |
+| **Target term**                   | The required translation                                         |
+| **Source locale / Target locale** | The language pair this entry applies to                          |
+| **Context**                       | Usage notes for translators                                      |
+| **Do not translate**              | When enabled, the term is kept as-is (proper nouns, brand names) |
 
 Glossary entries are automatically applied during DeepL translation via the DeepL Glossary API. When translating manually, the glossary serves as a reference.
 

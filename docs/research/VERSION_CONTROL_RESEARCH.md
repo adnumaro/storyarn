@@ -6,10 +6,10 @@
 
 ### Changelog
 
-| Date | Changes |
-|------|---------|
+| Date                    | Changes                                                                                                                                                                                                |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | February 2026 (Updated) | Added OTP 28 native zstd, updated Dolt/TerminusDB sections, fixed Elixir code sketch API errors, added Elixir-specific alternatives (Part 9), added S3 retrieval cost note, verified Jsonpatch library |
-| February 2026 | Initial research document |
+| February 2026           | Initial research document                                                                                                                                                                              |
 
 ---
 
@@ -18,6 +18,7 @@
 After researching industry practices, there are several viable approaches to implement full page-level version control efficiently. The key insight is that **storing deltas instead of full copies can achieve 10-100x storage reduction**.
 
 **Recommended approach:** Hybrid system combining:
+
 1. **RFC 6902 JSON Patch** for delta storage
 2. **zstd compression** with shared dictionary
 3. **PostgreSQL + S3 tiered storage** (hot/cold)
@@ -33,21 +34,24 @@ After researching industry practices, there are several viable approaches to imp
 
 Git achieves incredible compression through delta encoding:
 
-| Project         | Raw Size  | Compressed  | Ratio     |
-|-----------------|-----------|-------------|-----------|
-| SQLite (Fossil) | 7.1 GB    | 97 MB       | **74:1**  |
-| Linux Kernel    | ~1 TB     | ~4 GB       | **250:1** |
+| Project         | Raw Size | Compressed | Ratio     |
+| --------------- | -------- | ---------- | --------- |
+| SQLite (Fossil) | 7.1 GB   | 97 MB      | **74:1**  |
+| Linux Kernel    | ~1 TB    | ~4 GB      | **250:1** |
 
 **How it works:**
+
 - Store most recent version as full text
 - Store older versions as deltas pointing backwards
 - Use rolling hash to find similar chunks
 - Apply zlib compression on top
 
 **Key insight from Git:**
+
 > "The second (more recent) version is stored intact, the original is stored as a delta—because you need faster access to recent versions."
 
 **Sources:**
+
 - [Git Packfiles Documentation](https://git-scm.com/book/en/v2/Git-Internals-Packfiles)
 - [GitHub Blog: Git's Database Internals](https://github.blog/open-source/git/gits-database-internals-i-packed-object-store/)
 - [Fossil Delta Format](https://fossil-scm.org/home/doc/tip/www/delta_format.wiki)
@@ -57,6 +61,7 @@ Git achieves incredible compression through delta encoding:
 Perfect for Storyarn since pages are stored as JSON/JSONB.
 
 **Example:**
+
 ```json
 // Original page
 {
@@ -91,6 +96,7 @@ Perfect for Storyarn since pages are stored as JSON/JSONB.
 **Elixir library verified:** [Jsonpatch](https://hex.pm/packages/jsonpatch) v2.3.1 (August 2025) — actively maintained, pure Elixir implementation. API: `Jsonpatch.diff/2` for generating patches, `Jsonpatch.apply_patch/2` for applying them.
 
 **Sources:**
+
 - [RFC 6902 Specification](https://datatracker.ietf.org/doc/html/rfc6902)
 - [jsondiffpatch](https://github.com/benjamine/jsondiffpatch)
 
@@ -106,6 +112,7 @@ If another page has same content → same hash → no duplicate storage
 ```
 
 **Benefits:**
+
 - Automatic deduplication across all pages
 - Data integrity verification built-in
 - Efficient for similar pages (templates, variations)
@@ -113,7 +120,8 @@ If another page has same content → same hash → no duplicate storage
 **Used by:** Git, Docker, IPFS, Terraform
 
 **Sources:**
-- [Content Addressable Storage Overview](https://lab.abilian.com/Tech/Databases%20&%20Persistence/Content%20Addressable%20Storage%20(CAS)/)
+
+- [Content Addressable Storage Overview](<https://lab.abilian.com/Tech/Databases%20&%20Persistence/Content%20Addressable%20Storage%20(CAS)/>)
 
 ---
 
@@ -121,23 +129,26 @@ If another page has same content → same hash → no duplicate storage
 
 ### 2.1 zstd vs gzip for JSON
 
-| Algorithm   | Compression Ratio   | Compress Speed   | Decompress Speed   |
-|-------------|---------------------|------------------|--------------------|
-| gzip -6     | 3.09x               | 34 MB/s          | 380 MB/s           |
-| **zstd -3** | **3.17x**           | **300 MB/s**     | **1200 MB/s**      |
-| zstd -19    | 3.8x                | 5 MB/s           | 1100 MB/s          |
+| Algorithm   | Compression Ratio | Compress Speed | Decompress Speed |
+| ----------- | ----------------- | -------------- | ---------------- |
+| gzip -6     | 3.09x             | 34 MB/s        | 380 MB/s         |
+| **zstd -3** | **3.17x**         | **300 MB/s**   | **1200 MB/s**    |
+| zstd -19    | 3.8x              | 5 MB/s         | 1100 MB/s        |
 
 **Key findings:**
+
 - zstd compresses **7-8x faster** than gzip
 - zstd decompresses **2-3x faster** than gzip
 - Similar or better compression ratios
 
 **zstd Dictionary Mode (Game Changer for JSON):**
+
 > "Zstd's unique dictionary feature can achieve 90%+ compression for small JSON files. Similar JSON structures compress extremely well with shared dictionary."
 
 For Storyarn, all pages in a project share similar structure. A trained dictionary could compress individual page versions from ~5KB to ~200-500 bytes.
 
 **Sources:**
+
 - [Daniel Lemire: Compressing JSON: gzip vs zstd](https://lemire.me/blog/2021/06/30/compressing-json-gzip-vs-zstd/)
 - [Zstandard Official](http://facebook.github.io/zstd/)
 
@@ -145,15 +156,16 @@ For Storyarn, all pages in a project share similar structure. A trained dictiona
 
 PostgreSQL 14+ supports LZ4 compression for TOAST (large values).
 
-| Compression    | Storage Size  | Query Performance   |
-|----------------|---------------|---------------------|
-| PGLZ (default) | 41 GB         | Slower              |
-| **LZ4**        | **38 GB**     | **Fastest**         |
-| None           | 98 GB         | Baseline            |
+| Compression    | Storage Size | Query Performance |
+| -------------- | ------------ | ----------------- |
+| PGLZ (default) | 41 GB        | Slower            |
+| **LZ4**        | **38 GB**    | **Fastest**       |
+| None           | 98 GB        | Baseline          |
 
 **Warning:** TOAST has performance cliffs for values >2KB. Updates require full detoast+retoast.
 
 **Sources:**
+
 - [PostgreSQL TOAST Performance Tests](https://www.credativ.de/en/blog/postgresql-en/toasted-jsonb-data-in-postgresql-performance-tests-of-different-compression-algorithms/)
 - [5mins of Postgres: JSONB and TOAST](https://pganalyze.com/blog/5mins-postgres-jsonb-toast)
 
@@ -174,6 +186,7 @@ compressed = :zstd.compress(data, %{dict: dict})
 **Benefits:** No NIF compilation, no external C dependency, maintained as part of OTP, streaming support built-in. Requires Elixir 1.19+ and OTP 28+.
 
 **Sources:**
+
 - [Erlang/OTP 28.0 Release Notes](https://www.erlang.org/news/180)
 - [zstd stdlib documentation](https://www.erlang.org/doc/apps/stdlib/zstd.html)
 
@@ -188,20 +201,24 @@ SQL database with Git-like version control built-in.
 **Performance (updated December 2025):** Dolt has achieved **MySQL parity** on sysbench benchmarks (read/write mean multiplier: 0.96x). The 1.8x and 4.5x figures cited below are from 2024 and are now outdated. **DoltgreSQL** (PostgreSQL flavor) is in Beta as of October 2025, with 1.0 targeted around April 2026.
 
 **Historical performance (2024):**
+
 - 1.8x slower than MySQL on sysbench
 - 4.5x slower on TPC-C (heavy writes)
 - Gap is "unnoticeable in most applications"
 
 **Pros:**
+
 - Full SQL compatibility
 - Branch, merge, diff built-in
 - DoltgreSQL (PostgreSQL flavor) available
 
 **Cons:**
+
 - Write overhead by design
 - Relatively new (stability concerns for production)
 
 **Sources:**
+
 - [Dolt GitHub](https://github.com/dolthub/dolt)
 - [State of Dolt 2024](https://www.dolthub.com/blog/2024-04-03-state-of-dolt/)
 - [Dolt is as Fast as MySQL (Dec 2025)](https://www.dolthub.com/blog/2025-12-04-dolt-is-as-fast-as-mysql/)
@@ -212,6 +229,7 @@ SQL database with Git-like version control built-in.
 Immutable database with Git-like semantics, designed for JSON documents.
 
 **Architecture:**
+
 - Stores changes as deltas (immutable)
 - Time-travel queries to any commit
 - Push/pull/clone operations
@@ -220,16 +238,19 @@ Immutable database with Git-like semantics, designed for JSON documents.
 **Update (2025):** TerminusDB 12 released December 2025. Maintainership transferred to DFRNT in 2025. Key improvements include 5x faster JSON parsing, arbitrary precision decimals, and auto-optimizer.
 
 **Good fit for Storyarn because:**
+
 - Native JSON document support
 - Built-in versioning without extra tables
 - Delta compression by design
 
 **Cons:**
+
 - Smaller community than PostgreSQL
 - In-memory design may need tuning for large projects
 - Less ecosystem/tooling
 
 **Sources:**
+
 - [TerminusDB GitHub](https://github.com/terminusdb/terminusdb)
 - [TerminusDB Official](https://terminusdb.org/)
 - [TerminusDB 12 Release](https://terminusdb.org/blog/2025-12-08-terminusdb-12-release/)
@@ -239,16 +260,19 @@ Immutable database with Git-like semantics, designed for JSON documents.
 Purpose-built for event sourcing pattern.
 
 **Good for:**
+
 - Append-only immutable events
 - High write throughput
 - Built-in subscriptions
 - Strong audit trail
 
 **Not ideal for:**
+
 - Long-lived entities with thousands of events (needs snapshots)
 - Complex queries on current state
 
 **Sources:**
+
 - [EventStoreDB GitHub](https://github.com/EventStore/EventStore)
 - [Building Event Sourcing in Production](https://developersvoice.com/blog/dotnet/building-event-sourcing-with-eventstore-and-dotnet/)
 
@@ -257,6 +281,7 @@ Purpose-built for event sourcing pattern.
 Columnar database with extreme compression for logs.
 
 **Compression achievements:**
+
 - 170x compression on nginx logs
 - 10-20x typical for structured logs
 - 17x on AWS's largest cluster (10 trillion rows)
@@ -264,6 +289,7 @@ Columnar database with extreme compression for logs.
 **Perfect for:** Activity log storage (Layer 1 from original strategy)
 
 **Sources:**
+
 - [ClickHouse: 170x Log Compression](https://clickhouse.com/blog/log-compression-170x)
 - [Building 19 PiB Logging Platform](https://clickhouse.com/blog/building-a-logging-platform-with-clickhouse-and-saving-millions-over-datadog)
 
@@ -273,17 +299,18 @@ Columnar database with extreme compression for logs.
 
 ### 4.1 AWS S3 Storage Classes
 
-| Tier                     | Cost/GB/month   | Retrieval    | Use Case                    |
-|--------------------------|-----------------|--------------|-----------------------------|
-| S3 Standard              | $0.023          | Instant      | Hot data (current versions) |
-| S3 Infrequent Access     | $0.0125         | Instant      | Warm data (recent history)  |
-| S3 Glacier Instant       | $0.004          | Milliseconds | Cold data (old versions)    |
-| S3 Glacier Flexible      | $0.0036         | 3-5 hours    | Archive                     |
-| **Glacier Deep Archive** | **$0.00099**    | 12-48 hours  | Long-term archive           |
+| Tier                     | Cost/GB/month | Retrieval    | Use Case                    |
+| ------------------------ | ------------- | ------------ | --------------------------- |
+| S3 Standard              | $0.023        | Instant      | Hot data (current versions) |
+| S3 Infrequent Access     | $0.0125       | Instant      | Warm data (recent history)  |
+| S3 Glacier Instant       | $0.004        | Milliseconds | Cold data (old versions)    |
+| S3 Glacier Flexible      | $0.0036       | 3-5 hours    | Archive                     |
+| **Glacier Deep Archive** | **$0.00099**  | 12-48 hours  | Long-term archive           |
 
 **Key insight:** Glacier Deep Archive is **$1/TB/month**
 
 **Sources:**
+
 - [AWS S3 Pricing](https://aws.amazon.com/s3/pricing/)
 - [S3 Glacier Storage Classes](https://aws.amazon.com/s3/storage-classes/glacier/)
 
@@ -446,6 +473,7 @@ end
 ### 5.4 Storage Estimates (Revised)
 
 **Assumptions:**
+
 - Project with 10,000 pages
 - Average page: 5KB
 - 50 edits/day
@@ -453,7 +481,7 @@ end
 - Snapshot every 50 edits
 
 | Component             | Calculation      | Monthly     | Yearly    |
-|-----------------------|------------------|-------------|-----------|
+| --------------------- | ---------------- | ----------- | --------- |
 | Deltas (30 days)      | 50 × 150B × 30   | 225 KB      | -         |
 | Snapshots (hot)       | 50/50 × 5KB × 30 | 150 KB      | -         |
 | Archived deltas       | 50 × 150B × 335  | -           | 2.5 MB    |
@@ -461,10 +489,12 @@ end
 | **Total per project** |                  | **~400 KB** | **~5 MB** |
 
 **For 1,000 projects:**
+
 - Hot storage (PostgreSQL): ~400 MB
 - Archive (S3 Glacier): ~5 GB/year
 
 **Cost (1,000 projects):**
+
 - PostgreSQL (RDS): Part of existing infrastructure
 - S3 Glacier Deep Archive: 5 GB × $0.001 = **$0.005/month**
 
@@ -472,11 +502,11 @@ end
 
 **Comparison with original strategy:**
 
-| Approach             | Storage/year/project   | 1000 Projects  |
-|----------------------|------------------------|----------------|
-| Full page copies     | 90 MB                  | 90 GB          |
-| Original proposal    | 21 MB                  | 21 GB          |
-| **Delta + Snapshot** | **5 MB**               | **5 GB**       |
+| Approach             | Storage/year/project | 1000 Projects |
+| -------------------- | -------------------- | ------------- |
+| Full page copies     | 90 MB                | 90 GB         |
+| Original proposal    | 21 MB                | 21 GB         |
+| **Delta + Snapshot** | **5 MB**             | **5 GB**      |
 
 **Reduction: 95% less storage than naive, 76% less than original proposal**
 
@@ -486,19 +516,20 @@ end
 
 ### What This Enables
 
-| Feature             | Naive Copy  | Original Proposal   | Delta+Snapshot     |
-|---------------------|-------------|---------------------|--------------------|
-| See any version     | ✅           | ❌ (snapshots only)  | ✅                  |
-| See what changed    | ✅           | ✅ (field names)     | ✅ (full diff)      |
-| See who changed     | ✅           | ✅                   | ✅                  |
-| Restore single page | ✅           | ❌                   | ✅                  |
-| Compare versions    | ✅           | ❌                   | ✅                  |
-| Storage efficient   | ❌           | ✅                   | ✅✅                 |
-| Fast reconstruction | ✅           | N/A                 | ✅ (with snapshots) |
+| Feature             | Naive Copy | Original Proposal   | Delta+Snapshot      |
+| ------------------- | ---------- | ------------------- | ------------------- |
+| See any version     | ✅         | ❌ (snapshots only) | ✅                  |
+| See what changed    | ✅         | ✅ (field names)    | ✅ (full diff)      |
+| See who changed     | ✅         | ✅                  | ✅                  |
+| Restore single page | ✅         | ❌                  | ✅                  |
+| Compare versions    | ✅         | ❌                  | ✅                  |
+| Storage efficient   | ❌         | ✅                  | ✅✅                |
+| Fast reconstruction | ✅         | N/A                 | ✅ (with snapshots) |
 
 ### Trade-offs
 
 **Pros:**
+
 - Full version history for every page
 - Efficient storage through delta compression
 - Fast reconstruction via periodic snapshots
@@ -506,6 +537,7 @@ end
 - Can show exact field-level changes
 
 **Cons:**
+
 - More complex implementation than simple copies
 - Reconstruction time depends on distance to nearest snapshot
 - Need to maintain zstd dictionaries per project
@@ -516,28 +548,33 @@ end
 ## Part 7: Implementation Phases
 
 ### Phase 1: Core Delta System
+
 1. Add `page_versions` table
 2. Implement JSON Patch diff/apply (use `jsonpatch` hex package)
 3. Add zstd compression (use `ezstd` hex package)
 4. Version pages on every save
 
 ### Phase 2: Snapshots
+
 1. Implement snapshot creation logic
 2. Add snapshot-based reconstruction
 3. Configure snapshot interval (50 edits recommended)
 
 ### Phase 3: UI
+
 1. Version history timeline per page
 2. Diff viewer (side-by-side or inline)
 3. Restore to version button
 4. "Who changed what" attribution
 
 ### Phase 4: Archival
+
 1. Background job to archive old versions to S3
 2. Lifecycle policies for Glacier transition
 3. On-demand retrieval from archive
 
 ### Phase 5: Optimization
+
 1. Train zstd dictionaries per project
 2. Batch delta compression
 3. Pre-compute common diffs for faster display
@@ -603,6 +640,7 @@ The Elixir ecosystem has native event sourcing:
 **Recommended approach:** PostgreSQL + JSON Patch + zstd + S3 tiered storage
 
 This gives us:
+
 - **Full page-level version history** (not just snapshots)
 - **95% storage reduction** vs naive approach
 - **Exact field-level diffs** visible to users
@@ -616,18 +654,21 @@ The implementation complexity is manageable with existing Elixir libraries (`jso
 ## Sources
 
 ### Delta Compression & Git
+
 - [Git Packfiles Documentation](https://git-scm.com/book/en/v2/Git-Internals-Packfiles)
 - [GitHub Blog: Git's Database Internals](https://github.blog/open-source/git/gits-database-internals-i-packed-object-store/)
 - [Fossil Delta Format](https://fossil-scm.org/home/doc/tip/www/delta_format.wiki)
 - [Pure Storage: Delta Encoding](https://www.purestorage.com/uk/knowledge/what-is-delta-encoding.html)
 
 ### JSON Patch
+
 - [RFC 6902 Specification](https://datatracker.ietf.org/doc/html/rfc6902)
 - [jsondiffpatch Library](https://github.com/benjamine/jsondiffpatch)
 - [Elixir Jsonpatch](https://elixirforum.com/t/jsonpatch-pure-elixir-implementation-of-rfc-6902/32007)
 - [Jsonpatch on Hex.pm](https://hex.pm/packages/jsonpatch)
 
 ### Compression
+
 - [Daniel Lemire: Compressing JSON](https://lemire.me/blog/2021/06/30/compressing-json-gzip-vs-zstd/)
 - [Zstandard Official](http://facebook.github.io/zstd/)
 - [PostgreSQL TOAST Compression Tests](https://www.credativ.de/en/blog/postgresql-en/toasted-jsonb-data-in-postgresql-performance-tests-of-different-compression-algorithms/)
@@ -635,6 +676,7 @@ The implementation complexity is manageable with existing Elixir libraries (`jso
 - [zstd stdlib documentation](https://www.erlang.org/doc/apps/stdlib/zstd.html)
 
 ### Specialized Databases
+
 - [Dolt: Git for Data](https://github.com/dolthub/dolt)
 - [Dolt is as Fast as MySQL (Dec 2025)](https://www.dolthub.com/blog/2025-12-04-dolt-is-as-fast-as-mysql/)
 - [State of Doltgres (Oct 2025)](https://www.dolthub.com/blog/2025-10-16-state-of-doltgres/)
@@ -644,14 +686,17 @@ The implementation complexity is manageable with existing Elixir libraries (`jso
 - [ClickHouse Log Compression](https://clickhouse.com/blog/log-compression-170x)
 
 ### Storage & Costs
+
 - [AWS S3 Pricing](https://aws.amazon.com/s3/pricing/)
 - [S3 Glacier Storage Classes](https://aws.amazon.com/s3/storage-classes/glacier/)
 
 ### Event Sourcing
+
 - [Event Sourcing Pattern (Microsoft)](https://learn.microsoft.com/en-us/azure/architecture/patterns/event-sourcing)
 - [AWS Event Sourcing with DynamoDB](https://aws.amazon.com/blogs/database/build-a-cqrs-event-store-with-amazon-dynamodb/)
 
 ### Elixir Ecosystem
+
 - [Commanded (CQRS/ES)](https://hex.pm/packages/commanded)
 - [EventStore (Elixir)](https://hex.pm/packages/eventstore)
 - [PaperTrail](https://hex.pm/packages/paper_trail)

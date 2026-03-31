@@ -27,11 +27,13 @@ Usage: Create entity → Assign template → Fill properties
 ```
 
 **Pros:**
+
 - Professional, structured
 - Validation and constraints
 - Export-ready for engines
 
 **Cons:**
+
 - Templates locked to one type only
 - Cannot use same template twice on one object
 - Template editor locks the entire app
@@ -50,11 +52,13 @@ Components/
 ```
 
 **Pros:**
+
 - Simple, flexible
 - No forced structure
 - Easy to start
 
 **Cons:**
+
 - No inheritance
 - No schema enforcement
 - Must define attributes per-component
@@ -69,11 +73,13 @@ New Article → Select Type → Character (predefined fields)
 ```
 
 **Pros:**
+
 - Guided experience
 - 25+ templates for worldbuilding
 - Fields designed for common use cases
 
 **Cons:**
+
 - Preset templates may not fit project
 - Customization is complex
 - "Too complicated, dozens of features I didn't need"
@@ -89,11 +95,13 @@ Create Database → Define Properties → name (text)
 ```
 
 **Pros:**
+
 - Complete flexibility
 - Familiar interface
 - Relational databases
 
 **Cons:**
+
 - No guidance whatsoever
 - No inheritance between items
 - Must manually create schema for each database
@@ -111,11 +119,13 @@ Relationships Module (cross-links)
 ```
 
 **Pros:**
+
 - Modules interconnect automatically
 - Focused tools for each entity type
 - Publishing integration
 
 **Cons:**
+
 - Pay per module (can get expensive)
 - Fixed module structure
 - No custom entity types
@@ -150,16 +160,16 @@ Pages/
 
 ## Feature Comparison Matrix
 
-| Feature              | articy:draft  | Arcweave   | World Anvil   | Notion   | Campfire  | **Storyarn**      |
-|----------------------|---------------|------------|---------------|----------|-----------|-------------------|
-| Organic creation     | ❌             | ✅          | ⚠️            | ✅        | ⚠️        | ✅                 |
-| Property inheritance | ❌             | ❌          | ❌             | ❌        | ❌         | ✅                 |
-| User-defined schemas | ✅             | ⚠️         | ⚠️            | ✅        | ❌         | ✅                 |
-| Preset templates     | ✅             | ❌          | ✅             | ❌        | ✅         | ⚠️ (via examples) |
-| Hierarchical pages   | ❌             | ❌          | ❌             | ✅        | ❌         | ✅                 |
-| Flow integration     | ✅             | ✅          | ❌             | ❌        | ❌         | ✅                 |
-| Real-time collab     | ⚠️            | ✅          | ⚠️            | ✅        | ✅         | ✅                 |
-| Learning curve       | High          | Low        | High          | Low      | Medium    | **Low**           |
+| Feature              | articy:draft | Arcweave | World Anvil | Notion | Campfire | **Storyarn**      |
+| -------------------- | ------------ | -------- | ----------- | ------ | -------- | ----------------- |
+| Organic creation     | ❌           | ✅       | ⚠️          | ✅     | ⚠️       | ✅                |
+| Property inheritance | ❌           | ❌       | ❌          | ❌     | ❌       | ✅                |
+| User-defined schemas | ✅           | ⚠️       | ⚠️          | ✅     | ❌       | ✅                |
+| Preset templates     | ✅           | ❌       | ✅          | ❌     | ✅       | ⚠️ (via examples) |
+| Hierarchical pages   | ❌           | ❌       | ❌          | ✅     | ❌       | ✅                |
+| Flow integration     | ✅           | ✅       | ❌          | ❌     | ❌       | ✅                |
+| Real-time collab     | ⚠️           | ✅       | ⚠️          | ✅     | ✅       | ✅                |
+| Learning curve       | High         | Low      | High        | Low    | Medium   | **Low**           |
 
 ---
 
@@ -176,11 +186,13 @@ This is the right mental model.
 ### 2. Hierarchy as Natural Organization
 
 Nobody else uses page hierarchy for inheritance. They all have:
+
 - Flat entity lists (articy, Arcweave)
 - Separate modules (Campfire)
 - Independent databases (Notion)
 
 But game designers ALREADY think hierarchically:
+
 - Characters → Player Characters, NPCs → Named NPCs, Generic NPCs
 - Locations → Regions → Cities → Buildings → Rooms
 - Items → Weapons → Swords, Axes, Bows
@@ -196,6 +208,7 @@ In Storyarn, any page can define inheritable properties. There's no "Character T
 ### 4. Integration Potential
 
 Unlike Notion, Storyarn pages can be:
+
 - Referenced in dialogue nodes (speaker)
 - Used in conditions (if has_item("Sword"))
 - Exported with technical IDs
@@ -210,6 +223,7 @@ This is the game-engine-ready aspect that wiki tools lack.
 ### 1. Guided Starting Experience
 
 World Anvil and Campfire have predefined templates because many users DON'T want to start from scratch. They want:
+
 - "Here's what a Character usually looks like"
 - "Here are common Item properties"
 
@@ -222,6 +236,7 @@ articy:draft users struggle with character relationships (Father-Son, Allies, et
 **Current proposal limitation:** Relationships would be manual property additions.
 
 **Recommendation:** Consider a dedicated "Relationships" feature or a special "Reference" property type that:
+
 - Auto-creates bidirectional links
 - Shows relationship type (Father, Ally, Enemy)
 - Visualizable as graph/tree
@@ -233,6 +248,7 @@ articy:draft has "Calculated Strips" that query related objects dynamically.
 **Example:** "Show all Items where location = this page"
 
 **Recommendation:** Consider a "References" tab that auto-populates:
+
 - Where this page is mentioned
 - What pages reference this one
 - Children summary
@@ -240,12 +256,14 @@ articy:draft has "Calculated Strips" that query related objects dynamically.
 ### 4. Property Type Richness
 
 articy:draft supports:
+
 - Slots (single reference)
 - Strips (multiple references)
 - Dropdowns with predefined values
 - Constraints (min/max, required)
 
 **Recommendation:** Ensure property types include:
+
 - Text, Number, Boolean, Date
 - Single select, Multi-select
 - Asset reference (image, audio)
@@ -255,6 +273,7 @@ articy:draft supports:
 ### 5. Bulk Operations
 
 When propagating to many children, the modal approach is good but may need:
+
 - "Select all" / "Deselect all"
 - Filter by page name
 - "Apply to all future children only" option
@@ -268,6 +287,7 @@ When propagating to many children, the modal approach is good but may need:
 **Message:** "All the power, none of the complexity. Start creating in 30 seconds, not 30 minutes."
 
 **Key advantages:**
+
 - No template lock-in
 - Organic creation
 - Web-based, real-time collaboration
@@ -278,6 +298,7 @@ When propagating to many children, the modal approach is good but may need:
 **Message:** "Components with superpowers. Your entities can inherit, relate, and evolve."
 
 **Key advantages:**
+
 - Property inheritance
 - Hierarchical organization
 - Self-hosting option
@@ -287,6 +308,7 @@ When propagating to many children, the modal approach is good but may need:
 **Message:** "Built for game developers, not just worldbuilders. Your wiki exports to your engine."
 
 **Key advantages:**
+
 - Flow editor integration
 - Game engine export
 - Cleaner, simpler UI
@@ -296,6 +318,7 @@ When propagating to many children, the modal approach is good but may need:
 **Message:** "Notion for game design. Wiki flexibility with dialogue flows and engine export."
 
 **Key advantages:**
+
 - Flow editor
 - Inheritance (Notion databases don't inherit)
 - Purpose-built for games
@@ -305,6 +328,7 @@ When propagating to many children, the modal approach is good but may need:
 **Message:** "All modules in one, with the flexibility Campfire lacks."
 
 **Key advantages:**
+
 - No module purchases
 - Custom entity types
 - Flow integration
@@ -316,12 +340,14 @@ When propagating to many children, the modal approach is good but may need:
 Based on research, I recommend this order:
 
 ### Phase 1: Core Page Inheritance (Current Proposal)
+
 - [x] Property scope (this page only / children)
 - [x] Inherited vs own property distinction
 - [x] Propagation modal for existing children
 - [x] Detach/Hide actions
 
 ### Phase 2: Rich Property Types
+
 - [ ] Asset reference (select from project assets)
 - [ ] Page reference (link to another page)
 - [ ] Single/Multi select with predefined options
@@ -329,17 +355,20 @@ Based on research, I recommend this order:
 - [ ] Default values
 
 ### Phase 3: References & Relationships
+
 - [ ] Auto-populated "Used In" tab (where is this page referenced)
 - [ ] Page reference bidirectional linking
 - [ ] Optional relationship types (Father, Ally, etc.)
 
 ### Phase 4: Starter Content
+
 - [ ] Example "Characters" page with common properties
 - [ ] Example "Items" page
 - [ ] Example "Locations" page
 - [ ] One-click copy to user's project
 
 ### Phase 5: Advanced Features
+
 - [ ] Calculated properties (queries)
 - [ ] Property validation/constraints
 - [ ] Bulk property operations

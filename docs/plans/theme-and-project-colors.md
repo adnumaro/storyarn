@@ -6,12 +6,12 @@ Replace daisyUI default `light`/`dark` themes with custom Storyarn palette.
 
 ### Colors (oklch)
 
-| Role      | Light                               | Dark  |
-|-----------|-------------------------------------|-------|
-| Primary   | `oklch(78% 0.14 185)` (cyan)        | same  |
-| Secondary | `oklch(45% 0.04 260)` (slate)       | same  |
-| Accent    | `oklch(72% 0.16 60)` (amber)        | same  |
-| Neutral   | `oklch(18% 0.025 260)` (dark steel) | same  |
+| Role      | Light                               | Dark |
+| --------- | ----------------------------------- | ---- |
+| Primary   | `oklch(78% 0.14 185)` (cyan)        | same |
+| Secondary | `oklch(45% 0.04 260)` (slate)       | same |
+| Accent    | `oklch(72% 0.16 60)` (amber)        | same |
+| Neutral   | `oklch(18% 0.025 260)` (dark steel) | same |
 
 ### Gradients (buttons only)
 
@@ -23,6 +23,7 @@ Replace daisyUI default `light`/`dark` themes with custom Storyarn palette.
 ### Files to modify
 
 **`assets/css/app.css`** — Replace the daisyui plugin config + add:
+
 1. Custom theme variables under `:root, [data-theme="light"]` and `[data-theme="dark"]`
 2. Gradient overrides for `.btn-primary`, `.btn-secondary`, `.btn-accent` (+ hover states)
 3. Keep existing `--radius-field: 0.5rem` override
@@ -44,6 +45,7 @@ Allow each project to define its own primary + accent colors, applied inside `La
 **`lib/storyarn/projects/project.ex`** — Already has `settings` (`:map`, default `%{}`).
 
 Store colors inside `settings`:
+
 ```elixir
 %{
   "theme" => %{
@@ -58,6 +60,7 @@ No migration needed — `settings` is already a JSONB column.
 ### Context change
 
 **`lib/storyarn/projects/project.ex`** — Add helper:
+
 ```elixir
 def theme_colors(%__MODULE__{settings: settings}) do
   case settings do
@@ -70,10 +73,12 @@ end
 ### Layout injection
 
 **`lib/storyarn_web/components/layouts.ex`** → `focus/1`:
+
 - Read `@project.settings["theme"]`
 - If present, render a `<style>` tag inside the layout that overrides `--color-primary` and `--color-accent` (convert hex → oklch in a helper, OR just use hex since CSS supports it in modern browsers)
 
 Simplest approach — inject CSS variables directly:
+
 ```heex
 <style :if={@project_theme}>
   :root {
@@ -84,6 +89,7 @@ Simplest approach — inject CSS variables directly:
 ```
 
 Since daisyUI v5 uses oklch, and users will pick colors via a color picker (which returns hex), we need a hex→oklch conversion. Options:
+
 1. **JS-side**: Convert on save in the color picker hook, store as oklch string
 2. **Elixir-side**: Convert hex→oklch on render (small utility function)
 3. **CSS-side**: Use `color-mix()` or just use hex directly — modern browsers auto-convert
@@ -93,6 +99,7 @@ Since daisyUI v5 uses oklch, and users will pick colors via a color picker (whic
 ### Gradient update for project colors
 
 The gradient CSS uses hardcoded oklch values. For project-scoped colors:
+
 - Define CSS custom properties for gradient endpoints
 - The gradient rules reference these properties
 - Project override sets these properties
@@ -107,7 +114,11 @@ The gradient CSS uses hardcoded oklch values. For project-scoped colors:
 }
 
 .btn-primary {
-  background-image: linear-gradient(135deg, var(--gradient-primary-from), var(--gradient-primary-to));
+  background-image: linear-gradient(
+    135deg,
+    var(--gradient-primary-from),
+    var(--gradient-primary-to)
+  );
 }
 ```
 
@@ -116,6 +127,7 @@ Then project overrides set `--gradient-primary-from` / `--gradient-primary-to`.
 ### UI for picking project colors
 
 **`lib/storyarn_web/live/project_live/settings.ex`** — Add a "Theme" section:
+
 - Two `<.color_picker>` components (already exists in component registry)
 - One for primary, one for accent
 - Save to `project.settings.theme`

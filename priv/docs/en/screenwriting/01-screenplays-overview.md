@@ -1,9 +1,10 @@
 %{
-  title: "Screenplays Overview",
-  category_label: "Screenwriting",
-  order: 1,
-  description: "Write and format production-ready scripts with the screenplay editor."
+title: "Screenplays Overview",
+category_label: "Screenwriting",
+order: 1,
+description: "Write and format production-ready scripts with the screenplay editor."
 }
+
 ---
 
 The screenplay editor is a **block-based writing environment** for game narrative scripts. It combines industry-standard screenplay formatting with interactive elements that bridge the gap between written scripts and playable dialogue flows.
@@ -28,44 +29,44 @@ Screenplay content is built from **18 element types** organized into four catego
 
 These follow industry-standard screenplay formatting conventions:
 
-| Element | Purpose | Example |
-|---------|---------|---------|
-| **Scene Heading** | Location and time of day | INT. TAVERN - NIGHT |
-| **Action** | Stage directions and descriptions | *The door creaks open slowly.* |
-| **Character** | Speaker identification (ALL CAPS) | JAIME |
-| **Dialogue** | Spoken lines | I've been waiting for you. |
-| **Parenthetical** | Performance direction | (whispering) |
-| **Transition** | Scene transitions | CUT TO: |
-| **Dual Dialogue** | Two characters speaking simultaneously | Side-by-side dialogue columns |
+| Element           | Purpose                                | Example                        |
+| ----------------- | -------------------------------------- | ------------------------------ |
+| **Scene Heading** | Location and time of day               | INT. TAVERN - NIGHT            |
+| **Action**        | Stage directions and descriptions      | _The door creaks open slowly._ |
+| **Character**     | Speaker identification (ALL CAPS)      | JAIME                          |
+| **Dialogue**      | Spoken lines                           | I've been waiting for you.     |
+| **Parenthetical** | Performance direction                  | (whispering)                   |
+| **Transition**    | Scene transitions                      | CUT TO:                        |
+| **Dual Dialogue** | Two characters speaking simultaneously | Side-by-side dialogue columns  |
 
 ### Interactive elements
 
 These map directly to flow nodes, bridging screenplays and flows:
 
-| Element | Flow equivalent | Purpose |
-|---------|-----------------|---------|
-| **Conditional** | Condition node | Branch the script based on a variable |
-| **Instruction** | Instruction node | Modify variables (set health, update flags) |
-| **Response** | Dialogue responses | Player choices that branch the narrative |
+| Element         | Flow equivalent    | Purpose                                     |
+| --------------- | ------------------ | ------------------------------------------- |
+| **Conditional** | Condition node     | Branch the script based on a variable       |
+| **Instruction** | Instruction node   | Modify variables (set health, update flags) |
+| **Response**    | Dialogue responses | Player choices that branch the narrative    |
 
 ### Flow markers
 
 Preserved during round-trip sync between screenplays and flows:
 
-| Element | Purpose |
-|---------|---------|
-| **Hub Marker** | Preserves hub node data during sync |
+| Element         | Purpose                                |
+| --------------- | -------------------------------------- |
+| **Hub Marker**  | Preserves hub node data during sync    |
 | **Jump Marker** | Preserves jump target data during sync |
 
 ### Utility elements
 
 These exist only in the screenplay editor and are not synced to flows:
 
-| Element | Purpose |
-|---------|---------|
-| **Note** | Writer's notes (excluded from exports) |
-| **Section** | Outline headers for organizing long scripts |
-| **Page Break** | Force a page break in the formatted output |
+| Element        | Purpose                                                             |
+| -------------- | ------------------------------------------------------------------- |
+| **Note**       | Writer's notes (excluded from exports)                              |
+| **Section**    | Outline headers for organizing long scripts                         |
+| **Page Break** | Force a page break in the formatted output                          |
 | **Title Page** | Script metadata: title, author, credit, source, draft date, contact |
 
 <div class="docs-image-placeholder">

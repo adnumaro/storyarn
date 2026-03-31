@@ -13,6 +13,7 @@
 ## Overview
 
 This phase implements comprehensive export and import capabilities:
+
 - Export to Storyarn JSON format (full fidelity, lossless round-trip)
 - Export to narrative middleware formats (Ink, Yarn Spinner) — **highest ROI, reaches ~90% of devs**
 - Export to game engine formats (Unity DSfU, Godot Dialogic, Godot JSON, Unreal DataTable)
@@ -30,7 +31,7 @@ This phase implements comprehensive export and import capabilities:
 ### Architecture & Formats
 
 | Document                                                    | Contents                                                                                       |
-|-------------------------------------------------------------|------------------------------------------------------------------------------------------------|
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | [ARCHITECTURE.md](./export/ARCHITECTURE.md)                 | Serializer behaviour, registry, data collector, expression transpiler, architectural decisions |
 | [STORYARN_JSON_FORMAT.md](./export/STORYARN_JSON_FORMAT.md) | Native JSON format spec — sheets, flows, scenes, screenplays, localization, assets, metadata   |
 | [ENGINE_FORMATS.md](./export/ENGINE_FORMATS.md)             | Overview of all engine format mappings (summary)                                               |
@@ -38,19 +39,19 @@ This phase implements comprehensive export and import capabilities:
 
 ### Per-Format Plans
 
-| Document                                      | Target                                                   | Priority   | Reach  |
-|-----------------------------------------------|----------------------------------------------------------|------------|--------|
-| [FORMAT_INK.md](./export/FORMAT_INK.md)       | Ink (.ink) — 13+ engine runtimes                         | **Tier 1** | ~90%   |
-| [FORMAT_YARN.md](./export/FORMAT_YARN.md)     | Yarn Spinner (.yarn) — Unity, Godot, GameMaker, GDevelop | **Tier 1** | ~40%   |
-| [FORMAT_UNITY.md](./export/FORMAT_UNITY.md)   | Unity Dialogue System for Unity (JSON)                   | Tier 2     | ~35%   |
-| [FORMAT_GODOT.md](./export/FORMAT_GODOT.md)   | Godot (JSON + Dialogic .dtl + CSV localization)          | Tier 2     | ~15%   |
-| [FORMAT_UNREAL.md](./export/FORMAT_UNREAL.md) | Unreal (DataTable CSV + JSON + StringTable)              | Tier 2     | ~15%   |
-| [FORMAT_ARTICY.md](./export/FORMAT_ARTICY.md) | articy:draft XML (export + import)                       | Tier 3     | ~5%    |
+| Document                                      | Target                                                   | Priority   | Reach |
+| --------------------------------------------- | -------------------------------------------------------- | ---------- | ----- |
+| [FORMAT_INK.md](./export/FORMAT_INK.md)       | Ink (.ink) — 13+ engine runtimes                         | **Tier 1** | ~90%  |
+| [FORMAT_YARN.md](./export/FORMAT_YARN.md)     | Yarn Spinner (.yarn) — Unity, Godot, GameMaker, GDevelop | **Tier 1** | ~40%  |
+| [FORMAT_UNITY.md](./export/FORMAT_UNITY.md)   | Unity Dialogue System for Unity (JSON)                   | Tier 2     | ~35%  |
+| [FORMAT_GODOT.md](./export/FORMAT_GODOT.md)   | Godot (JSON + Dialogic .dtl + CSV localization)          | Tier 2     | ~15%  |
+| [FORMAT_UNREAL.md](./export/FORMAT_UNREAL.md) | Unreal (DataTable CSV + JSON + StringTable)              | Tier 2     | ~15%  |
+| [FORMAT_ARTICY.md](./export/FORMAT_ARTICY.md) | articy:draft XML (export + import)                       | Tier 3     | ~5%   |
 
 ### Implementation Phases
 
 | Document                                                                      | Contents                                                                                               |
-|-------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | [PHASE_A_FOUNDATION.md](./export/PHASE_A_FOUNDATION.md)                       | Tasks 1-8: Export context, serializer behaviour, data collector, native round-trip, validation, import |
 | [PHASE_B_EXPRESSION_TRANSPILER.md](./export/PHASE_B_EXPRESSION_TRANSPILER.md) | Tasks 9-11: Structured condition/assignment transpiler, code-mode parser                               |
 | [PHASE_C_ENGINE_SERIALIZERS.md](./export/PHASE_C_ENGINE_SERIALIZERS.md)       | Tasks 12-17: Ink, Yarn, Unity, Godot, Unreal, articy serializers                                       |
@@ -65,21 +66,21 @@ This phase implements comprehensive export and import capabilities:
 
 ### Phase A: Foundation + Native Round-Trip (Tasks 1-8)
 
-| # | Task                                    | Testable Outcome                             |
-|---|-----------------------------------------|----------------------------------------------|
-| 1 | Export context + options schema         | ExportOptions struct validates correctly     |
-| 2 | Serializer behaviour + registry         | Registry resolves format → module            |
-| 3 | Data collector                          | Loads full project data in single pass       |
-| 4 | Storyarn JSON serializer (all sections) | Full project exports to JSON                 |
-| 5 | Import parser (Storyarn JSON)           | Can parse exported JSON back                 |
-| 6 | Import round-trip test                  | **export → import = identical project data** |
-| 7 | Pre-export validation                   | Catches broken refs, orphans, etc.           |
-| 8 | Import preview + conflict detection     | Shows diff before executing import           |
+| #   | Task                                    | Testable Outcome                             |
+| --- | --------------------------------------- | -------------------------------------------- |
+| 1   | Export context + options schema         | ExportOptions struct validates correctly     |
+| 2   | Serializer behaviour + registry         | Registry resolves format → module            |
+| 3   | Data collector                          | Loads full project data in single pass       |
+| 4   | Storyarn JSON serializer (all sections) | Full project exports to JSON                 |
+| 5   | Import parser (Storyarn JSON)           | Can parse exported JSON back                 |
+| 6   | Import round-trip test                  | **export → import = identical project data** |
+| 7   | Pre-export validation                   | Catches broken refs, orphans, etc.           |
+| 8   | Import preview + conflict detection     | Shows diff before executing import           |
 
 ### Phase B: Expression Transpiler (Tasks 9-11)
 
 | #   | Task                                                                                   | Testable Outcome                                  |
-|-----|----------------------------------------------------------------------------------------|---------------------------------------------------|
+| --- | -------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | 9   | Structured condition transpiler (6 emitters: Ink, Yarn, Lua, GDScript, Unreal, articy) | All operators transpile correctly for all targets |
 | 10  | Structured assignment transpiler (6 emitters)                                          | All assignment operators transpile correctly      |
 | 11  | Code-mode parser + emitters                                                            | Fallback path for code-mode expressions           |
@@ -88,19 +89,19 @@ This phase implements comprehensive export and import capabilities:
 
 **Order: Middleware first (highest ROI), then engine-specific (indie-first), then interop.**
 
-| #   | Task                                                               | Testable Outcome                               | Reach  |
-|-----|--------------------------------------------------------------------|------------------------------------------------|--------|
-| 12  | **Ink serializer** (.ink text + metadata JSON)                     | Compiles with inklecate, loads in Ink runtimes | ~90%   |
-| 13  | **Yarn serializer** (.yarn text + string tables)                   | Loads in Yarn Spinner for Unity/Godot          | ~40%   |
-| 14  | Unity serializer (DSfU JSON + Lua emitter)                         | Imports in Dialogue System for Unity           | ~35%   |
-| 15  | Godot serializer (generic JSON + Dialogic .dtl + GDScript emitter) | Parseable in Godot, loads in Dialogic 2        | ~15%   |
-| 16  | Unreal serializer (DataTable CSV + metadata JSON)                  | Importable as UDataTable                       | ~15%   |
-| 17  | articy:draft XML serializer                                        | Valid articy:draft XML                         | ~5%    |
+| #   | Task                                                               | Testable Outcome                               | Reach |
+| --- | ------------------------------------------------------------------ | ---------------------------------------------- | ----- |
+| 12  | **Ink serializer** (.ink text + metadata JSON)                     | Compiles with inklecate, loads in Ink runtimes | ~90%  |
+| 13  | **Yarn serializer** (.yarn text + string tables)                   | Loads in Yarn Spinner for Unity/Godot          | ~40%  |
+| 14  | Unity serializer (DSfU JSON + Lua emitter)                         | Imports in Dialogue System for Unity           | ~35%  |
+| 15  | Godot serializer (generic JSON + Dialogic .dtl + GDScript emitter) | Parseable in Godot, loads in Dialogic 2        | ~15%  |
+| 16  | Unreal serializer (DataTable CSV + metadata JSON)                  | Importable as UDataTable                       | ~15%  |
+| 17  | articy:draft XML serializer                                        | Valid articy:draft XML                         | ~5%   |
 
 ### Phase D: UI + UX (Tasks 18-21)
 
 | #   | Task                                                   | Testable Outcome                         |
-|-----|--------------------------------------------------------|------------------------------------------|
+| --- | ------------------------------------------------------ | ---------------------------------------- |
 | 18  | Export UI (modal) — format selection, validation panel | All formats selectable, validation works |
 | 19  | Export download                                        | Browser file download for all formats    |
 | 20  | Import execution + UI                                  | Full import flow with conflicts          |
@@ -109,7 +110,7 @@ This phase implements comprehensive export and import capabilities:
 ### Phase E: Scale + API (Tasks 22-25)
 
 | #   | Task                                 | Testable Outcome                          |
-|-----|--------------------------------------|-------------------------------------------|
+| --- | ------------------------------------ | ----------------------------------------- |
 | 22  | Oban ExportWorker + queue config     | Background export with progress broadcast |
 | 23  | Sync/async threshold decision logic  | Small projects sync, large projects async |
 | 24  | Cleanup cron + retry with checkpoint | Old exports purged, crash recovery works  |
@@ -119,15 +120,15 @@ This phase implements comprehensive export and import capabilities:
 
 ## Effort-to-Reach Matrix
 
-| Format                  | Effort         | Reach         | Ratio           | Phase   |
-|-------------------------|----------------|---------------|-----------------|---------|
-| Storyarn JSON           | Medium         | 100% (backup) | Prerequisite    | A       |
-| **Ink (.ink)**          | **Medium**     | **~90%**      | **Best**        | **C**   |
-| **Yarn (.yarn)**        | **Low-Medium** | **~40%**      | **Excellent**   | **C**   |
-| Unity DSfU              | Medium         | ~35%          | Good            | C       |
-| Godot (JSON + Dialogic) | Medium         | ~15%          | Good            | C       |
-| Unreal DataTable        | Medium-High    | ~15%          | Fair            | C       |
-| articy XML              | High           | ~5%           | Low (strategic) | C       |
+| Format                  | Effort         | Reach         | Ratio           | Phase |
+| ----------------------- | -------------- | ------------- | --------------- | ----- |
+| Storyarn JSON           | Medium         | 100% (backup) | Prerequisite    | A     |
+| **Ink (.ink)**          | **Medium**     | **~90%**      | **Best**        | **C** |
+| **Yarn (.yarn)**        | **Low-Medium** | **~40%**      | **Excellent**   | **C** |
+| Unity DSfU              | Medium         | ~35%          | Good            | C     |
+| Godot (JSON + Dialogic) | Medium         | ~15%          | Good            | C     |
+| Unreal DataTable        | Medium-High    | ~15%          | Fair            | C     |
+| articy XML              | High           | ~5%           | Low (strategic) | C     |
 
 **Key insight from research:** A single Ink export reaches 13+ engine runtimes (~90% of game developers), while three engine-specific exports (Unity + Godot + Unreal) reach ~84%. Ink has **3x better effort-to-reach ratio**.
 
@@ -138,7 +139,7 @@ This phase implements comprehensive export and import capabilities:
 Research confirmed these engines are not worth targeting:
 
 | Engine                     | Reason                              |
-|----------------------------|-------------------------------------|
+| -------------------------- | ----------------------------------- |
 | REDengine (CD Projekt RED) | Abandoned — CDPR moving to UE5      |
 | CryEngine                  | Negligible user base                |
 | Infinity Engine            | Legacy (20+ years old)              |
@@ -171,4 +172,4 @@ Research confirmed these engines are not worth targeting:
 
 ---
 
-*This phase depends on 7.5 enhancements (Sheets, Flows, Localization, Scenes) being complete for full export coverage.*
+_This phase depends on 7.5 enhancements (Sheets, Flows, Localization, Scenes) being complete for full export coverage._

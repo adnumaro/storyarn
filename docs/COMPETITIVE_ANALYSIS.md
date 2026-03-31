@@ -26,7 +26,7 @@ Storyarn is a **web-based, real-time collaborative narrative design platform** b
 Storyarn occupies a unique niche: it combines the **professional depth of articy:draft** (visual flow editor, entity database, screenplay, variables, debug engine) with the **cloud-native accessibility of Arcweave** (real-time collaboration, browser-based, no install), while adding a **full industry-standard screenplay editor** that no competitor matches.
 
 | Dimension        | Storyarn                   | articy:draft X                    | Arcweave            | Yarn Spinner          | World Anvil        |
-|------------------|----------------------------|-----------------------------------|---------------------|-----------------------|--------------------|
+| ---------------- | -------------------------- | --------------------------------- | ------------------- | --------------------- | ------------------ |
 | Platform         | Web (LiveView)             | Desktop (Win/Mac)                 | Web (browser)       | VS Code + Engine      | Web (browser)      |
 | Primary strength | Flow + Screenplay + Sheets | Depth + Templates + Engine export | Simplicity + AI     | Engine integration    | Worldbuilding wiki |
 | Collaboration    | Real-time (cursors, locks) | Partition-based (SVN)             | Real-time (cursors) | VS Code Live Share    | Async only         |
@@ -38,15 +38,19 @@ Storyarn occupies a unique niche: it combines the **professional depth of articy
 ## 2. Competitor Positioning
 
 ### articy:draft X — The Industry Standard
+
 Desktop-native narrative design tool used by AAA studios. Deepest feature set but requires installation, per-seat licensing, and SVN for collaboration. The benchmark against which all narrative tools are measured.
 
 ### Arcweave — The Accessible Challenger
+
 Browser-based visual narrative tool focused on simplicity and speed. Strong AI integration and collaboration, but shallower data modeling. Popular for game jams and indie teams.
 
 ### Yarn Spinner — The Developer Tool
+
 Open-source text-based dialogue scripting language with engine plugins. Extremely writer-friendly syntax but no visual authoring beyond a basic graph view. Requires a game engine to test fully.
 
 ### World Anvil — The Worldbuilding Wiki
+
 Massive worldbuilding platform for TTRPG and fiction writers. 28 article templates, interactive maps, timelines, campaign management. No flow-based narrative editing or game engine integration.
 
 ---
@@ -54,6 +58,7 @@ Massive worldbuilding platform for TTRPG and fiction writers. 28 article templat
 ## 3. Feature Comparison Matrix
 
 ### Legend
+
 - **Y** = Fully implemented
 - **P** = Partially implemented or basic version
 - **N** = Not available
@@ -61,186 +66,186 @@ Massive worldbuilding platform for TTRPG and fiction writers. 28 article templat
 
 ### 3.1 Platform & Infrastructure
 
-| Feature                 | Storyarn       | articy:draft X   | Arcweave       | Yarn Spinner           | World Anvil    |
-|-------------------------|----------------|------------------|----------------|------------------------|----------------|
-| Web-based (no install)  | Y              | N                | Y              | P (web playground)     | Y              |
-| Desktop app             | N              | Y                | N              | N (VS Code ext)        | N              |
-| Offline support         | N              | Y                | N              | Y                      | N              |
-| Self-hostable           | Y (Elixir)     | N                | N              | —                      | N              |
-| Open source             | N              | N                | N              | Y (MIT core)           | N              |
-| Real-time collaboration | Y              | N (partition)    | Y              | P (VS Code Live Share) | N              |
-| Dark mode               | Y              | Y                | P              | Y (VS Code)            | P (themes)     |
-| Mobile support          | P (responsive) | N                | P (responsive) | N                      | P (responsive) |
+| Feature                 | Storyarn       | articy:draft X | Arcweave       | Yarn Spinner           | World Anvil    |
+| ----------------------- | -------------- | -------------- | -------------- | ---------------------- | -------------- |
+| Web-based (no install)  | Y              | N              | Y              | P (web playground)     | Y              |
+| Desktop app             | N              | Y              | N              | N (VS Code ext)        | N              |
+| Offline support         | N              | Y              | N              | Y                      | N              |
+| Self-hostable           | Y (Elixir)     | N              | N              | —                      | N              |
+| Open source             | N              | N              | N              | Y (MIT core)           | N              |
+| Real-time collaboration | Y              | N (partition)  | Y              | P (VS Code Live Share) | N              |
+| Dark mode               | Y              | Y              | P              | Y (VS Code)            | P (themes)     |
+| Mobile support          | P (responsive) | N              | P (responsive) | N                      | P (responsive) |
 
 ### 3.2 Visual Flow Editor
 
-| Feature               | Storyarn          | articy:draft X         | Arcweave        | Yarn Spinner     | World Anvil  |
-|-----------------------|-------------------|------------------------|-----------------|------------------|--------------|
-| Visual node canvas    | Y                 | Y                      | Y               | P (graph view)   | N            |
-| Drag-and-drop nodes   | Y                 | Y                      | Y               | P (VS Code)      | N            |
-| Zoom & pan            | Y                 | Y                      | Y               | Y                | —            |
-| Minimap               | Y                 | Y                      | N (planned)     | N                | —            |
-| Level of Detail (LOD) | Y                 | N                      | N               | N                | —            |
-| Grid background       | Y                 | Y                      | N               | N                | —            |
-| Node color coding     | Y                 | Y                      | Y               | P (node headers) | —            |
-| Nested flows (depth)  | N                 | Y (infinite)           | N (flat boards) | N                | —            |
-| Cross-flow navigation | Y (subflow, exit) | Y (jump, double-click) | Y (jumpers)     | Y (jump/detour)  | —            |
-| Undo/redo             | Y                 | Y                      | Y               | Y (VS Code)      | N            |
-| Copy/paste nodes      | P (duplicate)     | Y                      | Y               | —                | —            |
-| Connection labels     | P (response text) | Y (on connections)     | Y               | —                | —            |
-| Node locking (collab) | Y                 | Y (partition)          | N               | N                | —            |
-| Cursor tracking       | Y                 | N                      | Y               | N                | —            |
+| Feature               | Storyarn          | articy:draft X         | Arcweave        | Yarn Spinner     | World Anvil |
+| --------------------- | ----------------- | ---------------------- | --------------- | ---------------- | ----------- |
+| Visual node canvas    | Y                 | Y                      | Y               | P (graph view)   | N           |
+| Drag-and-drop nodes   | Y                 | Y                      | Y               | P (VS Code)      | N           |
+| Zoom & pan            | Y                 | Y                      | Y               | Y                | —           |
+| Minimap               | Y                 | Y                      | N (planned)     | N                | —           |
+| Level of Detail (LOD) | Y                 | N                      | N               | N                | —           |
+| Grid background       | Y                 | Y                      | N               | N                | —           |
+| Node color coding     | Y                 | Y                      | Y               | P (node headers) | —           |
+| Nested flows (depth)  | N                 | Y (infinite)           | N (flat boards) | N                | —           |
+| Cross-flow navigation | Y (subflow, exit) | Y (jump, double-click) | Y (jumpers)     | Y (jump/detour)  | —           |
+| Undo/redo             | Y                 | Y                      | Y               | Y (VS Code)      | N           |
+| Copy/paste nodes      | P (duplicate)     | Y                      | Y               | —                | —           |
+| Connection labels     | P (response text) | Y (on connections)     | Y               | —                | —           |
+| Node locking (collab) | Y                 | Y (partition)          | N               | N                | —           |
+| Cursor tracking       | Y                 | N                      | Y               | N                | —           |
 
 ### 3.3 Node Types
 
-| Node Type             | Storyarn              | articy:draft X        | Arcweave             | Yarn Spinner        | World Anvil  |
-|-----------------------|-----------------------|-----------------------|----------------------|---------------------|--------------|
-| Entry/Start           | Y                     | Y (implicit)          | Y (starting element) | Y (node title)      | —            |
-| Exit/End              | Y (3 modes)           | Y (implicit)          | N                    | Y (===)             | —            |
-| Dialogue              | Y                     | Y (Dialogue Fragment) | Y (Element)          | Y (lines)           | —            |
-| Condition/Branch      | Y (standard + switch) | Y                     | Y (Branch)           | Y (if/elseif/else)  | —            |
-| Instruction           | Y                     | Y                     | P (inline Arcscript) | Y (set/commands)    | —            |
-| Hub (merge point)     | Y                     | Y                     | N                    | N                   | —            |
-| Jump (goto)           | Y                     | Y (any node globally) | Y (Jumper)           | Y (<<jump>>)        | —            |
-| Scene heading         | Y                     | N                     | N                    | N                   | —            |
-| Subflow (nested call) | Y                     | Y (nested flows)      | N                    | Y (<<detour>>)      | —            |
-| Flow Fragment         | N                     | Y                     | N                    | N                   | —            |
-| Generic container     | N                     | Y (Flow Fragment)     | Y (Element)          | N                   | —            |
+| Node Type             | Storyarn              | articy:draft X        | Arcweave             | Yarn Spinner       | World Anvil |
+| --------------------- | --------------------- | --------------------- | -------------------- | ------------------ | ----------- |
+| Entry/Start           | Y                     | Y (implicit)          | Y (starting element) | Y (node title)     | —           |
+| Exit/End              | Y (3 modes)           | Y (implicit)          | N                    | Y (===)            | —           |
+| Dialogue              | Y                     | Y (Dialogue Fragment) | Y (Element)          | Y (lines)          | —           |
+| Condition/Branch      | Y (standard + switch) | Y                     | Y (Branch)           | Y (if/elseif/else) | —           |
+| Instruction           | Y                     | Y                     | P (inline Arcscript) | Y (set/commands)   | —           |
+| Hub (merge point)     | Y                     | Y                     | N                    | N                  | —           |
+| Jump (goto)           | Y                     | Y (any node globally) | Y (Jumper)           | Y (<<jump>>)       | —           |
+| Scene heading         | Y                     | N                     | N                    | N                  | —           |
+| Subflow (nested call) | Y                     | Y (nested flows)      | N                    | Y (<<detour>>)     | —           |
+| Flow Fragment         | N                     | Y                     | N                    | N                  | —           |
+| Generic container     | N                     | Y (Flow Fragment)     | Y (Element)          | N                  | —           |
 
 ### 3.4 Dialogue Features
 
-| Feature                   | Storyarn         | articy:draft X      | Arcweave              | Yarn Spinner     | World Anvil  |
-|---------------------------|------------------|---------------------|-----------------------|------------------|--------------|
-| Speaker assignment        | Y (linked sheet) | Y (entity ref)      | P (@mention)          | Y (name prefix)  | —            |
-| Speaker avatar on node    | Y                | Y (preview image)   | Y (cover image)       | N                | —            |
-| Rich text                 | Y (TipTap HTML)  | Y                   | Y                     | P (markup tags)  | —            |
-| Stage directions          | Y                | Y                   | N                     | N                | —            |
-| Menu text                 | Y                | Y                   | N                     | N                | —            |
-| Responses/choices         | Y (per-dialogue) | Y (pin connections) | Y (connection labels) | Y (-> options)   | —            |
-| Per-response conditions   | Y                | Y (pin scripts)     | Y (branch)            | Y (<<if>> on ->) | —            |
-| Per-response instructions | Y                | Y (pin scripts)     | P (inline code)       | Y (nested set)   | —            |
-| Audio attachment          | Y (per dialogue) | Y (per dialogue)    | Y (per element)       | Y (via line ID)  | —            |
-| @Mentions in text         | Y (sheets/flows) | N                   | Y (components)        | N                | —            |
-| Word count                | Y                | P                   | N                     | N                | —            |
-| Technical ID              | Y (auto-gen)     | Y (technical name)  | N                     | Y (line ID)      | —            |
-| Localization ID           | Y (auto-gen)     | Y (built-in)        | P (per-language)      | Y (line tags)    | —            |
+| Feature                   | Storyarn         | articy:draft X      | Arcweave              | Yarn Spinner     | World Anvil |
+| ------------------------- | ---------------- | ------------------- | --------------------- | ---------------- | ----------- |
+| Speaker assignment        | Y (linked sheet) | Y (entity ref)      | P (@mention)          | Y (name prefix)  | —           |
+| Speaker avatar on node    | Y                | Y (preview image)   | Y (cover image)       | N                | —           |
+| Rich text                 | Y (TipTap HTML)  | Y                   | Y                     | P (markup tags)  | —           |
+| Stage directions          | Y                | Y                   | N                     | N                | —           |
+| Menu text                 | Y                | Y                   | N                     | N                | —           |
+| Responses/choices         | Y (per-dialogue) | Y (pin connections) | Y (connection labels) | Y (-> options)   | —           |
+| Per-response conditions   | Y                | Y (pin scripts)     | Y (branch)            | Y (<<if>> on ->) | —           |
+| Per-response instructions | Y                | Y (pin scripts)     | P (inline code)       | Y (nested set)   | —           |
+| Audio attachment          | Y (per dialogue) | Y (per dialogue)    | Y (per element)       | Y (via line ID)  | —           |
+| @Mentions in text         | Y (sheets/flows) | N                   | Y (components)        | N                | —           |
+| Word count                | Y                | P                   | N                     | N                | —           |
+| Technical ID              | Y (auto-gen)     | Y (technical name)  | N                     | Y (line ID)      | —           |
+| Localization ID           | Y (auto-gen)     | Y (built-in)        | P (per-language)      | Y (line tags)    | —           |
 
 ### 3.5 Entity/Character Database
 
-| Feature                  | Storyarn                                                                     | articy:draft X                                            | Arcweave             | Yarn Spinner                   | World Anvil       |
-|--------------------------|------------------------------------------------------------------------------|-----------------------------------------------------------|----------------------|--------------------------------|-------------------|
-| Dedicated entity system  | Y (Sheets)                                                                   | Y (Entities)                                              | Y (Components)       | N                              | Y (Articles)      |
-| Custom properties/fields | Y (9 block types)                                                            | Y (template features)                                     | P (4 attr types)     | N                              | Y (28 templates)  |
-| Property inheritance     | Y (parent→children)                                                          | Y (templates)                                             | N                    | N                              | N                 |
-| Hierarchical tree        | Y                                                                            | Y (folders)                                               | Y (folders)          | N                              | Y (categories)    |
-| Custom data types        | Y (text, number, select, multi_select, boolean, date, rich_text, reference)  | Y (int, bool, string, dropdown, script, strip, ref, slot) | P (limited types)    | Y (number, string, bool, enum) | Y (per template)  |
-| Variable exposure        | Y (blocks as variables)                                                      | Y (global variables)                                      | Y (global variables) | Y (global variables)           | N                 |
-| Entity avatar/image      | Y (avatar + banner)                                                          | Y (preview image)                                         | Y (cover image)      | N                              | Y (cover image)   |
-| Entity color             | Y                                                                            | Y                                                         | Y                    | N                              | Y                 |
-| Versioning/history       | Y (full snapshots)                                                           | Y (SVN)                                                   | P (project history)  | N (git)                        | N                 |
-| Soft delete/trash        | Y                                                                            | N                                                         | N                    | N                              | N                 |
-| Inline editing           | Y (contenteditable)                                                          | Y                                                         | Y                    | —                              | Y                 |
-| Reference blocks         | Y (sheet↔flow links)                                                         | Y (strip/reference)                                       | Y (component refs)   | N                              | Y (article links) |
+| Feature                  | Storyarn                                                                    | articy:draft X                                            | Arcweave             | Yarn Spinner                   | World Anvil       |
+| ------------------------ | --------------------------------------------------------------------------- | --------------------------------------------------------- | -------------------- | ------------------------------ | ----------------- |
+| Dedicated entity system  | Y (Sheets)                                                                  | Y (Entities)                                              | Y (Components)       | N                              | Y (Articles)      |
+| Custom properties/fields | Y (9 block types)                                                           | Y (template features)                                     | P (4 attr types)     | N                              | Y (28 templates)  |
+| Property inheritance     | Y (parent→children)                                                         | Y (templates)                                             | N                    | N                              | N                 |
+| Hierarchical tree        | Y                                                                           | Y (folders)                                               | Y (folders)          | N                              | Y (categories)    |
+| Custom data types        | Y (text, number, select, multi_select, boolean, date, rich_text, reference) | Y (int, bool, string, dropdown, script, strip, ref, slot) | P (limited types)    | Y (number, string, bool, enum) | Y (per template)  |
+| Variable exposure        | Y (blocks as variables)                                                     | Y (global variables)                                      | Y (global variables) | Y (global variables)           | N                 |
+| Entity avatar/image      | Y (avatar + banner)                                                         | Y (preview image)                                         | Y (cover image)      | N                              | Y (cover image)   |
+| Entity color             | Y                                                                           | Y                                                         | Y                    | N                              | Y                 |
+| Versioning/history       | Y (full snapshots)                                                          | Y (SVN)                                                   | P (project history)  | N (git)                        | N                 |
+| Soft delete/trash        | Y                                                                           | N                                                         | N                    | N                              | N                 |
+| Inline editing           | Y (contenteditable)                                                         | Y                                                         | Y                    | —                              | Y                 |
+| Reference blocks         | Y (sheet↔flow links)                                                        | Y (strip/reference)                                       | Y (component refs)   | N                              | Y (article links) |
 
 ### 3.6 Variable System
 
-| Feature                   | Storyarn                                                                           | articy:draft X               | Arcweave                     | Yarn Spinner                  | World Anvil   |
-|---------------------------|------------------------------------------------------------------------------------|------------------------------|------------------------------|-------------------------------|---------------|
-| Variable types            | number, text, rich_text, select, multi_select, boolean, date                       | integer, boolean, string     | numeric, string, boolean     | number, string, boolean, enum | —             |
-| Variable scope            | Per-sheet (namespaced)                                                             | Global (variable sets)       | Global                       | Global                        | —             |
-| Variable namespacing      | Y (sheet.variable)                                                                 | Y (Set.Variable)             | N                            | N                             | —             |
-| Condition builder (GUI)   | Y (rule builder)                                                                   | N (code editor)              | N (code editor)              | N (text syntax)               | —             |
-| Instruction builder (GUI) | Y (assignment builder)                                                             | N (code editor)              | N (code editor)              | N (text syntax)               | —             |
-| Stale reference detection | Y                                                                                  | N                            | N                            | P (compile errors)            | —             |
-| Variable repair tool      | Y                                                                                  | N                            | N                            | N                             | —             |
-| Operators (conditions)    | Y (type-aware: equals, greater_than, contains, starts_with, is_true, is_nil, etc.) | Y (full expression language) | Y (full expression language) | Y (full expression language)  | —             |
-| Operators (instructions)  | Y (set, add, subtract, toggle, clear)                                              | Y (=, +=, -=, *=, /=, %=)    | Y (=, +=, -=, *=, /=, %=)    | Y (=, +=, -=, *=, /=, %=)     | —             |
-| Computed/smart variables  | N                                                                                  | N                            | N                            | Y                             | —             |
-| Scripting language        | N (GUI-only)                                                                       | Y (articy:expresso)          | Y (Arcscript)                | Y (Yarn language)             | —             |
-| Custom functions          | N                                                                                  | Y (getObj, getProp, etc.)    | Y (abs, roll, visits, etc.)  | Y (extensible from engine)    | —             |
-| Seen/visit tracking       | N                                                                                  | Y (seen/unseen/seenCounter)  | Y (visits())                 | Y (visited/visited_count)     | —             |
+| Feature                   | Storyarn                                                                           | articy:draft X               | Arcweave                     | Yarn Spinner                  | World Anvil |
+| ------------------------- | ---------------------------------------------------------------------------------- | ---------------------------- | ---------------------------- | ----------------------------- | ----------- |
+| Variable types            | number, text, rich_text, select, multi_select, boolean, date                       | integer, boolean, string     | numeric, string, boolean     | number, string, boolean, enum | —           |
+| Variable scope            | Per-sheet (namespaced)                                                             | Global (variable sets)       | Global                       | Global                        | —           |
+| Variable namespacing      | Y (sheet.variable)                                                                 | Y (Set.Variable)             | N                            | N                             | —           |
+| Condition builder (GUI)   | Y (rule builder)                                                                   | N (code editor)              | N (code editor)              | N (text syntax)               | —           |
+| Instruction builder (GUI) | Y (assignment builder)                                                             | N (code editor)              | N (code editor)              | N (text syntax)               | —           |
+| Stale reference detection | Y                                                                                  | N                            | N                            | P (compile errors)            | —           |
+| Variable repair tool      | Y                                                                                  | N                            | N                            | N                             | —           |
+| Operators (conditions)    | Y (type-aware: equals, greater_than, contains, starts_with, is_true, is_nil, etc.) | Y (full expression language) | Y (full expression language) | Y (full expression language)  | —           |
+| Operators (instructions)  | Y (set, add, subtract, toggle, clear)                                              | Y (=, +=, -=, \*=, /=, %=)   | Y (=, +=, -=, \*=, /=, %=)   | Y (=, +=, -=, \*=, /=, %=)    | —           |
+| Computed/smart variables  | N                                                                                  | N                            | N                            | Y                             | —           |
+| Scripting language        | N (GUI-only)                                                                       | Y (articy:expresso)          | Y (Arcscript)                | Y (Yarn language)             | —           |
+| Custom functions          | N                                                                                  | Y (getObj, getProp, etc.)    | Y (abs, roll, visits, etc.)  | Y (extensible from engine)    | —           |
+| Seen/visit tracking       | N                                                                                  | Y (seen/unseen/seenCounter)  | Y (visits())                 | Y (visited/visited_count)     | —           |
 
 ### 3.7 Screenplay / Document Writing
 
-| Feature                      | Storyarn                     | articy:draft X                      | Arcweave    | Yarn Spinner  | World Anvil  |
-|------------------------------|------------------------------|-------------------------------------|-------------|---------------|--------------|
-| Dedicated screenplay editor  | Y (full, TipTap)                    | Y (Document View)                          | N (planned) | N             | N            |
-| Industry-standard formatting | Y (Courier Prime, US Letter, margins) | P (word-processor-like)                  | N           | N             | N            |
-| Element types                | 18                                  | ~4 (chapter, fragment, stage dir, menu)  | —           | —             | —            |
-| Scene heading auto-detect    | Y                                   | N                                        | N           | N             | —            |
-| Transition auto-detect       | Y                                   | N                                        | N           | N             | —            |
-| Character CONT'D             | Y                                   | N                                        | N           | N             | —            |
-| Slash command palette        | Y                                   | N                                        | N           | N             | —            |
-| Smart type progression       | Y (Enter cycles types)              | P (Ctrl+Enter new line)                  | N           | N             | —            |
-| Tab cycling block types      | Y (6-type cycle)                    | P (Tab cycles fields within fragment)    | N           | N             | —            |
-| Inline condition builder     | Y (atom blocks)                     | N                                        | N           | N             | —            |
-| Inline instruction builder   | Y (atom blocks)                     | N                                        | N           | N             | —            |
-| Inline response builder      | Y (atom blocks)                     | N                                        | N           | N             | —            |
-| Bidirectional flow sync      | Y (to/from flow)                    | N (one-way drag, creates separate copy)  | N           | N             | —            |
-| Screenplay import            | Y (Fountain .fountain/.txt)         | Y (Final Draft .fdx)                     | N           | N             | —            |
-| Screenplay export            | Y (Fountain .fountain)              | Y (Word .docx)                           | N           | N             | —            |
-| Auto-create entities on import | Y (sheets from Fountain chars)    | P (maps to existing entities)            | N           | N             | —            |
-| Read mode                    | Y                                   | N                                        | N           | N             | —            |
-| Character sheet linking      | Y (auto-creates sheets)             | Y (entity auto-complete)                 | N           | N             | —            |
-| Page tree (branching)        | Y                                   | N                                        | N           | N             | —            |
-| Dual dialogue                | Y                                   | N                                        | N           | N             | —            |
-| Title page                   | Y                                   | N                                        | N           | N             | —            |
+| Feature                        | Storyarn                              | articy:draft X                          | Arcweave    | Yarn Spinner | World Anvil |
+| ------------------------------ | ------------------------------------- | --------------------------------------- | ----------- | ------------ | ----------- |
+| Dedicated screenplay editor    | Y (full, TipTap)                      | Y (Document View)                       | N (planned) | N            | N           |
+| Industry-standard formatting   | Y (Courier Prime, US Letter, margins) | P (word-processor-like)                 | N           | N            | N           |
+| Element types                  | 18                                    | ~4 (chapter, fragment, stage dir, menu) | —           | —            | —           |
+| Scene heading auto-detect      | Y                                     | N                                       | N           | N            | —           |
+| Transition auto-detect         | Y                                     | N                                       | N           | N            | —           |
+| Character CONT'D               | Y                                     | N                                       | N           | N            | —           |
+| Slash command palette          | Y                                     | N                                       | N           | N            | —           |
+| Smart type progression         | Y (Enter cycles types)                | P (Ctrl+Enter new line)                 | N           | N            | —           |
+| Tab cycling block types        | Y (6-type cycle)                      | P (Tab cycles fields within fragment)   | N           | N            | —           |
+| Inline condition builder       | Y (atom blocks)                       | N                                       | N           | N            | —           |
+| Inline instruction builder     | Y (atom blocks)                       | N                                       | N           | N            | —           |
+| Inline response builder        | Y (atom blocks)                       | N                                       | N           | N            | —           |
+| Bidirectional flow sync        | Y (to/from flow)                      | N (one-way drag, creates separate copy) | N           | N            | —           |
+| Screenplay import              | Y (Fountain .fountain/.txt)           | Y (Final Draft .fdx)                    | N           | N            | —           |
+| Screenplay export              | Y (Fountain .fountain)                | Y (Word .docx)                          | N           | N            | —           |
+| Auto-create entities on import | Y (sheets from Fountain chars)        | P (maps to existing entities)           | N           | N            | —           |
+| Read mode                      | Y                                     | N                                       | N           | N            | —           |
+| Character sheet linking        | Y (auto-creates sheets)               | Y (entity auto-complete)                | N           | N            | —           |
+| Page tree (branching)          | Y                                     | N                                       | N           | N            | —           |
+| Dual dialogue                  | Y                                     | N                                       | N           | N            | —           |
+| Title page                     | Y                                     | N                                       | N           | N            | —           |
 
 ### 3.8 Debug / Simulation / Testing
 
-| Feature                      | Storyarn                   | articy:draft X             | Arcweave              | Yarn Spinner        | World Anvil   |
-|------------------------------|----------------------------|----------------------------|-----------------------|---------------------|---------------|
-| Built-in debug/test mode     | Y                          | Y                          | Y (Play Mode)         | P (VS Code preview) | N             |
-| Step forward/back            | Y                          | Y                          | N                     | N                   | N             |
-| Variable inspector           | Y (filterable table)       | Y (variable state tab)     | Y (debugger panel)    | N                   | —             |
-| Variable inline editing      | Y (during debug)           | Y (initial value override) | N                     | N                   | —             |
-| Breakpoints                  | Y (per node)               | N                          | N                     | N                   | —             |
-| Auto-play with speed control | Y (200ms-3s)               | N                          | N                     | N                   | —             |
-| Execution path/history       | Y (Path tab)               | Y (journey)                | N                     | N                   | —             |
-| Variable change history      | Y (History tab)            | P (highlighted changes)    | P (before/after)      | N                   | —             |
-| Console/log                  | Y                          | N                          | N                     | N                   | —             |
-| Cross-flow debugging         | Y (subflow enter/return)   | Y (nested flows)           | N                     | N                   | —             |
-| Canvas visual feedback       | Y (pulse, visited, active) | P (breadcrumb)             | N                     | N                   | —             |
-| Save/load debug session      | P (ETS-persisted)          | Y (save journeys)          | N                     | N                   | —             |
-| Condition analysis           | N                          | Y (red highlight on false) | N                     | N                   | —             |
-| Shareable test link          | N                          | N                          | Y (public/embed link) | Y (HTML export)     | —             |
-| All-branches view            | N                          | Y (Analysis Mode)          | N                     | N                   | —             |
+| Feature                      | Storyarn                   | articy:draft X             | Arcweave              | Yarn Spinner        | World Anvil |
+| ---------------------------- | -------------------------- | -------------------------- | --------------------- | ------------------- | ----------- |
+| Built-in debug/test mode     | Y                          | Y                          | Y (Play Mode)         | P (VS Code preview) | N           |
+| Step forward/back            | Y                          | Y                          | N                     | N                   | N           |
+| Variable inspector           | Y (filterable table)       | Y (variable state tab)     | Y (debugger panel)    | N                   | —           |
+| Variable inline editing      | Y (during debug)           | Y (initial value override) | N                     | N                   | —           |
+| Breakpoints                  | Y (per node)               | N                          | N                     | N                   | —           |
+| Auto-play with speed control | Y (200ms-3s)               | N                          | N                     | N                   | —           |
+| Execution path/history       | Y (Path tab)               | Y (journey)                | N                     | N                   | —           |
+| Variable change history      | Y (History tab)            | P (highlighted changes)    | P (before/after)      | N                   | —           |
+| Console/log                  | Y                          | N                          | N                     | N                   | —           |
+| Cross-flow debugging         | Y (subflow enter/return)   | Y (nested flows)           | N                     | N                   | —           |
+| Canvas visual feedback       | Y (pulse, visited, active) | P (breadcrumb)             | N                     | N                   | —           |
+| Save/load debug session      | P (ETS-persisted)          | Y (save journeys)          | N                     | N                   | —           |
+| Condition analysis           | N                          | Y (red highlight on false) | N                     | N                   | —           |
+| Shareable test link          | N                          | N                          | Y (public/embed link) | Y (HTML export)     | —           |
+| All-branches view            | N                          | Y (Analysis Mode)          | N                     | N                   | —           |
 
 ### 3.9 Assets & Media
 
-| Featurec              | Storyarn                           | articy:draft X         | Arcweave            | Yarn Spinner   | World Anvil       |
-|-----------------------|------------------------------------|------------------------|---------------------|----------------|-------------------|
-| Image upload          | Y                                  | Y (attachments)        | Y                   | —              | Y                 |
-| Audio upload          | Y                                  | Y (VO files)           | Y                   | —              | P (embed)         |
-| Video upload          | N                                  | N                      | Y                   | —              | N                 |
-| Asset library/browser | Y (grid + search)                  | Y (navigator)          | Y (sidebar)         | —              | Y (image manager) |
-| Asset detail panel    | Y (preview + usage)                | Y (property inspector) | P                   | —              | P                 |
-| Storage backend       | R2/S3 + local                      | Local filesystem       | Cloud               | —              | Cloud             |
-| Image processing      | P (thumbnails, resize — not wired) | N                      | N                   | —              | N                 |
-| Usage tracking        | Y (flows, sheets)                  | P (object references)  | P (attachment refs) | —              | P (article refs)  |
-| Filter by type        | Y (All/Images/Audio)               | Y                      | P                   | —              | P                 |
-| Per-project isolation | Y                                  | Y (per project)        | Y (per project)     | —              | Y (per world)     |
-| Built-in icon library | N                                  | N                      | Y (4,000+)          | N              | N                 |
-| AI image generation   | N                                  | Y (preview images)     | Y (DALL-E/etc.)     | N              | N                 |
+| Featurec              | Storyarn                           | articy:draft X         | Arcweave            | Yarn Spinner | World Anvil       |
+| --------------------- | ---------------------------------- | ---------------------- | ------------------- | ------------ | ----------------- |
+| Image upload          | Y                                  | Y (attachments)        | Y                   | —            | Y                 |
+| Audio upload          | Y                                  | Y (VO files)           | Y                   | —            | P (embed)         |
+| Video upload          | N                                  | N                      | Y                   | —            | N                 |
+| Asset library/browser | Y (grid + search)                  | Y (navigator)          | Y (sidebar)         | —            | Y (image manager) |
+| Asset detail panel    | Y (preview + usage)                | Y (property inspector) | P                   | —            | P                 |
+| Storage backend       | R2/S3 + local                      | Local filesystem       | Cloud               | —            | Cloud             |
+| Image processing      | P (thumbnails, resize — not wired) | N                      | N                   | —            | N                 |
+| Usage tracking        | Y (flows, sheets)                  | P (object references)  | P (attachment refs) | —            | P (article refs)  |
+| Filter by type        | Y (All/Images/Audio)               | Y                      | P                   | —            | P                 |
+| Per-project isolation | Y                                  | Y (per project)        | Y (per project)     | —            | Y (per world)     |
+| Built-in icon library | N                                  | N                      | Y (4,000+)          | N            | N                 |
+| AI image generation   | N                                  | Y (preview images)     | Y (DALL-E/etc.)     | N            | N                 |
 
 ### 3.10 Localization
 
-| Feature                    | Storyarn                       | articy:draft X                 | Arcweave          | Yarn Spinner      | World Anvil  |
-|----------------------------|--------------------------------|--------------------------------|-------------------|-------------------|--------------|
-| Multi-language support     | P (UI only: en/es via Gettext) | Y (unlimited languages)        | Y (Team plan)     | Y (built-in)      | N            |
-| Content localization       | N                              | Y (per-property)               | Y                 | Y (strings files) | N            |
-| Localization view          | N                              | Y (dedicated view)             | P (side-by-side)  | N                 | —            |
-| Translation state tracking | N                              | Y (final/in-progress/outdated) | N                 | P (NEEDS UPDATE)  | —            |
-| Machine translation        | N                              | Y (DeepL)                      | N                 | N                 | —            |
-| Export for translators     | N                              | Y (Excel)                      | Y (JSON per lang) | Y (CSV)           | —            |
-| Import translations        | N                              | Y (Excel)                      | N                 | Y (CSV)           | —            |
-| VO per language            | N                              | Y                              | N                 | Y                 | —            |
-| Spellchecker               | N                              | Y (per language)               | N                 | N                 | —            |
+| Feature                    | Storyarn                       | articy:draft X                 | Arcweave          | Yarn Spinner      | World Anvil |
+| -------------------------- | ------------------------------ | ------------------------------ | ----------------- | ----------------- | ----------- |
+| Multi-language support     | P (UI only: en/es via Gettext) | Y (unlimited languages)        | Y (Team plan)     | Y (built-in)      | N           |
+| Content localization       | N                              | Y (per-property)               | Y                 | Y (strings files) | N           |
+| Localization view          | N                              | Y (dedicated view)             | P (side-by-side)  | N                 | —           |
+| Translation state tracking | N                              | Y (final/in-progress/outdated) | N                 | P (NEEDS UPDATE)  | —           |
+| Machine translation        | N                              | Y (DeepL)                      | N                 | N                 | —           |
+| Export for translators     | N                              | Y (Excel)                      | Y (JSON per lang) | Y (CSV)           | —           |
+| Import translations        | N                              | Y (Excel)                      | N                 | Y (CSV)           | —           |
+| VO per language            | N                              | Y                              | N                 | Y                 | —           |
+| Spellchecker               | N                              | Y (per language)               | N                 | N                 | —           |
 
 ### 3.11 Collaboration
 
 | Feature                     | Storyarn                      | articy:draft X           | Arcweave                          | Yarn Spinner   | World Anvil         |
-|-----------------------------|-------------------------------|--------------------------|-----------------------------------|----------------|---------------------|
+| --------------------------- | ----------------------------- | ------------------------ | --------------------------------- | -------------- | ------------------- |
 | Real-time presence          | Y (Phoenix Presence)          | N                        | Y                                 | P (Live Share) | N                   |
 | Live cursor tracking        | Y (colored, labeled)          | N                        | Y                                 | P (Live Share) | N                   |
 | Node/object locking         | Y (ETS, 30s expiry)           | Y (partition-based)      | N                                 | N              | N                   |
@@ -255,32 +260,32 @@ Massive worldbuilding platform for TTRPG and fiction writers. 28 article templat
 
 ### 3.12 Engine Integration & Export
 
-| Feature                 | Storyarn   | articy:draft X   | Arcweave       | Yarn Spinner     | World Anvil   |
-|-------------------------|------------|------------------|----------------|------------------|---------------|
-| Unity plugin            | N          | Y (Asset Store)  | Y (free)       | Y (core feature) | N             |
-| Unreal plugin           | N          | Y (open source)  | Y (free)       | P (alpha)        | N             |
-| Godot plugin            | N          | Y (generic JSON) | Y (free)       | Y (.NET)         | N             |
-| JSON export             | N          | Y                | Y              | N (compiled)     | P (API)       |
-| Custom export           | N          | Y (MDK plugins)  | N              | Y (via code)     | P (API)       |
-| API                     | N          | Y (.NET API)     | Y (REST, Team) | —                | Y (REST)      |
-| Fountain export         | Y          | N                | N              | N                | N             |
-| Excel/CSV export        | N          | Y                | Y              | Y (strings)      | Y             |
-| Plugin/extension system | N          | Y (MDK)          | N              | Y (code-level)   | N             |
+| Feature                 | Storyarn | articy:draft X   | Arcweave       | Yarn Spinner     | World Anvil |
+| ----------------------- | -------- | ---------------- | -------------- | ---------------- | ----------- |
+| Unity plugin            | N        | Y (Asset Store)  | Y (free)       | Y (core feature) | N           |
+| Unreal plugin           | N        | Y (open source)  | Y (free)       | P (alpha)        | N           |
+| Godot plugin            | N        | Y (generic JSON) | Y (free)       | Y (.NET)         | N           |
+| JSON export             | N        | Y                | Y              | N (compiled)     | P (API)     |
+| Custom export           | N        | Y (MDK plugins)  | N              | Y (via code)     | P (API)     |
+| API                     | N        | Y (.NET API)     | Y (REST, Team) | —                | Y (REST)    |
+| Fountain export         | Y        | N                | N              | N                | N           |
+| Excel/CSV export        | N        | Y                | Y              | Y (strings)      | Y           |
+| Plugin/extension system | N        | Y (MDK)          | N              | Y (code-level)   | N           |
 
 ### 3.13 AI Features
 
-| Feature                | Storyarn   | articy:draft X     | Arcweave          | Yarn Spinner  | World Anvil   |
-|------------------------|------------|--------------------|-------------------|---------------|---------------|
-| AI dialogue generation | N          | Y (plugin)         | Y                 | N             | N             |
-| AI image generation    | N          | Y (preview images) | Y                 | N             | N             |
-| AI content enhancement | N          | N                  | Y (enhancer)      | N             | N             |
-| AI design assistant    | N          | N                  | Y (project-aware) | N             | N             |
-| AI voice synthesis     | N          | Y (ElevenLabs)     | N                 | N             | N             |
+| Feature                | Storyarn | articy:draft X     | Arcweave          | Yarn Spinner | World Anvil |
+| ---------------------- | -------- | ------------------ | ----------------- | ------------ | ----------- |
+| AI dialogue generation | N        | Y (plugin)         | Y                 | N            | N           |
+| AI image generation    | N        | Y (preview images) | Y                 | N            | N           |
+| AI content enhancement | N        | N                  | Y (enhancer)      | N            | N           |
+| AI design assistant    | N        | N                  | Y (project-aware) | N            | N           |
+| AI voice synthesis     | N        | Y (ElevenLabs)     | N                 | N            | N           |
 
 ### 3.14 Additional Features
 
 | Feature                    | Storyarn                | articy:draft X                   | Arcweave               | Yarn Spinner       | World Anvil                      |
-|----------------------------|-------------------------|----------------------------------|------------------------|--------------------|----------------------------------|
+| -------------------------- | ----------------------- | -------------------------------- | ---------------------- | ------------------ | -------------------------------- |
 | Location/map editor        | N                       | Y (vector 2D)                    | N                      | N                  | Y (interactive maps)             |
 | Timeline visualization     | N                       | N                                | N                      | N                  | Y (timelines + chronicles)       |
 | Relationship visualization | N                       | N                                | N                      | N                  | Y (family trees, diplomacy webs) |
@@ -309,6 +314,7 @@ Massive worldbuilding platform for TTRPG and fiction writers. 28 article templat
 Both Storyarn and articy:draft X have dedicated screenplay/document writing views. The key differences lie in **depth, formatting fidelity, and flow integration**:
 
 **articy:draft X — Document View:**
+
 - Word-processor-like writing for linear dialogue sequences
 - ~4 element types: dialogue chapters (containers), dialogue fragments (lines), stage directions, menu text
 - Speaker auto-complete from project entities
@@ -318,6 +324,7 @@ Both Storyarn and articy:draft X have dedicated screenplay/document writing view
 - **One-way flow conversion** — drag chapters from Document View into Flow View, but they become **separate copies** (changes don't sync back)
 
 **Storyarn — Screenplay Editor:**
+
 - Full industry-standard formatting (Courier Prime font, US Letter dimensions, proper margins per element type)
 - 18 element types covering standard screenplay (scene heading, action, character, dialogue, parenthetical, transition, dual dialogue), interactive (condition, instruction, response atom blocks), and utility (note, section, page break, title page, hub/jump markers)
 - **Bidirectional flow sync** — push changes to flow and pull changes from flow; nodes and elements stay linked
@@ -347,6 +354,7 @@ Both Storyarn and articy:draft X have dedicated screenplay/document writing view
 **Storyarn vs articy:draft X / Arcweave / Yarn Spinner:** Storyarn takes a fundamentally different approach. Where competitors use **scripting languages** (articy:expresso, Arcscript, Yarn), Storyarn uses **GUI builders** — a visual condition builder (rule rows with dropdowns) and an instruction builder (assignment rows). This makes Storyarn more accessible to non-programmers but less powerful for complex logic.
 
 Key trade-offs:
+
 - **Storyarn strengths:** No syntax to learn, type-aware operators, stale reference detection with repair tool, variables namespaced per-sheet
 - **Competitor strengths:** Full expression evaluation, compound conditions (&&, ||), custom functions, mathematical operations, string manipulation, visit tracking, dice rolling
 
@@ -355,7 +363,7 @@ Key trade-offs:
 Storyarn's debug engine is **more capable than Arcweave's Play Mode** and **comparable to articy's Simulation Mode** in several respects:
 
 | Capability                    | Storyarn                         | articy:draft X     | Arcweave         |
-|-------------------------------|----------------------------------|--------------------|------------------|
+| ----------------------------- | -------------------------------- | ------------------ | ---------------- |
 | Step-by-step execution        | Y (forward + back)               | Y (forward)        | N                |
 | Variable editing during debug | Y                                | Y (initial values) | N                |
 | Breakpoints                   | Y                                | N                  | N                |
@@ -466,7 +474,7 @@ Storyarn has **UI localization** (en/es via Gettext) but no content localization
 ### 6.1 Critical Gaps (High Impact on Competitiveness)
 
 | Gap                                                  | Who Has It                                            | Impact                                                               |
-|------------------------------------------------------|-------------------------------------------------------|----------------------------------------------------------------------|
+| ---------------------------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------- |
 | **Game engine integration** (Unity, Unreal, Godot)   | articy, Arcweave, Yarn Spinner                        | Cannot be used in a real game production pipeline without this       |
 | **JSON/data export** for engine consumption          | articy, Arcweave, Yarn Spinner                        | Even without plugins, a structured export enables custom integration |
 | **Content localization** (multi-language narratives) | articy, Arcweave, Yarn Spinner                        | Table-stakes for any commercial game targeting multiple markets      |
@@ -476,7 +484,7 @@ Storyarn has **UI localization** (en/es via Gettext) but no content localization
 ### 6.2 Important Gaps (Would Strengthen Position)
 
 | Gap                                                     | Who Has It                                   | Impact                                                   |
-|---------------------------------------------------------|----------------------------------------------|----------------------------------------------------------|
+| ------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------- |
 | **Visit/seen tracking** (has player visited this node?) | articy, Arcweave, Yarn Spinner               | Common game mechanic for dynamic dialogue                |
 | **Nested flows** (flows within flows)                   | articy (infinite depth)                      | Hierarchical story structure (acts → scenes → dialogues) |
 | **AI features** (dialogue gen, image gen, assistant)    | articy (plugin), Arcweave (multiple)         | Growing expectation in creative tools                    |
@@ -489,7 +497,7 @@ Storyarn has **UI localization** (en/es via Gettext) but no content localization
 ### 6.3 Nice-to-Have Gaps (Lower Priority)
 
 | Gap                                 | Who Has It             | Impact                                                |
-|-------------------------------------|------------------------|-------------------------------------------------------|
+| ----------------------------------- | ---------------------- | ----------------------------------------------------- |
 | Location/map editor                 | articy, World Anvil    | Visual world planning                                 |
 | Dice rolling functions              | Arcweave, Yarn Spinner | Tabletop-style mechanics                              |
 | CSS theming for play mode           | Arcweave, World Anvil  | Visual novel / prototype styling                      |
@@ -507,6 +515,7 @@ Storyarn has **UI localization** (en/es via Gettext) but no content localization
 ### 7.1 Storyarn vs articy:draft X
 
 **Storyarn wins on:**
+
 - Web-based, no install, works anywhere
 - Real-time collaboration (cursors, locking, notifications vs SVN partitions)
 - Screenplay depth (18 element types, industry formatting, dual dialogue, title page, interactive atom blocks vs ~4 element types in Document View)
@@ -522,6 +531,7 @@ Storyarn has **UI localization** (en/es via Gettext) but no content localization
 - Free from per-seat licensing
 
 **articy:draft X wins on:**
+
 - Infinite nested flows (hierarchical story structure)
 - Full scripting language (articy:expresso)
 - Template system with reusable features
@@ -545,6 +555,7 @@ Storyarn has **UI localization** (en/es via Gettext) but no content localization
 ### 7.2 Storyarn vs Arcweave
 
 **Storyarn wins on:**
+
 - Node type variety (9 vs 3)
 - Properties panel with per-type configuration
 - Entity system depth (Sheets with 9 block types, inheritance, versioning vs Components with ~4 types)
@@ -558,6 +569,7 @@ Storyarn has **UI localization** (en/es via Gettext) but no content localization
 - Fountain import/export
 
 **Arcweave wins on:**
+
 - AI features (element generator, enhancer, image generator, design assistant)
 - Shareable prototypes (public links, embeddable Play Mode)
 - Engine integration (Unity, Unreal, Godot, Defold plugins)
@@ -582,6 +594,7 @@ Storyarn has **UI localization** (en/es via Gettext) but no content localization
 **These tools serve different workflows.** Yarn Spinner is a code-first scripting language; Storyarn is a visual-first design tool.
 
 **Storyarn wins on:**
+
 - Visual flow editor (primary interface vs secondary visualization)
 - Entity/character database (Sheets vs none)
 - Screenplay editor (full vs none)
@@ -591,6 +604,7 @@ Storyarn has **UI localization** (en/es via Gettext) but no content localization
 - Accessibility for non-programmers
 
 **Yarn Spinner wins on:**
+
 - Engine integration (Unity deep, Godot, Unreal alpha)
 - Full scripting language with extensions
 - Smart variables (computed read-only)
@@ -615,6 +629,7 @@ Storyarn has **UI localization** (en/es via Gettext) but no content localization
 **These tools serve different markets** with some overlap in character/entity management.
 
 **Storyarn wins on:**
+
 - Visual flow editor (World Anvil has none)
 - Screenplay editor (World Anvil has none)
 - Variables and game logic (World Anvil has none)
@@ -624,6 +639,7 @@ Storyarn has **UI localization** (en/es via Gettext) but no content localization
 - Modern UI/UX (World Anvil described as "dated" by reviewers)
 
 **World Anvil wins on:**
+
 - Worldbuilding breadth (28 article templates, maps, timelines, chronicles, family trees, diplomacy webs, whiteboards)
 - Community (3M+ users, challenges, gamification)
 - RPG campaign management (100+ systems, character sheets, DSTS)

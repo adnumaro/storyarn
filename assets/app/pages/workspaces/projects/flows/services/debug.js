@@ -1,0 +1,331 @@
+/**
+ * Debug composable for the flow debugger visual feedback.
+ *
+ * Manages CSS classes on node elements to show debug state:
+ * - `.debug-current`  — pulsing highlight on the node being evaluated
+ * - `.debug-visited`  — subtle border on already-visited nodes
+ * - `.debug-waiting`  — amber pulse when waiting for user input
+ * - `.debug-error`    — red indicator when node caused an error
+ *
+ * Connection highlighting uses CSS custom properties on the connection
+ * view wrapper div. These properties inherit through Shadow DOM boundaries
+ * into connection styles.
+ *
+ * Also handles auto-scrolling to the current node on each step.
+ */
+
+import { AreaExtensions } from "rete-area-plugin";
+
+/**
+ * Finds the node DOM element for a given Rete node ID via area's nodeViews.
+ * Uses a cache for fast repeated lookups.
+ * @param {Object} area - The Rete area instance
+ * @param {string} reteId - The Rete node ID
+ * @param {Map} cache - Element cache (reteId -> element)
+ * @returns {HTMLElement|null}
+ */
+function findNodeElement(area, reteId, cache) {
+  const el = cache.get(reteId);
+  if (el?.isConnected) {
+    return el;
+  }
+
+  const view = area.nodeViews.get(reteId);
+  if (!view) {
+    return null;
+  }
+
+  const nodeEl = view.element.querySelector("[data-testid='node']");
+  if (nodeEl) {
+    cache.set(reteId, nodeEl);
+  }
+  return nodeEl;
+}
+
+/**
+ * Finds the connection view wrapper element for a connection between two DB node IDs.
+ * Returns view.element (the outer div) where CSS custom properties can be set.
+ *
+ * @param {Object} editor - The Rete editor instance
+ * @param {Object} area - The Rete area instance
+ * @param {number} sourceDbId - Source node DB ID
+ * @param {number} targetDbId - Target node DB ID
+ * @returns {HTMLElement|null}
+ */
+function findConnectionViewElement(editor, area, sourceDbId, targetDbId) {
+  for (const conn of editor.getConnections()) {
+    const srcNode = editor.getNode(conn.source);
+    const tgtNode = editor.getNode(conn.target);
+
+    if (srcNode?.nodeId === sourceDbId && tgtNode?.nodeId === targetDbId) {
+      const view = area.connectionViews.get(conn.id);
+      if (view) {
+        return view.element;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Sets CSS custom properties for the "active" debug state on a connection view element.
+ * @param {HTMLElement} viewEl
+ */
+function setConnActiveProps(viewEl) {
+  viewEl.style.setProperty("--conn-stroke", "var(--color-primary, #7c3aed)");
+  viewEl.style.setProperty("--conn-stroke-width", "3px");
+  viewEl.style.setProperty("--conn-dash", "8 4");
+  viewEl.style.setProperty("--conn-animation", "debug-flow 0.6s linear infinite");
+}
+
+/**
+ * Sets CSS custom properties for the "visited" debug state on a connection view element.
+ * @param {HTMLElement} viewEl
+ */
+function setConnVisitedProps(viewEl) {
+  viewEl.style.setProperty(
+    "--conn-stroke",
+    "color-mix(in oklch, var(--color-primary, #7c3aed) 30%, transparent)",
+  );
+  viewEl.style.setProperty("--conn-stroke-width", "2px");
+  viewEl.style.removeProperty("--conn-dash");
+  viewEl.style.removeProperty("--conn-animation");
+}
+
+/**
+ * Removes all debug CSS custom properties from a connection view element.
+ * @param {HTMLElement} viewEl
+ */
+function clearConnDebugProps(viewEl) {
+  viewEl.style.removeProperty("--conn-stroke");
+  viewEl.style.removeProperty("--conn-stroke-width");
+  viewEl.style.removeProperty("--conn-dash");
+  viewEl.style.removeProperty("--conn-animation");
+}
+
+/**
+ * Creates the debug composable with methods bound to the Rete instances.
+ *
+ * @param {Object} area - The Rete area instance
+ * @param {Object} editor - The Rete editor instance
+ * @param {Map} nodeMap - Map of DB node ID -> Rete node
+ * @param {Function} handleEvent - Function to push events to LiveView
+ * @returns {Object} Public methods: init, handleHighlightNode, handleHighlightConnections, handleClearHighlights, handleUpdateBreakpoints, destroy
+ */
+export function debug(area, editor, nodeMap, _handleEvent) {
+  let currentEl = null;
+  let visitedEls = new Set();
+  let breakpointEls = new Set();
+  let activeConnView = null;
+  let visitedConnViews = new Set();
+  const nodeElCache = new Map();
+  let lastPathLength = 0;
+
+  /**
+   * Initialize the debug handler. Called once after setup.
+   */
+  function init() {
+    // No-op for now; available for future setup logic.
+  }
+
+  /**
+   * Handles the debug_highlight_node push event from LiveView.
+   * Marks the current node, all visited nodes, and scrolls to current.
+   *
+   * @param {{ node_id: number, status: string, execution_path: number[] }} data
+   */
+  function handleHighlightNode(data) {
+    const { node_id, status, execution_path } = data;
+
+    // 1. Remove previous "current" highlight
+    if (currentEl) {
+      currentEl.classList.remove("debug-current", "debug-waiting", "debug-error");
+      // Keep debug-visited on it since it was visited
+      currentEl.classList.add("debug-visited");
+    }
+
+    // 2. Mark only NEW nodes in execution path as visited (skip already-processed)
+    const path = execution_path || [];
+    for (let i = lastPathLength; i < path.length; i++) {
+      const dbId = path[i];
+      const reteNode = nodeMap.get(dbId);
+      if (!reteNode) {
+        continue;
+      }
+
+      const el = findNodeElement(area, reteNode.id, nodeElCache);
+      if (!el || visitedEls.has(el)) {
+        continue;
+      }
+
+      el.classList.add("debug-visited");
+      visitedEls.add(el);
+    }
+    lastPathLength = path.length;
+
+    // 3. Highlight current node
+    const currentNode = nodeMap.get(node_id);
+    if (!currentNode) {
+      return;
+    }
+
+    const el = findNodeElement(area, currentNode.id, nodeElCache);
+    if (!el) {
+      return;
+    }
+
+    // Remove visited style on current (current takes precedence)
+    el.classList.remove("debug-visited");
+
+    if (status === "waiting_input") {
+      el.classList.add("debug-waiting");
+    } else if (status === "error") {
+      el.classList.add("debug-error");
+    } else {
+      el.classList.add("debug-current");
+    }
+
+    currentEl = el;
+    visitedEls.add(el);
+
+    // 4. Scroll canvas to center on current node
+    AreaExtensions.zoomAt(area, [currentNode], { scale: undefined });
+  }
+
+  /**
+   * Handles the debug_highlight_connections push event from LiveView.
+   * Sets CSS custom properties on connection view wrapper divs.
+   *
+   * @param {{ active_connection: {source_node_id: number, target_node_id: number, source_pin: string}|null, execution_path: number[] }} data
+   */
+  function handleHighlightConnections(data) {
+    const { active_connection, execution_path } = data;
+
+    // 1. Demote previous active connection to visited
+    if (activeConnView) {
+      clearConnDebugProps(activeConnView);
+      setConnVisitedProps(activeConnView);
+      visitedConnViews.add(activeConnView);
+      activeConnView = null;
+    }
+
+    // 2. Mark all path connections as visited
+    if (execution_path && execution_path.length >= 2) {
+      for (let i = 0; i < execution_path.length - 1; i++) {
+        const viewEl = findConnectionViewElement(
+          editor,
+          area,
+          execution_path[i],
+          execution_path[i + 1],
+        );
+        if (viewEl && !visitedConnViews.has(viewEl)) {
+          setConnVisitedProps(viewEl);
+          visitedConnViews.add(viewEl);
+        }
+      }
+    }
+
+    // 3. Highlight current active connection
+    if (active_connection) {
+      const viewEl = findConnectionViewElement(
+        editor,
+        area,
+        active_connection.source_node_id,
+        active_connection.target_node_id,
+      );
+      if (viewEl) {
+        clearConnDebugProps(viewEl);
+        setConnActiveProps(viewEl);
+        activeConnView = viewEl;
+      }
+    }
+  }
+
+  /**
+   * Handles the debug_update_breakpoints push event from LiveView.
+   * Adds/removes `.debug-breakpoint` class on node elements.
+   *
+   * @param {{ breakpoint_ids: number[] }} data
+   */
+  function handleUpdateBreakpoints(data) {
+    const { breakpoint_ids } = data;
+    const idSet = new Set(breakpoint_ids || []);
+
+    // Remove class from nodes no longer in breakpoints
+    for (const el of breakpointEls) {
+      el.classList.remove("debug-breakpoint");
+    }
+    breakpointEls = new Set();
+
+    // Add class to current breakpoint nodes
+    for (const dbId of idSet) {
+      const reteNode = nodeMap.get(dbId);
+      if (!reteNode) {
+        continue;
+      }
+
+      const el = findNodeElement(area, reteNode.id, nodeElCache);
+      if (!el) {
+        continue;
+      }
+
+      el.classList.add("debug-breakpoint");
+      breakpointEls.add(el);
+    }
+  }
+
+  /**
+   * Removes all debug visual overlays from the canvas.
+   */
+  function handleClearHighlights() {
+    // Clear current node
+    if (currentEl) {
+      currentEl.classList.remove("debug-current", "debug-waiting", "debug-error");
+      currentEl = null;
+    }
+
+    // Clear all visited nodes
+    for (const el of visitedEls) {
+      el.classList.remove("debug-visited", "debug-current", "debug-waiting", "debug-error");
+    }
+    visitedEls = new Set();
+
+    // Clear breakpoint indicators
+    for (const el of breakpointEls) {
+      el.classList.remove("debug-breakpoint");
+    }
+    breakpointEls = new Set();
+
+    // Clear active connection
+    if (activeConnView) {
+      clearConnDebugProps(activeConnView);
+      activeConnView = null;
+    }
+
+    // Clear all visited connections
+    for (const el of visitedConnViews) {
+      clearConnDebugProps(el);
+    }
+    visitedConnViews = new Set();
+
+    // Reset caches
+    nodeElCache.clear();
+    lastPathLength = 0;
+  }
+
+  /**
+   * Cleans up all debug state.
+   */
+  function destroy() {
+    handleClearHighlights();
+  }
+
+  return {
+    init,
+    handleHighlightNode,
+    handleHighlightConnections,
+    handleClearHighlights,
+    handleUpdateBreakpoints,
+    destroy,
+  };
+}

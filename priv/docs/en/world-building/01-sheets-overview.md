@@ -1,9 +1,10 @@
 %{
-  title: "Sheets Overview",
-  category_label: "World Building",
-  order: 1,
-  description: "Understand how sheets organize your game data into a living database."
+title: "Sheets Overview",
+category_label: "World Building",
+order: 1,
+description: "Understand how sheets organize your game data into a living database."
 }
+
 ---
 
 Sheets are {accent}structured data containers{/accent} for your project's world data. Character profiles, item catalogs, location details, faction rosters -- anything you need to define and track across your narrative.

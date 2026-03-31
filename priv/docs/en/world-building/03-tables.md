@@ -1,9 +1,10 @@
 %{
-  title: "Tables",
-  category_label: "World Building",
-  order: 3,
-  description: "Spreadsheet-like grids within sheets for inventories, stat matrices, and structured lists."
+title: "Tables",
+category_label: "World Building",
+order: 3,
+description: "Spreadsheet-like grids within sheets for inventories, stat matrices, and structured lists."
 }
+
 ---
 
 Tables are a block type that embeds a {accent}spreadsheet grid{/accent} inside a sheet. Each table has typed columns, named rows, and cell-level variable references. Use them for inventories, stat tables, relationship matrices, skill trees, or shop catalogs.
@@ -29,16 +30,16 @@ A table is made of:
 
 Table columns support {accent}8 types{/accent}:
 
-| Type | Description |
-|------|-------------|
-| **Number** | Numeric values (default column type) |
-| **Text** | Plain text (no rich text in tables) |
-| **Boolean** | True/false toggle |
-| **Select** | Single choice from defined options |
-| **Multi Select** | Multiple choices from defined options |
-| **Date** | Date value |
-| **Reference** | Link to a sheet or flow (not a variable) |
-| **Formula** | Computed value from a math expression with bindings |
+| Type             | Description                                         |
+| ---------------- | --------------------------------------------------- |
+| **Number**       | Numeric values (default column type)                |
+| **Text**         | Plain text (no rich text in tables)                 |
+| **Boolean**      | True/false toggle                                   |
+| **Select**       | Single choice from defined options                  |
+| **Multi Select** | Multiple choices from defined options               |
+| **Date**         | Date value                                          |
+| **Reference**    | Link to a sheet or flow (not a variable)            |
+| **Formula**      | Computed value from a math expression with bindings |
 
 These mirror the regular block types, except tables use plain text instead of rich text and add the formula column type.
 
@@ -77,13 +78,13 @@ Formula columns let you define {accent}computed values{/accent} using math expre
 
 Formulas support standard math operations and functions:
 
-| Category | Syntax |
-|----------|--------|
-| **Operators** | `+`, `-`, `*`, `/`, `^` (power) |
-| **Unary minus** | `-a` |
-| **Parentheses** | `(a + b) * c` |
-| **Literals** | `42`, `3.14` |
-| **Functions** | `sqrt(x)`, `abs(x)`, `floor(x)`, `ceil(x)`, `round(x)`, `min(a, b)`, `max(a, b)` |
+| Category        | Syntax                                                                           |
+| --------------- | -------------------------------------------------------------------------------- |
+| **Operators**   | `+`, `-`, `*`, `/`, `^` (power)                                                  |
+| **Unary minus** | `-a`                                                                             |
+| **Parentheses** | `(a + b) * c`                                                                    |
+| **Literals**    | `42`, `3.14`                                                                     |
+| **Functions**   | `sqrt(x)`, `abs(x)`, `floor(x)`, `ceil(x)`, `round(x)`, `min(a, b)`, `max(a, b)` |
 
 Expressions use single-letter or named symbols (`a`, `b`, `con_value`) that are bound to actual data sources.
 
@@ -98,11 +99,11 @@ Each symbol in a formula is bound to a data source. There are two binding types:
 
 A "Modifier" formula column on a stats table with the expression `floor((a - 10) / 2)`, where `a` is bound to the same-row "Value" column:
 
-| Stat | Value | Modifier |
-|------|-------|----------|
-| Strength | 16 | 3 |
-| Dexterity | 12 | 1 |
-| Constitution | 8 | -1 |
+| Stat         | Value | Modifier |
+| ------------ | ----- | -------- |
+| Strength     | 16    | 3        |
+| Dexterity    | 12    | 1        |
+| Constitution | 8     | -1       |
 
 The modifier is recomputed whenever the bound values change.
 

@@ -59,10 +59,10 @@ No `tags` field exists. The `settings` map is used for per-flow configuration (n
 
 ### Files Affected
 
-| File | Action |
-|------|--------|
-| `priv/repo/migrations/YYYYMMDDHHMMSS_add_tags_to_flows.exs` | New migration |
-| `lib/storyarn/flows/flow.ex` | Add field, update changesets, add tag validations |
+| File                                                        | Action                                            |
+| ----------------------------------------------------------- | ------------------------------------------------- |
+| `priv/repo/migrations/YYYYMMDDHHMMSS_add_tags_to_flows.exs` | New migration                                     |
+| `lib/storyarn/flows/flow.ex`                                | Add field, update changesets, add tag validations |
 
 ### Implementation Steps
 
@@ -231,10 +231,10 @@ end
 
 ### Files Affected
 
-| File | Action |
-|------|--------|
+| File                              | Action                                                  |
+| --------------------------------- | ------------------------------------------------------- |
 | `lib/storyarn/flows/flow_crud.ex` | Add `add_tags/2`, `remove_tag/2`, `list_project_tags/1` |
-| `lib/storyarn/flows.ex` | Expose new functions via `defdelegate` |
+| `lib/storyarn/flows.ex`           | Expose new functions via `defdelegate`                  |
 
 ### Implementation Steps
 
@@ -401,7 +401,7 @@ end
 ### Files Affected
 
 | File                                                                | Action                                                             |
-|---------------------------------------------------------------------|--------------------------------------------------------------------|
+| ------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | `lib/storyarn_web/live/flow_live/components/flow_header.ex`         | Add tag badges + tag input                                         |
 | `lib/storyarn_web/live/flow_live/show.ex`                           | Load `project_tags` on mount, handle `add_tag`/`remove_tag` events |
 | `lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex` | Add `handle_add_tag/2`, `handle_remove_tag/2`                      |
@@ -556,9 +556,7 @@ export const TagInput = {
       return;
     }
 
-    const matches = this.allTags
-      .filter((tag) => tag.includes(query))
-      .slice(0, 8);
+    const matches = this.allTags.filter((tag) => tag.includes(query)).slice(0, 8);
 
     if (matches.length === 0) {
       this.hideSuggestions();
@@ -687,7 +685,7 @@ end
 ### Files Affected
 
 | File                                                                          | Action                                                |
-|-------------------------------------------------------------------------------|-------------------------------------------------------|
+| ----------------------------------------------------------------------------- | ----------------------------------------------------- |
 | `lib/storyarn_web/components/sidebar/flow_tree.ex`                            | Add tag badges to tree nodes, add tag filter dropdown |
 | `lib/storyarn_web/live/project_live/show.ex` (or wherever sidebar is mounted) | Load project tags, handle `filter_by_tag` event       |
 
@@ -823,7 +821,7 @@ end
 ### Files Affected
 
 | File                              | Action                                                  |
-|-----------------------------------|---------------------------------------------------------|
+| --------------------------------- | ------------------------------------------------------- |
 | `lib/storyarn/flows/flow_crud.ex` | Extend `search_flows` to accept opts with `:tag` filter |
 | `lib/storyarn/flows.ex`           | Update delegation if signature changes                  |
 
@@ -949,12 +947,12 @@ end
 
 ## Summary
 
-| Subtask                 | What it delivers                         | Can be used independently?  |
-|-------------------------|------------------------------------------|-----------------------------|
-| 1. Migration + Schema   | Tags stored in DB, validated on save     | Yes (data layer ready)      |
-| 2. CRUD Operations      | Add/remove tags, autocomplete list       | Yes (API complete)          |
-| 3. Tag Editor UI        | Users can add/remove tags in flow editor | Yes (full editing UX)       |
-| 4. Tree Badges + Filter | Tags visible in sidebar, filterable      | Yes (discovery UX)          |
-| 5. Search by Tag        | Search respects tag filter               | Yes (power search)          |
+| Subtask                 | What it delivers                         | Can be used independently? |
+| ----------------------- | ---------------------------------------- | -------------------------- |
+| 1. Migration + Schema   | Tags stored in DB, validated on save     | Yes (data layer ready)     |
+| 2. CRUD Operations      | Add/remove tags, autocomplete list       | Yes (API complete)         |
+| 3. Tag Editor UI        | Users can add/remove tags in flow editor | Yes (full editing UX)      |
+| 4. Tree Badges + Filter | Tags visible in sidebar, filterable      | Yes (discovery UX)         |
+| 5. Search by Tag        | Search respects tag filter               | Yes (power search)         |
 
 **Next document:** [06_AUTO_LAYOUT.md](../../completed/stress_test/06_AUTO_LAYOUT.md)

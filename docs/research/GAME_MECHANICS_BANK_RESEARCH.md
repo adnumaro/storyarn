@@ -5,6 +5,7 @@
 > **Goal:** Understand why no comprehensive game mechanics database exists and evaluate feasibility
 
 > **Changelog:**
+>
 > - **2026-02-06:** Updated patent table (Section 2.3) with verified patent numbers. Added Sections 2.4 (Nintendo/Palworld saga), 2.5 (Monolith closure), 3.6 (new entrants). Updated API status for USPTO and PatentsView. Added Federal Circuit statistics and Alice standard notes. Fixed dialogue wheel patent expiration date. Added 2025-2026 sources.
 > - **2026-02-04:** Initial research document.
 
@@ -21,6 +22,7 @@
 5. **Commercial disincentive** - Companies benefit from NOT sharing their innovations
 
 **However, the opportunity exists because:**
+
 - BoardGameGeek has 200+ mechanics cataloged (board games only)
 - "Building Blocks of Tabletop Game Design" proves categorization IS possible
 - Most game mechanics are NOT patented (< 6% approval rate for game patents)
@@ -39,7 +41,7 @@
 **Competing definitions include:**
 
 | Source         | Definition                                                 |
-|----------------|------------------------------------------------------------|
+| -------------- | ---------------------------------------------------------- |
 | Academic       | "Systems of interactions between player and game"          |
 | Designer       | "Rules and procedures that guide player and game response" |
 | Technical      | "Algorithms and data structures in the game engine"        |
@@ -48,6 +50,7 @@
 **The problem:** Without agreement on what a mechanic IS, you can't systematically catalog them.
 
 **Sources:**
+
 - [Redefining the MDA Framework](https://www.mdpi.com/2078-2489/12/10/395)
 - [Game Mechanics Taxonomy](https://boxbase.org/entries/2015/aug/31/game-mechanics-taxonomy/)
 
@@ -56,6 +59,7 @@
 > "What can be considered a mechanic in one game is fluff in another. The key identifier is whether it creates consequences."
 
 **Example:**
+
 - **Flaming arrow in Zelda:** Burns vines → reveals path → **mechanic**
 - **Flaming arrow in another game:** Cool VFX but acts like normal arrow → **not a mechanic**
 
@@ -64,6 +68,7 @@ This makes automated or universal classification nearly impossible.
 ### 1.3 Scope Explosion
 
 The number of potential mechanics is enormous when you consider:
+
 - Core mechanics (movement, combat, resource management)
 - Meta mechanics (progression, achievements, saves)
 - Social mechanics (trading, alliances, communication)
@@ -76,6 +81,7 @@ And each category has dozens of variations.
 ### 1.4 Commercial Disincentive
 
 Companies have no incentive to:
+
 - Document their innovations publicly
 - Make it easier for competitors to copy
 - Potentially weaken patent claims by prior disclosure
@@ -97,6 +103,7 @@ Academic frameworks like MDA are great for analysis but not for practical "I nee
 > "The United States Copyright Office specifically notes: 'Copyright does not protect the idea for a game, its name or title, or the **method or methods for playing it**.'"
 
 **What copyright DOES protect:**
+
 - Code implementation
 - Art assets
 - Music and sound
@@ -104,6 +111,7 @@ Academic frameworks like MDA are great for analysis but not for practical "I nee
 - Character designs
 
 **What copyright does NOT protect:**
+
 - Game rules
 - Mechanics
 - Systems
@@ -112,11 +120,13 @@ Academic frameworks like MDA are great for analysis but not for practical "I nee
 **This is why clones exist:** You can legally make a "match-3 puzzle game" or a "battle royale" because the mechanic itself isn't copyrightable.
 
 **Alice Corp. v. CLS Bank (2014)** made software patents harder:
+
 > "U.S. courts may reject patents deemed too abstract under the Abstract Idea Doctrine."
 
 As of 2024-2025, the Alice standard has become **more stringent**, not less. The Federal Circuit's 95.5% invalidity rate on appeal shows increasing hostility to abstract software patents.
 
 **Sources:**
+
 - [Columbia Law: Should Game Mechanics Be Copyrightable?](https://journals.library.columbia.edu/index.php/lawandarts/announcement/view/553)
 - [Wikipedia: IP Protection of Video Games](https://en.wikipedia.org/wiki/Intellectual_property_protection_of_video_games)
 
@@ -125,7 +135,7 @@ As of 2024-2025, the Alice standard has become **more stringent**, not less. The
 **Key facts:**
 
 | Aspect                     | Reality                               |
-|----------------------------|---------------------------------------|
+| -------------------------- | ------------------------------------- |
 | Can mechanics be patented? | Yes, if novel/non-obvious             |
 | Approval rate              | ~6% for game patents (vs 50% average) |
 | Cost                       | $10,000-$50,000+ with lawyers         |
@@ -136,30 +146,34 @@ As of 2024-2025, the Alice standard has become **more stringent**, not less. The
 Note: The 6% figure comes from a 2022 MTTLR analysis and may not reflect current rates. However, the general point — that game patents face high rejection rates — remains valid. In 2024, the Federal Circuit found claims eligible in only 1 of 22 cases on Section 101 grounds (95.5% invalidity rate).
 
 **Alice Corp. v. CLS Bank (2014)** made software patents harder:
+
 > "U.S. courts may reject patents deemed too abstract under the Abstract Idea Doctrine."
 
 **Europe is stricter:**
+
 > "European patent law contains explicit exclusions for 'programs for computers' and 'methods for playing games.'"
 
 **Sources:**
+
 - [The Futility of Patents on AAA Video Game Mechanics](https://mttlr.org/2022/10/the-futility-of-patents-on-aaa-video-game-mechanics/)
 - [UpCounsel: Game Patents](https://www.upcounsel.com/game-patents)
 
 ### 2.3 Notable Patented Mechanics
 
-| Mechanic                   | Owner        | Patent #                    | Expires                  |
-|----------------------------|--------------|-----------------------------|--------------------------|
-| Nemesis System             | Warner Bros. | US10926179B2                | 2036                     |
-| Pokemon Capture/Storage    | Nintendo     | Multiple (2021-2024 filings)| Various (contested)      |
-| Mass Effect Dialogue Wheel | BioWare Corp.| US8082499B2                 | October 2029             |
-| Sanity Effects             | Nintendo     | US6935954B2                 | Expired (2021)           |
-| Loading Screen Minigames   | Namco        | US5718632                   | Expired (2015)           |
-| Crazy Taxi Arrow           | Sega         | US6200138                   | Expired (2018)           |
-| Active Time Battle         | Square       | US5390937A                  | Expired (~2012)          |
+| Mechanic                   | Owner         | Patent #                     | Expires             |
+| -------------------------- | ------------- | ---------------------------- | ------------------- |
+| Nemesis System             | Warner Bros.  | US10926179B2                 | 2036                |
+| Pokemon Capture/Storage    | Nintendo      | Multiple (2021-2024 filings) | Various (contested) |
+| Mass Effect Dialogue Wheel | BioWare Corp. | US8082499B2                  | October 2029        |
+| Sanity Effects             | Nintendo      | US6935954B2                  | Expired (2021)      |
+| Loading Screen Minigames   | Namco         | US5718632                    | Expired (2015)      |
+| Crazy Taxi Arrow           | Sega          | US6200138                    | Expired (2018)      |
+| Active Time Battle         | Square        | US5390937A                   | Expired (~2012)     |
 
 **Key insight:** Most iconic mechanics are NOT patented, and many patents have expired.
 
 **Sources:**
+
 - [GamesRadar: 9 Video Game Patents](https://www.gamesradar.com/video-game-patents-that-might-surprise-you/)
 - [PC Gamer: 5 Legally Protected Mechanics](https://www.pcgamer.com/5-game-mechanics-legally-protected-by-the-companies-that-made-them/)
 
@@ -204,17 +218,20 @@ Warner Bros. Discovery shut down Monolith Productions (creator of the Nemesis Sy
 - **Examples** linked to specific games
 
 **Limitations:**
+
 - Board games only (no video games)
 - API doesn't expose mechanics list directly (requires workarounds)
 - No patent status information
 
 **API Access:**
+
 ```
 https://boardgamegeek.com/wiki/page/BGG_XML_API2
 https://boardgamegeek.com/data_dumps/bg_ranks (CSV dumps)
 ```
 
 **Sources:**
+
 - [BGG XML API2 Documentation](https://boardgamegeek.com/wiki/page/BGG_XML_API2)
 
 ### 3.2 "Building Blocks of Tabletop Game Design"
@@ -224,6 +241,7 @@ https://boardgamegeek.com/data_dumps/bg_ranks (CSV dumps)
 Authors: Geoffrey Engelstein & Isaac Shalev
 
 **Structure:**
+
 - 13 chapters by category (Auctions, Worker Placement, Area Control, etc.)
 - Each mechanic has:
   - Description
@@ -232,20 +250,24 @@ Authors: Geoffrey Engelstein & Isaac Shalev
   - Example games
 
 **Praise from Richard Garfield (Magic: The Gathering creator):**
+
 > "A much-needed atlas for the explorer—giving a framework of what to look for in a game."
 
 **Limitations:**
+
 - Tabletop focused (though many translate to video games)
 - Book format (not queryable database)
 - Copyright protected content
 
 **Sources:**
+
 - [Routledge: Building Blocks of Tabletop Game Design](https://www.routledge.com/Building-Blocks-of-Tabletop-Game-Design-An-Encyclopedia-of-Mechanisms/Engelstein-Shalev/p/book/9781032015811)
 - [Meeple Mountain Review](https://www.meeplemountain.com/reviews/building-blocks-of-tabletop-game-design/)
 
 ### 3.3 Game Design Library (GitHub)
 
 Open-source curated links organized by topic:
+
 - Crafting systems
 - Boss design
 - Health systems
@@ -255,6 +277,7 @@ Open-source curated links organized by topic:
 **URL:** https://nightblade9.github.io/game-design-library/
 
 **Limitations:**
+
 - Links to articles (not structured data)
 - No API
 - Maintenance dependent on contributors
@@ -264,6 +287,7 @@ Open-source curated links organized by topic:
 Community wiki attempting to catalog mechanics.
 
 **Self-acknowledged limitations:**
+
 > "We are not trying to be an academic resource—we do not try to list every mechanic ever, the history of their use, or every game they are in."
 
 **URL:** https://game-mechanics.fandom.com/
@@ -271,7 +295,7 @@ Community wiki attempting to catalog mechanics.
 ### 3.5 Academic Frameworks
 
 | Framework             | Focus                                    | Usability   |
-|-----------------------|------------------------------------------|-------------|
+| --------------------- | ---------------------------------------- | ----------- |
 | MDA                   | Analysis (Mechanics-Dynamics-Aesthetics) | Theoretical |
 | Game Ontology Project | Categorization                           | Academic    |
 | ATMSG                 | Serious games                            | Specialized |
@@ -303,12 +327,14 @@ API Catalog: https://developer.uspto.gov/api-catalog
 **Migration in progress (2025-2026):** The old developer hub (developer.uspto.gov) is being retired. Several legacy APIs were decommissioned in January 2026 (PTAB API v2, Office Action Citations, Enriched Citation). New replacement APIs exist on the ODP platform.
 
 **Capabilities:**
+
 - Search patents by keyword
 - Get patent status (active/expired)
 - Download full patent documents
 - Filter by classification codes
 
 **Limitations:**
+
 - US patents only
 - No "game mechanic" classification (must search by description)
 - Requires parsing legal language
@@ -324,6 +350,7 @@ URL: https://search.patentsview.org/
 ```
 
 **Features:**
+
 - 7 query endpoints
 - Inventor disambiguation
 - Company/assignee data
@@ -354,6 +381,7 @@ URL: https://worldwide.espacenet.com/
 ### 4.5 Building a Patent Check System
 
 **Approach:**
+
 1. Maintain list of known game-related patents
 2. Cross-reference mechanic keywords with patent claims
 3. Track expiration dates
@@ -362,6 +390,7 @@ URL: https://worldwide.espacenet.com/
 **Challenge:** Patents are written in legal language, not game design terms.
 
 **Example mapping needed:**
+
 ```
 User searches: "dialogue wheel"
 System maps to: US Patent claims mentioning "radial menu",
@@ -375,7 +404,7 @@ System maps to: US Patent claims mentioning "radial menu",
 ### 5.1 Why Storyarn Could Succeed Where Others Haven't
 
 | Challenge             | Storyarn Advantage                        |
-|-----------------------|-------------------------------------------|
+| --------------------- | ----------------------------------------- |
 | Scope explosion       | Focus on **narrative/RPG mechanics only** |
 | Definition ambiguity  | Define clearly for Storyarn's context     |
 | Maintenance burden    | Community contributions + AI assistance   |
@@ -458,11 +487,7 @@ System maps to: US Patent claims mentioning "radial menu",
     }
   ],
 
-  "pros": [
-    "Intuitive with controller",
-    "Quick selection",
-    "Can convey tone visually"
-  ],
+  "pros": ["Intuitive with controller", "Quick selection", "Can convey tone visually"],
 
   "cons": [
     "Limited options (typically 4-6)",
@@ -539,6 +564,7 @@ System maps to: US Patent claims mentioning "radial menu",
    - `unclear` - Potential patents, research needed
 
 3. **Disclaimer:**
+
    > "Patent information is provided for reference only. This is not legal advice. Consult a patent attorney for specific concerns."
 
 4. **Automatic Expiration Alerts:**
@@ -548,18 +574,21 @@ System maps to: US Patent claims mentioning "radial menu",
 ### 5.5 Community Features
 
 **Contributions:**
+
 - Suggest new mechanics
 - Add examples from games
 - Report patent information
 - Create Storyarn templates
 
 **Curation:**
+
 - Community voting on accuracy
 - Staff verification for patent claims
 - Regular review cycles
 - Track Nintendo/Palworld and other ongoing patent disputes
 
 **Monetization:**
+
 - Free: Browse mechanics, basic info
 - Pro: Full details, templates, patent alerts
 - Team: Custom mechanics library per workspace
@@ -569,30 +598,35 @@ System maps to: US Patent claims mentioning "radial menu",
 ## Part 6: Implementation Strategy
 
 ### Phase 1: Core Mechanics (50-100)
+
 1. Identify 50-100 most common narrative/RPG mechanics
 2. Write descriptions, pros/cons, examples
 3. Research patent status for each
 4. Create basic templates where applicable
 
 ### Phase 2: Database & API
+
 1. Build mechanics database in PostgreSQL
 2. Create API endpoints for search/browse
 3. Integrate with Storyarn flow editor
 4. Add "Use as template" functionality
 
 ### Phase 3: Patent Tracking
+
 1. Compile known game patents (manual research)
 2. Set up expiration monitoring
 3. Add status indicators to UI
 4. Create alerts for expiring patents
 
 ### Phase 4: Community
+
 1. Submission system for new mechanics
 2. Voting/verification workflow
 3. Contributor attribution
 4. Regular curation passes
 
 ### Phase 5: Intelligence
+
 1. Suggest mechanics based on flow content
 2. "Similar mechanics" recommendations
 3. Patent risk warnings in editor
@@ -603,7 +637,7 @@ System maps to: US Patent claims mentioning "radial menu",
 ## Part 7: Risks & Mitigations
 
 | Risk                          | Mitigation                                        |
-|-------------------------------|---------------------------------------------------|
+| ----------------------------- | ------------------------------------------------- |
 | Patent information accuracy   | Strong disclaimers, "last verified" dates         |
 | Legal liability               | Clear "not legal advice" messaging                |
 | Maintenance burden            | Start small, community contributions              |
@@ -616,6 +650,7 @@ System maps to: US Patent claims mentioning "radial menu",
 ## Conclusion
 
 **A video game mechanics bank doesn't exist because:**
+
 1. No definition consensus
 2. Context-dependent classification
 3. Legal complexity
@@ -623,6 +658,7 @@ System maps to: US Patent claims mentioning "radial menu",
 5. Massive maintenance burden
 
 **Storyarn can succeed by:**
+
 1. Limiting scope to narrative/RPG mechanics
 2. Being opinionated about definitions
 3. Including patent status (unique differentiator)
@@ -630,6 +666,7 @@ System maps to: US Patent claims mentioning "radial menu",
 5. Community contributions + curation
 
 **Unique value proposition:**
+
 > "The only mechanics database that tells you if it's safe to use AND gives you a template to start building."
 
 ---
@@ -637,32 +674,38 @@ System maps to: US Patent claims mentioning "radial menu",
 ## Sources
 
 ### Legal & Patents
+
 - [MTLR: Futility of Patents on AAA Game Mechanics](https://mttlr.org/2022/10/the-futility-of-patents-on-aaa-video-game-mechanics/)
 - [Columbia Law: Should Game Mechanics Be Copyrightable?](https://journals.library.columbia.edu/index.php/lawandarts/announcement/view/553)
 - [UpCounsel: Game Patents](https://www.upcounsel.com/game-patents)
 - [Lexology: Catch Me(chanic) if You Can](https://www.lexology.com/library/detail.aspx?g=0335550e-d67a-4044-8e12-86e347c940f1)
 
 ### Patent Databases
+
 - [USPTO Open Data Portal](https://data.uspto.gov/)
 - [PatentsView API](https://search.patentsview.org/)
 - [Google Patents](https://patents.google.com/)
 
 ### Mechanics Resources
+
 - [BoardGameGeek API](https://boardgamegeek.com/wiki/page/BGG_XML_API2)
 - [Building Blocks of Tabletop Game Design](https://www.routledge.com/Building-Blocks-of-Tabletop-Game-Design-An-Encyclopedia-of-Mechanisms/Engelstein-Shalev/p/book/9781032015811)
 - [Game Design Library](https://nightblade9.github.io/game-design-library/)
 - [Game Programming Patterns](https://gameprogrammingpatterns.com/)
 
 ### Academic
+
 - [Redefining MDA Framework](https://www.mdpi.com/2078-2489/12/10/395)
 - [Game Mechanics Taxonomy](https://boxbase.org/entries/2015/aug/31/game-mechanics-taxonomy/)
 - [Classification of Game Mechanics (2024)](https://link.springer.com/chapter/10.1007/978-981-97-2977-7_19)
 
 ### Patent Examples
+
 - [GamesRadar: 9 Video Game Patents](https://www.gamesradar.com/video-game-patents-that-might-surprise-you/)
 - [Workinman: 5 Game Patents Ending Soon](https://workinman.com/5-video-game-patents/)
 
 ### Patent Developments (2025-2026)
+
 - [Baker Botts: Patenting Play (Dec 2025)](https://www.bakerbotts.com/thought-leadership/publications/2025/december/patenting-play)
 - [Nintendo Patents Challenged at USPTO](https://www.gamesindustry.biz/nintendos-palworld-patents-challenged)
 - [Future of Gaming Patent Reports](https://futureofgaming.com/)

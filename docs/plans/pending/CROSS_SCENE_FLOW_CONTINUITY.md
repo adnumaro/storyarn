@@ -33,18 +33,21 @@ Currently, scene navigation (`target_type="scene"`) and flow execution are indep
 ## Possible Approaches
 
 ### A: Single LiveView, swap scene data
+
 Keep the same `ExplorationLive` process. Instead of navigating, swap the scene data (background, pins, zones) in-place. The flow engine stays alive.
 
 **Pros:** Simple state management. Flow never stops.
 **Cons:** URL doesn't update. Browser back button doesn't work intuitively. Need to load new scene data via context call.
 
 ### B: Serialize flow state, navigate, restore
+
 Before navigating, serialize the flow execution state (current node ID, variable map, call stack). Pass it via URL params or session. New `ExplorationLive` instance restores and continues.
 
 **Pros:** Clean navigation. URL updates. Back button works.
 **Cons:** Complex serialization. Race conditions. Large state in URL/session.
 
 ### C: Persistent flow process
+
 Spawn a separate process for flow execution that outlives the LiveView. New LiveView reconnects to it.
 
 **Pros:** Clean separation. Flow state is authoritative.

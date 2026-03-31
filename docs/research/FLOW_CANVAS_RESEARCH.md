@@ -11,6 +11,7 @@
 ## Problem Statement
 
 We need to render custom nodes in Rete.js that:
+
 1. Support Tailwind CSS and daisyUI theming (dark/light mode)
 2. Display Lucide icons
 3. Have working connection points (sockets) for node connections
@@ -20,12 +21,14 @@ We need to render custom nodes in Rete.js that:
 ### Shadow DOM
 
 **Advantages:**
+
 - **Style encapsulation**: Styles don't leak in or out
 - **DOM encapsulation**: Internal elements hidden from `querySelectorAll`
 - **Slots work natively**: `<slot>` elements project content correctly
 - **Isolation**: Components are protected from external CSS/JS
 
 **Disadvantages:**
+
 - **Global styles don't work**: Tailwind classes, daisyUI themes won't apply
 - **CSS custom properties required**: Must use `var(--property)` for theming
 - **Accessibility issues**: ARIA references broken across shadow boundaries
@@ -37,12 +40,14 @@ We need to render custom nodes in Rete.js that:
 ### Light DOM
 
 **Advantages:**
+
 - **Global styles work**: Tailwind, daisyUI, any external CSS applies
 - **Better accessibility**: IDs, `aria-labelledby`, `for` attributes work
 - **Simpler debugging**: Standard DOM inspection
 - **No JavaScript dependency for rendering**: HTML renders immediately
 
 **Disadvantages:**
+
 - **No style encapsulation**: Class names can conflict with global styles
 - **DOM exposed**: Internal elements accessible via `querySelectorAll`
 - **SLOTS DON'T WORK**: `<slot>` is a Shadow DOM feature only
@@ -64,6 +69,7 @@ From the [Lit plugin source code](https://github.com/retejs/lit-plugin):
 ```
 
 The `rete-ref` component:
+
 1. Registers socket position with the connection plugin
 2. Renders the socket element inside
 3. Uses DOM positioning for connection line calculation
@@ -71,11 +77,14 @@ The `rete-ref` component:
 ### Why Light DOM Breaks Connections
 
 In our Light DOM implementation:
+
 ```html
-<slot name="input-socket-${key}"></slot>  <!-- DOESN'T WORK! -->
+<slot name="input-socket-${key}"></slot>
+<!-- DOESN'T WORK! -->
 ```
 
 **Problem**: Slots only work in Shadow DOM. Without them, Rete.js can't:
+
 - Project socket components into our custom node
 - Track socket positions for drawing connections
 - Handle socket interactions (hover, click to connect)
@@ -100,11 +109,13 @@ class StoryarnNode extends LitElement {
 ```
 
 **Pros:**
+
 - Sockets work correctly
 - Connections work correctly
 - daisyUI CSS variables like `--b1`, `--bc` pierce Shadow DOM
 
 **Cons:**
+
 - Can't use Tailwind utility classes directly
 - Need to define all styles in component
 
@@ -128,10 +139,12 @@ class StoryarnNode extends LitElement {
 ```
 
 **Pros:**
+
 - Tailwind classes might work
 - Sockets work
 
 **Cons:**
+
 - Complex setup (though browser support is now universal since March 2023)
 - Performance implications
 - Tailwind v4 `@property` features break inside Shadow DOM even with adopted stylesheets
@@ -142,7 +155,9 @@ Render sockets directly without slots, manually handle positioning.
 
 ```typescript
 class StoryarnNode extends LitElement {
-  createRenderRoot() { return this; }
+  createRenderRoot() {
+    return this;
+  }
 
   render() {
     return html`
@@ -161,9 +176,11 @@ class StoryarnNode extends LitElement {
 ```
 
 **Pros:**
+
 - Tailwind works fully
 
 **Cons:**
+
 - Complex implementation
 - Need to handle all socket logic manually
 - May break connection plugin expectations
@@ -173,9 +190,11 @@ class StoryarnNode extends LitElement {
 Use Light DOM for the node container, Shadow DOM for socket wrappers.
 
 **Pros:**
+
 - Best of both worlds potentially
 
 **Cons:**
+
 - Increased complexity
 - Nested shadow roots
 
@@ -184,12 +203,14 @@ Use Light DOM for the node container, Shadow DOM for socket wrappers.
 **Use Option 1: Shadow DOM + CSS Custom Properties**
 
 Reasons:
+
 1. daisyUI's CSS variables (`--b1`, `--bc`, `--p`, etc.) already pierce Shadow DOM
 2. Sockets and connections work out of the box
 3. Less custom code to maintain
 4. Dark/light mode works via CSS variables
 
 Implementation approach:
+
 1. Keep Shadow DOM (remove `createRenderRoot`)
 2. Use daisyUI CSS variables for colors: `oklch(var(--b1))`
 3. Define Tailwind-equivalent styles using CSS custom properties
@@ -206,6 +227,7 @@ Tailwind CSS v4 relies heavily on CSS `@property` declarations for initial value
 daisyUI 5 renamed CSS variables (e.g., `--b1` → `--color-base-100`, `--p` → `--color-primary`). The current code still uses the older naming convention. daisyUI 5 with Tailwind v4 includes `:host` in CSS rules, meaning variables are available inside Shadow DOM via the `root: ":host"` config option.
 
 **Sources:**
+
 - [Tailwind v4 @property Shadow DOM - GitHub Discussion #16772](https://github.com/tailwindlabs/tailwindcss/discussions/16772)
 - [Tailwind v4 @property custom elements - GitHub #17104](https://github.com/tailwindlabs/tailwindcss/issues/17104)
 - [Web Components and Tailwind CSS (KINTO Tech)](https://blog.kinto-technologies.com/posts/2025-07-14-web-components-and-tailwind-css-dont-mix-en/)
@@ -224,8 +246,8 @@ import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 const iconElement = createElement(MessageSquare, {
   width: 16,
   height: 16,
-  stroke: "currentColor",  // Inherits from parent color
-  "stroke-width": 2
+  stroke: "currentColor", // Inherits from parent color
+  "stroke-width": 2,
 });
 
 // Convert to string for Lit template
@@ -237,60 +259,65 @@ return html`<span>${unsafeSVG(iconSvg)}</span>`;
 
 ### Why It Works
 
-| Aspect                 | Works in Shadow DOM?   | Reason                            |
-|------------------------|------------------------|-----------------------------------|
-| SVG element            | Yes                    | Self-contained, no external deps  |
-| `width`/`height` attrs | Yes                    | Native SVG attributes             |
-| `stroke: currentColor` | Yes                    | `color` is inherited CSS property |
-| Tailwind classes       | No                     | External styles don't penetrate   |
+| Aspect                 | Works in Shadow DOM? | Reason                            |
+| ---------------------- | -------------------- | --------------------------------- |
+| SVG element            | Yes                  | Self-contained, no external deps  |
+| `width`/`height` attrs | Yes                  | Native SVG attributes             |
+| `stroke: currentColor` | Yes                  | `color` is inherited CSS property |
+| Tailwind classes       | No                   | External styles don't penetrate   |
 
 ### Key Difference from Light DOM
 
 ```javascript
 // Light DOM - Tailwind classes work
-createElement(Icon, { class: "size-4 text-white" })
+createElement(Icon, { class: "size-4 text-white" });
 
 // Shadow DOM - Use direct attributes
-createElement(Icon, { width: 16, height: 16, stroke: "currentColor" })
+createElement(Icon, { width: 16, height: 16, stroke: "currentColor" });
 ```
 
 ## Design Decisions (Based on articy:draft & Arcweave)
 
 ### Sockets/Pins
+
 - **Size**: 10px diameter (small, subtle circles) (Adjusted from original spec during implementation)
 - **Color**: Muted, matches theme (`oklch(var(--bc) / 0.3)`)
 - **Border**: 2px solid, slightly more visible
 - **Hover**: Highlights with primary color, slight scale up
 
 ### Connections
+
 - **Style**: Bezier curves (smooth)
 - **Stroke**: 2px, muted color
 - **Hover**: Primary color, 3px stroke
 
 ### Background
+
 - **Color**: `oklch(var(--b2))` - slightly darker than nodes
 - **Grid**: Subtle dot pattern (24px spacing) (Adjusted from original spec during implementation)
 
 ### Nodes
+
 - **Background**: `oklch(var(--b1))` - base color
 - **Border**: 1.5px, color matches header at 25% opacity
 - **Header**: Solid color per node type
 - **Shadow**: Subtle drop shadow
 
 ### Minimap
+
 - **Position**: Bottom-right corner
 - **Size**: 180x120px
 - **Background**: Semi-transparent with blur
 
 ## Current Dependency Versions (February 2026)
 
-| Package | Version | Status |
-|---------|---------|--------|
-| rete | ^2.0.3 (latest: 2.0.6) | Stable, actively maintained |
-| @retejs/lit-plugin | ^2.0.7 | Up to date |
-| lit | ^3.3.2 | Up to date |
-| daisyui | 5.5.14 | Latest |
-| lucide | 0.563.0 | Latest |
+| Package            | Version                | Status                      |
+| ------------------ | ---------------------- | --------------------------- |
+| rete               | ^2.0.3 (latest: 2.0.6) | Stable, actively maintained |
+| @retejs/lit-plugin | ^2.0.7                 | Up to date                  |
+| lit                | ^3.3.2                 | Up to date                  |
+| daisyui            | 5.5.14                 | Latest                      |
+| lucide             | 0.563.0                | Latest                      |
 
 ## Sources
 

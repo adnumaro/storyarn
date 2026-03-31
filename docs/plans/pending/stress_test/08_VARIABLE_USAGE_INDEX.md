@@ -58,7 +58,7 @@ Add a new function `list_project_variable_usage/1` to `VariableReferenceTracker`
 ### Files Affected
 
 | File                                                      | Action                              |
-|-----------------------------------------------------------|-------------------------------------|
+| --------------------------------------------------------- | ----------------------------------- |
 | `lib/storyarn/flows/variable_reference_tracker.ex`        | Add `list_project_variable_usage/1` |
 | `lib/storyarn/flows.ex`                                   | Add facade `defdelegate`            |
 | `test/storyarn/flows/variable_reference_tracker_test.exs` | Add tests                           |
@@ -264,7 +264,7 @@ Create a LiveComponent that displays the project-wide variable usage index. Show
 ### Files Affected
 
 | File                                                                          | Action               |
-|-------------------------------------------------------------------------------|----------------------|
+| ----------------------------------------------------------------------------- | -------------------- |
 | `lib/storyarn_web/live/flow_live/components/variable_usage_browser.ex`        | Create new component |
 | `test/storyarn_web/live/flow_live/components/variable_usage_browser_test.exs` | Create tests         |
 
@@ -508,13 +508,14 @@ end
 ### Description
 
 Wire the Variable Usage Browser into two access points:
+
 1. **Sheet editor** -- a button on the "References" tab that opens the project-wide browser (modal overlay).
 2. **Project sidebar** -- a "Variables" menu item that opens a dedicated route or modal showing the full variable usage index.
 
 ### Files Affected
 
 | File                                                        | Action                                          |
-|-------------------------------------------------------------|-------------------------------------------------|
+| ----------------------------------------------------------- | ----------------------------------------------- |
 | `lib/storyarn_web/live/sheet_live/show.ex`                  | Add event handler + modal for project-wide view |
 | `lib/storyarn_web/live/project_live/components/sidebar.ex`  | Add "Variables" link (if sidebar exists)        |
 | `test/storyarn_web/live/sheet_live/variable_usage_test.exs` | Add integration tests for modal trigger         |
@@ -611,7 +612,7 @@ end
 ## Summary
 
 | Subtask          | What it delivers                                                                     | Key files                                   |
-|------------------|--------------------------------------------------------------------------------------|---------------------------------------------|
+| ---------------- | ------------------------------------------------------------------------------------ | ------------------------------------------- |
 | 1. Backend query | `list_project_variable_usage/1` -- all variables with their flow references, grouped | `variable_reference_tracker.ex`, `flows.ex` |
 | 2. UI component  | `VariableUsageBrowser` LiveComponent with grouping, filtering, and flow links        | `variable_usage_browser.ex`                 |
 | 3. Integration   | Accessible from sheet editor and project sidebar via modal                           | `sheet_live/show.ex`, test files            |

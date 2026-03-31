@@ -1,9 +1,10 @@
 %{
-  title: "Dialogue Nodes",
-  category_label: "Narrative Design",
-  order: 2,
-  description: "Character speech, player responses, and dialogue configuration."
+title: "Dialogue Nodes",
+category_label: "Narrative Design",
+order: 2,
+description: "Character speech, player responses, and dialogue configuration."
 }
+
 ---
 
 Dialogue nodes are the most common node type. They represent **what a character says** and optionally **what the player can respond**. Each dialogue node can be as simple as a single line of text or as rich as a fully configured screenplay-style beat with speaker, stage directions, audio, and branching responses.
@@ -65,7 +66,7 @@ When a dialogue node has no responses, it acts as a simple line of dialogue with
 
 Each response can have a **condition** that must be true for it to appear as a valid choice. Conditions are defined using the same visual Condition Builder used by condition nodes.
 
-> *Example: "[Strength > 15] Break down the door"*
+> _Example: "[Strength > 15] Break down the door"_
 > If the player's strength is 15 or less, this option does not appear (in Player mode) or appears greyed out with a strikethrough (in {accent}Analysis mode{/accent}).
 
 A condition indicator appears on the response in the canvas, so you can see at a glance which responses have conditions attached.
@@ -76,7 +77,7 @@ A condition indicator appears on the response in the canvas, so you can see at a
 
 Each response can also carry **instructions** that modify variables when that response is chosen. These use the same Instruction Builder as instruction nodes, supporting all operations: Set, Add, Subtract, Toggle, Set true/false, and Clear.
 
-> *Example: Player picks "Accept the quest" -> sets `quest.tavern.accepted` to true*
+> _Example: Player picks "Accept the quest" -> sets `quest.tavern.accepted` to true_
 
 This keeps simple logic close to the dialogue without needing a separate instruction node after each response branch. For complex cases with multiple variable changes or shared logic, use a dedicated instruction node instead.
 

@@ -765,7 +765,9 @@
   background-color: var(--color-base-100);
   border: 1px solid var(--color-base-300);
   border-radius: 8px;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
   font-family: system-ui, sans-serif;
   font-size: 0.875rem;
 }
@@ -956,7 +958,6 @@
   display: none;
 }
 
-
 /* ---------------------------------------------------------------------------
    Title page fields
    --------------------------------------------------------------------------- */
@@ -1040,7 +1041,9 @@
   background: none;
   color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
   cursor: pointer;
-  transition: color 0.12s, background-color 0.12s;
+  transition:
+    color 0.12s,
+    background-color 0.12s;
 }
 
 .sp-expr-tab:hover {
@@ -1094,4 +1097,3 @@
 .dialogue-sp-select-btn:hover {
   opacity: 0.8;
 }
-

@@ -17,7 +17,7 @@
 **Read these before writing code. Duplicating existing utilities is a bug.**
 
 | File                                    | Purpose                                                             |
-|-----------------------------------------|---------------------------------------------------------------------|
+| --------------------------------------- | ------------------------------------------------------------------- |
 | `AGENTS.md`                             | Phoenix/LiveView/Ecto patterns (**MUST READ**)                      |
 | @docs/conventions/shared-utilities.md   | **Shared utility registry — search here BEFORE writing any helper** |
 | @docs/conventions/domain-patterns.md    | Context facades, CRUD templates, auth patterns                      |
@@ -26,10 +26,12 @@
 ## Language Policy
 
 **Everything MUST be in English.** All user-facing text uses Gettext:
+
 ```elixir
 put_flash(socket, :info, gettext("Project saved"))  # ✅
 put_flash(socket, :info, "Project saved")            # ❌
 ```
+
 Locales: `en` (default), `es`
 
 ## Reuse Existing Code

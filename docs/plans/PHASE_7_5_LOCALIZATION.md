@@ -11,6 +11,7 @@
 ## Overview
 
 This phase adds a comprehensive localization system that enables:
+
 - Multiple language support per project
 - Localization state tracking (pending, draft, in progress, review, final)
 - Voice-over (VO) tracking and assignment
@@ -135,12 +136,14 @@ lib/storyarn/localization/
 ### 7.5.L.1 Project Languages
 
 #### Database & Schema
+
 - [x] Create `project_languages` table (migration `20260216120000`)
 - [x] Add unique index on `(project_id, locale_code)`
 - [x] Add partial unique index on `(project_id)` where `is_source = true`
 - [x] Static language list (44 languages) in `Languages` module
 
 #### Context Functions
+
 - [x] `Localization.list_languages/1` - List project languages
 - [x] `Localization.add_language/2` - Add language to project
 - [x] `Localization.remove_language/1` - Remove language
@@ -150,6 +153,7 @@ lib/storyarn/localization/
 - [x] `Localization.get_source_language/1`, `get_target_languages/1`, `get_language_by_locale/2`
 
 #### UI: Localization Page (inline management)
+
 - [x] Source language badge (read-only, inherited from workspace)
 - [x] Target language chips with remove button
 - [x] "Add Language" dropdown with predefined `<select>` (no free text)
@@ -163,12 +167,14 @@ lib/storyarn/localization/
 ### 7.5.L.2 Localized Texts Table
 
 #### Database & Schema
+
 - [x] Create `localized_texts` table (migration `20260216120000`)
 - [x] Indexes: `(project_id, locale_code, status)`, `(source_type, source_id)`, `(speaker_sheet_id, locale_code)`
 - [x] Partial index: `(project_id, locale_code)` where `status != 'final'`
 - [x] Unique constraint on `(source_type, source_id, source_field, locale_code)`
 
 #### Automatic Text Extraction
+
 - [x] Hook into flow node save → `TextExtractor.extract_flow_node/1` (in `NodeCrud`)
 - [x] Hook into block save → `TextExtractor.extract_block/1` (in `BlockCrud`)
 - [x] Hook into sheet save → `TextExtractor.extract_sheet/1` (in `SheetCrud`)
@@ -181,6 +187,7 @@ lib/storyarn/localization/
 - [x] Auto-extract on adding a target language
 
 #### Status Workflow
+
 ```
 ┌─────────┐    ┌───────┐    ┌─────────────┐    ┌────────┐    ┌───────┐
 │ pending │ →  │ draft │ →  │ in_progress │ →  │ review │ →  │ final │
@@ -190,7 +197,7 @@ lib/storyarn/localization/
 ```
 
 | Status      | Description                                       |
-|-------------|---------------------------------------------------|
+| ----------- | ------------------------------------------------- |
 | pending     | No translation exists yet                         |
 | draft       | Initial translation (possibly machine-translated) |
 | in_progress | Translator is working on it                       |
@@ -202,6 +209,7 @@ lib/storyarn/localization/
 ### 7.5.L.3 Localization View
 
 #### Implementation
+
 - [x] LiveView: `LocalizationLive.Index`
 - [x] Filters: status, source type, search
 - [x] Pagination (50 per page)
@@ -219,6 +227,7 @@ lib/storyarn/localization/
 ### 7.5.L.4 Translation Editor
 
 #### Implementation
+
 - [x] LiveView: `LocalizationLive.Edit`
 - [x] Side-by-side source/translation view
 - [x] Word count display
@@ -236,12 +245,14 @@ lib/storyarn/localization/
 ### 7.5.L.5 Export/Import
 
 #### Export (implemented)
+
 - [x] Export endpoint: `GET /workspaces/:ws/projects/:proj/localization/export/:format/:locale`
 - [x] Excel (.xlsx) generation via `Elixlsx`
 - [x] CSV generation
 - [x] Filter by status, source_type (query params)
 
 #### Import (backend only)
+
 - [x] CSV parsing and validation (`ExportImport.import_csv/1`)
 - [x] Match by composite key (source_type, source_id, source_field, locale_code)
 - [ ] Import LiveView with file upload UI
@@ -253,6 +264,7 @@ lib/storyarn/localization/
 ### 7.5.L.6 Machine Translation (DeepL)
 
 #### Integration
+
 - [x] DeepL API client module (`Providers.DeepL`)
 - [x] Project-level API key configuration (encrypted via Cloak)
 - [x] Translate single text (`BatchTranslator.translate_single/2`)
@@ -261,12 +273,14 @@ lib/storyarn/localization/
 - [x] HTML tag handling for rich text
 
 #### UI Integration
+
 - [x] "Translate with DeepL" button in editor
 - [x] "Translate all" batch button in localization view
 - [x] Set status to "draft" after machine translation
 - [x] `machine_translated` flag tracked
 
 #### Configuration (Project Settings)
+
 - [x] API key input (password field, shows masked if exists)
 - [x] Tier selection (Free vs Pro endpoint)
 - [x] "Test Connection" button with usage display
@@ -277,6 +291,7 @@ lib/storyarn/localization/
 ### 7.5.L.7 Localization Report
 
 #### Implementation
+
 - [x] LiveView: `LocalizationLive.Report`
 - [x] Progress by language (progress bars, percentages, status breakdown)
 - [x] Word counts by speaker (table with line counts + word counts)
@@ -290,6 +305,7 @@ lib/storyarn/localization/
 ### 7.5.L.8 Glossary
 
 #### Implementation
+
 - [x] Create `localization_glossary_entries` table (migration `20260216120000`)
 - [x] CRUD for glossary entries (per source/target language pair)
 - [x] "Do not translate" flag for proper nouns
@@ -317,6 +333,7 @@ GET /workspaces/:ws/projects/:proj/localization/export/:format/:locale → Local
 ## Testing
 
 ### Unit Tests (implemented)
+
 - [x] Text extraction from nodes/blocks/sheets/flows (`text_extractor_test.exs`)
 - [x] HTML handler preprocessing (`html_handler_test.exs`)
 - [x] Batch translator with mocks (`batch_translator_test.exs`)
@@ -325,15 +342,18 @@ GET /workspaces/:ws/projects/:proj/localization/export/:format/:locale → Local
 - [x] Reports queries (`reports_test.exs`)
 
 ### Integration Tests (implemented)
+
 - [x] Project language CRUD (79 test cases in `localization_test.exs`)
 - [x] Localized text CRUD with filters/pagination (54 test cases)
 - [x] Upsert logic and source-change detection
 - [x] Deletion cascades
 
 ### Fixtures
+
 - [x] `LocalizationFixtures` — `language_fixture/2`, `source_language_fixture/2`, `localized_text_fixture/2`
 
 ### Not tested
+
 - [ ] E2E: full localization workflow (add language → translate → export → import)
 - [ ] E2E: VO upload and playback
 - [ ] E2E: report generation
@@ -342,18 +362,18 @@ GET /workspaces/:ws/projects/:proj/localization/export/:format/:locale → Local
 
 ## Remaining Work
 
-| Item                                            | Category           | Effort   |
-|-------------------------------------------------|--------------------|----------|
-| Import UI (upload, preview, conflict handling)  | Export/Import      | Medium   |
-| VO section in editor (upload, playback, status) | Translation Editor | Medium   |
-| Inline editing in list view                     | Localization View  | Medium   |
-| History/audit log for translations              | Translation Editor | Medium   |
-| Keyboard navigation (arrow keys, Enter)         | Localization View  | Small    |
-| Glossary term highlighting in editor            | Translation Editor | Small    |
-| Glossary export for external teams              | Glossary           | Small    |
-| PDF export for reports                          | Report             | Small    |
-| Recent activity in report                       | Report             | Small    |
-| Length ratio indicator in editor                | Translation Editor | Small    |
+| Item                                            | Category           | Effort |
+| ----------------------------------------------- | ------------------ | ------ |
+| Import UI (upload, preview, conflict handling)  | Export/Import      | Medium |
+| VO section in editor (upload, playback, status) | Translation Editor | Medium |
+| Inline editing in list view                     | Localization View  | Medium |
+| History/audit log for translations              | Translation Editor | Medium |
+| Keyboard navigation (arrow keys, Enter)         | Localization View  | Small  |
+| Glossary term highlighting in editor            | Translation Editor | Small  |
+| Glossary export for external teams              | Glossary           | Small  |
+| PDF export for reports                          | Report             | Small  |
+| Recent activity in report                       | Report             | Small  |
+| Length ratio indicator in editor                | Translation Editor | Small  |
 
 ---
 
@@ -392,7 +412,7 @@ GET /workspaces/:ws/projects/:proj/localization/export/:format/:locale → Local
 ## Comparison: articy:draft vs Storyarn
 
 | Feature                 | articy:draft    | Storyarn                                  |
-|-------------------------|-----------------|-------------------------------------------|
+| ----------------------- | --------------- | ----------------------------------------- |
 | Language management     | Built-in        | Built-in (inline in Localization page)    |
 | Translation states      | 3 states        | 5 states (more granular)                  |
 | DeepL integration       | Yes             | Yes (with glossary sync)                  |
@@ -406,6 +426,7 @@ GET /workspaces/:ws/projects/:proj/localization/export/:format/:locale → Local
 | Bulk text extraction    | Manual          | Automatic hooks + manual Sync button      |
 
 **Key Advantages:**
+
 - More granular status workflow for professional pipelines
 - Automatic source change detection with hash comparison
 - Character-based analytics for VO budgeting
@@ -414,4 +435,4 @@ GET /workspaces/:ws/projects/:proj/localization/export/:format/:locale → Local
 
 ---
 
-*This phase was implemented independently of other enhancements. Migration: `20260216120000_create_localization_tables.exs` + `20260216130000_add_source_locale_to_workspaces.exs`*
+_This phase was implemented independently of other enhancements. Migration: `20260216120000_create_localization_tables.exs` + `20260216130000_add_source_locale_to_workspaces.exs`_

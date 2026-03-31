@@ -15,15 +15,17 @@ Each feature is independent and ordered by dependency.
 ## Feature 1: Manual Project Snapshots
 
 ### What
+
 A user with `manage_project` permission can create a full project snapshot at any time. The snapshot captures **absolutely everything** in the project at that moment.
 
 ### Why (standalone value)
+
 Before a major milestone (demo, client delivery, QA handoff), designers need a guaranteed restore point. "Gold Master v1.0" — one click, everything saved.
 
 ### What's captured (complete list)
 
 | Category           | Data                                                           | Includes assets?                 |
-|--------------------|----------------------------------------------------------------|----------------------------------|
+| ------------------ | -------------------------------------------------------------- | -------------------------------- |
 | **Project**        | name, slug, settings, configuration                            | —                                |
 | **Sheets**         | All sheets + all blocks with values, config, types, order      | Avatar blobs, banner blobs       |
 | **Flows**          | All flows + all nodes + all connections + all node data        | Audio blobs in dialogue nodes    |
@@ -64,6 +66,7 @@ projects/{project_id}/project_snapshots/{snapshot_id}.tar.gz
 ```
 
 **The `manifest.json` includes:**
+
 ```json
 {
   "format_version": "1.0",
@@ -89,6 +92,7 @@ projects/{project_id}/project_snapshots/{snapshot_id}.tar.gz
 ### Schema changes
 
 **New schema: `ProjectSnapshot`**
+
 ```
 project_snapshots
 ├── id (id)
@@ -105,6 +109,7 @@ project_snapshots
 ```
 
 ### Key implementation areas
+
 - **Backend**: `Storyarn.Versioning.ProjectSnapshots` context module
 - **Snapshot creation**: Oban job that serializes all entities, collects all blobs, creates archive, uploads to R2
 - **UI**: Project settings page → "Versions" tab → "Create Snapshot" button + snapshot list
@@ -112,6 +117,7 @@ project_snapshots
 - **Quota**: check plan limits before creating. Warn when approaching limit
 
 ### Acceptance criteria
+
 - [ ] "Create Project Snapshot" available in project settings
 - [ ] Snapshot captures all entities, assets, tree structure, and localization
 - [ ] Archive format is self-contained (manifest + JSON + blobs)
@@ -126,9 +132,11 @@ project_snapshots
 ## Feature 2: Automatic Daily Snapshots
 
 ### What
+
 An Oban cron job runs daily, iterates all projects, and creates a project snapshot for any project that has changes since its last snapshot.
 
 ### Why (standalone value)
+
 Manual snapshots require discipline. Daily auto-backups mean that even if a designer never manually creates a snapshot, there's always a recent backup. Maximum data loss: 24 hours.
 
 ### How it works
@@ -141,15 +149,18 @@ Manual snapshots require discipline. Daily auto-backups mean that even if a desi
 3. If a user created a manual snapshot within the last 6 hours → skip (no near-duplicate)
 
 ### Configuration
+
 - Project settings: "Automatic daily backups" toggle (default: on)
 - The 6-hour dedup window prevents: user creates manual snapshot at 22:00, auto-job at 03:00 creates nearly identical backup
 
 ### Retention
+
 - Auto project snapshots follow the plan's retention policy
 - Oldest auto-snapshots pruned when over quota
 - Named (manual) snapshots are never auto-pruned
 
 ### Acceptance criteria
+
 - [ ] Oban cron job runs daily
 - [ ] Only creates snapshot if changes exist since last snapshot
 - [ ] Skips if manual snapshot created within 6 hours
@@ -163,9 +174,11 @@ Manual snapshots require discipline. Daily auto-backups mean that even if a desi
 ## Feature 3: Project Restore with Exclusive Lock
 
 ### What
+
 Restore an entire project to a previous snapshot. During restoration, the project enters **exclusive mode**: all collaborators are switched to read-only, changes are blocked, and everyone is notified.
 
 ### Why (standalone value)
+
 Project restore is the most powerful recovery tool — but also the most dangerous operation. Without protection, collaborators could be editing while the restore overwrites everything underneath them. Exclusive lock makes it safe.
 
 ### Restore flow
@@ -200,17 +213,20 @@ Project restore is the most powerful recovery tool — but also the most dangero
    - Initiator sees success message with summary
 
 ### Edge cases
+
 - **Collaborator with unsaved changes**: changes are lost. The lock broadcast gives them a warning. The pre-restore backup captured the last persisted state
 - **Restore fails mid-transaction**: DB transaction rolls back, project stays as-is, lock released, error reported
 - **User disconnects during restore**: Oban job continues. Lock released on completion regardless
 - **Concurrent restore attempts**: only one restore per project at a time (check `restoration_in_progress` flag)
 
 ### Schema changes
+
 - `Project`: add `restoration_in_progress` (boolean, default: false)
 - `Project`: add `restoration_started_by_id` (id, FK to users, nullable)
 - `Project`: add `restoration_started_at` (utc_datetime, nullable)
 
 ### Acceptance criteria
+
 - [ ] Only `manage_project` users can initiate restore
 - [ ] Pre-restore backup always created automatically
 - [ ] Project enters exclusive mode during restore
@@ -228,9 +244,11 @@ Project restore is the most powerful recovery tool — but also the most dangero
 ## Feature 4: Deleted Project Recovery
 
 ### What
+
 When a project is soft-deleted, its project snapshots survive in R2. From the workspace settings, users can restore a deleted project entirely from its most recent (or any) snapshot.
 
 ### Why (standalone value)
+
 Accidental project deletion is catastrophic without this. With snapshot-based recovery, deleting a project is reversible. The project can be fully reconstructed — every flow, sheet, scene, asset, and tree structure.
 
 ### How it works
@@ -247,12 +265,15 @@ Accidental project deletion is catastrophic without this. With snapshot-based re
 4. **Result**: a new project that is identical in content to the snapshot, but with fresh IDs
 
 ### Why new IDs (not revive old project)?
+
 - The old project's IDs might conflict with data created after deletion
 - Clean separation: the restored project is a fresh entity
 - No risk of ghost references from other projects pointing to the old IDs
 
 ### id remapping
+
 The most complex part: every internal reference must be updated.
+
 - Snapshot contains original ids for all entities
 - On restore, new ids are generated for each entity
 - A mapping table `{old_id => new_id}` is built
@@ -260,16 +281,18 @@ The most complex part: every internal reference must be updated.
 - External references (to entities outside the project) are left as-is — they may or may not still exist
 
 ### Retention
-| Plan       | Snapshots retained after project deletion  |
-|------------|--------------------------------------------|
-| Free       | 30 days                                    |
-| Pro        | 90 days                                    |
-| Team       | 1 year                                     |
-| Enterprise | Indefinite                                 |
+
+| Plan       | Snapshots retained after project deletion |
+| ---------- | ----------------------------------------- |
+| Free       | 30 days                                   |
+| Pro        | 90 days                                   |
+| Team       | 1 year                                    |
+| Enterprise | Indefinite                                |
 
 After retention period, Oban job deletes snapshots and runs blob garbage collection.
 
 ### Acceptance criteria
+
 - [ ] Project soft-delete does NOT remove R2 snapshots
 - [ ] Workspace settings shows deleted projects with snapshot availability
 - [ ] User can select snapshot and restore to new project
@@ -285,21 +308,26 @@ After retention period, Oban job deletes snapshots and runs blob garbage collect
 ## Feature 5: Project Snapshot Export
 
 ### What
+
 Download a project snapshot as a self-contained `.tar.gz` archive. The file contains everything needed to reconstruct the project in any Storyarn instance.
 
 ### Why (standalone value)
+
 Portability. A designer can export their project, share it with a collaborator on a different workspace, import it into a different Storyarn instance, or simply keep an offline backup on their own machine.
 
 ### How it works
+
 1. User clicks "Download" on a project snapshot
 2. System generates a signed R2 URL for the `.tar.gz` file
 3. Browser downloads the archive directly from R2
 4. No server-side processing needed — the archive is already in the correct format
 
 ### Future: Import
+
 The inverse operation (import a `.tar.gz` into a workspace as a new project) is a natural follow-up. The `manifest.json` format version ensures forward compatibility. Not in scope for this feature but the architecture supports it.
 
 ### Acceptance criteria
+
 - [ ] "Download" button on each project snapshot
 - [ ] Download serves the complete `.tar.gz` archive from R2
 - [ ] Downloaded file is self-contained (manifest + JSON + blobs)

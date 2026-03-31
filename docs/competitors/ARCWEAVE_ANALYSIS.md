@@ -38,6 +38,7 @@
 Arcweave is a **web-based, collaborative game design tool** focused on narrative design, content management, and interactive prototyping. It runs entirely in the browser with no downloads or installation required.
 
 **Core pillars:**
+
 - Visual flowchart-based story authoring (boards + elements + connections)
 - Component system for game objects (characters, items, locations)
 - Built-in scripting language (Arcscript) for logic and conditions
@@ -50,13 +51,14 @@ Arcweave is a **web-based, collaborative game design tool** focused on narrative
 
 **Key differentiator:** Cloud-native, zero-install, real-time collaboration. Emphasizes accessibility and speed over feature depth. Especially popular for game jams (72-hour events).
 
-----
+---
 
 ## 3. Boards (Canvas)
 
 Boards are the **canvases** where you design story flowcharts. They are the primary organizational unit.
 
 ### Features
+
 - Visual drag-and-drop canvas for placing elements, connections, branches, jumpers
 - **Multiple boards per project** - use different boards for different chapters, scenes, dialogue trees, mechanics
 - **Board folders** - group related boards (e.g., "Dialogue Trees", "Act 1", "Puzzles")
@@ -64,6 +66,7 @@ Boards are the **canvases** where you design story flowcharts. They are the prim
 - Notes and comments can be placed on boards (not part of flow)
 
 ### Organization Pattern
+
 ```
 Project
 ├── Act 1/
@@ -81,6 +84,7 @@ Project
 ```
 
 ### Key Difference from articy:draft
+
 articy uses **nested flow** (nodes contain inner flowcharts at infinite depth). Arcweave uses **flat boards** with jumpers to link between them. This is simpler but doesn't provide the same hierarchical depth.
 
 ---
@@ -90,19 +94,21 @@ articy uses **nested flow** (nodes contain inner flowcharts at infinite depth). 
 Elements are the **core content nodes** of Arcweave - each represents a story beat, dialogue line, scene, or game state.
 
 ### Properties
-| Property         | Description                                                 |
-|------------------|-------------------------------------------------------------|
-| Title            | Element name (supports rich text)                           |
-| Content          | Rich text body (the actual narrative content)               |
-| Cover image      | Visual thumbnail/background (drag image asset onto element) |
-| Cover video      | Video asset as cover (with playback settings)               |
-| Audio            | Attached audio assets (music, VO, SFX)                      |
-| Color            | Color theme (right-click to change)                         |
-| Components       | Attached component references (characters, items)           |
-| Arcscript        | Inline code segments for logic/dynamic text                 |
-| Size             | Auto-resize or manual resize via corner/edge drag           |
+
+| Property    | Description                                                 |
+| ----------- | ----------------------------------------------------------- |
+| Title       | Element name (supports rich text)                           |
+| Content     | Rich text body (the actual narrative content)               |
+| Cover image | Visual thumbnail/background (drag image asset onto element) |
+| Cover video | Video asset as cover (with playback settings)               |
+| Audio       | Attached audio assets (music, VO, SFX)                      |
+| Color       | Color theme (right-click to change)                         |
+| Components  | Attached component references (characters, items)           |
+| Arcscript   | Inline code segments for logic/dynamic text                 |
+| Size        | Auto-resize or manual resize via corner/edge drag           |
 
 ### Rich Text Formatting
+
 - **Bold** (`**text**` or Ctrl+B)
 - **Italic** (`*text*` or Ctrl+I)
 - **Underline** (Ctrl+U)
@@ -111,7 +117,9 @@ Elements are the **core content nodes** of Arcweave - each represents a story be
 - **@Mentions** (reference components inline, stays updated if component name changes)
 
 ### Arcscript Segments in Content
+
 Elements can contain inline code segments mixed with narrative text:
+
 ```
 You enter the dark cave.
 { torch_lit = true }
@@ -129,6 +137,7 @@ You enter the dark cave.
 Connections are **arrows** linking elements, branches, and jumpers to define narrative flow.
 
 ### Features
+
 - Drag from element edge to create connection
 - **Labels** - double-click connection to add text (appears as option button in Play Mode)
 - Labels support Arcscript segments (dynamic text, conditions)
@@ -137,6 +146,7 @@ Connections are **arrows** linking elements, branches, and jumpers to define nar
 - Visual arrows show flow direction
 
 ### Play Mode Behavior
+
 - Each outgoing connection from an element renders as a **choice button**
 - The label text becomes the button text
 - If no label, a default "Continue" or arrow button appears
@@ -149,6 +159,7 @@ Connections are **arrows** linking elements, branches, and jumpers to define nar
 Branches are the **logic gates** of Arcweave - they evaluate conditions and direct flow accordingly.
 
 ### Structure
+
 ```
 if condition
   → Connection to Element A
@@ -159,6 +170,7 @@ else
 ```
 
 ### Rules
+
 - Exactly **1 mandatory `if`** condition
 - **0 or more `elseif`** conditions (unlimited)
 - **0 or 1 `else`** (optional, catch-all)
@@ -168,6 +180,7 @@ else
 - Best practice: use `else` for error/unexpected cases, not for the last logical outcome
 
 ### Example
+
 ```
 if player_has_key
   → "Unlock the door" (Element B)
@@ -178,6 +191,7 @@ else
 ```
 
 ### Visual
+
 - Branch nodes appear as diamond-shaped items on the board
 - Each output is labeled with its condition
 - In Play Mode, only satisfied conditions render as available options
@@ -189,12 +203,14 @@ else
 Jumpers are **links or aliases** that connect distant elements, even across different boards.
 
 ### Features
+
 - Link to any element in any board
 - Creates visual reference on current board
 - Enables cross-board flow without duplicating elements
 - Essential for multi-board project organization
 
 ### Use Cases
+
 - Connecting scenes across different boards
 - Creating loops back to earlier content
 - Linking dialogue trees to main quest flow
@@ -207,6 +223,7 @@ Jumpers are **links or aliases** that connect distant elements, even across diff
 Components are Arcweave's system for modeling game objects with structured data.
 
 ### What Components Represent
+
 - Characters (PCs, NPCs)
 - Items (weapons, keys, potions)
 - Locations (towns, dungeons)
@@ -214,39 +231,47 @@ Components are Arcweave's system for modeling game objects with structured data.
 - Any abstract concept the project needs
 
 ### Component Structure
+
 | Property    | Description                                      |
-|-------------|--------------------------------------------------|
+| ----------- | ------------------------------------------------ |
 | Title       | Component name                                   |
 | Cover Image | Visual thumbnail (uploaded or from icon library) |
 | Attributes  | Custom data fields (4 types available)           |
 
 ### Attribute Types
+
 Components support 4 types of attributes (exact types not fully documented in search results, but include):
+
 - Text fields
 - Component references (attach other components for relationships/inventory)
 - Custom values
 
 ### Icon Library
+
 - **4,000+ free game symbols and icons** built into Arcweave
 - Can also upload personal artwork for component covers
 
 ### Organization
+
 - Component folders and subfolders in sidebar
 - Create custom folder hierarchy
 - Searchable and browsable
 
 ### Attaching Components to Elements
+
 - Drag component from sidebar onto element
 - Creates visual reference in the element
 - Component renders in Play Mode alongside content
 - @Mention system keeps names synchronized (rename component -> all mentions update)
 
 ### Component References
+
 - Track where a component is used across the project
 - See all elements and other components that reference it
 - Quick navigation to references
 
 ### Export
+
 - Components and their attributes are included in JSON export
 - Attributes used as metadata for engine integration
 - Stable, documented JSON structure
@@ -258,30 +283,34 @@ Components support 4 types of attributes (exact types not fully documented in se
 Arcweave's built-in scripting language for adding logic, conditions, and dynamic content.
 
 ### Usage Contexts
+
 1. **Conditions in branches** - if/elseif/else flow control
 2. **Segments in elements** - inline code within narrative content
 3. **Segments in connection labels** - dynamic option text
 
 ### Data Types
-| Type     | Examples              |
-|----------|-----------------------|
-| Numeric  | `5`, `3.14`, `-1`     |
-| String   | `"Tim"`, `"hello"`    |
-| Boolean  | `true`, `false`       |
+
+| Type    | Examples           |
+| ------- | ------------------ |
+| Numeric | `5`, `3.14`, `-1`  |
+| String  | `"Tim"`, `"hello"` |
+| Boolean | `true`, `false`    |
 
 ### Assignment Operators
-| Operator | Effect                |
-|----------|-----------------------|
-| `=`      | Assign                |
-| `+=`     | Add and assign        |
-| `-=`     | Subtract and assign   |
-| `*=`     | Multiply and assign   |
-| `/=`     | Divide and assign     |
-| `%=`     | Modulo and assign     |
+
+| Operator | Effect              |
+| -------- | ------------------- |
+| `=`      | Assign              |
+| `+=`     | Add and assign      |
+| `-=`     | Subtract and assign |
+| `*=`     | Multiply and assign |
+| `/=`     | Divide and assign   |
+| `%=`     | Modulo and assign   |
 
 ### Arithmetic Operators
+
 | Operator | Name           |
-|----------|----------------|
+| -------- | -------------- |
 | `+`      | Addition       |
 | `-`      | Subtraction    |
 | `*`      | Multiplication |
@@ -290,8 +319,9 @@ Arcweave's built-in scripting language for adding logic, conditions, and dynamic
 | `( )`    | Grouping       |
 
 ### Conditional Operators
+
 | Operator        | Meaning               |
-|-----------------|-----------------------|
+| --------------- | --------------------- |
 | `==` / `is`     | Equality              |
 | `!=` / `is not` | Inequality            |
 | `>`             | Greater than          |
@@ -300,13 +330,15 @@ Arcweave's built-in scripting language for adding logic, conditions, and dynamic
 | `<=`            | Less than or equal    |
 
 ### Logical Operators
-| Operator       | Meaning       |
-|----------------|---------------|
-| `&&` / `and`   | Both true     |
-| `              |               |` / `or`    | At least one true      |
-| `!` / `not`    | Negation      |
+
+| Operator     | Meaning   |
+| ------------ | --------- | ------ | ----------------- |
+| `&&` / `and` | Both true |
+| `            |           | `/`or` | At least one true |
+| `!` / `not`  | Negation  |
 
 ### Conditional Statements
+
 ```arcscript
 if age >= 18
   Look at you! All grown up!
@@ -323,7 +355,7 @@ endif
 ### Built-in Functions
 
 | Function                | Returns                                        |
-|-------------------------|------------------------------------------------|
+| ----------------------- | ---------------------------------------------- |
 | `abs(n)`                | Absolute value                                 |
 | `sqr(n)`                | Square of n                                    |
 | `sqrt(n)`               | Square root of n                               |
@@ -339,6 +371,7 @@ endif
 | `resetVisits()`         | Reset all element visit counts to 0            |
 
 ### roll() - Dice Rolling
+
 ```arcscript
 damage = roll(12)           // 1d12
 dexterity = roll(6, 3)      // 3d6
@@ -350,12 +383,14 @@ endif
 ```
 
 ### show() - Dynamic Text
+
 ```arcscript
 show("Your score is ", score, "/", max_score, ".")
 // Output: "Your score is 3/256."
 ```
 
 ### visits() - Element Visit Tracking
+
 ```arcscript
 if visits(examine_the_painting) > 1
   You make a mental note of the knight's name.
@@ -368,6 +403,7 @@ endif
 ```
 
 ### Error Handling
+
 - Compile-time errors show exclamation mark at element's lower-right corner
 - Hover to see error description
 - Auto-complete while typing (variables, functions, operators)
@@ -378,6 +414,7 @@ endif
 ## 10. Variables
 
 ### Global Variables
+
 - Declared in **Global Variables** panel (bottom-left sidebar)
 - Must be declared before use in any script or branch
 - Each variable has: name, type, initial value
@@ -385,11 +422,13 @@ endif
 - Initial value = value at Play Mode start
 
 ### Variable Management
+
 - Create, rename, delete in sidebar panel
 - View and edit all variables in one place
 - Variables accessible anywhere in Arcscript
 
 ### Scope
+
 - All variables are **global** (no local/scoped variables)
 - Accessible from any board, element, branch, or connection
 
@@ -400,6 +439,7 @@ endif
 Arcweave's built-in **interactive prototype runner** - test stories without a game engine.
 
 ### Features
+
 - Press **Play** to instantly run the project as a choice-based game
 - Navigate through elements by clicking choice buttons (connection labels)
 - **Debugger** panel shows all variables with before/after values per element
@@ -410,12 +450,14 @@ Arcweave's built-in **interactive prototype runner** - test stories without a ga
 - Components attached to elements render visually
 
 ### Sharing
+
 - Share prototype via **public or private link**
 - Anyone with the link can play through the story
 - **Embed Play Mode** (Nov 2025) - embed directly into any webpage
 - Auto-sync: updates in Arcweave reflected automatically in embedded version
 
 ### Debugging
+
 - Variable state panel: see values before and after each element
 - Track which branches were taken and why
 - Catch logic errors before engine integration
@@ -428,14 +470,16 @@ Arcweave's built-in **interactive prototype runner** - test stories without a ga
 Transform Play Mode's appearance with CSS.
 
 ### How It Works
+
 - Enter Play Mode -> click palette icon (Style Editor)
 - Write CSS directly in the editor panel
 - **Real-time preview** - changes appear instantly
 - Save CSS to project
 
 ### Targetable CSS Classes
+
 | Class                                      | Targets                       |
-|--------------------------------------------|-------------------------------|
+| ------------------------------------------ | ----------------------------- |
 | `.prototype__wrapper`                      | Outer container               |
 | `.prototype__body`                         | Text content + option buttons |
 | `.prototype__text`                         | Text content only             |
@@ -444,13 +488,16 @@ Transform Play Mode's appearance with CSS.
 | `.prototype__components .comp`             | Attached components           |
 
 ### Visual Novel Mode
+
 Can be styled into a full **visual novel** interface:
+
 - Full-screen background images
 - Character sprites at bottom
 - Dialogue box with scrolling text
 - "Hijack" formatting tools (bold/italic/underline generate HTML tags targetable with CSS)
 
 ### Templates
+
 - **Visual Novel template** (Sep 2025) - pre-built style for VN format
 - **Serious Games template** - cybersecurity awareness scenario format
 
@@ -459,19 +506,22 @@ Can be styled into a full **visual novel** interface:
 ## 13. Assets & Multimedia
 
 ### Asset Types
-| Type    | Supported Formats  | Usage                                           |
-|---------|--------------------|-------------------------------------------------|
-| Images  | Common formats     | Element covers, component covers, board visuals |
-| Audio   | Common formats     | Music, voice-over, SFX on elements              |
-| Video   | Common formats     | Element covers with playback settings           |
+
+| Type   | Supported Formats | Usage                                           |
+| ------ | ----------------- | ----------------------------------------------- |
+| Images | Common formats    | Element covers, component covers, board visuals |
+| Audio  | Common formats    | Music, voice-over, SFX on elements              |
+| Video  | Common formats    | Element covers with playback settings           |
 
 ### Image Assets
+
 - Upload personal artwork or use built-in icon library (4,000+ icons)
 - Drag onto element to set as cover
 - Thumbnail on board, full-size in Play Mode
 - AI Image Generator can create images from prompts
 
 ### Audio Assets
+
 - Attach to elements (drag from Assets sidebar)
 - Play automatically in Play Mode when element renders
 - Configurable: loop or one-shot
@@ -479,11 +529,13 @@ Can be styled into a full **visual novel** interface:
 - Remove by dragging to empty board area (doesn't delete asset)
 
 ### Video Assets (Jun 2025)
+
 - Set as element cover
 - Playback settings: autoplay, show controls, loop
 - Plays in Play Mode
 
 ### Asset Management
+
 - **Assets tab** in sidebar
 - Create folders and subfolders
 - Deleting asset removes all attachments throughout project
@@ -496,6 +548,7 @@ Can be styled into a full **visual novel** interface:
 Arcweave invested heavily in AI features through 2025, powered by their Galaxy Interactive funding.
 
 ### Element Generator (Mar 2025)
+
 - Right-click element -> AI -> "Generate element"
 - Enter prompt describing desired content
 - AI generates element with **title and content**
@@ -503,11 +556,13 @@ Arcweave invested heavily in AI features through 2025, powered by their Galaxy I
 - Useful for overcoming writer's block
 
 ### Element Enhancer (Mar 2025)
+
 - Right-click existing element -> AI -> "Enhance"
 - AI refines and improves existing content
 - Maintains creative direction while polishing
 
 ### Image Generator (Mar 2025)
+
 - Generate images from text prompts
 - Select **size and orientation**
 - **AI Settings guidelines** - set project-wide art style rules
@@ -516,6 +571,7 @@ Arcweave invested heavily in AI features through 2025, powered by their Galaxy I
 - Generated images usable as element/component covers
 
 ### Design Assistant (Mar 2025)
+
 - Project-aware **AI chat assistant**
 - Analyzes project structure
 - Suggests improvements
@@ -523,17 +579,20 @@ Arcweave invested heavily in AI features through 2025, powered by their Galaxy I
 - Context-aware (understands your specific project)
 
 ### Cover Generator
+
 - Auto-generate covers for elements and components
 - Style guide ensures visual consistency
 - Matches story mood automatically
 
 ### Experimental: AI Drama Manager
+
 - Research project exploring LLM + human-authored story frameworks
 - Adaptive, responsive narratives
 - Maintains coherence while allowing player freedom
 - Not yet a production feature
 
 ### Control
+
 - AI features are tools, not requirements
 - User maintains full creative control
 - Can be used selectively per element
@@ -543,6 +602,7 @@ Arcweave invested heavily in AI features through 2025, powered by their Galaxy I
 ## 15. Collaboration
 
 ### Real-Time Editing
+
 - Multiple users edit the **same project simultaneously**
 - See teammates' cursors moving in real-time
 - Changes appear instantly for all collaborators
@@ -550,65 +610,74 @@ Arcweave invested heavily in AI features through 2025, powered by their Galaxy I
 - No merge conflicts to resolve
 
 ### Comments
+
 - Leave comments directly on board elements
 - Tag collaborators with @mentions
 - Get notified of replies
 - Use for feedback, questions, task assignments
 
 ### Notes
+
 - Sticky-style notes on boards
 - For communication, reminders, context
 - Not part of the narrative flow (cannot be connected)
 - Separate from elements and connections
 
 ### In-App Chat
+
 - Built-in chat to communicate without leaving Arcweave
 - Eliminates switching to Discord/Slack for quick discussions
 
 ### Access Levels
-| Role            | Can Do                                   |
-|-----------------|------------------------------------------|
-| Owner           | Full control over workspace and projects |
-| Editor          | Create, edit, delete content             |
-| Commenter       | View and leave comments                  |
-| Viewer          | View and play only                       |
+
+| Role      | Can Do                                   |
+| --------- | ---------------------------------------- |
+| Owner     | Full control over workspace and projects |
+| Editor    | Create, edit, delete content             |
+| Commenter | View and leave comments                  |
+| Viewer    | View and play only                       |
 
 ---
 
 ## 16. Workspaces, Roles & Permissions
 
 ### Workspace Model
+
 - Each workspace is an **independent environment**
 - Contains: projects, members, settings, billing, API keys
 - One user account can belong to multiple workspaces
 - Three types: Basic, Pro, Team
 
 ### Member Types
-| Type     | Access                                   |
-|----------|------------------------------------------|
-| Member   | Global access to all workspace projects  |
-| Guest    | Access to specific invited projects only |
+
+| Type   | Access                                   |
+| ------ | ---------------------------------------- |
+| Member | Global access to all workspace projects  |
+| Guest  | Access to specific invited projects only |
 
 ### Default Roles
+
 - **Owner** - full control (billing, settings, members)
 - **Editor** - create and edit content
 - **Viewer** - view and play only
 
 ### Custom Roles (Team plan only)
+
 - Create named custom roles
 - Toggle individual permissions on/off
 - Assign to any member
 - Fine-grained access control
 
 ### Workspace Dashboard Sections
-| Section   | Purpose                                     |
-|-----------|---------------------------------------------|
-| Projects  | View and manage all projects                |
-| People    | Manage members, guests, invitations         |
-| Roles     | View/create roles and permissions           |
-| Settings  | Name, icon, billing email                   |
-| Billing   | History and usage monitoring                |
-| API       | Manage API keys                             |
+
+| Section  | Purpose                             |
+| -------- | ----------------------------------- |
+| Projects | View and manage all projects        |
+| People   | Manage members, guests, invitations |
+| Roles    | View/create roles and permissions   |
+| Settings | Name, icon, billing email           |
+| Billing  | History and usage monitoring        |
+| API      | Manage API keys                     |
 
 ---
 
@@ -617,6 +686,7 @@ Arcweave invested heavily in AI features through 2025, powered by their Galaxy I
 **Status:** Launched January 2026 (was in beta through 2025). Available on Team plan.
 
 ### Features
+
 - Multi-language content management in one workspace
 - All languages viewable side-by-side
 - Translators see content in context (understand full interaction flow)
@@ -626,12 +696,14 @@ Arcweave invested heavily in AI features through 2025, powered by their Galaxy I
 - Updates go live instantly (no content duplication)
 
 ### Voice Over Workflow
+
 - Export structured scripts for VO recording
 - Create tracking spreadsheets for recording engineers
 - Content and audio synchronized in export
 - String IDs for localization systems
 
 ### Compared to articy:draft
+
 - Less mature (just launched, articy has had it since v4.0)
 - No DeepL integration
 - No localization state management (final/in-progress/outdated)
@@ -644,17 +716,20 @@ Arcweave invested heavily in AI features through 2025, powered by their Galaxy I
 ## 18. Exports & Imports
 
 ### Export Formats
-| Format          | Plan Required   | Description                                                                        |
-|-----------------|-----------------|------------------------------------------------------------------------------------|
-| JSON            | All             | Full project data (elements, connections, branches, variables, components, assets) |
-| CSV             | All             | Spreadsheet format, produces ZIP, HTML-encoded text                                |
-| XLSX (Excel)    | Pro+            | One sheet per item type                                                            |
-| JPEG/PNG/PDF    | All             | Board visual export (PDF has ink-friendly mode)                                    |
-| ZIP             | All             | Project data + all assets bundled                                                  |
-| Markdown        | All (Jan 2026)  | For sharing, reviews, documentation                                                |
+
+| Format       | Plan Required  | Description                                                                        |
+| ------------ | -------------- | ---------------------------------------------------------------------------------- |
+| JSON         | All            | Full project data (elements, connections, branches, variables, components, assets) |
+| CSV          | All            | Spreadsheet format, produces ZIP, HTML-encoded text                                |
+| XLSX (Excel) | Pro+           | One sheet per item type                                                            |
+| JPEG/PNG/PDF | All            | Board visual export (PDF has ink-friendly mode)                                    |
+| ZIP          | All            | Project data + all assets bundled                                                  |
+| Markdown     | All (Jan 2026) | For sharing, reviews, documentation                                                |
 
 ### JSON Export Structure
+
 Includes:
+
 - All elements with content, covers, audio references
 - All connections with labels
 - All branches with conditions
@@ -665,6 +740,7 @@ Includes:
 - Board structure and metadata
 
 ### Import
+
 - No specific import formats documented (e.g., no Final Draft import)
 - Projects can be restored via **Project History** (Dec 2025)
 
@@ -673,6 +749,7 @@ Includes:
 ## 19. Game Engine Integration
 
 ### Unity Plugin
+
 - **Free** plugin on Unity Asset Store + GitHub
 - Import from JSON file (all plans) or Web API (Team)
 - Click **Generate Project** to import
@@ -680,6 +757,7 @@ Includes:
 - Also integrates with **Dialogue System for Unity** (Pixel Crushers) via built-in Arcweave importer
 
 ### Unreal Engine Plugin
+
 - **Free** plugin (UE 5.0+)
 - Import from JSON (all plans) or Web API (Team)
 - Primary class: `UArcweaveSubsystem`
@@ -688,6 +766,7 @@ Includes:
 - Available on GitHub (open source)
 
 ### Godot Engine Plugin
+
 - **Free** plugin (Godot 4.0+, **.NET version required**)
 - Import from JSON (all plans) or Web API (Team)
 - Custom `ArcweaveNode` class (inherits Godot Node)
@@ -695,11 +774,13 @@ Includes:
 - Works from both GDScript and C# via cross-language scripting
 
 ### Defold Integration
+
 - Community plugin **DefArc** (third-party)
 - JSON parser and helper module for Lua
 - Branching, interactive, or linear conversations
 
 ### General Pattern
+
 ```
 Arcweave → Export JSON → Engine Plugin → Runtime Data
                 or
@@ -713,18 +794,21 @@ Arcweave → Web API → Engine Plugin → Runtime Data (Team only)
 **Available on Team plan only.**
 
 ### Features
+
 - RESTful API with token authentication
 - Fetch latest project state at runtime
 - Sync updates between Arcweave and game without manual exports
 - API tokens managed in workspace dashboard
 
 ### Endpoints
+
 ```
 GET /api/{project_hash}/json    → Full project as JSON
 GET /api/{project_hash}/godot   → Transpiled .gd format
 ```
 
 ### Use Cases
+
 - CI/CD integration (automated builds)
 - Live content updates in game
 - Custom tooling and pipelines
@@ -735,16 +819,19 @@ GET /api/{project_hash}/godot   → Transpiled .gd format
 ## 21. Search, Notes & Comments
 
 ### Search
+
 - **Global search** across all project items
 - Find boards, elements, notes, components, and more
 - Instant results
 
 ### Notes
+
 - Sticky-note style items on boards
 - Not connected to flow (purely informational)
 - For team communication, reminders, design notes
 
 ### Comments
+
 - Attached to specific elements or boards
 - @Mention team members
 - Notification on replies
@@ -757,26 +844,27 @@ GET /api/{project_hash}/godot   → Transpiled .gd format
 ### Coming Next (Planned)
 
 | Feature               | Description                                         |
-|-----------------------|-----------------------------------------------------|
+| --------------------- | --------------------------------------------------- |
 | Document boards       | Write in article format (long-form text)            |
 | Component templates   | Attribute inheritance from multiple templates       |
 | Minimap               | Board overview and quick navigation                 |
 | Screenplay formatting | Enable screenplay text formatting in elements/notes |
 
 ### Recent Updates (Completed)
-| Feature                       | Date       | Description                               |
-|-------------------------------|------------|-------------------------------------------|
-| Localization                  | Jan 2026   | Multi-language translation & export       |
-| Markdown export               | Jan 2026   | For sharing, reviews, documentation       |
-| Project History               | Dec 2025   | Revert to previous project states         |
-| Embed Play Mode               | Nov 2025   | Embed play mode in external webpages      |
-| Keyboard shortcuts            | Sep 2025   | Mouse-free navigation/editing             |
-| Visual Novel template         | Sep 2025   | Pre-built style for visual novel format   |
-| Video assets                  | Jun 2025   | Upload/embed video with playback settings |
-| Play Mode Style Editor        | May 2025   | CSS customization for prototypes          |
-| AI Image Generator            | Mar 2025   | Generate images from text prompts         |
-| AI Element Generator/Enhancer | Mar 2025   | AI-assisted content creation/refinement   |
-| AI Design Assistant           | Mar 2025   | Project-aware AI chat                     |
+
+| Feature                       | Date     | Description                               |
+| ----------------------------- | -------- | ----------------------------------------- |
+| Localization                  | Jan 2026 | Multi-language translation & export       |
+| Markdown export               | Jan 2026 | For sharing, reviews, documentation       |
+| Project History               | Dec 2025 | Revert to previous project states         |
+| Embed Play Mode               | Nov 2025 | Embed play mode in external webpages      |
+| Keyboard shortcuts            | Sep 2025 | Mouse-free navigation/editing             |
+| Visual Novel template         | Sep 2025 | Pre-built style for visual novel format   |
+| Video assets                  | Jun 2025 | Upload/embed video with playback settings |
+| Play Mode Style Editor        | May 2025 | CSS customization for prototypes          |
+| AI Image Generator            | Mar 2025 | Generate images from text prompts         |
+| AI Element Generator/Enhancer | Mar 2025 | AI-assisted content creation/refinement   |
+| AI Design Assistant           | Mar 2025 | Project-aware AI chat                     |
 
 ---
 

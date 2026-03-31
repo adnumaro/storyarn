@@ -54,7 +54,7 @@ The config panel (`lib/storyarn_web/components/block_components/config_panel.ex`
 #### Universal Fields (all block types)
 
 | Field           | Control           | Notes                                             |
-|-----------------|-------------------|---------------------------------------------------|
+| --------------- | ----------------- | ------------------------------------------------- |
 | Type            | Badge (read-only) | Shows block type + Inherited/Detached tag         |
 | Scope           | Radio buttons (2) | "This sheet only" / "This sheet and all children" |
 | Required        | Toggle            | Only when scope = "children"                      |
@@ -65,17 +65,17 @@ The config panel (`lib/storyarn_web/components/block_components/config_panel.ex`
 
 #### Type-Specific Fields
 
-| Block Type     | Extra Fields                                                       | Complexity   |
-|----------------|--------------------------------------------------------------------|--------------|
-| `text`         | Placeholder, Max Length                                            | Low          |
-| `rich_text`    | Placeholder, Max Length                                            | Low          |
-| `number`       | Placeholder, Min, Max, Step                                        | Low          |
-| `boolean`      | Mode (two/tri-state), Custom Labels (true/false/neutral)           | Medium       |
-| `select`       | Placeholder, Max Selections*, Options list (key+label, add/remove) | Medium       |
-| `multi_select` | Placeholder, Max Selections, Options list                          | Medium       |
-| `date`         | Min Date, Max Date                                                 | Low          |
-| `reference`    | Allowed Types (sheet/flow checkboxes)                              | Low          |
-| `table`        | (nothing extra — columns managed inline already)                   | **None**     |
+| Block Type     | Extra Fields                                                        | Complexity |
+| -------------- | ------------------------------------------------------------------- | ---------- |
+| `text`         | Placeholder, Max Length                                             | Low        |
+| `rich_text`    | Placeholder, Max Length                                             | Low        |
+| `number`       | Placeholder, Min, Max, Step                                         | Low        |
+| `boolean`      | Mode (two/tri-state), Custom Labels (true/false/neutral)            | Medium     |
+| `select`       | Placeholder, Max Selections\*, Options list (key+label, add/remove) | Medium     |
+| `multi_select` | Placeholder, Max Selections, Options list                           | Medium     |
+| `date`         | Min Date, Max Date                                                  | Low        |
+| `reference`    | Allowed Types (sheet/flow checkboxes)                               | Low        |
+| `table`        | (nothing extra — columns managed inline already)                    | **None**   |
 
 ### Current Interaction Flow
 
@@ -143,6 +143,7 @@ Every block's hover toolbar contains these base elements:
 ```
 
 **Which items show conditionally:**
+
 - 🔒 Constant toggle: only for variable-capable types
 - 📋 Copy reference: only when not constant
 - ⬆⬇ Move: always (existing reorder functionality)
@@ -305,6 +306,7 @@ Toolbar:
 ### 4.8 Table Block — No Toolbar Config
 
 Table blocks have **no config popover**. All configuration is already inline:
+
 - Column headers → click opens column menu (type, constraints, delete)
 - Row names → inline editable
 - Cells → inline editable
@@ -525,7 +527,7 @@ The hover toolbar for table only shows: drag handle, type badge, label edit, mov
 ### Components (Modify/Create)
 
 | File                                           | Action     | Notes                                             |
-|------------------------------------------------|------------|---------------------------------------------------|
+| ---------------------------------------------- | ---------- | ------------------------------------------------- |
 | `components/block_components/config_panel.ex`  | **DELETE** | Entire file removed in Phase 4                    |
 | `components/block_components/block_toolbar.ex` | **CREATE** | New hover toolbar component                       |
 | `components/block_components.ex`               | Modify     | Remove `config_panel` import, add `block_toolbar` |
@@ -534,7 +536,7 @@ The hover toolbar for table only shows: drag handle, type badge, label edit, mov
 ### LiveView Handlers
 
 | File                                             | Action     | Notes                                                |
-|--------------------------------------------------|------------|------------------------------------------------------|
+| ------------------------------------------------ | ---------- | ---------------------------------------------------- |
 | `sheet_live/handlers/config_panel_handlers.ex`   | **DELETE** | Events move to block toolbar handler                 |
 | `sheet_live/handlers/block_toolbar_handlers.ex`  | **CREATE** | New handler for toolbar+popover events               |
 | `sheet_live/components/content_tab.ex`           | Modify     | Remove `configuring_block` assign, `show_block_menu` |
@@ -543,14 +545,14 @@ The hover toolbar for table only shows: drag handle, type badge, label edit, mov
 ### JS / Hooks
 
 | File                                  | Action     | Notes                                                 |
-|---------------------------------------|------------|-------------------------------------------------------|
+| ------------------------------------- | ---------- | ----------------------------------------------------- |
 | `assets/js/hooks/block_toolbar.js`    | **CREATE** | Hook for toolbar + popover management via floating-ui |
 | `assets/js/utils/floating_popover.js` | Reuse      | Existing utility for body-appended popovers           |
 
 ### Helpers
 
 | File                                   | Action   | Notes                               |
-|----------------------------------------|----------|-------------------------------------|
+| -------------------------------------- | -------- | ----------------------------------- |
 | `sheet_live/helpers/config_helpers.ex` | Evaluate | May be deletable or reduced         |
 | `sheet_live/helpers/block_helpers.ex`  | Modify   | Remove `show_block_menu` references |
 
@@ -570,6 +572,7 @@ This avoids a risky big-bang replacement. At any point during development, the e
 ### Testing Checklist
 
 For each block type, verify:
+
 - [ ] All config fields accessible via toolbar/popover
 - [ ] Config changes save correctly (auto-save on change)
 - [ ] Undo/redo works for config changes made via toolbar

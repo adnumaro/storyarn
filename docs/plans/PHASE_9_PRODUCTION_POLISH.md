@@ -11,6 +11,7 @@
 ## Overview
 
 This phase ensures Storyarn is ready for production use:
+
 - Performance profiling and optimization
 - Error monitoring and logging (Sentry, AppSignal)
 - Production deployment (fly.io)
@@ -31,12 +32,14 @@ This phase ensures Storyarn is ready for production use:
 #### 9.1.1 Database Optimization
 
 **Index Analysis:**
+
 - [ ] Run `EXPLAIN ANALYZE` on critical queries
 - [ ] Add missing indexes for common access patterns
 - [ ] Review and optimize N+1 queries
 - [ ] Add composite indexes for filtered queries
 
 **Critical Queries to Optimize:**
+
 ```sql
 -- Page tree loading (hierarchical query)
 SELECT * FROM pages WHERE project_id = ? AND parent_id IS NULL ORDER BY position;
@@ -57,6 +60,7 @@ SELECT * FROM entity_references WHERE target_type = ? AND target_id = ?;
 ```
 
 **Recommended Indexes:**
+
 ```elixir
 # Sheets tree traversal
 create index(:sheets, [:project_id, :parent_id, :position])
@@ -83,6 +87,7 @@ create index(:assets, [:project_id, :content_type])
 - [ ] Implement cursor-based pagination for infinite scroll
 
 **Preload Strategy:**
+
 ```elixir
 # Bad: Over-preloading
 Repo.get!(Flow, id) |> Repo.preload([:nodes, :connections, project: :workspace])
@@ -95,16 +100,19 @@ Repo.get!(Flow, id) |> Repo.preload([:nodes, :connections])
 #### 9.1.3 Caching Strategy
 
 **ETS Cache for:**
+
 - [ ] User sessions (already using Phoenix token)
 - [ ] Rate limiting counters (already implemented)
 - [ ] Frequently accessed project settings
 
 **Redis Cache for:**
+
 - [ ] Collaboration presence (already using)
 - [ ] Export job status
 - [ ] API rate limiting
 
 **Application-level Cache:**
+
 ```elixir
 # lib/storyarn/cache.ex
 defmodule Storyarn.Cache do
@@ -124,6 +132,7 @@ end
 #### 9.1.4 Background Jobs
 
 **Oban Configuration:**
+
 ```elixir
 # config/config.exs
 config :storyarn, Oban,
@@ -146,6 +155,7 @@ config :storyarn, Oban,
 ```
 
 **Background Jobs to Implement:**
+
 - [ ] `ExportWorker` - Async project exports
 - [ ] `ImportWorker` - Async project imports
 - [ ] `AssetProcessingWorker` - Image thumbnails, optimization
@@ -165,6 +175,7 @@ config :storyarn, Oban,
 - [ ] Minimize socket payload size
 
 **Stream Usage:**
+
 ```elixir
 # In mount
 socket = socket
@@ -187,10 +198,11 @@ socket = socket
 - [ ] Use dynamic imports for large modules
 
 **Dynamic Import Pattern:**
+
 ```javascript
 // Lazy load Rete.js
 async function initFlowEditor(element) {
-  const { createEditor } = await import('./flow_canvas/editor.js');
+  const { createEditor } = await import("./flow_canvas/editor.js");
   return createEditor(element);
 }
 ```
@@ -203,6 +215,7 @@ async function initFlowEditor(element) {
 - [ ] Optimize images on upload (already using libvips)
 
 **Phoenix Static Configuration:**
+
 ```elixir
 # endpoint.ex
 plug Plug.Static,
@@ -283,6 +296,7 @@ end
 #### 9.4.1 Metrics to Track
 
 **Business Metrics:**
+
 - Active users (DAU, WAU, MAU)
 - Projects created per day
 - Flows edited per day
@@ -290,6 +304,7 @@ end
 - Collaboration sessions
 
 **Technical Metrics:**
+
 - Request latency (p50, p95, p99)
 - Database query time
 - WebSocket message rate
@@ -324,6 +339,7 @@ end
 #### 9.4.3 Dashboard Setup
 
 **Key Dashboards:**
+
 1. **Overview** - Request rate, error rate, latency
 2. **Database** - Query time, pool usage, slow queries
 3. **WebSockets** - Connected users, message rate
@@ -358,7 +374,7 @@ end
 #### 9.5.2 Log Levels
 
 | Level      | Usage                                            |
-|------------|--------------------------------------------------|
+| ---------- | ------------------------------------------------ |
 | `:debug`   | Detailed debugging (disabled in prod)            |
 | `:info`    | Normal operations (user actions, job completion) |
 | `:warning` | Unexpected but handled situations                |
@@ -418,6 +434,7 @@ AuditLog.log_action(user, :delete_project, project, %{project_name: project.name
 - [ ] Review WebSocket authentication
 
 **Security Headers:**
+
 ```elixir
 # lib/storyarn_web/plugs/security_headers.ex
 defmodule StoryarnWeb.Plugs.SecurityHeaders do
@@ -701,6 +718,7 @@ end
 #### 9.9.1 Common Operations
 
 **Deploy New Version:**
+
 ```bash
 # Deploy from main branch
 fly deploy
@@ -714,11 +732,13 @@ fly deploy --image registry.fly.io/storyarn:v1.2.2
 ```
 
 **Run Migrations:**
+
 ```bash
 fly ssh console -C "/app/bin/storyarn eval 'Storyarn.Release.migrate()'"
 ```
 
 **Scale Application:**
+
 ```bash
 # Scale to 3 instances
 fly scale count 3
@@ -728,12 +748,14 @@ fly scale memory 2048
 ```
 
 **View Logs:**
+
 ```bash
 fly logs
 fly logs --app storyarn-db  # Database logs
 ```
 
 **Database Backup:**
+
 ```bash
 # Fly Postgres automatic backups
 fly postgres backup list --app storyarn-db
@@ -745,6 +767,7 @@ fly postgres backup create --app storyarn-db
 #### 9.9.2 Incident Response
 
 **High Error Rate:**
+
 1. Check Sentry for error details
 2. Check application logs: `fly logs`
 3. Check database connectivity
@@ -753,12 +776,14 @@ fly postgres backup create --app storyarn-db
 6. Rollback if recent deploy: `fly deploy --image <previous>`
 
 **Database Issues:**
+
 1. Check Postgres logs: `fly logs --app storyarn-db`
 2. Check connection pool: `fly ssh console -C "/app/bin/storyarn eval 'Storyarn.Repo.query(\"SELECT count(*) FROM pg_stat_activity\")' "`
 3. Check slow queries in monitoring
 4. Restart if needed: `fly postgres restart --app storyarn-db`
 
 **Memory Issues:**
+
 1. Check memory usage: `fly status`
 2. Check for memory leaks in monitoring
 3. Restart instances: `fly apps restart`
@@ -819,24 +844,24 @@ fly postgres backup create --app storyarn-db
 
 ## Implementation Order
 
-| Order   | Task                        | Priority   | Testable Outcome        |
-|---------|-----------------------------|------------|-------------------------|
-| 1       | Database index optimization | High       | Faster queries          |
-| 2       | Sentry integration          | High       | Errors tracked          |
-| 3       | Structured logging          | High       | Logs queryable          |
-| 4       | Health endpoints            | High       | Health checks pass      |
-| 5       | Security headers            | High       | Headers present         |
-| 6       | Oban background jobs        | High       | Async exports work      |
-| 7       | Fly.io deployment           | High       | App deployed            |
-| 8       | Database backup automation  | High       | Backups running         |
-| 9       | LiveView streaming          | Medium     | Large lists perform     |
-| 10      | Application caching         | Medium     | Faster repeated queries |
-| 11      | Metrics dashboard           | Medium     | Metrics visible         |
-| 12      | JS bundle optimization      | Medium     | Smaller bundles         |
-| 13      | Audit logging               | Medium     | Actions tracked         |
-| 14      | Loading states/skeletons    | Low        | Better UX               |
-| 15      | Accessibility improvements  | Low        | WCAG compliance         |
-| 16      | User documentation          | Low        | Docs available          |
+| Order | Task                        | Priority | Testable Outcome        |
+| ----- | --------------------------- | -------- | ----------------------- |
+| 1     | Database index optimization | High     | Faster queries          |
+| 2     | Sentry integration          | High     | Errors tracked          |
+| 3     | Structured logging          | High     | Logs queryable          |
+| 4     | Health endpoints            | High     | Health checks pass      |
+| 5     | Security headers            | High     | Headers present         |
+| 6     | Oban background jobs        | High     | Async exports work      |
+| 7     | Fly.io deployment           | High     | App deployed            |
+| 8     | Database backup automation  | High     | Backups running         |
+| 9     | LiveView streaming          | Medium   | Large lists perform     |
+| 10    | Application caching         | Medium   | Faster repeated queries |
+| 11    | Metrics dashboard           | Medium   | Metrics visible         |
+| 12    | JS bundle optimization      | Medium   | Smaller bundles         |
+| 13    | Audit logging               | Medium   | Actions tracked         |
+| 14    | Loading states/skeletons    | Low      | Better UX               |
+| 15    | Accessibility improvements  | Low      | WCAG compliance         |
+| 16    | User documentation          | Low      | Docs available          |
 
 ---
 
@@ -870,4 +895,4 @@ fly postgres backup create --app storyarn-db
 
 ---
 
-*This phase should be completed before any public launch or beta release.*
+_This phase should be completed before any public launch or beta release._

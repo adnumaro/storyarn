@@ -9,6 +9,7 @@
 ## Overview
 
 This phase enhances the Sheets system to be more like Notion/articy:draft, adding:
+
 - Blocks as variables (accessible from flow scripting)
 - Reference system with shortcuts (`#shortcut.path`)
 - Bidirectional links (backlinks)
@@ -85,6 +86,7 @@ flows
 ### 7.5.1 Infrastructure Base
 
 #### 7.5.1.1 Shortcut System ✅ DONE
+
 - [x] Add `shortcut` field to `sheets` table (string, nullable)
 - [x] Add `shortcut` field to `flows` table (string, nullable)
 - [x] Add unique index on `(project_id, shortcut)` for both tables
@@ -95,12 +97,14 @@ flows
 - [x] UI: Shortcut field in flow header (inline editable with #prefix)
 
 **Shortcut Format:**
+
 ```
 Valid:   mc.jaime, loc.tavern, items.sword, quest-1
 Invalid: MC.Jaime (uppercase), my shortcut (spaces), @mention (special chars)
 ```
 
 #### 7.5.1.2 Sheet Avatar (replaces icon) ✅ DONE
+
 - [x] Add `avatar_asset_id` field to `sheets` table (FK to assets, nullable)
 - [x] Remove/deprecate `icon` field (migration to drop or keep for backwards compat)
 - [x] Preload avatar asset in sheet queries
@@ -111,6 +115,7 @@ Invalid: MC.Jaime (uppercase), my shortcut (spaces), @mention (special chars)
 - [x] Integration with existing Assets system (asset picker or direct upload)
 
 #### 7.5.1.3 Sheet Banner ✅ DONE
+
 - [x] Add `banner_asset_id` field to `sheets` table (FK to assets, nullable)
 - [x] Preload banner asset in sheet queries
 - [x] UI: Banner display at top of sheet (like Notion)
@@ -119,6 +124,7 @@ Invalid: MC.Jaime (uppercase), my shortcut (spaces), @mention (special chars)
 - [x] Integration with existing Assets system (direct upload via BannerUpload hook)
 
 #### 7.5.1.4 Sheet Tabs System ✅ DONE
+
 - [x] Refactor SheetLive.Show to support tabs
 - [x] Tab 1: **Content** - Current block editor view (default)
 - [x] Tab 2: **References** - Backlinks + version history (placeholder)
@@ -130,6 +136,7 @@ Invalid: MC.Jaime (uppercase), my shortcut (spaces), @mention (special chars)
 ### 7.5.2 Block Variables
 
 #### 7.5.2.1 Variable Fields
+
 - [x] Add `is_constant` field to `blocks` table (boolean, default: false)
   - **Note:** Inverted logic — `is_constant: false` means the block IS a variable
 - [x] Add `variable_name` field to `blocks` table (string, nullable)
@@ -139,12 +146,14 @@ Invalid: MC.Jaime (uppercase), my shortcut (spaces), @mention (special chars)
 - [x] Handle name collisions: "health", "health_2", "health_3"
 
 #### 7.5.2.2 Variable Configuration UI
+
 - [x] Add "Use as constant" toggle in block config panel (is_constant)
 - [x] Show generated variable name (read-only display)
 - [ ] Show full path: `#shortcut.variable_name` or `#sheets.path.variable_name`
 - [x] Visual indicator on constant blocks (green lock icon with tooltip)
 
 #### 7.5.2.3 Variable Access Path Resolution
+
 - [ ] Function to resolve variable path: `#mc.jaime.health` → block value
 - [ ] Support shortcut-based paths: `#shortcut.variable`
 - [ ] Support full paths: `#sheets.characters.jaime.health`
@@ -153,7 +162,7 @@ Invalid: MC.Jaime (uppercase), my shortcut (spaces), @mention (special chars)
 **Which blocks can be variables:**
 
 | Block Type   | Can be Variable | Value Type                 |
-|--------------|-----------------|----------------------------|
+| ------------ | --------------- | -------------------------- |
 | text         | Yes             | string                     |
 | rich_text    | Yes             | string (HTML)              |
 | number       | Yes             | number                     |
@@ -168,6 +177,7 @@ Invalid: MC.Jaime (uppercase), my shortcut (spaces), @mention (special chars)
 ### 7.5.3 New Block Types
 
 #### 7.5.3.1 Boolean Block ✅ DONE
+
 - [x] Add "boolean" to block types enum
 - [x] Schema: config `{label, mode}` where mode is "two_state" or "tri_state"
 - [x] Schema: value `{content}` where content is `true`, `false`, or `null`
@@ -178,6 +188,7 @@ Invalid: MC.Jaime (uppercase), my shortcut (spaces), @mention (special chars)
 - [x] Config panel: Custom labels for states (true_label, false_label, neutral_label)
 
 **Tri-state UI options:**
+
 ```
 Option A: Segmented control [Yes] [—] [No]
 Option B: Toggle with neutral: ○ ◐ ●
@@ -185,6 +196,7 @@ Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 ```
 
 #### 7.5.3.2 Date Block ✅ DONE
+
 - [x] Add "date" to block types enum
 - [x] Schema: config `{label}`
 - [x] Schema: value `{content}` where content is ISO date string or null
@@ -192,6 +204,7 @@ Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 - [x] Can be variable (value type: string ISO date)
 
 #### 7.5.3.3 Reference Block ✅ DONE
+
 - [x] Add "reference" to block types enum
 - [x] Schema: config `{label, allowed_types}` where allowed_types is ["sheet", "flow"] or subset
 - [x] Schema: value `{target_type, target_id}`
@@ -207,6 +220,7 @@ Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 ### 7.5.4 Mentions System (`#`)
 
 #### 7.5.4.1 Tiptap Mention Extension ✅ DONE
+
 - [x] Install/configure @tiptap/extension-mention
 - [x] Custom trigger character: `#` (not `@`)
 - [x] Suggestion list component (dropdown with search)
@@ -216,12 +230,14 @@ Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 - [x] Insert mention as custom node with target info
 
 #### 7.5.4.2 Mention Rendering ✅ DONE
+
 - [x] Render mentions as styled inline elements (chip/badge style)
 - [ ] Click to navigate to referenced entity (deferred)
 - [ ] Hover to show preview (optional, can defer)
 - [ ] Handle broken references (target deleted) (deferred)
 
 #### 7.5.4.3 Server Integration ✅ DONE
+
 - [x] LiveView event handler for Tiptap to fetch suggestions (mention_suggestions)
 - [x] Returns: `[{type, id, name, shortcut, label}]`
 - [ ] Extract mentions from saved content for backlinks tracking (deferred to Task 13)
@@ -231,17 +247,20 @@ Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 ### 7.5.5 Version Control
 
 #### 7.5.5.1 Database Schema ✅ DONE
+
 - [x] Create `sheet_versions` table (migration)
 - [x] Indexes on `(sheet_id, version_number)` and `(sheet_id, inserted_at)`
 - [x] Unique constraint on `(sheet_id, version_number)`
 
 #### 7.5.5.2 Snapshot Creation ✅ DONE
+
 - [x] Function: `Sheets.create_version/2` - creates snapshot of current sheet state
 - [x] Auto-generate change summary by diffing with previous version
 - [x] Snapshot includes: name, avatar, shortcut, banner, all blocks with values
 - [x] Functions: `Sheets.list_versions/2`, `Sheets.get_version/2`, `Sheets.get_latest_version/1`, `Sheets.count_versions/1`
 
 #### 7.5.5.3 Automatic Versioning Triggers ✅ DONE
+
 - [ ] Create version after 60 seconds of inactivity (debounced) - deferred
 - [x] Create version on significant changes:
   - Block added or deleted
@@ -251,12 +270,14 @@ Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 - [ ] GenServer or Process to handle debouncing per sheet - deferred (using simple rate limit instead)
 
 #### 7.5.5.4 Version History UI (References Tab) ✅ DONE
+
 - [x] List of versions with: version number, date, author, summary
 - [ ] Click to view version (read-only sheet view) - deferred
 - [ ] Compare two versions (diff view) - deferred
 - [x] Restore version button (restores sheet metadata, creates new version)
 
 #### 7.5.5.5 Retention Policy
+
 - [ ] Config: max versions per sheet (default: 50)
 - [ ] Config: max age (default: 30 days)
 - [ ] Background job to clean old versions
@@ -267,6 +288,7 @@ Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 ### 7.5.6 Soft Delete (Trash)
 
 #### 7.5.6.1 Sheets Soft Delete
+
 - [x] Add `deleted_at` field to `sheets` table
 - [x] Update queries to exclude deleted sheets by default
 - [x] "Move to trash" instead of hard delete (context functions)
@@ -274,6 +296,7 @@ Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 - [ ] Auto-purge after 30 days (background job)
 
 #### 7.5.6.2 Blocks Soft Delete
+
 - [x] Add `deleted_at` field to `blocks` table
 - [x] Update block queries to exclude deleted blocks
 - [ ] Track deleted blocks in sheet version history
@@ -284,6 +307,7 @@ Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 ### 7.5.7 Backlinks (References Tab)
 
 #### 7.5.7.1 Reference Tracking ✅ DONE
+
 - [x] Create `entity_references` table (migration)
 - [x] Extract references when saving:
   - From rich_text blocks (mentions)
@@ -294,6 +318,7 @@ Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 - [x] Handle reference cleanup when source is deleted
 
 #### 7.5.7.2 Backlinks UI (References Tab) ✅ DONE
+
 - [x] Query: "What references this sheet?"
 - [x] Show: source name, context (which block/field)
 - [x] Empty state when no references
@@ -306,6 +331,7 @@ Option C: Radio buttons: ○ True  ○ Neutral  ○ False
 Blocks with `scope: "children"` automatically cascade to descendant sheets.
 
 #### 7.5.8.1 Schema
+
 - [x] Add `scope` field to blocks ("self" | "children", default: "self")
 - [x] Add `inherited_from_block_id` FK to blocks (points to parent block)
 - [x] Add `detached` boolean to blocks (detached from parent definition)
@@ -313,6 +339,7 @@ Blocks with `scope: "children"` automatically cascade to descendant sheets.
 - [x] Add `hidden_inherited_block_ids` array to sheets (hidden ancestor blocks)
 
 #### 7.5.8.2 PropertyInheritance Module
+
 - [x] `resolve_inherited_blocks/1` — returns inherited blocks grouped by source sheet
 - [x] `create_inherited_instances/2` — creates block instances on child sheets
 - [x] `propagate_to_descendants/2` — bulk creates instances for selected descendants
@@ -326,6 +353,7 @@ Blocks with `scope: "children"` automatically cascade to descendant sheets.
 - [x] Variable names auto-deduplicated per sheet on inheritance
 
 #### 7.5.8.3 UI
+
 - [x] Inherited blocks grouped by source sheet with "Inherited from" header
 - [x] Scope indicator (arrow-down icon) for blocks with `scope: "children"`
 - [x] Context menu: Go to source, Detach, Hide for children
@@ -339,16 +367,19 @@ Blocks with `scope: "children"` automatically cascade to descendant sheets.
 Blocks can be arranged side-by-side in 2-3 column groups.
 
 #### 7.5.9.1 Schema
+
 - [x] Add `column_group_id` (id) to blocks — shared by blocks in same group
 - [x] Add `column_index` (integer 0-2) to blocks — position within group
 
 #### 7.5.9.2 Operations
+
 - [x] `reorder_blocks_with_columns/2` — reorder with column layout info
 - [x] `create_column_group/2` — group blocks side-by-side (min 2, max 3)
 - [x] `dissolve_column_group/2` — reset blocks to full-width
 - [x] Auto-dissolve when deletion leaves fewer than 2 blocks in group
 
 #### 7.5.9.3 UI
+
 - [x] ColumnSortable hook (two-tier SortableJS: vertical + horizontal)
 - [x] Drag to right edge of block to create column group
 - [x] Drop indicator CSS for column creation
@@ -430,6 +461,7 @@ User types: "Talk to #ja"
 ## Database Migrations
 
 ### Migration 1: Shortcuts
+
 ```elixir
 alter table(:sheets) do
   add :shortcut, :string
@@ -446,6 +478,7 @@ create unique_index(:flows, [:project_id, :shortcut],
 ```
 
 ### Migration 2: Sheet Avatar & Banner
+
 ```elixir
 alter table(:sheets) do
   add :avatar_asset_id, references(:assets, on_delete: :nilify_all)
@@ -456,6 +489,7 @@ end
 ```
 
 ### Migration 3: Block Variables
+
 ```elixir
 alter table(:blocks) do
   add :is_constant, :boolean, default: false  # inverted: false = IS a variable
@@ -467,6 +501,7 @@ create unique_index(:blocks, [:sheet_id, :variable_name],
 ```
 
 ### Migration 4: Sheet Versions
+
 ```elixir
 create table(:sheet_versions) do
   add :sheet_id, references(:sheets, on_delete: :delete_all), null: false
@@ -483,6 +518,7 @@ create index(:sheet_versions, [:sheet_id, :inserted_at])
 ```
 
 ### Migration 5: Entity References
+
 ```elixir
 create table(:entity_references) do
   add :source_type, :string, null: false
@@ -502,6 +538,7 @@ create unique_index(:entity_references,
 ```
 
 ### Migration 6: Soft Delete
+
 ```elixir
 alter table(:sheets) do
   add :deleted_at, :utc_datetime
@@ -516,6 +553,7 @@ create index(:blocks, [:deleted_at])
 ```
 
 ### Migration 7: Block Inheritance Fields
+
 ```elixir
 alter table(:blocks) do
   add :scope, :string, default: "self"
@@ -530,6 +568,7 @@ end
 ```
 
 ### Migration 8: Block Column Layout Fields
+
 ```elixir
 alter table(:blocks) do
   add :column_group_id, :id
@@ -547,8 +586,8 @@ create index(:blocks, [:sheet_id, :column_group_id],
 
 Recommended order to minimize dependencies and allow incremental testing:
 
-| Order | Task                                           | Dependencies              | Testable Outcome             |
-|-------|------------------------------------------------|---------------------------|------------------------------|
+| Order | Task                                            | Dependencies              | Testable Outcome             |
+| ----- | ----------------------------------------------- | ------------------------- | ---------------------------- |
 | 1     | ✅ Boolean block                                | None                      | New block type works         |
 | 2     | ✅ Date block                                   | None                      | Date picker works            |
 | 3     | ✅ Sheet avatar (replace icon)                  | Assets system             | Avatar upload/display works  |
@@ -573,6 +612,7 @@ Recommended order to minimize dependencies and allow incremental testing:
 ## Testing Strategy
 
 ### Unit Tests
+
 - [ ] Shortcut validation (format, uniqueness)
 - [ ] Variable name generation (slugify, uniqueness)
 - [ ] Version snapshot creation
@@ -583,6 +623,7 @@ Recommended order to minimize dependencies and allow incremental testing:
 - [ ] Column layout (create group, dissolve, auto-dissolve on delete)
 
 ### Integration Tests
+
 - [ ] Boolean block CRUD
 - [ ] Date block CRUD
 - [ ] Sheet avatar upload and display
@@ -596,6 +637,7 @@ Recommended order to minimize dependencies and allow incremental testing:
 - [ ] Column group creation and reordering
 
 ### E2E Tests
+
 - [ ] Create sheet with new block types (boolean, date, reference)
 - [ ] Upload sheet avatar and banner
 - [ ] Set up shortcut and use in mention
@@ -634,4 +676,4 @@ Recommended order to minimize dependencies and allow incremental testing:
 
 ---
 
-*This plan will be incorporated into IMPLEMENTATION_PLAN.md once approved and implementation begins.*
+_This plan will be incorporated into IMPLEMENTATION_PLAN.md once approved and implementation begins._

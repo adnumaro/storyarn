@@ -1,9 +1,10 @@
 %{
-  title: "Scenes Overview",
-  category_label: "Scene Design",
-  order: 1,
-  description: "Map your world with spatial canvases, zones, pins, and connections."
+title: "Scenes Overview",
+category_label: "Scene Design",
+order: 1,
+description: "Map your world with spatial canvases, zones, pins, and connections."
 }
+
 ---
 
 Scenes are **spatial canvases** for mapping your game world. Built on a Leaflet.js canvas with full pan, zoom, and minimap support, they let you lay out locations, define interactive areas, draw connections between places, and -- uniquely -- explore the result as a player would.
@@ -79,14 +80,14 @@ Scenes support multiple **layers** for organizing content. Every scene starts wi
 
 The bottom dock provides **10 tools** organized into groups:
 
-| Group | Tools | Purpose |
-|-------|-------|---------|
-| **Navigation** | Select, Pan | Select elements or pan around the canvas |
-| **Zone shapes** | Rectangle, Triangle, Circle, Freeform | Draw polygonal zones on the canvas |
-| **Elements** | Free Pin, From Sheet Pin | Place point markers (free or linked to a sheet) |
-| **Text** | Annotation | Add text notes directly on the canvas |
-| **Linking** | Connector | Draw connections between two pins |
-| **Measure** | Ruler | Measure distances between two points |
+| Group           | Tools                                 | Purpose                                         |
+| --------------- | ------------------------------------- | ----------------------------------------------- |
+| **Navigation**  | Select, Pan                           | Select elements or pan around the canvas        |
+| **Zone shapes** | Rectangle, Triangle, Circle, Freeform | Draw polygonal zones on the canvas              |
+| **Elements**    | Free Pin, From Sheet Pin              | Place point markers (free or linked to a sheet) |
+| **Text**        | Annotation                            | Add text notes directly on the canvas           |
+| **Linking**     | Connector                             | Draw connections between two pins               |
+| **Measure**     | Ruler                                 | Measure distances between two points            |
 
 The editor switches between **Edit mode** (dock visible, elements editable) and **View mode** (read-only, clean canvas).
 
@@ -117,11 +118,11 @@ Both zones and pins support **actions** and **conditions** that tie spatial elem
 
 ### Actions
 
-| Action type | Behavior |
-|-------------|----------|
-| **None** | No action (default) |
+| Action type     | Behavior                                                                                                              |
+| --------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **None**        | No action (default)                                                                                                   |
 | **Instruction** | Execute variable assignments when the element is clicked. Uses the same assignment builder as flow instruction nodes. |
-| **Display** | Show a variable's current value on the element. References a variable by its full path (e.g., `mc.jaime.health`). |
+| **Display**     | Show a variable's current value on the element. References a variable by its full path (e.g., `mc.jaime.health`).     |
 
 ### Conditions
 

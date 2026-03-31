@@ -84,7 +84,7 @@ defmodule StoryarnWeb do
 
       # LiveVue — must be before Phoenix.HTML/CoreComponents imports
       use LiveVue
-      use LiveVue.Components, vue_root: ["./assets/vue", "./lib/storyarn_web"]
+      use LiveVue.Components, vue_root: ["./assets/app", "./lib/storyarn_web"]
 
       # HTML escaping functionality
       import Phoenix.HTML

@@ -49,7 +49,7 @@ Each pin/zone property is either:
 **Pin variable properties:**
 
 | Property      | Type      | Description                        |
-|---------------|-----------|------------------------------------|
+| ------------- | --------- | ---------------------------------- |
 | `flow_id`     | reference | Flow launched on click             |
 | `hidden`      | boolean   | Whether pin is visible (NEW field) |
 | `is_playable` | boolean   | Player-controllable character      |
@@ -59,7 +59,7 @@ Each pin/zone property is either:
 **Zone variable properties:**
 
 | Property      | Type      | Description                         |
-|---------------|-----------|-------------------------------------|
+| ------------- | --------- | ----------------------------------- |
 | `target_type` | select    | Navigation target type (scene/flow) |
 | `target_id`   | reference | Navigation target                   |
 | `hidden`      | boolean   | Whether zone is visible (NEW field) |
@@ -72,6 +72,7 @@ Each pin/zone property is either:
 Pin/zone variables are referenced as: `{pin_shortcut}.{property}` or `{zone_shortcut}.{property}`
 
 Examples:
+
 - `guard.west.flow_id`
 - `guard.west.hidden`
 - `tavern.door.is_walkable`
@@ -117,6 +118,7 @@ Future consideration: session persistence (save/load) is a separate feature.
 Example: NPC says "Let's talk inside" -> scene changes to interior -> flow continues with next dialogue node.
 
 This is a complex feature involving:
+
 - Flow node that triggers scene navigation mid-execution
 - Preserving flow execution state across scene transitions
 - Coordinating exploration player state transfer
@@ -128,7 +130,7 @@ This is a complex feature involving:
 ## Files Impact (Phase 1)
 
 | Area          | Files                                          |
-|---------------|------------------------------------------------|
+| ------------- | ---------------------------------------------- |
 | Schema        | `scene_pin.ex`, `scene_zone.ex`                |
 | Migration     | New migration for shortcuts, flow_id, hidden   |
 | Context       | `scenes/pin_crud.ex`, `scenes/zone_crud.ex`    |

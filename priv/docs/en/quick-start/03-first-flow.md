@@ -1,9 +1,10 @@
 %{
-  title: "Your First Flow",
-  category_label: "Quick Start",
-  order: 3,
-  description: "Build a branching dialogue that reacts to character stats."
+title: "Your First Flow",
+category_label: "Quick Start",
+order: 3,
+description: "Build a branching dialogue that reacts to character stats."
 }
+
 ---
 
 Flows are where your narrative comes to life. In this guide you will build a short dialogue that branches based on the character sheet from the previous guide.
@@ -27,7 +28,7 @@ Connect the Entry node's output to the Dialogue node's input by dragging from on
 
 Select the Dialogue node and type the NPC's line directly on the node (double-click or press `E` to start inline editing):
 
-> *"You look like you've been through a lot, traveler."*
+> _"You look like you've been through a lot, traveler."_
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
@@ -55,8 +56,8 @@ The Condition node now has two outputs: **True** and **False**.
 
 Add two more Dialogue nodes and connect them to the Condition outputs:
 
-- **True** output -- *"Ah, you seem in good shape! What can I get you?"*
-- **False** output -- *"You're barely standing! Sit down, I'll bring a healing potion."*
+- **True** output -- _"Ah, you seem in good shape! What can I get you?"_
+- **False** output -- _"You're barely standing! Sit down, I'll bring a healing potion."_
 
 Add an {accent}Exit{/accent} node after each dialogue to end the flow.
 
@@ -88,14 +89,14 @@ Try changing the Health value to `30` on the character sheet and running the deb
 
 The flow editor supports these node types, all available from the **Add Node** dropdown:
 
-| Node | Purpose |
-|---|---|
-| **Entry** | Starting point of the flow |
-| **Exit** | Ends the flow (terminal, continue to another flow, or return to caller) |
-| **Dialogue** | Character speech with optional responses, speaker, audio, and stage directions |
-| **Condition** | Branches based on variable conditions (boolean or switch mode) |
-| **Instruction** | Modifies variable values (assignments) |
-| **Hub** | Named merge point that Jump nodes can target |
-| **Jump** | Jumps execution to a Hub node |
-| **Slug Line** | Screenplay-style scene heading (INT/EXT, location, time of day) |
-| **Subflow** | Embeds another flow as a reusable sub-routine |
+| Node            | Purpose                                                                        |
+| --------------- | ------------------------------------------------------------------------------ |
+| **Entry**       | Starting point of the flow                                                     |
+| **Exit**        | Ends the flow (terminal, continue to another flow, or return to caller)        |
+| **Dialogue**    | Character speech with optional responses, speaker, audio, and stage directions |
+| **Condition**   | Branches based on variable conditions (boolean or switch mode)                 |
+| **Instruction** | Modifies variable values (assignments)                                         |
+| **Hub**         | Named merge point that Jump nodes can target                                   |
+| **Jump**        | Jumps execution to a Hub node                                                  |
+| **Slug Line**   | Screenplay-style scene heading (INT/EXT, location, time of day)                |
+| **Subflow**     | Embeds another flow as a reusable sub-routine                                  |

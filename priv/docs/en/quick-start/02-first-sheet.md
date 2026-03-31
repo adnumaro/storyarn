@@ -1,9 +1,10 @@
 %{
-  title: "Your First Sheet",
-  category_label: "Quick Start",
-  order: 2,
-  description: "Create a character sheet and understand how variables work."
+title: "Your First Sheet",
+category_label: "Quick Start",
+order: 2,
+description: "Create a character sheet and understand how variables work."
 }
+
 ---
 
 Sheets are the data backbone of your project. Every field you add to a sheet can become a {accent}variable{/accent} that your flows read and modify at runtime.
@@ -55,10 +56,10 @@ If you want a block to hold display-only data that flows cannot read, mark it as
 
 Every non-constant block becomes a variable with the format `{sheet_shortcut}.{variable_name}`:
 
-| Block | Variable | Type |
-|---|---|---|
-| Health | `mc.jaime.health` | number |
-| Class | `mc.jaime.class` | select |
+| Block    | Variable            | Type    |
+| -------- | ------------------- | ------- |
+| Health   | `mc.jaime.health`   | number  |
+| Class    | `mc.jaime.class`    | select  |
 | Is Alive | `mc.jaime.is_alive` | boolean |
 
 The {accent}variable name{/accent} auto-generates from the block label (lowercased, spaces become underscores). You can customize it in the block's advanced config.

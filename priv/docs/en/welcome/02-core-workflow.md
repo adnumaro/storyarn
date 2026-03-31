@@ -1,9 +1,10 @@
 %{
-  title: "Core Workflow",
-  category_label: "Welcome",
-  order: 2,
-  description: "How a typical project comes together in Storyarn."
+title: "Core Workflow",
+category_label: "Welcome",
+order: 2,
+description: "How a typical project comes together in Storyarn."
 }
+
 ---
 
 Every team uses Storyarn differently, but here's how a typical project flows from setup to shipped.

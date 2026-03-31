@@ -1,9 +1,10 @@
 %{
-  title: "Flows Overview",
-  category_label: "Narrative Design",
-  order: 1,
-  description: "Visual dialogue trees and branching narrative logic."
+title: "Flows Overview",
+category_label: "Narrative Design",
+order: 1,
+description: "Visual dialogue trees and branching narrative logic."
 }
+
 ---
 
 Flows are the heart of Storyarn -- **visual node graphs** where you build branching dialogue, game logic, and interactive narratives. Each flow is a canvas of connected nodes that define how a conversation or sequence plays out, from a simple linear exchange to a sprawling quest tree with dozens of branches.
@@ -34,17 +35,17 @@ Nodes are connected through **pins** -- small circles on the edges of each node.
 
 Storyarn has **9 node types**, each serving a distinct role in the flow graph:
 
-| Node | Icon | Purpose |
-|------|------|---------|
-| **Entry** | Play | Where the flow starts. Auto-created with the flow, cannot be deleted. Shows which other flows reference this one via subflow nodes. |
-| **Exit** | Arrow right | Where the flow ends. Supports three modes: **Terminal** (ends entirely), **Continue to flow** (chains to another flow), and **Return to caller** (returns from a subflow). Has outcome tags and color coding. |
-| **Dialogue** | Message square | Character speech with optional player responses. The most common node type -- see the [dedicated guide](/docs/narrative-design/dialogue-nodes). |
-| **Condition** | Git branch | Branches the flow based on variable values. Visual builder with AND/OR logic -- no code required. Supports boolean mode (True/False outputs) and switch mode (multiple custom outputs). |
-| **Instruction** | Zap | Modifies variable values when the flow passes through. Supports Set, Add, Subtract, Toggle, Clear, and boolean-specific operations. |
-| **Hub** | Log in | A named merge point where multiple paths converge. Has a label, an ID, and a color. |
-| **Jump** | Log out | Jumps to a Hub node within the same flow. Select a target hub from the toolbar dropdown; a crosshair button locates it on the canvas. |
-| **Slug Line** | Clapperboard | Scene heading or location marker, borrowed from screenplay conventions. References a location sheet, with INT/EXT setting and time of day (day, night, morning, evening, continuous). |
-| **Subflow** | Box | Embeds another flow inside this one. Dynamic output pins are generated from the referenced flow's Exit nodes, enabling branching based on how the subflow ends. Circular references are detected and prevented. |
+| Node            | Icon           | Purpose                                                                                                                                                                                                         |
+| --------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Entry**       | Play           | Where the flow starts. Auto-created with the flow, cannot be deleted. Shows which other flows reference this one via subflow nodes.                                                                             |
+| **Exit**        | Arrow right    | Where the flow ends. Supports three modes: **Terminal** (ends entirely), **Continue to flow** (chains to another flow), and **Return to caller** (returns from a subflow). Has outcome tags and color coding.   |
+| **Dialogue**    | Message square | Character speech with optional player responses. The most common node type -- see the [dedicated guide](/docs/narrative-design/dialogue-nodes).                                                                 |
+| **Condition**   | Git branch     | Branches the flow based on variable values. Visual builder with AND/OR logic -- no code required. Supports boolean mode (True/False outputs) and switch mode (multiple custom outputs).                         |
+| **Instruction** | Zap            | Modifies variable values when the flow passes through. Supports Set, Add, Subtract, Toggle, Clear, and boolean-specific operations.                                                                             |
+| **Hub**         | Log in         | A named merge point where multiple paths converge. Has a label, an ID, and a color.                                                                                                                             |
+| **Jump**        | Log out        | Jumps to a Hub node within the same flow. Select a target hub from the toolbar dropdown; a crosshair button locates it on the canvas.                                                                           |
+| **Slug Line**   | Clapperboard   | Scene heading or location marker, borrowed from screenplay conventions. References a location sheet, with INT/EXT setting and time of day (day, night, morning, evening, continuous).                           |
+| **Subflow**     | Box            | Embeds another flow inside this one. Dynamic output pins are generated from the referenced flow's Exit nodes, enabling branching based on how the subflow ends. Circular references are detected and prevented. |
 
 ---
 

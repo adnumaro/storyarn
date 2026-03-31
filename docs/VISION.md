@@ -32,7 +32,7 @@ Storyarn (source of truth)
 Building a 3D engine inside Storyarn is not the goal. The complexity breakdown:
 
 | Component                              | Difficulty  | AI Dependency         |
-|----------------------------------------|-------------|-----------------------|
+| -------------------------------------- | ----------- | --------------------- |
 | Image -> 3D pipeline (Tripo/Meshy API) | Medium      | External API          |
 | 3D viewer (Three.js/Babylon)           | Medium-High | 0% — pure engineering |
 | Player controls                        | Medium      | 0%                    |
@@ -41,6 +41,7 @@ Building a 3D engine inside Storyarn is not the goal. The complexity breakdown:
 | Flow/dialogue integration              | Medium      | Already exists        |
 
 **Verdict:** Not viable as a short-term goal. If pursued later, the approach would be:
+
 1. Integrate with external tools (Spine for 2D animation, Tripo/Meshy for 3D generation)
 2. Use the Rust runtime (see section IV) to handle logic
 3. Engine plugins handle rendering — Storyarn handles data
@@ -48,6 +49,7 @@ Building a 3D engine inside Storyarn is not the goal. The complexity breakdown:
 ### B. 2D Engine in Exploration Mode — Viable
 
 Storyarn already has ~70% of the foundation:
+
 - Scene canvas with zones, pins, layers, background images
 - Exploration mode with navigation
 - Connections defining transitions between zones/pins
@@ -57,18 +59,19 @@ Storyarn already has ~70% of the foundation:
 
 **What's missing for a playable 2D prototype:**
 
-| Component                         | Difficulty   | Notes                            |
-|-----------------------------------|--------------|----------------------------------|
-| Player sprite + movement          | Low-Medium   | Point & click or WASD            |
-| Zone collision (is_solid flag)    | Low          | New field on zone schema         |
-| Trigger system (zone/pin -> flow) | Low          | trigger_flow_id on zones/pins    |
-| Dialogue overlay during play      | Medium       | Flow player as overlay           |
-| Scene transitions                 | Low          | Connections already define these |
-| Character animation integration   | Medium       | Spine runtime (see below)        |
+| Component                         | Difficulty | Notes                            |
+| --------------------------------- | ---------- | -------------------------------- |
+| Player sprite + movement          | Low-Medium | Point & click or WASD            |
+| Zone collision (is_solid flag)    | Low        | New field on zone schema         |
+| Trigger system (zone/pin -> flow) | Low        | trigger_flow_id on zones/pins    |
+| Dialogue overlay during play      | Medium     | Flow player as overlay           |
+| Scene transitions                 | Low        | Connections already define these |
+| Character animation integration   | Medium     | Spine runtime (see below)        |
 
 **Target quality: Modern adventure games** (Return to Monkey Island, Broken Age).
 
 For high-quality character animation, the approach is **integration, not building**:
+
 - Artists work in **Spine** (industry standard, $70-300 license)
 - Export `.json` + `.atlas` + `.png`
 - Upload to Storyarn as asset
@@ -76,6 +79,7 @@ For high-quality character animation, the approach is **integration, not buildin
 - Storyarn provides: placement, scale, animation state triggers
 
 **This eliminates the need to build:**
+
 - Spritesheet slicer
 - Animation timeline editor
 - Rigging editor
@@ -85,7 +89,7 @@ For high-quality character animation, the approach is **integration, not buildin
 **Storyarn UI needed:**
 
 | Menu                 | Purpose                                    | Complexity     |
-|----------------------|--------------------------------------------|----------------|
+| -------------------- | ------------------------------------------ | -------------- |
 | Character config     | Upload Spine export, set scale/speed       | Low            |
 | Scene placement      | Drag character to scene (like pins)        | Low            |
 | Animation mapping    | Link states to flow triggers               | Medium         |
@@ -119,6 +123,7 @@ AI does NOT generate:
 ```
 
 **Why this wins:**
+
 - Consistent, tested output
 - Exportable to Unity/Godot (plugins implement the same systems)
 - Users can tweak parameters after generation
@@ -152,6 +157,7 @@ Social Mechanics:
 ```
 
 Each system has:
+
 - Configuration schema (JSON Schema)
 - Web implementation (preview in exploration mode)
 - Export specification (for engine plugins to implement)
@@ -159,7 +165,7 @@ Each system has:
 ### What AI Can Do Well Today
 
 | Mechanic Type                             | AI Viability   | Why                                                |
-|-------------------------------------------|----------------|----------------------------------------------------|
+| ----------------------------------------- | -------------- | -------------------------------------------------- |
 | Static UI (inventory, HUD, minimap)       | High           | HTML/CSS/JS, LLMs excel here                       |
 | Variable logic (weight, stats, cooldowns) | High           | Variable system already exists, AI just configures |
 | Simple state machines (door open/closed)  | High           | Condition + instruction, already exists            |
@@ -168,22 +174,22 @@ Each system has:
 
 ### What AI Does Poorly Today
 
-| Mechanic Type                  | AI Viability  | Why                                            |
-|--------------------------------|---------------|------------------------------------------------|
-| Complex combat systems         | Low           | Too many emergent interactions, balance issues |
-| Custom physics                 | Low           | Subtle bugs, AI can't test the "feel"          |
-| NPC AI (pathfinding, behavior) | Medium-Low    | Works in demo, breaks on edge cases            |
-| Netcode/multiplayer            | Very Low      | Don't attempt                                  |
+| Mechanic Type                  | AI Viability | Why                                            |
+| ------------------------------ | ------------ | ---------------------------------------------- |
+| Complex combat systems         | Low          | Too many emergent interactions, balance issues |
+| Custom physics                 | Low          | Subtle bugs, AI can't test the "feel"          |
+| NPC AI (pathfinding, behavior) | Medium-Low   | Works in demo, breaks on edge cases            |
+| Netcode/multiplayer            | Very Low     | Don't attempt                                  |
 
 ### Complexity Assessment
 
-| Piece                                                       | Difficulty   | Timeline                           |
-|-------------------------------------------------------------|--------------|------------------------------------|
-| 3-5 base systems (inventory, quests, save, shop, health)    | Medium-High  | First milestone                    |
-| AI configurator from natural language                       | Medium       | Builds on existing variable system |
-| 10-15 systems covering 80% of narrative/adventure/RPG games | High         | Medium-term                        |
-| AI composing multiple systems + connecting variables        | High         | Medium-term                        |
-| UI editor for tweaking AI-generated config                  | Medium       | After AI configurator              |
+| Piece                                                       | Difficulty  | Timeline                           |
+| ----------------------------------------------------------- | ----------- | ---------------------------------- |
+| 3-5 base systems (inventory, quests, save, shop, health)    | Medium-High | First milestone                    |
+| AI configurator from natural language                       | Medium      | Builds on existing variable system |
+| 10-15 systems covering 80% of narrative/adventure/RPG games | High        | Medium-term                        |
+| AI composing multiple systems + connecting variables        | High        | Medium-term                        |
+| UI editor for tweaking AI-generated config                  | Medium      | After AI configurator              |
 
 ---
 
@@ -213,6 +219,7 @@ Already have `Exports` context with `DataCollector`, `Serializer`, etc. This ext
 **Layer 2: Native Runtime (Rust)**
 
 A core runtime that:
+
 - Loads Storyarn export
 - Evaluates conditions
 - Executes instructions (mutates variables)
@@ -234,14 +241,15 @@ storyarn-runtime (Rust)
 
 **Layer 3: Engine Plugins (bindings)**
 
-| Engine   | Binding      | Integration                        |
-|----------|--------------|------------------------------------|
-| Unity    | C# via C FFI | `.dll`/`.so` native + C# wrapper   |
-| Unreal   | C++ direct   | Rust -> C FFI -> C++ plugin        |
-| Godot    | GDExtension  | Rust with gdext (official support) |
-| Bevy     | Native Rust  | Direct crate, trivial              |
+| Engine | Binding      | Integration                        |
+| ------ | ------------ | ---------------------------------- |
+| Unity  | C# via C FFI | `.dll`/`.so` native + C# wrapper   |
+| Unreal | C++ direct   | Rust -> C FFI -> C++ plugin        |
+| Godot  | GDExtension  | Rust with gdext (official support) |
+| Bevy   | Native Rust  | Direct crate, trivial              |
 
 **Why Rust:**
+
 - One codebase, all engines — compiles to native library per platform
 - Clean C FFI — Unity and Unreal consume C without issues
 - Godot has gdext — first-class Rust bindings
@@ -251,6 +259,7 @@ storyarn-runtime (Rust)
 **Critical architecture decision: Rust as single source of truth**
 
 Instead of maintaining logic in both Elixir and Rust:
+
 1. Rust runtime compiles to **WASM**
 2. Story player and debug mode in web **use the WASM**
 3. Native plugins use the **same Rust compiled natively**
@@ -259,7 +268,7 @@ Instead of maintaining logic in both Elixir and Rust:
 ### Complexity Assessment
 
 | Piece                        | Difficulty                                              |
-|------------------------------|---------------------------------------------------------|
+| ---------------------------- | ------------------------------------------------------- |
 | Export format definition     | Medium (extends existing Exports context)               |
 | Rust core runtime            | High (replicate conditions/instructions/flows logic)    |
 | Expression evaluator in Rust | Medium-High (port FormulaEngine from Elixir)            |
@@ -318,7 +327,7 @@ The AI doesn't generate images. It **references** entities that already have ima
 **Spoiler control:**
 
 | Level             | What the AI can use                                           |
-|-------------------|---------------------------------------------------------------|
+| ----------------- | ------------------------------------------------------------- |
 | **No spoilers**   | Names, descriptions, visible locations, early-game characters |
 | **Hints**         | Above + vague quest hints without revealing resolution        |
 | **Full spoilers** | Everything — including endings, plot twists, solutions        |
@@ -373,14 +382,14 @@ Ads are not banners shoved into the response. They are **contextual recommendati
 
 **Market validation (March 2026):**
 
-| Platform | Approach | Result |
-|---|---|---|
+| Platform              | Approach                                               | Result                                                                                 |
+| --------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------- |
 | **Microsoft Copilot** | Ads below AI response, contextual to full conversation | **73% higher CTR, 16% higher conversion** vs traditional search. Journey shortened 33% |
-| **ChatGPT (OpenAI)** | Ads appended to responses, matched by topic + history | Testing on free/Go tiers since Feb 2026. Ad does not alter AI response |
-| **Perplexity** | Sponsored follow-up questions in "Related" section | **Abandoned Feb 2026** — execs said ads made users "suspicious of everything" |
-| **Character.AI** | Traditional banners/interstitials shoved mid-chat | Community backlash, users leaving |
+| **ChatGPT (OpenAI)**  | Ads appended to responses, matched by topic + history  | Testing on free/Go tiers since Feb 2026. Ad does not alter AI response                 |
+| **Perplexity**        | Sponsored follow-up questions in "Related" section     | **Abandoned Feb 2026** — execs said ads made users "suspicious of everything"          |
+| **Character.AI**      | Traditional banners/interstitials shoved mid-chat      | Community backlash, users leaving                                                      |
 
-**Why Perplexity failed but Storyarn won't (same mistake):** Perplexity sells *factual truth* — if users suspect the answer is ad-influenced, the product is worthless. Storyarn wiki sells *game help* — a recommendation of a similar game is orthogonal to "how do I beat the dragon." It doesn't contaminate the answer.
+**Why Perplexity failed but Storyarn won't (same mistake):** Perplexity sells _factual truth_ — if users suspect the answer is ad-influenced, the product is worthless. Storyarn wiki sells _game help_ — a recommendation of a similar game is orthogonal to "how do I beat the dragon." It doesn't contaminate the answer.
 
 **Why Character.AI's approach is wrong:** They use traditional ad formats (banners, interstitials, video pre-rolls) inside a conversational product. Maximum friction, zero context.
 
@@ -412,6 +421,7 @@ AI: To defeat the dragon you need the ice bow from the northern
 ```
 
 Key design principles:
+
 - **Answer first, recommend second** — the user's question is fully resolved before any ad
 - **Genuine hook** — a real, verified anecdote that's interesting independent of the ad. The AI doesn't invent hooks — they come from a curated catalog of verified facts
 - **Transparent disclosure** — "Sponsored recommendation" is explicit (legally required, but also builds trust — studies show explicit disclosure increases credibility)
@@ -433,6 +443,7 @@ AI: Let me look that up for you...
 ```
 
 Key design principles:
+
 - **Zero intrusión** — the user is already waiting, this fills dead time (like loading screen tips in games)
 - **Consistent timing** — if a tool call takes 1s, pad to 3-4s. If it takes 4s, don't pad. The floor is always the same, never feels artificially slow
 - **Video format** — higher CPM than text (5-10x), more engaging during a wait
@@ -456,6 +467,7 @@ Interaction 10 → tool call → loading ad
 ```
 
 Rules:
+
 - Minimum 3-4 interactions between any ad (either format)
 - Never two ads in consecutive interactions
 - Maximum 1 ad per response
@@ -464,13 +476,14 @@ Rules:
 
 **Legal requirements (validated March 2026):**
 
-| Jurisdiction | Requirement | How Storyarn complies |
-|---|---|---|
-| **FTC (USA)** | Sponsored content must be "clear, conspicuous, and timely" | 🏷️ "Sponsored recommendation" label on every ad |
-| **EU AI Act (Aug 2026)** | Users must know they interact with AI; AI-generated content must be identifiable | Wiki clearly states it's AI-powered; ads labeled |
-| **EU DSA** | Transparency in how content is recommended; no targeted ads to minors | Context-based targeting (no profiling); age gate possible |
+| Jurisdiction             | Requirement                                                                      | How Storyarn complies                                     |
+| ------------------------ | -------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| **FTC (USA)**            | Sponsored content must be "clear, conspicuous, and timely"                       | 🏷️ "Sponsored recommendation" label on every ad           |
+| **EU AI Act (Aug 2026)** | Users must know they interact with AI; AI-generated content must be identifiable | Wiki clearly states it's AI-powered; ads labeled          |
+| **EU DSA**               | Transparency in how content is recommended; no targeted ads to minors            | Context-based targeting (no profiling); age gate possible |
 
 **Why transparency is a feature, not a tax:**
+
 - 86% of consumers feel deceived by undisclosed native ads (→ trust destroyed forever)
 - Explicit disclosure **increases credibility** — users perceive the author as honest
 - Native ads with disclosure generate **32% more engagement** than traditional display ads
@@ -480,12 +493,12 @@ The format "Sponsored recommendation — but genuinely worth checking out" is ra
 
 **Revenue model — Cost Per Engagement (CPE):**
 
-| Model | What's measured | Conversational equivalent | Relative value |
-|---|---|---|---|
-| CPM | Ad seen | AI mentions the game | Low |
-| CPC | Click on banner | User clicks store link | Medium |
-| **CPE** | **User engagement** | **User asks "tell me more"** | **High** |
-| CPA | Purchase/install | User buys via affiliate link | Highest |
+| Model   | What's measured     | Conversational equivalent    | Relative value |
+| ------- | ------------------- | ---------------------------- | -------------- |
+| CPM     | Ad seen             | AI mentions the game         | Low            |
+| CPC     | Click on banner     | User clicks store link       | Medium         |
+| **CPE** | **User engagement** | **User asks "tell me more"** | **High**       |
+| CPA     | Purchase/install    | User buys via affiliate link | Highest        |
 
 CPE is the sweet spot. Reference: Microsoft Copilot achieves 73% higher CTR than traditional search with contextual ads. Perplexity reported 40% of users clicked follow-up questions before they abandoned ads.
 
@@ -507,11 +520,13 @@ Dragon's Dogma 2 — Campaign Report
 **How it works technically:**
 
 The LLM prompt includes an active ad catalog with **curated, verified metadata** per game:
+
 - Genre, platform, rating, description
 - **Verified anecdotes/hooks** (human-curated, not AI-invented) — development stories, interesting facts, critical reception highlights
 - Screenshots, trailer links, store links (with affiliate tags)
 
 The LLM chooses which ad fits the conversation context. Rules:
+
 - Never force an ad if not relevant
 - Maximum 1 ad per response
 - Respect shared cooldown (3-4 interactions minimum)
@@ -521,14 +536,15 @@ The LLM chooses which ad fits the conversation context. Rules:
 
 **Why this is different from every existing approach:**
 
-| Character.AI | Perplexity | Copilot | **Storyarn** |
-|---|---|---|---|
-| Banners mid-chat | Sponsored follow-up question | Ad block below response | Contextual recommendation + loading ad |
-| Zero context | Labeled, separate | Labeled, separate, with "ad voice" | Hook + disclosure + conversational CTA |
-| User hates it | Users got suspicious | 73% higher CTR | **Untested — but combines best of all** |
-| No disclosure design | Cold "Sponsored" label | "Sponsored" + AI explains why | "Sponsored — but genuinely worth it" |
+| Character.AI         | Perplexity                   | Copilot                            | **Storyarn**                            |
+| -------------------- | ---------------------------- | ---------------------------------- | --------------------------------------- |
+| Banners mid-chat     | Sponsored follow-up question | Ad block below response            | Contextual recommendation + loading ad  |
+| Zero context         | Labeled, separate            | Labeled, separate, with "ad voice" | Hook + disclosure + conversational CTA  |
+| User hates it        | Users got suspicious         | 73% higher CTR                     | **Untested — but combines best of all** |
+| No disclosure design | Cold "Sponsored" label       | "Sponsored" + AI explains why      | "Sponsored — but genuinely worth it"    |
 
 Privacy advantages (unchanged):
+
 - No personal data stored
 - No cross-site tracking
 - Targeting by session and context, not by profile
@@ -542,28 +558,30 @@ Storyarn operates as two complementary products:
 1. **Storyarn Platform** — the design tool (subscriptions)
 2. **Storyarn Wiki Ads** — the ad network for wiki monetization
 
-| Product | Revenue source | Customers |
-|---|---|---|
-| Storyarn Platform | Subscriptions per seat/workspace | Game designers, studios |
+| Product           | Revenue source                                      | Customers                       |
+| ----------------- | --------------------------------------------------- | ------------------------------- |
+| Storyarn Platform | Subscriptions per seat/workspace                    | Game designers, studios         |
 | Storyarn Wiki Ads | Advertisers paying for conversational ad placements | Game publishers, related brands |
 
 **Wiki + Ads tier integration:**
 
-| Tier | Wiki | Conversational Ads | Customization | Wiki Metrics |
-|---|---|---|---|---|
-| **Free/Indie** | **Opt-in** (dev activates it) | Revenue → Storyarn | Storyarn branding | No |
-| **Indie + Ads** | Opt-in | Revenue → developer (paid add-on) | Storyarn branding | Basic |
-| **Pro** | Optional (on/off) | Revenue → developer (included) | Game branding (colors, logo) | Yes (conversation insights) |
-| **Enterprise** | Optional | Revenue → developer (included) | Full branding, custom domain | Yes + API access |
+| Tier            | Wiki                          | Conversational Ads                | Customization                | Wiki Metrics                |
+| --------------- | ----------------------------- | --------------------------------- | ---------------------------- | --------------------------- |
+| **Free/Indie**  | **Opt-in** (dev activates it) | Revenue → Storyarn                | Storyarn branding            | No                          |
+| **Indie + Ads** | Opt-in                        | Revenue → developer (paid add-on) | Storyarn branding            | Basic                       |
+| **Pro**         | Optional (on/off)             | Revenue → developer (included)    | Game branding (colors, logo) | Yes (conversation insights) |
+| **Enterprise**  | Optional                      | Revenue → developer (included)    | Full branding, custom domain | Yes + API access            |
 
 **Wiki is opt-in, not mandatory.** The developer chooses when to activate their wiki (typically at or near launch). Forcing publication of project data during development would be hostile to users who protect their IP. The model mirrors Fandom's: free hosting with Storyarn-controlled ads. If the dev wants to control ads or remove them, they upgrade.
 
 **Upgrade paths:**
+
 - Free indie → activates wiki at launch → sees traffic → buys Ads add-on to own revenue
 - Indie + Ads → wants branding + metrics → upgrades to Pro → gets ads included + full control
 - The ad revenue ownership is a tangible, measurable incentive to upgrade
 
 **Pro tier wiki features:**
+
 - Custom branding: game logo, color scheme, fonts
 - Custom domain: `wiki.mygame.com` pointing to Storyarn-hosted wiki
 - Ad revenue goes to developer (Storyarn takes a % cut)
@@ -579,24 +597,24 @@ AI wikis for games NOT built with Storyarn, generated by aggregating data from p
 
 **Data sources with verified legal access (March 2026):**
 
-| Source | API | Content | License/Terms |
-|---|---|---|---|
-| **StrategyWiki** | MediaWiki API | **10,507 games, 852 complete guides, 56K pages** — walkthroughs, strategies | **CC-BY-SA 4.0** — commercial use allowed with attribution |
-| **Wikipedia** | MediaWiki API / REST | Synopsis, mechanics, reception, development history | **CC-BY-SA 4.0** — commercial use allowed with attribution |
-| **Wikibooks** | MediaWiki API | Additional game guides | **CC-BY-SA** |
-| **RAWG.io** | REST API | 500K+ games, descriptions, screenshots, ratings, genres | Free commercial <20K req/month, <500K pageviews |
-| **IGDB (Twitch)** | REST API | Comprehensive game metadata, covers, screenshots | Free non-commercial; **commercial requires partnership** |
-| **Steam Store** | Store API | Descriptions, reviews, prices, screenshots, requirements | API key (free) |
-| **GiantBomb** | REST API | Exhaustive game database | API key (free) |
+| Source            | API                  | Content                                                                     | License/Terms                                              |
+| ----------------- | -------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| **StrategyWiki**  | MediaWiki API        | **10,507 games, 852 complete guides, 56K pages** — walkthroughs, strategies | **CC-BY-SA 4.0** — commercial use allowed with attribution |
+| **Wikipedia**     | MediaWiki API / REST | Synopsis, mechanics, reception, development history                         | **CC-BY-SA 4.0** — commercial use allowed with attribution |
+| **Wikibooks**     | MediaWiki API        | Additional game guides                                                      | **CC-BY-SA**                                               |
+| **RAWG.io**       | REST API             | 500K+ games, descriptions, screenshots, ratings, genres                     | Free commercial <20K req/month, <500K pageviews            |
+| **IGDB (Twitch)** | REST API             | Comprehensive game metadata, covers, screenshots                            | Free non-commercial; **commercial requires partnership**   |
+| **Steam Store**   | Store API            | Descriptions, reviews, prices, screenshots, requirements                    | API key (free)                                             |
+| **GiantBomb**     | REST API             | Exhaustive game database                                                    | API key (free)                                             |
 
 **Sources explicitly excluded (legal risk):**
 
-| Source | Reason |
-|---|---|
-| **Fandom** | CC-BY-SA text but ToS explicitly prohibit scraping with bots. Reddit sued Anthropic and Perplexity for similar violations (2025-2026). 70+ copyright lawsuits against AI companies for scraping. Not worth the risk. |
-| **IGN, EliteGuías, GameFAQs, Game8** | Editorial copyright. GameFAQs authors explicitly prohibit redistribution. |
-| **MobyGames** | API available but prohibits data redistribution |
-| **Metacritic/OpenCritic** | No public API, scraping prohibited |
+| Source                               | Reason                                                                                                                                                                                                               |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Fandom**                           | CC-BY-SA text but ToS explicitly prohibit scraping with bots. Reddit sued Anthropic and Perplexity for similar violations (2025-2026). 70+ copyright lawsuits against AI companies for scraping. Not worth the risk. |
+| **IGN, EliteGuías, GameFAQs, Game8** | Editorial copyright. GameFAQs authors explicitly prohibit redistribution.                                                                                                                                            |
+| **MobyGames**                        | API available but prohibits data redistribution                                                                                                                                                                      |
+| **Metacritic/OpenCritic**            | No public API, scraping prohibited                                                                                                                                                                                   |
 
 **How external wikis work — AI as agent with tools:**
 
@@ -615,11 +633,11 @@ The AI doesn't store pre-scraped content. It queries APIs at runtime (with cachi
 
 **Quality tiers:**
 
-| Wiki type | Data quality | Source |
-|---|---|---|
-| **Native wiki** (Storyarn project) | Perfect — structured entities, relationships, spoiler tags | Project data via RAG |
-| **External wiki** (popular game) | Good — guides + metadata + LLM knowledge | StrategyWiki + APIs + LLM base knowledge |
-| **External wiki** (obscure game) | Basic — metadata only, limited guide content | APIs + LLM base knowledge |
+| Wiki type                          | Data quality                                               | Source                                   |
+| ---------------------------------- | ---------------------------------------------------------- | ---------------------------------------- |
+| **Native wiki** (Storyarn project) | Perfect — structured entities, relationships, spoiler tags | Project data via RAG                     |
+| **External wiki** (popular game)   | Good — guides + metadata + LLM knowledge                   | StrategyWiki + APIs + LLM base knowledge |
+| **External wiki** (obscure game)   | Basic — metadata only, limited guide content               | APIs + LLM base knowledge                |
 
 - External wikis have no owner — all ad revenue goes to Storyarn
 - Lower quality than native wikis (aggregated text vs structured entities)
@@ -627,6 +645,7 @@ The AI doesn't store pre-scraped content. It queries APIs at runtime (with cachi
 - If a developer wants the premium wiki experience (structured data, spoiler control, full guide coverage), they use Storyarn to design their game — that's the only path to a native wiki
 
 **Traffic reference points (March 2026):**
+
 - Stardew Valley Wiki (independent): ~110M visits/month (Semrush, March 2024) — an indie game
 - Fandom total: ~780M visits/month
 - Major wikis are **leaving Fandom** (Minecraft, Hollow Knight, GTA, League of Legends — all migrated 2022-2025) due to aggressive ads
@@ -646,14 +665,14 @@ Direct advertisers won't pay without traffic volume. Solve the chicken-and-egg w
 
 **Available affiliate programs:**
 
-| Platform | Commission | Cookie | Access | Notes |
-|---|---|---|---|---|
-| **GOG.com** | **6%** | 30 days | Open (via CJ Affiliate) | DRM-free games, good indie catalog |
-| **Humble Bundle** | **5-8%** (up to 15% on bundles) | 30 days | Open | Bundles are high-conversion |
-| **Green Man Gaming** | **0.5-5%** (10% on bundles) | 30 days | Open | 7,000+ games, sells Steam keys |
-| **Fanatical** | **2-5%** | — | Open | Steam/Epic keys |
-| **Epic Games** | **5%** or $5/referral | — | Support-A-Creator program | Requires "creator" status |
-| **Steam** | **No program** | — | — | No public affiliate program. Use GMG/Humble/Fanatical for Steam keys |
+| Platform             | Commission                      | Cookie  | Access                    | Notes                                                                |
+| -------------------- | ------------------------------- | ------- | ------------------------- | -------------------------------------------------------------------- |
+| **GOG.com**          | **6%**                          | 30 days | Open (via CJ Affiliate)   | DRM-free games, good indie catalog                                   |
+| **Humble Bundle**    | **5-8%** (up to 15% on bundles) | 30 days | Open                      | Bundles are high-conversion                                          |
+| **Green Man Gaming** | **0.5-5%** (10% on bundles)     | 30 days | Open                      | 7,000+ games, sells Steam keys                                       |
+| **Fanatical**        | **2-5%**                        | —       | Open                      | Steam/Epic keys                                                      |
+| **Epic Games**       | **5%** or $5/referral           | —       | Support-A-Creator program | Requires "creator" status                                            |
+| **Steam**            | **No program**                  | —       | —                         | No public affiliate program. Use GMG/Humble/Fanatical for Steam keys |
 
 **Phase 1 (no advertisers needed):** The AI recommends games using affiliate links from GOG, Humble, GMG. At 6% commission on a $30 game = $1.80 per sale. Low margin, but zero cost to operate — no sales team, no advertiser relationships. Validates the format and builds conversion data.
 
@@ -662,6 +681,7 @@ Direct advertisers won't pay without traffic volume. Solve the chicken-and-egg w
 **Phase 3 (direct advertisers):** With proven traffic and conversion data, approach game publishers for premium conversational ad placements at CPE rates significantly higher than affiliate commissions.
 
 **Flywheel:**
+
 - Indie uses Storyarn (free) → activates wiki at launch → Storyarn earns affiliate revenue from external recommendations
 - Players use the guide → conversational recommendations feel natural → higher engagement → more revenue
 - Traffic grows → affiliate data proves conversion rates → attracts direct advertisers
@@ -728,7 +748,7 @@ Each step links back to the character in Storyarn. The designer sees the full pi
 Share a link, testers play in exploration mode, Storyarn records everything:
 
 | Metric            | Value                                                                     |
-|-------------------|---------------------------------------------------------------------------|
+| ----------------- | ------------------------------------------------------------------------- |
 | Narrative funnel  | Of 100 testers, how many reached the end, where they dropped off          |
 | Decision heatmap  | What % chooses each dialogue response                                     |
 | Time-per-node     | Which dialogues are read fast (boring) vs re-read (confusing/interesting) |
@@ -753,6 +773,7 @@ A high-level view showing ALL possible paths through the game. Not individual fl
 ### 3. Voice Direction Sheets
 
 For each dialogue line, the designer adds direction for voice actors:
+
 - Emotion, intensity, pacing
 - Audio reference clips
 - Context (what just happened in the story)
@@ -767,7 +788,7 @@ Export as formatted scripts for recording sessions. Actors get full context with
 AI analyzes the entire project and detects:
 
 | Issue               | Example                                            |
-|---------------------|----------------------------------------------------|
+| ------------------- | -------------------------------------------------- |
 | Plot holes          | Character dies in branch A but appears in branch B |
 | Dead variables      | Variables set but never read                       |
 | Unreachable content | Dialogues that no path leads to                    |
@@ -781,6 +802,7 @@ AI analyzes the entire project and detects:
 ### 5. Live Collaboration in Playtesting
 
 Designer and tester in the same session:
+
 - Designer sees what the tester does in real-time
 - Designer takes notes anchored to the exact moment in the playtest
 - Can pause and ask questions
@@ -791,6 +813,7 @@ Designer and tester in the same session:
 ### 6. Asset Brief Generator
 
 From a character sheet, AI generates a complete brief for artists:
+
 - Visual description compiled from all sheet fields
 - Mood board suggestions
 - Color palette based on character traits
@@ -838,17 +861,17 @@ System:
 
 By name pattern:
 
-| Pattern                                                 | Inferred Type   | Confidence  |
-|---------------------------------------------------------|-----------------|-------------|
-| `has_*`, `is_*`, `can_*`, `was_*`                       | boolean         | High        |
-| `count_*`, `num_*`, `*_count`, `health`, `level`, `age` | number          | Medium      |
-| `name`, `title`, `description`, `*_text`                | text            | Medium      |
-| Everything else                                         | Unknown         | Show modal  |
+| Pattern                                                 | Inferred Type | Confidence |
+| ------------------------------------------------------- | ------------- | ---------- |
+| `has_*`, `is_*`, `can_*`, `was_*`                       | boolean       | High       |
+| `count_*`, `num_*`, `*_count`, `health`, `level`, `age` | number        | Medium     |
+| `name`, `title`, `description`, `*_text`                | text          | Medium     |
+| Everything else                                         | Unknown       | Show modal |
 
 By usage context:
 
 | Context                              | Inferred Type          |
-|--------------------------------------|------------------------|
+| ------------------------------------ | ---------------------- |
 | Compared with `true`/`false`         | boolean                |
 | Compared with a number               | number                 |
 | Operator `greater_than`, `less_than` | number                 |
@@ -864,6 +887,7 @@ When both agree, create without asking. When they conflict or are ambiguous, sho
 - **Visual indicator.** Input changes color or shows a "NEW" badge when about to create
 
 **Hierarchy rules:**
+
 - Intermediate folders are normal sheets without blocks
 - User can add blocks to them later
 - A "folder" is simply a sheet that has children
@@ -871,7 +895,7 @@ When both agree, create without asking. When they conflict or are ambiguous, sho
 **Where it applies:**
 
 | Context                     | What Gets Created       | Example                    |
-|-----------------------------|-------------------------|----------------------------|
+| --------------------------- | ----------------------- | -------------------------- |
 | Flow → dialogue speaker     | Sheet (character)       | `characters.elias`         |
 | Flow → condition variable   | Block on existing sheet | `elias.has_key`            |
 | Flow → instruction variable | Block on existing sheet | `elias.gold` → number      |
@@ -882,7 +906,7 @@ When both agree, create without asking. When they conflict or are ambiguous, sho
 **Project settings toggle:**
 
 | Mode                   | Behavior                                            | Target                    |
-|------------------------|-----------------------------------------------------|---------------------------|
+| ---------------------- | --------------------------------------------------- | ------------------------- |
 | **Creative** (default) | Create on reference active                          | Indies, rapid prototyping |
 | **Strict**             | Only reference existing entities, autocomplete only | AAA, large teams          |
 
@@ -905,6 +929,7 @@ end
 ```
 
 JS side: extend existing search inputs (combobox/searchable select):
+
 - Exact match → select
 - Fuzzy match → suggest
 - No match + creative mode → show "Create `elias.has_key`" option with inferred type
@@ -913,7 +938,7 @@ JS side: extend existing search inputs (combobox/searchable select):
 **Assessment:**
 
 | Aspect                     | Rating                                                                               |
-|----------------------------|--------------------------------------------------------------------------------------|
+| -------------------------- | ------------------------------------------------------------------------------------ |
 | User value                 | **Very high** — eliminates constant friction                                         |
 | Implementation complexity  | **Medium** — parsing/creation is simple, fuzzy + confirmation UX is the complex part |
 | Risk                       | **Low with toggle** — enterprises disable it, indies enjoy it                        |
@@ -952,6 +977,7 @@ Detailed management with two sub-views:
 Grid view — all avatars visible, click inline to name, drag to reorder.
 
 Single view — click any image from grid to see full-size, with editable fields below:
+
 - **Name** (optional) — normalized with `variablify` (e.g., "Angry Face" → `angry_face`)
 - **Notes** (optional) — free text for art direction, actor notes, context
 - Navigation arrows between images
@@ -960,19 +986,20 @@ Single view — click any image from grid to see full-size, with editable fields
 
 **Editing capabilities per mode:**
 
-| Action              | Film Strip   | Gallery Grid   | Gallery Single   |
-|---------------------|--------------|----------------|------------------|
-| Add image           | Yes          | Yes            | No               |
-| Reorder             | Drag         | Drag           | Arrows ← →       |
-| Select default      | Click        | Click          | Button           |
-| Delete              | Hover → X    | Hover → X      | Button           |
-| Edit name           | No           | Click inline   | Input field      |
-| Edit notes/metadata | No           | No             | Yes              |
-| View full size      | No           | No             | Yes              |
+| Action              | Film Strip | Gallery Grid | Gallery Single |
+| ------------------- | ---------- | ------------ | -------------- |
+| Add image           | Yes        | Yes          | No             |
+| Reorder             | Drag       | Drag         | Arrows ← →     |
+| Select default      | Click      | Click        | Button         |
+| Delete              | Hover → X  | Hover → X    | Button         |
+| Edit name           | No         | Click inline | Input field    |
+| Edit notes/metadata | No         | No           | Yes            |
+| View full size      | No         | No           | Yes            |
 
 **In dialogue nodes:**
 
 Click the avatar on the dialogue node → selector shows all avatars from the speaker's gallery:
+
 - Named avatars show name + thumbnail
 - Unnamed avatars show thumbnail only
 - Default is always labeled "default"
@@ -996,6 +1023,7 @@ Dialogue node data:
 New table (not JSON field) for: queryability, DB-level ordering, clean schema migration.
 
 **Design principles:**
+
 - **Zero overhead if unused** — single avatar works exactly as today
 - **No imposed semantics** — images can represent emotions, costumes, ages, angles — user decides
 - **Modal absorbs future complexity** — tags, audio references, or any new fields get added to single view without changing the strip
@@ -1004,7 +1032,7 @@ New table (not JSON field) for: queryability, DB-level ordering, clean schema mi
 **Assessment:**
 
 | Aspect                     | Rating                                                                       |
-|----------------------------|------------------------------------------------------------------------------|
+| -------------------------- | ---------------------------------------------------------------------------- |
 | User value                 | **High** — standard industry need, every narrative game uses portraits       |
 | Implementation complexity  | **Medium** — new table, film strip component, gallery modal                  |
 | Risk                       | **Very low** — backwards compatible, optional feature                        |
@@ -1016,15 +1044,15 @@ New table (not JSON field) for: queryability, DB-level ordering, clean schema mi
 
 **Two products:**
 
-| Product | Revenue Model | Customers |
-|---|---|---|
-| **Storyarn Platform** | Subscriptions (per-seat or per-workspace) | Game designers, studios |
+| Product               | Revenue Model                                             | Customers               |
+| --------------------- | --------------------------------------------------------- | ----------------------- |
+| **Storyarn Platform** | Subscriptions (per-seat or per-workspace)                 | Game designers, studios |
 | **Storyarn Wiki Ads** | Advertisers pay for conversational ad placements in wikis | Game publishers, brands |
 
 **Platform revenue streams:**
 
 | Revenue Stream        | Source                                                    |
-|-----------------------|-----------------------------------------------------------|
+| --------------------- | --------------------------------------------------------- |
 | Subscriptions         | Studios paying per-seat or per-workspace                  |
 | Ads add-on            | Indies paying to own their wiki ad revenue                |
 | Mechanics marketplace | Community-created mechanic configurations (revenue share) |
@@ -1034,13 +1062,13 @@ New table (not JSON field) for: queryability, DB-level ordering, clean schema mi
 
 **Wiki Ads revenue streams:**
 
-| Revenue Stream             | Source                                                              |
-|----------------------------|---------------------------------------------------------------------|
-| Free-tier wiki ads         | Conversational + loading ads on opt-in wikis → 100% to Storyarn     |
-| External wiki ads          | Ads on API-aggregated wikis → 100% to Storyarn                      |
-| Pro/Enterprise wiki ads    | Conversational + loading ads → developer gets majority, Storyarn takes % cut  |
-| Affiliate commissions      | Cold-start: GOG 6%, Humble 5-8%, GMG 0.5-5% on referred sales      |
-| Advertiser partnerships    | Game publishers paying for premium CPE placements in relevant wiki chats |
+| Revenue Stream          | Source                                                                       |
+| ----------------------- | ---------------------------------------------------------------------------- |
+| Free-tier wiki ads      | Conversational + loading ads on opt-in wikis → 100% to Storyarn              |
+| External wiki ads       | Ads on API-aggregated wikis → 100% to Storyarn                               |
+| Pro/Enterprise wiki ads | Conversational + loading ads → developer gets majority, Storyarn takes % cut |
+| Affiliate commissions   | Cold-start: GOG 6%, Humble 5-8%, GMG 0.5-5% on referred sales                |
+| Advertiser partnerships | Game publishers paying for premium CPE placements in relevant wiki chats     |
 
 ---
 
@@ -1097,6 +1125,7 @@ PHASE 7 — Ecosystem
 ## VIII. What Makes This Worth Paying For
 
 Today, a 5-15 person indie studio uses:
+
 - articy or Yarn Spinner (narrative): $200-800/year
 - Figma (UI/concepts): $15/month/person
 - Notion (GDD): $10/month/person

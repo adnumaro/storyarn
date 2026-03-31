@@ -1,24 +1,25 @@
 %{
-  title: "Import & Export",
-  category_label: "Import & Export",
-  order: 1,
-  description: "Get your content in and out of Storyarn in formats that work with every major game engine."
+title: "Import & Export",
+category_label: "Import & Export",
+order: 1,
+description: "Get your content in and out of Storyarn in formats that work with every major game engine."
 }
+
 ---
 
 Storyarn can export your narrative content to {accent}7 formats{/accent} covering every major game engine and dialogue system. Whether you are building with Unity, Unreal, Godot, or using Ink or Yarn Spinner as your runtime, Storyarn has a serializer ready for your pipeline.
 
 ## Export formats
 
-| Format | Extension | Engine / Tool | Content supported |
-|--------|-----------|---------------|-------------------|
-| **Storyarn JSON** | `.json` | Storyarn (full backup) | Sheets, Flows, Scenes, Screenplays, Localization, Assets |
-| **Ink** | `.ink` | Inkle's Ink runtime | Flows, Sheets |
-| **Yarn Spinner** | `.yarn` | Yarn Spinner (Unity, Godot) | Flows, Sheets |
-| **Unity Dialogue System** | `.json` | Unity (Pixel Crushers, etc.) | Flows, Sheets |
-| **Godot Dialogic** | `.dtl` | Godot 4 Dialogic plugin | Flows, Sheets |
-| **Unreal Engine** | `.csv` | Unreal Engine (Data Tables) | Flows, Sheets |
-| **articy:draft** | `.xml` | articy:draft XML import | Flows, Sheets |
+| Format                    | Extension | Engine / Tool                | Content supported                                        |
+| ------------------------- | --------- | ---------------------------- | -------------------------------------------------------- |
+| **Storyarn JSON**         | `.json`   | Storyarn (full backup)       | Sheets, Flows, Scenes, Screenplays, Localization, Assets |
+| **Ink**                   | `.ink`    | Inkle's Ink runtime          | Flows, Sheets                                            |
+| **Yarn Spinner**          | `.yarn`   | Yarn Spinner (Unity, Godot)  | Flows, Sheets                                            |
+| **Unity Dialogue System** | `.json`   | Unity (Pixel Crushers, etc.) | Flows, Sheets                                            |
+| **Godot Dialogic**        | `.dtl`    | Godot 4 Dialogic plugin      | Flows, Sheets                                            |
+| **Unreal Engine**         | `.csv`    | Unreal Engine (Data Tables)  | Flows, Sheets                                            |
+| **articy:draft**          | `.xml`    | articy:draft XML import      | Flows, Sheets                                            |
 
 The {accent}Storyarn JSON{/accent} format is the only one that supports the full project -- all entity types including scenes, screenplays, and localization data. The engine-specific formats focus on flows and sheets, which is what game runtimes need for dialogue and variable state.
 
@@ -34,11 +35,11 @@ The {accent}Storyarn JSON{/accent} format is the only one that supports the full
 3. **Select content sections** -- Check or uncheck Sheets, Flows, Scenes, Screenplays, and Localization. Sections not supported by the selected format are disabled.
 4. **Choose asset mode** -- Control how asset files (images, audio) are handled:
 
-| Asset mode | Behavior |
-|-----------|----------|
-| **References only** | Asset URLs are included in the output (default, smallest file) |
-| **Embedded** | Assets are Base64-encoded inline (larger file, fully self-contained) |
-| **Bundled** | Output is a ZIP file with an assets folder alongside the data file |
+| Asset mode          | Behavior                                                             |
+| ------------------- | -------------------------------------------------------------------- |
+| **References only** | Asset URLs are included in the output (default, smallest file)       |
+| **Embedded**        | Assets are Base64-encoded inline (larger file, fully self-contained) |
+| **Bundled**         | Output is a ZIP file with an assets folder alongside the data file   |
 
 5. **Set options** -- Toggle "Validate before export" and "Pretty print output" as needed.
 6. **Download** -- Click the download button to get your file.
@@ -48,10 +49,12 @@ The {accent}Storyarn JSON{/accent} format is the only one that supports the full
 Before downloading, you can run validation to catch issues that would cause problems in your game. Click **Validate** to check your project. The validator runs 9 checks and reports findings at three severity levels:
 
 **Errors** (will likely break your game):
+
 - Flows missing an Entry node
 - Broken references: jump nodes pointing to non-existent hubs, subflow nodes referencing deleted flows, slug lines linked to missing scenes
 
 **Warnings** (potential issues):
+
 - Orphan nodes with no connections
 - Unreachable nodes (not reachable from Entry via BFS traversal)
 - Empty dialogue nodes (no text content)
@@ -60,6 +63,7 @@ Before downloading, you can run validation to catch issues that would cause prob
 - Missing translations for configured languages
 
 **Info** (worth knowing):
+
 - Orphan sheets with no references from any flow or scene
 
 <div class="docs-image-placeholder">
@@ -79,11 +83,11 @@ Storyarn can import project data from {accent}.storyarn.json{/accent} files -- t
 
 3. **Resolve conflicts** -- When shortcut conflicts are detected, choose a strategy:
 
-| Strategy | Behavior |
-|----------|----------|
-| **Skip** | Keep existing entities, ignore conflicting imports |
-| **Overwrite** | Replace existing entities with imported data |
-| **Rename** | Import with a new shortcut to avoid collision |
+| Strategy      | Behavior                                           |
+| ------------- | -------------------------------------------------- |
+| **Skip**      | Keep existing entities, ignore conflicting imports |
+| **Overwrite** | Replace existing entities with imported data       |
+| **Rename**    | Import with a new shortcut to avoid collision      |
 
 4. **Execute** -- Click Import to apply. The import runs inside a {accent}database transaction{/accent}, so it is all-or-nothing. If any step fails, everything is rolled back and you get an error message explaining what went wrong.
 

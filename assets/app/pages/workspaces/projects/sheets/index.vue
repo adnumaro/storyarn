@@ -1,0 +1,295 @@
+<script setup>
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Info,
+  Layers,
+  Link,
+  MoreHorizontal,
+  TextCursorInput,
+  Trash2,
+  Variable,
+} from "lucide-vue-next";
+import { computed } from "vue";
+import { Button } from "@components/ui/button/index.js";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@components/ui/dropdown-menu/index.js";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@components/ui/table/index.js";
+import { useLive } from "@composables/useLive.js";
+import { formatRelativeTime } from "@lib/date-utils.js";
+
+const props = defineProps({
+  stats: { type: Object, default: null },
+  tableData: { type: Array, default: () => [] },
+  sortBy: { type: String, default: "name" },
+  sortDir: { type: String, default: "asc" },
+  page: { type: Number, default: 1 },
+  totalPages: { type: Number, default: 1 },
+  total: { type: Number, default: 0 },
+  issues: { type: Array, default: () => [] },
+  canEdit: { type: Boolean, default: false },
+  workspaceSlug: { type: String, required: true },
+  projectSlug: { type: String, required: true },
+});
+
+const live = useLive();
+
+function sheetHref(row) {
+  return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/sheets/${row.id}`;
+}
+
+function sortBy(column) {
+  live.pushEvent("sort_sheets", { column });
+}
+
+function goToPage(page) {
+  live.pushEvent("page_sheets", { page });
+}
+
+function requestDelete(id) {
+  live.pushEvent("set_pending_delete_sheet", { id });
+  live.pushEvent("confirm_delete_sheet", {});
+}
+
+function sortIcon(column) {
+  if (props.sortBy !== column) return ArrowUpDown;
+  return props.sortDir === "asc" ? ArrowUp : ArrowDown;
+}
+
+const statCards = computed(() => {
+  if (!props.stats) return [];
+  return [
+    {
+      icon: FileText,
+      label: "Sheets",
+      value: props.stats.sheet_count,
+      color: "text-primary",
+    },
+    {
+      icon: Layers,
+      label: "Blocks",
+      value: props.stats.block_count,
+      color: "text-blue-400",
+    },
+    {
+      icon: Variable,
+      label: "Variables",
+      value: props.stats.variable_count,
+      color: "text-violet-400",
+    },
+    {
+      icon: Link,
+      label: "Vars in use",
+      value: props.stats.variables_in_use,
+      color: "text-amber-400",
+    },
+    {
+      icon: TextCursorInput,
+      label: "Words",
+      value: props.stats.word_count,
+      color: "text-emerald-400",
+    },
+  ];
+});
+
+const columns = [
+  { key: "name", label: "Name", align: "left" },
+  { key: "block_count", label: "Blocks", align: "right" },
+  { key: "variable_count", label: "Variables", align: "right" },
+  { key: "word_count", label: "Words", align: "right" },
+  { key: "updated_at", label: "Modified", align: "right" },
+];
+
+const pages = computed(() => {
+  const result = [];
+  for (let i = 1; i <= props.totalPages; i++) {
+    result.push(i);
+  }
+  return result;
+});
+</script>
+
+<template>
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-8 space-y-6">
+    <!-- Header -->
+    <div>
+      <h1 class="text-lg font-semibold">Sheets</h1>
+      <p class="text-sm text-muted-foreground">Create and organize your project's content</p>
+    </div>
+
+    <!-- Empty state -->
+    <div
+      v-if="total === 0 && !stats"
+      class="flex flex-col items-center justify-center py-16 text-center"
+    >
+      <FileText class="size-12 text-muted-foreground/30 mb-4" />
+      <p class="text-sm text-muted-foreground">
+        No sheets yet. Create your first sheet to get started.
+      </p>
+    </div>
+
+    <!-- Loading skeleton -->
+    <div v-else-if="!stats" class="flex justify-center py-12">
+      <div
+        class="size-6 border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin"
+      />
+    </div>
+
+    <!-- Dashboard content -->
+    <template v-else>
+      <!-- Stats row -->
+      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+        <div
+          v-for="stat in statCards"
+          :key="stat.label"
+          class="rounded-lg border border-border bg-surface p-4 space-y-2"
+        >
+          <div class="flex items-center gap-2 text-xs text-muted-foreground">
+            <component :is="stat.icon" :class="['size-4', stat.color]" />
+            {{ stat.label }}
+          </div>
+          <p class="text-2xl font-bold tabular-nums">{{ stat.value }}</p>
+        </div>
+      </div>
+
+      <!-- Table section -->
+      <div class="space-y-2">
+        <h2 class="text-sm font-medium">All Sheets</h2>
+        <div class="rounded-lg border border-border bg-surface overflow-auto max-h-[60vh]">
+          <Table>
+            <TableHeader>
+              <TableRow class="bg-muted/40 hover:bg-muted/40 sticky top-0 z-10">
+                <TableHead
+                  v-for="col in columns"
+                  :key="col.key"
+                  :class="[
+                    'font-medium text-xs text-muted-foreground uppercase',
+                    col.align === 'right' ? 'text-right' : 'text-left',
+                  ]"
+                >
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                    :class="col.align === 'right' && 'ml-auto'"
+                    @click="sortBy(col.key)"
+                  >
+                    {{ col.label }}
+                    <component :is="sortIcon(col.key)" class="size-3" />
+                  </button>
+                </TableHead>
+                <TableHead v-if="canEdit" class="w-10" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-for="row in tableData" :key="row.id">
+                <TableCell>
+                  <a :href="sheetHref(row)" class="font-medium hover:underline">
+                    {{ row.name }}
+                  </a>
+                </TableCell>
+                <TableCell class="text-right tabular-nums">{{ row.block_count }}</TableCell>
+                <TableCell class="text-right tabular-nums">{{ row.variable_count }}</TableCell>
+                <TableCell class="text-right tabular-nums">{{ row.word_count }}</TableCell>
+                <TableCell class="text-right text-muted-foreground text-xs">
+                  {{ formatRelativeTime(row.updated_at) }}
+                </TableCell>
+                <TableCell v-if="canEdit" class="text-right w-10">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger as-child>
+                      <Button variant="ghost" size="icon-sm" class="size-7">
+                        <MoreHorizontal class="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" class="">
+                      <DropdownMenuItem
+                        class="text-destructive gap-2 text-xs"
+                        @select="requestDelete(row.id)"
+                      >
+                        <Trash2 class="size-3.5" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+
+        <!-- Pagination -->
+        <div
+          v-if="totalPages > 1"
+          class="flex items-center justify-between text-xs text-muted-foreground pt-1"
+        >
+          <span>{{ total }} sheets</span>
+          <div class="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              class="size-7"
+              :disabled="page <= 1"
+              @click="goToPage(page - 1)"
+            >
+              <ChevronLeft class="size-4" />
+            </Button>
+            <Button
+              v-for="p in pages"
+              :key="p"
+              :variant="p === page ? 'default' : 'ghost'"
+              size="sm"
+              class="h-7 min-w-7 px-2 text-xs"
+              @click="goToPage(p)"
+            >
+              {{ p }}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              class="size-7"
+              :disabled="page >= totalPages"
+              @click="goToPage(page + 1)"
+            >
+              <ChevronRight class="size-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Issues -->
+      <div v-if="issues.length > 0" class="space-y-2">
+        <h2 class="text-sm font-medium">Issues</h2>
+        <div class="rounded-lg border border-border divide-y divide-border">
+          <a
+            v-for="(issue, i) in issues"
+            :key="i"
+            :href="issue.href"
+            class="flex items-start gap-2 px-3 py-2 text-sm hover:bg-muted/30 transition-colors"
+          >
+            <AlertTriangle
+              v-if="issue.severity === 'warning'"
+              class="size-4 text-yellow-500 shrink-0 mt-0.5"
+            />
+            <Info v-else class="size-4 text-blue-400 shrink-0 mt-0.5" />
+            <span class="text-muted-foreground">{{ issue.message }}</span>
+          </a>
+        </div>
+      </div>
+    </template>
+  </div>
+</template>

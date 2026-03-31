@@ -69,12 +69,14 @@ Flow "Scene 3 Flow" (id=20, draft_of_id=nil)             ← ORIGINAL
 "Create draft" = deep clone of the entity + all its children:
 
 **Screenplay draft:**
+
 1. Clone `screenplay` record → set `draft_of_id` to original's id
 2. Clone all `screenplay_elements` → point to new screenplay
 3. Preserve `linked_node_id` references (elements still point to same flow nodes)
 4. User names the draft (default: "Draft of {original_name}")
 
 **Flow draft:**
+
 1. Clone `flow` record → set `draft_of_id` to original's id
 2. Clone all `flow_nodes` → point to new flow, build old→new ID map
 3. Clone all `flow_connections` → point to new flow, remap node IDs using the map
@@ -165,6 +167,7 @@ When viewing an original that has drafts, the toolbar shows a dropdown:
 ```
 
 When viewing a draft:
+
 - Banner at top: "You are editing draft: Dark ending" + [Promote] + [Back to original]
 - All editing works identically to the original
 - Collaboration works independently per draft
@@ -174,7 +177,7 @@ When viewing a draft:
 A screenplay draft can have its own `linked_flow_id`, independent of the original:
 
 | Scenario                  | Screenplay         | linked_flow_id            |
-|---------------------------|--------------------|---------------------------|
+| ------------------------- | ------------------ | ------------------------- |
 | Original with flow        | Scene 3 (original) | → Flow Scene 3 (original) |
 | Draft with same flow      | Scene 3 draft A    | → Flow Scene 3 (original) |
 | Draft with own flow draft | Scene 3 draft B    | → Flow Scene 3 draft X    |
@@ -187,6 +190,7 @@ This is handled naturally by the existing `linked_flow_id` field — no special 
 ### Implementation Phases
 
 #### Draft Phase 1: Core (Screenplay only)
+
 - Deep clone function for screenplays + elements
 - Draft CRUD: create, archive, delete, restore
 - Draft selector dropdown in screenplay editor toolbar
@@ -195,33 +199,36 @@ This is handled naturally by the existing `linked_flow_id` field — no special 
 - Filter drafts from sidebar tree
 
 #### Draft Phase 2: Promote & Compare
+
 - Promote draft to original
 - Side-by-side diff view (element-level comparison)
 - Draft history timeline
 
 #### Draft Phase 3: Flow Drafts
+
 - Add `draft_of_id`, `draft_label`, `draft_status` to flows migration
 - Deep clone for flows + nodes + connections
 - Draft selector in flow editor toolbar
 - Cross-entity linking (screenplay draft ↔ flow draft)
 
 #### Draft Phase 4: Advanced
+
 - Merge: cherry-pick elements from a draft into the original
 - Batch drafts: create draft of entire flow+screenplay pair simultaneously
 - Draft comments/annotations: "This version changes the motivation for..."
 
 ### Impact Assessment
 
-| Component         | Impact   | Notes                                           |
-|-------------------|----------|-------------------------------------------------|
-| Screenplay schema | None     | Fields already in migration                     |
-| Flow schema       | Low      | One migration to add 3 fields                   |
-| Sidebar tree      | None     | Already filters `draft_of_id IS NULL`           |
-| CRUD operations   | Low      | Deep clone is the main new function             |
-| Sync engine       | None     | Works via existing `linked_flow_id`             |
-| Collaboration     | None     | Each draft is an independent entity             |
-| Editor UI         | Medium   | Draft selector dropdown + banner                |
-| Queries           | Low      | Add `WHERE draft_of_id IS NULL` to list queries |
+| Component         | Impact | Notes                                           |
+| ----------------- | ------ | ----------------------------------------------- |
+| Screenplay schema | None   | Fields already in migration                     |
+| Flow schema       | Low    | One migration to add 3 fields                   |
+| Sidebar tree      | None   | Already filters `draft_of_id IS NULL`           |
+| CRUD operations   | Low    | Deep clone is the main new function             |
+| Sync engine       | None   | Works via existing `linked_flow_id`             |
+| Collaboration     | None   | Each draft is an independent entity             |
+| Editor UI         | Medium | Draft selector dropdown + banner                |
+| Queries           | Low    | Add `WHERE draft_of_id IS NULL` to list queries |
 
 **Total difficulty: Medium.** The bulk of the work is the deep clone function and the toolbar UI. The architecture supports it cleanly because a draft IS a full entity, not a layer on top.
 
@@ -288,6 +295,7 @@ Storyarn.Flows.VariableReferenceTracker.get_variable_usage(block_id, project_id)
 ```
 
 What's needed:
+
 1. **Sheet UI:** Add "Timeline" or "Usage" tab to the sheet editor
 2. **Query:** Group variable_references by variable, sorted by flow
 3. **Navigation:** Click a reference to jump to the flow node
@@ -389,6 +397,7 @@ When  [mc.zelda]·[hasMasterSword]  is  [true]  then  Set  [mc.link]·[health]  
 This merges two distinct concepts (condition + instruction) into one unit. articy:draft explicitly separates these into input pins (conditions) and output pins (instructions), and this separation is considered one of their best design decisions. The flow editor already supports this pattern naturally: Condition Node → Connection → Instruction Node.
 
 Problems with merging:
+
 - Complicates the data model (each assignment optionally contains a full condition)
 - Confuses the mental model ("is this a condition or an instruction?")
 - Doubles the complexity of the variable reference tracker
@@ -421,15 +430,15 @@ No mainstream narrative tool merges conditions and instructions this way. Ink us
 
 ### Market Landscape
 
-| Tool                      | Approach                           | Visual Builder?   | Non-Programmer Friendly?              |
-|---------------------------|------------------------------------|-------------------|---------------------------------------|
-| **articy:draft**          | C#-like text with autocomplete     | No                | Medium — C# syntax is barrier         |
-| **Twine (Harlowe)**       | Functional macros `(set: $v to x)` | No                | Easy for basics, steep for logic      |
-| **Ink (Inkle)**           | Custom syntax (`~ x = 2`)          | No                | Writer-friendly but still code        |
-| **Yarn Spinner**          | Tag-based `<<set $v to x>>`        | No                | Screenplay-like, accessible           |
-| **Chat Mapper**           | Lua + dropdowns                    | Partial           | Lua quirks frustrate users            |
-| **Dialogue System Unity** | Lua + **full dropdown wizard**     | **Yes**           | **Most accessible** for complex logic |
-| **Fungus**                | 100% visual blocks                 | **Yes**           | Most accessible but tedious at scale  |
+| Tool                      | Approach                           | Visual Builder? | Non-Programmer Friendly?              |
+| ------------------------- | ---------------------------------- | --------------- | ------------------------------------- |
+| **articy:draft**          | C#-like text with autocomplete     | No              | Medium — C# syntax is barrier         |
+| **Twine (Harlowe)**       | Functional macros `(set: $v to x)` | No              | Easy for basics, steep for logic      |
+| **Ink (Inkle)**           | Custom syntax (`~ x = 2`)          | No              | Writer-friendly but still code        |
+| **Yarn Spinner**          | Tag-based `<<set $v to x>>`        | No              | Screenplay-like, accessible           |
+| **Chat Mapper**           | Lua + dropdowns                    | Partial         | Lua quirks frustrate users            |
+| **Dialogue System Unity** | Lua + **full dropdown wizard**     | **Yes**         | **Most accessible** for complex logic |
+| **Fungus**                | 100% visual blocks                 | **Yes**         | Most accessible but tedious at scale  |
 
 ### Key Findings
 
@@ -450,7 +459,7 @@ No mainstream narrative tool merges conditions and instructions this way. Ink us
 Storyarn occupies an **unserved niche**: a standalone narrative design tool with a visual instruction builder that feels like writing.
 
 | Segment              | Competition               | Storyarn Advantage                        |
-|----------------------|---------------------------|-------------------------------------------|
+| -------------------- | ------------------------- | ----------------------------------------- |
 | Text scripting       | articy, Ink, Yarn Spinner | Accessible to non-programmers             |
 | Pure visual blocks   | Fungus                    | Scales better, less tedious               |
 | Hybrid wizard + code | Dialogue System for Unity | Standalone (not engine-locked), modern UX |
@@ -562,7 +571,7 @@ On image hover:
 ### Style Presets
 
 | Preset              | Description                | Best For          |
-|---------------------|----------------------------|-------------------|
+| ------------------- | -------------------------- | ----------------- |
 | Fantasy Portrait    | Detailed character art     | Characters        |
 | Environment Concept | Wide landscape/interior    | Locations         |
 | Item Render         | Clean object on neutral BG | Items             |
@@ -647,7 +656,7 @@ Reusable sheet structures with predefined blocks. Create a "Character" template,
 - How to handle template updates (sync to existing sheets?)
 - Versioning for templates?
 
-*To be fully designed when the feature is prioritized.*
+_To be fully designed when the feature is prioritized._
 
 ---
 
@@ -662,6 +671,7 @@ Reusable sheet structures with predefined blocks. Create a "Character" template,
 A "Feature" is a reusable group of properties (blocks) that can be composed into multiple templates. Instead of defining all blocks per template, you define Features once and combine them.
 
 **articy:draft's Approach:**
+
 ```
 Feature "BasicInfo"     = [name, description, icon]
 Feature "CombatStats"   = [health, attack, defense, speed]
@@ -702,6 +712,7 @@ Template "Monster"      = BasicInfo + CombatStats (no dialogue)
 ### Storyarn Adaptation Ideas
 
 **Option A: Features as Block Groups**
+
 ```
 Features are saved block configurations:
 - "CombatStats" = [{type: number, label: "Health"}, {type: number, label: "Attack"}, ...]
@@ -711,6 +722,7 @@ Templates reference Features by ID:
 ```
 
 **Option B: Features as Sheet Types**
+
 ```
 Features are special sheets that define blocks:
 - Sheet "/features/combat-stats" with blocks [health, attack, defense]
@@ -719,6 +731,7 @@ Templates inherit from multiple feature sheets (multiple inheritance)
 ```
 
 **Option C: Tags + Smart Defaults**
+
 ```
 Instead of formal Features, use tags and smart defaults:
 - Tag a sheet as "combatant" → suggest combat blocks
@@ -738,7 +751,7 @@ Instead of formal Features, use tags and smart defaults:
 3. Prototype simple Feature composition UI
 4. Decide on data model (Option A/B/C or hybrid)
 
-*This feature significantly impacts Sheet Templates. Should be researched before finalizing template design.*
+_This feature significantly impacts Sheet Templates. Should be researched before finalizing template design._
 
 ---
 
@@ -749,6 +762,7 @@ Instead of formal Features, use tags and smart defaults:
 > **Status:** Needs evaluation before implementing versioning (Phase 7.5.5)
 
 **Current Behavior:**
+
 - When a sheet/flow is renamed, its shortcut auto-updates to match the new name
 - References are stored by ID (stable), so the actual shortcut text change is transparent
 - When rendering a reference, the current shortcut is resolved from the ID
@@ -775,6 +789,7 @@ When sheet versioning is implemented, consider how shortcut changes should be re
 
 **Recommendation:**
 Evaluate these scenarios before implementing versioning. The simplest approach may be:
+
 - Store shortcut in version snapshot (for record)
 - On restore, regenerate shortcut from name (avoid conflicts)
 - References always resolve to current state (simpler UX)
@@ -791,6 +806,7 @@ Evaluate these scenarios before implementing versioning. The simplest approach m
 **Context:** When a speaker is selected for a dialogue node, the node header displays the speaker's avatar and name. Currently, the header keeps the default dialogue node color.
 
 **Feature Request:** Enhance header customization with options:
+
 - **Default mode** (current): Keep dialogue node color, show avatar + name
 - **Banner mode**: Use `Sheet.banner_asset_id` as header background
 - **Color mode**: Use speaker's custom color (requires adding color field to Sheet)
@@ -798,6 +814,7 @@ Evaluate these scenarios before implementing versioning. The simplest approach m
 **Implementation Options:**
 
 1. **Per-Sheet Setting:**
+
    ```elixir
    # Add to sheets table
    :header_display_mode  # "banner" | "color"
@@ -812,10 +829,12 @@ Evaluate these scenarios before implementing versioning. The simplest approach m
    ```
 
 **UI:**
+
 - Sheet settings: "Header display: [Default ▼] / [Banner ▼] / [Color ▼]"
 - Dialogue node (optional): "Override header: [Use sheet default ▼]"
 
 **Design Considerations:**
+
 - Banner backgrounds may cause readability issues with avatar + title
 - Need text shadow or overlay for contrast when using banners
 - Consider aspect ratio constraints for banner in small node headers
@@ -831,6 +850,7 @@ Evaluate these scenarios before implementing versioning. The simplest approach m
 **Feature:** Auto-generate menu text from full dialogue using AI.
 
 **User Flow:**
+
 ```
 ┌─────────────────────────────────────┐
 │ Text: "I've been waiting for you   │
@@ -847,6 +867,7 @@ Evaluate these scenarios before implementing versioning. The simplest approach m
 **Implementation:**
 
 1. **Prompt Template:**
+
    ```
    Summarize this dialogue line into a short phrase (max 6 words)
    suitable for a dialogue choice menu. Keep the essence and tone.
@@ -856,6 +877,7 @@ Evaluate these scenarios before implementing versioning. The simplest approach m
    ```
 
 2. **Backend:**
+
    ```elixir
    def generate_menu_text(full_text) do
      AI.complete(prompt: build_prompt(full_text), max_tokens: 20)
@@ -867,11 +889,13 @@ Evaluate these scenarios before implementing versioning. The simplest approach m
    - Only generates for nodes with empty menu_text
 
 **Cost Considerations:**
+
 - Very short completions (~20 tokens output)
 - Could use cheaper/faster model (e.g., Claude Haiku)
 - Rate limit: X generations per project per day
 
 **Dependencies:**
+
 - AI provider integration (OpenAI, Anthropic, etc.)
 - Credits/billing system if usage-based
 
@@ -1013,6 +1037,7 @@ Cons: Another organizational axis to manage.
 ### Prerequisites
 
 This feature only makes sense once Storyarn has:
+
 - Session/campaign concept (GM running a game for players)
 - Player roles beyond project membership (GM vs player vs spectator)
 - Real-time map viewing during sessions (players see the shared map)
@@ -1024,26 +1049,31 @@ Without these, there's no one to hide markers from. Defer until session/campaign
 ## Other Ideas (Not Yet Planned)
 
 ### Search & Query System
+
 - Full-text search across sheets and blocks
 - Advanced query language (like articy)
 - Saved searches/filters
 
 ### Rollups & Aggregations
+
 - Sum/count/average of numeric blocks across sheets
 - "Total gold across all characters"
 - Dashboard views
 
 ### Comments & Annotations
+
 - Comments on sheets/blocks
 - @mention team members
 - Resolved/unresolved status
 
 ### Webhooks & API
+
 - REST/GraphQL API for external access
 - Webhooks for change notifications
 - Integration with external tools
 
 ### Real-time Collaboration on Sheets
+
 - Cursor sharing (like flows have now)
 - Block locking
 - Presence indicators
@@ -1055,18 +1085,21 @@ Without these, there's no one to hide markers from. Defer until session/campaign
 Inspired by World Anvil's secrets/visibility system, but adapted for game development:
 
 **World Anvil's Approach:**
+
 - Visibility toggles to hide parts of articles from viewers
 - Secrets visible only to specific "subscriber groups"
 - GMs can show different info to different players
 - Spoiler markers for sensitive content
 
 **Potential Use Cases for Storyarn:**
+
 - Hide plot spoilers from QA testers
 - Show different documentation to writers vs artists
 - Restrict access to ending content during development
 - "Work in progress" markers for incomplete sections
 
 **Open Questions:**
+
 - How does this relate to workspace/project roles?
 - Per-block visibility or per-sheet?
 - Does this belong in Storyarn or in external documentation tools?
@@ -1091,4 +1124,4 @@ Inspired by World Anvil's secrets/visibility system, but adapted for game develo
 
 ---
 
-*This document will be updated as features are designed and prioritized.*
+_This document will be updated as features are designed and prioritized._
