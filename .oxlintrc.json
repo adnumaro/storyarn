@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "vue"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "complexity": ["warn", { "max": 10 }],
+    "no-nested-ternary": "error",
+    "vue/define-props-destructuring": "error",
+    "vue/max-props": ["error", { "maxProps": 6 }]
+  },
+  "env": {
+    "builtin": true
+  }
+}

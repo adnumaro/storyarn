@@ -4,22 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "node_modules/.bin/biome lint assets/js/",
-    "format": "node_modules/.bin/biome format --write assets/js/",
-    "check": "node_modules/.bin/biome check assets/js/",
-    "check:fix": "node_modules/.bin/biome check --write assets/js/",
+    "lint": "node_modules/.bin/oxlint",
+    "lint:fix": "node_modules/.bin/oxlint --fix",
+    "fmt": "node_modules/.bin/oxfmt",
+    "fmt:check": "node_modules/.bin/oxfmt --check",
     "build:grammar": "node_modules/.bin/lezer-generator assets/js/expression_editor/storyarn_expr.grammar -o assets/js/expression_editor/parser_generated.js",
     "test": "node_modules/.bin/vitest run",
     "test:watch": "node_modules/.bin/vitest"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.4.6",
-    "@lezer/generator": "^1.8.0",
-    "@lezer/lr": "^1.4.8",
-    "jsdom": "^28.1.0",
-    "playwright": "^1.58.2",
-    "shadcn-vue": "^2.4.3",
-    "vitest": "^4.0.18"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.1",
@@ -75,5 +66,15 @@
     "vite": "^7.3.1",
     "vue": "^3.5.30",
     "vue-konva": "^3.4.0"
+  },
+  "devDependencies": {
+    "@lezer/generator": "^1.8.0",
+    "@lezer/lr": "^1.4.8",
+    "jsdom": "^28.1.0",
+    "oxfmt": "^0.43.0",
+    "oxlint": "^1.58.0",
+    "playwright": "^1.58.2",
+    "shadcn-vue": "^2.4.3",
+    "vitest": "^4.0.18"
   }
 }
