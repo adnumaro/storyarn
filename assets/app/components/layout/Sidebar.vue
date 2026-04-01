@@ -22,7 +22,7 @@
 import { onClickOutside } from "@vueuse/core";
 import { nextTick, onMounted, ref, watch } from "vue";
 
-const props = defineProps({
+const { side, open } = defineProps({
   side: {
     type: String,
     default: "left",
@@ -48,7 +48,7 @@ function cancelPendingAnimation() {
 onClickOutside(
   panelRef,
   () => {
-    if (props.side === "right" && props.open) {
+    if (side === "right" && open) {
       emit("close");
     }
   },
@@ -67,7 +67,7 @@ const CLOSE_DURATION = 180;
 const EASING = "ease-out";
 
 function slideOffset() {
-  return props.side === "left" ? "-20px" : "20px";
+  return side === "left" ? "-20px" : "20px";
 }
 
 function animateIn() {
@@ -124,7 +124,7 @@ onMounted(() => {
   const el = panelRef.value;
   if (!el) return;
 
-  if (props.open) {
+  if (open) {
     el.style.opacity = 1;
     el.style.pointerEvents = "auto";
   } else {
@@ -136,7 +136,7 @@ onMounted(() => {
 
 // Animate on open/close changes
 watch(
-  () => props.open,
+  () => open,
   (nowOpen, wasOpen) => {
     if (nowOpen === wasOpen) return;
     nextTick(() => {

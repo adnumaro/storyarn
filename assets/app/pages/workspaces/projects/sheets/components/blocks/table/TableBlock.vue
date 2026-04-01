@@ -6,21 +6,21 @@ import BlockLabel from "../../BlockLabel.vue";
 import BlockToolbar from "../../BlockToolbar.vue";
 import TableGrid from "./TableGrid.vue";
 
-const props = defineProps({
+const { block, canEdit, inherited } = defineProps({
   block: { type: Object, required: true },
   canEdit: { type: Boolean, default: false },
   inherited: { type: Boolean, default: false },
 });
 
-const { live, label, isSelected, onBlockClick } = useBlockActions(props);
+const { live, label, isSelected, onBlockClick } = useBlockActions({ get block() { return block; }, get canEdit() { return canEdit; } });
 
 // can_manage: can modify table structure (add/delete/rename columns/rows, collapse)
 // When inherited (schema_locked): structure is locked but cell values are still editable
-const canManage = computed(() => props.canEdit && !props.inherited);
+const canManage = computed(() => canEdit && !inherited);
 
-const collapsed = computed(() => props.block.collapsed || false);
-const columns = computed(() => props.block.columns || []);
-const rows = computed(() => props.block.rows || []);
+const collapsed = computed(() => block.collapsed || false);
+const columns = computed(() => block.columns || []);
+const rows = computed(() => block.rows || []);
 
 const summary = computed(() => {
   const c = columns.value.length;
@@ -30,14 +30,14 @@ const summary = computed(() => {
 
 function saveLabel(val) {
   live.pushEvent("update_block_config", {
-    id: props.block.id,
+    id: block.id,
     field: "label",
     value: val,
   });
 }
 
 function toggleCollapse() {
-  live.pushEvent("toggle_table_collapse", { "block-id": props.block.id });
+  live.pushEvent("toggle_table_collapse", { "block-id": block.id });
 }
 </script>
 

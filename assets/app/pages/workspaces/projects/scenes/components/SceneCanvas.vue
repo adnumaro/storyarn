@@ -24,7 +24,7 @@ import WaypointEditorLayer from "./layers/WaypointEditorLayer.vue";
 import ZoneConnectionLayer from "./layers/ZoneConnectionLayer.vue";
 import SceneFloatingToolbar from "./SceneFloatingToolbar.vue";
 
-const props = defineProps({
+const { sceneData, pins, zones, connections, annotations, layers, activeTool, editMode, canEdit, currentUserId, entityLocks } = defineProps({
   sceneData: { type: Object, default: null },
   pins: { type: Array, default: () => [] },
   zones: { type: Array, default: () => [] },
@@ -39,7 +39,7 @@ const props = defineProps({
 });
 
 const containerRef = ref(null);
-const activeToolRef = toRef(props, "activeTool");
+const activeToolRef = toRef(() => activeTool);
 
 const {
   stageConfig,
@@ -54,14 +54,14 @@ const {
   stagePointerToWorld,
 } = useKonvaStage({
   containerRef,
-  sceneData: toRef(props, "sceneData"),
+  sceneData: toRef(() => sceneData),
   activeTool: activeToolRef,
-  editMode: toRef(props, "editMode"),
+  editMode: toRef(() => editMode),
 });
 
 const editRefs = {
-  editMode: toRef(props, "editMode"),
-  canEdit: toRef(props, "canEdit"),
+  editMode: toRef(() => editMode),
+  canEdit: toRef(() => canEdit),
 };
 
 const { handleCreationClick } = useCanvasCreation({
@@ -104,7 +104,7 @@ const {
   percentToPixel,
   activeTool: activeToolRef,
   ...editRefs,
-  pins: toRef(props, "pins"),
+  pins: toRef(() => pins),
 });
 
 // Unified creation click: try pin/annotation first, then zone, then connection cancel
@@ -135,19 +135,19 @@ const { isDraggingZone, zoneDragOverride, onZoneMouseDown, onZoneDragMove, onZon
     stageRef,
     stageConfig,
     pixelToPercent,
-    zones: toRef(props, "zones"),
+    zones: toRef(() => zones),
     selectedType,
     selectedId,
     ...editRefs,
-    entityLocks: toRef(props, "entityLocks"),
-    currentUserId: toRef(props, "currentUserId"),
+    entityLocks: toRef(() => entityLocks),
+    currentUserId: toRef(() => currentUserId),
   });
 
 const { pinConfigs } = usePins({
-  pins: toRef(props, "pins"),
-  layers: toRef(props, "layers"),
-  entityLocks: toRef(props, "entityLocks"),
-  currentUserId: toRef(props, "currentUserId"),
+  pins: toRef(() => pins),
+  layers: toRef(() => layers),
+  entityLocks: toRef(() => entityLocks),
+  currentUserId: toRef(() => currentUserId),
   percentToPixel,
   activeTool: activeToolRef,
   ...selectionRefs,
@@ -169,16 +169,16 @@ const {
   stageConfig,
   pixelToPercent,
   percentToPixel,
-  zones: toRef(props, "zones"),
+  zones: toRef(() => zones),
   selectedType,
   selectedId,
 });
 
 const { zoneConfigs } = useZones({
-  zones: toRef(props, "zones"),
-  layers: toRef(props, "layers"),
-  entityLocks: toRef(props, "entityLocks"),
-  currentUserId: toRef(props, "currentUserId"),
+  zones: toRef(() => zones),
+  layers: toRef(() => layers),
+  entityLocks: toRef(() => entityLocks),
+  currentUserId: toRef(() => currentUserId),
   percentToPixel,
   ...selectionRefs,
   zoneDragOverride,
@@ -187,10 +187,10 @@ const { zoneConfigs } = useZones({
 });
 
 const { annotationConfigs } = useAnnotations({
-  annotations: toRef(props, "annotations"),
-  layers: toRef(props, "layers"),
-  entityLocks: toRef(props, "entityLocks"),
-  currentUserId: toRef(props, "currentUserId"),
+  annotations: toRef(() => annotations),
+  layers: toRef(() => layers),
+  entityLocks: toRef(() => entityLocks),
+  currentUserId: toRef(() => currentUserId),
   percentToPixel,
   ...selectionRefs,
   ...editRefs,
@@ -206,9 +206,9 @@ const waypointEditOverride = computed(() => {
 });
 
 const { connectionConfigs } = useConnections({
-  connections: toRef(props, "connections"),
-  pins: toRef(props, "pins"),
-  layers: toRef(props, "layers"),
+  connections: toRef(() => connections),
+  pins: toRef(() => pins),
+  layers: toRef(() => layers),
   percentToPixel,
   ...selectionRefs,
   dragOverrides,
@@ -227,8 +227,8 @@ const {
   insertWaypoint,
   waypointEditorConfigs,
 } = useWaypointEditor({
-  connections: toRef(props, "connections"),
-  pins: toRef(props, "pins"),
+  connections: toRef(() => connections),
+  pins: toRef(() => pins),
   pixelToPercent,
   percentToPixel,
   ...selectionRefs,
@@ -240,19 +240,19 @@ const { startEditing, isEditingAnnotation, getDisplayText } = useAnnotationEditi
 });
 
 function handleAnnotationDblClick(annConfig, e) {
-  if (!props.canEdit || !props.editMode) return;
+  if (!canEdit || !editMode) return;
   if (e) e.cancelBubble = true;
   startEditing(annConfig);
 }
 
 function handleConnectionDblClick(connectionId, e) {
-  if (!props.canEdit || !props.editMode) return;
+  if (!canEdit || !editMode) return;
   if (e) e.cancelBubble = true;
   startWaypointEditing(connectionId);
 }
 
 function handleZoneDblClick(zoneId, e) {
-  if (!props.canEdit || !props.editMode) return;
+  if (!canEdit || !editMode) return;
   if (e) e.cancelBubble = true;
   startVertexEditing(zoneId);
 }

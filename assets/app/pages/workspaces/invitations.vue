@@ -2,7 +2,7 @@
 import { XCircle } from "lucide-vue-next";
 import { Button } from "@components/ui/button/index.js";
 
-defineProps({
+const { homepageUrl } = defineProps({
   homepageUrl: { type: String, default: "/" },
 });
 </script>

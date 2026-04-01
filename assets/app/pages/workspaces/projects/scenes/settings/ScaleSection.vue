@@ -3,7 +3,7 @@ import { Ruler } from "lucide-vue-next";
 import { computed } from "vue";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { scaleValue, scaleUnit } = defineProps({
   scaleValue: { type: [Number, String], default: null },
   scaleUnit: { type: String, default: null },
 });
@@ -11,10 +11,10 @@ const props = defineProps({
 const live = useLive();
 
 const formattedScale = computed(() => {
-  if (!props.scaleValue || !props.scaleUnit) return null;
-  const v = Number(props.scaleValue);
+  if (!scaleValue || !scaleUnit) return null;
+  const v = Number(scaleValue);
   const display = Number.isFinite(v) && v === Math.floor(v) ? Math.trunc(v) : v;
-  return `1 scene width = ${display} ${props.scaleUnit}`;
+  return `1 scene width = ${display} ${scaleUnit}`;
 });
 
 function onBlur(field, e) {

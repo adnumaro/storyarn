@@ -3,7 +3,7 @@ import { ChevronRight, CornerDownLeft, MapIcon } from "lucide-vue-next";
 import { computed } from "vue";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { slide, flowName, showContinue } = defineProps({
   slide: { type: Object, default: null },
   flowName: { type: String, default: null },
   showContinue: { type: Boolean, default: false },
@@ -11,8 +11,8 @@ const props = defineProps({
 
 const live = useLive();
 
-const slideType = computed(() => props.slide?.type);
-const visibleResponses = computed(() => (props.slide?.responses || []).filter((r) => r.valid));
+const slideType = computed(() => slide?.type);
+const visibleResponses = computed(() => (slide?.responses || []).filter((r) => r.valid));
 
 function flowContinue() {
   live.pushEvent("flow_continue", {});

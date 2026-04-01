@@ -2,14 +2,14 @@
 import { computed } from "vue";
 import { headerStyle } from "../lib/render-helpers.js";
 
-const props = defineProps({
+const { color, icon, label, avatarUrl } = defineProps({
   color: { type: String, default: "#3b82f6" },
   icon: { type: [Object, Function, null], default: null },
   label: { type: String, default: "" },
   avatarUrl: { type: String, default: null },
 });
 
-const bgStyle = computed(() => headerStyle(props.color));
+const bgStyle = computed(() => headerStyle(color));
 </script>
 
 <template>

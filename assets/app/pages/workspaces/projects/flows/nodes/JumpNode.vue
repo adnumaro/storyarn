@@ -5,7 +5,7 @@ import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
 
-const props = defineProps({
+const { data, emit, config, color, hubsMap } = defineProps({
   data: { type: Object, required: true },
   emit: { type: Function, required: true },
   config: { type: Object, required: true },
@@ -13,10 +13,10 @@ const props = defineProps({
   hubsMap: { type: Object, default: () => ({}) },
 });
 
-const nodeData = computed(() => props.data.nodeData || {});
+const nodeData = computed(() => data.nodeData || {});
 const targetHub = computed(() => {
   const id = nodeData.value.target_hub_id;
-  return id ? props.hubsMap[id] : null;
+  return id ? hubsMap[id] : null;
 });
 const targetLabel = computed(() => targetHub.value?.label || nodeData.value.target_hub_id || "");
 const hasError = computed(() => !nodeData.value.target_hub_id);

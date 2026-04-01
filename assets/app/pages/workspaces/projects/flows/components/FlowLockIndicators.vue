@@ -2,7 +2,7 @@
 import { Lock } from "lucide-vue-next";
 import { computed } from "vue";
 
-const props = defineProps({
+const { locks, nodePositions, currentUserId } = defineProps({
   locks: { type: Object, default: () => ({}) },
   nodePositions: { type: Object, default: () => ({}) },
   currentUserId: { type: [Number, String], default: 0 },
@@ -10,12 +10,12 @@ const props = defineProps({
 
 const otherUserLocks = computed(() => {
   const result = [];
-  for (const [nodeId, lock] of Object.entries(props.locks)) {
-    if (lock.user_id !== props.currentUserId && props.nodePositions[nodeId]) {
+  for (const [nodeId, lock] of Object.entries(locks)) {
+    if (lock.user_id !== currentUserId && nodePositions[nodeId]) {
       result.push({
         nodeId,
         ...lock,
-        ...props.nodePositions[nodeId],
+        ...nodePositions[nodeId],
       });
     }
   }

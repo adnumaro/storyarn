@@ -5,7 +5,7 @@ import { Input } from "@components/ui/input/index.js";
 import { Label } from "@components/ui/label/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { email, loginAction, backUrl } = defineProps({
   email: { type: String, required: true },
   loginAction: { type: String, required: true },
   backUrl: { type: String, default: "/workspaces" },
@@ -14,7 +14,7 @@ const props = defineProps({
 const live = useLive();
 
 function onSubmit() {
-  live.pushEvent("submit_magic", { user: { email: props.email } });
+  live.pushEvent("submit_magic", { user: { email } });
 }
 </script>
 

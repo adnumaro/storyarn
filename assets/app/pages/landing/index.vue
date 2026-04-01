@@ -9,7 +9,7 @@ import HeroSection from "./sections/hero/HeroSection.vue";
 import VersionSpotlight from "./sections/VersionSpotlight.vue";
 import WorkflowGrid from "./sections/WorkflowGrid.vue";
 
-const props = defineProps({
+const { isLoggedIn, translations } = defineProps({
   isLoggedIn: { type: Boolean, default: false },
   translations: { type: Object, required: true },
 });

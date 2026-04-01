@@ -4,7 +4,7 @@ import ConditionBuilder from "@components/builders/ConditionBuilder.vue";
 import { EntityCombobox, TextField } from "@components/form-fields";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { item, idx, zoneId, canEdit, projectSheets, projectVariables } = defineProps({
   item: { type: Object, required: true },
   idx: { type: Number, required: true },
   zoneId: { type: Number, required: true },
@@ -17,8 +17,8 @@ const live = useLive();
 
 function updateField(field, value) {
   live.pushEvent("update_collection_item", {
-    "zone-id": String(props.zoneId),
-    "item-id": props.item.id,
+    "zone-id": String(zoneId),
+    "item-id": item.id,
     field,
     value: value === null || value === undefined ? "" : String(value),
   });
@@ -26,24 +26,24 @@ function updateField(field, value) {
 
 function updateCondition(condition) {
   live.pushEvent("update_collection_item_condition", {
-    "zone-id": String(props.zoneId),
-    "item-id": props.item.id,
+    "zone-id": String(zoneId),
+    "item-id": item.id,
     condition,
   });
 }
 
 function updateInstruction(assignments) {
   live.pushEvent("update_collection_item_instruction", {
-    "zone-id": String(props.zoneId),
-    "item-id": props.item.id,
+    "zone-id": String(zoneId),
+    "item-id": item.id,
     assignments,
   });
 }
 
 function remove() {
   live.pushEvent("remove_collection_item", {
-    "zone-id": String(props.zoneId),
-    "item-id": props.item.id,
+    "zone-id": String(zoneId),
+    "item-id": item.id,
   });
 }
 </script>

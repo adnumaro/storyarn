@@ -2,7 +2,7 @@
 import { makeDroppable } from "@vue-dnd-kit/core";
 import { useTemplateRef } from "vue";
 
-const props = defineProps({
+const { items } = defineProps({
   items: { type: Array, required: true },
 });
 
@@ -10,7 +10,7 @@ const emit = defineEmits(["drop"]);
 
 const rootRef = useTemplateRef("rootRef");
 
-makeDroppable(rootRef, { events: { onDrop: (e) => emit("drop", e) } }, () => props.items);
+makeDroppable(rootRef, { events: { onDrop: (e) => emit("drop", e) } }, () => items);
 </script>
 
 <template>

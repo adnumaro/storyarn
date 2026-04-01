@@ -7,15 +7,15 @@ import { useBlockActions } from "../../../composables/useBlockActions.js";
 import BlockLabel from "../../BlockLabel.vue";
 import BlockToolbar from "../../BlockToolbar.vue";
 
-const props = defineProps({
+const { block, canEdit, inherited } = defineProps({
   block: { type: Object, required: true },
   canEdit: { type: Boolean, default: false },
   inherited: { type: Boolean, default: false },
 });
 
-const { live, label, isSelected, onBlockClick } = useBlockActions(props);
+const { live, label, isSelected, onBlockClick } = useBlockActions({ get block() { return block; }, get canEdit() { return canEdit; } });
 
-const content = computed(() => props.block.value?.content ?? "");
+const content = computed(() => block.value?.content ?? "");
 const localText = ref(content.value);
 watch(content, (v) => {
   localText.value = v;
@@ -24,7 +24,7 @@ watch(content, (v) => {
 function save() {
   if (localText.value !== content.value) {
     live.pushEvent("update_block_value", {
-      id: props.block.id,
+      id: block.id,
       value: localText.value,
     });
   }
@@ -32,7 +32,7 @@ function save() {
 
 function saveLabel(val) {
   live.pushEvent("update_block_config", {
-    id: props.block.id,
+    id: block.id,
     field: "label",
     value: val,
   });

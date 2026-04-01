@@ -12,20 +12,20 @@ import {
 } from "@components/ui/select/index.js";
 import { Separator } from "@components/ui/separator/index.js";
 
-const props = defineProps({
+const { profileForm: profileFormProp, emailForm: emailFormProp, currentEmail, translations } = defineProps({
   profileForm: { type: Object, required: true },
   emailForm: { type: Object, required: true },
   currentEmail: { type: String, required: true },
   translations: { type: Object, required: true },
 });
 
-const profileForm = useLiveForm(() => props.profileForm, {
+const profileForm = useLiveForm(() => profileFormProp, {
   changeEvent: "validate_profile",
   submitEvent: "update_profile",
   debounceInMiliseconds: 300,
 });
 
-const emailForm = useLiveForm(() => props.emailForm, {
+const emailForm = useLiveForm(() => emailFormProp, {
   changeEvent: "validate_email",
   submitEvent: "update_email",
   debounceInMiliseconds: 300,

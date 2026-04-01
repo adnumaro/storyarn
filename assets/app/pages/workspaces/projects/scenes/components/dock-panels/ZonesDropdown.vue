@@ -3,7 +3,7 @@ import { Circle, PenTool, Square, Triangle } from "lucide-vue-next";
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 
-const props = defineProps({
+const { activeTool } = defineProps({
   activeTool: { type: String, default: "select" },
 });
 
@@ -20,10 +20,10 @@ const shapeTools = [
 
 const shapeToolIds = shapeTools.map((s) => s.id);
 
-const isShapeActive = () => shapeToolIds.includes(props.activeTool);
+const isShapeActive = () => shapeToolIds.includes(activeTool);
 
 const activeShapeIcon = () => {
-  const shape = shapeTools.find((s) => s.id === props.activeTool);
+  const shape = shapeTools.find((s) => s.id === activeTool);
   return shape ? shape.icon : PenTool;
 };
 

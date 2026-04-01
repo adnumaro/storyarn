@@ -3,7 +3,7 @@ import { makeDraggable, makeDroppable } from "@vue-dnd-kit/core";
 import { GripVertical } from "lucide-vue-next";
 import { computed, useTemplateRef } from "vue";
 
-const props = defineProps({
+const { blockId, canEdit, groupId, index, items, group } = defineProps({
   blockId: { type: [Number, String], required: true },
   canEdit: { type: Boolean, default: false },
   groupId: { type: String, required: true },
@@ -20,9 +20,9 @@ const { isDragging, isDragOver: intraGroupPlacement } = makeDraggable(
   itemRef,
   {
     dragHandle: ".column-drag-handle",
-    groups: [props.group, "blocks-vertical"],
+    groups: [group, "blocks-vertical"],
   },
-  () => [props.index, props.items],
+  () => [index, items],
 );
 
 const { isDragOver: fullWidthPlacement } = makeDroppable(itemRef, {
@@ -33,7 +33,7 @@ const { isDragOver: fullWidthPlacement } = makeDroppable(itemRef, {
       const pointer = e.provider?.pointer?.value?.current;
       const rect = itemRef.value?.getBoundingClientRect();
 
-      if (draggedItem?.type !== "full_width" || !pointer || !rect || props.items.length >= 3) {
+      if (draggedItem?.type !== "full_width" || !pointer || !rect || items.length >= 3) {
         return;
       }
 
@@ -42,9 +42,9 @@ const { isDragOver: fullWidthPlacement } = makeDroppable(itemRef, {
 
       emit("insert-full-width", {
         draggedBlockId: draggedItem.block.id,
-        groupId: props.groupId,
+        groupId: groupId,
         side,
-        targetBlockId: props.blockId,
+        targetBlockId: blockId,
       });
     },
   },
@@ -53,7 +53,7 @@ const { isDragOver: fullWidthPlacement } = makeDroppable(itemRef, {
 const placement = computed(() => {
   if (
     fullWidthPlacement.value &&
-    props.items.length < 3 &&
+    items.length < 3 &&
     (fullWidthPlacement.value.left || fullWidthPlacement.value.right)
   ) {
     return fullWidthPlacement.value;

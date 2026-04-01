@@ -14,7 +14,7 @@ import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { Textarea } from "@components/ui/textarea";
 
-defineProps({
+const { open, title, description, loadingAction } = defineProps({
   open: { type: Boolean, required: true },
   title: { type: String, required: true },
   description: { type: String, required: true },

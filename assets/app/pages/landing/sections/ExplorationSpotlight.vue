@@ -2,7 +2,7 @@
 import { Compass } from "lucide-vue-next";
 import { useRevealOnScroll } from "../composables/useRevealOnScroll.js";
 
-const props = defineProps({
+const { translations } = defineProps({
   translations: { type: Object, required: true },
 });
 

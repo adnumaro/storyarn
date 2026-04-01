@@ -2,7 +2,7 @@
 import { List, MapPin, Star, User, Zap } from "lucide-vue-next";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { legendData, legendOpen } = defineProps({
   legendData: {
     type: Object,
     default: () => ({

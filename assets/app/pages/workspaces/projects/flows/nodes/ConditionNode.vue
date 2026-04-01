@@ -5,14 +5,14 @@ import { computed } from "vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 
-const props = defineProps({
+const { data, emit, config, color } = defineProps({
   data: { type: Object, required: true },
   emit: { type: Function, required: true },
   config: { type: Object, required: true },
   color: { type: String, required: true },
 });
 
-const nodeData = computed(() => props.data.nodeData || {});
+const nodeData = computed(() => data.nodeData || {});
 const hasStaleRefs = computed(() => nodeData.value.has_stale_refs);
 
 // --- Condition formatting (matching V1 condition.js exactly) ---
@@ -111,8 +111,8 @@ const summary = computed(() => {
 
 // --- Sockets ---
 
-const inputs = computed(() => Object.entries(props.data?.inputs || {}));
-const outputs = computed(() => Object.entries(props.data?.outputs || {}));
+const inputs = computed(() => Object.entries(data?.inputs || {}));
+const outputs = computed(() => Object.entries(data?.outputs || {}));
 
 function getOutputLabel(key) {
   const d = nodeData.value;

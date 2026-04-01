@@ -11,7 +11,7 @@ import { NO_VALUE_OPERATORS, OPERATOR_LABELS, operatorsForType } from "@lib/cond
 import { findVariable, groupVariablesBySheet } from "@lib/variables.js";
 import VariableCombobox from "../../VariableCombobox.vue";
 
-const props = defineProps({
+const { rule, variables, disabled } = defineProps({
   rule: { type: Object, required: true },
   variables: { type: Array, default: () => [] },
   disabled: { type: Boolean, default: false },
@@ -19,15 +19,15 @@ const props = defineProps({
 
 const emit = defineEmits(["update:rule", "remove"]);
 
-const sheetsWithVariables = computed(() => groupVariablesBySheet(props.variables));
+const sheetsWithVariables = computed(() => groupVariablesBySheet(variables));
 
 const sheetOptions = computed(() =>
   sheetsWithVariables.value.map((s) => ({ value: s.shortcut, label: s.name })),
 );
 
 const variableGroups = computed(() => {
-  if (!props.rule.sheet) return [];
-  const sheet = sheetsWithVariables.value.find((s) => s.shortcut === props.rule.sheet);
+  if (!rule.sheet) return [];
+  const sheet = sheetsWithVariables.value.find((s) => s.shortcut === rule.sheet);
   if (!sheet) return [];
   return [
     {
@@ -41,7 +41,7 @@ const variableGroups = computed(() => {
 });
 
 const variableType = computed(() => {
-  const v = findVariable(props.variables, props.rule.sheet, props.rule.variable);
+  const v = findVariable(variables, rule.sheet, rule.variable);
   return v ? v.block_type : null;
 });
 
@@ -54,11 +54,11 @@ const operatorOptions = computed(() => {
 });
 
 const needsValue = computed(
-  () => props.rule.operator && !NO_VALUE_OPERATORS.has(props.rule.operator),
+  () => rule.operator && !NO_VALUE_OPERATORS.has(rule.operator),
 );
 
 const valueOptions = computed(() => {
-  const v = findVariable(props.variables, props.rule.sheet, props.rule.variable);
+  const v = findVariable(variables, rule.sheet, rule.variable);
   if (v && (v.block_type === "select" || v.block_type === "multi_select") && v.options) {
     return v.options.map((opt) => ({
       value: opt.key,
@@ -71,20 +71,20 @@ const valueOptions = computed(() => {
 const isFreeTextValue = computed(() => valueOptions.value.length === 0);
 
 function update(field, value) {
-  const updated = { ...props.rule, [field]: value };
+  const updated = { ...rule, [field]: value };
   if (field === "sheet") {
     updated.variable = null;
     updated.operator = "equals";
     updated.value = null;
   } else if (field === "variable") {
-    const v = findVariable(props.variables, props.rule.sheet, value);
+    const v = findVariable(variables, rule.sheet, value);
     if (v) {
       const ops = operatorsForType(v.block_type);
       if (ops.length > 0) updated.operator = ops[0];
     }
     updated.value = null;
   } else if (field === "operator") {
-    const oldOp = props.rule.operator || "equals";
+    const oldOp = rule.operator || "equals";
     if (NO_VALUE_OPERATORS.has(value) !== NO_VALUE_OPERATORS.has(oldOp)) {
       updated.value = null;
     }

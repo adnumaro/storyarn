@@ -1,5 +1,5 @@
 <script setup>
-defineProps({
+const { waypointEditorConfigs } = defineProps({
   waypointEditorConfigs: { type: Object, default: null },
 });
 

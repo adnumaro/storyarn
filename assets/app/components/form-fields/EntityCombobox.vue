@@ -11,7 +11,7 @@ import {
 } from "@components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 
-const props = defineProps({
+const { options, selectedId, label, placeholder, disabled, variant } = defineProps({
   options: { type: Array, default: () => [] },
   selectedId: { type: [Number, String, null], default: null },
   label: { type: String, default: "" },
@@ -21,7 +21,7 @@ const props = defineProps({
 });
 
 const triggerClass = computed(() => {
-  if (props.variant === "ghost") {
+  if (variant === "ghost") {
     return "w-full flex items-center justify-between text-left text-[13px] font-medium bg-transparent border-none text-inherit cursor-pointer p-0 outline-none disabled:opacity-50 disabled:cursor-not-allowed";
   }
   return "w-full flex items-center justify-between text-left text-sm px-2 py-1.5 rounded-md border border-input bg-background dark:bg-card shadow-xs hover:dark:bg-card/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
@@ -31,9 +31,9 @@ const emit = defineEmits(["update:selectedId"]);
 const open = ref(false);
 
 const selectedName = computed(() => {
-  if (!props.selectedId) return null;
-  const id = String(props.selectedId);
-  const opt = props.options.find((o) => String(o.id) === id);
+  if (!selectedId) return null;
+  const id = String(selectedId);
+  const opt = options.find((o) => String(o.id) === id);
   return opt?.name || null;
 });
 

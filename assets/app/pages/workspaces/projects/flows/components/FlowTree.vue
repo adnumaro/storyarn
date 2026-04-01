@@ -16,7 +16,7 @@ import { useLive } from "@composables/useLive.js";
 import FlowTreeNode from "./FlowTreeNode.vue";
 import FlowTreeRoot from "./FlowTreeRoot.vue";
 
-const props = defineProps({
+const { flowsTree, selectedFlowId, canEdit, workspaceSlug, projectSlug } = defineProps({
   flowsTree: { type: Array, default: () => [] },
   selectedFlowId: { type: [String, Number], default: null },
   canEdit: { type: Boolean, default: false },
@@ -30,9 +30,9 @@ const deleteDialogOpen = ref(false);
 const pendingDeleteFlow = ref(null);
 
 // Local reactive copy for DnD mutations
-const localTree = ref([...props.flowsTree]);
+const localTree = ref([...flowsTree]);
 watch(
-  () => props.flowsTree,
+  () => flowsTree,
   (v) => {
     localTree.value = v;
   },
@@ -40,7 +40,7 @@ watch(
 );
 
 function flowHref(flow) {
-  return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/flows/${flow.id}`;
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${flow.id}`;
 }
 
 function matchesSearch(node, query) {

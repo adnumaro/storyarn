@@ -5,7 +5,7 @@ import { ToolbarSeparator } from "@components/shared/toolbar/index.js";
 import { useLive } from "@composables/useLive.js";
 import { ToolbarSearchableSelect } from "../../toolbar/index.js";
 
-const props = defineProps({
+const { nodeData, nodeId, flowHubs } = defineProps({
   nodeData: { type: Object, required: true },
   nodeId: { type: [String, Number], required: true },
   flowHubs: { type: Array, default: () => [] },
@@ -13,12 +13,12 @@ const props = defineProps({
 
 const live = useLive();
 
-const hubOptions = computed(() => props.flowHubs.map((h) => [h.hub_id, h.hub_id]));
+const hubOptions = computed(() => flowHubs.map((h) => [h.hub_id, h.hub_id]));
 
 const selectedHubLabel = computed(() => {
-  const target = props.nodeData.target_hub_id;
+  const target = nodeData.target_hub_id;
   if (!target) return null;
-  const hub = props.flowHubs.find((h) => h.hub_id === target);
+  const hub = flowHubs.find((h) => h.hub_id === target);
   return hub?.hub_id || null;
 });
 
@@ -27,7 +27,7 @@ function selectHub(hubId) {
 }
 
 function navigateToHub() {
-  live.pushEvent("navigate_to_hub", { id: props.nodeId });
+  live.pushEvent("navigate_to_hub", { id: nodeId });
 }
 </script>
 

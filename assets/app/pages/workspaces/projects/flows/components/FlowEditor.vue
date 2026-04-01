@@ -7,7 +7,7 @@ import FlowCursors from "./FlowCursors.vue";
 import FlowFloatingToolbar from "./FlowFloatingToolbar.vue";
 import FlowMinimapToggle from "./FlowMinimapToggle.vue";
 
-const props = defineProps({
+const { flowData, sheetsMap, labels, loading, readonly, userId, userColor, canvasId, flowHubs, availableFlows, allSheets, availableScenes, subflowExits, referencingJumps, referencingFlows, nodeSelectLoading, flowSearchHasMore } = defineProps({
   flowData: { type: String, default: null },
   sheetsMap: { type: String, default: null },
   labels: { type: String, default: "{}" },
@@ -38,31 +38,31 @@ const { init, toolbarState, editor, area } = useFlowEditor({
 });
 
 async function initCanvas() {
-  if (initialized || !containerRef.value || !props.flowData) return;
+  if (initialized || !containerRef.value || !flowData) return;
   initialized = true;
 
-  const flowData = JSON.parse(props.flowData);
-  const sheetsMap = props.sheetsMap ? JSON.parse(props.sheetsMap) : {};
-  const labels = JSON.parse(props.labels);
+  const parsedFlowData = JSON.parse(flowData);
+  const parsedSheetsMap = sheetsMap ? JSON.parse(sheetsMap) : {};
+  const parsedLabels = JSON.parse(labels);
 
-  await init(containerRef.value, flowData, {
-    sheetsMap,
-    labels,
-    readonly: props.readonly,
-    userId: Number(props.userId),
-    userColor: props.userColor,
+  await init(containerRef.value, parsedFlowData, {
+    sheetsMap: parsedSheetsMap,
+    labels: parsedLabels,
+    readonly,
+    userId: Number(userId),
+    userColor,
   });
 }
 
 watch(
-  () => props.flowData,
+  () => flowData,
   (val) => {
     if (val && !initialized) initCanvas();
   },
 );
 
 onMounted(() => {
-  if (props.flowData) initCanvas();
+  if (flowData) initCanvas();
 });
 
 function safeParse(json) {

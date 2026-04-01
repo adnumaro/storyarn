@@ -24,7 +24,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { activeTool, hasTree, treePanelOpen, projectName, workspaceName, showToolSwitcher, isSuperAdmin, urls } = defineProps({
   activeTool: { type: String, required: true },
   hasTree: { type: Boolean, default: true },
   treePanelOpen: { type: Boolean, default: false },
@@ -47,11 +47,11 @@ const tools = [
   { key: "localization", icon: Languages, label: "Localization" },
 ];
 
-const activeToolDef = computed(() => tools.find((t) => t.key === props.activeTool) || tools[0]);
+const activeToolDef = computed(() => tools.find((t) => t.key === activeTool) || tools[0]);
 
 const otherTools = computed(() => {
-  const filtered = tools.filter((t) => t.key !== props.activeTool);
-  if (!props.isSuperAdmin) {
+  const filtered = tools.filter((t) => t.key !== activeTool);
+  if (!isSuperAdmin) {
     return filtered.filter((t) => t.key !== "screenplays");
   }
   return filtered;

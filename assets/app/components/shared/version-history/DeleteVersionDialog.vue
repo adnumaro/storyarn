@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@components/ui/dialog";
 
-defineProps({
+const { open, loadingAction } = defineProps({
   open: { type: Boolean, required: true },
   loadingAction: { type: String, default: null },
 });

@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from "vue";
 
-const props = defineProps({
+const { label, value, min, max, step, disabled, format } = defineProps({
   label: { type: String, default: "" },
   value: { type: [Number, String], default: 0 },
   min: { type: Number, default: 0 },
@@ -14,8 +14,8 @@ const props = defineProps({
 const emit = defineEmits(["update"]);
 
 const displayValue = computed(() => {
-  if (props.format) return props.format(Number(props.value));
-  return props.value;
+  if (format) return format(Number(value));
+  return value;
 });
 </script>
 

@@ -3,7 +3,11 @@ import { Separator } from "@components/ui/separator/index.js";
 import ExportPanel from "./ExportPanel.vue";
 import ImportPanel from "./ImportPanel.vue";
 
-defineProps({
+const {
+  formats, selectedFormat, selectedExtension, supportedSections, sections, entityCounts,
+  assetMode, validateBeforeExport, prettyPrint, validationResult, exportDownloadUrl,
+  canEdit, importStep, importPreview, importResult, importError, conflictStrategy, uploadConfig,
+} = defineProps({
   // Export props
   formats: { type: Array, required: true },
   selectedFormat: { type: String, required: true },

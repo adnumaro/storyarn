@@ -33,7 +33,7 @@ import {
 import { useLive } from "@composables/useLive";
 import { formatRelativeTime } from "@lib/date-utils";
 
-const props = defineProps({
+const { stats, tableData, sortBy, sortDir, page, totalPages, total, issues, canEdit, workspaceSlug, projectSlug } = defineProps({
   stats: { type: Object, default: null },
   tableData: { type: Array, default: () => [] },
   sortBy: { type: String, default: "name" },
@@ -50,7 +50,7 @@ const props = defineProps({
 const live = useLive();
 
 function sceneHref(row) {
-  return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/scenes/${row.id}`;
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${row.id}`;
 }
 
 function handleSort(column) {
@@ -67,35 +67,35 @@ function requestDelete(id) {
 }
 
 function sortIcon(column) {
-  if (props.sortBy !== column) return ArrowUpDown;
-  return props.sortDir === "asc" ? ArrowUp : ArrowDown;
+  if (sortBy !== column) return ArrowUpDown;
+  return sortDir === "asc" ? ArrowUp : ArrowDown;
 }
 
 const statCards = computed(() => {
-  if (!props.stats) return [];
+  if (!stats) return [];
   return [
     {
       icon: MapIcon,
       label: "Scenes",
-      value: props.stats.scene_count,
+      value: stats.scene_count,
       color: "text-primary",
     },
     {
       icon: Pentagon,
       label: "Zones",
-      value: props.stats.zone_count,
+      value: stats.zone_count,
       color: "text-blue-400",
     },
     {
       icon: MapPin,
       label: "Pins",
-      value: props.stats.pin_count,
+      value: stats.pin_count,
       color: "text-violet-400",
     },
     {
       icon: Image,
       label: "Backgrounds",
-      value: props.stats.background_count,
+      value: stats.background_count,
       color: "text-emerald-400",
     },
   ];
@@ -111,7 +111,7 @@ const columns = [
 
 const pages = computed(() => {
   const result = [];
-  for (let i = 1; i <= props.totalPages; i++) {
+  for (let i = 1; i <= totalPages; i++) {
     result.push(i);
   }
   return result;

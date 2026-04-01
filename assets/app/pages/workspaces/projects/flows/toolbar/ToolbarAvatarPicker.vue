@@ -3,7 +3,7 @@ import { Image, X } from "lucide-vue-next";
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
 
-const props = defineProps({
+const { avatars, hasOverride, disabled } = defineProps({
   avatars: { type: Array, default: () => [] },
   hasOverride: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },

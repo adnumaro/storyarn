@@ -10,7 +10,7 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons";
 import { onMounted, shallowRef, watch } from "vue";
 
-const props = defineProps({
+const { activeStep, isVisible } = defineProps({
   activeStep: { type: Number, default: 0 },
   isVisible: { type: Boolean, default: false },
 });
@@ -117,7 +117,7 @@ onBeforeRender(() => {});
 
 // --- Step transitions ---
 watch(
-  () => props.activeStep,
+  () => activeStep,
   (index) => {
     const group = groupRef.value;
     const camera = cameraRef.value;

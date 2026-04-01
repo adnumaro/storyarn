@@ -1,5 +1,5 @@
 <script setup>
-defineProps({
+const { backgroundConfig, gridRectConfig, gridLines } = defineProps({
   backgroundConfig: { type: Object, default: null },
   gridRectConfig: { type: Object, required: true },
   gridLines: { type: Array, required: true },

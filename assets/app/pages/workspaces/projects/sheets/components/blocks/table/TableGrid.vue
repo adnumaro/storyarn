@@ -11,7 +11,7 @@ import TableDraggableRow from "./TableDraggableRow.vue";
 import TableRowActions from "./TableRowActions.vue";
 import { typeIcon } from "./table-config.js";
 
-const props = defineProps({
+const { blockId, columns, rows, canEdit, canManage } = defineProps({
   blockId: { type: [Number, String], required: true },
   columns: { type: Array, default: () => [] },
   rows: { type: Array, default: () => [] },
@@ -25,10 +25,10 @@ const live = useLive();
 // ══════════════════════════════════════════════════════════════
 // Row reorder via vue-dnd-kit (canManage only)
 // ══════════════════════════════════════════════════════════════
-const rowGroup = `table-rows-${props.blockId}`;
-const localRows = ref([...props.rows]);
+const rowGroup = `table-rows-${blockId}`;
+const localRows = ref([...rows]);
 watch(
-  () => props.rows,
+  () => rows,
   (v) => {
     localRows.value = [...v];
   },
@@ -46,7 +46,7 @@ makeDroppable(
         localRows.value = result.sourceItems;
         const ids = localRows.value.map((r) => r.id);
         live.pushEvent("reorder_table_rows", {
-          block_id: props.blockId,
+          block_id: blockId,
           row_ids: ids,
         });
       },
@@ -63,7 +63,7 @@ const editingCellValue = ref("");
 const cellInput = ref(null);
 
 function startEditCell(row, col) {
-  if (!props.canEdit) return;
+  if (!canEdit) return;
   editingCell.value = { rowId: row.id, colSlug: col.slug };
   editingCellValue.value = row.cells?.[col.slug] ?? "";
   nextTick(() => cellInput.value?.focus());
@@ -137,11 +137,11 @@ function filteredOptions(col) {
 // Add column / row (canManage only)
 // ══════════════════════════════════════════════════════════════
 function addColumn() {
-  live.pushEvent("add_table_column", { "block-id": props.blockId });
+  live.pushEvent("add_table_column", { "block-id": blockId });
 }
 
 function addRow() {
-  live.pushEvent("add_table_row", { "block-id": props.blockId });
+  live.pushEvent("add_table_row", { "block-id": blockId });
 }
 
 // ══════════════════════════════════════════════════════════════

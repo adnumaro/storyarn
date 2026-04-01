@@ -10,7 +10,7 @@ const TYPE_OPTIONS = [
   { value: "custom", label: "Custom", icon: Star },
 ];
 
-const props = defineProps({
+const { type, disabled } = defineProps({
   type: { type: String, default: "location" },
   disabled: { type: Boolean, default: false },
 });
@@ -23,7 +23,7 @@ function selectType(t) {
   open.value = false;
 }
 
-const currentIcon = () => TYPE_OPTIONS.find((o) => o.value === props.type)?.icon || MapPin;
+const currentIcon = () => TYPE_OPTIONS.find((o) => o.value === type)?.icon || MapPin;
 </script>
 
 <template>

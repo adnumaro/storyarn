@@ -2,7 +2,7 @@
 import { ref, watch } from "vue";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { sheet, canEdit, isDraft, sourceShortcut } = defineProps({
   sheet: { type: Object, required: true },
   canEdit: { type: Boolean, default: false },
   isDraft: { type: Boolean, default: false },
@@ -14,17 +14,17 @@ const live = useLive();
 // ── Title editing ──
 const editingName = ref(false);
 const nameInput = ref(null);
-const localName = ref(props.sheet.name);
+const localName = ref(sheet.name);
 
 watch(
-  () => props.sheet.name,
+  () => sheet.name,
   (v) => {
     localName.value = v;
   },
 );
 
 function startEditName() {
-  if (!props.canEdit) return;
+  if (!canEdit) return;
   editingName.value = true;
   setTimeout(() => nameInput.value?.focus(), 0);
 }
@@ -32,7 +32,7 @@ function startEditName() {
 function saveName() {
   editingName.value = false;
   const name = localName.value?.trim();
-  if (name && name !== props.sheet.name) {
+  if (name && name !== sheet.name) {
     live.pushEvent("save_name", { name });
   }
 }
@@ -47,17 +47,17 @@ function onNameKeydown(e) {
 // ── Shortcut editing ──
 const editingShortcut = ref(false);
 const shortcutInput = ref(null);
-const localShortcut = ref(props.sheet.shortcut || "");
+const localShortcut = ref(sheet.shortcut || "");
 
 watch(
-  () => props.sheet.shortcut,
+  () => sheet.shortcut,
   (v) => {
     localShortcut.value = v || "";
   },
 );
 
 function startEditShortcut() {
-  if (!props.canEdit || props.isDraft) return;
+  if (!canEdit || isDraft) return;
   editingShortcut.value = true;
   setTimeout(() => shortcutInput.value?.focus(), 0);
 }
@@ -65,7 +65,7 @@ function startEditShortcut() {
 function saveShortcut() {
   editingShortcut.value = false;
   const shortcut = localShortcut.value?.trim();
-  if (shortcut !== (props.sheet.shortcut || "")) {
+  if (shortcut !== (sheet.shortcut || "")) {
     live.pushEvent("save_shortcut", { shortcut: shortcut || "" });
   }
 }

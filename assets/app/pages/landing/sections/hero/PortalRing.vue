@@ -4,7 +4,7 @@ import { TresCanvas, useLoop } from "@tresjs/core";
 import * as THREE from "three";
 import { vertexShader, fragmentShader } from "./shaders/portalShader";
 
-const props = defineProps({
+const { portalFrameRef } = defineProps({
   /** Reference element for portal center positioning */
   portalFrameRef: { type: Object, default: null },
 });
@@ -84,7 +84,7 @@ function updatePortalPosition() {
   u.uDpr.value = pixelRatio.value;
   u.uResolution.value.set(width, height);
 
-  const frameEl = props.portalFrameRef;
+  const frameEl = portalFrameRef;
   if (frameEl) {
     const frameRect = frameEl.getBoundingClientRect();
     const minPortalWidth = window.innerWidth < 640 ? 1240 : 1020;

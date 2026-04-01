@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 
-const props = defineProps({
+const { bubble, getPinNode, stageRef } = defineProps({
   bubble: { type: Object, default: null },
   getPinNode: { type: Function, required: true },
   stageRef: { type: Object, default: null },
@@ -11,12 +11,12 @@ const position = ref({ x: 0, y: 0 });
 
 // Update position from Konva pin → screen coords
 function updatePosition() {
-  if (!props.bubble || !props.getPinNode || !props.stageRef) return;
+  if (!bubble || !getPinNode || !stageRef) return;
 
-  const node = props.getPinNode(props.bubble.pinId);
+  const node = getPinNode(bubble.pinId);
   if (!node) return;
 
-  const stage = props.stageRef.getStage?.();
+  const stage = stageRef.getStage?.();
   if (!stage) return;
 
   const absPos = node.getAbsolutePosition();
@@ -30,14 +30,14 @@ function updatePosition() {
 }
 
 watch(
-  () => props.bubble,
+  () => bubble,
   (b) => {
     if (b) requestAnimationFrame(updatePosition);
   },
   { immediate: true },
 );
 
-const visible = computed(() => props.bubble != null);
+const visible = computed(() => bubble != null);
 </script>
 
 <template>

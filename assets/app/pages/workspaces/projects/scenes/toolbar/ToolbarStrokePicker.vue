@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover"
 const STYLES = ["solid", "dashed", "dotted"];
 const DASH_MAP = { solid: "none", dashed: "6,3", dotted: "2,2" };
 
-const props = defineProps({
+const { lineStyle, lineWidth, color, disabled } = defineProps({
   lineStyle: { type: String, default: "solid" },
   lineWidth: { type: Number, default: 2 },
   color: { type: String, default: "#6b7280" },
@@ -17,10 +17,10 @@ const emit = defineEmits(["update:lineStyle", "update:lineWidth", "update:color"
 const open = ref(false);
 
 function decWidth() {
-  if (props.lineWidth > 0) emit("update:lineWidth", props.lineWidth - 1);
+  if (lineWidth > 0) emit("update:lineWidth", lineWidth - 1);
 }
 function incWidth() {
-  if (props.lineWidth < 10) emit("update:lineWidth", props.lineWidth + 1);
+  if (lineWidth < 10) emit("update:lineWidth", lineWidth + 1);
 }
 function selectColor(c) {
   emit("update:color", c);

@@ -9,7 +9,7 @@ import DimensionsSection from "../settings/DimensionsSection.vue";
 import DisplayModeSection from "../settings/DisplayModeSection.vue";
 import ScaleSection from "../settings/ScaleSection.vue";
 
-const props = defineProps({
+const { scene, canEdit, ambientFlows, projectFlows, sceneSettingsOpen } = defineProps({
   scene: { type: Object, default: null },
   canEdit: { type: Boolean, default: false },
   ambientFlows: { type: Array, default: () => [] },
@@ -18,7 +18,7 @@ const props = defineProps({
 });
 
 const live = useLive();
-const isOpen = computed(() => props.sceneSettingsOpen && props.scene != null);
+const isOpen = computed(() => sceneSettingsOpen && scene != null);
 
 function close() {
   live.pushEvent("close_scene_settings", {});

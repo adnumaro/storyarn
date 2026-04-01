@@ -4,7 +4,7 @@ import { Button } from "@components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { open, zone, items } = defineProps({
   open: { type: Boolean, default: false },
   zone: { type: Object, default: null },
   items: { type: Array, default: () => [] },

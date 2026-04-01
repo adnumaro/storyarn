@@ -4,7 +4,7 @@ import { useRevealOnScroll } from "../../composables/useRevealOnScroll.js";
 
 const DiscoverMonitor = defineAsyncComponent(() => import("./DiscoverMonitor.vue"));
 
-const props = defineProps({
+const { translations } = defineProps({
   translations: { type: Object, required: true },
 });
 
@@ -20,26 +20,26 @@ let scrollLocked = false;
 const features = computed(() => [
   {
     id: "sheets",
-    label: props.translations.discover_sheets,
-    title: props.translations.discover_sheets_title,
-    desc: props.translations.discover_sheets_desc,
-    items: props.translations.discover_sheets_items,
+    label: translations.discover_sheets,
+    title: translations.discover_sheets_title,
+    desc: translations.discover_sheets_desc,
+    items: translations.discover_sheets_items,
     textPosition: "left",
   },
   {
     id: "flows",
-    label: props.translations.discover_flows,
-    title: props.translations.discover_flows_title,
-    desc: props.translations.discover_flows_desc,
-    items: props.translations.discover_flows_items,
+    label: translations.discover_flows,
+    title: translations.discover_flows_title,
+    desc: translations.discover_flows_desc,
+    items: translations.discover_flows_items,
     textPosition: "right",
   },
   {
     id: "scenes",
-    label: props.translations.discover_scenes,
-    title: props.translations.discover_scenes_title,
-    desc: props.translations.discover_scenes_desc,
-    items: props.translations.discover_scenes_items,
+    label: translations.discover_scenes,
+    title: translations.discover_scenes_title,
+    desc: translations.discover_scenes_desc,
+    items: translations.discover_scenes_items,
     textPosition: "center",
   },
 ]);

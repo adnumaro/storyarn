@@ -24,7 +24,7 @@ const EXIT_MODES = [
   },
 ];
 
-const props = defineProps({
+const { mode, disabled } = defineProps({
   mode: { type: String, default: "terminal" },
   disabled: { type: Boolean, default: false },
 });
@@ -32,7 +32,7 @@ const props = defineProps({
 const emit = defineEmits(["update:mode"]);
 const open = ref(false);
 
-const current = computed(() => EXIT_MODES.find((m) => m.value === props.mode) || EXIT_MODES[0]);
+const current = computed(() => EXIT_MODES.find((m) => m.value === mode) || EXIT_MODES[0]);
 
 function selectMode(value) {
   emit("update:mode", value);

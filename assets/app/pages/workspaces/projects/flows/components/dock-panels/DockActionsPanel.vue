@@ -1,7 +1,7 @@
 <script setup>
 import { Bug, History, Play } from "lucide-vue-next";
 
-const props = defineProps({
+const { debugPanelOpen, playUrl } = defineProps({
   debugPanelOpen: { type: Boolean, default: false },
   playUrl: { type: String, required: true },
 });

@@ -1,7 +1,7 @@
 <script setup>
 import { nextTick, ref, watch } from "vue";
 
-const props = defineProps({
+const { modelValue, placeholder, tag, inputClass, displayClass, disabled } = defineProps({
   modelValue: { type: String, default: "" },
   placeholder: { type: String, default: "Untitled" },
   tag: { type: String, default: "span" },
@@ -14,15 +14,15 @@ const emit = defineEmits(["update:modelValue", "save"]);
 
 const editing = ref(false);
 const inputEl = ref(null);
-const localValue = ref(props.modelValue);
+const localValue = ref(modelValue);
 
 watch(
-  () => props.modelValue,
+  () => modelValue,
   (v) => (localValue.value = v),
 );
 
 function startEdit() {
-  if (props.disabled) return;
+  if (disabled) return;
   editing.value = true;
   nextTick(() => {
     inputEl.value?.focus();
@@ -33,7 +33,7 @@ function startEdit() {
 function save() {
   editing.value = false;
   const trimmed = localValue.value.trim();
-  if (trimmed !== props.modelValue) {
+  if (trimmed !== modelValue) {
     emit("update:modelValue", trimmed);
     emit("save", trimmed);
   }
@@ -45,7 +45,7 @@ function onKeydown(e) {
     save();
   }
   if (e.key === "Escape") {
-    localValue.value = props.modelValue;
+    localValue.value = modelValue;
     editing.value = false;
   }
 }

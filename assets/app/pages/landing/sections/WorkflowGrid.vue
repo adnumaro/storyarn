@@ -3,7 +3,7 @@ import { Database, GitBranch, Play, Upload } from "lucide-vue-next";
 import { computed } from "vue";
 import { useRevealOnScroll } from "../composables/useRevealOnScroll.js";
 
-const props = defineProps({
+const { translations } = defineProps({
   translations: { type: Object, required: true },
 });
 
@@ -11,26 +11,26 @@ const steps = computed(() => [
   {
     num: "01",
     icon: Database,
-    title: props.translations.workflow_step_1_title,
-    desc: props.translations.workflow_step_1_desc,
+    title: translations.workflow_step_1_title,
+    desc: translations.workflow_step_1_desc,
   },
   {
     num: "02",
     icon: GitBranch,
-    title: props.translations.workflow_step_2_title,
-    desc: props.translations.workflow_step_2_desc,
+    title: translations.workflow_step_2_title,
+    desc: translations.workflow_step_2_desc,
   },
   {
     num: "03",
     icon: Play,
-    title: props.translations.workflow_step_3_title,
-    desc: props.translations.workflow_step_3_desc,
+    title: translations.workflow_step_3_title,
+    desc: translations.workflow_step_3_desc,
   },
   {
     num: "04",
     icon: Upload,
-    title: props.translations.workflow_step_4_title,
-    desc: props.translations.workflow_step_4_desc,
+    title: translations.workflow_step_4_title,
+    desc: translations.workflow_step_4_desc,
   },
 ]);
 

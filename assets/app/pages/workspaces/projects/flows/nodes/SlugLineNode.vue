@@ -5,7 +5,7 @@ import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
 
-const props = defineProps({
+const { data, emit, config, color, sheetsMap } = defineProps({
   data: { type: Object, required: true },
   emit: { type: Function, required: true },
   config: { type: Object, required: true },
@@ -13,15 +13,15 @@ const props = defineProps({
   sheetsMap: { type: Object, default: () => ({}) },
 });
 
-const nodeData = computed(() => props.data.nodeData || {});
+const nodeData = computed(() => data.nodeData || {});
 
 const locSheet = computed(() => {
   const sheetId = nodeData.value.location_sheet_id;
   if (!sheetId) return null;
-  return props.sheetsMap[String(sheetId)] || null;
+  return sheetsMap[String(sheetId)] || null;
 });
 
-const headerLabel = computed(() => locSheet.value?.name || props.config.label);
+const headerLabel = computed(() => locSheet.value?.name || config.label);
 const hasError = computed(() => !nodeData.value.location_sheet_id);
 
 // Visual: override avatar > banner > nothing

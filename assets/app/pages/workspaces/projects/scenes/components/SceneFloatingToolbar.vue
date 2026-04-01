@@ -7,7 +7,7 @@ import {
   ZoneToolbar,
 } from "./toolbar-sections/index.js";
 
-const props = defineProps({
+const { selectedType, selectedId, annotations, connections, pins, zones, layers, canEdit, editMode, stageConfig, elementPosition, containerWidth, isDragging } = defineProps({
   selectedType: { type: String, default: null },
   selectedId: { type: [Number, null], default: null },
   annotations: { type: Array, default: () => [] },
@@ -27,15 +27,8 @@ const toolbarRef = ref(null);
 const toolbarStyle = ref({ display: "none" });
 
 const visible = computed(
-  () => props.selectedType !== null && props.selectedId !== null && props.canEdit && props.editMode,
+  () => selectedType !== null && selectedId !== null && canEdit && editMode,
 );
-
-const ELEMENT_LISTS = {
-  annotation: "annotations",
-  connection: "connections",
-  pin: "pins",
-  zone: "zones",
-};
 
 const TOOLBAR_COMPONENTS = {
   annotation: AnnotationToolbar,
@@ -44,24 +37,31 @@ const TOOLBAR_COMPONENTS = {
   zone: ZoneToolbar,
 };
 
+const ELEMENT_GETTERS = {
+  annotation: () => annotations,
+  connection: () => connections,
+  pin: () => pins,
+  zone: () => zones,
+};
+
 const selectedElement = computed(() => {
-  const listKey = ELEMENT_LISTS[props.selectedType];
-  if (!listKey) return null;
-  return props[listKey].find((e) => e.id === props.selectedId) || null;
+  const getter = ELEMENT_GETTERS[selectedType];
+  if (!getter) return null;
+  return getter().find((e) => e.id === selectedId) || null;
 });
 
-const activeComponent = computed(() => TOOLBAR_COMPONENTS[props.selectedType] || null);
+const activeComponent = computed(() => TOOLBAR_COMPONENTS[selectedType] || null);
 
 function updatePosition() {
-  if (!visible.value || !props.elementPosition) {
+  if (!visible.value || !elementPosition) {
     toolbarStyle.value = { display: "none" };
     return;
   }
 
-  const pos = props.elementPosition;
-  const scale = props.stageConfig.scaleX;
-  const screenX = pos.x * scale + props.stageConfig.x;
-  const screenY = pos.y * scale + props.stageConfig.y;
+  const pos = elementPosition;
+  const scale = stageConfig.scaleX;
+  const screenX = pos.x * scale + stageConfig.x;
+  const screenY = pos.y * scale + stageConfig.y;
   const screenW = (pos.width || 0) * scale;
   const screenH = (pos.height || 0) * scale;
 
@@ -81,11 +81,11 @@ function updatePosition() {
 
 watch(
   [
-    () => props.selectedId,
-    () => props.stageConfig.scaleX,
-    () => props.stageConfig.x,
-    () => props.stageConfig.y,
-    () => props.elementPosition,
+    () => selectedId,
+    () => stageConfig.scaleX,
+    () => stageConfig.x,
+    () => stageConfig.y,
+    () => elementPosition,
   ],
   () => nextTick(updatePosition),
   { immediate: true },

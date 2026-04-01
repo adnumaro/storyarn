@@ -6,7 +6,7 @@ import { Input } from "@components/ui/input/index.js";
 import { Label } from "@components/ui/label/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { email, readonly, localMailAdapter, loginAction } = defineProps({
   email: { type: String, default: "" },
   readonly: { type: Boolean, default: false },
   localMailAdapter: { type: Boolean, default: false },
@@ -14,7 +14,7 @@ const props = defineProps({
 });
 
 const live = useLive();
-const emailValue = ref(props.email || "");
+const emailValue = ref(email || "");
 const emailInput = ref(null);
 
 onMounted(() => {

@@ -1,7 +1,7 @@
 <script setup>
 import { Check, Loader2 } from "lucide-vue-next";
 
-const props = defineProps({
+const { status } = defineProps({
   status: { type: String, default: "idle" }, // "idle" | "saving" | "saved"
 });
 </script>

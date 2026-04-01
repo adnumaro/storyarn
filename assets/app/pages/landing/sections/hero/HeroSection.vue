@@ -3,7 +3,7 @@ import { Play, X } from "lucide-vue-next";
 import { ref } from "vue";
 import PortalRing from "./PortalRing.vue";
 
-const props = defineProps({
+const { translations } = defineProps({
   translations: { type: Object, required: true },
 });
 

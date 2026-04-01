@@ -8,7 +8,7 @@ import {
 } from "@components/ui/select";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { label, icon, options, value, placeholder, disabled, event, paramKey } = defineProps({
   label: { type: String, default: "" },
   icon: { type: [Object, Function, null], default: null },
   options: { type: Array, required: true },
@@ -24,8 +24,8 @@ const live = useLive();
 
 function onChange(v) {
   emit("update", v);
-  if (props.event) {
-    live.pushEvent(props.event, { [props.paramKey]: v });
+  if (event) {
+    live.pushEvent(event, { [paramKey]: v });
   }
 }
 </script>

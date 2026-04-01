@@ -15,7 +15,7 @@ import {
 } from "@components/ui/table/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { canEdit, importStep, importPreview, importResult, importError, conflictStrategy, uploadConfig } = defineProps({
   canEdit: { type: Boolean, required: true },
   importStep: { type: String, required: true },
   importPreview: { type: Object, default: null },
@@ -28,8 +28,8 @@ const props = defineProps({
 const live = useLive();
 
 // --- Upload handling ---
-const upload = props.uploadConfig
-  ? useLiveUpload(toRef(props, "uploadConfig"), {
+const upload = uploadConfig
+  ? useLiveUpload(toRef(() => uploadConfig), {
       changeEvent: "validate_upload",
       submitEvent: "parse_import",
     })
@@ -47,8 +47,8 @@ const hasUploadEntries = computed(() => {
 });
 
 const previewCountRows = computed(() => {
-  if (!props.importPreview?.counts) return [];
-  const counts = props.importPreview.counts;
+  if (!importPreview?.counts) return [];
+  const counts = importPreview.counts;
   const rows = [
     { entity: "Sheets", count: counts.sheets || 0 },
     { entity: "Flows", count: counts.flows || 0 },
@@ -61,8 +61,8 @@ const previewCountRows = computed(() => {
 });
 
 const importResultRows = computed(() => {
-  if (!props.importResult) return [];
-  const result = props.importResult;
+  if (!importResult) return [];
+  const result = importResult;
   const rows = [
     { entity: "Assets", items: result.assets },
     { entity: "Sheets", items: result.sheets },

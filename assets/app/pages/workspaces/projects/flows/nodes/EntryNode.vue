@@ -5,14 +5,14 @@ import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
 
-const props = defineProps({
+const { data, emit, config, color } = defineProps({
   data: { type: Object, required: true },
   emit: { type: Function, required: true },
   config: { type: Object, required: true },
   color: { type: String, required: true },
 });
 
-const refs = computed(() => props.data.nodeData?.referencing_flows || []);
+const refs = computed(() => data.nodeData?.referencing_flows || []);
 </script>
 
 <template>

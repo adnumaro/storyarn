@@ -2,7 +2,7 @@
 import { ArrowLeft, ChevronLeft, ChevronRight, Columns2 } from "lucide-vue-next";
 import { Button } from "@components/ui/button";
 
-const props = defineProps({
+const { backUrl, versionLabel, prevVersionUrl, nextVersionUrl, currentUrl, versionUrl } = defineProps({
   backUrl: { type: String, required: true },
   versionLabel: { type: String, default: "" },
   prevVersionUrl: { type: String, default: null },

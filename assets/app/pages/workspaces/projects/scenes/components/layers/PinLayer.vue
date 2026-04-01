@@ -1,5 +1,5 @@
 <script setup>
-defineProps({
+const { pinConfigs, sourcePinId, hoveredPinId, selectionColor, sourceHighlightColor, targetHighlightColor, labelColor, clipCircle } = defineProps({
   pinConfigs: { type: Array, required: true },
   sourcePinId: { type: [Number, String, null], default: null },
   hoveredPinId: { type: [Number, String, null], default: null },

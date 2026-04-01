@@ -14,7 +14,7 @@ import {
 } from "@components/ui/dialog/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { deletedProjects, expandedProjectId, snapshots, recovering, translations } = defineProps({
   deletedProjects: { type: Array, required: true },
   expandedProjectId: { type: [Number, null], default: null },
   snapshots: { type: Array, default: () => [] },
@@ -53,17 +53,17 @@ function formatEntityCounts(counts) {
   const parts = [];
   if (counts.sheets && counts.sheets > 0) {
     parts.push(
-      `${counts.sheets} ${counts.sheets === 1 ? props.translations.sheet : props.translations.sheets}`,
+      `${counts.sheets} ${counts.sheets === 1 ? translations.sheet : translations.sheets}`,
     );
   }
   if (counts.flows && counts.flows > 0) {
     parts.push(
-      `${counts.flows} ${counts.flows === 1 ? props.translations.flow : props.translations.flows}`,
+      `${counts.flows} ${counts.flows === 1 ? translations.flow : translations.flows}`,
     );
   }
   if (counts.scenes && counts.scenes > 0) {
     parts.push(
-      `${counts.scenes} ${counts.scenes === 1 ? props.translations.scene : props.translations.scenes}`,
+      `${counts.scenes} ${counts.scenes === 1 ? translations.scene : translations.scenes}`,
     );
   }
   return parts.join(", ");

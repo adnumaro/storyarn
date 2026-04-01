@@ -4,7 +4,7 @@ import { ToolbarColorPicker, ToolbarSeparator } from "@components/shared/toolbar
 import { useLive } from "@composables/useLive.js";
 import { ToolbarExitModePicker } from "../../toolbar/index.js";
 
-const props = defineProps({
+const { nodeData } = defineProps({
   nodeData: { type: Object, required: true },
 });
 

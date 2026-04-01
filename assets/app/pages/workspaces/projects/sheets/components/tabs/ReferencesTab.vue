@@ -24,7 +24,7 @@ import {
   CollapsibleTrigger,
 } from "@components/ui/collapsible/index.js";
 
-const props = defineProps({
+const { variableUsage, backlinks, sceneAppearances, workspaceSlug, projectSlug, loading } = defineProps({
   variableUsage: { type: Array, default: () => [] },
   backlinks: { type: Array, default: () => [] },
   sceneAppearances: { type: Array, default: () => [] },
@@ -38,7 +38,7 @@ const backlinksOpen = ref(true);
 const sceneAppearancesOpen = ref(true);
 
 const totalVariableRefs = computed(() =>
-  props.variableUsage.reduce((sum, v) => sum + v.reads.length + v.writes.length, 0),
+  variableUsage.reduce((sum, v) => sum + v.reads.length + v.writes.length, 0),
 );
 
 function nodeIcon(nodeType) {
@@ -65,24 +65,24 @@ function sourceColor(sourceType) {
 }
 
 function flowUrl(flowId, nodeId) {
-  const base = `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/flows/${flowId}`;
+  const base = `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${flowId}`;
   return nodeId ? `${base}?node=${nodeId}` : base;
 }
 
 function sceneUrl(sceneId) {
-  return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/scenes/${sceneId}`;
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${sceneId}`;
 }
 
 function backlinkUrl(backlink) {
   const si = backlink.sourceInfo;
   if (si.type === "sheet")
-    return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/sheets/${si.sheetId}`;
+    return `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets/${si.sheetId}`;
   if (si.type === "flow")
-    return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/flows/${si.flowId}`;
+    return `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${si.flowId}`;
   if (si.type === "screenplay")
-    return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/screenplays/${si.screenplayId}?element=${backlink.sourceId}`;
+    return `/workspaces/${workspaceSlug}/projects/${projectSlug}/screenplays/${si.screenplayId}?element=${backlink.sourceId}`;
   if (si.type === "scene")
-    return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/scenes/${si.sceneId}`;
+    return `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${si.sceneId}`;
   return "#";
 }
 </script>

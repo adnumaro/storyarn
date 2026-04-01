@@ -18,7 +18,7 @@ import {
 } from "./ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
-const props = defineProps({
+const { modelValue, options, groups, placeholder, disabled, freeText, inputType } = defineProps({
   /** Currently selected value */
   modelValue: { type: String, default: "" },
   /** Flat options: [{ value, label }] */
@@ -40,20 +40,20 @@ const open = ref(false);
 
 /** Display label for the current selection */
 const displayLabel = computed(() => {
-  if (!props.modelValue) return "";
+  if (!modelValue) return "";
 
-  for (const opt of props.options) {
-    if (opt.value === props.modelValue) return opt.label;
+  for (const opt of options) {
+    if (opt.value === modelValue) return opt.label;
   }
-  for (const group of props.groups) {
+  for (const group of groups) {
     for (const item of group.items) {
-      if (item.value === props.modelValue) return item.label;
+      if (item.value === modelValue) return item.label;
     }
   }
-  return props.modelValue;
+  return modelValue;
 });
 
-const hasGroups = computed(() => props.groups.length > 0);
+const hasGroups = computed(() => groups.length > 0);
 
 function onSelect(value) {
   emit("update:modelValue", value);

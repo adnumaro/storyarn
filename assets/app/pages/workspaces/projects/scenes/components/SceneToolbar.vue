@@ -2,7 +2,7 @@
 import EditableText from "@components/EditableText.vue";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { canEdit, sceneName, sceneShortcut } = defineProps({
   canEdit: { type: Boolean, default: false },
   sceneName: { type: String, default: "" },
   sceneShortcut: { type: String, default: "" },

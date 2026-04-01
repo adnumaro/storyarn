@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@components/ui/dialog";
 
-defineProps({
+const { open, restoreData, loadingAction } = defineProps({
   open: { type: Boolean, required: true },
   restoreData: { type: Object, default: null },
   loadingAction: { type: String, default: null },

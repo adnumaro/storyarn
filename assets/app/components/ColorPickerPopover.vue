@@ -12,7 +12,7 @@ import "vanilla-colorful/hex-input.js";
 
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { color, disabled, variant, event } = defineProps({
   color: { type: String, default: "#3b82f6" },
   disabled: { type: Boolean, default: false },
   variant: { type: String, default: "swatch" },
@@ -22,14 +22,14 @@ const props = defineProps({
 const emit = defineEmits(["update:color"]);
 const live = useLive();
 
-const localColor = ref(props.color);
+const localColor = ref(color);
 const pickerRef = ref(null);
 const hexInputRef = ref(null);
 const isOpen = ref(false);
 let debounceTimer = null;
 
 watch(
-  () => props.color,
+  () => color,
   (v) => {
     localColor.value = v;
   },
@@ -40,7 +40,7 @@ function pushColor(hex) {
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     emit("update:color", hex);
-    if (props.event) live.pushEvent(props.event, { value: hex });
+    if (event) live.pushEvent(event, { value: hex });
   }, 150);
 }
 

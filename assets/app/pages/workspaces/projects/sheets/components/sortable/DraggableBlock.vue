@@ -5,7 +5,7 @@ import { computed, onMounted, onUnmounted, ref, useTemplateRef } from "vue";
 
 const SIDE_THRESHOLD = 0.25;
 
-const props = defineProps({
+const { canEdit, index, items } = defineProps({
   canEdit: { type: Boolean, default: false },
   index: { type: Number, required: true },
   items: { type: Array, required: true },
@@ -19,10 +19,10 @@ const { isDragging, isDragOver } = makeDraggable(
     dragHandle: ".drag-handle",
     groups: ["blocks-vertical"],
   },
-  () => [props.index, props.items],
+  () => [index, items],
 );
 
-const isFullWidth = computed(() => props.items[props.index]?.type === "full_width");
+const isFullWidth = computed(() => items[index]?.type === "full_width");
 
 const pointerRelX = ref(0.5);
 

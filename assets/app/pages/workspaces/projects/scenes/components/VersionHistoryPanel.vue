@@ -4,7 +4,7 @@ import Sidebar from "@components/layout/Sidebar.vue";
 import VersionHistory from "@components/shared/VersionHistory.vue";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { versions, namedVersions, autoVersions, hasMore, canNameVersion, currentVersionId, canEdit, loading, open } = defineProps({
   versions: { type: Array, default: () => [] },
   namedVersions: { type: Array, default: () => [] },
   autoVersions: { type: Array, default: () => [] },

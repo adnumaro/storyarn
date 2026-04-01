@@ -3,7 +3,7 @@ import { Layers } from "lucide-vue-next";
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 
-const props = defineProps({
+const { layerId, layers, disabled } = defineProps({
   layerId: { type: [Number, null], default: null },
   layers: { type: Array, default: () => [] },
   disabled: { type: Boolean, default: false },

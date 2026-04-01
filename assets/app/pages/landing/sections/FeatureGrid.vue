@@ -3,7 +3,7 @@ import { Bug, GitBranch, Languages, Map, Package, Table2 } from "lucide-vue-next
 import { computed } from "vue";
 import { useRevealOnScroll } from "../composables/useRevealOnScroll.js";
 
-const props = defineProps({
+const { translations } = defineProps({
   translations: { type: Object, required: true },
 });
 
@@ -11,43 +11,43 @@ const features = computed(() => [
   {
     num: "01",
     icon: Table2,
-    title: props.translations.feature_1_title,
-    desc: props.translations.feature_1_desc,
+    title: translations.feature_1_title,
+    desc: translations.feature_1_desc,
     color: "primary",
   },
   {
     num: "02",
     icon: GitBranch,
-    title: props.translations.feature_2_title,
-    desc: props.translations.feature_2_desc,
+    title: translations.feature_2_title,
+    desc: translations.feature_2_desc,
     color: "accent",
   },
   {
     num: "03",
     icon: Map,
-    title: props.translations.feature_3_title,
-    desc: props.translations.feature_3_desc,
+    title: translations.feature_3_title,
+    desc: translations.feature_3_desc,
     color: "secondary",
   },
   {
     num: "04",
     icon: Bug,
-    title: props.translations.feature_4_title,
-    desc: props.translations.feature_4_desc,
+    title: translations.feature_4_title,
+    desc: translations.feature_4_desc,
     color: "primary",
   },
   {
     num: "05",
     icon: Languages,
-    title: props.translations.feature_5_title,
-    desc: props.translations.feature_5_desc,
+    title: translations.feature_5_title,
+    desc: translations.feature_5_desc,
     color: "accent",
   },
   {
     num: "06",
     icon: Package,
-    title: props.translations.feature_6_title,
-    desc: props.translations.feature_6_desc,
+    title: translations.feature_6_title,
+    desc: translations.feature_6_desc,
     color: "secondary",
   },
 ]);

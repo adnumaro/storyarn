@@ -5,7 +5,7 @@ import { ToolbarSeparator } from "@components/shared/toolbar/index.js";
 import { useLive } from "@composables/useLive.js";
 import { ToolbarAvatarPicker } from "../../toolbar/index.js";
 
-const props = defineProps({
+const { nodeData, nodeId, allSheets } = defineProps({
   nodeData: { type: Object, required: true },
   nodeId: { type: [String, Number], required: true },
   allSheets: { type: Array, default: () => [] },
@@ -22,11 +22,11 @@ function updateNodeField(field, value) {
 }
 
 function openScreenplay() {
-  live.pushEvent("open_screenplay", { id: props.nodeId });
+  live.pushEvent("open_screenplay", { id: nodeId });
 }
 
 function startPreview() {
-  live.pushEvent("start_preview", { id: props.nodeId });
+  live.pushEvent("start_preview", { id: nodeId });
 }
 
 function selectAvatar(avatarId) {
@@ -34,9 +34,9 @@ function selectAvatar(avatarId) {
 }
 
 const speakerAvatars = computed(() => {
-  const sheetId = props.nodeData.speaker_sheet_id || props.nodeData.location_sheet_id;
+  const sheetId = nodeData.speaker_sheet_id || nodeData.location_sheet_id;
   if (!sheetId) return [];
-  const sheet = props.allSheets.find((s) => String(s.id) === String(sheetId));
+  const sheet = allSheets.find((s) => String(s.id) === String(sheetId));
   if (!sheet?.avatars) return [];
   return sheet.avatars
     .filter((a) => a.asset?.url)
@@ -45,7 +45,7 @@ const speakerAvatars = computed(() => {
 });
 
 const hasAvatarOverride = computed(() => {
-  const aid = props.nodeData.avatar_id;
+  const aid = nodeData.avatar_id;
   return aid != null && aid !== "" && aid !== 0;
 });
 </script>

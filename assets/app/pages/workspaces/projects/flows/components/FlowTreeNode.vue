@@ -9,7 +9,7 @@ import {
   ContextMenuTrigger,
 } from "@components/ui/context-menu/index.js";
 
-const props = defineProps({
+const { node, index, siblings, selectedFlowId, canEdit, depth, searchActive, flowHref } = defineProps({
   node: { type: Object, required: true },
   index: { type: Number, required: true },
   siblings: { type: Array, required: true },
@@ -22,10 +22,10 @@ const props = defineProps({
 
 const emit = defineEmits(["createChild", "requestDelete", "setMain", "drop"]);
 
-const hasChildren = computed(() => props.node.children && props.node.children.length > 0);
+const hasChildren = computed(() => node.children && node.children.length > 0);
 
 const isSelected = computed(
-  () => props.selectedFlowId != null && String(props.node.id) === String(props.selectedFlowId),
+  () => selectedFlowId != null && String(node.id) === String(selectedFlowId),
 );
 
 // Auto-expand
@@ -39,14 +39,14 @@ function hasSelectedDescendant(node, selectedId) {
 }
 
 const shouldAutoExpand = computed(
-  () => hasChildren.value && hasSelectedDescendant(props.node, props.selectedFlowId),
+  () => hasChildren.value && hasSelectedDescendant(node, selectedFlowId),
 );
 
 const userToggled = ref(false);
 const isOpen = ref(shouldAutoExpand.value);
 
 watch(
-  () => props.searchActive,
+  () => searchActive,
   (active) => {
     if (active) isOpen.value = true;
     else if (!userToggled.value) isOpen.value = shouldAutoExpand.value;
@@ -58,7 +58,7 @@ function onToggle() {
   isOpen.value = !isOpen.value;
 }
 
-const paddingLeft = computed(() => `${props.depth * 12 + 4}px`);
+const paddingLeft = computed(() => `${depth * 12 + 4}px`);
 
 // Draggable
 const rowRef = useTemplateRef("rowRef");
@@ -66,7 +66,7 @@ const rowRef = useTemplateRef("rowRef");
 const { isDragging, isDragOver: rowPlacement } = makeDraggable(
   rowRef,
   { activation: { distance: 5 } },
-  () => [props.index, props.siblings],
+  () => [index, siblings],
 );
 
 // Center zone detection
@@ -99,7 +99,7 @@ const childrenRef = useTemplateRef("childrenRef");
 const { isDragOver: childrenOver } = makeDroppable(
   childrenRef,
   { events: { onDrop: (e) => emit("drop", e) } },
-  () => props.node.children,
+  () => node.children,
 );
 
 // Auto-expand on hover during drag

@@ -8,7 +8,7 @@ const TARGET_TYPES = [
   { value: "scene", label: "Scene", icon: MapIcon },
 ];
 
-const props = defineProps({
+const { targetType, targetId, scenes, flows, disabled } = defineProps({
   targetType: { type: String, default: null },
   targetId: { type: [Number, null], default: null },
   scenes: { type: Array, default: () => [] },
@@ -22,14 +22,14 @@ const step = ref("type"); // "type" | "entity"
 const selectedType = ref(null);
 
 const currentTargetName = computed(() => {
-  if (!props.targetType || !props.targetId) return null;
-  const list = props.targetType === "flow" ? props.flows : props.scenes;
-  return list.find((e) => e.id === props.targetId)?.name || "Unknown";
+  if (!targetType || !targetId) return null;
+  const list = targetType === "flow" ? flows : scenes;
+  return list.find((e) => e.id === targetId)?.name || "Unknown";
 });
 
 const entityList = computed(() => {
-  if (selectedType.value === "flow") return props.flows;
-  if (selectedType.value === "scene") return props.scenes;
+  if (selectedType.value === "flow") return flows;
+  if (selectedType.value === "scene") return scenes;
   return [];
 });
 

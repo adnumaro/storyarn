@@ -1,7 +1,7 @@
 <script setup>
 import { Lock, Unlock } from "lucide-vue-next";
 
-defineProps({
+const { locked, disabled } = defineProps({
   locked: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
 });

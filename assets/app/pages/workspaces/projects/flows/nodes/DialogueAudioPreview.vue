@@ -1,11 +1,11 @@
 <script setup>
 import { computed } from "vue";
 
-const props = defineProps({
+const { audioAssetId } = defineProps({
   audioAssetId: { type: [String, Number], default: null },
 });
 
-const hasAudio = computed(() => !!props.audioAssetId);
+const hasAudio = computed(() => !!audioAssetId);
 </script>
 
 <template>

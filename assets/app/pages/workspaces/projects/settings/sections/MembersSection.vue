@@ -14,7 +14,7 @@ import {
 } from "@components/ui/select/index.js";
 import { useLive } from "@composables/useLive.js";
 
-defineProps({
+const { members, currentUserId } = defineProps({
   members: { type: Array, default: () => [] },
   currentUserId: { type: Number, default: null },
 });

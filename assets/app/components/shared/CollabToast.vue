@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, ref } from "vue";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { actionLabels } = defineProps({
   actionLabels: { type: Object, default: () => ({}) },
 });
 
@@ -23,7 +23,7 @@ onMounted(() => {
 onUnmounted(() => clearTimeout(hideTimeout));
 
 function label(action) {
-  return props.actionLabels[action] || "made a change";
+  return actionLabels[action] || "made a change";
 }
 </script>
 

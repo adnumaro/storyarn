@@ -1,5 +1,5 @@
 <script setup>
-defineProps({
+const { vertexEditorConfigs } = defineProps({
   vertexEditorConfigs: { type: Object, default: null },
 });
 

@@ -10,7 +10,7 @@ import { ref } from "vue";
 import ConditionBuilder from "./builders/ConditionBuilder.vue";
 import InstructionBuilder from "./builders/InstructionBuilder.vue";
 
-const props = defineProps({
+const { mode, condition, assignments, variables, disabled, switchMode } = defineProps({
   mode: {
     type: String,
     required: true,

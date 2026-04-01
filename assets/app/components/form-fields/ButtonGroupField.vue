@@ -1,5 +1,5 @@
 <script setup>
-defineProps({
+const { label, icon, options, value, disabled } = defineProps({
   label: { type: String, default: "" },
   icon: { type: [Object, Function, null], default: null },
   options: { type: Array, required: true },

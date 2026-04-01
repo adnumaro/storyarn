@@ -6,7 +6,7 @@ import { Separator } from "@components/ui/separator/index.js";
 import { Switch } from "@components/ui/switch/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { autoSnapshotsEnabled, autoVersionFlows, autoVersionScenes, autoVersionSheets, versionUsage } = defineProps({
   autoSnapshotsEnabled: { type: Boolean, default: false },
   autoVersionFlows: { type: Boolean, default: false },
   autoVersionScenes: { type: Boolean, default: false },
@@ -16,31 +16,31 @@ const props = defineProps({
 
 const live = useLive();
 
-const autoSnapshots = ref(props.autoSnapshotsEnabled);
-const autoFlows = ref(props.autoVersionFlows);
-const autoScenes = ref(props.autoVersionScenes);
-const autoSheets = ref(props.autoVersionSheets);
+const autoSnapshots = ref(autoSnapshotsEnabled);
+const autoFlows = ref(autoVersionFlows);
+const autoScenes = ref(autoVersionScenes);
+const autoSheets = ref(autoVersionSheets);
 
 watch(
-  () => props.autoSnapshotsEnabled,
+  () => autoSnapshotsEnabled,
   (v) => {
     autoSnapshots.value = v;
   },
 );
 watch(
-  () => props.autoVersionFlows,
+  () => autoVersionFlows,
   (v) => {
     autoFlows.value = v;
   },
 );
 watch(
-  () => props.autoVersionScenes,
+  () => autoVersionScenes,
   (v) => {
     autoScenes.value = v;
   },
 );
 watch(
-  () => props.autoVersionSheets,
+  () => autoVersionSheets,
   (v) => {
     autoSheets.value = v;
   },

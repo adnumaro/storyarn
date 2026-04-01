@@ -4,7 +4,7 @@ import { computed } from "vue";
 import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { currentTab, canEdit, compact } = defineProps({
   currentTab: { type: String, default: "content" },
   canEdit: { type: Boolean, default: false },
   compact: { type: Boolean, default: false },
@@ -20,11 +20,11 @@ const allTabs = [
 ];
 
 const tabs = computed(() =>
-  props.compact ? allTabs.filter((t) => t.value !== "history") : allTabs,
+  compact ? allTabs.filter((t) => t.value !== "history") : allTabs,
 );
 
 function onTabChange(value) {
-  if (value !== props.currentTab) {
+  if (value !== currentTab) {
     live.pushEvent("switch_tab", { tab: value });
   }
 }

@@ -19,7 +19,7 @@ import { Badge } from "@components/ui/badge/index.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { flowName, flowShortcut, isMain, canEdit, saveStatus, isDraft, backEntry, forwardEntry, flowWordCount, flowErrorNodes, flowInfoNodes, sceneName, sceneInherited, availableScenes } = defineProps({
   flowName: { type: String, default: "" },
   flowShortcut: { type: String, default: "" },
   isMain: { type: Boolean, default: false },
@@ -43,9 +43,9 @@ const live = useLive();
 const sceneOpen = ref(false);
 const healthOpen = ref(false);
 
-const errorCount = computed(() => props.flowErrorNodes.length);
-const infoCount = computed(() => props.flowInfoNodes.length);
-const showScene = computed(() => props.canEdit || props.sceneName != null);
+const errorCount = computed(() => flowErrorNodes.length);
+const infoCount = computed(() => flowInfoNodes.length);
+const showScene = computed(() => canEdit || sceneName != null);
 
 function saveName(name) {
   live.pushEvent("save_name", { name });

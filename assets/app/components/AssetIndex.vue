@@ -17,7 +17,7 @@ import { Button } from "@components/ui/button/index.js";
 import { Input } from "@components/ui/input/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { assets, filter, search, typeCounts, selectedAsset, assetUsages, uploading, canEdit, workspaceSlug, projectSlug } = defineProps({
   assets: { type: Array, default: () => [] },
   filter: { type: String, default: "all" },
   search: { type: String, default: "" },
@@ -34,13 +34,13 @@ const props = defineProps({
 });
 
 const live = useLive();
-const searchValue = ref(props.search);
+const searchValue = ref(search);
 const showDeleteConfirm = ref(false);
 
 const filterTabs = computed(() => {
-  const total = Object.values(props.typeCounts).reduce((a, b) => a + b, 0);
-  const imageCount = props.typeCounts.image || 0;
-  const audioCount = props.typeCounts.audio || 0;
+  const total = Object.values(typeCounts).reduce((a, b) => a + b, 0);
+  const imageCount = typeCounts.image || 0;
+  const audioCount = typeCounts.audio || 0;
   return [
     { key: "all", label: "All", count: total },
     { key: "image", label: "Images", count: imageCount },
@@ -49,11 +49,11 @@ const filterTabs = computed(() => {
 });
 
 const totalUsages = computed(() => {
-  if (!props.assetUsages) return 0;
+  if (!assetUsages) return 0;
   return (
-    (props.assetUsages.flowNodes?.length || 0) +
-    (props.assetUsages.sheetAvatars?.length || 0) +
-    (props.assetUsages.sheetBanners?.length || 0)
+    (assetUsages.flowNodes?.length || 0) +
+    (assetUsages.sheetAvatars?.length || 0) +
+    (assetUsages.sheetBanners?.length || 0)
   );
 });
 
@@ -135,11 +135,11 @@ function formatDate(dateStr) {
 }
 
 function usageFlowHref(usage) {
-  return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/flows/${usage.flowId}`;
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${usage.flowId}`;
 }
 
 function usageSheetHref(sheet) {
-  return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/sheets/${sheet.id}`;
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets/${sheet.id}`;
 }
 </script>
 

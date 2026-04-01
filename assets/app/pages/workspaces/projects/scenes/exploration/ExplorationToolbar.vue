@@ -3,7 +3,7 @@ import { ArrowLeft, Save, Scan } from "lucide-vue-next";
 import { Button } from "@components/ui/button";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { sceneName, activeFlowName, flowMode, showZones } = defineProps({
   sceneName: { type: String, default: "" },
   activeFlowName: { type: String, default: null },
   flowMode: { type: Boolean, default: false },

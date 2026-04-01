@@ -6,13 +6,13 @@ import { Input } from "@components/ui/input/index.js";
 import { Label } from "@components/ui/label/index.js";
 import { Separator } from "@components/ui/separator/index.js";
 
-const props = defineProps({
+const { form: formProp, loginUrl, oauthAction } = defineProps({
   form: { type: Object, required: true },
   loginUrl: { type: String, default: "/users/log-in" },
   oauthAction: { type: String, default: "login" },
 });
 
-const form = useLiveForm(() => props.form, {
+const form = useLiveForm(() => formProp, {
   changeEvent: "validate",
   submitEvent: "save",
   debounceInMiliseconds: 300,
@@ -25,9 +25,9 @@ onMounted(() => {
   emailInput.value?.focus();
 });
 
-const githubHref = props.oauthAction === "link" ? "/auth/github/link" : "/auth/github";
-const googleHref = props.oauthAction === "link" ? "/auth/google/link" : "/auth/google";
-const discordHref = props.oauthAction === "link" ? "/auth/discord/link" : "/auth/discord";
+const githubHref = oauthAction === "link" ? "/auth/github/link" : "/auth/github";
+const googleHref = oauthAction === "link" ? "/auth/google/link" : "/auth/google";
+const discordHref = oauthAction === "link" ? "/auth/discord/link" : "/auth/discord";
 </script>
 
 <template>

@@ -1,5 +1,5 @@
 <script setup>
-const props = defineProps({
+const { translations } = defineProps({
   translations: { type: Object, required: true },
 });
 

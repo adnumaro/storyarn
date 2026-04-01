@@ -2,7 +2,7 @@
 import { Maximize, Monitor, Scan } from "lucide-vue-next";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { displayMode, defaultZoom, canEdit } = defineProps({
   displayMode: { type: String, default: "fit" },
   defaultZoom: { type: Number, default: 1.0 },
   canEdit: { type: Boolean, default: false },

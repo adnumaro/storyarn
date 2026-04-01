@@ -7,7 +7,7 @@ import { Separator } from "@components/ui/separator/index.js";
 import { useLive } from "@composables/useLive.js";
 import { formatRelativeTime } from "@lib/date-utils.js";
 
-const props = defineProps({
+const { workspace, membership, projects, searchQuery, canCreateProject, newProjectUrl, settingsUrl } = defineProps({
   workspace: { type: Object, required: true },
   membership: { type: Object, required: true },
   projects: { type: Array, default: () => [] },
@@ -19,16 +19,16 @@ const props = defineProps({
 
 const live = useLive();
 
-const localSearch = ref(props.searchQuery);
+const localSearch = ref(searchQuery);
 
 function onSearch(e) {
   localSearch.value = e.target.value;
   live.pushEvent("search", { search: e.target.value });
 }
 
-const canManage = computed(() => ["owner", "admin"].includes(props.membership.role));
+const canManage = computed(() => ["owner", "admin"].includes(membership.role));
 
-const canCreate = computed(() => ["owner", "admin", "member"].includes(props.membership.role));
+const canCreate = computed(() => ["owner", "admin", "member"].includes(membership.role));
 </script>
 
 <template>

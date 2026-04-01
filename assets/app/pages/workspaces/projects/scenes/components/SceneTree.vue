@@ -16,7 +16,7 @@ import { useLive } from "@composables/useLive";
 import SceneTreeNode from "./SceneTreeNode.vue";
 import SceneTreeRoot from "./SceneTreeRoot.vue";
 
-const props = defineProps({
+const { scenesTree, selectedSceneId, canEdit, workspaceSlug, projectSlug } = defineProps({
   scenesTree: { type: Array, default: () => [] },
   selectedSceneId: { type: [String, Number], default: null },
   canEdit: { type: Boolean, default: false },
@@ -30,9 +30,9 @@ const deleteDialogOpen = ref(false);
 const pendingDeleteScene = ref(null);
 
 // Local reactive copy for DnD mutations
-const localTree = ref([...props.scenesTree]);
+const localTree = ref([...scenesTree]);
 watch(
-  () => props.scenesTree,
+  () => scenesTree,
   (v) => {
     localTree.value = v;
   },
@@ -40,7 +40,7 @@ watch(
 );
 
 function sceneHref(scene) {
-  return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/scenes/${scene.id}`;
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${scene.id}`;
 }
 
 function matchesSearch(node, query) {

@@ -2,13 +2,13 @@
 import { Ref } from "rete-vue-plugin";
 import { computed } from "vue";
 
-const props = defineProps({
+const { data, emit } = defineProps({
   data: { type: Object, required: true },
   emit: { type: Function, required: true },
 });
 
-const inputs = computed(() => Object.entries(props.data?.inputs || {}));
-const outputs = computed(() => Object.entries(props.data?.outputs || {}));
+const inputs = computed(() => Object.entries(data?.inputs || {}));
+const outputs = computed(() => Object.entries(data?.outputs || {}));
 const isSimple = computed(() => inputs.value.length <= 1 && outputs.value.length <= 1);
 </script>
 

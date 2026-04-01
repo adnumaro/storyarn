@@ -2,7 +2,7 @@
 import { History, Play } from "lucide-vue-next";
 import DockToolButton from "./DockToolButton.vue";
 
-const props = defineProps({
+const { playUrl } = defineProps({
   playUrl: { type: String, required: true },
 });
 

@@ -36,7 +36,7 @@ const ACTION_TYPES = [
   },
 ];
 
-const props = defineProps({
+const { actionType, disabled } = defineProps({
   actionType: { type: String, default: "none" },
   disabled: { type: Boolean, default: false },
 });
@@ -49,7 +49,7 @@ function select(value) {
   open.value = false;
 }
 
-const current = () => ACTION_TYPES.find((t) => t.value === props.actionType) || ACTION_TYPES[0];
+const current = () => ACTION_TYPES.find((t) => t.value === actionType) || ACTION_TYPES[0];
 </script>
 
 <template>

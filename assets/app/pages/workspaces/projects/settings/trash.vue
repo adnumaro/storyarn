@@ -12,7 +12,7 @@ import {
 } from "@components/ui/dialog/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { trashedSheets, canManage } = defineProps({
   trashedSheets: { type: Array, default: () => [] },
   canManage: { type: Boolean, default: false },
 });

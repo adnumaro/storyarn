@@ -18,7 +18,7 @@ import {
 } from "@components/ui/dropdown-menu";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { layers, activeLayerId, canEdit, editMode } = defineProps({
   layers: { type: Array, default: () => [] },
   activeLayerId: { type: [Number, String], default: null },
   canEdit: { type: Boolean, default: false },
@@ -90,7 +90,7 @@ function confirmDelete() {
 }
 
 function isActive(layer) {
-  return props.activeLayerId != null && String(layer.id) === String(props.activeLayerId);
+  return activeLayerId != null && String(layer.id) === String(activeLayerId);
 }
 </script>
 

@@ -2,7 +2,7 @@
 import { computed, inject, nextTick, ref, watch } from "vue";
 import { FLOW_CONTEXT_KEY } from "../setup.js";
 
-const props = defineProps({
+const { data, emit, config, color } = defineProps({
   data: { type: Object, required: true },
   emit: { type: Function, required: true },
   config: { type: Object, required: true },
@@ -15,11 +15,11 @@ const ctx = inject(FLOW_CONTEXT_KEY, {
 });
 const textareaRef = ref(null);
 
-const nodeData = computed(() => props.data.nodeData || {});
+const nodeData = computed(() => data.nodeData || {});
 const text = computed(() => nodeData.value.text || "");
 const annColor = computed(() => nodeData.value.color || "#fbbf24");
-const selected = computed(() => props.data.selected || false);
-const editing = computed(() => ctx.editingNodeId === props.data.id);
+const selected = computed(() => data.selected || false);
+const editing = computed(() => ctx.editingNodeId === data.id);
 
 const sizeClass = computed(() => {
   const fs = nodeData.value.font_size || "md";
@@ -38,7 +38,7 @@ watch(editing, (val) => {
 function onBlur(e) {
   const val = e.target.value;
   if (val !== text.value) {
-    ctx.onInlineEditSave?.(props.data.id, "text", val);
+    ctx.onInlineEditSave?.(data.id, "text", val);
   }
 }
 

@@ -19,7 +19,7 @@ import {
 } from "@components/ui/tooltip/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { identities, hasPassword, translations } = defineProps({
   identities: { type: Array, required: true },
   hasPassword: { type: Boolean, required: true },
   translations: { type: Object, required: true },
@@ -37,7 +37,7 @@ const unlinkDialogOpen = ref(false);
 const unlinkProvider = ref(null);
 
 function findIdentity(provider) {
-  return props.identities.find((i) => i.provider === provider) || null;
+  return identities.find((i) => i.provider === provider) || null;
 }
 
 function openUnlinkDialog(provider) {

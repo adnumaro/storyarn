@@ -3,7 +3,7 @@ import { LayoutGrid, Plus, X } from "lucide-vue-next";
 import { computed } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
 
-const props = defineProps({
+const { sheet, canEdit } = defineProps({
   sheet: { type: Object, required: true },
   canEdit: { type: Boolean, default: false },
 });
@@ -11,7 +11,7 @@ const props = defineProps({
 const emit = defineEmits(["trigger-upload", "set-default", "remove", "open-gallery"]);
 
 const defaultAvatar = computed(
-  () => props.sheet.avatars?.find((a) => a.is_default) || props.sheet.avatars?.[0] || null,
+  () => sheet.avatars?.find((a) => a.is_default) || sheet.avatars?.[0] || null,
 );
 </script>
 

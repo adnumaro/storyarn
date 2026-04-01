@@ -13,7 +13,7 @@ import {
   SubflowToolbar,
 } from "./toolbar-sections/index.js";
 
-const props = defineProps({
+const { toolbarState, canEdit, flowHubs, availableFlows, allSheets, availableScenes, subflowExits, referencingJumps, referencingFlows, nodeSelectLoading, flowSearchHasMore } = defineProps({
   toolbarState: { type: Object, required: true },
   canEdit: { type: Boolean, default: false },
   // Server data for complex types
@@ -30,15 +30,15 @@ const props = defineProps({
 
 const toolbarRef = ref(null);
 
-const visible = computed(() => props.toolbarState.visible && props.canEdit);
-const nodeType = computed(() => props.toolbarState.nodeType);
-const nodeData = computed(() => props.toolbarState.nodeData || {});
-const nodeId = computed(() => props.toolbarState.nodeId);
+const visible = computed(() => toolbarState.visible && canEdit);
+const nodeType = computed(() => toolbarState.nodeType);
+const nodeData = computed(() => toolbarState.nodeData || {});
+const nodeId = computed(() => toolbarState.nodeId);
 
 // Toolbar position style
 const toolbarStyle = computed(() => {
   if (!visible.value) return { display: "none" };
-  const s = props.toolbarState;
+  const s = toolbarState;
   const el = toolbarRef.value;
   const toolbarW = el?.offsetWidth || 200;
   const left = s.x + s.width / 2 - toolbarW / 2;

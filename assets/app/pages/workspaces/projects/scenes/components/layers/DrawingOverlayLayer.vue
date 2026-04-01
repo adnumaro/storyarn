@@ -1,5 +1,5 @@
 <script setup>
-defineProps({
+const { drawingOverlay } = defineProps({
   drawingOverlay: { type: Object, default: null },
 });
 </script>

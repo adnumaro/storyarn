@@ -3,7 +3,7 @@ import { LayoutGrid, Maximize2 } from "lucide-vue-next";
 import { AreaExtensions } from "rete-area-plugin";
 import { ref } from "vue";
 
-const props = defineProps({
+const { area, editor } = defineProps({
   area: { type: Object, default: null },
   editor: { type: Object, default: null },
 });
@@ -11,20 +11,20 @@ const props = defineProps({
 const minimapVisible = ref(true);
 
 function toggleMinimap() {
-  if (!props.area) return;
+  if (!area) return;
   minimapVisible.value = !minimapVisible.value;
 
-  const minimapEl = props.area.container?.querySelector(".minimap");
+  const minimapEl = area.container?.querySelector(".minimap");
   if (minimapEl) {
     minimapEl.style.display = minimapVisible.value ? "" : "none";
   }
 }
 
 function fitToView() {
-  if (!props.area || !props.editor) return;
-  const nodes = props.editor.getNodes();
+  if (!area || !editor) return;
+  const nodes = editor.getNodes();
   if (nodes.length > 0) {
-    AreaExtensions.zoomAt(props.area, nodes);
+    AreaExtensions.zoomAt(area, nodes);
   }
 }
 </script>

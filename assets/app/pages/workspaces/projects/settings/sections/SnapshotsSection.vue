@@ -17,7 +17,7 @@ import { Separator } from "@components/ui/separator/index.js";
 import { Textarea } from "@components/ui/textarea/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { snapshots, canCreateSnapshot, restorationInProgress, workspaceSlug, projectSlug } = defineProps({
   snapshots: { type: Array, default: () => [] },
   canCreateSnapshot: { type: Boolean, default: true },
   restorationInProgress: { type: Boolean, default: false },
@@ -95,7 +95,7 @@ function sortedEntityCounts(counts) {
 }
 
 function downloadUrl(snapshotId) {
-  return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/snapshots/${snapshotId}/download`;
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/snapshots/${snapshotId}/download`;
 }
 </script>
 

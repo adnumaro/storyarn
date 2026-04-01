@@ -8,7 +8,7 @@ import AvatarGallery from "./AvatarGallery.vue";
 import SheetAvatarSection from "./SheetAvatarSection.vue";
 import SheetMetadata from "./SheetMetadata.vue";
 
-const props = defineProps({
+const { sheet, canEdit, isDraft, sourceShortcut } = defineProps({
   sheet: { type: Object, required: true },
   canEdit: { type: Boolean, default: false },
   isDraft: { type: Boolean, default: false },
@@ -18,10 +18,10 @@ const props = defineProps({
 const live = useLive();
 
 // ── Color picker ──
-const localColor = ref(props.sheet.color || "#3b82f6");
+const localColor = ref(sheet.color || "#3b82f6");
 
 watch(
-  () => props.sheet.color,
+  () => sheet.color,
   (v) => {
     localColor.value = v || "#3b82f6";
   },

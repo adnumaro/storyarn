@@ -2,7 +2,7 @@
 import { ImagePlus, RefreshCw, Trash2 } from "lucide-vue-next";
 import { useLive } from "@composables/useLive";
 
-defineProps({
+const { backgroundUrl, canEdit } = defineProps({
   backgroundUrl: { type: String, default: null },
   canEdit: { type: Boolean, default: false },
 });

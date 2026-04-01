@@ -8,7 +8,7 @@ import { Label } from "@components/ui/label/index.js";
 import { Separator } from "@components/ui/separator/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { passwordForm: passwordFormProp, currentEmail, triggerSubmit, passwordAction, translations } = defineProps({
   passwordForm: { type: Object, required: true },
   currentEmail: { type: String, required: true },
   triggerSubmit: { type: Boolean, default: false },
@@ -18,7 +18,7 @@ const props = defineProps({
 
 const live = useLive();
 
-const passwordForm = useLiveForm(() => props.passwordForm, {
+const passwordForm = useLiveForm(() => passwordFormProp, {
   changeEvent: "validate_password",
   submitEvent: "update_password",
   debounceInMiliseconds: 300,
@@ -32,7 +32,7 @@ const hiddenFormRef = ref(null);
 
 // Watch for triggerSubmit from server
 const checkTriggerSubmit = () => {
-  if (props.triggerSubmit && hiddenFormRef.value) {
+  if (triggerSubmit && hiddenFormRef.value) {
     hiddenFormRef.value.submit();
   }
 };
@@ -41,7 +41,7 @@ const checkTriggerSubmit = () => {
 import { watch } from "vue";
 
 watch(
-  () => props.triggerSubmit,
+  () => triggerSubmit,
   (val) => {
     if (val && hiddenFormRef.value) {
       hiddenFormRef.value.submit();

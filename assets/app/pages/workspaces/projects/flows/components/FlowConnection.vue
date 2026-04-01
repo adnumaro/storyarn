@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from "vue";
 
-const props = defineProps({
+const { path, data } = defineProps({
   path: { type: String, default: "" },
   data: { type: Object, default: null },
 });
@@ -10,9 +10,9 @@ const props = defineProps({
  * Calculate midpoint of cubic bezier path at t=0.5 for label positioning.
  */
 const midpoint = computed(() => {
-  if (!props.path || !props.data?.label) return null;
+  if (!path || !data?.label) return null;
 
-  const m = props.path.match(
+  const m = path.match(
     /M\s*([\d.-]+)[,\s]*([\d.-]+)\s*C\s*([\d.-]+)[,\s]*([\d.-]+)\s*([\d.-]+)[,\s]*([\d.-]+)\s*([\d.-]+)[,\s]*([\d.-]+)/,
   );
   if (!m) return null;
@@ -27,7 +27,7 @@ const midpoint = computed(() => {
 });
 
 const labelWidth = computed(() =>
-  props.data?.label ? Math.min(props.data.label.length * 6 + 10, 80) : 0,
+  data?.label ? Math.min(data.label.length * 6 + 10, 80) : 0,
 );
 </script>
 

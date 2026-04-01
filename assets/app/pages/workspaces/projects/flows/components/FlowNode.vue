@@ -27,7 +27,7 @@ const NODE_COMPONENTS = {
   annotation: AnnotationNode,
 };
 
-const props = defineProps({
+const { data, emit } = defineProps({
   data: { type: Object, required: true },
   emit: { type: Function, required: true },
 });
@@ -39,7 +39,7 @@ const ctx = inject(FLOW_CONTEXT_KEY, {
   lod: "full",
 });
 
-const nodeType = computed(() => props.data?.nodeType || "dialogue");
+const nodeType = computed(() => data?.nodeType || "dialogue");
 const config = computed(() => NODE_CONFIGS[nodeType.value] || NODE_CONFIGS.dialogue);
 const nodeComponent = computed(() => NODE_COMPONENTS[nodeType.value] || DialogueNode);
 
@@ -49,7 +49,7 @@ const nodeColor = computed(() => {
   const v = ctx.nodeDataVersion;
   return resolveNodeColor(
     nodeType.value,
-    props.data?.nodeData,
+    data?.nodeData,
     config.value.color,
     ctx.sheetsMap,
     ctx.hubsMap,
@@ -59,7 +59,7 @@ const nodeColor = computed(() => {
 // Reactive snapshot of nodeData — recomputes when nodeDataVersion bumps
 const reactiveNodeData = computed(() => {
   void ctx.nodeDataVersion;
-  return props.data?.nodeData || {};
+  return data?.nodeData || {};
 });
 </script>
 

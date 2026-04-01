@@ -34,7 +34,7 @@ import {
 import { useLive } from "@composables/useLive.js";
 import { formatRelativeTime } from "@lib/date-utils.js";
 
-const props = defineProps({
+const { stats, tableData, sortBy: sortByProp, sortDir, page, totalPages, total, issues, canEdit, workspaceSlug, projectSlug } = defineProps({
   stats: { type: Object, default: null },
   tableData: { type: Array, default: () => [] },
   sortBy: { type: String, default: "name" },
@@ -51,7 +51,7 @@ const props = defineProps({
 const live = useLive();
 
 function sheetHref(row) {
-  return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/sheets/${row.id}`;
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets/${row.id}`;
 }
 
 function sortBy(column) {
@@ -68,41 +68,41 @@ function requestDelete(id) {
 }
 
 function sortIcon(column) {
-  if (props.sortBy !== column) return ArrowUpDown;
-  return props.sortDir === "asc" ? ArrowUp : ArrowDown;
+  if (sortByProp !== column) return ArrowUpDown;
+  return sortDir === "asc" ? ArrowUp : ArrowDown;
 }
 
 const statCards = computed(() => {
-  if (!props.stats) return [];
+  if (!stats) return [];
   return [
     {
       icon: FileText,
       label: "Sheets",
-      value: props.stats.sheet_count,
+      value: stats.sheet_count,
       color: "text-primary",
     },
     {
       icon: Layers,
       label: "Blocks",
-      value: props.stats.block_count,
+      value: stats.block_count,
       color: "text-blue-400",
     },
     {
       icon: Variable,
       label: "Variables",
-      value: props.stats.variable_count,
+      value: stats.variable_count,
       color: "text-violet-400",
     },
     {
       icon: Link,
       label: "Vars in use",
-      value: props.stats.variables_in_use,
+      value: stats.variables_in_use,
       color: "text-amber-400",
     },
     {
       icon: TextCursorInput,
       label: "Words",
-      value: props.stats.word_count,
+      value: stats.word_count,
       color: "text-emerald-400",
     },
   ];

@@ -20,7 +20,7 @@ import { findVariable, groupVariablesBySheet } from "@lib/variables.js";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover/index.js";
 import VariableCombobox from "../../VariableCombobox.vue";
 
-const props = defineProps({
+const { assignment, variables, disabled } = defineProps({
   assignment: { type: Object, required: true },
   variables: { type: Array, default: () => [] },
   disabled: { type: Boolean, default: false },
@@ -29,10 +29,10 @@ const props = defineProps({
 const emit = defineEmits(["update:assignment", "remove"]);
 const operatorDropdownOpen = ref(false);
 
-const sheetsWithVariables = computed(() => groupVariablesBySheet(props.variables));
+const sheetsWithVariables = computed(() => groupVariablesBySheet(variables));
 
 const variableType = computed(() => {
-  const v = findVariable(props.variables, props.assignment.sheet, props.assignment.variable);
+  const v = findVariable(variables, assignment.sheet, assignment.variable);
   return v ? v.block_type : null;
 });
 
@@ -41,12 +41,12 @@ const availableOperators = computed(() =>
 );
 
 const template = computed(() => {
-  const op = props.assignment.operator || "set";
+  const op = assignment.operator || "set";
   let t = getTemplate(op);
   const hasValueSlot = t.some((item) => item.type === "slot" && item.key === "value");
   if (
     hasValueSlot &&
-    props.assignment.value_type === "variable_ref" &&
+    assignment.value_type === "variable_ref" &&
     !NO_VALUE_OPERATORS.has(op)
   ) {
     t = expandTemplateForVariableRef(t);
@@ -55,7 +55,7 @@ const template = computed(() => {
 });
 
 const sheetOptions = computed(() => {
-  const ct = typesForOperator(props.assignment.operator || "set");
+  const ct = typesForOperator(assignment.operator || "set");
   const filtered =
     ct === null
       ? sheetsWithVariables.value
@@ -64,10 +64,10 @@ const sheetOptions = computed(() => {
 });
 
 const variableGroups = computed(() => {
-  if (!props.assignment.sheet) return [];
-  const sheet = sheetsWithVariables.value.find((s) => s.shortcut === props.assignment.sheet);
+  if (!assignment.sheet) return [];
+  const sheet = sheetsWithVariables.value.find((s) => s.shortcut === assignment.sheet);
   if (!sheet) return [];
-  const ct = typesForOperator(props.assignment.operator || "set");
+  const ct = typesForOperator(assignment.operator || "set");
   const vars = ct === null ? sheet.vars : sheet.vars.filter((v) => ct.includes(v.block_type));
   return [
     {
@@ -81,8 +81,8 @@ const variableGroups = computed(() => {
 });
 
 const valueOptions = computed(() => {
-  if (props.assignment.value_type === "variable_ref") {
-    const vs = props.assignment.value_sheet;
+  if (assignment.value_type === "variable_ref") {
+    const vs = assignment.value_sheet;
     if (!vs) return [];
     const sheet = sheetsWithVariables.value.find((s) => s.shortcut === vs);
     if (!sheet) return [];
@@ -91,7 +91,7 @@ const valueOptions = computed(() => {
       label: v.variable_name,
     }));
   }
-  const v = findVariable(props.variables, props.assignment.sheet, props.assignment.variable);
+  const v = findVariable(variables, assignment.sheet, assignment.variable);
   if (v && (v.block_type === "select" || v.block_type === "multi_select") && v.options) {
     return v.options.map((opt) => ({
       value: opt.key,
@@ -106,23 +106,23 @@ const valueSheetOptions = computed(() =>
 );
 
 const isFreeTextValue = computed(
-  () => props.assignment.value_type !== "variable_ref" && valueOptions.value.length === 0,
+  () => assignment.value_type !== "variable_ref" && valueOptions.value.length === 0,
 );
 
 const isNumericValue = computed(
   () =>
-    props.assignment.value_type !== "variable_ref" &&
-    (props.assignment.operator === "add" || props.assignment.operator === "subtract"),
+    assignment.value_type !== "variable_ref" &&
+    (assignment.operator === "add" || assignment.operator === "subtract"),
 );
 
 function update(field, value) {
-  const updated = { ...props.assignment, [field]: value };
+  const updated = { ...assignment, [field]: value };
   if (field === "sheet") {
     updated.variable = null;
     if (updated.operator !== "add" && updated.operator !== "subtract") updated.value = null;
     updated.value_sheet = null;
   } else if (field === "variable") {
-    const sv = findVariable(props.variables, props.assignment.sheet, value);
+    const sv = findVariable(variables, assignment.sheet, value);
     if (sv) {
       const ops = operatorsForType(sv.block_type);
       if (!ops.includes(updated.operator) && ops.length > 0) updated.operator = ops[0];
@@ -136,15 +136,15 @@ function update(field, value) {
 }
 
 function changeOperator(op) {
-  const updated = { ...props.assignment, operator: op };
-  if (NO_VALUE_OPERATORS.has(op) !== NO_VALUE_OPERATORS.has(props.assignment.operator)) {
+  const updated = { ...assignment, operator: op };
+  if (NO_VALUE_OPERATORS.has(op) !== NO_VALUE_OPERATORS.has(assignment.operator)) {
     updated.value = null;
     updated.value_sheet = null;
     updated.value_type = "literal";
   }
   const ct = typesForOperator(op);
   if (ct !== null && updated.variable) {
-    const cv = findVariable(props.variables, updated.sheet, updated.variable);
+    const cv = findVariable(variables, updated.sheet, updated.variable);
     if (cv && !ct.includes(cv.block_type)) {
       updated.variable = null;
       updated.value = null;
@@ -158,8 +158,8 @@ function changeOperator(op) {
 
 function toggleValueType() {
   emit("update:assignment", {
-    ...props.assignment,
-    value_type: props.assignment.value_type === "variable_ref" ? "literal" : "variable_ref",
+    ...assignment,
+    value_type: assignment.value_type === "variable_ref" ? "literal" : "variable_ref",
     value: null,
     value_sheet: null,
   });

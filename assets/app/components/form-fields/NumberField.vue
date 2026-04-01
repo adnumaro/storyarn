@@ -1,5 +1,5 @@
 <script setup>
-defineProps({
+const { label, value, min, max, step, disabled } = defineProps({
   label: { type: String, default: "" },
   value: { type: [Number, String], default: 0 },
   min: { type: Number, default: 0 },

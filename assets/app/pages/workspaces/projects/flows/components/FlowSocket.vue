@@ -1,5 +1,5 @@
 <script setup>
-defineProps({
+const { data } = defineProps({
   data: { type: Object, default: null },
 });
 </script>

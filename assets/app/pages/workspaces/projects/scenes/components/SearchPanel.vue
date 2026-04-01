@@ -3,17 +3,17 @@ import { Cable, MapPin, Pentagon, Search, StickyNote, X } from "lucide-vue-next"
 import { ref, watch } from "vue";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { searchQuery, searchFilter, searchResults } = defineProps({
   searchQuery: { type: String, default: "" },
   searchFilter: { type: String, default: "all" },
   searchResults: { type: Array, default: () => [] },
 });
 
 const live = useLive();
-const localQuery = ref(props.searchQuery);
+const localQuery = ref(searchQuery);
 
 watch(
-  () => props.searchQuery,
+  () => searchQuery,
   (v) => {
     localQuery.value = v;
   },

@@ -3,7 +3,7 @@ import { Crosshair, LogIn } from "lucide-vue-next";
 import { ToolbarSeparator } from "@components/shared/toolbar/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { nodeData, nodeId, referencingJumps } = defineProps({
   nodeData: { type: Object, required: true },
   nodeId: { type: [String, Number], required: true },
   referencingJumps: { type: Array, default: () => [] },
@@ -16,7 +16,7 @@ function updateField(field, value) {
 }
 
 function navigateToJumps() {
-  live.pushEvent("navigate_to_jumps", { id: props.nodeId });
+  live.pushEvent("navigate_to_jumps", { id: nodeId });
 }
 </script>
 

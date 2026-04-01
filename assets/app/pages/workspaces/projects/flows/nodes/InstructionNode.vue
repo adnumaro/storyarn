@@ -5,14 +5,14 @@ import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
 
-const props = defineProps({
+const { data, emit, config, color } = defineProps({
   data: { type: Object, required: true },
   emit: { type: Function, required: true },
   config: { type: Object, required: true },
   color: { type: String, required: true },
 });
 
-const nodeData = computed(() => props.data.nodeData || {});
+const nodeData = computed(() => data.nodeData || {});
 
 // --- Formatting (matching V1 instruction.js exactly) ---
 

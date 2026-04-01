@@ -1,7 +1,7 @@
 <script setup>
 import VersionHistory from "@components/shared/VersionHistory.vue";
 
-defineProps({
+const { versions, namedVersions, autoVersions, hasMore, canNameVersion, currentVersionId, canEdit, loading } = defineProps({
   versions: { type: Array, default: () => [] },
   namedVersions: { type: Array, default: () => [] },
   autoVersions: { type: Array, default: () => [] },

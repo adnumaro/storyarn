@@ -1,5 +1,5 @@
 <script setup>
-const props = defineProps({
+const { icon, active, tooltipTitle, tooltipDescription, tag, href } = defineProps({
   icon: { type: [Object, Function], required: true },
   active: { type: Boolean, default: false },
   tooltipTitle: { type: String, required: true },

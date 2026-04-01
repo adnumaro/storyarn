@@ -1,5 +1,5 @@
 <script setup>
-defineProps({
+const { zoneConfigs, connectionConfigs, selectionColor, labelColor } = defineProps({
   zoneConfigs: { type: Array, required: true },
   connectionConfigs: { type: Array, required: true },
   selectionColor: { type: String, required: true },

@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
 import SceneLayerList from "./SceneLayerList.vue";
 import SceneTree from "./SceneTree.vue";
 
-const props = defineProps({
+const { scenesTree, selectedSceneId, canEdit, workspaceSlug, projectSlug, layers, activeLayerId, editMode, hasScene, hasLayers } = defineProps({
   // SceneTree props
   scenesTree: { type: Array, default: () => [] },
   selectedSceneId: { type: [String, Number], default: null },

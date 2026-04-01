@@ -3,7 +3,7 @@ import { PlayIcon } from "lucide-vue-next";
 import { ToolbarSeparator } from "@components/shared/toolbar/index.js";
 import { Badge } from "@components/ui/badge/index.js";
 
-defineProps({
+const { referencingFlows } = defineProps({
   referencingFlows: { type: Array, default: () => [] },
 });
 </script>

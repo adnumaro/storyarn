@@ -7,7 +7,7 @@ import {
 } from "@components/shared/toolbar/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { nodeData, nodeId } = defineProps({
   nodeData: { type: Object, required: true },
   nodeId: { type: [String, Number], required: true },
 });
@@ -23,7 +23,7 @@ function updateAnnotationFontSize(size) {
 }
 
 function deleteNode() {
-  live.pushEvent("delete_node", { id: props.nodeId });
+  live.pushEvent("delete_node", { id: nodeId });
 }
 </script>
 

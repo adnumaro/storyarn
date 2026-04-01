@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover"
 import { useLive } from "@composables/useLive";
 import AmbientFlowRow from "./AmbientFlowRow.vue";
 
-const props = defineProps({
+const { ambientFlows, projectFlows, canEdit } = defineProps({
   ambientFlows: { type: Array, default: () => [] },
   projectFlows: { type: Array, default: () => [] },
   canEdit: { type: Boolean, default: false },
@@ -23,8 +23,8 @@ const live = useLive();
 const addOpen = ref(false);
 
 const availableFlows = computed(() => {
-  const linkedIds = new Set(props.ambientFlows.map((af) => af.flowId));
-  return props.projectFlows.filter((f) => !linkedIds.has(f.id));
+  const linkedIds = new Set(ambientFlows.map((af) => af.flowId));
+  return projectFlows.filter((f) => !linkedIds.has(f.id));
 });
 
 function selectFlow(flowId) {

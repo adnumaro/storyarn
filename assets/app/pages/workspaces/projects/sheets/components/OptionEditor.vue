@@ -6,7 +6,7 @@
 import { Plus, X } from "lucide-vue-next";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { blockId, options } = defineProps({
   blockId: { type: [Number, String], required: true },
   options: { type: Array, default: () => [] },
 });
@@ -14,19 +14,19 @@ const props = defineProps({
 const live = useLive();
 
 function addOption() {
-  live.pushEvent("add_select_option", { "block-id": props.blockId });
+  live.pushEvent("add_select_option", { "block-id": blockId });
 }
 
 function removeOption(index) {
   live.pushEvent("remove_select_option", {
-    "block-id": props.blockId,
+    "block-id": blockId,
     index,
   });
 }
 
 function updateOption(index, field, value) {
   live.pushEvent("update_select_option", {
-    "block-id": props.blockId,
+    "block-id": blockId,
     index,
     field,
     value,

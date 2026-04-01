@@ -12,7 +12,7 @@ const TYPE_ICONS = {
   date: Calendar,
 };
 
-const props = defineProps({
+const { items, command } = defineProps({
   items: { type: Array, default: () => [] },
   command: { type: Function, required: true },
 });
@@ -20,24 +20,24 @@ const props = defineProps({
 const selectedIndex = ref(0);
 
 watch(
-  () => props.items,
+  () => items,
   () => {
     selectedIndex.value = 0;
   },
 );
 
 function selectItem(index) {
-  const item = props.items[index];
-  if (item) props.command(item);
+  const item = items[index];
+  if (item) command(item);
 }
 
 function onKeyDown({ event }) {
   if (event.key === "ArrowUp") {
-    selectedIndex.value = (selectedIndex.value - 1 + props.items.length) % props.items.length;
+    selectedIndex.value = (selectedIndex.value - 1 + items.length) % items.length;
     return true;
   }
   if (event.key === "ArrowDown") {
-    selectedIndex.value = (selectedIndex.value + 1) % props.items.length;
+    selectedIndex.value = (selectedIndex.value + 1) % items.length;
     return true;
   }
   if (event.key === "Enter") {

@@ -10,7 +10,7 @@ import {
   ToolbarStrokePicker,
 } from "../../toolbar";
 
-const props = defineProps({
+const { element, selectedId, layers, canEdit } = defineProps({
   element: { type: Object, required: true },
   selectedId: { type: [Number, null], required: true },
   layers: { type: Array, default: () => [] },
@@ -21,7 +21,7 @@ const live = useLive();
 
 function updateField(field, value) {
   live.pushEvent("update_zone", {
-    id: String(props.element.id),
+    id: String(element.id),
     field,
     value: value === null ? "" : String(value),
   });
@@ -29,16 +29,16 @@ function updateField(field, value) {
 
 function updateActionType(type) {
   live.pushEvent("update_zone_action_type", {
-    "zone-id": String(props.selectedId),
+    "zone-id": String(selectedId),
     "action-type": type,
   });
 }
 
 function toggleLock() {
   live.pushEvent("update_zone", {
-    id: String(props.element.id),
+    id: String(element.id),
     field: "locked",
-    toggle: String(!props.element.locked),
+    toggle: String(!element.locked),
   });
 }
 

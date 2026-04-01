@@ -35,7 +35,7 @@ import {
 import { useLive } from "@composables/useLive.js";
 import { formatRelativeTime } from "@lib/date-utils.js";
 
-const props = defineProps({
+const { stats, tableData, sortBy, sortDir, page, totalPages, total, issues, canEdit, workspaceSlug, projectSlug } = defineProps({
   stats: { type: Object, default: null },
   tableData: { type: Array, default: () => [] },
   sortBy: { type: String, default: "name" },
@@ -52,7 +52,7 @@ const props = defineProps({
 const live = useLive();
 
 function flowHref(row) {
-  return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/flows/${row.id}`;
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${row.id}`;
 }
 
 function handleSort(column) {
@@ -73,35 +73,35 @@ function requestDelete(id) {
 }
 
 function sortIcon(column) {
-  if (props.sortBy !== column) return ArrowUpDown;
-  return props.sortDir === "asc" ? ArrowUp : ArrowDown;
+  if (sortBy !== column) return ArrowUpDown;
+  return sortDir === "asc" ? ArrowUp : ArrowDown;
 }
 
 const statCards = computed(() => {
-  if (!props.stats) return [];
+  if (!stats) return [];
   return [
     {
       icon: GitBranch,
       label: "Flows",
-      value: props.stats.flow_count,
+      value: stats.flow_count,
       color: "text-primary",
     },
     {
       icon: Box,
       label: "Nodes",
-      value: props.stats.node_count,
+      value: stats.node_count,
       color: "text-blue-400",
     },
     {
       icon: MessageSquare,
       label: "Dialogue",
-      value: props.stats.dialogue_count,
+      value: stats.dialogue_count,
       color: "text-violet-400",
     },
     {
       icon: TextCursorInput,
       label: "Words",
-      value: props.stats.word_count,
+      value: stats.word_count,
       color: "text-emerald-400",
     },
   ];
@@ -138,7 +138,7 @@ const columns = [
 
 const pages = computed(() => {
   const result = [];
-  for (let i = 1; i <= props.totalPages; i++) {
+  for (let i = 1; i <= totalPages; i++) {
     result.push(i);
   }
   return result;

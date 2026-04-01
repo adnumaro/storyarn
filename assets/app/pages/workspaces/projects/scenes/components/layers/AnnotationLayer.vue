@@ -1,5 +1,5 @@
 <script setup>
-defineProps({
+const { annotationConfigs, selectionColor, isEditingAnnotation, getDisplayText } = defineProps({
   annotationConfigs: { type: Array, required: true },
   selectionColor: { type: String, required: true },
   isEditingAnnotation: { type: Function, required: true },

@@ -7,7 +7,7 @@ import DockLogicPanel from "./dock-panels/DockLogicPanel.vue";
 import DockNarrativePanel from "./dock-panels/DockNarrativePanel.vue";
 import DockNavigationPanel from "./dock-panels/DockNavigationPanel.vue";
 
-const props = defineProps({
+const { canEdit, compact, debugPanelOpen, workspaceSlug, projectSlug, flowId } = defineProps({
   canEdit: { type: Boolean, default: false },
   compact: { type: Boolean, default: false },
   debugPanelOpen: { type: Boolean, default: false },
@@ -38,10 +38,10 @@ function openVersions() {
 }
 
 function toggleDebug() {
-  live.pushEvent(props.debugPanelOpen ? "debug_stop" : "debug_start", {});
+  live.pushEvent(debugPanelOpen ? "debug_stop" : "debug_start", {});
 }
 
-const playUrl = `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/flows/${props.flowId}/play`;
+const playUrl = `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${flowId}/play`;
 </script>
 
 <template>

@@ -14,7 +14,7 @@ import {
 import { Textarea } from "@components/ui/textarea";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { text, form, hasProvider, canEdit, backUrl } = defineProps({
   text: { type: Object, required: true },
   form: { type: Object, required: true },
   hasProvider: { type: Boolean, default: false },
@@ -24,10 +24,10 @@ const props = defineProps({
 
 const live = useLive();
 
-const translatedText = ref(props.form.params?.translated_text || props.text.translated_text || "");
-const status = ref(props.form.params?.status || props.text.status || "pending");
+const translatedText = ref(form.params?.translated_text || text.translated_text || "");
+const status = ref(form.params?.status || text.status || "pending");
 const translatorNotes = ref(
-  props.form.params?.translator_notes || props.text.translator_notes || "",
+  form.params?.translator_notes || text.translator_notes || "",
 );
 const saving = ref(false);
 const translating = ref(false);

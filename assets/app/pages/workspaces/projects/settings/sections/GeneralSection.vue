@@ -17,7 +17,7 @@ import { Separator } from "@components/ui/separator/index.js";
 import { Textarea } from "@components/ui/textarea/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { projectName, projectDescription, sourceLanguage, sourceLanguageName, themePrimary, themeAccent, hasCustomTheme } = defineProps({
   projectName: { type: String, default: "" },
   projectDescription: { type: String, default: "" },
   sourceLanguage: { type: Object, default: null },
@@ -30,17 +30,17 @@ const props = defineProps({
 const live = useLive();
 
 // Project Details
-const projectNameLocal = ref(props.projectName);
-const projectDescLocal = ref(props.projectDescription);
+const projectNameLocal = ref(projectName);
+const projectDescLocal = ref(projectDescription);
 
 watch(
-  () => props.projectName,
+  () => projectName,
   (v) => {
     projectNameLocal.value = v;
   },
 );
 watch(
-  () => props.projectDescription,
+  () => projectDescription,
   (v) => {
     projectDescLocal.value = v;
   },
@@ -65,17 +65,17 @@ function validateProject() {
 }
 
 // Theme
-const localPrimary = ref(props.themePrimary);
-const localAccent = ref(props.themeAccent);
+const localPrimary = ref(themePrimary);
+const localAccent = ref(themeAccent);
 
 watch(
-  () => props.themePrimary,
+  () => themePrimary,
   (v) => {
     localPrimary.value = v;
   },
 );
 watch(
-  () => props.themeAccent,
+  () => themeAccent,
   (v) => {
     localAccent.value = v;
   },

@@ -30,7 +30,7 @@ const blockComponents = {
   table: TableBlock,
 };
 
-const props = defineProps({
+const { groupId, blocks, columnCount, canEdit } = defineProps({
   groupId: { type: String, required: true },
   blocks: { type: Array, required: true },
   columnCount: { type: Number, default: 2 },
@@ -41,16 +41,16 @@ const emit = defineEmits(["insert-full-width"]);
 
 const live = useLive();
 
-const localBlocks = ref([...props.blocks]);
+const localBlocks = ref([...blocks]);
 watch(
-  () => props.blocks,
+  () => blocks,
   (v) => {
     localBlocks.value = [...v];
   },
 );
 
 const gridRef = useTemplateRef("gridRef");
-const columnGroup = `column-${props.groupId}`;
+const columnGroup = `column-${groupId}`;
 
 makeDroppable(
   gridRef,
@@ -64,11 +64,11 @@ makeDroppable(
         // Push reorder with column indices
         const items = localBlocks.value.map((b, i) => ({
           id: b.id,
-          column_group_id: props.groupId,
+          column_group_id: groupId,
           column_index: i,
         }));
         live.pushEvent("reorder_column_group", {
-          group_id: props.groupId,
+          group_id: groupId,
           items,
         });
       },
@@ -82,8 +82,8 @@ function resolveComponent(type) {
 }
 
 function gridClass() {
-  if (props.columnCount === 2) return "sm:grid-cols-2";
-  if (props.columnCount === 3) return "sm:grid-cols-3";
+  if (columnCount === 2) return "sm:grid-cols-2";
+  if (columnCount === 3) return "sm:grid-cols-3";
   return "sm:grid-cols-1";
 }
 </script>

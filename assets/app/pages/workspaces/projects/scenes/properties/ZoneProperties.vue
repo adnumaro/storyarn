@@ -12,7 +12,7 @@ const CONDITION_EFFECTS = [
   { id: "disable", name: "Disable" },
 ];
 
-const props = defineProps({
+const { element, canEdit, projectScenes, projectSheets, projectFlows, projectVariables } = defineProps({
   element: { type: Object, required: true },
   canEdit: { type: Boolean, default: false },
   projectScenes: { type: Array, default: () => [] },
@@ -25,7 +25,7 @@ const live = useLive();
 
 function update(field, value) {
   live.pushEvent("update_zone", {
-    id: String(props.element.id),
+    id: String(element.id),
     field,
     value: value === null || value === undefined ? "" : String(value),
   });
@@ -33,7 +33,7 @@ function update(field, value) {
 
 function toggle(field, currentValue) {
   live.pushEvent("update_zone", {
-    id: String(props.element.id),
+    id: String(element.id),
     field,
     toggle: String(!currentValue),
   });
@@ -41,13 +41,13 @@ function toggle(field, currentValue) {
 
 function updateTarget({ targetType, targetId }) {
   live.pushEvent("update_zone", {
-    id: String(props.element.id),
+    id: String(element.id),
     field: "target_type",
     value: targetType || "",
   });
   if (targetId !== undefined) {
     live.pushEvent("update_zone", {
-      id: String(props.element.id),
+      id: String(element.id),
       field: "target_id",
       value: targetId ? String(targetId) : "",
     });
@@ -56,13 +56,13 @@ function updateTarget({ targetType, targetId }) {
 
 function updateAssignments(assignments) {
   live.pushEvent("update_zone_assignments", {
-    "zone-id": String(props.element.id),
+    "zone-id": String(element.id),
     assignments,
   });
 }
 
 function selectDisplayVar(varRef) {
-  live.pushEvent(`select_zone_display_var:${props.element.id}`, {
+  live.pushEvent(`select_zone_display_var:${element.id}`, {
     id: varRef,
   });
 }

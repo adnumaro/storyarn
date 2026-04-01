@@ -3,7 +3,7 @@
  * AND/OR logic toggle: "Match [all|any] of the {label}"
  */
 
-defineProps({
+const { logic, ofLabel, disabled } = defineProps({
   logic: { type: String, default: "all" },
   ofLabel: { type: String, default: "of the rules" },
   disabled: { type: Boolean, default: false },

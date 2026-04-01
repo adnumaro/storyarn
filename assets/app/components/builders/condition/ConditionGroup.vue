@@ -8,7 +8,7 @@ import { generateId } from "@lib/variables.js";
 import ConditionBlock from "./ConditionBlock.vue";
 import LogicToggle from "./LogicToggle.vue";
 
-const props = defineProps({
+const { group, variables, disabled } = defineProps({
   group: { type: Object, required: true },
   variables: { type: Array, default: () => [] },
   disabled: { type: Boolean, default: false },
@@ -17,19 +17,19 @@ const props = defineProps({
 const emit = defineEmits(["update:group", "ungroup"]);
 
 function updateBlock(index, updatedBlock) {
-  const blocks = [...props.group.blocks];
+  const blocks = [...group.blocks];
   blocks[index] = updatedBlock;
-  emit("update:group", { ...props.group, blocks });
+  emit("update:group", { ...group, blocks });
 }
 
 function removeBlock(index) {
-  const blocks = props.group.blocks.filter((_, i) => i !== index);
-  emit("update:group", { ...props.group, blocks });
+  const blocks = group.blocks.filter((_, i) => i !== index);
+  emit("update:group", { ...group, blocks });
 }
 
 function addBlock() {
   const blocks = [
-    ...props.group.blocks,
+    ...group.blocks,
     {
       id: generateId("block"),
       type: "block",
@@ -45,11 +45,11 @@ function addBlock() {
       ],
     },
   ];
-  emit("update:group", { ...props.group, blocks });
+  emit("update:group", { ...group, blocks });
 }
 
 function updateLogic(newLogic) {
-  emit("update:group", { ...props.group, logic: newLogic });
+  emit("update:group", { ...group, logic: newLogic });
 }
 </script>
 

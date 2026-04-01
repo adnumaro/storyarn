@@ -16,7 +16,7 @@ const treeComponents = {
   ),
 };
 
-const props = defineProps({
+const { treePanelOpen, treePanelPinned, showPin, activeTool, dashboardUrl, onDashboard, treeData, treeProps } = defineProps({
   treePanelOpen: { type: Boolean, default: false },
   treePanelPinned: { type: Boolean, default: true },
   showPin: { type: Boolean, default: true },
@@ -27,7 +27,7 @@ const props = defineProps({
   treeProps: { type: Object, default: () => ({}) },
 });
 
-const activeTreeComponent = computed(() => treeComponents[props.activeTool] || null);
+const activeTreeComponent = computed(() => treeComponents[activeTool] || null);
 
 const live = useLive();
 const internalOpen = ref(false);
@@ -55,10 +55,10 @@ function readPinned(tool) {
 onMounted(() => {
   localStorage.removeItem("storyarn:tree_panel:pinned");
 
-  const tool = props.activeTool;
+  const tool = activeTool;
   const pinned = readPinned(tool);
 
-  if (pinned || props.treePanelOpen) {
+  if (pinned || treePanelOpen) {
     internalOpen.value = true;
   }
 
@@ -67,9 +67,9 @@ onMounted(() => {
 
 // ── Watch for server-driven open/close changes ──
 watch(
-  () => [props.treePanelOpen, props.treePanelPinned],
+  () => [treePanelOpen, treePanelPinned],
   ([nowOpen, pinned]) => {
-    const tool = props.activeTool;
+    const tool = activeTool;
     localStorage.setItem(storageKey(tool), String(pinned));
     internalOpen.value = nowOpen;
   },
@@ -87,7 +87,7 @@ const toolLabels = {
 };
 
 const dashboardLabel = computed(() => {
-  const label = toolLabels[props.activeTool] || "";
+  const label = toolLabels[activeTool] || "";
   return `${label} dashboard`;
 });
 

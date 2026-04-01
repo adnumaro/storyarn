@@ -11,7 +11,7 @@ import {
 } from "@components/ui/command/index.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
 
-const props = defineProps({
+const { options, selectedValue, selectedLabel, placeholder, disabled } = defineProps({
   options: { type: Array, default: () => [] },
   selectedValue: { type: [String, Number, null], default: null },
   selectedLabel: { type: String, default: null },
@@ -22,7 +22,7 @@ const props = defineProps({
 const emit = defineEmits(["select"]);
 const open = ref(false);
 
-const displayLabel = computed(() => props.selectedLabel || null);
+const displayLabel = computed(() => selectedLabel || null);
 
 function select(value) {
   emit("select", value);

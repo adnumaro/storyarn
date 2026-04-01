@@ -9,7 +9,7 @@ import {
   ContextMenuTrigger,
 } from "@components/ui/context-menu/index.js";
 
-const props = defineProps({
+const { node, index, siblings, selectedSheetId, canEdit, depth, searchActive, sheetHref } = defineProps({
   node: { type: Object, required: true },
   index: { type: Number, required: true },
   siblings: { type: Array, required: true },
@@ -22,10 +22,10 @@ const props = defineProps({
 
 const emit = defineEmits(["createChild", "requestDelete", "drop"]);
 
-const hasChildren = computed(() => props.node.children && props.node.children.length > 0);
+const hasChildren = computed(() => node.children && node.children.length > 0);
 
 const isSelected = computed(
-  () => props.selectedSheetId != null && String(props.node.id) === String(props.selectedSheetId),
+  () => selectedSheetId != null && String(node.id) === String(selectedSheetId),
 );
 
 // ── Auto-expand ──
@@ -39,14 +39,14 @@ function hasSelectedDescendant(node, selectedId) {
 }
 
 const shouldAutoExpand = computed(
-  () => hasChildren.value && hasSelectedDescendant(props.node, props.selectedSheetId),
+  () => hasChildren.value && hasSelectedDescendant(node, selectedSheetId),
 );
 
 const userToggled = ref(false);
 const isOpen = ref(shouldAutoExpand.value);
 
 watch(
-  () => props.searchActive,
+  () => searchActive,
   (active) => {
     if (active) isOpen.value = true;
     else if (!userToggled.value) isOpen.value = shouldAutoExpand.value;
@@ -58,8 +58,8 @@ function onToggle() {
   isOpen.value = !isOpen.value;
 }
 
-const avatarUrl = computed(() => props.node.avatar_url || null);
-const paddingLeft = computed(() => `${props.depth * 12 + 4}px`);
+const avatarUrl = computed(() => node.avatar_url || null);
+const paddingLeft = computed(() => `${depth * 12 + 4}px`);
 
 // ── Draggable: the node row ──
 const rowRef = useTemplateRef("rowRef");
@@ -67,7 +67,7 @@ const rowRef = useTemplateRef("rowRef");
 const { isDragging, isDragOver: rowPlacement } = makeDraggable(
   rowRef,
   { activation: { distance: 5 } },
-  () => [props.index, props.siblings],
+  () => [index, siblings],
 );
 
 // Manual center zone detection (avoids dual-role routing issues)
@@ -100,7 +100,7 @@ const childrenRef = useTemplateRef("childrenRef");
 const { isDragOver: childrenOver } = makeDroppable(
   childrenRef,
   { events: { onDrop: (e) => emit("drop", e) } },
-  () => props.node.children,
+  () => node.children,
 );
 
 // Auto-expand on hover during drag (600ms)

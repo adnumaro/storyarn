@@ -3,7 +3,7 @@ import { GripVertical, Trash2 } from "lucide-vue-next";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { row, rows, canManage } = defineProps({
   row: { type: Object, required: true },
   rows: { type: Array, required: true },
   canManage: { type: Boolean, default: false },
@@ -13,16 +13,16 @@ const live = useLive();
 
 function saveRowName(event) {
   const name = event.target.value.trim();
-  if (name && name !== props.row.name) {
+  if (name && name !== row.name) {
     live.pushEvent("rename_table_row", {
-      "row-id": props.row.id,
+      "row-id": row.id,
       value: name,
     });
   }
 }
 
 function deleteRow() {
-  live.pushEvent("delete_table_row", { "row-id": props.row.id });
+  live.pushEvent("delete_table_row", { "row-id": row.id });
 }
 </script>
 

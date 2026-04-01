@@ -5,12 +5,12 @@ import { Input } from "@components/ui/input/index.js";
 import { Label } from "@components/ui/label/index.js";
 import { Textarea } from "@components/ui/textarea/index.js";
 
-const props = defineProps({
+const { form: formProp, cancelUrl } = defineProps({
   form: { type: Object, required: true },
   cancelUrl: { type: String, default: "/workspaces" },
 });
 
-const form = useLiveForm(() => props.form, {
+const form = useLiveForm(() => formProp, {
   submitEvent: "save",
   debounceInMiliseconds: 300,
 });

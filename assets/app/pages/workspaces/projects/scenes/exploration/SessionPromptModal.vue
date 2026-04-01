@@ -11,7 +11,7 @@ import {
 } from "@components/ui/dialog";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { open, pendingSession } = defineProps({
   open: { type: Boolean, default: false },
   pendingSession: { type: Object, default: null },
 });

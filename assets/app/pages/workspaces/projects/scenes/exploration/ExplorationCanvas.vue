@@ -12,7 +12,7 @@ import { usePatrols } from "./composables/usePatrols";
 import SpeechBubble from "./SpeechBubble.vue";
 import SubtitleBar from "./SubtitleBar.vue";
 
-const props = defineProps({
+const { sceneData, explorationData, showZones, flowMode } = defineProps({
   sceneData: { type: Object, default: null },
   explorationData: { type: Object, required: true },
   showZones: { type: Boolean, default: false },
@@ -34,7 +34,7 @@ const {
   stagePointerToWorld,
 } = useKonvaStage({
   containerRef,
-  sceneData: toRef(props, "sceneData"),
+  sceneData: toRef(() => sceneData),
   activeTool: ref("select"),
   editMode: ref(false),
 });
@@ -46,12 +46,12 @@ const emptyObj = ref({});
 const emptyArr = ref([]);
 
 // --- Filter visible elements from exploration data ---
-const allZones = computed(() => props.explorationData?.zones || []);
-const allPins = computed(() => props.explorationData?.pins || []);
+const allZones = computed(() => explorationData?.zones || []);
+const allPins = computed(() => explorationData?.pins || []);
 
 const visiblePins = computed(() => allPins.value.filter((p) => p.visibility !== "hide"));
 const visibleZones = computed(() => allZones.value.filter((z) => z.visibility !== "hide"));
-const connections = computed(() => props.explorationData?.connections || []);
+const connections = computed(() => explorationData?.connections || []);
 
 // --- Visibility lookup maps ---
 const zoneVisibility = computed(() =>
@@ -67,7 +67,7 @@ const { handleZoneClick, handlePinClick, zoneShowOverride, clickableZoneIds, cli
     pushEvent: live.pushEvent,
     explorationZones: allZones,
     explorationPins: allPins,
-    showZones: toRef(props, "showZones"),
+    showZones: toRef(() => showZones),
   });
 
 // --- Pin node refs for direct Konva updates ---
@@ -92,7 +92,7 @@ const {
 } = useMovement({
   explorationPins: allPins,
   explorationZones: allZones,
-  flowMode: toRef(props, "flowMode"),
+  flowMode: toRef(() => flowMode),
   percentToPixel,
   getPinNode,
 });

@@ -21,7 +21,7 @@ import { Label } from "@components/ui/label/index.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { open, node, canEdit, allSheets, projectVariables } = defineProps({
   open: { type: Boolean, default: false },
   node: { type: Object, default: null },
   canEdit: { type: Boolean, default: false },
@@ -33,29 +33,29 @@ const live = useLive();
 const activeTab = ref("text");
 
 const parsedVariables = computed(() => {
-  if (Array.isArray(props.projectVariables)) return props.projectVariables;
+  if (Array.isArray(projectVariables)) return projectVariables;
   try {
-    return JSON.parse(props.projectVariables);
+    return JSON.parse(projectVariables);
   } catch {
     return [];
   }
 });
-const nodeData = computed(() => props.node?.data || {});
+const nodeData = computed(() => node?.data || {});
 const speakerId = computed(() => nodeData.value.speaker_sheet_id || null);
-const speakerOptions = computed(() => props.allSheets.map((s) => ({ id: s.id, name: s.name })));
+const speakerOptions = computed(() => allSheets.map((s) => ({ id: s.id, name: s.name })));
 const responses = computed(() => nodeData.value.responses || []);
 
 // TipTap editor for dialogue text
 let debounceTimer = null;
 const editor = useEditor({
   extensions: [StarterKit, Placeholder.configure({ placeholder: "Write dialogue..." })],
-  editable: props.canEdit,
+  editable: canEdit,
   content: nodeData.value.text || "",
   onUpdate: ({ editor: ed }) => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       live.pushEvent("update_node_text", {
-        id: props.node?.id,
+        id: node?.id,
         content: ed.getHTML(),
       });
     }, 500);

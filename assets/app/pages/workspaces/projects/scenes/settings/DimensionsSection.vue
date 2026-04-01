@@ -1,5 +1,5 @@
 <script setup>
-defineProps({
+const { width, height } = defineProps({
   width: { type: Number, default: 1000 },
   height: { type: Number, default: 1000 },
 });

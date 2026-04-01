@@ -8,7 +8,7 @@ import { generateId } from "@lib/variables.js";
 import ConditionRule from "./ConditionRule.vue";
 import LogicToggle from "./LogicToggle.vue";
 
-const props = defineProps({
+const { block, variables, disabled, switchMode } = defineProps({
   block: { type: Object, required: true },
   variables: { type: Array, default: () => [] },
   disabled: { type: Boolean, default: false },
@@ -18,23 +18,23 @@ const props = defineProps({
 const emit = defineEmits(["update:block", "remove"]);
 
 function updateField(field, value) {
-  emit("update:block", { ...props.block, [field]: value });
+  emit("update:block", { ...block, [field]: value });
 }
 
 function updateRule(index, updatedRule) {
-  const rules = [...props.block.rules];
+  const rules = [...block.rules];
   rules[index] = updatedRule;
-  emit("update:block", { ...props.block, rules });
+  emit("update:block", { ...block, rules });
 }
 
 function removeRule(index) {
-  const rules = props.block.rules.filter((_, i) => i !== index);
-  emit("update:block", { ...props.block, rules });
+  const rules = block.rules.filter((_, i) => i !== index);
+  emit("update:block", { ...block, rules });
 }
 
 function addRule() {
   const rules = [
-    ...props.block.rules,
+    ...block.rules,
     {
       id: generateId("rule"),
       sheet: null,
@@ -43,7 +43,7 @@ function addRule() {
       value: null,
     },
   ];
-  emit("update:block", { ...props.block, rules });
+  emit("update:block", { ...block, rules });
 }
 </script>
 
@@ -56,7 +56,7 @@ function addRule() {
           v-if="!disabled"
           type="text"
           :value="block.label || ''"
-          class="h-6 px-2 text-xs font-medium border border-border rounded bg-transparent w-full max-w-[200px] outline-none focus:border-ring"
+          class="h-6 px-2 text-xs font-medium border border-border rounded bg-transparent w-full max-w-50 outline-none focus:border-ring"
           placeholder="label"
           maxlength="100"
           @input="(e) => updateField('label', e.target.value)"

@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { Avatar, AvatarFallback } from "@components/ui/avatar";
 
-const props = defineProps({
+const { email, displayName, size, color } = defineProps({
   email: { type: String, default: "" },
   displayName: { type: String, default: "" },
   size: { type: String, default: "sm" },
@@ -10,7 +10,7 @@ const props = defineProps({
 });
 
 const initials = computed(() => {
-  const name = props.displayName || props.email || "";
+  const name = displayName || email || "";
   if (!name) return "?";
   const parts = name.split(/[\s@.]+/).filter(Boolean);
   if (parts.length >= 2) {
@@ -20,7 +20,7 @@ const initials = computed(() => {
 });
 
 const sizeClass = computed(() => {
-  switch (props.size) {
+  switch (size) {
     case "xs":
       return "size-5 text-[9px]";
     case "sm":
@@ -35,8 +35,8 @@ const sizeClass = computed(() => {
 });
 
 const ringStyle = computed(() => {
-  if (!props.color) return {};
-  return { boxShadow: `0 0 0 2px ${props.color}` };
+  if (!color) return {};
+  return { boxShadow: `0 0 0 2px ${color}` };
 });
 </script>
 

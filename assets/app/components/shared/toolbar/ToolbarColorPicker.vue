@@ -3,7 +3,7 @@ import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { COLOR_SWATCHES } from "./color-swatches";
 
-const props = defineProps({
+const { color, disabled } = defineProps({
   color: { type: String, default: "#fbbf24" },
   disabled: { type: Boolean, default: false },
 });

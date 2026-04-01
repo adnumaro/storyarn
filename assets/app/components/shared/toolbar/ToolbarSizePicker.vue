@@ -8,7 +8,7 @@ const SIZE_OPTIONS = [
   { value: "lg", label: "L" },
 ];
 
-const props = defineProps({
+const { size, disabled } = defineProps({
   size: { type: String, default: "md" },
   disabled: { type: Boolean, default: false },
 });
@@ -21,7 +21,7 @@ function selectSize(s) {
   open.value = false;
 }
 
-const currentLabel = () => SIZE_OPTIONS.find((o) => o.value === props.size)?.label || "M";
+const currentLabel = () => SIZE_OPTIONS.find((o) => o.value === size)?.label || "M";
 </script>
 
 <template>

@@ -9,7 +9,7 @@
 import { Lock } from "lucide-vue-next";
 import { nextTick, ref, watch } from "vue";
 
-const props = defineProps({
+const { icon, label, canEdit, isConstant, required, detached } = defineProps({
   icon: { type: [Object, Function], required: true },
   label: { type: String, default: "" },
   canEdit: { type: Boolean, default: false },
@@ -21,18 +21,18 @@ const props = defineProps({
 const emit = defineEmits(["save"]);
 
 const editing = ref(false);
-const localLabel = ref(props.label);
+const localLabel = ref(label);
 const inputRef = ref(null);
 
 watch(
-  () => props.label,
+  () => label,
   (v) => {
     localLabel.value = v;
   },
 );
 
 function startEdit() {
-  if (!props.canEdit) return;
+  if (!canEdit) return;
   editing.value = true;
   nextTick(() => inputRef.value?.focus());
 }
@@ -40,7 +40,7 @@ function startEdit() {
 function save() {
   editing.value = false;
   const val = localLabel.value?.trim();
-  if (val && val !== props.label) {
+  if (val && val !== label) {
     emit("save", val);
   }
 }

@@ -6,7 +6,7 @@ import InstructionBuilder from "@components/builders/InstructionBuilder.vue";
 import Sidebar from "@components/layout/Sidebar.vue";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { open, nodeType, nodeId, condition, assignments, switchMode, projectVariables, canEdit } = defineProps({
   open: { type: Boolean, default: false },
   nodeType: { type: String, default: null },
   nodeId: { type: [Number, String], default: null },
@@ -20,33 +20,33 @@ const props = defineProps({
 const live = useLive();
 
 const parsedVariables = computed(() => {
-  if (Array.isArray(props.projectVariables)) return props.projectVariables;
+  if (Array.isArray(projectVariables)) return projectVariables;
   try {
-    return JSON.parse(props.projectVariables);
+    return JSON.parse(projectVariables);
   } catch {
     return [];
   }
 });
 
 const title = computed(() => {
-  if (props.nodeType === "condition") return "Condition Builder";
-  if (props.nodeType === "instruction") return "Instruction Builder";
+  if (nodeType === "condition") return "Condition Builder";
+  if (nodeType === "instruction") return "Instruction Builder";
   return "Builder";
 });
 
 const icon = computed(() => {
-  if (props.nodeType === "condition") return GitBranch;
-  if (props.nodeType === "instruction") return Zap;
+  if (nodeType === "condition") return GitBranch;
+  if (nodeType === "instruction") return Zap;
   return null;
 });
 
 const hasContent = computed(() => {
-  if (props.nodeType === "condition") {
-    const rules = props.condition?.rules || props.condition?.blocks || [];
+  if (nodeType === "condition") {
+    const rules = condition?.rules || condition?.blocks || [];
     return rules.length > 0;
   }
-  if (props.nodeType === "instruction") {
-    return props.assignments.length > 0;
+  if (nodeType === "instruction") {
+    return assignments.length > 0;
   }
   return false;
 });

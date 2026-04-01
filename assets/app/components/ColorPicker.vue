@@ -2,7 +2,7 @@
 import { ref, watch } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
 
-const props = defineProps({
+const { modelValue, presets, disabled } = defineProps({
   modelValue: { type: String, default: "#8b5cf6" },
   presets: {
     type: Array,

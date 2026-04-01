@@ -22,7 +22,7 @@ import { Slider } from "@components/ui/slider/index.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { open, debugState, debugActiveTab, debugNodes, debugAutoPlaying, debugSpeed, debugEditingVar, debugVarFilter, debugVarChangedOnly, debugCurrentFlowName, debugStepLimitReached } = defineProps({
   open: { type: Boolean, default: false },
   debugState: { type: Object, default: null },
   debugActiveTab: { type: String, default: "console" },
@@ -38,14 +38,14 @@ const props = defineProps({
 
 const live = useLive();
 const height = ref(280);
-const varFilter = ref(props.debugVarFilter);
+const varFilter = ref(debugVarFilter);
 
-const status = computed(() => props.debugState?.status || "idle");
-const stepCount = computed(() => props.debugState?.execution_path?.length || 0);
-const currentNodeId = computed(() => props.debugState?.current_node_id);
-const variables = computed(() => props.debugState?.variables || {});
-const executionPath = computed(() => props.debugState?.execution_path || []);
-const pendingChoices = computed(() => props.debugState?.pending_choices || []);
+const status = computed(() => debugState?.status || "idle");
+const stepCount = computed(() => debugState?.execution_path?.length || 0);
+const currentNodeId = computed(() => debugState?.current_node_id);
+const variables = computed(() => debugState?.variables || {});
+const executionPath = computed(() => debugState?.execution_path || []);
+const pendingChoices = computed(() => debugState?.pending_choices || []);
 
 const filteredVariables = computed(() => {
   const vars = Object.entries(variables.value);
@@ -54,7 +54,7 @@ const filteredVariables = computed(() => {
     const q = varFilter.value.toLowerCase();
     filtered = filtered.filter(([key]) => key.toLowerCase().includes(q));
   }
-  if (props.debugVarChangedOnly) {
+  if (debugVarChangedOnly) {
     filtered = filtered.filter(([, v]) => v.changed);
   }
   return filtered;
@@ -77,7 +77,7 @@ function stop() {
   live.pushEvent("debug_stop", {});
 }
 function togglePlay() {
-  live.pushEvent(props.debugAutoPlaying ? "debug_pause" : "debug_play", {});
+  live.pushEvent(debugAutoPlaying ? "debug_pause" : "debug_play", {});
 }
 function setSpeed(val) {
   live.pushEvent("debug_set_speed", { speed: val[0] });

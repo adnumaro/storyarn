@@ -7,7 +7,7 @@ import PinsDropdown from "./dock-panels/PinsDropdown.vue";
 import DockActions from "./dock-panels/DockActions.vue";
 import PendingSheetIndicator from "./dock-panels/PendingSheetIndicator.vue";
 
-const props = defineProps({
+const { activeTool, editMode, compact, pendingSheet, projectSheets, workspaceSlug, projectSlug, sceneId } = defineProps({
   activeTool: { type: String, default: "select" },
   editMode: { type: Boolean, default: true },
   compact: { type: Boolean, default: false },
@@ -36,7 +36,7 @@ function openVersions() {
   live.pushEvent("open_versions_panel", {});
 }
 
-const playUrl = `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/scenes/${props.sceneId}/explore`;
+const playUrl = `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${sceneId}/explore`;
 </script>
 
 <template>

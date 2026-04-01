@@ -11,7 +11,7 @@ import {
 } from "@components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 
-const props = defineProps({
+const { activeTool, projectSheets } = defineProps({
   activeTool: { type: String, default: "select" },
   projectSheets: { type: Array, default: () => [] },
 });

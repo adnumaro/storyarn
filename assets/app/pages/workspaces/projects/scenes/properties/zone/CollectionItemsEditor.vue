@@ -5,7 +5,7 @@ import { TextField, ToggleField } from "@components/form-fields";
 import { useLive } from "@composables/useLive";
 import CollectionItemCard from "./CollectionItemCard.vue";
 
-const props = defineProps({
+const { zoneId, actionData, canEdit, projectSheets, projectVariables } = defineProps({
   zoneId: { type: Number, required: true },
   actionData: { type: Object, default: () => ({}) },
   canEdit: { type: Boolean, default: false },
@@ -15,13 +15,13 @@ const props = defineProps({
 
 const live = useLive();
 
-const items = computed(() => props.actionData?.items || []);
-const collectAllEnabled = computed(() => props.actionData?.collect_all_enabled || false);
-const emptyMessage = computed(() => props.actionData?.empty_message || "");
+const items = computed(() => actionData?.items || []);
+const collectAllEnabled = computed(() => actionData?.collect_all_enabled || false);
+const emptyMessage = computed(() => actionData?.empty_message || "");
 
 function updateSetting(field, value) {
   live.pushEvent("update_collection_settings", {
-    "zone-id": String(props.zoneId),
+    "zone-id": String(zoneId),
     field,
     value: value === null || value === undefined ? "" : String(value),
   });
@@ -29,7 +29,7 @@ function updateSetting(field, value) {
 
 function addItem() {
   live.pushEvent("add_collection_item", {
-    "zone-id": String(props.zoneId),
+    "zone-id": String(zoneId),
   });
 }
 </script>

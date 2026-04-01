@@ -29,7 +29,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { groupedLines, audioAssets, workspaceSlug, projectSlug, canEdit, loading } = defineProps({
   groupedLines: { type: Array, default: () => [] },
   audioAssets: { type: Array, default: () => [] },
   workspaceSlug: { type: String, required: true },
@@ -44,24 +44,24 @@ const uploadingNodeId = ref(null);
 const openPopoverNodeId = ref(null);
 const searchQuery = ref("");
 
-const totalLines = computed(() => props.groupedLines.reduce((sum, g) => sum + g.lines.length, 0));
+const totalLines = computed(() => groupedLines.reduce((sum, g) => sum + g.lines.length, 0));
 
 const filteredAssets = computed(() => {
-  if (!searchQuery.value) return props.audioAssets;
+  if (!searchQuery.value) return audioAssets;
   const q = searchQuery.value.toLowerCase();
-  return props.audioAssets.filter((a) => a.filename.toLowerCase().includes(q));
+  return audioAssets.filter((a) => a.filename.toLowerCase().includes(q));
 });
 
 // Reset uploading state when props update with new audio data
 watch(
-  () => props.groupedLines,
+  () => groupedLines,
   () => {
     uploadingNodeId.value = null;
   },
 );
 
 function flowUrl(flowId) {
-  return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/flows/${flowId}`;
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${flowId}`;
 }
 
 function nodeUrl(flowId, nodeId) {

@@ -35,7 +35,7 @@ const blockComponents = {
   reference: ReferenceBlock,
 };
 
-const props = defineProps({
+const { layoutItems, canEdit } = defineProps({
   /** Layout items: [{type:"full_width", block:{...}}, {type:"column_group", group_id, blocks:[...], column_count}] */
   layoutItems: { type: Array, default: () => [] },
   canEdit: { type: Boolean, default: false },
@@ -47,9 +47,9 @@ function reattachBlock(id) {
   live.pushEvent("reattach_block", { id });
 }
 
-const localItems = ref([...props.layoutItems]);
+const localItems = ref([...layoutItems]);
 watch(
-  () => props.layoutItems,
+  () => layoutItems,
   (v) => {
     localItems.value = [...v];
   },

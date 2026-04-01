@@ -16,7 +16,7 @@ import { useLive } from "@composables/useLive.js";
 import SheetTreeNode from "./SheetTreeNode.vue";
 import SheetTreeRoot from "./SheetTreeRoot.vue";
 
-const props = defineProps({
+const { sheetsTree, selectedSheetId, canEdit, workspaceSlug, projectSlug } = defineProps({
   sheetsTree: { type: Array, default: () => [] },
   selectedSheetId: { type: [String, Number], default: null },
   canEdit: { type: Boolean, default: false },
@@ -30,9 +30,9 @@ const deleteDialogOpen = ref(false);
 const pendingDeleteSheet = ref(null);
 
 // Use a local reactive copy so suggestSort can mutate it
-const localTree = ref([...props.sheetsTree]);
+const localTree = ref([...sheetsTree]);
 watch(
-  () => props.sheetsTree,
+  () => sheetsTree,
   (v) => {
     localTree.value = v;
   },
@@ -40,7 +40,7 @@ watch(
 );
 
 function sheetHref(sheet) {
-  return `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/sheets/${sheet.id}`;
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets/${sheet.id}`;
 }
 
 function matchesSearch(node, query) {

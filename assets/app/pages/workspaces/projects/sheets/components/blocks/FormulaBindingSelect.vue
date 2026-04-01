@@ -21,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/
 import { useLive } from "@composables/useLive.js";
 import { useServerSearch } from "@composables/useServerSearch.js";
 
-const props = defineProps({
+const { modelValue, sameRowOptions, searchResults, hasMore } = defineProps({
   modelValue: { type: String, default: "" },
   sameRowOptions: { type: Array, default: () => [] },
   searchResults: { type: Array, default: () => [] },
@@ -46,7 +46,7 @@ function getListEl() {
 }
 
 function onScroll() {
-  if (!props.hasMore || pendingLoad.value) return;
+  if (!hasMore || pendingLoad.value) return;
   const el = getListEl();
   if (!el) return;
   if (el.scrollHeight - el.scrollTop - el.clientHeight < 40) {
@@ -63,7 +63,7 @@ onBeforeUpdate(() => {
 
 // After new results arrive: restore scroll, then unlock
 watch(
-  () => props.searchResults,
+  () => searchResults,
   () => {
     nextTick(() => {
       const el = getListEl();
@@ -99,17 +99,17 @@ onBeforeUnmount(() => {
 
 // Display label for the currently selected binding
 const displayLabel = computed(() => {
-  if (!props.modelValue) return "";
-  for (const opt of props.sameRowOptions) {
-    if (opt.value === props.modelValue) return opt.label;
+  if (!modelValue) return "";
+  for (const opt of sameRowOptions) {
+    if (opt.value === modelValue) return opt.label;
   }
-  for (const group of props.searchResults) {
+  for (const group of searchResults) {
     for (const item of group.items) {
-      if (item.value === props.modelValue) return item.label;
+      if (item.value === modelValue) return item.label;
     }
   }
-  if (props.modelValue.startsWith("same_row:")) return props.modelValue.slice(9);
-  return props.modelValue;
+  if (modelValue.startsWith("same_row:")) return modelValue.slice(9);
+  return modelValue;
 });
 
 function onSelect(value) {

@@ -1,7 +1,7 @@
 <script setup>
 import { Switch } from "@components/ui/switch";
 
-defineProps({
+const { label, icon, checked, disabled } = defineProps({
   label: { type: String, default: "" },
   icon: { type: [Object, Function, null], default: null },
   checked: { type: Boolean, default: false },

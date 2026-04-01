@@ -7,7 +7,7 @@ import { Dialog, DialogContent } from "@components/ui/dialog/index.js";
 import { Input } from "@components/ui/input/index.js";
 import { Textarea } from "@components/ui/textarea/index.js";
 
-const props = defineProps({
+const { open, avatars, canEdit } = defineProps({
   open: { type: Boolean, default: false },
   avatars: { type: Array, default: () => [] },
   canEdit: { type: Boolean, default: false },
@@ -28,9 +28,9 @@ const currentIndex = ref(0);
 
 // Reset to grid when dialog opens
 watch(
-  () => props.open,
-  (open) => {
-    if (open) {
+  () => open,
+  (openVal) => {
+    if (openVal) {
       view.value = "grid";
       currentIndex.value = 0;
     }
@@ -39,7 +39,7 @@ watch(
 
 // Keep index in bounds when avatars change
 watch(
-  () => props.avatars.length,
+  () => avatars.length,
   (len) => {
     if (currentIndex.value >= len) {
       currentIndex.value = Math.max(0, len - 1);
@@ -56,7 +56,7 @@ function openSingle(index) {
 }
 
 function navigate(direction) {
-  const count = props.avatars.length;
+  const count = avatars.length;
   if (count <= 1) return;
   currentIndex.value = (currentIndex.value + direction + count) % count;
 }

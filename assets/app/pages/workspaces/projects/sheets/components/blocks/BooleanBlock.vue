@@ -8,27 +8,27 @@ import { useBlockActions } from "../../composables/useBlockActions.js";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 
-const props = defineProps({
+const { block, canEdit, inherited } = defineProps({
   block: { type: Object, required: true },
   canEdit: { type: Boolean, default: false },
   inherited: { type: Boolean, default: false },
 });
 
-const { live, label, isSelected, onBlockClick } = useBlockActions(props);
+const { live, label, isSelected, onBlockClick } = useBlockActions({ get block() { return block; }, get canEdit() { return canEdit; } });
 
 function saveLabel(val) {
   live.pushEvent("update_block_config", {
-    id: props.block.id,
+    id: block.id,
     field: "label",
     value: val,
   });
 }
 
-const content = computed(() => props.block.value?.content);
-const mode = computed(() => props.block.config?.mode || "two_state");
+const content = computed(() => block.value?.content);
+const mode = computed(() => block.config?.mode || "two_state");
 
 const booleanLabel = computed(() => {
-  const cfg = props.block.config || {};
+  const cfg = block.config || {};
   if (content.value === true) return cfg.true_label || "Yes";
   if (content.value === false) return cfg.false_label || "No";
   return cfg.neutral_label || "—";
@@ -36,7 +36,7 @@ const booleanLabel = computed(() => {
 
 const booleanChecked = computed({
   get: () => content.value === true,
-  set: (val) => live.pushEvent("update_block_value", { id: props.block.id, value: val }),
+  set: (val) => live.pushEvent("update_block_value", { id: block.id, value: val }),
 });
 
 function cycle() {
@@ -44,7 +44,7 @@ function cycle() {
   if (content.value === true) next = false;
   else if (content.value === false) next = null;
   else next = true;
-  live.pushEvent("update_block_value", { id: props.block.id, value: next });
+  live.pushEvent("update_block_value", { id: block.id, value: next });
 }
 </script>
 

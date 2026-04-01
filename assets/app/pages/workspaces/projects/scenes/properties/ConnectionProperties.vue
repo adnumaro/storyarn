@@ -3,18 +3,18 @@ import { Undo2 } from "lucide-vue-next";
 import { computed } from "vue";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { element, canEdit } = defineProps({
   element: { type: Object, required: true },
   canEdit: { type: Boolean, default: false },
 });
 
 const live = useLive();
 
-const waypointCount = computed(() => props.element?.waypoints?.length || 0);
+const waypointCount = computed(() => element?.waypoints?.length || 0);
 
 function straightenPath() {
   live.pushEvent("clear_connection_waypoints", {
-    id: String(props.element.id),
+    id: String(element.id),
   });
 }
 </script>

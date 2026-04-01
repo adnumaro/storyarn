@@ -5,14 +5,14 @@ import { computed } from "vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 
-const props = defineProps({
+const { data, emit, config, color } = defineProps({
   data: { type: Object, required: true },
   emit: { type: Function, required: true },
   config: { type: Object, required: true },
   color: { type: String, required: true },
 });
 
-const nodeData = computed(() => props.data.nodeData || {});
+const nodeData = computed(() => data.nodeData || {});
 const refFlowName = computed(() => nodeData.value.referenced_flow_name);
 const refFlowShortcut = computed(() => nodeData.value.referenced_flow_shortcut);
 const hasRef = computed(() => !!nodeData.value.referenced_flow_id);
@@ -22,8 +22,8 @@ const errorTitle = computed(() =>
 );
 
 // Sockets
-const inputs = computed(() => Object.entries(props.data?.inputs || {}));
-const outputs = computed(() => Object.entries(props.data?.outputs || {}));
+const inputs = computed(() => Object.entries(data?.inputs || {}));
+const outputs = computed(() => Object.entries(data?.outputs || {}));
 
 // Exit labels for dynamic output formatting
 const exitLabels = computed(() => nodeData.value.exit_labels || []);

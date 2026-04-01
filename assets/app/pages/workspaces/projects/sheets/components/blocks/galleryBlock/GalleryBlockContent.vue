@@ -7,7 +7,7 @@ import { Input } from "@components/ui/input/index.js";
 import { Textarea } from "@components/ui/textarea/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { blockId, images, canEdit } = defineProps({
   blockId: { type: [Number, String], required: true },
   images: { type: Array, default: () => [] },
   canEdit: { type: Boolean, default: false },
@@ -28,7 +28,7 @@ function triggerUpload() {
       const reader = new FileReader();
       reader.onload = () => {
         live.pushEvent("upload_gallery_image", {
-          block_id: props.blockId,
+          block_id: blockId,
           filename: file.name,
           content_type: file.type,
           data: reader.result,
@@ -57,7 +57,7 @@ function updateImageField(id, field, value) {
 function removeImage(id) {
   live.pushEvent("remove_gallery_image", {
     gallery_image_id: id,
-    block_id: props.blockId,
+    block_id: blockId,
   });
   if (detailImage.value?.id === id) {
     detailOpen.value = false;
@@ -89,12 +89,12 @@ function onDrop(e, dropIndex) {
   if (dragIndex === null || dragIndex === dropIndex) return;
 
   // Build new order
-  const ids = props.images.map((img) => img.id);
+  const ids = images.map((img) => img.id);
   const [moved] = ids.splice(dragIndex, 1);
   ids.splice(dropIndex, 0, moved);
 
   live.pushEvent("reorder_gallery_images", {
-    block_id: props.blockId,
+    block_id: blockId,
     ids,
   });
 

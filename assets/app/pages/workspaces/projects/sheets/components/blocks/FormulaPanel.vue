@@ -6,7 +6,7 @@ import Sidebar from "@components/layout/Sidebar.vue";
 import { useLive } from "@composables/useLive.js";
 import FormulaBindingSelect from "./FormulaBindingSelect.vue";
 
-const props = defineProps({
+const { formulaEditing } = defineProps({
   formulaEditing: { type: Object, default: null },
 });
 
@@ -17,7 +17,7 @@ const localExpression = ref("");
 const expressionDirty = ref(false);
 
 watch(
-  () => props.formulaEditing?.expression,
+  () => formulaEditing?.expression,
   (expr) => {
     if (!expressionDirty.value) {
       localExpression.value = expr || "";
@@ -39,11 +39,11 @@ function safeRenderToString(latex) {
   }
 }
 
-const previewHtml = computed(() => safeRenderToString(props.formulaEditing?.preview_latex));
-const resultHtml = computed(() => safeRenderToString(props.formulaEditing?.result_latex));
+const previewHtml = computed(() => safeRenderToString(formulaEditing?.preview_latex));
+const resultHtml = computed(() => safeRenderToString(formulaEditing?.result_latex));
 
 // ── Actions ──
-const isOpen = computed(() => props.formulaEditing != null);
+const isOpen = computed(() => formulaEditing != null);
 
 function close() {
   expressionDirty.value = false;
@@ -52,7 +52,7 @@ function close() {
 
 function saveExpression() {
   expressionDirty.value = false;
-  const fe = props.formulaEditing;
+  const fe = formulaEditing;
   if (!fe) return;
   live.pushEvent("save_formula_expression", {
     value: localExpression.value,
@@ -66,7 +66,7 @@ function onExpressionInput() {
 }
 
 function saveBinding(symbol, value) {
-  const fe = props.formulaEditing;
+  const fe = formulaEditing;
   if (!fe) return;
   live.pushEvent("save_formula_binding", {
     symbol,

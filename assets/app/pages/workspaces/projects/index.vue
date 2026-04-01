@@ -17,7 +17,7 @@ import { Badge } from "@components/ui/badge/index.js";
 import { useLive } from "@composables/useLive.js";
 import { formatRelativeTime } from "@lib/date-utils.js";
 
-const props = defineProps({
+const { stats, nodeDist, speakers, issues, localization, activity, canEdit, workspaceSlug, projectSlug, loading } = defineProps({
   stats: { type: Object, default: null },
   nodeDist: { type: Array, default: () => [] },
   speakers: { type: Array, default: () => [] },
@@ -33,42 +33,42 @@ const props = defineProps({
 const live = useLive();
 
 const statCards = computed(() => {
-  if (!props.stats) return [];
+  if (!stats) return [];
   return [
     {
       icon: FileText,
       label: "Sheets",
-      value: props.stats.sheet_count,
-      href: `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/sheets`,
+      value: stats.sheet_count,
+      href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets`,
     },
     {
       icon: Variable,
       label: "Variables",
-      value: props.stats.variable_count,
-      href: `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/sheets`,
+      value: stats.variable_count,
+      href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets`,
     },
     {
       icon: GitBranch,
       label: "Flows",
-      value: props.stats.flow_count,
-      href: `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/flows`,
+      value: stats.flow_count,
+      href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows`,
     },
     {
       icon: MessageSquare,
       label: "Dialogue Lines",
-      value: props.stats.dialogue_count,
-      href: `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/flows`,
+      value: stats.dialogue_count,
+      href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows`,
     },
     {
       icon: MapIcon,
       label: "Scenes",
-      value: props.stats.scene_count,
-      href: `/workspaces/${props.workspaceSlug}/projects/${props.projectSlug}/scenes`,
+      value: stats.scene_count,
+      href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes`,
     },
     {
       icon: Text,
       label: "Words",
-      value: props.stats.total_word_count,
+      value: stats.total_word_count,
       href: null,
     },
   ];

@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@components/ui/dialog";
 
-defineProps({
+const { open, versionNumber, loadingAction } = defineProps({
   open: { type: Boolean, required: true },
   versionNumber: { type: Number, default: null },
   loadingAction: { type: String, default: null },

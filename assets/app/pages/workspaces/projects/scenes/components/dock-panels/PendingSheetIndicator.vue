@@ -1,7 +1,7 @@
 <script setup>
 import { MapPin, X } from "lucide-vue-next";
 
-defineProps({
+const { pendingSheet } = defineProps({
   pendingSheet: { type: Object, required: true },
 });
 

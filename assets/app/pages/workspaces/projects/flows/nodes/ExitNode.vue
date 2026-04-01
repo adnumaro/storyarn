@@ -5,7 +5,7 @@ import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
 
-const props = defineProps({
+const { data, emit, config, color, nodeDataOverride } = defineProps({
   data: { type: Object, required: true },
   emit: { type: Function, required: true },
   config: { type: Object, required: true },
@@ -13,7 +13,7 @@ const props = defineProps({
   nodeDataOverride: { type: Object, default: null },
 });
 
-const nodeData = computed(() => props.nodeDataOverride || props.data.nodeData || {});
+const nodeData = computed(() => nodeDataOverride || data.nodeData || {});
 const exitMode = computed(() => nodeData.value.exit_mode || "terminal");
 const label = computed(() => nodeData.value.label || "Exit");
 const tags = computed(() => nodeData.value.outcome_tags || []);

@@ -1,5 +1,5 @@
 <script setup>
-defineProps({
+const { connectionPreviewLine, previewStroke } = defineProps({
   connectionPreviewLine: { type: Array, default: null },
   previewStroke: { type: String, required: true },
 });

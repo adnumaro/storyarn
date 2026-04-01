@@ -6,7 +6,7 @@ import { Button } from "@components/ui/button/index.js";
 import { Input } from "@components/ui/input/index.js";
 import { useRevealOnScroll } from "../../composables/useRevealOnScroll.js";
 
-const props = defineProps({
+const { translations } = defineProps({
   translations: { type: Object, required: true },
 });
 

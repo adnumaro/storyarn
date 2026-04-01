@@ -8,7 +8,7 @@ import ExplorationToolbar from "./ExplorationToolbar.vue";
 import FlowOverlay from "./FlowOverlay.vue";
 import SessionPromptModal from "./SessionPromptModal.vue";
 
-const props = defineProps({
+const { sceneData, explorationData, sceneName, showZones, flowMode, sessionPrompt, pendingSession, collectionMode, collectionZone, collectionItems, activeFlowSlide, activeFlowName, showFlowContinue } = defineProps({
   sceneData: { type: Object, required: true },
   explorationData: { type: Object, required: true },
   sceneName: { type: String, default: "" },
@@ -27,8 +27,8 @@ const props = defineProps({
 const live = useLive();
 
 useExplorationKeyboard({
-  flowMode: toRef(props, "flowMode"),
-  activeFlowSlide: toRef(props, "activeFlowSlide"),
+  flowMode: toRef(() => flowMode),
+  activeFlowSlide: toRef(() => activeFlowSlide),
   pushEvent: live.pushEvent,
 });
 </script>

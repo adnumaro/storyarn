@@ -9,7 +9,7 @@ import { TresCanvas } from "@tresjs/core";
 import { onMounted, ref } from "vue";
 import MonitorScene from "./MonitorScene.vue";
 
-const props = defineProps({
+const { activeStep, isVisible } = defineProps({
   activeStep: { type: Number, default: 0 },
   isVisible: { type: Boolean, default: false },
 });

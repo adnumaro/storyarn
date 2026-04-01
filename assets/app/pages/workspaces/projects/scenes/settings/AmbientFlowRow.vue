@@ -9,7 +9,7 @@ import {
 } from "@components/ui/select";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { flow, canEdit } = defineProps({
   flow: { type: Object, required: true },
   canEdit: { type: Boolean, default: false },
 });
@@ -25,42 +25,42 @@ const triggerTypes = [
 
 function reorder(direction) {
   live.pushEvent("reorder_ambient_flow", {
-    id: props.flow.id,
+    id: flow.id,
     direction,
   });
 }
 
 function toggle() {
-  live.pushEvent("toggle_ambient_flow", { id: props.flow.id });
+  live.pushEvent("toggle_ambient_flow", { id: flow.id });
 }
 
 function remove() {
-  live.pushEvent("remove_ambient_flow", { id: props.flow.id });
+  live.pushEvent("remove_ambient_flow", { id: flow.id });
 }
 
 function onTriggerTypeChange(value) {
-  live.pushEvent(`select_ambient_trigger_type:${props.flow.id}`, {
+  live.pushEvent(`select_ambient_trigger_type:${flow.id}`, {
     selected: value,
   });
 }
 
 function onVariableRefBlur(e) {
-  live.pushEvent(`select_ambient_variable_ref:${props.flow.id}`, {
+  live.pushEvent(`select_ambient_variable_ref:${flow.id}`, {
     selected: e.target.value,
   });
 }
 
 function onIntervalBlur(e) {
   live.pushEvent("update_ambient_flow_trigger", {
-    id: props.flow.id,
-    trigger_type: props.flow.triggerType,
+    id: flow.id,
+    trigger_type: flow.triggerType,
     interval_ms: e.target.value,
   });
 }
 
 function onPriorityBlur(e) {
   live.pushEvent("update_ambient_flow_priority", {
-    id: props.flow.id,
+    id: flow.id,
     priority: e.target.value,
   });
 }

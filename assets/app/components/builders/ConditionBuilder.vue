@@ -11,7 +11,7 @@ import ConditionBlock from "@components/builders/condition/ConditionBlock.vue";
 import ConditionGroup from "@components/builders/condition/ConditionGroup.vue";
 import LogicToggle from "@components/builders/condition/LogicToggle.vue";
 
-const props = defineProps({
+const { condition, variables, disabled, switchMode } = defineProps({
   condition: { type: [Object, Array, null], default: null },
   variables: { type: Array, default: () => [] },
   disabled: { type: Boolean, default: false },
@@ -38,9 +38,9 @@ function ensureBlockFormat(condition) {
   };
 }
 
-const internalCondition = ref(ensureBlockFormat(props.condition));
+const internalCondition = ref(ensureBlockFormat(condition));
 watch(
-  () => props.condition,
+  () => condition,
   (v) => {
     internalCondition.value = ensureBlockFormat(v);
   },
@@ -91,7 +91,7 @@ function addBlock() {
       },
     ],
   };
-  if (props.switchMode) newBlock.label = "";
+  if (switchMode) newBlock.label = "";
   internalCondition.value = {
     ...internalCondition.value,
     blocks: [...blocks.value, newBlock],

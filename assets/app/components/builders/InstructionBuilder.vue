@@ -11,7 +11,7 @@ import { Plus } from "lucide-vue-next";
 import { ref, watch } from "vue";
 import AssignmentRow from "@components/builders/instruction/AssignmentRow.vue";
 
-const props = defineProps({
+const { assignments, variables, disabled } = defineProps({
   assignments: { type: Array, default: () => [] },
   variables: { type: Array, default: () => [] },
   disabled: { type: Boolean, default: false },
@@ -19,10 +19,10 @@ const props = defineProps({
 
 const emit = defineEmits(["update:assignments"]);
 
-const internalAssignments = ref([...props.assignments]);
+const internalAssignments = ref([...assignments]);
 
 watch(
-  () => props.assignments,
+  () => assignments,
   (v) => {
     internalAssignments.value = [...v];
   },

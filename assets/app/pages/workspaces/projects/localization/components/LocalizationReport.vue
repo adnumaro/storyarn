@@ -29,7 +29,7 @@ import {
 } from "@components/ui/table";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { languageProgress, targetLanguages, selectedLocale, speakerStats, voProgress, typeCounts, backUrl } = defineProps({
   languageProgress: { type: Array, default: () => [] },
   targetLanguages: { type: Array, default: () => [] },
   selectedLocale: { type: String, default: null },
@@ -49,24 +49,24 @@ function changeLocale(value) {
 }
 
 const typeCountEntries = computed(() => {
-  return Object.entries(props.typeCounts);
+  return Object.entries(typeCounts);
 });
 
 const voStats = computed(() => [
   {
     label: "None",
-    value: props.voProgress.none,
+    value: voProgress.none,
     color: "text-muted-foreground",
   },
-  { label: "Needed", value: props.voProgress.needed, color: "text-yellow-500" },
+  { label: "Needed", value: voProgress.needed, color: "text-yellow-500" },
   {
     label: "Recorded",
-    value: props.voProgress.recorded,
+    value: voProgress.recorded,
     color: "text-blue-400",
   },
   {
     label: "Approved",
-    value: props.voProgress.approved,
+    value: voProgress.approved,
     color: "text-emerald-500",
   },
 ]);

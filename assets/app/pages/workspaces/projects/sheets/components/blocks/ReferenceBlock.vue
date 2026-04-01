@@ -16,23 +16,23 @@ import { useBlockActions } from "../../composables/useBlockActions.js";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 
-const props = defineProps({
+const { block, canEdit, inherited } = defineProps({
   block: { type: Object, required: true },
   canEdit: { type: Boolean, default: false },
   inherited: { type: Boolean, default: false },
 });
 
-const { live, label, isSelected, onBlockClick } = useBlockActions(props);
+const { live, label, isSelected, onBlockClick } = useBlockActions({ get block() { return block; }, get canEdit() { return canEdit; } });
 
-const targetType = computed(() => props.block.value?.target_type);
-const targetId = computed(() => props.block.value?.target_id);
-const referenceTarget = computed(() => props.block.reference_target);
+const targetType = computed(() => block.value?.target_type);
+const targetId = computed(() => block.value?.target_id);
+const referenceTarget = computed(() => block.reference_target);
 const hasReference = computed(() => targetType.value && targetId.value);
 const isDeleted = computed(() => hasReference.value && !referenceTarget.value);
 
 function saveLabel(val) {
   live.pushEvent("update_block_config", {
-    id: props.block.id,
+    id: block.id,
     field: "label",
     value: val,
   });
@@ -52,7 +52,7 @@ const { query, loading, search, reset } = useServerSearch({
 
 // Listen for results from server
 live.handleEvent("reference_results", (payload) => {
-  if (payload.block_id === props.block.id) {
+  if (payload.block_id === block.id) {
     searchResults.value = payload.results || [];
     pendingLoad.value = false;
   }
@@ -67,7 +67,7 @@ watch(open, (v) => {
     // Push search with block_id so server knows allowed_types
     live.pushEvent("search_references", {
       query: "",
-      "block-id": props.block.id,
+      "block-id": block.id,
     });
   }
 });
@@ -77,13 +77,13 @@ function onSearchInput(q) {
   savedScrollTop = 0;
   live.pushEvent("search_references", {
     query: q,
-    "block-id": props.block.id,
+    "block-id": block.id,
   });
 }
 
 function selectReference(result) {
   live.pushEvent("select_reference", {
-    "block-id": props.block.id,
+    "block-id": block.id,
     type: result.type,
     id: String(result.id),
   });
@@ -91,7 +91,7 @@ function selectReference(result) {
 }
 
 function clearReference() {
-  live.pushEvent("clear_reference", { "block-id": props.block.id });
+  live.pushEvent("clear_reference", { "block-id": block.id });
   open.value = false;
 }
 

@@ -19,7 +19,7 @@ import { Separator } from "@components/ui/separator/index.js";
 import { useLive } from "@composables/useLive.js";
 import { allTypes, typeIcon, typeLabels } from "./table-config.js";
 
-const props = defineProps({
+const { column, columns, canManage } = defineProps({
   column: { type: Object, required: true },
   columns: { type: Array, required: true },
   canManage: { type: Boolean, default: false },
@@ -37,15 +37,15 @@ const optionEdits = ref({});
 function open() {
   isOpen.value = true;
   panel.value = "main";
-  renameValue.value = props.column.name;
+  renameValue.value = column.name;
   newOptionValue.value = "";
   optionEdits.value = {};
 }
 
 function close() {
-  if (renameValue.value.trim() && renameValue.value.trim() !== props.column.name) {
+  if (renameValue.value.trim() && renameValue.value.trim() !== column.name) {
     live.pushEvent("rename_table_column", {
-      "column-id": props.column.id,
+      "column-id": column.id,
       value: renameValue.value.trim(),
     });
   }
@@ -54,9 +54,9 @@ function close() {
 
 function saveRename() {
   const name = renameValue.value.trim();
-  if (name && name !== props.column.name) {
+  if (name && name !== column.name) {
     live.pushEvent("rename_table_column", {
-      "column-id": props.column.id,
+      "column-id": column.id,
       value: name,
     });
   }
@@ -64,27 +64,27 @@ function saveRename() {
 
 function toggleConstant() {
   live.pushEvent("toggle_table_column_constant", {
-    "column-id": props.column.id,
+    "column-id": column.id,
   });
 }
 
 function toggleRequired() {
   live.pushEvent("toggle_table_column_required", {
-    "column-id": props.column.id,
+    "column-id": column.id,
   });
 }
 
 function changeType(newType) {
-  if (props.column.type !== newType) {
+  if (column.type !== newType) {
     live.pushEvent("change_table_column_type", {
-      "column-id": props.column.id,
+      "column-id": column.id,
       "new-type": newType,
     });
   }
 }
 
 function deleteColumn() {
-  live.pushEvent("delete_table_column", { "column-id": props.column.id });
+  live.pushEvent("delete_table_column", { "column-id": column.id });
   isOpen.value = false;
 }
 
@@ -92,7 +92,7 @@ function addOption() {
   const label = newOptionValue.value.trim();
   if (!label) return;
   live.pushEvent("add_table_column_option", {
-    "column-id": props.column.id,
+    "column-id": column.id,
     value: label,
   });
   newOptionValue.value = "";
@@ -102,7 +102,7 @@ function updateOption(index) {
   const val = optionEdits.value[index];
   if (val != null && val.trim()) {
     live.pushEvent("update_table_column_option", {
-      "column-id": props.column.id,
+      "column-id": column.id,
       index,
       value: val.trim(),
     });
@@ -111,14 +111,14 @@ function updateOption(index) {
 
 function removeOption(key) {
   live.pushEvent("remove_table_column_option", {
-    "column-id": props.column.id,
+    "column-id": column.id,
     key,
   });
 }
 
 function updateNumberConstraint(field, event) {
   live.pushEvent("update_number_constraint", {
-    "column-id": props.column.id,
+    "column-id": column.id,
     field,
     value: event.target.value,
   });
@@ -126,7 +126,7 @@ function updateNumberConstraint(field, event) {
 
 function toggleReferenceMultiple() {
   live.pushEvent("toggle_reference_multiple", {
-    "column-id": props.column.id,
+    "column-id": column.id,
   });
 }
 </script>

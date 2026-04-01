@@ -14,7 +14,7 @@ const TITLES = {
   annotation: "Annotation Properties",
 };
 
-const props = defineProps({
+const { selectedType, selectedElement, canEdit, elementPanelOpen, projectSheets, projectFlows, projectScenes, projectVariables } = defineProps({
   selectedType: { type: String, default: null },
   selectedElement: { type: Object, default: null },
   canEdit: { type: Boolean, default: false },
@@ -27,7 +27,7 @@ const props = defineProps({
 
 const live = useLive();
 
-const isOpen = computed(() => props.elementPanelOpen && props.selectedElement != null);
+const isOpen = computed(() => elementPanelOpen && selectedElement != null);
 
 function close() {
   live.pushEvent("close_element_panel", {});

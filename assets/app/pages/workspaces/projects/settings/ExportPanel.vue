@@ -8,7 +8,7 @@ import { Label } from "@components/ui/label/index.js";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { formats, selectedFormat, selectedExtension, supportedSections, sections, entityCounts, assetMode, validateBeforeExport, prettyPrint, validationResult, exportDownloadUrl } = defineProps({
   formats: { type: Array, required: true },
   selectedFormat: { type: String, required: true },
   selectedExtension: { type: String, required: true },
@@ -38,8 +38,8 @@ const assetModeOptions = [
   { value: "bundled", label: "Bundled (ZIP with assets folder)" },
 ];
 
-const sectionsSet = computed(() => new Set(props.sections));
-const supportedSet = computed(() => new Set(props.supportedSections));
+const sectionsSet = computed(() => new Set(sections));
+const supportedSet = computed(() => new Set(supportedSections));
 
 function setFormat(format) {
   live.pushEvent("set_format", { format });

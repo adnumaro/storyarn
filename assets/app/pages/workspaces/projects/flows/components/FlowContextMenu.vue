@@ -20,7 +20,7 @@ import {
 import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { containerEl, canEdit, selectedNodeId, selectedNodeType } = defineProps({
   containerEl: { type: Object, default: null },
   canEdit: { type: Boolean, default: false },
   selectedNodeId: { type: [Number, String], default: null },
@@ -44,7 +44,7 @@ const NODE_TYPES = [
   { type: "slug_line", icon: Clapperboard, label: "Slug Line" },
 ];
 
-const isNodeMenu = computed(() => props.selectedNodeId != null && visible.value);
+const isNodeMenu = computed(() => selectedNodeId != null && visible.value);
 
 function onContextMenu(e) {
   e.preventDefault();
@@ -70,22 +70,22 @@ function addAnnotation() {
 }
 
 function duplicateNode() {
-  if (props.selectedNodeId) {
-    live.pushEvent("duplicate_node", { id: props.selectedNodeId });
+  if (selectedNodeId) {
+    live.pushEvent("duplicate_node", { id: selectedNodeId });
   }
   close();
 }
 
 function deleteNode() {
-  if (props.selectedNodeId) {
-    live.pushEvent("delete_node", { id: props.selectedNodeId });
+  if (selectedNodeId) {
+    live.pushEvent("delete_node", { id: selectedNodeId });
   }
   close();
 }
 
 function copyNodeId() {
-  if (props.selectedNodeId) {
-    navigator.clipboard.writeText(String(props.selectedNodeId));
+  if (selectedNodeId) {
+    navigator.clipboard.writeText(String(selectedNodeId));
   }
   close();
 }
@@ -105,13 +105,13 @@ function onClickOutside(e) {
 }
 
 onMounted(() => {
-  props.containerEl?.addEventListener("contextmenu", onContextMenu);
+  containerEl?.addEventListener("contextmenu", onContextMenu);
   document.addEventListener("keydown", onKeydown);
   document.addEventListener("pointerdown", onClickOutside);
 });
 
 onUnmounted(() => {
-  props.containerEl?.removeEventListener("contextmenu", onContextMenu);
+  containerEl?.removeEventListener("contextmenu", onContextMenu);
   document.removeEventListener("keydown", onKeydown);
   document.removeEventListener("pointerdown", onClickOutside);
 });

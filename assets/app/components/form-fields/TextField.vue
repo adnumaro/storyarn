@@ -1,5 +1,5 @@
 <script setup>
-defineProps({
+const { label, value, placeholder, disabled } = defineProps({
   label: { type: String, default: "" },
   value: { type: String, default: "" },
   placeholder: { type: String, default: "" },

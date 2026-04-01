@@ -32,7 +32,7 @@ const blockComponents = {
   reference: ReferenceBlock,
 };
 
-const props = defineProps({
+const { blocks, inheritedGroups, canEdit, workspaceSlug, projectSlug, formulaEditing, blockLocks, currentUserId } = defineProps({
   blocks: { type: Array, default: () => [] },
   inheritedGroups: { type: Array, default: () => [] },
   canEdit: { type: Boolean, default: false },
@@ -50,16 +50,16 @@ let lockHeartbeatInterval = null;
 const lockedBlockId = ref(null);
 
 function isLockedByOther(blockId) {
-  const lock = props.blockLocks[String(blockId)];
-  return lock && lock.userId !== props.currentUserId;
+  const lock = blockLocks[String(blockId)];
+  return lock && lock.userId !== currentUserId;
 }
 
 function lockInfo(blockId) {
-  return props.blockLocks[String(blockId)] || null;
+  return blockLocks[String(blockId)] || null;
 }
 
 function acquireLock(blockId) {
-  if (!props.canEdit || isLockedByOther(blockId)) return;
+  if (!canEdit || isLockedByOther(blockId)) return;
   lockedBlockId.value = blockId;
   live.pushEvent("acquire_block_lock", { block_id: blockId });
   clearInterval(lockHeartbeatInterval);
@@ -77,8 +77,8 @@ function releaseLock() {
   lockHeartbeatInterval = null;
 }
 
-provide("blockLocks", () => props.blockLocks);
-provide("currentUserId", () => props.currentUserId);
+provide("blockLocks", () => blockLocks);
+provide("currentUserId", () => currentUserId);
 provide("isLockedByOther", isLockedByOther);
 provide("lockInfo", lockInfo);
 
@@ -92,7 +92,7 @@ function selectBlock(id) {
     releaseLock();
   }
   selectedBlockId.value = selectedBlockId.value === id ? null : id;
-  if (selectedBlockId.value && props.canEdit) {
+  if (selectedBlockId.value && canEdit) {
     acquireLock(selectedBlockId.value);
   } else {
     releaseLock();
@@ -115,7 +115,7 @@ function isInputFocused() {
 }
 
 function onKeydown(e) {
-  if (!selectedBlockId.value || !props.canEdit || isInputFocused()) return;
+  if (!selectedBlockId.value || !canEdit || isInputFocused()) return;
 
   if (e.key === "Backspace" || e.key === "Delete") {
     e.preventDefault();

@@ -11,18 +11,18 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
 import UserAvatar from "./UserAvatar.vue";
 
-const props = defineProps({
+const { currentUser, onlineUsers, urls } = defineProps({
   currentUser: { type: Object, required: true },
   onlineUsers: { type: Array, default: () => [] },
   urls: { type: Object, required: true },
 });
 
 const otherUsers = computed(() =>
-  props.onlineUsers.filter((u) => u.userId !== props.currentUser.id).slice(0, 5),
+  onlineUsers.filter((u) => u.userId !== currentUser.id).slice(0, 5),
 );
 
 const displayName = computed(
-  () => props.currentUser.displayName || props.currentUser.email?.split("@")[0] || "",
+  () => currentUser.displayName || currentUser.email?.split("@")[0] || "",
 );
 </script>
 

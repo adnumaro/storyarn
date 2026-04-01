@@ -8,7 +8,7 @@ import {
   ToolbarSizePicker,
 } from "../../toolbar";
 
-const props = defineProps({
+const { element, layers, canEdit } = defineProps({
   element: { type: Object, required: true },
   layers: { type: Array, default: () => [] },
   canEdit: { type: Boolean, default: false },
@@ -18,14 +18,14 @@ const live = useLive();
 
 function updateField(field, value) {
   live.pushEvent("update_annotation", {
-    id: String(props.element.id),
+    id: String(element.id),
     field,
     value: value === null ? "" : String(value),
   });
 }
 
 function toggleLock() {
-  updateField("locked", !props.element.locked ? "true" : "false");
+  updateField("locked", !element.locked ? "true" : "false");
 }
 </script>
 

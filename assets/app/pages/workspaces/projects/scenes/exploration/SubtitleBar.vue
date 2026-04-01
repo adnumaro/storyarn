@@ -1,11 +1,11 @@
 <script setup>
 import { computed } from "vue";
 
-const props = defineProps({
+const { subtitle } = defineProps({
   subtitle: { type: Object, default: null },
 });
 
-const visible = computed(() => props.subtitle != null);
+const visible = computed(() => subtitle != null);
 </script>
 
 <template>

@@ -9,7 +9,7 @@ import { previewText, stripHtml } from "../lib/render-helpers.js";
 import { FLOW_CONTEXT_KEY } from "../setup.js";
 import DialogueAudioPreview from "./DialogueAudioPreview.vue";
 
-const props = defineProps({
+const { data, emit, config, color, sheetsMap, labels } = defineProps({
   data: { type: Object, required: true },
   emit: { type: Function, required: true },
   config: { type: Object, required: true },
@@ -25,16 +25,16 @@ const ctx = inject(FLOW_CONTEXT_KEY, {
 });
 const dialogueRef = ref(null);
 
-const nodeData = computed(() => props.data.nodeData || {});
-const editing = computed(() => ctx.editingNodeId === props.data.id);
+const nodeData = computed(() => data.nodeData || {});
+const editing = computed(() => ctx.editingNodeId === data.id);
 
 const speaker = computed(() => {
   const sheetId = nodeData.value.speaker_sheet_id;
   if (!sheetId) return null;
-  return props.sheetsMap[String(sheetId)] || null;
+  return sheetsMap[String(sheetId)] || null;
 });
 
-const speakerName = computed(() => speaker.value?.name || props.config.label);
+const speakerName = computed(() => speaker.value?.name || config.label);
 
 // Avatar resolution: specific avatar_id override > default avatar_url > no avatar
 const overrideAvatarUrl = computed(() => {
@@ -62,13 +62,13 @@ const hasContent = computed(
 );
 
 // Sockets
-const inputs = computed(() => Object.entries(props.data?.inputs || {}));
-const outputs = computed(() => Object.entries(props.data?.outputs || {}));
+const inputs = computed(() => Object.entries(data?.inputs || {}));
+const outputs = computed(() => Object.entries(data?.outputs || {}));
 const responses = computed(() => nodeData.value.responses || []);
 
 // Speaker list for inline edit dropdown
 const speakerOptions = computed(() => {
-  const map = ctx.sheetsMap || props.sheetsMap || {};
+  const map = ctx.sheetsMap || sheetsMap || {};
   return Object.values(map);
 });
 
@@ -106,7 +106,7 @@ function getOutputBadges(key) {
 }
 
 function save(field, value) {
-  ctx.onInlineEditSave?.(props.data.id, field, value);
+  ctx.onInlineEditSave?.(data.id, field, value);
 }
 
 function onStageDirectionsBlur(e) {

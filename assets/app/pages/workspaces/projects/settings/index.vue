@@ -5,7 +5,15 @@ import MembersSection from "./sections/MembersSection.vue";
 import SnapshotsSection from "./sections/SnapshotsSection.vue";
 import VersionControlSection from "./sections/VersionControlSection.vue";
 
-defineProps({
+const {
+  section,
+  projectName, projectDescription, sourceLanguage, sourceLanguageName,
+  themePrimary, themeAccent, hasCustomTheme,
+  providerApiEndpoint, hasApiKey, providerUsage,
+  members, currentUserId,
+  snapshots, canCreateSnapshot, restorationInProgress, workspaceSlug, projectSlug,
+  autoSnapshotsEnabled, autoVersionFlows, autoVersionScenes, autoVersionSheets, versionUsage,
+} = defineProps({
   section: { type: String, required: true },
   // General
   projectName: { type: String, default: "" },

@@ -1,7 +1,7 @@
 <script setup>
 import { BookOpen } from "lucide-vue-next";
 
-const props = defineProps({
+const { guideBody, translations } = defineProps({
   guideBody: { type: String, default: null },
   translations: { type: Object, required: true },
 });

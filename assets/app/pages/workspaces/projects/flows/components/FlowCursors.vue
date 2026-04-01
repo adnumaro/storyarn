@@ -3,7 +3,7 @@ import { MousePointer2 } from "lucide-vue-next";
 import { onMounted, onUnmounted, reactive, ref } from "vue";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { areaTransform, currentUserId, containerEl } = defineProps({
   areaTransform: { type: Object, default: () => ({ x: 0, y: 0, k: 1 }) },
   currentUserId: { type: [Number, String], default: 0 },
   containerEl: { type: Object, default: null },
@@ -26,13 +26,13 @@ function onMouseMove(e) {
   if (now - lastSend < THROTTLE_MS) return;
   lastSend = now;
 
-  const el = props.containerEl;
+  const el = containerEl;
   if (!el) return;
   const rect = el.getBoundingClientRect();
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
 
-  const t = props.areaTransform;
+  const t = areaTransform;
   const canvasX = (x - t.x) / t.k;
   const canvasY = (y - t.y) / t.k;
 
@@ -41,9 +41,9 @@ function onMouseMove(e) {
 
 // Receive remote cursor
 live.handleEvent("cursor_update", (data) => {
-  if (String(data.user_id) === String(props.currentUserId)) return;
+  if (String(data.user_id) === String(currentUserId)) return;
 
-  const t = props.areaTransform;
+  const t = areaTransform;
   const screenX = data.x * t.k + t.x;
   const screenY = data.y * t.k + t.y;
 
@@ -78,11 +78,11 @@ live.handleEvent("cursor_leave", (data) => {
 });
 
 onMounted(() => {
-  props.containerEl?.addEventListener("mousemove", onMouseMove);
+  containerEl?.addEventListener("mousemove", onMouseMove);
 });
 
 onUnmounted(() => {
-  props.containerEl?.removeEventListener("mousemove", onMouseMove);
+  containerEl?.removeEventListener("mousemove", onMouseMove);
   for (const timer of fadeTimers.values()) clearTimeout(timer);
 });
 </script>

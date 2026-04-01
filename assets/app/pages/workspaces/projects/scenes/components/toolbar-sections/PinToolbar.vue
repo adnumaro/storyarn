@@ -10,7 +10,7 @@ import {
   ToolbarTypePicker,
 } from "../../toolbar";
 
-const props = defineProps({
+const { element, layers, canEdit } = defineProps({
   element: { type: Object, required: true },
   layers: { type: Array, default: () => [] },
   canEdit: { type: Boolean, default: false },
@@ -20,7 +20,7 @@ const live = useLive();
 
 function updateField(field, value) {
   live.pushEvent("update_pin", {
-    id: String(props.element.id),
+    id: String(element.id),
     field,
     value: value === null ? "" : String(value),
   });
@@ -28,9 +28,9 @@ function updateField(field, value) {
 
 function toggleLock() {
   live.pushEvent("update_pin", {
-    id: String(props.element.id),
+    id: String(element.id),
     field: "locked",
-    toggle: String(!props.element.locked),
+    toggle: String(!element.locked),
   });
 }
 

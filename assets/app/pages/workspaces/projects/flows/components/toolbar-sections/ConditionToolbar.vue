@@ -4,7 +4,7 @@ import { ToolbarSeparator } from "@components/shared/toolbar/index.js";
 import { Badge } from "@components/ui/badge/index.js";
 import { useLive } from "@composables/useLive.js";
 
-defineProps({
+const { nodeData } = defineProps({
   nodeData: { type: Object, required: true },
 });
 

@@ -9,7 +9,7 @@ import {
 } from "@components/ui/dropdown-menu";
 import { useLive } from "@composables/useLive";
 
-const props = defineProps({
+const { editMode, canEdit } = defineProps({
   editMode: { type: Boolean, default: true },
   canEdit: { type: Boolean, default: false },
 });
@@ -18,7 +18,7 @@ const live = useLive();
 
 function toggleEditMode() {
   live.pushEvent("toggle_edit_mode", {
-    mode: props.editMode ? "view" : "edit",
+    mode: editMode ? "view" : "edit",
   });
 }
 

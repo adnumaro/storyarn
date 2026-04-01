@@ -2,7 +2,7 @@
 import { makeDraggable } from "@vue-dnd-kit/core";
 import { useTemplateRef } from "vue";
 
-const props = defineProps({
+const { index, items, group } = defineProps({
   index: { type: Number, required: true },
   items: { type: Array, required: true },
   group: { type: String, required: true },
@@ -14,9 +14,9 @@ const { isDragging, isDragOver } = makeDraggable(
   rowRef,
   {
     dragHandle: ".row-drag-handle",
-    groups: [props.group],
+    groups: [group],
   },
-  () => [props.index, props.items],
+  () => [index, items],
 );
 </script>
 

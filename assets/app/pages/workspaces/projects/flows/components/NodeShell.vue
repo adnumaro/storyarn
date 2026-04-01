@@ -1,13 +1,13 @@
 <script setup>
 import { computed } from "vue";
 
-const props = defineProps({
+const { color, selected, extraClass } = defineProps({
   color: { type: String, default: "#3b82f6" },
   selected: { type: Boolean, default: false },
   extraClass: { type: String, default: "" },
 });
 
-const borderColor = computed(() => `${props.color}40`);
+const borderColor = computed(() => `${color}40`);
 </script>
 
 <template>

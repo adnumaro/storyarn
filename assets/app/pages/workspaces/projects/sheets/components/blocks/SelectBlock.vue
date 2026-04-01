@@ -14,25 +14,25 @@ import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 import OptionEditor from "../OptionEditor.vue";
 
-const props = defineProps({
+const { block, canEdit, inherited } = defineProps({
   block: { type: Object, required: true },
   canEdit: { type: Boolean, default: false },
   inherited: { type: Boolean, default: false },
 });
 
-const { live, label, isSelected, onBlockClick } = useBlockActions(props);
+const { live, label, isSelected, onBlockClick } = useBlockActions({ get block() { return block; }, get canEdit() { return canEdit; } });
 
 function saveLabel(val) {
   live.pushEvent("update_block_config", {
-    id: props.block.id,
+    id: block.id,
     field: "label",
     value: val,
   });
 }
 
-const content = computed(() => props.block.value?.content);
-const options = computed(() => props.block.config?.options || []);
-const placeholder = computed(() => props.block.config?.placeholder || "Select...");
+const content = computed(() => block.value?.content);
+const options = computed(() => block.config?.options || []);
+const placeholder = computed(() => block.config?.placeholder || "Select...");
 
 const displayValue = computed(() => {
   if (!content.value) return null;
@@ -42,7 +42,7 @@ const displayValue = computed(() => {
 
 function onChange(val) {
   live.pushEvent("update_block_value", {
-    id: props.block.id,
+    id: block.id,
     value: val === " " ? null : val,
   });
 }

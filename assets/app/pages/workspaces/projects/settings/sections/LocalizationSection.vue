@@ -12,7 +12,7 @@ import {
 } from "@components/ui/select/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const props = defineProps({
+const { providerApiEndpoint, hasApiKey, providerUsage } = defineProps({
   providerApiEndpoint: { type: String, default: "https://api-free.deepl.com" },
   hasApiKey: { type: Boolean, default: false },
   providerUsage: { type: Object, default: null },
@@ -21,10 +21,10 @@ const props = defineProps({
 const live = useLive();
 
 const providerApiKey = ref("");
-const providerEndpoint = ref(props.providerApiEndpoint);
+const providerEndpoint = ref(providerApiEndpoint);
 
 watch(
-  () => props.providerApiEndpoint,
+  () => providerApiEndpoint,
   (v) => {
     providerEndpoint.value = v;
   },

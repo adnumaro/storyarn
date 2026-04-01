@@ -11,7 +11,7 @@ const CONDITION_EFFECTS = [
   { id: "disable", name: "Disable" },
 ];
 
-const props = defineProps({
+const { element, canEdit, projectSheets, projectFlows, projectVariables } = defineProps({
   element: { type: Object, required: true },
   canEdit: { type: Boolean, default: false },
   projectSheets: { type: Array, default: () => [] },
@@ -23,7 +23,7 @@ const live = useLive();
 
 function update(field, value) {
   live.pushEvent("update_pin", {
-    id: String(props.element.id),
+    id: String(element.id),
     field,
     value: value === null || value === undefined ? "" : String(value),
   });
@@ -39,7 +39,7 @@ function uploadIcon() {
     const reader = new FileReader();
     reader.onload = () => {
       live.pushEvent("upload_pin_icon", {
-        id: String(props.element.id),
+        id: String(element.id),
         filename: file.name,
         content_type: file.type,
         data: reader.result,
@@ -52,7 +52,7 @@ function uploadIcon() {
 
 function toggle(field, currentValue) {
   live.pushEvent("update_pin", {
-    id: String(props.element.id),
+    id: String(element.id),
     field,
     toggle: String(!currentValue),
   });

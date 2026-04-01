@@ -16,7 +16,7 @@ import {
 } from "lucide-vue-next";
 import { onBeforeUnmount, watch } from "vue";
 
-const props = defineProps({
+const { content, editable, placeholder } = defineProps({
   content: { type: String, default: "" },
   editable: { type: Boolean, default: false },
   placeholder: { type: String, default: "Write something..." },
@@ -27,9 +27,9 @@ const emit = defineEmits(["update"]);
 let debounceTimer = null;
 
 const editor = useEditor({
-  content: props.content || "",
-  editable: props.editable,
-  extensions: [StarterKit, Placeholder.configure({ placeholder: props.placeholder })],
+  content: content || "",
+  editable: editable,
+  extensions: [StarterKit, Placeholder.configure({ placeholder: placeholder })],
   editorProps: {
     attributes: {
       class: "prose prose-sm dark:prose-invert max-w-none outline-none min-h-[80px] px-3 py-2",
@@ -48,7 +48,7 @@ const editor = useEditor({
 });
 
 watch(
-  () => props.content,
+  () => content,
   (newContent) => {
     if (editor.value && !editor.value.isFocused && newContent !== editor.value.getHTML()) {
       editor.value.commands.setContent(newContent || "", false);
@@ -57,7 +57,7 @@ watch(
 );
 
 watch(
-  () => props.editable,
+  () => editable,
   (editable) => {
     editor.value?.setEditable(editable);
   },

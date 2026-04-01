@@ -1,7 +1,7 @@
 <script setup>
 import CompareView from "./CompareView.vue";
 
-defineProps({
+const { backUrl, versionLabel, prevVersionUrl, nextVersionUrl, currentUrl, versionUrl } = defineProps({
   backUrl: { type: String, required: true },
   versionLabel: { type: String, default: "" },
   prevVersionUrl: { type: String, default: null },
