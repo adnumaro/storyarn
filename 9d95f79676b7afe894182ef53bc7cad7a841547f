@@ -1,0 +1,23 @@
+.oxlintrc.json
+  aa411e6268b1fe63 4,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "9d95f79676b7afe894182ef53bc7cad7a841547f",
+  "prompts": {
+    "aa411e6268b1fe63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee02b674-0f8d-485d-be9a-c8380b599f30",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 7,
+      "total_deletions": 7,
+      "accepted_lines": 685,
+      "overriden_lines": 0
+    }
+  }
+}
