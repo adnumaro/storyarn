@@ -140,7 +140,11 @@ watch(
   (nowOpen, wasOpen) => {
     if (nowOpen === wasOpen) return;
     nextTick(() => {
-      nowOpen ? animateIn() : animateOut();
+      if (nowOpen) {
+        animateIn();
+      } else {
+        animateOut();
+      }
     });
   },
 );

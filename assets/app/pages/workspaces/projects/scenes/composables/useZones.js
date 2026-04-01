@@ -42,11 +42,14 @@ export function useZones({
         // Use vertex editor or drag override vertices when active
         const isVertexEditing = editingZoneId?.value === zone.id && editingVertices?.value?.length;
         const override = zoneDragOverride?.value;
-        const vertices = isVertexEditing
-          ? editingVertices.value
-          : override && override.id === zone.id
-            ? override.vertices
-            : zone.vertices || [];
+        let vertices;
+        if (isVertexEditing) {
+          vertices = editingVertices.value;
+        } else if (override && override.id === zone.id) {
+          vertices = override.vertices;
+        } else {
+          vertices = zone.vertices || [];
+        }
         const pixelCoords = vertices.map((v) => percentToPixel(v.x, v.y));
 
         // Flat points array for Konva v-line: [x1, y1, x2, y2, ...]

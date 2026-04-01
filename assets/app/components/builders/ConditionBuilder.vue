@@ -118,7 +118,11 @@ function cancelSelectionMode() {
 
 function toggleBlockSelection(blockId) {
   const ids = new Set(selectedBlockIds.value);
-  ids.has(blockId) ? ids.delete(blockId) : ids.add(blockId);
+  if (ids.has(blockId)) {
+    ids.delete(blockId);
+  } else {
+    ids.add(blockId);
+  }
   selectedBlockIds.value = ids;
 }
 

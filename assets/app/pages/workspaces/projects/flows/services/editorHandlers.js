@@ -81,12 +81,12 @@ export function editorHandlers(hook) {
     async handleFlowUpdated(data) {
       hook.history?.clear();
 
-      for (const conn of [...hook.editor.getConnections()]) {
+      for (const conn of hook.editor.getConnections()) {
         try {
           await hook.editor.removeConnection(conn.id);
         } catch {}
       }
-      for (const node of [...hook.editor.getNodes()]) {
+      for (const node of hook.editor.getNodes()) {
         try {
           await hook.editor.removeNode(node.id);
         } catch {}

@@ -11,7 +11,7 @@ const CREATION_TOOLS = new Set(["pin", "annotation"]);
  * The server creates the element, auto-selects it, and resets the tool to "select".
  */
 export function useCanvasCreation({
-  stageRef,
+  stageRef: _stageRef,
   stageConfig,
   pixelToPercent,
   activeTool,

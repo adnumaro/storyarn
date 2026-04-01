@@ -17,7 +17,7 @@ const MIN_VERTICES = 3;
  * Deactivates on Escape, clicking empty canvas, or selecting another element.
  */
 export function useVertexEditor({
-  stageConfig,
+  stageConfig: _stageConfig,
   pixelToPercent,
   percentToPixel,
   zones,

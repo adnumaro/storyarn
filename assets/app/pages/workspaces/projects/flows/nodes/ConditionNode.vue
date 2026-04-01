@@ -128,7 +128,9 @@ function getOutputLabel(key) {
       return rule?.label || formatRuleShort(rule) || key;
     }
   }
-  return key === "true" ? "True" : key === "false" ? "False" : key;
+  if (key === "true") return "True";
+  if (key === "false") return "False";
+  return key;
 }
 
 function getOutputBadges(key) {
