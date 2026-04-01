@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "unicorn", "oxc", "vue"],
+  "jsPlugins": ["oxlint-tailwindcss"],
   "categories": {
     "correctness": "error"
   },
@@ -8,8 +9,17 @@
     "complexity": ["warn", { "max": 10 }],
     "no-nested-ternary": "error",
     "vue/define-props-destructuring": "error",
-    "vue/max-props": ["error", { "maxProps": 6 }]
+    "vue/max-props": ["error", { "maxProps": 6 }],
+    "tailwindcss/no-unknown-classes": "error",
+    "tailwindcss/no-duplicate-classes": "error",
+    "tailwindcss/no-conflicting-classes": "error",
+    "tailwindcss/no-deprecated-classes": "error",
+    "tailwindcss/no-unnecessary-whitespace": "error",
+    "tailwindcss/enforce-sort-order": "warn",
+    "tailwindcss/enforce-shorthand": "warn",
+    "tailwindcss/no-hardcoded-colors": "warn"
   },
+  "ignorePatterns": ["assets/app/components/ui/**"],
   "env": {
     "builtin": true
   }
