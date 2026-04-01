@@ -1,0 +1,26 @@
+// {
+//   ...
+//   "dependencies": {
+//     ...,
+//     "phoenix": "../deps/phoenix",
+//     "phoenix_html": "../deps/phoenix_html",
+//     "phoenix_live_view": "../deps/phoenix_live_view"
+//   }
+// }
+//
+{
+  "compilerOptions": {
+    "baseUrl": "./assets",
+    "paths": {
+      "*": ["../deps/*"],
+      "@app/*": ["./app/*"],
+      "@components/*": ["./app/components/*"],
+      "@lib/*": ["./app/lib/*"],
+      "@pages/*": ["./app/pages/*"],
+      "@composables/*": ["./app/composables/*"]
+    },
+    "allowJs": true,
+    "noEmit": true
+  },
+  "include": ["js/**/*", "app/**/*"]
+}
