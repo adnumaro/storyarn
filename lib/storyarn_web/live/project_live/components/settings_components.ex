@@ -1,6 +1,6 @@
 defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   @moduledoc """
-  Private helper functions extracted from `StoryarnWeb.ProjectLive.Settings`.
+  Shared helper functions for `StoryarnWeb.ProjectSettingsLive.*` LiveViews.
 
   Contains form changesets, provider helpers, and do_* action helpers
   used by the settings LiveView.
@@ -315,7 +315,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
 
   @doc """
   Navigation sections for the project settings sidebar.
-  Shared between ProjectLive.Settings and ExportImportLive.Index.
+  Shared between ProjectSettingsLive.* and ExportImportLive.Index.
   """
   def project_settings_sections(workspace, project) do
     base = ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/settings"

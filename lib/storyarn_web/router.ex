@@ -142,24 +142,24 @@ defmodule StoryarnWeb.Router do
       live "/workspaces/:workspace_slug/projects/:project_slug", ProjectLive.Show, :show
 
       live "/workspaces/:workspace_slug/projects/:project_slug/settings",
-           ProjectLive.Settings,
-           :general
+           ProjectSettingsLive.General,
+           :edit
 
       live "/workspaces/:workspace_slug/projects/:project_slug/settings/localization",
-           ProjectLive.Settings,
-           :localization
+           ProjectSettingsLive.Localization,
+           :edit
 
       live "/workspaces/:workspace_slug/projects/:project_slug/settings/members",
-           ProjectLive.Settings,
-           :members
+           ProjectSettingsLive.Members,
+           :edit
 
       live "/workspaces/:workspace_slug/projects/:project_slug/settings/snapshots",
-           ProjectLive.Settings,
-           :snapshots
+           ProjectSettingsLive.Snapshots,
+           :edit
 
       live "/workspaces/:workspace_slug/projects/:project_slug/settings/version-control",
-           ProjectLive.Settings,
-           :version_control
+           ProjectSettingsLive.VersionControl,
+           :edit
 
       live "/workspaces/:workspace_slug/projects/:project_slug/settings/export-import",
            ExportImportLive.Index,
