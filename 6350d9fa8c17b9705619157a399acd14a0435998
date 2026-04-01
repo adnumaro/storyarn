@@ -1,0 +1,21 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "6350d9fa8c17b9705619157a399acd14a0435998",
+  "prompts": {
+    "aa411e6268b1fe63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee02b674-0f8d-485d-be9a-c8380b599f30",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 678,
+      "overriden_lines": 0
+    }
+  }
+}
