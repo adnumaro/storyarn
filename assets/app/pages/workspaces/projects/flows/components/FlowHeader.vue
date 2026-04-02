@@ -5,7 +5,6 @@ import {
   Check,
   ChevronDown,
   CircleCheck,
-  GitBranch,
   Info,
   Map as MapIcon,
   Save,
@@ -19,33 +18,25 @@ import { Badge } from "@components/ui/badge/index.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const { flowName, flowShortcut, isMain, canEdit, saveStatus, isDraft, backEntry, forwardEntry, flowWordCount, flowErrorNodes, flowInfoNodes, sceneName, sceneInherited, availableScenes } = defineProps({
+const { flowName, flowShortcut, isMain, canEdit, saveStatus, navHistory, flowHealth, sceneSelected, projectScenes } = defineProps({
   flowName: { type: String, default: "" },
   flowShortcut: { type: String, default: "" },
   isMain: { type: Boolean, default: false },
   canEdit: { type: Boolean, default: false },
   saveStatus: { type: String, default: "idle" },
-  isDraft: { type: Boolean, default: false },
-  // Nav history
-  backEntry: { type: Object, default: null },
-  forwardEntry: { type: Object, default: null },
-  // Stats
-  flowWordCount: { type: Number, default: 0 },
-  flowErrorNodes: { type: Array, default: () => [] },
-  flowInfoNodes: { type: Array, default: () => [] },
-  // Scene
-  sceneName: { type: String, default: null },
-  sceneInherited: { type: Boolean, default: false },
-  availableScenes: { type: Array, default: () => [] },
+  navHistory: { type: Object, default: () => ({ back: null, forward: null }) },
+  flowHealth: { type: Object, default: () => ({ wordCount: 0, errorNodes: [], infoNodes: [] }) },
+  sceneSelected: { type: Object, default: () => ({ name: null, inherited: false }) },
+  projectScenes: { type: Array, default: () => [] },
 });
 
 const live = useLive();
 const sceneOpen = ref(false);
 const healthOpen = ref(false);
 
-const errorCount = computed(() => flowErrorNodes.length);
-const infoCount = computed(() => flowInfoNodes.length);
-const showScene = computed(() => canEdit || sceneName != null);
+const errorCount = computed(() => flowHealth.errorNodes.length);
+const infoCount = computed(() => flowHealth.infoNodes.length);
+const showScene = computed(() => canEdit || sceneSelected.name != null);
 
 function saveName(name) {
   live.pushEvent("save_name", { name });
@@ -69,25 +60,25 @@ function navigateToNode(nodeId) {
 <template>
   <div class="flex items-stretch gap-2">
     <!-- Nav history -->
-    <div v-if="backEntry || forwardEntry" class="flex items-center gap-0.5 v2-surface-panel px-1">
+    <div v-if="navHistory.back || navHistory.forward" class="flex items-center gap-0.5 v2-surface-panel px-1">
       <button
-        v-if="backEntry"
+        v-if="navHistory.back"
         type="button"
         class="v2-toolbar-btn gap-1 text-muted-foreground max-w-[140px]"
         title="Alt+Left"
         @click="live.pushEvent('nav_back', {})"
       >
         <ArrowLeft class="size-3.5 shrink-0" />
-        <span class="truncate text-xs">{{ backEntry.flow_name }}</span>
+        <span class="truncate text-xs">{{ navHistory.back.flow_name }}</span>
       </button>
       <button
-        v-if="forwardEntry"
+        v-if="navHistory.forward"
         type="button"
         class="v2-toolbar-btn gap-1 text-muted-foreground max-w-[140px]"
         title="Alt+Right"
         @click="live.pushEvent('nav_forward', {})"
       >
-        <span class="truncate text-xs">{{ forwardEntry.flow_name }}</span>
+        <span class="truncate text-xs">{{ navHistory.forward.flow_name }}</span>
         <ArrowRight class="size-3.5 shrink-0" />
       </button>
     </div>
@@ -125,13 +116,13 @@ function navigateToNode(nodeId) {
             <button
               type="button"
               class="v2-toolbar-btn gap-1.5"
-              :class="sceneName ? 'text-foreground' : 'text-muted-foreground'"
+              :class="sceneSelected.name ? 'text-foreground' : 'text-muted-foreground'"
               title="Scene backdrop"
             >
               <MapIcon class="size-3.5" />
-              <span v-if="sceneName" class="truncate max-w-[120px]">{{ sceneName }}</span>
+              <span v-if="sceneSelected.name" class="truncate max-w-[120px]">{{ sceneSelected.name }}</span>
               <span v-else>No scene</span>
-              <span v-if="sceneInherited" class="text-muted-foreground text-[10px]"
+              <span v-if="sceneSelected.inherited" class="text-muted-foreground text-[10px]"
                 >(inherited)</span
               >
               <ChevronDown v-if="canEdit" class="size-3 opacity-50" />
@@ -141,14 +132,14 @@ function navigateToNode(nodeId) {
             <button
               type="button"
               class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs hover:bg-accent transition-colors"
-              :class="{ 'bg-accent': !sceneName }"
+              :class="{ 'bg-accent': !sceneSelected.name }"
               @click="selectScene(null)"
             >
               <X class="size-3 opacity-60" />
               <span class="text-muted-foreground">No scene (inherit)</span>
             </button>
             <button
-              v-for="scene in availableScenes"
+              v-for="scene in projectScenes"
               :key="scene.id"
               type="button"
               class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs hover:bg-accent transition-colors"
@@ -165,10 +156,10 @@ function navigateToNode(nodeId) {
       <!-- Word count -->
       <div
         class="v2-toolbar-btn gap-1.5 text-muted-foreground"
-        :title="`${flowWordCount} words in this flow`"
+        :title="`${flowHealth.wordCount} words in this flow`"
       >
         <Text class="size-3.5" />
-        <span>{{ flowWordCount }}</span>
+        <span>{{ flowHealth.wordCount }}</span>
       </div>
 
       <!-- Flow health indicator -->
@@ -188,15 +179,15 @@ function navigateToNode(nodeId) {
             </button>
           </PopoverTrigger>
           <PopoverContent side="bottom" :side-offset="4" class="w-max max-h-60 overflow-y-auto p-1">
-            <div v-if="flowErrorNodes.length > 0">
+            <div v-if="flowHealth.errorNodes.length > 0">
               <div
-                v-if="flowInfoNodes.length > 0"
+                v-if="flowHealth.infoNodes.length > 0"
                 class="px-2 py-1 text-[10px] text-muted-foreground font-medium uppercase"
               >
                 Errors
               </div>
               <button
-                v-for="node in flowErrorNodes"
+                v-for="node in flowHealth.errorNodes"
                 :key="'e-' + node.id"
                 type="button"
                 class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs hover:bg-accent transition-colors"
@@ -205,15 +196,15 @@ function navigateToNode(nodeId) {
                 <span class="truncate">{{ node.label }}</span>
               </button>
             </div>
-            <div v-if="flowInfoNodes.length > 0">
+            <div v-if="flowHealth.infoNodes.length > 0">
               <div
-                v-if="flowErrorNodes.length > 0"
+                v-if="flowHealth.errorNodes.length > 0"
                 class="px-2 py-1 text-[10px] text-muted-foreground font-medium uppercase mt-1"
               >
                 Info
               </div>
               <button
-                v-for="node in flowInfoNodes"
+                v-for="node in flowHealth.infoNodes"
                 :key="'i-' + node.id"
                 type="button"
                 class="w-full flex flex-col items-start gap-0.5 px-2 py-1.5 rounded-md text-xs hover:bg-accent transition-colors"
@@ -233,17 +224,7 @@ function navigateToNode(nodeId) {
       </div>
     </div>
 
-    <!-- Draft button -->
-    <button
-      v-if="canEdit && !isDraft"
-      type="button"
-      class="hidden lg:flex items-center gap-1 v2-toolbar-btn text-muted-foreground v2-surface-panel px-2"
-      title="Create a private draft copy"
-      @click="live.pushEvent('create_draft', {})"
-    >
-      <GitBranch class="size-3.5" />
-      <span class="text-xs">Draft</span>
-    </button>
+    <!-- TODO: Draft button hidden until draft feature is complete -->
 
     <!-- Save indicator -->
     <div v-if="canEdit" class="flex items-center v2-surface-panel px-2">

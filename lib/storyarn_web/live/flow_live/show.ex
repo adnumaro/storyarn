@@ -9,7 +9,8 @@ defmodule StoryarnWeb.FlowLive.Show do
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
 
-  alias StoryarnWeb.Components.DraftComponents
+  # TODO: Re-enable when draft feature is complete
+  # alias StoryarnWeb.Components.DraftComponents
   alias StoryarnWeb.Live.Shared.DraftHandlers
 
   alias Storyarn.Collaboration
@@ -84,7 +85,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       }
     >
       <:top_bar_extra>
-        <DraftComponents.draft_banner :if={@flow} is_draft={@is_draft} />
+        <%!-- TODO: DraftComponents hidden until draft feature is complete --%>
         <.vue
           :if={@flow}
           v-component="pages/workspaces/projects/flows/components/FlowHeader"
@@ -95,19 +96,20 @@ defmodule StoryarnWeb.FlowLive.Show do
           is-main={@flow.is_main}
           can-edit={@can_edit}
           save-status={to_string(@save_status)}
-          is-draft={@is_draft}
-          back-entry={@nav_history && NavigationHistory.peek_back(@nav_history)}
-          forward-entry={@nav_history && NavigationHistory.peek_forward(@nav_history)}
-          flow-word-count={@flow_word_count}
-          flow-error-nodes={@flow_error_nodes}
-          flow-info-nodes={@flow_info_nodes}
-          scene-name={@scene_name}
-          scene-inherited={@scene_inherited}
-          available-scenes={Enum.map(@available_scenes, &Map.take(&1, [:id, :name]))}
+          nav-history={%{
+            back: @nav_history && NavigationHistory.peek_back(@nav_history),
+            forward: @nav_history && NavigationHistory.peek_forward(@nav_history)
+          }}
+          flow-health={%{
+            wordCount: @flow_word_count,
+            errorNodes: @flow_error_nodes,
+            infoNodes: @flow_info_nodes
+          }}
+          scene-selected={%{name: @scene_name, inherited: @scene_inherited}}
+          project-scenes={Enum.map(@available_scenes, &Map.take(&1, [:id, :name]))}
         />
       </:top_bar_extra>
-      <DraftComponents.discard_draft_modal is_draft={@is_draft} />
-      <DraftComponents.merge_review_modal :if={@flow} is_draft={@is_draft} merge_summary={@merge_summary} />
+      <%!-- TODO: Draft modals hidden until draft feature is complete --%>
       <div class="h-full relative">
         <div class="absolute inset-0 flex flex-col">
           <div class="flex-1 relative">
