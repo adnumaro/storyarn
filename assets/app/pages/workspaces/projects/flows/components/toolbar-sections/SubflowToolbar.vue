@@ -6,20 +6,20 @@ import { Badge } from "@components/ui/badge/index.js";
 import { useLive } from "@composables/useLive.js";
 import { ToolbarSearchableSelect } from "../../toolbar/index.js";
 
-const { nodeData, availableFlows, subflowExits } = defineProps({
+const { nodeData, projectFlows, subflowExits } = defineProps({
   nodeData: { type: Object, required: true },
-  availableFlows: { type: Array, default: () => [] },
+  projectFlows: { type: Array, default: () => [] },
   subflowExits: { type: Array, default: () => [] },
 });
 
 const live = useLive();
 
-const flowOptions = computed(() => availableFlows.map((f) => [f.name, f.id]));
+const flowOptions = computed(() => projectFlows.map((f) => [f.name, f.id]));
 
 const selectedFlowName = computed(() => {
   const refId = nodeData.referenced_flow_id;
   if (!refId) return null;
-  const flow = availableFlows.find((f) => String(f.id) === String(refId));
+  const flow = projectFlows.find((f) => String(f.id) === String(refId));
   return flow?.name || null;
 });
 

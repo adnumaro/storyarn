@@ -5,9 +5,9 @@ import { ToolbarSeparator } from "@components/shared/toolbar/index.js";
 import { useLive } from "@composables/useLive.js";
 import { ToolbarAvatarPicker, ToolbarSearchableSelect } from "../../toolbar/index.js";
 
-const { nodeData, allSheets } = defineProps({
+const { nodeData, sheetAvatars } = defineProps({
   nodeData: { type: Object, required: true },
-  allSheets: { type: Array, default: () => [] },
+  sheetAvatars: { type: Array, default: () => [] },
 });
 
 const live = useLive();
@@ -26,12 +26,12 @@ const intExtLabel = computed(() => {
   return null;
 });
 
-const sheetOptions = computed(() => allSheets.map((s) => [s.name, s.id]));
+const sheetOptions = computed(() => sheetAvatars.map((s) => [s.name, s.id]));
 
 const selectedLocationName = computed(() => {
   const locId = nodeData.location_sheet_id;
   if (!locId) return null;
-  const sheet = allSheets.find((s) => String(s.id) === String(locId));
+  const sheet = sheetAvatars.find((s) => String(s.id) === String(locId));
   return sheet?.name || null;
 });
 
@@ -51,7 +51,7 @@ const timeLabel = computed(() => {
 const speakerAvatars = computed(() => {
   const sheetId = nodeData.speaker_sheet_id || nodeData.location_sheet_id;
   if (!sheetId) return [];
-  const sheet = allSheets.find((s) => String(s.id) === String(sheetId));
+  const sheet = sheetAvatars.find((s) => String(s.id) === String(sheetId));
   if (!sheet?.avatars) return [];
   return sheet.avatars
     .filter((a) => a.asset?.url)

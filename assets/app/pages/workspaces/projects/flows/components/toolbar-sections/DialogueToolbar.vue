@@ -5,10 +5,10 @@ import { ToolbarSeparator } from "@components/shared/toolbar/index.js";
 import { useLive } from "@composables/useLive.js";
 import { ToolbarAvatarPicker } from "../../toolbar/index.js";
 
-const { nodeData, nodeId, allSheets } = defineProps({
+const { nodeData, nodeId, sheetAvatars } = defineProps({
   nodeData: { type: Object, required: true },
   nodeId: { type: [String, Number], required: true },
-  allSheets: { type: Array, default: () => [] },
+  sheetAvatars: { type: Array, default: () => [] },
 });
 
 const live = useLive();
@@ -36,7 +36,7 @@ function selectAvatar(avatarId) {
 const speakerAvatars = computed(() => {
   const sheetId = nodeData.speaker_sheet_id || nodeData.location_sheet_id;
   if (!sheetId) return [];
-  const sheet = allSheets.find((s) => String(s.id) === String(sheetId));
+  const sheet = sheetAvatars.find((s) => String(s.id) === String(sheetId));
   if (!sheet?.avatars) return [];
   return sheet.avatars
     .filter((a) => a.asset?.url)

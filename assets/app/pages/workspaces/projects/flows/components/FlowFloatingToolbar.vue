@@ -13,19 +13,19 @@ import {
   SubflowToolbar,
 } from "./toolbar-sections/index.js";
 
-const { toolbarState, canEdit, flowHubs, availableFlows, allSheets, availableScenes, subflowExits, referencingJumps, referencingFlows, nodeSelectLoading, flowSearchHasMore } = defineProps({
+const { toolbarState, canEdit, hubs, projectFlows, sheetAvatars, projectScenes, subflowExits, referencingJumps, referencingFlows, selectLoading, searchHasMore } = defineProps({
   toolbarState: { type: Object, required: true },
   canEdit: { type: Boolean, default: false },
   // Server data for complex types
-  flowHubs: { type: Array, default: () => [] },
-  availableFlows: { type: Array, default: () => [] },
-  allSheets: { type: Array, default: () => [] },
-  availableScenes: { type: Array, default: () => [] },
+  hubs: { type: Array, default: () => [] },
+  projectFlows: { type: Array, default: () => [] },
+  sheetAvatars: { type: Array, default: () => [] },
+  projectScenes: { type: Array, default: () => [] },
   subflowExits: { type: Array, default: () => [] },
   referencingJumps: { type: Array, default: () => [] },
   referencingFlows: { type: Array, default: () => [] },
-  nodeSelectLoading: { type: Boolean, default: false },
-  flowSearchHasMore: { type: Boolean, default: false },
+  selectLoading: { type: Boolean, default: false },
+  searchHasMore: { type: Boolean, default: false },
 });
 
 const toolbarRef = ref(null);
@@ -80,10 +80,10 @@ const activeComponent = computed(() => TOOLBAR_COMPONENTS[nodeType.value] || nul
       v-if="activeComponent"
       :node-data="nodeData"
       :node-id="nodeId"
-      :flow-hubs="flowHubs"
-      :available-flows="availableFlows"
-      :all-sheets="allSheets"
-      :available-scenes="availableScenes"
+      :hubs="hubs"
+      :project-flows="projectFlows"
+      :sheet-avatars="sheetAvatars"
+      :project-scenes="projectScenes"
       :subflow-exits="subflowExits"
       :referencing-jumps="referencingJumps"
       :referencing-flows="referencingFlows"

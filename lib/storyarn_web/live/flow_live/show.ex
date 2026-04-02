@@ -118,27 +118,14 @@ defmodule StoryarnWeb.FlowLive.Show do
               id={"flow-editor-#{@flow && @flow.id || "new"}"}
               class="w-full h-full"
               flow-data={if @loading, do: nil, else: Jason.encode!(@flow_data)}
-              sheets-map={if @loading, do: nil, else: Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))}
+              variable-map={if @loading, do: nil, else: Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))}
               labels={Jason.encode!(flow_canvas_labels())}
               loading={@loading}
               readonly={!@can_edit}
               user-id={@current_scope.user.id}
               user-color={Collaboration.user_color(@current_scope.user.id)}
               canvas-id={"flow-canvas-#{@flow && @flow.id || "new"}"}
-              flow-hubs={Jason.encode!(@flow_hubs)}
-              available-flows={Jason.encode!(Enum.map(@available_flows, &Map.take(&1, [:id, :name])))}
-              all-sheets={Jason.encode!(Enum.map(@all_sheets, fn s ->
-                avatars = if is_list(s.avatars), do: Enum.map(s.avatars, fn a ->
-                  %{id: a.id, name: a.name, position: a.position, asset: %{url: a.asset && a.asset.url}}
-                end), else: []
-                %{id: s.id, name: s.name, color: s.color, avatars: avatars}
-              end))}
-              available-scenes={Jason.encode!(Enum.map(@available_scenes, &Map.take(&1, [:id, :name])))}
-              subflow-exits={Jason.encode!(@subflow_exits)}
-              referencing-jumps={Jason.encode!(@referencing_jumps)}
-              referencing-flows={Jason.encode!(@referencing_flows)}
-              node-select-loading={@node_select_loading}
-              flow-search-has-more={@flow_search_has_more}
+              toolbar-data={Jason.encode!(toolbar_data(assigns))}
             />
 
             <%!-- Bottom dock (Vue) --%>
@@ -240,27 +227,14 @@ defmodule StoryarnWeb.FlowLive.Show do
           id={"flow-editor-compact-#{@flow.id}"}
           class="w-full h-full"
           flow-data={Jason.encode!(@flow_data)}
-          sheets-map={Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))}
+          variable-map={Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))}
           labels={Jason.encode!(flow_canvas_labels())}
           loading={false}
           readonly={!@can_edit}
           user-id={@current_scope.user.id}
           user-color={Collaboration.user_color(@current_scope.user.id)}
           canvas-id={"flow-canvas-#{@flow.id}"}
-          flow-hubs={Jason.encode!(@flow_hubs)}
-          available-flows={Jason.encode!(Enum.map(@available_flows, &Map.take(&1, [:id, :name])))}
-          all-sheets={Jason.encode!(Enum.map(@all_sheets, fn s ->
-            avatars = if is_list(s.avatars), do: Enum.map(s.avatars, fn a ->
-              %{id: a.id, name: a.name, position: a.position, asset: %{url: a.asset && a.asset.url}}
-            end), else: []
-            %{id: s.id, name: s.name, color: s.color, avatars: avatars}
-          end))}
-          available-scenes={Jason.encode!(Enum.map(@available_scenes, &Map.take(&1, [:id, :name])))}
-          subflow-exits={Jason.encode!(@subflow_exits)}
-          referencing-jumps={Jason.encode!(@referencing_jumps)}
-          referencing-flows={Jason.encode!(@referencing_flows)}
-          node-select-loading={@node_select_loading}
-          flow-search-has-more={@flow_search_has_more}
+          toolbar-data={Jason.encode!(toolbar_data(assigns))}
         />
       </div>
     </Layouts.compare>
@@ -1728,6 +1702,36 @@ defmodule StoryarnWeb.FlowLive.Show do
   # ===========================================================================
   # Private Helpers
   # ===========================================================================
+
+  defp toolbar_data(assigns) do
+    %{
+      hubs: assigns.flow_hubs,
+      projectFlows: Enum.map(assigns.available_flows, &Map.take(&1, [:id, :name])),
+      sheetAvatars:
+        Enum.map(assigns.all_sheets, fn s ->
+          avatars =
+            if is_list(s.avatars),
+              do:
+                Enum.map(s.avatars, fn a ->
+                  %{
+                    id: a.id,
+                    name: a.name,
+                    position: a.position,
+                    asset: %{url: a.asset && a.asset.url}
+                  }
+                end),
+              else: []
+
+          %{id: s.id, name: s.name, color: s.color, avatars: avatars}
+        end),
+      projectScenes: Enum.map(assigns.available_scenes, &Map.take(&1, [:id, :name])),
+      subflowExits: assigns.subflow_exits,
+      referencingJumps: assigns.referencing_jumps,
+      referencingFlows: assigns.referencing_flows,
+      selectLoading: assigns.node_select_loading,
+      searchHasMore: assigns.flow_search_has_more
+    }
+  end
 
   defp flow_canvas_labels do
     %{

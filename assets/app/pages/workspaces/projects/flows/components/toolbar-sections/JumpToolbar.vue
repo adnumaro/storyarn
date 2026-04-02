@@ -5,20 +5,20 @@ import { ToolbarSeparator } from "@components/shared/toolbar/index.js";
 import { useLive } from "@composables/useLive.js";
 import { ToolbarSearchableSelect } from "../../toolbar/index.js";
 
-const { nodeData, nodeId, flowHubs } = defineProps({
+const { nodeData, nodeId, hubs } = defineProps({
   nodeData: { type: Object, required: true },
   nodeId: { type: [String, Number], required: true },
-  flowHubs: { type: Array, default: () => [] },
+  hubs: { type: Array, default: () => [] },
 });
 
 const live = useLive();
 
-const hubOptions = computed(() => flowHubs.map((h) => [h.hub_id, h.hub_id]));
+const hubOptions = computed(() => hubs.map((h) => [h.hub_id, h.hub_id]));
 
 const selectedHubLabel = computed(() => {
   const target = nodeData.target_hub_id;
   if (!target) return null;
-  const hub = flowHubs.find((h) => h.hub_id === target);
+  const hub = hubs.find((h) => h.hub_id === target);
   return hub?.hub_id || null;
 });
 
