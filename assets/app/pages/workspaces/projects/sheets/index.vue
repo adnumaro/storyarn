@@ -34,14 +34,10 @@ import {
 import { useLive } from "@composables/useLive.js";
 import { formatRelativeTime } from "@lib/date-utils.js";
 
-const { stats, tableData, sortBy: sortByProp, sortDir, page, totalPages, total, issues, canEdit, workspaceSlug, projectSlug } = defineProps({
+const { stats, tableData, pagination, issues, canEdit, workspaceSlug, projectSlug } = defineProps({
   stats: { type: Object, default: null },
   tableData: { type: Array, default: () => [] },
-  sortBy: { type: String, default: "name" },
-  sortDir: { type: String, default: "asc" },
-  page: { type: Number, default: 1 },
-  totalPages: { type: Number, default: 1 },
-  total: { type: Number, default: 0 },
+  pagination: { type: Object, default: () => ({ sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 0 }) },
   issues: { type: Array, default: () => [] },
   canEdit: { type: Boolean, default: false },
   workspaceSlug: { type: String, required: true },
@@ -68,8 +64,8 @@ function requestDelete(id) {
 }
 
 function sortIcon(column) {
-  if (sortByProp !== column) return ArrowUpDown;
-  return sortDir === "asc" ? ArrowUp : ArrowDown;
+  if (pagination.sortBy !== column) return ArrowUpDown;
+  return pagination.sortDir === "asc" ? ArrowUp : ArrowDown;
 }
 
 const statCards = computed(() => {
@@ -118,7 +114,7 @@ const columns = [
 
 const pages = computed(() => {
   const result = [];
-  for (let i = 1; i <= props.totalPages; i++) {
+  for (let i = 1; i <= pagination.totalPages; i++) {
     result.push(i);
   }
   return result;
@@ -135,7 +131,7 @@ const pages = computed(() => {
 
     <!-- Empty state -->
     <div
-      v-if="total === 0 && !stats"
+      v-if="pagination.total === 0 && !stats"
       class="flex flex-col items-center justify-center py-16 text-center"
     >
       <FileText class="size-12 text-muted-foreground/30 mb-4" />
@@ -234,24 +230,24 @@ const pages = computed(() => {
 
         <!-- Pagination -->
         <div
-          v-if="totalPages > 1"
+          v-if="pagination.totalPages > 1"
           class="flex items-center justify-between text-xs text-muted-foreground pt-1"
         >
-          <span>{{ total }} sheets</span>
+          <span>{{ pagination.total }} sheets</span>
           <div class="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon-sm"
               class="size-7"
-              :disabled="page <= 1"
-              @click="goToPage(page - 1)"
+              :disabled="pagination.page <= 1"
+              @click="goToPage(pagination.page - 1)"
             >
               <ChevronLeft class="size-4" />
             </Button>
             <Button
               v-for="p in pages"
               :key="p"
-              :variant="p === page ? 'default' : 'ghost'"
+              :variant="p === pagination.page ? 'default' : 'ghost'"
               size="sm"
               class="h-7 min-w-7 px-2 text-xs"
               @click="goToPage(p)"
@@ -262,8 +258,8 @@ const pages = computed(() => {
               variant="ghost"
               size="icon-sm"
               class="size-7"
-              :disabled="page >= totalPages"
-              @click="goToPage(page + 1)"
+              :disabled="pagination.page >= pagination.totalPages"
+              @click="goToPage(pagination.page + 1)"
             >
               <ChevronRight class="size-4" />
             </Button>

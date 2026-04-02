@@ -56,11 +56,13 @@ defmodule StoryarnWeb.FlowLive.Index do
         id="flow-dashboard"
         stats={@dashboard_stats}
         table-data={@flow_table_data}
-        sort-by={@sort_by}
-        sort-dir={to_string(@sort_dir)}
-        page={@page}
-        total-pages={@total_pages}
-        total={length(@all_flow_table_data)}
+        pagination={%{
+          sortBy: @sort_by,
+          sortDir: to_string(@sort_dir),
+          page: @page,
+          totalPages: @total_pages,
+          total: length(@all_flow_table_data)
+        }}
         issues={@flow_issues}
         can-edit={@can_edit}
         workspace-slug={@workspace.slug}
