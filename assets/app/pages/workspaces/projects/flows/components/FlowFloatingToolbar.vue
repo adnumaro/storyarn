@@ -13,19 +13,15 @@ import {
   SubflowToolbar,
 } from "./toolbar-sections/index.js";
 
-const { toolbarState, canEdit, hubs, projectFlows, sheetAvatars, projectScenes, subflowExits, referencingJumps, referencingFlows, selectLoading, searchHasMore } = defineProps({
+const { toolbarState, canEdit, hubs, projectFlows, sheetAvatars, subflowExits, referencingJumps, referencingFlows } = defineProps({
   toolbarState: { type: Object, required: true },
   canEdit: { type: Boolean, default: false },
-  // Server data for complex types
   hubs: { type: Array, default: () => [] },
   projectFlows: { type: Array, default: () => [] },
   sheetAvatars: { type: Array, default: () => [] },
-  projectScenes: { type: Array, default: () => [] },
   subflowExits: { type: Array, default: () => [] },
   referencingJumps: { type: Array, default: () => [] },
   referencingFlows: { type: Array, default: () => [] },
-  selectLoading: { type: Boolean, default: false },
-  searchHasMore: { type: Boolean, default: false },
 });
 
 const toolbarRef = ref(null);
@@ -83,7 +79,6 @@ const activeComponent = computed(() => TOOLBAR_COMPONENTS[nodeType.value] || nul
       :hubs="hubs"
       :project-flows="projectFlows"
       :sheet-avatars="sheetAvatars"
-      :project-scenes="projectScenes"
       :subflow-exits="subflowExits"
       :referencing-jumps="referencingJumps"
       :referencing-flows="referencingFlows"

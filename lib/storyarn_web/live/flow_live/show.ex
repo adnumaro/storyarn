@@ -1727,12 +1727,9 @@ defmodule StoryarnWeb.FlowLive.Show do
 
           %{id: s.id, name: s.name, color: s.color, avatars: avatars}
         end),
-      projectScenes: Enum.map(assigns.available_scenes, &Map.take(&1, [:id, :name])),
       subflowExits: assigns.subflow_exits,
       referencingJumps: assigns.referencing_jumps,
-      referencingFlows: assigns.referencing_flows,
-      selectLoading: assigns.node_select_loading,
-      searchHasMore: assigns.flow_search_has_more
+      referencingFlows: assigns.referencing_flows
     }
   end
 
