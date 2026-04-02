@@ -8,27 +8,21 @@ import ExplorationToolbar from "./ExplorationToolbar.vue";
 import FlowOverlay from "./FlowOverlay.vue";
 import SessionPromptModal from "./SessionPromptModal.vue";
 
-const { sceneData, explorationData, sceneName, showZones, flowMode, sessionPrompt, pendingSession, collectionMode, collectionZone, collectionItems, activeFlowSlide, activeFlowName, showFlowContinue } = defineProps({
+const { sceneData, explorationData, sceneName, showZones, flowState, collection, session } = defineProps({
   sceneData: { type: Object, required: true },
   explorationData: { type: Object, required: true },
   sceneName: { type: String, default: "" },
   showZones: { type: Boolean, default: false },
-  flowMode: { type: Boolean, default: false },
-  sessionPrompt: { type: Boolean, default: false },
-  pendingSession: { type: Object, default: null },
-  collectionMode: { type: Boolean, default: false },
-  collectionZone: { type: Object, default: null },
-  collectionItems: { type: Array, default: () => [] },
-  activeFlowSlide: { type: Object, default: null },
-  activeFlowName: { type: String, default: null },
-  showFlowContinue: { type: Boolean, default: false },
+  flowState: { type: Object, default: () => ({ active: false, slide: null, flowName: null, showContinue: false }) },
+  collection: { type: Object, default: () => ({ open: false, zone: null, items: [] }) },
+  session: { type: Object, default: () => ({ promptOpen: false, pending: null }) },
 });
 
 const live = useLive();
 
 useExplorationKeyboard({
-  flowMode: toRef(() => flowMode),
-  activeFlowSlide: toRef(() => activeFlowSlide),
+  flowMode: toRef(() => flowState.active),
+  activeFlowSlide: toRef(() => flowState.slide),
   pushEvent: live.pushEvent,
 });
 </script>
@@ -37,8 +31,8 @@ useExplorationKeyboard({
   <div class="w-full h-full bg-background flex flex-col">
     <ExplorationToolbar
       :scene-name="sceneName"
-      :active-flow-name="activeFlowName"
-      :flow-mode="flowMode"
+      :active-flow-name="flowState.flowName"
+      :flow-mode="flowState.active"
       :show-zones="showZones"
     />
 
@@ -49,23 +43,23 @@ useExplorationKeyboard({
           :scene-data="sceneData"
           :exploration-data="explorationData"
           :show-zones="showZones"
-          :flow-mode="flowMode"
+          :flow-mode="flowState.active"
         />
       </div>
 
       <!-- Flow overlay -->
       <FlowOverlay
-        v-if="flowMode && activeFlowSlide"
-        :slide="activeFlowSlide"
-        :flow-name="activeFlowName"
-        :show-continue="showFlowContinue"
+        v-if="flowState.active && flowState.slide"
+        :slide="flowState.slide"
+        :flow-name="flowState.flowName"
+        :show-continue="flowState.showContinue"
       />
     </div>
 
     <!-- Collection modal -->
-    <CollectionModal :open="collectionMode" :zone="collectionZone" :items="collectionItems" />
+    <CollectionModal :open="collection.open" :zone="collection.zone" :items="collection.items" />
 
     <!-- Session prompt -->
-    <SessionPromptModal :open="sessionPrompt" :pending-session="pendingSession" />
+    <SessionPromptModal :open="session.promptOpen" :pending-session="session.pending" />
   </div>
 </template>

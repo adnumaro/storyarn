@@ -49,15 +49,21 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         exploration-data={@exploration_data}
         scene-name={@scene.name}
         show-zones={@show_zones}
-        flow-mode={@flow_mode}
-        session-prompt={@session_prompt}
-        pending-session={serialize_pending_session(@pending_session)}
-        collection-mode={@collection_mode}
-        collection-zone={@collection_zone}
-        collection-items={@collection_items}
-        active-flow-slide={@active_flow && serialize_slide(@active_flow.slide)}
-        active-flow-name={@active_flow && @active_flow.flow.name}
-        show-flow-continue={@active_flow && show_flow_continue?(@active_flow)}
+        flow-state={%{
+          active: @flow_mode,
+          slide: @active_flow && serialize_slide(@active_flow.slide),
+          flowName: @active_flow && @active_flow.flow.name,
+          showContinue: @active_flow && show_flow_continue?(@active_flow)
+        }}
+        collection={%{
+          open: @collection_mode,
+          zone: @collection_zone,
+          items: @collection_items
+        }}
+        session={%{
+          promptOpen: @session_prompt,
+          pending: serialize_pending_session(@pending_session)
+        }}
       />
       <.flash_group flash={@flash} />
     </div>

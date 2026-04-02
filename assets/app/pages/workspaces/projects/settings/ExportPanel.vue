@@ -8,17 +8,11 @@ import { Label } from "@components/ui/label/index.js";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const { formats, selectedFormat, selectedExtension, supportedSections, sections, entityCounts, assetMode, validateBeforeExport, prettyPrint, validationResult, exportDownloadUrl } = defineProps({
-  formats: { type: Array, required: true },
-  selectedFormat: { type: String, required: true },
-  selectedExtension: { type: String, required: true },
-  supportedSections: { type: Array, required: true },
-  sections: { type: Array, required: true },
-  entityCounts: { type: Object, default: () => ({}) },
-  assetMode: { type: String, required: true },
-  validateBeforeExport: { type: Boolean, required: true },
-  prettyPrint: { type: Boolean, required: true },
-  validationResult: { type: Object, default: null },
+const { formatConfig, sectionConfig, options, validation, exportDownloadUrl } = defineProps({
+  formatConfig: { type: Object, required: true },
+  sectionConfig: { type: Object, required: true },
+  options: { type: Object, required: true },
+  validation: { type: Object, default: null },
   exportDownloadUrl: { type: String, required: true },
 });
 
@@ -38,8 +32,8 @@ const assetModeOptions = [
   { value: "bundled", label: "Bundled (ZIP with assets folder)" },
 ];
 
-const sectionsSet = computed(() => new Set(sections));
-const supportedSet = computed(() => new Set(supportedSections));
+const sectionsSet = computed(() => new Set(sectionConfig.selected));
+const supportedSet = computed(() => new Set(sectionConfig.supported));
 
 function setFormat(format) {
   live.pushEvent("set_format", { format });
@@ -82,15 +76,15 @@ function validationBadgeVariant(status) {
     <div class="space-y-2">
       <Label class="text-sm font-medium">Format</Label>
       <RadioGroup
-        :model-value="selectedFormat"
+        :model-value="formatConfig.selected"
         class="flex flex-col gap-1"
         @update:model-value="setFormat"
       >
         <label
-          v-for="fmt in formats"
+          v-for="fmt in formatConfig.formats"
           :key="fmt.format"
           class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2"
-          :class="selectedFormat === fmt.format ? 'bg-muted' : ''"
+          :class="formatConfig.selected === fmt.format ? 'bg-muted' : ''"
         >
           <RadioGroupItem :value="fmt.format" />
           <span class="text-sm">{{ fmt.label }}</span>
@@ -114,8 +108,8 @@ function validationBadgeVariant(status) {
           />
           <span class="text-sm" :class="!supportedSet.has(sec.key) ? 'opacity-40' : ''">
             {{ sec.label }}
-            <span v-if="entityCounts[sec.key]" class="text-muted-foreground">
-              ({{ entityCounts[sec.key] }})
+            <span v-if="sectionConfig.entityCounts[sec.key]" class="text-muted-foreground">
+              ({{ sectionConfig.entityCounts[sec.key] }})
             </span>
           </span>
         </label>
@@ -126,7 +120,7 @@ function validationBadgeVariant(status) {
     <div class="space-y-2">
       <Label class="text-sm font-medium">Assets</Label>
       <RadioGroup
-        :model-value="assetMode"
+        :model-value="options.assetMode"
         class="flex flex-col gap-1"
         @update:model-value="setAssetMode"
       >
@@ -147,13 +141,13 @@ function validationBadgeVariant(status) {
       <div class="flex flex-col gap-1">
         <label class="flex cursor-pointer items-center gap-3 py-1">
           <Checkbox
-            :model-value="validateBeforeExport"
+            :model-value="options.validateBeforeExport"
             @update:model-value="toggleOption('validate_before_export')"
           />
           <span class="text-sm">Validate before export</span>
         </label>
         <label class="flex cursor-pointer items-center gap-3 py-1">
-          <Checkbox :model-value="prettyPrint" @update:model-value="toggleOption('pretty_print')" />
+          <Checkbox :model-value="options.prettyPrint" @update:model-value="toggleOption('pretty_print')" />
           <span class="text-sm">Pretty print output</span>
         </label>
       </div>
@@ -169,20 +163,20 @@ function validationBadgeVariant(status) {
       <Button size="sm" as-child>
         <a :href="exportDownloadUrl">
           <Download class="size-4" />
-          Download .{{ selectedExtension }}
+          Download .{{ formatConfig.extension }}
         </a>
       </Button>
     </div>
 
     <!-- Validation results -->
-    <div v-if="validationResult" class="space-y-2">
-      <Badge :variant="validationBadgeVariant(validationResult.status)">
-        {{ validationStatusLabel(validationResult.status) }}
+    <div v-if="validation" class="space-y-2">
+      <Badge :variant="validationBadgeVariant(validation.status)">
+        {{ validationStatusLabel(validation.status) }}
       </Badge>
 
-      <div v-if="validationResult.errors?.length" class="space-y-1">
+      <div v-if="validation.errors?.length" class="space-y-1">
         <div
-          v-for="(finding, i) in validationResult.errors"
+          v-for="(finding, i) in validation.errors"
           :key="'err-' + i"
           class="flex items-start gap-2 text-sm text-destructive"
         >
@@ -191,9 +185,9 @@ function validationBadgeVariant(status) {
         </div>
       </div>
 
-      <div v-if="validationResult.warnings?.length" class="space-y-1">
+      <div v-if="validation.warnings?.length" class="space-y-1">
         <div
-          v-for="(finding, i) in validationResult.warnings"
+          v-for="(finding, i) in validation.warnings"
           :key="'warn-' + i"
           class="flex items-start gap-2 text-sm text-yellow-600 dark:text-yellow-500"
         >
@@ -202,9 +196,9 @@ function validationBadgeVariant(status) {
         </div>
       </div>
 
-      <div v-if="validationResult.info?.length" class="space-y-1">
+      <div v-if="validation.info?.length" class="space-y-1">
         <div
-          v-for="(finding, i) in validationResult.info"
+          v-for="(finding, i) in validation.info"
           :key="'info-' + i"
           class="flex items-start gap-2 text-sm text-blue-600 dark:text-blue-400"
         >
@@ -214,7 +208,7 @@ function validationBadgeVariant(status) {
       </div>
 
       <p
-        v-if="validationResult.status === 'passed' && !validationResult.info?.length"
+        v-if="validation.status === 'passed' && !validation.info?.length"
         class="text-sm text-green-600 dark:text-green-400"
       >
         No issues found. Project is ready for export.

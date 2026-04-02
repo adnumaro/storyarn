@@ -4,21 +4,14 @@ import ExportPanel from "./ExportPanel.vue";
 import ImportPanel from "./ImportPanel.vue";
 
 const {
-  formats, selectedFormat, selectedExtension, supportedSections, sections, entityCounts,
-  assetMode, validateBeforeExport, prettyPrint, validationResult, exportDownloadUrl,
+  formatConfig, sectionConfig, options, validation, exportDownloadUrl,
   canEdit, importStep, importPreview, importResult, importError, conflictStrategy, uploadConfig,
 } = defineProps({
-  // Export props
-  formats: { type: Array, required: true },
-  selectedFormat: { type: String, required: true },
-  selectedExtension: { type: String, required: true },
-  supportedSections: { type: Array, required: true },
-  sections: { type: Array, required: true },
-  entityCounts: { type: Object, default: () => ({}) },
-  assetMode: { type: String, required: true },
-  validateBeforeExport: { type: Boolean, required: true },
-  prettyPrint: { type: Boolean, required: true },
-  validationResult: { type: Object, default: null },
+  // Export props (grouped)
+  formatConfig: { type: Object, required: true },
+  sectionConfig: { type: Object, required: true },
+  options: { type: Object, required: true },
+  validation: { type: Object, default: null },
   exportDownloadUrl: { type: String, required: true },
 
   // Import props
@@ -35,16 +28,10 @@ const {
 <template>
   <div class="space-y-8">
     <ExportPanel
-      :formats="formats"
-      :selected-format="selectedFormat"
-      :selected-extension="selectedExtension"
-      :supported-sections="supportedSections"
-      :sections="sections"
-      :entity-counts="entityCounts"
-      :asset-mode="assetMode"
-      :validate-before-export="validateBeforeExport"
-      :pretty-print="prettyPrint"
-      :validation-result="validationResult"
+      :format-config="formatConfig"
+      :section-config="sectionConfig"
+      :options="options"
+      :validation="validation"
       :export-download-url="exportDownloadUrl"
     />
 

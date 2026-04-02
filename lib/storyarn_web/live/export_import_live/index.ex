@@ -29,16 +29,22 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         v-component="pages/workspaces/projects/settings/export-import"
         v-socket={@socket}
         id="export-import-vue"
-        formats={serialize_formats(@formats)}
-        selected-format={to_string(@selected_format)}
-        selected-extension={@selected_extension}
-        supported-sections={Enum.map(@supported_sections, &to_string/1)}
-        sections={Enum.map(@sections, &to_string/1)}
-        entity-counts={serialize_entity_counts(@entity_counts)}
-        asset-mode={to_string(@asset_mode)}
-        validate-before-export={@validate_before_export}
-        pretty-print={@pretty_print}
-        validation-result={serialize_validation_result(@validation_result)}
+        format-config={%{
+          formats: serialize_formats(@formats),
+          selected: to_string(@selected_format),
+          extension: @selected_extension
+        }}
+        section-config={%{
+          supported: Enum.map(@supported_sections, &to_string/1),
+          selected: Enum.map(@sections, &to_string/1),
+          entityCounts: serialize_entity_counts(@entity_counts)
+        }}
+        options={%{
+          assetMode: to_string(@asset_mode),
+          validateBeforeExport: @validate_before_export,
+          prettyPrint: @pretty_print
+        }}
+        validation={serialize_validation_result(@validation_result)}
         export-download-url={export_download_url(assigns)}
         can-edit={@can_edit}
         import-step={to_string(@import_step)}
