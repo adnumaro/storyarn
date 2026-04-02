@@ -22,30 +22,26 @@ import { Slider } from "@components/ui/slider/index.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const { open, debugState, debugActiveTab, debugNodes, debugAutoPlaying, debugSpeed, debugEditingVar, debugVarFilter, debugVarChangedOnly, debugCurrentFlowName, debugStepLimitReached } = defineProps({
+const { open, state, nodes, controls } = defineProps({
   open: { type: Boolean, default: false },
-  debugState: { type: Object, default: null },
-  debugActiveTab: { type: String, default: "console" },
-  debugNodes: { type: Object, default: () => ({}) },
-  debugAutoPlaying: { type: Boolean, default: false },
-  debugSpeed: { type: Number, default: 800 },
-  debugEditingVar: { type: String, default: null },
-  debugVarFilter: { type: String, default: "" },
-  debugVarChangedOnly: { type: Boolean, default: false },
-  debugCurrentFlowName: { type: String, default: "" },
-  debugStepLimitReached: { type: Boolean, default: false },
+  state: { type: Object, default: null },
+  nodes: { type: Object, default: () => ({}) },
+  controls: { type: Object, default: () => ({
+    activeTab: "console", autoPlaying: false, speed: 800,
+    varFilter: "", varChangedOnly: false, flowName: "", stepLimitReached: false,
+  }) },
 });
 
 const live = useLive();
 const height = ref(280);
-const varFilter = ref(debugVarFilter);
+const varFilter = ref(controls.varFilter);
 
-const status = computed(() => debugState?.status || "idle");
-const stepCount = computed(() => debugState?.execution_path?.length || 0);
-const currentNodeId = computed(() => debugState?.current_node_id);
-const variables = computed(() => debugState?.variables || {});
-const executionPath = computed(() => debugState?.execution_path || []);
-const pendingChoices = computed(() => debugState?.pending_choices || []);
+const status = computed(() => state?.status || "idle");
+const stepCount = computed(() => state?.execution_path?.length || 0);
+const currentNodeId = computed(() => state?.current_node_id);
+const variables = computed(() => state?.variables || {});
+const executionPath = computed(() => state?.execution_path || []);
+const pendingChoices = computed(() => state?.pending_choices || []);
 
 const filteredVariables = computed(() => {
   const vars = Object.entries(variables.value);
@@ -54,7 +50,7 @@ const filteredVariables = computed(() => {
     const q = varFilter.value.toLowerCase();
     filtered = filtered.filter(([key]) => key.toLowerCase().includes(q));
   }
-  if (debugVarChangedOnly) {
+  if (controls.varChangedOnly) {
     filtered = filtered.filter(([, v]) => v.changed);
   }
   return filtered;
@@ -77,7 +73,7 @@ function stop() {
   live.pushEvent("debug_stop", {});
 }
 function togglePlay() {
-  live.pushEvent(debugAutoPlaying ? "debug_pause" : "debug_play", {});
+  live.pushEvent(controls.autoPlaying ? "debug_pause" : "debug_play", {});
 }
 function setSpeed(val) {
   live.pushEvent("debug_set_speed", { speed: val[0] });
@@ -92,7 +88,7 @@ function switchTab(tab) {
 
 <template>
   <div
-    v-if="open && debugState"
+    v-if="open && state"
     class="border-t border-border bg-background shrink-0"
     :style="{ height: `${height}px` }"
   >
@@ -102,7 +98,7 @@ function switchTab(tab) {
 
       <!-- Play/Pause -->
       <Button variant="ghost" size="icon-sm" class="size-7" @click="togglePlay">
-        <Pause v-if="debugAutoPlaying" class="size-3.5" />
+        <Pause v-if="controls.autoPlaying" class="size-3.5" />
         <Play v-else class="size-3.5" />
       </Button>
 
@@ -143,9 +139,9 @@ function switchTab(tab) {
       <div class="w-px h-5 bg-border mx-1" />
 
       <!-- Speed slider -->
-      <span class="text-xs text-muted-foreground">{{ formatSpeed(debugSpeed) }}</span>
+      <span class="text-xs text-muted-foreground">{{ formatSpeed(controls.speed) }}</span>
       <Slider
-        :model-value="[debugSpeed]"
+        :model-value="[controls.speed]"
         :min="200"
         :max="3000"
         :step="100"
@@ -155,20 +151,20 @@ function switchTab(tab) {
 
       <!-- Flow name -->
       <span class="ml-auto text-xs text-muted-foreground truncate max-w-[150px]">
-        {{ debugCurrentFlowName }}
+        {{ controls.flowName }}
       </span>
     </div>
 
     <!-- Step limit warning -->
     <div
-      v-if="debugStepLimitReached"
+      v-if="controls.stepLimitReached"
       class="px-3 py-1.5 bg-amber-500/10 text-amber-600 text-xs flex items-center gap-2"
     >
       Step limit reached. Reset to continue.
     </div>
 
     <!-- Tab content -->
-    <Tabs :model-value="debugActiveTab" class="h-[calc(100%-44px)]" @update:model-value="switchTab">
+    <Tabs :model-value="controls.activeTab" class="h-[calc(100%-44px)]" @update:model-value="switchTab">
       <TabsList class="px-3 pt-1">
         <TabsTrigger value="console" class="text-xs">Console</TabsTrigger>
         <TabsTrigger value="variables" class="text-xs">Variables</TabsTrigger>
@@ -226,7 +222,7 @@ function switchTab(tab) {
           class="flex items-center gap-2 text-xs py-1"
         >
           <span class="text-muted-foreground w-6 text-right">{{ i + 1 }}</span>
-          <span class="font-mono">{{ debugNodes[nodeId]?.label || nodeId }}</span>
+          <span class="font-mono">{{ nodes[nodeId]?.label || nodeId }}</span>
         </div>
       </TabsContent>
     </Tabs>

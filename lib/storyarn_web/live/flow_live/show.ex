@@ -167,16 +167,17 @@ defmodule StoryarnWeb.FlowLive.Show do
             v-socket={@socket}
             id="flow-debug-panel"
             open={@debug_panel_open && @debug_state != nil}
-            debug-state={@debug_state}
-            debug-active-tab={@debug_active_tab}
-            debug-nodes={@debug_nodes}
-            debug-auto-playing={@debug_auto_playing}
-            debug-speed={@debug_speed}
-            debug-editing-var={@debug_editing_var}
-            debug-var-filter={@debug_var_filter}
-            debug-var-changed-only={@debug_var_changed_only}
-            debug-current-flow-name={@flow && @flow.name}
-            debug-step-limit-reached={@debug_step_limit_reached}
+            state={@debug_state}
+            nodes={@debug_nodes}
+            controls={%{
+              activeTab: @debug_active_tab,
+              autoPlaying: @debug_auto_playing,
+              speed: @debug_speed,
+              varFilter: @debug_var_filter,
+              varChangedOnly: @debug_var_changed_only,
+              flowName: @flow && @flow.name,
+              stepLimitReached: @debug_step_limit_reached
+            }}
           />
         </div>
 
