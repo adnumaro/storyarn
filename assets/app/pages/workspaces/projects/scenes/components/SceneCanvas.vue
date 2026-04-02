@@ -318,6 +318,19 @@ const selectedElementPosition = computed(() => {
   return null;
 });
 
+const ELEMENT_LISTS = {
+  annotation: () => annotations,
+  connection: () => connections,
+  pin: () => pins,
+  zone: () => zones,
+};
+
+const selectedElement = computed(() => {
+  const getter = ELEMENT_LISTS[selectedType.value];
+  if (!getter) return null;
+  return getter().find((e) => e.id === selectedId.value) || null;
+});
+
 function clipCircle(radius) {
   return (ctx) => {
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
@@ -418,17 +431,12 @@ const LABEL_COLOR = "#d1d5db";
     <!-- Floating toolbar (HTML overlay above canvas) -->
     <SceneFloatingToolbar
       :selected-type="selectedType"
-      :selected-id="selectedId"
-      :annotations="annotations"
-      :connections="connections"
-      :pins="pins"
-      :zones="zones"
+      :selected-element="selectedElement"
       :layers="layers"
       :can-edit="canEdit"
       :edit-mode="editMode"
       :stage-config="stageConfig"
       :element-position="selectedElementPosition"
-      :container-width="stageConfig.width"
       :is-dragging="isDragging || isDraggingZone || isEditingWaypoints"
     />
   </div>

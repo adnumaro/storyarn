@@ -10,9 +10,8 @@ import {
   ToolbarStrokePicker,
 } from "../../toolbar";
 
-const { element, selectedId, layers, canEdit } = defineProps({
+const { element, layers, canEdit } = defineProps({
   element: { type: Object, required: true },
-  selectedId: { type: [Number, null], required: true },
   layers: { type: Array, default: () => [] },
   canEdit: { type: Boolean, default: false },
 });
@@ -29,7 +28,7 @@ function updateField(field, value) {
 
 function updateActionType(type) {
   live.pushEvent("update_zone_action_type", {
-    "zone-id": String(selectedId),
+    "zone-id": String(element.id),
     "action-type": type,
   });
 }
