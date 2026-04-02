@@ -150,8 +150,7 @@ defmodule StoryarnWeb.SceneLive.Show do
               active-tool={to_string(@active_tool)}
               edit-mode={@edit_mode}
               can-edit={@can_edit}
-              current-user-id={@current_scope.user.id}
-              entity-locks={serialize_entity_locks(@entity_locks)}
+              collaboration={%{userId: @current_scope.user.id, locks: serialize_entity_locks(@entity_locks)}}
             />
 
             <%!-- Hidden file input for background upload --%>
@@ -361,8 +360,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           active-tool={to_string(@active_tool)}
           edit-mode={@edit_mode}
           can-edit={@can_edit}
-          current-user-id={@current_scope.user.id}
-          entity-locks={serialize_entity_locks(@entity_locks)}
+          collaboration={%{userId: @current_scope.user.id, locks: serialize_entity_locks(@entity_locks)}}
         />
 
         <.vue

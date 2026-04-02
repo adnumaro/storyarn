@@ -24,7 +24,7 @@ import WaypointEditorLayer from "./layers/WaypointEditorLayer.vue";
 import ZoneConnectionLayer from "./layers/ZoneConnectionLayer.vue";
 import SceneFloatingToolbar from "./SceneFloatingToolbar.vue";
 
-const { sceneData, pins, zones, connections, annotations, layers, activeTool, editMode, canEdit, currentUserId, entityLocks } = defineProps({
+const { sceneData, pins, zones, connections, annotations, layers, activeTool, editMode, canEdit, collaboration } = defineProps({
   sceneData: { type: Object, default: null },
   pins: { type: Array, default: () => [] },
   zones: { type: Array, default: () => [] },
@@ -34,8 +34,7 @@ const { sceneData, pins, zones, connections, annotations, layers, activeTool, ed
   activeTool: { type: String, default: "select" },
   editMode: { type: Boolean, default: true },
   canEdit: { type: Boolean, default: false },
-  currentUserId: { type: [Number, String], default: 0 },
-  entityLocks: { type: Object, default: () => ({}) },
+  collaboration: { type: Object, default: () => ({ userId: 0, locks: {} }) },
 });
 
 const containerRef = ref(null);
@@ -139,15 +138,15 @@ const { isDraggingZone, zoneDragOverride, onZoneMouseDown, onZoneDragMove, onZon
     selectedType,
     selectedId,
     ...editRefs,
-    entityLocks: toRef(() => entityLocks),
-    currentUserId: toRef(() => currentUserId),
+    entityLocks: toRef(() => collaboration.locks),
+    currentUserId: toRef(() => collaboration.userId),
   });
 
 const { pinConfigs } = usePins({
   pins: toRef(() => pins),
   layers: toRef(() => layers),
-  entityLocks: toRef(() => entityLocks),
-  currentUserId: toRef(() => currentUserId),
+  entityLocks: toRef(() => collaboration.locks),
+  currentUserId: toRef(() => collaboration.userId),
   percentToPixel,
   activeTool: activeToolRef,
   ...selectionRefs,
@@ -177,8 +176,8 @@ const {
 const { zoneConfigs } = useZones({
   zones: toRef(() => zones),
   layers: toRef(() => layers),
-  entityLocks: toRef(() => entityLocks),
-  currentUserId: toRef(() => currentUserId),
+  entityLocks: toRef(() => collaboration.locks),
+  currentUserId: toRef(() => collaboration.userId),
   percentToPixel,
   ...selectionRefs,
   zoneDragOverride,
@@ -189,8 +188,8 @@ const { zoneConfigs } = useZones({
 const { annotationConfigs } = useAnnotations({
   annotations: toRef(() => annotations),
   layers: toRef(() => layers),
-  entityLocks: toRef(() => entityLocks),
-  currentUserId: toRef(() => currentUserId),
+  entityLocks: toRef(() => collaboration.locks),
+  currentUserId: toRef(() => collaboration.userId),
   percentToPixel,
   ...selectionRefs,
   ...editRefs,
