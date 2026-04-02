@@ -6,7 +6,7 @@
     "correctness": "error"
   },
   "rules": {
-    "complexity": ["warn", { "max": 10 }],
+    "complexity": ["error", { "max": 10 }],
     "no-nested-ternary": "error",
     "vue/define-props-destructuring": "error",
     "vue/max-props": ["error", { "maxProps": 10 }],
