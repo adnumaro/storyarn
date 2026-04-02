@@ -15,9 +15,13 @@ import {
 } from "@components/ui/table/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const { canEdit, importState, uploadConfig } = defineProps({
+const { canEdit, importStep, importPreview, importResult, importError, conflictStrategy, uploadConfig } = defineProps({
   canEdit: { type: Boolean, required: true },
-  importState: { type: Object, required: true },
+  importStep: { type: String, required: true },
+  importPreview: { type: Object, default: null },
+  importResult: { type: Object, default: null },
+  importError: { type: String, default: null },
+  conflictStrategy: { type: String, required: true },
   uploadConfig: { type: Object, default: null },
 });
 
@@ -43,8 +47,8 @@ const hasUploadEntries = computed(() => {
 });
 
 const previewCountRows = computed(() => {
-  if (!importState.preview?.counts) return [];
-  const counts = importState.preview.counts;
+  if (!importPreview?.counts) return [];
+  const counts = importPreview.counts;
   const rows = [
     { entity: "Sheets", count: counts.sheets || 0 },
     { entity: "Flows", count: counts.flows || 0 },
@@ -56,9 +60,9 @@ const previewCountRows = computed(() => {
   return rows.filter((r) => r.count > 0);
 });
 
-const importState.resultRows = computed(() => {
-  if (!importState.result) return [];
-  const result = importState.result;
+const importResultRows = computed(() => {
+  if (!importResult) return [];
+  const result = importResult;
   const rows = [
     { entity: "Assets", items: result.assets },
     { entity: "Sheets", items: result.sheets },
@@ -112,7 +116,7 @@ function formatImportCount(items) {
 
     <template v-if="canEdit">
       <!-- Step: Upload -->
-      <div v-if="importState.step === 'upload'" class="space-y-3">
+      <div v-if="importStep === 'upload'" class="space-y-3">
         <div class="space-y-2">
           <Label>Select a .storyarn.json file</Label>
           <Button variant="outline" size="sm" @click="upload?.showFilePicker()">
@@ -135,7 +139,7 @@ function formatImportCount(items) {
       </div>
 
       <!-- Step: Preview -->
-      <div v-if="importState.step === 'preview'" class="space-y-4">
+      <div v-if="importStep === 'preview'" class="space-y-4">
         <h3 class="text-base font-medium">Import preview</h3>
 
         <!-- Entity counts -->
@@ -155,12 +159,12 @@ function formatImportCount(items) {
         </Table>
 
         <!-- Conflicts -->
-        <div v-if="importState.preview?.has_conflicts" class="space-y-2">
+        <div v-if="importPreview?.has_conflicts" class="space-y-2">
           <h4 class="text-sm font-medium text-yellow-600 dark:text-yellow-500">
             Shortcut conflicts detected
           </h4>
           <div
-            v-for="([type, shortcuts], ci) in Object.entries(importState.preview.conflicts)"
+            v-for="([type, shortcuts], ci) in Object.entries(importPreview.conflicts)"
             :key="ci"
             class="text-sm"
           >
@@ -171,7 +175,7 @@ function formatImportCount(items) {
           <div class="space-y-2">
             <Label>Conflict resolution strategy</Label>
             <RadioGroup
-              :model-value="importState.conflictStrategy"
+              :model-value="conflictStrategy"
               class="flex flex-col gap-1"
               @update:model-value="setStrategy"
             >
@@ -197,7 +201,7 @@ function formatImportCount(items) {
       </div>
 
       <!-- Step: Done -->
-      <div v-if="importState.step === 'done'" class="space-y-3">
+      <div v-if="importStep === 'done'" class="space-y-3">
         <div
           class="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200"
         >
@@ -205,7 +209,7 @@ function formatImportCount(items) {
           <span>Import completed successfully!</span>
         </div>
 
-        <Table v-if="importState.resultRows.length">
+        <Table v-if="importResultRows.length">
           <TableHeader>
             <TableRow>
               <TableHead>Entity</TableHead>
@@ -213,7 +217,7 @@ function formatImportCount(items) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow v-for="row in importState.resultRows" :key="row.entity">
+            <TableRow v-for="row in importResultRows" :key="row.entity">
               <TableCell class="capitalize">{{ row.entity }}</TableCell>
               <TableCell class="text-right">{{ formatImportCount(row.items) }}</TableCell>
             </TableRow>
@@ -224,12 +228,12 @@ function formatImportCount(items) {
       </div>
 
       <!-- Step: Error -->
-      <div v-if="importState.step === 'error'" class="space-y-3">
+      <div v-if="importStep === 'error'" class="space-y-3">
         <div
           class="flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
         >
           <AlertTriangle class="size-5 shrink-0" />
-          <span>{{ importState.error }}</span>
+          <span>{{ importError }}</span>
         </div>
 
         <Button variant="ghost" size="sm" @click="resetImport"> Try again </Button>
