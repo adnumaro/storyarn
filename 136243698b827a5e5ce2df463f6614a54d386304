@@ -1,0 +1,23 @@
+assets/app/pages/workspaces/projects/flows/services/keyboard.js
+  aa411e6268b1fe63 45-58,60-62,64-66,68-82,84-94,96-107,109-117,119-124,126-140,142-152,156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "136243698b827a5e5ce2df463f6614a54d386304",
+  "prompts": {
+    "aa411e6268b1fe63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee02b674-0f8d-485d-be9a-c8380b599f30",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "messages": [],
+      "total_additions": 118,
+      "total_deletions": 116,
+      "accepted_lines": 110,
+      "overriden_lines": 0
+    }
+  }
+}
