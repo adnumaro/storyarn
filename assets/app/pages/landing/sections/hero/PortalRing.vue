@@ -1,13 +1,8 @@
 <script setup>
-import { ref, shallowRef, onMounted, onUnmounted, computed } from "vue";
+import { ref, shallowRef, onMounted, onUnmounted, computed, nextTick } from "vue";
 import { TresCanvas, useLoop } from "@tresjs/core";
 import * as THREE from "three";
 import { vertexShader, fragmentShader } from "./shaders/portalShader";
-
-const { portalFrameRef } = defineProps({
-  /** Reference element for portal center positioning */
-  portalFrameRef: { type: Object, default: null },
-});
 
 const containerRef = ref(null);
 const isMobile = ref(false);
@@ -42,19 +37,18 @@ onMounted(() => {
   isMobile.value = /Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 768;
   reducedMotion.value = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // Mobile: skip WebGL entirely
-  if (isMobile.value) {
-    webglFailed.value = true;
-    return;
-  }
 
-  updatePortalPosition();
-  window.addEventListener("resize", debouncedResize);
+  // Wait a tick to ensure parent frames are mounted
+  nextTick(() => {
+    updatePortalPosition();
+    window.addEventListener("resize", debouncedResize);
 
-  if (containerRef.value && "ResizeObserver" in window) {
-    resizeObserver = new ResizeObserver(updatePortalPosition);
-    resizeObserver.observe(containerRef.value);
-  }
+    const frameEl = document.getElementById("portal-video-frame");
+    if (frameEl && "ResizeObserver" in window) {
+      resizeObserver = new ResizeObserver(updatePortalPosition);
+      resizeObserver.observe(frameEl);
+    }
+  });
 });
 
 onUnmounted(() => {
@@ -84,14 +78,14 @@ function updatePortalPosition() {
   u.uDpr.value = pixelRatio.value;
   u.uResolution.value.set(width, height);
 
-  const frameEl = portalFrameRef;
+  const frameEl = document.getElementById("portal-video-frame");
   if (frameEl) {
     const frameRect = frameEl.getBoundingClientRect();
     const minPortalWidth = window.innerWidth < 640 ? 1240 : 1020;
     const localCenterX = frameRect.left - rect.left + frameRect.width * 0.5;
     const localCenterY = frameRect.top - rect.top + frameRect.height * 0.5;
     const portalYOffset = Math.min(frameRect.height * 0.28, window.innerWidth < 640 ? 112 : 156);
-    const maxPortalWidth = Math.min(Math.max(frameRect.width * 1.4, minPortalWidth), 1400);
+    const maxPortalWidth = Math.min(Math.max(frameRect.width * 2.05 + 900, minPortalWidth), 2220);
 
     u.uPortalCenter.value.set(localCenterX, height - localCenterY - portalYOffset);
     u.uPortalMaxWidth.value = maxPortalWidth;
@@ -105,7 +99,7 @@ function updatePortalPosition() {
 </script>
 
 <template>
-  <div ref="containerRef" class="absolute inset-0 z-0 pointer-events-none">
+  <div ref="containerRef" class="absolute inset-0 w-full h-full z-0 pointer-events-none">
     <!-- WebGL fallback: CSS ring for mobile or failed WebGL -->
     <div v-if="webglFailed" class="portal-fallback" />
 
@@ -116,9 +110,9 @@ function updatePortalPosition() {
       :antialias="false"
       :power-preference="powerPreference"
       :dpr="pixelRatio"
-      :clear-color="'#000000'"
-      window-size
-      class="absolute! inset-0!"
+      clear-color="#000000"
+      :clear-alpha="0"
+      class="absolute inset-0 w-full h-full"
     >
       <PortalScene :uniforms="uniforms" :reduced-motion="reducedMotion" />
     </TresCanvas>

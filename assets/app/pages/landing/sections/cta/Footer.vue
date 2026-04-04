@@ -1,6 +1,6 @@
 <script setup>
 const { translations } = defineProps({
-  translations: { type: Object, required: true },
+  translations: { type: Object, default: () => ({}) },
 });
 
 const year = new Date().getFullYear();

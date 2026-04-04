@@ -3,24 +3,24 @@ import { Compass } from "lucide-vue-next";
 import { useRevealOnScroll } from "../composables/useRevealOnScroll.js";
 
 const { translations } = defineProps({
-  translations: { type: Object, required: true },
+  translations: { type: Object, default: () => ({ exploration_items: [] }) },
 });
 
 const { elementRef: sectionRef, isRevealed } = useRevealOnScroll();
 </script>
 
 <template>
-  <section
-    ref="sectionRef"
-    class="relative py-24"
-    :class="{ 'opacity-0 translate-y-7': !isRevealed, 'opacity-100 translate-y-0': isRevealed }"
-    style="
-      transition:
-        opacity 1s cubic-bezier(0.22, 1, 0.36, 1),
-        transform 1s cubic-bezier(0.22, 1, 0.36, 1);
-    "
-  >
-    <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
+  <section class="relative py-24">
+    <div
+      ref="sectionRef"
+      class="mx-auto w-[min(calc(100%-48px),1280px)]"
+      :class="{ 'opacity-0 translate-y-7': !isRevealed, 'opacity-100 translate-y-0': isRevealed }"
+      style="
+        transition:
+          opacity 1s cubic-bezier(0.22, 1, 0.36, 1),
+          transform 1s cubic-bezier(0.22, 1, 0.36, 1);
+      "
+    >
       <div class="grid items-center gap-10 lg:grid-cols-[1.1fr_0.72fr]">
         <div>
           <div

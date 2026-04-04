@@ -189,7 +189,7 @@ defmodule StoryarnWeb.Layouts do
     <div class={["min-h-screen flex flex-col", @theme == "dark" && "dark"]}>
       <header
         class={[
-          "w-[min(calc(100%-48px),1280px)]",
+          "w-[min(calc(100%-48px),1280px)] h-16 flex items-center",
           @theme == "dark" &&
             "z-[120] rounded-full border border-border bg-background/70 px-5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.28)]"
         ]}
@@ -215,33 +215,33 @@ defmodule StoryarnWeb.Layouts do
           </div>
           <%!-- Desktop nav --%>
           <div class="hidden min-w-0 flex-1 items-center justify-between gap-6 xl:flex">
-            <div class="flex min-w-0 items-center gap-1">
-              <a href="#features" class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
+            <div class="flex min-w-0 items-center gap-2">
+              <a href="#features" class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
                 {gettext("Features")}
               </a>
-              <a href="#discover" class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
+              <a href="#discover" class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
                 {gettext("Discover")}
               </a>
-              <a href="#workflow" class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
+              <a href="#workflow" class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
                 {gettext("Workflow")}
               </a>
-              <.link navigate={~p"/docs"} class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
+              <.link navigate={~p"/docs"} class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
                 {gettext("Docs")}
               </.link>
-              <.link navigate={~p"/contact"} class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
+              <.link navigate={~p"/contact"} class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
                 {gettext("Contact")}
               </.link>
             </div>
-            <div class="flex flex-none items-center gap-1">
+            <div class="flex flex-none items-center gap-2">
               <%= if @current_scope && @current_scope.user do %>
-                <.link navigate={~p"/workspaces"} class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
+                <.link navigate={~p"/workspaces"} class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
                   {gettext("Dashboard")}
                 </.link>
               <% else %>
-                <a href="#waitlist" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                <a href="#waitlist" class="inline-flex items-center justify-center px-5 py-2.5 text-sm font-bold rounded-md text-teal-950 hover:scale-105 transition-all" style="background: linear-gradient(135deg, oklch(78% 0.14 185), oklch(68% 0.12 210)); box-shadow: 0 0 20px rgba(34, 211, 238, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);">
                   {gettext("Request access")}
                 </a>
-                <.link navigate={~p"/users/log-in"} class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
+                <.link navigate={~p"/users/log-in"} class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
                   {gettext("Log in")}
                 </.link>
               <% end %>
@@ -344,7 +344,8 @@ defmodule StoryarnWeb.Layouts do
                 <% else %>
                   <a
                     href="#waitlist"
-                    class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors btn-block rounded-2xl"
+                    class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-bold rounded-xl text-teal-950 hover:scale-105 transition-all w-full"
+                    style="background: linear-gradient(135deg, oklch(78% 0.14 185), oklch(68% 0.12 210)); box-shadow: 0 0 20px rgba(34, 211, 238, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);"
                     phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
                   >
                     {gettext("Request access")}

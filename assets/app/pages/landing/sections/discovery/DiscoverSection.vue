@@ -1,105 +1,60 @@
 <script setup>
-import { computed, defineAsyncComponent, onMounted, onUnmounted, ref } from "vue";
-import { useRevealOnScroll } from "../../composables/useRevealOnScroll.js";
+import { computed, defineAsyncComponent, ref, onMounted } from "vue";
 
 const DiscoverMonitor = defineAsyncComponent(() => import("./DiscoverMonitor.vue"));
 
-const { translations } = defineProps({
-  translations: { type: Object, required: true },
-});
-
 const activeTab = ref(0);
-const sectionRef = ref(null);
-const { elementRef: revealRef, isRevealed } = useRevealOnScroll({
-  threshold: 0.1,
-});
 
-const TOTAL_STEPS = 3;
-let scrollLocked = false;
+onMounted(() => {
+  window.addEventListener("storyarn:discover-step", (e) => {
+    activeTab.value = e.detail;
+  });
+});
+const isRevealed = ref(true); // GSAP controls the timeline now, assume it's revealed when reached
 
 const features = computed(() => [
   {
     id: "sheets",
-    label: translations.discover_sheets,
-    title: translations.discover_sheets_title,
-    desc: translations.discover_sheets_desc,
-    items: translations.discover_sheets_items,
+    label: "Fichas",
+    title: "La herencia mantiene tu mundo consistente",
+    desc: "Las fichas padre e hijo te permiten desarrollar personajes, facciones y lugares sin duplicar estructuras constantemente.",
+    items: [
+      "Variables compartidas que fluyen por la jerarquía.",
+      "Sobrescribe solo lo que cambie — por variante o episodio.",
+      "Escala el mundo sin copiar y pegar."
+    ],
     textPosition: "left",
   },
   {
     id: "flows",
-    label: translations.discover_flows,
-    title: translations.discover_flows_title,
-    desc: translations.discover_flows_desc,
-    items: translations.discover_flows_items,
+    label: "Flujos",
+    title: "Grafos visuales limpios a escala productiva",
+    desc: "Diálogos, condiciones, instrucciones y ramas en un único grafo integrado — diseñado para mantenerse claro incluso en máxima escala.",
+    items: [
+      "Conversaciones, cambios de estado y salidas unificadas.",
+      "La lógica vive enlazada a tus fichas, no en fragmentos huérfanos.",
+      "Desde bocetos rápidos hasta grafos hipercomplejos."
+    ],
     textPosition: "right",
   },
   {
     id: "scenes",
-    label: translations.discover_scenes,
-    title: translations.discover_scenes_title,
-    desc: translations.discover_scenes_desc,
-    items: translations.discover_scenes_items,
+    label: "Escenas",
+    title: "Capas y niebla para mapas comprensibles",
+    desc: "Utiliza capas para plantear progresiones, visibilidad y estructuras sin aplanar todo en una única imagen saturada.",
+    items: [
+      "Visibilidad por capas en lugar de un lienzo caótico.",
+      "Niebla de guerra para comunicar progresión.",
+      "Los grandes espacios se mantienen iterables y legibles en review."
+    ],
     textPosition: "center",
   },
 ]);
-
-function onScroll() {
-  if (scrollLocked) return;
-
-  const section = sectionRef.value;
-  if (!section) return;
-
-  const rect = section.getBoundingClientRect();
-  const scrolled = -rect.top;
-  const scrollableHeight = section.offsetHeight - window.innerHeight;
-
-  if (scrolled <= 0 || scrollableHeight <= 0) {
-    activeTab.value = 0;
-    return;
-  }
-
-  if (scrolled >= scrollableHeight) {
-    activeTab.value = TOTAL_STEPS - 1;
-    return;
-  }
-
-  const progress = scrolled / scrollableHeight;
-  activeTab.value = Math.min(Math.floor(progress * TOTAL_STEPS), TOTAL_STEPS - 1);
-}
-
-function scrollToTab(index) {
-  const section = sectionRef.value;
-  if (!section) return;
-
-  activeTab.value = index;
-  scrollLocked = true;
-
-  const scrollableHeight = section.offsetHeight - window.innerHeight;
-  // Scroll to the center of this step's zone so onScroll agrees when lock releases
-  const targetProgress = (index + 0.5) / TOTAL_STEPS;
-  const targetScroll = section.offsetTop + targetProgress * scrollableHeight;
-
-  window.scrollTo({ top: targetScroll, behavior: "smooth" });
-
-  setTimeout(() => {
-    scrollLocked = false;
-  }, 900);
-}
-
-onMounted(() => {
-  window.addEventListener("scroll", onScroll, { passive: true });
-  onScroll();
-});
-
-onUnmounted(() => {
-  window.removeEventListener("scroll", onScroll);
-});
 </script>
 
 <template>
-  <section id="discover" ref="sectionRef" class="discover-section relative">
-    <div ref="revealRef" class="discover-sticky">
+  <section id="discover" class="discover-section relative min-h-svh w-full">
+    <div class="discover-sticky relative h-svh w-full overflow-hidden">
       <!-- 3D Monitor canvas backdrop -->
       <div class="discover-canvas-wrap">
         <DiscoverMonitor :active-step="activeTab" :is-visible="isRevealed" />
@@ -147,7 +102,7 @@ onUnmounted(() => {
             type="button"
             class="discover-tab"
             :class="{ 'is-active': activeTab === i }"
-            @click="scrollToTab(i)"
+            @click="activeTab = i"
           >
             {{ feature.label }}
           </button>
@@ -159,8 +114,6 @@ onUnmounted(() => {
 
 <style scoped>
 .discover-section {
-  /* 3 steps × 100svh each = total scrollable area */
-  height: 300svh;
   background:
     radial-gradient(circle at 50% -15%, rgb(0 0 0 / 28%), transparent 24%),
     linear-gradient(
@@ -169,13 +122,6 @@ onUnmounted(() => {
       hsl(var(--background)) 54%,
       hsl(var(--background)) 100%
     );
-}
-
-.discover-sticky {
-  position: sticky;
-  top: 0;
-  height: 100svh;
-  overflow: hidden;
 }
 
 .discover-canvas-wrap {
@@ -254,7 +200,7 @@ onUnmounted(() => {
 
 .discover-text--center {
   top: auto;
-  bottom: 12%;
+  bottom: 15%;
   left: 50%;
   transform: translateX(-50%) translateY(20px);
   text-align: center;

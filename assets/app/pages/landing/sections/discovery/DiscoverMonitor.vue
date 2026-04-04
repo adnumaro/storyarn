@@ -28,6 +28,7 @@ onMounted(() => {
   <div class="absolute inset-0 z-0 pointer-events-none">
     <template v-if="!isMobile && !reducedMotion">
       <TresCanvas
+        window-size
         :alpha="true"
         :antialias="true"
         power-preference="high-performance"

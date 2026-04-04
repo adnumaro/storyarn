@@ -7,7 +7,7 @@ import { Input } from "@components/ui/input/index.js";
 import { useRevealOnScroll } from "../../composables/useRevealOnScroll.js";
 
 const { translations } = defineProps({
-  translations: { type: Object, required: true },
+  translations: { type: Object, default: () => ({}) },
 });
 
 const { pushEvent } = useLiveVue();
