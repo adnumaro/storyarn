@@ -14,19 +14,17 @@ const { activeStep, isVisible } = defineProps({
   isVisible: { type: Boolean, default: false },
 });
 
-const isMobile = ref(false);
 const reducedMotion = ref(false);
 const dpr = ref(typeof window !== "undefined" ? Math.min(window.devicePixelRatio, 2) : 1);
 
 onMounted(() => {
-  isMobile.value = /Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 768;
   reducedMotion.value = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 });
 </script>
 
 <template>
   <div class="absolute inset-0 z-0 pointer-events-none">
-    <template v-if="!isMobile && !reducedMotion">
+    <template v-if="!reducedMotion">
       <TresCanvas
         window-size
         :alpha="true"

@@ -112,7 +112,6 @@ export function useSectionScroll() {
     const featuresSection = document.getElementById("features-section");
     const featureShell = document.querySelector("[data-feature-stage-shell]");
     const featureIntro = document.querySelector("[data-feature-intro]");
-    const cardList = gsap.utils.toArray("[data-feature-card]");
     const autoSections = gsap.utils.toArray("[data-section-step]");
 
     if (!featuresSection || !heroContentInner) return;
@@ -123,19 +122,16 @@ export function useSectionScroll() {
         gsap.set(heroContentInner, { y: 0, opacity: 1 });
         if(featureShell) gsap.set(featureShell, { y: 72, opacity: 0.18 });
         if(featureIntro) gsap.set(featureIntro, { y: 28, opacity: 0.36 });
-        if(cardList.length) gsap.set(cardList, { y: 48, opacity: 0.18 });
       } else if (index === 1) {
         gsap.set(featuresSection, { yPercent: 0, y: 0, opacity: 1 });
         gsap.set(heroContentInner, { y: -132, opacity: 0 });
         if(featureShell) gsap.set(featureShell, { y: 0, opacity: 1 });
         if(featureIntro) gsap.set(featureIntro, { y: 0, opacity: 1 });
-        if(cardList.length) gsap.set(cardList, { y: 0, opacity: 1 });
       } else {
         gsap.set(featuresSection, { yPercent: -100 });
         gsap.set(heroContentInner, { y: -132, opacity: 0 });
         if(featureShell) gsap.set(featureShell, { y: 0, opacity: 1 });
         if(featureIntro) gsap.set(featureIntro, { y: 0, opacity: 1 });
-        if(cardList.length) gsap.set(cardList, { y: 0, opacity: 1 });
       }
 
       autoSections.forEach((section, i) => {
@@ -152,7 +148,7 @@ export function useSectionScroll() {
   }
 
   /* eslint-disable complexity */
-  function gotoPanel(index, isScrollingDown) {
+  function gotoPanel(index, isScrollingDown, forcedTabIndex = undefined) {
     if (animating) return;
     animating = true;
 
@@ -180,7 +176,9 @@ export function useSectionScroll() {
         scrollCooldown = setTimeout(() => { scrollCooldown = null; }, 400);
 
         if (index === DISCOVER_PANEL) {
-          if (isScrollingDown) {
+          if (forcedTabIndex !== undefined) {
+            discoverSubIndex = forcedTabIndex;
+          } else if (isScrollingDown) {
             discoverSubIndex = 0;
           } else {
             discoverSubIndex = DISCOVER_TOTAL_STEPS - 1;
@@ -197,22 +195,19 @@ export function useSectionScroll() {
     const featuresSection = document.getElementById("features-section");
     const featureShell = document.querySelector("[data-feature-stage-shell]");
     const featureIntro = document.querySelector("[data-feature-intro]");
-    const cardList = gsap.utils.toArray("[data-feature-card]");
 
     if (from === 0 && index === 1) {
       timeline
-        .to(featuresSection, { yPercent: 0 }, 0)
-        .to(heroContentInner, { y: -132, opacity: 0 }, 0)
-        .to(featureShell, { y: 0, opacity: 1 }, 0.12)
-        .to(featureIntro, { y: 0, opacity: 1 }, 0.16)
-        .to(cardList, { y: 0, opacity: 1, stagger: 0.045 }, 0.2);
+        .to(featuresSection, { yPercent: 0, duration: 0.8, ease: "power2.inOut" }, 0)
+        .to(heroContentInner, { y: -80, opacity: 0, duration: 0.7, ease: "power2.inOut" }, 0)
+        .to(featureShell, { y: 0, opacity: 1, duration: 0.8, ease: "power2.out" }, 0)
+        .to(featureIntro, { y: 0, opacity: 1, duration: 0.8, ease: "power2.out" }, 0);
     } else if (from === 1 && index === 0) {
       timeline
-        .to(cardList, { y: 48, opacity: 0.18, stagger: { each: 0.03, from: "end" } }, 0)
-        .to(featureIntro, { y: 28, opacity: 0.36 }, 0.04)
-        .to(featureShell, { y: 72, opacity: 0.18 }, 0.08)
-        .to(heroContentInner, { y: 0, opacity: 1 }, 0.08)
-        .to(featuresSection, { yPercent: 100 }, 0.08);
+        .to(featureIntro, { y: 28, opacity: 0, duration: 0.6, ease: "power2.inOut" }, 0)
+        .to(featureShell, { y: 72, opacity: 0, duration: 0.6, ease: "power2.inOut" }, 0)
+        .to(heroContentInner, { y: 0, opacity: 1, duration: 0.8, ease: "power2.inOut" }, 0)
+        .to(featuresSection, { yPercent: 100, duration: 0.8, ease: "power2.inOut" }, 0);
     } else if (from === 1 && index === 2) {
       timeline
         .to(featuresSection, { yPercent: -100 }, 0)

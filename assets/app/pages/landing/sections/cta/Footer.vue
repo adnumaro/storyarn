@@ -7,55 +7,45 @@ const year = new Date().getFullYear();
 </script>
 
 <template>
-  <footer class="border-t border-border/30 pb-8 pt-10">
+  <footer class="landing-footer w-full border-t border-border/10 pb-8 pt-16 bg-[#111318]">
     <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
-      <div class="flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <img
-            :src="'/images/logos/logo-name-white.png'"
-            alt="Storyarn"
-            class="mb-3 h-8 w-auto opacity-60"
-          />
-          <p class="max-w-xs text-sm leading-relaxed text-muted-foreground">
-            {{ translations.footer_tagline }}
+      
+      <!-- Split Structure -->
+      <div class="flex flex-col gap-12 sm:flex-row sm:justify-between mb-16">
+        
+        <!-- Left: Branding, Tagline, Badges -->
+        <div class="flex flex-col items-start gap-5 max-w-[26rem]">
+          <div class="flex items-center gap-3">
+            <img
+              :src="'/images/logos/logo-name-white.png'"
+              alt="Storyarn"
+              class="h-7 w-auto mix-blend-screen opacity-90"
+            />
+            <span class="rounded-full border border-border/20 bg-muted/30 px-3 py-1 text-[11px] font-semibold text-foreground/70 tracking-wide uppercase">
+              Beta privada
+            </span>
+          </div>
+          <p class="text-sm leading-relaxed text-muted-foreground/80">
+            Diseña personajes, diálogos, mundos y localización en un solo proyecto conectado. Creado para equipos narrativos que publican historias interactivas.
           </p>
         </div>
-        <nav class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-          <a href="#features-section" class="transition-colors hover:text-foreground">
-            {{ translations.features }}
-          </a>
-          <a href="#discover" class="transition-colors hover:text-foreground">
-            {{ translations.discover }}
-          </a>
-          <a href="#workflow" class="transition-colors hover:text-foreground">
-            {{ translations.workflow }}
-          </a>
-          <a href="/docs" class="transition-colors hover:text-foreground">
-            {{ translations.docs }}
-          </a>
-          <a href="/contact" class="transition-colors hover:text-foreground">
-            {{ translations.contact }}
-          </a>
+        
+        <!-- Right: Links Stack -->
+        <nav class="flex flex-col gap-3 text-sm font-medium text-muted-foreground/80 pt-2 lg:mr-24">
+          <a href="#features-section" class="transition-colors hover:text-foreground">Características</a>
+          <a href="#discover" class="transition-colors hover:text-foreground">Descubrir</a>
+          <a href="#workflow" class="transition-colors hover:text-foreground">Flujo de trabajo</a>
+          <a href="/docs" class="transition-colors hover:text-foreground">Docs</a>
+          <a href="/contact" class="transition-colors hover:text-foreground">Contacto</a>
         </nav>
       </div>
-      <div class="mt-8 flex flex-wrap items-center gap-3 border-t border-border/20 pt-6">
-        <span
-          class="rounded-full border border-border/30 bg-muted/20 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm"
-        >
-          {{ translations.private_beta_badge }}
-        </span>
-        <span
-          class="rounded-full border border-border/30 bg-muted/20 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm"
-        >
-          {{ translations.realtime_collab }}
-        </span>
-        <span
-          class="rounded-full border border-border/30 bg-muted/20 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm"
-        >
-          {{ translations.version_snapshots }}
-        </span>
-        <span class="ml-auto text-xs text-muted-foreground/50"> &copy; {{ year }} Storyarn </span>
+
+      <!-- Bottom Edge -->
+      <div class="flex items-center justify-between border-t border-border/10 pt-6 text-sm text-muted-foreground/50">
+        <span>Storyarn &middot; {{ year }}</span>
+        <span>Beta privada</span>
       </div>
+      
     </div>
   </footer>
 </template>

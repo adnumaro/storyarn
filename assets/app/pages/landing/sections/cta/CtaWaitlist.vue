@@ -45,26 +45,31 @@ async function handleSubmit() {
           <h2
             class="mb-3 text-[clamp(2rem,3vw,3.4rem)] font-bold leading-[0.96] tracking-[-0.06em] text-foreground"
           >
-            {{ translations.cta_title }}
+            Empieza a construir tu próxima narrativa
           </h2>
           <p class="mb-2 max-w-160 leading-relaxed text-muted-foreground">
-            {{ translations.cta_desc }}
+            Estamos incorporando a un pequeño grupo de diseñadores narrativos y estudios de juegos. Únete a la lista de espera — te contactaremos cuando tu plaza esté disponible.
           </p>
-          <form class="mt-6 flex max-w-115 flex-wrap gap-3" @submit.prevent="handleSubmit">
+          <form class="mt-6 flex max-w-xl flex-wrap gap-3" @submit.prevent="handleSubmit">
             <Input
               v-model="email"
               type="email"
-              :placeholder="translations.email_placeholder"
+              placeholder="tu@estudio.com"
               required
-              class="min-w-50 flex-1"
+              class="min-w-50 flex-1 border-border/40 bg-zinc-950/40 h-12 px-4 rounded-lg text-[15px]"
             />
-            <Button type="submit" :disabled="submitting" class="gap-2">
-              {{ translations.join_waitlist }}
+            <Button 
+              type="submit" 
+              :disabled="submitting" 
+              class="gap-2 font-bold text-teal-950 hover:scale-105 transition-all border-0 h-12 !px-6 rounded-lg text-[15px]"
+              style="background: linear-gradient(135deg, oklch(78% 0.14 185), oklch(68% 0.12 210)); box-shadow: 0 0 20px rgba(34, 211, 238, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);"
+            >
+              Unirse a la lista de espera
               <ArrowRight class="size-4" />
             </Button>
           </form>
-          <p class="mt-3 text-xs text-foreground/30">
-            {{ translations.no_spam }}
+          <p class="mt-3 text-xs text-foreground/40">
+            Sin spam. Solo te escribiremos cuando sea el momento.
           </p>
         </div>
       </div>

@@ -5,7 +5,6 @@ import * as THREE from "three";
 import { vertexShader, fragmentShader } from "./shaders/portalShader";
 
 const containerRef = ref(null);
-const isMobile = ref(false);
 const reducedMotion = ref(false);
 const webglFailed = ref(false);
 
@@ -20,8 +19,8 @@ const uniforms = shallowRef({
   uDpr: { value: 1 },
 });
 
-const powerPreference = computed(() => (isMobile.value ? "low-power" : "high-performance"));
-const pixelRatio = computed(() => (isMobile.value ? 1 : Math.min(window.devicePixelRatio, 2)));
+const powerPreference = computed(() => "high-performance");
+const pixelRatio = computed(() => Math.min(window.devicePixelRatio, 2));
 
 // Public API for scroll animation to control
 function setIntensity(v) {
@@ -34,7 +33,6 @@ function setScale(v) {
 defineExpose({ setIntensity, setScale });
 
 onMounted(() => {
-  isMobile.value = /Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth < 768;
   reducedMotion.value = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 

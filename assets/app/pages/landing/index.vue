@@ -3,11 +3,8 @@ import { onMounted, onUnmounted } from "vue";
 import CtaWaitlist from "./sections/cta/CtaWaitlist.vue";
 import LandingFooter from "./sections/cta/Footer.vue";
 import DiscoverSection from "./sections/discovery/DiscoverSection.vue";
-import ExplorationSpotlight from "./sections/ExplorationSpotlight.vue";
 import FeatureGrid from "./sections/FeatureGrid.vue";
 import HeroSection from "./sections/hero/HeroSection.vue";
-import VersionSpotlight from "./sections/VersionSpotlight.vue";
-import WorkflowGrid from "./sections/WorkflowGrid.vue";
 
 const { isLoggedIn } = defineProps({
   isLoggedIn: { type: Boolean, default: false },
@@ -18,14 +15,23 @@ import { useSectionScroll } from "./composables/useSectionScroll";
 const { gotoPanel } = useSectionScroll();
 
 // Force dark mode + smooth scroll on the landing page
+function handleForceScroll(e) {
+  if (e.detail && e.detail.panelIndex !== undefined) {
+    const isDown = e.detail.isScrollingDown !== undefined ? e.detail.isScrollingDown : e.detail.panelIndex > 0;
+    gotoPanel(e.detail.panelIndex, isDown, e.detail.tabIndex);
+  }
+}
+
 onMounted(() => {
   document.documentElement.classList.add("dark");
   document.documentElement.style.scrollBehavior = "smooth";
+  window.addEventListener("storyarn:force-scroll", handleForceScroll);
 });
 
 onUnmounted(() => {
   document.documentElement.classList.remove("dark");
   document.documentElement.style.scrollBehavior = "";
+  window.removeEventListener("storyarn:force-scroll", handleForceScroll);
 });
 </script>
 
@@ -40,9 +46,6 @@ onUnmounted(() => {
         
         <!-- Use data-section-step to denote scroll hijacker logic for these trailing panels -->
         <DiscoverSection data-section-step />
-        <ExplorationSpotlight data-section-step />
-        <VersionSpotlight data-section-step />
-        <WorkflowGrid data-section-step />
         
         <div class="lp-auto-section lp-cta-footer-section" data-section-step>
           <CtaWaitlist />

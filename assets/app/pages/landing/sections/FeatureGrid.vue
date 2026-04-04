@@ -1,111 +1,259 @@
 <script setup>
-import { Bug, GitBranch, Languages, Map, Package, Table2 } from "lucide-vue-next";
+import { ref } from "vue";
+import { 
+  Table2, GitBranch, Map, LayoutDashboard, LineChart, Bug, GitCommit, Languages, Package 
+} from "lucide-vue-next";
 
-// Define the static features array explicitly matching Staging UX
+const scrollContainer = ref(null);
+const activeIndex = ref(0);
+
 const features = [
   {
-    num: "01",
-    icon: Table2,
-    title: "Documentos como fuente de verdad",
-    desc: "Personajes, facciones, misiones y objetos viven en documentos estructurados con variables, fórmulas y herencia — tu única fuente de verdad.",
-    colorClassText: "text-primary",
-    colorClassBg: "bg-primary/10",
+    icon: LayoutDashboard,
+    title: "Las herramientas Core",
+    desc: "El corazón de tu narrativa. Documentos estructurados, ramificaciones dinámicas y mundos interactivos diseñados para integrarse como tu única fuente de verdad.",
+    colorClassText: "text-cyan-400",
+    subLinks: [
+      { name: "Explorar Fichas (Sheets)", index: 0, icon: Table2 },
+      { name: "Explorar Flujos (Flows)", index: 1, icon: GitBranch },
+      { name: "Explorar Escenas (Scenes)", index: 2, icon: Map },
+    ]
   },
   {
-    num: "02",
-    icon: GitBranch,
-    title: "Flujos que puedes jugar",
-    desc: "Construye diálogos ramificados, juégalos, depúralos y verifícalos — sin salir nunca del editor.",
-    colorClassText: "text-accent",
-    colorClassBg: "bg-accent/10",
+    icon: LineChart,
+    title: "Análisis y Dashboards",
+    desc: "Supervisa la complejidad de tu proyecto. Visualiza de un vistazo dependencias, densidad de diálogos y puntos ciegos técnicos en tu estructura narrativa.",
+    colorClassText: "text-blue-400",
   },
   {
-    num: "03",
-    icon: Map,
-    title: "Escenas con exploración real",
-    desc: "Coloca zonas, pins y disparadores en un lienzo interactivo. Camina a través de tu mundo antes de exportarlo al motor.",
-    colorClassText: "text-secondary",
-    colorClassBg: "bg-secondary/10",
-  },
-  {
-    num: "04",
     icon: Bug,
-    title: "Juégalo. Depúralo. Envíalo.",
-    desc: "Experimenta la historia como lo haría un jugador o analízala paso a paso viendo cada variable y condición interna en vivo.",
-    colorClassText: "text-primary",
-    colorClassBg: "bg-primary/10",
+    title: "Depuración multinivel",
+    desc: "Experimenta la historia exactamente como lo haría un jugador o analízala paso a paso rastreando cada variable, condición y trigger en tiempo real.",
+    colorClassText: "text-emerald-400",
   },
   {
-    num: "05",
+    icon: GitCommit,
+    title: "Control de versiones",
+    desc: "Historial completo de tu narrativa. Compara ramas, audita cambios entre guionistas y retrocede en el tiempo sin miedo a romper el flujo de juego.",
+    colorClassText: "text-purple-400",
+  },
+  {
     icon: Languages,
-    title: "Localización integrada",
-    desc: "Extrae líneas, traduce inteligentemente, maneja glosarios y haz seguimiento de la cobertura por idioma — todo desde el mismo proyecto.",
-    colorClassText: "text-accent",
-    colorClassBg: "bg-accent/10",
+    title: "Localización inteligente",
+    desc: "Extrae líneas, traduce inteligentemente, maneja glosarios y visualiza métricas de cobertura por idioma — todo desde el propio lienzo de escritura.",
+    colorClassText: "text-amber-500",
   },
   {
-    num: "06",
     icon: Package,
-    title: "Exporta a múltiples motores",
-    desc: "Exporta de forma nativa a Godot Dialogic, Unity, Unreal, Ink o Yarn Spinner — tu narrativa lista para entrar a producción.",
-    colorClassText: "text-secondary",
-    colorClassBg: "bg-secondary/10",
+    title: "Exportación nativa",
+    desc: "Exporta de forma automática a motores consolidados como Godot Dialogic, Unity, Unreal, Ink o Yarn Spinner. Tus datos, listos para entrar a producción.",
+    colorClassText: "text-zinc-400",
   },
 ];
+
+// GSAP Shield: High-Performance Wheel Throttle
+let isAnimating = false;
+
+function handleWheel(e) {
+  const delta = Math.sign(e.deltaY);
+
+  // We are within bounds: shield the event from the global GSAP Observer
+  e.stopPropagation();
+
+  // If we are fading/locked, just eat the event
+  if (isAnimating) return;
+
+  // Velocity Threshold: Ignore weak inertia tail-ends (macOS) after unlock
+  if (Math.abs(e.deltaY) < 40) return;
+
+  if (delta > 0) {
+    if (activeIndex.value === features.length - 1) {
+      gotoGlobal(2); // Jump to Discover
+    } else {
+      activeIndex.value++;
+    }
+    isAnimating = true;
+  } else if (delta < 0) {
+    if (activeIndex.value === 0) {
+      gotoGlobal(0); // Jump to Hero
+    } else {
+      activeIndex.value--;
+    }
+    isAnimating = true;
+  }
+
+  // Quick 300ms release allows rapid intentional multi-swipes
+  setTimeout(() => {
+    isAnimating = false;
+  }, 300);
+}
+
+let touchStartY = 0;
+function handleTouchStart(e) {
+  touchStartY = e.touches[0].clientY;
+}
+function handleTouchMove(e) {
+  if (!touchStartY) return;
+
+  const touchY = e.touches[0].clientY;
+  const deltaY = touchStartY - touchY;
+  const delta = Math.sign(deltaY);
+
+  e.stopPropagation();
+
+  if (isAnimating) return;
+  if (Math.abs(deltaY) < 30) return; // Touch intent threshold
+
+  if (delta > 0) {
+    if (activeIndex.value === features.length - 1) {
+      gotoGlobal(2);
+    } else {
+      activeIndex.value++;
+    }
+    isAnimating = true;
+    touchStartY = touchY;
+  } else if (delta < 0) {
+    if (activeIndex.value === 0) {
+      gotoGlobal(0);
+    } else {
+      activeIndex.value--;
+    }
+    isAnimating = true;
+    touchStartY = touchY;
+  }
+
+  setTimeout(() => {
+    isAnimating = false;
+  }, 300);
+}
+
+// Router trigger jumping over GSAP timeline safely
+function gotoGlobal(panelIndex, tabIndex = undefined) {
+  if (typeof window !== "undefined") {
+    const detail = { panelIndex };
+    if (tabIndex !== undefined) detail.tabIndex = tabIndex;
+    
+    window.dispatchEvent(
+      new CustomEvent("storyarn:force-scroll", { detail })
+    );
+  }
+}
 </script>
 
 <template>
   <section
     id="features-section"
-    class="relative z-20 flex min-h-svh items-center bg-linear-to-b from-background via-background to-background"
+    class="relative z-20 flex flex-col h-svh bg-background"
+    @wheel="handleWheel"
+    @touchstart="handleTouchStart"
+    @touchmove="handleTouchMove"
   >
-    <div
-      class="lp-features-shell mx-auto w-[min(calc(100%-48px),1280px)] py-28"
-      data-feature-stage-shell
-    >
-      <!-- Section header -->
-      <div class="mb-8 max-w-[56rem]" data-feature-intro>
-        <h2
-          class="text-[clamp(2.2rem,3vw,3.8rem)] font-bold leading-[0.97] tracking-[-0.06em] text-foreground"
-        >
-          Una plataforma, todo conectado
+    <!-- Global Fixed Header Area (Spanning 100% width) -->
+    <div class="pt-28 lg:pt-48 px-8 lg:px-24 pb-12 lg:pb-24 relative z-30 w-full shrink-0 bg-background/80 backdrop-blur-xl border-b border-border/20 shadow-sm shadow-black/5 overflow-hidden">
+      <!-- Glow embedded securely inside the Header -->
+      <div class="pointer-events-none absolute inset-x-0 -top-[450px] left-1/2 h-[600px] w-[1000px] -translate-x-1/2 rounded-full bg-primary/10 blur-[160px]"></div>
+      
+      <div class="max-w-[1280px] mx-auto relative z-10">
+        <h2 class="text-[clamp(2.5rem,4vw,4.5rem)] font-bold tracking-tight text-foreground leading-[1] mb-6 max-w-4xl">
+          Desarrollo Narrativo End-to-End
         </h2>
-        <p class="mt-4 max-w-[36rem] text-base leading-relaxed text-muted-foreground">
-          Cada herramienta está diseñada para alimentar al resto — logrando que tus personajes, lógica, mundos y traducciones se mantengan conectados en lugar de esparcidos a lo largo de multitud de archivos inconexos.
+        <p class="text-lg lg:text-xl leading-relaxed text-muted-foreground lg:mr-8 max-w-3xl">
+          Una suite de herramientas donde los guionistas crean, los analistas exploran y los programadores simplemente exportan. Todo conectado.
         </p>
       </div>
+    </div>
 
-      <!-- Feature cards grid -->
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <article
-          v-for="feature in features"
-          :key="feature.num"
-          data-feature-card
-          class="lp-feature-card rounded-3xl border border-border/40 bg-muted/60 p-5 backdrop-blur-md transition-all sm:p-6"
-        >
-          <em
-            class="mb-4 inline-flex min-h-[46px] min-w-[46px] items-center justify-center rounded-xl not-italic"
-            :class="[feature.colorClassText, feature.colorClassBg]"
+    <div class="relative z-20 flex flex-1 w-full max-w-[1280px] mx-auto flex-col lg:flex-row min-h-0">
+      
+      <!-- Visual Sticking Container (Top Mobile, Right Desktop) -->
+      <div 
+        class="lg:w-[45%] w-full lg:h-full basis-[45%] lg:basis-auto shrink-0 bg-black/10 lg:order-2 flex items-center justify-center border-b lg:border-b-0 lg:border-l border-border/20 relative"
+      >
+        <transition name="vp-fade" mode="out-in">
+          <div 
+            :key="activeIndex" 
+            class="flex items-center justify-center w-full max-w-[280px] lg:max-w-[400px] aspect-square rounded-3xl bg-muted/30 border border-border/20 backdrop-blur-md shadow-2xl"
           >
-            <component :is="feature.icon" class="size-5" />
-          </em>
-          <h3 class="mb-3 text-xl font-bold tracking-tight text-foreground">
-            {{ feature.title }}
-          </h3>
-          <p class="leading-relaxed text-muted-foreground">{{ feature.desc }}</p>
-        </article>
+            <component 
+              :is="features[activeIndex].icon" 
+              class="w-32 h-32 lg:w-48 lg:h-48 opacity-20 transition-all duration-700 delay-100" 
+              :class="features[activeIndex].colorClassText" 
+            />
+          </div>
+        </transition>
+      </div>
+
+      <!-- Left Column Wrapper: ONLY contains the Scrollable Body now -->
+      <div class="lg:w-[55%] w-full flex-1 flex flex-col lg:order-1 relative h-full">
+
+        <!-- Dynamic Presenter Container (No Scroll) -->
+        <div
+          ref="scrollContainer"
+          class="flex-1 w-full flex flex-col justify-center relative touch-pan-y"
+        >
+          <!-- Using the same smooth Crossfade mechanic as the Visual wrapper! -->
+          <transition name="vp-fade" mode="out-in">
+            <div
+              :key="activeIndex"
+              class="px-8 lg:px-24 w-full flex flex-col max-w-xl left-0 right-0 absolute lg:static my-auto"
+            >
+              <h3 class="mb-4 text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
+                {{ features[activeIndex].title }}
+              </h3>
+              <p class="leading-relaxed text-lg lg:text-xl text-muted-foreground mb-8 text-pretty">
+                {{ features[activeIndex].desc }}
+              </p>
+              
+              <!-- SubLinks para el Punto 1 (Dovetail style sub-feature cards) -->
+              <div v-if="features[activeIndex].subLinks" class="flex flex-col gap-4 mt-8">
+                 <div 
+                   v-for="sublink in features[activeIndex].subLinks" 
+                   :key="sublink.name"
+                   @click="gotoGlobal(2, sublink.index)"
+                   class="group flex items-center justify-between p-4 rounded-xl border border-border/40 bg-muted/20 hover:bg-muted/60 transition-colors cursor-pointer"
+                 >
+                    <div class="flex items-center gap-4">
+                       <component :is="sublink.icon" class="size-5 text-primary" />
+                       <span class="font-semibold text-foreground">{{ sublink.name }}</span>
+                    </div>
+                    <span class="text-xl text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all duration-300">→</span>
+                 </div>
+              </div>
+            </div>
+          </transition>
+        </div>
       </div>
     </div>
   </section>
 </template>
 
 <style scoped>
-/* Additional micro-interactions matching staging */
-@media (hover: hover) {
-  .lp-feature-card:hover {
-    box-shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.4);
-    border-color: hsl(var(--border) / 0.8);
-    transform: translateY(-2px);
-  }
+/* Crossfade animation mechanics for the fixed Visual Area */
+.vp-fade-enter-active,
+.vp-fade-leave-active {
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.vp-fade-enter-from {
+  opacity: 0;
+  transform: scale(0.96) translateY(10px);
+}
+.vp-fade-leave-to {
+  opacity: 0;
+  transform: scale(1.04) translateY(-10px);
+}
+
+/* Optional custom scrollbar design for the content container overlaying beautifully */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 12px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
 }
 </style>
