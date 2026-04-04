@@ -19,6 +19,7 @@ const form = useLiveForm(() => formProp, {
 });
 
 const email = form.field("email");
+const password = form.field("password");
 const emailInput = ref(null);
 
 onMounted(() => {
@@ -33,17 +34,9 @@ const discordHref = oauthAction === "link" ? "/auth/discord/link" : "/auth/disco
 <template>
   <div class="mx-auto max-w-sm space-y-4">
     <div class="text-center space-y-2">
-      <h1 class="text-2xl font-bold tracking-tight">Register for an account</h1>
+      <h1 class="text-2xl font-bold tracking-tight">Complete your account</h1>
       <p class="text-sm text-muted-foreground">
-        Already registered?
-        <a
-          :href="loginUrl"
-          data-phx-link="redirect"
-          data-phx-link-state="push"
-          class="font-semibold text-primary hover:underline"
-          >Log in</a
-        >
-        to your account now.
+        Welcome to the beta! Define your password to access your workspace.
       </p>
     </div>
 
@@ -97,11 +90,7 @@ const discordHref = oauthAction === "link" ? "/auth/discord/link" : "/auth/disco
       </a>
     </div>
 
-    <div class="flex items-center gap-3">
-      <Separator class="flex-1" />
-      <span class="text-xs text-muted-foreground">or register with email</span>
-      <Separator class="flex-1" />
-    </div>
+    <!-- OAuth hidden natively or ignored since it's an invite beta flow, we just drop the 'or register' separator -->
 
     <div class="space-y-4">
       <div class="space-y-1.5">
@@ -112,10 +101,26 @@ const discordHref = oauthAction === "link" ? "/auth/discord/link" : "/auth/disco
           v-bind="email.inputAttrs.value"
           type="email"
           autocomplete="username"
+          readonly
+          class="bg-muted text-muted-foreground cursor-not-allowed"
           required
         />
         <p v-if="email.errorMessage.value" class="text-sm text-destructive mt-1">
           {{ email.errorMessage.value }}
+        </p>
+      </div>
+
+      <div class="space-y-1.5">
+        <Label for="register-password">Password</Label>
+        <Input
+          id="register-password"
+          v-bind="password.inputAttrs.value"
+          type="password"
+          autocomplete="new-password"
+          required
+        />
+        <p v-if="password.errorMessage.value" class="text-sm text-destructive mt-1">
+          {{ password.errorMessage.value }}
         </p>
       </div>
 

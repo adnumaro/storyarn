@@ -196,39 +196,58 @@ export function useSectionScroll() {
     const featureShell = document.querySelector("[data-feature-stage-shell]");
     const featureIntro = document.querySelector("[data-feature-intro]");
 
-    if (from === 0 && index === 1) {
-      timeline
-        .to(featuresSection, { yPercent: 0, duration: 0.8, ease: "power2.inOut" }, 0)
-        .to(heroContentInner, { y: -80, opacity: 0, duration: 0.7, ease: "power2.inOut" }, 0)
-        .to(featureShell, { y: 0, opacity: 1, duration: 0.8, ease: "power2.out" }, 0)
-        .to(featureIntro, { y: 0, opacity: 1, duration: 0.8, ease: "power2.out" }, 0);
-    } else if (from === 1 && index === 0) {
-      timeline
-        .to(featureIntro, { y: 28, opacity: 0, duration: 0.6, ease: "power2.inOut" }, 0)
-        .to(featureShell, { y: 72, opacity: 0, duration: 0.6, ease: "power2.inOut" }, 0)
-        .to(heroContentInner, { y: 0, opacity: 1, duration: 0.8, ease: "power2.inOut" }, 0)
-        .to(featuresSection, { yPercent: 100, duration: 0.8, ease: "power2.inOut" }, 0);
-    } else if (from === 1 && index === 2) {
-      timeline
-        .to(featuresSection, { yPercent: -100 }, 0)
-        .fromTo(autoSections[0], { yPercent: 100 }, { yPercent: 0 }, 0);
-    } else if (from === 2 && index === 1) {
-      timeline
-        .to(autoSections[0], { yPercent: 100 }, 0)
-        .to(featuresSection, { yPercent: 0 }, 0);
-    } else {
-      const currentSection = autoSections[from - 2];
-      const nextSection = autoSections[index - 2];
-      if (isScrollingDown) {
+    // Dynamic Universal State Solver for Arbitrary Navigation Jumps
+    const isNavigationJump = isScrollingDown === undefined && Math.abs(from - index) > 1;
+
+    const trgFeatY = index === 0 ? 100 : (index === 1 ? 0 : -100);
+    const trgHeroY = index === 0 ? 0 : -132;
+    const trgHeroOp = index === 0 ? 1 : 0;
+    const trgShellY = index === 0 ? 72 : 0;
+    const trgShellOp = index === 0 ? 0.18 : 1;
+    const trgIntroY = index === 0 ? 28 : 0;
+    const trgIntroOp = index === 0 ? 0.36 : 1;
+
+    if (isNavigationJump) {
+      const stage = document.getElementById("hero-features-stage");
+      if (stage) {
         timeline
-          .to(currentSection, { yPercent: -100 }, 0)
-          .fromTo(nextSection, { yPercent: 100 }, { yPercent: 0 }, 0);
-      } else {
-        timeline
-          .fromTo(nextSection, { yPercent: -100 }, { yPercent: 0 }, 0)
-          .to(currentSection, { yPercent: 100 }, 0);
+          .to(stage, { opacity: 0, duration: 0.3, ease: "power2.inOut" })
+          .add(() => {
+            gsap.set(featuresSection, { yPercent: trgFeatY });
+            gsap.set(heroContentInner, { y: trgHeroY, opacity: trgHeroOp });
+            if (featureShell) gsap.set(featureShell, { y: trgShellY, opacity: trgShellOp });
+            if (featureIntro) gsap.set(featureIntro, { y: trgIntroY, opacity: trgIntroOp });
+            autoSections.forEach((section, i) => {
+              const panelIdx = i + 2;
+              gsap.set(section, { yPercent: (panelIdx === index) ? 0 : (panelIdx < index ? -100 : 100) });
+            });
+          })
+          .to(stage, { opacity: 1, duration: 0.4, ease: "power2.inOut", clearProps: "opacity" });
+        return;
       }
     }
+
+    const isDown = isScrollingDown !== undefined ? isScrollingDown : index > from;
+
+    timeline
+      .to(featuresSection, { yPercent: trgFeatY, duration: 0.8, ease: "power2.inOut" }, 0)
+      .to(heroContentInner, { y: trgHeroY, opacity: trgHeroOp, duration: 0.8, ease: "power2.inOut" }, 0);
+
+    if (featureShell) timeline.to(featureShell, { y: trgShellY, opacity: trgShellOp, duration: 0.8, ease: "power2.out" }, 0);
+    if (featureIntro) timeline.to(featureIntro, { y: trgIntroY, opacity: trgIntroOp, duration: 0.8, ease: "power2.out" }, 0);
+
+    autoSections.forEach((section, i) => {
+      const panelIdx = i + 2;
+      let trgAutoY = 100;
+      if (panelIdx === index) trgAutoY = 0;
+      else if (panelIdx < index) trgAutoY = -100;
+      
+      if (panelIdx !== from && panelIdx !== index) {
+        gsap.set(section, { yPercent: panelIdx < index ? -100 : 100 });
+      }
+
+      timeline.to(section, { yPercent: trgAutoY, duration: 0.8, ease: "power2.inOut" }, 0);
+    });
   }
 
   function buildStage() {

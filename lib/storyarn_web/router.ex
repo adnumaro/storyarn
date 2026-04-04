@@ -258,7 +258,7 @@ defmodule StoryarnWeb.Router do
             {@user_auth_hook, :load_workspaces}
           ] do
       live "/", LandingLive.Index, :index
-      live "/users/register", UserLive.Registration, :new
+      live "/users/register/:token", UserLive.Registration, :new
       live "/users/log-in", UserLive.Login, :new
       live "/users/log-in/:token", UserLive.Confirmation, :new
       live "/users/confirm-access", UserLive.ConfirmAccess, :new

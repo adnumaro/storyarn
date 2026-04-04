@@ -216,14 +216,11 @@ defmodule StoryarnWeb.Layouts do
           <%!-- Desktop nav --%>
           <div class="hidden min-w-0 flex-1 items-center justify-between gap-6 xl:flex">
             <div class="flex min-w-0 items-center gap-2">
-              <a href="#features" class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
+              <a href="#features" onclick="window.dispatchEvent(new CustomEvent('storyarn:force-scroll', { detail: { panelIndex: 1 } })); return false;" class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
                 {gettext("Features")}
               </a>
-              <a href="#discover" class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
+              <a href="#discover" onclick="window.dispatchEvent(new CustomEvent('storyarn:force-scroll', { detail: { panelIndex: 2 } })); return false;" class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
                 {gettext("Discover")}
-              </a>
-              <a href="#workflow" class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
-                {gettext("Workflow")}
               </a>
               <.link navigate={~p"/docs"} class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
                 {gettext("Docs")}
@@ -238,7 +235,7 @@ defmodule StoryarnWeb.Layouts do
                   {gettext("Dashboard")}
                 </.link>
               <% else %>
-                <a href="#waitlist" class="inline-flex items-center justify-center px-5 py-2.5 text-sm font-bold rounded-md text-teal-950 hover:scale-105 transition-all" style="background: linear-gradient(135deg, oklch(78% 0.14 185), oklch(68% 0.12 210)); box-shadow: 0 0 20px rgba(34, 211, 238, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);">
+                <a href="#waitlist" onclick="window.dispatchEvent(new CustomEvent('storyarn:force-scroll', { detail: { panelIndex: 3 } })); return false;" class="inline-flex items-center justify-center px-5 py-2.5 text-sm font-bold rounded-md text-teal-950 hover:scale-105 transition-all" style="background: linear-gradient(135deg, oklch(78% 0.14 185), oklch(68% 0.12 210)); box-shadow: 0 0 20px rgba(34, 211, 238, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);">
                   {gettext("Request access")}
                 </a>
                 <.link navigate={~p"/users/log-in"} class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
@@ -299,7 +296,7 @@ defmodule StoryarnWeb.Layouts do
                 <a
                   href="#features"
                   class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-accent"
-                  phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
+                  phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out") |> JS.dispatch("storyarn:force-scroll", detail: %{panelIndex: 1})}
                 >
                   <.icon name="sparkles" class="size-5 text-foreground/45" />
                   {gettext("Features")}
@@ -307,18 +304,10 @@ defmodule StoryarnWeb.Layouts do
                 <a
                   href="#discover"
                   class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-accent"
-                  phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
+                  phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out") |> JS.dispatch("storyarn:force-scroll", detail: %{panelIndex: 2})}
                 >
                   <.icon name="panels-top-left" class="size-5 text-foreground/45" />
                   {gettext("Discover")}
-                </a>
-                <a
-                  href="#workflow"
-                  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-accent"
-                  phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
-                >
-                  <.icon name="git-branch" class="size-5 text-foreground/45" />
-                  {gettext("Workflow")}
                 </a>
                 <.link
                   navigate={~p"/docs"}
@@ -346,6 +335,7 @@ defmodule StoryarnWeb.Layouts do
                     href="#waitlist"
                     class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-bold rounded-xl text-teal-950 hover:scale-105 transition-all w-full"
                     style="background: linear-gradient(135deg, oklch(78% 0.14 185), oklch(68% 0.12 210)); box-shadow: 0 0 20px rgba(34, 211, 238, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);"
+                    onclick="window.dispatchEvent(new CustomEvent('storyarn:force-scroll', { detail: { panelIndex: 3 } })); return false;"
                     phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out")}
                   >
                     {gettext("Request access")}

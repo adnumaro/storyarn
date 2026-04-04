@@ -3,8 +3,7 @@ defmodule StoryarnWeb.UserLive.Login do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Accounts
-  alias Storyarn.RateLimiter
+
 
   @impl true
   def render(assigns) do
@@ -34,35 +33,7 @@ defmodule StoryarnWeb.UserLive.Login do
     {:ok, assign(socket, form: form)}
   end
 
-  @impl true
-  def handle_event("submit_magic", %{"user" => %{"email" => email}}, socket) do
-    case RateLimiter.check_magic_link(email) do
-      :ok ->
-        if user = Accounts.get_user_by_email(email) do
-          Accounts.deliver_login_instructions(
-            user,
-            &url(~p"/users/log-in/#{&1}")
-          )
-        end
-
-        info =
-          dgettext(
-            "identity",
-            "If your email is in our system, you will receive instructions for logging in shortly."
-          )
-
-        {:noreply,
-         socket
-         |> put_flash(:info, info)
-         |> push_navigate(to: ~p"/users/log-in")}
-
-      {:error, :rate_limited} ->
-        {:noreply,
-         socket
-         |> put_flash(:error, dgettext("identity", "Too many requests. Please try again later."))
-         |> push_navigate(to: ~p"/users/log-in")}
-    end
-  end
+  # Magic links have been replaced by Email + Password authentication
 
   defp local_mail_adapter? do
     Application.get_env(:storyarn, Storyarn.Mailer)[:adapter] == Swoosh.Adapters.Local

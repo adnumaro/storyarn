@@ -29,19 +29,19 @@ defmodule Storyarn.Release do
     Gettext.put_locale(Storyarn.Gettext, locale)
 
     case Storyarn.Accounts.find_or_register_confirmed_user(email) do
-      {:ok, _user} ->
+      {:ok, user} ->
         IO.puts("User account ready for #{email}")
+        
+        case Storyarn.Accounts.deliver_waitlist_invite_instructions(user, fn token -> 
+          Storyarn.Urls.base_url() <> "/users/register/" <> token
+        end) do
+          {:ok, _} -> IO.puts("Invitation sent to #{email}")
+          {:error, reason} -> IO.puts("Failed to send: #{inspect(reason)}")
+        end
 
       {:error, reason} ->
         IO.puts("Failed to create user: #{inspect(reason)}")
         raise "Cannot invite #{email}: user creation failed"
-    end
-
-    login_url = Storyarn.Urls.base_url() <> "/users/log-in"
-
-    case Storyarn.Accounts.UserNotifier.deliver_waitlist_invite(email, login_url) do
-      {:ok, _} -> IO.puts("Invitation sent to #{email}")
-      {:error, reason} -> IO.puts("Failed to send: #{inspect(reason)}")
     end
   end
 

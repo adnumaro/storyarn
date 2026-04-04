@@ -13,24 +13,22 @@ const { email, readonly, localMailAdapter, loginAction } = defineProps({
   loginAction: { type: String, required: true },
 });
 
-const live = useLive();
 const emailValue = ref(email || "");
+const passwordValue = ref("");
+const csrfToken = ref("");
 const emailInput = ref(null);
 
 onMounted(() => {
   emailInput.value?.focus();
+  csrfToken.value = document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || "";
 });
-
-function onSubmit() {
-  live.pushEvent("submit_magic", { user: { email: emailValue.value } });
-}
 </script>
 
 <template>
   <div class="mx-auto max-w-sm space-y-4">
     <div class="text-center space-y-2">
       <h1 class="text-2xl font-bold tracking-tight">Log in</h1>
-      <p class="text-sm text-muted-foreground">Enter your email and we'll send you a login link.</p>
+      <p class="text-sm text-muted-foreground">Enter your email and password to access your account.</p>
     </div>
 
     <div
@@ -47,22 +45,36 @@ function onSubmit() {
       </div>
     </div>
 
-    <form :action="loginAction" method="post" @submit.prevent="onSubmit">
-      <div class="space-y-1.5 mb-4">
-        <Label for="login-email">Email</Label>
-        <Input
-          id="login-email"
-          ref="emailInput"
-          v-model="emailValue"
-          type="email"
-          name="user[email]"
-          autocomplete="email"
-          :readonly="readonly"
-          required
-        />
+    <form :action="loginAction" method="post">
+      <input type="hidden" name="_csrf_token" :value="csrfToken" />
+      <div class="space-y-4 mb-6">
+        <div class="space-y-1.5">
+          <Label for="login-email">Email</Label>
+          <Input
+            id="login-email"
+            ref="emailInput"
+            v-model="emailValue"
+            type="email"
+            name="user[email]"
+            autocomplete="email"
+            :readonly="readonly"
+            required
+          />
+        </div>
+        <div class="space-y-1.5">
+          <Label for="login-password">Password</Label>
+          <Input
+            id="login-password"
+            v-model="passwordValue"
+            type="password"
+            name="user[password]"
+            autocomplete="current-password"
+            required
+          />
+        </div>
       </div>
       <Button type="submit" class="w-full">
-        Log in with email <span aria-hidden="true" class="ml-1">&rarr;</span>
+        Log in <span aria-hidden="true" class="ml-1">&rarr;</span>
       </Button>
     </form>
   </div>

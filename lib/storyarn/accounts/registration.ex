@@ -4,6 +4,7 @@ defmodule Storyarn.Accounts.Registration do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Accounts.User
+  alias Storyarn.Accounts.UserToken
   alias Storyarn.Repo
   alias Storyarn.Workspaces
 
@@ -43,6 +44,46 @@ defmodule Storyarn.Accounts.Registration do
           Repo.update(User.confirm_changeset(user))
         end
     end
+  end
+
+  @doc """
+  Gets the user with the given invite token and deletes the token if found.
+  Used for gating registration.
+  """
+  def get_user_by_invite_token(token) do
+    with {:ok, query} <- UserToken.verify_invite_token_query(token),
+         {user, found_token} <- Repo.one(query) do
+      # Delete token upon consumption? Wait, not upon viewing the page.
+      # They only consume it on successful save! So we just return the user and the token struct.
+      {user, found_token}
+    else
+      _ -> nil
+    end
+  end
+
+  @doc """
+  Completes the user's registration by setting their password and consuming the invite token.
+  """
+  def complete_registration(%User{} = user, token_record, attrs) do
+    Repo.transact(fn ->
+      user_changeset = User.password_changeset(user, attrs, hash_password: true)
+      
+      with {:ok, updated_user} <- Repo.update(user_changeset) do
+        # Consume the token immediately
+        Repo.delete!(token_record)
+        {:ok, updated_user}
+      end
+    end)
+  end
+
+  @doc """
+  Delivers the waitlist invite instructions to the given user.
+  """
+  def deliver_waitlist_invite_instructions(%User{} = user, invite_url_fun)
+      when is_function(invite_url_fun, 1) do
+    {encoded_token, user_token} = UserToken.build_email_token(user, "invite")
+    Repo.insert!(user_token)
+    Storyarn.Accounts.UserNotifier.deliver_waitlist_invite(user.email, invite_url_fun.(encoded_token))
   end
 
   defp insert_user(attrs) do

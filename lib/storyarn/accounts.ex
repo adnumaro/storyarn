@@ -268,10 +268,26 @@ defmodule Storyarn.Accounts do
   end
 
   @doc """
+  Gets the user with the given invite token and deletes the token if found.
+  Used for gating registration.
+  """
+  defdelegate get_user_by_invite_token(token), to: Registration
+
+  @doc """
+  Completes the user's registration by setting their password and consuming the invite token.
+  """
+  defdelegate complete_registration(user, token, attrs), to: Registration
+
+  @doc """
   Finds an existing user by email, or registers and auto-confirms a new one.
   Used for invitation acceptance.
   """
   defdelegate find_or_register_confirmed_user(email), to: Registration
+
+  @doc """
+  Delivers the waitlist invite instructions to the given user.
+  """
+  defdelegate deliver_waitlist_invite_instructions(user, invite_url_fun), to: Registration
 
   @doc """
   Notifies the admin about a member invitation request.

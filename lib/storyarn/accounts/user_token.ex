@@ -12,6 +12,7 @@ defmodule Storyarn.Accounts.UserToken do
   @magic_link_validity_in_minutes 15
   @change_email_validity_in_days 7
   @session_validity_in_days 14
+  @invite_validity_in_days 14
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -149,6 +150,29 @@ defmodule Storyarn.Accounts.UserToken do
         query =
           from t in by_token_and_context_query(hashed_token, context),
             where: t.inserted_at > ago(@change_email_validity_in_days, "day")
+
+        {:ok, query}
+
+      :error ->
+        :error
+    end
+  end
+
+  @doc """
+  Checks if the token is valid and returns its underlying lookup query.
+
+  The query returns the user found by the token, if any.
+  This is used to validate registration invitations.
+  """
+  def verify_invite_token_query(token) do
+    case TokenGenerator.decode_and_hash(token) do
+      {:ok, hashed_token} ->
+        query =
+          from t in by_token_and_context_query(hashed_token, "invite"),
+            join: user in assoc(t, :user),
+            where: t.inserted_at > ago(@invite_validity_in_days, "day"),
+            where: t.sent_to == user.email,
+            select: {user, t}
 
         {:ok, query}
 
