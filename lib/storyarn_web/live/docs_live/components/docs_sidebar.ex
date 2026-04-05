@@ -62,9 +62,9 @@ defmodule StoryarnWeb.DocsLive.Components.DocsSidebar do
         <button
           phx-click="toggle_category"
           phx-value-category={category}
-          class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+          class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm font-semibold text-foreground hover:bg-muted transition-colors text-left"
         >
-          <span>{label}</span>
+          <span class="text-left">{label}</span>
           <.icon
             name={
               if expanded?(category, @expanded_categories), do: "chevron-down", else: "chevron-right"

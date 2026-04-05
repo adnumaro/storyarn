@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "katex/dist/katex.min.css";
 
-@source "../vue";
+@source "../app";
 @source "../../lib/storyarn_web";
 
 @custom-variant dark (&:is(.dark *));
