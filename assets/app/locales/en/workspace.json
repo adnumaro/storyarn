@@ -29,6 +29,12 @@
           "placeholder": "A brief description of your project"
         }
       }
+    },
+    "sidebar": {
+      "my_workspaces": "My Workspaces",
+      "account_settings": "Account settings",
+      "all_workspaces": "All workspaces",
+      "log_out": "Log out"
     }
   }
 }

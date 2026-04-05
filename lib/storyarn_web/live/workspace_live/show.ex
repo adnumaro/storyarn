@@ -90,31 +90,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
      )}
   end
 
-  defp filter_projects(projects, query) when query in [nil, ""], do: projects
 
-  defp filter_projects(projects, query) do
-    downcased = String.downcase(query)
-
-    Enum.filter(projects, fn %{project: project} ->
-      String.contains?(String.downcase(project.name), downcased) or
-        (project.description && String.contains?(String.downcase(project.description), downcased))
-    end)
-  end
-
-  defp format_projects(projects, workspace) do
-    Enum.map(projects, fn %{project: project} ->
-      %{
-        project: %{
-          id: project.id,
-          name: project.name,
-          description: project.description,
-          inserted_at_formatted: Calendar.strftime(project.inserted_at, "%b %d, %Y"),
-          updated_at: project.updated_at && DateTime.to_iso8601(project.updated_at)
-        },
-        href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets"
-      }
-    end)
-  end
 
   @impl true
   def handle_event("validate_project", %{"project" => project_params}, socket) do
@@ -148,5 +124,31 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
       {:error, changeset} ->
         {:noreply, assign(socket, :project_form, to_form(changeset))}
     end
+  end
+
+  defp filter_projects(projects, query) when query in [nil, ""], do: projects
+
+  defp filter_projects(projects, query) do
+    downcased = String.downcase(query)
+
+    Enum.filter(projects, fn %{project: project} ->
+      String.contains?(String.downcase(project.name), downcased) or
+        (project.description && String.contains?(String.downcase(project.description), downcased))
+    end)
+  end
+
+  defp format_projects(projects, workspace) do
+    Enum.map(projects, fn %{project: project} ->
+      %{
+        project: %{
+          id: project.id,
+          name: project.name,
+          description: project.description,
+          inserted_at_formatted: Calendar.strftime(project.inserted_at, "%b %d, %Y"),
+          updated_at: project.updated_at && DateTime.to_iso8601(project.updated_at)
+        },
+        href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets"
+      }
+    end)
   end
 end

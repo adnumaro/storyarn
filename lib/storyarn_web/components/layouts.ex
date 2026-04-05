@@ -186,7 +186,7 @@ defmodule StoryarnWeb.Layouts do
 
   def public(assigns) do
     ~H"""
-    <div class={["min-h-screen flex flex-col", @theme == "dark" && "dark"]}>
+    <div class={["min-h-screen flex flex-col w-full bg-background text-foreground", @theme == "dark" && "dark"]}>
       <header
         class={[
           "w-[min(calc(100%-48px),1280px)] h-16 flex items-center",
@@ -387,7 +387,7 @@ defmodule StoryarnWeb.Layouts do
         </div>
       </nav>
 
-      <main class="flex-1">
+      <main class="flex-1 flex flex-col">
         {render_slot(@inner_block)}
       </main>
 
@@ -627,11 +627,11 @@ defmodule StoryarnWeb.Layouts do
     ~H"""
     <div class="h-screen flex flex-col overflow-hidden">
       <%!-- Header --%>
-      <header class="navbar px-4 sm:px-6 lg:px-8 border-b border-border bg-background shrink-0">
-        <div class="flex-none md:hidden">
+      <header class="flex items-center h-16 px-4 sm:px-6 lg:px-8 border-b border-border bg-background shrink-0">
+        <div class="flex-none lg:hidden mr-4">
           <button
             phx-click="toggle_sidebar"
-            class="inline-flex items-center justify-center size-9 rounded-md hover:bg-accent btn-ghost btn-sm"
+            class="inline-flex items-center justify-center size-9 rounded-md hover:bg-accent text-muted-foreground transition-colors"
           >
             <.icon name="menu" class="size-5" />
           </button>
@@ -694,9 +694,10 @@ defmodule StoryarnWeb.Layouts do
           />
         </aside>
 
-        <%!-- Content --%>
-        <main id="docs-main" class="flex-1 overflow-y-auto">
-          <div class="max-w-4xl mx-auto px-4 sm:px-8 py-8 xl:mr-56">
+        <%!-- Content & TOC wrapper --%>
+        <main id="docs-main" class="flex-1 overflow-y-auto xl:flex xl:items-start xl:justify-between px-4 sm:px-8 lg:px-12">
+          <%!-- Main content (Centered) --%>
+          <div class="flex-1 w-full max-w-4xl mx-auto py-8 min-w-0">
             <%!-- Guide header --%>
             <div :if={@guide} class="mb-8">
               <p class="text-xs uppercase tracking-wider text-primary font-semibold mb-1">
@@ -749,8 +750,8 @@ defmodule StoryarnWeb.Layouts do
           <aside
             :if={@guide && @guide.toc != []}
             id="docs-toc"
-            class="hidden xl:block fixed top-16 right-0 w-56 py-8 pr-4 pl-2 overflow-y-auto"
-            style="max-height: calc(100vh - 4rem)"
+            class="hidden xl:block sticky top-0 w-60 shrink-0 py-8 overflow-y-auto"
+            style="max-height: 100vh;"
           >
             <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
               {gettext("On this page")}

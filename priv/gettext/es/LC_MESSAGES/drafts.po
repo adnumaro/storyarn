@@ -11,17 +11,17 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/components/sidebar/draft_list.ex:166
+#: lib/storyarn_web/components/sidebar/draft_list.ex:173
 #, elixir-autogen, elixir-format
 msgid "%{count}d ago"
 msgstr "hace %{count}d"
 
-#: lib/storyarn_web/components/sidebar/draft_list.ex:165
+#: lib/storyarn_web/components/sidebar/draft_list.ex:172
 #, elixir-autogen, elixir-format
 msgid "%{count}h ago"
 msgstr "hace %{count}h"
 
-#: lib/storyarn_web/components/sidebar/draft_list.ex:164
+#: lib/storyarn_web/components/sidebar/draft_list.ex:171
 #, elixir-autogen, elixir-format
 msgid "%{count}m ago"
 msgstr "hace %{count}m"
@@ -31,7 +31,7 @@ msgstr "hace %{count}m"
 msgid "Before merge from draft"
 msgstr "Antes de fusionar desde borrador"
 
-#: lib/storyarn_web/components/draft_components.ex:127
+#: lib/storyarn_web/components/draft_components.ex:128
 #, elixir-autogen, elixir-format
 msgid "Cancel"
 msgstr "Cancelar"
@@ -67,38 +67,24 @@ msgstr "No se pudo fusionar el borrador."
 msgid "Could not rename draft."
 msgstr "No se pudo renombrar el borrador."
 
-#: lib/storyarn_web/live/flow_live/components/flow_header.ex:99
-#: lib/storyarn_web/live/scene_live/components/scene_header.ex:32
-#: lib/storyarn_web/live/sheet_live/show.ex:253
-#, elixir-autogen, elixir-format
-msgid "Create a private draft copy"
-msgstr "Crear una copia de borrador privada"
-
-#: lib/storyarn_web/components/sidebar/draft_list.ex:58
+#: lib/storyarn_web/components/sidebar/draft_list.ex:60
 #, elixir-autogen, elixir-format
 msgid "Deleted"
 msgstr "Eliminado"
 
 #: lib/storyarn_web/components/draft_components.ex:33
 #: lib/storyarn_web/components/draft_components.ex:51
-#: lib/storyarn_web/components/sidebar/draft_list.ex:104
-#: lib/storyarn_web/components/sidebar/draft_list.ex:116
+#: lib/storyarn_web/components/sidebar/draft_list.ex:109
+#: lib/storyarn_web/components/sidebar/draft_list.ex:123
 #, elixir-autogen, elixir-format
 msgid "Discard"
 msgstr "Descartar"
 
 #: lib/storyarn_web/components/draft_components.ex:49
-#: lib/storyarn_web/components/sidebar/draft_list.ex:114
+#: lib/storyarn_web/components/sidebar/draft_list.ex:121
 #, elixir-autogen, elixir-format
 msgid "Discard draft?"
 msgstr "¿Descartar borrador?"
-
-#: lib/storyarn_web/live/flow_live/components/flow_header.ex:102
-#: lib/storyarn_web/live/scene_live/components/scene_header.ex:35
-#: lib/storyarn_web/live/sheet_live/show.ex:256
-#, elixir-autogen, elixir-format
-msgid "Draft"
-msgstr "Borrador"
 
 #: lib/storyarn_web/live/shared/draft_handlers.ex:50
 #: lib/storyarn_web/live/shared/draft_handlers.ex:186
@@ -133,7 +119,7 @@ msgstr "Fusionar"
 msgid "Merge Draft"
 msgstr "Fusionar borrador"
 
-#: lib/storyarn_web/components/draft_components.ex:136
+#: lib/storyarn_web/components/draft_components.ex:137
 #, elixir-autogen, elixir-format
 msgid "Merge into original"
 msgstr "Fusionar con el original"
@@ -158,17 +144,12 @@ msgstr "No se detectaron cambios."
 msgid "Original has diverged"
 msgstr "El original ha divergido"
 
-#: lib/storyarn_web/components/sidebar/draft_list.ex:96
+#: lib/storyarn_web/components/sidebar/draft_list.ex:101
 #, elixir-autogen, elixir-format
 msgid "Rename"
 msgstr "Renombrar"
 
-#: lib/storyarn_web/live/sheet_live/components/sheet_title.ex:36
-#, elixir-autogen, elixir-format
-msgid "Shortcut from the original (read-only in draft)"
-msgstr "Atajo del original (solo lectura en borrador)"
-
-#: lib/storyarn_web/components/sidebar/draft_list.ex:86
+#: lib/storyarn_web/components/sidebar/draft_list.ex:91
 #, elixir-autogen, elixir-format
 msgid "Stale draft"
 msgstr "Borrador obsoleto"
@@ -186,7 +167,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: lib/storyarn_web/components/draft_components.ex:50
-#: lib/storyarn_web/components/sidebar/draft_list.ex:115
+#: lib/storyarn_web/components/sidebar/draft_list.ex:122
 #, elixir-autogen, elixir-format
 msgid "This draft will be permanently deleted. This cannot be undone."
 msgstr "Este borrador se eliminará permanentemente. Esta acción no se puede deshacer."
@@ -201,17 +182,17 @@ msgstr "Esto reemplazará el original con el contenido de tu borrador."
 msgid "You've reached the maximum number of active drafts."
 msgstr "Has alcanzado el número máximo de borradores activos."
 
-#: lib/storyarn_web/components/sidebar/draft_list.ex:124
+#: lib/storyarn_web/components/sidebar/draft_list.ex:131
 #, elixir-autogen, elixir-format
 msgid "from"
 msgstr "de"
 
-#: lib/storyarn_web/components/sidebar/draft_list.ex:163
+#: lib/storyarn_web/components/sidebar/draft_list.ex:170
 #, elixir-autogen, elixir-format
 msgid "just now"
 msgstr "ahora mismo"
 
-#: lib/storyarn_web/components/sidebar/draft_list.ex:88
+#: lib/storyarn_web/components/sidebar/draft_list.ex:93
 #, elixir-autogen, elixir-format
 msgid "stale"
 msgstr "obsoleto"

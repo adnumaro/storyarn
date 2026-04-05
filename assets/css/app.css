@@ -89,9 +89,11 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   button,
   [role="button"],
   a[href],
@@ -217,12 +219,14 @@
 }
 
 @keyframes nav-pulse {
+
   0%,
   100% {
     box-shadow:
       0 0 0 3px var(--highlight-color),
       0 0 12px 2px var(--highlight-color);
   }
+
   50% {
     box-shadow:
       0 0 0 6px color-mix(in srgb, var(--highlight-color) 50%, transparent),
@@ -241,12 +245,15 @@
   outline: none;
   transition: border-color 0.15s ease;
 }
+
 .v2-toolbar-input:focus {
   border-color: hsl(var(--ring));
 }
+
 .v2-toolbar-input::placeholder {
   color: hsl(var(--muted-foreground));
 }
+
 .v2-toolbar-input:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -459,4 +466,85 @@
 .sp-row-action-danger:hover {
   color: hsl(var(--destructive));
   background-color: hsl(var(--destructive) / 0.1);
+}
+
+/* Documentation Typography (Tailwind v4 manually styled) */
+@layer components {
+  .docs-content {
+    @apply text-base text-foreground leading-7;
+  }
+
+  .docs-content h1 {
+    @apply text-4xl font-bold tracking-tight mt-10 mb-6;
+  }
+
+  .docs-content h2 {
+    @apply text-2xl font-semibold tracking-tight mt-10 mb-4 border-b border-border pb-2;
+  }
+
+  .docs-content h3 {
+    @apply text-xl font-semibold tracking-tight mt-8 mb-4;
+  }
+
+  .docs-content p {
+    @apply leading-7 [&:not(:first-child)]:mt-6;
+  }
+
+  .docs-content ul {
+    @apply my-6 ml-6 list-disc [&>li]:mt-2;
+  }
+
+  .docs-content ol {
+    @apply my-6 ml-6 list-decimal [&>li]:mt-2;
+  }
+
+  .docs-content a {
+    @apply font-medium text-primary underline underline-offset-4 hover:text-primary/80;
+  }
+
+  .docs-content blockquote {
+    @apply mt-6 border-l-2 border-primary pl-6 italic text-muted-foreground;
+  }
+
+  .docs-content code {
+    @apply relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold;
+  }
+
+  .docs-content pre {
+    @apply mb-4 mt-6 overflow-x-auto rounded-lg border border-border bg-black py-4 px-4;
+  }
+
+  .docs-content pre code {
+    @apply rounded-none bg-transparent px-0 py-0 font-normal text-white;
+  }
+
+  .docs-content img {
+    @apply rounded-md border border-border mt-8 mb-4 max-w-full h-auto;
+  }
+
+  .docs-content strong,
+  .docs-content b {
+    @apply font-bold;
+  }
+
+  /* Custom docs inline utilities matching Shadcn theme */
+  .docs-tool-icon {
+    @apply inline-flex items-center justify-center size-7 rounded-lg bg-accent text-foreground align-middle mr-1.5;
+  }
+
+  .docs-tool-icon svg {
+    @apply size-4;
+  }
+
+  .docs-accent {
+    @apply text-primary font-medium;
+  }
+
+  .docs-image-placeholder {
+    @apply flex items-center justify-center gap-2 min-h-48 my-8 px-8 py-6 border-2 border-dashed border-border rounded-xl bg-accent/20 text-muted-foreground text-sm text-center leading-relaxed;
+  }
+
+  .docs-image-placeholder svg {
+    @apply size-5 shrink-0 opacity-50;
+  }
 }

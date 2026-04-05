@@ -5,6 +5,21 @@ import { i18n } from "./i18n.js";
 
 let appCounter = 0;
 
+// Keep i18n locale synced with html lang attribute across LiveView navigations
+const syncLocale = () => {
+  if (i18n.global && i18n.global.locale) {
+    i18n.global.locale.value = document.documentElement.lang || "en";
+  }
+};
+
+const observer = new MutationObserver((mutations) => {
+  for (const m of mutations) {
+    if (m.attributeName === "lang") syncLocale();
+  }
+});
+observer.observe(document.documentElement, { attributes: true });
+
+
 export default createLiveVue({
   resolve: (name) => {
     const components = {
@@ -14,6 +29,7 @@ export default createLiveVue({
     return findComponent(components, name);
   },
   setup: ({ createApp, component, props, slots, plugin, el }) => {
+    syncLocale();
     const app = createApp({ render: () => h(component, props, slots) });
     app.config.idPrefix = `vue-${appCounter++}`;
     // Suppress vue-konva false-positive warnings about event listeners on v-group/v-layer

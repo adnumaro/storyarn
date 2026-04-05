@@ -35,8 +35,8 @@ defmodule StoryarnWeb.Plugs.Locale do
         param_locale -> put_session(conn, :locale, locale)
         # DB preference set: DB is source of truth, clear stale session value
         user_locale -> delete_session(conn, :locale)
-        # No DB preference: don't persist, let it re-detect each time
-        true -> conn
+        # Auto-detected from headers: persist so the WebSocket can read it
+        true -> put_session(conn, :locale, locale)
       end
 
     assign(conn, :locale, locale)

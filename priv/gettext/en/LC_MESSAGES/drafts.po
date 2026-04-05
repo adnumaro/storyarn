@@ -11,17 +11,17 @@ msgstr ""
 "Language: en\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/components/sidebar/draft_list.ex:166
+#: lib/storyarn_web/components/sidebar/draft_list.ex:173
 #, elixir-autogen, elixir-format
 msgid "%{count}d ago"
 msgstr ""
 
-#: lib/storyarn_web/components/sidebar/draft_list.ex:165
+#: lib/storyarn_web/components/sidebar/draft_list.ex:172
 #, elixir-autogen, elixir-format
 msgid "%{count}h ago"
 msgstr ""
 
-#: lib/storyarn_web/components/sidebar/draft_list.ex:164
+#: lib/storyarn_web/components/sidebar/draft_list.ex:171
 #, elixir-autogen, elixir-format
 msgid "%{count}m ago"
 msgstr ""
@@ -31,7 +31,7 @@ msgstr ""
 msgid "Before merge from draft"
 msgstr ""
 
-#: lib/storyarn_web/components/draft_components.ex:127
+#: lib/storyarn_web/components/draft_components.ex:128
 #, elixir-autogen, elixir-format
 msgid "Cancel"
 msgstr ""
@@ -67,37 +67,23 @@ msgstr ""
 msgid "Could not rename draft."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/components/flow_header.ex:99
-#: lib/storyarn_web/live/scene_live/components/scene_header.ex:32
-#: lib/storyarn_web/live/sheet_live/show.ex:253
-#, elixir-autogen, elixir-format
-msgid "Create a private draft copy"
-msgstr ""
-
-#: lib/storyarn_web/components/sidebar/draft_list.ex:58
+#: lib/storyarn_web/components/sidebar/draft_list.ex:60
 #, elixir-autogen, elixir-format
 msgid "Deleted"
 msgstr ""
 
 #: lib/storyarn_web/components/draft_components.ex:33
 #: lib/storyarn_web/components/draft_components.ex:51
-#: lib/storyarn_web/components/sidebar/draft_list.ex:104
-#: lib/storyarn_web/components/sidebar/draft_list.ex:116
+#: lib/storyarn_web/components/sidebar/draft_list.ex:109
+#: lib/storyarn_web/components/sidebar/draft_list.ex:123
 #, elixir-autogen, elixir-format
 msgid "Discard"
 msgstr ""
 
 #: lib/storyarn_web/components/draft_components.ex:49
-#: lib/storyarn_web/components/sidebar/draft_list.ex:114
+#: lib/storyarn_web/components/sidebar/draft_list.ex:121
 #, elixir-autogen, elixir-format
 msgid "Discard draft?"
-msgstr ""
-
-#: lib/storyarn_web/live/flow_live/components/flow_header.ex:102
-#: lib/storyarn_web/live/scene_live/components/scene_header.ex:35
-#: lib/storyarn_web/live/sheet_live/show.ex:256
-#, elixir-autogen, elixir-format
-msgid "Draft"
 msgstr ""
 
 #: lib/storyarn_web/live/shared/draft_handlers.ex:50
@@ -133,7 +119,7 @@ msgstr ""
 msgid "Merge Draft"
 msgstr ""
 
-#: lib/storyarn_web/components/draft_components.ex:136
+#: lib/storyarn_web/components/draft_components.ex:137
 #, elixir-autogen, elixir-format
 msgid "Merge into original"
 msgstr ""
@@ -158,17 +144,12 @@ msgstr ""
 msgid "Original has diverged"
 msgstr ""
 
-#: lib/storyarn_web/components/sidebar/draft_list.ex:96
+#: lib/storyarn_web/components/sidebar/draft_list.ex:101
 #, elixir-autogen, elixir-format
 msgid "Rename"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/components/sheet_title.ex:36
-#, elixir-autogen, elixir-format
-msgid "Shortcut from the original (read-only in draft)"
-msgstr ""
-
-#: lib/storyarn_web/components/sidebar/draft_list.ex:86
+#: lib/storyarn_web/components/sidebar/draft_list.ex:91
 #, elixir-autogen, elixir-format
 msgid "Stale draft"
 msgstr ""
@@ -186,7 +167,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: lib/storyarn_web/components/draft_components.ex:50
-#: lib/storyarn_web/components/sidebar/draft_list.ex:115
+#: lib/storyarn_web/components/sidebar/draft_list.ex:122
 #, elixir-autogen, elixir-format
 msgid "This draft will be permanently deleted. This cannot be undone."
 msgstr ""
@@ -201,17 +182,17 @@ msgstr ""
 msgid "You've reached the maximum number of active drafts."
 msgstr ""
 
-#: lib/storyarn_web/components/sidebar/draft_list.ex:124
+#: lib/storyarn_web/components/sidebar/draft_list.ex:131
 #, elixir-autogen, elixir-format
 msgid "from"
 msgstr ""
 
-#: lib/storyarn_web/components/sidebar/draft_list.ex:163
+#: lib/storyarn_web/components/sidebar/draft_list.ex:170
 #, elixir-autogen, elixir-format
 msgid "just now"
 msgstr ""
 
-#: lib/storyarn_web/components/sidebar/draft_list.ex:88
+#: lib/storyarn_web/components/sidebar/draft_list.ex:93
 #, elixir-autogen, elixir-format
 msgid "stale"
 msgstr ""

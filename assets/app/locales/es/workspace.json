@@ -29,6 +29,12 @@
           "placeholder": "Una breve descripción de tu proyecto"
         }
       }
+    },
+    "sidebar": {
+      "my_workspaces": "Mis espacios de trabajo",
+      "account_settings": "Ajustes de cuenta",
+      "all_workspaces": "Todos los espacios",
+      "log_out": "Cerrar sesión"
     }
   }
 }
