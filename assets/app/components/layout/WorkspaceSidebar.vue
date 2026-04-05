@@ -1,5 +1,5 @@
 <script setup>
-import { LayoutDashboard, User, Briefcase } from "lucide-vue-next";
+import { LayoutDashboard, User, Briefcase, LogOut } from "lucide-vue-next";
 import { computed } from "vue";
 import {
   DropdownMenu,
@@ -20,6 +20,30 @@ const { currentUser, urls, workspaces, currentWorkspaceSlug } = defineProps({
 const displayName = computed(
   () => currentUser.displayName || currentUser.email?.split("@")[0] || "",
 );
+
+const handleLogout = () => {
+  const token = document.querySelector("meta[name='csrf-token']")?.getAttribute("content");
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = urls.logout;
+  
+  const methodInput = document.createElement("input");
+  methodInput.type = "hidden";
+  methodInput.name = "_method";
+  methodInput.value = "delete";
+  form.appendChild(methodInput);
+
+  if (token) {
+    const csrfInput = document.createElement("input");
+    csrfInput.type = "hidden";
+    csrfInput.name = "_csrf_token";
+    csrfInput.value = token;
+    form.appendChild(csrfInput);
+  }
+
+  document.body.appendChild(form);
+  form.submit();
+};
 </script>
 
 <template>
@@ -82,6 +106,11 @@ const displayName = computed(
               <LayoutDashboard class="size-4" />
               All workspaces
             </a>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem @select.prevent="handleLogout" class="flex items-center gap-2 text-destructive cursor-pointer">
+            <LogOut class="size-4" />
+            Log out
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

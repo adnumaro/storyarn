@@ -41,7 +41,8 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
 
     urls = %{
       accountSettings: ~p"/users/settings",
-      workspaces: ~p"/workspaces"
+      workspaces: ~p"/workspaces",
+      logout: ~p"/users/log-out"
     }
 
     assigns =
