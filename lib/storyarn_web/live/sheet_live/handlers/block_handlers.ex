@@ -71,8 +71,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockHandlers do
             else: current ++ [key]
 
         case Sheets.update_block_value(block, %{"content" => new_content}) do
-          {:ok, _} -> {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
-          {:error, _} -> {:noreply, socket}
+          {:ok, _} ->
+            {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
+
+          {:error, _} ->
+            {:noreply, socket}
         end
       else
         {:noreply, socket}
@@ -88,8 +91,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockHandlers do
         new_config = Map.put(block.config || %{}, field, value)
 
         case Sheets.update_block_config(block, new_config) do
-          {:ok, _} -> {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
-          {:error, _} -> {:noreply, socket}
+          {:ok, _} ->
+            {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
+
+          {:error, _} ->
+            {:noreply, socket}
         end
       else
         {:noreply, socket}
@@ -137,7 +143,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockHandlers do
              |> helpers.broadcast.(:block_created)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not duplicate block."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("sheets", "Could not duplicate block."))}
         end
       else
         {:noreply, socket}

@@ -1,5 +1,5 @@
 <script setup>
-import { FolderOpen, Plus, Search, Settings } from "lucide-vue-next";
+import { FolderOpen, Plus, Search, Settings, Menu } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { Button } from "@components/ui/button/index.js";
 import { Input } from "@components/ui/input/index.js";
@@ -59,7 +59,15 @@ const canCreate = computed(() => ["owner", "admin", "member"].includes(membershi
     <div class="absolute top-0 left-0 right-0 p-6">
       <div class="flex items-end justify-between">
         <div>
-          <h1 class="text-3xl font-bold">{{ workspace.name }}</h1>
+          <div class="flex items-center gap-3">
+            <label
+              for="workspace-sidebar-check"
+              class="inline-flex lg:hidden items-center justify-center size-9 rounded-md bg-background/50 backdrop-blur border border-border/50 text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+            >
+              <Menu class="size-5" />
+            </label>
+            <h1 class="text-3xl font-bold">{{ workspace.name }}</h1>
+          </div>
           <p v-if="workspace.description" class="text-muted-foreground mt-1 max-w-2xl">
             {{ workspace.description }}
           </p>

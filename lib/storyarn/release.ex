@@ -31,10 +31,10 @@ defmodule Storyarn.Release do
     case Storyarn.Accounts.find_or_register_confirmed_user(email) do
       {:ok, user} ->
         IO.puts("User account ready for #{email}")
-        
-        case Storyarn.Accounts.deliver_waitlist_invite_instructions(user, fn token -> 
-          Storyarn.Urls.base_url() <> "/users/register/" <> token
-        end) do
+
+        case Storyarn.Accounts.deliver_waitlist_invite_instructions(user, fn token ->
+               Storyarn.Urls.base_url() <> "/users/register/" <> token
+             end) do
           {:ok, _} -> IO.puts("Invitation sent to #{email}")
           {:error, reason} -> IO.puts("Failed to send: #{inspect(reason)}")
         end

@@ -48,8 +48,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
       status: text.status,
       translator_notes: text.translator_notes,
       machine_translated: text.machine_translated,
-      last_translated_at:
-        text.last_translated_at && DateTime.to_iso8601(text.last_translated_at)
+      last_translated_at: text.last_translated_at && DateTime.to_iso8601(text.last_translated_at)
     }
   end
 

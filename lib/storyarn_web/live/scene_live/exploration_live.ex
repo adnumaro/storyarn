@@ -49,21 +49,27 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         exploration-data={@exploration_data}
         scene-name={@scene.name}
         show-zones={@show_zones}
-        flow-state={%{
-          active: @flow_mode,
-          slide: @active_flow && serialize_slide(@active_flow.slide),
-          flowName: @active_flow && @active_flow.flow.name,
-          showContinue: @active_flow && show_flow_continue?(@active_flow)
-        }}
-        collection={%{
-          open: @collection_mode,
-          zone: @collection_zone,
-          items: @collection_items
-        }}
-        session={%{
-          promptOpen: @session_prompt,
-          pending: serialize_pending_session(@pending_session)
-        }}
+        flow-state={
+          %{
+            active: @flow_mode,
+            slide: @active_flow && serialize_slide(@active_flow.slide),
+            flowName: @active_flow && @active_flow.flow.name,
+            showContinue: @active_flow && show_flow_continue?(@active_flow)
+          }
+        }
+        collection={
+          %{
+            open: @collection_mode,
+            zone: @collection_zone,
+            items: @collection_items
+          }
+        }
+        session={
+          %{
+            promptOpen: @session_prompt,
+            pending: serialize_pending_session(@pending_session)
+          }
+        }
       />
       <.flash_group flash={@flash} />
     </div>
@@ -575,7 +581,13 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
             {:error, put_flash(socket, :error, reason)}
 
           {:ok, engine_state} ->
-            case build_slide_or_advance(engine_state, nodes_map, connections, sheets_map, project.id) do
+            case build_slide_or_advance(
+                   engine_state,
+                   nodes_map,
+                   connections,
+                   sheets_map,
+                   project.id
+                 ) do
               {:finished, final_state} ->
                 # Flow completed with no interactive content — apply variables silently
                 new_variables = FormulaRuntime.recompute_formulas(final_state.variables)
@@ -820,7 +832,12 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
         {_status, new_state, _} ->
           do_build_slide_or_advance(
-            new_state, nodes_map, connections, sheets_map, project_id, attempts + 1
+            new_state,
+            nodes_map,
+            connections,
+            sheets_map,
+            project_id,
+            attempts + 1
           )
       end
     end

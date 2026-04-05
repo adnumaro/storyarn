@@ -26,7 +26,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     sheet =
       Repo.preload(
         sheet,
-        [blocks: {active_blocks, [:table_columns, :table_rows]}, avatars: :asset], force: true)
+        [blocks: {active_blocks, [:table_columns, :table_rows]}, avatars: :asset],
+        force: true
+      )
 
     default_avatar_asset_id = default_avatar_asset_id(sheet)
     asset_ids = [default_avatar_asset_id, sheet.banner_asset_id]

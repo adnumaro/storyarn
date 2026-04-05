@@ -148,7 +148,9 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
 
       if avatar && avatar.sheet_id == socket.assigns.sheet.id do
         Sheets.set_avatar_default(avatar)
-        {:noreply, socket |> helpers.reload_sheet_and_tree.() |> helpers.broadcast.(:sheet_updated)}
+
+        {:noreply,
+         socket |> helpers.reload_sheet_and_tree.() |> helpers.broadcast.(:sheet_updated)}
       else
         {:noreply, socket}
       end
@@ -227,7 +229,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
 
       {:error, :limit_reached, _} ->
         {:noreply,
-         put_flash(socket, :error, dgettext("sheets", "Storage limit reached. Upgrade your plan."))}
+         put_flash(
+           socket,
+           :error,
+           dgettext("sheets", "Storage limit reached. Upgrade your plan.")
+         )}
     end
   end
 end

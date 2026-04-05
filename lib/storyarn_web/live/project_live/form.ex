@@ -16,7 +16,11 @@ defmodule StoryarnWeb.ProjectLive.Form do
         id="project-form-vue"
         form={@form}
         title={@title}
-        submit-label={if @action == :new, do: dgettext("projects", "Create Project"), else: dgettext("projects", "Save")}
+        submit-label={
+          if @action == :new,
+            do: dgettext("projects", "Create Project"),
+            else: dgettext("projects", "Save")
+        }
         cancel-url={@navigate}
       />
     </div>

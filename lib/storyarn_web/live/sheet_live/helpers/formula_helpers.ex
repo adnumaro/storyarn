@@ -277,7 +277,9 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpers do
             formula_results = Map.get(computed, row.id, %{})
 
             updated_cells =
-              Enum.reduce(formula_results, row.cells, fn {slug, %{result: result} = computed_entry}, cells ->
+              Enum.reduce(formula_results, row.cells, fn {slug,
+                                                          %{result: result} = computed_entry},
+                                                         cells ->
                 current = cells[slug]
                 resolved = Map.get(computed_entry, :resolved, %{})
 

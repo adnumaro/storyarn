@@ -5,9 +5,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   use StoryarnWeb, :live_view
   alias StoryarnWeb.Helpers.Authorize
 
-  import StoryarnWeb.Components.MemberComponents
-  import StoryarnWeb.Components.UIComponents, only: [form_actions: 1]
-
   alias Storyarn.Accounts
   alias Storyarn.Workspaces
 
@@ -71,69 +68,14 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
         {dgettext("workspaces", "Manage team members for %{name}", name: @workspace.name)}
       </:subtitle>
 
-      <div class="space-y-8">
-        <%!-- Team Members Section --%>
-        <section>
-          <h3 class="text-lg font-semibold mb-4">{dgettext("workspaces", "Team Members")}</h3>
-          <div class="space-y-3">
-            <.member_row
-              :for={member <- @members}
-              member={member}
-              current_user_id={@current_scope.user.id}
-              can_manage={@membership.role == "owner"}
-              on_remove="remove_member"
-              on_role_change="change_role"
-              role_options={[
-                {dgettext("workspaces", "Admin"), "admin"},
-                {dgettext("workspaces", "Member"), "member"},
-                {dgettext("workspaces", "Viewer"), "viewer"}
-              ]}
-            />
-          </div>
-        </section>
-
-        <div class="divider" />
-
-        <%!-- Invite Form --%>
-        <section>
-          <h3 class="text-lg font-semibold mb-4">
-            {dgettext("workspaces", "Request member invitation")}
-          </h3>
-          <p class="text-sm opacity-70 mb-3">
-            {dgettext("workspaces", "Invitation requests are reviewed by an admin before being sent.")}
-          </p>
-          <.form for={@invite_form} id="invite-form" phx-submit="send_invitation">
-            <div class="flex gap-3 items-end">
-              <div class="flex-1">
-                <.input
-                  field={@invite_form[:email]}
-                  type="email"
-                  label={dgettext("workspaces", "Email address")}
-                  placeholder="colleague@example.com"
-                  required
-                />
-              </div>
-              <div class="w-32">
-                <.input
-                  field={@invite_form[:role]}
-                  type="select"
-                  label={dgettext("workspaces", "Role")}
-                  options={[
-                    {dgettext("workspaces", "Admin"), "admin"},
-                    {dgettext("workspaces", "Member"), "member"},
-                    {dgettext("workspaces", "Viewer"), "viewer"}
-                  ]}
-                />
-              </div>
-            </div>
-            <.form_actions>
-              <.button variant="primary">
-                {dgettext("workspaces", "Request Invitation")}
-              </.button>
-            </.form_actions>
-          </.form>
-        </section>
-      </div>
+      <.vue
+        v-component="pages/settings/WorkspaceMembers"
+        v-socket={@socket}
+        id="workspace-settings-members"
+        members={serialize_members(@members)}
+        current-user-id={@current_scope.user.id}
+        can-manage={@membership.role == "owner"}
+      />
     </Layouts.settings>
     """
   end
@@ -174,6 +116,17 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   end
 
   # Private helpers
+
+  defp serialize_members(members) do
+    Enum.map(members, fn member ->
+      %{
+        id: member.id,
+        email: member.user.email,
+        display_name: member.user.display_name,
+        role: member.role
+      }
+    end)
+  end
 
   @workspace_invite_roles ~w(admin member viewer)
 

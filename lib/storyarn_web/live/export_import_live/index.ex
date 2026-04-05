@@ -29,33 +29,37 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         v-component="pages/workspaces/projects/settings/export-import"
         v-socket={@socket}
         id="export-import-vue"
-        export-config={%{
-          formatConfig: %{
-            formats: serialize_formats(@formats),
-            selected: to_string(@selected_format),
-            extension: @selected_extension
-          },
-          sectionConfig: %{
-            supported: Enum.map(@supported_sections, &to_string/1),
-            selected: Enum.map(@sections, &to_string/1),
-            entityCounts: serialize_entity_counts(@entity_counts)
-          },
-          options: %{
-            assetMode: to_string(@asset_mode),
-            validateBeforeExport: @validate_before_export,
-            prettyPrint: @pretty_print
-          },
-          validation: serialize_validation_result(@validation_result),
-          downloadUrl: export_download_url(assigns)
-        }}
+        export-config={
+          %{
+            formatConfig: %{
+              formats: serialize_formats(@formats),
+              selected: to_string(@selected_format),
+              extension: @selected_extension
+            },
+            sectionConfig: %{
+              supported: Enum.map(@supported_sections, &to_string/1),
+              selected: Enum.map(@sections, &to_string/1),
+              entityCounts: serialize_entity_counts(@entity_counts)
+            },
+            options: %{
+              assetMode: to_string(@asset_mode),
+              validateBeforeExport: @validate_before_export,
+              prettyPrint: @pretty_print
+            },
+            validation: serialize_validation_result(@validation_result),
+            downloadUrl: export_download_url(assigns)
+          }
+        }
         can-edit={@can_edit}
-        import-state={%{
-          step: to_string(@import_step),
-          preview: @import_preview,
-          result: @import_result,
-          error: serialize_import_error(@import_error),
-          conflictStrategy: to_string(@conflict_strategy)
-        }}
+        import-state={
+          %{
+            step: to_string(@import_step),
+            preview: @import_preview,
+            result: @import_result,
+            error: serialize_import_error(@import_error),
+            conflictStrategy: to_string(@conflict_strategy)
+          }
+        }
         upload-config={if @can_edit, do: @uploads.import_file, else: nil}
       />
     </Layouts.settings>

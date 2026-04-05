@@ -51,7 +51,6 @@ defmodule StoryarnWeb.Components.Sidebar.FlowTree do
             id={"flow-tree-set-main-#{flow.id}"}
             phx-click="set_main_flow"
             phx-value-id={to_string(flow.id)}
-            
             data-stop-propagation
           >
             <.icon name="star" class="size-4" />

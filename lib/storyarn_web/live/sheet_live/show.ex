@@ -7,6 +7,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   use StoryarnWeb, :live_view
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.UndoRedoStack
+
   alias StoryarnWeb.SheetLive.Handlers.{
     AudioHandlers,
     BlockHandlers,
@@ -180,12 +181,33 @@ defmodule StoryarnWeb.SheetLive.Show do
           v-component="pages/workspaces/projects/sheets/components/BlockList"
           v-socket={@socket}
           id="block-list"
-          blocks={prepare_blocks_for_vue(@blocks, @gallery_data, @table_data, @project.id, @inherited_groups)}
-          inherited-groups={prepare_inherited_groups_for_vue(@inherited_groups, @gallery_data, @table_data, @project.id)}
+          blocks={
+            prepare_blocks_for_vue(
+              @blocks,
+              @gallery_data,
+              @table_data,
+              @project.id,
+              @inherited_groups
+            )
+          }
+          inherited-groups={
+            prepare_inherited_groups_for_vue(
+              @inherited_groups,
+              @gallery_data,
+              @table_data,
+              @project.id
+            )
+          }
           workspace-slug={@workspace.slug}
           project-slug={@project.slug}
           can-edit={@can_edit}
-          formula-editing={build_formula_editing_for_vue(@formula_editing, @formula_search_results, @formula_search_has_more)}
+          formula-editing={
+            build_formula_editing_for_vue(
+              @formula_editing,
+              @formula_search_results,
+              @formula_search_has_more
+            )
+          }
           block-locks={serialize_block_locks(@block_locks)}
           current-user-id={@current_user_id}
         />
@@ -821,7 +843,11 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   @impl true
   def handle_info({:project_restoration_started, payload}, socket),
-    do: RestorationHandlers.handle_restoration_event({:project_restoration_started, payload}, socket)
+    do:
+      RestorationHandlers.handle_restoration_event(
+        {:project_restoration_started, payload},
+        socket
+      )
 
   def handle_info({:project_restoration_completed, payload}, socket),
     do:
@@ -964,7 +990,11 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   defp handle_remote_change(:tree_changed, _payload, socket) do
     {:noreply,
-     assign(socket, :sheets_tree, prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id)))}
+     assign(
+       socket,
+       :sheets_tree,
+       prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id))
+     )}
   end
 
   defp handle_remote_change(:sheet_restored, payload, socket) do

@@ -52,8 +52,23 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
 
     ~H"""
     <div id="layout-wrapper" class="flex h-screen w-screen overflow-hidden bg-background">
-      <!-- Fixed Left Sidebar (Desktop) -->
-      <aside class="flex-none w-[252px] ml-3 my-3 v2-surface-panel hidden md:flex flex-col z-10 rounded-lg overflow-hidden shrink-0">
+      <%!-- Hidden checkbox for mobile sidebar toggle (must be first child for peer-*) --%>
+      <input id="workspace-sidebar-check" type="checkbox" class="peer hidden" />
+
+      <%!-- Mobile overlay (closes sidebar on tap) --%>
+      <label
+        for="workspace-sidebar-check"
+        class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[1005] hidden peer-checked:block lg:hidden cursor-pointer"
+      />
+      
+    <!-- Fixed Left Sidebar (Desktop) -->
+      <aside class={[
+        "flex-none w-[252px] v2-surface-panel flex flex-col z-[1010] shrink-0 overflow-hidden rounded-lg",
+        "fixed lg:relative top-3 bottom-3 left-3 lg:top-0 lg:bottom-0 lg:left-0 h-[calc(100vh-1.5rem)] lg:h-auto",
+        "lg:ml-3 lg:my-3",
+        "transition-transform duration-200",
+        "-translate-x-[calc(100%+1rem)] peer-checked:translate-x-0 lg:translate-x-0"
+      ]}>
         <.vue
           v-component="layout/WorkspaceSidebar"
           v-socket={@socket}
@@ -64,9 +79,12 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
           current-workspace-slug={@current_workspace.slug}
         />
       </aside>
-
-      <!-- Main fluid content -->
-      <main id="main-content" class="flex-1 min-w-0 overflow-y-auto bg-background p-4 md:px-8 md:py-3 min-vh-100">
+      
+    <!-- Main fluid content -->
+      <main
+        id="main-content"
+        class="flex-1 min-w-0 overflow-y-auto bg-background p-4 lg:px-8 lg:py-3 min-vh-100"
+      >
         {render_slot(@inner_block)}
       </main>
 

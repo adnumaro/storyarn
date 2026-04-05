@@ -746,7 +746,8 @@ defmodule StoryarnWeb.Components.VersionsSection do
   defp loading_placeholder(assigns) do
     ~H"""
     <div class="flex items-center justify-center p-8">
-      <span class="size-5 border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin"></span>
+      <span class="size-5 border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin">
+      </span>
     </div>
     """
   end
@@ -800,7 +801,10 @@ defmodule StoryarnWeb.Components.VersionsSection do
             ]}>
               {@version.title || @version.change_summary || dgettext("versioning", "No summary")}
             </span>
-            <span :if={@is_current} class="text-[10px] px-1.5 py-0 rounded-full bg-primary text-primary-foreground flex-shrink-0">
+            <span
+              :if={@is_current}
+              class="text-[10px] px-1.5 py-0 rounded-full bg-primary text-primary-foreground flex-shrink-0"
+            >
               {dgettext("versioning", "Current")}
             </span>
             <span
@@ -936,7 +940,10 @@ defmodule StoryarnWeb.Components.VersionsSection do
         >
           {dgettext("versioning", "Cancel")}
         </button>
-        <button type="submit" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+        <button
+          type="submit"
+          class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
           <.icon name="save" class="size-4" />
           {dgettext("versioning", "Create Version")}
         </button>
@@ -995,7 +1002,10 @@ defmodule StoryarnWeb.Components.VersionsSection do
         >
           {dgettext("versioning", "Cancel")}
         </button>
-        <button type="submit" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+        <button
+          type="submit"
+          class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
           <.icon name="bookmark-plus" class="size-4" />
           {dgettext("versioning", "Name Version")}
         </button>
@@ -1071,7 +1081,10 @@ defmodule StoryarnWeb.Components.VersionsSection do
     <%= if @preview.report.has_conflicts do %>
       <div class="space-y-3 mb-4">
         <%!-- Shortcut collision --%>
-        <div :if={@preview.report.shortcut_collision} class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-700 dark:text-amber-300">
+        <div
+          :if={@preview.report.shortcut_collision}
+          class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-700 dark:text-amber-300"
+        >
           <.icon name="alert-triangle" class="size-4" />
           <span>
             {dgettext("versioning", "Shortcut collision — will be renamed to \"%{shortcut}\"",
@@ -1092,7 +1105,10 @@ defmodule StoryarnWeb.Components.VersionsSection do
             class="bg-muted/50 rounded-lg p-3"
           >
             <div class="flex items-center gap-2 text-sm font-medium">
-              <.icon name={conflict_type_icon(conflict.type)} class="size-4 text-amber-600 dark:text-amber-400" />
+              <.icon
+                name={conflict_type_icon(conflict.type)}
+                class="size-4 text-amber-600 dark:text-amber-400"
+              />
               <span>
                 {dgettext("versioning", "Missing %{type} (ID: %{id})",
                   type: conflict_type_label(conflict.type),

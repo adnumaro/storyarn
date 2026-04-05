@@ -7,7 +7,6 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
-
   alias StoryarnWeb.Components.DraftComponents
   alias StoryarnWeb.Helpers.DraftTouchTimer
   alias StoryarnWeb.Live.Shared.DraftHandlers
@@ -38,6 +37,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       prepare_project_scenes_for_vue: 1,
       prepare_project_sheets_for_vue: 1
     ]
+
   import StoryarnWeb.SceneLive.Helpers.SceneHelpers
   import StoryarnWeb.SceneLive.Helpers.SceneSerializer
 
@@ -134,7 +134,6 @@ defmodule StoryarnWeb.SceneLive.Show do
             phx-drop-target={
               @can_edit && @edit_mode && @uploads[:background] && @uploads.background.ref
             }
-            
           >
             <.vue
               v-component="pages/workspaces/projects/scenes/components/SceneCanvas"
@@ -150,7 +149,9 @@ defmodule StoryarnWeb.SceneLive.Show do
               active-tool={to_string(@active_tool)}
               edit-mode={@edit_mode}
               can-edit={@can_edit}
-              collaboration={%{userId: @current_scope.user.id, locks: serialize_entity_locks(@entity_locks)}}
+              collaboration={
+                %{userId: @current_scope.user.id, locks: serialize_entity_locks(@entity_locks)}
+              }
             />
 
             <%!-- Hidden file input for background upload --%>
@@ -303,7 +304,6 @@ defmodule StoryarnWeb.SceneLive.Show do
             scene-settings-open={@scene_settings_open && @can_edit && @edit_mode}
           />
         </div>
-
       <% else %>
         <div class="h-full"></div>
       <% end %>
@@ -360,7 +360,9 @@ defmodule StoryarnWeb.SceneLive.Show do
           active-tool={to_string(@active_tool)}
           edit-mode={@edit_mode}
           can-edit={@can_edit}
-          collaboration={%{userId: @current_scope.user.id, locks: serialize_entity_locks(@entity_locks)}}
+          collaboration={
+            %{userId: @current_scope.user.id, locks: serialize_entity_locks(@entity_locks)}
+          }
         />
 
         <.vue
@@ -927,10 +929,17 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("load_more_versions", _params, socket) do
     history = socket.assigns.history_data
+
     if history do
       next_page = (history[:page] || 1) + 1
+
       {:noreply,
-       VersionHistoryHelpers.load_more_history(socket, "scene", socket.assigns.scene.id, next_page)}
+       VersionHistoryHelpers.load_more_history(
+         socket,
+         "scene",
+         socket.assigns.scene.id,
+         next_page
+       )}
     else
       {:noreply, socket}
     end
@@ -940,7 +949,12 @@ defmodule StoryarnWeb.SceneLive.Show do
     with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn),
          version when not is_nil(version) <-
            Versioning.get_version("scene", socket.assigns.scene.id, number) do
-      VersionHistoryHelpers.detect_and_show_restore_preview(socket, "scene", socket.assigns.scene, version)
+      VersionHistoryHelpers.detect_and_show_restore_preview(
+        socket,
+        "scene",
+        socket.assigns.scene,
+        version
+      )
     else
       _ -> {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
     end
@@ -972,7 +986,11 @@ defmodule StoryarnWeb.SceneLive.Show do
            version when not is_nil(version) <-
              Versioning.get_version("scene", socket.assigns.scene.id, number) do
         VersionHistoryHelpers.show_conflict_preview(
-          socket, "scene", socket.assigns.scene, version, true
+          socket,
+          "scene",
+          socket.assigns.scene,
+          version,
+          true
         )
       else
         _ -> {:noreply, socket}
@@ -1211,7 +1229,11 @@ defmodule StoryarnWeb.SceneLive.Show do
     end)
   end
 
-  def handle_event("upload_pin_icon", %{"filename" => filename, "content_type" => ct, "data" => data}, socket) do
+  def handle_event(
+        "upload_pin_icon",
+        %{"filename" => filename, "content_type" => ct, "data" => data},
+        socket
+      ) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       with %{__struct__: Scenes.ScenePin} = pin <- socket.assigns[:selected_element],
            [_header, base64] <- String.split(data, ",", parts: 2),
@@ -2287,5 +2309,4 @@ defmodule StoryarnWeb.SceneLive.Show do
         dgettext("scenes", "Could not upload file.")
     end
   end
-
 end

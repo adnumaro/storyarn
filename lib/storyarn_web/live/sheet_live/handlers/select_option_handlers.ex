@@ -16,8 +16,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.SelectOptionHandlers do
         new_config = Map.put(block.config || %{}, "options", options ++ [new_option])
 
         case Sheets.update_block_config(block, new_config) do
-          {:ok, _} -> {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
-          {:error, _} -> {:noreply, socket}
+          {:ok, _} ->
+            {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
+
+          {:error, _} ->
+            {:noreply, socket}
         end
       else
         {:noreply, socket}
@@ -34,8 +37,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.SelectOptionHandlers do
         new_config = Map.put(block.config || %{}, "options", List.delete_at(options, index))
 
         case Sheets.update_block_config(block, new_config) do
-          {:ok, _} -> {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
-          {:error, _} -> {:noreply, socket}
+          {:ok, _} ->
+            {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
+
+          {:error, _} ->
+            {:noreply, socket}
         end
       else
         {:noreply, socket}
@@ -60,8 +66,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.SelectOptionHandlers do
         new_config = Map.put(block.config || %{}, "options", new_options)
 
         case Sheets.update_block_config(block, new_config) do
-          {:ok, _} -> {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
-          {:error, _} -> {:noreply, socket}
+          {:ok, _} ->
+            {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
+
+          {:error, _} ->
+            {:noreply, socket}
         end
       else
         {:noreply, socket}

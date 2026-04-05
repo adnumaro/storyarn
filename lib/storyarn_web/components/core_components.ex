@@ -56,25 +56,25 @@ defmodule StoryarnWeb.Components.CoreComponents do
       id={@id}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
       role="alert"
-      class="toast toast-bottom toast-end z-[2000]"
+      class={[
+        "flex w-full items-start gap-3 overflow-hidden rounded-lg border p-4 shadow-lg cursor-pointer",
+        @kind == :info && "border-border bg-card text-card-foreground hover:bg-accent/50",
+        @kind == :error &&
+          "border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive hover:bg-destructive/20"
+      ]}
       {@rest}
     >
-      <div class={[
-        "alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap",
-        @kind == :info && "alert-info",
-        @kind == :error && "alert-error"
-      ]}>
-        <.icon :if={@kind == :info} name="info" class="size-5 shrink-0" />
-        <.icon :if={@kind == :error} name="alert-circle" class="size-5 shrink-0" />
-        <div>
-          <p :if={@title} class="font-semibold">{@title}</p>
-          <p>{msg}</p>
-        </div>
-        <div class="flex-1" />
-        <button type="button" class="group self-start cursor-pointer" aria-label={gettext("close")}>
-          <.icon name="x" class="size-5 opacity-40 group-hover:opacity-70" />
-        </button>
+      <div class="mt-0.5 shrink-0">
+        <.icon :if={@kind == :info} name="info" class="size-4" />
+        <.icon :if={@kind == :error} name="alert-circle" class="size-4 text-destructive" />
       </div>
+      <div class="flex-1 min-w-0">
+        <p :if={@title} class="text-sm font-semibold mb-1">{@title}</p>
+        <p class="text-sm">{msg}</p>
+      </div>
+      <button type="button" class="group shrink-0 mt-0.5" aria-label={gettext("close")}>
+        <.icon name="x" class="size-4 opacity-50 group-hover:opacity-100 transition-opacity" />
+      </button>
     </div>
     """
   end
@@ -472,7 +472,6 @@ defmodule StoryarnWeb.Components.CoreComponents do
       <span
         :if={@can_edit && @block_id}
         id={"block-label-#{@block_id}"}
-        
         phx-update="ignore"
         data-label={@label}
         data-block-id={@block_id}

@@ -80,8 +80,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
         end
       else
         _ ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+          {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
       end
     end)
   end
@@ -104,8 +103,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
         end
       else
         _ ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+          {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
       end
     end)
   end
@@ -129,8 +127,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
         detect_and_show_restore_preview(socket, version)
       else
         _ ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+          {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
       end
     end)
   end
@@ -160,8 +157,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
         end
       else
         _ ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+          {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
       end
     end)
   end
@@ -174,8 +170,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
         show_conflict_preview(socket, version, true)
       else
         _ ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+          {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
       end
     end)
   end
@@ -232,8 +227,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
         end
       else
         _ ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("versioning", "Version not found."))}
+          {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
       end
     end)
   end

@@ -33,10 +33,20 @@ defmodule StoryarnWeb.Components.SaveIndicator do
     <%= case @variant do %>
       <% :inline -> %>
         <div :if={@status != :idle} class="flex items-center gap-2 text-sm">
-          <span :if={@status == :saving} class="border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin loading-xs"></span>
-          <.icon :if={@status == :saved} name="check" class="size-4 text-green-600 dark:text-green-400" />
+          <span
+            :if={@status == :saving}
+            class="border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin loading-xs"
+          >
+          </span>
+          <.icon
+            :if={@status == :saved}
+            name="check"
+            class="size-4 text-green-600 dark:text-green-400"
+          />
           <span :if={@status == :saving} class="text-muted-foreground">{gettext("Saving...")}</span>
-          <span :if={@status == :saved} class="text-green-600 dark:text-green-400">{gettext("Saved")}</span>
+          <span :if={@status == :saved} class="text-green-600 dark:text-green-400">
+            {gettext("Saved")}
+          </span>
         </div>
       <% :floating -> %>
         <div
@@ -48,7 +58,11 @@ defmodule StoryarnWeb.Components.SaveIndicator do
             @status == :saving && "bg-muted text-foreground",
             @status == :saved && "bg-success/10 text-green-600 dark:text-green-400"
           ]}>
-            <span :if={@status == :saving} class="border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin loading-xs"></span>
+            <span
+              :if={@status == :saving}
+              class="border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin loading-xs"
+            >
+            </span>
             <.icon :if={@status == :saved} name="check" class="size-4" />
             <span :if={@status == :saving}>{gettext("Saving...")}</span>
             <span :if={@status == :saved}>{gettext("Saved")}</span>

@@ -14,7 +14,6 @@ defmodule StoryarnWeb.Router do
     plug StoryarnWeb.Plugs.Locale
   end
 
-
   pipeline :api do
     plug :accepts, ["json"]
   end
@@ -50,7 +49,6 @@ defmodule StoryarnWeb.Router do
       live_dashboard "/dashboard", metrics: StoryarnWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
-
   end
 
   ## Documentation (public, isolated context)

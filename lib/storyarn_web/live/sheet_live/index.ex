@@ -56,13 +56,15 @@ defmodule StoryarnWeb.SheetLive.Index do
         id="sheet-dashboard"
         stats={@dashboard_stats}
         table-data={@sheet_table_data}
-        pagination={%{
-          sortBy: @sort_by,
-          sortDir: to_string(@sort_dir),
-          page: @page,
-          totalPages: @total_pages,
-          total: length(@all_sheet_table_data)
-        }}
+        pagination={
+          %{
+            sortBy: @sort_by,
+            sortDir: to_string(@sort_dir),
+            page: @page,
+            totalPages: @total_pages,
+            total: length(@all_sheet_table_data)
+          }
+        }
         issues={@sheet_issues}
         can-edit={@can_edit}
         workspace-slug={@workspace.slug}

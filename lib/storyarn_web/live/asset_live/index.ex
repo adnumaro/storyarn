@@ -38,7 +38,6 @@ defmodule StoryarnWeb.AssetLive.Index do
               type="file"
               accept="image/*,audio/*"
               class="hidden"
-
               id="asset-upload-input"
             />
           </label>

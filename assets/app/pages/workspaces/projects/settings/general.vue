@@ -1,6 +1,6 @@
 <script setup>
 import { AlertTriangle, Monitor, Moon, Sun, Wrench } from "lucide-vue-next";
-import { ref, watch } from "vue";
+import { ref, watch, onMounted, onUnmounted } from "vue";
 import ColorPickerPopover from "@components/ColorPickerPopover.vue";
 import { Button } from "@components/ui/button/index.js";
 import {
@@ -100,6 +100,21 @@ function resetTheme() {
 }
 
 // Theme toggle
+const currentTheme = ref('system');
+
+function updateThemeRef() {
+  currentTheme.value = localStorage.getItem("phx:theme") || 'system';
+}
+
+onMounted(() => {
+  updateThemeRef();
+  window.addEventListener("phx:set-theme", updateThemeRef);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("phx:set-theme", updateThemeRef);
+});
+
 function setTheme(theme) {
   if (theme === "system") {
     localStorage.removeItem("phx:theme");
@@ -189,25 +204,34 @@ function confirmDeleteProject() {
       <h3 class="text-lg font-semibold mb-4">Appearance</h3>
       <div class="flex items-center gap-1 rounded-full border border-border bg-muted p-0.5 w-fit">
         <button
-          class="flex items-center justify-center size-8 rounded-full transition-colors hover:bg-accent"
+          :class="[
+            'flex items-center justify-center size-8 rounded-full transition-colors',
+            currentTheme === 'system' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+          ]"
           title="System"
           @click="setTheme('system')"
         >
-          <Monitor class="size-4 opacity-75" />
+          <Monitor class="size-4" :class="{ 'opacity-75': currentTheme !== 'system' }" />
         </button>
         <button
-          class="flex items-center justify-center size-8 rounded-full transition-colors hover:bg-accent"
+          :class="[
+            'flex items-center justify-center size-8 rounded-full transition-colors',
+            currentTheme === 'light' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+          ]"
           title="Light"
           @click="setTheme('light')"
         >
-          <Sun class="size-4 opacity-75" />
+          <Sun class="size-4" :class="{ 'opacity-75': currentTheme !== 'light' }" />
         </button>
         <button
-          class="flex items-center justify-center size-8 rounded-full transition-colors hover:bg-accent"
+          :class="[
+            'flex items-center justify-center size-8 rounded-full transition-colors',
+            currentTheme === 'dark' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+          ]"
           title="Dark"
           @click="setTheme('dark')"
         >
-          <Moon class="size-4 opacity-75" />
+          <Moon class="size-4" :class="{ 'opacity-75': currentTheme !== 'dark' }" />
         </button>
       </div>
     </section>

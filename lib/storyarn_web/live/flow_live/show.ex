@@ -8,7 +8,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   import StoryarnWeb.Components.CollaborationComponents
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
-
   # TODO: Re-enable when draft feature is complete
   # alias StoryarnWeb.Components.DraftComponents
   alias StoryarnWeb.Live.Shared.DraftHandlers
@@ -96,15 +95,19 @@ defmodule StoryarnWeb.FlowLive.Show do
           is-main={@flow.is_main}
           can-edit={@can_edit}
           save-status={to_string(@save_status)}
-          nav-history={%{
-            back: @nav_history && NavigationHistory.peek_back(@nav_history),
-            forward: @nav_history && NavigationHistory.peek_forward(@nav_history)
-          }}
-          flow-health={%{
-            wordCount: @flow_word_count,
-            errorNodes: @flow_error_nodes,
-            infoNodes: @flow_info_nodes
-          }}
+          nav-history={
+            %{
+              back: @nav_history && NavigationHistory.peek_back(@nav_history),
+              forward: @nav_history && NavigationHistory.peek_forward(@nav_history)
+            }
+          }
+          flow-health={
+            %{
+              wordCount: @flow_word_count,
+              errorNodes: @flow_error_nodes,
+              infoNodes: @flow_info_nodes
+            }
+          }
           scene-selected={%{name: @scene_name, inherited: @scene_inherited}}
           project-scenes={Enum.map(@available_scenes, &Map.take(&1, [:id, :name]))}
         />
@@ -120,7 +123,11 @@ defmodule StoryarnWeb.FlowLive.Show do
               id={"flow-editor-#{@flow && @flow.id || "new"}"}
               class="w-full h-full"
               flow-data={if @loading, do: nil, else: Jason.encode!(@flow_data)}
-              variable-map={if @loading, do: nil, else: Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))}
+              variable-map={
+                if @loading,
+                  do: nil,
+                  else: Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))
+              }
               labels={Jason.encode!(flow_canvas_labels())}
               loading={@loading}
               readonly={!@can_edit}
@@ -169,15 +176,17 @@ defmodule StoryarnWeb.FlowLive.Show do
             open={@debug_panel_open && @debug_state != nil}
             state={@debug_state}
             nodes={@debug_nodes}
-            controls={%{
-              activeTab: @debug_active_tab,
-              autoPlaying: @debug_auto_playing,
-              speed: @debug_speed,
-              varFilter: @debug_var_filter,
-              varChangedOnly: @debug_var_changed_only,
-              flowName: @flow && @flow.name,
-              stepLimitReached: @debug_step_limit_reached
-            }}
+            controls={
+              %{
+                activeTab: @debug_active_tab,
+                autoPlaying: @debug_auto_playing,
+                speed: @debug_speed,
+                varFilter: @debug_var_filter,
+                varChangedOnly: @debug_var_changed_only,
+                flowName: @flow && @flow.name,
+                stepLimitReached: @debug_step_limit_reached
+              }
+            }
           />
         </div>
 

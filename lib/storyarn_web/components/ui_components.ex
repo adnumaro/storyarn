@@ -169,7 +169,10 @@ defmodule StoryarnWeb.Components.UIComponents do
 
   def search_input(assigns) do
     ~H"""
-    <label class={["h-9 rounded-md border border-input bg-background px-3 text-sm input-#{@size} flex items-center gap-2", @class]}>
+    <label class={[
+      "h-9 rounded-md border border-input bg-background px-3 text-sm input-#{@size} flex items-center gap-2",
+      @class
+    ]}>
       <.icon name="search" class="size-4 opacity-50" />
       <input type="text" class="grow" {@rest} />
     </label>
@@ -301,7 +304,11 @@ defmodule StoryarnWeb.Components.UIComponents do
       <div class="border border-error/30 rounded-lg p-4">
         <p class="text-sm text-muted-foreground mb-4">{@message}</p>
         <.form_actions>
-          <button type="button" phx-click={@on_click} class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md bg-destructive text-white hover:bg-destructive/90 transition-colors">
+          <button
+            type="button"
+            phx-click={@on_click}
+            class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md bg-destructive text-white hover:bg-destructive/90 transition-colors"
+          >
             {render_slot(@inner_block)}
           </button>
         </.form_actions>
@@ -364,10 +371,18 @@ defmodule StoryarnWeb.Components.UIComponents do
         <span class="text-sm text-muted-foreground">{gettext("Don't show this again")}</span>
       </label>
       <div class="flex justify-end gap-2 mt-4 justify-end gap-2">
-        <button type="button" class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors" data-cancel-upload>
+        <button
+          type="button"
+          class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
+          data-cancel-upload
+        >
           {gettext("Cancel")}
         </button>
-        <button type="button" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors" data-proceed-upload>
+        <button
+          type="button"
+          class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          data-proceed-upload
+        >
           {gettext("Upload")}
         </button>
       </div>

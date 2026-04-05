@@ -37,7 +37,7 @@ defmodule StoryarnWeb.SettingsLive.Connections do
       <:subtitle>{dgettext("settings", "Link your social accounts for easier sign-in")}</:subtitle>
 
       <.vue
-        v-component="settings/Connections"
+        v-component="pages/settings/Connections"
         v-socket={@socket}
         id="settings-connections-vue"
         identities={serialize_identities(@identities)}

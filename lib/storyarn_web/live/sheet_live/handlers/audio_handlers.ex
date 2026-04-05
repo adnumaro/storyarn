@@ -25,12 +25,23 @@ defmodule StoryarnWeb.SheetLive.Handlers.AudioHandlers do
   end
 
   def handle_upload(params, socket, _helpers) do
-    %{"filename" => filename, "content_type" => content_type, "data" => data, "node_id" => node_id} = params
+    %{
+      "filename" => filename,
+      "content_type" => content_type,
+      "data" => data,
+      "node_id" => node_id
+    } = params
 
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       with [_header, base64_data] <- String.split(data, ",", parts: 2),
            {:ok, binary_data} <- Base.decode64(base64_data) do
-        AudioDataHelpers.process_audio_upload(socket, node_id, filename, content_type, binary_data)
+        AudioDataHelpers.process_audio_upload(
+          socket,
+          node_id,
+          filename,
+          content_type,
+          binary_data
+        )
       else
         _ ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid file data."))}

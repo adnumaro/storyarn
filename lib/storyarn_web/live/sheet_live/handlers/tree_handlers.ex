@@ -92,7 +92,9 @@ defmodule StoryarnWeb.SheetLive.Handlers.TreeHandlers do
       sheet = Sheets.get_sheet(socket.assigns.project.id, MapUtils.parse_int(id))
 
       if sheet do
-        parsed_parent = if new_parent_id in [nil, ""], do: nil, else: MapUtils.parse_int(new_parent_id)
+        parsed_parent =
+          if new_parent_id in [nil, ""], do: nil, else: MapUtils.parse_int(new_parent_id)
+
         parsed_pos = MapUtils.parse_int(position) || 0
 
         case Sheets.move_sheet_to_position(sheet, parsed_parent, parsed_pos) do
@@ -100,7 +102,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.TreeHandlers do
             {:noreply,
              socket
              |> helpers.reload_blocks.()
-             |> assign(:sheets_tree,
+             |> assign(
+               :sheets_tree,
                prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id))
              )
              |> helpers.broadcast_project.(:tree_changed)}

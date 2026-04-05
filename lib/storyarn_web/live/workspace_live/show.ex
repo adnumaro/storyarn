@@ -66,7 +66,14 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
         v-component="pages/workspaces/index"
         v-socket={@socket}
         id="workspace-show"
-        workspace={%{name: @workspace.name, description: @workspace.description, banner_url: @workspace.banner_url}}
+        workspace={
+          %{
+            name: @workspace.name,
+            description: @workspace.description,
+            banner_url: @workspace.banner_url
+          }
+        }
+        class="container mx-auto"
         membership={%{role: @membership.role}}
         projects={@projects}
         search-query={@search_query}

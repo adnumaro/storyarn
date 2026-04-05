@@ -115,7 +115,8 @@ defmodule StoryarnWeb.Components.DraftComponents do
         </div>
 
         <div :if={is_nil(@merge_summary)} class="flex justify-center py-4">
-          <span class="size-5 border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin"></span>
+          <span class="size-5 border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin">
+          </span>
         </div>
 
         <div class="flex justify-end gap-2 pt-2">

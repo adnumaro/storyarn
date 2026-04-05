@@ -231,7 +231,9 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
     zones
     |> Enum.group_by(fn zone -> zone.fill_color || "#3b82f6" end)
     |> Enum.map(fn {color, items} ->
-      avg_opacity = Enum.reduce(items, 0, fn z, acc -> acc + (z.opacity || 0.3) end) / max(length(items), 1)
+      avg_opacity =
+        Enum.reduce(items, 0, fn z, acc -> acc + (z.opacity || 0.3) end) / max(length(items), 1)
+
       hex = round(avg_opacity * 255) |> Integer.to_string(16) |> String.pad_leading(2, "0")
 
       %{

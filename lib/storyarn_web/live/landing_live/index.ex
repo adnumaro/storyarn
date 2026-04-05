@@ -196,9 +196,7 @@ defmodule StoryarnWeb.LandingLive.Index do
       # Workflow
       workflow_title: gettext("From first draft to engine-ready"),
       workflow_subtitle:
-        gettext(
-          "Storyarn follows your natural workflow — define, write, test, export."
-        ),
+        gettext("Storyarn follows your natural workflow — define, write, test, export."),
       workflow_step_1_title: gettext("Define the world"),
       workflow_step_1_desc:
         gettext(

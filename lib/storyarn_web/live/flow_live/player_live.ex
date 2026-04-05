@@ -31,7 +31,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div id="story-player" class="player-layout" >
+    <div id="story-player" class="player-layout">
       <div class="player-main relative">
         <%!-- Scene backdrop (dimmed map background) --%>
         <div :if={@scene_backdrop} class="scene-backdrop scene-backdrop-transition">

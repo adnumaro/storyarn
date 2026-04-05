@@ -66,7 +66,6 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
       <div
         :if={@tree != []}
         id={"#{@entity_type}-tree-search"}
-        
         data-tree-id={"#{@entity_type}-tree-container"}
         class="mb-2"
       >
@@ -86,7 +85,6 @@ defmodule StoryarnWeb.Components.Sidebar.GenericTree do
       <div
         :if={@tree != []}
         id={"#{@entity_type}-tree-container"}
-        
         data-tree-type={@tree_type_attr}
       >
         <div data-sortable-container data-parent-id="" class="flex flex-col gap-1">

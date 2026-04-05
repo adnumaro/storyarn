@@ -27,7 +27,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       sidebar_sections={project_settings_sections(@workspace, @project)}
     >
       <:title>{dgettext("projects", "Snapshots")}</:title>
-      <:subtitle>{dgettext("projects", "Create and restore point-in-time project backups")}</:subtitle>
+      <:subtitle>
+        {dgettext("projects", "Create and restore point-in-time project backups")}
+      </:subtitle>
 
       <.vue
         v-component="pages/workspaces/projects/settings/snapshots"

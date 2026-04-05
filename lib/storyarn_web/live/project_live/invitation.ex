@@ -22,7 +22,10 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
             {dgettext("projects", "This invitation link is invalid or has expired.")}
           </:subtitle>
         </.header>
-        <.link navigate={~p"/"} class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mt-8">
+        <.link
+          navigate={~p"/"}
+          class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mt-8"
+        >
           {dgettext("projects", "Go to Homepage")}
         </.link>
       </div>

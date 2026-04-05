@@ -66,7 +66,6 @@ defmodule StoryarnWeb.Components.TreeComponents do
           :if={@has_children}
           type="button"
           class="flex items-center justify-center w-5 h-5 rounded shrink-0"
-          
           id={"tree-toggle-#{@id}"}
           data-node-id={@id}
           data-expanded={to_string(@expanded)}
@@ -92,13 +91,23 @@ defmodule StoryarnWeb.Components.TreeComponents do
           >
             <.tree_icon icon={@icon} icon_text={@icon_text} avatar_url={@avatar_url} color={@color} />
             <span class="truncate">{@label}</span>
-            <span :if={@badge} class="text-[10px] px-1.5 py-0 rounded-full bg-muted text-muted-foreground ml-auto shrink-0">{@badge}</span>
+            <span
+              :if={@badge}
+              class="text-[10px] px-1.5 py-0 rounded-full bg-muted text-muted-foreground ml-auto shrink-0"
+            >
+              {@badge}
+            </span>
           </.link>
         <% else %>
           <div class="flex-1 min-w-0 flex items-center gap-2 px-2 py-1 text-sm truncate">
             <.tree_icon icon={@icon} icon_text={@icon_text} avatar_url={@avatar_url} color={@color} />
             <span class="truncate">{@label}</span>
-            <span :if={@badge} class="text-[10px] px-1.5 py-0 rounded-full bg-muted text-muted-foreground ml-auto shrink-0">{@badge}</span>
+            <span
+              :if={@badge}
+              class="text-[10px] px-1.5 py-0 rounded-full bg-muted text-muted-foreground ml-auto shrink-0"
+            >
+              {@badge}
+            </span>
           </div>
         <% end %>
 

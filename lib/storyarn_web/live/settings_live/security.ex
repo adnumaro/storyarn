@@ -38,7 +38,7 @@ defmodule StoryarnWeb.SettingsLive.Security do
       <:subtitle>{dgettext("settings", "Manage your password and account security")}</:subtitle>
 
       <.vue
-        v-component="settings/Security"
+        v-component="pages/settings/Security"
         v-socket={@socket}
         id="settings-security-vue"
         password-form={@password_form}
@@ -60,8 +60,7 @@ defmodule StoryarnWeb.SettingsLive.Security do
       confirmPassword: dgettext("settings", "Confirm new password"),
       updatePassword: dgettext("settings", "Update Password"),
       activeSessions: dgettext("settings", "Active Sessions"),
-      sessionsDescription:
-        dgettext("settings", "You are currently logged in on this device."),
+      sessionsDescription: dgettext("settings", "You are currently logged in on this device."),
       sessionsComingSoon: dgettext("settings", "Session management coming soon.")
     }
   end

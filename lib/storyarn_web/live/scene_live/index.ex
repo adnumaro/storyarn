@@ -59,13 +59,15 @@ defmodule StoryarnWeb.SceneLive.Index do
         id="scene-dashboard"
         stats={@dashboard_stats}
         table-data={@scene_table_data}
-        pagination={%{
-          sortBy: @sort_by,
-          sortDir: to_string(@sort_dir),
-          page: @page,
-          totalPages: @total_pages,
-          total: length(@all_scene_table_data)
-        }}
+        pagination={
+          %{
+            sortBy: @sort_by,
+            sortDir: to_string(@sort_dir),
+            page: @page,
+            totalPages: @total_pages,
+            total: length(@all_scene_table_data)
+          }
+        }
         issues={@scene_issues}
         can-edit={@can_edit}
         workspace-slug={@workspace.slug}
@@ -259,8 +261,7 @@ defmodule StoryarnWeb.SceneLive.Index do
                |> reload_scenes()}
 
             {:error, _} ->
-              {:noreply,
-               put_flash(socket, :error, dgettext("scenes", "Could not delete scene."))}
+              {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not delete scene."))}
           end
       end
     end)
@@ -325,8 +326,7 @@ defmodule StoryarnWeb.SceneLive.Index do
               {:noreply, reload_scenes(socket)}
 
             {:error, _} ->
-              {:noreply,
-               put_flash(socket, :error, dgettext("scenes", "Could not move scene."))}
+              {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not move scene."))}
           end
       end
     end)
@@ -388,8 +388,7 @@ defmodule StoryarnWeb.SceneLive.Index do
       %{
         severity: to_string(severity),
         message: message,
-        href:
-          ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{issue.scene_id}"
+        href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{issue.scene_id}"
       }
     end)
   end

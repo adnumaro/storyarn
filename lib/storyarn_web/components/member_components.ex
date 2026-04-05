@@ -117,7 +117,10 @@ defmodule StoryarnWeb.Components.MemberComponents do
       <div class="flex items-center gap-2">
         <%= if @can_change_role do %>
           <form phx-change={@on_role_change} phx-value-member-id={@member.id}>
-            <select name="role" class="h-8 rounded-md border border-input bg-background px-2 text-sm w-28">
+            <select
+              name="role"
+              class="h-8 rounded-md border border-input bg-background px-2 text-sm w-28"
+            >
               <option
                 :for={{label, value} <- @role_options}
                 value={value}
@@ -185,7 +188,9 @@ defmodule StoryarnWeb.Components.MemberComponents do
       </div>
       <div class="flex items-center gap-2">
         <.role_badge role={@invitation.role} />
-        <span class="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground badge-sm">{gettext("Pending")}</span>
+        <span class="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground badge-sm">
+          {gettext("Pending")}
+        </span>
         <button
           :if={@can_revoke && @on_revoke}
           type="button"

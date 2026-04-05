@@ -25,7 +25,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
       sidebar_sections={project_settings_sections(@workspace, @project)}
     >
       <:title>{dgettext("projects", "Version Control")}</:title>
-      <:subtitle>{dgettext("projects", "Configure automatic snapshots and auto-versioning")}</:subtitle>
+      <:subtitle>
+        {dgettext("projects", "Configure automatic snapshots and auto-versioning")}
+      </:subtitle>
 
       <.vue
         v-component="pages/workspaces/projects/settings/version-control"

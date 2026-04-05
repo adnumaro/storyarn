@@ -26,7 +26,9 @@ defmodule StoryarnWeb.Components.Sidebar.DraftList do
         <summary class="flex items-center gap-1.5 cursor-pointer select-none px-1 py-1 text-xs font-medium text-muted-foreground hover:text-foreground/80">
           <.icon name="git-branch" class="size-3.5" />
           <span class="flex-1">{dgettext("drafts", "My Drafts")}</span>
-          <span class="text-[10px] px-1 rounded bg-muted text-muted-foreground badge-ghost">{@count}</span>
+          <span class="text-[10px] px-1 rounded bg-muted text-muted-foreground badge-ghost">
+            {@count}
+          </span>
         </summary>
         <ul class="mt-1 space-y-0.5">
           <li :for={draft <- @my_drafts}>
@@ -72,7 +74,10 @@ defmodule StoryarnWeb.Components.Sidebar.DraftList do
             phx-key="Escape"
             phx-keydown={JS.push("cancel_rename_draft")}
           />
-          <button type="submit" class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
+          <button
+            type="submit"
+            class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+          >
             <.icon name="check" class="size-3" />
           </button>
         </form>
@@ -106,7 +111,9 @@ defmodule StoryarnWeb.Components.Sidebar.DraftList do
             <.icon name="trash-2" class="size-3" />
           </button>
         </div>
-        <span class="text-xs text-muted-foreground shrink-0 group-hover:hidden">{@relative_time}</span>
+        <span class="text-xs text-muted-foreground shrink-0 group-hover:hidden">
+          {@relative_time}
+        </span>
       <% end %>
 
       <.confirm_modal

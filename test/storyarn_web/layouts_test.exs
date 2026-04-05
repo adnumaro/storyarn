@@ -375,7 +375,6 @@ defmodule StoryarnWeb.LayoutsTest do
     end
   end
 
-
   # ── flash_group/1 ───────────────────────────────────────────────────
 
   describe "flash_group/1" do

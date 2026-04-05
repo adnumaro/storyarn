@@ -58,7 +58,10 @@ defmodule StoryarnWeb.Components.AssetUpload do
             <p class="text-muted-foreground mb-2">
               {dgettext("assets", "Drag and drop files here, or")}
             </p>
-            <label for={@uploads.asset.ref} class="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer">
+            <label
+              for={@uploads.asset.ref}
+              class="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+            >
               {dgettext("assets", "Browse Files")}
             </label>
             <p class="text-xs text-muted-foreground mt-2">

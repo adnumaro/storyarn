@@ -40,7 +40,11 @@ defmodule StoryarnWeb.LocalizationLive.Index do
             <span class="hidden xl:inline">{dgettext("localization", "Report")}</span>
           </.link>
           <div :if={@selected_locale} class="relative">
-            <div tabindex="0" role="button" class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors gap-1.5">
+            <div
+              tabindex="0"
+              role="button"
+              class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors gap-1.5"
+            >
               <.icon name="download" class="size-4" />
               <span class="hidden xl:inline">{dgettext("localization", "Export")}</span>
             </div>
@@ -327,7 +331,10 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
   defp status_badge(assigns) do
     ~H"""
-    <span class={["text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground", status_class(@status)]}>
+    <span class={[
+      "text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground",
+      status_class(@status)
+    ]}>
       {status_label(@status)}
     </span>
     """

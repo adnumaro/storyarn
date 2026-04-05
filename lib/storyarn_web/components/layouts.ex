@@ -216,29 +216,54 @@ defmodule StoryarnWeb.Layouts do
           <%!-- Desktop nav --%>
           <div class="hidden min-w-0 flex-1 items-center justify-between gap-6 xl:flex">
             <div class="flex min-w-0 items-center gap-2">
-              <a href="#features" onclick="window.dispatchEvent(new CustomEvent('storyarn:force-scroll', { detail: { panelIndex: 1 } })); return false;" class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
+              <a
+                href="#features"
+                onclick="window.dispatchEvent(new CustomEvent('storyarn:force-scroll', { detail: { panelIndex: 1 } })); return false;"
+                class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors"
+              >
                 {gettext("Features")}
               </a>
-              <a href="#discover" onclick="window.dispatchEvent(new CustomEvent('storyarn:force-scroll', { detail: { panelIndex: 2 } })); return false;" class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
+              <a
+                href="#discover"
+                onclick="window.dispatchEvent(new CustomEvent('storyarn:force-scroll', { detail: { panelIndex: 2 } })); return false;"
+                class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors"
+              >
                 {gettext("Discover")}
               </a>
-              <.link navigate={~p"/docs"} class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
+              <.link
+                navigate={~p"/docs"}
+                class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors"
+              >
                 {gettext("Docs")}
               </.link>
-              <.link navigate={~p"/contact"} class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
+              <.link
+                navigate={~p"/contact"}
+                class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors"
+              >
                 {gettext("Contact")}
               </.link>
             </div>
             <div class="flex flex-none items-center gap-2">
               <%= if @current_scope && @current_scope.user do %>
-                <.link navigate={~p"/workspaces"} class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
+                <.link
+                  navigate={~p"/workspaces"}
+                  class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors"
+                >
                   {gettext("Dashboard")}
                 </.link>
               <% else %>
-                <a href="#waitlist" onclick="window.dispatchEvent(new CustomEvent('storyarn:force-scroll', { detail: { panelIndex: 3 } })); return false;" class="inline-flex items-center justify-center px-5 py-2.5 text-sm font-bold rounded-md text-teal-950 hover:scale-105 transition-all" style="background: linear-gradient(135deg, oklch(78% 0.14 185), oklch(68% 0.12 210)); box-shadow: 0 0 20px rgba(34, 211, 238, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);">
+                <a
+                  href="#waitlist"
+                  onclick="window.dispatchEvent(new CustomEvent('storyarn:force-scroll', { detail: { panelIndex: 3 } })); return false;"
+                  class="inline-flex items-center justify-center px-5 py-2.5 text-sm font-bold rounded-md text-teal-950 hover:scale-105 transition-all"
+                  style="background: linear-gradient(135deg, oklch(78% 0.14 185), oklch(68% 0.12 210)); box-shadow: 0 0 20px rgba(34, 211, 238, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);"
+                >
                   {gettext("Request access")}
                 </a>
-                <.link navigate={~p"/users/log-in"} class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors">
+                <.link
+                  navigate={~p"/users/log-in"}
+                  class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md hover:bg-accent text-foreground/80 hover:text-foreground transition-colors"
+                >
                   {gettext("Log in")}
                 </.link>
               <% end %>
@@ -296,7 +321,10 @@ defmodule StoryarnWeb.Layouts do
                 <a
                   href="#features"
                   class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-accent"
-                  phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out") |> JS.dispatch("storyarn:force-scroll", detail: %{panelIndex: 1})}
+                  phx-click={
+                    JS.hide(to: "#mobile-nav", transition: "fade-out")
+                    |> JS.dispatch("storyarn:force-scroll", detail: %{panelIndex: 1})
+                  }
                 >
                   <.icon name="sparkles" class="size-5 text-foreground/45" />
                   {gettext("Features")}
@@ -304,7 +332,10 @@ defmodule StoryarnWeb.Layouts do
                 <a
                   href="#discover"
                   class="flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-accent"
-                  phx-click={JS.hide(to: "#mobile-nav", transition: "fade-out") |> JS.dispatch("storyarn:force-scroll", detail: %{panelIndex: 2})}
+                  phx-click={
+                    JS.hide(to: "#mobile-nav", transition: "fade-out")
+                    |> JS.dispatch("storyarn:force-scroll", detail: %{panelIndex: 2})
+                  }
                 >
                   <.icon name="panels-top-left" class="size-5 text-foreground/45" />
                   {gettext("Discover")}
@@ -327,7 +358,10 @@ defmodule StoryarnWeb.Layouts do
 
               <div class="mt-auto grid gap-3 border-t border-border pt-5">
                 <%= if @current_scope && @current_scope.user do %>
-                  <.link navigate={~p"/workspaces"} class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors btn-block rounded-2xl">
+                  <.link
+                    navigate={~p"/workspaces"}
+                    class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors btn-block rounded-2xl"
+                  >
                     {gettext("Dashboard")}
                   </.link>
                 <% else %>
@@ -340,7 +374,10 @@ defmodule StoryarnWeb.Layouts do
                   >
                     {gettext("Request access")}
                   </a>
-                  <.link navigate={~p"/users/log-in"} class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors btn-block rounded-2xl">
+                  <.link
+                    navigate={~p"/users/log-in"}
+                    class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors btn-block rounded-2xl"
+                  >
                     {gettext("Log in")}
                   </.link>
                 <% end %>
@@ -429,23 +466,26 @@ defmodule StoryarnWeb.Layouts do
       <%!-- Mobile overlay (closes sidebar on tap) --%>
       <label
         for="settings-sidebar-check"
-        class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[1005] hidden peer-checked:block md:hidden cursor-pointer"
+        class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[1005] hidden peer-checked:block lg:hidden cursor-pointer"
       />
 
       <%!-- Mobile header to toggle sidebar --%>
-      <div class="absolute top-3 left-3 z-[1000] md:hidden">
-        <label for="settings-sidebar-check" class="inline-flex items-center justify-center size-9 rounded-md bg-background border border-border shadow-sm hover:bg-accent transition-colors cursor-pointer text-muted-foreground">
+      <div class="absolute top-3 left-3 z-[1000] lg:hidden">
+        <label
+          for="settings-sidebar-check"
+          class="inline-flex items-center justify-center size-9 rounded-md bg-background border border-border shadow-sm hover:bg-accent transition-colors cursor-pointer text-muted-foreground"
+        >
           <.icon name="menu" class="size-5" />
         </label>
       </div>
 
       <%!-- Settings sidebar (static on desktop, floating on mobile) --%>
       <aside class={[
-        "flex-none w-[252px] v2-surface-panel flex flex-col z-[1010] shrink-0 overflow-hidden",
-        "fixed md:relative top-0 bottom-0 left-0 h-screen md:h-auto",
-        "md:ml-3 md:my-3 md:rounded-lg",
+        "flex-none w-[252px] v2-surface-panel flex flex-col z-[1010] shrink-0 overflow-hidden rounded-lg",
+        "fixed lg:relative top-3 bottom-3 left-3 lg:top-0 lg:bottom-0 lg:left-0 h-[calc(100vh-1.5rem)] lg:h-auto",
+        "lg:ml-3 lg:my-3",
         "transition-transform duration-200",
-        "-translate-x-[calc(100%+1rem)] peer-checked:translate-x-0 md:translate-x-0"
+        "-translate-x-[calc(100%+1rem)] peer-checked:translate-x-0 lg:translate-x-0"
       ]}>
         <div class="px-2 pt-3 pb-3 border-b border-border/10">
           <.link
@@ -468,8 +508,10 @@ defmodule StoryarnWeb.Layouts do
                   navigate={item.path}
                   class={[
                     "flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors",
-                    @current_path == item.path && "bg-black/5 dark:bg-white/10 font-medium text-foreground",
-                    @current_path != item.path && "text-foreground/80 hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
+                    @current_path == item.path &&
+                      "bg-black/5 dark:bg-white/10 font-medium text-foreground",
+                    @current_path != item.path &&
+                      "text-foreground/80 hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
                   ]}
                 >
                   <.icon name={item.icon} class="size-4 opacity-70" />
@@ -482,8 +524,8 @@ defmodule StoryarnWeb.Layouts do
       </aside>
 
       <%!-- Main content area --%>
-      <main class="flex-1 min-w-0 overflow-y-auto bg-background p-4 pt-16 md:px-8 md:py-3 min-vh-100">
-        <div class="max-w-3xl mx-auto md:mt-5">
+      <main class="flex-1 min-w-0 overflow-y-auto bg-background p-4 pt-16 lg:px-8 lg:py-3 min-vh-100">
+        <div class="max-w-3xl mx-auto lg:mt-5">
           <.header>
             {render_slot(@title)}
             <:subtitle :if={@subtitle != []}>
@@ -587,7 +629,10 @@ defmodule StoryarnWeb.Layouts do
       <%!-- Header --%>
       <header class="navbar px-4 sm:px-6 lg:px-8 border-b border-border bg-background shrink-0">
         <div class="flex-none md:hidden">
-          <button phx-click="toggle_sidebar" class="inline-flex items-center justify-center size-9 rounded-md hover:bg-accent btn-ghost btn-sm">
+          <button
+            phx-click="toggle_sidebar"
+            class="inline-flex items-center justify-center size-9 rounded-md hover:bg-accent btn-ghost btn-sm"
+          >
             <.icon name="menu" class="size-5" />
           </button>
         </div>
@@ -606,11 +651,17 @@ defmodule StoryarnWeb.Layouts do
         <div class="flex-none flex items-center gap-2">
           <.theme_toggle />
           <%= if @current_scope && @current_scope.user do %>
-            <.link navigate={~p"/workspaces"} class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors">
+            <.link
+              navigate={~p"/workspaces"}
+              class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors"
+            >
               {gettext("Dashboard")}
             </.link>
           <% else %>
-            <.link navigate={~p"/users/log-in"} class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors">
+            <.link
+              navigate={~p"/users/log-in"}
+              class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors"
+            >
               {gettext("Log in")}
             </.link>
           <% end %>
@@ -644,7 +695,7 @@ defmodule StoryarnWeb.Layouts do
         </aside>
 
         <%!-- Content --%>
-        <main id="docs-main" class="flex-1 overflow-y-auto" >
+        <main id="docs-main" class="flex-1 overflow-y-auto">
           <div class="max-w-4xl mx-auto px-4 sm:px-8 py-8 xl:mr-56">
             <%!-- Guide header --%>
             <div :if={@guide} class="mb-8">
@@ -739,7 +790,11 @@ defmodule StoryarnWeb.Layouts do
 
   def flash_group(assigns) do
     ~H"""
-    <div id={@id} aria-live="polite">
+    <div
+      id={@id}
+      aria-live="polite"
+      class="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 z-[2000] flex flex-col gap-2 w-auto sm:w-96 pointer-events-auto max-w-[420px]"
+    >
       <.flash kind={:info} flash={@flash} />
       <.flash kind={:error} flash={@flash} />
 
@@ -769,5 +824,4 @@ defmodule StoryarnWeb.Layouts do
     </div>
     """
   end
-
 end

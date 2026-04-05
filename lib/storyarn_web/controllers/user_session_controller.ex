@@ -14,8 +14,6 @@ defmodule StoryarnWeb.UserSessionController do
     create(conn, params, dgettext("identity", "Welcome back!"))
   end
 
-
-
   # email + password login
   defp create(conn, %{"user" => user_params}, info) do
     %{"email" => email, "password" => password} = user_params

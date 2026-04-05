@@ -59,7 +59,7 @@ defmodule StoryarnWeb.SettingsLive.Profile do
       </:subtitle>
 
       <.vue
-        v-component="settings/Profile"
+        v-component="pages/settings/Profile"
         v-socket={@socket}
         id="settings-profile-vue"
         profile-form={@profile_form}

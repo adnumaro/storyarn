@@ -155,8 +155,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers do
         isAuto: v.is_auto,
         entityType: v.entity_type,
         insertedAt: Calendar.strftime(v.inserted_at, "%b %d, %Y at %H:%M"),
-        createdBy:
-          if(v.created_by, do: v.created_by.display_name || v.created_by.email)
+        createdBy: if(v.created_by, do: v.created_by.display_name || v.created_by.email)
       }
     end)
   end

@@ -43,7 +43,12 @@ defmodule StoryarnWeb.AssetLive.Components.AssetComponents do
         <p class="text-sm font-medium truncate" title={@asset.filename}>{@asset.filename}</p>
         <div class="flex items-center justify-between text-xs text-muted-foreground">
           <span>{format_size(@asset.size)}</span>
-          <span class={["text-[10px] px-1 rounded bg-muted text-muted-foreground", type_badge_class(@asset)]}>{type_label(@asset)}</span>
+          <span class={[
+            "text-[10px] px-1 rounded bg-muted text-muted-foreground",
+            type_badge_class(@asset)
+          ]}>
+            {type_label(@asset)}
+          </span>
         </div>
       </div>
     </div>
@@ -68,7 +73,11 @@ defmodule StoryarnWeb.AssetLive.Components.AssetComponents do
     <div class="w-80 flex-shrink-0 border border-border rounded-lg bg-background p-4 space-y-4 self-start">
       <div class="flex items-center justify-between">
         <h3 class="font-semibold text-sm">{dgettext("assets", "Details")}</h3>
-        <button type="button" phx-click="deselect_asset" class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
+        <button
+          type="button"
+          phx-click="deselect_asset"
+          class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+        >
           <.icon name="x" class="size-4" />
         </button>
       </div>

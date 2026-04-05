@@ -39,7 +39,7 @@ defmodule StoryarnWeb.UserLive.Registration do
       {user, token_record} ->
         # We start with an empty changeset (casted so params is %{}) so no validation errors are shown on load
         changeset = Ecto.Changeset.cast(user, %{}, [])
-        
+
         {:ok,
          socket
          |> assign(:invited_user, user)

@@ -34,7 +34,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.ReferenceHandlers do
       if block && block.sheet_id == socket.assigns.sheet.id do
         target_id_int = helpers.parse_id.(target_id)
 
-        case Sheets.validate_reference_target(target_type, target_id_int, socket.assigns.project.id) do
+        case Sheets.validate_reference_target(
+               target_type,
+               target_id_int,
+               socket.assigns.project.id
+             ) do
           {:ok, _target} ->
             Sheets.update_block_value(block, %{
               "target_type" => target_type,
@@ -44,7 +48,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.ReferenceHandlers do
             {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("sheets", "Reference target not found."))}
+            {:noreply,
+             put_flash(socket, :error, dgettext("sheets", "Reference target not found."))}
         end
       else
         {:noreply, socket}

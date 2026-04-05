@@ -67,7 +67,7 @@ defmodule Storyarn.Accounts.Registration do
   def complete_registration(%User{} = user, token_record, attrs) do
     Repo.transact(fn ->
       user_changeset = User.password_changeset(user, attrs, hash_password: true)
-      
+
       with {:ok, updated_user} <- Repo.update(user_changeset) do
         # Consume the token immediately
         Repo.delete!(token_record)
@@ -83,7 +83,11 @@ defmodule Storyarn.Accounts.Registration do
       when is_function(invite_url_fun, 1) do
     {encoded_token, user_token} = UserToken.build_email_token(user, "invite")
     Repo.insert!(user_token)
-    Storyarn.Accounts.UserNotifier.deliver_waitlist_invite(user.email, invite_url_fun.(encoded_token))
+
+    Storyarn.Accounts.UserNotifier.deliver_waitlist_invite(
+      user.email,
+      invite_url_fun.(encoded_token)
+    )
   end
 
   defp insert_user(attrs) do
