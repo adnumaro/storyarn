@@ -26,15 +26,13 @@ const displayName = computed(
   <div class="flex flex-col h-full">
     <!-- Header -->
     <div class="px-4 py-4 border-b border-border/10">
-      <h2 class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-        Storyarn
-      </h2>
+      <h2 class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Storyarn</h2>
     </div>
 
     <!-- Workspaces List -->
     <div class="flex-1 overflow-y-auto px-2 py-4 space-y-1">
       <div class="px-2 pb-2 text-xs font-medium text-muted-foreground">My Workspaces</div>
-      
+
       <a
         v-for="ws in workspaces"
         :key="ws.id"
@@ -43,7 +41,7 @@ const displayName = computed(
           'flex items-center gap-2 px-2 py-2 rounded-md text-sm transition-colors',
           ws.slug === currentWorkspaceSlug
             ? 'bg-accent text-accent-foreground font-medium'
-            : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+            : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
         ]"
       >
         <Briefcase class="size-4 shrink-0" />
@@ -55,14 +53,19 @@ const displayName = computed(
     <div class="pt-2 pb-2 px-2 border-t border-border/10 mt-auto">
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
-          <button class="flex items-center gap-2 w-full p-2 rounded-md hover:bg-accent transition-colors text-left group">
+          <button
+            class="flex items-center gap-2 w-full p-2 rounded-md hover:bg-accent transition-colors text-left group"
+          >
             <UserAvatar
               :email="currentUser.email"
               :display-name="currentUser.displayName"
               size="sm"
             />
             <div class="flex flex-col overflow-hidden">
-              <span class="text-sm font-medium truncate text-foreground group-hover:text-foreground/90 transition-colors">{{ displayName }}</span>
+              <span
+                class="text-sm font-medium truncate text-foreground group-hover:text-foreground/90 transition-colors"
+                >{{ displayName }}</span
+              >
               <span class="text-xs text-muted-foreground truncate">{{ currentUser.email }}</span>
             </div>
           </button>

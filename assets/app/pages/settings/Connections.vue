@@ -19,10 +19,9 @@ import {
 } from "@components/ui/tooltip/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const { identities, hasPassword, translations } = defineProps({
+const { identities, hasPassword } = defineProps({
   identities: { type: Array, required: true },
   hasPassword: { type: Boolean, required: true },
-  translations: { type: Object, required: true },
 });
 
 const live = useLive();
@@ -72,7 +71,14 @@ function confirmUnlink() {
 </script>
 
 <template>
-  <div>
+  <div class="space-y-8">
+    <div class="space-y-1.5">
+      <h1 class="text-2xl font-bold tracking-tight text-foreground">
+        {{ $t("settings.connections.title") }}
+      </h1>
+      <p class="text-base text-muted-foreground">{{ $t("settings.connections.subtitle") }}</p>
+    </div>
+
     <div class="space-y-4">
       <div
         v-for="provider in providers"
@@ -136,7 +142,7 @@ function confirmUnlink() {
               }}
             </p>
             <p v-else class="text-sm text-muted-foreground/50">
-              {{ translations.notConnected }}
+              {{ $t("settings.connections.not_connected") }}
             </p>
           </div>
         </div>
@@ -150,7 +156,7 @@ function confirmUnlink() {
                 class="text-destructive hover:text-destructive"
                 @click="openUnlinkDialog(provider.key)"
               >
-                {{ translations.unlink }}
+                {{ $t("settings.connections.unlink") }}
               </Button>
             </template>
             <template v-else>
@@ -158,11 +164,11 @@ function confirmUnlink() {
                 <Tooltip>
                   <TooltipTrigger as-child>
                     <span class="text-sm text-muted-foreground/50 cursor-default">
-                      {{ translations.connected }}
+                      {{ $t("settings.connections.connected") }}
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>
-                    {{ translations.setPasswordFirst }}
+                    {{ $t("settings.connections.set_password_first") }}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -171,7 +177,7 @@ function confirmUnlink() {
           <template v-else>
             <a :href="`/auth/${provider.key}/link`">
               <Button variant="outline" size="sm">
-                {{ translations.connect }}
+                {{ $t("settings.connections.connect") }}
               </Button>
             </a>
           </template>
@@ -181,9 +187,11 @@ function confirmUnlink() {
 
     <!-- Why connect accounts? info box -->
     <div class="mt-8 p-4 rounded-lg bg-muted">
-      <h4 class="font-medium mb-2">{{ translations.whyConnect }}</h4>
+      <h4 class="font-medium mb-2">{{ $t("settings.connections.why_connect.title") }}</h4>
       <ul class="text-sm text-muted-foreground space-y-1">
-        <li v-for="(reason, idx) in translations.reasons" :key="idx">&bull; {{ reason }}</li>
+        <li v-for="(reason, index) in $tm('settings.connections.why_connect.reasons')" :key="index">
+          &bull; {{ $rt(reason) }}
+        </li>
       </ul>
     </div>
 
@@ -191,17 +199,17 @@ function confirmUnlink() {
     <Dialog v-model:open="unlinkDialogOpen">
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{{ translations.unlinkTitle }}</DialogTitle>
+          <DialogTitle>{{ $t("settings.connections.unlink_modal.title") }}</DialogTitle>
           <DialogDescription>
-            {{ translations.unlinkMessage }}
+            {{ $t("settings.connections.unlink_modal.message") }}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <DialogClose as-child>
-            <Button variant="outline">{{ translations.cancel }}</Button>
+            <Button variant="outline">{{ $t("settings.connections.unlink_modal.cancel") }}</Button>
           </DialogClose>
           <Button variant="destructive" @click="confirmUnlink">
-            {{ translations.unlink }}
+            {{ $t("settings.connections.unlink") }}
           </Button>
         </DialogFooter>
       </DialogContent>

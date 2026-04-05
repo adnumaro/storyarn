@@ -52,11 +52,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
       managed_workspace_slugs={@managed_workspace_slugs}
       current_path={@current_path}
     >
-      <:title>{dgettext("workspaces", "General")}</:title>
-      <:subtitle>
-        {dgettext("workspaces", "Manage workspace details for %{name}", name: @workspace.name)}
-      </:subtitle>
-
       <.vue
         v-component="pages/settings/WorkspaceGeneral"
         v-socket={@socket}

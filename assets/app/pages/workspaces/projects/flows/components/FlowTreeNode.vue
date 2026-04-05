@@ -9,16 +9,17 @@ import {
   ContextMenuTrigger,
 } from "@components/ui/context-menu/index.js";
 
-const { node, index, siblings, selectedFlowId, canEdit, depth, searchActive, flowHref } = defineProps({
-  node: { type: Object, required: true },
-  index: { type: Number, required: true },
-  siblings: { type: Array, required: true },
-  selectedFlowId: { type: [String, Number], default: null },
-  canEdit: { type: Boolean, default: false },
-  depth: { type: Number, default: 0 },
-  searchActive: { type: Boolean, default: false },
-  flowHref: { type: Function, required: true },
-});
+const { node, index, siblings, selectedFlowId, canEdit, depth, searchActive, flowHref } =
+  defineProps({
+    node: { type: Object, required: true },
+    index: { type: Number, required: true },
+    siblings: { type: Array, required: true },
+    selectedFlowId: { type: [String, Number], default: null },
+    canEdit: { type: Boolean, default: false },
+    depth: { type: Number, default: 0 },
+    searchActive: { type: Boolean, default: false },
+    flowHref: { type: Function, required: true },
+  });
 
 const emit = defineEmits(["createChild", "requestDelete", "setMain", "drop"]);
 

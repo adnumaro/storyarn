@@ -1,0 +1,103 @@
+{
+  "landing": {
+    "common": {
+      "badge": "Private beta",
+      "links": {
+        "features": "Features",
+        "discover": "Discover",
+        "workflow": "Workflow",
+        "docs": "Docs",
+        "contact": "Contact"
+      }
+    },
+    "hero": {
+      "title_part1": "Create worlds.",
+      "title_part2": "Weave stories.",
+      "description": "The narrative design platform where characters, dialogues, worlds, and localization live in a single connected project — from the first draft to native engine export.",
+      "cta_explore": "Explore Storyarn",
+      "cta_workflow": "View workflow",
+      "video_demo_sr": "Watch demo video",
+      "video_demo_badge": "Watch demo",
+      "video_close_sr": "Close video"
+    },
+    "features": {
+      "section_title": "End-to-End Narrative Development",
+      "section_subtitle": "A suite of tools where writers create, analysts explore, and programmers simply export. Everything connected.",
+      "cards": {
+        "core": {
+          "title": "The Core Tools",
+          "desc": "The heart of your narrative. Structured documents, dynamic branching, and interactive worlds designed to integrate as your single source of truth.",
+          "sublinks": {
+            "sheets": "Explore Sheets",
+            "flows": "Explore Flows",
+            "scenes": "Explore Scenes"
+          }
+        },
+        "analytics": {
+          "title": "Analytics and Dashboards",
+          "desc": "Monitor your project's complexity. Visualize dependencies, dialogue density, and technical blind spots in your narrative structure at a glance."
+        },
+        "debugging": {
+          "title": "Multi-level Debugging",
+          "desc": "Experience the story exactly as a player would or analyze it step-by-step by tracking every variable, condition, and trigger in real time."
+        },
+        "vcs": {
+          "title": "Version Control",
+          "desc": "Complete history of your narrative. Compare branches, audit changes between writers, and roll back in time without fear of breaking the game flow."
+        },
+        "localization": {
+          "title": "Smart Localization",
+          "desc": "Extract lines, translate smartly, manage glossaries, and visualize coverage metrics by language — all from the writing canvas itself."
+        },
+        "export": {
+          "title": "Native Export",
+          "desc": "Automatically export to established engines like Godot Dialogic, Unity, Unreal, Ink, or Yarn Spinner. Your data, ready to enter production."
+        }
+      }
+    },
+    "discovery": {
+      "features": {
+        "sheets": {
+          "label": "Sheets",
+          "title": "Inheritance keeps your world consistent",
+          "desc": "Parent and child sheets let you develop characters, factions, and places without constantly duplicating structures.",
+          "items": [
+            "Shared variables flowing down the hierarchy.",
+            "Override only what changes — per variant or episode.",
+            "Scale the world without copy and paste."
+          ]
+        },
+        "flows": {
+          "label": "Flows",
+          "title": "Clean visual graphs at production scale",
+          "desc": "Dialogues, conditions, instructions, and branches in a single integrated graph — designed to remain clear even at maximum scale.",
+          "items": [
+            "Conversations, state changes, and unified exits.",
+            "Logic lives linked to your sheets, not in orphaned snippets.",
+            "From quick sketches to hyper-complex graphs."
+          ]
+        },
+        "scenes": {
+          "label": "Scenes",
+          "title": "Layers and fog for readable maps",
+          "desc": "Use layers to plan progressions, visibility, and structures without flattening everything into a single saturated image.",
+          "items": [
+            "Layer visibility instead of a chaotic canvas.",
+            "Fog of war to communicate progression.",
+            "Large spaces remain iterable and readable in review."
+          ]
+        }
+      }
+    },
+    "cta": {
+      "title": "Start building your next narrative",
+      "desc": "We are onboarding a small group of narrative designers and game studios. Join the waitlist — we'll contact you when your slot becomes available.",
+      "placeholder": "you{'@'}studio.com",
+      "btn": "Join the waitlist",
+      "footer": "No spam. We'll only write when the time comes."
+    },
+    "footer": {
+      "tagline": "Design characters, dialogues, worlds, and localization in a single connected project. Built for narrative teams shipping interactive stories."
+    }
+  }
+}

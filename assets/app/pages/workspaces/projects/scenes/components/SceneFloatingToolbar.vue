@@ -7,7 +7,16 @@ import {
   ZoneToolbar,
 } from "./toolbar-sections/index.js";
 
-const { selectedType, selectedElement, layers, canEdit, editMode, stageConfig, elementPosition, isDragging } = defineProps({
+const {
+  selectedType,
+  selectedElement,
+  layers,
+  canEdit,
+  editMode,
+  stageConfig,
+  elementPosition,
+  isDragging,
+} = defineProps({
   selectedType: { type: String, default: null },
   selectedElement: { type: Object, default: null },
   layers: { type: Array, default: () => [] },

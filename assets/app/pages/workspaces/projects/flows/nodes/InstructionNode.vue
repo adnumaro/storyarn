@@ -16,28 +16,40 @@ const nodeData = computed(() => data.nodeData || {});
 
 // --- Formatting (matching V1 instruction.js exactly) ---
 
+function getBooleanOpString(op, ref) {
+  const map = {
+    set_true: `Set ${ref} to true`,
+    set_false: `Set ${ref} to false`,
+    toggle: `Toggle ${ref}`,
+    clear: `Clear ${ref}`,
+  };
+  return map[op] || null;
+}
+
+function getValueDisplay(assignment) {
+  if (assignment.value_type === "variable_ref" && assignment.value_sheet && assignment.value) {
+    return `${assignment.value_sheet}.${assignment.value}`;
+  }
+  return assignment.value || "?";
+}
+
+function getValueOpString(op, ref, val) {
+  const map = {
+    add: `Add ${val} to ${ref}`,
+    subtract: `Subtract ${val} from ${ref}`,
+  };
+  return map[op] || `Set ${ref} to ${val}`;
+}
+
 function formatAssignment(assignment) {
   if (!assignment.sheet || !assignment.variable) return null;
   const ref = `${assignment.sheet}.${assignment.variable}`;
   const op = assignment.operator || "set";
 
-  if (op === "set_true") return `Set ${ref} to true`;
-  if (op === "set_false") return `Set ${ref} to false`;
-  if (op === "toggle") return `Toggle ${ref}`;
-  if (op === "clear") return `Clear ${ref}`;
+  const boolStr = getBooleanOpString(op, ref);
+  if (boolStr) return boolStr;
 
-  let valueDisplay;
-  if (assignment.value_type === "variable_ref" && assignment.value_sheet && assignment.value) {
-    valueDisplay = `${assignment.value_sheet}.${assignment.value}`;
-  } else {
-    valueDisplay = assignment.value || "?";
-  }
-
-  if (op === "set") return `Set ${ref} to ${valueDisplay}`;
-  if (op === "add") return `Add ${valueDisplay} to ${ref}`;
-  if (op === "subtract") return `Subtract ${valueDisplay} from ${ref}`;
-
-  return `Set ${ref} to ${valueDisplay}`;
+  return getValueOpString(op, ref, getValueDisplay(assignment));
 }
 
 const summary = computed(() => {

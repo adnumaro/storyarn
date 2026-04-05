@@ -23,10 +23,6 @@ const { exportConfig, canEdit, importState, uploadConfig } = defineProps({
 
     <Separator />
 
-    <ImportPanel
-      :can-edit="canEdit"
-      :import-state="importState"
-      :upload-config="uploadConfig"
-    />
+    <ImportPanel :can-edit="canEdit" :import-state="importState" :upload-config="uploadConfig" />
   </div>
 </template>

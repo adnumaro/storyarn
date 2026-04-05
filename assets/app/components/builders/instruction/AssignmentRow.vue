@@ -44,11 +44,7 @@ const template = computed(() => {
   const op = assignment.operator || "set";
   let t = getTemplate(op);
   const hasValueSlot = t.some((item) => item.type === "slot" && item.key === "value");
-  if (
-    hasValueSlot &&
-    assignment.value_type === "variable_ref" &&
-    !NO_VALUE_OPERATORS.has(op)
-  ) {
+  if (hasValueSlot && assignment.value_type === "variable_ref" && !NO_VALUE_OPERATORS.has(op)) {
     t = expandTemplateForVariableRef(t);
   }
   return t;

@@ -27,9 +27,7 @@ const steps = [
 </script>
 
 <template>
-  <section
-    class="lp-auto-section scroll-mt-32 py-16 lg:py-20"
-  >
+  <section class="lp-auto-section scroll-mt-32 py-16 lg:py-20">
     <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
       <!-- Section header -->
       <div class="mb-8 grid max-w-[56rem] gap-4">
@@ -39,7 +37,8 @@ const steps = [
           Del worldbuilding al juego publicado
         </h2>
         <p class="max-w-[36rem] text-base leading-relaxed text-muted-foreground">
-          Un flujo de trabajo conectado desde la preproducción hasta la exportación — sin necesidad de módulos o herramientas desconectadas.
+          Un flujo de trabajo conectado desde la preproducción hasta la exportación — sin necesidad
+          de módulos o herramientas desconectadas.
         </p>
       </div>
 
@@ -50,7 +49,9 @@ const steps = [
           :key="step.num"
           class="relative rounded-3xl border border-border/40 bg-muted/60 px-5 pb-6 pt-16 backdrop-blur-md transition-colors hover:border-border/80 hover:bg-muted/80"
         >
-          <span class="absolute left-5 top-5 text-3xl font-extrabold tracking-tight text-foreground/20">
+          <span
+            class="absolute left-5 top-5 text-3xl font-extrabold tracking-tight text-foreground/20"
+          >
             {{ step.num }}
           </span>
           <h3 class="mb-3 text-lg font-bold tracking-tight text-foreground">

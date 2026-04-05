@@ -18,7 +18,17 @@ import { Badge } from "@components/ui/badge/index.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const { flowName, flowShortcut, isMain, canEdit, saveStatus, navHistory, flowHealth, sceneSelected, projectScenes } = defineProps({
+const {
+  flowName,
+  flowShortcut,
+  isMain,
+  canEdit,
+  saveStatus,
+  navHistory,
+  flowHealth,
+  sceneSelected,
+  projectScenes,
+} = defineProps({
   flowName: { type: String, default: "" },
   flowShortcut: { type: String, default: "" },
   isMain: { type: Boolean, default: false },
@@ -60,7 +70,10 @@ function navigateToNode(nodeId) {
 <template>
   <div class="flex items-stretch gap-2">
     <!-- Nav history -->
-    <div v-if="navHistory.back || navHistory.forward" class="flex items-center gap-0.5 v2-surface-panel px-1">
+    <div
+      v-if="navHistory.back || navHistory.forward"
+      class="flex items-center gap-0.5 v2-surface-panel px-1"
+    >
       <button
         v-if="navHistory.back"
         type="button"
@@ -120,7 +133,9 @@ function navigateToNode(nodeId) {
               title="Scene backdrop"
             >
               <MapIcon class="size-3.5" />
-              <span v-if="sceneSelected.name" class="truncate max-w-[120px]">{{ sceneSelected.name }}</span>
+              <span v-if="sceneSelected.name" class="truncate max-w-[120px]">{{
+                sceneSelected.name
+              }}</span>
               <span v-else>No scene</span>
               <span v-if="sceneSelected.inherited" class="text-muted-foreground text-[10px]"
                 >(inherited)</span

@@ -15,38 +15,26 @@ const isRevealed = ref(true); // GSAP controls the timeline now, assume it's rev
 const features = computed(() => [
   {
     id: "sheets",
-    label: "Fichas",
-    title: "La herencia mantiene tu mundo consistente",
-    desc: "Las fichas padre e hijo te permiten desarrollar personajes, facciones y lugares sin duplicar estructuras constantemente.",
-    items: [
-      "Variables compartidas que fluyen por la jerarquía.",
-      "Sobrescribe solo lo que cambie — por variante o episodio.",
-      "Escala el mundo sin copiar y pegar."
-    ],
+    labelKey: "landing.discovery.features.sheets.label",
+    titleKey: "landing.discovery.features.sheets.title",
+    descKey: "landing.discovery.features.sheets.desc",
+    itemsKey: "landing.discovery.features.sheets.items",
     textPosition: "left",
   },
   {
     id: "flows",
-    label: "Flujos",
-    title: "Grafos visuales limpios a escala productiva",
-    desc: "Diálogos, condiciones, instrucciones y ramas en un único grafo integrado — diseñado para mantenerse claro incluso en máxima escala.",
-    items: [
-      "Conversaciones, cambios de estado y salidas unificadas.",
-      "La lógica vive enlazada a tus fichas, no en fragmentos huérfanos.",
-      "Desde bocetos rápidos hasta grafos hipercomplejos."
-    ],
+    labelKey: "landing.discovery.features.flows.label",
+    titleKey: "landing.discovery.features.flows.title",
+    descKey: "landing.discovery.features.flows.desc",
+    itemsKey: "landing.discovery.features.flows.items",
     textPosition: "right",
   },
   {
     id: "scenes",
-    label: "Escenas",
-    title: "Capas y niebla para mapas comprensibles",
-    desc: "Utiliza capas para plantear progresiones, visibilidad y estructuras sin aplanar todo en una única imagen saturada.",
-    items: [
-      "Visibilidad por capas en lugar de un lienzo caótico.",
-      "Niebla de guerra para comunicar progresión.",
-      "Los grandes espacios se mantienen iterables y legibles en review."
-    ],
+    labelKey: "landing.discovery.features.scenes.label",
+    titleKey: "landing.discovery.features.scenes.title",
+    descKey: "landing.discovery.features.scenes.desc",
+    itemsKey: "landing.discovery.features.scenes.items",
     textPosition: "center",
   },
 ]);
@@ -70,26 +58,26 @@ const features = computed(() => [
           :class="[`discover-text--${feature.textPosition}`, { 'is-active': activeTab === i }]"
         >
           <span class="text-xs font-bold uppercase tracking-widest text-primary">
-            {{ feature.label }}
+            {{ $t(feature.labelKey) }}
           </span>
           <h3
             class="mt-2 text-[clamp(1.8rem,2.4vw,2.6rem)] font-bold leading-[0.98] tracking-[-0.04em] text-balance text-foreground"
           >
-            {{ feature.title }}
+            {{ $t(feature.titleKey) }}
           </h3>
           <p class="mt-3 max-w-[34rem] leading-relaxed text-foreground/70">
-            {{ feature.desc }}
+            {{ $t(feature.descKey) }}
           </p>
           <ul class="mx-auto mt-4 grid max-w-[28rem] gap-2.5 text-start">
             <li
-              v-for="(item, j) in feature.items"
+              v-for="(item, j) in $tm(feature.itemsKey)"
               :key="j"
               class="relative pl-4 leading-relaxed text-foreground/70"
             >
               <span
                 class="absolute left-0 top-[0.7em] size-2 rounded-full bg-primary shadow-[0_0_16px_hsl(var(--primary)/0.36)]"
               />
-              {{ item }}
+              {{ $rt(item) }}
             </li>
           </ul>
         </div>
@@ -104,7 +92,7 @@ const features = computed(() => [
             :class="{ 'is-active': activeTab === i }"
             @click="activeTab = i"
           >
-            {{ feature.label }}
+            {{ $t(feature.labelKey) }}
           </button>
         </div>
       </div>

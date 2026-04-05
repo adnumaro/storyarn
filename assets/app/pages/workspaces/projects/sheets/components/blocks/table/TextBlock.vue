@@ -13,7 +13,14 @@ const { block, canEdit, inherited } = defineProps({
   inherited: { type: Boolean, default: false },
 });
 
-const { live, label, isSelected, onBlockClick } = useBlockActions({ get block() { return block; }, get canEdit() { return canEdit; } });
+const { live, label, isSelected, onBlockClick } = useBlockActions({
+  get block() {
+    return block;
+  },
+  get canEdit() {
+    return canEdit;
+  },
+});
 
 const content = computed(() => block.value?.content ?? "");
 const localText = ref(content.value);

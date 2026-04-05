@@ -17,13 +17,14 @@ import { Separator } from "@components/ui/separator/index.js";
 import { Textarea } from "@components/ui/textarea/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const { snapshots, canCreateSnapshot, restorationInProgress, workspaceSlug, projectSlug } = defineProps({
-  snapshots: { type: Array, default: () => [] },
-  canCreateSnapshot: { type: Boolean, default: true },
-  restorationInProgress: { type: Boolean, default: false },
-  workspaceSlug: { type: String, default: "" },
-  projectSlug: { type: String, default: "" },
-});
+const { snapshots, canCreateSnapshot, restorationInProgress, workspaceSlug, projectSlug } =
+  defineProps({
+    snapshots: { type: Array, default: () => [] },
+    canCreateSnapshot: { type: Boolean, default: true },
+    restorationInProgress: { type: Boolean, default: false },
+    workspaceSlug: { type: String, default: "" },
+    projectSlug: { type: String, default: "" },
+  });
 
 const live = useLive();
 

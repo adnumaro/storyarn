@@ -61,15 +61,10 @@ function formatRuleShort(rule) {
 }
 
 function isRuleComplete(rule) {
-  if (!rule) return false;
-  const hasSheet = rule.sheet && rule.sheet !== "";
-  const hasVariable = rule.variable && rule.variable !== "";
-  const hasOperator = rule.operator && rule.operator !== "";
+  if (!rule || !rule.sheet || !rule.variable || !rule.operator) return false;
   const noValueOps = ["is_empty", "is_true", "is_false", "is_nil"];
-  const needsValue = !noValueOps.includes(rule.operator);
-  const hasValue =
-    !needsValue || (rule.value !== null && rule.value !== undefined && rule.value !== "");
-  return hasSheet && hasVariable && hasOperator && hasValue;
+  if (noValueOps.includes(rule.operator)) return true;
+  return rule.value !== null && rule.value !== undefined && rule.value !== "";
 }
 
 function countRulesInBlocks(blocks) {
@@ -83,30 +78,32 @@ function countRulesInBlocks(blocks) {
 
 // --- Summary ---
 
-const summary = computed(() => {
-  const d = nodeData.value;
-  const condition = d.condition;
-  const switchMode = d.switch_mode;
+function formatBlockSummary(blocks, switchMode, condition) {
+  if (blocks.length === 0) return switchMode ? "No conditions" : "No condition";
+  if (switchMode) return `${blocks.length} output${blocks.length > 1 ? "s" : ""} + default`;
+  const ruleCount = countRulesInBlocks(blocks);
+  const logic = condition.logic === "all" ? "AND" : "OR";
+  return `${ruleCount} rule${ruleCount !== 1 ? "s" : ""} in ${blocks.length} block${blocks.length !== 1 ? "s" : ""} (${logic})`;
+}
 
-  // Block format
-  if (condition?.blocks) {
-    const blocks = condition.blocks;
-    if (blocks.length === 0) return switchMode ? "No conditions" : "No condition";
-    if (switchMode) return `${blocks.length} output${blocks.length > 1 ? "s" : ""} + default`;
-    const ruleCount = countRulesInBlocks(blocks);
-    const logic = condition.logic === "all" ? "AND" : "OR";
-    return `${ruleCount} rule${ruleCount !== 1 ? "s" : ""} in ${blocks.length} block${blocks.length !== 1 ? "s" : ""} (${logic})`;
-  }
-
-  // Flat format
-  if (!condition?.rules || condition.rules.length === 0) {
-    return switchMode ? "No conditions" : "No condition";
-  }
-  const rules = condition.rules;
+function formatFlatSummary(rules, switchMode, condition) {
   if (switchMode) return `${rules.length} output${rules.length > 1 ? "s" : ""} + default`;
   const logic = condition.logic === "all" ? "AND" : "OR";
   if (rules.length === 1) return formatRule(rules[0]);
   return `${rules.length} rules (${logic})`;
+}
+
+const summary = computed(() => {
+  const d = nodeData.value;
+  const condition = d.condition;
+
+  if (condition?.blocks) {
+    return formatBlockSummary(condition.blocks, d.switch_mode, condition);
+  }
+  if (!condition?.rules || condition.rules.length === 0) {
+    return d.switch_mode ? "No conditions" : "No condition";
+  }
+  return formatFlatSummary(condition.rules, d.switch_mode, condition);
 });
 
 // --- Sockets ---
@@ -114,45 +111,58 @@ const summary = computed(() => {
 const inputs = computed(() => Object.entries(data?.inputs || {}));
 const outputs = computed(() => Object.entries(data?.outputs || {}));
 
+function findBlockLabel(blocks, key) {
+  const block = blocks.find((b) => b.id === key);
+  return block?.label || `Block ${key}`;
+}
+
+function findRuleLabel(rules, key) {
+  const rule = rules.find((r) => r.id === key);
+  return rule?.label || formatRuleShort(rule) || key;
+}
+
 function getOutputLabel(key) {
   const d = nodeData.value;
-  if (d.switch_mode) {
-    if (key === "default") return "Default";
-    if (d.condition?.blocks?.length > 0) {
-      const block = d.condition.blocks.find((b) => b.id === key);
-      if (block) return block.label || `Block ${key}`;
-      return key;
-    }
-    if (d.condition?.rules?.length > 0) {
-      const rule = d.condition.rules.find((r) => r.id === key);
-      return rule?.label || formatRuleShort(rule) || key;
-    }
+  if (!d.switch_mode) {
+    if (key === "true") return "True";
+    if (key === "false") return "False";
+    return key;
   }
-  if (key === "true") return "True";
-  if (key === "false") return "False";
+  if (key === "default") return "Default";
+  if (d.condition?.blocks?.length > 0) return findBlockLabel(d.condition.blocks, key);
+  if (d.condition?.rules?.length > 0) return findRuleLabel(d.condition.rules, key);
   return key;
+}
+
+function getBlockBadges(blocks, key) {
+  const block = blocks.find((b) => b.id === key);
+  if (!block) return [];
+  const rules = block.rules || [];
+  if (rules.length === 0 || rules.some((r) => !isRuleComplete(r))) {
+    return [{ type: "error", title: "Block has incomplete rules" }];
+  }
+  return [];
+}
+
+function getRuleBadges(rules, key) {
+  const rule = rules.find((r) => r.id === key);
+  if (rule && !isRuleComplete(rule)) {
+    return [{ type: "error", title: "Incomplete rule" }];
+  }
+  return [];
 }
 
 function getOutputBadges(key) {
   const d = nodeData.value;
-  const badges = [];
-  if (d.switch_mode && key !== "default") {
-    if (d.condition?.blocks?.length > 0) {
-      const block = d.condition.blocks.find((b) => b.id === key);
-      if (block) {
-        const rules = block.rules || [];
-        if (rules.length === 0 || rules.some((r) => !isRuleComplete(r))) {
-          badges.push({ type: "error", title: "Block has incomplete rules" });
-        }
-      }
-    } else if (d.condition?.rules?.length > 0) {
-      const rule = d.condition.rules.find((r) => r.id === key);
-      if (rule && !isRuleComplete(rule)) {
-        badges.push({ type: "error", title: "Incomplete rule" });
-      }
-    }
+  if (!d.switch_mode || key === "default") return [];
+
+  if (d.condition?.blocks?.length > 0) {
+    return getBlockBadges(d.condition.blocks, key);
   }
-  return badges;
+  if (d.condition?.rules?.length > 0) {
+    return getRuleBadges(d.condition.rules, key);
+  }
+  return [];
 }
 </script>
 

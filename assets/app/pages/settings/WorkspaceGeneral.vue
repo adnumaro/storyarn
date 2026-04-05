@@ -26,7 +26,14 @@ import {
 
 import { useLive } from "@composables/useLive.js";
 
-const { workspaceName, workspaceDescription, workspaceBannerUrl, sourceLocale, languageOptions, isOwner } = defineProps({
+const {
+  workspaceName,
+  workspaceDescription,
+  workspaceBannerUrl,
+  sourceLocale,
+  languageOptions,
+  isOwner,
+} = defineProps({
   workspaceName: { type: String, default: "" },
   workspaceDescription: { type: String, default: "" },
   workspaceBannerUrl: { type: String, default: "" },
@@ -43,10 +50,30 @@ const localDescription = ref(workspaceDescription);
 const localBannerUrl = ref(workspaceBannerUrl);
 const localSourceLocale = ref(sourceLocale);
 
-watch(() => workspaceName, (v) => { localName.value = v; });
-watch(() => workspaceDescription, (v) => { localDescription.value = v; });
-watch(() => workspaceBannerUrl, (v) => { localBannerUrl.value = v; });
-watch(() => sourceLocale, (v) => { localSourceLocale.value = v; });
+watch(
+  () => workspaceName,
+  (v) => {
+    localName.value = v;
+  },
+);
+watch(
+  () => workspaceDescription,
+  (v) => {
+    localDescription.value = v;
+  },
+);
+watch(
+  () => workspaceBannerUrl,
+  (v) => {
+    localBannerUrl.value = v;
+  },
+);
+watch(
+  () => sourceLocale,
+  (v) => {
+    localSourceLocale.value = v;
+  },
+);
 
 function saveWorkspace() {
   live.pushEvent("save", {
@@ -87,10 +114,10 @@ function removeBanner() {
 }
 
 // Theme toggle (Shared behavior)
-const currentTheme = ref('system');
+const currentTheme = ref("system");
 
 function updateThemeRef() {
-  currentTheme.value = localStorage.getItem("phx:theme") || 'system';
+  currentTheme.value = localStorage.getItem("phx:theme") || "system";
 }
 
 onMounted(() => {
@@ -122,71 +149,95 @@ function confirmDeleteWorkspace() {
 
 <template>
   <div class="space-y-8">
+    <div class="space-y-1.5">
+      <h1 class="text-2xl font-bold tracking-tight text-foreground">
+        {{ $t("settings.workspace.general.title") }}
+      </h1>
+      <p class="text-base text-muted-foreground">{{ $t("settings.workspace.general.subtitle") }}</p>
+    </div>
+
     <!-- General Settings -->
     <section>
       <form @submit.prevent="saveWorkspace" class="space-y-5">
         <div class="space-y-1.5">
-          <Label for="workspace-name">Workspace name</Label>
+          <Label for="workspace-name">{{ $t("settings.workspace.general.fields.name") }}</Label>
           <Input id="workspace-name" v-model="localName" required />
         </div>
-        
+
         <div class="space-y-1.5">
-          <Label for="workspace-description">Description</Label>
+          <Label for="workspace-description">{{
+            $t("settings.workspace.general.fields.description")
+          }}</Label>
           <Textarea
             id="workspace-description"
             v-model="localDescription"
             :rows="3"
+            :placeholder="$t('settings.workspace.general.fields.description')"
           />
         </div>
 
         <div class="space-y-1.5">
-          <Label>Workspace Banner</Label>
+          <Label>{{ $t("settings.workspace.general.fields.banner") }}</Label>
           <div v-if="localBannerUrl" class="space-y-2 mt-1.5">
             <div class="rounded border border-border overflow-hidden">
               <img :src="localBannerUrl" alt="Workspace banner" class="w-full h-32 object-cover" />
             </div>
             <div class="flex gap-2">
-              <Button type="button" variant="outline" class="flex-1 h-8 text-xs" @click="triggerBannerUpload">
+              <Button
+                type="button"
+                variant="outline"
+                class="flex-1 h-8 text-xs"
+                @click="triggerBannerUpload"
+              >
                 <ImagePlus class="size-3 mr-1.5" />
-                Change
+                {{ $t("settings.workspace.general.fields.change") }}
               </Button>
-              <Button type="button" variant="outline" class="flex-1 h-8 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" @click="removeBanner">
+              <Button
+                type="button"
+                variant="outline"
+                class="flex-1 h-8 text-xs border-destructive/30 text-destructive hover:bg-destructive/10"
+                @click="removeBanner"
+              >
                 <Trash2 class="size-3 mr-1.5" />
-                Remove
+                {{ $t("settings.workspace.general.fields.remove") }}
               </Button>
             </div>
           </div>
-          <Button v-else type="button" variant="outline" class="w-full h-9 text-xs border-dashed text-muted-foreground" @click="triggerBannerUpload">
+          <Button
+            v-else
+            type="button"
+            variant="outline"
+            class="w-full h-9 text-xs border-dashed text-muted-foreground"
+            @click="triggerBannerUpload"
+          >
             <ImagePlus class="size-4 mr-1.5" />
-            Upload Banner
+            {{ $t("settings.workspace.general.fields.upload_banner") }}
           </Button>
         </div>
 
         <div class="space-y-1.5">
-          <Label for="source-locale">Source language</Label>
+          <Label for="source-locale">{{
+            $t("settings.workspace.general.fields.source_language")
+          }}</Label>
           <Select v-model="localSourceLocale">
             <SelectTrigger id="source-locale">
-              <SelectValue placeholder="Select language..." />
+              <SelectValue :placeholder="$t('settings.workspace.general.fields.select_language')" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem 
-                  v-for="opt in languageOptions" 
-                  :key="opt[1]" 
-                  :value="opt[1]"
-                >
+                <SelectItem v-for="opt in languageOptions" :key="opt[1]" :value="opt[1]">
                   {{ opt[0] }}
                 </SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>
           <p class="text-xs text-muted-foreground mt-1">
-            Default source language for new projects in this workspace.
+            {{ $t("settings.workspace.general.fields.source_language_hint") }}
           </p>
         </div>
 
         <div class="flex justify-start gap-3 pt-2">
-          <Button type="submit">Save Changes</Button>
+          <Button type="submit">{{ $t("settings.workspace.general.save_changes") }}</Button>
         </div>
       </form>
     </section>
@@ -195,12 +246,14 @@ function confirmDeleteWorkspace() {
 
     <!-- Appearance -->
     <section>
-      <h3 class="text-lg font-semibold mb-4">Appearance</h3>
+      <h3 class="text-lg font-semibold mb-4">{{ $t("settings.workspace.appearance.title") }}</h3>
       <div class="flex items-center gap-1 rounded-full border border-border bg-muted p-0.5 w-fit">
         <button
           :class="[
             'flex items-center justify-center size-8 rounded-full transition-colors',
-            currentTheme === 'system' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+            currentTheme === 'system'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
           ]"
           title="System"
           @click="setTheme('system')"
@@ -211,7 +264,9 @@ function confirmDeleteWorkspace() {
         <button
           :class="[
             'flex items-center justify-center size-8 rounded-full transition-colors',
-            currentTheme === 'light' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+            currentTheme === 'light'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
           ]"
           title="Light"
           @click="setTheme('light')"
@@ -222,7 +277,9 @@ function confirmDeleteWorkspace() {
         <button
           :class="[
             'flex items-center justify-center size-8 rounded-full transition-colors',
-            currentTheme === 'dark' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+            currentTheme === 'dark'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
           ]"
           title="Dark"
           @click="setTheme('dark')"
@@ -238,14 +295,20 @@ function confirmDeleteWorkspace() {
       <Separator />
 
       <section>
-        <h3 class="text-lg font-semibold mb-4 text-destructive">Danger Zone</h3>
+        <h3 class="text-lg font-semibold mb-4 text-destructive">
+          {{ $t("settings.workspace.danger_zone.title") }}
+        </h3>
         <div class="border border-destructive/30 rounded-lg p-4">
-          <p class="text-sm text-foreground mb-1 font-medium">Delete Workspace</p>
+          <p class="text-sm text-foreground mb-1 font-medium">
+            {{ $t("settings.workspace.danger_zone.delete_workspace") }}
+          </p>
           <p class="text-sm text-muted-foreground mb-4">
-            Once you delete a workspace, there is no going back. All projects will be deleted.
+            {{ $t("settings.workspace.danger_zone.delete_description") }}
           </p>
           <div class="flex justify-end gap-3">
-            <Button variant="destructive" @click="showDeleteConfirm = true" type="button">Delete Workspace</Button>
+            <Button variant="destructive" @click="showDeleteConfirm = true" type="button">{{
+              $t("settings.workspace.danger_zone.delete_button")
+            }}</Button>
           </div>
         </div>
       </section>
@@ -257,13 +320,19 @@ function confirmDeleteWorkspace() {
         <DialogHeader>
           <div class="flex items-center gap-2">
             <AlertTriangle class="size-5 text-destructive" />
-            <DialogTitle>Delete workspace?</DialogTitle>
+            <DialogTitle>{{ $t("settings.workspace.delete_modal.title") }}</DialogTitle>
           </div>
-          <DialogDescription> This action cannot be undone. </DialogDescription>
+          <DialogDescription>{{
+            $t("settings.workspace.delete_modal.description")
+          }}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" @click="showDeleteConfirm = false">Cancel</Button>
-          <Button variant="destructive" @click="confirmDeleteWorkspace">Delete</Button>
+          <Button variant="outline" @click="showDeleteConfirm = false">{{
+            $t("settings.workspace.delete_modal.cancel")
+          }}</Button>
+          <Button variant="destructive" @click="confirmDeleteWorkspace">{{
+            $t("settings.workspace.delete_modal.delete")
+          }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

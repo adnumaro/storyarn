@@ -42,10 +42,10 @@ onUnmounted(() => {
       <div id="hero-features-stage" class="lp-hero-features-stage">
         <HeroSection />
         <FeatureGrid />
-        
+
         <!-- Use data-section-step to denote scroll hijacker logic for these trailing panels -->
         <DiscoverSection data-section-step />
-        
+
         <div class="lp-auto-section lp-cta-footer-section" data-section-step>
           <CtaWaitlist />
           <LandingFooter />
@@ -76,9 +76,14 @@ onUnmounted(() => {
   inset: 0;
   width: 100%;
   min-height: 100svh;
-  background: 
+  background:
     radial-gradient(circle at 50% -15%, rgb(0 0 0 / 28%), transparent 24%),
-    linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background)) 54%, hsl(var(--background)) 100%);
+    linear-gradient(
+      180deg,
+      hsl(var(--background)) 0%,
+      hsl(var(--background)) 54%,
+      hsl(var(--background)) 100%
+    );
 }
 
 .lp-hero-features-stack.is-scroll-staged :deep(.lp-cta-footer-section) {

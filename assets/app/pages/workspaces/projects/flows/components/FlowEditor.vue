@@ -7,7 +7,17 @@ import FlowCursors from "./FlowCursors.vue";
 import FlowFloatingToolbar from "./FlowFloatingToolbar.vue";
 import FlowMinimapToggle from "./FlowMinimapToggle.vue";
 
-const { flowData, variableMap, labels, loading, readonly, userId, userColor, canvasId, toolbarData } = defineProps({
+const {
+  flowData,
+  variableMap,
+  labels,
+  loading,
+  readonly,
+  userId,
+  userColor,
+  canvasId,
+  toolbarData,
+} = defineProps({
   flowData: { type: String, default: null },
   variableMap: { type: String, default: null },
   labels: { type: String, default: "{}" },

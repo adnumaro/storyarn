@@ -6,7 +6,13 @@ import { Separator } from "@components/ui/separator/index.js";
 import { Switch } from "@components/ui/switch/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const { autoSnapshotsEnabled, autoVersionFlows, autoVersionScenes, autoVersionSheets, versionUsage } = defineProps({
+const {
+  autoSnapshotsEnabled,
+  autoVersionFlows,
+  autoVersionScenes,
+  autoVersionSheets,
+  versionUsage,
+} = defineProps({
   autoSnapshotsEnabled: { type: Boolean, default: false },
   autoVersionFlows: { type: Boolean, default: false },
   autoVersionScenes: { type: Boolean, default: false },

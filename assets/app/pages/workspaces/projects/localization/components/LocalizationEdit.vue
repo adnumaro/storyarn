@@ -26,9 +26,7 @@ const live = useLive();
 
 const translatedText = ref(form.params?.translated_text || text.translated_text || "");
 const status = ref(form.params?.status || text.status || "pending");
-const translatorNotes = ref(
-  form.params?.translator_notes || text.translator_notes || "",
-);
+const translatorNotes = ref(form.params?.translator_notes || text.translator_notes || "");
 const saving = ref(false);
 const translating = ref(false);
 

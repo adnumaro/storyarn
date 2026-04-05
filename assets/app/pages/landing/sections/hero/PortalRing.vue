@@ -35,7 +35,6 @@ defineExpose({ setIntensity, setScale });
 onMounted(() => {
   reducedMotion.value = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-
   // Wait a tick to ensure parent frames are mounted
   nextTick(() => {
     updatePortalPosition();

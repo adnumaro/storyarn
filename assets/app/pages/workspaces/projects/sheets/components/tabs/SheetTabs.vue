@@ -19,9 +19,7 @@ const allTabs = [
   { value: "history", label: "History", icon: History },
 ];
 
-const tabs = computed(() =>
-  compact ? allTabs.filter((t) => t.value !== "history") : allTabs,
-);
+const tabs = computed(() => (compact ? allTabs.filter((t) => t.value !== "history") : allTabs));
 
 function onTabChange(value) {
   if (value !== currentTab) {

@@ -27,7 +27,9 @@ onMounted(() => {
   <div class="mx-auto max-w-sm space-y-4">
     <div class="text-center space-y-2">
       <h1 class="text-2xl font-bold tracking-tight">Log in</h1>
-      <p class="text-sm text-muted-foreground">Enter your email and password to access your account.</p>
+      <p class="text-sm text-muted-foreground">
+        Enter your email and password to access your account.
+      </p>
     </div>
 
     <div

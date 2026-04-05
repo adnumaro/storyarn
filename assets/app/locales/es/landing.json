@@ -1,0 +1,103 @@
+{
+  "landing": {
+    "common": {
+      "badge": "Beta privada",
+      "links": {
+        "features": "Características",
+        "discover": "Descubrir",
+        "workflow": "Flujo de trabajo",
+        "docs": "Docs",
+        "contact": "Contacto"
+      }
+    },
+    "hero": {
+      "title_part1": "Crea mundos.",
+      "title_part2": "Teje historias.",
+      "description": "La plataforma de diseño narrativo donde personajes, diálogos, mundos y localización viven en un único proyecto conectado — desde el primer borrador hasta exportación nativa para motor.",
+      "cta_explore": "Explora Storyarn",
+      "cta_workflow": "Ver flujo de trabajo",
+      "video_demo_sr": "Ver vídeo de demostración",
+      "video_demo_badge": "Ver demo",
+      "video_close_sr": "Cerrar vídeo"
+    },
+    "features": {
+      "section_title": "Desarrollo Narrativo End-to-End",
+      "section_subtitle": "Una suite de herramientas donde los guionistas crean, los analistas exploran y los programadores simplemente exportan. Todo conectado.",
+      "cards": {
+        "core": {
+          "title": "Las herramientas Core",
+          "desc": "El corazón de tu narrativa. Documentos estructurados, ramificaciones dinámicas y mundos interactivos diseñados para integrarse como tu única fuente de verdad.",
+          "sublinks": {
+            "sheets": "Explorar Fichas (Sheets)",
+            "flows": "Explorar Flujos (Flows)",
+            "scenes": "Explorar Escenas (Scenes)"
+          }
+        },
+        "analytics": {
+          "title": "Análisis y Dashboards",
+          "desc": "Supervisa la complejidad de tu proyecto. Visualiza de un vistazo dependencias, densidad de diálogos y puntos ciegos técnicos en tu estructura narrativa."
+        },
+        "debugging": {
+          "title": "Depuración multinivel",
+          "desc": "Experimenta la historia exactamente como lo haría un jugador o analízala paso a paso rastreando cada variable, condición y trigger en tiempo real."
+        },
+        "vcs": {
+          "title": "Control de versiones",
+          "desc": "Historial completo de tu narrativa. Compara ramas, audita cambios entre guionistas y retrocede en el tiempo sin miedo a romper el flujo de juego."
+        },
+        "localization": {
+          "title": "Localización inteligente",
+          "desc": "Extrae líneas, traduce inteligentemente, maneja glosarios y visualiza métricas de cobertura por idioma — todo desde el propio lienzo de escritura."
+        },
+        "export": {
+          "title": "Exportación nativa",
+          "desc": "Exporta de forma automática a motores consolidados como Godot Dialogic, Unity, Unreal, Ink o Yarn Spinner. Tus datos, listos para entrar a producción."
+        }
+      }
+    },
+    "discovery": {
+      "features": {
+        "sheets": {
+          "label": "Fichas",
+          "title": "La herencia mantiene tu mundo consistente",
+          "desc": "Las fichas padre e hijo te permiten desarrollar personajes, facciones y lugares sin duplicar estructuras constantemente.",
+          "items": [
+            "Variables compartidas que fluyen por la jerarquía.",
+            "Sobrescribe solo lo que cambie — por variante o episodio.",
+            "Escala el mundo sin copiar y pegar."
+          ]
+        },
+        "flows": {
+          "label": "Flujos",
+          "title": "Grafos visuales limpios a escala productiva",
+          "desc": "Diálogos, condiciones, instrucciones y ramas en un único grafo integrado — diseñado para mantenerse claro incluso en máxima escala.",
+          "items": [
+            "Conversaciones, cambios de estado y salidas unificadas.",
+            "La lógica vive enlazada a tus fichas, no en fragmentos huérfanos.",
+            "Desde bocetos rápidos hasta grafos hipercomplejos."
+          ]
+        },
+        "scenes": {
+          "label": "Escenas",
+          "title": "Capas y niebla para mapas comprensibles",
+          "desc": "Utiliza capas para plantear progresiones, visibilidad y estructuras sin aplanar todo en una única imagen saturada.",
+          "items": [
+            "Visibilidad por capas en lugar de un lienzo caótico.",
+            "Niebla de guerra para comunicar progresión.",
+            "Los grandes espacios se mantienen iterables y legibles en review."
+          ]
+        }
+      }
+    },
+    "cta": {
+      "title": "Empieza a construir tu próxima narrativa",
+      "desc": "Estamos incorporando a un pequeño grupo de diseñadores narrativos y estudios de juegos. Únete a la lista de espera — te contactaremos cuando tu plaza esté disponible.",
+      "placeholder": "tu{'@'}estudio.com",
+      "btn": "Unirse a la lista de espera",
+      "footer": "Sin spam. Solo te escribiremos cuando sea el momento."
+    },
+    "footer": {
+      "tagline": "Diseña personajes, diálogos, mundos y localización en un solo proyecto conectado. Creado para equipos narrativos que publican historias interactivas."
+    }
+  }
+}

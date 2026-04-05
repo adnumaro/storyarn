@@ -6,10 +6,20 @@
     "correctness": "error"
   },
   "rules": {
-    "complexity": ["error", { "max": 10 }],
+    "complexity": [
+      "error",
+      {
+        "max": 10
+      }
+    ],
     "no-nested-ternary": "error",
     "vue/define-props-destructuring": "error",
-    "vue/max-props": ["error", { "maxProps": 10 }],
+    "vue/max-props": [
+      "error",
+      {
+        "maxProps": 10
+      }
+    ],
     "tailwindcss/no-unknown-classes": "error",
     "tailwindcss/no-duplicate-classes": "error",
     "tailwindcss/no-conflicting-classes": "error",

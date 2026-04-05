@@ -14,12 +14,11 @@ import {
 } from "@components/ui/dialog/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const { deletedProjects, expandedProjectId, snapshots, recovering, translations } = defineProps({
+const { deletedProjects, expandedProjectId, snapshots, recovering } = defineProps({
   deletedProjects: { type: Array, required: true },
   expandedProjectId: { type: [Number, null], default: null },
   snapshots: { type: Array, default: () => [] },
   recovering: { type: Boolean, default: false },
-  translations: { type: Object, required: true },
 });
 
 const live = useLive();
@@ -48,23 +47,19 @@ function confirmRecover() {
   recoverDialogOpen.value = false;
 }
 
+// Remove useI18n
+
 function formatEntityCounts(counts) {
   if (!counts) return "";
   const parts = [];
   if (counts.sheets && counts.sheets > 0) {
-    parts.push(
-      `${counts.sheets} ${counts.sheets === 1 ? translations.sheet : translations.sheets}`,
-    );
+    parts.push(`${counts.sheets} ${counts.sheets === 1 ? "sheet" : "sheets"}`);
   }
   if (counts.flows && counts.flows > 0) {
-    parts.push(
-      `${counts.flows} ${counts.flows === 1 ? translations.flow : translations.flows}`,
-    );
+    parts.push(`${counts.flows} ${counts.flows === 1 ? "flow" : "flows"}`);
   }
   if (counts.scenes && counts.scenes > 0) {
-    parts.push(
-      `${counts.scenes} ${counts.scenes === 1 ? translations.scene : translations.scenes}`,
-    );
+    parts.push(`${counts.scenes} ${counts.scenes === 1 ? "scene" : "scenes"}`);
   }
   return parts.join(", ");
 }
@@ -72,12 +67,23 @@ function formatEntityCounts(counts) {
 
 <template>
   <div class="space-y-4">
+    <div class="space-y-1.5 mb-8">
+      <h1 class="text-2xl font-bold tracking-tight text-foreground">
+        {{ $t("settings.workspace.deleted_projects.title") }}
+      </h1>
+      <p class="text-base text-muted-foreground">
+        {{ $t("settings.workspace.deleted_projects.subtitle") }}
+      </p>
+    </div>
+
     <!-- Empty state -->
     <div v-if="deletedProjects.length === 0" class="py-12 text-center">
       <Trash2 class="size-12 text-muted-foreground/30 mx-auto mb-4" />
-      <h3 class="text-lg font-semibold mb-1">{{ translations.noDeletedProjects }}</h3>
+      <h3 class="text-lg font-semibold mb-1">
+        {{ $t("settings.workspace.deleted_projects.empty.title") }}
+      </h3>
       <p class="text-sm text-muted-foreground">
-        {{ translations.noDeletedProjectsDescription }}
+        {{ $t("settings.workspace.deleted_projects.empty.description") }}
       </p>
     </div>
 
@@ -107,7 +113,11 @@ function formatEntityCounts(counts) {
         <div class="flex items-center gap-3">
           <Badge variant="secondary">
             {{ project.snapshot_count }}
-            {{ project.snapshot_count === 1 ? translations.snapshot : translations.snapshots }}
+            {{
+              project.snapshot_count === 1
+                ? $t("settings.workspace.deleted_projects.snapshot")
+                : $t("settings.workspace.deleted_projects.snapshots")
+            }}
           </Badge>
           <ChevronUp v-if="expandedProjectId === project.id" class="size-4 text-muted-foreground" />
           <ChevronDown v-else class="size-4 text-muted-foreground" />
@@ -117,7 +127,7 @@ function formatEntityCounts(counts) {
       <!-- Expanded snapshots -->
       <div v-if="expandedProjectId === project.id" class="border-t border-border p-4 space-y-3">
         <div v-if="snapshots.length === 0" class="text-sm text-muted-foreground py-4 text-center">
-          {{ translations.noSnapshots }}
+          {{ $t("settings.workspace.deleted_projects.no_snapshots") }}
         </div>
 
         <div
@@ -127,7 +137,10 @@ function formatEntityCounts(counts) {
         >
           <div>
             <div class="font-medium text-sm">
-              {{ snapshot.title || `${translations.snapshotPrefix} ${snapshot.version_number}` }}
+              {{
+                snapshot.title ||
+                `${$t("settings.workspace.deleted_projects.snapshot_prefix")}${snapshot.version_number}`
+              }}
             </div>
             <div class="text-xs text-muted-foreground mt-0.5">
               {{ snapshot.formatted_date }}
@@ -138,7 +151,7 @@ function formatEntityCounts(counts) {
           </div>
           <Button size="sm" :disabled="recovering" @click="openRecoverDialog(snapshot, project.id)">
             <RotateCcw class="size-3.5" />
-            {{ translations.recover }}
+            {{ $t("settings.workspace.deleted_projects.recover") }}
           </Button>
         </div>
       </div>
@@ -148,17 +161,26 @@ function formatEntityCounts(counts) {
     <Dialog v-model:open="recoverDialogOpen">
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{{ translations.recoverTitle }}</DialogTitle>
+          <DialogTitle>{{
+            $t("settings.workspace.deleted_projects.recover_modal.title")
+          }}</DialogTitle>
           <DialogDescription>
-            {{ translations.recoverMessage?.replace("%{number}", recoverSnapshot?.version_number) }}
+            {{
+              $t("settings.workspace.deleted_projects.recover_modal.description").replace(
+                "{number}",
+                recoverSnapshot?.version_number,
+              )
+            }}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <DialogClose as-child>
-            <Button variant="outline">{{ translations.cancel }}</Button>
+            <Button variant="outline">{{
+              $t("settings.workspace.deleted_projects.recover_modal.cancel")
+            }}</Button>
           </DialogClose>
           <Button @click="confirmRecover">
-            {{ translations.recover }}
+            {{ $t("settings.workspace.deleted_projects.recover") }}
           </Button>
         </DialogFooter>
       </DialogContent>

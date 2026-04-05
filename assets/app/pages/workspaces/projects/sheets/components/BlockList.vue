@@ -32,7 +32,16 @@ const blockComponents = {
   reference: ReferenceBlock,
 };
 
-const { blocks, inheritedGroups, canEdit, workspaceSlug, projectSlug, formulaEditing, blockLocks, currentUserId } = defineProps({
+const {
+  blocks,
+  inheritedGroups,
+  canEdit,
+  workspaceSlug,
+  projectSlug,
+  formulaEditing,
+  blockLocks,
+  currentUserId,
+} = defineProps({
   blocks: { type: Array, default: () => [] },
   inheritedGroups: { type: Array, default: () => [] },
   canEdit: { type: Boolean, default: false },

@@ -8,12 +8,16 @@ import { Label } from "@components/ui/label/index.js";
 import { Separator } from "@components/ui/separator/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const { passwordForm: passwordFormProp, currentEmail, triggerSubmit, passwordAction, translations } = defineProps({
+const {
+  passwordForm: passwordFormProp,
+  currentEmail,
+  triggerSubmit,
+  passwordAction,
+} = defineProps({
   passwordForm: { type: Object, required: true },
   currentEmail: { type: String, required: true },
   triggerSubmit: { type: Boolean, default: false },
   passwordAction: { type: String, required: true },
-  translations: { type: Object, required: true },
 });
 
 const live = useLive();
@@ -52,6 +56,13 @@ watch(
 
 <template>
   <div class="space-y-8">
+    <div class="space-y-1.5">
+      <h1 class="text-2xl font-bold tracking-tight text-foreground">
+        {{ $t("settings.security.title") }}
+      </h1>
+      <p class="text-base text-muted-foreground">{{ $t("settings.security.subtitle") }}</p>
+    </div>
+
     <!-- Hidden form for password action POST -->
     <form ref="hiddenFormRef" :action="passwordAction" method="post" class="hidden">
       <input
@@ -80,16 +91,16 @@ watch(
 
     <!-- Password Section -->
     <section>
-      <h3 class="text-lg font-semibold mb-4">{{ translations.changePassword }}</h3>
+      <h3 class="text-lg font-semibold mb-4">{{ $t("settings.security.change_password") }}</h3>
       <p class="text-sm text-muted-foreground mb-4">
-        {{ translations.passwordDescription }}
+        {{ $t("settings.security.change_password_description") }}
       </p>
 
       <div class="space-y-4">
         <input type="hidden" autocomplete="username" :value="currentEmail" />
 
         <div class="space-y-1.5">
-          <Label for="security-password">{{ translations.newPassword }}</Label>
+          <Label for="security-password">{{ $t("settings.security.new_password") }}</Label>
           <Input
             id="security-password"
             type="password"
@@ -103,7 +114,9 @@ watch(
         </div>
 
         <div class="space-y-1.5">
-          <Label for="security-password-confirmation">{{ translations.confirmPassword }}</Label>
+          <Label for="security-password-confirmation">{{
+            $t("settings.security.confirm_password")
+          }}</Label>
           <Input
             id="security-password-confirmation"
             type="password"
@@ -117,7 +130,7 @@ watch(
 
         <div class="flex justify-end gap-3">
           <Button @click="passwordForm.submit()">
-            {{ translations.updatePassword }}
+            {{ $t("settings.security.update_password") }}
           </Button>
         </div>
       </div>
@@ -127,15 +140,17 @@ watch(
 
     <!-- Sessions Section (future) -->
     <section>
-      <h3 class="text-lg font-semibold mb-4">{{ translations.activeSessions }}</h3>
+      <h3 class="text-lg font-semibold mb-4">
+        {{ $t("settings.security.active_sessions.title") }}
+      </h3>
       <p class="text-sm text-muted-foreground mb-4">
-        {{ translations.sessionsDescription }}
+        {{ $t("settings.security.active_sessions.description") }}
       </p>
       <div
         class="flex items-center gap-2 rounded-md border border-border bg-muted/50 p-3 text-sm text-muted-foreground"
       >
         <Info class="size-5 shrink-0" />
-        <span>{{ translations.sessionsComingSoon }}</span>
+        <span>{{ $t("settings.security.active_sessions.coming_soon") }}</span>
       </div>
     </section>
   </div>

@@ -34,9 +34,6 @@ defmodule StoryarnWeb.SettingsLive.Security do
       managed_workspace_slugs={@managed_workspace_slugs}
       current_path={@current_path}
     >
-      <:title>{dgettext("settings", "Security")}</:title>
-      <:subtitle>{dgettext("settings", "Manage your password and account security")}</:subtitle>
-
       <.vue
         v-component="pages/settings/Security"
         v-socket={@socket}
@@ -45,24 +42,9 @@ defmodule StoryarnWeb.SettingsLive.Security do
         current-email={@current_email}
         trigger-submit={@trigger_submit}
         password-action={~p"/users/update-password"}
-        translations={security_translations()}
       />
     </Layouts.settings>
     """
-  end
-
-  defp security_translations do
-    %{
-      changePassword: dgettext("settings", "Change Password"),
-      passwordDescription:
-        dgettext("settings", "Choose a strong password that you don't use elsewhere."),
-      newPassword: dgettext("settings", "New password"),
-      confirmPassword: dgettext("settings", "Confirm new password"),
-      updatePassword: dgettext("settings", "Update Password"),
-      activeSessions: dgettext("settings", "Active Sessions"),
-      sessionsDescription: dgettext("settings", "You are currently logged in on this device."),
-      sessionsComingSoon: dgettext("settings", "Session management coming soon.")
-    }
   end
 
   @impl true

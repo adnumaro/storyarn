@@ -53,11 +53,6 @@ defmodule StoryarnWeb.SettingsLive.Profile do
       managed_workspace_slugs={@managed_workspace_slugs}
       current_path={@current_path}
     >
-      <:title>{dgettext("settings", "Profile")}</:title>
-      <:subtitle>
-        {dgettext("settings", "Manage your personal information and email address")}
-      </:subtitle>
-
       <.vue
         v-component="pages/settings/Profile"
         v-socket={@socket}
@@ -65,25 +60,9 @@ defmodule StoryarnWeb.SettingsLive.Profile do
         profile-form={@profile_form}
         email-form={@email_form}
         current-email={@current_email}
-        translations={profile_translations()}
       />
     </Layouts.settings>
     """
-  end
-
-  defp profile_translations do
-    %{
-      personalInfo: dgettext("settings", "Personal Information"),
-      displayName: dgettext("settings", "Display Name"),
-      displayNamePlaceholder: dgettext("settings", "How you want to be called"),
-      language: dgettext("settings", "Language"),
-      autoDetect: dgettext("settings", "Auto-detect from browser"),
-      saveProfile: dgettext("settings", "Save Profile"),
-      emailAddress: dgettext("settings", "Email Address"),
-      emailDescription: dgettext("settings", "Your email is used for login and notifications."),
-      email: dgettext("settings", "Email"),
-      changeEmail: dgettext("settings", "Change Email")
-    }
   end
 
   @impl true

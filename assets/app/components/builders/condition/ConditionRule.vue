@@ -53,9 +53,7 @@ const operatorOptions = computed(() => {
   }));
 });
 
-const needsValue = computed(
-  () => rule.operator && !NO_VALUE_OPERATORS.has(rule.operator),
-);
+const needsValue = computed(() => rule.operator && !NO_VALUE_OPERATORS.has(rule.operator));
 
 const valueOptions = computed(() => {
   const v = findVariable(variables, rule.sheet, rule.variable);

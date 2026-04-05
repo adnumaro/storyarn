@@ -24,7 +24,18 @@ import WaypointEditorLayer from "./layers/WaypointEditorLayer.vue";
 import ZoneConnectionLayer from "./layers/ZoneConnectionLayer.vue";
 import SceneFloatingToolbar from "./SceneFloatingToolbar.vue";
 
-const { sceneData, pins, zones, connections, annotations, layers, activeTool, editMode, canEdit, collaboration } = defineProps({
+const {
+  sceneData,
+  pins,
+  zones,
+  connections,
+  annotations,
+  layers,
+  activeTool,
+  editMode,
+  canEdit,
+  collaboration,
+} = defineProps({
   sceneData: { type: Object, default: null },
   pins: { type: Array, default: () => [] },
   zones: { type: Array, default: () => [] },

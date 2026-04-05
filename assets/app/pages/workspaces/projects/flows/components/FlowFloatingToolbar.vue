@@ -13,7 +13,16 @@ import {
   SubflowToolbar,
 } from "./toolbar-sections/index.js";
 
-const { toolbarState, canEdit, hubs, projectFlows, sheetAvatars, subflowExits, referencingJumps, referencingFlows } = defineProps({
+const {
+  toolbarState,
+  canEdit,
+  hubs,
+  projectFlows,
+  sheetAvatars,
+  subflowExits,
+  referencingJumps,
+  referencingFlows,
+} = defineProps({
   toolbarState: { type: Object, required: true },
   canEdit: { type: Boolean, default: false },
   hubs: { type: Array, default: () => [] },

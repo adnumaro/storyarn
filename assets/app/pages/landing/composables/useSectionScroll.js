@@ -23,8 +23,8 @@ export function useSectionScroll() {
   let discoverBoundaryReady = false;
   let discoverBoundaryLock = null;
   let discoverStepTimer = null;
-  
-  let totalPanels = 3; 
+
+  let totalPanels = 3;
 
   function gotoDiscoverStep(stepIndex) {
     if (stepIndex < 0 || stepIndex >= DISCOVER_TOTAL_STEPS) return;
@@ -40,7 +40,9 @@ export function useSectionScroll() {
     discoverStepTimer = setTimeout(() => {
       animating = false;
       discoverStepTimer = null;
-      scrollCooldown = setTimeout(() => { scrollCooldown = null; }, 400);
+      scrollCooldown = setTimeout(() => {
+        scrollCooldown = null;
+      }, 400);
     }, 400);
   }
 
@@ -120,18 +122,18 @@ export function useSectionScroll() {
       if (index === 0) {
         gsap.set(featuresSection, { yPercent: 100, y: 0, opacity: 1 });
         gsap.set(heroContentInner, { y: 0, opacity: 1 });
-        if(featureShell) gsap.set(featureShell, { y: 72, opacity: 0.18 });
-        if(featureIntro) gsap.set(featureIntro, { y: 28, opacity: 0.36 });
+        if (featureShell) gsap.set(featureShell, { y: 72, opacity: 0.18 });
+        if (featureIntro) gsap.set(featureIntro, { y: 28, opacity: 0.36 });
       } else if (index === 1) {
         gsap.set(featuresSection, { yPercent: 0, y: 0, opacity: 1 });
         gsap.set(heroContentInner, { y: -132, opacity: 0 });
-        if(featureShell) gsap.set(featureShell, { y: 0, opacity: 1 });
-        if(featureIntro) gsap.set(featureIntro, { y: 0, opacity: 1 });
+        if (featureShell) gsap.set(featureShell, { y: 0, opacity: 1 });
+        if (featureIntro) gsap.set(featureIntro, { y: 0, opacity: 1 });
       } else {
         gsap.set(featuresSection, { yPercent: -100 });
         gsap.set(heroContentInner, { y: -132, opacity: 0 });
-        if(featureShell) gsap.set(featureShell, { y: 0, opacity: 1 });
-        if(featureIntro) gsap.set(featureIntro, { y: 0, opacity: 1 });
+        if (featureShell) gsap.set(featureShell, { y: 0, opacity: 1 });
+        if (featureIntro) gsap.set(featureIntro, { y: 0, opacity: 1 });
       }
 
       autoSections.forEach((section, i) => {
@@ -173,7 +175,9 @@ export function useSectionScroll() {
       onComplete() {
         currentIndex = index;
         animating = false;
-        scrollCooldown = setTimeout(() => { scrollCooldown = null; }, 400);
+        scrollCooldown = setTimeout(() => {
+          scrollCooldown = null;
+        }, 400);
 
         if (index === DISCOVER_PANEL) {
           if (forcedTabIndex !== undefined) {
@@ -184,7 +188,9 @@ export function useSectionScroll() {
             discoverSubIndex = DISCOVER_TOTAL_STEPS - 1;
           }
           if (typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent("storyarn:discover-step", { detail: discoverSubIndex }));
+            window.dispatchEvent(
+              new CustomEvent("storyarn:discover-step", { detail: discoverSubIndex }),
+            );
           }
         }
       },
@@ -199,7 +205,7 @@ export function useSectionScroll() {
     // Dynamic Universal State Solver for Arbitrary Navigation Jumps
     const isNavigationJump = isScrollingDown === undefined && Math.abs(from - index) > 1;
 
-    const trgFeatY = index === 0 ? 100 : (index === 1 ? 0 : -100);
+    const trgFeatY = index === 0 ? 100 : index === 1 ? 0 : -100;
     const trgHeroY = index === 0 ? 0 : -132;
     const trgHeroOp = index === 0 ? 1 : 0;
     const trgShellY = index === 0 ? 72 : 0;
@@ -219,26 +225,45 @@ export function useSectionScroll() {
             if (featureIntro) gsap.set(featureIntro, { y: trgIntroY, opacity: trgIntroOp });
             autoSections.forEach((section, i) => {
               const panelIdx = i + 2;
-              gsap.set(section, { yPercent: (panelIdx === index) ? 0 : (panelIdx < index ? -100 : 100) });
+              gsap.set(section, {
+                yPercent: panelIdx === index ? 0 : panelIdx < index ? -100 : 100,
+              });
             });
           })
           .to(stage, { opacity: 1, duration: 0.4, ease: "power2.inOut", clearProps: "opacity" });
         return;
       }
     }
+
+    const isDown = isScrollingDown !== undefined ? isScrollingDown : index > from;
+
     timeline
       .to(featuresSection, { yPercent: trgFeatY, duration: 0.8, ease: "power2.inOut" }, 0)
-      .to(heroContentInner, { y: trgHeroY, opacity: trgHeroOp, duration: 0.8, ease: "power2.inOut" }, 0);
+      .to(
+        heroContentInner,
+        { y: trgHeroY, opacity: trgHeroOp, duration: 0.8, ease: "power2.inOut" },
+        0,
+      );
 
-    if (featureShell) timeline.to(featureShell, { y: trgShellY, opacity: trgShellOp, duration: 0.8, ease: "power2.out" }, 0);
-    if (featureIntro) timeline.to(featureIntro, { y: trgIntroY, opacity: trgIntroOp, duration: 0.8, ease: "power2.out" }, 0);
+    if (featureShell)
+      timeline.to(
+        featureShell,
+        { y: trgShellY, opacity: trgShellOp, duration: 0.8, ease: "power2.out" },
+        0,
+      );
+    if (featureIntro)
+      timeline.to(
+        featureIntro,
+        { y: trgIntroY, opacity: trgIntroOp, duration: 0.8, ease: "power2.out" },
+        0,
+      );
 
     autoSections.forEach((section, i) => {
       const panelIdx = i + 2;
       let trgAutoY = 100;
       if (panelIdx === index) trgAutoY = 0;
       else if (panelIdx < index) trgAutoY = -100;
-      
+
       if (panelIdx !== from && panelIdx !== index) {
         gsap.set(section, { yPercent: panelIdx < index ? -100 : 100 });
       }
@@ -314,9 +339,9 @@ export function useSectionScroll() {
     intentObserver = null;
     pinTrigger?.kill();
     pinTrigger = null;
-    
+
     const stack = document.getElementById("hero-features-stack");
-    if(stack) stack.classList.remove("is-scroll-staged");
+    if (stack) stack.classList.remove("is-scroll-staged");
 
     // Clear GSAP properties
     const elements = [
@@ -325,7 +350,7 @@ export function useSectionScroll() {
       document.querySelector("[data-feature-stage-shell]"),
       document.querySelector("[data-feature-intro]"),
       ...gsap.utils.toArray("[data-feature-card]"),
-      ...gsap.utils.toArray("[data-section-step]")
+      ...gsap.utils.toArray("[data-section-step]"),
     ].filter(Boolean);
 
     gsap.killTweensOf(elements);
@@ -355,6 +380,6 @@ export function useSectionScroll() {
   });
 
   return {
-    gotoPanel // useful to manually trigger scroll down if a button is clicked
+    gotoPanel, // useful to manually trigger scroll down if a button is clicked
   };
 }

@@ -7,7 +7,16 @@ import PinsDropdown from "./dock-panels/PinsDropdown.vue";
 import DockActions from "./dock-panels/DockActions.vue";
 import PendingSheetIndicator from "./dock-panels/PendingSheetIndicator.vue";
 
-const { activeTool, editMode, compact, pendingSheet, projectSheets, workspaceSlug, projectSlug, sceneId } = defineProps({
+const {
+  activeTool,
+  editMode,
+  compact,
+  pendingSheet,
+  projectSheets,
+  workspaceSlug,
+  projectSlug,
+  sceneId,
+} = defineProps({
   activeTool: { type: String, default: "select" },
   editMode: { type: Boolean, default: true },
   compact: { type: Boolean, default: false },

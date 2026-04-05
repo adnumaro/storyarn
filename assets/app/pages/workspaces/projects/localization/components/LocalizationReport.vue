@@ -29,7 +29,15 @@ import {
 } from "@components/ui/table";
 import { useLive } from "@composables/useLive";
 
-const { languageProgress, targetLanguages, selectedLocale, speakerStats, voProgress, typeCounts, backUrl } = defineProps({
+const {
+  languageProgress,
+  targetLanguages,
+  selectedLocale,
+  speakerStats,
+  voProgress,
+  typeCounts,
+  backUrl,
+} = defineProps({
   languageProgress: { type: Array, default: () => [] },
   targetLanguages: { type: Array, default: () => [] },
   selectedLocale: { type: String, default: null },

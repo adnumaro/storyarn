@@ -97,7 +97,7 @@ const isNewProjectModalOpen = ref(false);
             />
             <Input
               type="text"
-              placeholder="Search projects..."
+              :placeholder="$t('workspace.dashboard.search_placeholder')"
               class="pl-9 h-8 w-64"
               :value="localSearch"
               @input="onSearch"
@@ -111,17 +111,17 @@ const isNewProjectModalOpen = ref(false);
           @click="isNewProjectModalOpen = true"
         >
           <Plus class="size-4 mr-1" />
-          New Project
+          {{ $t("workspace.dashboard.new_project") }}
         </Button>
         <div v-else-if="canCreate && !canCreateProject" class="relative group">
           <Button size="sm" disabled>
             <Plus class="size-4 mr-1" />
-            New Project
+            {{ $t("workspace.dashboard.new_project") }}
           </Button>
           <div
             class="absolute right-0 top-full mt-1 px-2 py-1 text-xs rounded bg-popover border border-border shadow-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10"
           >
-            Project limit reached for your plan
+            {{ $t("workspace.dashboard.limit_reached") }}
           </div>
         </div>
       </div>
@@ -149,7 +149,9 @@ const isNewProjectModalOpen = ref(false);
                 {{ projectData.project.description }}
               </template>
               <template v-else>
-                <span class="italic opacity-50">No description provided</span>
+                <span class="italic opacity-50">{{
+                  $t("workspace.dashboard.no_description")
+                }}</span>
               </template>
             </div>
           </div>
@@ -162,7 +164,11 @@ const isNewProjectModalOpen = ref(false);
                 {{ projectData.project.inserted_at_formatted }}
               </div>
               <div class="text-xs font-medium text-muted-foreground/70">
-                Updated {{ formatRelativeTime(projectData.project.updated_at).toLowerCase() }}
+                {{
+                  $t("workspace.dashboard.updated_at", {
+                    time: formatRelativeTime(projectData.project.updated_at).toLowerCase(),
+                  })
+                }}
               </div>
             </div>
           </div>
@@ -176,8 +182,10 @@ const isNewProjectModalOpen = ref(false);
       class="flex flex-col items-center justify-center py-12 text-center h-full"
     >
       <FolderOpen class="size-12 text-muted-foreground/40 mb-4" />
-      <h3 class="text-lg font-medium mb-1">No projects yet</h3>
-      <p class="text-sm text-muted-foreground">Create your first project to get started</p>
+      <h3 class="text-lg font-medium mb-1">{{ $t("workspace.dashboard.empty_projects.title") }}</h3>
+      <p class="text-sm text-muted-foreground">
+        {{ $t("workspace.dashboard.empty_projects.description") }}
+      </p>
     </div>
 
     <div
@@ -185,8 +193,10 @@ const isNewProjectModalOpen = ref(false);
       class="flex flex-col items-center justify-center py-12 text-center h-full"
     >
       <Search class="size-12 text-muted-foreground/40 mb-4" />
-      <h3 class="text-lg font-medium mb-1">No projects found</h3>
-      <p class="text-sm text-muted-foreground">Try a different search term</p>
+      <h3 class="text-lg font-medium mb-1">{{ $t("workspace.dashboard.empty_search.title") }}</h3>
+      <p class="text-sm text-muted-foreground">
+        {{ $t("workspace.dashboard.empty_search.description") }}
+      </p>
     </div>
   </div>
 
@@ -194,7 +204,7 @@ const isNewProjectModalOpen = ref(false);
   <Dialog :open="isNewProjectModalOpen" @update:open="(val) => (isNewProjectModalOpen = val)">
     <DialogContent class="sm:max-w-106.25">
       <DialogHeader>
-        <DialogTitle class="hidden">New Project</DialogTitle>
+        <DialogTitle class="hidden">{{ $t("workspace.dashboard.new_project") }}</DialogTitle>
       </DialogHeader>
       <NewProjectForm
         v-if="newProjectForm"

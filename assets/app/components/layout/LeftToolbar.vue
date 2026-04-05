@@ -24,7 +24,16 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
 import { useLive } from "@composables/useLive";
 
-const { activeTool, hasTree, treePanelOpen, projectName, workspaceName, showToolSwitcher, isSuperAdmin, urls } = defineProps({
+const {
+  activeTool,
+  hasTree,
+  treePanelOpen,
+  projectName,
+  workspaceName,
+  showToolSwitcher,
+  isSuperAdmin,
+  urls,
+} = defineProps({
   activeTool: { type: String, required: true },
   hasTree: { type: Boolean, default: true },
   treePanelOpen: { type: Boolean, default: false },

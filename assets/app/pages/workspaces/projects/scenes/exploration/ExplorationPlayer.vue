@@ -8,15 +8,19 @@ import ExplorationToolbar from "./ExplorationToolbar.vue";
 import FlowOverlay from "./FlowOverlay.vue";
 import SessionPromptModal from "./SessionPromptModal.vue";
 
-const { sceneData, explorationData, sceneName, showZones, flowState, collection, session } = defineProps({
-  sceneData: { type: Object, required: true },
-  explorationData: { type: Object, required: true },
-  sceneName: { type: String, default: "" },
-  showZones: { type: Boolean, default: false },
-  flowState: { type: Object, default: () => ({ active: false, slide: null, flowName: null, showContinue: false }) },
-  collection: { type: Object, default: () => ({ open: false, zone: null, items: [] }) },
-  session: { type: Object, default: () => ({ promptOpen: false, pending: null }) },
-});
+const { sceneData, explorationData, sceneName, showZones, flowState, collection, session } =
+  defineProps({
+    sceneData: { type: Object, required: true },
+    explorationData: { type: Object, required: true },
+    sceneName: { type: String, default: "" },
+    showZones: { type: Boolean, default: false },
+    flowState: {
+      type: Object,
+      default: () => ({ active: false, slide: null, flowName: null, showContinue: false }),
+    },
+    collection: { type: Object, default: () => ({ open: false, zone: null, items: [] }) },
+    session: { type: Object, default: () => ({ promptOpen: false, pending: null }) },
+  });
 
 const live = useLive();
 

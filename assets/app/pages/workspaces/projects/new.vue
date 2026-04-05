@@ -6,10 +6,14 @@ import { Input } from "@components/ui/input/index.js";
 import { Label } from "@components/ui/label/index.js";
 import { Textarea } from "@components/ui/textarea/index.js";
 
-const { form: formProp, title, submitLabel } = defineProps({
+const {
+  form: formProp,
+  title,
+  submitLabel,
+} = defineProps({
   form: { type: Object, required: true },
-  title: { type: String, default: "New Project" },
-  submitLabel: { type: String, default: "Create Project" },
+  title: { type: String, default: null },
+  submitLabel: { type: String, default: null },
 });
 
 const emit = defineEmits(["cancel"]);
@@ -26,11 +30,13 @@ const description = form.field("description");
 const touched = ref({ name: false, description: false });
 
 const showNameError = computed(() => {
-  return (touched.value.name || formProp.action === 'insert') && name.errorMessage.value;
+  return (touched.value.name || formProp.action === "insert") && name.errorMessage.value;
 });
 
 const showDescriptionError = computed(() => {
-  return (touched.value.description || formProp.action === 'insert') && description.errorMessage.value;
+  return (
+    (touched.value.description || formProp.action === "insert") && description.errorMessage.value
+  );
 });
 
 function updateField(field, val) {
@@ -43,58 +49,50 @@ function updateField(field, val) {
 
 <template>
   <div class="space-y-4">
-    <h2 class="text-lg font-semibold">{{ title }}</h2>
+    <h2 class="text-lg font-semibold">{{ title || $t("workspace.new_project.title") }}</h2>
 
     <div class="space-y-1.5">
-      <Label for="project-name">Project Name</Label>
+      <Label for="project-name">{{ $t("workspace.new_project.fields.name.label") }}</Label>
       <Input
         id="project-name"
         name="project[name]"
         :model-value="name.value"
-        @update:model-value="v => updateField(name, v)"
-        placeholder="My Narrative Project"
+        @update:model-value="(v) => updateField(name, v)"
+        :placeholder="$t('workspace.new_project.fields.name.placeholder')"
         required
         @blur="touched.name = true"
         :aria-invalid="showNameError ? 'true' : null"
       />
-      <p
-        v-if="showNameError"
-        class="text-sm text-destructive flex items-center gap-1 mt-1"
-      >
+      <p v-if="showNameError" class="text-sm text-destructive flex items-center gap-1 mt-1">
         {{ name.errorMessage.value }}
       </p>
     </div>
 
     <div class="space-y-1.5">
-      <Label for="project-description">Description</Label>
+      <Label for="project-description">{{
+        $t("workspace.new_project.fields.description.label")
+      }}</Label>
       <Textarea
         id="project-description"
         name="project[description]"
         :model-value="description.value"
-        @update:model-value="v => updateField(description, v)"
-        placeholder="A brief description of your project"
+        @update:model-value="(v) => updateField(description, v)"
+        :placeholder="$t('workspace.new_project.fields.description.placeholder')"
         :rows="4"
         @blur="touched.description = true"
         :aria-invalid="showDescriptionError ? 'true' : null"
       />
-      <p
-        v-if="showDescriptionError"
-        class="text-sm text-destructive flex items-center gap-1 mt-1"
-      >
+      <p v-if="showDescriptionError" class="text-sm text-destructive flex items-center gap-1 mt-1">
         {{ description.errorMessage.value }}
       </p>
     </div>
 
     <div class="flex justify-end gap-2 pt-2">
-      <Button
-        type="button"
-        variant="ghost"
-        @click="$emit('cancel')"
-      >
-        Cancel
+      <Button type="button" variant="ghost" @click="$emit('cancel')">
+        {{ $t("workspace.new_project.cancel") }}
       </Button>
       <Button @click="form.submit()" :disabled="!form.isValid.value">
-        {{ submitLabel }}
+        {{ submitLabel || $t("workspace.new_project.submit") }}
       </Button>
     </div>
   </div>

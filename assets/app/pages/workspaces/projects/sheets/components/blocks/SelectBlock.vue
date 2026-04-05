@@ -20,7 +20,14 @@ const { block, canEdit, inherited } = defineProps({
   inherited: { type: Boolean, default: false },
 });
 
-const { live, label, isSelected, onBlockClick } = useBlockActions({ get block() { return block; }, get canEdit() { return canEdit; } });
+const { live, label, isSelected, onBlockClick } = useBlockActions({
+  get block() {
+    return block;
+  },
+  get canEdit() {
+    return canEdit;
+  },
+});
 
 function saveLabel(val) {
   live.pushEvent("update_block_config", {

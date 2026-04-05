@@ -26,10 +26,18 @@ const { open, state, nodes, controls } = defineProps({
   open: { type: Boolean, default: false },
   state: { type: Object, default: null },
   nodes: { type: Object, default: () => ({}) },
-  controls: { type: Object, default: () => ({
-    activeTab: "console", autoPlaying: false, speed: 800,
-    varFilter: "", varChangedOnly: false, flowName: "", stepLimitReached: false,
-  }) },
+  controls: {
+    type: Object,
+    default: () => ({
+      activeTab: "console",
+      autoPlaying: false,
+      speed: 800,
+      varFilter: "",
+      varChangedOnly: false,
+      flowName: "",
+      stepLimitReached: false,
+    }),
+  },
 });
 
 const live = useLive();
@@ -164,7 +172,11 @@ function switchTab(tab) {
     </div>
 
     <!-- Tab content -->
-    <Tabs :model-value="controls.activeTab" class="h-[calc(100%-44px)]" @update:model-value="switchTab">
+    <Tabs
+      :model-value="controls.activeTab"
+      class="h-[calc(100%-44px)]"
+      @update:model-value="switchTab"
+    >
       <TabsList class="px-3 pt-1">
         <TabsTrigger value="console" class="text-xs">Console</TabsTrigger>
         <TabsTrigger value="variables" class="text-xs">Variables</TabsTrigger>

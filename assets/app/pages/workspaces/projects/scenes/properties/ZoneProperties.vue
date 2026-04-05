@@ -12,14 +12,15 @@ const CONDITION_EFFECTS = [
   { id: "disable", name: "Disable" },
 ];
 
-const { element, canEdit, projectScenes, projectSheets, projectFlows, projectVariables } = defineProps({
-  element: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  projectScenes: { type: Array, default: () => [] },
-  projectSheets: { type: Array, default: () => [] },
-  projectFlows: { type: Array, default: () => [] },
-  projectVariables: { type: Array, default: () => [] },
-});
+const { element, canEdit, projectScenes, projectSheets, projectFlows, projectVariables } =
+  defineProps({
+    element: { type: Object, required: true },
+    canEdit: { type: Boolean, default: false },
+    projectScenes: { type: Array, default: () => [] },
+    projectSheets: { type: Array, default: () => [] },
+    projectFlows: { type: Array, default: () => [] },
+    projectVariables: { type: Array, default: () => [] },
+  });
 
 const live = useLive();
 

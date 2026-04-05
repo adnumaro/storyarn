@@ -24,14 +24,15 @@ import {
   CollapsibleTrigger,
 } from "@components/ui/collapsible/index.js";
 
-const { variableUsage, backlinks, sceneAppearances, workspaceSlug, projectSlug, loading } = defineProps({
-  variableUsage: { type: Array, default: () => [] },
-  backlinks: { type: Array, default: () => [] },
-  sceneAppearances: { type: Array, default: () => [] },
-  workspaceSlug: { type: String, required: true },
-  projectSlug: { type: String, required: true },
-  loading: { type: Boolean, default: false },
-});
+const { variableUsage, backlinks, sceneAppearances, workspaceSlug, projectSlug, loading } =
+  defineProps({
+    variableUsage: { type: Array, default: () => [] },
+    backlinks: { type: Array, default: () => [] },
+    sceneAppearances: { type: Array, default: () => [] },
+    workspaceSlug: { type: String, required: true },
+    projectSlug: { type: String, required: true },
+    loading: { type: Boolean, default: false },
+  });
 
 const variableUsageOpen = ref(true);
 const backlinksOpen = ref(true);

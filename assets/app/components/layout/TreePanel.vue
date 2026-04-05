@@ -16,7 +16,16 @@ const treeComponents = {
   ),
 };
 
-const { treePanelOpen, treePanelPinned, showPin, activeTool, dashboardUrl, onDashboard, treeData, treeProps } = defineProps({
+const {
+  treePanelOpen,
+  treePanelPinned,
+  showPin,
+  activeTool,
+  dashboardUrl,
+  onDashboard,
+  treeData,
+  treeProps,
+} = defineProps({
   treePanelOpen: { type: Boolean, default: false },
   treePanelPinned: { type: Boolean, default: true },
   showPin: { type: Boolean, default: true },

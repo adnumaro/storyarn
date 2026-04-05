@@ -1,14 +1,15 @@
 <script setup>
 import CompareView from "./CompareView.vue";
 
-const { backUrl, versionLabel, prevVersionUrl, nextVersionUrl, currentUrl, versionUrl } = defineProps({
-  backUrl: { type: String, required: true },
-  versionLabel: { type: String, default: "" },
-  prevVersionUrl: { type: String, default: null },
-  nextVersionUrl: { type: String, default: null },
-  currentUrl: { type: String, default: "" },
-  versionUrl: { type: String, default: "" },
-});
+const { backUrl, versionLabel, prevVersionUrl, nextVersionUrl, currentUrl, versionUrl } =
+  defineProps({
+    backUrl: { type: String, required: true },
+    versionLabel: { type: String, default: "" },
+    prevVersionUrl: { type: String, default: null },
+    nextVersionUrl: { type: String, default: null },
+    currentUrl: { type: String, default: "" },
+    versionUrl: { type: String, default: "" },
+  });
 </script>
 
 <template>

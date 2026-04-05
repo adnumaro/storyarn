@@ -11,7 +11,16 @@ import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.js";
 
 const configOpen = ref(false);
 
-const { isConstant, isVariable, variableName, scope, required, showConstant, showScope, showConfig } = defineProps({
+const {
+  isConstant,
+  isVariable,
+  variableName,
+  scope,
+  required,
+  showConstant,
+  showScope,
+  showConfig,
+} = defineProps({
   isConstant: { type: Boolean, default: false },
   isVariable: { type: Boolean, default: false },
   variableName: { type: String, default: "" },

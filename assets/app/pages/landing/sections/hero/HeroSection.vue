@@ -12,7 +12,7 @@ const triggerRef = ref(null);
 
 let currentTimeline = null;
 let isTransitioning = false;
-let isFullscreenNative = false; 
+let isFullscreenNative = false;
 
 function setVideoMask(video, solidPct, fadePct) {
   const mask = `radial-gradient(circle at 50% 50%, black ${solidPct}%, transparent ${fadePct}%)`;
@@ -26,7 +26,8 @@ function clearVideoMask(video) {
 }
 
 function resolvedBoxShadow(boxShadow) {
-  if (!boxShadow || boxShadow === "none" || boxShadow === "") return "0 40px 120px rgba(0, 0, 0, 0.46)";
+  if (!boxShadow || boxShadow === "none" || boxShadow === "")
+    return "0 40px 120px rgba(0, 0, 0, 0.46)";
   return boxShadow;
 }
 
@@ -54,8 +55,8 @@ function openFullscreen() {
   }
 
   isTransitioning = true;
-  if(currentTimeline) currentTimeline.kill();
-  
+  if (currentTimeline) currentTimeline.kill();
+
   gsap.killTweensOf([heroContent, frame, portalBadge, video, fullscreen]);
 
   // Fade out hero content
@@ -63,7 +64,11 @@ function openFullscreen() {
     gsap.to(heroContent, { opacity: 0, y: -48, duration: 0.5, ease: "power2.in" });
   }
 
-  try { video.muted = false; video.volume = 0; video.currentTime = 0; } catch (e) {}
+  try {
+    video.muted = false;
+    video.volume = 0;
+    video.currentTime = 0;
+  } catch (e) {}
 
   const videoRect = frame.getBoundingClientRect();
   const frameStyle = window.getComputedStyle(frame);
@@ -79,7 +84,7 @@ function openFullscreen() {
 
   fullscreen.appendChild(video);
   triggerRef.value.classList.add("is-active");
-  
+
   // Set fly styles
   video.style.position = "fixed";
   video.style.top = `${videoRect.top}px`;
@@ -109,13 +114,15 @@ function openFullscreen() {
       video.style.filter = "";
       fullscreen.appendChild(video);
       clearVideoMask(video);
-      try { video.volume = 1; } catch(e){}
+      try {
+        video.volume = 1;
+      } catch (e) {}
       currentTimeline = null;
       isTransitioning = false;
       isFullscreenNative = true;
       fullscreen.classList.add("is-active");
       fullscreen.style.pointerEvents = "auto";
-    }
+    },
   });
 
   // Allow the WebGL scale to handle the immersion without aggressive blackout
@@ -124,32 +131,59 @@ function openFullscreen() {
     currentTimeline.to(topbar, { opacity: 0, y: -40, duration: 0.8, ease: "power3.inOut" }, 0);
   }
 
-  currentTimeline.to(video, {
-    top: targetY, left: targetX, width: targetW, height: targetH,
-    borderRadius: 12, boxShadow: fullscreenShadow, 
-    opacity: 1, filter: "saturate(1) brightness(1) contrast(1)",
-    duration: 1.22, ease: "power3.in"
-  }, 0);
+  currentTimeline.to(
+    video,
+    {
+      top: targetY,
+      left: targetX,
+      width: targetW,
+      height: targetH,
+      borderRadius: 12,
+      boxShadow: fullscreenShadow,
+      opacity: 1,
+      filter: "saturate(1) brightness(1) contrast(1)",
+      duration: 1.22,
+      ease: "power3.in",
+    },
+    0,
+  );
 
-  currentTimeline.to(maskProxy, {
-    solid: 100, fade: 100, duration: 1.0, ease: "power2.in",
-    onUpdate: () => setVideoMask(video, maskProxy.solid, maskProxy.fade)
-  }, 0);
+  currentTimeline.to(
+    maskProxy,
+    {
+      solid: 100,
+      fade: 100,
+      duration: 1.0,
+      ease: "power2.in",
+      onUpdate: () => setVideoMask(video, maskProxy.solid, maskProxy.fade),
+    },
+    0,
+  );
 
   currentTimeline.to(frame, { opacity: 0, duration: 0.52, ease: "power2.inOut" }, 0.22);
-  
+
   if (portalBadge) {
     currentTimeline.to(portalBadge, { opacity: 0, duration: 0.34, ease: "power2.inOut" }, 0.16);
   }
 
-  currentTimeline.to(proxy, {
-    scale: 10, intensity: 3, vol: 1, duration: 1.4, ease: "power3.in",
-    onUpdate() {
-      portalRef.value?.setScale(proxy.scale);
-      portalRef.value?.setIntensity(proxy.intensity);
-      try { video.volume = proxy.vol; } catch(e){}
-    }
-  }, 0);
+  currentTimeline.to(
+    proxy,
+    {
+      scale: 10,
+      intensity: 3,
+      vol: 1,
+      duration: 1.4,
+      ease: "power3.in",
+      onUpdate() {
+        portalRef.value?.setScale(proxy.scale);
+        portalRef.value?.setIntensity(proxy.intensity);
+        try {
+          video.volume = proxy.vol;
+        } catch (e) {}
+      },
+    },
+    0,
+  );
 }
 
 function closeFullscreen() {
@@ -179,13 +213,20 @@ function closeFullscreen() {
   }
 
   isTransitioning = true;
-  if(currentTimeline) currentTimeline.kill();
+  if (currentTimeline) currentTimeline.kill();
 
   const volProxy = { vol: video.volume || 1 };
   gsap.to(volProxy, {
-    vol: 0, duration: 0.4,
-    onUpdate: () => { try { video.volume = volProxy.vol; } catch(e){} },
-    onComplete: () => { video.muted = true; }
+    vol: 0,
+    duration: 0.4,
+    onUpdate: () => {
+      try {
+        video.volume = volProxy.vol;
+      } catch (e) {}
+    },
+    onComplete: () => {
+      video.muted = true;
+    },
   });
 
   const videoRect = video.getBoundingClientRect();
@@ -233,38 +274,62 @@ function closeFullscreen() {
       currentTimeline = null;
       isTransitioning = false;
       isFullscreenNative = false;
-    }
+    },
   });
 
-  currentTimeline.to(video, {
-    top: targetRect.top, left: targetRect.left, width: targetRect.width, height: targetRect.height,
-    borderRadius: targetRadius, boxShadow: targetShadow,
-    opacity: 0.7, filter: "saturate(0.84) brightness(0.72) contrast(1.08)",
-    duration: 0.72, ease: "power2.out"
-  }, 0);
+  currentTimeline.to(
+    video,
+    {
+      top: targetRect.top,
+      left: targetRect.left,
+      width: targetRect.width,
+      height: targetRect.height,
+      borderRadius: targetRadius,
+      boxShadow: targetShadow,
+      opacity: 0.7,
+      filter: "saturate(0.84) brightness(0.72) contrast(1.08)",
+      duration: 0.72,
+      ease: "power2.out",
+    },
+    0,
+  );
 
   if (topbar) {
     currentTimeline.to(topbar, { opacity: 1, y: 0, duration: 0.72, ease: "power2.out" }, 0);
   }
 
-  currentTimeline.to(maskProxy, {
-    solid: 5, fade: 55, duration: 0.58, ease: "power2.out",
-    onUpdate: () => setVideoMask(video, maskProxy.solid, maskProxy.fade)
-  }, 0.08);
+  currentTimeline.to(
+    maskProxy,
+    {
+      solid: 5,
+      fade: 55,
+      duration: 0.58,
+      ease: "power2.out",
+      onUpdate: () => setVideoMask(video, maskProxy.solid, maskProxy.fade),
+    },
+    0.08,
+  );
 
   currentTimeline.to(frame, { opacity: 1, duration: 0.18, ease: "power2.inOut" }, 0.56);
-  
+
   if (portalBadge) {
     currentTimeline.to(portalBadge, { opacity: 1, duration: 0.18, ease: "power2.inOut" }, 0.62);
   }
 
-  currentTimeline.to(zoomProxy, {
-    scale: 1, intensity: 1, duration: 0.6, ease: "power2.out",
-    onUpdate() {
-      portalRef.value?.setScale(zoomProxy.scale);
-      portalRef.value?.setIntensity(zoomProxy.intensity);
-    }
-  }, 0);
+  currentTimeline.to(
+    zoomProxy,
+    {
+      scale: 1,
+      intensity: 1,
+      duration: 0.6,
+      ease: "power2.out",
+      onUpdate() {
+        portalRef.value?.setScale(zoomProxy.scale);
+        portalRef.value?.setIntensity(zoomProxy.intensity);
+      },
+    },
+    0,
+  );
 
   if (heroContent) {
     gsap.to(heroContent, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", delay: 0.2 });
@@ -281,7 +346,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener("keydown", onKeydown);
-  if(currentTimeline) currentTimeline.kill();
+  if (currentTimeline) currentTimeline.kill();
 });
 </script>
 
@@ -303,12 +368,12 @@ onUnmounted(() => {
       id="portal-trigger"
       class="portal-trigger"
       type="button"
-      aria-label="Ver vídeo de demostración"
+      :aria-label="$t('landing.hero.video_demo_sr')"
       @click="openFullscreen"
     >
       <span class="portal-badge">
         <Play class="size-4" />
-        <span>Ver demo</span>
+        <span>{{ $t("landing.hero.video_demo_badge") }}</span>
       </span>
 
       <div ref="portalFrameRef" id="portal-video-frame" class="portal-video-frame">
@@ -339,22 +404,24 @@ onUnmounted(() => {
           <span
             class="size-2 animate-pulse rounded-full bg-primary shadow-[0_0_20px_var(--color-primary)] sm:size-2.5"
           />
-          Private beta
+          {{ $t("landing.common.badge") }}
         </div>
 
         <div class="mt-5 sm:mt-7">
           <h1
             class="text-[clamp(2.6rem,7.2vw,5.8rem)] font-bold leading-[0.88] tracking-[-0.07em] text-foreground"
           >
-            Crea mundos.
+            {{ $t("landing.hero.title_part1") }}
             <span class="mt-1.5 block text-[1em] brand-logotype">
-              Teje historias.
+              {{ $t("landing.hero.title_part2") }}
             </span>
           </h1>
         </div>
 
-        <p class="hidden sm:block mx-auto mt-6 max-w-[46rem] text-sm leading-relaxed text-white/90 sm:text-lg text-balance">
-          La plataforma de diseño narrativo donde personajes, diálogos, mundos y localización viven en un único proyecto conectado — desde el primer borrador hasta exportación nativa para&nbsp;motor.
+        <p
+          class="hidden sm:block mx-auto mt-6 max-w-[46rem] text-sm leading-relaxed text-white/90 sm:text-lg text-balance"
+        >
+          {{ $t("landing.hero.description") }}
         </p>
 
         <div class="mt-8 flex flex-wrap justify-center gap-3 sm:gap-3.5">
@@ -362,16 +429,21 @@ onUnmounted(() => {
           <a
             href="#discover"
             class="inline-flex items-center justify-center rounded-md px-5 py-2.5 text-sm sm:px-6 sm:py-3 sm:text-[0.95rem] md:px-8 md:py-3.5 md:text-base font-bold text-teal-950 transition-all hover:scale-105"
-            style="background: linear-gradient(135deg, oklch(78% 0.14 185), oklch(68% 0.12 210)); box-shadow: 0 0 20px rgba(34, 211, 238, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);"
+            style="
+              background: linear-gradient(135deg, oklch(78% 0.14 185), oklch(68% 0.12 210));
+              box-shadow:
+                0 0 20px rgba(34, 211, 238, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            "
           >
-            Explora Storyarn
+            {{ $t("landing.hero.cta_explore") }}
           </a>
           <a
             href="#workflow"
             class="inline-flex items-center justify-center rounded-md border border-white/10 px-5 py-2.5 text-sm sm:px-6 sm:py-3 sm:text-[0.95rem] md:px-8 md:py-3.5 md:text-base font-medium text-foreground transition-colors hover:bg-white/5"
-            style="backdrop-filter: blur(8px);"
+            style="backdrop-filter: blur(8px)"
           >
-            Ver flujo de trabajo
+            {{ $t("landing.hero.cta_workflow") }}
           </a>
         </div>
       </div>
@@ -386,7 +458,7 @@ onUnmounted(() => {
     >
       <button
         class="absolute right-6 top-6 z-10 flex size-11 items-center justify-center rounded-full border border-border/30 bg-muted/30 text-foreground transition-colors hover:bg-muted/50"
-        aria-label="Cerrar vídeo"
+        :aria-label="$t('landing.hero.video_close_sr')"
         @click="closeFullscreen"
       >
         <X class="size-5" />
@@ -396,7 +468,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Sonsie+One&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Sonsie+One&display=swap");
 
 .hero-section {
   background:
@@ -415,21 +487,25 @@ onUnmounted(() => {
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background:
-    radial-gradient(
-      circle at 50% 72%,
-      rgba(34, 211, 238, 0.38) 0%,
-      rgba(17, 132, 164, 0.24) 24%,
-      rgba(7, 13, 19, 0.9) 62%,
-      rgba(4, 8, 14, 1) 100%
-    );
+  background: radial-gradient(
+    circle at 50% 72%,
+    rgba(34, 211, 238, 0.38) 0%,
+    rgba(17, 132, 164, 0.24) 24%,
+    rgba(7, 13, 19, 0.9) 62%,
+    rgba(4, 8, 14, 1) 100%
+  );
 }
 
 .brand-logotype {
   font-family: "Sonsie One", var(--font-display, cursive);
   font-weight: 400;
   letter-spacing: 0.05em;
-  background: linear-gradient(90deg, oklch(78% 0.14 185) 0%, oklch(68% 0.12 210) 35%, currentColor 55%);
+  background: linear-gradient(
+    90deg,
+    oklch(78% 0.14 185) 0%,
+    oklch(68% 0.12 210) 35%,
+    currentColor 55%
+  );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -480,7 +556,6 @@ onUnmounted(() => {
   -webkit-backdrop-filter: blur(4px);
 }
 
-
 .portal-trigger.is-active {
   pointer-events: none;
 }
@@ -521,7 +596,12 @@ onUnmounted(() => {
   isolation: isolate;
   filter: saturate(0.84) brightness(0.72) contrast(1.08);
   mask-image: radial-gradient(circle at 50% 50%, black 5%, rgba(0, 0, 0, 0.98) 6%, transparent 55%);
-  -webkit-mask-image: radial-gradient(circle at 50% 50%, black 5%, rgba(0, 0, 0, 0.98) 6%, transparent 55%);
+  -webkit-mask-image: radial-gradient(
+    circle at 50% 50%,
+    black 5%,
+    rgba(0, 0, 0, 0.98) 6%,
+    transparent 55%
+  );
   opacity: 0.7;
 }
 

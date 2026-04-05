@@ -7,7 +7,12 @@ import { Label } from "@components/ui/label/index.js";
 import { Separator } from "@components/ui/separator/index.js";
 import { Eye, EyeOff } from "lucide-vue-next";
 
-const { form: formProp, loginUrl, oauthAction, userEmail } = defineProps({
+const {
+  form: formProp,
+  loginUrl,
+  oauthAction,
+  userEmail,
+} = defineProps({
   form: { type: Object, required: true },
   loginUrl: { type: String, default: "/users/log-in" },
   oauthAction: { type: String, default: "login" },
@@ -45,8 +50,6 @@ const discordHref = oauthAction === "link" ? "/auth/discord/link" : "/auth/disco
         Welcome to the beta! Define your password to access your workspace.
       </p>
     </div>
-
-
 
     <div class="space-y-4">
       <div class="space-y-1.5 hidden">
@@ -87,11 +90,14 @@ const discordHref = oauthAction === "link" ? "/auth/discord/link" : "/auth/disco
             <EyeOff v-else class="h-4 w-4" />
           </button>
         </div>
-        <p v-if="password.errorMessage.value && password.isTouched.value" class="text-sm text-destructive mt-1">
+        <p
+          v-if="password.errorMessage.value && password.isTouched.value"
+          class="text-sm text-destructive mt-1"
+        >
           {{ password.errorMessage.value }}
         </p>
       </div>
-      
+
       <div class="space-y-1.5">
         <Label for="register-password-confirmation">Confirm Password</Label>
         <div class="relative">
@@ -112,7 +118,10 @@ const discordHref = oauthAction === "link" ? "/auth/discord/link" : "/auth/disco
             <EyeOff v-else class="h-4 w-4" />
           </button>
         </div>
-        <p v-if="passwordConfirmation.errorMessage.value && passwordConfirmation.isTouched.value" class="text-sm text-destructive mt-1">
+        <p
+          v-if="passwordConfirmation.errorMessage.value && passwordConfirmation.isTouched.value"
+          class="text-sm text-destructive mt-1"
+        >
           {{ passwordConfirmation.errorMessage.value }}
         </p>
       </div>

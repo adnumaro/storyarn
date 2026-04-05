@@ -1,0 +1,34 @@
+{
+  "workspace": {
+    "dashboard": {
+      "search_placeholder": "Buscar proyectos...",
+      "new_project": "Nuevo proyecto",
+      "limit_reached": "Límite de proyectos alcanzado para tu plan",
+      "no_description": "Sin descripción proporcionada",
+      "updated_at": "Actualizado {time}",
+      "empty_projects": {
+        "title": "Aún no hay proyectos",
+        "description": "Crea tu primer proyecto para empezar"
+      },
+      "empty_search": {
+        "title": "No se encontraron proyectos",
+        "description": "Prueba con otro término de búsqueda"
+      }
+    },
+    "new_project": {
+      "title": "Nuevo Proyecto",
+      "submit": "Crear proyecto",
+      "cancel": "Cancelar",
+      "fields": {
+        "name": {
+          "label": "Nombre del proyecto",
+          "placeholder": "Mi Proyecto Narrativo"
+        },
+        "description": {
+          "label": "Descripción",
+          "placeholder": "Una breve descripción de tu proyecto"
+        }
+      }
+    }
+  }
+}

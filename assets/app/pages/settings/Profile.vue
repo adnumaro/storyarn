@@ -12,11 +12,14 @@ import {
 } from "@components/ui/select/index.js";
 import { Separator } from "@components/ui/separator/index.js";
 
-const { profileForm: profileFormProp, emailForm: emailFormProp, currentEmail, translations } = defineProps({
+const {
+  profileForm: profileFormProp,
+  emailForm: emailFormProp,
+  currentEmail,
+} = defineProps({
   profileForm: { type: Object, required: true },
   emailForm: { type: Object, required: true },
   currentEmail: { type: String, required: true },
-  translations: { type: Object, required: true },
 });
 
 const profileForm = useLiveForm(() => profileFormProp, {
@@ -38,17 +41,26 @@ const email = emailForm.field("email");
 
 <template>
   <div class="space-y-8">
+    <div class="space-y-1.5">
+      <h1 class="text-2xl font-bold tracking-tight text-foreground">
+        {{ $t("settings.profile.title") }}
+      </h1>
+      <p class="text-base text-muted-foreground">
+        {{ $t("settings.profile.subtitle") }}
+      </p>
+    </div>
+
     <!-- Profile Section -->
     <section>
-      <h3 class="text-lg font-semibold mb-4">{{ translations.personalInfo }}</h3>
+      <h3 class="text-lg font-semibold mb-4">{{ $t("settings.profile.personal_info") }}</h3>
 
       <div class="space-y-4">
         <div class="space-y-1.5">
-          <Label for="profile-display-name">{{ translations.displayName }}</Label>
+          <Label for="profile-display-name">{{ $t("settings.profile.display_name") }}</Label>
           <Input
             id="profile-display-name"
             v-bind="displayName.inputAttrs.value"
-            :placeholder="translations.displayNamePlaceholder"
+            :placeholder="$t('settings.profile.display_name_placeholder')"
           />
           <p v-if="displayName.errorMessage.value" class="text-sm text-destructive mt-1">
             {{ displayName.errorMessage.value }}
@@ -56,7 +68,7 @@ const email = emailForm.field("email");
         </div>
 
         <div class="space-y-1.5">
-          <Label for="profile-locale">{{ translations.language }}</Label>
+          <Label for="profile-locale">{{ $t("settings.profile.language") }}</Label>
           <Select
             :model-value="locale.inputAttrs.value.value || ''"
             @update:model-value="
@@ -66,10 +78,10 @@ const email = emailForm.field("email");
             "
           >
             <SelectTrigger id="profile-locale" class="w-full">
-              <SelectValue :placeholder="translations.autoDetect" />
+              <SelectValue :placeholder="$t('settings.profile.auto_detect')" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">{{ translations.autoDetect }}</SelectItem>
+              <SelectItem value="">{{ $t("settings.profile.auto_detect") }}</SelectItem>
               <SelectItem value="en">English</SelectItem>
               <SelectItem value="es">Espa&#241;ol</SelectItem>
             </SelectContent>
@@ -80,9 +92,7 @@ const email = emailForm.field("email");
         </div>
 
         <div class="flex justify-end gap-3">
-          <Button @click="profileForm.submit()">
-            {{ translations.saveProfile }}
-          </Button>
+          <Button @click="profileForm.submit()"> {{ $t("settings.profile.save_profile") }} </Button>
         </div>
       </div>
     </section>
@@ -91,14 +101,14 @@ const email = emailForm.field("email");
 
     <!-- Email Section -->
     <section>
-      <h3 class="text-lg font-semibold mb-4">{{ translations.emailAddress }}</h3>
+      <h3 class="text-lg font-semibold mb-4">{{ $t("settings.profile.email_address") }}</h3>
       <p class="text-sm text-muted-foreground mb-4">
-        {{ translations.emailDescription }}
+        {{ $t("settings.profile.email_description") }}
       </p>
 
       <div class="space-y-4">
         <div class="space-y-1.5">
-          <Label for="profile-email">{{ translations.email }}</Label>
+          <Label for="profile-email">{{ $t("settings.profile.email") }}</Label>
           <Input
             id="profile-email"
             type="email"
@@ -112,9 +122,7 @@ const email = emailForm.field("email");
         </div>
 
         <div class="flex justify-end gap-3">
-          <Button @click="emailForm.submit()">
-            {{ translations.changeEmail }}
-          </Button>
+          <Button @click="emailForm.submit()"> {{ $t("settings.profile.change_email") }} </Button>
         </div>
       </div>
     </section>

@@ -62,11 +62,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
       managed_workspace_slugs={@managed_workspace_slugs}
       current_path={@current_path}
     >
-      <:title>{gettext("Deleted Projects")}</:title>
-      <:subtitle>
-        {gettext("Recover deleted projects from their snapshots")}
-      </:subtitle>
-
       <.vue
         v-component="pages/settings/WorkspaceDeletedProjects"
         v-socket={@socket}
@@ -75,7 +70,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
         expanded-project-id={@expanded_project_id}
         snapshots={serialize_snapshots(@snapshots)}
         recovering={@recovering}
-        translations={deleted_projects_translations()}
       />
     </Layouts.settings>
     """
@@ -109,31 +103,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
     end)
   end
 
-  defp deleted_projects_translations do
-    %{
-      noDeletedProjects: gettext("No deleted projects"),
-      noDeletedProjectsDescription:
-        gettext("Deleted projects with available snapshots will appear here."),
-      snapshot: gettext("snapshot"),
-      snapshots: gettext("snapshots"),
-      noSnapshots: gettext("No snapshots available for this project."),
-      snapshotPrefix: gettext("Snapshot v"),
-      recover: gettext("Recover"),
-      recoverTitle: gettext("Recover project?"),
-      recoverMessage:
-        gettext(
-          "This will create a new project from snapshot v%{number}. The recovered project will appear in your workspace.",
-          number: "%{number}"
-        ),
-      cancel: gettext("Cancel"),
-      sheet: gettext("sheet"),
-      sheets: gettext("sheets"),
-      flow: gettext("flow"),
-      flows: gettext("flows"),
-      scene: gettext("scene"),
-      scenes: gettext("scenes")
-    }
-  end
+
 
   @impl true
   def handle_event("toggle_project", %{"id" => id}, socket) do

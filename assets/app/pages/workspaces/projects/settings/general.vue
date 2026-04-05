@@ -17,7 +17,15 @@ import { Separator } from "@components/ui/separator/index.js";
 import { Textarea } from "@components/ui/textarea/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const { projectName, projectDescription, sourceLanguage, sourceLanguageName, themePrimary, themeAccent, hasCustomTheme } = defineProps({
+const {
+  projectName,
+  projectDescription,
+  sourceLanguage,
+  sourceLanguageName,
+  themePrimary,
+  themeAccent,
+  hasCustomTheme,
+} = defineProps({
   projectName: { type: String, default: "" },
   projectDescription: { type: String, default: "" },
   sourceLanguage: { type: Object, default: null },
@@ -100,10 +108,10 @@ function resetTheme() {
 }
 
 // Theme toggle
-const currentTheme = ref('system');
+const currentTheme = ref("system");
 
 function updateThemeRef() {
-  currentTheme.value = localStorage.getItem("phx:theme") || 'system';
+  currentTheme.value = localStorage.getItem("phx:theme") || "system";
 }
 
 onMounted(() => {
@@ -206,7 +214,9 @@ function confirmDeleteProject() {
         <button
           :class="[
             'flex items-center justify-center size-8 rounded-full transition-colors',
-            currentTheme === 'system' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+            currentTheme === 'system'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
           ]"
           title="System"
           @click="setTheme('system')"
@@ -216,7 +226,9 @@ function confirmDeleteProject() {
         <button
           :class="[
             'flex items-center justify-center size-8 rounded-full transition-colors',
-            currentTheme === 'light' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+            currentTheme === 'light'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
           ]"
           title="Light"
           @click="setTheme('light')"
@@ -226,7 +238,9 @@ function confirmDeleteProject() {
         <button
           :class="[
             'flex items-center justify-center size-8 rounded-full transition-colors',
-            currentTheme === 'dark' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+            currentTheme === 'dark'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
           ]"
           title="Dark"
           @click="setTheme('dark')"

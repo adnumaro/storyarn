@@ -1,6 +1,7 @@
 import { createLiveVue, findComponent } from "live_vue";
 import { h } from "vue";
 import VueKonva from "vue-konva";
+import { i18n } from "./i18n.js";
 
 let appCounter = 0;
 
@@ -25,6 +26,7 @@ export default createLiveVue({
     };
     app.use(plugin);
     app.use(VueKonva);
+    app.use(i18n);
     app.mount(el);
     return app;
   },

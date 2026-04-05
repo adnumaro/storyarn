@@ -14,7 +14,16 @@ const TITLES = {
   annotation: "Annotation Properties",
 };
 
-const { selectedType, selectedElement, canEdit, elementPanelOpen, projectSheets, projectFlows, projectScenes, projectVariables } = defineProps({
+const {
+  selectedType,
+  selectedElement,
+  canEdit,
+  elementPanelOpen,
+  projectSheets,
+  projectFlows,
+  projectScenes,
+  projectVariables,
+} = defineProps({
   selectedType: { type: String, default: null },
   selectedElement: { type: Object, default: null },
   canEdit: { type: Boolean, default: false },

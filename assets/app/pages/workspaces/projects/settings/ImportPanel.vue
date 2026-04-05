@@ -25,10 +25,13 @@ const live = useLive();
 
 // --- Upload handling ---
 const upload = uploadConfig
-  ? useLiveUpload(toRef(() => uploadConfig), {
-      changeEvent: "validate_upload",
-      submitEvent: "parse_import",
-    })
+  ? useLiveUpload(
+      toRef(() => uploadConfig),
+      {
+        changeEvent: "validate_upload",
+        submitEvent: "parse_import",
+      },
+    )
   : null;
 
 // --- Computed ---

@@ -63,11 +63,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
       managed_workspace_slugs={@managed_workspace_slugs}
       current_path={@current_path}
     >
-      <:title>{dgettext("workspaces", "Members")}</:title>
-      <:subtitle>
-        {dgettext("workspaces", "Manage team members for %{name}", name: @workspace.name)}
-      </:subtitle>
-
       <.vue
         v-component="pages/settings/WorkspaceMembers"
         v-socket={@socket}

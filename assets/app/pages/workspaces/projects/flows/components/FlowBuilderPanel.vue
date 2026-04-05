@@ -6,16 +6,17 @@ import InstructionBuilder from "@components/builders/InstructionBuilder.vue";
 import Sidebar from "@components/layout/Sidebar.vue";
 import { useLive } from "@composables/useLive.js";
 
-const { open, nodeType, nodeId, condition, assignments, switchMode, projectVariables, canEdit } = defineProps({
-  open: { type: Boolean, default: false },
-  nodeType: { type: String, default: null },
-  nodeId: { type: [Number, String], default: null },
-  condition: { type: Object, default: null },
-  assignments: { type: Array, default: () => [] },
-  switchMode: { type: Boolean, default: false },
-  projectVariables: { default: "[]" },
-  canEdit: { type: Boolean, default: false },
-});
+const { open, nodeType, nodeId, condition, assignments, switchMode, projectVariables, canEdit } =
+  defineProps({
+    open: { type: Boolean, default: false },
+    nodeType: { type: String, default: null },
+    nodeId: { type: [Number, String], default: null },
+    condition: { type: Object, default: null },
+    assignments: { type: Array, default: () => [] },
+    switchMode: { type: Boolean, default: false },
+    projectVariables: { default: "[]" },
+    canEdit: { type: Boolean, default: false },
+  });
 
 const live = useLive();
 

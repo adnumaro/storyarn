@@ -12,7 +12,14 @@ const { block, canEdit, inherited } = defineProps({
   inherited: { type: Boolean, default: false },
 });
 
-const { live, label, isSelected, onBlockClick } = useBlockActions({ get block() { return block; }, get canEdit() { return canEdit; } });
+const { live, label, isSelected, onBlockClick } = useBlockActions({
+  get block() {
+    return block;
+  },
+  get canEdit() {
+    return canEdit;
+  },
+});
 
 // can_manage: can modify table structure (add/delete/rename columns/rows, collapse)
 // When inherited (schema_locked): structure is locked but cell values are still editable

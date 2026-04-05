@@ -147,7 +147,10 @@ function validationBadgeVariant(status) {
           <span class="text-sm">Validate before export</span>
         </label>
         <label class="flex cursor-pointer items-center gap-3 py-1">
-          <Checkbox :model-value="options.prettyPrint" @update:model-value="toggleOption('pretty_print')" />
+          <Checkbox
+            :model-value="options.prettyPrint"
+            @update:model-value="toggleOption('pretty_print')"
+          />
           <span class="text-sm">Pretty print output</span>
         </label>
       </div>

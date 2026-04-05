@@ -17,7 +17,18 @@ import { Badge } from "@components/ui/badge/index.js";
 import { useLive } from "@composables/useLive.js";
 import { formatRelativeTime } from "@lib/date-utils.js";
 
-const { stats, nodeDist, speakers, issues, localization, activity, canEdit, workspaceSlug, projectSlug, loading } = defineProps({
+const {
+  stats,
+  nodeDist,
+  speakers,
+  issues,
+  localization,
+  activity,
+  canEdit,
+  workspaceSlug,
+  projectSlug,
+  loading,
+} = defineProps({
   stats: { type: Object, default: null },
   nodeDist: { type: Array, default: () => [] },
   speakers: { type: Array, default: () => [] },

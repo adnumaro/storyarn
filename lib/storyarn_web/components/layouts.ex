@@ -439,7 +439,7 @@ defmodule StoryarnWeb.Layouts do
     default: nil,
     doc: "custom sidebar sections list; when nil, uses default account/workspace nav"
 
-  slot :title, required: true
+  slot :title
   slot :subtitle
   slot :inner_block, required: true
 
@@ -526,7 +526,7 @@ defmodule StoryarnWeb.Layouts do
       <%!-- Main content area --%>
       <main class="flex-1 min-w-0 overflow-y-auto bg-background p-4 pt-16 lg:px-8 lg:py-3 min-vh-100">
         <div class="max-w-3xl mx-auto lg:mt-5">
-          <.header>
+          <.header :if={@title != []}>
             {render_slot(@title)}
             <:subtitle :if={@subtitle != []}>
               {render_slot(@subtitle)}

@@ -9,16 +9,17 @@ import {
   ContextMenuTrigger,
 } from "@components/ui/context-menu";
 
-const { node, index, siblings, selectedSceneId, canEdit, depth, searchActive, sceneHref } = defineProps({
-  node: { type: Object, required: true },
-  index: { type: Number, required: true },
-  siblings: { type: Array, required: true },
-  selectedSceneId: { type: [String, Number], default: null },
-  canEdit: { type: Boolean, default: false },
-  depth: { type: Number, default: 0 },
-  searchActive: { type: Boolean, default: false },
-  sceneHref: { type: Function, required: true },
-});
+const { node, index, siblings, selectedSceneId, canEdit, depth, searchActive, sceneHref } =
+  defineProps({
+    node: { type: Object, required: true },
+    index: { type: Number, required: true },
+    siblings: { type: Array, required: true },
+    selectedSceneId: { type: [String, Number], default: null },
+    canEdit: { type: Boolean, default: false },
+    depth: { type: Number, default: 0 },
+    searchActive: { type: Boolean, default: false },
+    sceneHref: { type: Function, required: true },
+  });
 
 const emit = defineEmits(["createChild", "requestDelete", "drop"]);
 

@@ -22,7 +22,14 @@ const { block, canEdit, inherited } = defineProps({
   inherited: { type: Boolean, default: false },
 });
 
-const { live, label, isSelected, onBlockClick } = useBlockActions({ get block() { return block; }, get canEdit() { return canEdit; } });
+const { live, label, isSelected, onBlockClick } = useBlockActions({
+  get block() {
+    return block;
+  },
+  get canEdit() {
+    return canEdit;
+  },
+});
 
 const targetType = computed(() => block.value?.target_type);
 const targetId = computed(() => block.value?.target_id);

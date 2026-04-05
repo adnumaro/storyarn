@@ -26,9 +26,7 @@ const midpoint = computed(() => {
   };
 });
 
-const labelWidth = computed(() =>
-  data?.label ? Math.min(data.label.length * 6 + 10, 80) : 0,
-);
+const labelWidth = computed(() => (data?.label ? Math.min(data.label.length * 6 + 10, 80) : 0));
 </script>
 
 <template>

@@ -1,7 +1,15 @@
 <script setup>
 import { ref } from "vue";
-import { 
-  Table2, GitBranch, Map, LayoutDashboard, LineChart, Bug, GitCommit, Languages, Package 
+import {
+  Table2,
+  GitBranch,
+  Map,
+  LayoutDashboard,
+  LineChart,
+  Bug,
+  GitCommit,
+  Languages,
+  Package,
 } from "lucide-vue-next";
 
 const scrollContainer = ref(null);
@@ -10,43 +18,43 @@ const activeIndex = ref(0);
 const features = [
   {
     icon: LayoutDashboard,
-    title: "Las herramientas Core",
-    desc: "El corazón de tu narrativa. Documentos estructurados, ramificaciones dinámicas y mundos interactivos diseñados para integrarse como tu única fuente de verdad.",
+    titleKey: "landing.features.cards.core.title",
+    descKey: "landing.features.cards.core.desc",
     colorClassText: "text-cyan-400",
     subLinks: [
-      { name: "Explorar Fichas (Sheets)", index: 0, icon: Table2 },
-      { name: "Explorar Flujos (Flows)", index: 1, icon: GitBranch },
-      { name: "Explorar Escenas (Scenes)", index: 2, icon: Map },
-    ]
+      { nameKey: "landing.features.cards.core.sublinks.sheets", index: 0, icon: Table2 },
+      { nameKey: "landing.features.cards.core.sublinks.flows", index: 1, icon: GitBranch },
+      { nameKey: "landing.features.cards.core.sublinks.scenes", index: 2, icon: Map },
+    ],
   },
   {
     icon: LineChart,
-    title: "Análisis y Dashboards",
-    desc: "Supervisa la complejidad de tu proyecto. Visualiza de un vistazo dependencias, densidad de diálogos y puntos ciegos técnicos en tu estructura narrativa.",
+    titleKey: "landing.features.cards.analytics.title",
+    descKey: "landing.features.cards.analytics.desc",
     colorClassText: "text-blue-400",
   },
   {
     icon: Bug,
-    title: "Depuración multinivel",
-    desc: "Experimenta la historia exactamente como lo haría un jugador o analízala paso a paso rastreando cada variable, condición y trigger en tiempo real.",
+    titleKey: "landing.features.cards.debugging.title",
+    descKey: "landing.features.cards.debugging.desc",
     colorClassText: "text-emerald-400",
   },
   {
     icon: GitCommit,
-    title: "Control de versiones",
-    desc: "Historial completo de tu narrativa. Compara ramas, audita cambios entre guionistas y retrocede en el tiempo sin miedo a romper el flujo de juego.",
+    titleKey: "landing.features.cards.vcs.title",
+    descKey: "landing.features.cards.vcs.desc",
     colorClassText: "text-purple-400",
   },
   {
     icon: Languages,
-    title: "Localización inteligente",
-    desc: "Extrae líneas, traduce inteligentemente, maneja glosarios y visualiza métricas de cobertura por idioma — todo desde el propio lienzo de escritura.",
+    titleKey: "landing.features.cards.localization.title",
+    descKey: "landing.features.cards.localization.desc",
     colorClassText: "text-amber-500",
   },
   {
     icon: Package,
-    title: "Exportación nativa",
-    desc: "Exporta de forma automática a motores consolidados como Godot Dialogic, Unity, Unreal, Ink o Yarn Spinner. Tus datos, listos para entrar a producción.",
+    titleKey: "landing.features.cards.export.title",
+    descKey: "landing.features.cards.export.desc",
     colorClassText: "text-zinc-400",
   },
 ];
@@ -132,10 +140,8 @@ function gotoGlobal(panelIndex, tabIndex = undefined) {
   if (typeof window !== "undefined") {
     const detail = { panelIndex };
     if (tabIndex !== undefined) detail.tabIndex = tabIndex;
-    
-    window.dispatchEvent(
-      new CustomEvent("storyarn:force-scroll", { detail })
-    );
+
+    window.dispatchEvent(new CustomEvent("storyarn:force-scroll", { detail }));
   }
 }
 </script>
@@ -149,35 +155,42 @@ function gotoGlobal(panelIndex, tabIndex = undefined) {
     @touchmove="handleTouchMove"
   >
     <!-- Global Fixed Header Area (Spanning 100% width) -->
-    <div class="pt-28 lg:pt-48 px-8 lg:px-24 pb-12 lg:pb-24 relative z-30 w-full shrink-0 bg-background/80 backdrop-blur-xl border-b border-border/20 shadow-sm shadow-black/5 overflow-hidden">
+    <div
+      class="pt-28 lg:pt-48 px-8 lg:px-24 pb-12 lg:pb-24 relative z-30 w-full shrink-0 bg-background/80 backdrop-blur-xl border-b border-border/20 shadow-sm shadow-black/5 overflow-hidden"
+    >
       <!-- Glow embedded securely inside the Header -->
-      <div class="pointer-events-none absolute inset-x-0 -top-[450px] left-1/2 h-[600px] w-[1000px] -translate-x-1/2 rounded-full bg-primary/10 blur-[160px]"></div>
-      
+      <div
+        class="pointer-events-none absolute inset-x-0 -top-[450px] left-1/2 h-[600px] w-[1000px] -translate-x-1/2 rounded-full bg-primary/10 blur-[160px]"
+      ></div>
+
       <div class="max-w-[1280px] mx-auto relative z-10">
-        <h2 class="text-[clamp(2.5rem,4vw,4.5rem)] font-bold tracking-tight text-foreground leading-[1] mb-6 max-w-4xl">
-          Desarrollo Narrativo End-to-End
+        <h2
+          class="text-[clamp(2.5rem,4vw,4.5rem)] font-bold tracking-tight text-foreground leading-[1] mb-6 max-w-4xl"
+        >
+          {{ $t("landing.features.section_title") }}
         </h2>
         <p class="text-lg lg:text-xl leading-relaxed text-muted-foreground lg:mr-8 max-w-3xl">
-          Una suite de herramientas donde los guionistas crean, los analistas exploran y los programadores simplemente exportan. Todo conectado.
+          {{ $t("landing.features.section_subtitle") }}
         </p>
       </div>
     </div>
 
-    <div class="relative z-20 flex flex-1 w-full max-w-[1280px] mx-auto flex-col lg:flex-row min-h-0">
-      
+    <div
+      class="relative z-20 flex flex-1 w-full max-w-[1280px] mx-auto flex-col lg:flex-row min-h-0"
+    >
       <!-- Visual Sticking Container (Top Mobile, Right Desktop) -->
-      <div 
+      <div
         class="lg:w-[45%] w-full lg:h-full basis-[45%] lg:basis-auto shrink-0 bg-black/10 lg:order-2 flex items-center justify-center border-b lg:border-b-0 lg:border-l border-border/20 relative"
       >
         <transition name="vp-fade" mode="out-in">
-          <div 
-            :key="activeIndex" 
+          <div
+            :key="activeIndex"
             class="flex items-center justify-center w-full max-w-[280px] lg:max-w-[400px] aspect-square rounded-3xl bg-muted/30 border border-border/20 backdrop-blur-md shadow-2xl"
           >
-            <component 
-              :is="features[activeIndex].icon" 
-              class="w-32 h-32 lg:w-48 lg:h-48 opacity-20 transition-all duration-700 delay-100" 
-              :class="features[activeIndex].colorClassText" 
+            <component
+              :is="features[activeIndex].icon"
+              class="w-32 h-32 lg:w-48 lg:h-48 opacity-20 transition-all duration-700 delay-100"
+              :class="features[activeIndex].colorClassText"
             />
           </div>
         </transition>
@@ -185,7 +198,6 @@ function gotoGlobal(panelIndex, tabIndex = undefined) {
 
       <!-- Left Column Wrapper: ONLY contains the Scrollable Body now -->
       <div class="lg:w-[55%] w-full flex-1 flex flex-col lg:order-1 relative h-full">
-
         <!-- Dynamic Presenter Container (No Scroll) -->
         <div
           ref="scrollContainer"
@@ -198,26 +210,29 @@ function gotoGlobal(panelIndex, tabIndex = undefined) {
               class="px-8 lg:px-24 w-full flex flex-col max-w-xl left-0 right-0 absolute lg:static my-auto"
             >
               <h3 class="mb-4 text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
-                {{ features[activeIndex].title }}
+                {{ $t(features[activeIndex].titleKey) }}
               </h3>
               <p class="leading-relaxed text-lg lg:text-xl text-muted-foreground mb-8 text-pretty">
-                {{ features[activeIndex].desc }}
+                {{ $t(features[activeIndex].descKey) }}
               </p>
-              
+
               <!-- SubLinks para el Punto 1 (Dovetail style sub-feature cards) -->
               <div v-if="features[activeIndex].subLinks" class="flex flex-col gap-4 mt-8">
-                 <div 
-                   v-for="sublink in features[activeIndex].subLinks" 
-                   :key="sublink.name"
-                   @click="gotoGlobal(2, sublink.index)"
-                   class="group flex items-center justify-between p-4 rounded-xl border border-border/40 bg-muted/20 hover:bg-muted/60 transition-colors cursor-pointer"
-                 >
-                    <div class="flex items-center gap-4">
-                       <component :is="sublink.icon" class="size-5 text-primary" />
-                       <span class="font-semibold text-foreground">{{ sublink.name }}</span>
-                    </div>
-                    <span class="text-xl text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all duration-300">→</span>
-                 </div>
+                <div
+                  v-for="sublink in features[activeIndex].subLinks"
+                  :key="sublink.name"
+                  @click="gotoGlobal(2, sublink.index)"
+                  class="group flex items-center justify-between p-4 rounded-xl border border-border/40 bg-muted/20 hover:bg-muted/60 transition-colors cursor-pointer"
+                >
+                  <div class="flex items-center gap-4">
+                    <component :is="sublink.icon" class="size-5 text-primary" />
+                    <span class="font-semibold text-foreground">{{ $t(sublink.nameKey) }}</span>
+                  </div>
+                  <span
+                    class="text-xl text-muted-foreground group-hover:translate-x-1 group-hover:text-primary transition-all duration-300"
+                    >→</span
+                  >
+                </div>
               </div>
             </div>
           </transition>
@@ -231,7 +246,9 @@ function gotoGlobal(panelIndex, tabIndex = undefined) {
 /* Crossfade animation mechanics for the fixed Visual Area */
 .vp-fade-enter-active,
 .vp-fade-leave-active {
-  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .vp-fade-enter-from {
   opacity: 0;

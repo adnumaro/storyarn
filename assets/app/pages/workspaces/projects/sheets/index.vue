@@ -37,7 +37,10 @@ import { formatRelativeTime } from "@lib/date-utils.js";
 const { stats, tableData, pagination, issues, canEdit, workspaceSlug, projectSlug } = defineProps({
   stats: { type: Object, default: null },
   tableData: { type: Array, default: () => [] },
-  pagination: { type: Object, default: () => ({ sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 0 }) },
+  pagination: {
+    type: Object,
+    default: () => ({ sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 0 }),
+  },
   issues: { type: Array, default: () => [] },
   canEdit: { type: Boolean, default: false },
   workspaceSlug: { type: String, required: true },

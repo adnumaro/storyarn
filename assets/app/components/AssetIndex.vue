@@ -17,7 +17,18 @@ import { Button } from "@components/ui/button/index.js";
 import { Input } from "@components/ui/input/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const { assets, filter, search, typeCounts, selectedAsset, assetUsages, uploading, canEdit, workspaceSlug, projectSlug } = defineProps({
+const {
+  assets,
+  filter,
+  search,
+  typeCounts,
+  selectedAsset,
+  assetUsages,
+  uploading,
+  canEdit,
+  workspaceSlug,
+  projectSlug,
+} = defineProps({
   assets: { type: Array, default: () => [] },
   filter: { type: String, default: "all" },
   search: { type: String, default: "" },
