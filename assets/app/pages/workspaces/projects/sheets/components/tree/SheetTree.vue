@@ -214,14 +214,7 @@ function handleDrop(e) {
 <template>
   <div class="space-y-2">
     <!-- Search -->
-    <div class="px-1">
-      <Input
-        v-model="searchQuery"
-        type="search"
-        placeholder="Filter sheets..."
-        class="h-7 text-xs"
-      />
-    </div>
+    <Input v-model="searchQuery" type="search" placeholder="Filter sheets..." class="text-xs" />
 
     <!-- Empty state -->
     <div

@@ -78,6 +78,7 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
           id="workspace-sidebar"
           current-user={@current_user}
           urls={@urls}
+          class="h-full"
           workspaces={@formatted_workspaces}
           current-workspace-slug={@current_workspace.slug}
         />
