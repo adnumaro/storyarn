@@ -5,35 +5,35 @@
 default:
     @just --list
 
-# ─── JS (assets/) ───────────────────────────────────────────────
+# ─── JS ─────────────────────────────────────────────────────────
 
-# Lint JS with Biome
+# Lint JS with Oxlint
 js-lint:
-    cd assets && npx biome lint vue/
+    npm run lint
 
-# Format JS with Biome
+# Format JS with Oxfmt
 js-format:
-    cd assets && npx biome format --write vue/
+    npm run fmt
 
-# Check JS (lint + format) with Biome
+# Check JS (lint + format) with Oxlint/Oxfmt
 js-check:
-    cd assets && npx biome check vue/
+    npm run fmt:check && npm run lint
 
-# Check and auto-fix JS with Biome
+# Check and auto-fix JS with Oxlint/Oxfmt
 js-fix:
-    cd assets && npx biome check --write vue/
+    npm run fmt && npm run lint:fix
 
 # Build Lezer grammar
 js-grammar:
-    cd assets && npx lezer-generator js/expression_editor/storyarn_expr.grammar -o js/expression_editor/parser_generated.js
+    npm run build:grammar
 
 # Run JS tests
 js-test:
-    cd assets && ./node_modules/.bin/vitest run
+    npm run test
 
 # Run JS tests in watch mode
 js-test-watch:
-    cd assets && ./node_modules/.bin/vitest
+    npm run test:watch
 
 # ─── Elixir ─────────────────────────────────────────────────────
 
@@ -55,11 +55,11 @@ server:
 
 # ─── Quality ────────────────────────────────────────────────────
 
-# Run all quality checks: Biome fix, Credo strict, Elixir tests, JS tests, E2E tests
+# Run all quality checks: Oxlint fix, Credo strict, Elixir tests, JS tests, E2E tests
 quality:
-    cd assets && npx biome check --write js/
+    npm run fmt && npm run lint:fix
     mix convention.check
     mix credo --strict
     mix test
     mix test.e2e
-    cd assets && ./node_modules/.bin/vitest run
+    npm run test

@@ -49,8 +49,8 @@ mix phx.server              # Dev server (localhost:4000)
 mix test                    # Run tests
 mix precommit               # Before commit: format, credo, test
 docker compose up -d        # Start PostgreSQL + Redis + Mailpit
-just quality                # Full checks: Biome fix, Credo, tests, E2E, Vitest
-just js-fix                 # Biome auto-fix JS
+just quality                # Full checks: Oxlint fix, Credo, tests, E2E, Vitest
+just js-fix                 # Oxlint auto-fix JS
 just js-test                # Vitest JS tests
 just js-grammar             # Build Lezer grammar
 ```

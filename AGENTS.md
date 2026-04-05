@@ -415,8 +415,8 @@ And **never** do this:
 ### Quality Commands
 
 ```bash
-just quality                # Full: Biome fix, Credo strict, mix test, E2E, Vitest
-just js-fix                 # Biome auto-fix JS
+just quality                # Full: Oxlint fix, Credo strict, mix test, E2E, Vitest
+just js-fix                 # Oxlint auto-fix JS
 just js-test                # Vitest JS tests
 just js-grammar             # Build Lezer grammar (expression editor)
 mix test --cover            # Tests with coverage (threshold: 85%)
