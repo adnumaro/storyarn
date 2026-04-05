@@ -51,19 +51,22 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
       |> assign(:urls, urls)
 
     ~H"""
-    <div id="layout-wrapper" class="flex h-screen w-screen overflow-hidden bg-background">
+    <div
+      id="layout-wrapper"
+      class="flex h-screen w-screen overflow-hidden"
+    >
       <%!-- Hidden checkbox for mobile sidebar toggle (must be first child for peer-*) --%>
       <input id="workspace-sidebar-check" type="checkbox" class="peer hidden" />
 
       <%!-- Mobile overlay (closes sidebar on tap) --%>
       <label
         for="workspace-sidebar-check"
-        class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[1005] hidden peer-checked:block lg:hidden cursor-pointer"
+        class="fixed inset-0 bg-background/80 backdrop-blur-sm z-30 hidden peer-checked:block lg:hidden cursor-pointer"
       />
       
     <!-- Fixed Left Sidebar (Desktop) -->
       <aside class={[
-        "flex-none w-[252px] v2-surface-panel flex flex-col z-[1010] shrink-0 overflow-hidden rounded-lg",
+        "flex-none w-[252px] v2-surface-panel flex flex-col z-40 shrink-0 overflow-hidden rounded-lg",
         "fixed lg:relative top-3 bottom-3 left-3 lg:top-0 lg:bottom-0 lg:left-0 h-[calc(100vh-1.5rem)] lg:h-auto",
         "lg:ml-3 lg:my-3",
         "transition-transform duration-200",
@@ -83,7 +86,7 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
     <!-- Main fluid content -->
       <main
         id="main-content"
-        class="flex-1 min-w-0 overflow-y-auto bg-background p-4 lg:px-8 lg:py-3 min-vh-100"
+        class="flex-1 min-w-0 overflow-y-auto p-4 lg:px-8 lg:py-3 min-vh-100"
       >
         {render_slot(@inner_block)}
       </main>

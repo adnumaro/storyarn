@@ -7,6 +7,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
 
   alias Storyarn.Billing
   alias Storyarn.Projects
+  alias Storyarn.Projects.Project
   alias Storyarn.Workspaces
 
   @impl true
@@ -29,7 +30,8 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
          |> assign(:all_projects, projects)
          |> assign(:projects, format_projects(projects, workspace))
          |> assign(:search_query, "")
-         |> assign(:can_create_project, can_create_project)}
+         |> assign(:can_create_project, can_create_project)
+         |> assign(:project_form, to_form(Projects.change_project(%Project{})))}
 
       {:error, :not_found} ->
         {:ok,
@@ -40,16 +42,8 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   end
 
   @impl true
-  def handle_params(params, _url, socket) do
-    {:noreply, apply_action(socket, socket.assigns.live_action, params)}
-  end
-
-  defp apply_action(socket, :show, _params) do
-    socket
-  end
-
-  defp apply_action(socket, :new_project, _params) do
-    socket
+  def handle_params(_params, _url, socket) do
+    {:noreply, socket}
   end
 
   @impl true
@@ -78,26 +72,9 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
         projects={@projects}
         search-query={@search_query}
         can-create-project={@can_create_project}
-        new-project-url={~p"/workspaces/#{@workspace.slug}/projects/new"}
+        new-project-form={@project_form}
         settings-url={~p"/users/settings/workspaces/#{@workspace.slug}/general"}
       />
-
-      <.modal
-        :if={@live_action == :new_project}
-        id="new-project-modal"
-        show
-        on_cancel={JS.patch(~p"/workspaces/#{@workspace.slug}")}
-      >
-        <.live_component
-          module={StoryarnWeb.ProjectLive.Form}
-          id="new-project-form"
-          current_scope={@current_scope}
-          workspace={@workspace}
-          title={dgettext("workspaces", "New Project")}
-          action={:new}
-          navigate={~p"/workspaces/#{@workspace.slug}"}
-        />
-      </.modal>
     </Layouts.workspace>
     """
   end
@@ -140,14 +117,36 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   end
 
   @impl true
-  def handle_info({StoryarnWeb.ProjectLive.Form, {:saved, project}}, socket) do
-    socket =
-      socket
-      |> put_flash(:info, dgettext("workspaces", "Project created successfully."))
-      |> push_navigate(
-        to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{project.slug}/sheets"
-      )
+  def handle_event("validate_project", %{"project" => project_params}, socket) do
+    changeset =
+      %Project{}
+      |> Projects.change_project(project_params)
+      |> Map.put(:action, :validate)
 
-    {:noreply, socket}
+    {:noreply, assign(socket, :project_form, to_form(changeset))}
+  end
+
+  def handle_event("create_project", %{"project" => project_params}, socket) do
+    project_params = Map.put(project_params, "workspace_id", socket.assigns.workspace.id)
+
+    case Projects.create_project(socket.assigns.current_scope, project_params) do
+      {:ok, project} ->
+        socket =
+          socket
+          |> put_flash(:info, dgettext("workspaces", "Project created successfully."))
+          |> push_navigate(
+            to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{project.slug}/sheets"
+          )
+
+        {:noreply, socket}
+
+      {:error, :limit_reached, _details} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, dgettext("workspaces", "Project limit reached for your plan"))}
+
+      {:error, changeset} ->
+        {:noreply, assign(socket, :project_form, to_form(changeset))}
+    end
   end
 end

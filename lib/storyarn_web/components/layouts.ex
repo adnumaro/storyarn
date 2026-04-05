@@ -458,7 +458,7 @@ defmodule StoryarnWeb.Layouts do
     ~H"""
     <div
       id="settings-layout"
-      class="flex h-screen w-screen overflow-hidden bg-background"
+      class="flex h-screen w-screen overflow-hidden bg-linear-to-br from-background via-background to-muted/40 dark:to-muted/10"
     >
       <%!-- Hidden checkbox for mobile sidebar toggle (must be first child for peer-*) --%>
       <input id="settings-sidebar-check" type="checkbox" class="peer hidden" />
@@ -466,11 +466,11 @@ defmodule StoryarnWeb.Layouts do
       <%!-- Mobile overlay (closes sidebar on tap) --%>
       <label
         for="settings-sidebar-check"
-        class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[1005] hidden peer-checked:block lg:hidden cursor-pointer"
+        class="fixed inset-0 bg-background/80 backdrop-blur-sm z-30 hidden peer-checked:block lg:hidden cursor-pointer"
       />
 
       <%!-- Mobile header to toggle sidebar --%>
-      <div class="absolute top-3 left-3 z-[1000] lg:hidden">
+      <div class="absolute top-3 left-3 z-20 lg:hidden">
         <label
           for="settings-sidebar-check"
           class="inline-flex items-center justify-center size-9 rounded-md bg-background border border-border shadow-sm hover:bg-accent transition-colors cursor-pointer text-muted-foreground"
@@ -481,7 +481,7 @@ defmodule StoryarnWeb.Layouts do
 
       <%!-- Settings sidebar (static on desktop, floating on mobile) --%>
       <aside class={[
-        "flex-none w-[252px] v2-surface-panel flex flex-col z-[1010] shrink-0 overflow-hidden rounded-lg",
+        "flex-none w-[252px] v2-surface-panel flex flex-col z-40 shrink-0 overflow-hidden rounded-lg",
         "fixed lg:relative top-3 bottom-3 left-3 lg:top-0 lg:bottom-0 lg:left-0 h-[calc(100vh-1.5rem)] lg:h-auto",
         "lg:ml-3 lg:my-3",
         "transition-transform duration-200",

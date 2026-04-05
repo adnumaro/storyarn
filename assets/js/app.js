@@ -42,6 +42,18 @@ window.addEventListener("storage", (e) => {
 });
 window.addEventListener("phx:set-theme", applyTheme);
 
+// Native Modals
+window.addEventListener("phx:show-modal", (e) => {
+  if (e.target.showModal) {
+    e.target.showModal();
+  }
+});
+window.addEventListener("phx:hide-modal", (e) => {
+  if (e.target.close) {
+    e.target.close();
+  }
+});
+
 // Dev tools
 if (process.env.NODE_ENV === "development") {
   window.addEventListener("phx:live_reload:attached", ({ detail: reloader }) => {

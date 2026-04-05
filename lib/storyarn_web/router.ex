@@ -134,7 +134,6 @@ defmodule StoryarnWeb.Router do
       live "/workspaces", WorkspaceLive.Index, :index
       live "/workspaces/new", WorkspaceLive.New, :new
       live "/workspaces/:workspace_slug", WorkspaceLive.Show, :show
-      live "/workspaces/:workspace_slug/projects/new", WorkspaceLive.Show, :new_project
 
       # Projects (nested under workspaces)
       live "/workspaces/:workspace_slug/projects/:project_slug", ProjectLive.Show, :show

@@ -550,30 +550,27 @@ defmodule StoryarnWeb.Components.CoreComponents do
     ~H"""
     <dialog
       id={@id}
-      class="modal"
+      class="p-0 m-auto bg-transparent border-none shadow-none outline-none w-full max-w-lg backdrop:bg-background/80 backdrop:backdrop-blur-sm open:animate-in open:fade-in-90 open:zoom-in-95"
       phx-mounted={@show && show_modal(@id)}
       phx-remove={hide_modal(@id)}
     >
       <div
         id={"#{@id}-container"}
-        class="rounded-lg bg-background p-6 shadow-lg relative"
+        class="relative border border-border bg-background p-6 shadow-lg rounded-lg sm:rounded-xl text-foreground"
         phx-click-away={@on_cancel |> hide_modal(@id)}
         phx-key="escape"
         phx-window-keydown={@on_cancel |> hide_modal(@id)}
       >
         <button
           type="button"
-          class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 btn-circle btn-ghost absolute right-2 top-2"
+          class="absolute right-4 top-4 inline-flex items-center justify-center rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           aria-label={gettext("close")}
           phx-click={@on_cancel |> hide_modal(@id)}
         >
-          <.icon name="x" class="size-5" />
+          <.icon name="x" class="size-4" />
         </button>
         {render_slot(@inner_block)}
       </div>
-      <form method="dialog" class="modal-backdrop">
-        <button type="button" phx-click={@on_cancel |> hide_modal(@id)}>close</button>
-      </form>
     </dialog>
     """
   end
@@ -609,12 +606,12 @@ defmodule StoryarnWeb.Components.CoreComponents do
     ~H"""
     <dialog
       id={@id}
-      class="modal"
+      class="p-0 m-auto bg-transparent border-none shadow-none outline-none w-full max-w-sm backdrop:bg-background/80 backdrop:backdrop-blur-sm open:animate-in open:fade-in-90 open:zoom-in-95"
       phx-remove={hide_modal(@id)}
     >
       <div
         id={"#{@id}-container"}
-        class="rounded-lg bg-background p-6 shadow-lg max-w-sm"
+        class="relative border border-border bg-background p-6 shadow-lg rounded-lg sm:rounded-xl text-foreground"
         phx-click-away={@on_cancel |> hide_modal(@id)}
         phx-key="escape"
         phx-window-keydown={@on_cancel |> hide_modal(@id)}
@@ -626,10 +623,10 @@ defmodule StoryarnWeb.Components.CoreComponents do
           <h3 class="font-bold text-lg">{@title}</h3>
         </div>
         <p :if={@message} class="text-muted-foreground mb-6">{@message}</p>
-        <div class="flex justify-end gap-2 mt-4 justify-end gap-2">
+        <div class="flex justify-end gap-2 mt-4">
           <button
             type="button"
-            class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
+            class="inline-flex h-9 items-center justify-center px-4 py-2 text-sm rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors mix-blend-luminosity"
             phx-click={@on_cancel |> hide_modal(@id)}
           >
             {@cancel_text}
@@ -637,10 +634,10 @@ defmodule StoryarnWeb.Components.CoreComponents do
           <button
             type="button"
             class={[
-              "btn",
-              @confirm_variant == "error" && "btn-error",
-              @confirm_variant == "primary" && "btn-primary",
-              @confirm_variant == "warning" && "btn-warning"
+              "inline-flex h-9 items-center justify-center px-4 py-2 text-sm rounded-md text-primary-foreground transition-colors",
+              @confirm_variant == "error" && "bg-destructive hover:bg-destructive/90",
+              @confirm_variant == "primary" && "bg-primary hover:bg-primary/90",
+              @confirm_variant == "warning" && "bg-warning hover:bg-warning/90 text-warning-foreground"
             ]}
             phx-click={@on_confirm |> hide_modal(@id)}
           >
@@ -648,9 +645,6 @@ defmodule StoryarnWeb.Components.CoreComponents do
           </button>
         </div>
       </div>
-      <form method="dialog" class="modal-backdrop">
-        <button type="button" phx-click={@on_cancel |> hide_modal(@id)}>close</button>
-      </form>
     </dialog>
     """
   end

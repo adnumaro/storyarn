@@ -1,9 +1,10 @@
 <script setup>
 import { FolderOpen, Plus, Search, Settings, Menu } from "lucide-vue-next";
 import { computed, ref } from "vue";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog/index.js";
 import { Button } from "@components/ui/button/index.js";
 import { Input } from "@components/ui/input/index.js";
-import { Separator } from "@components/ui/separator/index.js";
+import NewProjectForm from "./projects/new.vue";
 import { useLive } from "@composables/useLive.js";
 import { formatRelativeTime } from "@lib/date-utils.js";
 
@@ -13,7 +14,7 @@ const {
   projects,
   searchQuery,
   canCreateProject,
-  newProjectUrl,
+  newProjectForm,
   settingsUrl,
 } = defineProps({
   workspace: { type: Object, required: true },
@@ -21,7 +22,7 @@ const {
   projects: { type: Array, default: () => [] },
   searchQuery: { type: String, default: "" },
   canCreateProject: { type: Boolean, default: false },
-  newProjectUrl: { type: String, default: null },
+  newProjectForm: { type: Object, default: null },
   settingsUrl: { type: String, default: null },
 });
 
@@ -37,6 +38,8 @@ function onSearch(e) {
 const canManage = computed(() => ["owner", "admin"].includes(membership.role));
 
 const canCreate = computed(() => ["owner", "admin", "member"].includes(membership.role));
+
+const isNewProjectModalOpen = ref(false);
 </script>
 
 <template>
@@ -102,17 +105,14 @@ const canCreate = computed(() => ["owner", "admin", "member"].includes(membershi
           </div>
         </div>
 
-        <a
-          v-if="canCreate && canCreateProject && newProjectUrl"
-          :href="newProjectUrl"
-          data-phx-link="patch"
-          data-phx-link-state="push"
+        <Button
+          v-if="canCreate && canCreateProject && newProjectForm"
+          size="sm"
+          @click="isNewProjectModalOpen = true"
         >
-          <Button size="sm">
-            <Plus class="size-4 mr-1" />
-            New Project
-          </Button>
-        </a>
+          <Plus class="size-4 mr-1" />
+          New Project
+        </Button>
         <div v-else-if="canCreate && !canCreateProject" class="relative group">
           <Button size="sm" disabled>
             <Plus class="size-4 mr-1" />
@@ -129,33 +129,43 @@ const canCreate = computed(() => ["owner", "admin", "member"].includes(membershi
   </header>
 
   <!-- Projects Grid -->
-  <div class="v2-surface-panel h-full pt-2">
-    <div
-      v-if="projects.length > 0"
-      class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 h-full"
-    >
+  <div class="v2-surface-panel h-full p-4 pt-8">
+    <div v-if="projects.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       <a
         v-for="projectData in projects"
         :key="projectData.project.id"
         :href="projectData.href"
         data-phx-link="redirect"
         data-phx-link-state="push"
-        class="rounded-lg border border-border bg-surface p-4 space-y-2 hover:bg-muted/30 transition-colors cursor-pointer"
+        class="group flex flex-col rounded-xl border bg-card text-card-foreground shadow-sm hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer overflow-hidden relative"
       >
-        <div class="text-xs text-muted-foreground">
-          {{ projectData.project.inserted_at_formatted }}
-        </div>
-        <h3 class="text-base font-semibold">{{ projectData.project.name }}</h3>
-        <p
-          v-if="projectData.project.description"
-          class="text-sm text-muted-foreground line-clamp-2"
-        >
-          {{ projectData.project.description }}
-        </p>
-        <div class="flex items-center justify-end mt-2">
-          <span class="text-xs text-muted-foreground">
-            {{ formatRelativeTime(projectData.project.updated_at) }}
-          </span>
+        <div class="p-5 flex flex-col flex-1">
+          <div>
+            <h3 class="text-lg font-semibold truncate group-hover:text-primary transition-colors">
+              {{ projectData.project.name }}
+            </h3>
+            <div class="mt-2 text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
+              <template v-if="projectData.project.description">
+                {{ projectData.project.description }}
+              </template>
+              <template v-else>
+                <span class="italic opacity-50">No description provided</span>
+              </template>
+            </div>
+          </div>
+
+          <div class="mt-auto pt-5">
+            <div class="flex items-center justify-between border-t border-border/50 pt-4">
+              <div
+                class="text-xs text-muted-foreground bg-secondary/50 px-2 py-1 rounded-md font-medium"
+              >
+                {{ projectData.project.inserted_at_formatted }}
+              </div>
+              <div class="text-xs font-medium text-muted-foreground/70">
+                Updated {{ formatRelativeTime(projectData.project.updated_at).toLowerCase() }}
+              </div>
+            </div>
+          </div>
         </div>
       </a>
     </div>
@@ -179,4 +189,18 @@ const canCreate = computed(() => ["owner", "admin", "member"].includes(membershi
       <p class="text-sm text-muted-foreground">Try a different search term</p>
     </div>
   </div>
+
+  <!-- New Project Modal -->
+  <Dialog :open="isNewProjectModalOpen" @update:open="(val) => (isNewProjectModalOpen = val)">
+    <DialogContent class="sm:max-w-106.25">
+      <DialogHeader>
+        <DialogTitle class="hidden">New Project</DialogTitle>
+      </DialogHeader>
+      <NewProjectForm
+        v-if="newProjectForm"
+        :form="newProjectForm"
+        @cancel="isNewProjectModalOpen = false"
+      />
+    </DialogContent>
+  </Dialog>
 </template>

@@ -14,9 +14,6 @@ const treeComponents = {
   scenes: defineAsyncComponent(
     () => import("@pages/workspaces/projects/scenes/components/SceneTreePanel.vue"),
   ),
-  dashboard: defineAsyncComponent(
-    () => import("@pages/workspaces/components/WorkspaceTree.vue"),
-  ),
 };
 
 const { treePanelOpen, treePanelPinned, showPin, activeTool, dashboardUrl, onDashboard, treeData, treeProps } = defineProps({

@@ -1,25 +1,44 @@
 <script setup>
 import { useLiveForm } from "live_vue";
+import { computed, ref, watch } from "vue";
 import { Button } from "@components/ui/button/index.js";
 import { Input } from "@components/ui/input/index.js";
 import { Label } from "@components/ui/label/index.js";
 import { Textarea } from "@components/ui/textarea/index.js";
 
-const { form: formProp, title, submitLabel, cancelUrl } = defineProps({
+const { form: formProp, title, submitLabel } = defineProps({
   form: { type: Object, required: true },
   title: { type: String, default: "New Project" },
   submitLabel: { type: String, default: "Create Project" },
-  cancelUrl: { type: String, default: null },
 });
 
+const emit = defineEmits(["cancel"]);
+
 const form = useLiveForm(() => formProp, {
-  changeEvent: "validate",
-  submitEvent: "save",
+  changeEvent: "validate_project",
+  submitEvent: "create_project",
   debounceInMiliseconds: 300,
 });
 
 const name = form.field("name");
 const description = form.field("description");
+
+const touched = ref({ name: false, description: false });
+
+const showNameError = computed(() => {
+  return (touched.value.name || formProp.action === 'insert') && name.errorMessage.value;
+});
+
+const showDescriptionError = computed(() => {
+  return (touched.value.description || formProp.action === 'insert') && description.errorMessage.value;
+});
+
+function updateField(field, val) {
+  field.value = val;
+  if (field.inputAttrs?.value?.onInput) {
+    field.inputAttrs.value.onInput({ target: { value: val } });
+  }
+}
 </script>
 
 <template>
@@ -30,12 +49,16 @@ const description = form.field("description");
       <Label for="project-name">Project Name</Label>
       <Input
         id="project-name"
-        v-bind="name.inputAttrs.value"
+        name="project[name]"
+        :model-value="name.value"
+        @update:model-value="v => updateField(name, v)"
         placeholder="My Narrative Project"
         required
+        @blur="touched.name = true"
+        :aria-invalid="showNameError ? 'true' : null"
       />
       <p
-        v-if="name.errorMessage.value"
+        v-if="showNameError"
         class="text-sm text-destructive flex items-center gap-1 mt-1"
       >
         {{ name.errorMessage.value }}
@@ -46,12 +69,16 @@ const description = form.field("description");
       <Label for="project-description">Description</Label>
       <Textarea
         id="project-description"
-        v-bind="description.inputAttrs.value"
+        name="project[description]"
+        :model-value="description.value"
+        @update:model-value="v => updateField(description, v)"
         placeholder="A brief description of your project"
-        :rows="3"
+        :rows="4"
+        @blur="touched.description = true"
+        :aria-invalid="showDescriptionError ? 'true' : null"
       />
       <p
-        v-if="description.errorMessage.value"
+        v-if="showDescriptionError"
         class="text-sm text-destructive flex items-center gap-1 mt-1"
       >
         {{ description.errorMessage.value }}
@@ -59,15 +86,13 @@ const description = form.field("description");
     </div>
 
     <div class="flex justify-end gap-2 pt-2">
-      <a
-        v-if="cancelUrl"
-        :href="cancelUrl"
-        data-phx-link="patch"
-        data-phx-link-state="push"
-        class="inline-flex items-center justify-center h-9 px-4 text-sm rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+      <Button
+        type="button"
+        variant="ghost"
+        @click="$emit('cancel')"
       >
         Cancel
-      </a>
+      </Button>
       <Button @click="form.submit()" :disabled="!form.isValid.value">
         {{ submitLabel }}
       </Button>
