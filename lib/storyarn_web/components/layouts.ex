@@ -33,6 +33,9 @@ defmodule StoryarnWeb.Layouts do
   # App layout — delegates to AppLayout module (Vue + shadcn-vue)
   defdelegate app(assigns), to: StoryarnWeb.Components.AppLayout
 
+  # Workspace layout — static sidebar layout for workspaces dashboard
+  defdelegate workspace(assigns), to: StoryarnWeb.Components.WorkspaceLayout
+
   @doc """
   Renders a chromeless canvas layout for version comparison mode.
 
@@ -145,9 +148,6 @@ defmodule StoryarnWeb.Layouts do
             <.app_logo class="w-8 h-8" />
             <span class="text-xl brand-logotype">Storyarn</span>
           </.link>
-        </div>
-        <div class="flex-none">
-          <.theme_toggle />
         </div>
       </header>
 
@@ -421,55 +421,45 @@ defmodule StoryarnWeb.Layouts do
     ~H"""
     <div
       id="settings-layout"
-      
-      class="h-screen w-screen overflow-hidden relative bg-background"
+      class="flex h-screen w-screen overflow-hidden bg-background"
     >
       <%!-- Hidden checkbox for mobile sidebar toggle (must be first child for peer-*) --%>
       <input id="settings-sidebar-check" type="checkbox" class="peer hidden" />
 
-      <%!-- Left floating toolbar (top-left) --%>
-      <div class="fixed top-3 left-3 z-[1020] flex items-stretch gap-2">
-        <nav class="flex items-center gap-1 px-1 py-1 surface-panel w-60">
-          <%!-- Mobile sidebar toggle (hidden on desktop) --%>
-          <div class="contents md:hidden">
-            <label for="settings-sidebar-check" class="inline-flex items-center justify-center size-8 rounded-md hover:bg-accent transition-colors cursor-pointer">
-              <.icon name="panel-left" class="size-4" />
-            </label>
-            <div class="w-px h-5 bg-border"></div>
-          </div>
-
-          <.link navigate="/" class="toolbar-btn gap-1.5">
-            <.app_logo class="w-5 h-5" />
-            <span class="text-sm font-medium brand-logotype">Storyarn</span>
-          </.link>
-        </nav>
-      </div>
-
       <%!-- Mobile overlay (closes sidebar on tap) --%>
       <label
         for="settings-sidebar-check"
-        class="fixed inset-0 bg-black/30 z-[1005] hidden peer-checked:block peer-checked:md:hidden cursor-pointer"
+        class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[1005] hidden peer-checked:block md:hidden cursor-pointer"
       />
 
-      <%!-- Settings sidebar (floating panel) --%>
-      <div class={[
-        "fixed left-3 top-[76px] bottom-3 z-[1010] w-60 flex flex-col surface-panel overflow-hidden",
+      <%!-- Mobile header to toggle sidebar --%>
+      <div class="absolute top-3 left-3 z-[1000] md:hidden">
+        <label for="settings-sidebar-check" class="inline-flex items-center justify-center size-9 rounded-md bg-background border border-border shadow-sm hover:bg-accent transition-colors cursor-pointer text-muted-foreground">
+          <.icon name="menu" class="size-5" />
+        </label>
+      </div>
+
+      <%!-- Settings sidebar (static on desktop, floating on mobile) --%>
+      <aside class={[
+        "flex-none w-[252px] v2-surface-panel flex flex-col z-[1010] shrink-0 overflow-hidden",
+        "fixed md:relative top-0 bottom-0 left-0 h-screen md:h-auto",
+        "md:ml-3 md:my-3 md:rounded-lg",
         "transition-transform duration-200",
-        "-translate-x-[calc(100%+0.75rem)] peer-checked:translate-x-0 md:translate-x-0"
+        "-translate-x-[calc(100%+1rem)] peer-checked:translate-x-0 md:translate-x-0"
       ]}>
-        <div class="px-2 pt-2 pb-2 border-b border-border">
+        <div class="px-2 pt-3 pb-3 border-b border-border/10">
           <.link
             navigate={@resolved_back_path}
-            class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-muted-foreground hover:bg-accent"
+            class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm font-medium text-foreground/70 hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5 transition-colors"
           >
             <.icon name="chevron-left" class="size-4" />
             {@resolved_back_label}
           </.link>
         </div>
 
-        <nav class="flex-1 overflow-y-auto p-2 space-y-5">
+        <nav class="flex-1 overflow-y-auto p-3 space-y-5">
           <div :for={section <- @resolved_sections}>
-            <h3 class="text-xs font-semibold uppercase text-muted-foreground px-2 mb-2">
+            <h3 class="text-xs font-semibold uppercase text-foreground/50 px-2 mb-2 tracking-wider">
               {section.label}
             </h3>
             <ul class="space-y-0.5">
@@ -477,23 +467,23 @@ defmodule StoryarnWeb.Layouts do
                 <.link
                   navigate={item.path}
                   class={[
-                    "flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm",
-                    @current_path == item.path && "bg-accent font-medium",
-                    @current_path != item.path && "hover:bg-accent"
+                    "flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors",
+                    @current_path == item.path && "bg-black/5 dark:bg-white/10 font-medium text-foreground",
+                    @current_path != item.path && "text-foreground/80 hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
                   ]}
                 >
-                  <.icon name={item.icon} class="size-4" />
+                  <.icon name={item.icon} class="size-4 opacity-70" />
                   {item.label}
                 </.link>
               </li>
             </ul>
           </div>
         </nav>
-      </div>
+      </aside>
 
       <%!-- Main content area --%>
-      <main class="h-full overflow-y-auto pt-[76px] pb-4 px-4 md:pl-[264px]">
-        <div class="max-w-3xl mx-auto">
+      <main class="flex-1 min-w-0 overflow-y-auto bg-background p-4 pt-16 md:px-8 md:py-3 min-vh-100">
+        <div class="max-w-3xl mx-auto md:mt-5">
           <.header>
             {render_slot(@title)}
             <:subtitle :if={@subtitle != []}>

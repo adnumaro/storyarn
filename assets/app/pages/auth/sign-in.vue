@@ -6,21 +6,20 @@ import { Input } from "@components/ui/input/index.js";
 import { Label } from "@components/ui/label/index.js";
 import { useLive } from "@composables/useLive.js";
 
-const { email, readonly, localMailAdapter, loginAction } = defineProps({
+const { email, readonly, localMailAdapter, loginAction, csrfToken } = defineProps({
   email: { type: String, default: "" },
   readonly: { type: Boolean, default: false },
   localMailAdapter: { type: Boolean, default: false },
+  csrfToken: { type: String, required: true },
   loginAction: { type: String, required: true },
 });
 
 const emailValue = ref(email || "");
 const passwordValue = ref("");
-const csrfToken = ref("");
 const emailInput = ref(null);
 
 onMounted(() => {
   emailInput.value?.focus();
-  csrfToken.value = document.querySelector("meta[name='csrf-token']")?.getAttribute("content") || "";
 });
 </script>
 

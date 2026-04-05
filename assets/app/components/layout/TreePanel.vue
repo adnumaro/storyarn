@@ -14,6 +14,9 @@ const treeComponents = {
   scenes: defineAsyncComponent(
     () => import("@pages/workspaces/projects/scenes/components/SceneTreePanel.vue"),
   ),
+  dashboard: defineAsyncComponent(
+    () => import("@pages/workspaces/components/WorkspaceTree.vue"),
+  ),
 };
 
 const { treePanelOpen, treePanelPinned, showPin, activeTool, dashboardUrl, onDashboard, treeData, treeProps } = defineProps({
@@ -35,6 +38,7 @@ const internalOpen = ref(false);
 // ── localStorage persistence (same keys as v1 TreePanel hook) ──
 const KEY_PREFIX = "storyarn:tree_panel:pinned:";
 const DEFAULTS = {
+  dashboard: true,
   sheets: true,
   screenplays: true,
   flows: false,

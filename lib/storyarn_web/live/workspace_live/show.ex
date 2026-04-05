@@ -16,12 +16,14 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     case Workspaces.get_workspace_by_slug(scope, workspace_slug) do
       {:ok, workspace, membership} ->
         projects = Projects.list_projects_for_workspace(workspace.id, scope)
+        workspaces = Workspaces.list_workspaces_for_user(scope.user)
         can_create_project = Billing.can_create_project?(workspace) == :ok
 
         {:ok,
          socket
          |> assign(:page_title, workspace.name)
          |> assign(:workspace, workspace)
+         |> assign(:workspaces, workspaces)
          |> assign(:current_workspace, workspace)
          |> assign(:membership, membership)
          |> assign(:all_projects, projects)
@@ -53,14 +55,12 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app
+    <Layouts.workspace
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
-      workspace={@workspace}
-      has_tree={false}
-      show_tool_switcher={false}
-      active_tool={:dashboard}
+      current_workspace={@current_workspace}
+      workspaces={@workspaces}
     >
       <.vue
         v-component="pages/workspaces/index"
@@ -91,7 +91,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
           navigate={~p"/workspaces/#{@workspace.slug}"}
         />
       </.modal>
-    </Layouts.app>
+    </Layouts.workspace>
     """
   end
 

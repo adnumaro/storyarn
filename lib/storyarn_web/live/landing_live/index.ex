@@ -7,6 +7,10 @@ defmodule StoryarnWeb.LandingLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
+    peer = get_connect_info(socket, :peer_data)
+    ip = if peer, do: peer.address |> :inet.ntoa() |> to_string(), else: "unknown"
+    socket = assign(socket, ip: ip)
+
     case socket.assigns do
       %{current_scope: %{user: %Accounts.User{} = user}} ->
         {:ok, redirect_to_workspace(socket, user)}
@@ -33,8 +37,7 @@ defmodule StoryarnWeb.LandingLive.Index do
 
   @impl true
   def handle_event("join_waitlist", %{"email" => email}, socket) do
-    peer = get_connect_info(socket, :peer_data)
-    ip = if peer, do: peer.address |> :inet.ntoa() |> to_string(), else: "unknown"
+    ip = socket.assigns.ip
 
     case RateLimiter.check_waitlist(ip) do
       :ok ->

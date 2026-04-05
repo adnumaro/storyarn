@@ -15,6 +15,7 @@ defmodule StoryarnWeb.UserLive.Registration do
         v-socket={@socket}
         id="registration-vue"
         form={@form}
+        user-email={@invited_user.email}
         login-url={~p"/users/log-in"}
       />
     </Layouts.auth>
@@ -36,8 +37,8 @@ defmodule StoryarnWeb.UserLive.Registration do
 
     case Accounts.get_user_by_invite_token(token) do
       {user, token_record} ->
-        # We prefill the email and use it in the form (readonly in UI)
-        changeset = Accounts.change_user_password(user, %{"email" => user.email}, hash_password: false)
+        # We start with an empty changeset (casted so params is %{}) so no validation errors are shown on load
+        changeset = Ecto.Changeset.cast(user, %{}, [])
         
         {:ok,
          socket

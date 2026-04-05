@@ -10,7 +10,7 @@ const { translations } = defineProps({
   translations: { type: Object, default: () => ({}) },
 });
 
-const { pushEvent } = useLiveVue();
+const live = useLiveVue();
 const email = ref("");
 const submitting = ref(false);
 
@@ -19,7 +19,7 @@ const { elementRef: sectionRef, isRevealed } = useRevealOnScroll();
 async function handleSubmit() {
   if (!email.value || submitting.value) return;
   submitting.value = true;
-  pushEvent("join_waitlist", { email: email.value });
+  live.pushEvent("join_waitlist", { email: email.value });
   email.value = "";
   submitting.value = false;
 }

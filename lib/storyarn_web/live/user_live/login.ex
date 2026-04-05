@@ -3,8 +3,6 @@ defmodule StoryarnWeb.UserLive.Login do
 
   use StoryarnWeb, :live_view
 
-
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -16,6 +14,7 @@ defmodule StoryarnWeb.UserLive.Login do
         email={@form.params["email"] || ""}
         readonly={!!@current_scope}
         local-mail-adapter={local_mail_adapter?()}
+        csrf-token={Plug.CSRFProtection.get_csrf_token()}
         login-action={~p"/users/log-in"}
       />
     </Layouts.auth>
