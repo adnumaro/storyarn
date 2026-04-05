@@ -226,9 +226,6 @@ export function useSectionScroll() {
         return;
       }
     }
-
-    const isDown = isScrollingDown !== undefined ? isScrollingDown : index > from;
-
     timeline
       .to(featuresSection, { yPercent: trgFeatY, duration: 0.8, ease: "power2.inOut" }, 0)
       .to(heroContentInner, { y: trgHeroY, opacity: trgHeroOp, duration: 0.8, ease: "power2.inOut" }, 0);
