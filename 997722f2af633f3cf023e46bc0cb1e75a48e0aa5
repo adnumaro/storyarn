@@ -1,0 +1,161 @@
+assets/app/modules/scenes/properties/zone/CollectionItemsEditor.vue
+  dde06b034582d0b2 1,5,7,10-34,42
+assets/app/modules/scenes/components/VersionHistoryPanel.vue
+  dde06b034582d0b2 1,5,9-28,32
+assets/app/modules/scenes/components/layers/VertexEditorLayer.vue
+  dde06b034582d0b2 1-2,4-31,33-38
+assets/app/modules/scenes/toolbar/ToolbarLockToggle.vue
+  dde06b034582d0b2 1,4-7,9-11
+assets/app/modules/scenes/exploration/SessionPromptModal.vue
+  dde06b034582d0b2 1,14-22
+assets/app/modules/scenes/exploration/ExplorationPlayer.vue
+  dde06b034582d0b2 1,5,11-45
+assets/app/modules/scenes/components/SceneDock.vue
+  dde06b034582d0b2 1,10-20,22-26,30-39,43,47,51,55
+assets/app/modules/scenes/properties/PinProperties.vue
+  dde06b034582d0b2 1,4,6,16-51,55,67-68,84
+assets/app/modules/scenes/properties/ZoneProperties.vue
+  dde06b034582d0b2 1,4,7,17-59,63,71,79,94,101
+assets/app/modules/scenes/properties/pin/PinPlayableSection.vue
+  dde06b034582d0b2 1,5-9,11-14
+assets/app/modules/scenes/components/dock-panels/PinsDropdown.vue
+  dde06b034582d0b2 1,14-18,20-26,28-31,36,42,47
+assets/app/modules/scenes/components/layers/AnnotationLayer.vue
+  dde06b034582d0b2 1-3,5-18
+assets/app/modules/scenes/settings/DisplayModeSection.vue
+  dde06b034582d0b2 1,5-9,13,17,20
+assets/app/modules/scenes/settings/DimensionsSection.vue
+  dde06b034582d0b2 1-5
+assets/app/modules/scenes/exploration/ExplorationToolbar.vue
+  dde06b034582d0b2 1,6-11
+assets/app/modules/scenes/toolbar/ToolbarTypePicker.vue
+  dde06b034582d0b2 1,3,7-13,20-23,25-27,30,35
+assets/app/modules/scenes/settings/ScaleSection.vue
+  dde06b034582d0b2 1,6-9,20-21
+assets/app/modules/scenes/components/layers/PinLayer.vue
+  dde06b034582d0b2 1-4,7-8,14-23,25-30
+assets/app/modules/scenes/components/toolbar-sections/ZoneToolbar.vue
+  dde06b034582d0b2 1,13-36,40,48,55,63,83-84,106
+assets/app/modules/scenes/settings/AmbientFlowsSection.vue
+  dde06b034582d0b2 1,16-35,45
+assets/app/modules/scenes/composables/useZones.ts
+  dde06b034582d0b2 1,67-68,70-73,75-80
+assets/app/modules/scenes/exploration/CollectionModal.vue
+  dde06b034582d0b2 1,7-22,26
+assets/app/modules/scenes/components/ElementPropertiesPanel.vue
+  dde06b034582d0b2 1,5,11-22,30-47
+assets/app/modules/scenes/components/Legend.vue
+  dde06b034582d0b2 1-2,6-40,44,51,55
+assets/app/modules/scenes/properties/zone/CollectionItemCard.vue
+  dde06b034582d0b2 1,4,6,9-36,40,49,57
+assets/app/modules/scenes/components/layers/ConnectionPreviewLayer.vue
+  dde06b034582d0b2 1-8
+assets/app/modules/scenes/components/toolbar-sections/ConnectionToolbar.vue
+  dde06b034582d0b2 1,6-19,23,31,39-40,43,57
+assets/app/modules/scenes/toolbar/ToolbarLayerPicker.vue
+  dde06b034582d0b2 1,6-9,11-15,17-19,22
+assets/app/modules/scenes/properties/pin/PinPatrolSection.vue
+  dde06b034582d0b2 1,12-17,19-23,25
+assets/app/modules/scenes/components/dock-panels/DockToolButton.vue
+  dde06b034582d0b2 1-2,4-22
+assets/app/modules/scenes/exploration/composables/usePatrols.ts
+  dde06b034582d0b2 1,42
+assets/app/modules/scenes/components/layers/BackgroundLayer.vue
+  dde06b034582d0b2 1-35
+assets/app/modules/scenes/components/toolbar-sections/AnnotationToolbar.vue
+  dde06b034582d0b2 1,11-29,33,41
+assets/app/modules/scenes/toolbar/ToolbarActionTypePicker.vue
+  dde06b034582d0b2 1,3,7-14,47-50,52-54,57,62
+assets/app/modules/scenes/SceneDashboard.vue
+  dde06b034582d0b2 1-2,37-96,100,104,108,112,117,122,152
+assets/app/modules/scenes/exploration/ExplorationCanvas.vue
+  dde06b034582d0b2 1,3,5,17-68,70-95,97,118-119,121-123,151,153,159,190,209,246-247,256-258,261-262,266-267,275-276,279-280,282-284,290,292-293,295,299-300,305,313
+assets/app/modules/scenes/components/dock-panels/PendingSheetIndicator.vue
+  dde06b034582d0b2 1,4-7,9-15
+assets/app/modules/scenes/exploration/composables/useExplorationKeyboard.ts
+  dde06b034582d0b2 1,3,5-6,10-25,29-30
+assets/app/modules/scenes/exploration/SpeechBubble.vue
+  dde06b034582d0b2 1,3-4,6-14
+assets/app/modules/scenes/components/SceneActions.vue
+  dde06b034582d0b2 1,12-15,19,25,29
+assets/app/modules/scenes/components/layers/WaypointEditorLayer.vue
+  dde06b034582d0b2 1-31,33-38
+assets/app/modules/scenes/components/SceneTreeNode.vue
+  dde06b034582d0b2 1,12-16,18-43,52,76,93,96,126
+assets/app/modules/scenes/exploration/SubtitleBar.vue
+  dde06b034582d0b2 1,3,5-7
+assets/app/modules/scenes/composables/usePins.ts
+  dde06b034582d0b2 1,58-59,61-64,66-71
+assets/app/modules/scenes/components/SceneTreeRoot.vue
+  dde06b034582d0b2 1,5-9,11-14,16-18,22
+assets/app/modules/scenes/components/SceneFloatingToolbar.vue
+  dde06b034582d0b2 1-2,11-36,38-42,44-58,64,73
+assets/app/modules/shared/variables.ts
+  dde06b034582d0b2 16-17
+assets/app/modules/scenes/components/CollabToast.vue
+  dde06b034582d0b2 1,4
+assets/app/modules/scenes/properties/ConnectionProperties.vue
+  dde06b034582d0b2 1,6-14
+assets/app/modules/landing/sections/hero/PortalScene.vue
+  dde06b034582d0b2 7
+assets/app/modules/scenes/composables/useLayerVisibility.ts
+  dde06b034582d0b2 12
+assets/app/modules/scenes/properties/zone/TargetPicker.vue
+  dde06b034582d0b2 1,3,7-13,18-29,31-33,35-36,55,60
+assets/app/modules/scenes/exploration/composables/useExplorationInteraction.ts
+  dde06b034582d0b2 1,26-27,30-32
+assets/app/modules/scenes/components/layers/DrawingOverlayLayer.vue
+  dde06b034582d0b2 1-20
+assets/app/modules/scenes/composables/useConnections.ts
+  dde06b034582d0b2 1,91-92,94-96,98-102
+assets/app/modules/scenes/components/SceneToolbar.vue
+  dde06b034582d0b2 1,5-9,13
+assets/app/modules/scenes/components/SceneTreePanel.vue
+  dde06b034582d0b2 1,8-20,22-24,27-43
+assets/app/modules/scenes/components/SceneTree.vue
+  dde06b034582d0b2 1,19-37,42,45,54,58,66,80,84,88,93,106,114,125,129,136,147,157,165-166,177
+assets/app/modules/scenes/exploration/FlowOverlay.vue
+  dde06b034582d0b2 1,5,7-11,22
+assets/app/modules/scenes/components/SceneCanvas.vue
+  dde06b034582d0b2 1-2,5,28-78,80-106,108-129,131,201,332,338,344,350,355,411,424-425
+assets/app/modules/scenes/components/SceneLayerList.vue
+  dde06b034582d0b2 1,21-38,41,43,45,47,51,55,59,68,76,80,88,93,104
+assets/app/modules/scenes/components/dock-panels/DockActions.vue
+  dde06b034582d0b2 1,5-7,9-11
+assets/app/modules/scenes/settings/BackgroundSection.vue
+  dde06b034582d0b2 1,5-8,14
+assets/app/modules/scenes/components/dock-panels/ZonesDropdown.vue
+  dde06b034582d0b2 1-2,7-9,11-13,17-23,32,34,39
+assets/app/modules/scenes/components/layers/ZoneConnectionLayer.vue
+  dde06b034582d0b2 1-4,6-19
+assets/app/modules/scenes/components/toolbar-sections/PinToolbar.vue
+  dde06b034582d0b2 1,13-34,38,46,54,67-68,97
+assets/app/modules/scenes/toolbar/ToolbarStrokePicker.vue
+  dde06b034582d0b2 1,6-7,9-14,16-20,29,32-33
+assets/app/modules/scenes/settings/AmbientFlowRow.vue
+  dde06b034582d0b2 1,12-24,35,50,56,58,62,66,70,73,77
+assets/app/modules/scenes/components/SettingsPanel.vue
+  dde06b034582d0b2 1,12-20,22-50,55
+assets/app/modules/scenes/components/SearchPanel.vue
+  dde06b034582d0b2 1-2,7-26,38,46,53,55,62,67,71,78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "997722f2af633f3cf023e46bc0cb1e75a48e0aa5",
+  "prompts": {
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 1790,
+      "total_deletions": 907,
+      "accepted_lines": 2994,
+      "overriden_lines": 0
+    }
+  }
+}
