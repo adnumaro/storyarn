@@ -1,0 +1,25 @@
+CLAUDE.md
+  dde06b034582d0b2 7,26-56,116-117
+docs/conventions/shared-utilities.md
+  dde06b034582d0b2 290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "2d529ef74680d9700d707d7457e53dececd3270f",
+  "prompts": {
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 257,
+      "total_deletions": 112,
+      "accepted_lines": 1375,
+      "overriden_lines": 0
+    }
+  }
+}
