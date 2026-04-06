@@ -1,0 +1,88 @@
+assets/app/modules/flows/components/FlowTree.vue
+  1464e78edb32af56 209-210,212-213,215-218,220-221,223,226,244-258
+assets/app/modules/scenes/exploration/composables/useExplorationInteraction.ts
+  1464e78edb32af56 40-54,69,86,100,102,111,119
+assets/app/modules/scenes/composables/usePins.ts
+  1464e78edb32af56 74-130,174-200,207-213
+assets/app/composables/useKeyboard.ts
+  1464e78edb32af56 27-41,44,46-51,53
+assets/app/modules/flows/lib/render-helpers.ts
+  1464e78edb32af56 47-71,80-81,184-186,188-189,191-192,194,196-201,204-212,214-221
+assets/app/modules/scenes/composables/useAnnotations.ts
+  1464e78edb32af56 108-155,178-198,205-211
+assets/app/modules/flows/services/debug.ts
+  1464e78edb32af56 197-201
+assets/app/modules/flows/lib/node-configs.ts
+  1464e78edb32af56 119-124,128-160
+assets/app/modules/sheets/components/tree/SheetTree.vue
+  1464e78edb32af56 212-213,215-216,218-220,223-224,226-227,229,247-257,259-260
+assets/app/modules/sheets/components/sortable/SortableBlockList.vue
+  1464e78edb32af56 268-345,354
+assets/app/modules/shared/operators/expression-serializer.ts
+  1464e78edb32af56 119-125,132-133
+assets/app/modules/settings/WorkspaceDeletedProjects.vue
+  1464e78edb32af56 73-78,81-83
+assets/app/components/builders/instruction/AssignmentRow.vue
+  1464e78edb32af56 127-148,152,154
+assets/app/modules/flows/composables/useFlowEditor.ts
+  1464e78edb32af56 409,411-414,416-418,420-421,423,435,437,456,458,460-462,464-465,467-468,471-472,474-475,478-479,481-483,485,493,495-506,508-522,524,526,536-542,544,546-561,563,683,694-697,706,708,718-723,738-761,781-786
+assets/app/modules/flows/services/editorHandlers.ts
+  1464e78edb32af56 197-287,385-387,389-390,392-397,399-412,469,476-477,491
+assets/app/modules/scenes/exploration/composables/usePatrols.ts
+  1464e78edb32af56 131-174,180,182
+assets/app/modules/landing/sections/hero/HeroSection.vue
+  1464e78edb32af56 34-41,45-48,50-60,62,66-68,80,94,127,188,195-198,200-203,207-212,214-225,227,233,235,237,239,251-266,284,291-295,301-304,312-316,318,325-335,337-346
+assets/app/modules/scenes/components/SceneTree.vue
+  1464e78edb32af56 196-197,199-200,202-205,207-208,210,213,231-244
+assets/app/modules/scenes/composables/useZoneDrag.ts
+  1464e78edb32af56 96-109,115-116,119,128
+assets/app/modules/landing/composables/useSectionScroll.ts
+  1464e78edb32af56 12-16,217-219,240
+assets/app/modules/scenes/composables/useZones.ts
+  1464e78edb32af56 83-156,185,187,193
+assets/app/modules/scenes/components/SceneCanvas.vue
+  1464e78edb32af56 368-414,418-419
+assets/app/modules/flows/nodes/ConditionNode.vue
+  1464e78edb32af56 146-150,153,155-156
+assets/app/modules/sheets/components/sortable/HorizontalDraggableItem.vue
+  1464e78edb32af56 46-67,72-73,75
+assets/app/modules/flows/services/magneticConnection.ts
+  1464e78edb32af56 136-143,145-188,191-200,202-216,218,220-223
+assets/app/components/ColorPickerPopover.vue
+  1464e78edb32af56 15-20,49,60
+assets/app/modules/scenes/composables/useConnections.ts
+  1464e78edb32af56 105-157,205-241,246-247,250-251,254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "47c02deaf08f7e44512112939058880faf2e2863",
+  "prompts": {
+    "1464e78edb32af56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32241278-aef1-44b1-af40-f90f76d11498",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 1413,
+      "total_deletions": 1157,
+      "accepted_lines": 1333,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 250,
+      "overriden_lines": 0
+    }
+  }
+}
