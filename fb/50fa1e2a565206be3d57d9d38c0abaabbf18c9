@@ -1,0 +1,50 @@
+lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex
+  1464e78edb32af56 133
+lib/storyarn/sheets/gallery_crud.ex
+  1464e78edb32af56 31-41,108-110
+lib/storyarn/sheets/avatar_crud.ex
+  1464e78edb32af56 77,82,93-95
+.gitignore
+  1464e78edb32af56 30
+assets/app/components/ColorPickerPopover.vue
+  1464e78edb32af56 1-7,22,38,46,57,103-104
+lib/storyarn_web/live/sheet_live/handlers/gallery_handlers.ex
+  1464e78edb32af56 66,79
+test/storyarn_web/live/sheet_live/idor_test.exs
+  1464e78edb32af56 1-256
+lib/storyarn/sheets.ex
+  1464e78edb32af56 527,530,548
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "fb50fa1e2a565206be3d57d9d38c0abaabbf18c9",
+  "prompts": {
+    "1464e78edb32af56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32241278-aef1-44b1-af40-f90f76d11498",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 313,
+      "total_deletions": 46,
+      "accepted_lines": 300,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 152,
+      "overriden_lines": 0
+    }
+  }
+}
