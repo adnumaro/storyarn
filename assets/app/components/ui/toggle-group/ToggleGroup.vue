@@ -1,33 +1,32 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { ToggleGroupRoot, useForwardPropsEmits } from "reka-ui";
+import { ToggleGroupRoot, useForwardPropsEmits, type AsTag } from "reka-ui";
 import { provide } from "vue";
 import { cn } from "@utils/utils";
 
-const props = defineProps({
-  rovingFocus: { type: Boolean, required: false },
-  disabled: { type: Boolean, required: false },
-  orientation: { type: String, required: false },
-  dir: { type: String, required: false },
-  loop: { type: Boolean, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  name: { type: String, required: false },
-  required: { type: Boolean, required: false },
-  type: { type: String, required: false },
-  modelValue: { type: null, required: false },
-  defaultValue: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-  variant: { type: null, required: false },
-  size: { type: null, required: false },
-  spacing: { type: Number, required: false, default: 0 },
-});
+const props = defineProps<{
+  rovingFocus?: boolean;
+  disabled?: boolean;
+  orientation?: "horizontal" | "vertical";
+  dir?: "ltr" | "rtl";
+  loop?: boolean;
+  asChild?: boolean;
+  as?: AsTag | Component;
+  name?: string;
+  required?: boolean;
+  type?: "single" | "multiple";
+  modelValue?: string | string[];
+  defaultValue?: string | string[];
+  class?: HTMLAttributes["class"];
+  variant?: "default" | "outline";
+  size?: "default" | "sm" | "lg";
+  spacing?: number;
+}>();
 
-const emits = defineEmits(["update:modelValue"]);
+const emits = defineEmits<{
+  "update:modelValue": [value: string | string[]];
+}>();
 
 provide("toggleGroup", {
   variant: props.variant,

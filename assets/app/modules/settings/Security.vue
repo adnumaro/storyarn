@@ -1,5 +1,5 @@
-<script setup>
-import { useLiveForm } from "live_vue";
+<script setup lang="ts">
+import { useLiveForm, type Form } from "live_vue";
 import { Info } from "lucide-vue-next";
 import { ref } from "vue";
 import { Button } from "@components/ui/button/index.ts";
@@ -8,31 +8,38 @@ import { Label } from "@components/ui/label/index.ts";
 import { Separator } from "@components/ui/separator/index.ts";
 import { useLive } from "@composables/useLive";
 
+interface PasswordFormValues {
+  email: string;
+  password: string;
+  password_confirmation: string;
+}
+
 const {
   passwordForm: passwordFormProp,
   currentEmail,
-  triggerSubmit,
+  triggerSubmit = false,
   passwordAction,
-} = defineProps({
-  passwordForm: { type: Object, required: true },
-  currentEmail: { type: String, required: true },
-  triggerSubmit: { type: Boolean, default: false },
-  passwordAction: { type: String, required: true },
-});
+} = defineProps<{
+  passwordForm: Form<PasswordFormValues>;
+  currentEmail: string;
+  triggerSubmit?: boolean;
+  passwordAction: string;
+}>();
 
 const live = useLive();
 
 const passwordForm = useLiveForm(() => passwordFormProp, {
   changeEvent: "validate_password",
   submitEvent: "update_password",
-  debounceInMilliseconds: 300,
+  debounceInMiliseconds: 300,
 });
 
 const password = passwordForm.field("password");
 const passwordConfirmation = passwordForm.field("password_confirmation");
 
 // For the form action POST, we use a hidden form that triggers on valid submit
-const hiddenFormRef = ref(null);
+const hiddenFormRef = ref<HTMLFormElement | null>(null);
+const csrfToken = ref(document.querySelector('meta[name=csrf-token]')?.getAttribute('content') ?? '');
 
 // Watch for triggerSubmit from server
 const checkTriggerSubmit = () => {
@@ -68,7 +75,7 @@ watch(
       <input
         type="hidden"
         name="_csrf_token"
-        :value="document.querySelector('meta[name=csrf-token]')?.content"
+        :value="csrfToken"
       />
       <input type="hidden" name="_method" value="put" />
       <input

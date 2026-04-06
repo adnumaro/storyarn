@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { onMounted, onUnmounted } from "vue";
 import CtaWaitlist from "./sections/cta/CtaWaitlist.vue";
 import LandingFooter from "./sections/cta/Footer.vue";
@@ -6,18 +6,19 @@ import DiscoverSection from "./sections/discovery/DiscoverSection.vue";
 import FeatureGrid from "./sections/FeatureGrid.vue";
 import HeroSection from "./sections/hero/HeroSection.vue";
 
-const { isLoggedIn } = defineProps({
-  isLoggedIn: { type: Boolean, default: false },
-});
+const { isLoggedIn = false } = defineProps<{
+  isLoggedIn?: boolean;
+}>();
 
 // Import and initialize our GSAP scroll hijacker
 import { useSectionScroll } from "./composables/useSectionScroll";
 const { gotoPanel } = useSectionScroll();
 
 // Force dark mode + smooth scroll on the landing page
-function handleForceScroll(e) {
-  if (e.detail && e.detail.panelIndex !== undefined) {
-    gotoPanel(e.detail.panelIndex, e.detail.isScrollingDown, e.detail.tabIndex);
+function handleForceScroll(e: Event) {
+  const detail = (e as CustomEvent<{ panelIndex: number; isScrollingDown?: boolean; tabIndex?: number }>).detail;
+  if (detail && detail.panelIndex !== undefined) {
+    gotoPanel(detail.panelIndex, detail.isScrollingDown, detail.tabIndex);
   }
 }
 

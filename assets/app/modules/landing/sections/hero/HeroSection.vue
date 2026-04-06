@@ -1,31 +1,31 @@
-<script setup>
+<script setup lang="ts">
 import { Play, X } from "lucide-vue-next";
 import { ref, onMounted, onUnmounted } from "vue";
 import { gsap } from "gsap";
 import PortalRing from "./PortalRing.vue";
 
-const portalRef = ref(null);
-const portalFrameRef = ref(null);
-const videoRef = ref(null);
-const fullscreenRef = ref(null);
-const triggerRef = ref(null);
+const portalRef = ref<InstanceType<typeof PortalRing> | null>(null);
+const portalFrameRef = ref<HTMLDivElement | null>(null);
+const videoRef = ref<HTMLVideoElement | null>(null);
+const fullscreenRef = ref<HTMLDivElement | null>(null);
+const triggerRef = ref<HTMLButtonElement | null>(null);
 
-let currentTimeline = null;
+let currentTimeline: gsap.core.Timeline | null = null;
 let isTransitioning = false;
 let isFullscreenNative = false;
 
-function setVideoMask(video, solidPct, fadePct) {
+function setVideoMask(video: HTMLVideoElement, solidPct: number, fadePct: number) {
   const mask = `radial-gradient(circle at 50% 50%, black ${solidPct}%, transparent ${fadePct}%)`;
   video.style.maskImage = mask;
   video.style.webkitMaskImage = mask;
 }
 
-function clearVideoMask(video) {
+function clearVideoMask(video: HTMLVideoElement) {
   video.style.maskImage = "";
   video.style.webkitMaskImage = "";
 }
 
-function resolvedBoxShadow(boxShadow) {
+function resolvedBoxShadow(boxShadow: string) {
   if (!boxShadow || boxShadow === "none" || boxShadow === "")
     return "0 40px 120px rgba(0, 0, 0, 0.46)";
   return boxShadow;
@@ -37,7 +37,7 @@ function openFullscreen() {
   const frame = portalFrameRef.value;
   const fullscreen = fullscreenRef.value;
   const heroContent = document.getElementById("hero-content-inner");
-  const portalBadge = document.querySelector(".portal-badge");
+  const portalBadge = document.querySelector(".portal-badge") as HTMLElement | null;
 
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -75,7 +75,7 @@ function openFullscreen() {
   const startRadius = frameStyle.borderRadius;
   const startShadow = resolvedBoxShadow(frameStyle.boxShadow);
   const fullscreenShadow = "0 40px 120px rgba(0, 0, 0, 0.46)";
-  const topbar = document.querySelector("header");
+  const topbar = document.querySelector("header") as HTMLElement | null;
 
   const targetW = Math.min(window.innerWidth * 0.92, 1400);
   const targetH = targetW * (9 / 16);
@@ -192,7 +192,7 @@ function closeFullscreen() {
   const frame = portalFrameRef.value;
   const fullscreen = fullscreenRef.value;
   const heroContent = document.getElementById("hero-content-inner");
-  const portalBadge = document.querySelector(".portal-badge");
+  const portalBadge = document.querySelector(".portal-badge") as HTMLElement | null;
 
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -205,7 +205,7 @@ function closeFullscreen() {
     clearVideoMask(video);
     triggerRef.value.classList.remove("is-active");
     isFullscreenNative = false;
-    const topbar = document.querySelector("header");
+    const topbar = document.querySelector("header") as HTMLElement | null;
     if (topbar) {
       topbar.style.opacity = "";
     }
@@ -253,7 +253,7 @@ function closeFullscreen() {
   const maskProxy = { solid: 100, fade: 100 };
   const zoomProxy = { scale: 10, intensity: 3 };
 
-  const topbar = document.querySelector("header");
+  const topbar = document.querySelector("header") as HTMLElement | null;
 
   currentTimeline = gsap.timeline({
     onComplete() {
@@ -336,7 +336,7 @@ function closeFullscreen() {
   }
 }
 
-function onKeydown(e) {
+function onKeydown(e: KeyboardEvent) {
   if (e.key === "Escape" && isFullscreenNative) closeFullscreen();
 }
 
@@ -393,7 +393,7 @@ onUnmounted(() => {
     <!-- Hero content -->
     <div
       id="hero-content"
-      class="pointer-events-none relative z-10 mx-auto flex min-h-svh w-full max-w-[1180px] flex-col items-center justify-center px-6 pb-20 pt-28 text-center sm:px-8 sm:pb-24 sm:pt-32 lg:pt-40"
+      class="pointer-events-none relative z-10 mx-auto flex min-h-svh w-full max-w-295 flex-col items-center justify-center px-6 pb-20 pt-28 text-center sm:px-8 sm:pb-24 sm:pt-32 lg:pt-40"
       style="transform: translateY(-16%)"
     >
       <div id="hero-content-inner" class="pointer-events-auto">
@@ -419,7 +419,7 @@ onUnmounted(() => {
         </div>
 
         <p
-          class="hidden sm:block mx-auto mt-6 max-w-[46rem] text-sm leading-relaxed text-white/90 sm:text-lg text-balance"
+          class="hidden sm:block mx-auto mt-6 max-w-184 text-sm leading-relaxed text-white/90 sm:text-lg text-balance"
         >
           {{ $t("landing.hero.description") }}
         </p>

@@ -1,11 +1,12 @@
-<script setup>
-import { DropdownMenuTrigger, useForwardProps } from "reka-ui";
+<script setup lang="ts">
+import type { Component } from "vue";
+import { DropdownMenuTrigger, useForwardProps, type AsTag } from "reka-ui";
 
-const props = defineProps({
-  disabled: { type: Boolean, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-});
+const props = defineProps<{
+  disabled?: boolean;
+  asChild?: boolean;
+  as?: AsTag | Component;
+}>();
 
 const forwardedProps = useForwardProps(props);
 </script>

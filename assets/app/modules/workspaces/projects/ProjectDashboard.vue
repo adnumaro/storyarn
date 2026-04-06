@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import {
   AlertTriangle,
   Box,
@@ -12,33 +12,74 @@ import {
   Text,
   Variable,
 } from "lucide-vue-next";
+import type { Component } from "vue";
 import { computed } from "vue";
 import { useLive } from "@composables/useLive";
 import { formatRelativeTime } from "@utils/date-utils";
 
+interface ProjectStats {
+  sheet_count: number;
+  variable_count: number;
+  flow_count: number;
+  dialogue_count: number;
+  scene_count: number;
+  total_word_count: number;
+}
+
+interface NodeDistItem {
+  label: string;
+  count: number;
+  percentage: number;
+}
+
+interface Speaker {
+  name: string;
+  count: number;
+  href?: string;
+}
+
+interface Issue {
+  severity: string;
+  message: string;
+  href: string;
+}
+
+interface LocalizationLang {
+  name: string;
+  percentage: number;
+  final: number;
+  total: number;
+}
+
+interface ActivityItem {
+  type: string;
+  name: string;
+  updated_at: string;
+}
+
 const {
-  stats,
-  nodeDist,
-  speakers,
-  issues,
-  localization,
-  activity,
-  canEdit,
+  stats = null,
+  nodeDist = [],
+  speakers = [],
+  issues = [],
+  localization = [],
+  activity = [],
+  canEdit = false,
   workspaceSlug,
   projectSlug,
-  loading,
-} = defineProps({
-  stats: { type: Object, default: null },
-  nodeDist: { type: Array, default: () => [] },
-  speakers: { type: Array, default: () => [] },
-  issues: { type: Array, default: () => [] },
-  localization: { type: Array, default: () => [] },
-  activity: { type: Array, default: () => [] },
-  canEdit: { type: Boolean, default: false },
-  workspaceSlug: { type: String, required: true },
-  projectSlug: { type: String, required: true },
-  loading: { type: Boolean, default: false },
-});
+  loading = false,
+} = defineProps<{
+  stats?: ProjectStats | null;
+  nodeDist?: NodeDistItem[];
+  speakers?: Speaker[];
+  issues?: Issue[];
+  localization?: LocalizationLang[];
+  activity?: ActivityItem[];
+  canEdit?: boolean;
+  workspaceSlug: string;
+  projectSlug: string;
+  loading?: boolean;
+}>();
 
 const live = useLive();
 
@@ -84,7 +125,7 @@ const statCards = computed(() => {
   ];
 });
 
-const activityIcons = {
+const activityIcons: Record<string, Component> = {
   sheet: FileText,
   flow: GitBranch,
   scene: MapIcon,
@@ -92,11 +133,11 @@ const activityIcons = {
   node: Box,
 };
 
-function activityIcon(type) {
+function activityIcon(type: string) {
   return activityIcons[type] || Clock;
 }
 
-function activityTypeLabel(type) {
+function activityTypeLabel(type: string) {
   const labels = {
     sheet: "Sheet",
     flow: "Flow",

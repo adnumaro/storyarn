@@ -1,11 +1,18 @@
-<script setup>
+<script setup lang="ts">
 import { FileText, Zap } from "lucide-vue-next";
 import { ref, watch } from "vue";
 
-const { items, command } = defineProps({
-  items: { type: Array, default: () => [] },
-  command: { type: Function, required: true },
-});
+interface MentionItem {
+  id: string | number;
+  type: "sheet" | "flow";
+  name: string;
+  shortcut?: string;
+}
+
+const { items = [], command } = defineProps<{
+  items?: MentionItem[];
+  command: (item: MentionItem) => void;
+}>();
 
 const selectedIndex = ref(0);
 

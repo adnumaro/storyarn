@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import {
   ChevronDown,
   FileText,
@@ -24,25 +24,32 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
 import { useLive } from "@composables/useLive";
 
+interface LeftToolbarUrls {
+  workspace?: string;
+  projectSettings: string;
+  trash: string;
+  tools: Record<string, string>;
+}
+
 const {
   activeTool,
-  hasTree,
-  treePanelOpen,
+  hasTree = true,
+  treePanelOpen = false,
   projectName,
   workspaceName,
-  showToolSwitcher,
-  isSuperAdmin,
+  showToolSwitcher = true,
+  isSuperAdmin = false,
   urls,
-} = defineProps({
-  activeTool: { type: String, required: true },
-  hasTree: { type: Boolean, default: true },
-  treePanelOpen: { type: Boolean, default: false },
-  projectName: { type: String, required: true },
-  workspaceName: { type: String, required: true },
-  showToolSwitcher: { type: Boolean, default: true },
-  isSuperAdmin: { type: Boolean, default: false },
-  urls: { type: Object, required: true },
-});
+} = defineProps<{
+  activeTool: string;
+  hasTree?: boolean;
+  treePanelOpen?: boolean;
+  projectName: string;
+  workspaceName: string;
+  showToolSwitcher?: boolean;
+  isSuperAdmin?: boolean;
+  urls: LeftToolbarUrls;
+}>();
 
 const live = useLive();
 

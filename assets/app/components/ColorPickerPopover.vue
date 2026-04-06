@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * Color picker using vanilla-colorful web components inside shadcn Popover.
  */
@@ -12,58 +12,66 @@ import "vanilla-colorful/hex-input.js";
 
 import { useLive } from "@composables/useLive";
 
-const { color, disabled, variant, event } = defineProps({
-  color: { type: String, default: "#3b82f6" },
-  disabled: { type: Boolean, default: false },
-  variant: { type: String, default: "swatch" },
-  event: { type: String, default: null },
-});
+const props = defineProps<{
+  color?: string;
+  disabled?: boolean;
+  variant?: "swatch" | "inline";
+  event?: string | null;
+}>();
 
-const emit = defineEmits(["update:color"]);
+declare class EyeDropper {
+  constructor();
+  open(): Promise<{ sRGBHex: string }>;
+}
+
+const emit = defineEmits<{
+  "update:color": [hex: string];
+}>();
 const live = useLive();
 
-const localColor = ref(color);
+const localColor = ref(props.color ?? "#3b82f6");
 const pickerRef = ref(null);
 const hexInputRef = ref(null);
 const isOpen = ref(false);
-let debounceTimer = null;
+const hasEyeDropper = ref(typeof window !== "undefined" && "EyeDropper" in window);
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 watch(
-  () => color,
+  () => props.color,
   (v) => {
     localColor.value = v;
   },
 );
 
-function pushColor(hex) {
+function pushColor(hex: string) {
   localColor.value = hex;
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     emit("update:color", hex);
-    if (event) live.pushEvent(event, { value: hex });
+    if (props.event) live.pushEvent(props.event, { value: hex });
   }, 150);
 }
 
-function onPickerChanged(e) {
+function onPickerChanged(e: CustomEvent<{ value: string }>) {
   const hex = e.detail.value;
   pushColor(hex);
   if (hexInputRef.value) hexInputRef.value.color = hex;
 }
 
-function onHexChanged(e) {
+function onHexChanged(e: CustomEvent<{ value: string }>) {
   const hex = e.detail.value;
   pushColor(hex);
   if (pickerRef.value) pickerRef.value.color = hex;
 }
 
-function setColor(hex) {
+function setColor(hex: string) {
   pushColor(hex);
   if (pickerRef.value) pickerRef.value.color = hex;
   if (hexInputRef.value) hexInputRef.value.color = hex;
 }
 
 async function pickFromScreen() {
-  if (!window.EyeDropper) return;
+  if (!hasEyeDropper.value) return;
   try {
     const dropper = new EyeDropper();
     const result = await dropper.open();
@@ -73,7 +81,9 @@ async function pickFromScreen() {
   }
 }
 
-function onPopoverOpen(open) {
+
+
+function onPopoverOpen(open: boolean) {
   isOpen.value = open;
 }
 
@@ -116,7 +126,7 @@ onBeforeUnmount(() => {
       <div class="flex items-center gap-2 mt-2.5">
         <!-- Eyedropper -->
         <button
-          v-if="'EyeDropper' in window"
+          v-if="hasEyeDropper"
           type="button"
           class="flex items-center justify-center size-7 rounded-md border border-border bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           title="Pick color from screen"

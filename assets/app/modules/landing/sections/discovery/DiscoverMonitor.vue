@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * 3D monitor wrapper for the Discover section.
  * Handles TresCanvas setup, mobile/a11y detection.
@@ -9,10 +9,10 @@ import { TresCanvas } from "@tresjs/core";
 import { onMounted, ref } from "vue";
 import MonitorScene from "./MonitorScene.vue";
 
-const { activeStep, isVisible } = defineProps({
-  activeStep: { type: Number, default: 0 },
-  isVisible: { type: Boolean, default: false },
-});
+const { activeStep = 0, isVisible = false } = defineProps<{
+  activeStep?: number;
+  isVisible?: boolean;
+}>();
 
 const reducedMotion = ref(false);
 const dpr = ref(typeof window !== "undefined" ? Math.min(window.devicePixelRatio, 2) : 1);

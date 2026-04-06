@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Trash2, UserPlus } from "lucide-vue-next";
 import { ref } from "vue";
 import { Badge } from "@components/ui/badge/index.ts";
@@ -15,11 +15,18 @@ import {
 } from "@components/ui/select/index.ts";
 import { useLive } from "@composables/useLive";
 
-const { members, currentUserId, canManage } = defineProps({
-  members: { type: Array, default: () => [] },
-  currentUserId: { type: Number, default: null },
-  canManage: { type: Boolean, default: false },
-});
+interface WorkspaceMember {
+  id: number;
+  display_name?: string;
+  email: string;
+  role: string;
+}
+
+const { members = [], currentUserId = null, canManage = false } = defineProps<{
+  members?: WorkspaceMember[];
+  currentUserId?: number | null;
+  canManage?: boolean;
+}>();
 
 const live = useLive();
 
@@ -37,24 +44,25 @@ function sendInvitation() {
   inviteRole.value = "member";
 }
 
-function removeMember(id) {
+function removeMember(id: number) {
   live.pushEvent("remove_member", { id: String(id) });
 }
 
-function changeRole(id, role) {
+function changeRole(id: number, role: string) {
   live.pushEvent("change_role", { "member-id": String(id), role });
 }
 
-function memberDisplayName(member) {
+function memberDisplayName(member: WorkspaceMember) {
   return member.display_name || member.email;
 }
 
-function memberInitials(member) {
+function memberInitials(member: WorkspaceMember) {
   const name = member.display_name || member.email;
   return name.substring(0, 2).toUpperCase();
 }
 
-const roleBadgeVariant = {
+type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
+const roleBadgeVariant: Record<string, BadgeVariant> = {
   owner: "default",
   admin: "secondary",
   member: "outline",
@@ -184,7 +192,7 @@ const roleBadgeVariant = {
             <template v-if="canManage && member.role !== 'owner' && member.id !== currentUserId">
               <Select
                 :model-value="member.role"
-                @update:model-value="(val) => changeRole(member.id, val)"
+                @update:model-value="(val) => changeRole(member.id, String(val))"
               >
                 <SelectTrigger class="w-27.5 h-8 text-xs bg-muted/40 border-border/60 focus:ring-0">
                   <SelectValue />

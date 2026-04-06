@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * Inline sentence-slot combobox.
  *
@@ -18,23 +18,35 @@ import {
 } from "./ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
-const { modelValue, options, groups, placeholder, disabled, freeText, inputType } = defineProps({
-  /** Currently selected value */
-  modelValue: { type: String, default: "" },
-  /** Flat options: [{ value, label }] */
-  options: { type: Array, default: () => [] },
-  /** Grouped options: [{ heading, items: [{ value, label }] }] */
-  groups: { type: Array, default: () => [] },
-  /** Placeholder text */
-  placeholder: { type: String, default: "..." },
-  disabled: { type: Boolean, default: false },
-  /** Allow free-text input (no dropdown, just a text input) */
-  freeText: { type: Boolean, default: false },
-  /** Input type for free-text mode */
-  inputType: { type: String, default: "text" },
-});
+interface SelectOption {
+  value: string;
+  label: string;
+}
 
-const emit = defineEmits(["update:modelValue"]);
+interface OptionGroup {
+  heading: string;
+  items: SelectOption[];
+}
+
+const { modelValue = "", options = [], groups = [], placeholder = "...", disabled = false, freeText = false, inputType = "text" } = defineProps<{
+  /** Currently selected value */
+  modelValue?: string;
+  /** Flat options: [{ value, label }] */
+  options?: SelectOption[];
+  /** Grouped options: [{ heading, items: [{ value, label }] }] */
+  groups?: OptionGroup[];
+  /** Placeholder text */
+  placeholder?: string;
+  disabled?: boolean;
+  /** Allow free-text input (no dropdown, just a text input) */
+  freeText?: boolean;
+  /** Input type for free-text mode */
+  inputType?: string;
+}>();
+
+const emit = defineEmits<{
+  "update:modelValue": [value: string];
+}>();
 
 const open = ref(false);
 

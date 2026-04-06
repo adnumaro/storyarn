@@ -1,13 +1,13 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from "vue";
 import { Avatar, AvatarFallback } from "@components/ui/avatar";
 
-const { email, displayName, size, color } = defineProps({
-  email: { type: String, default: "" },
-  displayName: { type: String, default: "" },
-  size: { type: String, default: "sm" },
-  color: { type: String, default: null },
-});
+const { email = "", displayName = "", size = "sm", color = null } = defineProps<{
+  email?: string;
+  displayName?: string;
+  size?: "xs" | "sm" | "md" | "lg";
+  color?: string | null;
+}>();
 
 const initials = computed(() => {
   const name = displayName || email || "";

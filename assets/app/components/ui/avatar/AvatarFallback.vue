@@ -1,18 +1,15 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { AvatarFallback } from "reka-ui";
+import { AvatarFallback, type AsTag } from "reka-ui";
 import { cn } from "@utils/utils";
 
-const props = defineProps({
-  delayMs: { type: Number, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-});
+const props = defineProps<{
+  delayMs?: number;
+  asChild?: boolean;
+  as?: AsTag | Component;
+  class?: HTMLAttributes["class"];
+}>();
 
 const delegatedProps = reactiveOmit(props, "class");
 </script>

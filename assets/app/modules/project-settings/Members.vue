@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Trash2 } from "lucide-vue-next";
 import { ref } from "vue";
 import { Badge } from "@components/ui/badge/index.ts";
@@ -14,10 +14,17 @@ import {
 } from "@components/ui/select/index.ts";
 import { useLive } from "@composables/useLive";
 
-const { members, currentUserId } = defineProps({
-  members: { type: Array, default: () => [] },
-  currentUserId: { type: Number, default: null },
-});
+interface ProjectMember {
+  id: number;
+  display_name?: string;
+  email: string;
+  role: string;
+}
+
+const { members = [], currentUserId = null } = defineProps<{
+  members?: ProjectMember[];
+  currentUserId?: number | null;
+}>();
 
 const live = useLive();
 
@@ -34,20 +41,21 @@ function sendInvitation() {
   inviteEmail.value = "";
 }
 
-function removeMember(id) {
+function removeMember(id: number) {
   live.pushEvent("remove_member", { id: String(id) });
 }
 
-function memberDisplayName(member) {
+function memberDisplayName(member: ProjectMember) {
   return member.display_name || member.email;
 }
 
-function memberInitials(member) {
+function memberInitials(member: ProjectMember) {
   const name = member.display_name || member.email;
   return name.substring(0, 2).toUpperCase();
 }
 
-const roleBadgeVariant = {
+type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
+const roleBadgeVariant: Record<string, BadgeVariant> = {
   owner: "default",
   admin: "secondary",
   editor: "outline",

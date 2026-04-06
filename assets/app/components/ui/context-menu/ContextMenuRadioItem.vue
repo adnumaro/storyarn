@@ -1,22 +1,21 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { Circle } from "lucide-vue-next";
-import { ContextMenuItemIndicator, ContextMenuRadioItem, useForwardPropsEmits } from "reka-ui";
+import { ContextMenuItemIndicator, ContextMenuRadioItem, useForwardPropsEmits, type AsTag } from "reka-ui";
 import { cn } from "@utils/utils";
 
-const props = defineProps({
-  value: { type: null, required: true },
-  disabled: { type: Boolean, required: false },
-  textValue: { type: String, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-});
-const emits = defineEmits(["select"]);
+const props = defineProps<{
+  value: string;
+  disabled?: boolean;
+  textValue?: string;
+  asChild?: boolean;
+  as?: AsTag | Component;
+  class?: HTMLAttributes["class"];
+}>();
+const emits = defineEmits<{
+  select: [event: Event];
+}>();
 
 const delegatedProps = reactiveOmit(props, "class");
 

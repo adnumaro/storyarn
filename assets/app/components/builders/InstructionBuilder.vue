@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * Variable assignment editor — instruction builder.
  * Wraps in .instruction-builder for sentence-flow CSS.
@@ -9,15 +9,19 @@
 
 import { Plus } from "lucide-vue-next";
 import { ref, watch } from "vue";
+import type { Variable } from "@modules/shared/variables";
+import type { Assignment } from "./types";
 import AssignmentRow from "@components/builders/instruction/AssignmentRow.vue";
 
-const { assignments, variables, disabled } = defineProps({
-  assignments: { type: Array, default: () => [] },
-  variables: { type: Array, default: () => [] },
-  disabled: { type: Boolean, default: false },
-});
+const { assignments = [], variables = [], disabled = false } = defineProps<{
+  assignments?: Assignment[];
+  variables?: Variable[];
+  disabled?: boolean;
+}>();
 
-const emit = defineEmits(["update:assignments"]);
+const emit = defineEmits<{
+  "update:assignments": [assignments: Assignment[]];
+}>();
 
 const internalAssignments = ref([...assignments]);
 
@@ -34,28 +38,26 @@ function emitUpdate() {
 }
 
 function addAssignment() {
-  internalAssignments.value = [
-    ...internalAssignments.value,
-    {
-      operator: "set",
-      sheet: null,
-      variable: null,
-      value_type: "literal",
-      value: null,
-      value_sheet: null,
-    },
-  ];
+  const newAssignment: Assignment = {
+    operator: "set",
+    sheet: null,
+    variable: null,
+    value_type: "literal",
+    value: null,
+    value_sheet: null,
+  };
+  internalAssignments.value = [...internalAssignments.value, newAssignment];
   emitUpdate();
 }
 
-function updateAssignment(index, updated) {
+function updateAssignment(index: number, updated: Assignment) {
   const arr = [...internalAssignments.value];
   arr[index] = updated;
   internalAssignments.value = arr;
   emitUpdate();
 }
 
-function removeAssignment(index) {
+function removeAssignment(index: number) {
   internalAssignments.value = internalAssignments.value.filter((_, i) => i !== index);
   emitUpdate();
 }

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Check, ChevronsUpDown } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import {
@@ -11,14 +11,19 @@ import {
 } from "@components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 
-const { options, selectedId, label, placeholder, disabled, variant } = defineProps({
-  options: { type: Array, default: () => [] },
-  selectedId: { type: [Number, String, null], default: null },
-  label: { type: String, default: "" },
-  placeholder: { type: String, default: "Select..." },
-  disabled: { type: Boolean, default: false },
-  variant: { type: String, default: "default" },
-});
+interface EntityOption {
+  id: number | string;
+  name: string;
+}
+
+const { options = [], selectedId = null, label = "", placeholder = "Select...", disabled = false, variant = "default" } = defineProps<{
+  options?: EntityOption[];
+  selectedId?: number | string | null;
+  label?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  variant?: "default" | "ghost";
+}>();
 
 const triggerClass = computed(() => {
   if (variant === "ghost") {
@@ -27,7 +32,9 @@ const triggerClass = computed(() => {
   return "w-full flex items-center justify-between text-left text-sm px-2 py-1.5 rounded-md border border-input bg-background dark:bg-card shadow-xs hover:dark:bg-card/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 });
 
-const emit = defineEmits(["update:selectedId"]);
+const emit = defineEmits<{
+  "update:selectedId": [id: number | string | null];
+}>();
 const open = ref(false);
 
 const selectedName = computed(() => {

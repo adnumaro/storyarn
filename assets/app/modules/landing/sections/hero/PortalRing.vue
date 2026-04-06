@@ -1,10 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { ref, shallowRef, onMounted, onUnmounted, computed, nextTick } from "vue";
-import { TresCanvas, useLoop } from "@tresjs/core";
+import { TresCanvas } from "@tresjs/core";
 import * as THREE from "three";
-import { vertexShader, fragmentShader } from "./shaders/portalShader";
+import PortalScene from "./PortalScene.vue";
 
-const containerRef = ref(null);
+const containerRef = ref<HTMLDivElement | null>(null);
 const reducedMotion = ref(false);
 const webglFailed = ref(false);
 
@@ -19,14 +19,14 @@ const uniforms = shallowRef({
   uDpr: { value: 1 },
 });
 
-const powerPreference = computed(() => "high-performance");
+const powerPreference = computed((): WebGLPowerPreference => "high-performance");
 const pixelRatio = computed(() => Math.min(window.devicePixelRatio, 2));
 
 // Public API for scroll animation to control
-function setIntensity(v) {
+function setIntensity(v: number) {
   uniforms.value.uIntensity.value = v;
 }
-function setScale(v) {
+function setScale(v: number) {
   uniforms.value.uScale.value = v;
 }
 
@@ -54,8 +54,8 @@ onUnmounted(() => {
   clearTimeout(resizeTimer);
 });
 
-let resizeObserver = null;
-let resizeTimer = null;
+let resizeObserver: ResizeObserver | null = null;
+let resizeTimer: ReturnType<typeof setTimeout> | null = null;
 
 function debouncedResize() {
   clearTimeout(resizeTimer);
@@ -91,8 +91,6 @@ function updatePortalPosition() {
     u.uPortalMaxWidth.value = Math.min(width * 0.92, 1360);
   }
 }
-
-// Render loop inner component — must be a child of TresCanvas
 </script>
 
 <template>
@@ -115,47 +113,6 @@ function updatePortalPosition() {
     </TresCanvas>
   </div>
 </template>
-
-<script>
-// Separate component that lives inside TresCanvas context for useLoop
-import { defineComponent, h } from "vue";
-import { useLoop } from "@tresjs/core";
-import { AdditiveBlending } from "three";
-
-const PortalScene = defineComponent({
-  name: "PortalScene",
-  props: {
-    uniforms: { type: Object, required: true },
-    reducedMotion: { type: Boolean, default: false },
-  },
-  setup(props) {
-    if (!props.reducedMotion) {
-      const { onBeforeRender } = useLoop();
-      const startTime = performance.now();
-      onBeforeRender(() => {
-        props.uniforms.uTime.value = (performance.now() - startTime) / 1000;
-      });
-    }
-
-    return () =>
-      h("TresOrthographicCamera", { args: [-1, 1, 1, -1, 0, 1] }, [
-        h("TresMesh", null, [
-          h("TresPlaneGeometry", { args: [2, 2] }),
-          h("TresShaderMaterial", {
-            vertexShader,
-            fragmentShader,
-            uniforms: props.uniforms,
-            transparent: true,
-            depthWrite: false,
-            blending: AdditiveBlending,
-          }),
-        ]),
-      ]);
-  },
-});
-
-export { PortalScene };
-</script>
 
 <style scoped>
 .portal-fallback {

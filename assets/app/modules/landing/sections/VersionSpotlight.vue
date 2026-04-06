@@ -1,10 +1,16 @@
-<script setup>
+<script setup lang="ts">
 import { History } from "lucide-vue-next";
 import { useRevealOnScroll } from "../composables/useRevealOnScroll";
 
-const { translations } = defineProps({
-  translations: { type: Object, default: () => ({ version_items: [] }) },
-});
+interface VersionTranslations {
+  version_title?: string;
+  version_desc?: string;
+  version_items: string[];
+}
+
+const { translations = { version_items: [] } } = defineProps<{
+  translations?: VersionTranslations;
+}>();
 
 const { elementRef: sectionRef, isRevealed } = useRevealOnScroll();
 </script>
@@ -24,7 +30,7 @@ const { elementRef: sectionRef, isRevealed } = useRevealOnScroll();
       <div class="grid items-center gap-10 lg:grid-cols-[0.72fr_1.1fr]">
         <!-- Screenshot placeholder -->
         <div
-          class="flex min-h-[280px] items-center justify-center rounded-2xl border-2 border-dashed border-border/40 bg-muted/10 text-sm text-muted-foreground"
+          class="flex min-h-70 items-center justify-center rounded-2xl border-2 border-dashed border-border/40 bg-muted/10 text-sm text-muted-foreground"
         >
           480 x 360 — Version history screenshot
         </div>
@@ -39,7 +45,7 @@ const { elementRef: sectionRef, isRevealed } = useRevealOnScroll();
           >
             {{ translations.version_title }}
           </h2>
-          <p class="mt-4 max-w-[40rem] leading-relaxed text-muted-foreground">
+          <p class="mt-4 max-w-160 leading-relaxed text-muted-foreground">
             {{ translations.version_desc }}
           </p>
           <ul class="mt-6 space-y-3">

@@ -1,10 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { XCircle } from "lucide-vue-next";
 import { Button } from "@components/ui/button/index.ts";
 
-const { homepageUrl } = defineProps({
-  homepageUrl: { type: String, default: "/" },
-});
+const { homepageUrl = "/" } = defineProps<{
+  homepageUrl?: string;
+}>();
 </script>
 
 <template>

@@ -1,10 +1,11 @@
-<script setup>
-import { ContextMenuGroup } from "reka-ui";
+<script setup lang="ts">
+import type { Component } from "vue";
+import { ContextMenuGroup, type AsTag } from "reka-ui";
 
-const props = defineProps({
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-});
+const props = defineProps<{
+  asChild?: boolean;
+  as?: AsTag | Component;
+}>();
 </script>
 
 <template>

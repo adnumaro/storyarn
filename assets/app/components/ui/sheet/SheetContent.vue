@@ -1,7 +1,8 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { X } from "lucide-vue-next";
-import { DialogClose, DialogContent, DialogPortal, useForwardPropsEmits } from "reka-ui";
+import { DialogClose, DialogContent, DialogPortal, useForwardPropsEmits, type AsTag } from "reka-ui";
 import { cn } from "@utils/utils";
 import SheetOverlay from "./SheetOverlay.vue";
 
@@ -9,26 +10,22 @@ defineOptions({
   inheritAttrs: false,
 });
 
-const props = defineProps({
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-  side: { type: String, required: false, default: "right" },
-  forceMount: { type: Boolean, required: false },
-  disableOutsidePointerEvents: { type: Boolean, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-});
-const emits = defineEmits([
-  "escapeKeyDown",
-  "pointerDownOutside",
-  "focusOutside",
-  "interactOutside",
-  "openAutoFocus",
-  "closeAutoFocus",
-]);
+const props = defineProps<{
+  class?: HTMLAttributes["class"];
+  side?: "top" | "right" | "bottom" | "left";
+  forceMount?: boolean;
+  disableOutsidePointerEvents?: boolean;
+  asChild?: boolean;
+  as?: AsTag | Component;
+}>();
+const emits = defineEmits<{
+  escapeKeyDown: [event: KeyboardEvent];
+  pointerDownOutside: [event: Event];
+  focusOutside: [event: Event];
+  interactOutside: [event: Event];
+  openAutoFocus: [event: Event];
+  closeAutoFocus: [event: Event];
+}>();
 
 const delegatedProps = reactiveOmit(props, "class", "side");
 

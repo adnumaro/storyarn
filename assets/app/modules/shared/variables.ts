@@ -2,12 +2,17 @@
  * Variable utilities for condition and instruction builders.
  */
 
+export interface VariableOption {
+  key: string;
+  value: string;
+}
+
 export interface Variable {
   sheet_shortcut: string;
   sheet_name?: string;
   variable_name: string;
   block_type: string;
-  options?: string[];
+  options?: VariableOption[];
 }
 
 export interface SheetGroup {

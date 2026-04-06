@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Loader2, Save } from "lucide-vue-next";
 import { Button } from "@components/ui/button";
 import {
@@ -14,14 +14,19 @@ import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { Textarea } from "@components/ui/textarea";
 
-const { open, title, description, loadingAction } = defineProps({
-  open: { type: Boolean, required: true },
-  title: { type: String, required: true },
-  description: { type: String, required: true },
-  loadingAction: { type: String, default: null },
-});
+const { open, title, description, loadingAction = null } = defineProps<{
+  open: boolean;
+  title: string;
+  description: string;
+  loadingAction?: string | null;
+}>();
 
-const emit = defineEmits(["update:open", "update:title", "update:description", "submit"]);
+const emit = defineEmits<{
+  "update:open": [open: boolean];
+  "update:title": [title: string];
+  "update:description": [description: string];
+  submit: [];
+}>();
 </script>
 
 <template>
@@ -37,7 +42,7 @@ const emit = defineEmits(["update:open", "update:title", "update:description", "
           <Input
             id="version-title"
             :model-value="title"
-            @update:model-value="emit('update:title', $event)"
+            @update:model-value="emit('update:title', String($event))"
             placeholder="e.g., Before major refactor"
             required
             autofocus
@@ -48,7 +53,7 @@ const emit = defineEmits(["update:open", "update:title", "update:description", "
           <Textarea
             id="version-description"
             :model-value="description"
-            @update:model-value="emit('update:description', $event)"
+            @update:model-value="emit('update:description', String($event))"
             :rows="3"
             placeholder="Describe what this version captures..."
           />

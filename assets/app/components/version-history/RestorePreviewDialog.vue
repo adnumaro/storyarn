@@ -1,4 +1,5 @@
-<script setup>
+<script setup lang="ts">
+import type { Component } from "vue";
 import {
   AlertTriangle,
   CircleAlert,
@@ -19,14 +20,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@components/ui/dialog";
+import type { RestoreData } from "./useVersionHistory";
 
-const { open, restoreData, loadingAction } = defineProps({
-  open: { type: Boolean, required: true },
-  restoreData: { type: Object, default: null },
-  loadingAction: { type: String, default: null },
-});
+const { open, restoreData = null, loadingAction = null } = defineProps<{
+  open: boolean;
+  restoreData?: RestoreData | null;
+  loadingAction?: string | null;
+}>();
 
-const emit = defineEmits(["update:open", "confirm"]);
+const emit = defineEmits<{
+  "update:open": [open: boolean];
+  confirm: [];
+}>();
 
 const conflictIcons = {
   asset: Image,

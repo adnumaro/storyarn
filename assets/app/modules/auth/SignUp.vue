@@ -1,28 +1,31 @@
-<script setup>
-import { useLiveForm } from "live_vue";
+<script setup lang="ts">
+import { useLiveForm, type Form } from "live_vue";
 import { onMounted, ref } from "vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
-import { Separator } from "@components/ui/separator/index.ts";
 import { Eye, EyeOff } from "lucide-vue-next";
+
+interface SignUpFormValues {
+  email: string;
+  password: string;
+  password_confirmation: string;
+}
 
 const {
   form: formProp,
-  loginUrl,
-  oauthAction,
   userEmail,
-} = defineProps({
-  form: { type: Object, required: true },
-  loginUrl: { type: String, default: "/users/log-in" },
-  oauthAction: { type: String, default: "login" },
-  userEmail: { type: String, required: true },
-});
+} = defineProps<{
+  form: Form<SignUpFormValues>;
+  loginUrl?: string;
+  oauthAction?: string;
+  userEmail: string;
+}>();
 
 const form = useLiveForm(() => formProp, {
   changeEvent: "validate",
   submitEvent: "save",
-  debounceInMilliseconds: 300,
+  debounceInMiliseconds: 300,
 });
 
 const email = form.field("email");
@@ -36,10 +39,6 @@ const showPasswordConfirmation = ref(false);
 onMounted(() => {
   emailInput.value?.focus();
 });
-
-const githubHref = oauthAction === "link" ? "/auth/github/link" : "/auth/github";
-const googleHref = oauthAction === "link" ? "/auth/google/link" : "/auth/google";
-const discordHref = oauthAction === "link" ? "/auth/discord/link" : "/auth/discord";
 </script>
 
 <template>

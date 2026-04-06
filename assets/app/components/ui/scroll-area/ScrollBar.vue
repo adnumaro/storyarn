@@ -1,19 +1,16 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { ScrollAreaScrollbar, ScrollAreaThumb } from "reka-ui";
+import { ScrollAreaScrollbar, ScrollAreaThumb, type AsTag } from "reka-ui";
 import { cn } from "@utils/utils";
 
-const props = defineProps({
-  orientation: { type: String, required: false, default: "vertical" },
-  forceMount: { type: Boolean, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-});
+const props = defineProps<{
+  orientation?: "horizontal" | "vertical";
+  forceMount?: boolean;
+  asChild?: boolean;
+  as?: AsTag | Component;
+  class?: HTMLAttributes["class"];
+}>();
 
 const delegatedProps = reactiveOmit(props, "class");
 </script>

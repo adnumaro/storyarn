@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from "vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
@@ -12,11 +12,16 @@ import {
 } from "@components/ui/select/index.ts";
 import { useLive } from "@composables/useLive";
 
-const { providerApiEndpoint, hasApiKey, providerUsage } = defineProps({
-  providerApiEndpoint: { type: String, default: "https://api-free.deepl.com" },
-  hasApiKey: { type: Boolean, default: false },
-  providerUsage: { type: Object, default: null },
-});
+interface ProviderUsage {
+  characterCount: number;
+  characterLimit: number;
+}
+
+const { providerApiEndpoint = "https://api-free.deepl.com", hasApiKey = false, providerUsage = null } = defineProps<{
+  providerApiEndpoint?: string;
+  hasApiKey?: boolean;
+  providerUsage?: ProviderUsage | null;
+}>();
 
 const live = useLive();
 
@@ -44,7 +49,7 @@ function testProviderConnection() {
   live.pushEvent("test_provider_connection", {});
 }
 
-function formatNumber(n) {
+function formatNumber(n: number | string) {
   if (typeof n !== "number") return String(n);
   return n.toLocaleString();
 }

@@ -1,11 +1,12 @@
-<script setup>
-import { TooltipTrigger } from "reka-ui";
+<script setup lang="ts">
+import type { Component } from "vue";
+import { TooltipTrigger, type AsTag } from "reka-ui";
 
-const props = defineProps({
-  reference: { type: null, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-});
+const props = defineProps<{
+  reference?: HTMLElement | null;
+  asChild?: boolean;
+  as?: AsTag | Component;
+}>();
 </script>
 
 <template>

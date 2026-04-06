@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { AlertTriangle, Trash2, Undo2 } from "lucide-vue-next";
 import { ref } from "vue";
 import { Button } from "@components/ui/button/index.ts";
@@ -12,22 +12,28 @@ import {
 } from "@components/ui/dialog/index.ts";
 import { useLive } from "@composables/useLive";
 
-const { trashedSheets, canManage } = defineProps({
-  trashedSheets: { type: Array, default: () => [] },
-  canManage: { type: Boolean, default: false },
-});
+interface TrashedSheet {
+  id: number;
+  name: string;
+  deleted_at: string;
+}
+
+const { trashedSheets = [], canManage = false } = defineProps<{
+  trashedSheets?: TrashedSheet[];
+  canManage?: boolean;
+}>();
 
 const live = useLive();
 
 const showDeleteConfirm = ref(false);
 const showEmptyConfirm = ref(false);
-const sheetToDelete = ref(null);
+const sheetToDelete = ref<TrashedSheet | null>(null);
 
-function restoreSheet(id) {
+function restoreSheet(id: number) {
   live.pushEvent("restore_sheet", { id });
 }
 
-function openDeleteConfirm(sheet) {
+function openDeleteConfirm(sheet: TrashedSheet) {
   sheetToDelete.value = sheet;
   live.pushEvent("show_delete_confirm", { id: sheet.id });
   showDeleteConfirm.value = true;
@@ -44,11 +50,11 @@ function emptyTrash() {
   showEmptyConfirm.value = false;
 }
 
-function formatTimeAgo(datetime) {
+function formatTimeAgo(datetime: string | null) {
   if (!datetime) return "";
   const now = new Date();
   const deleted = new Date(datetime);
-  const diffSeconds = Math.floor((now - deleted) / 1000);
+  const diffSeconds = Math.floor((now.getTime() - deleted.getTime()) / 1000);
 
   if (diffSeconds < 60) return "just now";
   if (diffSeconds < 3600) {

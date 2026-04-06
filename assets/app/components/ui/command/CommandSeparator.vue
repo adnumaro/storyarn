@@ -1,19 +1,16 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { Separator } from "reka-ui";
+import { Separator, type AsTag } from "reka-ui";
 import { cn } from "@utils/utils";
 
-const props = defineProps({
-  orientation: { type: String, required: false },
-  decorative: { type: Boolean, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-});
+const props = defineProps<{
+  orientation?: "horizontal" | "vertical";
+  decorative?: boolean;
+  asChild?: boolean;
+  as?: AsTag | Component;
+  class?: HTMLAttributes["class"];
+}>();
 
 const delegatedProps = reactiveOmit(props, "class");
 </script>

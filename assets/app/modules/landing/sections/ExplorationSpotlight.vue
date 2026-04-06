@@ -1,10 +1,16 @@
-<script setup>
+<script setup lang="ts">
 import { Compass } from "lucide-vue-next";
 import { useRevealOnScroll } from "../composables/useRevealOnScroll";
 
-const { translations } = defineProps({
-  translations: { type: Object, default: () => ({ exploration_items: [] }) },
-});
+interface ExplorationTranslations {
+  exploration_title?: string;
+  exploration_desc?: string;
+  exploration_items: string[];
+}
+
+const { translations = { exploration_items: [] } } = defineProps<{
+  translations?: ExplorationTranslations;
+}>();
 
 const { elementRef: sectionRef, isRevealed } = useRevealOnScroll();
 </script>

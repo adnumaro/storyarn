@@ -1,9 +1,9 @@
-<script setup>
+<script setup lang="ts">
 import { Check, Loader2 } from "lucide-vue-next";
 
-const { status } = defineProps({
-  status: { type: String, default: "idle" }, // "idle" | "saving" | "saved"
-});
+const { status = "idle" } = defineProps<{
+  status?: "idle" | "saving" | "saved";
+}>();
 </script>
 
 <template>

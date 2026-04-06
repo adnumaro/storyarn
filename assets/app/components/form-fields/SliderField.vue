@@ -1,17 +1,19 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from "vue";
 
-const { label, value, min, max, step, disabled, format } = defineProps({
-  label: { type: String, default: "" },
-  value: { type: [Number, String], default: 0 },
-  min: { type: Number, default: 0 },
-  max: { type: Number, default: 1 },
-  step: { type: Number, default: 0.1 },
-  disabled: { type: Boolean, default: false },
-  format: { type: Function, default: null },
-});
+const { label = "", value = 0, min = 0, max = 1, step = 0.1, disabled = false, format = null } = defineProps<{
+  label?: string;
+  value?: number | string;
+  min?: number;
+  max?: number;
+  step?: number;
+  disabled?: boolean;
+  format?: ((value: number) => string) | null;
+}>();
 
-const emit = defineEmits(["update"]);
+const emit = defineEmits<{
+  update: [value: string];
+}>();
 
 const displayValue = computed(() => {
   if (format) return format(Number(value));
@@ -33,7 +35,7 @@ const displayValue = computed(() => {
       :step="step"
       :disabled="disabled"
       class="w-full h-1 accent-primary disabled:opacity-40"
-      @input="(e) => emit('update', e.target.value)"
+      @input="(e: Event) => emit('update', (e.target as HTMLInputElement).value)"
     />
   </div>
 </template>

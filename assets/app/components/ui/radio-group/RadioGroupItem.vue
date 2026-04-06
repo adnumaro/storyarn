@@ -1,23 +1,20 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { CircleIcon } from "lucide-vue-next";
-import { RadioGroupIndicator, RadioGroupItem, useForwardProps } from "reka-ui";
+import { RadioGroupIndicator, RadioGroupItem, useForwardProps, type AsTag } from "reka-ui";
 import { cn } from "@utils/utils";
 
-const props = defineProps({
-  id: { type: String, required: false },
-  value: { type: null, required: false },
-  disabled: { type: Boolean, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  name: { type: String, required: false },
-  required: { type: Boolean, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-});
+const props = defineProps<{
+  id?: string;
+  value?: string;
+  disabled?: boolean;
+  asChild?: boolean;
+  as?: AsTag | Component;
+  name?: string;
+  required?: boolean;
+  class?: HTMLAttributes["class"];
+}>();
 
 const delegatedProps = reactiveOmit(props, "class");
 

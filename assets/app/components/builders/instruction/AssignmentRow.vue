@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * Single assignment row — sentence-template layout.
  * Uses .assignment-row, .sentence-text, .sentence-slot, .operator-selector CSS.
@@ -16,17 +16,23 @@ import {
   operatorsForType,
   typesForOperator,
 } from "@modules/shared/operators/instruction-operators";
+import type { InstructionOperator } from "@modules/shared/operators/instruction-operators";
 import { findVariable, groupVariablesBySheet } from "@modules/shared/variables";
+import type { Variable } from "@modules/shared/variables";
+import type { Assignment } from "../types";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover/index.ts";
 import VariableCombobox from "../../VariableCombobox.vue";
 
-const { assignment, variables, disabled } = defineProps({
-  assignment: { type: Object, required: true },
-  variables: { type: Array, default: () => [] },
-  disabled: { type: Boolean, default: false },
-});
+const { assignment, variables = [], disabled = false } = defineProps<{
+  assignment: Assignment;
+  variables?: Variable[];
+  disabled?: boolean;
+}>();
 
-const emit = defineEmits(["update:assignment", "remove"]);
+const emit = defineEmits<{
+  "update:assignment": [assignment: Assignment];
+  remove: [];
+}>();
 const operatorDropdownOpen = ref(false);
 
 const sheetsWithVariables = computed(() => groupVariablesBySheet(variables));
@@ -55,7 +61,7 @@ const sheetOptions = computed(() => {
   const filtered =
     ct === null
       ? sheetsWithVariables.value
-      : sheetsWithVariables.value.filter((s) => s.vars.some((v) => ct.includes(v.block_type)));
+      : sheetsWithVariables.value.filter((s) => s.vars.some((v) => (ct as string[]).includes(v.block_type)));
   return filtered.map((s) => ({ value: s.shortcut, label: s.name }));
 });
 
@@ -64,7 +70,7 @@ const variableGroups = computed(() => {
   const sheet = sheetsWithVariables.value.find((s) => s.shortcut === assignment.sheet);
   if (!sheet) return [];
   const ct = typesForOperator(assignment.operator || "set");
-  const vars = ct === null ? sheet.vars : sheet.vars.filter((v) => ct.includes(v.block_type));
+  const vars = ct === null ? sheet.vars : sheet.vars.filter((v) => (ct as string[]).includes(v.block_type));
   return [
     {
       heading: sheet.name,
@@ -111,7 +117,7 @@ const isNumericValue = computed(
     (assignment.operator === "add" || assignment.operator === "subtract"),
 );
 
-function update(field, value) {
+function update(field: string, value: string | null) {
   const updated = { ...assignment, [field]: value };
   if (field === "sheet") {
     updated.variable = null;
@@ -131,7 +137,7 @@ function update(field, value) {
   emit("update:assignment", updated);
 }
 
-function changeOperator(op) {
+function changeOperator(op: InstructionOperator) {
   const updated = { ...assignment, operator: op };
   if (NO_VALUE_OPERATORS.has(op) !== NO_VALUE_OPERATORS.has(assignment.operator)) {
     updated.value = null;
@@ -141,7 +147,7 @@ function changeOperator(op) {
   const ct = typesForOperator(op);
   if (ct !== null && updated.variable) {
     const cv = findVariable(variables, updated.sheet, updated.variable);
-    if (cv && !ct.includes(cv.block_type)) {
+    if (cv && !(ct as string[]).includes(cv.block_type)) {
       updated.variable = null;
       updated.value = null;
       updated.value_sheet = null;

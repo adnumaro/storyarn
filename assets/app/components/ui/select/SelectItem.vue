@@ -1,21 +1,18 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { Check } from "lucide-vue-next";
-import { SelectItem, SelectItemIndicator, SelectItemText, useForwardProps } from "reka-ui";
+import { SelectItem, SelectItemIndicator, SelectItemText, useForwardProps, type AsTag } from "reka-ui";
 import { cn } from "@utils/utils";
 
-const props = defineProps({
-  value: { type: null, required: true },
-  disabled: { type: Boolean, required: false },
-  textValue: { type: String, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-});
+const props = defineProps<{
+  value: string;
+  disabled?: boolean;
+  textValue?: string;
+  asChild?: boolean;
+  as?: AsTag | Component;
+  class?: HTMLAttributes["class"];
+}>();
 
 const delegatedProps = reactiveOmit(props, "class");
 

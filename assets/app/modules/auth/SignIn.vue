@@ -1,25 +1,24 @@
-<script setup>
+<script setup lang="ts">
 import { Info } from "lucide-vue-next";
 import { onMounted, ref } from "vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
-import { useLive } from "@composables/useLive";
 
-const { email, readonly, localMailAdapter, loginAction, csrfToken } = defineProps({
-  email: { type: String, default: "" },
-  readonly: { type: Boolean, default: false },
-  localMailAdapter: { type: Boolean, default: false },
-  csrfToken: { type: String, required: true },
-  loginAction: { type: String, required: true },
-});
+const { email = "", readonly = false, localMailAdapter = false, loginAction, csrfToken } = defineProps<{
+  email?: string;
+  readonly?: boolean;
+  localMailAdapter?: boolean;
+  csrfToken: string;
+  loginAction: string;
+}>();
 
 const emailValue = ref(email || "");
 const passwordValue = ref("");
-const emailInput = ref(null);
+const emailInput = ref<InstanceType<typeof Input> | null>(null);
 
 onMounted(() => {
-  emailInput.value?.focus();
+  (emailInput.value?.$el as HTMLInputElement)?.focus();
 });
 </script>
 

@@ -1,4 +1,5 @@
-<script setup>
+<script setup lang="ts">
+import type { Component } from "vue";
 import { LayoutDashboard, Pin, X } from "lucide-vue-next";
 import { computed, onMounted, ref, watch } from "vue";
 import { useLive } from "@composables/useLive";
@@ -7,31 +8,31 @@ import SheetTree from "@modules/sheets/components/tree/SheetTree.vue";
 import FlowTree from "@modules/flows/components/FlowTree.vue";
 import SceneTreePanel from "@modules/scenes/components/SceneTreePanel.vue";
 
-const treeComponents = {
+const treeComponents: Record<string, Component> = {
   sheets: SheetTree,
   flows: FlowTree,
   scenes: SceneTreePanel,
 };
 
 const {
-  treePanelOpen,
-  treePanelPinned,
-  showPin,
-  activeTool,
-  dashboardUrl,
-  onDashboard,
-  treeData,
-  treeProps,
-} = defineProps({
-  treePanelOpen: { type: Boolean, default: false },
-  treePanelPinned: { type: Boolean, default: true },
-  showPin: { type: Boolean, default: true },
-  activeTool: { type: String, default: "sheets" },
-  dashboardUrl: { type: String, default: null },
-  onDashboard: { type: Boolean, default: false },
-  treeData: { type: [Array, Object], default: null },
-  treeProps: { type: Object, default: () => ({}) },
-});
+  treePanelOpen = false,
+  treePanelPinned = true,
+  showPin = true,
+  activeTool = "sheets",
+  dashboardUrl = null,
+  onDashboard = false,
+  treeData = null,
+  treeProps = {},
+} = defineProps<{
+  treePanelOpen?: boolean;
+  treePanelPinned?: boolean;
+  showPin?: boolean;
+  activeTool?: string;
+  dashboardUrl?: string | null;
+  onDashboard?: boolean;
+  treeData?: unknown[] | Record<string, unknown> | null;
+  treeProps?: Record<string, unknown>;
+}>();
 
 const activeTreeComponent = computed(() => treeComponents[activeTool] || null);
 

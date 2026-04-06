@@ -1,18 +1,23 @@
-<script setup>
-import { useLiveForm } from "live_vue";
+<script setup lang="ts">
+import { useLiveForm, type Form } from "live_vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
 import { Textarea } from "@components/ui/textarea/index.ts";
 
-const { form: formProp, cancelUrl } = defineProps({
-  form: { type: Object, required: true },
-  cancelUrl: { type: String, default: "/workspaces" },
-});
+interface WorkspaceFormValues {
+  name: string;
+  description: string;
+}
+
+const { form: formProp, cancelUrl = "/workspaces" } = defineProps<{
+  form: Form<WorkspaceFormValues>;
+  cancelUrl?: string;
+}>();
 
 const form = useLiveForm(() => formProp, {
   submitEvent: "save",
-  debounceInMilliseconds: 300,
+  debounceInMiliseconds: 300,
 });
 
 const name = form.field("name");

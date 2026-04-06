@@ -1,4 +1,5 @@
-<script setup>
+<script setup lang="ts">
+import type { Component } from "vue";
 import {
   Select,
   SelectContent,
@@ -8,18 +9,27 @@ import {
 } from "@components/ui/select";
 import { useLive } from "@composables/useLive";
 
-const { label, icon, options, value, placeholder, disabled, event, paramKey } = defineProps({
-  label: { type: String, default: "" },
-  icon: { type: [Object, Function, null], default: null },
-  options: { type: Array, required: true },
-  value: { type: [String, Number], default: "" },
-  placeholder: { type: String, default: "Select..." },
-  disabled: { type: Boolean, default: false },
-  event: { type: String, default: null },
-  paramKey: { type: String, default: "value" },
-});
+interface SelectOption {
+  id?: string | number;
+  value?: string | number;
+  name?: string;
+  label?: string;
+}
 
-const emit = defineEmits(["update"]);
+const { label = "", icon = null, options, value = "", placeholder = "Select...", disabled = false, event = null, paramKey = "value" } = defineProps<{
+  label?: string;
+  icon?: Component | null;
+  options: SelectOption[];
+  value?: string | number;
+  placeholder?: string;
+  disabled?: boolean;
+  event?: string | null;
+  paramKey?: string;
+}>();
+
+const emit = defineEmits<{
+  update: [value: string];
+}>();
 const live = useLive();
 
 function onChange(v) {

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 // This component is a simple loading spinner shown briefly
 // while the LiveView redirects to the default workspace.
 </script>

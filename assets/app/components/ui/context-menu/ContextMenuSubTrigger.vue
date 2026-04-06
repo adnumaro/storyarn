@@ -1,21 +1,18 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { ChevronRight } from "lucide-vue-next";
-import { ContextMenuSubTrigger, useForwardProps } from "reka-ui";
+import { ContextMenuSubTrigger, useForwardProps, type AsTag } from "reka-ui";
 import { cn } from "@utils/utils";
 
-const props = defineProps({
-  disabled: { type: Boolean, required: false },
-  textValue: { type: String, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-  inset: { type: Boolean, required: false },
-});
+const props = defineProps<{
+  disabled?: boolean;
+  textValue?: string;
+  asChild?: boolean;
+  as?: AsTag | Component;
+  class?: HTMLAttributes["class"];
+  inset?: boolean;
+}>();
 
 const delegatedProps = reactiveOmit(props, "class");
 

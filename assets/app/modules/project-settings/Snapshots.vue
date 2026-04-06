@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Archive, Download, Loader, RotateCcw, Trash2 } from "lucide-vue-next";
 import { ref } from "vue";
 import { Badge } from "@components/ui/badge/index.ts";
@@ -17,21 +17,37 @@ import { Separator } from "@components/ui/separator/index.ts";
 import { Textarea } from "@components/ui/textarea/index.ts";
 import { useLive } from "@composables/useLive";
 
-const { snapshots, canCreateSnapshot, restorationInProgress, workspaceSlug, projectSlug } =
-  defineProps({
-    snapshots: { type: Array, default: () => [] },
-    canCreateSnapshot: { type: Boolean, default: true },
-    restorationInProgress: { type: Boolean, default: false },
-    workspaceSlug: { type: String, default: "" },
-    projectSlug: { type: String, default: "" },
-  });
+interface Snapshot {
+  id: number;
+  title?: string;
+  description?: string;
+  versionNumber: number;
+  insertedAt: string;
+  snapshotSizeBytes?: number;
+  entityCounts?: Record<string, number>;
+  createdByEmail?: string;
+}
+
+const {
+  snapshots = [],
+  canCreateSnapshot = true,
+  restorationInProgress = false,
+  workspaceSlug = "",
+  projectSlug = "",
+} = defineProps<{
+  snapshots?: Snapshot[];
+  canCreateSnapshot?: boolean;
+  restorationInProgress?: boolean;
+  workspaceSlug?: string;
+  projectSlug?: string;
+}>();
 
 const live = useLive();
 
 const snapshotTitle = ref("");
 const snapshotDescription = ref("");
-const showRestoreDialog = ref(null);
-const showDeleteSnapshotDialog = ref(null);
+const showRestoreDialog = ref<number | null>(null);
+const showDeleteSnapshotDialog = ref<number | null>(null);
 
 function createSnapshot() {
   live.pushEvent("create_snapshot", {
@@ -44,12 +60,12 @@ function createSnapshot() {
   snapshotDescription.value = "";
 }
 
-function restoreSnapshot(id) {
+function restoreSnapshot(id: number) {
   showRestoreDialog.value = null;
   live.pushEvent("restore_snapshot", { id });
 }
 
-function deleteSnapshot(id) {
+function deleteSnapshot(id: number) {
   showDeleteSnapshotDialog.value = null;
   live.pushEvent("delete_snapshot", { id });
 }
@@ -58,14 +74,14 @@ function clearStaleLock() {
   live.pushEvent("clear_stale_lock", {});
 }
 
-function formatSnapshotSize(bytes) {
+function formatSnapshotSize(bytes: number | undefined) {
   if (typeof bytes !== "number") return "\u2014";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
-function formatSnapshotDate(dateStr) {
+function formatSnapshotDate(dateStr: string | undefined) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
   return d.toLocaleDateString("en-US", {
@@ -88,14 +104,14 @@ const entityTypeOrder = [
   "glossary_entries",
 ];
 
-function sortedEntityCounts(counts) {
+function sortedEntityCounts(counts: Record<string, number> | undefined) {
   if (!counts) return [];
   return entityTypeOrder
     .filter((type) => counts[type] && counts[type] > 0)
     .map((type) => ({ type, count: counts[type] }));
 }
 
-function downloadUrl(snapshotId) {
+function downloadUrl(snapshotId: number) {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/snapshots/${snapshotId}/download`;
 }
 </script>

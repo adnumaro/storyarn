@@ -1,7 +1,7 @@
-<script setup>
-const { translations } = defineProps({
-  translations: { type: Object, default: () => ({}) },
-});
+<script setup lang="ts">
+const { translations = {} } = defineProps<{
+  translations?: Record<string, string>;
+}>();
 
 const year = new Date().getFullYear();
 </script>

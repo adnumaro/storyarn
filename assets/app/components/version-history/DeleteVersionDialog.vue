@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { AlertTriangle, Loader2, Trash2 } from "lucide-vue-next";
 import { Button } from "@components/ui/button";
 import {
@@ -11,12 +11,15 @@ import {
   DialogTitle,
 } from "@components/ui/dialog";
 
-const { open, loadingAction } = defineProps({
-  open: { type: Boolean, required: true },
-  loadingAction: { type: String, default: null },
-});
+const { open, loadingAction = null } = defineProps<{
+  open: boolean;
+  loadingAction?: string | null;
+}>();
 
-const emit = defineEmits(["update:open", "confirm"]);
+const emit = defineEmits<{
+  "update:open": [open: boolean];
+  confirm: [];
+}>();
 </script>
 
 <template>

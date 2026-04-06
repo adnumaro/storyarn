@@ -1,15 +1,15 @@
-<script setup>
+<script setup lang="ts">
 import { Shield } from "lucide-vue-next";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
 import { useLive } from "@composables/useLive";
 
-const { email, loginAction, backUrl } = defineProps({
-  email: { type: String, required: true },
-  loginAction: { type: String, required: true },
-  backUrl: { type: String, default: "/workspaces" },
-});
+const { email, loginAction, backUrl = "/workspaces" } = defineProps<{
+  email: string;
+  loginAction: string;
+  backUrl?: string;
+}>();
 
 const live = useLive();
 

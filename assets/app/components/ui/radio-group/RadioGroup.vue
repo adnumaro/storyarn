@@ -1,26 +1,25 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { RadioGroupRoot, useForwardPropsEmits } from "reka-ui";
+import { RadioGroupRoot, useForwardPropsEmits, type AsTag } from "reka-ui";
 import { cn } from "@utils/utils";
 
-const props = defineProps({
-  modelValue: { type: null, required: false },
-  defaultValue: { type: null, required: false },
-  disabled: { type: Boolean, required: false },
-  orientation: { type: String, required: false },
-  dir: { type: String, required: false },
-  loop: { type: Boolean, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  name: { type: String, required: false },
-  required: { type: Boolean, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-});
-const emits = defineEmits(["update:modelValue"]);
+const props = defineProps<{
+  modelValue?: string;
+  defaultValue?: string;
+  disabled?: boolean;
+  orientation?: "horizontal" | "vertical";
+  dir?: "ltr" | "rtl";
+  loop?: boolean;
+  asChild?: boolean;
+  as?: AsTag | Component;
+  name?: string;
+  required?: boolean;
+  class?: HTMLAttributes["class"];
+}>();
+const emits = defineEmits<{
+  "update:modelValue": [value: string];
+}>();
 
 const delegatedProps = reactiveOmit(props, "class");
 

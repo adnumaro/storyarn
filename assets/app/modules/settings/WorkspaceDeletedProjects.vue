@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ChevronDown, ChevronUp, Folder, RotateCcw, Trash2 } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { Badge } from "@components/ui/badge/index.ts";
@@ -14,24 +14,40 @@ import {
 } from "@components/ui/dialog/index.ts";
 import { useLive } from "@composables/useLive";
 
-const { deletedProjects, expandedProjectId, snapshots, recovering } = defineProps({
-  deletedProjects: { type: Array, required: true },
-  expandedProjectId: { type: [Number, null], default: null },
-  snapshots: { type: Array, default: () => [] },
-  recovering: { type: Boolean, default: false },
-});
+interface DeletedProject {
+  id: number;
+  name: string;
+  deleted_time_ago: string;
+  deleted_by_text?: string;
+  snapshot_count: number;
+}
+
+interface ProjectSnapshot {
+  id: number;
+  title?: string;
+  version_number: number;
+  formatted_date: string;
+  entity_counts?: Record<string, number>;
+}
+
+const { deletedProjects, expandedProjectId = null, snapshots = [], recovering = false } = defineProps<{
+  deletedProjects: DeletedProject[];
+  expandedProjectId?: number | null;
+  snapshots?: ProjectSnapshot[];
+  recovering?: boolean;
+}>();
 
 const live = useLive();
 
 const recoverDialogOpen = ref(false);
-const recoverSnapshot = ref(null);
-const recoverProjectId = ref(null);
+const recoverSnapshot = ref<ProjectSnapshot | null>(null);
+const recoverProjectId = ref<number | null>(null);
 
-function toggleProject(projectId) {
+function toggleProject(projectId: number) {
   live.pushEvent("toggle_project", { id: String(projectId) });
 }
 
-function openRecoverDialog(snapshot, projectId) {
+function openRecoverDialog(snapshot: ProjectSnapshot, projectId: number) {
   recoverSnapshot.value = snapshot;
   recoverProjectId.value = projectId;
   recoverDialogOpen.value = true;
@@ -49,7 +65,7 @@ function confirmRecover() {
 
 // Remove useI18n
 
-function formatEntityCounts(counts) {
+function formatEntityCounts(counts: Record<string, number> | undefined) {
   if (!counts) return "";
   const parts = [];
   if (counts.sheets && counts.sheets > 0) {
@@ -168,7 +184,7 @@ function formatEntityCounts(counts) {
             {{
               $t("settings.workspace.deleted_projects.recover_modal.description").replace(
                 "{number}",
-                recoverSnapshot?.version_number,
+                String(recoverSnapshot?.version_number ?? ""),
               )
             }}
           </DialogDescription>

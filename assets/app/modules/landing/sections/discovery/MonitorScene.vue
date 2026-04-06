@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * 3D monitor scene rendered inside a TresCanvas.
  * Displays rotating screenshots with GSAP-driven transitions.
@@ -10,10 +10,10 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons";
 import { onMounted, shallowRef, watch } from "vue";
 
-const { activeStep, isVisible } = defineProps({
-  activeStep: { type: Number, default: 0 },
-  isVisible: { type: Boolean, default: false },
-});
+const { activeStep = 0, isVisible = false } = defineProps<{
+  activeStep?: number;
+  isVisible?: boolean;
+}>();
 
 const SCREEN_IMAGES = [
   "/images/landing/discovery-sheets.png",
@@ -30,13 +30,13 @@ const SUB_STEPS = [
 const BASE_CAM_Z = 4.2;
 const FOV = 40;
 
-const groupRef = shallowRef(null);
-const cameraRef = shallowRef(null);
+const groupRef = shallowRef<THREE.Group | null>(null);
+const cameraRef = shallowRef<THREE.PerspectiveCamera | null>(null);
 
-const textures = shallowRef([]);
+const textures = shallowRef<(THREE.Texture | null)[]>([]);
 let prevStep = 0;
-let stepTimeline = null;
-let pendingTex = null; // texture that B is fading into
+let stepTimeline: gsap.core.Timeline | null = null;
+let pendingTex: THREE.Texture | null = null; // texture that B is fading into
 
 // --- Geometry & Materials ---
 const screenW = 3.2;

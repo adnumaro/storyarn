@@ -1,44 +1,41 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { DropdownMenuSubContent, useForwardPropsEmits } from "reka-ui";
+import { DropdownMenuSubContent, useForwardPropsEmits, type AsTag } from "reka-ui";
 import { cn } from "@utils/utils";
 
-const props = defineProps({
-  forceMount: { type: Boolean, required: false },
-  loop: { type: Boolean, required: false },
-  sideOffset: { type: Number, required: false },
-  sideFlip: { type: Boolean, required: false },
-  alignOffset: { type: Number, required: false },
-  alignFlip: { type: Boolean, required: false },
-  avoidCollisions: { type: Boolean, required: false },
-  collisionBoundary: { type: null, required: false },
-  collisionPadding: { type: [Number, Object], required: false },
-  arrowPadding: { type: Number, required: false },
-  hideShiftedArrow: { type: Boolean, required: false },
-  sticky: { type: String, required: false },
-  hideWhenDetached: { type: Boolean, required: false },
-  positionStrategy: { type: String, required: false },
-  updatePositionStrategy: { type: String, required: false },
-  disableUpdateOnLayoutShift: { type: Boolean, required: false },
-  prioritizePosition: { type: Boolean, required: false },
-  reference: { type: null, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-});
-const emits = defineEmits([
-  "escapeKeyDown",
-  "pointerDownOutside",
-  "focusOutside",
-  "interactOutside",
-  "entryFocus",
-  "openAutoFocus",
-  "closeAutoFocus",
-]);
+const props = defineProps<{
+  forceMount?: boolean;
+  loop?: boolean;
+  sideOffset?: number;
+  sideFlip?: boolean;
+  alignOffset?: number;
+  alignFlip?: boolean;
+  avoidCollisions?: boolean;
+  collisionBoundary?: Element | (Element | null)[] | null;
+  collisionPadding?: number | Partial<Record<"top" | "right" | "bottom" | "left", number>>;
+  arrowPadding?: number;
+  hideShiftedArrow?: boolean;
+  sticky?: "partial" | "always";
+  hideWhenDetached?: boolean;
+  positionStrategy?: "fixed" | "absolute";
+  updatePositionStrategy?: "always" | "optimized";
+  disableUpdateOnLayoutShift?: boolean;
+  prioritizePosition?: boolean;
+  reference?: HTMLElement | null;
+  asChild?: boolean;
+  as?: AsTag | Component;
+  class?: HTMLAttributes["class"];
+}>();
+const emits = defineEmits<{
+  escapeKeyDown: [event: KeyboardEvent];
+  pointerDownOutside: [event: Event];
+  focusOutside: [event: Event];
+  interactOutside: [event: Event];
+  entryFocus: [event: Event];
+  openAutoFocus: [event: Event];
+  closeAutoFocus: [event: Event];
+}>();
 
 const delegatedProps = reactiveOmit(props, "class");
 

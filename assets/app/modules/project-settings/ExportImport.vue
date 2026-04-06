@@ -1,14 +1,80 @@
-<script setup>
+<script setup lang="ts">
 import { Separator } from "@components/ui/separator/index.ts";
+import type { UploadConfig } from "live_vue";
 import ExportPanel from "./ExportPanel.vue";
 import ImportPanel from "./ImportPanel.vue";
 
-const { exportConfig, canEdit, importState, uploadConfig } = defineProps({
-  exportConfig: { type: Object, required: true },
-  canEdit: { type: Boolean, required: true },
-  importState: { type: Object, required: true },
-  uploadConfig: { type: Object, default: null },
-});
+interface FormatOption {
+  format: string;
+  label: string;
+}
+
+interface FormatConfig {
+  selected: string;
+  formats: FormatOption[];
+  extension: string;
+}
+
+interface SectionConfig {
+  selected: string[];
+  supported: string[];
+  entityCounts: Record<string, number>;
+}
+
+interface ExportOptions {
+  assetMode: string;
+  validateBeforeExport: boolean;
+  prettyPrint: boolean;
+}
+
+interface ValidationFinding {
+  message: string;
+}
+
+interface ValidationResult {
+  status: string;
+  errors?: ValidationFinding[];
+  warnings?: ValidationFinding[];
+  info?: ValidationFinding[];
+}
+
+interface ExportConfig {
+  formatConfig: FormatConfig;
+  sectionConfig: SectionConfig;
+  options: ExportOptions;
+  validation: ValidationResult | null;
+  downloadUrl: string;
+}
+
+interface ImportPreview {
+  counts?: Record<string, number>;
+  has_conflicts?: boolean;
+  conflicts?: Record<string, string[]>;
+}
+
+interface ImportResult {
+  assets?: unknown[];
+  sheets?: unknown[];
+  flows?: unknown[];
+  scenes?: unknown[];
+  screenplays?: unknown[];
+  localization?: unknown[];
+}
+
+interface ImportState {
+  step: string;
+  preview?: ImportPreview;
+  result?: ImportResult;
+  error?: string;
+  conflictStrategy?: string;
+}
+
+const { exportConfig, canEdit, importState, uploadConfig = null } = defineProps<{
+  exportConfig: ExportConfig;
+  canEdit: boolean;
+  importState: ImportState;
+  uploadConfig?: UploadConfig | null;
+}>();
 </script>
 
 <template>

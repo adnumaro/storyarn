@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * Shared sidebar panel — floating surface panel with JS-driven animation.
  *
@@ -22,16 +22,14 @@
 import { onClickOutside } from "@vueuse/core";
 import { nextTick, onMounted, ref, watch } from "vue";
 
-const { side, open } = defineProps({
-  side: {
-    type: String,
-    default: "left",
-    validator: (v) => ["left", "right"].includes(v),
-  },
-  open: { type: Boolean, default: false },
-});
+const { side = "left", open = false } = defineProps<{
+  side?: "left" | "right";
+  open?: boolean;
+}>();
 
-const emit = defineEmits(["close"]);
+const emit = defineEmits<{
+  close: [];
+}>();
 
 const panelRef = ref(null);
 let animationTimer = null;

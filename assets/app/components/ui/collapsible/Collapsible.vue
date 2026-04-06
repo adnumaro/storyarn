@@ -1,15 +1,18 @@
-<script setup>
-import { CollapsibleRoot, useForwardPropsEmits } from "reka-ui";
+<script setup lang="ts">
+import type { Component } from "vue";
+import { CollapsibleRoot, useForwardPropsEmits, type AsTag } from "reka-ui";
 
-const props = defineProps({
-  defaultOpen: { type: Boolean, required: false },
-  open: { type: Boolean, required: false },
-  disabled: { type: Boolean, required: false },
-  unmountOnHide: { type: Boolean, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-});
-const emits = defineEmits(["update:open"]);
+const props = defineProps<{
+  defaultOpen?: boolean;
+  open?: boolean;
+  disabled?: boolean;
+  unmountOnHide?: boolean;
+  asChild?: boolean;
+  as?: AsTag | Component;
+}>();
+const emits = defineEmits<{
+  "update:open": [value: boolean];
+}>();
 
 const forwarded = useForwardPropsEmits(props, emits);
 </script>

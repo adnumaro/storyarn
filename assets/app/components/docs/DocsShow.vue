@@ -1,10 +1,14 @@
-<script setup>
+<script setup lang="ts">
 import { BookOpen } from "lucide-vue-next";
 
-const { guideBody, translations } = defineProps({
-  guideBody: { type: String, default: null },
-  translations: { type: Object, required: true },
-});
+interface DocsTranslations {
+  noDocsAvailable: string;
+}
+
+const { guideBody = null, translations } = defineProps<{
+  guideBody?: string | null;
+  translations: DocsTranslations;
+}>();
 </script>
 
 <template>

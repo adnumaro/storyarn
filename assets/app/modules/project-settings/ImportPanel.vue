@@ -1,5 +1,5 @@
-<script setup>
-import { useLiveUpload } from "live_vue";
+<script setup lang="ts">
+import { useLiveUpload, type UploadConfig } from "live_vue";
 import { AlertTriangle, CheckCircle, Eye, Lock, Upload } from "lucide-vue-next";
 import { computed, toRef } from "vue";
 import { Button } from "@components/ui/button/index.ts";
@@ -15,11 +15,34 @@ import {
 } from "@components/ui/table/index.ts";
 import { useLive } from "@composables/useLive";
 
-const { canEdit, importState, uploadConfig } = defineProps({
-  canEdit: { type: Boolean, required: true },
-  importState: { type: Object, required: true },
-  uploadConfig: { type: Object, default: null },
-});
+interface ImportPreview {
+  counts?: Record<string, number>;
+  has_conflicts?: boolean;
+  conflicts?: Record<string, string[]>;
+}
+
+interface ImportResult {
+  assets?: unknown[];
+  sheets?: unknown[];
+  flows?: unknown[];
+  scenes?: unknown[];
+  screenplays?: unknown[];
+  localization?: unknown[];
+}
+
+interface ImportState {
+  step: string;
+  preview?: ImportPreview;
+  result?: ImportResult;
+  error?: string;
+  conflictStrategy?: string;
+}
+
+const { canEdit, importState, uploadConfig = null } = defineProps<{
+  canEdit: boolean;
+  importState: ImportState;
+  uploadConfig?: UploadConfig | null;
+}>();
 
 const live = useLive();
 
@@ -83,7 +106,7 @@ function executeImport() {
   live.pushEvent("execute_import", {});
 }
 
-function setStrategy(strategy) {
+function setStrategy(strategy: string) {
   live.pushEvent("set_strategy", { strategy });
 }
 
@@ -96,13 +119,13 @@ function handleUploadSubmit() {
 }
 
 // --- Helpers ---
-function formatFileSize(bytes) {
+function formatFileSize(bytes: number) {
   if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
   if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${bytes} B`;
 }
 
-function formatImportCount(items) {
+function formatImportCount(items: unknown[] | Record<string, unknown> | string | number) {
   if (Array.isArray(items)) return items.length;
   if (typeof items === "object") return JSON.stringify(items);
   return String(items);

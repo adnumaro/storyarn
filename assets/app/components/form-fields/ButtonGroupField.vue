@@ -1,13 +1,24 @@
-<script setup>
-const { label, icon, options, value, disabled } = defineProps({
-  label: { type: String, default: "" },
-  icon: { type: [Object, Function, null], default: null },
-  options: { type: Array, required: true },
-  value: { type: [String, Number], default: "" },
-  disabled: { type: Boolean, default: false },
-});
+<script setup lang="ts">
+import type { Component } from "vue";
 
-const emit = defineEmits(["update"]);
+interface ButtonOption {
+  id?: string | number;
+  value?: string | number;
+  name?: string;
+  label?: string;
+}
+
+const { label = "", icon = null, options, value = "", disabled = false } = defineProps<{
+  label?: string;
+  icon?: Component | null;
+  options: ButtonOption[];
+  value?: string | number;
+  disabled?: boolean;
+}>();
+
+const emit = defineEmits<{
+  update: [value: string | number];
+}>();
 </script>
 
 <template>

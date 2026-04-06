@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Link } from "lucide-vue-next";
 import { ref } from "vue";
 import { Button } from "@components/ui/button/index.ts";
@@ -19,10 +19,16 @@ import {
 } from "@components/ui/tooltip/index.ts";
 import { useLive } from "@composables/useLive";
 
-const { identities, hasPassword } = defineProps({
-  identities: { type: Array, required: true },
-  hasPassword: { type: Boolean, required: true },
-});
+interface OAuthIdentity {
+  provider: string;
+  provider_email?: string;
+  provider_name?: string;
+}
+
+const { identities, hasPassword } = defineProps<{
+  identities: OAuthIdentity[];
+  hasPassword: boolean;
+}>();
 
 const live = useLive();
 
@@ -33,13 +39,13 @@ const providers = [
 ];
 
 const unlinkDialogOpen = ref(false);
-const unlinkProvider = ref(null);
+const unlinkProvider = ref<string | null>(null);
 
-function findIdentity(provider) {
+function findIdentity(provider: string) {
   return identities.find((i) => i.provider === provider) || null;
 }
 
-function openUnlinkDialog(provider) {
+function openUnlinkDialog(provider: string) {
   unlinkProvider.value = provider;
   unlinkDialogOpen.value = true;
 }
@@ -54,7 +60,7 @@ function confirmUnlink() {
     const csrfInput = document.createElement("input");
     csrfInput.type = "hidden";
     csrfInput.name = "_csrf_token";
-    csrfInput.value = document.querySelector("meta[name=csrf-token]")?.content || "";
+    csrfInput.value = (document.querySelector("meta[name=csrf-token]") as HTMLMetaElement | null)?.content || "";
     form.appendChild(csrfInput);
 
     const methodInput = document.createElement("input");

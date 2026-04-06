@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { AlertTriangle, Monitor, Moon, Sun, ImagePlus, Trash2 } from "lucide-vue-next";
 import { ref, watch, onMounted, onUnmounted } from "vue";
 import { Button } from "@components/ui/button/index.ts";
@@ -27,20 +27,20 @@ import {
 import { useLive } from "@composables/useLive";
 
 const {
-  workspaceName,
-  workspaceDescription,
-  workspaceBannerUrl,
-  sourceLocale,
-  languageOptions,
-  isOwner,
-} = defineProps({
-  workspaceName: { type: String, default: "" },
-  workspaceDescription: { type: String, default: "" },
-  workspaceBannerUrl: { type: String, default: "" },
-  sourceLocale: { type: String, default: "" },
-  languageOptions: { type: Array, default: () => [] },
-  isOwner: { type: Boolean, default: false },
-});
+  workspaceName = "",
+  workspaceDescription = "",
+  workspaceBannerUrl = "",
+  sourceLocale = "",
+  languageOptions = [],
+  isOwner = false,
+} = defineProps<{
+  workspaceName?: string;
+  workspaceDescription?: string;
+  workspaceBannerUrl?: string;
+  sourceLocale?: string;
+  languageOptions?: [string, string][];
+  isOwner?: boolean;
+}>();
 
 const live = useLive();
 
@@ -91,11 +91,11 @@ function triggerBannerUpload() {
   const input = document.createElement("input");
   input.type = "file";
   input.accept = "image/*";
-  input.onchange = (e) => uploadBanner(e.target.files[0]);
+  input.onchange = (e) => uploadBanner((e.target as HTMLInputElement).files![0]);
   input.click();
 }
 
-function uploadBanner(file) {
+function uploadBanner(file: File) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = () => {
@@ -129,7 +129,7 @@ onUnmounted(() => {
   window.removeEventListener("phx:set-theme", updateThemeRef);
 });
 
-function setTheme(theme) {
+function setTheme(theme: string) {
   if (theme === "system") {
     localStorage.removeItem("phx:theme");
   } else {

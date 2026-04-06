@@ -1,54 +1,57 @@
-<script setup>
+<script setup lang="ts">
 /**
  * Condition group — colored left border, group-level AND/OR, ungroup action.
  */
 
 import { Plus, Ungroup } from "lucide-vue-next";
 import { generateId } from "@modules/shared/variables";
+import type { Variable } from "@modules/shared/variables";
+import type { ConditionBlock as ConditionBlockType, ConditionGroup as ConditionGroupType } from "../types";
 import ConditionBlock from "./ConditionBlock.vue";
 import LogicToggle from "./LogicToggle.vue";
 
-const { group, variables, disabled } = defineProps({
-  group: { type: Object, required: true },
-  variables: { type: Array, default: () => [] },
-  disabled: { type: Boolean, default: false },
-});
+const { group, variables = [], disabled = false } = defineProps<{
+  group: ConditionGroupType;
+  variables?: Variable[];
+  disabled?: boolean;
+}>();
 
-const emit = defineEmits(["update:group", "ungroup"]);
+const emit = defineEmits<{
+  "update:group": [group: ConditionGroupType];
+  ungroup: [];
+}>();
 
-function updateBlock(index, updatedBlock) {
+function updateBlock(index: number, updatedBlock: ConditionBlockType) {
   const blocks = [...group.blocks];
   blocks[index] = updatedBlock;
   emit("update:group", { ...group, blocks });
 }
 
-function removeBlock(index) {
+function removeBlock(index: number) {
   const blocks = group.blocks.filter((_, i) => i !== index);
   emit("update:group", { ...group, blocks });
 }
 
 function addBlock() {
-  const blocks = [
-    ...group.blocks,
-    {
-      id: generateId("block"),
-      type: "block",
-      logic: "all",
-      rules: [
-        {
-          id: generateId("rule"),
-          sheet: null,
-          variable: null,
-          operator: "equals",
-          value: null,
-        },
-      ],
-    },
-  ];
+  const newBlock: ConditionBlockType = {
+    id: generateId("block"),
+    type: "block",
+    logic: "all",
+    rules: [
+      {
+        id: generateId("rule"),
+        sheet: null,
+        variable: null,
+        operator: "equals",
+        value: null,
+      },
+    ],
+  };
+  const blocks = [...group.blocks, newBlock];
   emit("update:group", { ...group, blocks });
 }
 
-function updateLogic(newLogic) {
+function updateLogic(newLogic: "all" | "any") {
   emit("update:group", { ...group, logic: newLogic });
 }
 </script>

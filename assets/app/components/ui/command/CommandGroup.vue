@@ -1,20 +1,17 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { ListboxGroup, ListboxGroupLabel, useId } from "reka-ui";
+import { ListboxGroup, ListboxGroupLabel, useId, type AsTag } from "reka-ui";
 import { computed, onMounted, onUnmounted } from "vue";
 import { cn } from "@utils/utils";
 import { provideCommandGroupContext, useCommand } from ".";
 
-const props = defineProps({
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-  heading: { type: String, required: false },
-});
+const props = defineProps<{
+  asChild?: boolean;
+  as?: AsTag | Component;
+  class?: HTMLAttributes["class"];
+  heading?: string;
+}>();
 
 const delegatedProps = reactiveOmit(props, "class");
 

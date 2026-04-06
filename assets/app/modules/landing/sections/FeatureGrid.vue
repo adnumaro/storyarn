@@ -1,5 +1,6 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from "vue";
+import type { Component } from "vue";
 import {
   Table2,
   GitBranch,
@@ -12,10 +13,24 @@ import {
   Package,
 } from "lucide-vue-next";
 
-const scrollContainer = ref(null);
+interface FeatureSubLink {
+  nameKey: string;
+  index: number;
+  icon: Component;
+}
+
+interface Feature {
+  icon: Component;
+  titleKey: string;
+  descKey: string;
+  colorClassText: string;
+  subLinks?: FeatureSubLink[];
+}
+
+const scrollContainer = ref<HTMLDivElement | null>(null);
 const activeIndex = ref(0);
 
-const features = [
+const features: Feature[] = [
   {
     icon: LayoutDashboard,
     titleKey: "landing.features.cards.core.title",
@@ -62,7 +77,7 @@ const features = [
 // GSAP Shield: High-Performance Wheel Throttle
 let isAnimating = false;
 
-function handleWheel(e) {
+function handleWheel(e: WheelEvent) {
   const delta = Math.sign(e.deltaY);
 
   // We are within bounds: shield the event from the global GSAP Observer
@@ -97,10 +112,10 @@ function handleWheel(e) {
 }
 
 let touchStartY = 0;
-function handleTouchStart(e) {
+function handleTouchStart(e: TouchEvent) {
   touchStartY = e.touches[0].clientY;
 }
-function handleTouchMove(e) {
+function handleTouchMove(e: TouchEvent) {
   if (!touchStartY) return;
 
   const touchY = e.touches[0].clientY;
@@ -136,9 +151,9 @@ function handleTouchMove(e) {
 }
 
 // Router trigger jumping over GSAP timeline safely
-function gotoGlobal(panelIndex, tabIndex = undefined) {
+function gotoGlobal(panelIndex: number, tabIndex?: number) {
   if (typeof window !== "undefined") {
-    const detail = { panelIndex };
+    const detail = { panelIndex, tabIndex };
     if (tabIndex !== undefined) detail.tabIndex = tabIndex;
 
     window.dispatchEvent(new CustomEvent("storyarn:force-scroll", { detail }));
@@ -160,12 +175,12 @@ function gotoGlobal(panelIndex, tabIndex = undefined) {
     >
       <!-- Glow embedded securely inside the Header -->
       <div
-        class="pointer-events-none absolute inset-x-0 -top-[450px] left-1/2 h-[600px] w-[1000px] -translate-x-1/2 rounded-full bg-primary/10 blur-[160px]"
+        class="pointer-events-none absolute inset-x-0 -top-112.5 left-1/2 h-150 w-250 -translate-x-1/2 rounded-full bg-primary/10 blur-[160px]"
       ></div>
 
-      <div class="max-w-[1280px] mx-auto relative z-10">
+      <div class="max-w-7xl mx-auto relative z-10">
         <h2
-          class="text-[clamp(2.5rem,4vw,4.5rem)] font-bold tracking-tight text-foreground leading-[1] mb-6 max-w-4xl"
+          class="text-[clamp(2.5rem,4vw,4.5rem)] font-bold tracking-tight text-foreground leading-none mb-6 max-w-4xl"
         >
           {{ $t("landing.features.section_title") }}
         </h2>
@@ -176,7 +191,7 @@ function gotoGlobal(panelIndex, tabIndex = undefined) {
     </div>
 
     <div
-      class="relative z-20 flex flex-1 w-full max-w-[1280px] mx-auto flex-col lg:flex-row min-h-0"
+      class="relative z-20 flex flex-1 w-full max-w-7xl mx-auto flex-col lg:flex-row min-h-0"
     >
       <!-- Visual Sticking Container (Top Mobile, Right Desktop) -->
       <div
@@ -185,7 +200,7 @@ function gotoGlobal(panelIndex, tabIndex = undefined) {
         <transition name="vp-fade" mode="out-in">
           <div
             :key="activeIndex"
-            class="flex items-center justify-center w-full max-w-[280px] lg:max-w-[400px] aspect-square rounded-3xl bg-muted/30 border border-border/20 backdrop-blur-md shadow-2xl"
+            class="flex items-center justify-center w-full max-w-70 lg:max-w-100 aspect-square rounded-3xl bg-muted/30 border border-border/20 backdrop-blur-md shadow-2xl"
           >
             <component
               :is="features[activeIndex].icon"
@@ -220,7 +235,7 @@ function gotoGlobal(panelIndex, tabIndex = undefined) {
               <div v-if="features[activeIndex].subLinks" class="flex flex-col gap-4 mt-8">
                 <div
                   v-for="sublink in features[activeIndex].subLinks"
-                  :key="sublink.name"
+                  :key="sublink.nameKey"
                   @click="gotoGlobal(2, sublink.index)"
                   class="group flex items-center justify-between p-4 rounded-xl border border-border/40 bg-muted/20 hover:bg-muted/60 transition-colors cursor-pointer"
                 >

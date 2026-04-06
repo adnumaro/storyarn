@@ -1,16 +1,13 @@
-<script setup>
+<script setup lang="ts">
+import type { HTMLAttributes } from "vue";
 import { DialogClose } from "reka-ui";
 import { Button } from "@components/ui/button";
 import { cn } from "@utils/utils";
 
-const props = defineProps({
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-  showCloseButton: { type: Boolean, required: false, default: false },
-});
+const props = defineProps<{
+  class?: HTMLAttributes["class"];
+  showCloseButton?: boolean;
+}>();
 </script>
 
 <template>

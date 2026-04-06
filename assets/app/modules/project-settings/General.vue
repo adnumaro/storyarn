@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { AlertTriangle, Monitor, Moon, Sun, Wrench } from "lucide-vue-next";
 import { ref, watch, onMounted, onUnmounted } from "vue";
 import ColorPickerPopover from "@components/ColorPickerPopover.vue";
@@ -17,23 +17,27 @@ import { Separator } from "@components/ui/separator/index.ts";
 import { Textarea } from "@components/ui/textarea/index.ts";
 import { useLive } from "@composables/useLive";
 
+interface SourceLanguage {
+  localeCode: string;
+}
+
 const {
-  projectName,
-  projectDescription,
-  sourceLanguage,
-  sourceLanguageName,
-  themePrimary,
-  themeAccent,
-  hasCustomTheme,
-} = defineProps({
-  projectName: { type: String, default: "" },
-  projectDescription: { type: String, default: "" },
-  sourceLanguage: { type: Object, default: null },
-  sourceLanguageName: { type: String, default: "" },
-  themePrimary: { type: String, default: "#00D4CC" },
-  themeAccent: { type: String, default: "#E8922F" },
-  hasCustomTheme: { type: Boolean, default: false },
-});
+  projectName = "",
+  projectDescription = "",
+  sourceLanguage = null,
+  sourceLanguageName = "",
+  themePrimary = "#00D4CC",
+  themeAccent = "#E8922F",
+  hasCustomTheme = false,
+} = defineProps<{
+  projectName?: string;
+  projectDescription?: string;
+  sourceLanguage?: SourceLanguage | null;
+  sourceLanguageName?: string;
+  themePrimary?: string;
+  themeAccent?: string;
+  hasCustomTheme?: boolean;
+}>();
 
 const live = useLive();
 
@@ -89,12 +93,12 @@ watch(
   },
 );
 
-function onPrimaryChange(hex) {
+function onPrimaryChange(hex: string) {
   localPrimary.value = hex;
   live.pushEvent("update_theme_primary", { color: hex });
 }
 
-function onAccentChange(hex) {
+function onAccentChange(hex: string) {
   localAccent.value = hex;
   live.pushEvent("update_theme_accent", { color: hex });
 }
@@ -123,7 +127,7 @@ onUnmounted(() => {
   window.removeEventListener("phx:set-theme", updateThemeRef);
 });
 
-function setTheme(theme) {
+function setTheme(theme: string) {
   if (theme === "system") {
     localStorage.removeItem("phx:theme");
   } else {

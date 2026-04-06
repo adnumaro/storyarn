@@ -1,37 +1,37 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { TooltipArrow, TooltipContent, TooltipPortal, useForwardPropsEmits } from "reka-ui";
+import { TooltipArrow, TooltipContent, TooltipPortal, useForwardPropsEmits, type AsTag } from "reka-ui";
 import { cn } from "@utils/utils";
 
 defineOptions({
   inheritAttrs: false,
 });
 
-const props = defineProps({
-  forceMount: { type: Boolean, required: false },
-  ariaLabel: { type: String, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  side: { type: null, required: false },
-  sideOffset: { type: Number, required: false, default: 4 },
-  align: { type: null, required: false },
-  alignOffset: { type: Number, required: false },
-  avoidCollisions: { type: Boolean, required: false },
-  collisionBoundary: { type: null, required: false },
-  collisionPadding: { type: [Number, Object], required: false },
-  arrowPadding: { type: Number, required: false },
-  sticky: { type: String, required: false },
-  hideWhenDetached: { type: Boolean, required: false },
-  positionStrategy: { type: String, required: false },
-  updatePositionStrategy: { type: String, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-});
+const props = defineProps<{
+  forceMount?: boolean;
+  ariaLabel?: string;
+  asChild?: boolean;
+  as?: AsTag | Component;
+  side?: "top" | "right" | "bottom" | "left";
+  sideOffset?: number;
+  align?: "start" | "center" | "end";
+  alignOffset?: number;
+  avoidCollisions?: boolean;
+  collisionBoundary?: Element | (Element | null)[] | null;
+  collisionPadding?: number | Partial<Record<"top" | "right" | "bottom" | "left", number>>;
+  arrowPadding?: number;
+  sticky?: "partial" | "always";
+  hideWhenDetached?: boolean;
+  positionStrategy?: "fixed" | "absolute";
+  updatePositionStrategy?: "always" | "optimized";
+  class?: HTMLAttributes["class"];
+}>();
 
-const emits = defineEmits(["escapeKeyDown", "pointerDownOutside"]);
+const emits = defineEmits<{
+  escapeKeyDown: [event: KeyboardEvent];
+  pointerDownOutside: [event: Event];
+}>();
 
 const delegatedProps = reactiveOmit(props, "class");
 const forwarded = useForwardPropsEmits(delegatedProps, emits);

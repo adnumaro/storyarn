@@ -1,14 +1,17 @@
-<script setup>
+<script setup lang="ts">
+import type { Component } from "vue";
 import { Switch } from "@components/ui/switch";
 
-const { label, icon, checked, disabled } = defineProps({
-  label: { type: String, default: "" },
-  icon: { type: [Object, Function, null], default: null },
-  checked: { type: Boolean, default: false },
-  disabled: { type: Boolean, default: false },
-});
+const { label = "", icon = null, checked = false, disabled = false } = defineProps<{
+  label?: string;
+  icon?: Component | null;
+  checked?: boolean;
+  disabled?: boolean;
+}>();
 
-const emit = defineEmits(["toggle"]);
+const emit = defineEmits<{
+  toggle: [];
+}>();
 </script>
 
 <template>

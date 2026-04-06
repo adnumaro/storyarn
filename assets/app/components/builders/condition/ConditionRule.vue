@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * Single condition rule row — sentence-flow layout.
  *
@@ -8,16 +8,22 @@
 import { X } from "lucide-vue-next";
 import { computed } from "vue";
 import { NO_VALUE_OPERATORS, OPERATOR_LABELS, operatorsForType } from "@modules/shared/operators/condition-operators";
+import type { ConditionOperator } from "@modules/shared/operators/condition-operators";
 import { findVariable, groupVariablesBySheet } from "@modules/shared/variables";
+import type { Variable } from "@modules/shared/variables";
+import type { ConditionRule } from "../types";
 import VariableCombobox from "../../VariableCombobox.vue";
 
-const { rule, variables, disabled } = defineProps({
-  rule: { type: Object, required: true },
-  variables: { type: Array, default: () => [] },
-  disabled: { type: Boolean, default: false },
-});
+const { rule, variables = [], disabled = false } = defineProps<{
+  rule: ConditionRule;
+  variables?: Variable[];
+  disabled?: boolean;
+}>();
 
-const emit = defineEmits(["update:rule", "remove"]);
+const emit = defineEmits<{
+  "update:rule": [rule: ConditionRule];
+  remove: [];
+}>();
 
 const sheetsWithVariables = computed(() => groupVariablesBySheet(variables));
 
@@ -68,7 +74,7 @@ const valueOptions = computed(() => {
 
 const isFreeTextValue = computed(() => valueOptions.value.length === 0);
 
-function update(field, value) {
+function update(field: string, value: string | null) {
   const updated = { ...rule, [field]: value };
   if (field === "sheet") {
     updated.variable = null;
@@ -83,7 +89,7 @@ function update(field, value) {
     updated.value = null;
   } else if (field === "operator") {
     const oldOp = rule.operator || "equals";
-    if (NO_VALUE_OPERATORS.has(value) !== NO_VALUE_OPERATORS.has(oldOp)) {
+    if (NO_VALUE_OPERATORS.has(value as ConditionOperator) !== NO_VALUE_OPERATORS.has(oldOp)) {
       updated.value = null;
     }
   }

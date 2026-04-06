@@ -1,22 +1,21 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit, useCurrentElement } from "@vueuse/core";
-import { ListboxItem, useForwardPropsEmits, useId } from "reka-ui";
+import { ListboxItem, useForwardPropsEmits, useId, type AsTag } from "reka-ui";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { cn } from "@utils/utils";
 import { useCommand, useCommandGroup } from ".";
 
-const props = defineProps({
-  value: { type: null, required: true },
-  disabled: { type: Boolean, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-});
-const emits = defineEmits(["select"]);
+const props = defineProps<{
+  value: string;
+  disabled?: boolean;
+  asChild?: boolean;
+  as?: AsTag | Component;
+  class?: HTMLAttributes["class"];
+}>();
+const emits = defineEmits<{
+  select: [event: Event];
+}>();
 
 const delegatedProps = reactiveOmit(props, "class");
 

@@ -1,17 +1,14 @@
-<script setup>
+<script setup lang="ts">
+import type { HTMLAttributes } from "vue";
 import { ProgressIndicator, ProgressRoot } from "reka-ui";
 import { computed } from "vue";
 import { cn } from "@utils/utils";
 
-const props = defineProps({
-  modelValue: { type: Number, default: 0 },
-  max: { type: Number, default: 100 },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-});
+const props = defineProps<{
+  modelValue?: number;
+  max?: number;
+  class?: HTMLAttributes["class"];
+}>();
 
 const percentage = computed(() => {
   const val = Math.min(props.modelValue, props.max);

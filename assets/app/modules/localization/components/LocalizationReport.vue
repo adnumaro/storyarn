@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import {
   ArrowLeft,
   Box,
@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Square,
 } from "lucide-vue-next";
+import type { Component } from "vue";
 import { computed } from "vue";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
@@ -29,30 +30,53 @@ import {
 } from "@components/ui/table";
 import { useLive } from "@composables/useLive";
 
+interface LanguageProgress {
+  localeCode: string;
+  name: string;
+  final: number;
+  total: number;
+  percentage: number;
+}
+
+interface TargetLanguage {
+  localeCode: string;
+  name: string;
+}
+
+interface SpeakerStat {
+  speakerSheetId: number | null;
+  lineCount: number;
+  wordCount: number;
+}
+
+interface VoProgress {
+  none: number;
+  needed: number;
+  recorded: number;
+  approved: number;
+}
+
 const {
-  languageProgress,
-  targetLanguages,
-  selectedLocale,
-  speakerStats,
-  voProgress,
-  typeCounts,
+  languageProgress = [],
+  targetLanguages = [],
+  selectedLocale = null,
+  speakerStats = [],
+  voProgress = { none: 0, needed: 0, recorded: 0, approved: 0 },
+  typeCounts = {},
   backUrl,
-} = defineProps({
-  languageProgress: { type: Array, default: () => [] },
-  targetLanguages: { type: Array, default: () => [] },
-  selectedLocale: { type: String, default: null },
-  speakerStats: { type: Array, default: () => [] },
-  voProgress: {
-    type: Object,
-    default: () => ({ none: 0, needed: 0, recorded: 0, approved: 0 }),
-  },
-  typeCounts: { type: Object, default: () => ({}) },
-  backUrl: { type: String, required: true },
-});
+} = defineProps<{
+  languageProgress?: LanguageProgress[];
+  targetLanguages?: TargetLanguage[];
+  selectedLocale?: string | null;
+  speakerStats?: SpeakerStat[];
+  voProgress?: VoProgress;
+  typeCounts?: Record<string, number>;
+  backUrl: string;
+}>();
 
 const live = useLive();
 
-function changeLocale(value) {
+function changeLocale(value: string) {
   live.pushEvent("change_locale", { locale: value });
 }
 
@@ -79,8 +103,8 @@ const voStats = computed(() => [
   },
 ]);
 
-function typeIcon(type) {
-  const icons = {
+function typeIcon(type: string) {
+  const icons: Record<string, Component> = {
     flow_node: MessageSquare,
     block: Square,
     sheet: FileText,
@@ -90,8 +114,8 @@ function typeIcon(type) {
   return icons[type] || Box;
 }
 
-function typeLabel(type) {
-  const labels = {
+function typeLabel(type: string) {
+  const labels: Record<string, string> = {
     flow_node: "Nodes",
     block: "Blocks",
     sheet: "Sheets",

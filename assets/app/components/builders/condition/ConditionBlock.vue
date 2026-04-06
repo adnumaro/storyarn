@@ -1,48 +1,51 @@
-<script setup>
+<script setup lang="ts">
 /**
  * Single condition block containing rule rows.
  */
 
 import { Plus, X } from "lucide-vue-next";
 import { generateId } from "@modules/shared/variables";
+import type { Variable } from "@modules/shared/variables";
+import type { ConditionBlock as ConditionBlockType, ConditionRule as ConditionRuleType } from "../types";
 import ConditionRule from "./ConditionRule.vue";
 import LogicToggle from "./LogicToggle.vue";
 
-const { block, variables, disabled, switchMode } = defineProps({
-  block: { type: Object, required: true },
-  variables: { type: Array, default: () => [] },
-  disabled: { type: Boolean, default: false },
-  switchMode: { type: Boolean, default: false },
-});
+const { block, variables = [], disabled = false, switchMode = false } = defineProps<{
+  block: ConditionBlockType;
+  variables?: Variable[];
+  disabled?: boolean;
+  switchMode?: boolean;
+}>();
 
-const emit = defineEmits(["update:block", "remove"]);
+const emit = defineEmits<{
+  "update:block": [block: ConditionBlockType];
+  remove: [];
+}>();
 
-function updateField(field, value) {
+function updateField(field: string, value: string) {
   emit("update:block", { ...block, [field]: value });
 }
 
-function updateRule(index, updatedRule) {
+function updateRule(index: number, updatedRule: ConditionRuleType) {
   const rules = [...block.rules];
   rules[index] = updatedRule;
   emit("update:block", { ...block, rules });
 }
 
-function removeRule(index) {
+function removeRule(index: number) {
   const rules = block.rules.filter((_, i) => i !== index);
   emit("update:block", { ...block, rules });
 }
 
 function addRule() {
-  const rules = [
-    ...block.rules,
-    {
-      id: generateId("rule"),
-      sheet: null,
-      variable: null,
-      operator: "equals",
-      value: null,
-    },
-  ];
+  const newRule: ConditionRuleType = {
+    id: generateId("rule"),
+    sheet: null,
+    variable: null,
+    operator: "equals",
+    value: null,
+  };
+  const rules = [...block.rules, newRule];
   emit("update:block", { ...block, rules });
 }
 </script>
@@ -59,8 +62,8 @@ function addRule() {
           class="h-6 px-2 text-xs font-medium border border-border rounded bg-transparent w-full max-w-50 outline-none focus:border-ring"
           placeholder="label"
           maxlength="100"
-          @input="(e) => updateField('label', e.target.value)"
-          @blur="(e) => updateField('label', e.target.value)"
+          @input="(e: Event) => updateField('label', (e.target as HTMLInputElement).value)"
+          @blur="(e: Event) => updateField('label', (e.target as HTMLInputElement).value)"
         />
         <span v-else class="text-xs font-medium">{{ block.label || "label" }}</span>
       </template>

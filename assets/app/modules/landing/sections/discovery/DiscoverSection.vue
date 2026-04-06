@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, defineAsyncComponent, ref, onMounted } from "vue";
 
 const DiscoverMonitor = defineAsyncComponent(() => import("./DiscoverMonitor.vue"));
@@ -6,8 +6,8 @@ const DiscoverMonitor = defineAsyncComponent(() => import("./DiscoverMonitor.vue
 const activeTab = ref(0);
 
 onMounted(() => {
-  window.addEventListener("storyarn:discover-step", (e) => {
-    activeTab.value = e.detail;
+  window.addEventListener("storyarn:discover-step", (e: Event) => {
+    activeTab.value = (e as CustomEvent<number>).detail;
   });
 });
 const isRevealed = ref(true); // GSAP controls the timeline now, assume it's revealed when reached

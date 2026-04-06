@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { BookmarkPlus, Loader2 } from "lucide-vue-next";
 import { Button } from "@components/ui/button";
 import {
@@ -14,15 +14,25 @@ import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { Textarea } from "@components/ui/textarea";
 
-const { open, title, description, promoteVersion, loadingAction } = defineProps({
-  open: { type: Boolean, required: true },
-  title: { type: String, required: true },
-  description: { type: String, required: true },
-  promoteVersion: { type: Object, default: null },
-  loadingAction: { type: String, default: null },
-});
+interface PromoteVersionEntry {
+  versionNumber: number;
+  changeSummary?: string;
+}
 
-const emit = defineEmits(["update:open", "update:title", "update:description", "submit"]);
+const { open, title, description, promoteVersion = null, loadingAction = null } = defineProps<{
+  open: boolean;
+  title: string;
+  description: string;
+  promoteVersion?: PromoteVersionEntry | null;
+  loadingAction?: string | null;
+}>();
+
+const emit = defineEmits<{
+  "update:open": [open: boolean];
+  "update:title": [title: string];
+  "update:description": [description: string];
+  submit: [];
+}>();
 </script>
 
 <template>
@@ -38,7 +48,7 @@ const emit = defineEmits(["update:open", "update:title", "update:description", "
           <Input
             id="promote-title"
             :model-value="title"
-            @update:model-value="emit('update:title', $event)"
+            @update:model-value="emit('update:title', String($event))"
             :placeholder="promoteVersion?.changeSummary || 'e.g., Before major refactor'"
             required
             autofocus
@@ -49,7 +59,7 @@ const emit = defineEmits(["update:open", "update:title", "update:description", "
           <Textarea
             id="promote-description"
             :model-value="description"
-            @update:model-value="emit('update:description', $event)"
+            @update:model-value="emit('update:description', String($event))"
             :rows="3"
             placeholder="Describe what this version captures..."
           />

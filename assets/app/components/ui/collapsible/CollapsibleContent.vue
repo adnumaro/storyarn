@@ -1,11 +1,12 @@
-<script setup>
-import { CollapsibleContent } from "reka-ui";
+<script setup lang="ts">
+import type { Component } from "vue";
+import { CollapsibleContent, type AsTag } from "reka-ui";
 
-const props = defineProps({
-  forceMount: { type: Boolean, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-});
+const props = defineProps<{
+  forceMount?: boolean;
+  asChild?: boolean;
+  as?: AsTag | Component;
+}>();
 </script>
 
 <template>

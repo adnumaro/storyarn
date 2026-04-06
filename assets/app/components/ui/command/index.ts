@@ -1,3 +1,4 @@
+import type { Ref } from "vue";
 import { createContext } from "reka-ui";
 
 export { default as Command } from "./Command.vue";
@@ -10,6 +11,25 @@ export { default as CommandList } from "./CommandList.vue";
 export { default as CommandSeparator } from "./CommandSeparator.vue";
 export { default as CommandShortcut } from "./CommandShortcut.vue";
 
-export const [useCommand, provideCommandContext] = createContext("Command");
+export interface CommandContext {
+  allItems: Ref<Map<string, string>>;
+  allGroups: Ref<Map<string, Set<string>>>;
+  filterState: {
+    search: string;
+    filtered: {
+      count: number;
+      items: Map<string, number>;
+      groups: Set<string>;
+    };
+  };
+}
 
-export const [useCommandGroup, provideCommandGroupContext] = createContext("CommandGroup");
+export interface CommandGroupContext {
+  id: string;
+}
+
+export const [useCommand, provideCommandContext] =
+  createContext<CommandContext>("Command");
+
+export const [useCommandGroup, provideCommandGroupContext] =
+  createContext<CommandGroupContext>("CommandGroup");

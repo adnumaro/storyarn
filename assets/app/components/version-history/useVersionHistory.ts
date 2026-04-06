@@ -1,14 +1,34 @@
 import { onMounted, ref } from "vue";
 import { useLive } from "@composables/useLive";
 
-interface VersionEntry {
+export interface VersionEntry {
+  id?: number;
   versionNumber: number;
-  changeSummary: string;
+  title?: string;
+  description?: string;
+  changeSummary?: string;
+  changeDetails?: { stats?: { added?: number; modified?: number; removed?: number }; changes?: { action: string; detail: string }[] };
+  insertedAt?: string;
+  createdBy?: string;
 }
 
-interface RestoreData {
+export interface RestoreConflict {
+  type: string;
+  id: number;
+  contexts: string[];
+}
+
+export interface RestoreReport {
+  hasConflicts: boolean;
+  shortcutCollision?: boolean;
+  resolvedShortcut?: string;
+  conflicts: RestoreConflict[];
+  autoResolved?: string[];
+}
+
+export interface RestoreData {
   versionNumber: number;
-  report: Record<string, unknown>;
+  report: RestoreReport;
   skipPreSnapshot: boolean;
 }
 
@@ -44,16 +64,20 @@ export function useVersionHistory() {
 
   // Server push event handlers
   onMounted(() => {
-    live.handleEvent("show_unsaved_modal", ({ versionNumber }: { versionNumber: number }) => {
+    live.handleEvent("show_unsaved_modal", (payload) => {
       loadingAction.value = null;
-      unsavedVersionNumber.value = versionNumber;
+      unsavedVersionNumber.value = payload.versionNumber as number;
       showUnsavedModal.value = true;
     });
 
-    live.handleEvent("show_restore_modal", ({ versionNumber, report, skipPreSnapshot }: { versionNumber: number; report: Record<string, unknown>; skipPreSnapshot: boolean }) => {
+    live.handleEvent("show_restore_modal", (payload) => {
       loadingAction.value = null;
       showUnsavedModal.value = false;
-      restoreData.value = { versionNumber, report, skipPreSnapshot };
+      restoreData.value = {
+        versionNumber: payload.versionNumber as number,
+        report: payload.report as RestoreReport,
+        skipPreSnapshot: payload.skipPreSnapshot as boolean,
+      };
       showRestoreModal.value = true;
     });
 

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { AlertTriangle, CircleX, Download, Info, ShieldCheck } from "lucide-vue-next";
 import { computed } from "vue";
 import { Badge } from "@components/ui/badge/index.ts";
@@ -8,13 +8,47 @@ import { Label } from "@components/ui/label/index.ts";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group/index.ts";
 import { useLive } from "@composables/useLive";
 
-const { formatConfig, sectionConfig, options, validation, exportDownloadUrl } = defineProps({
-  formatConfig: { type: Object, required: true },
-  sectionConfig: { type: Object, required: true },
-  options: { type: Object, required: true },
-  validation: { type: Object, default: null },
-  exportDownloadUrl: { type: String, required: true },
-});
+interface FormatOption {
+  format: string;
+  label: string;
+}
+
+interface FormatConfig {
+  selected: string;
+  formats: FormatOption[];
+  extension: string;
+}
+
+interface SectionConfig {
+  selected: string[];
+  supported: string[];
+  entityCounts: Record<string, number>;
+}
+
+interface ExportOptions {
+  assetMode: string;
+  validateBeforeExport: boolean;
+  prettyPrint: boolean;
+}
+
+interface ValidationFinding {
+  message: string;
+}
+
+interface ValidationResult {
+  status: string;
+  errors?: ValidationFinding[];
+  warnings?: ValidationFinding[];
+  info?: ValidationFinding[];
+}
+
+const { formatConfig, sectionConfig, options, validation = null, exportDownloadUrl } = defineProps<{
+  formatConfig: FormatConfig;
+  sectionConfig: SectionConfig;
+  options: ExportOptions;
+  validation?: ValidationResult | null;
+  exportDownloadUrl: string;
+}>();
 
 const live = useLive();
 
@@ -35,19 +69,19 @@ const assetModeOptions = [
 const sectionsSet = computed(() => new Set(sectionConfig.selected));
 const supportedSet = computed(() => new Set(sectionConfig.supported));
 
-function setFormat(format) {
+function setFormat(format: string) {
   live.pushEvent("set_format", { format });
 }
 
-function toggleSection(section) {
+function toggleSection(section: string) {
   live.pushEvent("toggle_section", { section });
 }
 
-function setAssetMode(mode) {
+function setAssetMode(mode: string) {
   live.pushEvent("set_asset_mode", { mode });
 }
 
-function toggleOption(option) {
+function toggleOption(option: string) {
   live.pushEvent("toggle_option", { option });
 }
 
@@ -55,12 +89,12 @@ function validateExport() {
   live.pushEvent("validate_export", {});
 }
 
-function validationStatusLabel(status) {
+function validationStatusLabel(status: string) {
   const labels = { passed: "Passed", warnings: "Warnings", errors: "Errors" };
   return labels[status] || status;
 }
 
-function validationBadgeVariant(status) {
+function validationBadgeVariant(status: string) {
   if (status === "passed") return "default";
   if (status === "warnings") return "secondary";
   if (status === "errors") return "destructive";

@@ -1,34 +1,25 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
 
-const { modelValue, presets, disabled } = defineProps({
-  modelValue: { type: String, default: "#8b5cf6" },
-  presets: {
-    type: Array,
-    default: () => [
-      "#ef4444",
-      "#f97316",
-      "#f59e0b",
-      "#eab308",
-      "#84cc16",
-      "#22c55e",
-      "#14b8a6",
-      "#06b6d4",
-      "#3b82f6",
-      "#6366f1",
-      "#8b5cf6",
-      "#a855f7",
-      "#d946ef",
-      "#ec4899",
-      "#f43f5e",
-      "#6b7280",
-    ],
-  },
-  disabled: { type: Boolean, default: false },
-});
+const {
+  modelValue = "#8b5cf6",
+  presets = [
+    "#ef4444", "#f97316", "#f59e0b", "#eab308",
+    "#84cc16", "#22c55e", "#14b8a6", "#06b6d4",
+    "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7",
+    "#d946ef", "#ec4899", "#f43f5e", "#6b7280",
+  ],
+  disabled = false,
+} = defineProps<{
+  modelValue?: string;
+  presets?: string[];
+  disabled?: boolean;
+}>();
 
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits<{
+  "update:modelValue": [color: string];
+}>();
 
 const open = ref(false);
 
@@ -67,7 +58,7 @@ function selectColor(color) {
           type="color"
           :value="modelValue"
           class="size-7 cursor-pointer rounded border-0 p-0"
-          @input="(e) => selectColor(e.target.value)"
+          @input="(e: Event) => selectColor((e.target as HTMLInputElement).value)"
         />
         <span class="text-xs text-muted-foreground font-mono">{{ modelValue }}</span>
       </div>

@@ -1,8 +1,9 @@
-<script setup>
+<script setup lang="ts">
+import type { Component } from "vue";
 import { Calendar, Hash, List, ToggleLeft, Type } from "lucide-vue-next";
 import { ref, watch } from "vue";
 
-const TYPE_ICONS = {
+const TYPE_ICONS: Record<string, Component> = {
   number: Hash,
   text: Type,
   rich_text: Type,
@@ -12,10 +13,18 @@ const TYPE_ICONS = {
   date: Calendar,
 };
 
-const { items, command } = defineProps({
-  items: { type: Array, default: () => [] },
-  command: { type: Function, required: true },
-});
+interface VariableItem {
+  id?: string | number;
+  ref?: string;
+  label?: string;
+  block_type: string;
+  sheet_name?: string;
+}
+
+const { items = [], command } = defineProps<{
+  items?: VariableItem[];
+  command: (item: VariableItem) => void;
+}>();
 
 const selectedIndex = ref(0);
 

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import {
   File,
   GitBranch,
@@ -17,32 +17,54 @@ import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { useLive } from "@composables/useLive";
 
+interface Asset {
+  id: number;
+  filename: string;
+  url: string;
+  contentType: string;
+  size: number;
+  insertedAt: string;
+}
+
+interface FlowNodeUsage {
+  flowId: number;
+  flowName: string;
+}
+
+interface SheetUsage {
+  id: number;
+  name: string;
+}
+
+interface AssetUsages {
+  flowNodes: FlowNodeUsage[];
+  sheetAvatars: SheetUsage[];
+  sheetBanners: SheetUsage[];
+}
+
 const {
-  assets,
-  filter,
-  search,
-  typeCounts,
-  selectedAsset,
-  assetUsages,
-  uploading,
-  canEdit,
+  assets = [],
+  filter = "all",
+  search = "",
+  typeCounts = {},
+  selectedAsset = null,
+  assetUsages = { flowNodes: [], sheetAvatars: [], sheetBanners: [] },
+  uploading = false,
+  canEdit = false,
   workspaceSlug,
   projectSlug,
-} = defineProps({
-  assets: { type: Array, default: () => [] },
-  filter: { type: String, default: "all" },
-  search: { type: String, default: "" },
-  typeCounts: { type: Object, default: () => ({}) },
-  selectedAsset: { type: Object, default: null },
-  assetUsages: {
-    type: Object,
-    default: () => ({ flowNodes: [], sheetAvatars: [], sheetBanners: [] }),
-  },
-  uploading: { type: Boolean, default: false },
-  canEdit: { type: Boolean, default: false },
-  workspaceSlug: { type: String, required: true },
-  projectSlug: { type: String, required: true },
-});
+} = defineProps<{
+  assets?: Asset[];
+  filter?: string;
+  search?: string;
+  typeCounts?: Record<string, number>;
+  selectedAsset?: Asset | null;
+  assetUsages?: AssetUsages;
+  uploading?: boolean;
+  canEdit?: boolean;
+  workspaceSlug: string;
+  projectSlug: string;
+}>();
 
 const live = useLive();
 const searchValue = ref(search);

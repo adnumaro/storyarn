@@ -1,28 +1,27 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { Check } from "lucide-vue-next";
-import { CheckboxIndicator, CheckboxRoot, useForwardPropsEmits } from "reka-ui";
+import { CheckboxIndicator, CheckboxRoot, useForwardPropsEmits, type AsTag } from "reka-ui";
 import { cn } from "@utils/utils";
 
-const props = defineProps({
-  defaultValue: { type: null, required: false },
-  modelValue: { type: null, required: false },
-  disabled: { type: Boolean, required: false },
-  value: { type: null, required: false },
-  id: { type: String, required: false },
-  trueValue: { type: null, required: false },
-  falseValue: { type: null, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  name: { type: String, required: false },
-  required: { type: Boolean, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-});
-const emits = defineEmits(["update:modelValue"]);
+const props = defineProps<{
+  defaultValue?: boolean | "indeterminate";
+  modelValue?: boolean | "indeterminate";
+  disabled?: boolean;
+  value?: string;
+  id?: string;
+  trueValue?: string;
+  falseValue?: string;
+  asChild?: boolean;
+  as?: AsTag | Component;
+  name?: string;
+  required?: boolean;
+  class?: HTMLAttributes["class"];
+}>();
+const emits = defineEmits<{
+  "update:modelValue": [value: boolean | "indeterminate"];
+}>();
 
 const delegatedProps = reactiveOmit(props, "class");
 

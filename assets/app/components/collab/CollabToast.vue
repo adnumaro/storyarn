@@ -1,10 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { onMounted, onUnmounted, ref } from "vue";
 import { useLive } from "@composables/useLive";
 
-const { actionLabels } = defineProps({
-  actionLabels: { type: Object, default: () => ({}) },
-});
+const { actionLabels = {} } = defineProps<{
+  actionLabels?: Record<string, string>;
+}>();
 
 const live = useLive();
 const toast = ref(null);

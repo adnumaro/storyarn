@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import {
   Bookmark,
   BookmarkPlus,
@@ -14,7 +14,7 @@ import {
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { useLive } from "@composables/useLive";
-import { useVersionHistory } from "./useVersionHistory";
+import { useVersionHistory, type VersionEntry } from "./useVersionHistory";
 import {
   CreateVersionDialog,
   PromoteVersionDialog,
@@ -23,25 +23,27 @@ import {
   RestorePreviewDialog,
 } from "./index.ts";
 
+type Version = VersionEntry;
+
 const {
-  versions,
-  namedVersions,
-  autoVersions,
-  hasMore,
-  canNameVersion,
-  currentVersionId,
-  canEdit,
-  loading,
-} = defineProps({
-  versions: { type: Array, default: () => [] },
-  namedVersions: { type: Array, default: () => [] },
-  autoVersions: { type: Array, default: () => [] },
-  hasMore: { type: Boolean, default: false },
-  canNameVersion: { type: Boolean, default: false },
-  currentVersionId: { type: Number, default: null },
-  canEdit: { type: Boolean, default: false },
-  loading: { type: Boolean, default: false },
-});
+  versions = [],
+  namedVersions = [],
+  autoVersions = [],
+  hasMore = false,
+  canNameVersion = false,
+  currentVersionId = null,
+  canEdit = false,
+  loading = false,
+} = defineProps<{
+  versions?: Version[];
+  namedVersions?: Version[];
+  autoVersions?: Version[];
+  hasMore?: boolean;
+  canNameVersion?: boolean;
+  currentVersionId?: number | null;
+  canEdit?: boolean;
+  loading?: boolean;
+}>();
 
 const live = useLive();
 const h = useVersionHistory();

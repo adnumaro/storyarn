@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { LayoutDashboard, User } from "lucide-vue-next";
 import { computed } from "vue";
 import {
@@ -11,11 +11,29 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
 import UserAvatar from "./UserAvatar.vue";
 
-const { currentUser, onlineUsers, urls } = defineProps({
-  currentUser: { type: Object, required: true },
-  onlineUsers: { type: Array, default: () => [] },
-  urls: { type: Object, required: true },
-});
+interface CurrentUser {
+  id: number;
+  email: string;
+  displayName?: string;
+}
+
+interface OnlineUser {
+  userId: number;
+  email: string;
+  displayName?: string;
+  color?: string;
+}
+
+interface RightToolbarUrls {
+  accountSettings: string;
+  workspaces: string;
+}
+
+const { currentUser, onlineUsers = [], urls } = defineProps<{
+  currentUser: CurrentUser;
+  onlineUsers?: OnlineUser[];
+  urls: RightToolbarUrls;
+}>();
 
 const otherUsers = computed(() =>
   onlineUsers.filter((u) => u.userId !== currentUser.id).slice(0, 5),

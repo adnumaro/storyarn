@@ -1,14 +1,16 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { COLOR_SWATCHES } from "./color-swatches";
 
-const { color, disabled } = defineProps({
-  color: { type: String, default: "#fbbf24" },
-  disabled: { type: Boolean, default: false },
-});
+const { color = "#fbbf24", disabled = false } = defineProps<{
+  color?: string;
+  disabled?: boolean;
+}>();
 
-const emit = defineEmits(["update:color"]);
+const emit = defineEmits<{
+  "update:color": [color: string];
+}>();
 const open = ref(false);
 
 function selectColor(c) {

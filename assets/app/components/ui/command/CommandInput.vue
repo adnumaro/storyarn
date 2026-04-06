@@ -1,7 +1,8 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { Search } from "lucide-vue-next";
-import { ListboxFilter, useForwardProps } from "reka-ui";
+import { ListboxFilter, useForwardProps, type AsTag } from "reka-ui";
 import { cn } from "@utils/utils";
 import { useCommand } from ".";
 
@@ -9,18 +10,14 @@ defineOptions({
   inheritAttrs: false,
 });
 
-const props = defineProps({
-  modelValue: { type: String, required: false },
-  autoFocus: { type: Boolean, required: false },
-  disabled: { type: Boolean, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-});
+const props = defineProps<{
+  modelValue?: string;
+  autoFocus?: boolean;
+  disabled?: boolean;
+  asChild?: boolean;
+  as?: AsTag | Component;
+  class?: HTMLAttributes["class"];
+}>();
 
 const delegatedProps = reactiveOmit(props, "class");
 

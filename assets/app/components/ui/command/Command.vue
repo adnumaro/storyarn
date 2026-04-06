@@ -1,39 +1,41 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { ListboxRoot, useFilter, useForwardPropsEmits } from "reka-ui";
+import { ListboxRoot, useFilter, useForwardPropsEmits, type AsTag } from "reka-ui";
 import { reactive, ref, watch } from "vue";
 import { cn } from "@utils/utils";
 import { provideCommandContext } from ".";
 
-const props = defineProps({
-  modelValue: { type: null, required: false, default: "" },
-  defaultValue: { type: null, required: false },
-  multiple: { type: Boolean, required: false },
-  orientation: { type: String, required: false },
-  dir: { type: String, required: false },
-  disabled: { type: Boolean, required: false },
-  selectionBehavior: { type: String, required: false },
-  highlightOnHover: { type: Boolean, required: false },
-  by: { type: [String, Function], required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  name: { type: String, required: false },
-  required: { type: Boolean, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-});
+const props = defineProps<{
+  modelValue?: string | string[];
+  defaultValue?: string | string[];
+  multiple?: boolean;
+  orientation?: "horizontal" | "vertical";
+  dir?: "ltr" | "rtl";
+  disabled?: boolean;
+  selectionBehavior?: "toggle" | "replace";
+  highlightOnHover?: boolean;
+  by?: string | ((a: string, b: string) => boolean);
+  asChild?: boolean;
+  as?: AsTag | Component;
+  name?: string;
+  required?: boolean;
+  class?: HTMLAttributes["class"];
+}>();
 
-const emits = defineEmits(["update:modelValue", "highlight", "entryFocus", "leave"]);
+const emits = defineEmits<{
+  "update:modelValue": [value: string | string[]];
+  highlight: [event: Event];
+  entryFocus: [event: Event];
+  leave: [event: Event];
+}>();
 
 const delegatedProps = reactiveOmit(props, "class");
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits);
 
-const allItems = ref(new Map());
-const allGroups = ref(new Map());
+const allItems = ref(new Map<string, string>());
+const allGroups = ref(new Map<string, Set<string>>());
 
 const { contains } = useFilter({ sensitivity: "base" });
 const filterState = reactive({
@@ -42,9 +44,9 @@ const filterState = reactive({
     /** The count of all visible items. */
     count: 0,
     /** Map from visible item id to its search score. */
-    items: new Map(),
+    items: new Map<string, number>(),
     /** Set of groups with at least one visible item. */
-    groups: new Set(),
+    groups: new Set<string>(),
   },
 });
 

@@ -1,12 +1,14 @@
-<script setup>
+<script setup lang="ts">
 import { ContextMenuRoot, useForwardPropsEmits } from "reka-ui";
 
-const props = defineProps({
-  pressOpenDelay: { type: Number, required: false },
-  dir: { type: String, required: false },
-  modal: { type: Boolean, required: false },
-});
-const emits = defineEmits(["update:open"]);
+const props = defineProps<{
+  pressOpenDelay?: number;
+  dir?: "ltr" | "rtl";
+  modal?: boolean;
+}>();
+const emits = defineEmits<{
+  "update:open": [value: boolean];
+}>();
 
 const forwarded = useForwardPropsEmits(props, emits);
 </script>

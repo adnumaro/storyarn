@@ -1,18 +1,15 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { ContextMenuLabel } from "reka-ui";
+import { ContextMenuLabel, type AsTag } from "reka-ui";
 import { cn } from "@utils/utils";
 
-const props = defineProps({
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-  inset: { type: Boolean, required: false },
-});
+const props = defineProps<{
+  asChild?: boolean;
+  as?: AsTag | Component;
+  class?: HTMLAttributes["class"];
+  inset?: boolean;
+}>();
 
 const delegatedProps = reactiveOmit(props, "class");
 </script>

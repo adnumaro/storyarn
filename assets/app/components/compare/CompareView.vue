@@ -1,16 +1,16 @@
-<script setup>
+<script setup lang="ts">
 import { ArrowLeft, ChevronLeft, ChevronRight, Columns2 } from "lucide-vue-next";
 import { Button } from "@components/ui/button";
 
-const { backUrl, versionLabel, prevVersionUrl, nextVersionUrl, currentUrl, versionUrl } =
-  defineProps({
-    backUrl: { type: String, required: true },
-    versionLabel: { type: String, default: "" },
-    prevVersionUrl: { type: String, default: null },
-    nextVersionUrl: { type: String, default: null },
-    currentUrl: { type: String, default: "" },
-    versionUrl: { type: String, default: "" },
-  });
+const { backUrl, versionLabel = "", prevVersionUrl = null, nextVersionUrl = null, currentUrl = "", versionUrl = "" } =
+  defineProps<{
+    backUrl: string;
+    versionLabel?: string;
+    prevVersionUrl?: string | null;
+    nextVersionUrl?: string | null;
+    currentUrl?: string;
+    versionUrl?: string;
+  }>();
 </script>
 
 <template>

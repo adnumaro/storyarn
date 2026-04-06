@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from "vue";
 
 // Define the hardcoded steps mimicking the original HEEx layout
@@ -30,13 +30,13 @@ const steps = [
   <section class="lp-auto-section scroll-mt-32 py-16 lg:py-20">
     <div class="mx-auto w-[min(calc(100%-48px),1280px)]">
       <!-- Section header -->
-      <div class="mb-8 grid max-w-[56rem] gap-4">
+      <div class="mb-8 grid max-w-4xl gap-4">
         <h2
           class="text-[clamp(2.2rem,3vw,3.8rem)] font-bold leading-[0.97] tracking-[-0.06em] text-foreground"
         >
           Del worldbuilding al juego publicado
         </h2>
-        <p class="max-w-[36rem] text-base leading-relaxed text-muted-foreground">
+        <p class="max-w-xl text-base leading-relaxed text-muted-foreground">
           Un flujo de trabajo conectado desde la preproducción hasta la exportación — sin necesidad
           de módulos o herramientas desconectadas.
         </p>

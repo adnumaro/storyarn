@@ -1,27 +1,26 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { Toggle, useForwardPropsEmits } from "reka-ui";
+import { Toggle, useForwardPropsEmits, type AsTag } from "reka-ui";
 import { cn } from "@utils/utils";
 import { toggleVariants } from ".";
 
-const props = defineProps({
-  defaultValue: { type: Boolean, required: false },
-  modelValue: { type: [Boolean, null], required: false },
-  disabled: { type: Boolean, required: false, default: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  name: { type: String, required: false },
-  required: { type: Boolean, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-  variant: { type: null, required: false, default: "default" },
-  size: { type: null, required: false, default: "default" },
-});
+const props = defineProps<{
+  defaultValue?: boolean;
+  modelValue?: boolean | null;
+  disabled?: boolean;
+  asChild?: boolean;
+  as?: AsTag | Component;
+  name?: string;
+  required?: boolean;
+  class?: HTMLAttributes["class"];
+  variant?: "default" | "outline";
+  size?: "default" | "sm" | "lg";
+}>();
 
-const emits = defineEmits(["update:modelValue"]);
+const emits = defineEmits<{
+  "update:modelValue": [value: boolean];
+}>();
 
 const delegatedProps = reactiveOmit(props, "class", "size", "variant");
 const forwarded = useForwardPropsEmits(delegatedProps, emits);

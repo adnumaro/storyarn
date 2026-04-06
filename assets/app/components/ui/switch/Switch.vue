@@ -1,28 +1,27 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { SwitchRoot, SwitchThumb, useForwardPropsEmits } from "reka-ui";
+import { SwitchRoot, SwitchThumb, useForwardPropsEmits, type AsTag } from "reka-ui";
 import { cn } from "@utils/utils";
 
-const props = defineProps({
-  defaultValue: { type: null, required: false },
-  modelValue: { type: null, required: false },
-  disabled: { type: Boolean, required: false },
-  id: { type: String, required: false },
-  value: { type: String, required: false },
-  trueValue: { type: null, required: false },
-  falseValue: { type: null, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  name: { type: String, required: false },
-  required: { type: Boolean, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-});
+const props = defineProps<{
+  defaultValue?: boolean;
+  modelValue?: boolean;
+  disabled?: boolean;
+  id?: string;
+  value?: string;
+  trueValue?: string;
+  falseValue?: string;
+  asChild?: boolean;
+  as?: AsTag | Component;
+  name?: string;
+  required?: boolean;
+  class?: HTMLAttributes["class"];
+}>();
 
-const emits = defineEmits(["update:modelValue"]);
+const emits = defineEmits<{
+  "update:modelValue": [value: boolean];
+}>();
 
 const delegatedProps = reactiveOmit(props, "class");
 

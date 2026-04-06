@@ -1,16 +1,19 @@
-<script setup>
+<script setup lang="ts">
 import { nextTick, ref, watch } from "vue";
 
-const { modelValue, placeholder, tag, inputClass, displayClass, disabled } = defineProps({
-  modelValue: { type: String, default: "" },
-  placeholder: { type: String, default: "Untitled" },
-  tag: { type: String, default: "span" },
-  inputClass: { type: String, default: "" },
-  displayClass: { type: String, default: "" },
-  disabled: { type: Boolean, default: false },
-});
+const { modelValue = "", placeholder = "Untitled", tag = "span", inputClass = "", displayClass = "", disabled = false } = defineProps<{
+  modelValue?: string;
+  placeholder?: string;
+  tag?: string;
+  inputClass?: string;
+  displayClass?: string;
+  disabled?: boolean;
+}>();
 
-const emit = defineEmits(["update:modelValue", "save"]);
+const emit = defineEmits<{
+  "update:modelValue": [value: string];
+  save: [value: string];
+}>();
 
 const editing = ref(false);
 const inputEl = ref(null);

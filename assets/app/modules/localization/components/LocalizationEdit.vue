@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ArrowLeft, Sparkles } from "lucide-vue-next";
 import { ref } from "vue";
 import { Badge } from "@components/ui/badge";
@@ -14,13 +14,36 @@ import {
 import { Textarea } from "@components/ui/textarea";
 import { useLive } from "@composables/useLive";
 
-const { text, form, hasProvider, canEdit, backUrl } = defineProps({
-  text: { type: Object, required: true },
-  form: { type: Object, required: true },
-  hasProvider: { type: Boolean, default: false },
-  canEdit: { type: Boolean, default: false },
-  backUrl: { type: String, required: true },
-});
+interface LocalizedText {
+  source_type: string;
+  source_field: string;
+  source_text: string;
+  translated_text?: string;
+  status?: string;
+  translator_notes?: string;
+  locale_code: string;
+  word_count?: number;
+  machine_translated?: boolean;
+  last_translated_at?: string;
+}
+
+interface TranslationFormParams {
+  translated_text?: string;
+  status?: string;
+  translator_notes?: string;
+}
+
+interface TranslationForm {
+  params?: TranslationFormParams;
+}
+
+const { text, form, hasProvider = false, canEdit = false, backUrl } = defineProps<{
+  text: LocalizedText;
+  form: TranslationForm;
+  hasProvider?: boolean;
+  canEdit?: boolean;
+  backUrl: string;
+}>();
 
 const live = useLive();
 
@@ -64,12 +87,12 @@ function translateWithDeepL() {
 
 // Update local state when server pushes new text data
 live.handleEvent("text_updated", (payload) => {
-  if (payload.translated_text !== undefined) translatedText.value = payload.translated_text;
-  if (payload.status !== undefined) status.value = payload.status;
-  if (payload.translator_notes !== undefined) translatorNotes.value = payload.translator_notes;
+  if (payload.translated_text !== undefined) translatedText.value = payload.translated_text as string;
+  if (payload.status !== undefined) status.value = payload.status as string;
+  if (payload.translator_notes !== undefined) translatorNotes.value = payload.translator_notes as string;
 });
 
-function formatDateTime(datetime) {
+function formatDateTime(datetime: string | undefined) {
   if (!datetime) return "";
   const d = new Date(datetime);
   return d.toISOString().slice(0, 16).replace("T", " ");

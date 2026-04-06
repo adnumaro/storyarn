@@ -1,38 +1,68 @@
-<script setup>
+<script setup lang="ts">
 import { FolderOpen, Plus, Search, Settings, Menu } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog/index.ts";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
+import type { Form } from "live_vue";
 import NewProjectForm from "./projects/New.vue";
 import { useLive } from "@composables/useLive";
 import { formatRelativeTime } from "@utils/date-utils";
 
+interface Workspace {
+  name: string;
+  description?: string;
+  banner_url?: string;
+}
+
+interface Membership {
+  role: string;
+}
+
+interface Project {
+  id: number;
+  name: string;
+  description?: string;
+  inserted_at_formatted: string;
+  updated_at: string;
+}
+
+interface ProjectData {
+  project: Project;
+  href: string;
+}
+
+interface NewProjectFormValues {
+  name: string;
+  description: string;
+}
+
 const {
   workspace,
   membership,
-  projects,
-  searchQuery,
-  canCreateProject,
-  newProjectForm,
-  settingsUrl,
-} = defineProps({
-  workspace: { type: Object, required: true },
-  membership: { type: Object, required: true },
-  projects: { type: Array, default: () => [] },
-  searchQuery: { type: String, default: "" },
-  canCreateProject: { type: Boolean, default: false },
-  newProjectForm: { type: Object, default: null },
-  settingsUrl: { type: String, default: null },
-});
+  projects = [],
+  searchQuery = "",
+  canCreateProject = false,
+  newProjectForm = null,
+  settingsUrl = null,
+} = defineProps<{
+  workspace: Workspace;
+  membership: Membership;
+  projects?: ProjectData[];
+  searchQuery?: string;
+  canCreateProject?: boolean;
+  newProjectForm?: Form<NewProjectFormValues> | null;
+  settingsUrl?: string | null;
+}>();
 
 const live = useLive();
 
 const localSearch = ref(searchQuery);
 
-function onSearch(e) {
-  localSearch.value = e.target.value;
-  live.pushEvent("search", { search: e.target.value });
+function onSearch(e: Event) {
+  const value = (e.target as HTMLInputElement).value;
+  localSearch.value = value;
+  live.pushEvent("search", { search: value });
 }
 
 const canManage = computed(() => ["owner", "admin"].includes(membership.role));

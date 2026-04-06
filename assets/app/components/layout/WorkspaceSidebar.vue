@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { LayoutDashboard, User, Briefcase, LogOut } from "lucide-vue-next";
 import { computed } from "vue";
 import {
@@ -13,12 +13,30 @@ import { useI18n } from "vue-i18n";
 
 const { t } = useI18n();
 
-const { currentUser, urls, workspaces, currentWorkspaceSlug } = defineProps({
-  currentUser: { type: Object, required: true },
-  urls: { type: Object, required: true },
-  workspaces: { type: Array, default: () => [] },
-  currentWorkspaceSlug: { type: String, required: true },
-});
+interface WorkspaceSidebarUser {
+  email: string;
+  displayName?: string;
+}
+
+interface WorkspaceSidebarUrls {
+  accountSettings: string;
+  workspaces: string;
+  logout: string;
+}
+
+interface WorkspaceItem {
+  id: number;
+  slug: string;
+  name: string;
+  href: string;
+}
+
+const { currentUser, urls, workspaces = [], currentWorkspaceSlug } = defineProps<{
+  currentUser: WorkspaceSidebarUser;
+  urls: WorkspaceSidebarUrls;
+  workspaces?: WorkspaceItem[];
+  currentWorkspaceSlug: string;
+}>();
 
 const displayName = computed(
   () => currentUser.displayName || currentUser.email?.split("@")[0] || "",

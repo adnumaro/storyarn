@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from "vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Progress } from "@components/ui/progress/index.ts";
@@ -6,19 +6,29 @@ import { Separator } from "@components/ui/separator/index.ts";
 import { Switch } from "@components/ui/switch/index.ts";
 import { useLive } from "@composables/useLive";
 
+interface UsageBucket {
+  used: number;
+  limit: number | null;
+}
+
+interface VersionUsage {
+  projectSnapshots: UsageBucket;
+  namedVersions: UsageBucket;
+}
+
 const {
-  autoSnapshotsEnabled,
-  autoVersionFlows,
-  autoVersionScenes,
-  autoVersionSheets,
-  versionUsage,
-} = defineProps({
-  autoSnapshotsEnabled: { type: Boolean, default: false },
-  autoVersionFlows: { type: Boolean, default: false },
-  autoVersionScenes: { type: Boolean, default: false },
-  autoVersionSheets: { type: Boolean, default: false },
-  versionUsage: { type: Object, default: null },
-});
+  autoSnapshotsEnabled = false,
+  autoVersionFlows = false,
+  autoVersionScenes = false,
+  autoVersionSheets = false,
+  versionUsage = null,
+} = defineProps<{
+  autoSnapshotsEnabled?: boolean;
+  autoVersionFlows?: boolean;
+  autoVersionScenes?: boolean;
+  autoVersionSheets?: boolean;
+  versionUsage?: VersionUsage | null;
+}>();
 
 const live = useLive();
 
@@ -63,7 +73,7 @@ function saveVersionControl() {
   });
 }
 
-function usagePct(used, limit) {
+function usagePct(used: number, limit: number | null) {
   if (!limit || limit <= 0) return 0;
   return Math.min(Math.round((used / limit) * 100), 100);
 }

@@ -1,25 +1,28 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { ToggleGroupItem, useForwardProps } from "reka-ui";
+import { ToggleGroupItem, useForwardProps, type AsTag } from "reka-ui";
 import { inject } from "vue";
 import { toggleVariants } from "@components/ui/toggle";
 import { cn } from "@utils/utils";
 
-const props = defineProps({
-  value: { type: null, required: true },
-  disabled: { type: Boolean, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-  variant: { type: null, required: false },
-  size: { type: null, required: false },
-});
+interface ToggleGroupContext {
+  variant?: "default" | "outline";
+  size?: "default" | "sm" | "lg";
+  spacing?: number;
+}
 
-const context = inject("toggleGroup");
+const props = defineProps<{
+  value: string;
+  disabled?: boolean;
+  asChild?: boolean;
+  as?: AsTag | Component;
+  class?: HTMLAttributes["class"];
+  variant?: "default" | "outline";
+  size?: "default" | "sm" | "lg";
+}>();
+
+const context = inject<ToggleGroupContext>("toggleGroup");
 
 const delegatedProps = reactiveOmit(props, "class", "size", "variant");
 const forwardedProps = useForwardProps(delegatedProps);

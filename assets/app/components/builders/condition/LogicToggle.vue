@@ -1,15 +1,17 @@
-<script setup>
+<script setup lang="ts">
 /**
  * AND/OR logic toggle: "Match [all|any] of the {label}"
  */
 
-const { logic, ofLabel, disabled } = defineProps({
-  logic: { type: String, default: "all" },
-  ofLabel: { type: String, default: "of the rules" },
-  disabled: { type: Boolean, default: false },
-});
+const { logic = "all", ofLabel = "of the rules", disabled = false } = defineProps<{
+  logic?: "all" | "any";
+  ofLabel?: string;
+  disabled?: boolean;
+}>();
 
-const emit = defineEmits(["update:logic"]);
+const emit = defineEmits<{
+  "update:logic": [logic: "all" | "any"];
+}>();
 </script>
 
 <template>

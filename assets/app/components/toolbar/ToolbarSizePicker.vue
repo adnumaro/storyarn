@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 
@@ -6,14 +6,16 @@ const SIZE_OPTIONS = [
   { value: "sm", label: "S" },
   { value: "md", label: "M" },
   { value: "lg", label: "L" },
-];
+] as const;
 
-const { size, disabled } = defineProps({
-  size: { type: String, default: "md" },
-  disabled: { type: Boolean, default: false },
-});
+const { size = "md", disabled = false } = defineProps<{
+  size?: string;
+  disabled?: boolean;
+}>();
 
-const emit = defineEmits(["update:size"]);
+const emit = defineEmits<{
+  "update:size": [size: string];
+}>();
 const open = ref(false);
 
 function selectSize(s) {

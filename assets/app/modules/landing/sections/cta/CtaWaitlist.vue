@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { useLiveVue } from "live_vue";
 import { ArrowRight } from "lucide-vue-next";
 import { ref } from "vue";
@@ -6,9 +6,9 @@ import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { useRevealOnScroll } from "../../composables/useRevealOnScroll";
 
-const { translations } = defineProps({
-  translations: { type: Object, default: () => ({}) },
-});
+const { translations = {} } = defineProps<{
+  translations?: Record<string, string>;
+}>();
 
 const live = useLiveVue();
 const email = ref("");

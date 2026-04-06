@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * Tabbed expression editor: Builder | Code.
  *
@@ -9,21 +9,22 @@
 import { ref } from "vue";
 import ConditionBuilder from "./builders/ConditionBuilder.vue";
 import InstructionBuilder from "./builders/InstructionBuilder.vue";
+import type { Variable } from "@modules/shared/variables";
+import type { ConditionData, Assignment } from "./builders/types";
 
-const { mode, condition, assignments, variables, disabled, switchMode } = defineProps({
-  mode: {
-    type: String,
-    required: true,
-    validator: (v) => ["condition", "instruction"].includes(v),
-  },
-  condition: { type: [Object, null], default: null },
-  assignments: { type: Array, default: () => [] },
-  variables: { type: Array, default: () => [] },
-  disabled: { type: Boolean, default: false },
-  switchMode: { type: Boolean, default: false },
-});
+const { mode, condition = null, assignments = [], variables = [], disabled = false, switchMode = false } = defineProps<{
+  mode: "condition" | "instruction";
+  condition?: ConditionData | null;
+  assignments?: Assignment[];
+  variables?: Variable[];
+  disabled?: boolean;
+  switchMode?: boolean;
+}>();
 
-const emit = defineEmits(["update:condition", "update:assignments"]);
+const emit = defineEmits<{
+  "update:condition": [condition: ConditionData];
+  "update:assignments": [assignments: Assignment[]];
+}>();
 
 const activeTab = ref("builder");
 </script>

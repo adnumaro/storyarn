@@ -1,27 +1,36 @@
-<script setup>
-import { useLiveForm } from "live_vue";
+<script setup lang="ts">
+import { useLiveForm, type Form, type FormField } from "live_vue";
 import { computed, ref, watch } from "vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
 import { Textarea } from "@components/ui/textarea/index.ts";
 
+interface ProjectFormValues {
+  name: string;
+  description: string;
+}
+
+type ProjectForm = Form<ProjectFormValues> & { action?: string };
+
 const {
   form: formProp,
-  title,
-  submitLabel,
-} = defineProps({
-  form: { type: Object, required: true },
-  title: { type: String, default: null },
-  submitLabel: { type: String, default: null },
-});
+  title = null,
+  submitLabel = null,
+} = defineProps<{
+  form: ProjectForm;
+  title?: string | null;
+  submitLabel?: string | null;
+}>();
 
-const emit = defineEmits(["cancel"]);
+const emit = defineEmits<{
+  cancel: [];
+}>();
 
 const form = useLiveForm(() => formProp, {
   changeEvent: "validate_project",
   submitEvent: "create_project",
-  debounceInMilliseconds: 300,
+  debounceInMiliseconds: 300,
 });
 
 const name = form.field("name");
@@ -39,10 +48,10 @@ const showDescriptionError = computed(() => {
   );
 });
 
-function updateField(field, val) {
-  field.value = val;
+function updateField(field: FormField<string>, val: string | number) {
+  (field as unknown as { value: string }).value = String(val);
   if (field.inputAttrs?.value?.onInput) {
-    field.inputAttrs.value.onInput({ target: { value: val } });
+    field.inputAttrs.value.onInput({ target: { value: String(val) } } as unknown as Event);
   }
 }
 </script>
@@ -56,7 +65,7 @@ function updateField(field, val) {
       <Input
         id="project-name"
         name="project[name]"
-        :model-value="name.value"
+        :model-value="(name.value as unknown as string)"
         @update:model-value="(v) => updateField(name, v)"
         :placeholder="$t('workspace.new_project.fields.name.placeholder')"
         required
@@ -75,7 +84,7 @@ function updateField(field, val) {
       <Textarea
         id="project-description"
         name="project[description]"
-        :model-value="description.value"
+        :model-value="(description.value as unknown as string)"
         @update:model-value="(v) => updateField(description, v)"
         :placeholder="$t('workspace.new_project.fields.description.placeholder')"
         :rows="4"

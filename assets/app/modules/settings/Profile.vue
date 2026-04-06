@@ -1,5 +1,5 @@
-<script setup>
-import { useLiveForm } from "live_vue";
+<script setup lang="ts">
+import { useLiveForm, type Form } from "live_vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
@@ -12,26 +12,35 @@ import {
 } from "@components/ui/select/index.ts";
 import { Separator } from "@components/ui/separator/index.ts";
 
+interface ProfileFormValues {
+  display_name: string;
+  locale: string;
+}
+
+interface EmailFormValues {
+  email: string;
+}
+
 const {
   profileForm: profileFormProp,
   emailForm: emailFormProp,
   currentEmail,
-} = defineProps({
-  profileForm: { type: Object, required: true },
-  emailForm: { type: Object, required: true },
-  currentEmail: { type: String, required: true },
-});
+} = defineProps<{
+  profileForm: Form<ProfileFormValues>;
+  emailForm: Form<EmailFormValues>;
+  currentEmail: string;
+}>();
 
 const profileForm = useLiveForm(() => profileFormProp, {
   changeEvent: "validate_profile",
   submitEvent: "update_profile",
-  debounceInMilliseconds: 300,
+  debounceInMiliseconds: 300,
 });
 
 const emailForm = useLiveForm(() => emailFormProp, {
   changeEvent: "validate_email",
   submitEvent: "update_email",
-  debounceInMilliseconds: 300,
+  debounceInMiliseconds: 300,
 });
 
 const displayName = profileForm.field("display_name");
@@ -74,7 +83,7 @@ const email = emailForm.field("email");
             @update:model-value="
               (val) =>
                 locale.inputAttrs.value['onUpdate:modelValue']?.(val) ??
-                locale.inputAttrs.value.onInput?.({ target: { value: val } })
+                locale.inputAttrs.value.onInput?.({ target: { value: val } } as unknown as Event)
             "
           >
             <SelectTrigger id="profile-locale" class="w-full">

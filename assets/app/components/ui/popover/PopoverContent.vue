@@ -1,49 +1,46 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { PopoverContent, PopoverPortal, useForwardPropsEmits } from "reka-ui";
+import { PopoverContent, PopoverPortal, useForwardPropsEmits, type AsTag } from "reka-ui";
 import { cn } from "@utils/utils";
 
 defineOptions({
   inheritAttrs: false,
 });
 
-const props = defineProps({
-  forceMount: { type: Boolean, required: false },
-  side: { type: null, required: false },
-  sideOffset: { type: Number, required: false, default: 4 },
-  sideFlip: { type: Boolean, required: false },
-  align: { type: null, required: false, default: "center" },
-  alignOffset: { type: Number, required: false },
-  alignFlip: { type: Boolean, required: false },
-  avoidCollisions: { type: Boolean, required: false },
-  collisionBoundary: { type: null, required: false },
-  collisionPadding: { type: [Number, Object], required: false },
-  arrowPadding: { type: Number, required: false },
-  hideShiftedArrow: { type: Boolean, required: false },
-  sticky: { type: String, required: false },
-  hideWhenDetached: { type: Boolean, required: false },
-  positionStrategy: { type: String, required: false },
-  updatePositionStrategy: { type: String, required: false },
-  disableUpdateOnLayoutShift: { type: Boolean, required: false },
-  prioritizePosition: { type: Boolean, required: false },
-  reference: { type: null, required: false },
-  asChild: { type: Boolean, required: false },
-  as: { type: null, required: false },
-  disableOutsidePointerEvents: { type: Boolean, required: false },
-  class: {
-    type: [Boolean, null, String, Object, Array],
-    required: false,
-    skipCheck: true,
-  },
-});
-const emits = defineEmits([
-  "escapeKeyDown",
-  "pointerDownOutside",
-  "focusOutside",
-  "interactOutside",
-  "openAutoFocus",
-  "closeAutoFocus",
-]);
+const props = defineProps<{
+  forceMount?: boolean;
+  side?: "top" | "right" | "bottom" | "left";
+  sideOffset?: number;
+  sideFlip?: boolean;
+  align?: "start" | "center" | "end";
+  alignOffset?: number;
+  alignFlip?: boolean;
+  avoidCollisions?: boolean;
+  collisionBoundary?: Element | (Element | null)[] | null;
+  collisionPadding?: number | Partial<Record<"top" | "right" | "bottom" | "left", number>>;
+  arrowPadding?: number;
+  hideShiftedArrow?: boolean;
+  sticky?: "partial" | "always";
+  hideWhenDetached?: boolean;
+  positionStrategy?: "fixed" | "absolute";
+  updatePositionStrategy?: "always" | "optimized";
+  disableUpdateOnLayoutShift?: boolean;
+  prioritizePosition?: boolean;
+  reference?: HTMLElement | null;
+  asChild?: boolean;
+  as?: AsTag | Component;
+  disableOutsidePointerEvents?: boolean;
+  class?: HTMLAttributes["class"];
+}>();
+const emits = defineEmits<{
+  escapeKeyDown: [event: KeyboardEvent];
+  pointerDownOutside: [event: Event];
+  focusOutside: [event: Event];
+  interactOutside: [event: Event];
+  openAutoFocus: [event: Event];
+  closeAutoFocus: [event: Event];
+}>();
 
 const delegatedProps = reactiveOmit(props, "class");
 
