@@ -1,0 +1,257 @@
+assets/app/modules/sheets/SheetDashboard.vue
+  dde06b034582d0b2 19,25,33
+assets/app/modules/flows/services/lod.ts
+  dde06b034582d0b2 10-23,28-30,34,44,52,65,71
+assets/app/modules/workspaces/Invitations.vue
+  dde06b034582d0b2 3
+assets/app/modules/sheets/components/AddBlockMenu.vue
+  dde06b034582d0b2 16,24-25
+assets/app/modules/flows/components/dock-panels/DockNavigationPanel.vue
+  dde06b034582d0b2 4
+assets/app/modules/sheets/components/BlockToolbar.vue
+  dde06b034582d0b2 9-10
+assets/app/modules/scenes/exploration/composables/useAmbientDisplay.ts
+  dde06b034582d0b2 29-30,32,68-69,75-76,82
+assets/app/modules/shared/operators/expression-serializer.ts
+  dde06b034582d0b2 7-35,50,60,70,84,104,116
+assets/app/modules/shared/operators/instruction-operators.ts
+  dde06b034582d0b2 5-15,23,80-81,88-89,105-107,112,126-127,133,139,152-153,160,174
+assets/app/utils/date-utils.ts
+  dde06b034582d0b2 4-5,8
+assets/app/modules/flows/components/dock-panels/DockLogicPanel.vue
+  dde06b034582d0b2 4
+assets/app/modules/flows/toolbar/ToolbarExitModePicker.vue
+  dde06b034582d0b2 4
+assets/app/modules/workspaces/New.vue
+  dde06b034582d0b2 3-6
+assets/app/modules/flows/services/keyboard.ts
+  dde06b034582d0b2 7-16,18-23,26-27,32,43,50-52,61,76,80,84,86,92,100,112,125,128,135,145,158,162,172
+assets/app/modules/sheets/components/tree/SheetTreeNode.vue
+  dde06b034582d0b2 10
+tsconfig.json
+  dde06b034582d0b2 3-14,16,19,22-24,27,29-30
+assets/app/modules/flows/lib/batch-positions.ts
+  dde06b034582d0b2 2,5-18
+assets/app/modules/flows/composables/useFlowEditor.ts
+  dde06b034582d0b2 3,9-16,18-25,27-105,108-109,121-131,134-135,137-146,148,150,153,161,164,205,211,217,232,238,265,269,281,285-286,290-291,303,313,315,324,331-332,340,349-350,356-357,360,364,373,376,380,386,397-398,424,426,430,434,436,486-489,503,506,515,519,525,530,537-539,563,567,573,578,582,591,598-599,603,612,617,621,623,630-631,634-636,643,656,663-664,675,677-681,693-700,702,705,709-712,714,718-721,730-733,744,747,752,761-768,783-790,805,810,822,831,837,843,856,859,868-872,875-880,882,889
+assets/app/composables/useUndoRedo.ts
+  dde06b034582d0b2 13,16-36,40-41,46,55,63,71
+assets/app/modules/flows/components/toolbar-sections/SubflowToolbar.vue
+  dde06b034582d0b2 5,7
+assets/app/modules/flows/services/magneticConnection.ts
+  dde06b034582d0b2 2,10,12,16-35,39-44,51,56,62,73-82,86,99-106,113-120,125-126,133-138,141-142,147,152,154,170-173,177-178,184-186,190-191,194-196,198-201,203-206
+assets/app/modules/flows/components/toolbar-sections/SlugLineToolbar.vue
+  dde06b034582d0b2 6
+assets/app/modules/flows/services/editorHandlers.ts
+  dde06b034582d0b2 4-5,8-15,23,25-114,121-123,127-128,136,140-143,146,153,157-158,172,194,201-202,209-210,218-220,223-224,244,254,257-258,263-264,272-273,278-279,297,309,317,322-328,333,335,347,358-359,383,388-389,391-392,398-399,413,418-419,435,439-443,450,457,461-465,472,479,482-483
+assets/app/modules/sheets/components/blocks/richText/RichTextBlock.vue
+  dde06b034582d0b2 4
+assets/app/modules/flows/components/dock-panels/DockNarrativePanel.vue
+  dde06b034582d0b2 4
+assets/app/modules/sheets/components/tabs/SheetTabs.vue
+  dde06b034582d0b2 4
+assets/app/plugins/tiptap/variableRefExtension.ts
+  dde06b034582d0b2 8-10,13-38,46-50,53-81,87-88,107-108,112,123,125,140,143,151-152,154,159-160,163,180
+assets/app/modules/auth/SignUp.vue
+  dde06b034582d0b2 4-7
+assets/app/modules/sheets/components/blocks/NumberBlock.vue
+  dde06b034582d0b2 4-5
+assets/app/modules/scenes/components/SceneFloatingToolbar.vue
+  dde06b034582d0b2 8
+assets/app/modules/flows/components/FlowFloatingToolbar.vue
+  dde06b034582d0b2 14
+assets/app/modules/sheets/components/blocks/table/TextBlock.vue
+  dde06b034582d0b2 4,6
+assets/app/modules/sheets/components/SheetHeader.vue
+  dde06b034582d0b2 5
+assets/app/modules/scenes/composables/useConnections.ts
+  dde06b034582d0b2 1,13,19-102,117-119,121,129-131,142-143,150-151,170,173,185,194,226,247,284-287,289-290,295
+assets/app/modules/flows/nodes/AnnotationNode.vue
+  dde06b034582d0b2 3
+assets/app/plugins/tiptap/mentionExtension.ts
+  dde06b034582d0b2 8-9,13-37,46-49,52-79,86,137-138,142,153,155,170,173,181-182,184,189-190,193,210
+assets/app/modules/flows/services/locks.ts
+  dde06b034582d0b2 7-10,12-26,28,32,36,41
+assets/app/modules/sheets/composables/useBlockActions.ts
+  dde06b034582d0b2 2,5-33,38,42-43,46,54,56,60,68,80
+assets/app/modules/flows/components/FlowForm.vue
+  dde06b034582d0b2 3-6
+assets/app/modules/workspaces/WorkspaceDashboard.vue
+  dde06b034582d0b2 4-7
+assets/app/modules/auth/ConfirmAccess.vue
+  dde06b034582d0b2 3-5
+assets/app/modules/sheets/components/blocks/galleryBlock/GalleryBlock.vue
+  dde06b034582d0b2 3
+assets/app/modules/project-settings/Trash.vue
+  dde06b034582d0b2 4,12
+assets/app/modules/sheets/components/blocks/table/TableBlock.vue
+  dde06b034582d0b2 4
+assets/app/modules/flows/components/FlowScreenplayEditor.vue
+  dde06b034582d0b2 18-21
+assets/app/utils/utils.ts
+  dde06b034582d0b2 1,4
+assets/app/modules/flows/components/toolbar-sections/ConditionToolbar.vue
+  dde06b034582d0b2 4
+assets/app/i18n.ts
+  dde06b034582d0b2 3,5-8
+assets/app/modules/flows/toolbar/ToolbarSearchableSelect.vue
+  dde06b034582d0b2 11-12
+assets/app/modules/flows/components/toolbar-sections/InstructionToolbar.vue
+  dde06b034582d0b2 4
+assets/app/modules/sheets/components/blocks/FormulaBindingSelect.vue
+  dde06b034582d0b2 19-20
+assets/app/modules/flows/components/FlowTree.vue
+  dde06b034582d0b2 5,13-14
+assets/app/modules/sheets/components/SheetAvatarSection.vue
+  dde06b034582d0b2 4
+assets/app/modules/flows/services/navigation.ts
+  dde06b034582d0b2 2,8-11,15-20,23-34,43-47,59,64,67-75,87,105,116,126,137,148,162
+assets/app/modules/sheets/components/blocks/BooleanBlock.vue
+  dde06b034582d0b2 4-7
+assets/app/modules/project-settings/General.vue
+  dde06b034582d0b2 5,13-17
+assets/app/modules/landing/composables/useSectionScroll.ts
+  dde06b034582d0b2 12-17,20-22,28-29,33,43,53,59,79,85,105,115,121,157,162,279,303,323,337-339,364-365
+assets/app/modules/sheets/components/blocks/table/TableColumnHeader.vue
+  dde06b034582d0b2 17-18,20
+assets/app/composables/useLive.ts
+  dde06b034582d0b2 12-18,20-21,26,30,43,50,57
+assets/app/composables/usePresence.ts
+  dde06b034582d0b2 10,12-16,18-32,36
+assets/app/modules/flows/components/FlowNode.vue
+  dde06b034582d0b2 3-4,15
+assets/app/modules/flows/components/FlowHeader.vue
+  dde06b034582d0b2 17-18
+assets/app/modules/shared/operators/condition-operators.ts
+  dde06b034582d0b2 6-33,38,60,83,88-89
+assets/app/modules/flows/components/toolbar-sections/ExitToolbar.vue
+  dde06b034582d0b2 5
+assets/app/modules/workspaces/projects/New.vue
+  dde06b034582d0b2 4-7
+assets/app/modules/project-settings/Localization.vue
+  dde06b034582d0b2 3-5,12
+assets/app/modules/project-settings/ImportPanel.vue
+  dde06b034582d0b2 5-7,15
+assets/app/modules/scenes/composables/useVertexEditor.ts
+  dde06b034582d0b2 174-175
+assets/app/modules/project-settings/Snapshots.vue
+  dde06b034582d0b2 4-5,13-17
+assets/app/modules/shared/variables.ts
+  dde06b034582d0b2 5-18,22-23,34,47-52,61
+assets/app/modules/project-settings/ExportImport.vue
+  dde06b034582d0b2 2
+assets/app/modules/flows/lib/render-helpers.ts
+  dde06b034582d0b2 6-32,34,36,43-49,67,71,75,82,91,109,114,120,122,125-130,137,144,165,179,188,199,205,208
+assets/app/modules/sheets/components/tabs/AudioTab.vue
+  dde06b034582d0b2 15-16,21,28-29
+assets/app/components/ui/table/utils.ts
+  dde06b034582d0b2 1,4
+assets/app/modules/sheets/components/blocks/table/table-config.ts
+  dde06b034582d0b2 12,14-24,35,46,57
+assets/app/modules/flows/lib/rete-schemes.ts
+  dde06b034582d0b2 1-22
+assets/app/modules/scenes/composables/useWaypointEditor.ts
+  dde06b034582d0b2 168-169
+assets/app/modules/flows/components/toolbar-sections/EntryToolbar.vue
+  dde06b034582d0b2 4
+assets/app/modules/project-settings/ExportPanel.vue
+  dde06b034582d0b2 4-8
+assets/app/modules/landing/sections/cta/CtaWaitlist.vue
+  dde06b034582d0b2 7
+assets/app/modules/flows/toolbar/ToolbarAvatarPicker.vue
+  dde06b034582d0b2 4
+assets/app/modules/landing/sections/VersionSpotlight.vue
+  dde06b034582d0b2 3
+assets/app/modules/auth/SignIn.vue
+  dde06b034582d0b2 4-6
+assets/app/components/version-history/useVersionHistory.ts
+  dde06b034582d0b2 4-14,27,30,32,34,36-37,47,53,67,98,123,138
+assets/app/modules/sheets/components/blocks/table/TableRowActions.vue
+  dde06b034582d0b2 3
+assets/app/modules/sheets/components/blocks/table/TableGrid.vue
+  dde06b034582d0b2 5-7,12
+assets/app/modules/flows/lib/flow-node.ts
+  dde06b034582d0b2 4,8,13-16,18-19
+assets/app/modules/scenes/exploration/composables/useExplorationInteraction.ts
+  dde06b034582d0b2 27
+assets/app/modules/sheets/components/blocks/MultiSelectBlock.vue
+  dde06b034582d0b2 4-8
+assets/app/modules/sheets/components/tabs/ReferencesTab.vue
+  dde06b034582d0b2 20,25
+assets/app/modules/flows/nodes/DialogueNode.vue
+  dde06b034582d0b2 8-9
+assets/app/modules/flows/components/NodeHeader.vue
+  dde06b034582d0b2 3
+assets/app/modules/landing/sections/hero/shaders/portalShader.ts
+  dde06b034582d0b2 7,15
+assets/app/modules/sheets/components/tree/SheetTree.vue
+  dde06b034582d0b2 5,13-14
+assets/app/modules/sheets/components/blocks/ReferenceBlock.vue
+  dde06b034582d0b2 11-12,15
+assets/app/modules/sheets/components/blocks/SelectBlock.vue
+  dde06b034582d0b2 4,11-12
+assets/app/modules/sheets/components/blocks/DateBlock.vue
+  dde06b034582d0b2 4-5
+assets/app/modules/flows/components/FlowDebugPanel.vue
+  dde06b034582d0b2 18-22
+assets/app/composables/useServerSearch.ts
+  dde06b034582d0b2 15,18-32,39,45,51,55
+assets/app/modules/project-settings/VersionControl.vue
+  dde06b034582d0b2 3-6
+assets/app/modules/landing/composables/useRevealOnScroll.ts
+  dde06b034582d0b2 2,4-13,18,20,22,32
+assets/app/modules/sheets/components/blocks/galleryBlock/GalleryBlockContent.vue
+  dde06b034582d0b2 4-7
+assets/app/composables/useKeyboard.ts
+  dde06b034582d0b2 17-24,27-28,30-32,34-38,45-46,48
+assets/app/modules/flows/components/FlowEditor.vue
+  dde06b034582d0b2 4
+assets/app/index.ts
+  dde06b034582d0b2 2,4,11,17,26-27,33,40
+assets/app/modules/flows/setup.ts
+  dde06b034582d0b2 2,7,10,20-23,29-38,42-48,50,61,92,107-108,112,124,132-134,137,140,161-165,172,175
+assets/app/modules/scenes/composables/useDrag.ts
+  dde06b034582d0b2 3,5-13,25,28-29,32,42,45,66,71,73
+assets/app/modules/flows/components/toolbar-sections/DialogueToolbar.vue
+  dde06b034582d0b2 6
+assets/app/modules/flows/lib/node-configs.ts
+  dde06b034582d0b2 8-36,105-106,109-110,119
+assets/app/modules/project-settings/Members.vue
+  dde06b034582d0b2 4-7,14
+assets/app/modules/landing/sections/ExplorationSpotlight.vue
+  dde06b034582d0b2 3
+assets/app/modules/flows/services/historyPreset.ts
+  dde06b034582d0b2 12-23,26,28-34,41,49,62-69,74,81,97-104,109,119,131-135,140,144,154-158,163,168,178-183,185,192,195,199,202,213-224,231,234,238,241,250-253,270-279,285,289,293,307,315,317-320,323,326,334-337,339-341,345-346,348-350,363-365,376-377,380-381,384,389-391,399,405,408-410
+assets/app/modules/flows/components/toolbar-sections/JumpToolbar.vue
+  dde06b034582d0b2 6
+assets/app/modules/flows/FlowDashboard.vue
+  dde06b034582d0b2 19-20,26,34
+assets/app/modules/scenes/exploration/composables/usePatrols.ts
+  dde06b034582d0b2 1-2,8-46,54,57-59,64,101,108,122,131,140,186-187,217,229,233,240,252,268
+assets/app/modules/sheets/components/AvatarGallery.vue
+  dde06b034582d0b2 4-8
+assets/app/modules/flows/services/debug.ts
+  dde06b034582d0b2 5-8,17-48,54-58,69,80-85,87-88,103,113,126,136-147,150,154,212,255,282,318
+assets/app/modules/flows/components/FlowTreeNode.vue
+  dde06b034582d0b2 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "c7707d8a94fa318a5285f4d4cbbc043c9a9bb2b2",
+  "prompts": {
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 2143,
+      "total_deletions": 1275,
+      "accepted_lines": 1977,
+      "overriden_lines": 4
+    }
+  }
+}
