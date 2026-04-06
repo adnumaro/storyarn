@@ -4,7 +4,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/
 import { useLive } from "@composables/useLive";
 import type { TableRow } from "../../../types";
 
-const { row, rows, canManage = false } = defineProps<{
+const {
+  row,
+  rows,
+  canManage = false,
+} = defineProps<{
   row: TableRow;
   rows: TableRow[];
   canManage?: boolean;

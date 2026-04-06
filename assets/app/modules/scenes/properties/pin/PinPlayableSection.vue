@@ -2,7 +2,11 @@
 import { Crown, User } from "lucide-vue-next";
 import { ToggleField } from "@components/form-fields";
 
-const { isPlayable = false, isLeader = false, disabled = false } = defineProps<{
+const {
+  isPlayable = false,
+  isLeader = false,
+  disabled = false,
+} = defineProps<{
   isPlayable?: boolean;
   isLeader?: boolean;
   disabled?: boolean;

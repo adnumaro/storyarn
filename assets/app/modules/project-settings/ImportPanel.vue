@@ -38,7 +38,11 @@ interface ImportState {
   conflictStrategy?: string;
 }
 
-const { canEdit, importState, uploadConfig = null } = defineProps<{
+const {
+  canEdit,
+  importState,
+  uploadConfig = null,
+} = defineProps<{
   canEdit: boolean;
   importState: ImportState;
   uploadConfig?: UploadConfig | null;

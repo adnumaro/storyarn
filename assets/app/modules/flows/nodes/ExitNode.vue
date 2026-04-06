@@ -17,7 +17,13 @@ interface ExitNodeData {
   stale_reference?: boolean;
 }
 
-const { data, emit, config, color, nodeDataOverride = null } = defineProps<{
+const {
+  data,
+  emit,
+  config,
+  color,
+  nodeDataOverride = null,
+} = defineProps<{
   data: ReteNodeData;
   emit: ReteEmitFn;
   config: NodeConfig;
@@ -25,7 +31,9 @@ const { data, emit, config, color, nodeDataOverride = null } = defineProps<{
   nodeDataOverride?: ExitNodeData | null;
 }>();
 
-const nodeData = computed<ExitNodeData>(() => nodeDataOverride || (data.nodeData as ExitNodeData) || {});
+const nodeData = computed<ExitNodeData>(
+  () => nodeDataOverride || (data.nodeData as ExitNodeData) || {},
+);
 const exitMode = computed(() => nodeData.value.exit_mode || "terminal");
 const label = computed(() => nodeData.value.label || "Exit");
 const tags = computed(() => nodeData.value.outcome_tags || []);

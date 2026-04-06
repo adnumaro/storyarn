@@ -23,7 +23,11 @@ import type { Assignment } from "../types";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover/index.ts";
 import VariableCombobox from "../../VariableCombobox.vue";
 
-const { assignment, variables = [], disabled = false } = defineProps<{
+const {
+  assignment,
+  variables = [],
+  disabled = false,
+} = defineProps<{
   assignment: Assignment;
   variables?: Variable[];
   disabled?: boolean;
@@ -61,7 +65,9 @@ const sheetOptions = computed(() => {
   const filtered =
     ct === null
       ? sheetsWithVariables.value
-      : sheetsWithVariables.value.filter((s) => s.vars.some((v) => (ct as string[]).includes(v.block_type)));
+      : sheetsWithVariables.value.filter((s) =>
+          s.vars.some((v) => (ct as string[]).includes(v.block_type)),
+        );
   return filtered.map((s) => ({ value: s.shortcut, label: s.name }));
 });
 
@@ -70,7 +76,8 @@ const variableGroups = computed(() => {
   const sheet = sheetsWithVariables.value.find((s) => s.shortcut === assignment.sheet);
   if (!sheet) return [];
   const ct = typesForOperator(assignment.operator || "set");
-  const vars = ct === null ? sheet.vars : sheet.vars.filter((v) => (ct as string[]).includes(v.block_type));
+  const vars =
+    ct === null ? sheet.vars : sheet.vars.filter((v) => (ct as string[]).includes(v.block_type));
   return [
     {
       heading: sheet.name,

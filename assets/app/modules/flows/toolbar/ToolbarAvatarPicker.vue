@@ -9,7 +9,11 @@ interface AvatarOption {
   name: string;
 }
 
-const { avatars = [], hasOverride = false, disabled = false } = defineProps<{
+const {
+  avatars = [],
+  hasOverride = false,
+  disabled = false,
+} = defineProps<{
   avatars?: AvatarOption[];
   hasOverride?: boolean;
   disabled?: boolean;

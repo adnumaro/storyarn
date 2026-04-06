@@ -73,7 +73,12 @@ interface UseKonvaStageOpts {
  * Composable managing the Konva stage lifecycle: sizing, background, grid,
  * pan/zoom, cursor style, and coordinate conversion.
  */
-export function useKonvaStage({ containerRef, sceneData, activeTool, editMode: _editMode }: UseKonvaStageOpts) {
+export function useKonvaStage({
+  containerRef,
+  sceneData,
+  activeTool,
+  editMode: _editMode,
+}: UseKonvaStageOpts) {
   const stageRef = ref<StageRefValue | null>(null);
   const bgImage = ref<HTMLImageElement | null>(null);
 

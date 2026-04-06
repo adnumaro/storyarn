@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
-import { SliderRange, SliderRoot, SliderThumb, SliderTrack, useForwardPropsEmits, type AsTag } from "reka-ui";
+import {
+  SliderRange,
+  SliderRoot,
+  SliderThumb,
+  SliderTrack,
+  useForwardPropsEmits,
+  type AsTag,
+} from "reka-ui";
 import { cn } from "@utils/utils";
 
 const props = defineProps<{

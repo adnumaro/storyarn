@@ -111,7 +111,11 @@ function applyToTree(oldArr: SceneTreeNodeData[], newArr: SceneTreeNodeData[]): 
   }
 }
 
-function findAndReplace(nodes: SceneTreeNodeData[], oldArr: SceneTreeNodeData[], newArr: SceneTreeNodeData[]): boolean {
+function findAndReplace(
+  nodes: SceneTreeNodeData[],
+  oldArr: SceneTreeNodeData[],
+  newArr: SceneTreeNodeData[],
+): boolean {
   for (const node of nodes) {
     if (node.children === oldArr) {
       node.children = newArr;
@@ -122,7 +126,11 @@ function findAndReplace(nodes: SceneTreeNodeData[], oldArr: SceneTreeNodeData[],
   return false;
 }
 
-function findNodeContext(nodes: SceneTreeNodeData[], nodeId: number | string, parentId: number | string | null = null): { parentId: number | string | null; position: number } | null {
+function findNodeContext(
+  nodes: SceneTreeNodeData[],
+  nodeId: number | string,
+  parentId: number | string | null = null,
+): { parentId: number | string | null; position: number } | null {
   for (let i = 0; i < nodes.length; i++) {
     if (nodes[i].id === nodeId) return { parentId, position: i };
     if (nodes[i].children) {
@@ -133,7 +141,10 @@ function findNodeContext(nodes: SceneTreeNodeData[], nodeId: number | string, pa
   return null;
 }
 
-function findNodeById(nodes: SceneTreeNodeData[], nodeId: number | string): SceneTreeNodeData | null {
+function findNodeById(
+  nodes: SceneTreeNodeData[],
+  nodeId: number | string,
+): SceneTreeNodeData | null {
   for (const n of nodes) {
     if (n.id === nodeId) return n;
     if (n.children) {
@@ -144,7 +155,11 @@ function findNodeById(nodes: SceneTreeNodeData[], nodeId: number | string): Scen
   return null;
 }
 
-function isDescendantOf(nodes: SceneTreeNodeData[], ancestorId: number | string, targetId: number | string): boolean {
+function isDescendantOf(
+  nodes: SceneTreeNodeData[],
+  ancestorId: number | string,
+  targetId: number | string,
+): boolean {
   const ancestor = findNodeById(nodes, ancestorId);
   if (!ancestor?.children) return false;
   for (const c of ancestor.children) {
@@ -154,7 +169,11 @@ function isDescendantOf(nodes: SceneTreeNodeData[], ancestorId: number | string,
   return false;
 }
 
-function pushMove(nodeId: number | string, parentId: number | string | null, position: number): void {
+function pushMove(
+  nodeId: number | string,
+  parentId: number | string | null,
+  position: number,
+): void {
   live.pushEvent("move_to_parent", {
     item_id: String(nodeId),
     new_parent_id: parentId != null ? String(parentId) : "",

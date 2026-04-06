@@ -64,7 +64,10 @@ export function useConnectionDrawing({
    * Handle click on a pin while connector tool is active.
    * Returns true if handled.
    */
-  function handlePinClickForConnection(pinId: number | string, e?: KonvaEventObject<MouseEvent>): boolean {
+  function handlePinClickForConnection(
+    pinId: number | string,
+    e?: KonvaEventObject<MouseEvent>,
+  ): boolean {
     if (activeTool.value !== "connector") {
       return false;
     }

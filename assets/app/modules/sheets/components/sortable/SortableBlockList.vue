@@ -5,7 +5,13 @@ import { Link2 } from "lucide-vue-next";
 import { inject, ref, useTemplateRef, watch } from "vue";
 import UserAvatar from "@components/layout/UserAvatar.vue";
 import { useLive } from "@composables/useLive";
-import type { Block, BlockLock, ColumnGroupLayoutItem, FullWidthLayoutItem, LayoutItem } from "../../types";
+import type {
+  Block,
+  BlockLock,
+  ColumnGroupLayoutItem,
+  FullWidthLayoutItem,
+  LayoutItem,
+} from "../../types";
 import DraggableBlock from "./DraggableBlock.vue";
 import SortableColumnGroup from "./SortableColumnGroup.vue";
 
@@ -86,24 +92,34 @@ function pushColumnLayout(items: LayoutItem[]): void {
 }
 
 function removeFullWidthItem(items: LayoutItem[], blockId: number | string): LayoutItem[] {
-  return items.filter((item) => !(item.type === "full_width" && (item as FullWidthLayoutItem).block.id === blockId));
+  return items.filter(
+    (item) => !(item.type === "full_width" && (item as FullWidthLayoutItem).block.id === blockId),
+  );
 }
 
-function createColumnGroupItems(items: LayoutItem[], draggedBlockId: number | string, targetBlockId: number | string, side: string): LayoutItem[] | null {
+function createColumnGroupItems(
+  items: LayoutItem[],
+  draggedBlockId: number | string,
+  targetBlockId: number | string,
+  side: string,
+): LayoutItem[] | null {
   if (draggedBlockId === targetBlockId) return null;
 
   const draggedItem = items.find(
-    (item) => item.type === "full_width" && (item as FullWidthLayoutItem).block.id === draggedBlockId,
+    (item) =>
+      item.type === "full_width" && (item as FullWidthLayoutItem).block.id === draggedBlockId,
   ) as FullWidthLayoutItem | undefined;
   const targetItem = items.find(
-    (item) => item.type === "full_width" && (item as FullWidthLayoutItem).block.id === targetBlockId,
+    (item) =>
+      item.type === "full_width" && (item as FullWidthLayoutItem).block.id === targetBlockId,
   ) as FullWidthLayoutItem | undefined;
 
   if (!draggedItem || !targetItem) return null;
 
   const nextItems = removeFullWidthItem(items, draggedBlockId);
   const targetIndex = nextItems.findIndex(
-    (item) => item.type === "full_width" && (item as FullWidthLayoutItem).block.id === targetBlockId,
+    (item) =>
+      item.type === "full_width" && (item as FullWidthLayoutItem).block.id === targetBlockId,
   );
 
   if (targetIndex === -1) return null;
@@ -128,11 +144,15 @@ interface InsertPayload {
   targetBlockId: number | string;
 }
 
-function insertIntoColumnGroupItems(items: LayoutItem[], payload: InsertPayload): LayoutItem[] | null {
+function insertIntoColumnGroupItems(
+  items: LayoutItem[],
+  payload: InsertPayload,
+): LayoutItem[] | null {
   const { draggedBlockId, groupId, side, targetBlockId } = payload;
 
   const draggedItem = items.find(
-    (item) => item.type === "full_width" && (item as FullWidthLayoutItem).block.id === draggedBlockId,
+    (item) =>
+      item.type === "full_width" && (item as FullWidthLayoutItem).block.id === draggedBlockId,
   ) as FullWidthLayoutItem | undefined;
   if (!draggedItem) return null;
 
@@ -162,7 +182,11 @@ function insertIntoColumnGroupItems(items: LayoutItem[], payload: InsertPayload)
   return nextItems;
 }
 
-function dropSide(event: IDragEvent, hoveredElement: HTMLElement | undefined, threshold = 0.25): string | null {
+function dropSide(
+  event: IDragEvent,
+  hoveredElement: HTMLElement | undefined,
+  threshold = 0.25,
+): string | null {
   const pointer = event.provider?.pointer?.value?.current;
   if (!pointer || !hoveredElement) return null;
 
@@ -186,9 +210,16 @@ function isColumnGroupBlock(item: LayoutItem | Block): item is Block {
   return "id" in item && !!item.id && item.type !== "full_width" && item.type !== "column_group";
 }
 
-function extractFromColumnGroup(items: LayoutItem[], block: Block, hoveredItem: LayoutItem | undefined, hoveredPlacement: { bottom?: boolean } | undefined): LayoutItem[] | null {
+function extractFromColumnGroup(
+  items: LayoutItem[],
+  block: Block,
+  hoveredItem: LayoutItem | undefined,
+  hoveredPlacement: { bottom?: boolean } | undefined,
+): LayoutItem[] | null {
   const groupIndex = items.findIndex(
-    (item) => item.type === "column_group" && (item as ColumnGroupLayoutItem).blocks.some((b) => b.id === block.id),
+    (item) =>
+      item.type === "column_group" &&
+      (item as ColumnGroupLayoutItem).blocks.some((b) => b.id === block.id),
   );
   if (groupIndex === -1) return null;
 
@@ -214,8 +245,12 @@ function extractFromColumnGroup(items: LayoutItem[], block: Block, hoveredItem: 
   if (hoveredItem) {
     const hoveredIdx = nextItems.findIndex(
       (item) =>
-        (item.type === "full_width" && (item as FullWidthLayoutItem).block?.id === (hoveredItem as FullWidthLayoutItem).block?.id) ||
-        (item.type === "column_group" && (item as ColumnGroupLayoutItem).group_id === (hoveredItem as ColumnGroupLayoutItem).group_id),
+        (item.type === "full_width" &&
+          (item as FullWidthLayoutItem).block?.id ===
+            (hoveredItem as FullWidthLayoutItem).block?.id) ||
+        (item.type === "column_group" &&
+          (item as ColumnGroupLayoutItem).group_id ===
+            (hoveredItem as ColumnGroupLayoutItem).group_id),
     );
     if (hoveredIdx !== -1) {
       insertIndex = hoveredPlacement?.bottom ? hoveredIdx + 1 : hoveredIdx;
@@ -278,7 +313,9 @@ makeDroppable(
 
         localItems.value = result.sourceItems as LayoutItem[];
         const ids = localItems.value.flatMap((item) =>
-          item.type === "column_group" ? (item as ColumnGroupLayoutItem).blocks.map((b) => b.id) : [(item as FullWidthLayoutItem).block.id],
+          item.type === "column_group"
+            ? (item as ColumnGroupLayoutItem).blocks.map((b) => b.id)
+            : [(item as FullWidthLayoutItem).block.id],
         );
         live.pushEvent("reorder_blocks", { ids });
       },
@@ -296,7 +333,11 @@ function resolveComponent(type: string): typeof TextBlock | null {
   <div ref="container" class="space-y-3">
     <DraggableBlock
       v-for="(item, index) in localItems"
-      :key="item.type === 'full_width' ? (item as FullWidthLayoutItem).block.id : (item as ColumnGroupLayoutItem).group_id"
+      :key="
+        item.type === 'full_width'
+          ? (item as FullWidthLayoutItem).block.id
+          : (item as ColumnGroupLayoutItem).group_id
+      "
       :can-edit="canEdit"
       :index="index"
       :items="localItems"
@@ -312,7 +353,10 @@ function resolveComponent(type: string): typeof TextBlock | null {
             <template #menu>
               <div class="flex items-center gap-0.5">
                 <button
-                  v-if="(item as FullWidthLayoutItem).block.can_reattach && !isLockedByOther((item as FullWidthLayoutItem).block.id)"
+                  v-if="
+                    (item as FullWidthLayoutItem).block.can_reattach &&
+                    !isLockedByOther((item as FullWidthLayoutItem).block.id)
+                  "
                   type="button"
                   class="size-6 rounded flex items-center justify-center text-blue-500 hover:bg-blue-500/10 transition-colors"
                   title="Reattach to parent"

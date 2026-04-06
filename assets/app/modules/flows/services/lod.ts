@@ -25,7 +25,10 @@ const ZOOM_DOWN = 0.4; // switch to simplified below this
 const ZOOM_UP = 0.45; // switch to full above this
 const MIN_NODES_FOR_LOD = 50; // skip LOD when fewer nodes
 
-export function lod(area: AreaPlugin<FlowSchemes, FlowAreaExtra>, hookProxy: HookProxy): LodController {
+export function lod(
+  area: AreaPlugin<FlowSchemes, FlowAreaExtra>,
+  hookProxy: HookProxy,
+): LodController {
   let currentLod: LodLevel = LOD_FULL;
   let rafId: number | null = null;
 

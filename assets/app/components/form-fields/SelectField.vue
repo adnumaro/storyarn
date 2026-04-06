@@ -16,7 +16,16 @@ interface SelectOption {
   label?: string;
 }
 
-const { label = "", icon = null, options, value = "", placeholder = "Select...", disabled = false, event = null, paramKey = "value" } = defineProps<{
+const {
+  label = "",
+  icon = null,
+  options,
+  value = "",
+  placeholder = "Select...",
+  disabled = false,
+  event = null,
+  paramKey = "value",
+} = defineProps<{
   label?: string;
   icon?: Component | null;
   options: SelectOption[];

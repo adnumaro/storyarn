@@ -21,7 +21,11 @@ import type { TableColumn } from "../../../types";
 import type { ColumnHeaderPanel } from "../../../types";
 import { allTypes, typeIcon, typeLabels } from "./table-config";
 
-const { column, columns, canManage = false } = defineProps<{
+const {
+  column,
+  columns,
+  canManage = false,
+} = defineProps<{
   column: TableColumn;
   columns: TableColumn[];
   canManage?: boolean;

@@ -23,7 +23,12 @@ import { useLive } from "@composables/useLive";
 import { useServerSearch } from "@composables/useServerSearch";
 import type { FormulaBindingOption, FormulaSearchGroup } from "../../types";
 
-const { modelValue = "", sameRowOptions = [], searchResults = [], hasMore = false } = defineProps<{
+const {
+  modelValue = "",
+  sameRowOptions = [],
+  searchResults = [],
+  hasMore = false,
+} = defineProps<{
   modelValue?: string;
   sameRowOptions?: FormulaBindingOption[];
   searchResults?: FormulaSearchGroup[];

@@ -39,7 +39,12 @@ interface InsertFullWidthPayload {
   targetBlockId: number | string;
 }
 
-const { groupId, blocks, columnCount = 2, canEdit = false } = defineProps<{
+const {
+  groupId,
+  blocks,
+  columnCount = 2,
+  canEdit = false,
+} = defineProps<{
   groupId: string;
   blocks: Block[];
   columnCount?: number;

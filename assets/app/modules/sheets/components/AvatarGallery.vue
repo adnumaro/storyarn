@@ -8,7 +8,11 @@ import { Input } from "@components/ui/input/index.ts";
 import { Textarea } from "@components/ui/textarea/index.ts";
 import type { SheetAvatar } from "../types";
 
-const { open = false, avatars = [], canEdit = false } = defineProps<{
+const {
+  open = false,
+  avatars = [],
+  canEdit = false,
+} = defineProps<{
   open?: boolean;
   avatars?: SheetAvatar[];
   canEdit?: boolean;
@@ -217,7 +221,11 @@ function onNotesBlur(id: number | string, value: string, original: string | unde
               :disabled="!canEdit"
               @blur="
                 (e) =>
-                  onNameBlur(avatars[currentIndex].id, (e.target as HTMLInputElement).value, avatars[currentIndex].name)
+                  onNameBlur(
+                    avatars[currentIndex].id,
+                    (e.target as HTMLInputElement).value,
+                    avatars[currentIndex].name,
+                  )
               "
             />
           </div>
@@ -233,7 +241,11 @@ function onNotesBlur(id: number | string, value: string, original: string | unde
               :disabled="!canEdit"
               @blur="
                 (e) =>
-                  onNotesBlur(avatars[currentIndex].id, (e.target as HTMLTextAreaElement).value, avatars[currentIndex].notes)
+                  onNotesBlur(
+                    avatars[currentIndex].id,
+                    (e.target as HTMLTextAreaElement).value,
+                    avatars[currentIndex].notes,
+                  )
               "
             />
           </div>

@@ -60,7 +60,8 @@ function confirmUnlink() {
     const csrfInput = document.createElement("input");
     csrfInput.type = "hidden";
     csrfInput.name = "_csrf_token";
-    csrfInput.value = (document.querySelector("meta[name=csrf-token]") as HTMLMetaElement | null)?.content || "";
+    csrfInput.value =
+      (document.querySelector("meta[name=csrf-token]") as HTMLMetaElement | null)?.content || "";
     form.appendChild(csrfInput);
 
     const methodInput = document.createElement("input");

@@ -9,7 +9,11 @@ import {
   DialogTitle,
 } from "@components/ui/dialog";
 
-const { open, versionNumber = null, loadingAction = null } = defineProps<{
+const {
+  open,
+  versionNumber = null,
+  loadingAction = null,
+} = defineProps<{
   open: boolean;
   versionNumber?: number | null;
   loadingAction?: string | null;

@@ -26,15 +26,21 @@ import {
 } from "@components/ui/collapsible/index.ts";
 import type { Backlink, SceneAppearance, VariableUsageEntry } from "../../types";
 
-const { variableUsage = [], backlinks = [], sceneAppearances = [], workspaceSlug, projectSlug, loading = false } =
-  defineProps<{
-    variableUsage?: VariableUsageEntry[];
-    backlinks?: Backlink[];
-    sceneAppearances?: SceneAppearance[];
-    workspaceSlug: string;
-    projectSlug: string;
-    loading?: boolean;
-  }>();
+const {
+  variableUsage = [],
+  backlinks = [],
+  sceneAppearances = [],
+  workspaceSlug,
+  projectSlug,
+  loading = false,
+} = defineProps<{
+  variableUsage?: VariableUsageEntry[];
+  backlinks?: Backlink[];
+  sceneAppearances?: SceneAppearance[];
+  workspaceSlug: string;
+  projectSlug: string;
+  loading?: boolean;
+}>();
 
 const variableUsageOpen = ref(true);
 const backlinksOpen = ref(true);

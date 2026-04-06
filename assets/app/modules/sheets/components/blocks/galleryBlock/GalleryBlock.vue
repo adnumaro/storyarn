@@ -6,7 +6,11 @@ import BlockLabel from "../../BlockLabel.vue";
 import BlockToolbar from "../../BlockToolbar.vue";
 import GalleryBlockContent from "./GalleryBlockContent.vue";
 
-const { block, canEdit = false, inherited = false } = defineProps<{
+const {
+  block,
+  canEdit = false,
+  inherited = false,
+} = defineProps<{
   block: Block;
   canEdit?: boolean;
   inherited?: boolean;

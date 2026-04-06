@@ -22,7 +22,11 @@ interface WorkspaceMember {
   role: string;
 }
 
-const { members = [], currentUserId = null, canManage = false } = defineProps<{
+const {
+  members = [],
+  currentUserId = null,
+  canManage = false,
+} = defineProps<{
   members?: WorkspaceMember[];
   currentUserId?: number | null;
   canManage?: boolean;

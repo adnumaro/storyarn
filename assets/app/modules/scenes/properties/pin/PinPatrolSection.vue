@@ -9,7 +9,12 @@ const PATROL_MODES = [
   { id: "one_way", name: "One-way" },
 ];
 
-const { patrolMode = "none", patrolSpeed = 1.0, patrolPauseMs = 0, disabled = false } = defineProps<{
+const {
+  patrolMode = "none",
+  patrolSpeed = 1.0,
+  patrolPauseMs = 0,
+  disabled = false,
+} = defineProps<{
   patrolMode?: string;
   patrolSpeed?: number | string;
   patrolPauseMs?: number | string;

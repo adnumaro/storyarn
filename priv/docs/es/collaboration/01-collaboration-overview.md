@@ -76,8 +76,8 @@ Una variante mas clara de cada color (peso 300) tambien esta disponible para ele
 
 La colaboracion respeta la jerarquia de roles del proyecto. Todos los roles pueden ver la presencia, los cursores y las notificaciones. Solo los usuarios con permisos de edicion (Propietario, Editor) pueden adquirir bloqueos y hacer cambios. Los Lectores ven todo en tiempo real pero no pueden modificar nada -- la adquisicion de bloqueos se deniega en el servidor, no solo se oculta en la interfaz.
 
-| Rol              | Ve presencia | Ve cursores | Puede editar nodos |
-| ---------------- | :----------: | :---------: | :----------------: |
-| **Propietario**  |      Si      |     Si      |         Si         |
-| **Editor**       |      Si      |     Si      |         Si         |
-| **Lector**       |      Si      |     Si      |         No         |
+| Rol             | Ve presencia | Ve cursores | Puede editar nodos |
+| --------------- | :----------: | :---------: | :----------------: |
+| **Propietario** |      Si      |     Si      |         Si         |
+| **Editor**      |      Si      |     Si      |         Si         |
+| **Lector**      |      Si      |     Si      |         No         |

@@ -10,7 +10,11 @@ interface HubToolbarData extends NodeData {
   hub_id?: string;
 }
 
-const { nodeData, nodeId, referencingJumps = [] } = defineProps<{
+const {
+  nodeData,
+  nodeId,
+  referencingJumps = [],
+} = defineProps<{
   nodeData: HubToolbarData;
   nodeId: string | number;
   referencingJumps?: ReferencingJump[];

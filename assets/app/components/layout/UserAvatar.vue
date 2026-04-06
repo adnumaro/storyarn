@@ -2,7 +2,12 @@
 import { computed } from "vue";
 import { Avatar, AvatarFallback } from "@components/ui/avatar";
 
-const { email = "", displayName = "", size = "sm", color = null } = defineProps<{
+const {
+  email = "",
+  displayName = "",
+  size = "sm",
+  color = null,
+} = defineProps<{
   email?: string;
   displayName?: string;
   size?: "xs" | "sm" | "md" | "lg";

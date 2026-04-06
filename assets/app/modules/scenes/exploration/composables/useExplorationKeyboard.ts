@@ -38,7 +38,11 @@ interface UseExplorationKeyboardOpts {
  * Server handles: Escape chain, flow continue/back, response selection.
  * This composable adds: number key visual feedback on response buttons.
  */
-export function useExplorationKeyboard({ flowMode, activeFlowSlide, pushEvent }: UseExplorationKeyboardOpts) {
+export function useExplorationKeyboard({
+  flowMode,
+  activeFlowSlide,
+  pushEvent,
+}: UseExplorationKeyboardOpts) {
   function onKeyDown(e: KeyboardEvent): void {
     // Only handle flow-related keys when flow is active
     if (!flowMode.value || !activeFlowSlide.value) {

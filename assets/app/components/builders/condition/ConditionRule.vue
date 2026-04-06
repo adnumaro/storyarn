@@ -7,14 +7,22 @@
 
 import { X } from "lucide-vue-next";
 import { computed } from "vue";
-import { NO_VALUE_OPERATORS, OPERATOR_LABELS, operatorsForType } from "@modules/shared/operators/condition-operators";
+import {
+  NO_VALUE_OPERATORS,
+  OPERATOR_LABELS,
+  operatorsForType,
+} from "@modules/shared/operators/condition-operators";
 import type { ConditionOperator } from "@modules/shared/operators/condition-operators";
 import { findVariable, groupVariablesBySheet } from "@modules/shared/variables";
 import type { Variable } from "@modules/shared/variables";
 import type { ConditionRule } from "../types";
 import VariableCombobox from "../../VariableCombobox.vue";
 
-const { rule, variables = [], disabled = false } = defineProps<{
+const {
+  rule,
+  variables = [],
+  disabled = false,
+} = defineProps<{
   rule: ConditionRule;
   variables?: Variable[];
   disabled?: boolean;

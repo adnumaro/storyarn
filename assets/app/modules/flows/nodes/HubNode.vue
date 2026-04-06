@@ -11,7 +11,13 @@ interface HubNodeData {
   hub_id?: string;
 }
 
-const { data, emit, config, color, hubsMap = {} } = defineProps<{
+const {
+  data,
+  emit,
+  config,
+  color,
+  hubsMap = {},
+} = defineProps<{
   data: ReteNodeData;
   emit: ReteEmitFn;
   config: NodeConfig;

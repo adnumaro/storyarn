@@ -3,7 +3,12 @@ import { ref, watch } from "vue";
 import { useLive } from "@composables/useLive";
 import type { Sheet } from "../types";
 
-const { sheet, canEdit = false, isDraft = false, sourceShortcut = null } = defineProps<{
+const {
+  sheet,
+  canEdit = false,
+  isDraft = false,
+  sourceShortcut = null,
+} = defineProps<{
   sheet: Sheet;
   canEdit?: boolean;
   isDraft?: boolean;

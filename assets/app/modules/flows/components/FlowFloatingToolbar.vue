@@ -118,7 +118,9 @@ const TOOLBAR_COMPONENTS: Record<string, Component> = {
   slug_line: SlugLineToolbar,
 };
 
-const activeComponent = computed<Component | null>(() => (nodeType.value ? TOOLBAR_COMPONENTS[nodeType.value] ?? null : null));
+const activeComponent = computed<Component | null>(() =>
+  nodeType.value ? (TOOLBAR_COMPONENTS[nodeType.value] ?? null) : null,
+);
 </script>
 
 <template>

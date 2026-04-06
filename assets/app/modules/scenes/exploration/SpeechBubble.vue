@@ -7,7 +7,11 @@ interface StageRefProxy {
   getStage: () => Konva.Stage | undefined;
 }
 
-const { bubble = null, getPinNode, stageRef = null } = defineProps<{
+const {
+  bubble = null,
+  getPinNode,
+  stageRef = null,
+} = defineProps<{
   bubble?: BubbleData | null;
   getPinNode: (pinId: number | string) => Konva.Node | null;
   stageRef?: StageRefProxy | null;

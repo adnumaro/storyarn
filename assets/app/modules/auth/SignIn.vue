@@ -5,7 +5,13 @@ import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
 
-const { email = "", readonly = false, localMailAdapter = false, loginAction, csrfToken } = defineProps<{
+const {
+  email = "",
+  readonly = false,
+  localMailAdapter = false,
+  loginAction,
+  csrfToken,
+} = defineProps<{
   email?: string;
   readonly?: boolean;
   localMailAdapter?: boolean;

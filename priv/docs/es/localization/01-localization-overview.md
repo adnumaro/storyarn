@@ -26,12 +26,12 @@ Abre **Localizacion** en la barra lateral de tu proyecto. El idioma fuente de tu
 
 Haz clic en **Sincronizar** para escanear todo tu proyecto y extraer cada texto traducible. El extractor obtiene contenido de cuatro tipos de fuente:
 
-| Fuente                | Que se extrae                                                                                              |
-| --------------------- | ---------------------------------------------------------------------------------------------------------- |
-| **Nodos de flujo**    | Texto de dialogo, acotaciones, texto de menu, textos de respuestas individuales, descripciones de slug line, etiquetas de salida |
-| **Fichas**            | Nombre de ficha, descripcion de ficha                                                                      |
-| **Bloques**           | Etiquetas de bloque, valores de contenido de texto, etiquetas de opciones de seleccion                     |
-| **Flujos**            | Nombre de flujo, descripcion de flujo                                                                      |
+| Fuente             | Que se extrae                                                                                                                    |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Nodos de flujo** | Texto de dialogo, acotaciones, texto de menu, textos de respuestas individuales, descripciones de slug line, etiquetas de salida |
+| **Fichas**         | Nombre de ficha, descripcion de ficha                                                                                            |
+| **Bloques**        | Etiquetas de bloque, valores de contenido de texto, etiquetas de opciones de seleccion                                           |
+| **Flujos**         | Nombre de flujo, descripcion de flujo                                                                                            |
 
 Cada texto extraido recibe un hash SHA-256 de su contenido fuente. Cuando vuelves a sincronizar, Storyarn detecta cambios -- si el texto fuente ha sido modificado desde la ultima traduccion, el sistema puede marcarlo para re-traduccion. La extraccion es idempotente: ejecutarla multiples veces nunca crea duplicados gracias a la logica de upsert.
 
@@ -58,13 +58,13 @@ Internamente, la traduccion de DeepL es {accent}compatible con HTML{/accent}: el
 
 Cada entrada de texto sigue un {accent}flujo de trabajo de cinco etapas{/accent}:
 
-| Estado            | Significado                                      |
-| ----------------- | ------------------------------------------------ |
-| **Pendiente**     | Extraido pero aun no traducido                   |
-| **Borrador**      | Traduccion automatica o primera pasada completada |
-| **En progreso**   | El traductor esta trabajando activamente en ello  |
-| **Revision**      | Traduccion completada, pendiente de revision      |
-| **Final**         | Aprobado y listo para exportar                    |
+| Estado          | Significado                                       |
+| --------------- | ------------------------------------------------- |
+| **Pendiente**   | Extraido pero aun no traducido                    |
+| **Borrador**    | Traduccion automatica o primera pasada completada |
+| **En progreso** | El traductor esta trabajando activamente en ello  |
+| **Revision**    | Traduccion completada, pendiente de revision      |
+| **Final**       | Aprobado y listo para exportar                    |
 
 Las traducciones automaticas se establecen automaticamente con estado **Borrador**. Si el texto fuente cambia despues de la traduccion, el sistema puede detectar la discrepancia de hash para re-revision.
 
@@ -82,13 +82,13 @@ Filtra la tabla de traducciones por idioma, estado y tipo de fuente. Busca tanto
 
 El glosario asegura {accent}terminologia consistente{/accent} en todas las traducciones. Cada entrada mapea un termino fuente a un termino destino para un par de idiomas especifico.
 
-| Campo                                  | Proposito                                                            |
-| -------------------------------------- | -------------------------------------------------------------------- |
-| **Termino fuente**                     | El termino en tu idioma fuente                                       |
-| **Termino destino**                    | La traduccion requerida                                              |
-| **Idioma fuente / Idioma destino**     | El par de idiomas al que aplica esta entrada                         |
-| **Contexto**                           | Notas de uso para traductores                                        |
-| **No traducir**                        | Cuando esta habilitado, el termino se mantiene tal cual (nombres propios, marcas) |
+| Campo                              | Proposito                                                                         |
+| ---------------------------------- | --------------------------------------------------------------------------------- |
+| **Termino fuente**                 | El termino en tu idioma fuente                                                    |
+| **Termino destino**                | La traduccion requerida                                                           |
+| **Idioma fuente / Idioma destino** | El par de idiomas al que aplica esta entrada                                      |
+| **Contexto**                       | Notas de uso para traductores                                                     |
+| **No traducir**                    | Cuando esta habilitado, el termino se mantiene tal cual (nombres propios, marcas) |
 
 Las entradas del glosario se aplican automaticamente durante la traduccion con DeepL mediante la API de Glosarios de DeepL. Al traducir manualmente, el glosario sirve como referencia.
 

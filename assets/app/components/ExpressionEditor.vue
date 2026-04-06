@@ -12,7 +12,14 @@ import InstructionBuilder from "./builders/InstructionBuilder.vue";
 import type { Variable } from "@modules/shared/variables";
 import type { ConditionData, Assignment } from "./builders/types";
 
-const { mode, condition = null, assignments = [], variables = [], disabled = false, switchMode = false } = defineProps<{
+const {
+  mode,
+  condition = null,
+  assignments = [],
+  variables = [],
+  disabled = false,
+  switchMode = false,
+} = defineProps<{
   mode: "condition" | "instruction";
   condition?: ConditionData | null;
   assignments?: Assignment[];

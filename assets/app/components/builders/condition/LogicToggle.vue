@@ -3,7 +3,11 @@
  * AND/OR logic toggle: "Match [all|any] of the {label}"
  */
 
-const { logic = "all", ofLabel = "of the rules", disabled = false } = defineProps<{
+const {
+  logic = "all",
+  ofLabel = "of the rules",
+  disabled = false,
+} = defineProps<{
   logic?: "all" | "any";
   ofLabel?: string;
   disabled?: boolean;

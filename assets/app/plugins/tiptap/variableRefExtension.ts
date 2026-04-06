@@ -46,7 +46,11 @@ function escapeAttr(str: string | undefined | null): string {
 }
 
 export function createVariableRefExtension(
-  { pushEvent, pushEventTo, phxTarget }: VariableRefExtensionOptions = {} as VariableRefExtensionOptions,
+  {
+    pushEvent,
+    pushEventTo,
+    phxTarget,
+  }: VariableRefExtensionOptions = {} as VariableRefExtensionOptions,
 ): VariableRefExtensionReturn {
   let variableDebounce: ReturnType<typeof setTimeout> | null = null;
   let variableResolve: VariableResolve = null;
@@ -124,7 +128,8 @@ export function createVariableRefExtension(
             variableDebounce = setTimeout(() => {
               const push =
                 phxTarget && pushEventTo
-                  ? (ev: string, payload: Record<string, unknown>) => pushEventTo(phxTarget, ev, payload)
+                  ? (ev: string, payload: Record<string, unknown>) =>
+                      pushEventTo(phxTarget, ev, payload)
                   : pushEvent;
               push("variable_suggestions", { query });
 
@@ -150,7 +155,8 @@ export function createVariableRefExtension(
               if (!props.clientRect) return;
               const rect = props.clientRect();
               if (!rect) return;
-              (component.element as HTMLElement).style.cssText = `position:absolute;left:${rect.left}px;top:${rect.bottom + 8}px;z-index:50;`;
+              (component.element as HTMLElement).style.cssText =
+                `position:absolute;left:${rect.left}px;top:${rect.bottom + 8}px;z-index:50;`;
               document.body.appendChild(component.element!);
             },
             onUpdate(props: SuggestionProps<VariableItem>) {
@@ -175,7 +181,6 @@ export function createVariableRefExtension(
           };
         },
       },
-
     }),
 
     /** Call when server responds with variable suggestions */

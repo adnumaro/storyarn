@@ -8,12 +8,21 @@ import { Group, Plus } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
 import { generateId } from "@modules/shared/variables";
 import type { Variable } from "@modules/shared/variables";
-import type { ConditionBlock as ConditionBlockType, ConditionData, ConditionGroup as ConditionGroupType } from "./types";
+import type {
+  ConditionBlock as ConditionBlockType,
+  ConditionData,
+  ConditionGroup as ConditionGroupType,
+} from "./types";
 import ConditionBlock from "@components/builders/condition/ConditionBlock.vue";
 import ConditionGroup from "@components/builders/condition/ConditionGroup.vue";
 import LogicToggle from "@components/builders/condition/LogicToggle.vue";
 
-const { condition = null, variables = [], disabled = false, switchMode = false } = defineProps<{
+const {
+  condition = null,
+  variables = [],
+  disabled = false,
+  switchMode = false,
+} = defineProps<{
   condition?: ConditionData | null;
   variables?: Variable[];
   disabled?: boolean;

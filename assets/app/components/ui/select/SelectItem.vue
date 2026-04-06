@@ -2,7 +2,13 @@
 import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { Check } from "lucide-vue-next";
-import { SelectItem, SelectItemIndicator, SelectItemText, useForwardProps, type AsTag } from "reka-ui";
+import {
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  useForwardProps,
+  type AsTag,
+} from "reka-ui";
 import { cn } from "@utils/utils";
 
 const props = defineProps<{

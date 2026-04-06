@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-const { label = "", value = 0, min = 0, max = 1, step = 0.1, disabled = false, format = null } = defineProps<{
+const {
+  label = "",
+  value = 0,
+  min = 0,
+  max = 1,
+  step = 0.1,
+  disabled = false,
+  format = null,
+} = defineProps<{
   label?: string;
   value?: number | string;
   min?: number;

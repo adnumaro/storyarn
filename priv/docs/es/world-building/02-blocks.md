@@ -20,18 +20,18 @@ Los bloques (blocks) son los {accent}campos{/accent} de una ficha. Cada bloque t
 
 Storyarn admite {accent}10 tipos de bloques{/accent}:
 
-| Tipo             | Descripción                                                                        | ¿Variable?       | Ejemplo de valor                        |
-| ---------------- | ---------------------------------------------------------------------------------- | ---------------- | --------------------------------------- |
-| **Texto**        | Entrada de texto corto o de una sola línea con placeholder opcional                | Sí               | `"Jaime"`                               |
-| **Texto Enriquecido** | Texto formateado con negrita, cursiva, listas, enlaces                        | Sí               | `"<p>Un guerrero valiente...</p>"`      |
-| **Número**       | Entrada numérica con restricciones opcionales de mín, máx y paso                   | Sí               | `42`                                    |
-| **Booleano**     | Interruptor. Admite modo de dos estados (true/false) o tres estados (true/false/nil) | Sí             | `true`                                  |
-| **Selección**    | Elección única de una lista de opciones definida                                   | Sí               | `"warrior"`                             |
-| **Selección Múltiple** | Múltiples elecciones de una lista definida (etiquetas)                       | Sí               | `["fire", "ice"]`                       |
-| **Fecha**        | Selector de fecha                                                                  | Sí               | `"2024-03-15"`                          |
-| **Tabla**        | Cuadrícula tipo hoja de cálculo con columnas tipadas y filas con nombre            | Sí (a nivel de celda) | Ver [Tablas](/es/world-building/tables) |
-| **Referencia**   | Enlace a otra hoja o flujo                                                         | **No**           | --                                      |
-| **Galería**      | Colección de imágenes de recursos subidos                                          | **No**           | --                                      |
+| Tipo                   | Descripción                                                                          | ¿Variable?            | Ejemplo de valor                        |
+| ---------------------- | ------------------------------------------------------------------------------------ | --------------------- | --------------------------------------- |
+| **Texto**              | Entrada de texto corto o de una sola línea con placeholder opcional                  | Sí                    | `"Jaime"`                               |
+| **Texto Enriquecido**  | Texto formateado con negrita, cursiva, listas, enlaces                               | Sí                    | `"<p>Un guerrero valiente...</p>"`      |
+| **Número**             | Entrada numérica con restricciones opcionales de mín, máx y paso                     | Sí                    | `42`                                    |
+| **Booleano**           | Interruptor. Admite modo de dos estados (true/false) o tres estados (true/false/nil) | Sí                    | `true`                                  |
+| **Selección**          | Elección única de una lista de opciones definida                                     | Sí                    | `"warrior"`                             |
+| **Selección Múltiple** | Múltiples elecciones de una lista definida (etiquetas)                               | Sí                    | `["fire", "ice"]`                       |
+| **Fecha**              | Selector de fecha                                                                    | Sí                    | `"2024-03-15"`                          |
+| **Tabla**              | Cuadrícula tipo hoja de cálculo con columnas tipadas y filas con nombre              | Sí (a nivel de celda) | Ver [Tablas](/es/world-building/tables) |
+| **Referencia**         | Enlace a otra hoja o flujo                                                           | **No**                | --                                      |
+| **Galería**            | Colección de imágenes de recursos subidos                                            | **No**                | --                                      |
 
 Los bloques de referencia y galería se excluyen del sistema de variables porque no llevan un valor significativo en tiempo de ejecución.
 

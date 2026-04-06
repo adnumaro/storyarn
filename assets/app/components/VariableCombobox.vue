@@ -28,7 +28,15 @@ interface OptionGroup {
   items: SelectOption[];
 }
 
-const { modelValue = "", options = [], groups = [], placeholder = "...", disabled = false, freeText = false, inputType = "text" } = defineProps<{
+const {
+  modelValue = "",
+  options = [],
+  groups = [],
+  placeholder = "...",
+  disabled = false,
+  freeText = false,
+  inputType = "text",
+} = defineProps<{
   /** Currently selected value */
   modelValue?: string;
   /** Flat options: [{ value, label }] */

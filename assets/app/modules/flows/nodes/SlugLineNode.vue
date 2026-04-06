@@ -16,7 +16,13 @@ interface SlugLineNodeData {
   description?: string;
 }
 
-const { data, emit, config, color, sheetsMap = {} } = defineProps<{
+const {
+  data,
+  emit,
+  config,
+  color,
+  sheetsMap = {},
+} = defineProps<{
   data: ReteNodeData;
   emit: ReteEmitFn;
   config: NodeConfig;

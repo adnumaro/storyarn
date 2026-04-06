@@ -17,7 +17,11 @@ interface ProviderUsage {
   characterLimit: number;
 }
 
-const { providerApiEndpoint = "https://api-free.deepl.com", hasApiKey = false, providerUsage = null } = defineProps<{
+const {
+  providerApiEndpoint = "https://api-free.deepl.com",
+  hasApiKey = false,
+  providerUsage = null,
+} = defineProps<{
   providerApiEndpoint?: string;
   hasApiKey?: boolean;
   providerUsage?: ProviderUsage | null;

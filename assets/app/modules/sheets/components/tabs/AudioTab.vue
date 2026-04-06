@@ -30,7 +30,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/
 import { useLive } from "@composables/useLive";
 import type { AudioAsset, VoiceLineGroup } from "../../types";
 
-const { groupedLines = [], audioAssets = [], workspaceSlug, projectSlug, canEdit = false, loading = false } = defineProps<{
+const {
+  groupedLines = [],
+  audioAssets = [],
+  workspaceSlug,
+  projectSlug,
+  canEdit = false,
+  loading = false,
+} = defineProps<{
   groupedLines?: VoiceLineGroup[];
   audioAssets?: AudioAsset[];
   workspaceSlug: string;

@@ -62,7 +62,7 @@ function updateField(field: FormField<string>, val: string | number) {
       <Input
         id="project-name"
         name="project[name]"
-        :model-value="(name.value.value as string)"
+        :model-value="name.value.value as string"
         @update:model-value="(v) => updateField(name, v)"
         :placeholder="$t('workspace.new_project.fields.name.placeholder')"
         required
@@ -81,7 +81,7 @@ function updateField(field: FormField<string>, val: string | number) {
       <Textarea
         id="project-description"
         name="project[description]"
-        :model-value="(description.value.value as string)"
+        :model-value="description.value.value as string"
         @update:model-value="(v) => updateField(description, v)"
         :placeholder="$t('workspace.new_project.fields.description.placeholder')"
         :rows="4"

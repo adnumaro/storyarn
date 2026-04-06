@@ -8,7 +8,13 @@ interface ButtonOption {
   label?: string;
 }
 
-const { label = "", icon = null, options, value = "", disabled = false } = defineProps<{
+const {
+  label = "",
+  icon = null,
+  options,
+  value = "",
+  disabled = false,
+} = defineProps<{
   label?: string;
   icon?: Component | null;
   options: ButtonOption[];

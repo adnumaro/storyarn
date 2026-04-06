@@ -1,5 +1,10 @@
 <script setup lang="ts">
-const { label = "", value = "", placeholder = "", disabled = false } = defineProps<{
+const {
+  label = "",
+  value = "",
+  placeholder = "",
+  disabled = false,
+} = defineProps<{
   label?: string;
   value?: string;
   placeholder?: string;

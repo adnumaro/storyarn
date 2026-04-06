@@ -1,5 +1,12 @@
 <script setup lang="ts">
-const { label = "", value = 0, min = 0, max = 100, step = 1, disabled = false } = defineProps<{
+const {
+  label = "",
+  value = 0,
+  min = 0,
+  max = 100,
+  step = 1,
+  disabled = false,
+} = defineProps<{
   label?: string;
   value?: number | string;
   min?: number;

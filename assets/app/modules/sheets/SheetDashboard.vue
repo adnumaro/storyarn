@@ -43,7 +43,15 @@ import type {
   StatCard,
 } from "./types";
 
-const { stats = null, tableData = [], pagination = { sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 0 }, issues = [], canEdit = false, workspaceSlug, projectSlug } = defineProps<{
+const {
+  stats = null,
+  tableData = [],
+  pagination = { sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 0 },
+  issues = [],
+  canEdit = false,
+  workspaceSlug,
+  projectSlug,
+} = defineProps<{
   stats?: DashboardStats | null;
   tableData?: DashboardRow[];
   pagination?: DashboardPagination;

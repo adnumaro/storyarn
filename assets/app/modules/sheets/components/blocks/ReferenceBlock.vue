@@ -18,7 +18,11 @@ import type { Block, ReferenceSearchResult } from "../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 
-const { block, canEdit = false, inherited = false } = defineProps<{
+const {
+  block,
+  canEdit = false,
+  inherited = false,
+} = defineProps<{
   block: Block;
   canEdit?: boolean;
   inherited?: boolean;

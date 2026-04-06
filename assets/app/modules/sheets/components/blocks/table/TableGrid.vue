@@ -7,13 +7,25 @@ import { Badge } from "@components/ui/badge/index.ts";
 import { Checkbox } from "@components/ui/checkbox/index.ts";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { useLive } from "@composables/useLive";
-import type { CellValue, FormulaCellValue, SelectOption, TableColumn, TableRow } from "../../../types";
+import type {
+  CellValue,
+  FormulaCellValue,
+  SelectOption,
+  TableColumn,
+  TableRow,
+} from "../../../types";
 import TableColumnHeader from "./TableColumnHeader.vue";
 import TableDraggableRow from "./TableDraggableRow.vue";
 import TableRowActions from "./TableRowActions.vue";
 import { typeIcon } from "./table-config";
 
-const { blockId, columns = [], rows = [], canEdit = false, canManage = false } = defineProps<{
+const {
+  blockId,
+  columns = [],
+  rows = [],
+  canEdit = false,
+  canManage = false,
+} = defineProps<{
   blockId: number | string;
   columns?: TableColumn[];
   rows?: TableRow[];
@@ -385,7 +397,8 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
                       "
                       class="text-sm"
                       >{{
-                        findOptionLabel(col.config?.options || [], getCellValue(row, col)) || "\u2014"
+                        findOptionLabel(col.config?.options || [], getCellValue(row, col)) ||
+                        "\u2014"
                       }}</span
                     >
                   </div>
@@ -439,12 +452,15 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
                             :key="opt.key"
                             class="flex items-center gap-2 w-full px-2 py-1.5 text-sm hover:bg-accent rounded"
                             :class="
-                              ((getCellValue(row, col) as string[]) || []).includes(opt.key) && 'bg-primary/10'
+                              ((getCellValue(row, col) as string[]) || []).includes(opt.key) &&
+                              'bg-primary/10'
                             "
                             @click="toggleMultiSelectCell(row, col, opt.key)"
                           >
                             <Checkbox
-                              :checked="((getCellValue(row, col) as string[]) || []).includes(opt.key)"
+                              :checked="
+                                ((getCellValue(row, col) as string[]) || []).includes(opt.key)
+                              "
                               class="pointer-events-none"
                             />{{ opt.value }}
                           </button>
@@ -498,7 +514,8 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
                     <Sigma class="size-3 opacity-30 shrink-0" />
                     <span
                       :class="
-                        getFormulaDisplay(row, col) === '\u2014' && 'text-muted-foreground/40 italic'
+                        getFormulaDisplay(row, col) === '\u2014' &&
+                        'text-muted-foreground/40 italic'
                       "
                       >{{ getFormulaDisplay(row, col) }}</span
                     >
@@ -578,7 +595,9 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
                       "
                       class="text-sm"
                     >
-                      {{ displayValue(getCellValue(row, col), col.type === "number" ? "0" : "\u2014") }}
+                      {{
+                        displayValue(getCellValue(row, col), col.type === "number" ? "0" : "\u2014")
+                      }}
                     </span>
                   </div>
                 </template>

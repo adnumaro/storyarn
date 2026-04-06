@@ -11,7 +11,11 @@ import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 import OptionEditor from "../OptionEditor.vue";
 
-const { block, canEdit = false, inherited = false } = defineProps<{
+const {
+  block,
+  canEdit = false,
+  inherited = false,
+} = defineProps<{
   block: Block;
   canEdit?: boolean;
   inherited?: boolean;

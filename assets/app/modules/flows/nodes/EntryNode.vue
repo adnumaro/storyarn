@@ -18,7 +18,9 @@ const { data, emit, config, color } = defineProps<{
   color: string;
 }>();
 
-const refs = computed<ReferencingFlow[]>(() => (data.nodeData as EntryNodeData)?.referencing_flows || []);
+const refs = computed<ReferencingFlow[]>(
+  () => (data.nodeData as EntryNodeData)?.referencing_flows || [],
+);
 </script>
 
 <template>

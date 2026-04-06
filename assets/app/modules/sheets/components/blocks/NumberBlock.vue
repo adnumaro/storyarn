@@ -7,7 +7,11 @@ import type { Block } from "../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 
-const { block, canEdit = false, inherited = false } = defineProps<{
+const {
+  block,
+  canEdit = false,
+  inherited = false,
+} = defineProps<{
   block: Block;
   canEdit?: boolean;
   inherited?: boolean;
@@ -91,7 +95,10 @@ function onKeydown(e: KeyboardEvent): void {
                   live.pushEvent('update_block_config', {
                     id: block.id,
                     field: 'min',
-                    value: (e.target as HTMLInputElement).value === '' ? null : Number((e.target as HTMLInputElement).value),
+                    value:
+                      (e.target as HTMLInputElement).value === ''
+                        ? null
+                        : Number((e.target as HTMLInputElement).value),
                   })
               "
             />
@@ -107,7 +114,10 @@ function onKeydown(e: KeyboardEvent): void {
                   live.pushEvent('update_block_config', {
                     id: block.id,
                     field: 'max',
-                    value: (e.target as HTMLInputElement).value === '' ? null : Number((e.target as HTMLInputElement).value),
+                    value:
+                      (e.target as HTMLInputElement).value === ''
+                        ? null
+                        : Number((e.target as HTMLInputElement).value),
                   })
               "
             />
@@ -123,7 +133,10 @@ function onKeydown(e: KeyboardEvent): void {
                   live.pushEvent('update_block_config', {
                     id: block.id,
                     field: 'step',
-                    value: (e.target as HTMLInputElement).value === '' ? null : Number((e.target as HTMLInputElement).value),
+                    value:
+                      (e.target as HTMLInputElement).value === ''
+                        ? null
+                        : Number((e.target as HTMLInputElement).value),
                   })
               "
             />

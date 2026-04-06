@@ -80,7 +80,12 @@ export const OPERATOR_LABELS: Record<ConditionOperator, string> = {
  * Operators that don't need a value input.
  * Must stay in sync with Condition.operator_requires_value?/1.
  */
-export const NO_VALUE_OPERATORS: Set<ConditionOperator> = new Set(["is_empty", "is_true", "is_false", "is_nil"]);
+export const NO_VALUE_OPERATORS: Set<ConditionOperator> = new Set([
+  "is_empty",
+  "is_true",
+  "is_false",
+  "is_nil",
+]);
 
 /**
  * Returns operators for a given variable type.

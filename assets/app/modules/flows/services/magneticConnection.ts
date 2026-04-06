@@ -7,7 +7,11 @@
  */
 
 import { AreaPlugin } from "rete-area-plugin";
-import { type ConnectionPlugin, createPseudoconnection, type SocketData } from "rete-connection-plugin";
+import {
+  type ConnectionPlugin,
+  createPseudoconnection,
+  type SocketData,
+} from "rete-connection-plugin";
 import { getElementCenter } from "rete-render-utils";
 import type { FlowSchemes, FlowAreaExtra } from "../lib/rete-schemes";
 
@@ -41,7 +45,7 @@ function findNearestPoint(
   target: Point,
   maxDistance: number,
 ): (SocketData & Point) | undefined {
-  const result = points.reduce<PointWithDistance & SocketData | null>((nearest, point) => {
+  const result = points.reduce<(PointWithDistance & SocketData) | null>((nearest, point) => {
     const dist = Math.sqrt((point.x - target.x) ** 2 + (point.y - target.y) ** 2);
 
     if (dist > maxDistance) {
@@ -115,7 +119,10 @@ export function magneticConnection(
   props: MagneticConnectionProps,
 ): void {
   // Rete.js parentScope() returns a generic Scope type; cast needed for typed plugin access
-  const area = connection.parentScope(AreaPlugin) as unknown as AreaPlugin<FlowSchemes, FlowAreaExtra>;
+  const area = connection.parentScope(AreaPlugin) as unknown as AreaPlugin<
+    FlowSchemes,
+    FlowAreaExtra
+  >;
   const editor = area.parentScope() as unknown as import("rete").NodeEditor<FlowSchemes>;
   const sockets = new Map<HTMLElement, SocketData>();
   const pseudoconn = createPseudoconnection({ isMagnetic: true } as never);
@@ -183,9 +190,7 @@ export function magneticConnection(
       );
 
       // Find the nearest valid socket
-      const validPositions = socketsPositions.filter(
-        (p): p is SocketData & Point => p !== null,
-      );
+      const validPositions = socketsPositions.filter((p): p is SocketData & Point => p !== null);
       nearestSocket = findNearestPoint(validPositions, point, distance) || null;
 
       if (nearestSocket && props.display(picked, nearestSocket)) {

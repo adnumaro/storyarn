@@ -5,7 +5,11 @@ import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
 import { useLive } from "@composables/useLive";
 
-const { email, loginAction, backUrl = "/workspaces" } = defineProps<{
+const {
+  email,
+  loginAction,
+  backUrl = "/workspaces",
+} = defineProps<{
   email: string;
   loginAction: string;
   backUrl?: string;

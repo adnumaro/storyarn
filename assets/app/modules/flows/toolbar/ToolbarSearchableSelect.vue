@@ -11,7 +11,13 @@ import {
 } from "@components/ui/command/index.ts";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 
-const { options = [], selectedValue = null, selectedLabel = null, placeholder = "Select...", disabled = false } = defineProps<{
+const {
+  options = [],
+  selectedValue = null,
+  selectedLabel = null,
+  placeholder = "Select...",
+  disabled = false,
+} = defineProps<{
   options?: [string, string | number][];
   selectedValue?: string | number | null;
   selectedLabel?: string | null;

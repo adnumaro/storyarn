@@ -47,7 +47,6 @@ const {
   projectSheets?: EntityOption[];
   projectFlows?: EntityOption[];
   projectVariables?: Variable[];
-
 }>();
 
 const live = useLive();

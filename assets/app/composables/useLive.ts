@@ -10,7 +10,11 @@
 import { getCurrentInstance } from "vue";
 
 export interface LiveInterface {
-  pushEvent: (event: string, payload?: Record<string, unknown>, callback?: (reply: Record<string, unknown>) => void) => void;
+  pushEvent: (
+    event: string,
+    payload?: Record<string, unknown>,
+    callback?: (reply: Record<string, unknown>) => void,
+  ) => void;
   handleEvent: (event: string, callback: (payload: Record<string, unknown>) => void) => void;
   upload: (name: string, files: FileList) => void;
 }
@@ -23,7 +27,11 @@ export function useLive(): LiveInterface {
   if (!$live) {
     // Return a no-op stub when used outside LiveView (e.g., Storybook)
     return {
-      pushEvent: (event: string, payload?: Record<string, unknown>, callback?: (reply: Record<string, unknown>) => void) => {
+      pushEvent: (
+        event: string,
+        payload?: Record<string, unknown>,
+        callback?: (reply: Record<string, unknown>) => void,
+      ) => {
         console.warn(`[useLive] pushEvent("${event}") called outside LiveView`, payload);
         callback?.({});
       },
@@ -40,7 +48,11 @@ export function useLive(): LiveInterface {
     /**
      * Push an event to the LiveView server.
      */
-    pushEvent: (event: string, payload: Record<string, unknown> = {}, callback?: (reply: Record<string, unknown>) => void) => {
+    pushEvent: (
+      event: string,
+      payload: Record<string, unknown> = {},
+      callback?: (reply: Record<string, unknown>) => void,
+    ) => {
       $live.pushEvent(event, payload, callback);
     },
 

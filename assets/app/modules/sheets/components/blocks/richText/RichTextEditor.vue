@@ -16,7 +16,11 @@ import {
 } from "lucide-vue-next";
 import { onBeforeUnmount, watch } from "vue";
 
-const { content = "", editable = false, placeholder = "Write something..." } = defineProps<{
+const {
+  content = "",
+  editable = false,
+  placeholder = "Write something...",
+} = defineProps<{
   content?: string;
   editable?: boolean;
   placeholder?: string;

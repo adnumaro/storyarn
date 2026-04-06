@@ -39,7 +39,9 @@ const passwordConfirmation = passwordForm.field("password_confirmation");
 
 // For the form action POST, we use a hidden form that triggers on valid submit
 const hiddenFormRef = ref<HTMLFormElement | null>(null);
-const csrfToken = ref(document.querySelector('meta[name=csrf-token]')?.getAttribute('content') ?? '');
+const csrfToken = ref(
+  document.querySelector("meta[name=csrf-token]")?.getAttribute("content") ?? "",
+);
 
 // Watch for triggerSubmit from server
 const checkTriggerSubmit = () => {
@@ -72,11 +74,7 @@ watch(
 
     <!-- Hidden form for password action POST -->
     <form ref="hiddenFormRef" :action="passwordAction" method="post" class="hidden">
-      <input
-        type="hidden"
-        name="_csrf_token"
-        :value="csrfToken"
-      />
+      <input type="hidden" name="_csrf_token" :value="csrfToken" />
       <input type="hidden" name="_method" value="put" />
       <input
         :name="passwordForm.field('email')?.inputAttrs?.value?.name || 'user[email]'"

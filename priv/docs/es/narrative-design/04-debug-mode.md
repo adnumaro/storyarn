@@ -30,13 +30,13 @@ El depurador se inicializa en el nodo de **Entrada** del flujo, cargando todas l
 
 La barra de controles se encuentra en la parte superior del panel de depuracion con las siguientes acciones:
 
-| Boton                   | Accion              | Que hace                                                                                          |
-| ----------------------- | ------------------- | ------------------------------------------------------------------------------------------------- |
-| Play / Pausa            | **Reproduccion automatica** | Avanza el flujo automaticamente a la velocidad configurada, pausando en decisiones de dialogo y puntos de interrupcion |
-| Paso                    | **Paso**            | Avanza exactamente un nodo hacia adelante                                                         |
-| Paso atras              | **Paso atras**      | Retrocede al estado anterior (deshace el ultimo paso)                                             |
-| Reiniciar               | **Reiniciar**       | Reinicia la sesion desde el nodo de inicio, restableciendo todas las variables a sus valores iniciales |
-| Detener                 | **Detener**         | Finaliza la sesion de depuracion y cierra el panel                                                |
+| Boton        | Accion                      | Que hace                                                                                                               |
+| ------------ | --------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Play / Pausa | **Reproduccion automatica** | Avanza el flujo automaticamente a la velocidad configurada, pausando en decisiones de dialogo y puntos de interrupcion |
+| Paso         | **Paso**                    | Avanza exactamente un nodo hacia adelante                                                                              |
+| Paso atras   | **Paso atras**              | Retrocede al estado anterior (deshace el ultimo paso)                                                                  |
+| Reiniciar    | **Reiniciar**               | Reinicia la sesion desde el nodo de inicio, restableciendo todas las variables a sus valores iniciales                 |
+| Detener      | **Detener**                 | Finaliza la sesion de depuracion y cierra el panel                                                                     |
 
 Cuando el depurador llega a un **nodo de dialogo con respuestas**, se detiene y presenta las opciones disponibles como botones en la consola. Las respuestas cuyas condiciones no se cumplen aparecen en gris y deshabilitadas. Haz clic en una respuesta valida para continuar la ejecucion por ese camino.
 
@@ -97,13 +97,13 @@ Cuando el depurador esta esperando una respuesta, las opciones disponibles apare
 
 Una tabla en vivo de **cada variable** del proyecto, con cinco columnas:
 
-| Columna      | Muestra                                                            |
-| ------------ | ------------------------------------------------------------------ |
-| **Variable** | La referencia completa (shortcut de ficha + nombre de variable)    |
+| Columna      | Muestra                                                                     |
+| ------------ | --------------------------------------------------------------------------- |
+| **Variable** | La referencia completa (shortcut de ficha + nombre de variable)             |
 | **Tipo**     | El tipo de bloque de la variable (numero, booleano, texto, seleccion, etc.) |
-| **Inicial**  | El valor cuando se inicio la sesion de depuracion                  |
-| **Anterior** | El valor antes del cambio mas reciente                             |
-| **Actual**   | El valor en vivo en este momento                                   |
+| **Inicial**  | El valor cuando se inicio la sesion de depuracion                           |
+| **Anterior** | El valor antes del cambio mas reciente                                      |
+| **Actual**   | El valor en vivo en este momento                                            |
 
 Las variables modificadas se resaltan -- los valores modificados por instrucciones aparecen en **amarillo**, y los valores que sobreescribes manualmente aparecen en **azul**. Un indicador de diamante marca las variables cuyo valor actual difiere de su valor inicial.
 

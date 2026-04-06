@@ -10,7 +10,14 @@ import { Lock } from "lucide-vue-next";
 import type { Component } from "vue";
 import { nextTick, ref, watch } from "vue";
 
-const { icon, label = "", canEdit = false, isConstant = false, required = false, detached = false } = defineProps<{
+const {
+  icon,
+  label = "",
+  canEdit = false,
+  isConstant = false,
+  required = false,
+  detached = false,
+} = defineProps<{
   icon: Component;
   label?: string;
   canEdit?: boolean;

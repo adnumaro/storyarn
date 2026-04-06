@@ -21,7 +21,11 @@ interface AvatarOption {
   name: string;
 }
 
-const { nodeData, nodeId, sheetAvatars = [] } = defineProps<{
+const {
+  nodeData,
+  nodeId,
+  sheetAvatars = [],
+} = defineProps<{
   nodeData: DialogueToolbarData;
   nodeId: string | number;
   sheetAvatars?: SheetAvatarEntry[];

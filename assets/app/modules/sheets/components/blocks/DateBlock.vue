@@ -7,7 +7,11 @@ import type { Block } from "../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 
-const { block, canEdit = false, inherited = false } = defineProps<{
+const {
+  block,
+  canEdit = false,
+  inherited = false,
+} = defineProps<{
   block: Block;
   canEdit?: boolean;
   inherited?: boolean;
@@ -79,7 +83,11 @@ const content = computed(() => block.value?.content);
       :model-value="(content as string) || ''"
       class="h-9 w-full"
       @change="
-        (e) => live.pushEvent('update_block_value', { id: block.id, value: (e.target as HTMLInputElement).value || null })
+        (e) =>
+          live.pushEvent('update_block_value', {
+            id: block.id,
+            value: (e.target as HTMLInputElement).value || null,
+          })
       "
     />
     <p v-else class="text-sm">{{ content || "\u2014" }}</p>

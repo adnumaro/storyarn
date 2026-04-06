@@ -31,7 +31,12 @@ interface WorkspaceItem {
   href: string;
 }
 
-const { currentUser, urls, workspaces = [], currentWorkspaceSlug } = defineProps<{
+const {
+  currentUser,
+  urls,
+  workspaces = [],
+  currentWorkspaceSlug,
+} = defineProps<{
   currentUser: WorkspaceSidebarUser;
   urls: WorkspaceSidebarUrls;
   workspaces?: WorkspaceItem[];
@@ -47,7 +52,7 @@ const handleLogout = () => {
   const form = document.createElement("form");
   form.method = "POST";
   form.action = urls.logout;
-  
+
   const methodInput = document.createElement("input");
   methodInput.type = "hidden";
   methodInput.name = "_method";
@@ -76,7 +81,9 @@ const handleLogout = () => {
 
     <!-- Workspaces List -->
     <div class="flex-1 overflow-y-auto px-2 py-4 space-y-1">
-      <div class="px-2 pb-2 text-xs font-medium text-muted-foreground">{{ t('workspace.sidebar.my_workspaces') }}</div>
+      <div class="px-2 pb-2 text-xs font-medium text-muted-foreground">
+        {{ t("workspace.sidebar.my_workspaces") }}
+      </div>
 
       <a
         v-for="ws in workspaces"
@@ -119,19 +126,22 @@ const handleLogout = () => {
           <DropdownMenuItem as-child>
             <a :href="urls.accountSettings" class="flex items-center gap-2">
               <User class="size-4" />
-              {{ t('workspace.sidebar.account_settings') }}
+              {{ t("workspace.sidebar.account_settings") }}
             </a>
           </DropdownMenuItem>
           <DropdownMenuItem as-child>
             <a :href="urls.workspaces" class="flex items-center gap-2">
               <LayoutDashboard class="size-4" />
-              {{ t('workspace.sidebar.all_workspaces') }}
+              {{ t("workspace.sidebar.all_workspaces") }}
             </a>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem @select.prevent="handleLogout" class="flex items-center gap-2 text-destructive cursor-pointer">
+          <DropdownMenuItem
+            @select.prevent="handleLogout"
+            class="flex items-center gap-2 text-destructive cursor-pointer"
+          >
             <LogOut class="size-4" />
-            {{ t('workspace.sidebar.log_out') }}
+            {{ t("workspace.sidebar.log_out") }}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

@@ -7,7 +7,11 @@ import BlockLabel from "../../BlockLabel.vue";
 import BlockToolbar from "../../BlockToolbar.vue";
 import TableGrid from "./TableGrid.vue";
 
-const { block, canEdit = false, inherited = false } = defineProps<{
+const {
+  block,
+  canEdit = false,
+  inherited = false,
+} = defineProps<{
   block: Block;
   canEdit?: boolean;
   inherited?: boolean;

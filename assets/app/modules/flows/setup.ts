@@ -7,7 +7,11 @@
 import { ClassicPreset, NodeEditor } from "rete";
 import { AreaExtensions, AreaPlugin } from "rete-area-plugin";
 import { Presets as ArrangePresets, AutoArrangePlugin } from "rete-auto-arrange-plugin";
-import { ConnectionPlugin, Presets as ConnectionPresets, type SocketData } from "rete-connection-plugin";
+import {
+  ConnectionPlugin,
+  Presets as ConnectionPresets,
+  type SocketData,
+} from "rete-connection-plugin";
 import { HistoryPlugin } from "rete-history-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
 import { VuePlugin, Presets as VuePresets } from "rete-vue-plugin";

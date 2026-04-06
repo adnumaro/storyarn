@@ -342,7 +342,7 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
           await hook.area.update("node", node.id);
           await hook.syncNodeSize(node.id);
         }
-        for (const conn of (data.connections || [])) {
+        for (const conn of data.connections || []) {
           if (!hook.editor.getConnection(`conn-${conn.id}`)) {
             await hook.addConnectionToEditor(conn);
           }
@@ -410,9 +410,9 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
         for (const conn of connections) {
           if (conn.source === existingNode.id || conn.target === existingNode.id) {
             affectedConnections.push({
-              source: (hook.editor.getNode(conn.source))?.nodeId,
+              source: hook.editor.getNode(conn.source)?.nodeId,
               sourceOutput: conn.sourceOutput,
-              target: (hook.editor.getNode(conn.target))?.nodeId,
+              target: hook.editor.getNode(conn.target)?.nodeId,
               targetInput: conn.targetInput,
               connData: hook.connectionDataMap.get(conn.id),
             });
@@ -465,11 +465,9 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
         .getConnections()
         .find(
           (c) =>
-            (hook.editor.getNode(c.source))?.nodeId ===
-              data.source_node_id &&
+            hook.editor.getNode(c.source)?.nodeId === data.source_node_id &&
             c.sourceOutput === data.source_pin &&
-            (hook.editor.getNode(c.target))?.nodeId ===
-              data.target_node_id &&
+            hook.editor.getNode(c.target)?.nodeId === data.target_node_id &&
             c.targetInput === data.target_pin,
         );
 

@@ -15,7 +15,11 @@ interface CollectionItem {
   _sheet_name?: string;
 }
 
-const { open = false, zone = null, items = [] } = defineProps<{
+const {
+  open = false,
+  zone = null,
+  items = [],
+} = defineProps<{
   open?: boolean;
   zone?: CollectionZone | null;
   items?: CollectionItem[];

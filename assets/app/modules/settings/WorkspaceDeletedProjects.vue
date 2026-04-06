@@ -30,7 +30,12 @@ interface ProjectSnapshot {
   entity_counts?: Record<string, number>;
 }
 
-const { deletedProjects, expandedProjectId = null, snapshots = [], recovering = false } = defineProps<{
+const {
+  deletedProjects,
+  expandedProjectId = null,
+  snapshots = [],
+  recovering = false,
+} = defineProps<{
   deletedProjects: DeletedProject[];
   expandedProjectId?: number | null;
   snapshots?: ProjectSnapshot[];

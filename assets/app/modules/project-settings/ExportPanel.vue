@@ -42,7 +42,13 @@ interface ValidationResult {
   info?: ValidationFinding[];
 }
 
-const { formatConfig, sectionConfig, options, validation = null, exportDownloadUrl } = defineProps<{
+const {
+  formatConfig,
+  sectionConfig,
+  options,
+  validation = null,
+  exportDownloadUrl,
+} = defineProps<{
   formatConfig: FormatConfig;
   sectionConfig: SectionConfig;
   options: ExportOptions;

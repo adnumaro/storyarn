@@ -5,7 +5,11 @@ import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
 import { useLive } from "@composables/useLive";
 import type { TabDefinition } from "../../types";
 
-const { currentTab = "content", canEdit = false, compact = false } = defineProps<{
+const {
+  currentTab = "content",
+  canEdit = false,
+  compact = false,
+} = defineProps<{
   currentTab?: string;
   canEdit?: boolean;
   compact?: boolean;

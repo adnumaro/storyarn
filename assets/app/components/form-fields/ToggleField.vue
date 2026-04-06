@@ -2,7 +2,12 @@
 import type { Component } from "vue";
 import { Switch } from "@components/ui/switch";
 
-const { label = "", icon = null, checked = false, disabled = false } = defineProps<{
+const {
+  label = "",
+  icon = null,
+  checked = false,
+  disabled = false,
+} = defineProps<{
   label?: string;
   icon?: Component | null;
   checked?: boolean;

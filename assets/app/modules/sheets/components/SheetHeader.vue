@@ -9,7 +9,12 @@ import AvatarGallery from "./AvatarGallery.vue";
 import SheetAvatarSection from "./SheetAvatarSection.vue";
 import SheetMetadata from "./SheetMetadata.vue";
 
-const { sheet, canEdit = false, isDraft = false, sourceShortcut = null } = defineProps<{
+const {
+  sheet,
+  canEdit = false,
+  isDraft = false,
+  sourceShortcut = null,
+} = defineProps<{
   sheet: Sheet;
   canEdit?: boolean;
   isDraft?: boolean;
@@ -53,7 +58,9 @@ function triggerAvatarUpload(): void {
   input.accept = "image/*";
   input.multiple = true;
   input.onchange = (e) => {
-    Array.from((e.target as HTMLInputElement).files!).forEach((file) => uploadFile(file, "upload_avatar"));
+    Array.from((e.target as HTMLInputElement).files!).forEach((file) =>
+      uploadFile(file, "upload_avatar"),
+    );
   };
   input.click();
 }

@@ -190,9 +190,7 @@ function gotoGlobal(panelIndex: number, tabIndex?: number) {
       </div>
     </div>
 
-    <div
-      class="relative z-20 flex flex-1 w-full max-w-7xl mx-auto flex-col lg:flex-row min-h-0"
-    >
+    <div class="relative z-20 flex flex-1 w-full max-w-7xl mx-auto flex-col lg:flex-row min-h-0">
       <!-- Visual Sticking Container (Top Mobile, Right Desktop) -->
       <div
         class="lg:w-[45%] w-full lg:h-full basis-[45%] lg:basis-auto shrink-0 bg-black/10 lg:order-2 flex items-center justify-center border-b lg:border-b-0 lg:border-l border-border/20 relative"

@@ -14,7 +14,12 @@ import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { Textarea } from "@components/ui/textarea";
 
-const { open, title, description, loadingAction = null } = defineProps<{
+const {
+  open,
+  title,
+  description,
+  loadingAction = null,
+} = defineProps<{
   open: boolean;
   title: string;
   description: string;

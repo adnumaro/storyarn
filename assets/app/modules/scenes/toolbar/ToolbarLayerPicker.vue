@@ -8,7 +8,11 @@ interface Layer {
   name: string;
 }
 
-const { layerId = null, layers = [], disabled = false } = defineProps<{
+const {
+  layerId = null,
+  layers = [],
+  disabled = false,
+} = defineProps<{
   layerId?: number | string | null;
   layers?: Layer[];
   disabled?: boolean;

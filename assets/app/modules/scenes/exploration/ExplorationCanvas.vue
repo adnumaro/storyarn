@@ -87,7 +87,12 @@ interface ExplorationData {
   connections?: ExplorationConnection[];
 }
 
-const { sceneData = null, explorationData, showZones = false, flowMode = false } = defineProps<{
+const {
+  sceneData = null,
+  explorationData,
+  showZones = false,
+  flowMode = false,
+} = defineProps<{
   sceneData?: SceneData | null;
   explorationData: ExplorationData;
   showZones?: boolean;
@@ -254,7 +259,9 @@ onMounted(() => {
 
 // --- Composables in read-only mode ---
 const emptyVertices = ref<{ x: number; y: number }[]>([]);
-const nullDragOverride = ref<{ id: number | string; vertices: { x: number; y: number }[] } | null>(null);
+const nullDragOverride = ref<{ id: number | string; vertices: { x: number; y: number }[] } | null>(
+  null,
+);
 
 const { pinConfigs } = usePins({
   pins: visiblePins,
@@ -310,7 +317,11 @@ function getZoneFill(zone: { id: number | string }): { fill: string; opacity: nu
   return { fill: "transparent", opacity: 0 };
 }
 
-function getElementOpacity(id: number | string, visMap: Record<number | string, string>, fallback: number): number {
+function getElementOpacity(
+  id: number | string,
+  visMap: Record<number | string, string>,
+  fallback: number,
+): number {
   return visMap[id] === "disable" ? 0.3 : fallback;
 }
 

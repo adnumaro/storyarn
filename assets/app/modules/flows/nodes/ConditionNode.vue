@@ -5,13 +5,7 @@ import { computed } from "vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import type { NodeConfig } from "../lib/node-configs";
-import type {
-  Condition,
-  ConditionBlock,
-  ConditionRule,
-  ReteEmitFn,
-  ReteNodeData,
-} from "../types";
+import type { Condition, ConditionBlock, ConditionRule, ReteEmitFn, ReteNodeData } from "../types";
 
 interface ConditionNodeData {
   has_stale_refs?: boolean;
@@ -98,7 +92,11 @@ function countRulesInBlocks(blocks: ConditionBlock[]): number {
 
 // --- Summary ---
 
-function formatBlockSummary(blocks: ConditionBlock[], switchMode: boolean, condition: Condition): string {
+function formatBlockSummary(
+  blocks: ConditionBlock[],
+  switchMode: boolean,
+  condition: Condition,
+): string {
   if (blocks.length === 0) return switchMode ? "No conditions" : "No condition";
   if (switchMode) return `${blocks.length} output${blocks.length > 1 ? "s" : ""} + default`;
   const ruleCount = countRulesInBlocks(blocks);
@@ -106,7 +104,11 @@ function formatBlockSummary(blocks: ConditionBlock[], switchMode: boolean, condi
   return `${ruleCount} rule${ruleCount !== 1 ? "s" : ""} in ${blocks.length} block${blocks.length !== 1 ? "s" : ""} (${logic})`;
 }
 
-function formatFlatSummary(rules: ConditionRule[], switchMode: boolean, condition: Condition): string {
+function formatFlatSummary(
+  rules: ConditionRule[],
+  switchMode: boolean,
+  condition: Condition,
+): string {
   if (switchMode) return `${rules.length} output${rules.length > 1 ? "s" : ""} + default`;
   const logic = condition.logic === "all" ? "AND" : "OR";
   if (rules.length === 1) return formatRule(rules[0]);
@@ -149,8 +151,10 @@ function getOutputLabel(key: string): string {
     return key;
   }
   if (key === "default") return "Default";
-  if (d.condition?.blocks && d.condition.blocks.length > 0) return findBlockLabel(d.condition.blocks, key);
-  if (d.condition?.rules && d.condition.rules.length > 0) return findRuleLabel(d.condition.rules, key);
+  if (d.condition?.blocks && d.condition.blocks.length > 0)
+    return findBlockLabel(d.condition.blocks, key);
+  if (d.condition?.rules && d.condition.rules.length > 0)
+    return findRuleLabel(d.condition.rules, key);
   return key;
 }
 

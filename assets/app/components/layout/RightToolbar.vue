@@ -29,7 +29,11 @@ interface RightToolbarUrls {
   workspaces: string;
 }
 
-const { currentUser, onlineUsers = [], urls } = defineProps<{
+const {
+  currentUser,
+  onlineUsers = [],
+  urls,
+} = defineProps<{
   currentUser: CurrentUser;
   onlineUsers?: OnlineUser[];
   urls: RightToolbarUrls;

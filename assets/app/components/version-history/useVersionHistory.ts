@@ -7,7 +7,10 @@ export interface VersionEntry {
   title?: string;
   description?: string;
   changeSummary?: string;
-  changeDetails?: { stats?: { added?: number; modified?: number; removed?: number }; changes?: { action: string; detail: string }[] };
+  changeDetails?: {
+    stats?: { added?: number; modified?: number; removed?: number };
+    changes?: { action: string; detail: string }[];
+  };
   insertedAt?: string;
   createdBy?: string;
 }

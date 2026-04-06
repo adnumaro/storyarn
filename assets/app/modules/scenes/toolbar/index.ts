@@ -1,9 +1,5 @@
 // Shared toolbar widgets (re-exported from shared location)
-export {
-  ToolbarColorPicker,
-  ToolbarSeparator,
-  ToolbarSizePicker,
-} from "@components/toolbar/index";
+export { ToolbarColorPicker, ToolbarSeparator, ToolbarSizePicker } from "@components/toolbar/index";
 
 // Scene-specific toolbar widgets
 export { default as ToolbarActionTypePicker } from "./ToolbarActionTypePicker.vue";

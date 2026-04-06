@@ -20,7 +20,13 @@ interface EntityOption {
   name: string;
 }
 
-const { targetType = null, targetId = null, scenes = [], flows = [], disabled = false } = defineProps<{
+const {
+  targetType = null,
+  targetId = null,
+  scenes = [],
+  flows = [],
+  disabled = false,
+} = defineProps<{
   targetType?: string | null;
   targetId?: number | string | null;
   scenes?: EntityOption[];

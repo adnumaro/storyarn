@@ -81,8 +81,6 @@ async function pickFromScreen() {
   }
 }
 
-
-
 function onPopoverOpen(open: boolean) {
   isOpen.value = open;
 }

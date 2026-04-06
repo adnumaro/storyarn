@@ -28,7 +28,11 @@ interface DnDDropEvent {
   hoveredDraggable: { item: FlowTreeItem; items: FlowTreeItem[]; element: HTMLElement } | null;
   dropZone: { items: FlowTreeItem[] } | null;
   provider: { pointer: { value: { current: { x: number; y: number } } } } | null;
-  helpers: { suggestSort: (dir: string) => { sourceItems: FlowTreeItem[]; targetItems: FlowTreeItem[]; sameList: boolean } | null };
+  helpers: {
+    suggestSort: (
+      dir: string,
+    ) => { sourceItems: FlowTreeItem[]; targetItems: FlowTreeItem[]; sameList: boolean } | null;
+  };
 }
 
 const {
@@ -123,7 +127,11 @@ function applyToTree(oldArr: FlowTreeItem[], newArr: FlowTreeItem[]): void {
   }
 }
 
-function findAndReplace(nodes: FlowTreeItem[], oldArr: FlowTreeItem[], newArr: FlowTreeItem[]): boolean {
+function findAndReplace(
+  nodes: FlowTreeItem[],
+  oldArr: FlowTreeItem[],
+  newArr: FlowTreeItem[],
+): boolean {
   for (const node of nodes) {
     if (node.children === oldArr) {
       node.children = newArr;
@@ -134,7 +142,11 @@ function findAndReplace(nodes: FlowTreeItem[], oldArr: FlowTreeItem[], newArr: F
   return false;
 }
 
-function findNodeContext(nodes: FlowTreeItem[], nodeId: number | string, parentId: number | string | null = null): { parentId: number | string | null; position: number } | null {
+function findNodeContext(
+  nodes: FlowTreeItem[],
+  nodeId: number | string,
+  parentId: number | string | null = null,
+): { parentId: number | string | null; position: number } | null {
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i];
     if (node.id === nodeId) return { parentId, position: i };
@@ -157,7 +169,11 @@ function findNodeById(nodes: FlowTreeItem[], nodeId: number | string): FlowTreeI
   return null;
 }
 
-function isDescendantOf(nodes: FlowTreeItem[], ancestorId: number | string, targetId: number | string): boolean {
+function isDescendantOf(
+  nodes: FlowTreeItem[],
+  ancestorId: number | string,
+  targetId: number | string,
+): boolean {
   const ancestor = findNodeById(nodes, ancestorId);
   if (!ancestor?.children) return false;
   for (const c of ancestor.children) {
@@ -167,7 +183,11 @@ function isDescendantOf(nodes: FlowTreeItem[], ancestorId: number | string, targ
   return false;
 }
 
-function pushMove(nodeId: number | string, parentId: number | string | null, position: number): void {
+function pushMove(
+  nodeId: number | string,
+  parentId: number | string | null,
+  position: number,
+): void {
   live.pushEvent("move_to_parent", {
     item_id: String(nodeId),
     new_parent_id: parentId != null ? String(parentId) : "",

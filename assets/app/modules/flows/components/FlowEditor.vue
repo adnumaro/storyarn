@@ -69,7 +69,11 @@ onMounted(() => {
 interface ToolbarExtraProps {
   hubs?: { id: string; label: string; color_hex?: string }[];
   projectFlows?: { id: number; name: string }[];
-  sheetAvatars?: { id: number; name: string; avatars?: { id: number; name: string; asset?: { url: string } }[] }[];
+  sheetAvatars?: {
+    id: number;
+    name: string;
+    avatars?: { id: number; name: string; asset?: { url: string } }[];
+  }[];
   subflowExits?: { id: number; label?: string; exit_mode?: string }[];
   referencingJumps?: { node_id: number | string; label?: string }[];
   referencingFlows?: { id: number | string; name: string }[];

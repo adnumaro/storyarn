@@ -17,10 +17,7 @@ interface ProjectSheet {
   shortcut?: string;
 }
 
-const {
-  activeTool = "select",
-  projectSheets = [],
-} = defineProps<{
+const { activeTool = "select", projectSheets = [] } = defineProps<{
   activeTool: string;
   projectSheets: ProjectSheet[];
 }>();

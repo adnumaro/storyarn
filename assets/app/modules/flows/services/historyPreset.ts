@@ -31,7 +31,12 @@ class DragAction implements Action {
   prev: Position;
   next: Position;
 
-  constructor(area: AreaPlugin<FlowSchemes, FlowAreaExtra>, nodeId: string, prev: Position, next: Position) {
+  constructor(
+    area: AreaPlugin<FlowSchemes, FlowAreaExtra>,
+    nodeId: string,
+    prev: Position,
+    next: Position,
+  ) {
     this.area = area;
     this.nodeId = nodeId;
     this.prev = { ...prev };
@@ -63,10 +68,7 @@ class AddConnectionAction implements Action {
   editor: NodeEditor<FlowSchemes>;
   connection: FlowConnection;
 
-  constructor(
-    editor: NodeEditor<FlowSchemes>,
-    connection: FlowConnection,
-  ) {
+  constructor(editor: NodeEditor<FlowSchemes>, connection: FlowConnection) {
     this.editor = editor;
     this.connection = connection;
   }
@@ -98,10 +100,7 @@ class RemoveConnectionAction implements Action {
   editor: NodeEditor<FlowSchemes>;
   connection: FlowConnection;
 
-  constructor(
-    editor: NodeEditor<FlowSchemes>,
-    connection: FlowConnection,
-  ) {
+  constructor(editor: NodeEditor<FlowSchemes>, connection: FlowConnection) {
     this.editor = editor;
     this.connection = connection;
   }
@@ -312,7 +311,9 @@ class AutoLayoutAction implements Action {
 /**
  * Creates a custom history preset for the flow canvas.
  */
-export function historyPreset(hookProxy: HookProxy): { connect(history: HistoryPlugin<FlowSchemes>): void } {
+export function historyPreset(hookProxy: HookProxy): {
+  connect(history: HistoryPlugin<FlowSchemes>): void;
+} {
   return {
     connect(history: HistoryPlugin<FlowSchemes>) {
       // Rete.js parentScope() returns a generic Scope type; cast needed for typed plugin access
@@ -333,22 +334,16 @@ export function historyPreset(hookProxy: HookProxy): { connect(history: HistoryP
         }
 
         if ((context as { type: string }).type === "connectioncreated") {
-          const connection = editor.getConnection(
-            (context as { data: { id: string } }).data.id,
-          );
+          const connection = editor.getConnection((context as { data: { id: string } }).data.id);
           if (connection) {
-            history.add(
-              new AddConnectionAction(editor, connection),
-            );
+            history.add(new AddConnectionAction(editor, connection));
           }
         }
 
         if ((context as { type: string }).type === "connectionremoved") {
           const connection = (context as { data: FlowConnection }).data;
           if (connection) {
-            history.add(
-              new RemoveConnectionAction(editor, connection),
-            );
+            history.add(new RemoveConnectionAction(editor, connection));
           }
         }
 
@@ -406,9 +401,7 @@ export function historyPreset(hookProxy: HookProxy): { connect(history: HistoryP
             (recent[0].action as DragAction).next = { ...position };
             recent[0].time = Date.now();
           } else {
-            history.add(
-              new DragAction(area, id, previous, position),
-            );
+            history.add(new DragAction(area, id, previous, position));
           }
         }
 

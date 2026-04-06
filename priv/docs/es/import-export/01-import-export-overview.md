@@ -11,15 +11,15 @@ Storyarn puede exportar tu contenido narrativo a {accent}7 formatos{/accent} que
 
 ## Formatos de exportacion
 
-| Formato                   | Extension | Motor / Herramienta          | Contenido soportado                                      |
-| ------------------------- | --------- | ---------------------------- | -------------------------------------------------------- |
+| Formato                   | Extension | Motor / Herramienta                    | Contenido soportado                                      |
+| ------------------------- | --------- | -------------------------------------- | -------------------------------------------------------- |
 | **Storyarn JSON**         | `.json`   | Storyarn (copia de seguridad completa) | Fichas, Flujos, Escenas, Guiones, Localizacion, Recursos |
-| **Ink**                   | `.ink`    | Runtime Ink de Inkle          | Flujos, Fichas                                           |
-| **Yarn Spinner**          | `.yarn`   | Yarn Spinner (Unity, Godot)  | Flujos, Fichas                                           |
-| **Unity Dialogue System** | `.json`   | Unity (Pixel Crushers, etc.) | Flujos, Fichas                                           |
-| **Godot Dialogic**        | `.dtl`    | Plugin Dialogic para Godot 4 | Flujos, Fichas                                           |
-| **Unreal Engine**         | `.csv`    | Unreal Engine (Data Tables)  | Flujos, Fichas                                           |
-| **articy:draft**          | `.xml`    | Importacion XML de articy:draft | Flujos, Fichas                                        |
+| **Ink**                   | `.ink`    | Runtime Ink de Inkle                   | Flujos, Fichas                                           |
+| **Yarn Spinner**          | `.yarn`   | Yarn Spinner (Unity, Godot)            | Flujos, Fichas                                           |
+| **Unity Dialogue System** | `.json`   | Unity (Pixel Crushers, etc.)           | Flujos, Fichas                                           |
+| **Godot Dialogic**        | `.dtl`    | Plugin Dialogic para Godot 4           | Flujos, Fichas                                           |
+| **Unreal Engine**         | `.csv`    | Unreal Engine (Data Tables)            | Flujos, Fichas                                           |
+| **articy:draft**          | `.xml`    | Importacion XML de articy:draft        | Flujos, Fichas                                           |
 
 El formato {accent}Storyarn JSON{/accent} es el unico que soporta el proyecto completo -- todos los tipos de entidad incluyendo escenas, guiones y datos de localizacion. Los formatos especificos de motor se centran en flujos y fichas, que es lo que los runtimes de juego necesitan para dialogos y estado de variables.
 
@@ -35,11 +35,11 @@ El formato {accent}Storyarn JSON{/accent} es el unico que soporta el proyecto co
 3. **Selecciona secciones de contenido** -- Marca o desmarca Fichas, Flujos, Escenas, Guiones y Localizacion. Las secciones no soportadas por el formato seleccionado se deshabilitan.
 4. **Elige el modo de recursos** -- Controla como se gestionan los archivos de recursos (imagenes, audio):
 
-| Modo de recursos       | Comportamiento                                                          |
-| ---------------------- | ----------------------------------------------------------------------- |
-| **Solo referencias**   | Las URLs de recursos se incluyen en la salida (predeterminado, archivo mas pequeno) |
-| **Incrustados**        | Los recursos se codifican en Base64 en linea (archivo mas grande, completamente autocontenido) |
-| **Empaquetados**       | La salida es un archivo ZIP con una carpeta de recursos junto al archivo de datos |
+| Modo de recursos     | Comportamiento                                                                                 |
+| -------------------- | ---------------------------------------------------------------------------------------------- |
+| **Solo referencias** | Las URLs de recursos se incluyen en la salida (predeterminado, archivo mas pequeno)            |
+| **Incrustados**      | Los recursos se codifican en Base64 en linea (archivo mas grande, completamente autocontenido) |
+| **Empaquetados**     | La salida es un archivo ZIP con una carpeta de recursos junto al archivo de datos              |
 
 5. **Configura opciones** -- Activa "Validar antes de exportar" y "Formato legible de salida" segun necesites.
 6. **Descargar** -- Haz clic en el boton de descarga para obtener tu archivo.
@@ -83,11 +83,11 @@ Storyarn puede importar datos de proyecto desde archivos {accent}.storyarn.json{
 
 3. **Resolver conflictos** -- Cuando se detectan conflictos de shortcuts, elige una estrategia:
 
-| Estrategia       | Comportamiento                                              |
-| ----------------- | ----------------------------------------------------------- |
+| Estrategia        | Comportamiento                                                           |
+| ----------------- | ------------------------------------------------------------------------ |
 | **Omitir**        | Mantiene las entidades existentes, ignora las importaciones en conflicto |
-| **Sobreescribir** | Reemplaza las entidades existentes con los datos importados |
-| **Renombrar**     | Importa con un nuevo shortcut para evitar la colision       |
+| **Sobreescribir** | Reemplaza las entidades existentes con los datos importados              |
+| **Renombrar**     | Importa con un nuevo shortcut para evitar la colision                    |
 
 4. **Ejecutar** -- Haz clic en Importar para aplicar. La importacion se ejecuta dentro de una {accent}transaccion de base de datos{/accent}, por lo que es todo o nada. Si algun paso falla, todo se revierte y recibes un mensaje de error explicando que salio mal.
 

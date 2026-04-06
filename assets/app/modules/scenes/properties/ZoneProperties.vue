@@ -17,7 +17,12 @@ const CONDITION_EFFECTS = [
 interface ZoneActionData {
   assignments?: Assignment[];
   variable_ref?: string;
-  items?: { id: string; sheet_id?: number | string | null; label?: string; condition?: ConditionData | null }[];
+  items?: {
+    id: string;
+    sheet_id?: number | string | null;
+    label?: string;
+    condition?: ConditionData | null;
+  }[];
   collect_all_enabled?: boolean;
   empty_message?: string;
 }
@@ -76,7 +81,13 @@ function toggle(field: string, currentValue: boolean | undefined) {
   });
 }
 
-function updateTarget({ targetType, targetId }: { targetType: string | null; targetId: number | null }) {
+function updateTarget({
+  targetType,
+  targetId,
+}: {
+  targetType: string | null;
+  targetId: number | null;
+}) {
   live.pushEvent("update_zone", {
     id: String(element.id),
     field: "target_type",

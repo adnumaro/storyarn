@@ -12,10 +12,7 @@ interface SignUpFormValues {
   password_confirmation: string;
 }
 
-const {
-  form: formProp,
-  userEmail,
-} = defineProps<{
+const { form: formProp, userEmail } = defineProps<{
   form: Form<SignUpFormValues>;
   loginUrl?: string;
   oauthAction?: string;

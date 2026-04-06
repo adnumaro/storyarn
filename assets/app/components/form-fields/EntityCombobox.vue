@@ -16,7 +16,14 @@ interface EntityOption {
   name: string;
 }
 
-const { options = [], selectedId = null, label = "", placeholder = "Select...", disabled = false, variant = "default" } = defineProps<{
+const {
+  options = [],
+  selectedId = null,
+  label = "",
+  placeholder = "Select...",
+  disabled = false,
+  variant = "default",
+} = defineProps<{
   options?: EntityOption[];
   selectedId?: number | string | null;
   label?: string;

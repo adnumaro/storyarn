@@ -8,7 +8,12 @@ import type { ConditionData } from "@components/builders/types";
 import CollectionItemCard from "./CollectionItemCard.vue";
 
 interface CollectionActionData {
-  items?: { id: string; sheet_id?: number | string | null; label?: string; condition?: ConditionData | null }[];
+  items?: {
+    id: string;
+    sheet_id?: number | string | null;
+    label?: string;
+    condition?: ConditionData | null;
+  }[];
   collect_all_enabled?: boolean;
   empty_message?: string;
 }

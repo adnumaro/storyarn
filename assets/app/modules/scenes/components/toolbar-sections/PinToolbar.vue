@@ -27,7 +27,11 @@ interface LayerData {
   visible: boolean;
 }
 
-const { element, layers = [], canEdit = false } = defineProps<{
+const {
+  element,
+  layers = [],
+  canEdit = false,
+} = defineProps<{
   element: PinElement;
   layers: LayerData[];
   canEdit: boolean;

@@ -29,7 +29,11 @@ interface LayerData {
   visible: boolean;
 }
 
-const { element, layers = [], canEdit = false } = defineProps<{
+const {
+  element,
+  layers = [],
+  canEdit = false,
+} = defineProps<{
   element: ZoneElement;
   layers: LayerData[];
   canEdit: boolean;

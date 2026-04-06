@@ -10,7 +10,8 @@ let appCounter = 0;
 // Keep i18n locale synced with html lang attribute across LiveView navigations
 const syncLocale = (): void => {
   if (i18n.global && i18n.global.locale) {
-    (i18n.global.locale as unknown as { value: string }).value = document.documentElement.lang || "en";
+    (i18n.global.locale as unknown as { value: string }).value =
+      document.documentElement.lang || "en";
   }
 };
 
@@ -20,7 +21,6 @@ const observer = new MutationObserver((mutations: MutationRecord[]) => {
   }
 });
 observer.observe(document.documentElement, { attributes: true });
-
 
 export default createLiveVue({
   resolve: (name: string) => {

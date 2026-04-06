@@ -13,7 +13,11 @@ import type { Variable } from "@modules/shared/variables";
 import type { Assignment } from "./types";
 import AssignmentRow from "@components/builders/instruction/AssignmentRow.vue";
 
-const { assignments = [], variables = [], disabled = false } = defineProps<{
+const {
+  assignments = [],
+  variables = [],
+  disabled = false,
+} = defineProps<{
   assignments?: Assignment[];
   variables?: Variable[];
   disabled?: boolean;

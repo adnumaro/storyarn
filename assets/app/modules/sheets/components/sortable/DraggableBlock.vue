@@ -6,7 +6,11 @@ import type { LayoutItem } from "../../types";
 
 const SIDE_THRESHOLD = 0.25;
 
-const { canEdit = false, index, items } = defineProps<{
+const {
+  canEdit = false,
+  index,
+  items,
+} = defineProps<{
   canEdit?: boolean;
   index: number;
   items: LayoutItem[];

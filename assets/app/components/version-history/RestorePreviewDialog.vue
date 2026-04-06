@@ -22,7 +22,11 @@ import {
 } from "@components/ui/dialog";
 import type { RestoreData } from "./useVersionHistory";
 
-const { open, restoreData = null, loadingAction = null } = defineProps<{
+const {
+  open,
+  restoreData = null,
+  loadingAction = null,
+} = defineProps<{
   open: boolean;
   restoreData?: RestoreData | null;
   loadingAction?: string | null;

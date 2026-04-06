@@ -329,13 +329,19 @@ const { startEditing, isEditingAnnotation, getDisplayText } = useAnnotationEditi
   stageConfig,
 });
 
-function handleAnnotationDblClick(annConfig: AnnotationConfig, e: KonvaEventObject<MouseEvent>): void {
+function handleAnnotationDblClick(
+  annConfig: AnnotationConfig,
+  e: KonvaEventObject<MouseEvent>,
+): void {
   if (!canEdit || !editMode) return;
   if (e) e.cancelBubble = true;
   startEditing(annConfig);
 }
 
-function handleConnectionDblClick(connectionId: number | string, e: KonvaEventObject<MouseEvent>): void {
+function handleConnectionDblClick(
+  connectionId: number | string,
+  e: KonvaEventObject<MouseEvent>,
+): void {
   if (!canEdit || !editMode) return;
   if (e) e.cancelBubble = true;
   startWaypointEditing(connectionId);

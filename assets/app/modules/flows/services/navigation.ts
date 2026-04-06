@@ -56,7 +56,10 @@ function findJumpsForHub(
 /**
  * Finds the [data-testid="node"] element for a Rete node ID.
  */
-function findNodeElement(area: AreaPlugin<FlowSchemes, FlowAreaExtra>, reteId: string): HTMLElement | null {
+function findNodeElement(
+  area: AreaPlugin<FlowSchemes, FlowAreaExtra>,
+  reteId: string,
+): HTMLElement | null {
   const view = area.nodeViews.get(reteId);
   if (!view) {
     return null;

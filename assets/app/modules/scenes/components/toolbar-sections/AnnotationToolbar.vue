@@ -22,7 +22,11 @@ interface LayerData {
   visible: boolean;
 }
 
-const { element, layers = [], canEdit = false } = defineProps<{
+const {
+  element,
+  layers = [],
+  canEdit = false,
+} = defineProps<{
   element: AnnotationElement;
   layers: LayerData[];
   canEdit: boolean;

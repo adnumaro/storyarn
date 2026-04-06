@@ -22,7 +22,11 @@ export function useSelection({ activeTool, onCreationClick }: UseSelectionOpts) 
 
   const isSelectMode = computed(() => activeTool.value === "select");
 
-  function handleElementClick(type: string, id: number | string, e?: KonvaEventObject<MouseEvent>): void {
+  function handleElementClick(
+    type: string,
+    id: number | string,
+    e?: KonvaEventObject<MouseEvent>,
+  ): void {
     if (!isSelectMode.value) {
       return;
     }

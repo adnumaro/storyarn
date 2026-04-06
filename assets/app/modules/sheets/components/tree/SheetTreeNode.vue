@@ -10,17 +10,25 @@ import {
 } from "@components/ui/context-menu/index.ts";
 import type { SheetTreeNodeData } from "../../types";
 
-const { node, index, siblings, selectedSheetId = null, canEdit = false, depth = 0, searchActive = false, sheetHref } =
-  defineProps<{
-    node: SheetTreeNodeData;
-    index: number;
-    siblings: SheetTreeNodeData[];
-    selectedSheetId?: string | number | null;
-    canEdit?: boolean;
-    depth?: number;
-    searchActive?: boolean;
-    sheetHref: (node: SheetTreeNodeData) => string;
-  }>();
+const {
+  node,
+  index,
+  siblings,
+  selectedSheetId = null,
+  canEdit = false,
+  depth = 0,
+  searchActive = false,
+  sheetHref,
+} = defineProps<{
+  node: SheetTreeNodeData;
+  index: number;
+  siblings: SheetTreeNodeData[];
+  selectedSheetId?: string | number | null;
+  canEdit?: boolean;
+  depth?: number;
+  searchActive?: boolean;
+  sheetHref: (node: SheetTreeNodeData) => string;
+}>();
 
 const emit = defineEmits<{
   createChild: [id: number | string];
@@ -35,7 +43,10 @@ const isSelected = computed(
 );
 
 // ── Auto-expand ──
-function hasSelectedDescendant(node: SheetTreeNodeData, selectedId: string | number | null | undefined): boolean {
+function hasSelectedDescendant(
+  node: SheetTreeNodeData,
+  selectedId: string | number | null | undefined,
+): boolean {
   if (!selectedId || !node.children) return false;
   for (const child of node.children) {
     if (String(child.id) === String(selectedId)) return true;

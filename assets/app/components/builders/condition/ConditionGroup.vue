@@ -6,11 +6,18 @@
 import { Plus, Ungroup } from "lucide-vue-next";
 import { generateId } from "@modules/shared/variables";
 import type { Variable } from "@modules/shared/variables";
-import type { ConditionBlock as ConditionBlockType, ConditionGroup as ConditionGroupType } from "../types";
+import type {
+  ConditionBlock as ConditionBlockType,
+  ConditionGroup as ConditionGroupType,
+} from "../types";
 import ConditionBlock from "./ConditionBlock.vue";
 import LogicToggle from "./LogicToggle.vue";
 
-const { group, variables = [], disabled = false } = defineProps<{
+const {
+  group,
+  variables = [],
+  disabled = false,
+} = defineProps<{
   group: ConditionGroupType;
   variables?: Variable[];
   disabled?: boolean;

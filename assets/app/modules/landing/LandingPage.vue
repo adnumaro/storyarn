@@ -16,7 +16,9 @@ const { gotoPanel } = useSectionScroll();
 
 // Force dark mode + smooth scroll on the landing page
 function handleForceScroll(e: Event) {
-  const detail = (e as CustomEvent<{ panelIndex: number; isScrollingDown?: boolean; tabIndex?: number }>).detail;
+  const detail = (
+    e as CustomEvent<{ panelIndex: number; isScrollingDown?: boolean; tabIndex?: number }>
+  ).detail;
   if (detail && detail.panelIndex !== undefined) {
     gotoPanel(detail.panelIndex, detail.isScrollingDown, detail.tabIndex);
   }

@@ -37,7 +37,13 @@ interface TranslationForm {
   params?: TranslationFormParams;
 }
 
-const { text, form, hasProvider = false, canEdit = false, backUrl } = defineProps<{
+const {
+  text,
+  form,
+  hasProvider = false,
+  canEdit = false,
+  backUrl,
+} = defineProps<{
   text: LocalizedText;
   form: TranslationForm;
   hasProvider?: boolean;
@@ -87,9 +93,11 @@ function translateWithDeepL() {
 
 // Update local state when server pushes new text data
 live.handleEvent("text_updated", (payload) => {
-  if (payload.translated_text !== undefined) translatedText.value = payload.translated_text as string;
+  if (payload.translated_text !== undefined)
+    translatedText.value = payload.translated_text as string;
   if (payload.status !== undefined) status.value = payload.status as string;
-  if (payload.translator_notes !== undefined) translatorNotes.value = payload.translator_notes as string;
+  if (payload.translator_notes !== undefined)
+    translatorNotes.value = payload.translator_notes as string;
 });
 
 function formatDateTime(datetime: string | undefined) {

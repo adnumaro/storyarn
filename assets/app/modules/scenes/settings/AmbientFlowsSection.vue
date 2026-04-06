@@ -28,7 +28,11 @@ interface FlowOption {
   name: string;
 }
 
-const { ambientFlows = [], projectFlows = [], canEdit = false } = defineProps<{
+const {
+  ambientFlows = [],
+  projectFlows = [],
+  canEdit = false,
+} = defineProps<{
   ambientFlows?: AmbientFlow[];
   projectFlows?: FlowOption[];
   canEdit?: boolean;

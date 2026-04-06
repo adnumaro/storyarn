@@ -2,8 +2,10 @@ import { createI18n } from "vue-i18n";
 
 type LocaleMessages = Record<string, Record<string, string>>;
 
-const localesModules: Record<string, { default?: Record<string, string> } & Record<string, string>> =
-  import.meta.glob("./locales/**/*.json", { eager: true });
+const localesModules: Record<
+  string,
+  { default?: Record<string, string> } & Record<string, string>
+> = import.meta.glob("./locales/**/*.json", { eager: true });
 
 const messages: LocaleMessages = {};
 

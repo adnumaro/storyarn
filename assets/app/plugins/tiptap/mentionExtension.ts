@@ -154,7 +154,8 @@ export function createMentionExtension(
             mentionDebounce = setTimeout(() => {
               const push =
                 phxTarget && pushEventTo
-                  ? (ev: string, payload: Record<string, unknown>) => pushEventTo(phxTarget, ev, payload)
+                  ? (ev: string, payload: Record<string, unknown>) =>
+                      pushEventTo(phxTarget, ev, payload)
                   : pushEvent;
               push("mention_suggestions", { query });
 
@@ -180,7 +181,8 @@ export function createMentionExtension(
               if (!props.clientRect) return;
               const rect = props.clientRect();
               if (!rect) return;
-              (component.element as HTMLElement).style.cssText = `position:absolute;left:${rect.left}px;top:${rect.bottom + 8}px;z-index:50;`;
+              (component.element as HTMLElement).style.cssText =
+                `position:absolute;left:${rect.left}px;top:${rect.bottom + 8}px;z-index:50;`;
               document.body.appendChild(component.element!);
             },
             onUpdate(props: SuggestionProps<MentionItem>) {
@@ -205,7 +207,6 @@ export function createMentionExtension(
           };
         },
       },
-
     }),
 
     /** Call when server responds with mention suggestions */

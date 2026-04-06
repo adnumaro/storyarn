@@ -28,8 +28,7 @@ export interface CommandGroupContext {
   id: string;
 }
 
-export const [useCommand, provideCommandContext] =
-  createContext<CommandContext>("Command");
+export const [useCommand, provideCommandContext] = createContext<CommandContext>("Command");
 
 export const [useCommandGroup, provideCommandGroupContext] =
   createContext<CommandGroupContext>("CommandGroup");

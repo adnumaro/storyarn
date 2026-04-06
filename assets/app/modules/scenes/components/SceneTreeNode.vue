@@ -49,7 +49,10 @@ const isSelected = computed(
 );
 
 // ── Auto-expand ──
-function hasSelectedDescendant(node: SceneTreeNodeData, selectedId: string | number | null): boolean {
+function hasSelectedDescendant(
+  node: SceneTreeNodeData,
+  selectedId: string | number | null,
+): boolean {
   if (!selectedId || !node.children) return false;
   for (const child of node.children) {
     if (String(child.id) === String(selectedId)) return true;

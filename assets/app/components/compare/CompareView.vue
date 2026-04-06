@@ -2,15 +2,21 @@
 import { ArrowLeft, ChevronLeft, ChevronRight, Columns2 } from "lucide-vue-next";
 import { Button } from "@components/ui/button";
 
-const { backUrl, versionLabel = "", prevVersionUrl = null, nextVersionUrl = null, currentUrl = "", versionUrl = "" } =
-  defineProps<{
-    backUrl: string;
-    versionLabel?: string;
-    prevVersionUrl?: string | null;
-    nextVersionUrl?: string | null;
-    currentUrl?: string;
-    versionUrl?: string;
-  }>();
+const {
+  backUrl,
+  versionLabel = "",
+  prevVersionUrl = null,
+  nextVersionUrl = null,
+  currentUrl = "",
+  versionUrl = "",
+} = defineProps<{
+  backUrl: string;
+  versionLabel?: string;
+  prevVersionUrl?: string | null;
+  nextVersionUrl?: string | null;
+  currentUrl?: string;
+  versionUrl?: string;
+}>();
 </script>
 
 <template>

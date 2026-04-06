@@ -6,7 +6,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover"
 const STYLES = ["solid", "dashed", "dotted"] as const;
 const DASH_MAP: Record<string, string> = { solid: "none", dashed: "6,3", dotted: "2,2" };
 
-const { lineStyle = "solid", lineWidth = 2, color = "#6b7280", disabled = false } = defineProps<{
+const {
+  lineStyle = "solid",
+  lineWidth = 2,
+  color = "#6b7280",
+  disabled = false,
+} = defineProps<{
   lineStyle?: string;
   lineWidth?: number;
   color?: string;

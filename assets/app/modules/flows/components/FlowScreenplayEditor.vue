@@ -157,7 +157,10 @@ function updateResponseCondition(responseId: string | number, condition: Conditi
   });
 }
 
-function updateResponseAssignments(responseId: string | number, updatedAssignments: Assignment[]): void {
+function updateResponseAssignments(
+  responseId: string | number,
+  updatedAssignments: Assignment[],
+): void {
   live.pushEvent("update_response_assignments", {
     response_id: responseId,
     assignments: updatedAssignments,
@@ -254,7 +257,9 @@ function updateResponseAssignments(responseId: string | number, updatedAssignmen
               :model-value="resp.text || ''"
               placeholder="Response text..."
               :disabled="!canEdit"
-              @blur="(e: FocusEvent) => updateResponseText(resp.id, (e.target as HTMLInputElement).value)"
+              @blur="
+                (e: FocusEvent) => updateResponseText(resp.id, (e.target as HTMLInputElement).value)
+              "
             />
 
             <!-- Condition (collapsible) -->

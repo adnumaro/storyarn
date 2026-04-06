@@ -15,7 +15,9 @@ interface StageConfig {
 }
 
 interface UseCanvasCreationOpts {
-  stageRef: Ref<{ getStage: () => { getPointerPosition: () => { x: number; y: number } | null } } | null>;
+  stageRef: Ref<{
+    getStage: () => { getPointerPosition: () => { x: number; y: number } | null };
+  } | null>;
   stageConfig: StageConfig;
   pixelToPercent: (pixelX: number, pixelY: number) => PixelPoint;
   activeTool: Ref<string>;

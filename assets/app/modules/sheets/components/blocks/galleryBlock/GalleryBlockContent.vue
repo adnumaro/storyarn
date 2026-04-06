@@ -8,7 +8,11 @@ import { Textarea } from "@components/ui/textarea/index.ts";
 import { useLive } from "@composables/useLive";
 import type { GalleryImage } from "../../../types";
 
-const { blockId, images = [], canEdit = false } = defineProps<{
+const {
+  blockId,
+  images = [],
+  canEdit = false,
+} = defineProps<{
   blockId: number | string;
   images?: GalleryImage[];
   canEdit?: boolean;
@@ -183,7 +187,10 @@ function onDrop(e: DragEvent, dropIndex: number): void {
             placeholder="Image label..."
             class="h-8 text-sm"
             :disabled="!canEdit"
-            @blur="(e) => updateImageField(detailImage!.id, 'label', (e.target as HTMLInputElement).value)"
+            @blur="
+              (e) =>
+                updateImageField(detailImage!.id, 'label', (e.target as HTMLInputElement).value)
+            "
           />
         </div>
 
@@ -196,7 +203,14 @@ function onDrop(e: DragEvent, dropIndex: number): void {
             :rows="2"
             class="text-sm resize-none"
             :disabled="!canEdit"
-            @blur="(e) => updateImageField(detailImage!.id, 'description', (e.target as HTMLTextAreaElement).value)"
+            @blur="
+              (e) =>
+                updateImageField(
+                  detailImage!.id,
+                  'description',
+                  (e.target as HTMLTextAreaElement).value,
+                )
+            "
           />
         </div>
 

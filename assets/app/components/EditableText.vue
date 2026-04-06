@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from "vue";
 
-const { modelValue = "", placeholder = "Untitled", tag = "span", inputClass = "", displayClass = "", disabled = false } = defineProps<{
+const {
+  modelValue = "",
+  placeholder = "Untitled",
+  tag = "span",
+  inputClass = "",
+  displayClass = "",
+  disabled = false,
+} = defineProps<{
   modelValue?: string;
   placeholder?: string;
   tag?: string;

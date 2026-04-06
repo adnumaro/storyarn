@@ -35,7 +35,14 @@ interface OutputBadge {
   color?: string;
 }
 
-const { data, emit, config, color, sheetsMap = {}, labels = {} } = defineProps<{
+const {
+  data,
+  emit,
+  config,
+  color,
+  sheetsMap = {},
+  labels = {},
+} = defineProps<{
   data: ReteNodeData;
   emit: ReteEmitFn;
   config: NodeConfig;

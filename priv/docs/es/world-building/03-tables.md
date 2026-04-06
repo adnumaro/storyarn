@@ -30,16 +30,16 @@ Una tabla se compone de:
 
 Las columnas de tabla admiten {accent}8 tipos{/accent}:
 
-| Tipo             | Descripción                                         |
-| ---------------- | --------------------------------------------------- |
-| **Número**       | Valores numéricos (tipo de columna predeterminado)  |
-| **Texto**        | Texto plano (sin texto enriquecido en tablas)       |
-| **Booleano**     | Interruptor verdadero/falso                         |
-| **Selección**    | Elección única de opciones definidas                |
-| **Selección Múltiple** | Múltiples elecciones de opciones definidas    |
-| **Fecha**        | Valor de fecha                                      |
-| **Referencia**   | Enlace a una ficha o flujo (no es variable)          |
-| **Fórmula**      | Valor calculado a partir de una expresión matemática con vinculaciones |
+| Tipo                   | Descripción                                                            |
+| ---------------------- | ---------------------------------------------------------------------- |
+| **Número**             | Valores numéricos (tipo de columna predeterminado)                     |
+| **Texto**              | Texto plano (sin texto enriquecido en tablas)                          |
+| **Booleano**           | Interruptor verdadero/falso                                            |
+| **Selección**          | Elección única de opciones definidas                                   |
+| **Selección Múltiple** | Múltiples elecciones de opciones definidas                             |
+| **Fecha**              | Valor de fecha                                                         |
+| **Referencia**         | Enlace a una ficha o flujo (no es variable)                            |
+| **Fórmula**            | Valor calculado a partir de una expresión matemática con vinculaciones |
 
 Estos reflejan los tipos de bloques regulares, excepto que las tablas usan texto plano en lugar de texto enriquecido y añaden el tipo de columna de fórmula.
 
@@ -78,13 +78,13 @@ Las columnas de fórmula te permiten definir {accent}valores calculados{/accent}
 
 Las fórmulas admiten operaciones y funciones matemáticas estándar:
 
-| Categoría       | Sintaxis                                                                             |
-| --------------- | ------------------------------------------------------------------------------------ |
-| **Operadores**  | `+`, `-`, `*`, `/`, `^` (potencia)                                                   |
-| **Menos unario**| `-a`                                                                                 |
-| **Paréntesis**  | `(a + b) * c`                                                                        |
-| **Literales**   | `42`, `3.14`                                                                         |
-| **Funciones**   | `sqrt(x)`, `abs(x)`, `floor(x)`, `ceil(x)`, `round(x)`, `min(a, b)`, `max(a, b)`   |
+| Categoría        | Sintaxis                                                                         |
+| ---------------- | -------------------------------------------------------------------------------- |
+| **Operadores**   | `+`, `-`, `*`, `/`, `^` (potencia)                                               |
+| **Menos unario** | `-a`                                                                             |
+| **Paréntesis**   | `(a + b) * c`                                                                    |
+| **Literales**    | `42`, `3.14`                                                                     |
+| **Funciones**    | `sqrt(x)`, `abs(x)`, `floor(x)`, `ceil(x)`, `round(x)`, `min(a, b)`, `max(a, b)` |
 
 Las expresiones usan símbolos de una sola letra o con nombre (`a`, `b`, `con_value`) que se vinculan a fuentes de datos reales.
 

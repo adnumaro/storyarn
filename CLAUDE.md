@@ -48,6 +48,7 @@ assets/app/
 ```
 
 **TypeScript rules:**
+
 - All `.vue` files use `<script setup lang="ts">`
 - NO `any` — define proper interfaces
 - NO `withDefaults()` — use destructured defaults: `const { prop = default } = defineProps<{...}>()`

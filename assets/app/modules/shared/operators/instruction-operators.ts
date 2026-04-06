@@ -2,7 +2,14 @@
  * Instruction operator definitions for the instruction builder.
  */
 
-export type InstructionOperator = "set" | "add" | "subtract" | "set_true" | "set_false" | "toggle" | "clear";
+export type InstructionOperator =
+  | "set"
+  | "add"
+  | "subtract"
+  | "set_true"
+  | "set_false"
+  | "toggle"
+  | "clear";
 
 export type TemplateItemType = "text" | "slot" | "verb";
 
@@ -102,9 +109,22 @@ export function expandTemplateForVariableRef(template: TemplateItem[]): Template
 /**
  * Operators that don't need a value input.
  */
-export const NO_VALUE_OPERATORS: Set<InstructionOperator> = new Set(["set_true", "set_false", "toggle", "clear"]);
+export const NO_VALUE_OPERATORS: Set<InstructionOperator> = new Set([
+  "set_true",
+  "set_false",
+  "toggle",
+  "clear",
+]);
 
-type VariableType = "number" | "boolean" | "text" | "rich_text" | "select" | "multi_select" | "date" | "reference";
+type VariableType =
+  | "number"
+  | "boolean"
+  | "text"
+  | "rich_text"
+  | "select"
+  | "multi_select"
+  | "date"
+  | "reference";
 
 /**
  * Operators available per variable type.
@@ -130,7 +150,15 @@ export function operatorsForType(type: string): InstructionOperator[] {
 /**
  * All operators in display order.
  */
-export const ALL_OPERATORS: InstructionOperator[] = ["set", "add", "subtract", "set_true", "set_false", "toggle", "clear"];
+export const ALL_OPERATORS: InstructionOperator[] = [
+  "set",
+  "add",
+  "subtract",
+  "set_true",
+  "set_false",
+  "toggle",
+  "clear",
+];
 
 /**
  * Compatible variable types per operator.

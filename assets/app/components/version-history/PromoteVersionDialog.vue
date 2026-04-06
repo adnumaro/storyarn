@@ -19,7 +19,13 @@ interface PromoteVersionEntry {
   changeSummary?: string;
 }
 
-const { open, title, description, promoteVersion = null, loadingAction = null } = defineProps<{
+const {
+  open,
+  title,
+  description,
+  promoteVersion = null,
+  loadingAction = null,
+} = defineProps<{
   open: boolean;
   title: string;
   description: string;

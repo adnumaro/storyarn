@@ -12,7 +12,11 @@ interface SubflowToolbarData extends NodeData {
   referenced_flow_id?: number | string | null;
 }
 
-const { nodeData, projectFlows = [], subflowExits = [] } = defineProps<{
+const {
+  nodeData,
+  projectFlows = [],
+  subflowExits = [],
+} = defineProps<{
   nodeData: SubflowToolbarData;
   projectFlows?: ProjectFlow[];
   subflowExits?: SubflowExit[];

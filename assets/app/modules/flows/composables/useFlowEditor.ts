@@ -145,7 +145,10 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
   let _render: VuePlugin<FlowSchemes, FlowAreaExtra> | null = null;
 
   const _nodeMap = new Map<string | number, FlowNode>();
-  const _connectionDataMap = new Map<string, { id: number; label: string | null; condition: unknown }>();
+  const _connectionDataMap = new Map<
+    string,
+    { id: number; label: string | null; condition: unknown }
+  >();
   let _loadingFromServerCount = 0;
   let _deferSocketCalc = false;
   let _deferredSockets: unknown[] = [];
@@ -354,7 +357,9 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     // Blur active input/textarea inside the node so blur handlers fire and save
     const nodeView = _area?.nodeViews.get(ctx.editingNodeId);
     if (nodeView) {
-      const focused = nodeView.element.querySelector("textarea:focus, input:focus") as HTMLElement | null;
+      const focused = nodeView.element.querySelector(
+        "textarea:focus, input:focus",
+      ) as HTMLElement | null;
       if (focused) {
         focused.blur();
       }
@@ -374,7 +379,10 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
       pushEvent("update_node_field", { field: "text", value: value as string });
     } else if (field === "text") {
       // Dialogue: wrap plain text in <p> tags for rich text storage
-      const escaped = (value as string).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const escaped = (value as string)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
       const content = escaped
         ? escaped
             .split("\n")
@@ -400,7 +408,11 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
 
   // --- Init ---
 
-  async function init(containerEl: HTMLElement, flowData: FlowData, opts: InitOpts = {}): Promise<void> {
+  async function init(
+    containerEl: HTMLElement,
+    flowData: FlowData,
+    opts: InitOpts = {},
+  ): Promise<void> {
     hookProxy._containerEl = containerEl;
     hookProxy._sheetsMap = opts.sheetsMap || {};
     hookProxy._labels = opts.labels || {};
@@ -438,7 +450,8 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     syncFlowContext();
 
     // Wire inline edit save callback for node components
-    (hookProxy as { _flowContext: FlowContext })._flowContext.onInlineEditSave = handleInlineEditSave;
+    (hookProxy as { _flowContext: FlowContext })._flowContext.onInlineEditSave =
+      handleInlineEditSave;
 
     // Canvas click -- exit inline edit + clear toolbar when clicking empty space
     _canvasClickController = new AbortController();
@@ -693,9 +706,7 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     if (hookProxy._readonly) {
       _area!.addPipe((context) => {
         if ((context as { type: string }).type === "nodepicked") {
-          const node = _editor!.getNode(
-            (context as { data: { id: string } }).data.id,
-          );
+          const node = _editor!.getNode((context as { data: { id: string } }).data.id);
           if (node?.nodeId) {
             _selectedNodeId = node.nodeId;
             pushEvent("node_selected", { id: node.nodeId });
@@ -724,9 +735,7 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
         }
       }
       if ((context as { type: string }).type === "nodedragged") {
-        const node = _editor!.getNode(
-          (context as { data: { id: string } }).data.id,
-        );
+        const node = _editor!.getNode((context as { data: { id: string } }).data.id);
         if (node?.nodeId) {
           _editorHandlers!.flushNodeMoved(node.nodeId);
         }
@@ -780,7 +789,11 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
         (context as { type: string }).type === "connectioncreate" &&
         !hookProxy.isLoadingFromServer
       ) {
-        const conn = (context as { data: { source: string; sourceOutput: string; target: string; targetInput: string } }).data;
+        const conn = (
+          context as {
+            data: { source: string; sourceOutput: string; target: string; targetInput: string };
+          }
+        ).data;
         const sourceNode = _editor!.getNode(conn.source);
         const targetNode = _editor!.getNode(conn.target);
 

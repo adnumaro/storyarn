@@ -80,14 +80,14 @@ Las escenas soportan multiples **capas** para organizar el contenido. Cada escen
 
 La barra inferior proporciona **10 herramientas** organizadas en grupos:
 
-| Grupo             | Herramientas                              | Proposito                                                   |
-| ----------------- | ----------------------------------------- | ----------------------------------------------------------- |
-| **Navegacion**    | Seleccionar, Desplazar                    | Selecciona elementos o desplazate por el lienzo             |
-| **Formas de zona**| Rectangulo, Triangulo, Circulo, Libre     | Dibuja zonas poligonales en el lienzo                       |
-| **Elementos**     | Pin libre, Pin desde ficha                | Coloca marcadores de punto (libres o vinculados a una ficha) |
-| **Texto**         | Anotacion                                 | Anade notas de texto directamente en el lienzo              |
-| **Vinculacion**   | Conector                                  | Dibuja conexiones entre dos pines                           |
-| **Medicion**      | Regla                                     | Mide distancias entre dos puntos                            |
+| Grupo              | Herramientas                          | Proposito                                                    |
+| ------------------ | ------------------------------------- | ------------------------------------------------------------ |
+| **Navegacion**     | Seleccionar, Desplazar                | Selecciona elementos o desplazate por el lienzo              |
+| **Formas de zona** | Rectangulo, Triangulo, Circulo, Libre | Dibuja zonas poligonales en el lienzo                        |
+| **Elementos**      | Pin libre, Pin desde ficha            | Coloca marcadores de punto (libres o vinculados a una ficha) |
+| **Texto**          | Anotacion                             | Anade notas de texto directamente en el lienzo               |
+| **Vinculacion**    | Conector                              | Dibuja conexiones entre dos pines                            |
+| **Medicion**       | Regla                                 | Mide distancias entre dos puntos                             |
 
 El editor alterna entre **Modo edicion** (barra visible, elementos editables) y **Modo visualizacion** (solo lectura, lienzo limpio).
 
@@ -118,11 +118,11 @@ Tanto las zonas como los pines soportan **acciones** y **condiciones** que vincu
 
 ### Acciones
 
-| Tipo de accion  | Comportamiento                                                                                                         |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **Ninguna**     | Sin accion (predeterminado)                                                                                            |
+| Tipo de accion  | Comportamiento                                                                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Ninguna**     | Sin accion (predeterminado)                                                                                                                      |
 | **Instruccion** | Ejecuta asignaciones de variables al hacer clic en el elemento. Usa el mismo constructor de asignaciones que los nodos de instruccion de flujos. |
-| **Mostrar**     | Muestra el valor actual de una variable en el elemento. Referencia una variable por su ruta completa (p. ej., `mc.jaime.health`). |
+| **Mostrar**     | Muestra el valor actual de una variable en el elemento. Referencia una variable por su ruta completa (p. ej., `mc.jaime.health`).                |
 
 ### Condiciones
 

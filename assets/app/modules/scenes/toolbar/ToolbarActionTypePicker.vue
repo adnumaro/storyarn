@@ -59,7 +59,8 @@ function select(value: string) {
   open.value = false;
 }
 
-const current = (): ActionTypeOption => ACTION_TYPES.find((t) => t.value === actionType) || ACTION_TYPES[0];
+const current = (): ActionTypeOption =>
+  ACTION_TYPES.find((t) => t.value === actionType) || ACTION_TYPES[0];
 </script>
 
 <template>

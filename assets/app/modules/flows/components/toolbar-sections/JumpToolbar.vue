@@ -11,7 +11,11 @@ interface JumpToolbarData extends NodeData {
   target_hub_id?: string;
 }
 
-const { nodeData, nodeId, hubs = [] } = defineProps<{
+const {
+  nodeData,
+  nodeId,
+  hubs = [],
+} = defineProps<{
   nodeData: JumpToolbarData;
   nodeId: string | number;
   hubs?: HubMapEntry[];
