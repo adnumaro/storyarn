@@ -206,10 +206,11 @@ function getPointerZone(e: DnDDropEvent): "before" | "after" | "nest" | null {
   return "nest";
 }
 
-function handleDrop(e: DnDDropEvent): void {
-  const draggedNode = e.draggedItems[0]?.item;
-  const hoveredNode = e.hoveredDraggable?.item;
-  const zone = getPointerZone(e);
+function handleDrop(e: unknown): void {
+  const dropEvent = e as DnDDropEvent;
+  const draggedNode = dropEvent.draggedItems[0]?.item;
+  const hoveredNode = dropEvent.hoveredDraggable?.item;
+  const zone = getPointerZone(dropEvent);
 
   if (!draggedNode) return;
 
@@ -220,7 +221,7 @@ function handleDrop(e: DnDDropEvent): void {
     const targetNode = findNodeById(localTree.value, hoveredNode.id);
     if (!targetNode) return;
 
-    const srcArr = e.draggedItems[0]?.items;
+    const srcArr = dropEvent.draggedItems[0]?.items;
     if (srcArr) {
       const filtered = srcArr.filter((n) => n.id !== draggedNode.id);
       applyToTree(srcArr, filtered);
@@ -234,11 +235,11 @@ function handleDrop(e: DnDDropEvent): void {
   }
 
   // Top/bottom: sibling sort
-  const r = e.helpers.suggestSort("vertical");
+  const r = dropEvent.helpers.suggestSort("vertical");
   if (!r) return;
 
-  const srcArr = e.draggedItems[0]?.items;
-  const tgtArr = e.hoveredDraggable?.items ?? e.dropZone?.items;
+  const srcArr = dropEvent.draggedItems[0]?.items;
+  const tgtArr = dropEvent.hoveredDraggable?.items ?? dropEvent.dropZone?.items;
   if (!srcArr || !tgtArr) return;
 
   applyToTree(srcArr, r.sourceItems);

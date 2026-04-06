@@ -80,7 +80,7 @@ const speakerOptions = computed(() => allSheets.map((s) => ({ id: s.id, name: s.
 const responses = computed<NodeResponse[]>(() => nodeData.value.responses || []);
 
 // TipTap editor for dialogue text
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 const editor = useEditor({
   extensions: [StarterKit, Placeholder.configure({ placeholder: "Write dialogue..." })],
   editable: canEdit,

@@ -209,7 +209,7 @@ function handleDrop(e: any): void {
 
     const srcArr = e.draggedItems[0]?.items;
     if (srcArr) {
-      const filtered = srcArr.filter((n) => n.id !== draggedNode.id);
+      const filtered = srcArr.filter((n: SceneTreeNodeData) => n.id !== draggedNode.id);
       applyToTree(srcArr, filtered);
     }
 

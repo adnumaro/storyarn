@@ -83,7 +83,7 @@ const content = computed(() => block.value?.content);
       :model-value="(content as string) || ''"
       class="h-9 w-full"
       @change="
-        (e) =>
+        (e: Event) =>
           live.pushEvent('update_block_value', {
             id: block.id,
             value: (e.target as HTMLInputElement).value || null,

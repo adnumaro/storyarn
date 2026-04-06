@@ -36,10 +36,10 @@ const emit = defineEmits<{
       v-for="pin in pinConfigs"
       :key="'pin-' + pin.id"
       :config="{ x: pin.x, y: pin.y, listening: pin.listening, draggable: pin.draggable }"
-      @click="(e) => emit('pin-click', pin.id, e)"
-      @dragstart="(e) => emit('dragstart', 'pin', pin.id, e)"
-      @dragmove="(e) => emit('dragmove', 'pin', pin.id, e)"
-      @dragend="(e) => emit('dragend', 'pin', pin.id, e)"
+      @click="(e: KonvaEventObject<MouseEvent>) => emit('pin-click', pin.id, e)"
+      @dragstart="(e: KonvaEventObject<DragEvent>) => emit('dragstart', 'pin', pin.id, e)"
+      @dragmove="(e: KonvaEventObject<DragEvent>) => emit('dragmove', 'pin', pin.id, e)"
+      @dragend="(e: KonvaEventObject<DragEvent>) => emit('dragend', 'pin', pin.id, e)"
     >
       <v-circle
         v-if="pin.isSelected"

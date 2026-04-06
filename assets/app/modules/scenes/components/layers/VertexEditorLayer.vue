@@ -52,7 +52,7 @@ const emit = defineEmits<{
         stroke: mp.stroke,
         strokeWidth: mp.strokeWidth,
       }"
-      @click="(e) => emit('insert-vertex', mp.afterIndex, e)"
+      @click="(e: KonvaEventObject<MouseEvent>) => emit('insert-vertex', mp.afterIndex, e)"
     />
     <!-- Vertex anchors (drag to reshape, ctrl+click to remove) -->
     <v-circle
@@ -67,9 +67,9 @@ const emit = defineEmits<{
         strokeWidth: va.strokeWidth,
         draggable: true,
       }"
-      @dragmove="(e) => emit('vertex-dragmove', va.index, e)"
+      @dragmove="(e: KonvaEventObject<DragEvent>) => emit('vertex-dragmove', va.index, e)"
       @dragend="emit('vertex-dragend')"
-      @click="(e) => emit('vertex-click', va.index, e)"
+      @click="(e: KonvaEventObject<MouseEvent>) => emit('vertex-click', va.index, e)"
     />
   </v-layer>
 </template>

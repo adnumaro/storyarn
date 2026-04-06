@@ -13,13 +13,13 @@ const emit = defineEmits<{
 }>();
 const open = ref(false);
 
-function selectColor(c) {
+function selectColor(c: string) {
   emit("update:color", c);
   open.value = false;
 }
 
-function onCustomColor(e) {
-  emit("update:color", e.target.value);
+function onCustomColor(e: Event) {
+  emit("update:color", (e.target as HTMLInputElement).value);
 }
 </script>
 

@@ -107,9 +107,9 @@ watch(
         <div class="space-y-1.5">
           <Label for="security-password">{{ $t("settings.security.new_password") }}</Label>
           <Input
+            v-bind="password.inputAttrs.value"
             id="security-password"
             type="password"
-            v-bind="password.inputAttrs.value"
             autocomplete="new-password"
             required
           />
@@ -123,9 +123,9 @@ watch(
             $t("settings.security.confirm_password")
           }}</Label>
           <Input
+            v-bind="passwordConfirmation.inputAttrs.value"
             id="security-password-confirmation"
             type="password"
-            v-bind="passwordConfirmation.inputAttrs.value"
             autocomplete="new-password"
           />
           <p v-if="passwordConfirmation.errorMessage.value" class="text-sm text-destructive mt-1">

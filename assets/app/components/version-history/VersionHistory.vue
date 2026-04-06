@@ -48,14 +48,14 @@ const {
 const live = useLive();
 const h = useVersionHistory();
 
-function changeActionIcon(action) {
+function changeActionIcon(action: string) {
   if (action === "added") return "+";
   if (action === "modified") return "~";
   if (action === "removed") return "-";
   return "?";
 }
 
-function changeActionColor(action) {
+function changeActionColor(action: string) {
   if (action === "added") return "text-green-600 dark:text-green-400";
   if (action === "modified") return "text-amber-600 dark:text-amber-400";
   if (action === "removed") return "text-red-600 dark:text-red-400";
@@ -193,22 +193,22 @@ function changeActionColor(action) {
               <ChevronRight v-else class="size-3" />
               <span class="flex items-center gap-1.5">
                 <span
-                  v-if="version.changeDetails.stats?.added > 0"
+                  v-if="(version.changeDetails?.stats?.added ?? 0) > 0"
                   class="text-green-600 dark:text-green-400"
                 >
-                  +{{ version.changeDetails.stats.added }}
+                  +{{ version.changeDetails?.stats?.added }}
                 </span>
                 <span
-                  v-if="version.changeDetails.stats?.modified > 0"
+                  v-if="(version.changeDetails?.stats?.modified ?? 0) > 0"
                   class="text-amber-600 dark:text-amber-400"
                 >
-                  ~{{ version.changeDetails.stats.modified }}
+                  ~{{ version.changeDetails?.stats?.modified }}
                 </span>
                 <span
-                  v-if="version.changeDetails.stats?.removed > 0"
+                  v-if="(version.changeDetails?.stats?.removed ?? 0) > 0"
                   class="text-red-600 dark:text-red-400"
                 >
-                  -{{ version.changeDetails.stats.removed }}
+                  -{{ version.changeDetails?.stats?.removed }}
                 </span>
               </span>
             </button>
@@ -217,7 +217,7 @@ function changeActionColor(action) {
               class="mt-1.5 space-y-0.5 ml-0.5"
             >
               <div
-                v-for="(change, ci) in version.changeDetails.changes"
+                v-for="(change, ci) in version.changeDetails?.changes"
                 :key="ci"
                 class="flex items-start gap-1.5 text-[11px]"
               >
@@ -342,22 +342,22 @@ function changeActionColor(action) {
                 <ChevronRight v-else class="size-3" />
                 <span class="flex items-center gap-1.5">
                   <span
-                    v-if="version.changeDetails.stats?.added > 0"
+                    v-if="(version.changeDetails?.stats?.added ?? 0) > 0"
                     class="text-green-600 dark:text-green-400"
                   >
-                    +{{ version.changeDetails.stats.added }}
+                    +{{ version.changeDetails?.stats?.added }}
                   </span>
                   <span
-                    v-if="version.changeDetails.stats?.modified > 0"
+                    v-if="(version.changeDetails?.stats?.modified ?? 0) > 0"
                     class="text-amber-600 dark:text-amber-400"
                   >
-                    ~{{ version.changeDetails.stats.modified }}
+                    ~{{ version.changeDetails?.stats?.modified }}
                   </span>
                   <span
-                    v-if="version.changeDetails.stats?.removed > 0"
+                    v-if="(version.changeDetails?.stats?.removed ?? 0) > 0"
                     class="text-red-600 dark:text-red-400"
                   >
-                    -{{ version.changeDetails.stats.removed }}
+                    -{{ version.changeDetails?.stats?.removed }}
                   </span>
                 </span>
               </button>
@@ -366,7 +366,7 @@ function changeActionColor(action) {
                 class="mt-1.5 space-y-0.5 ml-0.5"
               >
                 <div
-                  v-for="(change, ci) in version.changeDetails.changes"
+                  v-for="(change, ci) in version.changeDetails?.changes"
                   :key="ci"
                   class="flex items-start gap-1.5 text-[11px]"
                 >

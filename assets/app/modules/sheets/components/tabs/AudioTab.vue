@@ -229,7 +229,7 @@ function openPopover(nodeId: number | string): void {
                   <Command :should-filter="false">
                     <CommandInput
                       :model-value="searchQuery"
-                      @update:model-value="(v) => (searchQuery = v as string)"
+                      @update:model-value="(v: string | number) => (searchQuery = String(v))"
                       placeholder="Search audio..."
                     />
                     <CommandList class="max-h-48">

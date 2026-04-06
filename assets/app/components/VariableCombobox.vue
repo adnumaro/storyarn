@@ -75,21 +75,21 @@ const displayLabel = computed(() => {
 
 const hasGroups = computed(() => groups.length > 0);
 
-function onSelect(value) {
+function onSelect(value: string) {
   emit("update:modelValue", value);
   open.value = false;
 }
 
-function onFreeTextInput(e) {
-  emit("update:modelValue", e.target.value);
+function onFreeTextInput(e: Event) {
+  emit("update:modelValue", (e.target as HTMLInputElement).value);
 }
 
-function onFreeTextBlur(e) {
-  emit("update:modelValue", e.target.value);
+function onFreeTextBlur(e: Event) {
+  emit("update:modelValue", (e.target as HTMLInputElement).value);
 }
 
 /** Auto-size an input based on content */
-function autoSize(el) {
+function autoSize(el: HTMLInputElement | null) {
   if (!el) return;
   const text = el.value || el.placeholder || "";
   const charCount = Math.max(text.length, 3);

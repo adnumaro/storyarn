@@ -52,7 +52,7 @@ const displayValue = computed(() => {
   return opt?.value || content.value;
 });
 
-function onChange(val: string): void {
+function onChange(val: string | string[]): void {
   live.pushEvent("update_block_value", {
     id: block.id,
     value: val === " " ? null : val,
@@ -94,7 +94,7 @@ function onChange(val: string): void {
             placeholder="Select..."
             class="h-7 text-xs"
             @blur="
-              (e) =>
+              (e: Event) =>
                 live.pushEvent('update_block_config', {
                   id: block.id,
                   field: 'placeholder',

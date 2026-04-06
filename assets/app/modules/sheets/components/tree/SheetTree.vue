@@ -273,7 +273,7 @@ function handleDrop(e: DndDropEvent): void {
 
     <!-- Tree -->
     <DnDProvider v-if="filteredTree.length > 0">
-      <SheetTreeRoot :items="filteredTree" @drop="handleDrop">
+      <SheetTreeRoot :items="filteredTree" @drop="(e: unknown) => handleDrop(e as DndDropEvent)">
         <SheetTreeNode
           v-for="(node, index) in filteredTree"
           :key="node.id"
@@ -287,7 +287,7 @@ function handleDrop(e: DndDropEvent): void {
           :sheet-href="sheetHref"
           @create-child="createChildSheet"
           @request-delete="requestDelete"
-          @drop="handleDrop"
+          @drop="(e: unknown) => handleDrop(e as DndDropEvent)"
         />
       </SheetTreeRoot>
     </DnDProvider>

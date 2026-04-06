@@ -50,7 +50,7 @@ const resultIcons: Record<string, Component> = {
   annotation: StickyNote,
 };
 
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
 function onInput(): void {
   clearTimeout(debounceTimer);

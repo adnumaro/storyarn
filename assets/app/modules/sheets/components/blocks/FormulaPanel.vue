@@ -141,7 +141,7 @@ function saveBinding(symbol: string, value: string): void {
       </div>
 
       <!-- Symbol Bindings -->
-      <div v-if="formulaEditing.symbols?.length > 0">
+      <div v-if="(formulaEditing.symbols?.length ?? 0) > 0">
         <label class="text-xs font-medium text-muted-foreground mb-2 block"
           >Variable Bindings</label
         >

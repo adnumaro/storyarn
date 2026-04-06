@@ -11,8 +11,10 @@ const props = defineProps<{
 }>();
 
 const percentage = computed(() => {
-  const val = Math.min(props.modelValue, props.max);
-  return props.max > 0 ? (val / props.max) * 100 : 0;
+  const max = props.max ?? 100;
+  const modelValue = props.modelValue ?? 0;
+  const val = Math.min(modelValue, max);
+  return max > 0 ? (val / max) * 100 : 0;
 });
 </script>
 

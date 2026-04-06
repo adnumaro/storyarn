@@ -86,7 +86,7 @@ function updateTarget({
   targetId,
 }: {
   targetType: string | null;
-  targetId: number | null;
+  targetId: string | number | null;
 }) {
   live.pushEvent("update_zone", {
     id: String(element.id),
@@ -109,7 +109,8 @@ function updateAssignments(assignments: unknown[]) {
   });
 }
 
-function selectDisplayVar(varRef: string | number) {
+function selectDisplayVar(varRef: string | number | null) {
+  if (varRef == null) return;
   live.pushEvent(`select_zone_display_var:${element.id}`, {
     id: varRef,
   });

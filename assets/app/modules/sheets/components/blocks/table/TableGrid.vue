@@ -165,7 +165,7 @@ function getCellValue(row: TableRow, col: TableColumn): CellValue {
   return row.cells?.[col.slug] ?? "";
 }
 
-function isFormulaCell(cell: CellValue): cell is FormulaCellValue {
+function isFormulaCell(cell: CellValue | undefined): cell is FormulaCellValue {
   return typeof cell === "object" && cell !== null && !Array.isArray(cell);
 }
 
@@ -223,8 +223,8 @@ function displayValue(val: CellValue, fallback: string): string {
 }
 
 interface NumberInputAttrs {
-  min?: number | null;
-  max?: number | null;
+  min?: number;
+  max?: number;
   step: number | string;
 }
 

@@ -69,7 +69,7 @@ const strategyOptions = [
 ];
 
 const hasUploadEntries = computed(() => {
-  return upload?.entries.value?.length > 0;
+  return (upload?.entries.value?.length ?? 0) > 0;
 });
 
 const previewCountRows = computed(() => {
@@ -190,7 +190,7 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
             Shortcut conflicts detected
           </h4>
           <div
-            v-for="([type, shortcuts], ci) in Object.entries(importState.preview.conflicts)"
+            v-for="([type, shortcuts], ci) in Object.entries(importState.preview.conflicts ?? {})"
             :key="ci"
             class="text-sm"
           >
@@ -245,7 +245,7 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
           <TableBody>
             <TableRow v-for="row in importResultRows" :key="row.entity">
               <TableCell class="capitalize">{{ row.entity }}</TableCell>
-              <TableCell class="text-right">{{ formatImportCount(row.items) }}</TableCell>
+              <TableCell class="text-right">{{ formatImportCount(row.items ?? []) }}</TableCell>
             </TableRow>
           </TableBody>
         </Table>

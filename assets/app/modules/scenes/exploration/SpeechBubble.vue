@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { ref, watch } from "vue";
 import type Konva from "konva";
 import type { BubbleData } from "./composables/useAmbientDisplay";
 
@@ -47,13 +47,12 @@ watch(
   { immediate: true },
 );
 
-const visible = computed(() => bubble != null);
 </script>
 
 <template>
   <Teleport to="body">
     <div
-      v-if="visible"
+      v-if="bubble"
       class="fixed z-50 pointer-events-none"
       :style="{
         left: position.x + 'px',

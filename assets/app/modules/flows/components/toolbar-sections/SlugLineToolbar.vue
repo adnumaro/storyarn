@@ -105,21 +105,21 @@ function selectAvatar(avatarId: number | null) {
     :selected-value="nodeData.int_ext"
     :selected-label="intExtLabel"
     placeholder="Setting…"
-    @select="selectSlugSetting"
+    @select="(v: string | number) => selectSlugSetting(String(v))"
   />
   <ToolbarSearchableSelect
     :options="sheetOptions"
     :selected-value="nodeData.location_sheet_id"
     :selected-label="selectedLocationName"
     placeholder="Location…"
-    @select="selectSlugLocation"
+    @select="(v: string | number) => selectSlugLocation(String(v))"
   />
   <ToolbarSearchableSelect
     :options="timeOptions"
     :selected-value="nodeData.time_of_day"
     :selected-label="timeLabel"
     placeholder="Time…"
-    @select="selectSlugTime"
+    @select="(v: string | number) => selectSlugTime(String(v))"
   />
   <ToolbarAvatarPicker
     v-if="speakerAvatars.length > 0"

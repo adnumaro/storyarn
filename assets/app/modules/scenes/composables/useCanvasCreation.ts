@@ -46,8 +46,8 @@ export function useCanvasCreation({
   const hasPendingSheet = ref(false);
 
   onMounted(() => {
-    live.handleEvent("pending_sheet_changed", ({ active }: { active: boolean }) => {
-      hasPendingSheet.value = !!active;
+    live.handleEvent("pending_sheet_changed", (payload) => {
+      hasPendingSheet.value = !!payload.active;
     });
   });
 

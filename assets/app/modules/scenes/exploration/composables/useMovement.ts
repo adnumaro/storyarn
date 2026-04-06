@@ -1,4 +1,12 @@
-import { onUnmounted, ref, watch } from "vue";
+import { onUnmounted, ref, watch, type ComputedRef, type Ref } from "vue";
+import type {
+  ExplorationPin,
+  ExplorationZone,
+  PartyPosition,
+  PixelPoint,
+  Vertex,
+} from "../types";
+import type { Node as KonvaNode } from "konva/lib/Node";
 
 // --- Constants (matching V1 exactly) ---
 const MOVEMENT_SPEED = 15; // %/s
@@ -8,17 +16,18 @@ const PARTY_SPREAD = 2; // % offset
 const ARRIVAL_THRESHOLD = 0.3; // %
 const MAX_DT = 0.05; // 50ms cap
 
+interface UseMovementOpts {
+  explorationPins: Ref<ExplorationPin[]> | ComputedRef<ExplorationPin[]>;
+  explorationZones: Ref<ExplorationZone[]> | ComputedRef<ExplorationZone[]>;
+  flowMode: Ref<boolean> | ComputedRef<boolean>;
+  percentToPixel: (pctX: number, pctY: number) => PixelPoint;
+  getPinNode: (pinId: number | string) => KonvaNode | null;
+}
+
 /**
  * Movement engine for exploration mode.
  * Handles click-to-move with leader/party following and walkable area enforcement.
  * Updates Konva node positions directly for 60fps performance (bypasses Vue reactivity).
- *
- * @param {Object} opts
- * @param {import('vue').Ref<Array>} opts.explorationPins - all pins with visibility
- * @param {import('vue').Ref<Array>} opts.explorationZones - all zones with visibility
- * @param {import('vue').Ref<boolean>} opts.flowMode - true when flow overlay is active
- * @param {Function} opts.percentToPixel - (pctX, pctY) => { x, y }
- * @param {Function} opts.getPinNode - (pinId) => Konva.Group node or null
  */
 export function useMovement({
   explorationPins,
@@ -26,26 +35,26 @@ export function useMovement({
   flowMode,
   percentToPixel,
   getPinNode,
-}) {
+}: UseMovementOpts) {
   // --- State ---
   const leaderMoving = ref(false);
 
-  let leaderPin = null;
-  let partyPins = [];
-  let walkableZones = [];
+  let leaderPin: ExplorationPin | null = null;
+  let partyPins: ExplorationPin[] = [];
+  let walkableZones: ExplorationZone[] = [];
 
   let leaderCurrentX = 0;
   let leaderCurrentY = 0;
   let leaderTargetX = 0;
   let leaderTargetY = 0;
 
-  let partyPositions = []; // [{id, x, y}]
-  let partyTargets = []; // [{id, x, y}]
+  let partyPositions: PartyPosition[] = []; // [{id, x, y}]
+  let partyTargets: PartyPosition[] = []; // [{id, x, y}]
   let partyMoving = false;
 
-  let frameId = null;
+  let frameId: number | null = null;
   let lastTime = 0;
-  let partyTimeout = null;
+  let partyTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // --- Init from pin/zone data ---
 
@@ -82,7 +91,7 @@ export function useMovement({
 
   // --- Point-in-polygon (ray-casting) ---
 
-  function isPointInPolygon(x, y, vertices) {
+  function isPointInPolygon(x: number, y: number, vertices: Vertex[]): boolean {
     let inside = false;
     for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
       const xi = vertices[i].x;
@@ -98,13 +107,13 @@ export function useMovement({
     return inside;
   }
 
-  function isPointInWalkableArea(x, y) {
-    return walkableZones.some((z) => isPointInPolygon(x, y, z.vertices));
+  function isPointInWalkableArea(x: number, y: number): boolean {
+    return walkableZones.some((z) => z.vertices && isPointInPolygon(x, y, z.vertices));
   }
 
   // --- Stage click handler ---
 
-  function handleStageClick(pctX, pctY) {
+  function handleStageClick(pctX: number, pctY: number): "walkable" | "blocked" | null {
     if (flowMode.value) {
       return null;
     }
@@ -121,7 +130,7 @@ export function useMovement({
 
   // --- Movement start ---
 
-  function startMovement(targetX, targetY) {
+  function startMovement(targetX: number, targetY: number) {
     leaderTargetX = targetX;
     leaderTargetY = targetY;
     leaderMoving.value = true;
@@ -176,7 +185,7 @@ export function useMovement({
 
   // --- Animation loop ---
 
-  function movementLoop(timestamp) {
+  function movementLoop(timestamp: number) {
     const dt = Math.min((timestamp - lastTime) / 1000, MAX_DT);
     lastTime = timestamp;
 
@@ -204,7 +213,7 @@ export function useMovement({
 
   // --- Leader step ---
 
-  function stepLeader(dt) {
+  function stepLeader(dt: number): boolean {
     const dx = leaderTargetX - leaderCurrentX;
     const dy = leaderTargetY - leaderCurrentY;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -212,7 +221,9 @@ export function useMovement({
     if (dist < ARRIVAL_THRESHOLD) {
       leaderCurrentX = leaderTargetX;
       leaderCurrentY = leaderTargetY;
-      updatePinPosition(leaderPin.id, leaderCurrentX, leaderCurrentY);
+      if (leaderPin) {
+        updatePinPosition(leaderPin.id, leaderCurrentX, leaderCurrentY);
+      }
       leaderMoving.value = false;
       return false;
     }
@@ -229,13 +240,15 @@ export function useMovement({
 
     leaderCurrentX = nextX;
     leaderCurrentY = nextY;
-    updatePinPosition(leaderPin.id, leaderCurrentX, leaderCurrentY);
+    if (leaderPin) {
+      updatePinPosition(leaderPin.id, leaderCurrentX, leaderCurrentY);
+    }
     return true;
   }
 
   // --- Party step ---
 
-  function stepParty(dt) {
+  function stepParty(dt: number): boolean {
     let anyMoving = false;
     const speed = MOVEMENT_SPEED * PARTY_SPEED_FACTOR * dt;
 
@@ -276,7 +289,7 @@ export function useMovement({
 
   // --- Konva position update ---
 
-  function updatePinPosition(pinId, pctX, pctY) {
+  function updatePinPosition(pinId: number | string, pctX: number, pctY: number) {
     const node = getPinNode(pinId);
     if (!node) {
       return;
@@ -313,16 +326,19 @@ export function useMovement({
 
   // --- Restore positions (from session) ---
 
-  function restorePositions(leader, party) {
-    if (leader && leaderPin) {
-      leaderCurrentX = leader.x;
-      leaderCurrentY = leader.y;
-      leaderTargetX = leader.x;
-      leaderTargetY = leader.y;
-      updatePinPosition(leaderPin.id, leader.x, leader.y);
+  function restorePositions(leader: unknown, party: unknown) {
+    const leaderPos = leader as { x: number; y: number } | null;
+    const partyPos = party as PartyPosition[] | null;
+
+    if (leaderPos && leaderPin) {
+      leaderCurrentX = leaderPos.x;
+      leaderCurrentY = leaderPos.y;
+      leaderTargetX = leaderPos.x;
+      leaderTargetY = leaderPos.y;
+      updatePinPosition(leaderPin.id, leaderPos.x, leaderPos.y);
     }
-    if (party && party.length > 0) {
-      for (const p of party) {
+    if (partyPos && partyPos.length > 0) {
+      for (const p of partyPos) {
         const idx = partyPositions.findIndex((pp) => pp.id === p.id);
         if (idx >= 0) {
           partyPositions[idx].x = p.x;

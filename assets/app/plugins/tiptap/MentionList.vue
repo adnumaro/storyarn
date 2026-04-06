@@ -23,12 +23,12 @@ watch(
   },
 );
 
-function selectItem(index) {
+function selectItem(index: number) {
   const item = items[index];
   if (item) command(item);
 }
 
-function onKeyDown({ event }) {
+function onKeyDown({ event }: { event: KeyboardEvent }) {
   if (event.key === "ArrowUp") {
     selectedIndex.value = (selectedIndex.value - 1 + items.length) % items.length;
     return true;

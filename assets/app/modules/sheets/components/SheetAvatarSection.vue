@@ -82,7 +82,7 @@ const defaultAvatar = computed<SheetAvatar | null>(
 
       <!-- Gallery link -->
       <button
-        v-if="sheet.avatars?.length > 0"
+        v-if="(sheet.avatars?.length ?? 0) > 0"
         class="flex items-center justify-center gap-1.5 w-full mt-2 pt-2 border-t border-border text-xs text-muted-foreground hover:text-foreground transition-colors"
         @click="$emit('open-gallery')"
       >

@@ -91,7 +91,7 @@ function onKeydown(e: KeyboardEvent): void {
               :model-value="block.config?.min ?? ''"
               class="h-7 text-xs"
               @blur="
-                (e) =>
+                (e: Event) =>
                   live.pushEvent('update_block_config', {
                     id: block.id,
                     field: 'min',
@@ -110,7 +110,7 @@ function onKeydown(e: KeyboardEvent): void {
               :model-value="block.config?.max ?? ''"
               class="h-7 text-xs"
               @blur="
-                (e) =>
+                (e: Event) =>
                   live.pushEvent('update_block_config', {
                     id: block.id,
                     field: 'max',
@@ -129,7 +129,7 @@ function onKeydown(e: KeyboardEvent): void {
               :model-value="block.config?.step ?? ''"
               class="h-7 text-xs"
               @blur="
-                (e) =>
+                (e: Event) =>
                   live.pushEvent('update_block_config', {
                     id: block.id,
                     field: 'step',
@@ -149,7 +149,7 @@ function onKeydown(e: KeyboardEvent): void {
             placeholder="0"
             class="h-7 text-xs"
             @blur="
-              (e) =>
+              (e: Event) =>
                 live.pushEvent('update_block_config', {
                   id: block.id,
                   field: 'placeholder',

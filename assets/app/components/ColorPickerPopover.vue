@@ -29,9 +29,13 @@ const emit = defineEmits<{
 }>();
 const live = useLive();
 
+interface ColorElement extends HTMLElement {
+  color: string;
+}
+
 const localColor = ref(props.color ?? "#3b82f6");
-const pickerRef = ref(null);
-const hexInputRef = ref(null);
+const pickerRef = ref<ColorElement | null>(null);
+const hexInputRef = ref<ColorElement | null>(null);
 const isOpen = ref(false);
 const hasEyeDropper = ref(typeof window !== "undefined" && "EyeDropper" in window);
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -39,13 +43,13 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 watch(
   () => props.color,
   (v) => {
-    localColor.value = v;
+    localColor.value = v ?? "#3b82f6";
   },
 );
 
 function pushColor(hex: string) {
   localColor.value = hex;
-  clearTimeout(debounceTimer);
+  if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     emit("update:color", hex);
     if (props.event) live.pushEvent(props.event, { value: hex });
@@ -86,7 +90,7 @@ function onPopoverOpen(open: boolean) {
 }
 
 onBeforeUnmount(() => {
-  clearTimeout(debounceTimer);
+  if (debounceTimer) clearTimeout(debounceTimer);
 });
 </script>
 

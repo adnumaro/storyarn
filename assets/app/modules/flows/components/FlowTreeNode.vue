@@ -118,7 +118,7 @@ const { isDragOver: childrenOver } = makeDroppable(
 );
 
 // Auto-expand on hover during drag
-let autoExpandTimer: ReturnType<typeof setTimeout> | null = null;
+let autoExpandTimer: ReturnType<typeof setTimeout> | undefined;
 
 watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
   clearTimeout(autoExpandTimer);

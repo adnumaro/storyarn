@@ -23,7 +23,7 @@ const emit = defineEmits<{
 }>();
 
 const editing = ref(false);
-const inputEl = ref(null);
+const inputEl = ref<HTMLInputElement | null>(null);
 const localValue = ref(modelValue);
 
 watch(
@@ -49,7 +49,7 @@ function save() {
   }
 }
 
-function onKeydown(e) {
+function onKeydown(e: KeyboardEvent) {
   if (e.key === "Enter") {
     e.preventDefault();
     save();

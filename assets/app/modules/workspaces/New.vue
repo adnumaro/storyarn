@@ -37,8 +37,8 @@ const description = form.field("description");
       <div class="space-y-1.5">
         <Label for="workspace-name">Workspace name</Label>
         <Input
-          id="workspace-name"
           v-bind="name.inputAttrs.value"
+          id="workspace-name"
           placeholder="My Workspace"
           required
         />
@@ -50,8 +50,8 @@ const description = form.field("description");
       <div class="space-y-1.5">
         <Label for="workspace-description">Description</Label>
         <Textarea
-          id="workspace-description"
           v-bind="description.inputAttrs.value"
+          id="workspace-description"
           placeholder="What is this workspace for?"
           :rows="3"
         />

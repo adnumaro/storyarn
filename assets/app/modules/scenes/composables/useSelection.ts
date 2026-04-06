@@ -83,7 +83,9 @@ export function useSelection({ activeTool, onCreationClick }: UseSelectionOpts) 
 
   // Listen for server-driven selection (e.g., from SearchPanel focus)
   onMounted(() => {
-    live.handleEvent("element_selected", ({ type, id }: { type: string; id: string }) => {
+    live.handleEvent("element_selected", (payload) => {
+      const type = String(payload.type ?? "");
+      const id = String(payload.id ?? "");
       selectedType.value = type;
       selectedId.value = Number(id);
     });

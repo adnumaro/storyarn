@@ -17,6 +17,22 @@ const emit = defineEmits<{
   "connection-click": [id: number | string, e: KonvaEventObject<MouseEvent>];
   "connection-dblclick": [id: number | string, e: KonvaEventObject<MouseEvent>];
 }>();
+
+function onZoneClick(id: number | string, e: KonvaEventObject<MouseEvent>) {
+  emit("zone-click", id, e);
+}
+function onZoneDblclick(id: number | string, e: KonvaEventObject<MouseEvent>) {
+  emit("zone-dblclick", id, e);
+}
+function onZoneMousedown(id: number | string, e: KonvaEventObject<MouseEvent>) {
+  emit("zone-mousedown", id, e);
+}
+function onConnectionClick(id: number | string, e: KonvaEventObject<MouseEvent>) {
+  emit("connection-click", id, e);
+}
+function onConnectionDblclick(id: number | string, e: KonvaEventObject<MouseEvent>) {
+  emit("connection-dblclick", id, e);
+}
 </script>
 
 <template>
@@ -25,9 +41,9 @@ const emit = defineEmits<{
       v-for="zone in zoneConfigs"
       :key="'zone-' + zone.id"
       :config="{ listening: zone.listening }"
-      @click="(e) => emit('zone-click', zone.id, e)"
-      @dblclick="(e) => emit('zone-dblclick', zone.id, e)"
-      @mousedown="(e) => emit('zone-mousedown', zone.id, e)"
+      @click="(e: KonvaEventObject<MouseEvent>) => onZoneClick(zone.id, e)"
+      @dblclick="(e: KonvaEventObject<MouseEvent>) => onZoneDblclick(zone.id, e)"
+      @mousedown="(e: KonvaEventObject<MouseEvent>) => onZoneMousedown(zone.id, e)"
     >
       <!-- Zone polygon -->
       <v-line
@@ -84,8 +100,8 @@ const emit = defineEmits<{
       v-for="conn in connectionConfigs"
       :key="'conn-' + conn.id"
       :config="{ listening: conn.listening }"
-      @click="(e) => emit('connection-click', conn.id, e)"
-      @dblclick="(e) => emit('connection-dblclick', conn.id, e)"
+      @click="(e: KonvaEventObject<MouseEvent>) => onConnectionClick(conn.id, e)"
+      @dblclick="(e: KonvaEventObject<MouseEvent>) => onConnectionDblclick(conn.id, e)"
     >
       <v-arrow
         :config="{

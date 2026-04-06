@@ -422,9 +422,10 @@ const ELEMENT_LISTS: Record<string, () => { id: number | string }[]> = {
 };
 
 const selectedElement = computed(() => {
+  if (!selectedType.value) return null;
   const getter = ELEMENT_LISTS[selectedType.value];
   if (!getter) return null;
-  return getter().find((e) => e.id === selectedId.value) || null;
+  return getter().find((e: { id: number | string }) => e.id === selectedId.value) || null;
 });
 
 function clipCircle(radius: number): (ctx: CanvasRenderingContext2D) => void {

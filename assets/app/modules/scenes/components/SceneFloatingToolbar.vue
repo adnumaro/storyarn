@@ -68,7 +68,7 @@ const TOOLBAR_COMPONENTS: Record<string, Component> = {
   zone: ZoneToolbar,
 };
 
-const activeComponent = computed(() => TOOLBAR_COMPONENTS[selectedType] || null);
+const activeComponent = computed(() => (selectedType ? TOOLBAR_COMPONENTS[selectedType] : null) || null);
 
 function updatePosition(): void {
   if (!visible.value || !elementPosition) {

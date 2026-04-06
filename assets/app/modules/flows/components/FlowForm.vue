@@ -38,7 +38,7 @@ const description = form.field("description");
 
     <div class="space-y-1.5">
       <Label for="flow-name">Name</Label>
-      <Input id="flow-name" v-bind="name.inputAttrs.value" placeholder="Main Story" required />
+      <Input v-bind="name.inputAttrs.value" id="flow-name" placeholder="Main Story" required />
       <p
         v-if="name.errorMessage.value"
         class="text-sm text-destructive flex items-center gap-1 mt-1"
@@ -50,8 +50,8 @@ const description = form.field("description");
     <div class="space-y-1.5">
       <Label for="flow-description">Description</Label>
       <Textarea
-        id="flow-description"
         v-bind="description.inputAttrs.value"
+        id="flow-description"
         placeholder="Describe the purpose of this flow..."
         :rows="3"
       />

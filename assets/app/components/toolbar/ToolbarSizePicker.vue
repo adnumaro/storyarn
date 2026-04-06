@@ -18,7 +18,7 @@ const emit = defineEmits<{
 }>();
 const open = ref(false);
 
-function selectSize(s) {
+function selectSize(s: string) {
   emit("update:size", s);
   open.value = false;
 }

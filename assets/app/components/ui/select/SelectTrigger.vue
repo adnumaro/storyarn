@@ -7,7 +7,7 @@ import { cn } from "@utils/utils";
 
 const props = defineProps<{
   disabled?: boolean;
-  reference?: HTMLElement | null;
+  reference?: HTMLElement;
   asChild?: boolean;
   as?: AsTag | Component;
   class?: HTMLAttributes["class"];

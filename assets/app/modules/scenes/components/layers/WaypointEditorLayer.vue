@@ -52,7 +52,7 @@ const emit = defineEmits<{
         stroke: mp.stroke,
         strokeWidth: mp.strokeWidth,
       }"
-      @click="(e) => emit('insert-waypoint', mp.segmentIndex, e)"
+      @click="(e: KonvaEventObject<MouseEvent>) => emit('insert-waypoint', mp.segmentIndex, e)"
     />
     <!-- Waypoint anchors (drag to reshape, ctrl+click to remove) -->
     <v-circle
@@ -67,9 +67,9 @@ const emit = defineEmits<{
         strokeWidth: wa.strokeWidth,
         draggable: true,
       }"
-      @dragmove="(e) => emit('waypoint-dragmove', wa.index, e)"
+      @dragmove="(e: KonvaEventObject<DragEvent>) => emit('waypoint-dragmove', wa.index, e)"
       @dragend="emit('waypoint-dragend')"
-      @click="(e) => emit('waypoint-click', wa.index, e)"
+      @click="(e: KonvaEventObject<MouseEvent>) => emit('waypoint-click', wa.index, e)"
     />
   </v-layer>
 </template>

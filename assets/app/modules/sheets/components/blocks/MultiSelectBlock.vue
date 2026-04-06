@@ -87,7 +87,7 @@ function toggle(key: string): void {
             placeholder="Select..."
             class="h-7 text-xs"
             @blur="
-              (e) =>
+              (e: Event) =>
                 live.pushEvent('update_block_config', {
                   id: block.id,
                   field: 'placeholder',

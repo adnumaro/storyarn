@@ -122,11 +122,11 @@ const childrenRef = useTemplateRef("childrenRef");
 const { isDragOver: childrenOver } = makeDroppable(
   childrenRef,
   { events: { onDrop: (e) => emit("drop", e) } },
-  () => node.children,
+  () => node.children ?? [],
 );
 
 // Auto-expand on hover during drag (600ms)
-let autoExpandTimer: ReturnType<typeof setTimeout> | null = null;
+let autoExpandTimer: ReturnType<typeof setTimeout> | undefined;
 
 watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
   clearTimeout(autoExpandTimer);
@@ -238,7 +238,7 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
         :key="child.id"
         :node="child"
         :index="childIndex"
-        :siblings="node.children"
+        :siblings="node.children ?? []"
         :selected-scene-id="selectedSceneId"
         :can-edit="canEdit"
         :depth="depth + 1"

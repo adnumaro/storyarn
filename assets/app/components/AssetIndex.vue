@@ -100,16 +100,17 @@ const deleteConfirmMessage = computed(() => {
   return "Are you sure you want to delete this asset? This cannot be undone.";
 });
 
-function filterAssets(type) {
+function filterAssets(type: string) {
   live.pushEvent("filter_assets", { type });
 }
 
-function handleSearch(event) {
-  searchValue.value = event.target.value;
-  live.pushEvent("search_assets", { search: event.target.value });
+function handleSearch(event: Event) {
+  const target = event.target as HTMLInputElement;
+  searchValue.value = target.value;
+  live.pushEvent("search_assets", { search: target.value });
 }
 
-function selectAsset(id) {
+function selectAsset(id: number) {
   live.pushEvent("select_asset", { id: String(id) });
 }
 
@@ -130,34 +131,34 @@ function cancelDelete() {
   showDeleteConfirm.value = false;
 }
 
-function isImage(asset) {
+function isImage(asset: Asset) {
   return asset.contentType?.startsWith("image/");
 }
 
-function isAudio(asset) {
+function isAudio(asset: Asset) {
   return asset.contentType?.startsWith("audio/");
 }
 
-function formatSize(bytes) {
+function formatSize(bytes: number) {
   if (!bytes) return "";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
-function typeLabel(asset) {
+function typeLabel(asset: Asset) {
   if (isImage(asset)) return "Image";
   if (isAudio(asset)) return "Audio";
   return "File";
 }
 
-function typeBadgeVariant(asset) {
+function typeBadgeVariant(asset: Asset) {
   if (isImage(asset)) return "default";
   if (isAudio(asset)) return "secondary";
   return "outline";
 }
 
-function formatDate(dateStr) {
+function formatDate(dateStr: string) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
   return d.toLocaleDateString("en-US", {
@@ -167,11 +168,11 @@ function formatDate(dateStr) {
   });
 }
 
-function usageFlowHref(usage) {
+function usageFlowHref(usage: FlowNodeUsage) {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${usage.flowId}`;
 }
 
-function usageSheetHref(sheet) {
+function usageSheetHref(sheet: SheetUsage) {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets/${sheet.id}`;
 }
 </script>

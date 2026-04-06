@@ -49,14 +49,14 @@ const DEFAULTS = {
   scenes: false,
 };
 
-function storageKey(tool) {
+function storageKey(tool: string) {
   return `${KEY_PREFIX}${tool}`;
 }
 
-function readPinned(tool) {
+function readPinned(tool: string) {
   const stored = localStorage.getItem(storageKey(tool));
   if (stored !== null) return stored === "true";
-  return DEFAULTS[tool] ?? true;
+  return DEFAULTS[tool as keyof typeof DEFAULTS] ?? true;
 }
 
 // ── Lifecycle ──
@@ -95,7 +95,7 @@ const toolLabels = {
 };
 
 const dashboardLabel = computed(() => {
-  const label = toolLabels[activeTool] || "";
+  const label = toolLabels[activeTool as keyof typeof toolLabels] || "";
   return `${label} dashboard`;
 });
 

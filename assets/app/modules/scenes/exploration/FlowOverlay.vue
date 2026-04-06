@@ -42,7 +42,7 @@ function flowFinish() {
   >
     <div class="px-5 py-4 max-w-4xl mx-auto">
       <!-- Dialogue -->
-      <template v-if="slideType === 'dialogue'">
+      <template v-if="slideType === 'dialogue' && slide">
         <div class="flex gap-4">
           <div class="shrink-0">
             <img
@@ -91,7 +91,7 @@ function flowFinish() {
       </template>
 
       <!-- Slug line -->
-      <template v-else-if="slideType === 'slug_line'">
+      <template v-else-if="slideType === 'slug_line' && slide">
         <div class="font-mono text-xs font-bold text-muted-foreground uppercase tracking-widest">
           {{ slide.setting }}. {{ slide.locationName }}
           <span v-if="slide.subLocation"> — {{ slide.subLocation }}</span>
@@ -105,7 +105,7 @@ function flowFinish() {
       </template>
 
       <!-- Outcome -->
-      <template v-else-if="slideType === 'outcome'">
+      <template v-else-if="slideType === 'outcome' && slide">
         <div v-if="slide.text" class="text-sm text-foreground" v-html="slide.text" />
       </template>
 

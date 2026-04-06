@@ -6,23 +6,31 @@ const { actionLabels = {} } = defineProps<{
   actionLabels?: Record<string, string>;
 }>();
 
+interface CollabToastData {
+  userColor: string;
+  userEmail: string;
+  action: string;
+}
+
 const live = useLive();
-const toast = ref(null);
-let hideTimeout = null;
+const toast = ref<CollabToastData | null>(null);
+let hideTimeout: ReturnType<typeof setTimeout> | null = null;
 
 onMounted(() => {
-  live.handleEvent("collab_toast", (data) => {
-    toast.value = data;
-    clearTimeout(hideTimeout);
+  live.handleEvent("collab_toast", (data: Record<string, unknown>) => {
+    toast.value = data as unknown as CollabToastData;
+    if (hideTimeout) clearTimeout(hideTimeout);
     hideTimeout = setTimeout(() => {
       toast.value = null;
     }, 4000);
   });
 });
 
-onUnmounted(() => clearTimeout(hideTimeout));
+onUnmounted(() => {
+  if (hideTimeout) clearTimeout(hideTimeout);
+});
 
-function label(action) {
+function label(action: string) {
   return actionLabels[action] || "made a change";
 }
 </script>

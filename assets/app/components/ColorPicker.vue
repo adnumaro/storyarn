@@ -35,7 +35,7 @@ const emit = defineEmits<{
 
 const open = ref(false);
 
-function selectColor(color) {
+function selectColor(color: string) {
   emit("update:modelValue", color);
   open.value = false;
 }

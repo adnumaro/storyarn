@@ -87,7 +87,7 @@ function usagePct(used: number, limit: number | null) {
         <h3 class="text-lg font-semibold mb-4">Automatic Snapshots</h3>
         <div class="rounded-lg border border-border bg-muted/30 p-4">
           <label class="flex items-center gap-3 cursor-pointer">
-            <Switch :checked="autoSnapshots" @update:checked="(v) => (autoSnapshots = v)" />
+            <Switch :checked="autoSnapshots" @update:checked="(v: boolean) => (autoSnapshots = v)" />
             <div>
               <span class="font-medium">Enable daily automatic snapshots</span>
               <p class="text-sm text-muted-foreground">
@@ -108,15 +108,15 @@ function usagePct(used: number, limit: number | null) {
         </p>
         <div class="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
           <label class="flex items-center gap-3 cursor-pointer">
-            <Switch :checked="autoFlows" @update:checked="(v) => (autoFlows = v)" />
+            <Switch :checked="autoFlows" @update:checked="(v: boolean) => (autoFlows = v)" />
             <span>Flows</span>
           </label>
           <label class="flex items-center gap-3 cursor-pointer">
-            <Switch :checked="autoScenes" @update:checked="(v) => (autoScenes = v)" />
+            <Switch :checked="autoScenes" @update:checked="(v: boolean) => (autoScenes = v)" />
             <span>Scenes</span>
           </label>
           <label class="flex items-center gap-3 cursor-pointer">
-            <Switch :checked="autoSheets" @update:checked="(v) => (autoSheets = v)" />
+            <Switch :checked="autoSheets" @update:checked="(v: boolean) => (autoSheets = v)" />
             <span>Sheets</span>
           </label>
         </div>

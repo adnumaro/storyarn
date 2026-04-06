@@ -31,8 +31,8 @@ const emit = defineEmits<{
   close: [];
 }>();
 
-const panelRef = ref(null);
-let animationTimer = null;
+const panelRef = ref<HTMLDivElement | null>(null);
+let animationTimer: ReturnType<typeof setTimeout> | null = null;
 
 function cancelPendingAnimation() {
   if (animationTimer) {
@@ -73,7 +73,7 @@ function animateIn() {
   const el = panelRef.value;
   if (!el) return;
 
-  el.style.opacity = 0;
+  el.style.opacity = "0";
   el.style.transform = `translateX(${slideOffset()})`;
   el.style.transition = "";
   el.style.pointerEvents = "auto";
@@ -81,7 +81,7 @@ function animateIn() {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       el.style.transition = `transform ${OPEN_DURATION}ms ${EASING}, opacity ${OPEN_DURATION}ms ${EASING}`;
-      el.style.opacity = 1;
+      el.style.opacity = "1";
       el.style.transform = "translateX(0)";
 
       animationTimer = setTimeout(() => {
@@ -99,17 +99,17 @@ function animateOut() {
   const el = panelRef.value;
   if (!el) return;
 
-  el.style.opacity = 1;
+  el.style.opacity = "1";
   el.style.transform = "translateX(0)";
 
   requestAnimationFrame(() => {
     el.style.transition = `transform ${CLOSE_DURATION}ms ${EASING}, opacity ${CLOSE_DURATION}ms ${EASING}`;
-    el.style.opacity = 0;
+    el.style.opacity = "0";
     el.style.transform = `translateX(${slideOffset()})`;
 
     animationTimer = setTimeout(() => {
       el.style.transition = "";
-      el.style.opacity = 0;
+      el.style.opacity = "0";
       el.style.transform = `translateX(${slideOffset()})`;
       el.style.pointerEvents = "none";
       animationTimer = null;
@@ -123,10 +123,10 @@ onMounted(() => {
   if (!el) return;
 
   if (open) {
-    el.style.opacity = 1;
+    el.style.opacity = "1";
     el.style.pointerEvents = "auto";
   } else {
-    el.style.opacity = 0;
+    el.style.opacity = "0";
     el.style.transform = `translateX(${slideOffset()})`;
     el.style.pointerEvents = "none";
   }

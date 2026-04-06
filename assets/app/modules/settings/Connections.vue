@@ -144,8 +144,8 @@ function confirmUnlink() {
             <p class="font-medium">{{ provider.label }}</p>
             <p v-if="findIdentity(provider.key)" class="text-sm text-muted-foreground">
               {{
-                findIdentity(provider.key).provider_email ||
-                findIdentity(provider.key).provider_name
+                findIdentity(provider.key)!.provider_email ||
+                findIdentity(provider.key)!.provider_name
               }}
             </p>
             <p v-else class="text-sm text-muted-foreground/50">

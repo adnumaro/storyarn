@@ -70,21 +70,25 @@ interface SerializedLayoutEntry {
 }
 
 function serializeLayout(items: LayoutItem[]): SerializedLayoutEntry[] {
-  return items.flatMap((item) =>
-    item.type === "column_group"
-      ? item.blocks.map((block, index) => ({
+  const entries: SerializedLayoutEntry[] = [];
+  for (const item of items) {
+    if (item.type === "column_group") {
+      for (let index = 0; index < item.blocks.length; index++) {
+        entries.push({
           column_group_id: item.group_id,
           column_index: index,
-          id: block.id,
-        }))
-      : [
-          {
-            column_group_id: null,
-            column_index: 0,
-            id: (item as FullWidthLayoutItem).block.id,
-          },
-        ],
-  );
+          id: item.blocks[index].id,
+        });
+      }
+    } else {
+      entries.push({
+        column_group_id: null,
+        column_index: 0,
+        id: item.block.id,
+      });
+    }
+  }
+  return entries;
 }
 
 function pushColumnLayout(items: LayoutItem[]): void {

@@ -55,7 +55,7 @@ onUnmounted(() => {
 });
 
 let resizeObserver: ResizeObserver | null = null;
-let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+let resizeTimer: ReturnType<typeof setTimeout> | undefined;
 
 function debouncedResize() {
   clearTimeout(resizeTimer);

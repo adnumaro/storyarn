@@ -220,7 +220,7 @@ function onNotesBlur(id: number | string, value: string, original: string | unde
               class="h-8 text-sm"
               :disabled="!canEdit"
               @blur="
-                (e) =>
+                (e: Event) =>
                   onNameBlur(
                     avatars[currentIndex].id,
                     (e.target as HTMLInputElement).value,
@@ -240,7 +240,7 @@ function onNotesBlur(id: number | string, value: string, original: string | unde
               class="text-sm resize-none"
               :disabled="!canEdit"
               @blur="
-                (e) =>
+                (e: Event) =>
                   onNotesBlur(
                     avatars[currentIndex].id,
                     (e.target as HTMLTextAreaElement).value,

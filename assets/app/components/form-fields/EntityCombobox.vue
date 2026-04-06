@@ -51,7 +51,7 @@ const selectedName = computed(() => {
   return opt?.name || null;
 });
 
-function select(id) {
+function select(id: number | string | null) {
   emit("update:selectedId", id);
   open.value = false;
 }

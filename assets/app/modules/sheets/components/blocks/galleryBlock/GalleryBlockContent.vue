@@ -188,7 +188,7 @@ function onDrop(e: DragEvent, dropIndex: number): void {
             class="h-8 text-sm"
             :disabled="!canEdit"
             @blur="
-              (e) =>
+              (e: Event) =>
                 updateImageField(detailImage!.id, 'label', (e.target as HTMLInputElement).value)
             "
           />
@@ -204,7 +204,7 @@ function onDrop(e: DragEvent, dropIndex: number): void {
             class="text-sm resize-none"
             :disabled="!canEdit"
             @blur="
-              (e) =>
+              (e: Event) =>
                 updateImageField(
                   detailImage!.id,
                   'description',

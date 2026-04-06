@@ -86,7 +86,7 @@ onMounted(() => {
   }
 
   const loader = new THREE.TextureLoader();
-  const loaded = [];
+  const loaded: (THREE.Texture | null)[] = [];
 
   SCREEN_IMAGES.forEach((src, i) => {
     loader.load(

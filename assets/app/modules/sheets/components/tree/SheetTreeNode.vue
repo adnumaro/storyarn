@@ -117,7 +117,7 @@ const childrenRef = useTemplateRef("childrenRef");
 const { isDragOver: childrenOver } = makeDroppable(
   childrenRef,
   { events: { onDrop: (e: unknown) => emit("drop", e) } },
-  () => node.children,
+  () => node.children ?? [],
 );
 
 // Auto-expand on hover during drag (600ms)

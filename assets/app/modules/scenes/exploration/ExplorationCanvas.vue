@@ -38,6 +38,7 @@ interface ExplorationPin {
   position: number | null;
   visibility: string;
   isPlayable: boolean;
+  isLeader: boolean;
   flowId: number | string | null;
   patrolMode: string | null;
   patrolRoute: { x: number; y: number; isPinStop?: boolean }[] | null;
@@ -411,7 +412,7 @@ const LABEL_COLOR = "#d1d5db";
         <v-group
           v-for="pin in pinConfigs"
           :key="'pin-' + pin.id"
-          :ref="(el) => setPinRef(pin.id, el)"
+          :ref="(el: unknown) => setPinRef(pin.id, el as { getNode?: () => Konva.Node } | null)"
           :config="{
             x: pin.x,
             y: pin.y,

@@ -1,17 +1,14 @@
 <script setup lang="ts">
-import { computed } from "vue";
 import type { SubtitleData } from "./composables/useAmbientDisplay";
 
 const { subtitle = null } = defineProps<{
   subtitle?: SubtitleData | null;
 }>();
-
-const visible = computed(() => subtitle != null);
 </script>
 
 <template>
   <div
-    v-if="visible"
+    v-if="subtitle"
     class="absolute bottom-16 inset-x-0 z-40 flex justify-center pointer-events-none"
   >
     <div

@@ -24,11 +24,11 @@ const emit = defineEmits<{
       v-for="ann in annotationConfigs"
       :key="'ann-' + ann.id"
       :config="{ x: ann.x, y: ann.y, listening: ann.listening, draggable: ann.draggable }"
-      @click="(e) => emit('annotation-click', ann.id, e)"
-      @dblclick="(e) => emit('annotation-dblclick', ann, e)"
-      @dragstart="(e) => emit('dragstart', 'annotation', ann.id, e)"
-      @dragmove="(e) => emit('dragmove', 'annotation', ann.id, e)"
-      @dragend="(e) => emit('dragend', 'annotation', ann.id, e)"
+      @click="(e: KonvaEventObject<MouseEvent>) => emit('annotation-click', ann.id, e)"
+      @dblclick="(e: KonvaEventObject<MouseEvent>) => emit('annotation-dblclick', ann, e)"
+      @dragstart="(e: KonvaEventObject<DragEvent>) => emit('dragstart', 'annotation', ann.id, e)"
+      @dragmove="(e: KonvaEventObject<DragEvent>) => emit('dragmove', 'annotation', ann.id, e)"
+      @dragend="(e: KonvaEventObject<DragEvent>) => emit('dragend', 'annotation', ann.id, e)"
     >
       <v-rect
         v-if="ann.isSelected"

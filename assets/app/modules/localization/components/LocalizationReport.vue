@@ -176,7 +176,7 @@ function typeLabel(type: string) {
     <section v-if="selectedLocale && speakerStats.length > 0" class="mt-8">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-base font-semibold">Word Counts by Speaker</h3>
-        <Select :model-value="selectedLocale" @update:model-value="changeLocale">
+        <Select :model-value="selectedLocale" @update:model-value="(v: string | string[]) => changeLocale(Array.isArray(v) ? v[0] : v)">
           <SelectTrigger class="w-40 h-8">
             <SelectValue />
           </SelectTrigger>

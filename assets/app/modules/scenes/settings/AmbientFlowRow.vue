@@ -47,7 +47,8 @@ function remove() {
   live.pushEvent("remove_ambient_flow", { id: flow.id });
 }
 
-function onTriggerTypeChange(value: string) {
+function onTriggerTypeChange(value: string | string[]) {
+  if (Array.isArray(value)) return;
   live.pushEvent(`select_ambient_trigger_type:${flow.id}`, {
     selected: value,
   });

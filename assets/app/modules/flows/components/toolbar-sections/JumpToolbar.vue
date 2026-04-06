@@ -49,7 +49,7 @@ function navigateToHub() {
     :selected-value="nodeData.target_hub_id"
     :selected-label="selectedHubLabel"
     placeholder="Target hub…"
-    @select="selectHub"
+    @select="(v: string | number) => selectHub(String(v))"
   />
   <button
     v-if="nodeData.target_hub_id"

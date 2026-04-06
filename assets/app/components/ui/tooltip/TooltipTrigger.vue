@@ -3,7 +3,7 @@ import type { Component } from "vue";
 import { TooltipTrigger, type AsTag } from "reka-ui";
 
 const props = defineProps<{
-  reference?: HTMLElement | null;
+  reference?: HTMLElement;
   asChild?: boolean;
   as?: AsTag | Component;
 }>();

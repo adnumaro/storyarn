@@ -41,10 +41,11 @@ const emit = defineEmits<{
 }>();
 const live = useLive();
 
-function onChange(v) {
-  emit("update", v);
+function onChange(v: string | string[]) {
+  const val = Array.isArray(v) ? v[0] : v;
+  emit("update", val);
   if (event) {
-    live.pushEvent(event, { [paramKey]: v });
+    live.pushEvent(event, { [paramKey]: val });
   }
 }
 </script>

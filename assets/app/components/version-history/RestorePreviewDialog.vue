@@ -37,7 +37,7 @@ const emit = defineEmits<{
   confirm: [];
 }>();
 
-const conflictIcons = {
+const conflictIcons: Record<string, Component> = {
   asset: Image,
   sheet: FileText,
   flow: GitBranch,
@@ -45,12 +45,12 @@ const conflictIcons = {
   block: Puzzle,
 };
 
-function conflictIcon(type) {
+function conflictIcon(type: string) {
   return conflictIcons[type] || CircleAlert;
 }
 
-function conflictLabel(type) {
-  const labels = {
+function conflictLabel(type: string) {
+  const labels: Record<string, string> = {
     asset: "asset",
     sheet: "sheet",
     flow: "flow",
@@ -116,7 +116,7 @@ function conflictLabel(type) {
           This will restore to version {{ restoreData.versionNumber }}.
         </p>
         <div
-          v-if="restoreData.report.autoResolved?.length > 0"
+          v-if="(restoreData.report.autoResolved?.length ?? 0) > 0"
           class="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3"
         >
           <p

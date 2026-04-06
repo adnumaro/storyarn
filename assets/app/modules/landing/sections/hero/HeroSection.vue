@@ -39,6 +39,8 @@ function openFullscreen() {
   const heroContent = document.getElementById("hero-content-inner");
   const portalBadge = document.querySelector(".portal-badge") as HTMLElement | null;
 
+  if (!video || !frame || !fullscreen || !triggerRef.value) return;
+
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   if (reduced) {
@@ -194,6 +196,8 @@ function closeFullscreen() {
   const heroContent = document.getElementById("hero-content-inner");
   const portalBadge = document.querySelector(".portal-badge") as HTMLElement | null;
 
+  if (!video || !frame || !fullscreen || !triggerRef.value) return;
+
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   if (reduced) {
@@ -265,7 +269,7 @@ function closeFullscreen() {
       video.style.objectFit = "cover";
       clearVideoMask(video);
       frame.appendChild(video);
-      triggerRef.value.classList.remove("is-active");
+      triggerRef.value?.classList.remove("is-active");
       frame.style.opacity = "";
       if (portalBadge) portalBadge.style.opacity = "";
       if (topbar) {

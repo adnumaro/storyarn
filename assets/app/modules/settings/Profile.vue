@@ -71,8 +71,8 @@ function updateLocale(val: string): void {
         <div class="space-y-1.5">
           <Label for="profile-display-name">{{ $t("settings.profile.display_name") }}</Label>
           <Input
-            id="profile-display-name"
             v-bind="displayName.inputAttrs.value"
+            id="profile-display-name"
             :placeholder="$t('settings.profile.display_name_placeholder')"
           />
           <p v-if="displayName.errorMessage.value" class="text-sm text-destructive mt-1">
@@ -84,7 +84,7 @@ function updateLocale(val: string): void {
           <Label for="profile-locale">{{ $t("settings.profile.language") }}</Label>
           <Select
             :model-value="locale.inputAttrs.value.value || ''"
-            @update:model-value="updateLocale"
+            @update:model-value="(v: string | string[]) => updateLocale(Array.isArray(v) ? v[0] : v)"
           >
             <SelectTrigger id="profile-locale" class="w-full">
               <SelectValue :placeholder="$t('settings.profile.auto_detect')" />
@@ -119,9 +119,9 @@ function updateLocale(val: string): void {
         <div class="space-y-1.5">
           <Label for="profile-email">{{ $t("settings.profile.email") }}</Label>
           <Input
+            v-bind="email.inputAttrs.value"
             id="profile-email"
             type="email"
-            v-bind="email.inputAttrs.value"
             autocomplete="username"
             required
           />

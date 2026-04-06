@@ -120,7 +120,7 @@ const statCards = computed(() => {
       icon: Text,
       label: "Words",
       value: stats.total_word_count,
-      href: null,
+      href: undefined,
     },
   ];
 });
@@ -138,7 +138,7 @@ function activityIcon(type: string) {
 }
 
 function activityTypeLabel(type: string) {
-  const labels = {
+  const labels: Record<string, string> = {
     sheet: "Sheet",
     flow: "Flow",
     scene: "Scene",
