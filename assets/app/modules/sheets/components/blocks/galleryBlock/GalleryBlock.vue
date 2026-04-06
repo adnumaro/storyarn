@@ -1,6 +1,6 @@
 <script setup>
 import { Image } from "lucide-vue-next";
-import { useBlockActions } from "../../../composables/useBlockActions.js";
+import { useBlockActions } from "../../../composables/useBlockActions";
 import BlockLabel from "../../BlockLabel.vue";
 import BlockToolbar from "../../BlockToolbar.vue";
 import GalleryBlockContent from "./GalleryBlockContent.vue";

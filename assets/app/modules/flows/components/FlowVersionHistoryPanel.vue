@@ -2,7 +2,7 @@
 import { History, X } from "lucide-vue-next";
 import Sidebar from "@components/layout/Sidebar.vue";
 import VersionHistory from "@components/version-history/VersionHistory.vue";
-import { useLive } from "@composables/useLive.js";
+import { useLive } from "@composables/useLive";
 
 const {
   versions,

@@ -1,9 +1,9 @@
 <script setup>
 import { Clapperboard } from "lucide-vue-next";
 import { computed } from "vue";
-import { ToolbarSeparator } from "@components/toolbar/index.js";
-import { useLive } from "@composables/useLive.js";
-import { ToolbarAvatarPicker, ToolbarSearchableSelect } from "../../toolbar/index.js";
+import { ToolbarSeparator } from "@components/toolbar/index.ts";
+import { useLive } from "@composables/useLive";
+import { ToolbarAvatarPicker, ToolbarSearchableSelect } from "../../toolbar";
 
 const { nodeData, sheetAvatars } = defineProps({
   nodeData: { type: Object, required: true },

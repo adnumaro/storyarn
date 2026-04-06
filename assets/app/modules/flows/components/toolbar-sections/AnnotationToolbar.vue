@@ -4,8 +4,8 @@ import {
   ToolbarColorPicker,
   ToolbarSeparator,
   ToolbarSizePicker,
-} from "@components/toolbar/index.js";
-import { useLive } from "@composables/useLive.js";
+} from "@components/toolbar/index.ts";
+import { useLive } from "@composables/useLive";
 
 const { nodeData, nodeId } = defineProps({
   nodeData: { type: Object, required: true },

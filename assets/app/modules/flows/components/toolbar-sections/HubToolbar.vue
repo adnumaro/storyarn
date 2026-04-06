@@ -1,7 +1,7 @@
 <script setup>
 import { Crosshair, LogIn } from "lucide-vue-next";
-import { ToolbarSeparator } from "@components/toolbar/index.js";
-import { useLive } from "@composables/useLive.js";
+import { ToolbarSeparator } from "@components/toolbar/index.ts";
+import { useLive } from "@composables/useLive";
 
 const { nodeData, nodeId, referencingJumps } = defineProps({
   nodeData: { type: Object, required: true },

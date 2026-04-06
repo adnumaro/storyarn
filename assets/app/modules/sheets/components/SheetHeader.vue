@@ -2,8 +2,8 @@
 import { Image, Trash2 } from "lucide-vue-next";
 import { ref, watch } from "vue";
 import ColorPickerPopover from "@components/ColorPickerPopover.vue";
-import { Button } from "@components/ui/button/index.js";
-import { useLive } from "@composables/useLive.js";
+import { Button } from "@components/ui/button/index.ts";
+import { useLive } from "@composables/useLive";
 import AvatarGallery from "./AvatarGallery.vue";
 import SheetAvatarSection from "./SheetAvatarSection.vue";
 import SheetMetadata from "./SheetMetadata.vue";

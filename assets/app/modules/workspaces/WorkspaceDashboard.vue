@@ -1,12 +1,12 @@
 <script setup>
 import { FolderOpen, Plus, Search, Settings, Menu } from "lucide-vue-next";
 import { computed, ref } from "vue";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog/index.js";
-import { Button } from "@components/ui/button/index.js";
-import { Input } from "@components/ui/input/index.js";
-import NewProjectForm from "./projects/new.vue";
-import { useLive } from "@composables/useLive.js";
-import { formatRelativeTime } from "@utils/date-utils.js";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog/index.ts";
+import { Button } from "@components/ui/button/index.ts";
+import { Input } from "@components/ui/input/index.ts";
+import NewProjectForm from "./projects/New.vue";
+import { useLive } from "@composables/useLive";
+import { formatRelativeTime } from "@utils/date-utils";
 
 const {
   workspace,

@@ -1,6 +1,6 @@
 <script setup>
 import { History } from "lucide-vue-next";
-import { useRevealOnScroll } from "../composables/useRevealOnScroll.js";
+import { useRevealOnScroll } from "../composables/useRevealOnScroll";
 
 const { translations } = defineProps({
   translations: { type: Object, default: () => ({ version_items: [] }) },

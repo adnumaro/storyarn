@@ -1,9 +1,9 @@
 <script setup>
 import { useLiveForm } from "live_vue";
-import { Button } from "@components/ui/button/index.js";
-import { Input } from "@components/ui/input/index.js";
-import { Label } from "@components/ui/label/index.js";
-import { Textarea } from "@components/ui/textarea/index.js";
+import { Button } from "@components/ui/button/index.ts";
+import { Input } from "@components/ui/input/index.ts";
+import { Label } from "@components/ui/label/index.ts";
+import { Textarea } from "@components/ui/textarea/index.ts";
 
 const { form: formProp, cancelUrl } = defineProps({
   form: { type: Object, required: true },
@@ -12,7 +12,7 @@ const { form: formProp, cancelUrl } = defineProps({
 
 const form = useLiveForm(() => formProp, {
   submitEvent: "save",
-  debounceInMiliseconds: 300,
+  debounceInMilliseconds: 300,
 });
 
 const name = form.field("name");

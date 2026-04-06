@@ -1,10 +1,10 @@
 <script setup>
 import { Box, ExternalLink } from "lucide-vue-next";
 import { computed } from "vue";
-import { ToolbarSeparator } from "@components/toolbar/index.js";
-import { Badge } from "@components/ui/badge/index.js";
-import { useLive } from "@composables/useLive.js";
-import { ToolbarSearchableSelect } from "../../toolbar/index.js";
+import { ToolbarSeparator } from "@components/toolbar/index.ts";
+import { Badge } from "@components/ui/badge/index.ts";
+import { useLive } from "@composables/useLive";
+import { ToolbarSearchableSelect } from "../../toolbar";
 
 const { nodeData, projectFlows, subflowExits } = defineProps({
   nodeData: { type: Object, required: true },

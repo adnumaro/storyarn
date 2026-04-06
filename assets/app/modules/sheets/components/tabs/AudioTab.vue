@@ -12,22 +12,22 @@ import {
   X,
 } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
-import { Badge } from "@components/ui/badge/index.js";
-import { Button } from "@components/ui/button/index.js";
+import { Badge } from "@components/ui/badge/index.ts";
+import { Button } from "@components/ui/button/index.ts";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@components/ui/collapsible/index.js";
+} from "@components/ui/collapsible/index.ts";
 import {
   Command,
   CommandEmpty,
   CommandInput,
   CommandItem,
   CommandList,
-} from "@components/ui/command/index.js";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
-import { useLive } from "@composables/useLive.js";
+} from "@components/ui/command/index.ts";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
+import { useLive } from "@composables/useLive";
 
 const { groupedLines, audioAssets, workspaceSlug, projectSlug, canEdit, loading } = defineProps({
   groupedLines: { type: Array, default: () => [] },

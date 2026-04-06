@@ -1,15 +1,15 @@
 <script setup>
 import { CircleDot } from "lucide-vue-next";
 import { computed } from "vue";
-import { Input } from "@components/ui/input/index.js";
+import { Input } from "@components/ui/input/index.ts";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@components/ui/select/index.js";
-import { useBlockActions } from "../../composables/useBlockActions.js";
+} from "@components/ui/select/index.ts";
+import { useBlockActions } from "../../composables/useBlockActions";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 import OptionEditor from "../OptionEditor.vue";

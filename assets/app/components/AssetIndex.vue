@@ -12,10 +12,10 @@ import {
   X,
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
-import { Badge } from "@components/ui/badge/index.js";
-import { Button } from "@components/ui/button/index.js";
-import { Input } from "@components/ui/input/index.js";
-import { useLive } from "@composables/useLive.js";
+import { Badge } from "@components/ui/badge/index.ts";
+import { Button } from "@components/ui/button/index.ts";
+import { Input } from "@components/ui/input/index.ts";
+import { useLive } from "@composables/useLive";
 
 const {
   assets,

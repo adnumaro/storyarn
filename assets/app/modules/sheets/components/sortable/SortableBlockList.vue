@@ -3,7 +3,7 @@ import { makeDroppable } from "@vue-dnd-kit/core";
 import { Link2 } from "lucide-vue-next";
 import { inject, ref, useTemplateRef, watch } from "vue";
 import UserAvatar from "@components/layout/UserAvatar.vue";
-import { useLive } from "@composables/useLive.js";
+import { useLive } from "@composables/useLive";
 import DraggableBlock from "./DraggableBlock.vue";
 import SortableColumnGroup from "./SortableColumnGroup.vue";
 

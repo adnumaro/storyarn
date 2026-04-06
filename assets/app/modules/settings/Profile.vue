@@ -1,16 +1,16 @@
 <script setup>
 import { useLiveForm } from "live_vue";
-import { Button } from "@components/ui/button/index.js";
-import { Input } from "@components/ui/input/index.js";
-import { Label } from "@components/ui/label/index.js";
+import { Button } from "@components/ui/button/index.ts";
+import { Input } from "@components/ui/input/index.ts";
+import { Label } from "@components/ui/label/index.ts";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@components/ui/select/index.js";
-import { Separator } from "@components/ui/separator/index.js";
+} from "@components/ui/select/index.ts";
+import { Separator } from "@components/ui/separator/index.ts";
 
 const {
   profileForm: profileFormProp,
@@ -25,13 +25,13 @@ const {
 const profileForm = useLiveForm(() => profileFormProp, {
   changeEvent: "validate_profile",
   submitEvent: "update_profile",
-  debounceInMiliseconds: 300,
+  debounceInMilliseconds: 300,
 });
 
 const emailForm = useLiveForm(() => emailFormProp, {
   changeEvent: "validate_email",
   submitEvent: "update_email",
-  debounceInMiliseconds: 300,
+  debounceInMilliseconds: 300,
 });
 
 const displayName = profileForm.field("display_name");

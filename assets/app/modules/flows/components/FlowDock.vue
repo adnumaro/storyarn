@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from "vue";
-import { useLive } from "@composables/useLive.js";
+import { useLive } from "@composables/useLive";
 import DockActionsPanel from "./dock-panels/DockActionsPanel.vue";
 import DockAnnotationButton from "./dock-panels/DockAnnotationButton.vue";
 import DockLogicPanel from "./dock-panels/DockLogicPanel.vue";

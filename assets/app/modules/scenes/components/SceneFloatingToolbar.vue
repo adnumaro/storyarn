@@ -5,7 +5,7 @@ import {
   ConnectionToolbar,
   PinToolbar,
   ZoneToolbar,
-} from "./toolbar-sections/index.js";
+} from "./toolbar-sections/index.ts";
 
 const {
   selectedType,

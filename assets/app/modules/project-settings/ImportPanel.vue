@@ -2,9 +2,9 @@
 import { useLiveUpload } from "live_vue";
 import { AlertTriangle, CheckCircle, Eye, Lock, Upload } from "lucide-vue-next";
 import { computed, toRef } from "vue";
-import { Button } from "@components/ui/button/index.js";
-import { Label } from "@components/ui/label/index.js";
-import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group/index.js";
+import { Button } from "@components/ui/button/index.ts";
+import { Label } from "@components/ui/label/index.ts";
+import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group/index.ts";
 import {
   Table,
   TableBody,
@@ -12,8 +12,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@components/ui/table/index.js";
-import { useLive } from "@composables/useLive.js";
+} from "@components/ui/table/index.ts";
+import { useLive } from "@composables/useLive";
 
 const { canEdit, importState, uploadConfig } = defineProps({
   canEdit: { type: Boolean, required: true },

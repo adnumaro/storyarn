@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from "vue";
-import { useLive } from "@composables/useLive.js";
+import { useLive } from "@composables/useLive";
 
 const { sheet, canEdit, isDraft, sourceShortcut } = defineProps({
   sheet: { type: Object, required: true },

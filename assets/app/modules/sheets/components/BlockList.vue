@@ -3,7 +3,7 @@ import { DnDProvider } from "@vue-dnd-kit/core";
 import { ArrowUpRight, Link2Off } from "lucide-vue-next";
 import { onMounted, onUnmounted, provide, ref } from "vue";
 import UserAvatar from "@components/layout/UserAvatar.vue";
-import { useLive } from "@composables/useLive.js";
+import { useLive } from "@composables/useLive";
 import AddBlockMenu from "./AddBlockMenu.vue";
 import BooleanBlock from "./blocks/BooleanBlock.vue";
 import DateBlock from "./blocks/DateBlock.vue";

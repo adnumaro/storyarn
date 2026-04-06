@@ -11,7 +11,7 @@ import {
   JumpToolbar,
   SlugLineToolbar,
   SubflowToolbar,
-} from "./toolbar-sections/index.js";
+} from "./toolbar-sections";
 
 const {
   toolbarState,

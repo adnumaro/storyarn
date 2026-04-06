@@ -1,8 +1,8 @@
 <script setup>
 import { ChevronDown, ChevronUp, Folder, RotateCcw, Trash2 } from "lucide-vue-next";
 import { computed, ref } from "vue";
-import { Badge } from "@components/ui/badge/index.js";
-import { Button } from "@components/ui/button/index.js";
+import { Badge } from "@components/ui/badge/index.ts";
+import { Button } from "@components/ui/button/index.ts";
 import {
   Dialog,
   DialogClose,
@@ -11,8 +11,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@components/ui/dialog/index.js";
-import { useLive } from "@composables/useLive.js";
+} from "@components/ui/dialog/index.ts";
+import { useLive } from "@composables/useLive";
 
 const { deletedProjects, expandedProjectId, snapshots, recovering } = defineProps({
   deletedProjects: { type: Array, required: true },

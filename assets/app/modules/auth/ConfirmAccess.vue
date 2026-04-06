@@ -1,9 +1,9 @@
 <script setup>
 import { Shield } from "lucide-vue-next";
-import { Button } from "@components/ui/button/index.js";
-import { Input } from "@components/ui/input/index.js";
-import { Label } from "@components/ui/label/index.js";
-import { useLive } from "@composables/useLive.js";
+import { Button } from "@components/ui/button/index.ts";
+import { Input } from "@components/ui/input/index.ts";
+import { Label } from "@components/ui/label/index.ts";
+import { useLive } from "@composables/useLive";
 
 const { email, loginAction, backUrl } = defineProps({
   email: { type: String, required: true },

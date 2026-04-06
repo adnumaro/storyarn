@@ -15,9 +15,9 @@ import {
   OPERATOR_VERBS,
   operatorsForType,
   typesForOperator,
-} from "@modules/shared/operators/instruction-operators.js";
-import { findVariable, groupVariablesBySheet } from "@modules/shared/variables.js";
-import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover/index.js";
+} from "@modules/shared/operators/instruction-operators";
+import { findVariable, groupVariablesBySheet } from "@modules/shared/variables";
+import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover/index.ts";
 import VariableCombobox from "../../VariableCombobox.vue";
 
 const { assignment, variables, disabled } = defineProps({

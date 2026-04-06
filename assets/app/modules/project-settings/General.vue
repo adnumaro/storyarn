@@ -2,7 +2,7 @@
 import { AlertTriangle, Monitor, Moon, Sun, Wrench } from "lucide-vue-next";
 import { ref, watch, onMounted, onUnmounted } from "vue";
 import ColorPickerPopover from "@components/ColorPickerPopover.vue";
-import { Button } from "@components/ui/button/index.js";
+import { Button } from "@components/ui/button/index.ts";
 import {
   Dialog,
   DialogContent,
@@ -10,12 +10,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@components/ui/dialog/index.js";
-import { Input } from "@components/ui/input/index.js";
-import { Label } from "@components/ui/label/index.js";
-import { Separator } from "@components/ui/separator/index.js";
-import { Textarea } from "@components/ui/textarea/index.js";
-import { useLive } from "@composables/useLive.js";
+} from "@components/ui/dialog/index.ts";
+import { Input } from "@components/ui/input/index.ts";
+import { Label } from "@components/ui/label/index.ts";
+import { Separator } from "@components/ui/separator/index.ts";
+import { Textarea } from "@components/ui/textarea/index.ts";
+import { useLive } from "@composables/useLive";
 
 const {
   projectName,

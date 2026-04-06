@@ -1,26 +1,31 @@
-// {
-//   ...
-//   "dependencies": {
-//     ...,
-//     "phoenix": "../deps/phoenix",
-//     "phoenix_html": "../deps/phoenix_html",
-//     "phoenix_live_view": "../deps/phoenix_live_view"
-//   }
-// }
-//
 {
   "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": false,
+    "allowJs": true,
+    "noEmit": true,
+    "jsx": "preserve",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
     "baseUrl": "./assets",
+    "ignoreDeprecations": "6.0",
     "paths": {
       "*": ["../deps/*"],
+      "@/*": ["./*"],
       "@app/*": ["./app/*"],
       "@components/*": ["./app/components/*"],
-      "@lib/*": ["./app/lib/*"],
-      "@pages/*": ["./app/pages/*"],
+      "@utils/*": ["./app/utils/*"],
+      "@modules/*": ["./app/modules/*"],
+      "@plugins/*": ["./app/plugins/*"],
       "@composables/*": ["./app/composables/*"]
     },
-    "allowJs": true,
-    "noEmit": true
+    "types": ["vite/client"]
   },
-  "include": ["js/**/*", "app/**/*"]
+  "include": ["assets/app/**/*.ts", "assets/app/**/*.vue", "assets/app/**/*.js"],
+  "exclude": ["node_modules", "priv", "assets/js"]
 }

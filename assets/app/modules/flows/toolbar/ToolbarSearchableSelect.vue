@@ -8,8 +8,8 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@components/ui/command/index.js";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
+} from "@components/ui/command/index.ts";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 
 const { options, selectedValue, selectedLabel, placeholder, disabled } = defineProps({
   options: { type: Array, default: () => [] },

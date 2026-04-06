@@ -1,8 +1,8 @@
 <script setup>
 import { Calendar } from "lucide-vue-next";
 import { computed } from "vue";
-import { Input } from "@components/ui/input/index.js";
-import { useBlockActions } from "../../composables/useBlockActions.js";
+import { Input } from "@components/ui/input/index.ts";
+import { useBlockActions } from "../../composables/useBlockActions";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 

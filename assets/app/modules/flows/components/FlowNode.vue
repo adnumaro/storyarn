@@ -1,7 +1,7 @@
 <script setup>
 import { computed, inject } from "vue";
-import { NODE_CONFIGS } from "../lib/node-configs.js";
-import { resolveNodeColor } from "../lib/render-helpers.js";
+import { NODE_CONFIGS } from "../lib/node-configs";
+import { resolveNodeColor } from "../lib/render-helpers";
 import AnnotationNode from "../nodes/AnnotationNode.vue";
 import ConditionNode from "../nodes/ConditionNode.vue";
 import DialogueNode from "../nodes/DialogueNode.vue";
@@ -12,7 +12,7 @@ import InstructionNode from "../nodes/InstructionNode.vue";
 import JumpNode from "../nodes/JumpNode.vue";
 import SlugLineNode from "../nodes/SlugLineNode.vue";
 import SubflowNode from "../nodes/SubflowNode.vue";
-import { FLOW_CONTEXT_KEY } from "../setup.js";
+import { FLOW_CONTEXT_KEY } from "../setup";
 
 const NODE_COMPONENTS = {
   dialogue: DialogueNode,

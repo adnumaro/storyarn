@@ -1,7 +1,7 @@
 <script setup>
 import { PlayIcon } from "lucide-vue-next";
-import { ToolbarSeparator } from "@components/toolbar/index.js";
-import { Badge } from "@components/ui/badge/index.js";
+import { ToolbarSeparator } from "@components/toolbar/index.ts";
+import { Badge } from "@components/ui/badge/index.ts";
 
 const { referencingFlows } = defineProps({
   referencingFlows: { type: Array, default: () => [] },

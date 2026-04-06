@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from "vue";
-import { headerStyle } from "../lib/render-helpers.js";
+import { headerStyle } from "../lib/render-helpers";
 
 const { color, icon, label, avatarUrl } = defineProps({
   color: { type: String, default: "#3b82f6" },

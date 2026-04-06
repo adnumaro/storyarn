@@ -17,12 +17,12 @@ import {
   Zap,
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
-import { Badge } from "@components/ui/badge/index.js";
+import { Badge } from "@components/ui/badge/index.ts";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@components/ui/collapsible/index.js";
+} from "@components/ui/collapsible/index.ts";
 
 const { variableUsage, backlinks, sceneAppearances, workspaceSlug, projectSlug, loading } =
   defineProps({

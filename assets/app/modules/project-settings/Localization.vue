@@ -1,16 +1,16 @@
 <script setup>
 import { ref, watch } from "vue";
-import { Button } from "@components/ui/button/index.js";
-import { Input } from "@components/ui/input/index.js";
-import { Label } from "@components/ui/label/index.js";
+import { Button } from "@components/ui/button/index.ts";
+import { Input } from "@components/ui/input/index.ts";
+import { Label } from "@components/ui/label/index.ts";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@components/ui/select/index.js";
-import { useLive } from "@composables/useLive.js";
+} from "@components/ui/select/index.ts";
+import { useLive } from "@composables/useLive";
 
 const { providerApiEndpoint, hasApiKey, providerUsage } = defineProps({
   providerApiEndpoint: { type: String, default: "https://api-free.deepl.com" },

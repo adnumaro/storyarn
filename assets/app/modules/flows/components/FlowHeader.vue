@@ -14,9 +14,9 @@ import {
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import EditableText from "@components/EditableText.vue";
-import { Badge } from "@components/ui/badge/index.js";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
-import { useLive } from "@composables/useLive.js";
+import { Badge } from "@components/ui/badge/index.ts";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
+import { useLive } from "@composables/useLive";
 
 const {
   flowName,

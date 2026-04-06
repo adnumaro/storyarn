@@ -6,7 +6,7 @@
 
 import { Group, Plus } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
-import { generateId } from "@modules/shared/variables.js";
+import { generateId } from "@modules/shared/variables";
 import ConditionBlock from "@components/builders/condition/ConditionBlock.vue";
 import ConditionGroup from "@components/builders/condition/ConditionGroup.vue";
 import LogicToggle from "@components/builders/condition/LogicToggle.vue";

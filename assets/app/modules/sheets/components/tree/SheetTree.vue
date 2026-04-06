@@ -2,7 +2,7 @@
 import { DnDProvider } from "@vue-dnd-kit/core";
 import { Plus } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
-import { Button } from "@components/ui/button/index.js";
+import { Button } from "@components/ui/button/index.ts";
 import {
   Dialog,
   DialogContent,
@@ -10,9 +10,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@components/ui/dialog/index.js";
-import { Input } from "@components/ui/input/index.js";
-import { useLive } from "@composables/useLive.js";
+} from "@components/ui/dialog/index.ts";
+import { Input } from "@components/ui/input/index.ts";
+import { useLive } from "@composables/useLive";
 import SheetTreeNode from "./SheetTreeNode.vue";
 import SheetTreeRoot from "./SheetTreeRoot.vue";
 

@@ -1,10 +1,10 @@
 <script setup>
 import { Info } from "lucide-vue-next";
 import { onMounted, ref } from "vue";
-import { Button } from "@components/ui/button/index.js";
-import { Input } from "@components/ui/input/index.js";
-import { Label } from "@components/ui/label/index.js";
-import { useLive } from "@composables/useLive.js";
+import { Button } from "@components/ui/button/index.ts";
+import { Input } from "@components/ui/input/index.ts";
+import { Label } from "@components/ui/label/index.ts";
+import { useLive } from "@composables/useLive";
 
 const { email, readonly, localMailAdapter, loginAction, csrfToken } = defineProps({
   email: { type: String, default: "" },

@@ -1,9 +1,9 @@
 <script setup>
 import { MessageSquare, Play as PlayIcon, Settings, Volume2 } from "lucide-vue-next";
 import { computed } from "vue";
-import { ToolbarSeparator } from "@components/toolbar/index.js";
-import { useLive } from "@composables/useLive.js";
-import { ToolbarAvatarPicker } from "../../toolbar/index.js";
+import { ToolbarSeparator } from "@components/toolbar/index.ts";
+import { useLive } from "@composables/useLive";
+import { ToolbarAvatarPicker } from "../../toolbar";
 
 const { nodeData, nodeId, sheetAvatars } = defineProps({
   nodeData: { type: Object, required: true },

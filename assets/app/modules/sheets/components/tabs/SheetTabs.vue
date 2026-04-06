@@ -1,8 +1,8 @@
 <script setup>
 import { Headphones, History, LayoutList, Link } from "lucide-vue-next";
 import { computed } from "vue";
-import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.js";
-import { useLive } from "@composables/useLive.js";
+import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
+import { useLive } from "@composables/useLive";
 
 const { currentTab, canEdit, compact } = defineProps({
   currentTab: { type: String, default: "content" },

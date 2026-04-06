@@ -4,7 +4,7 @@ import { computed } from "vue";
 import ConditionBuilder from "@components/builders/ConditionBuilder.vue";
 import InstructionBuilder from "@components/builders/InstructionBuilder.vue";
 import Sidebar from "@components/layout/Sidebar.vue";
-import { useLive } from "@composables/useLive.js";
+import { useLive } from "@composables/useLive";
 
 const { open, nodeType, nodeId, condition, assignments, switchMode, projectVariables, canEdit } =
   defineProps({

@@ -1,11 +1,11 @@
 <script setup>
 import { ListChecks } from "lucide-vue-next";
 import { computed } from "vue";
-import { Badge } from "@components/ui/badge/index.js";
-import { Checkbox } from "@components/ui/checkbox/index.js";
-import { Input } from "@components/ui/input/index.js";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
-import { useBlockActions } from "../../composables/useBlockActions.js";
+import { Badge } from "@components/ui/badge/index.ts";
+import { Checkbox } from "@components/ui/checkbox/index.ts";
+import { Input } from "@components/ui/input/index.ts";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
+import { useBlockActions } from "../../composables/useBlockActions";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 import OptionEditor from "../OptionEditor.vue";

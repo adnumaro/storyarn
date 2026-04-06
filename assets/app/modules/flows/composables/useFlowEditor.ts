@@ -1,0 +1,919 @@
+/**
+ * Composable managing the Rete.js flow editor lifecycle.
+ * Replaces the V1 FlowCanvas Phoenix hook -- Vue owns the editor.
+ *
+ * Handles: plugin setup, 3-phase node/connection loading, socket deferral,
+ * node size sync, hub map rebuild, event bindings, auto-layout, and cleanup.
+ */
+
+import { ClassicPreset, type NodeEditor } from "rete";
+import type { AreaPlugin } from "rete-area-plugin";
+import type { HistoryPlugin } from "rete-history-plugin";
+import type { ConnectionPlugin } from "rete-connection-plugin";
+import type { AutoArrangePlugin } from "rete-auto-arrange-plugin";
+import type { MinimapPlugin } from "rete-minimap-plugin";
+import type { VuePlugin } from "rete-vue-plugin";
+import { onUnmounted, reactive, ref, shallowRef, type Ref, type ShallowRef } from "vue";
+
+import { FlowNode } from "../lib/flow-node";
+import type { NodeData } from "../lib/node-configs";
+import type { FlowSchemes, FlowAreaExtra, FlowConnection } from "../lib/rete-schemes";
+import { debug } from "../services/debug";
+import { editorHandlers, type EditorHandlers, type FlowContext, type HookProxy } from "../services/editorHandlers";
+import { keyboard, type KeyboardHandler } from "../services/keyboard";
+import { lod, type LodController } from "../services/lod";
+import { navigation, type NavigationHandler } from "../services/navigation";
+
+import { createPlugins, finalizeSetup } from "../setup";
+import type { DebugHandler } from "../services/debug";
+
+interface FlowEditorOpts {
+  pushEvent: (event: string, payload: Record<string, unknown>) => void;
+  handleEvent: (event: string, callback: (data: Record<string, unknown>) => void) => void;
+}
+
+interface ToolbarState {
+  visible: boolean;
+  nodeId: string | number | null;
+  reteNodeId: string | null;
+  nodeType: string | null;
+  nodeData: NodeData | null;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface InitOpts {
+  sheetsMap?: Record<string, unknown>;
+  labels?: Record<string, string>;
+  readonly?: boolean;
+  userId?: number;
+  userColor?: string;
+}
+
+interface FlowData {
+  nodes?: {
+    type: string;
+    id: string | number;
+    data: NodeData;
+    position?: { x: number; y: number };
+  }[];
+  connections?: {
+    id: number;
+    source_node_id: string | number;
+    target_node_id: string | number;
+    source_pin: string;
+    target_pin: string;
+    label?: string;
+    condition?: unknown;
+  }[];
+}
+
+interface ConnectionData {
+  id: number;
+  source_node_id: string | number;
+  target_node_id: string | number;
+  source_pin: string;
+  target_pin: string;
+  label?: string;
+  condition?: unknown;
+}
+
+interface NodeServerData {
+  type: string;
+  id: string | number;
+  data: NodeData;
+  position?: { x: number; y: number };
+}
+
+export interface FlowEditorReturn {
+  editor: ShallowRef<NodeEditor<FlowSchemes> | null>;
+  area: ShallowRef<AreaPlugin<FlowSchemes, FlowAreaExtra> | null>;
+  loading: Ref<boolean>;
+  toolbarState: ToolbarState;
+  init(containerEl: HTMLElement, flowData: FlowData, opts?: InitOpts): Promise<void>;
+  addNodeToEditor(nodeData: NodeServerData): Promise<FlowNode>;
+  addConnectionToEditor(connData: ConnectionData): Promise<FlowConnection | undefined>;
+  rebuildHubsMap(): Promise<void>;
+  syncNodeSize(nodeId: string): Promise<void>;
+  destroy(): void;
+}
+
+export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowEditorReturn {
+  const editor = shallowRef<NodeEditor<FlowSchemes> | null>(null);
+  const area = shallowRef<AreaPlugin<FlowSchemes, FlowAreaExtra> | null>(null);
+  const loading = ref(true);
+
+  // Reactive toolbar positioning -- updated on node pick, drag, zoom, pan
+  const toolbarState: ToolbarState = reactive({
+    visible: false,
+    nodeId: null,
+    reteNodeId: null,
+    nodeType: null,
+    nodeData: null,
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+  });
+
+  // Internal state (not reactive -- performance-critical)
+  let _editor: NodeEditor<FlowSchemes> | null = null;
+  let _area: AreaPlugin<FlowSchemes, FlowAreaExtra> | null = null;
+  let _connection: ConnectionPlugin<FlowSchemes> | null = null;
+  let _history: HistoryPlugin<FlowSchemes> | null = null;
+  let _arrange: AutoArrangePlugin<FlowSchemes> | null = null;
+  let _minimap: MinimapPlugin<FlowSchemes> | null = null;
+  let _render: VuePlugin<FlowSchemes, FlowAreaExtra> | null = null;
+
+  const _nodeMap = new Map<string | number, FlowNode>();
+  const _connectionDataMap = new Map<string, { id: number; label: string | null; condition: unknown }>();
+  let _loadingFromServerCount = 0;
+  let _deferSocketCalc = false;
+  let _deferredSockets: unknown[] = [];
+  let _socketRenderedEvents: unknown[] = [];
+  let _isRecalculatingSockets = false;
+  let _nodeMoveQueue: Promise<void> | null = Promise.resolve();
+  let _nodeUpdateQueue: Promise<void> | null = Promise.resolve();
+
+  let _editorHandlers: EditorHandlers | null = null;
+  let _navigationHandler: NavigationHandler | null = null;
+  let _debugHandler: DebugHandler | null = null;
+  let _keyboardHandler: KeyboardHandler | null = null;
+  let _lodController: LodController | null = null;
+
+  let _selectedNodeId: string | number | null = null;
+  let _lastNodeClickTime = 0;
+  let _lastClickedNodeId: string | number | null = null;
+  let _destroyed = false;
+  let _canvasClickController: AbortController | null = null;
+
+  // Expose as a "hook-like" object for handler modules that expect `hook.pushEvent`, etc.
+  const hookProxy: HookProxy = {
+    get pushEvent() {
+      return pushEvent;
+    },
+    get handleEvent() {
+      return handleEvent;
+    },
+    get editor() {
+      return _editor!;
+    },
+    get area() {
+      return _area!;
+    },
+    get connection() {
+      return _connection;
+    },
+    get history() {
+      return _history;
+    },
+    get arrange() {
+      return _arrange;
+    },
+    get nodeMap() {
+      return _nodeMap;
+    },
+    get connectionDataMap() {
+      return _connectionDataMap;
+    },
+    get sheetsMap() {
+      return hookProxy._sheetsMap || {};
+    },
+    get hubsMap() {
+      return hookProxy._hubsMap || {};
+    },
+    get labels() {
+      return hookProxy._labels || {};
+    },
+    get currentLod() {
+      return _lodController?.currentLod || "full";
+    },
+    get readonly() {
+      return hookProxy._readonly || false;
+    },
+    get currentUserId() {
+      return hookProxy._currentUserId || 0;
+    },
+    get currentUserColor() {
+      return hookProxy._currentUserColor || "#3b82f6";
+    },
+    get selectedNodeId() {
+      return _selectedNodeId;
+    },
+    set selectedNodeId(v: string | number | null) {
+      _selectedNodeId = v;
+    },
+    get lastNodeClickTime() {
+      return _lastNodeClickTime;
+    },
+    set lastNodeClickTime(v: number) {
+      _lastNodeClickTime = v;
+    },
+    get lastClickedNodeId() {
+      return _lastClickedNodeId;
+    },
+    set lastClickedNodeId(v: string | number | null) {
+      _lastClickedNodeId = v;
+    },
+    get isLoadingFromServer() {
+      return _loadingFromServerCount > 0;
+    },
+    get _deferSocketCalc() {
+      return _deferSocketCalc;
+    },
+    get _deferredSockets() {
+      return _deferredSockets;
+    },
+    get _socketRenderedEvents() {
+      return _socketRenderedEvents;
+    },
+    set _socketRenderedEvents(v: unknown[]) {
+      _socketRenderedEvents = v;
+    },
+    get _isRecalculatingSockets() {
+      return _isRecalculatingSockets;
+    },
+    // el proxy -- handlers use hook.el for DOM queries
+    get el() {
+      return hookProxy._containerEl;
+    },
+    // Expose enterLoadingFromServer/exitLoadingFromServer
+    enterLoadingFromServer() {
+      _loadingFromServerCount++;
+    },
+    exitLoadingFromServer() {
+      _loadingFromServerCount = Math.max(0, _loadingFromServerCount - 1);
+    },
+    // Internal refs for handlers
+    _sheetsMap: {},
+    _hubsMap: {},
+    _labels: {},
+    _readonly: false,
+    _currentUserId: 0,
+    _currentUserColor: "#3b82f6",
+    _containerEl: null,
+    _inlineEditingNodeId: null,
+    _speakerPopover: null,
+    _eventBindingsController: null,
+    editorHandlers: null,
+    navigationHandler: null,
+    debugHandler: null,
+    keyboardHandler: null,
+    lodController: null,
+  } as HookProxy;
+
+  // --- Toolbar positioning ---
+
+  function updateToolbarPosition(): void {
+    if (!_area || !toolbarState.reteNodeId) {
+      toolbarState.visible = false;
+      return;
+    }
+    const view = _area.nodeViews.get(toolbarState.reteNodeId);
+    if (!view) {
+      toolbarState.visible = false;
+      return;
+    }
+    const transform = _area.area.transform;
+    const pos = view.position;
+    const node = _editor!.getNode(toolbarState.reteNodeId);
+
+    toolbarState.x = pos.x * transform.k + transform.x;
+    toolbarState.y = pos.y * transform.k + transform.y;
+    toolbarState.width = (node?.width || 180) * transform.k;
+    toolbarState.height = (node?.height || 40) * transform.k;
+    toolbarState.visible = true;
+  }
+
+  function selectNodeForToolbar(reteNodeId: string): void {
+    const node = _editor!.getNode(reteNodeId);
+    if (!node) {
+      clearToolbar();
+      return;
+    }
+    toolbarState.reteNodeId = reteNodeId;
+    toolbarState.nodeId = node.nodeId;
+    toolbarState.nodeType = node.nodeType;
+    toolbarState.nodeData = node.nodeData;
+    updateToolbarPosition();
+  }
+
+  function clearToolbar(): void {
+    toolbarState.visible = false;
+    toolbarState.reteNodeId = null;
+    toolbarState.nodeId = null;
+    toolbarState.nodeType = null;
+    toolbarState.nodeData = null;
+  }
+
+  // --- Inline edit ---
+
+  function enterInlineEdit(reteNodeId: string): void {
+    exitInlineEdit();
+    const node = _editor!.getNode(reteNodeId);
+    if (!node) {
+      return;
+    }
+    const type = node.nodeType;
+    if (type !== "dialogue" && type !== "annotation") {
+      return;
+    }
+
+    const ctx = (hookProxy as { _flowContext: FlowContext })._flowContext;
+    if (!ctx) {
+      return;
+    }
+    ctx.editingNodeId = reteNodeId;
+  }
+
+  function exitInlineEdit(): void {
+    const ctx = (hookProxy as { _flowContext: FlowContext })._flowContext;
+    if (!ctx || !ctx.editingNodeId) {
+      return;
+    }
+
+    // Blur active input/textarea inside the node so blur handlers fire and save
+    const nodeView = _area?.nodeViews.get(ctx.editingNodeId);
+    if (nodeView) {
+      const focused = nodeView.element.querySelector("textarea:focus, input:focus") as HTMLElement | null;
+      if (focused) {
+        focused.blur();
+      }
+    }
+
+    ctx.editingNodeId = null;
+  }
+
+  function handleInlineEditSave(reteNodeId: string, field: string, value: unknown): void {
+    const node = _editor!.getNode(reteNodeId);
+    if (!node) {
+      return;
+    }
+
+    if (field === "text" && node.nodeType === "annotation") {
+      node.nodeData = { ...node.nodeData, text: value as string };
+      pushEvent("update_node_field", { field: "text", value: value as string });
+    } else if (field === "text") {
+      // Dialogue: wrap plain text in <p> tags for rich text storage
+      const escaped = (value as string).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const content = escaped
+        ? escaped
+            .split("\n")
+            .map((line: string) => `<p>${line || "<br>"}</p>`)
+            .join("")
+        : "";
+      node.nodeData = { ...node.nodeData, text: content };
+      pushEvent("update_node_text", { id: node.nodeId, content });
+    } else if (field === "speaker_sheet_id") {
+      const newSpeakerId = value || null;
+      node.nodeData = { ...node.nodeData, speaker_sheet_id: newSpeakerId };
+      node._updateTs = Date.now();
+      _area!.update("node", node.id);
+      pushEvent("update_node_field", {
+        field: "speaker_sheet_id",
+        value: newSpeakerId as string,
+      });
+    } else {
+      node.nodeData = { ...node.nodeData, [field]: value };
+      pushEvent("update_node_field", { field, value: value as string });
+    }
+  }
+
+  // --- Init ---
+
+  async function init(containerEl: HTMLElement, flowData: FlowData, opts: InitOpts = {}): Promise<void> {
+    hookProxy._containerEl = containerEl;
+    hookProxy._sheetsMap = opts.sheetsMap || {};
+    hookProxy._labels = opts.labels || {};
+    hookProxy._readonly = opts.readonly || false;
+    hookProxy._currentUserId = opts.userId || 0;
+    hookProxy._currentUserColor = opts.userColor || "#3b82f6";
+
+    // Create handlers (skip collab/mutation in readonly)
+    if (!hookProxy._readonly) {
+      _editorHandlers = editorHandlers(hookProxy);
+      _navigationHandler = navigation(_area!, _nodeMap, pushEvent);
+      _debugHandler = debug(hookProxy.area, hookProxy.editor, _nodeMap, undefined);
+
+      hookProxy.editorHandlers = _editorHandlers;
+      hookProxy.navigationHandler = _navigationHandler;
+      hookProxy.debugHandler = _debugHandler;
+
+      _editorHandlers.init();
+    }
+
+    // Create plugins
+    const plugins = createPlugins(containerEl, hookProxy);
+    _editor = plugins.editor;
+    _area = plugins.area;
+    _connection = plugins.connection;
+    _history = plugins.history;
+    _arrange = plugins.arrange;
+    _minimap = plugins.minimap;
+    _render = plugins.render;
+
+    editor.value = _editor;
+    area.value = _area;
+
+    // Sync shared reactive context with initial data
+    syncFlowContext();
+
+    // Wire inline edit save callback for node components
+    (hookProxy as { _flowContext: FlowContext })._flowContext.onInlineEditSave = handleInlineEditSave;
+
+    // Canvas click -- exit inline edit + clear toolbar when clicking empty space
+    _canvasClickController = new AbortController();
+    containerEl.addEventListener(
+      "pointerdown",
+      (e: PointerEvent) => {
+        if (e.button !== 0) {
+          return;
+        }
+        const nodeEl = (e.target as HTMLElement).closest("[data-testid='node']");
+        if (!nodeEl) {
+          if ((hookProxy as { _flowContext: FlowContext })._flowContext?.editingNodeId) {
+            exitInlineEdit();
+          }
+          clearToolbar();
+          _selectedNodeId = null;
+        }
+      },
+      { signal: _canvasClickController.signal },
+    );
+
+    // LOD
+    const nodeCount = flowData.nodes?.length || 0;
+    const _initialLod = nodeCount >= 50 ? "simplified" : "full";
+    _lodController = lod(_area, hookProxy);
+    hookProxy.lodController = _lodController;
+
+    // 3-phase load
+    hookProxy._hubsMap = {};
+    if (flowData.nodes) {
+      _deferSocketCalc = true;
+      _loadingFromServerCount++;
+
+      for (const nodeData of flowData.nodes) {
+        await addNodeToEditor(nodeData);
+      }
+
+      _deferSocketCalc = false;
+      await flushDeferredSockets();
+
+      for (const connData of flowData.connections || []) {
+        await addConnectionToEditor(connData);
+      }
+
+      _loadingFromServerCount = Math.max(0, _loadingFromServerCount - 1);
+    }
+
+    // History + minimap after load
+    if (_history && !hookProxy._readonly) {
+      _area.use(_history);
+    }
+    if (_minimap) {
+      _area.use(_minimap);
+    }
+
+    // Event bindings
+    setupAreaPipes();
+    setupServerEvents();
+
+    // LOD zoom watcher
+    _area.addPipe((context) => {
+      if ((context as { type: string }).type === "zoomed") {
+        _lodController!.onZoom();
+        const k = _area!.area.transform.k;
+        containerEl.style.setProperty("--canvas-zoom", String(k));
+      }
+      return context;
+    });
+
+    // Keyboard
+    if (!hookProxy._readonly) {
+      _keyboardHandler = keyboard(hookProxy, null);
+      _keyboardHandler.init();
+      hookProxy.keyboardHandler = _keyboardHandler;
+    }
+
+    // Sync sizes + finalize
+    await syncAllNodeSizes();
+    await finalizeSetup(_area, _editor, (flowData.nodes?.length ?? 0) > 0);
+    await recalculateAllSockets();
+
+    if ((flowData.nodes?.length ?? 0) > 0) {
+      await rebuildHubsMap();
+    }
+
+    loading.value = false;
+  }
+
+  // --- Node/Connection CRUD ---
+
+  async function addNodeToEditor(nodeData: NodeServerData): Promise<FlowNode> {
+    const node = new FlowNode(nodeData.type, nodeData.id, nodeData.data);
+    node.id = `node-${nodeData.id}`;
+
+    await _editor!.addNode(node);
+
+    const x = nodeData.position?.x || 0;
+    const y = nodeData.position?.y || 0;
+
+    if (_deferSocketCalc) {
+      const view = _area!.nodeViews.get(node.id);
+      if (view) {
+        view.translate(x, y);
+      }
+    } else {
+      await _area!.translate(node.id, { x, y });
+    }
+
+    _nodeMap.set(nodeData.id, node);
+    return node;
+  }
+
+  async function addConnectionToEditor(
+    connData: ConnectionData,
+  ): Promise<FlowConnection | undefined> {
+    const sourceNode = _nodeMap.get(connData.source_node_id);
+    const targetNode = _nodeMap.get(connData.target_node_id);
+    if (!sourceNode || !targetNode) {
+      return;
+    }
+
+    if (!sourceNode.outputs[connData.source_pin]) {
+      return;
+    }
+    if (!targetNode.inputs[connData.target_pin]) {
+      return;
+    }
+
+    const connection = new ClassicPreset.Connection(
+      sourceNode,
+      connData.source_pin,
+      targetNode,
+      connData.target_pin,
+    );
+    connection.id = `conn-${connData.id}`;
+
+    _connectionDataMap.set(connection.id, {
+      id: connData.id,
+      label: connData.label || null,
+      condition: connData.condition,
+    });
+
+    await _editor!.addConnection(connection);
+    return connection;
+  }
+
+  // --- Socket management ---
+
+  async function flushDeferredSockets(): Promise<void> {
+    const deferred = _deferredSockets;
+    _deferredSockets = [];
+    await new Promise((r) => requestAnimationFrame(r));
+    for (const ctx of deferred) {
+      await _area!.emit(ctx as FlowAreaExtra);
+    }
+  }
+
+  async function recalculateAllSockets(): Promise<void> {
+    const events = _socketRenderedEvents;
+    if (!events || events.length === 0) {
+      return;
+    }
+    _socketRenderedEvents = [];
+    _isRecalculatingSockets = true;
+    await new Promise((r) => requestAnimationFrame(r));
+    for (const ctx of events) {
+      await _area!.emit(ctx as FlowAreaExtra);
+    }
+    _isRecalculatingSockets = false;
+  }
+
+  // --- Node size sync (Vue DOM, no shadow DOM) ---
+
+  async function syncNodeSize(nodeId: string): Promise<void> {
+    const view = _area!.nodeViews.get(nodeId);
+    if (!view) {
+      return;
+    }
+    const nodeEl = view.element.querySelector("[data-testid='node']") as HTMLElement | null;
+    if (!nodeEl) {
+      return;
+    }
+
+    await new Promise((r) => requestAnimationFrame(r));
+    const w = nodeEl.offsetWidth;
+    const h = nodeEl.offsetHeight;
+    if (w > 0 && h > 0) {
+      const node = _editor!.getNode(nodeId);
+      if (node) {
+        node.width = w;
+        node.height = h;
+      }
+      await _area!.resize(nodeId, w, h);
+    }
+  }
+
+  async function syncAllNodeSizes(): Promise<void> {
+    await new Promise((r) => requestAnimationFrame(r));
+    for (const [nodeId] of _area!.nodeViews) {
+      await syncNodeSize(nodeId);
+    }
+  }
+
+  // --- Hub map ---
+
+  async function rebuildHubsMap(): Promise<void> {
+    const map: Record<string, { color_hex: string | null; label: string; jumpCount: number }> = {};
+    for (const [, node] of _nodeMap) {
+      if (node.nodeType === "hub" && node.nodeData?.hub_id) {
+        map[node.nodeData.hub_id as string] = {
+          color_hex: (node.nodeData.color_hex as string) || null,
+          label: (node.nodeData.label as string) || "",
+          jumpCount: 0,
+        };
+      }
+    }
+    for (const [, node] of _nodeMap) {
+      if (node.nodeType === "jump" && node.nodeData?.target_hub_id) {
+        const entry = map[node.nodeData.target_hub_id as string];
+        if (entry) {
+          entry.jumpCount++;
+        }
+      }
+    }
+    hookProxy._hubsMap = map;
+    syncFlowContext();
+
+    const ts = Date.now();
+    for (const [, node] of _nodeMap) {
+      if (node.nodeType === "hub" || node.nodeType === "jump") {
+        node._updateTs = ts;
+        await _area!.update("node", node.id);
+      }
+    }
+  }
+
+  // --- Sync reactive flow context (used by Vue node components via inject) ---
+
+  function syncFlowContext(): void {
+    const ctx = (hookProxy as { _flowContext: FlowContext })._flowContext;
+    if (!ctx) {
+      return;
+    }
+    ctx.sheetsMap = hookProxy._sheetsMap || {};
+    ctx.hubsMap = hookProxy._hubsMap || {};
+    ctx.labels = hookProxy._labels || {};
+  }
+
+  // --- Area pipes (drag, selection, connections) ---
+
+  function setupAreaPipes(): void {
+    if (hookProxy._readonly) {
+      _area!.addPipe((context) => {
+        if ((context as { type: string }).type === "nodepicked") {
+          const node = _editor!.getNode(
+            (context as { data: { id: string } }).data.id,
+          );
+          if (node?.nodeId) {
+            _selectedNodeId = node.nodeId;
+            pushEvent("node_selected", { id: node.nodeId });
+          }
+        }
+        return context;
+      });
+      return;
+    }
+
+    // Node drag + toolbar reposition
+    _area!.addPipe((context) => {
+      if (
+        (context as { type: string }).type === "nodetranslated" &&
+        !hookProxy.isLoadingFromServer
+      ) {
+        const ctxData = (context as { data: { id: string; position: { x: number; y: number } } })
+          .data;
+        const node = _editor!.getNode(ctxData.id);
+        if (node?.nodeId) {
+          _editorHandlers!.throttleNodeMoved(node.nodeId, ctxData.position);
+        }
+        // Reposition toolbar if dragging the selected node
+        if (ctxData.id === toolbarState.reteNodeId) {
+          updateToolbarPosition();
+        }
+      }
+      if ((context as { type: string }).type === "nodedragged") {
+        const node = _editor!.getNode(
+          (context as { data: { id: string } }).data.id,
+        );
+        if (node?.nodeId) {
+          _editorHandlers!.flushNodeMoved(node.nodeId);
+        }
+      }
+      // Reposition toolbar on zoom/pan
+      if (
+        (context as { type: string }).type === "zoomed" ||
+        (context as { type: string }).type === "translated"
+      ) {
+        if (toolbarState.reteNodeId) {
+          updateToolbarPosition();
+        }
+      }
+      return context;
+    });
+
+    // Node selection + double-click
+    _area!.addPipe((context) => {
+      if ((context as { type: string }).type === "nodepicked") {
+        const nodeId = (context as { data: { id: string } }).data.id;
+        const node = _editor!.getNode(nodeId);
+        if (node?.nodeId) {
+          const now = Date.now();
+          const isDoubleClick =
+            _lastClickedNodeId === node.nodeId && now - _lastNodeClickTime < 300;
+
+          _lastNodeClickTime = now;
+          _lastClickedNodeId = node.nodeId;
+          _selectedNodeId = node.nodeId;
+
+          if (isDoubleClick) {
+            const reteNode = _editor!.getNode(nodeId);
+            const type = reteNode?.nodeType;
+            if (type === "dialogue" || type === "annotation") {
+              enterInlineEdit(nodeId);
+            } else {
+              pushEvent("node_double_clicked", { id: node.nodeId });
+            }
+          } else {
+            selectNodeForToolbar(nodeId);
+            pushEvent("node_selected", { id: node.nodeId });
+          }
+        }
+      }
+      return context;
+    });
+
+    // Connection created
+    _editor!.addPipe((context) => {
+      if (
+        (context as { type: string }).type === "connectioncreate" &&
+        !hookProxy.isLoadingFromServer
+      ) {
+        const conn = (context as { data: { source: string; sourceOutput: string; target: string; targetInput: string } }).data;
+        const sourceNode = _editor!.getNode(conn.source);
+        const targetNode = _editor!.getNode(conn.target);
+
+        if (sourceNode?.nodeId && targetNode?.nodeId) {
+          pushEvent("connection_created", {
+            source_node_id: sourceNode.nodeId,
+            source_pin: conn.sourceOutput,
+            target_node_id: targetNode.nodeId,
+            target_pin: conn.targetInput,
+          });
+        }
+      }
+      return context;
+    });
+
+    // Connection deleted
+    _editor!.addPipe((context) => {
+      if (
+        (context as { type: string }).type === "connectionremove" &&
+        !hookProxy.isLoadingFromServer
+      ) {
+        const conn = (context as { data: { source: string; target: string } }).data;
+        const sourceNode = _editor!.getNode(conn.source);
+        const targetNode = _editor!.getNode(conn.target);
+
+        if (sourceNode?.nodeId && targetNode?.nodeId) {
+          pushEvent("connection_deleted", {
+            source_node_id: sourceNode.nodeId,
+            target_node_id: targetNode.nodeId,
+          });
+        }
+      }
+      return context;
+    });
+  }
+
+  // --- Server event handlers ---
+
+  function setupServerEvents(): void {
+    if (!_editorHandlers) {
+      return;
+    }
+
+    handleEvent("flow_updated", (data) => _editorHandlers!.handleFlowUpdated(data));
+
+    _nodeMoveQueue = Promise.resolve();
+    handleEvent("node_moved", (data) => {
+      if (!_nodeMoveQueue) {
+        return;
+      }
+      _nodeMoveQueue = _nodeMoveQueue
+        .then(() => {
+          if (!_area || _destroyed) {
+            return;
+          }
+          return _editorHandlers!.handleNodeMoved(data);
+        })
+        .catch(() => {});
+    });
+
+    handleEvent("node_added", (data) => {
+      if (_destroyed) {
+        return;
+      }
+      _editorHandlers!.handleNodeAdded(data);
+    });
+    handleEvent("node_removed", (data) => {
+      if (_destroyed) {
+        return;
+      }
+      _editorHandlers!.handleNodeRemoved(data);
+    });
+    handleEvent("node_restored", (data) => {
+      if (_destroyed) {
+        return;
+      }
+      _editorHandlers!.handleNodeRestored(data);
+    });
+
+    _nodeUpdateQueue = Promise.resolve();
+    handleEvent("node_updated", (data) => {
+      if (!_nodeUpdateQueue) {
+        return;
+      }
+      _nodeUpdateQueue = _nodeUpdateQueue
+        .then(async () => {
+          if (!_area || _destroyed) {
+            return;
+          }
+          await _editorHandlers!.handleNodeUpdated(data);
+          // Sync toolbar if the updated node is the one selected
+          if (toolbarState.nodeId && String(data.id) === String(toolbarState.nodeId)) {
+            const reteNode = _nodeMap.get(data.id as string | number);
+            if (reteNode) {
+              toolbarState.nodeData = { ...reteNode.nodeData };
+            }
+          }
+        })
+        .catch(() => {});
+    });
+
+    handleEvent("node_data_changed", (data) => _editorHandlers!.handleNodeDataChanged(data));
+    handleEvent("flow_meta_changed", (data) => _editorHandlers!.handleFlowMetaChanged(data));
+    handleEvent("connection_added", (data) => _editorHandlers!.handleConnectionAdded(data));
+    handleEvent("connection_removed", (data) => _editorHandlers!.handleConnectionRemoved(data));
+    handleEvent("connection_updated", (data) => _editorHandlers!.handleConnectionUpdated(data));
+
+    if (_navigationHandler) {
+      handleEvent("navigate_to_hub", (data) =>
+        _navigationHandler!.navigateToHub(data.jump_db_id as number),
+      );
+      handleEvent("navigate_to_node", (data) =>
+        _navigationHandler!.navigateToNode(data.node_db_id as number),
+      );
+      handleEvent("navigate_to_jumps", (data) =>
+        _navigationHandler!.navigateToJumps(data.hub_db_id as number),
+      );
+    }
+  }
+
+  // --- Cleanup ---
+
+  function destroy(): void {
+    _destroyed = true;
+    _canvasClickController?.abort();
+    hookProxy._eventBindingsController?.abort();
+    _lodController?.destroy();
+    _keyboardHandler?.destroy();
+    _editorHandlers?.destroy();
+    _navigationHandler?.destroy();
+    _debugHandler?.destroy();
+    _nodeMoveQueue = null;
+    _nodeUpdateQueue = null;
+    if (_area) {
+      _area.destroy();
+    }
+  }
+
+  onUnmounted(destroy);
+
+  return {
+    editor,
+    area,
+    loading,
+    toolbarState,
+    init,
+    addNodeToEditor,
+    addConnectionToEditor,
+    rebuildHubsMap,
+    syncNodeSize,
+    destroy,
+  };
+}

@@ -1,12 +1,12 @@
 <script setup>
 import { AlertTriangle, CircleX, Download, Info, ShieldCheck } from "lucide-vue-next";
 import { computed } from "vue";
-import { Badge } from "@components/ui/badge/index.js";
-import { Button } from "@components/ui/button/index.js";
-import { Checkbox } from "@components/ui/checkbox/index.js";
-import { Label } from "@components/ui/label/index.js";
-import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group/index.js";
-import { useLive } from "@composables/useLive.js";
+import { Badge } from "@components/ui/badge/index.ts";
+import { Button } from "@components/ui/button/index.ts";
+import { Checkbox } from "@components/ui/checkbox/index.ts";
+import { Label } from "@components/ui/label/index.ts";
+import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group/index.ts";
+import { useLive } from "@composables/useLive";
 
 const { formatConfig, sectionConfig, options, validation, exportDownloadUrl } = defineProps({
   formatConfig: { type: Object, required: true },

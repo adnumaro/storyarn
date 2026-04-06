@@ -1,7 +1,7 @@
 <script setup>
 import { LayoutGrid, Plus, X } from "lucide-vue-next";
 import { computed } from "vue";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 
 const { sheet, canEdit } = defineProps({
   sheet: { type: Object, required: true },

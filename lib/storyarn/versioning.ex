@@ -37,15 +37,13 @@ defmodule Storyarn.Versioning do
   - `:description` - Optional description
   - `:is_auto` - Whether this is an auto-generated version (default: false)
   """
-  defdelegate create_version(entity_type, entity, project_id, user_id, opts \\ []),
-    to: VersionCrud
+  defdelegate create_version(entity_type, entity, project_id, user_id, opts \\ []), to: VersionCrud
 
   @doc """
   Creates a version if enough time has passed since the last version.
   Returns `{:ok, version}`, `{:skipped, :too_recent}`, or `{:error, reason}`.
   """
-  defdelegate maybe_create_version(entity_type, entity, project_id, user_id, opts \\ []),
-    to: VersionCrud
+  defdelegate maybe_create_version(entity_type, entity, project_id, user_id, opts \\ []), to: VersionCrud
 
   # ========== Queries ==========
 
@@ -73,8 +71,7 @@ defmodule Storyarn.Versioning do
   Returns `{prev_number, next_number}` adjacent to the given version number.
   Either may be nil if no adjacent version exists.
   """
-  defdelegate get_adjacent_version_numbers(entity_type, entity_id, current_number),
-    to: VersionCrud
+  defdelegate get_adjacent_version_numbers(entity_type, entity_id, current_number), to: VersionCrud
 
   @doc """
   Counts versions created after the given timestamp for an entity.
@@ -106,9 +103,7 @@ defmodule Storyarn.Versioning do
   Detects conflicts that would occur when restoring from a snapshot.
   Returns a report with missing references, shortcut collisions, and auto-resolved items.
   """
-  defdelegate detect_restore_conflicts(entity_type, snapshot, entity),
-    to: ConflictDetector,
-    as: :detect_conflicts
+  defdelegate detect_restore_conflicts(entity_type, snapshot, entity), to: ConflictDetector, as: :detect_conflicts
 
   @doc """
   Loads a version's snapshot from storage and restores the entity.
@@ -137,94 +132,71 @@ defmodule Storyarn.Versioning do
   @doc """
   Creates a project-level snapshot of all entities.
   """
-  defdelegate create_project_snapshot(project_id, user_id, opts \\ []),
-    to: ProjectSnapshotCrud,
-    as: :create_snapshot
+  defdelegate create_project_snapshot(project_id, user_id, opts \\ []), to: ProjectSnapshotCrud, as: :create_snapshot
 
   @doc """
   Lists project snapshots, ordered by version number descending.
   """
-  defdelegate list_project_snapshots(project_id, opts \\ []),
-    to: ProjectSnapshotCrud,
-    as: :list_snapshots
+  defdelegate list_project_snapshots(project_id, opts \\ []), to: ProjectSnapshotCrud, as: :list_snapshots
 
   @doc """
   Gets a project snapshot by ID.
   """
-  defdelegate get_project_snapshot(project_id, id),
-    to: ProjectSnapshotCrud,
-    as: :get_snapshot_by_id
+  defdelegate get_project_snapshot(project_id, id), to: ProjectSnapshotCrud, as: :get_snapshot_by_id
 
   @doc """
   Restores all project entities from a snapshot.
   """
-  defdelegate restore_project_snapshot(project_id, snapshot, opts \\ []),
-    to: ProjectSnapshotCrud,
-    as: :restore_snapshot
+  defdelegate restore_project_snapshot(project_id, snapshot, opts \\ []), to: ProjectSnapshotCrud, as: :restore_snapshot
 
   @doc """
   Deletes a project snapshot and its storage.
   """
-  defdelegate delete_project_snapshot(snapshot),
-    to: ProjectSnapshotCrud,
-    as: :delete_snapshot
+  defdelegate delete_project_snapshot(snapshot), to: ProjectSnapshotCrud, as: :delete_snapshot
 
   @doc """
   Updates a project snapshot's title and description.
   """
-  defdelegate update_project_snapshot(snapshot, attrs),
-    to: ProjectSnapshotCrud,
-    as: :update_snapshot
+  defdelegate update_project_snapshot(snapshot, attrs), to: ProjectSnapshotCrud, as: :update_snapshot
 
   @doc """
   Counts project snapshots for billing limit checks.
   """
-  defdelegate count_project_snapshots(project_id),
-    to: ProjectSnapshotCrud,
-    as: :count_snapshots
+  defdelegate count_project_snapshots(project_id), to: ProjectSnapshotCrud, as: :count_snapshots
 
   @doc """
   Prunes the oldest auto-generated snapshot for a project.
   """
-  defdelegate prune_auto_snapshots(project_id),
-    to: ProjectSnapshotCrud
+  defdelegate prune_auto_snapshots(project_id), to: ProjectSnapshotCrud
 
   @doc """
   Deletes auto snapshots older than the given retention period.
   """
-  defdelegate prune_expired_snapshots(project_id, retention_days),
-    to: ProjectSnapshotCrud
+  defdelegate prune_expired_snapshots(project_id, retention_days), to: ProjectSnapshotCrud
 
   # ========== Project Recovery ==========
 
   @doc """
   Creates a new project from snapshot data with full ID remapping.
   """
-  defdelegate recover_project(workspace_id, snapshot_data, user_id, opts \\ []),
-    to: ProjectRecovery
+  defdelegate recover_project(workspace_id, snapshot_data, user_id, opts \\ []), to: ProjectRecovery
 
   # ========== Snapshot Diff ==========
 
   @doc """
   Compares two snapshots and returns a structured diff result with changes and stats.
   """
-  defdelegate diff_snapshots(entity_type, old_snapshot, new_snapshot),
-    to: SnapshotDiff,
-    as: :diff
+  defdelegate diff_snapshots(entity_type, old_snapshot, new_snapshot), to: SnapshotDiff, as: :diff
 
   @doc """
   Returns true if two snapshots have any differences.
   """
-  defdelegate snapshot_has_changes?(entity_type, old_snapshot, new_snapshot),
-    to: SnapshotDiff,
-    as: :has_changes?
+  defdelegate snapshot_has_changes?(entity_type, old_snapshot, new_snapshot), to: SnapshotDiff, as: :has_changes?
 
   @doc """
   Converts a diff result into a human-readable summary string.
   """
-  defdelegate format_diff_summary(diff_result),
-    to: SnapshotDiff,
-    as: :format_summary
+  defdelegate format_diff_summary(diff_result), to: SnapshotDiff, as: :format_summary
 
   # ========== Snapshot Viewer ==========
 

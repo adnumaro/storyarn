@@ -1,19 +1,19 @@
 <script setup>
 import { Trash2, UserPlus } from "lucide-vue-next";
 import { ref } from "vue";
-import { Badge } from "@components/ui/badge/index.js";
-import { Button } from "@components/ui/button/index.js";
-import { Input } from "@components/ui/input/index.js";
-import { Label } from "@components/ui/label/index.js";
-import { Separator } from "@components/ui/separator/index.js";
+import { Badge } from "@components/ui/badge/index.ts";
+import { Button } from "@components/ui/button/index.ts";
+import { Input } from "@components/ui/input/index.ts";
+import { Label } from "@components/ui/label/index.ts";
+import { Separator } from "@components/ui/separator/index.ts";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@components/ui/select/index.js";
-import { useLive } from "@composables/useLive.js";
+} from "@components/ui/select/index.ts";
+import { useLive } from "@composables/useLive";
 
 const { members, currentUserId, canManage } = defineProps({
   members: { type: Array, default: () => [] },

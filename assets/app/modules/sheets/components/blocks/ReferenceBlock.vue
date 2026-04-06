@@ -8,11 +8,11 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@components/ui/command/index.js";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
-import { useLive } from "@composables/useLive.js";
-import { useServerSearch } from "@composables/useServerSearch.js";
-import { useBlockActions } from "../../composables/useBlockActions.js";
+} from "@components/ui/command/index.ts";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
+import { useLive } from "@composables/useLive";
+import { useServerSearch } from "@composables/useServerSearch";
+import { useBlockActions } from "../../composables/useBlockActions";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 

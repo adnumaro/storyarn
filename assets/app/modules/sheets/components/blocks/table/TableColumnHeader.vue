@@ -14,10 +14,10 @@ import {
   X,
 } from "lucide-vue-next";
 import { ref } from "vue";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
-import { Separator } from "@components/ui/separator/index.js";
-import { useLive } from "@composables/useLive.js";
-import { allTypes, typeIcon, typeLabels } from "./table-config.js";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
+import { Separator } from "@components/ui/separator/index.ts";
+import { useLive } from "@composables/useLive";
+import { allTypes, typeIcon, typeLabels } from "./table-config";
 
 const { column, columns, canManage } = defineProps({
   column: { type: Object, required: true },

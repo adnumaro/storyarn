@@ -31,7 +31,7 @@ import {
   TableRow,
 } from "@components/ui/table";
 import { useLive } from "@composables/useLive";
-import { formatRelativeTime } from "@utils/date-utils.js";
+import { formatRelativeTime } from "@utils/date-utils";
 
 const { stats, tableData, pagination, issues, canEdit, workspaceSlug, projectSlug } = defineProps({
   stats: { type: Object, default: null },

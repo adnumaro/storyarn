@@ -1,7 +1,7 @@
 <script setup>
 import { MousePointer2 } from "lucide-vue-next";
 import { onMounted, onUnmounted, reactive, ref } from "vue";
-import { useLive } from "@composables/useLive.js";
+import { useLive } from "@composables/useLive";
 
 const { areaTransform, currentUserId, containerEl } = defineProps({
   areaTransform: { type: Object, default: () => ({ x: 0, y: 0, k: 1 }) },

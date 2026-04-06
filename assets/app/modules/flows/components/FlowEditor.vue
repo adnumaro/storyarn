@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref, watch } from "vue";
-import { useLive } from "@composables/useLive.js";
-import { useFlowEditor } from "../composables/useFlowEditor.js";
+import { useLive } from "@composables/useLive";
+import { useFlowEditor } from "../composables/useFlowEditor";
 import FlowContextMenu from "./FlowContextMenu.vue";
 import FlowCursors from "./FlowCursors.vue";
 import FlowFloatingToolbar from "./FlowFloatingToolbar.vue";

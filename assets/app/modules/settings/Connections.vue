@@ -1,7 +1,7 @@
 <script setup>
 import { Link } from "lucide-vue-next";
 import { ref } from "vue";
-import { Button } from "@components/ui/button/index.js";
+import { Button } from "@components/ui/button/index.ts";
 import {
   Dialog,
   DialogClose,
@@ -10,14 +10,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@components/ui/dialog/index.js";
+} from "@components/ui/dialog/index.ts";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@components/ui/tooltip/index.js";
-import { useLive } from "@composables/useLive.js";
+} from "@components/ui/tooltip/index.ts";
+import { useLive } from "@composables/useLive";
 
 const { identities, hasPassword } = defineProps({
   identities: { type: Array, required: true },

@@ -16,13 +16,13 @@ import {
   Variable,
 } from "lucide-vue-next";
 import { computed } from "vue";
-import { Button } from "@components/ui/button/index.js";
+import { Button } from "@components/ui/button/index.ts";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@components/ui/dropdown-menu/index.js";
+} from "@components/ui/dropdown-menu/index.ts";
 import {
   Table,
   TableBody,
@@ -30,9 +30,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@components/ui/table/index.js";
-import { useLive } from "@composables/useLive.js";
-import { formatRelativeTime } from "@utils/date-utils.js";
+} from "@components/ui/table/index.ts";
+import { useLive } from "@composables/useLive";
+import { formatRelativeTime } from "@utils/date-utils";
 
 const { stats, tableData, pagination, issues, canEdit, workspaceSlug, projectSlug } = defineProps({
   stats: { type: Object, default: null },

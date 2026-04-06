@@ -48,7 +48,7 @@ defmodule Storyarn.Workspaces do
   Returns a list of maps with `:workspace` and `:role` keys.
   Role is `nil` for workspaces accessible only through ProjectMembership.
   """
-  @spec list_workspaces(scope()) :: [%{workspace: workspace(), role: String.t() | nil}]
+  @spec list_workspaces(scope()) :: [%{workspace: workspace(), role: String.t()}]
   defdelegate list_workspaces(scope), to: WorkspaceCrud
 
   @doc """

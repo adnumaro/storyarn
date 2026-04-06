@@ -1,7 +1,7 @@
 <script setup>
 import { GripVertical, Trash2 } from "lucide-vue-next";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
-import { useLive } from "@composables/useLive.js";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
+import { useLive } from "@composables/useLive";
 
 const { row, rows, canManage } = defineProps({
   row: { type: Object, required: true },

@@ -4,7 +4,7 @@
  * Renders editable key+label rows with add/remove.
  */
 import { Plus, X } from "lucide-vue-next";
-import { useLive } from "@composables/useLive.js";
+import { useLive } from "@composables/useLive";
 
 const { blockId, options } = defineProps({
   blockId: { type: [Number, String], required: true },

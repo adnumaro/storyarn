@@ -7,7 +7,7 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-} from "@components/ui/context-menu/index.js";
+} from "@components/ui/context-menu/index.ts";
 
 const { node, index, siblings, selectedFlowId, canEdit, depth, searchActive, flowHref } =
   defineProps({

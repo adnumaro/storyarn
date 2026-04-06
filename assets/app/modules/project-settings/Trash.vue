@@ -1,7 +1,7 @@
 <script setup>
 import { AlertTriangle, Trash2, Undo2 } from "lucide-vue-next";
 import { ref } from "vue";
-import { Button } from "@components/ui/button/index.js";
+import { Button } from "@components/ui/button/index.ts";
 import {
   Dialog,
   DialogContent,
@@ -9,8 +9,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@components/ui/dialog/index.js";
-import { useLive } from "@composables/useLive.js";
+} from "@components/ui/dialog/index.ts";
+import { useLive } from "@composables/useLive";
 
 const { trashedSheets, canManage } = defineProps({
   trashedSheets: { type: Array, default: () => [] },

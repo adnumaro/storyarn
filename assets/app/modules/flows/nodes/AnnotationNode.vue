@@ -1,6 +1,6 @@
 <script setup>
 import { computed, inject, nextTick, ref, watch } from "vue";
-import { FLOW_CONTEXT_KEY } from "../setup.js";
+import { FLOW_CONTEXT_KEY } from "../setup";
 
 const { data, emit, config, color } = defineProps({
   data: { type: Object, required: true },

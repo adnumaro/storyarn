@@ -1,10 +1,10 @@
 <script setup>
 import { ToggleLeft } from "lucide-vue-next";
 import { computed } from "vue";
-import { Badge } from "@components/ui/badge/index.js";
-import { Checkbox } from "@components/ui/checkbox/index.js";
-import { Switch } from "@components/ui/switch/index.js";
-import { useBlockActions } from "../../composables/useBlockActions.js";
+import { Badge } from "@components/ui/badge/index.ts";
+import { Checkbox } from "@components/ui/checkbox/index.ts";
+import { Switch } from "@components/ui/switch/index.ts";
+import { useBlockActions } from "../../composables/useBlockActions";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 

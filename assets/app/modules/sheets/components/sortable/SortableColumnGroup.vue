@@ -1,7 +1,7 @@
 <script setup>
 import { makeDroppable } from "@vue-dnd-kit/core";
 import { inject, ref, useTemplateRef, watch } from "vue";
-import { useLive } from "@composables/useLive.js";
+import { useLive } from "@composables/useLive";
 
 const isLockedByOther = inject("isLockedByOther", () => false);
 const lockInfo = inject("lockInfo", () => null);

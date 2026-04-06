@@ -1,7 +1,7 @@
 <script setup>
 import { ChevronDown, ChevronRight, Lock, Table2 } from "lucide-vue-next";
 import { computed } from "vue";
-import { useBlockActions } from "../../../composables/useBlockActions.js";
+import { useBlockActions } from "../../../composables/useBlockActions";
 import BlockLabel from "../../BlockLabel.vue";
 import BlockToolbar from "../../BlockToolbar.vue";
 import TableGrid from "./TableGrid.vue";

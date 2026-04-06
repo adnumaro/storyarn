@@ -1,7 +1,7 @@
 <script setup>
 import { AlertTriangle, Monitor, Moon, Sun, ImagePlus, Trash2 } from "lucide-vue-next";
 import { ref, watch, onMounted, onUnmounted } from "vue";
-import { Button } from "@components/ui/button/index.js";
+import { Button } from "@components/ui/button/index.ts";
 import {
   Dialog,
   DialogContent,
@@ -9,11 +9,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@components/ui/dialog/index.js";
-import { Input } from "@components/ui/input/index.js";
-import { Label } from "@components/ui/label/index.js";
-import { Separator } from "@components/ui/separator/index.js";
-import { Textarea } from "@components/ui/textarea/index.js";
+} from "@components/ui/dialog/index.ts";
+import { Input } from "@components/ui/input/index.ts";
+import { Label } from "@components/ui/label/index.ts";
+import { Separator } from "@components/ui/separator/index.ts";
+import { Textarea } from "@components/ui/textarea/index.ts";
 import {
   Select,
   SelectContent,
@@ -22,9 +22,9 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@components/ui/select/index.js";
+} from "@components/ui/select/index.ts";
 
-import { useLive } from "@composables/useLive.js";
+import { useLive } from "@composables/useLive";
 
 const {
   workspaceName,

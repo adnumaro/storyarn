@@ -1,11 +1,11 @@
 <script setup>
 import { ChevronLeft, ChevronRight, Image, Plus, Star, Trash2, X } from "lucide-vue-next";
 import { ref, watch } from "vue";
-import { Badge } from "@components/ui/badge/index.js";
-import { Button } from "@components/ui/button/index.js";
-import { Dialog, DialogContent } from "@components/ui/dialog/index.js";
-import { Input } from "@components/ui/input/index.js";
-import { Textarea } from "@components/ui/textarea/index.js";
+import { Badge } from "@components/ui/badge/index.ts";
+import { Button } from "@components/ui/button/index.ts";
+import { Dialog, DialogContent } from "@components/ui/dialog/index.ts";
+import { Input } from "@components/ui/input/index.ts";
+import { Textarea } from "@components/ui/textarea/index.ts";
 
 const { open, avatars, canEdit } = defineProps({
   open: { type: Boolean, default: false },

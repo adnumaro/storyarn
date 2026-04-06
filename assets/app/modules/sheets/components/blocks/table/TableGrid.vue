@@ -2,14 +2,14 @@
 import { makeDroppable } from "@vue-dnd-kit/core";
 import { Check, Plus, Sigma, X } from "lucide-vue-next";
 import { nextTick, ref, useTemplateRef, watch } from "vue";
-import { Badge } from "@components/ui/badge/index.js";
-import { Checkbox } from "@components/ui/checkbox/index.js";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
-import { useLive } from "@composables/useLive.js";
+import { Badge } from "@components/ui/badge/index.ts";
+import { Checkbox } from "@components/ui/checkbox/index.ts";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
+import { useLive } from "@composables/useLive";
 import TableColumnHeader from "./TableColumnHeader.vue";
 import TableDraggableRow from "./TableDraggableRow.vue";
 import TableRowActions from "./TableRowActions.vue";
-import { typeIcon } from "./table-config.js";
+import { typeIcon } from "./table-config";
 
 const { blockId, columns, rows, canEdit, canManage } = defineProps({
   blockId: { type: [Number, String], required: true },

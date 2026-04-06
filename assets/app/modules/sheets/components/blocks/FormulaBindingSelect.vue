@@ -16,10 +16,10 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@components/ui/command/index.js";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
-import { useLive } from "@composables/useLive.js";
-import { useServerSearch } from "@composables/useServerSearch.js";
+} from "@components/ui/command/index.ts";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
+import { useLive } from "@composables/useLive";
+import { useServerSearch } from "@composables/useServerSearch";
 
 const { modelValue, sameRowOptions, searchResults, hasMore } = defineProps({
   modelValue: { type: String, default: "" },

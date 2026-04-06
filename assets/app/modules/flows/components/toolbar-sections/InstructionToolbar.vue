@@ -1,8 +1,8 @@
 <script setup>
 import { Settings, Zap } from "lucide-vue-next";
-import { ToolbarSeparator } from "@components/toolbar/index.js";
-import { Badge } from "@components/ui/badge/index.js";
-import { useLive } from "@composables/useLive.js";
+import { ToolbarSeparator } from "@components/toolbar/index.ts";
+import { Badge } from "@components/ui/badge/index.ts";
+import { useLive } from "@composables/useLive";
 
 const { nodeData } = defineProps({
   nodeData: { type: Object, required: true },

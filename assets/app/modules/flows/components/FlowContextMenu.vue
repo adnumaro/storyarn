@@ -18,7 +18,7 @@ import {
   Zap,
 } from "lucide-vue-next";
 import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
-import { useLive } from "@composables/useLive.js";
+import { useLive } from "@composables/useLive";
 
 const { containerEl, canEdit, selectedNodeId, selectedNodeType } = defineProps({
   containerEl: { type: Object, default: null },

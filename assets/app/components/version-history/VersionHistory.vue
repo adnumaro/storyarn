@@ -21,7 +21,7 @@ import {
   DeleteVersionDialog,
   UnsavedChangesDialog,
   RestorePreviewDialog,
-} from "./index.js";
+} from "./index.ts";
 
 const {
   versions,

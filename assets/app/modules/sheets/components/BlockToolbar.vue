@@ -6,8 +6,8 @@
 
 import { Hash, Lock, Settings, Unlock } from "lucide-vue-next";
 import { ref } from "vue";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
-import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.js";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
+import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
 
 const configOpen = ref(false);
 

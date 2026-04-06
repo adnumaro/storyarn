@@ -5,8 +5,8 @@ import { computed, inject, nextTick, ref, watch } from "vue";
 import EntityCombobox from "@components/form-fields/EntityCombobox.vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
-import { previewText, stripHtml } from "../lib/render-helpers.js";
-import { FLOW_CONTEXT_KEY } from "../setup.js";
+import { previewText, stripHtml } from "../lib/render-helpers";
+import { FLOW_CONTEXT_KEY } from "../setup";
 import DialogueAudioPreview from "./DialogueAudioPreview.vue";
 
 const { data, emit, config, color, sheetsMap, labels } = defineProps({

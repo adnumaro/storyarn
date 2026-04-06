@@ -1,10 +1,10 @@
 <script setup>
 import { ref, watch } from "vue";
-import { Button } from "@components/ui/button/index.js";
-import { Progress } from "@components/ui/progress/index.js";
-import { Separator } from "@components/ui/separator/index.js";
-import { Switch } from "@components/ui/switch/index.js";
-import { useLive } from "@composables/useLive.js";
+import { Button } from "@components/ui/button/index.ts";
+import { Progress } from "@components/ui/progress/index.ts";
+import { Separator } from "@components/ui/separator/index.ts";
+import { Switch } from "@components/ui/switch/index.ts";
+import { useLive } from "@composables/useLive";
 
 const {
   autoSnapshotsEnabled,

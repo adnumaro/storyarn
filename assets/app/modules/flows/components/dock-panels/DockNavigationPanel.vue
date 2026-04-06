@@ -1,7 +1,7 @@
 <script setup>
 import { ArrowRightToLine, Box, LogIn, LogOut } from "lucide-vue-next";
 import { ref } from "vue";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 
 const emit = defineEmits(["add-node"]);
 

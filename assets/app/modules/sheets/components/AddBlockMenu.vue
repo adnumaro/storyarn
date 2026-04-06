@@ -13,7 +13,7 @@ import {
   Type,
 } from "lucide-vue-next";
 import { ref } from "vue";
-import { Button } from "@components/ui/button/index.js";
+import { Button } from "@components/ui/button/index.ts";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,8 +21,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@components/ui/dropdown-menu/index.js";
-import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.js";
+} from "@components/ui/dropdown-menu/index.ts";
+import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
 
 const emit = defineEmits(["select"]);
 

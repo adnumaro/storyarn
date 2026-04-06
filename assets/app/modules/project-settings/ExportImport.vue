@@ -1,5 +1,5 @@
 <script setup>
-import { Separator } from "@components/ui/separator/index.js";
+import { Separator } from "@components/ui/separator/index.ts";
 import ExportPanel from "./ExportPanel.vue";
 import ImportPanel from "./ImportPanel.vue";
 

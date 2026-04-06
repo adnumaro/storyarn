@@ -15,11 +15,11 @@ import ConditionBuilder from "@components/builders/ConditionBuilder.vue";
 import EntityCombobox from "@components/form-fields/EntityCombobox.vue";
 import InstructionBuilder from "@components/builders/InstructionBuilder.vue";
 import Sidebar from "@components/layout/Sidebar.vue";
-import { Button } from "@components/ui/button/index.js";
-import { Input } from "@components/ui/input/index.js";
-import { Label } from "@components/ui/label/index.js";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs/index.js";
-import { useLive } from "@composables/useLive.js";
+import { Button } from "@components/ui/button/index.ts";
+import { Input } from "@components/ui/input/index.ts";
+import { Label } from "@components/ui/label/index.ts";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
+import { useLive } from "@composables/useLive";
 
 const { open, node, canEdit, allSheets, projectVariables } = defineProps({
   open: { type: Boolean, default: false },

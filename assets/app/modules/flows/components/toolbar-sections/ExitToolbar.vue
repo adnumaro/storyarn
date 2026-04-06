@@ -1,8 +1,8 @@
 <script setup>
 import { ArrowRightToLine, ExternalLink } from "lucide-vue-next";
-import { ToolbarColorPicker, ToolbarSeparator } from "@components/toolbar/index.js";
-import { useLive } from "@composables/useLive.js";
-import { ToolbarExitModePicker } from "../../toolbar/index.js";
+import { ToolbarColorPicker, ToolbarSeparator } from "@components/toolbar/index.ts";
+import { useLive } from "@composables/useLive";
+import { ToolbarExitModePicker } from "../../toolbar";
 
 const { nodeData } = defineProps({
   nodeData: { type: Object, required: true },

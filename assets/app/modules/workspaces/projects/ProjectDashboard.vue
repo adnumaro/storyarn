@@ -13,9 +13,8 @@ import {
   Variable,
 } from "lucide-vue-next";
 import { computed } from "vue";
-import { Badge } from "@components/ui/badge/index.js";
-import { useLive } from "@composables/useLive.js";
-import { formatRelativeTime } from "@utils/date-utils.js";
+import { useLive } from "@composables/useLive";
+import { formatRelativeTime } from "@utils/date-utils";
 
 const {
   stats,

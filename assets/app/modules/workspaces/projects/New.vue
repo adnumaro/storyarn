@@ -1,10 +1,10 @@
 <script setup>
 import { useLiveForm } from "live_vue";
 import { computed, ref, watch } from "vue";
-import { Button } from "@components/ui/button/index.js";
-import { Input } from "@components/ui/input/index.js";
-import { Label } from "@components/ui/label/index.js";
-import { Textarea } from "@components/ui/textarea/index.js";
+import { Button } from "@components/ui/button/index.ts";
+import { Input } from "@components/ui/input/index.ts";
+import { Label } from "@components/ui/label/index.ts";
+import { Textarea } from "@components/ui/textarea/index.ts";
 
 const {
   form: formProp,
@@ -21,7 +21,7 @@ const emit = defineEmits(["cancel"]);
 const form = useLiveForm(() => formProp, {
   changeEvent: "validate_project",
   submitEvent: "create_project",
-  debounceInMiliseconds: 300,
+  debounceInMilliseconds: 300,
 });
 
 const name = form.field("name");

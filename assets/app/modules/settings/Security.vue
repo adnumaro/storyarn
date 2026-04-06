@@ -2,11 +2,11 @@
 import { useLiveForm } from "live_vue";
 import { Info } from "lucide-vue-next";
 import { ref } from "vue";
-import { Button } from "@components/ui/button/index.js";
-import { Input } from "@components/ui/input/index.js";
-import { Label } from "@components/ui/label/index.js";
-import { Separator } from "@components/ui/separator/index.js";
-import { useLive } from "@composables/useLive.js";
+import { Button } from "@components/ui/button/index.ts";
+import { Input } from "@components/ui/input/index.ts";
+import { Label } from "@components/ui/label/index.ts";
+import { Separator } from "@components/ui/separator/index.ts";
+import { useLive } from "@composables/useLive";
 
 const {
   passwordForm: passwordFormProp,
@@ -25,7 +25,7 @@ const live = useLive();
 const passwordForm = useLiveForm(() => passwordFormProp, {
   changeEvent: "validate_password",
   submitEvent: "update_password",
-  debounceInMiliseconds: 300,
+  debounceInMilliseconds: 300,
 });
 
 const password = passwordForm.field("password");

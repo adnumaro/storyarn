@@ -1,11 +1,11 @@
 <script setup>
 import { GripVertical, Plus, Trash2, X } from "lucide-vue-next";
 import { ref } from "vue";
-import { Button } from "@components/ui/button/index.js";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog/index.js";
-import { Input } from "@components/ui/input/index.js";
-import { Textarea } from "@components/ui/textarea/index.js";
-import { useLive } from "@composables/useLive.js";
+import { Button } from "@components/ui/button/index.ts";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog/index.ts";
+import { Input } from "@components/ui/input/index.ts";
+import { Textarea } from "@components/ui/textarea/index.ts";
+import { useLive } from "@composables/useLive";
 
 const { blockId, images, canEdit } = defineProps({
   blockId: { type: [Number, String], required: true },

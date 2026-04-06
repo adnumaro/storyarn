@@ -1,7 +1,7 @@
 <script setup>
 import { ArrowRight, ArrowRightToLine, ChevronDown, Undo2 } from "lucide-vue-next";
 import { computed, ref } from "vue";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.js";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 
 const EXIT_MODES = [
   {
