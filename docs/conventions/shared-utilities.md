@@ -287,7 +287,7 @@ fp.close();
 fp.destroy();
 ```
 
-### `assets/js/flow_canvas/node_config.js`
+### `assets/js/flow_canvas/node_config.ts`
 
 Icon utilities for Lucide icons in different rendering contexts.
 

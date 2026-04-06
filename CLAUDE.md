@@ -4,7 +4,7 @@
 
 **Storyarn** is a narrative design platform for game development and interactive storytelling. Built with collaborative, real-time editing.
 
-**Stack:** Elixir 1.15+ / Phoenix 1.8 / LiveView 1.1 / PostgreSQL / Redis / Tailwind v4 / daisyUI
+**Stack:** Elixir 1.15+ / Phoenix 1.8 / LiveView 1.1 / PostgreSQL / Redis / Tailwind v4 / daisyUI / TypeScript / Vue 3
 
 ## Debugging & Research Policy
 
@@ -22,6 +22,37 @@
 | @docs/conventions/shared-utilities.md   | **Shared utility registry — search here BEFORE writing any helper** |
 | @docs/conventions/domain-patterns.md    | Context facades, CRUD templates, auth patterns                      |
 | @docs/conventions/component-registry.md | All reusable HEEx components                                        |
+
+## Frontend Architecture (Vue / TypeScript)
+
+All frontend code lives in `assets/app/` and is fully TypeScript (`lang="ts"` in all Vue SFCs).
+
+```
+assets/app/
+├── utils/            — Pure utility functions (utils.ts, date-utils.ts)
+├── plugins/          — Third-party extensions (tiptap/)
+├── components/       — Shared UI (ui/, toolbar/, collab/, builders/, version-history/)
+├── composables/      — Shared composables (useLive, usePresence, etc.)
+├── modules/          — Domain modules
+│   ├── shared/         — Shared business logic (variables, operators)
+│   ├── flows/          — Flow editor (rete.js canvas, nodes, toolbar)
+│   ├── sheets/         — Sheet editor (blocks, tables, sortable)
+│   ├── scenes/         — Scene editor (konva canvas, exploration)
+│   ├── localization/   — Localization UI
+│   ├── auth/           — Sign in/up/confirm
+│   ├── landing/        — Landing page (TresJS 3D)
+│   ├── settings/       — User & workspace settings
+│   ├── workspaces/     — Workspace dashboard & project list
+│   └── project-settings/ — Project settings pages
+└── locales/          — i18n translations (en/, es/)
+```
+
+**TypeScript rules:**
+- All `.vue` files use `<script setup lang="ts">`
+- NO `any` — define proper interfaces
+- NO `withDefaults()` — use destructured defaults: `const { prop = default } = defineProps<{...}>()`
+- NO `Record<string, unknown>` for typed data — define interfaces based on actual field usage
+- `useLive().pushEvent` payload is the only acceptable `Record<string, unknown>` (generic bridge to Phoenix)
 
 ## Language Policy
 
@@ -82,8 +113,8 @@ Per-type architecture: each `lib/storyarn_web/live/flow_live/nodes/{type}/node.e
 **NEVER use Unicode emojis or custom SVGs. Always use [Lucide](https://lucide.dev) icons.**
 
 - HEEx: `<.icon name="box" class="size-3" />`
-- Shadow DOM / innerHTML: `createIconHTML(Icon, { size })` from `node_config.js`
-- Node headers: `createIconSvg(Icon)` from `node_config.js`
+- Shadow DOM / innerHTML: `createIconHTML(Icon, { size })` from `node_config.ts`
+- Node headers: `createIconSvg(Icon)` from `node_config.ts`
 - Regular DOM appends: `createElement(Icon, { width, height })` from `lucide`
 - Always pre-create icon constants at module level
 
