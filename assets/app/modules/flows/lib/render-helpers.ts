@@ -44,6 +44,31 @@ export function headerStyle(color: string): string {
 /**
  * Resolve node color from type-specific data, falling back to config default.
  */
+
+type ColorResolver = (
+  d: NodeData,
+  sheetsMap: Record<string, SheetMapEntry> | null,
+  hubsMap: Record<string, HubInfo> | null,
+) => string | null;
+
+const NODE_COLOR_RESOLVERS: Record<string, ColorResolver> = {
+  dialogue: (d, sheetsMap) => {
+    if (!d.speaker_sheet_id) return null;
+    return sheetsMap?.[String(d.speaker_sheet_id)]?.color ?? null;
+  },
+  slug_line: (d, sheetsMap) => {
+    if (!d.location_sheet_id) return null;
+    return sheetsMap?.[String(d.location_sheet_id)]?.color ?? null;
+  },
+  hub: (d) => (d.color_hex as string) || null,
+  exit: (d) => (d.color_hex as string) || (d.outcome_color as string) || null,
+  jump: (d, _sheetsMap, hubsMap) => {
+    if (!d.target_hub_id || !hubsMap) return null;
+    return hubsMap[d.target_hub_id as string]?.color_hex ?? null;
+  },
+  annotation: (d) => (d.color as string) || "#fbbf24",
+};
+
 export function resolveNodeColor(
   nodeType: string,
   nodeData: NodeData | null,
@@ -52,41 +77,8 @@ export function resolveNodeColor(
   hubsMap: Record<string, HubInfo> | null,
 ): string {
   const d = nodeData || {};
-
-  if (nodeType === "dialogue" && d.speaker_sheet_id) {
-    const sheet = sheetsMap?.[String(d.speaker_sheet_id)];
-    if (sheet?.color) {
-      return sheet.color;
-    }
-  }
-
-  if (nodeType === "slug_line" && d.location_sheet_id) {
-    const sheet = sheetsMap?.[String(d.location_sheet_id)];
-    if (sheet?.color) {
-      return sheet.color;
-    }
-  }
-
-  if ((nodeType === "hub" || nodeType === "exit") && d.color_hex) {
-    return d.color_hex as string;
-  }
-
-  if (nodeType === "exit" && d.outcome_color) {
-    return d.outcome_color as string;
-  }
-
-  if (nodeType === "jump" && d.target_hub_id && hubsMap) {
-    const hub = hubsMap[d.target_hub_id as string];
-    if (hub?.color_hex) {
-      return hub.color_hex;
-    }
-  }
-
-  if (nodeType === "annotation") {
-    return (d.color as string) || "#fbbf24";
-  }
-
-  return configColor;
+  const resolver = NODE_COLOR_RESOLVERS[nodeType];
+  return resolver?.(d, sheetsMap, hubsMap) ?? configColor;
 }
 
 /**
@@ -189,43 +181,43 @@ export function formatRuleShort(rule: ConditionRule): string {
 /**
  * Format an instruction assignment to readable string.
  */
+function resolveAssignmentValue(assignment: InstructionAssignment): string {
+  if (assignment.value_type === "variable" && assignment.value_ref) {
+    return assignment.value_ref;
+  }
+  if (typeof assignment.value === "boolean") {
+    return assignment.value ? "true" : "false";
+  }
+  return String(assignment.value ?? "");
+}
+
+type AssignmentFormatter = (ref: string, val: string, label: string) => string;
+
+const ASSIGNMENT_FORMATTERS: Record<string, AssignmentFormatter> = {
+  toggle: (ref) => `Toggle ${ref}`,
+  clear: (ref) => `Clear ${ref}`,
+  set: (ref, val, label) => `${label} ${ref} to ${val}`,
+  add: (ref, val, label) => `${label} ${val} to ${ref}`,
+  subtract: (ref, val, label) => `${label} ${val} to ${ref}`,
+};
+
+const OP_LABELS: Record<string, string> = {
+  set: "Set",
+  add: "Add",
+  subtract: "Subtract",
+  multiply: "Multiply",
+  divide: "Divide",
+  append: "Append",
+  prepend: "Prepend",
+};
+
 export function formatAssignment(assignment: InstructionAssignment): string {
   const ref = assignment.variable_ref || "?";
   const op = assignment.operator || "set";
-
-  if (op === "toggle") {
-    return `Toggle ${ref}`;
-  }
-  if (op === "clear") {
-    return `Clear ${ref}`;
-  }
-
-  let val: string;
-  if (assignment.value_type === "variable" && assignment.value_ref) {
-    val = assignment.value_ref;
-  } else if (typeof assignment.value === "boolean") {
-    val = assignment.value ? "true" : "false";
-  } else {
-    val = String(assignment.value ?? "");
-  }
-
-  const opLabels: Record<string, string> = {
-    set: "Set",
-    add: "Add",
-    subtract: "Subtract",
-    multiply: "Multiply",
-    divide: "Divide",
-    append: "Append",
-    prepend: "Prepend",
-  };
-
-  const label = opLabels[op] || "Set";
-
-  if (op === "set") {
-    return `${label} ${ref} to ${val}`;
-  }
-  if (["add", "subtract"].includes(op)) {
-    return `${label} ${val} to ${ref}`;
-  }
+  const val = resolveAssignmentValue(assignment);
+  const label = OP_LABELS[op] || "Set";
+  const formatter = ASSIGNMENT_FORMATTERS[op];
+  if (formatter) return formatter(ref, val, label);
+  // Default: "Label ref by val" (multiply, divide, append, prepend)
   return `${label} ${ref} by ${val}`;
 }

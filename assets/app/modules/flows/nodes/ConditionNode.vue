@@ -143,18 +143,17 @@ function findRuleLabel(rules: ConditionRule[], key: string): string {
   return rule?.label || formatRuleShort(rule) || key;
 }
 
+const BOOLEAN_OUTPUT_LABELS: Record<string, string> = {
+  true: "True",
+  false: "False",
+};
+
 function getOutputLabel(key: string): string {
   const d = nodeData.value;
-  if (!d.switch_mode) {
-    if (key === "true") return "True";
-    if (key === "false") return "False";
-    return key;
-  }
+  if (!d.switch_mode) return BOOLEAN_OUTPUT_LABELS[key] ?? key;
   if (key === "default") return "Default";
-  if (d.condition?.blocks && d.condition.blocks.length > 0)
-    return findBlockLabel(d.condition.blocks, key);
-  if (d.condition?.rules && d.condition.rules.length > 0)
-    return findRuleLabel(d.condition.rules, key);
+  if (d.condition?.blocks?.length) return findBlockLabel(d.condition.blocks, key);
+  if (d.condition?.rules?.length) return findRuleLabel(d.condition.rules, key);
   return key;
 }
 

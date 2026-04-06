@@ -406,34 +406,21 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     }
   }
 
-  // --- Init ---
+  // --- Init helpers ---
 
-  async function init(
-    containerEl: HTMLElement,
-    flowData: FlowData,
-    opts: InitOpts = {},
-  ): Promise<void> {
-    hookProxy._containerEl = containerEl;
-    hookProxy._sheetsMap = opts.sheetsMap || {};
-    hookProxy._labels = opts.labels || {};
-    hookProxy._readonly = opts.readonly || false;
-    hookProxy._currentUserId = opts.userId || 0;
-    hookProxy._currentUserColor = opts.userColor || "#3b82f6";
+  function initHandlers(): void {
+    _editorHandlers = editorHandlers(hookProxy);
+    _navigationHandler = navigation(_area!, _nodeMap, pushEvent);
+    _debugHandler = debug(hookProxy.area, hookProxy.editor, _nodeMap, undefined);
 
-    // Create handlers (skip collab/mutation in readonly)
-    if (!hookProxy._readonly) {
-      _editorHandlers = editorHandlers(hookProxy);
-      _navigationHandler = navigation(_area!, _nodeMap, pushEvent);
-      _debugHandler = debug(hookProxy.area, hookProxy.editor, _nodeMap, undefined);
+    hookProxy.editorHandlers = _editorHandlers;
+    hookProxy.navigationHandler = _navigationHandler;
+    hookProxy.debugHandler = _debugHandler;
 
-      hookProxy.editorHandlers = _editorHandlers;
-      hookProxy.navigationHandler = _navigationHandler;
-      hookProxy.debugHandler = _debugHandler;
+    _editorHandlers.init();
+  }
 
-      _editorHandlers.init();
-    }
-
-    // Create plugins
+  function initPlugins(containerEl: HTMLElement): void {
     const plugins = createPlugins(containerEl, hookProxy);
     _editor = plugins.editor;
     _area = plugins.area;
@@ -445,15 +432,9 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
 
     editor.value = _editor;
     area.value = _area;
+  }
 
-    // Sync shared reactive context with initial data
-    syncFlowContext();
-
-    // Wire inline edit save callback for node components
-    (hookProxy as { _flowContext: FlowContext })._flowContext.onInlineEditSave =
-      handleInlineEditSave;
-
-    // Canvas click -- exit inline edit + clear toolbar when clicking empty space
+  function setupCanvasClickHandler(containerEl: HTMLElement): void {
     _canvasClickController = new AbortController();
     containerEl.addEventListener(
       "pointerdown",
@@ -472,47 +453,36 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
       },
       { signal: _canvasClickController.signal },
     );
+  }
 
-    // LOD
-    const nodeCount = flowData.nodes?.length || 0;
-    const _initialLod = nodeCount >= 50 ? "simplified" : "full";
-    _lodController = lod(_area, hookProxy);
+  async function loadInitialFlowData(flowData: FlowData): Promise<void> {
+    hookProxy._hubsMap = {};
+    if (!flowData.nodes) {
+      return;
+    }
+
+    _deferSocketCalc = true;
+    _loadingFromServerCount++;
+
+    for (const nodeData of flowData.nodes) {
+      await addNodeToEditor(nodeData);
+    }
+
+    _deferSocketCalc = false;
+    await flushDeferredSockets();
+
+    for (const connData of flowData.connections || []) {
+      await addConnectionToEditor(connData);
+    }
+
+    _loadingFromServerCount = Math.max(0, _loadingFromServerCount - 1);
+  }
+
+  function setupLOD(containerEl: HTMLElement): void {
+    _lodController = lod(_area!, hookProxy);
     hookProxy.lodController = _lodController;
 
-    // 3-phase load
-    hookProxy._hubsMap = {};
-    if (flowData.nodes) {
-      _deferSocketCalc = true;
-      _loadingFromServerCount++;
-
-      for (const nodeData of flowData.nodes) {
-        await addNodeToEditor(nodeData);
-      }
-
-      _deferSocketCalc = false;
-      await flushDeferredSockets();
-
-      for (const connData of flowData.connections || []) {
-        await addConnectionToEditor(connData);
-      }
-
-      _loadingFromServerCount = Math.max(0, _loadingFromServerCount - 1);
-    }
-
-    // History + minimap after load
-    if (_history && !hookProxy._readonly) {
-      _area.use(_history);
-    }
-    if (_minimap) {
-      _area.use(_minimap);
-    }
-
-    // Event bindings
-    setupAreaPipes();
-    setupServerEvents();
-
-    // LOD zoom watcher
-    _area.addPipe((context) => {
+    _area!.addPipe((context) => {
       if ((context as { type: string }).type === "zoomed") {
         _lodController!.onZoom();
         const k = _area!.area.transform.k;
@@ -520,17 +490,40 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
       }
       return context;
     });
+  }
 
-    // Keyboard
-    if (!hookProxy._readonly) {
-      _keyboardHandler = keyboard(hookProxy, null);
-      _keyboardHandler.init();
-      hookProxy.keyboardHandler = _keyboardHandler;
+  function setupKeyboard(): void {
+    if (hookProxy._readonly) {
+      return;
     }
+    _keyboardHandler = keyboard(hookProxy, null);
+    _keyboardHandler.init();
+    hookProxy.keyboardHandler = _keyboardHandler;
+  }
 
-    // Sync sizes + finalize
+  function activatePostLoadPlugins(): void {
+    if (_history && !hookProxy._readonly) {
+      _area!.use(_history);
+    }
+    if (_minimap) {
+      _area!.use(_minimap);
+    }
+  }
+
+  // --- Init ---
+
+  function applyInitOpts(containerEl: HTMLElement, opts: InitOpts): void {
+    hookProxy._containerEl = containerEl;
+    hookProxy._sheetsMap = opts.sheetsMap || {};
+    hookProxy._labels = opts.labels || {};
+    hookProxy._readonly = opts.readonly || false;
+    hookProxy._currentUserId = opts.userId || 0;
+    hookProxy._currentUserColor = opts.userColor || "#3b82f6";
+  }
+
+  async function finalizeInit(flowData: FlowData): Promise<void> {
     await syncAllNodeSizes();
-    await finalizeSetup(_area, _editor, (flowData.nodes?.length ?? 0) > 0);
+    await finalizeSetup(_area!, _editor!, (flowData.nodes?.length ?? 0) > 0);
     await recalculateAllSockets();
 
     if ((flowData.nodes?.length ?? 0) > 0) {
@@ -538,6 +531,36 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     }
 
     loading.value = false;
+  }
+
+  async function init(
+    containerEl: HTMLElement,
+    flowData: FlowData,
+    opts: InitOpts = {},
+  ): Promise<void> {
+    applyInitOpts(containerEl, opts);
+
+    if (!hookProxy._readonly) {
+      initHandlers();
+    }
+
+    initPlugins(containerEl);
+    syncFlowContext();
+
+    (hookProxy as { _flowContext: FlowContext })._flowContext.onInlineEditSave =
+      handleInlineEditSave;
+
+    setupCanvasClickHandler(containerEl);
+    setupLOD(containerEl);
+
+    await loadInitialFlowData(flowData);
+    activatePostLoadPlugins();
+
+    setupAreaPipes();
+    setupServerEvents();
+    setupKeyboard();
+
+    await finalizeInit(flowData);
   }
 
   // --- Node/Connection CRUD ---
@@ -657,7 +680,7 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
 
   // --- Hub map ---
 
-  async function rebuildHubsMap(): Promise<void> {
+  function buildHubMap(): Record<string, { color_hex: string | null; label: string; jumpCount: number }> {
     const map: Record<string, { color_hex: string | null; label: string; jumpCount: number }> = {};
     for (const [, node] of _nodeMap) {
       if (node.nodeType === "hub" && node.nodeData?.hub_id) {
@@ -668,6 +691,10 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
         };
       }
     }
+    return map;
+  }
+
+  function countHubJumps(map: Record<string, { color_hex: string | null; label: string; jumpCount: number }>): void {
     for (const [, node] of _nodeMap) {
       if (node.nodeType === "jump" && node.nodeData?.target_hub_id) {
         const entry = map[node.nodeData.target_hub_id as string];
@@ -676,9 +703,9 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
         }
       }
     }
-    hookProxy._hubsMap = map;
-    syncFlowContext();
+  }
 
+  async function updateHubAndJumpNodes(): Promise<void> {
     const ts = Date.now();
     for (const [, node] of _nodeMap) {
       if (node.nodeType === "hub" || node.nodeType === "jump") {
@@ -686,6 +713,14 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
         await _area!.update("node", node.id);
       }
     }
+  }
+
+  async function rebuildHubsMap(): Promise<void> {
+    const map = buildHubMap();
+    countHubJumps(map);
+    hookProxy._hubsMap = map;
+    syncFlowContext();
+    await updateHubAndJumpNodes();
   }
 
   // --- Sync reactive flow context (used by Vue node components via inject) ---
@@ -698,6 +733,30 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     ctx.sheetsMap = hookProxy._sheetsMap || {};
     ctx.hubsMap = hookProxy._hubsMap || {};
     ctx.labels = hookProxy._labels || {};
+  }
+
+  // --- Area pipe helpers ---
+
+  function handleNodeTranslated(context: unknown): void {
+    if (hookProxy.isLoadingFromServer) {
+      return;
+    }
+    const ctxData = (context as { data: { id: string; position: { x: number; y: number } } })
+      .data;
+    const node = _editor!.getNode(ctxData.id);
+    if (node?.nodeId) {
+      _editorHandlers!.throttleNodeMoved(node.nodeId, ctxData.position);
+    }
+    if (ctxData.id === toolbarState.reteNodeId) {
+      updateToolbarPosition();
+    }
+  }
+
+  function handleNodeDragged(context: unknown): void {
+    const node = _editor!.getNode((context as { data: { id: string } }).data.id);
+    if (node?.nodeId) {
+      _editorHandlers!.flushNodeMoved(node.nodeId);
+    }
   }
 
   // --- Area pipes (drag, selection, connections) ---
@@ -719,32 +778,12 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
 
     // Node drag + toolbar reposition
     _area!.addPipe((context) => {
-      if (
-        (context as { type: string }).type === "nodetranslated" &&
-        !hookProxy.isLoadingFromServer
-      ) {
-        const ctxData = (context as { data: { id: string; position: { x: number; y: number } } })
-          .data;
-        const node = _editor!.getNode(ctxData.id);
-        if (node?.nodeId) {
-          _editorHandlers!.throttleNodeMoved(node.nodeId, ctxData.position);
-        }
-        // Reposition toolbar if dragging the selected node
-        if (ctxData.id === toolbarState.reteNodeId) {
-          updateToolbarPosition();
-        }
-      }
-      if ((context as { type: string }).type === "nodedragged") {
-        const node = _editor!.getNode((context as { data: { id: string } }).data.id);
-        if (node?.nodeId) {
-          _editorHandlers!.flushNodeMoved(node.nodeId);
-        }
-      }
-      // Reposition toolbar on zoom/pan
-      if (
-        (context as { type: string }).type === "zoomed" ||
-        (context as { type: string }).type === "translated"
-      ) {
+      const type = (context as { type: string }).type;
+      if (type === "nodetranslated") {
+        handleNodeTranslated(context);
+      } else if (type === "nodedragged") {
+        handleNodeDragged(context);
+      } else if (type === "zoomed" || type === "translated") {
         if (toolbarState.reteNodeId) {
           updateToolbarPosition();
         }

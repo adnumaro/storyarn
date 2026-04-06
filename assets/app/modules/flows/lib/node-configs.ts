@@ -116,42 +116,46 @@ export function createDynamicOutputs(type: string, data: NodeData): string[] | n
  * Determines if a node needs full rebuild (socket structure changed).
  * Only returns true for changes that add/remove sockets.
  */
-export function needsRebuild(type: string, oldData: NodeData | null, newData: NodeData): boolean {
-  if (type === "dialogue") {
-    const oldResp = oldData?.responses || [];
-    const newResp = newData.responses || [];
-    if (oldResp.length !== newResp.length) {
-      return true;
-    }
-    for (let i = 0; i < oldResp.length; i++) {
-      if (oldResp[i].id !== newResp[i].id) {
-        return true;
-      }
-    }
-    return false;
+function dialogueNeedsRebuild(oldData: NodeData | null, newData: NodeData): boolean {
+  const oldResp = oldData?.responses || [];
+  const newResp = newData.responses || [];
+  if (oldResp.length !== newResp.length) return true;
+  for (let i = 0; i < oldResp.length; i++) {
+    if (oldResp[i].id !== newResp[i].id) return true;
   }
-  if (type === "condition") {
-    // Switch mode changes output count (true/false vs per-rule outputs)
-    if (oldData?.switch_mode !== newData.switch_mode) {
-      return true;
-    }
-    if (oldData?.switch_mode) {
-      const oldRules = oldData?.condition?.rules || [];
-      const newRules = newData.condition?.rules || [];
-      if (oldRules.length !== newRules.length) {
-        return true;
-      }
-    }
-    return false;
-  }
-  if (type === "subflow") {
-    const oldPins = oldData?.exit_pins || [];
-    const newPins = newData.exit_pins || [];
-    if (oldPins.length !== newPins.length) {
-      return true;
-    }
-    return false;
-  }
-  // All other types have fixed sockets — never rebuild
   return false;
+}
+
+function getRuleCount(data: NodeData | null): number {
+  return data?.condition?.rules?.length ?? 0;
+}
+
+function conditionNeedsRebuild(oldData: NodeData | null, newData: NodeData): boolean {
+  if (Boolean(oldData?.switch_mode) !== Boolean(newData.switch_mode)) return true;
+  if (!newData.switch_mode) return false;
+  return getRuleCount(oldData) !== getRuleCount(newData);
+}
+
+function subflowNeedsRebuild(oldData: NodeData | null, newData: NodeData): boolean {
+  const oldPins = oldData?.exit_pins || [];
+  const newPins = newData.exit_pins || [];
+  return oldPins.length !== newPins.length;
+}
+
+type RebuildChecker = (oldData: NodeData | null, newData: NodeData) => boolean;
+
+const REBUILD_CHECKERS: Record<string, RebuildChecker> = {
+  dialogue: dialogueNeedsRebuild,
+  condition: conditionNeedsRebuild,
+  subflow: subflowNeedsRebuild,
+};
+
+/**
+ * Determines if a node needs full rebuild (socket structure changed).
+ * Only returns true for changes that add/remove sockets.
+ */
+export function needsRebuild(type: string, oldData: NodeData | null, newData: NodeData): boolean {
+  const checker = REBUILD_CHECKERS[type];
+  // Types without a checker have fixed sockets — never rebuild
+  return checker ? checker(oldData, newData) : false;
 }

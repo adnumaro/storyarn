@@ -93,33 +93,30 @@ export function useZoneDrag({
     };
   }
 
+  /** Check whether the zone can be dragged by the current user. */
+  function canDragZone(zoneId: number | string): ZoneData | null {
+    if (!editMode.value || !canEdit.value) return null;
+    if (selectedType.value !== "zone" || selectedId.value !== zoneId) return null;
+
+    const lock = entityLocks.value[String(zoneId)];
+    if (lock && String(lock.userId) !== String(currentUserId.value)) return null;
+
+    const zone = zones.value.find((z) => z.id === zoneId);
+    if (!zone || zone.locked) return null;
+
+    return zone;
+  }
+
   /**
    * Called on mousedown on a zone group. Starts drag if the zone is selected
    * and editable.
    */
   function onZoneMouseDown(zoneId: number | string, e?: KonvaEventObject<MouseEvent>): void {
-    if (!editMode.value || !canEdit.value) {
-      return;
-    }
-    if (selectedType.value !== "zone" || selectedId.value !== zoneId) {
-      return;
-    }
-
-    // Check lock
-    const lock = entityLocks.value[String(zoneId)];
-    if (lock && String(lock.userId) !== String(currentUserId.value)) {
-      return;
-    }
-
-    const zone = zones.value.find((z) => z.id === zoneId);
-    if (!zone || zone.locked) {
-      return;
-    }
+    const zone = canDragZone(zoneId);
+    if (!zone) return;
 
     const world = getWorldPointer();
-    if (!world) {
-      return;
-    }
+    if (!world) return;
 
     dragStartWorld = world;
     dragOriginalVertices = [...(zone.vertices || [])];
@@ -128,9 +125,7 @@ export function useZoneDrag({
     lastDragTime = 0;
 
     // Prevent stage pan during zone drag
-    if (e?.evt) {
-      e.evt.preventDefault();
-    }
+    e?.evt?.preventDefault();
   }
 
   /**

@@ -128,52 +128,58 @@ export function usePatrols({ explorationPins, percentToPixel, getPinNode }: UseP
 
   // --- Step all patrols ---
 
+  /** Step a single pin toward its next waypoint. Returns true if still moving. */
+  function stepPin(pin: PatrolPin, state: PatrolState, dt: number): boolean {
+    const route = pin.patrolRoute!;
+    if (state.routeIndex < 0 || state.routeIndex >= route.length) {
+      state.moving = false;
+      return false;
+    }
+
+    const target = route[state.routeIndex];
+    const dx = target.x - state.currentX;
+    const dy = target.y - state.currentY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < ARRIVAL_THRESHOLD) {
+      state.currentX = target.x;
+      state.currentY = target.y;
+      updatePinPosition(pin.id, state.currentX, state.currentY);
+      handleArrival(pin, state, target);
+      return false;
+    }
+
+    // Move toward target
+    const speed = PATROL_BASE_SPEED * (pin.patrolSpeed || 1.0);
+    const ratio = Math.min((speed * dt) / dist, 1);
+    state.currentX += dx * ratio;
+    state.currentY += dy * ratio;
+    updatePinPosition(pin.id, state.currentX, state.currentY);
+    return true;
+  }
+
+  function handleArrival(pin: PatrolPin, state: PatrolState, target: RoutePoint): void {
+    if (target.isPinStop && pin.patrolPauseMs > 0) {
+      state.paused = true;
+      state.pauseTimer = setTimeout(() => {
+        state.paused = false;
+        state.pauseTimer = null;
+        advanceIndex(pin, state);
+        ensureLoop();
+      }, pin.patrolPauseMs);
+    } else {
+      advanceIndex(pin, state);
+    }
+  }
+
   function stepAll(dt: number): boolean {
     let anyMoving = false;
 
     for (const pin of patrolPins) {
       const state = patrolStates[pin.id];
-      if (!state || !state.moving || state.paused) {
-        continue;
-      }
+      if (!state || !state.moving || state.paused) continue;
 
-      const route = pin.patrolRoute!;
-      if (state.routeIndex < 0 || state.routeIndex >= route.length) {
-        state.moving = false;
-        continue;
-      }
-
-      const target = route[state.routeIndex];
-      const dx = target.x - state.currentX;
-      const dy = target.y - state.currentY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < ARRIVAL_THRESHOLD) {
-        // Snap to target
-        state.currentX = target.x;
-        state.currentY = target.y;
-        updatePinPosition(pin.id, state.currentX, state.currentY);
-
-        // Pause at pin stops if configured
-        if (target.isPinStop && pin.patrolPauseMs > 0) {
-          state.paused = true;
-          state.pauseTimer = setTimeout(() => {
-            state.paused = false;
-            state.pauseTimer = null;
-            advanceIndex(pin, state);
-            ensureLoop();
-          }, pin.patrolPauseMs);
-        } else {
-          advanceIndex(pin, state);
-        }
-      } else {
-        // Move toward target
-        const speed = PATROL_BASE_SPEED * (pin.patrolSpeed || 1.0);
-        const step = speed * dt;
-        const ratio = Math.min(step / dist, 1);
-        state.currentX += dx * ratio;
-        state.currentY += dy * ratio;
-        updatePinPosition(pin.id, state.currentX, state.currentY);
+      if (stepPin(pin, state, dt)) {
         anyMoving = true;
       }
     }

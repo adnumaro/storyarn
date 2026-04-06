@@ -12,7 +12,12 @@ import "vanilla-colorful/hex-input.js";
 
 import { useLive } from "@composables/useLive";
 
-const props = defineProps<{
+const {
+  color = "#3b82f6",
+  disabled = false,
+  variant = "inline",
+  event = null,
+} = defineProps<{
   color?: string;
   disabled?: boolean;
   variant?: "swatch" | "inline" | "full";
@@ -33,7 +38,7 @@ interface ColorElement extends HTMLElement {
   color: string;
 }
 
-const localColor = ref(props.color ?? "#3b82f6");
+const localColor = ref(color);
 const pickerRef = ref<ColorElement | null>(null);
 const hexInputRef = ref<ColorElement | null>(null);
 const isOpen = ref(false);
@@ -41,7 +46,7 @@ const hasEyeDropper = ref(typeof window !== "undefined" && "EyeDropper" in windo
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 watch(
-  () => props.color,
+  () => color,
   (v) => {
     localColor.value = v ?? "#3b82f6";
   },
@@ -52,7 +57,7 @@ function pushColor(hex: string) {
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     emit("update:color", hex);
-    if (props.event) live.pushEvent(props.event, { value: hex });
+    if (event) live.pushEvent(event, { value: hex });
   }, 150);
 }
 

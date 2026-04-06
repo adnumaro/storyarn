@@ -9,6 +9,11 @@ if (typeof window !== "undefined") {
 
 const INTERACTIVE_IGNORE = "input, textarea, select, option, button, a[href], label";
 
+function panelYPercent(panelIdx: number, activeIndex: number): number {
+  if (panelIdx === activeIndex) return 0;
+  return panelIdx < activeIndex ? -100 : 100;
+}
+
 interface SectionScrollReturn {
   gotoPanel: (index: number, isScrollingDown?: boolean, forcedTabIndex?: number) => void;
 }
@@ -209,7 +214,9 @@ export function useSectionScroll(): SectionScrollReturn {
     // Dynamic Universal State Solver for Arbitrary Navigation Jumps
     const isNavigationJump = isScrollingDown === undefined && Math.abs(from - index) > 1;
 
-    const trgFeatY = index === 0 ? 100 : index === 1 ? 0 : -100;
+    let trgFeatY = -100;
+    if (index === 0) trgFeatY = 100;
+    else if (index === 1) trgFeatY = 0;
     const trgHeroY = index === 0 ? 0 : -132;
     const trgHeroOp = index === 0 ? 1 : 0;
     const trgShellY = index === 0 ? 72 : 0;
@@ -230,7 +237,7 @@ export function useSectionScroll(): SectionScrollReturn {
             autoSections.forEach((section, i) => {
               const panelIdx = i + 2;
               gsap.set(section, {
-                yPercent: panelIdx === index ? 0 : panelIdx < index ? -100 : 100,
+                yPercent: panelYPercent(panelIdx, index),
               });
             });
           })
@@ -238,8 +245,6 @@ export function useSectionScroll(): SectionScrollReturn {
         return;
       }
     }
-
-    const isDown = isScrollingDown !== undefined ? isScrollingDown : index > from;
 
     timeline
       .to(featuresSection, { yPercent: trgFeatY, duration: 0.8, ease: "power2.inOut" }, 0)

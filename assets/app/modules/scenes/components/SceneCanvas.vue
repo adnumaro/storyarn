@@ -365,53 +365,58 @@ function handleStageMouseMove(e: KonvaEventObject<MouseEvent>): void {
   onZoneDragMove();
 }
 
+interface ElementRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+function getAnnotationPosition(id: number | string): ElementRect | null {
+  const ann = annotationConfigs.value.find((a) => a.id === id);
+  return ann ? { x: ann.x, y: ann.y, width: ann.width, height: ann.height } : null;
+}
+
+function getPinPosition(id: number | string): ElementRect | null {
+  const pin = pinConfigs.value.find((p) => p.id === id);
+  return pin ? { x: pin.x - pin.radius, y: pin.y - pin.radius, width: pin.diameter, height: pin.diameter } : null;
+}
+
+function getZonePosition(id: number | string): ElementRect | null {
+  const zone = zoneConfigs.value.find((z) => z.id === id);
+  if (!zone || zone.points.length < 4) return null;
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (let i = 0; i < zone.points.length; i += 2) {
+    xs.push(zone.points[i]);
+    ys.push(zone.points[i + 1]);
+  }
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  return { x: minX, y: minY, width: Math.max(...xs) - minX, height: Math.max(...ys) - minY };
+}
+
+function getConnectionPosition(id: number | string): ElementRect | null {
+  const conn = connectionConfigs.value.find((c) => c.id === id);
+  if (!conn || conn.points.length < 4) return null;
+  const midIdx = Math.floor(conn.points.length / 2);
+  const midX = (conn.points[midIdx - 2] + conn.points[midIdx]) / 2;
+  const midY = (conn.points[midIdx - 1] + conn.points[midIdx + 1]) / 2;
+  return { x: midX, y: midY, width: 0, height: 0 };
+}
+
+const POSITION_GETTERS: Record<string, (id: number | string) => ElementRect | null> = {
+  annotation: getAnnotationPosition,
+  pin: getPinPosition,
+  zone: getZonePosition,
+  connection: getConnectionPosition,
+};
+
 // Compute selected element position for toolbar positioning
 const selectedElementPosition = computed(() => {
   if (!selectedType.value || !selectedId.value) return null;
-
-  if (selectedType.value === "annotation") {
-    const ann = annotationConfigs.value.find((a) => a.id === selectedId.value);
-    if (ann) return { x: ann.x, y: ann.y, width: ann.width, height: ann.height };
-  }
-  if (selectedType.value === "pin") {
-    const pin = pinConfigs.value.find((p) => p.id === selectedId.value);
-    if (pin)
-      return {
-        x: pin.x - pin.radius,
-        y: pin.y - pin.radius,
-        width: pin.diameter,
-        height: pin.diameter,
-      };
-  }
-  if (selectedType.value === "zone") {
-    const zone = zoneConfigs.value.find((z) => z.id === selectedId.value);
-    if (zone && zone.points.length >= 4) {
-      const xs = [];
-      const ys = [];
-      for (let i = 0; i < zone.points.length; i += 2) {
-        xs.push(zone.points[i]);
-        ys.push(zone.points[i + 1]);
-      }
-      const minX = Math.min(...xs);
-      const minY = Math.min(...ys);
-      return {
-        x: minX,
-        y: minY,
-        width: Math.max(...xs) - minX,
-        height: Math.max(...ys) - minY,
-      };
-    }
-  }
-  if (selectedType.value === "connection") {
-    const conn = connectionConfigs.value.find((c) => c.id === selectedId.value);
-    if (conn && conn.points.length >= 4) {
-      const midIdx = Math.floor(conn.points.length / 2);
-      const midX = (conn.points[midIdx - 2] + conn.points[midIdx]) / 2;
-      const midY = (conn.points[midIdx - 1] + conn.points[midIdx + 1]) / 2;
-      return { x: midX, y: midY, width: 0, height: 0 };
-    }
-  }
-  return null;
+  const getter = POSITION_GETTERS[selectedType.value];
+  return getter ? getter(selectedId.value) : null;
 });
 
 const ELEMENT_LISTS: Record<string, () => { id: number | string }[]> = {

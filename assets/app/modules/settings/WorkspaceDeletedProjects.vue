@@ -70,19 +70,17 @@ function confirmRecover() {
 
 // Remove useI18n
 
+const ENTITY_TYPES = [
+  { key: "sheets", singular: "sheet", plural: "sheets" },
+  { key: "flows", singular: "flow", plural: "flows" },
+  { key: "scenes", singular: "scene", plural: "scenes" },
+] as const;
+
 function formatEntityCounts(counts: Record<string, number> | undefined) {
   if (!counts) return "";
-  const parts = [];
-  if (counts.sheets && counts.sheets > 0) {
-    parts.push(`${counts.sheets} ${counts.sheets === 1 ? "sheet" : "sheets"}`);
-  }
-  if (counts.flows && counts.flows > 0) {
-    parts.push(`${counts.flows} ${counts.flows === 1 ? "flow" : "flows"}`);
-  }
-  if (counts.scenes && counts.scenes > 0) {
-    parts.push(`${counts.scenes} ${counts.scenes === 1 ? "scene" : "scenes"}`);
-  }
-  return parts.join(", ");
+  return ENTITY_TYPES.filter(({ key }) => counts[key] > 0)
+    .map(({ key, singular, plural }) => `${counts[key]} ${counts[key] === 1 ? singular : plural}`)
+    .join(", ");
 }
 </script>
 

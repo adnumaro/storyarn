@@ -133,86 +133,94 @@ export function magneticConnection(
   let picked: SocketData | null = null;
   let nearestSocket: (SocketData & Point) | null = null;
 
-  connection.addPipe(async (context) => {
-    if (!context || typeof context !== "object" || !("type" in context)) {
-      return context;
-    }
+  function handleConnectionPick(context: unknown): void {
+    picked = (context as { data: { socket: SocketData } }).data.socket;
+  }
 
-    if ((context as { type: string }).type === "connectionpick") {
-      picked = (context as { data: { socket: SocketData } }).data.socket;
-    } else if ((context as { type: string }).type === "connectiondrop") {
-      const dropData = (context as { data: { initial: SocketData; created: boolean } }).data;
-      if (nearestSocket && !dropData.created) {
-        await props.createConnection(dropData.initial, nearestSocket);
-      }
-      picked = null;
+  async function handleConnectionDrop(context: unknown): Promise<void> {
+    const dropData = (context as { data: { initial: SocketData; created: boolean } }).data;
+    if (nearestSocket && !dropData.created) {
+      await props.createConnection(dropData.initial, nearestSocket);
+    }
+    picked = null;
+    pseudoconn.unmount(area);
+  }
+
+  async function handlePointerMove(context: unknown): Promise<void> {
+    const point = (context as { data: { position: Point } }).data.position;
+    const nodes = Array.from(area.nodeViews.entries());
+    const socketsList = Array.from(sockets.values());
+
+    const rects: NodeRect[] = nodes.map(([id, view]) => ({
+      id,
+      ...getNodeRect(editor.getNode(id) as NodeWithSize, view as unknown as NodeView),
+    }));
+    const nearestRects = rects.filter((rect) => isInsideRect(rect, point, margin));
+    const nearestNodeIds = nearestRects.map(({ id }) => id);
+
+    const nearestSockets = socketsList.filter((item) => nearestNodeIds.includes(item.nodeId));
+
+    const socketsPositions = await Promise.all(
+      nearestSockets.map(async (socket) => {
+        const nodeView = area.nodeViews.get(socket.nodeId);
+        if (!nodeView) return null;
+
+        const { x, y } = await getElementCenter(
+          socket.element,
+          (nodeView as unknown as NodeView).element,
+        );
+
+        return {
+          ...socket,
+          x: x + (nodeView as unknown as NodeView).position.x,
+          y: y + (nodeView as unknown as NodeView).position.y,
+        };
+      }),
+    );
+
+    const validPositions = socketsPositions.filter((p): p is SocketData & Point => p !== null);
+    nearestSocket = findNearestPoint(validPositions, point, distance) || null;
+
+    if (nearestSocket && picked && props.display(picked, nearestSocket)) {
+      if (!pseudoconn.isMounted()) pseudoconn.mount(area);
+      const { x, y } = nearestSocket;
+      pseudoconn.render(area, props.offset(nearestSocket, { x, y }), picked);
+    } else if (pseudoconn.isMounted()) {
       pseudoconn.unmount(area);
-    } else if ((context as { type: string }).type === "pointermove") {
-      if (!picked) {
-        return context;
-      }
-
-      const point = (context as { data: { position: Point } }).data.position;
-      const nodes = Array.from(area.nodeViews.entries());
-      const socketsList = Array.from(sockets.values());
-
-      // Find nodes near the cursor
-      // Rete node views expose position/element but aren't typed as our NodeView interface
-      const rects: NodeRect[] = nodes.map(([id, view]) => ({
-        id,
-        ...getNodeRect(editor.getNode(id) as NodeWithSize, view as unknown as NodeView),
-      }));
-      const nearestRects = rects.filter((rect) => isInsideRect(rect, point, margin));
-      const nearestNodeIds = nearestRects.map(({ id }) => id);
-
-      // Get sockets belonging to nearby nodes
-      const nearestSockets = socketsList.filter((item) => nearestNodeIds.includes(item.nodeId));
-
-      // Calculate positions for those sockets
-      const socketsPositions = await Promise.all(
-        nearestSockets.map(async (socket) => {
-          const nodeView = area.nodeViews.get(socket.nodeId);
-          if (!nodeView) {
-            return null;
-          }
-
-          const { x, y } = await getElementCenter(
-            socket.element,
-            (nodeView as unknown as NodeView).element,
-          );
-
-          return {
-            ...socket,
-            x: x + (nodeView as unknown as NodeView).position.x,
-            y: y + (nodeView as unknown as NodeView).position.y,
-          };
-        }),
-      );
-
-      // Find the nearest valid socket
-      const validPositions = socketsPositions.filter((p): p is SocketData & Point => p !== null);
-      nearestSocket = findNearestPoint(validPositions, point, distance) || null;
-
-      if (nearestSocket && props.display(picked, nearestSocket)) {
-        if (!pseudoconn.isMounted()) {
-          pseudoconn.mount(area);
-        }
-        const { x, y } = nearestSocket;
-        pseudoconn.render(area, props.offset(nearestSocket, { x, y }), picked);
-      } else if (pseudoconn.isMounted()) {
-        pseudoconn.unmount(area);
-      }
-    } else if (
-      (context as { type: string }).type === "render" &&
-      (context as { data: { type: string } }).data.type === "socket"
-    ) {
-      // Track socket elements for position lookup
-      const socketData = (context as { data: SocketData }).data;
-      sockets.set(socketData.element, socketData);
-    } else if ((context as { type: string }).type === "unmount") {
-      sockets.delete((context as { data: { element: HTMLElement } }).data.element);
     }
+  }
 
+  function handleSocketRender(context: unknown): void {
+    const socketData = (context as { data: SocketData }).data;
+    sockets.set(socketData.element, socketData);
+  }
+
+  function isValidPipeContext(context: unknown): context is { type: string } {
+    return !!context && typeof context === "object" && "type" in context;
+  }
+
+  function isSocketRender(context: { type: string }): boolean {
+    return context.type === "render" && (context as unknown as { data: { type: string } }).data.type === "socket";
+  }
+
+  async function dispatchPipeEvent(context: { type: string }): Promise<void> {
+    if (context.type === "connectionpick") {
+      handleConnectionPick(context);
+    } else if (context.type === "connectiondrop") {
+      await handleConnectionDrop(context);
+    } else if (context.type === "pointermove" && picked) {
+      await handlePointerMove(context);
+    } else if (isSocketRender(context)) {
+      handleSocketRender(context);
+    } else if (context.type === "unmount") {
+      sockets.delete((context as unknown as { data: { element: HTMLElement } }).data.element);
+    }
+  }
+
+  connection.addPipe(async (context) => {
+    if (isValidPipeContext(context)) {
+      await dispatchPipeEvent(context);
+    }
     return context;
   });
 }

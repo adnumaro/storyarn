@@ -209,36 +209,24 @@ function getPointerZone(e: DndDropEvent): "before" | "nest" | "after" | null {
   return "nest";
 }
 
-function handleDrop(e: DndDropEvent): void {
-  const draggedNode = e.draggedItems[0]?.item;
-  const hoveredNode = e.hoveredDraggable?.item;
-  const zone = getPointerZone(e);
+function handleNestDrop(e: DndDropEvent, draggedNode: SheetTreeNodeData, hoveredNode: SheetTreeNodeData): void {
+  if (isDescendantOf(localTree.value, draggedNode.id, hoveredNode.id)) return;
 
-  if (!draggedNode) return;
+  const targetNode = findNodeById(localTree.value, hoveredNode.id);
+  if (!targetNode) return;
 
-  // Center zone → nest as last child of hovered node
-  if (zone === "nest" && hoveredNode && hoveredNode.id !== draggedNode.id) {
-    if (isDescendantOf(localTree.value, draggedNode.id, hoveredNode.id)) return;
-
-    const targetNode = findNodeById(localTree.value, hoveredNode.id);
-    if (!targetNode) return;
-
-    // Remove from source
-    const srcArr = e.draggedItems[0]?.items;
-    if (srcArr) {
-      const filtered = srcArr.filter((n) => n.id !== draggedNode.id);
-      applyToTree(srcArr, filtered);
-    }
-
-    // Add as last child
-    if (!targetNode.children) targetNode.children = [];
-    targetNode.children.push(draggedNode);
-
-    pushMove(draggedNode.id, hoveredNode.id, targetNode.children.length - 1);
-    return;
+  const srcArr = e.draggedItems[0]?.items;
+  if (srcArr) {
+    applyToTree(srcArr, srcArr.filter((n) => n.id !== draggedNode.id));
   }
 
-  // Top/bottom placement → sibling sort via suggestSort
+  if (!targetNode.children) targetNode.children = [];
+  targetNode.children.push(draggedNode);
+
+  pushMove(draggedNode.id, hoveredNode.id, targetNode.children.length - 1);
+}
+
+function handleSiblingSort(e: DndDropEvent, draggedNode: SheetTreeNodeData): void {
   const r = e.helpers.suggestSort("vertical");
   if (!r) return;
 
@@ -255,6 +243,21 @@ function handleDrop(e: DndDropEvent): void {
   if (ctx) {
     pushMove(draggedNode.id, ctx.parentId, ctx.position);
   }
+}
+
+function handleDrop(e: DndDropEvent): void {
+  const draggedNode = e.draggedItems[0]?.item;
+  const hoveredNode = e.hoveredDraggable?.item;
+  const zone = getPointerZone(e);
+
+  if (!draggedNode) return;
+
+  if (zone === "nest" && hoveredNode && hoveredNode.id !== draggedNode.id) {
+    handleNestDrop(e, draggedNode, hoveredNode);
+    return;
+  }
+
+  handleSiblingSort(e, draggedNode);
 }
 </script>
 

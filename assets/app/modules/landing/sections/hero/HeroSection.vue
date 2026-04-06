@@ -31,37 +31,44 @@ function resolvedBoxShadow(boxShadow: string) {
   return boxShadow;
 }
 
-function openFullscreen() {
-  if (isTransitioning || isFullscreenNative) return;
+interface FullscreenElements {
+  video: HTMLVideoElement;
+  frame: HTMLDivElement;
+  fullscreen: HTMLDivElement;
+  trigger: HTMLButtonElement;
+}
+
+function getFullscreenElements(): FullscreenElements | null {
   const video = videoRef.value;
   const frame = portalFrameRef.value;
   const fullscreen = fullscreenRef.value;
-  const heroContent = document.getElementById("hero-content-inner");
-  const portalBadge = document.querySelector(".portal-badge") as HTMLElement | null;
+  const trigger = triggerRef.value;
+  if (!video || !frame || !fullscreen || !trigger) return null;
+  return { video, frame, fullscreen, trigger };
+}
 
-  if (!video || !frame || !fullscreen || !triggerRef.value) return;
+function openFullscreenReduced({ video, fullscreen, trigger }: FullscreenElements) {
+  fullscreen.appendChild(video);
+  trigger.classList.add("is-active");
+  fullscreen.classList.add("is-active");
+  fullscreen.style.opacity = "1";
+  fullscreen.style.pointerEvents = "auto";
+  video.muted = false;
+  video.volume = 1;
+  video.currentTime = 0;
+  isFullscreenNative = true;
+}
 
-  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  if (reduced) {
-    fullscreen.appendChild(video);
-    triggerRef.value.classList.add("is-active");
-    fullscreen.classList.add("is-active");
-    fullscreen.style.opacity = "1";
-    fullscreen.style.pointerEvents = "auto";
-    video.muted = false;
-    video.volume = 1;
-    video.currentTime = 0;
-    isFullscreenNative = true;
-    return;
-  }
-
+function buildOpenTimeline({ video, frame, fullscreen, trigger }: FullscreenElements) {
   isTransitioning = true;
   if (currentTimeline) currentTimeline.kill();
 
+  const heroContent = document.getElementById("hero-content-inner");
+  const portalBadge = document.querySelector(".portal-badge") as HTMLElement | null;
+  const topbar = document.querySelector("header") as HTMLElement | null;
+
   gsap.killTweensOf([heroContent, frame, portalBadge, video, fullscreen]);
 
-  // Fade out hero content
   if (heroContent) {
     gsap.to(heroContent, { opacity: 0, y: -48, duration: 0.5, ease: "power2.in" });
   }
@@ -70,14 +77,13 @@ function openFullscreen() {
     video.muted = false;
     video.volume = 0;
     video.currentTime = 0;
-  } catch (e) {}
+  } catch (_e) {}
 
   const videoRect = frame.getBoundingClientRect();
   const frameStyle = window.getComputedStyle(frame);
   const startRadius = frameStyle.borderRadius;
   const startShadow = resolvedBoxShadow(frameStyle.boxShadow);
   const fullscreenShadow = "0 40px 120px rgba(0, 0, 0, 0.46)";
-  const topbar = document.querySelector("header") as HTMLElement | null;
 
   const targetW = Math.min(window.innerWidth * 0.92, 1400);
   const targetH = targetW * (9 / 16);
@@ -85,7 +91,7 @@ function openFullscreen() {
   const targetY = (window.innerHeight - targetH) / 2;
 
   fullscreen.appendChild(video);
-  triggerRef.value.classList.add("is-active");
+  trigger.classList.add("is-active");
 
   // Set fly styles
   video.style.position = "fixed";
@@ -118,7 +124,7 @@ function openFullscreen() {
       clearVideoMask(video);
       try {
         video.volume = 1;
-      } catch (e) {}
+      } catch (_e) {}
       currentTimeline = null;
       isTransitioning = false;
       isFullscreenNative = true;
@@ -126,8 +132,6 @@ function openFullscreen() {
       fullscreen.style.pointerEvents = "auto";
     },
   });
-
-  // Allow the WebGL scale to handle the immersion without aggressive blackout
 
   if (topbar) {
     currentTimeline.to(topbar, { opacity: 0, y: -40, duration: 0.8, ease: "power3.inOut" }, 0);
@@ -181,68 +185,59 @@ function openFullscreen() {
         portalRef.value?.setIntensity(proxy.intensity);
         try {
           video.volume = proxy.vol;
-        } catch (e) {}
+        } catch (_e) {}
       },
     },
     0,
   );
 }
 
-function closeFullscreen() {
-  if (isTransitioning || !isFullscreenNative) return;
-  const video = videoRef.value;
-  const frame = portalFrameRef.value;
-  const fullscreen = fullscreenRef.value;
-  const heroContent = document.getElementById("hero-content-inner");
-  const portalBadge = document.querySelector(".portal-badge") as HTMLElement | null;
+function openFullscreen() {
+  if (isTransitioning || isFullscreenNative) return;
+  const els = getFullscreenElements();
+  if (!els) return;
 
-  if (!video || !frame || !fullscreen || !triggerRef.value) return;
-
-  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  if (reduced) {
-    fullscreen.classList.remove("is-active");
-    fullscreen.style.opacity = "0";
-    fullscreen.style.pointerEvents = "none";
-    frame.appendChild(video);
-    video.muted = true;
-    clearVideoMask(video);
-    triggerRef.value.classList.remove("is-active");
-    isFullscreenNative = false;
-    const topbar = document.querySelector("header") as HTMLElement | null;
-    if (topbar) {
-      topbar.style.opacity = "";
-    }
-    return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    openFullscreenReduced(els);
+  } else {
+    buildOpenTimeline(els);
   }
+}
 
-  isTransitioning = true;
-  if (currentTimeline) currentTimeline.kill();
+interface CloseElements {
+  video: HTMLVideoElement;
+  frame: HTMLDivElement;
+  fullscreen: HTMLDivElement;
+  trigger: HTMLButtonElement;
+}
 
+function closeFullscreenReduced({ video, frame, fullscreen, trigger }: CloseElements) {
+  fullscreen.classList.remove("is-active");
+  fullscreen.style.opacity = "0";
+  fullscreen.style.pointerEvents = "none";
+  frame.appendChild(video);
+  video.muted = true;
+  clearVideoMask(video);
+  trigger.classList.remove("is-active");
+  isFullscreenNative = false;
+  const topbar = document.querySelector("header") as HTMLElement | null;
+  if (topbar) topbar.style.opacity = "";
+}
+
+function fadeOutVolume(video: HTMLVideoElement) {
   const volProxy = { vol: video.volume || 1 };
   gsap.to(volProxy, {
     vol: 0,
     duration: 0.4,
     onUpdate: () => {
-      try {
-        video.volume = volProxy.vol;
-      } catch (e) {}
+      try { video.volume = volProxy.vol; } catch (_e) { /* muted or detached */ }
     },
-    onComplete: () => {
-      video.muted = true;
-    },
+    onComplete: () => { video.muted = true; },
   });
+}
 
+function positionVideoForClose(video: HTMLVideoElement) {
   const videoRect = video.getBoundingClientRect();
-  const targetRect = frame.getBoundingClientRect();
-  const frameStyle = window.getComputedStyle(frame);
-  const targetRadius = frameStyle.borderRadius;
-  const targetShadow = resolvedBoxShadow(frameStyle.boxShadow);
-
-  fullscreen.classList.remove("is-active");
-  fullscreen.style.pointerEvents = "none";
-  triggerRef.value.classList.add("is-active");
-
   video.style.position = "fixed";
   video.style.top = `${videoRect.top}px`;
   video.style.left = `${videoRect.left}px`;
@@ -253,11 +248,25 @@ function closeFullscreen() {
   video.style.filter = "saturate(1) brightness(1) contrast(1)";
   document.body.appendChild(video);
   clearVideoMask(video);
+}
+
+function buildCloseTimeline(
+  { video, frame, fullscreen, trigger }: CloseElements,
+  heroContent: HTMLElement | null,
+  portalBadge: HTMLElement | null,
+) {
+  const targetRect = frame.getBoundingClientRect();
+  const frameStyle = window.getComputedStyle(frame);
+  const targetRadius = frameStyle.borderRadius;
+  const targetShadow = resolvedBoxShadow(frameStyle.boxShadow);
+  const topbar = document.querySelector("header") as HTMLElement | null;
+
+  fullscreen.classList.remove("is-active");
+  fullscreen.style.pointerEvents = "none";
+  trigger.classList.add("is-active");
 
   const maskProxy = { solid: 100, fade: 100 };
   const zoomProxy = { scale: 10, intensity: 3 };
-
-  const topbar = document.querySelector("header") as HTMLElement | null;
 
   currentTimeline = gsap.timeline({
     onComplete() {
@@ -272,47 +281,27 @@ function closeFullscreen() {
       triggerRef.value?.classList.remove("is-active");
       frame.style.opacity = "";
       if (portalBadge) portalBadge.style.opacity = "";
-      if (topbar) {
-        topbar.style.opacity = "";
-      }
+      if (topbar) topbar.style.opacity = "";
       currentTimeline = null;
       isTransitioning = false;
       isFullscreenNative = false;
     },
   });
 
-  currentTimeline.to(
-    video,
-    {
-      top: targetRect.top,
-      left: targetRect.left,
-      width: targetRect.width,
-      height: targetRect.height,
-      borderRadius: targetRadius,
-      boxShadow: targetShadow,
-      opacity: 0.7,
-      filter: "saturate(0.84) brightness(0.72) contrast(1.08)",
-      duration: 0.72,
-      ease: "power2.out",
-    },
-    0,
-  );
+  currentTimeline.to(video, {
+    top: targetRect.top, left: targetRect.left, width: targetRect.width, height: targetRect.height,
+    borderRadius: targetRadius, boxShadow: targetShadow, opacity: 0.7,
+    filter: "saturate(0.84) brightness(0.72) contrast(1.08)", duration: 0.72, ease: "power2.out",
+  }, 0);
 
   if (topbar) {
     currentTimeline.to(topbar, { opacity: 1, y: 0, duration: 0.72, ease: "power2.out" }, 0);
   }
 
-  currentTimeline.to(
-    maskProxy,
-    {
-      solid: 5,
-      fade: 55,
-      duration: 0.58,
-      ease: "power2.out",
-      onUpdate: () => setVideoMask(video, maskProxy.solid, maskProxy.fade),
-    },
-    0.08,
-  );
+  currentTimeline.to(maskProxy, {
+    solid: 5, fade: 55, duration: 0.58, ease: "power2.out",
+    onUpdate: () => setVideoMask(video, maskProxy.solid, maskProxy.fade),
+  }, 0.08);
 
   currentTimeline.to(frame, { opacity: 1, duration: 0.18, ease: "power2.inOut" }, 0.56);
 
@@ -320,24 +309,41 @@ function closeFullscreen() {
     currentTimeline.to(portalBadge, { opacity: 1, duration: 0.18, ease: "power2.inOut" }, 0.62);
   }
 
-  currentTimeline.to(
-    zoomProxy,
-    {
-      scale: 1,
-      intensity: 1,
-      duration: 0.6,
-      ease: "power2.out",
-      onUpdate() {
-        portalRef.value?.setScale(zoomProxy.scale);
-        portalRef.value?.setIntensity(zoomProxy.intensity);
-      },
+  currentTimeline.to(zoomProxy, {
+    scale: 1, intensity: 1, duration: 0.6, ease: "power2.out",
+    onUpdate() {
+      portalRef.value?.setScale(zoomProxy.scale);
+      portalRef.value?.setIntensity(zoomProxy.intensity);
     },
-    0,
-  );
+  }, 0);
 
   if (heroContent) {
     gsap.to(heroContent, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", delay: 0.2 });
   }
+}
+
+function closeFullscreen() {
+  if (isTransitioning || !isFullscreenNative) return;
+  const video = videoRef.value;
+  const frame = portalFrameRef.value;
+  const fullscreen = fullscreenRef.value;
+  const trigger = triggerRef.value;
+  if (!video || !frame || !fullscreen || !trigger) return;
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    closeFullscreenReduced({ video, frame, fullscreen, trigger });
+    return;
+  }
+
+  isTransitioning = true;
+  if (currentTimeline) currentTimeline.kill();
+
+  fadeOutVolume(video);
+  positionVideoForClose(video);
+
+  const heroContent = document.getElementById("hero-content-inner");
+  const portalBadge = document.querySelector(".portal-badge") as HTMLElement | null;
+  buildCloseTimeline({ video, frame, fullscreen, trigger }, heroContent, portalBadge);
 }
 
 function onKeydown(e: KeyboardEvent) {

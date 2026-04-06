@@ -43,21 +43,36 @@ const { isDragging, isDragOver: intraGroupPlacement } = makeDraggable(
   () => [index, items],
 );
 
+function extractDropContext(e: IDragEvent) {
+  const draggedItem = e.draggedItems?.[0]?.item as { type?: string; block?: Block } | undefined;
+  const pointer = e.provider?.pointer?.value?.current;
+  const rect = (itemRef.value as HTMLElement | null)?.getBoundingClientRect();
+  return { draggedItem, pointer, rect };
+}
+
+function canAcceptDrop(
+  draggedItem: { type?: string } | undefined,
+  pointer: { x: number } | undefined,
+  rect: DOMRect | undefined,
+): boolean {
+  return draggedItem?.type === "full_width" && !!pointer && !!rect && items.length < 3;
+}
+
+function computeDropSide(e: IDragEvent): string | null {
+  const { draggedItem, pointer, rect } = extractDropContext(e);
+  if (!canAcceptDrop(draggedItem, pointer, rect)) return null;
+
+  return (pointer!.x - rect!.left) / rect!.width < 0.5 ? "left" : "right";
+}
+
 const { isDragOver: fullWidthPlacement } = makeDroppable(itemRef, {
   groups: ["blocks-vertical"],
   events: {
     onDrop: (e: IDragEvent) => {
-      const draggedItem = e.draggedItems?.[0]?.item as { type?: string; block?: Block } | undefined;
-      const pointer = e.provider?.pointer?.value?.current;
-      const rect = (itemRef.value as HTMLElement | null)?.getBoundingClientRect();
+      const side = computeDropSide(e);
+      if (!side) return;
 
-      if (draggedItem?.type !== "full_width" || !pointer || !rect || items.length >= 3) {
-        return;
-      }
-
-      const relX = (pointer.x - rect.left) / rect.width;
-      const side = relX < 0.5 ? "left" : "right";
-
+      const draggedItem = e.draggedItems?.[0]?.item as { type?: string; block?: Block };
       emit("insert-full-width", {
         draggedBlockId: draggedItem.block!.id,
         groupId: groupId,

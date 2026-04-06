@@ -71,6 +71,63 @@ interface UsePinsOpts {
   canEdit?: MaybeComputedRef<boolean>;
 }
 
+interface PinRenderMode {
+  image: HTMLImageElement | null;
+  iconCanvas: HTMLCanvasElement | null;
+  initialsCanvas: HTMLCanvasElement | null;
+}
+
+/** Determine pin visual: loaded image > initials canvas > icon canvas */
+function determinePinRenderMode(
+  pin: PinData,
+  loadedImg: HTMLImageElement | null,
+  color: string,
+  sizeKey: string,
+  opacity: number,
+): PinRenderMode {
+  if (loadedImg) {
+    return { image: loadedImg, iconCanvas: null, initialsCanvas: null };
+  }
+  if (pin.sheetId && !pin.sheetAvatarUrl) {
+    const initials = (pin.label || "?").slice(0, 2).toUpperCase();
+    return { image: null, iconCanvas: null, initialsCanvas: renderInitialsCanvas(initials, color, sizeKey, opacity) };
+  }
+  return { image: null, iconCanvas: renderPinIcon(pin.pinType, color, sizeKey, opacity), initialsCanvas: null };
+}
+
+/** Build a single PinConfig from pin data */
+function buildPinConfig(
+  pin: PinData,
+  pos: PixelPoint,
+  render: PinRenderMode,
+  dims: { diameter: number },
+  color: string,
+  opacity: number,
+  isLockedByOther: boolean,
+  isSelected: boolean,
+  listening: boolean,
+  draggable: boolean,
+): PinConfig {
+  return {
+    id: pin.id,
+    x: pos.x,
+    y: pos.y,
+    radius: dims.diameter / 2,
+    diameter: dims.diameter,
+    color,
+    opacity,
+    image: render.image,
+    iconCanvas: render.iconCanvas,
+    initialsCanvas: render.initialsCanvas,
+    label: pin.label,
+    isLockedByOther,
+    lockBadge: isLockedByOther ? renderLockBadge() : null,
+    isSelected,
+    listening,
+    draggable,
+  };
+}
+
 /**
  * Composable for computing pin render configs from raw pin data.
  * Handles layer filtering, coordinate conversion, image resolution, and lock state.
@@ -114,61 +171,46 @@ export function usePins({
 
   const { images: loadedImages } = useImageLoader(pinImageUrls);
 
+  function resolvePinAppearance(pin: PinData) {
+    const sizeKey = pin.size || "md";
+    const dims = PIN_SIZES[sizeKey] || PIN_SIZES.md;
+    const color = pin.color || DEFAULT_PIN_COLOR;
+    const opacity = pin.opacity ?? 1;
+    const loadedImg = loadedImages.value[pin.id] || null;
+    const render = determinePinRenderMode(pin, loadedImg, color, sizeKey, opacity);
+    return { dims, color, opacity, render };
+  }
+
+  function isPinSelected(pin: PinData): boolean {
+    return selectedType?.value === "pin" && selectedId?.value === pin.id;
+  }
+
+  function isPinListening(): boolean {
+    return (isSelectMode?.value || activeTool?.value === "connector") ?? false;
+  }
+
+  function isPinDraggable(pin: PinData, isLockedByOther: boolean): boolean {
+    return !!(isSelectMode?.value && editMode?.value && canEdit?.value && !pin.locked && !isLockedByOther);
+  }
+
+  function checkPinLock(pin: PinData): boolean {
+    const lock = entityLocks.value[String(pin.id)];
+    return !!lock && String(lock.userId) !== String(currentUserId.value);
+  }
+
   const pinConfigs = computed<PinConfig[]>(() =>
     visiblePins.value
       .slice()
       .sort((a, b) => (a.position || 0) - (b.position || 0))
       .map((pin) => {
         const pos = percentToPixel(pin.positionX, pin.positionY);
-        const sizeKey = pin.size || "md";
-        const dims = PIN_SIZES[sizeKey] || PIN_SIZES.md;
-        const color = pin.color || DEFAULT_PIN_COLOR;
-        const opacity = pin.opacity ?? 1;
-        const radius = dims.diameter / 2;
+        const { dims, color, opacity, render } = resolvePinAppearance(pin);
+        const isLockedByOther = checkPinLock(pin);
 
-        // Lock state
-        const lock = entityLocks.value[String(pin.id)];
-        const isLockedByOther = !!lock && String(lock.userId) !== String(currentUserId.value);
-
-        // Determine render mode: image > initials > icon
-        const loadedImg = loadedImages.value[pin.id] || null;
-        let image: HTMLImageElement | null = null;
-        let iconCanvas: HTMLCanvasElement | null = null;
-        let initialsCanvas: HTMLCanvasElement | null = null;
-
-        if (loadedImg) {
-          image = loadedImg;
-        } else if (pin.sheetId && !pin.sheetAvatarUrl) {
-          const initials = (pin.label || "?").slice(0, 2).toUpperCase();
-          initialsCanvas = renderInitialsCanvas(initials, color, sizeKey, opacity);
-        } else {
-          iconCanvas = renderPinIcon(pin.pinType, color, sizeKey, opacity);
-        }
-
-        return {
-          id: pin.id,
-          x: pos.x,
-          y: pos.y,
-          radius,
-          diameter: dims.diameter,
-          color,
-          opacity,
-          image,
-          iconCanvas,
-          initialsCanvas,
-          label: pin.label,
-          isLockedByOther,
-          lockBadge: isLockedByOther ? renderLockBadge() : null,
-          isSelected: selectedType?.value === "pin" && selectedId?.value === pin.id,
-          listening: (isSelectMode?.value || activeTool?.value === "connector") ?? false,
-          draggable: !!(
-            isSelectMode?.value &&
-            editMode?.value &&
-            canEdit?.value &&
-            !pin.locked &&
-            !isLockedByOther
-          ),
-        };
+        return buildPinConfig(
+          pin, pos, render, dims, color, opacity, isLockedByOther,
+          isPinSelected(pin), isPinListening(), isPinDraggable(pin, isLockedByOther),
+        );
       }),
   );
 

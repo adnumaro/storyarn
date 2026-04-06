@@ -194,13 +194,11 @@ export function debug(
     // Remove visited style on current (current takes precedence)
     el.classList.remove("debug-visited");
 
-    if (status === "waiting_input") {
-      el.classList.add("debug-waiting");
-    } else if (status === "error") {
-      el.classList.add("debug-error");
-    } else {
-      el.classList.add("debug-current");
-    }
+    const STATUS_CLASS: Record<string, string> = {
+      waiting_input: "debug-waiting",
+      error: "debug-error",
+    };
+    el.classList.add(STATUS_CLASS[status] || "debug-current");
 
     currentEl = el;
     visitedEls.add(el);

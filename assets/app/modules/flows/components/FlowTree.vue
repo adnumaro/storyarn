@@ -206,35 +206,24 @@ function getPointerZone(e: DnDDropEvent): "before" | "after" | "nest" | null {
   return "nest";
 }
 
-function handleDrop(e: unknown): void {
-  const dropEvent = e as DnDDropEvent;
-  const draggedNode = dropEvent.draggedItems[0]?.item;
-  const hoveredNode = dropEvent.hoveredDraggable?.item;
-  const zone = getPointerZone(dropEvent);
+function handleNestDrop(dropEvent: DnDDropEvent, draggedNode: FlowTreeItem, hoveredNode: FlowTreeItem): void {
+  if (isDescendantOf(localTree.value, draggedNode.id, hoveredNode.id)) return;
 
-  if (!draggedNode) return;
+  const targetNode = findNodeById(localTree.value, hoveredNode.id);
+  if (!targetNode) return;
 
-  // Center zone: nest as last child
-  if (zone === "nest" && hoveredNode && hoveredNode.id !== draggedNode.id) {
-    if (isDescendantOf(localTree.value, draggedNode.id, hoveredNode.id)) return;
-
-    const targetNode = findNodeById(localTree.value, hoveredNode.id);
-    if (!targetNode) return;
-
-    const srcArr = dropEvent.draggedItems[0]?.items;
-    if (srcArr) {
-      const filtered = srcArr.filter((n) => n.id !== draggedNode.id);
-      applyToTree(srcArr, filtered);
-    }
-
-    if (!targetNode.children) targetNode.children = [];
-    targetNode.children.push(draggedNode);
-
-    pushMove(draggedNode.id, hoveredNode.id, targetNode.children.length - 1);
-    return;
+  const srcArr = dropEvent.draggedItems[0]?.items;
+  if (srcArr) {
+    applyToTree(srcArr, srcArr.filter((n) => n.id !== draggedNode.id));
   }
 
-  // Top/bottom: sibling sort
+  if (!targetNode.children) targetNode.children = [];
+  targetNode.children.push(draggedNode);
+
+  pushMove(draggedNode.id, hoveredNode.id, targetNode.children.length - 1);
+}
+
+function handleSiblingSort(dropEvent: DnDDropEvent, draggedNode: FlowTreeItem): void {
   const r = dropEvent.helpers.suggestSort("vertical");
   if (!r) return;
 
@@ -251,6 +240,22 @@ function handleDrop(e: unknown): void {
   if (ctx) {
     pushMove(draggedNode.id, ctx.parentId, ctx.position);
   }
+}
+
+function handleDrop(e: unknown): void {
+  const dropEvent = e as DnDDropEvent;
+  const draggedNode = dropEvent.draggedItems[0]?.item;
+  const hoveredNode = dropEvent.hoveredDraggable?.item;
+  const zone = getPointerZone(dropEvent);
+
+  if (!draggedNode) return;
+
+  if (zone === "nest" && hoveredNode && hoveredNode.id !== draggedNode.id) {
+    handleNestDrop(dropEvent, draggedNode, hoveredNode);
+    return;
+  }
+
+  handleSiblingSort(dropEvent, draggedNode);
 }
 </script>
 

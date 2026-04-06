@@ -194,6 +194,97 @@ export interface EditorHandlers {
   destroy(): void;
 }
 
+// ---------------------------------------------------------------------------
+// Private helpers (extracted to reduce per-method complexity)
+// ---------------------------------------------------------------------------
+
+function cleanupEditContext(hook: HookProxy, node: FlowNode): void {
+  const ctx = hook._flowContext;
+  if (ctx?.editingNodeId === node.id) {
+    ctx.editingNodeId = null;
+  }
+}
+
+function cleanupThrottleTimer(hook: HookProxy, nodeId: string | number): void {
+  if (hook._throttleTimers?.[nodeId]) {
+    clearTimeout(hook._throttleTimers[nodeId]);
+    delete hook._throttleTimers[nodeId];
+  }
+}
+
+async function removeRelatedConnections(hook: HookProxy, reteNodeId: string): Promise<void> {
+  const connections = [...hook.editor.getConnections()];
+  for (const conn of connections) {
+    if (conn.source === reteNodeId || conn.target === reteNodeId) {
+      hook.connectionDataMap.delete(conn.id);
+      await hook.editor.removeConnection(conn.id);
+    }
+  }
+}
+
+interface AffectedConnection {
+  source: string | number | undefined;
+  sourceOutput: string;
+  target: string | number | undefined;
+  targetInput: string;
+  connData: { id: number; label: string | null; condition: unknown } | undefined;
+}
+
+function collectAffectedConnections(hook: HookProxy, reteNodeId: string): AffectedConnection[] {
+  const connections = [...hook.editor.getConnections()];
+  const affected: AffectedConnection[] = [];
+
+  for (const conn of connections) {
+    if (conn.source === reteNodeId || conn.target === reteNodeId) {
+      affected.push({
+        source: hook.editor.getNode(conn.source)?.nodeId,
+        sourceOutput: conn.sourceOutput,
+        target: hook.editor.getNode(conn.target)?.nodeId,
+        targetInput: conn.targetInput,
+        connData: hook.connectionDataMap.get(conn.id),
+      });
+    }
+  }
+  return affected;
+}
+
+async function removeAffectedConnections(hook: HookProxy, reteNodeId: string): Promise<void> {
+  const connections = [...hook.editor.getConnections()];
+  for (const conn of connections) {
+    if (conn.source === reteNodeId || conn.target === reteNodeId) {
+      hook.connectionDataMap.delete(conn.id);
+      await hook.editor.removeConnection(conn.id);
+    }
+  }
+}
+
+async function reconnectNode(hook: HookProxy, affectedConnections: AffectedConnection[]): Promise<void> {
+  for (const connInfo of affectedConnections) {
+    const sourceNode = hook.nodeMap.get(connInfo.source!);
+    const targetNode = hook.nodeMap.get(connInfo.target!);
+    if (!sourceNode || !targetNode) {
+      continue;
+    }
+    if (!sourceNode.outputs[connInfo.sourceOutput] || !targetNode.inputs[connInfo.targetInput]) {
+      continue;
+    }
+    const connection = new ClassicPreset.Connection(
+      sourceNode,
+      connInfo.sourceOutput,
+      targetNode,
+      connInfo.targetInput,
+    );
+    await hook.editor.addConnection(connection);
+    if (connInfo.connData) {
+      hook.connectionDataMap.set(connection.id, connInfo.connData);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main factory
+// ---------------------------------------------------------------------------
+
 export function editorHandlers(hook: HookProxy): EditorHandlers {
   return {
     init() {
@@ -291,46 +382,34 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
 
     async handleNodeRemoved(data: NodeRemovedPayload) {
       const node = hook.nodeMap.get(data.id);
-      if (node) {
-        // Exit inline edit if needed
-        const ctx = hook._flowContext;
-        if (ctx?.editingNodeId === node.id) {
-          ctx.editingNodeId = null;
-        }
+      if (!node) {
+        return;
+      }
 
-        if (hook._throttleTimers?.[data.id]) {
-          clearTimeout(hook._throttleTimers[data.id]);
-          delete hook._throttleTimers[data.id];
-        }
+      cleanupEditContext(hook, node);
+      cleanupThrottleTimer(hook, data.id);
 
-        if (data.self && hook._historyTriggeredDelete !== data.id) {
-          hook.history?.add(new DeleteNodeAction(hook, data.id));
-        }
-        if (hook._historyTriggeredDelete === data.id) {
-          hook._historyTriggeredDelete = null;
-        }
+      if (data.self && hook._historyTriggeredDelete !== data.id) {
+        hook.history?.add(new DeleteNodeAction(hook, data.id));
+      }
+      if (hook._historyTriggeredDelete === data.id) {
+        hook._historyTriggeredDelete = null;
+      }
 
-        const needsHubRebuild = node.nodeType === "hub" || node.nodeType === "jump";
-        hook.enterLoadingFromServer();
-        try {
-          const connections = [...hook.editor.getConnections()];
-          for (const conn of connections) {
-            if (conn.source === node.id || conn.target === node.id) {
-              hook.connectionDataMap.delete(conn.id);
-              await hook.editor.removeConnection(conn.id);
-            }
-          }
-          await hook.editor.removeNode(node.id);
-        } finally {
-          hook.exitLoadingFromServer();
-        }
-        hook.nodeMap.delete(data.id);
-        if (hook.selectedNodeId === data.id) {
-          hook.selectedNodeId = null;
-        }
-        if (needsHubRebuild) {
-          await hook.rebuildHubsMap();
-        }
+      const needsHubRebuild = node.nodeType === "hub" || node.nodeType === "jump";
+      hook.enterLoadingFromServer();
+      try {
+        await removeRelatedConnections(hook, node.id);
+        await hook.editor.removeNode(node.id);
+      } finally {
+        hook.exitLoadingFromServer();
+      }
+      hook.nodeMap.delete(data.id);
+      if (hook.selectedNodeId === data.id) {
+        hook.selectedNodeId = null;
+      }
+      if (needsHubRebuild) {
+        await hook.rebuildHubsMap();
       }
     },
 
@@ -387,40 +466,15 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
     },
 
     async rebuildNode(id: string | number, existingNode: FlowNode, nodeData: NodeData) {
-      // Exit inline edit if needed
-      const ctx = hook._flowContext;
-      if (ctx?.editingNodeId === existingNode.id) {
-        ctx.editingNodeId = null;
-      }
+      cleanupEditContext(hook, existingNode);
 
       const view = hook.area.nodeViews.get(existingNode.id);
       const position: Position = view ? { ...view.position } : { x: 0, y: 0 };
 
       hook.enterLoadingFromServer();
       try {
-        const connections = [...hook.editor.getConnections()];
-        const affectedConnections: {
-          source: string | number | undefined;
-          sourceOutput: string;
-          target: string | number | undefined;
-          targetInput: string;
-          connData: { id: number; label: string | null; condition: unknown } | undefined;
-        }[] = [];
-
-        for (const conn of connections) {
-          if (conn.source === existingNode.id || conn.target === existingNode.id) {
-            affectedConnections.push({
-              source: hook.editor.getNode(conn.source)?.nodeId,
-              sourceOutput: conn.sourceOutput,
-              target: hook.editor.getNode(conn.target)?.nodeId,
-              targetInput: conn.targetInput,
-              connData: hook.connectionDataMap.get(conn.id),
-            });
-            hook.connectionDataMap.delete(conn.id);
-            await hook.editor.removeConnection(conn.id);
-          }
-        }
-
+        const affected = collectAffectedConnections(hook, existingNode.id);
+        await removeAffectedConnections(hook, existingNode.id);
         await hook.editor.removeNode(existingNode.id);
         hook.nodeMap.delete(id);
 
@@ -434,27 +488,7 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
         await hook.area.update("node", newNode.id);
         await hook.syncNodeSize(newNode.id);
 
-        for (const connInfo of affectedConnections) {
-          const sourceNode = hook.nodeMap.get(connInfo.source!);
-          const targetNode = hook.nodeMap.get(connInfo.target!);
-          if (sourceNode && targetNode) {
-            if (
-              sourceNode.outputs[connInfo.sourceOutput] &&
-              targetNode.inputs[connInfo.targetInput]
-            ) {
-              const connection = new ClassicPreset.Connection(
-                sourceNode,
-                connInfo.sourceOutput,
-                targetNode,
-                connInfo.targetInput,
-              );
-              await hook.editor.addConnection(connection);
-              if (connInfo.connData) {
-                hook.connectionDataMap.set(connection.id, connInfo.connData);
-              }
-            }
-          }
-        }
+        await reconnectNode(hook, affected);
       } finally {
         hook.exitLoadingFromServer();
       }

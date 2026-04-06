@@ -116,16 +116,21 @@ export function serializeCondition(condition: Condition | null | undefined): str
 export function serializeAssignments(assignments: Assignment[] | null | undefined): string {
   if (!assignments || assignments.length === 0) return "";
 
+  const FIXED_SERIALIZERS: Record<string, (ref: string) => string> = {
+    set_true: (ref) => `${ref} = true`,
+    set_false: (ref) => `${ref} = false`,
+    toggle: (ref) => `toggle ${ref}`,
+    clear: (ref) => `clear ${ref}`,
+  };
+
   return assignments
     .map((a) => {
       const { operator, sheet, variable, value, value_type, value_sheet } = a;
       if (!sheet || !variable) return "";
       const ref = `${sheet}.${variable}`;
 
-      if (operator === "set_true") return `${ref} = true`;
-      if (operator === "set_false") return `${ref} = false`;
-      if (operator === "toggle") return `toggle ${ref}`;
-      if (operator === "clear") return `clear ${ref}`;
+      const fixedSerializer = FIXED_SERIALIZERS[operator];
+      if (fixedSerializer) return fixedSerializer(ref);
 
       const symbol = INSTRUCTION_SYMBOLS[operator] || "=";
       if (value_type === "variable_ref" && value_sheet && value) {

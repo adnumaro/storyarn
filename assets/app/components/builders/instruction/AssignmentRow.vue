@@ -124,20 +124,34 @@ const isNumericValue = computed(
     (assignment.operator === "add" || assignment.operator === "subtract"),
 );
 
+function clearValueUnlessArithmetic(updated: Assignment): void {
+  if (updated.operator !== "add" && updated.operator !== "subtract") {
+    updated.value = null;
+  }
+}
+
+function applySheetChange(updated: Assignment): void {
+  updated.variable = null;
+  clearValueUnlessArithmetic(updated);
+  updated.value_sheet = null;
+}
+
+function applyVariableChange(updated: Assignment, value: string | null): void {
+  const sv = findVariable(variables, assignment.sheet, value);
+  if (sv) {
+    const ops = operatorsForType(sv.block_type);
+    if (!ops.includes(updated.operator) && ops.length > 0) updated.operator = ops[0];
+  }
+  clearValueUnlessArithmetic(updated);
+  updated.value_sheet = null;
+}
+
 function update(field: string, value: string | null) {
   const updated = { ...assignment, [field]: value };
   if (field === "sheet") {
-    updated.variable = null;
-    if (updated.operator !== "add" && updated.operator !== "subtract") updated.value = null;
-    updated.value_sheet = null;
+    applySheetChange(updated);
   } else if (field === "variable") {
-    const sv = findVariable(variables, assignment.sheet, value);
-    if (sv) {
-      const ops = operatorsForType(sv.block_type);
-      if (!ops.includes(updated.operator) && ops.length > 0) updated.operator = ops[0];
-    }
-    if (updated.operator !== "add" && updated.operator !== "subtract") updated.value = null;
-    updated.value_sheet = null;
+    applyVariableChange(updated, value);
   } else if (field === "value_sheet") {
     updated.value = null;
   }

@@ -105,6 +105,54 @@ interface UseAnnotationsOpts {
   canEdit: Ref<boolean>;
 }
 
+/** Build shape geometry (body + fold polygons) for an annotation */
+function buildAnnotationShape(dims: AnnotationSizeDims): { bodyPoints: number[]; foldPoints: number[] } {
+  const w = dims.width;
+  const h = dims.minHeight;
+  const f = FOLD_SIZE;
+  return {
+    bodyPoints: [0, 0, w - f, 0, w, f, w, h, 0, h],
+    foldPoints: [w - f, 0, w, f, w - f, f],
+  };
+}
+
+/** Build a single AnnotationConfig from annotation data */
+function buildAnnotationConfig(
+  ann: AnnotationData,
+  pos: PixelPoint,
+  dims: AnnotationSizeDims,
+  color: string,
+  shape: { bodyPoints: number[]; foldPoints: number[] },
+  isLockedByOther: boolean,
+  isSelected: boolean,
+  listening: boolean,
+  draggable: boolean,
+): AnnotationConfig {
+  return {
+    id: ann.id,
+    x: pos.x,
+    y: pos.y,
+    text: ann.text || "",
+    color,
+    bgOpacity: BG_OPACITY,
+    width: dims.width,
+    height: dims.minHeight,
+    fontSize: dims.fontSize,
+    padLeft: dims.padLeft,
+    padRight: dims.padRight,
+    padTop: dims.padTop,
+    bodyPoints: shape.bodyPoints,
+    foldPoints: shape.foldPoints,
+    textWidth: dims.width - dims.padLeft - dims.padRight,
+    locked: !!ann.locked,
+    isLockedByOther,
+    lockBadge: isLockedByOther ? renderLockBadge() : null,
+    isSelected,
+    listening,
+    draggable,
+  };
+}
+
 /**
  * Composable for computing annotation render configs.
  * Annotations are sticky-note shapes with a folded corner.
@@ -127,60 +175,40 @@ export function useAnnotations({
     annotations.value.filter((ann) => !(ann.layerId && hiddenLayerIds.value.has(ann.layerId))),
   );
 
+  function resolveAnnotationAppearance(ann: AnnotationData) {
+    const sizeKey = ANNOTATION_SIZES[ann.fontSize] ? ann.fontSize : "md";
+    const dims = ANNOTATION_SIZES[sizeKey];
+    const color = ann.color || DEFAULT_COLOR;
+    const shape = buildAnnotationShape(dims);
+    return { dims, color, shape };
+  }
+
+  function checkAnnotationLock(ann: AnnotationData): boolean {
+    const lock = entityLocks.value[String(ann.id)];
+    return !!lock && String(lock.userId) !== String(currentUserId.value);
+  }
+
+  function isAnnotationSelected(ann: AnnotationData): boolean {
+    return selectedType?.value === "annotation" && selectedId?.value === ann.id;
+  }
+
+  function isAnnotationDraggable(ann: AnnotationData, isLockedByOther: boolean): boolean {
+    return !!(isSelectMode?.value && editMode?.value && canEdit?.value && !ann.locked && !isLockedByOther);
+  }
+
   const annotationConfigs = computed<AnnotationConfig[]>(() =>
     visibleAnnotations.value
       .slice()
       .sort((a, b) => (a.position || 0) - (b.position || 0))
       .map((ann) => {
         const pos = percentToPixel(ann.positionX, ann.positionY);
-        const sizeKey = ANNOTATION_SIZES[ann.fontSize] ? ann.fontSize : "md";
-        const dims = ANNOTATION_SIZES[sizeKey];
-        const color = ann.color || DEFAULT_COLOR;
+        const { dims, color, shape } = resolveAnnotationAppearance(ann);
+        const isLockedByOther = checkAnnotationLock(ann);
 
-        const w = dims.width;
-        const h = dims.minHeight;
-        const f = FOLD_SIZE;
-
-        // Body polygon: rectangle with top-right corner clipped
-        // (0,0) -> (W-F,0) -> (W,F) -> (W,H) -> (0,H)
-        const bodyPoints = [0, 0, w - f, 0, w, f, w, h, 0, h];
-
-        // Fold triangle: the darker corner piece
-        // (W-F,0) -> (W,F) -> (W-F,F)
-        const foldPoints = [w - f, 0, w, f, w - f, f];
-
-        const lock = entityLocks.value[String(ann.id)];
-        const isLockedByOther = !!lock && String(lock.userId) !== String(currentUserId.value);
-
-        return {
-          id: ann.id,
-          x: pos.x,
-          y: pos.y,
-          text: ann.text || "",
-          color,
-          bgOpacity: BG_OPACITY,
-          width: w,
-          height: h,
-          fontSize: dims.fontSize,
-          padLeft: dims.padLeft,
-          padRight: dims.padRight,
-          padTop: dims.padTop,
-          bodyPoints,
-          foldPoints,
-          textWidth: w - dims.padLeft - dims.padRight,
-          locked: !!ann.locked,
-          isLockedByOther,
-          lockBadge: isLockedByOther ? renderLockBadge() : null,
-          isSelected: selectedType?.value === "annotation" && selectedId?.value === ann.id,
-          listening: isSelectMode?.value ?? false,
-          draggable: !!(
-            isSelectMode?.value &&
-            editMode?.value &&
-            canEdit?.value &&
-            !ann.locked &&
-            !isLockedByOther
-          ),
-        };
+        return buildAnnotationConfig(
+          ann, pos, dims, color, shape, isLockedByOther,
+          isAnnotationSelected(ann), isSelectMode?.value ?? false, isAnnotationDraggable(ann, isLockedByOther),
+        );
       }),
   );
 

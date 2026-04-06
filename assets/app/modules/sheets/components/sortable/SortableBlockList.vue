@@ -265,6 +265,84 @@ function extractFromColumnGroup(
   return nextItems;
 }
 
+// ── Drop sub-handlers ──
+
+function handleColumnGroupCreation(
+  draggedItem: FullWidthLayoutItem,
+  hoveredItem: FullWidthLayoutItem,
+  side: string,
+): boolean {
+  const nextItems = createColumnGroupItems(
+    localItems.value,
+    draggedItem.block.id,
+    hoveredItem.block.id,
+    side,
+  );
+  if (!nextItems) return false;
+  localItems.value = nextItems;
+  pushColumnLayout(nextItems);
+  return true;
+}
+
+function handleColumnGroupExtraction(
+  draggedItem: Block,
+  hoveredItem: LayoutItem | undefined,
+  hoveredPlacement: { bottom?: boolean } | undefined,
+): boolean {
+  const nextItems = extractFromColumnGroup(localItems.value, draggedItem, hoveredItem, hoveredPlacement);
+  if (!nextItems) return false;
+  localItems.value = nextItems;
+  pushColumnLayout(nextItems);
+  return true;
+}
+
+function handleVerticalReorder(e: IDragEvent): void {
+  const result = e.helpers.suggestSort("vertical");
+  if (!result) return;
+
+  localItems.value = result.sourceItems as LayoutItem[];
+  const ids = localItems.value.flatMap((item) =>
+    item.type === "column_group"
+      ? (item as ColumnGroupLayoutItem).blocks.map((b) => b.id)
+      : [(item as FullWidthLayoutItem).block.id],
+  );
+  live.pushEvent("reorder_blocks", { ids });
+}
+
+function extractDropData(e: IDragEvent) {
+  return {
+    draggedItem: e.draggedItems?.[0]?.item as LayoutItem | Block | undefined,
+    hoveredItem: e.hoveredDraggable?.item as LayoutItem | undefined,
+    hoveredElement: e.hoveredDraggable?.element,
+    hoveredPlacement: e.hoveredDraggable?.placement,
+  };
+}
+
+function isColumnGroupDrop(
+  dragged: LayoutItem | Block | undefined,
+  hovered: LayoutItem | undefined,
+  side: string | null,
+): boolean {
+  return dragged?.type === "full_width" && hovered?.type === "full_width" && !!side;
+}
+
+function handleDrop(e: IDragEvent): void {
+  const { draggedItem, hoveredItem, hoveredElement, hoveredPlacement } = extractDropData(e);
+  const side = dropSide(e, hoveredElement);
+
+  if (isColumnGroupDrop(draggedItem, hoveredItem, side)) {
+    handleColumnGroupCreation(draggedItem as FullWidthLayoutItem, hoveredItem as FullWidthLayoutItem, side!);
+    return;
+  }
+
+  if (draggedItem && isColumnGroupBlock(draggedItem)) {
+    handleColumnGroupExtraction(draggedItem, hoveredItem, hoveredPlacement);
+    return;
+  }
+
+  handleVerticalReorder(e);
+}
+
 // Flat list of blocks for vertical sortable
 const containerRef = useTemplateRef("container");
 makeDroppable(
@@ -273,55 +351,7 @@ makeDroppable(
     groups: ["blocks-vertical"],
     events: {
       onDrop: (e: IDragEvent) => {
-        const draggedItem = e.draggedItems?.[0]?.item as LayoutItem | Block | undefined;
-        const hoveredItem = e.hoveredDraggable?.item as LayoutItem | undefined;
-        const side = dropSide(e, e.hoveredDraggable?.element);
-
-        // Case 1: Create column group (full_width + full_width side drop)
-        if (draggedItem?.type === "full_width" && hoveredItem?.type === "full_width" && side) {
-          const nextItems = createColumnGroupItems(
-            localItems.value,
-            (draggedItem as FullWidthLayoutItem).block.id,
-            (hoveredItem as FullWidthLayoutItem).block.id,
-            side,
-          );
-
-          if (nextItems) {
-            localItems.value = nextItems;
-            pushColumnLayout(nextItems);
-          }
-
-          return;
-        }
-
-        // Case 2: Extract block from column group (dragged item is a Block from within a column group)
-        if (draggedItem && isColumnGroupBlock(draggedItem)) {
-          const nextItems = extractFromColumnGroup(
-            localItems.value,
-            draggedItem,
-            hoveredItem,
-            e.hoveredDraggable?.placement,
-          );
-
-          if (nextItems) {
-            localItems.value = nextItems;
-            pushColumnLayout(nextItems);
-          }
-
-          return;
-        }
-
-        // Case 3: Normal vertical reorder
-        const result = e.helpers.suggestSort("vertical");
-        if (!result) return;
-
-        localItems.value = result.sourceItems as LayoutItem[];
-        const ids = localItems.value.flatMap((item) =>
-          item.type === "column_group"
-            ? (item as ColumnGroupLayoutItem).blocks.map((b) => b.id)
-            : [(item as FullWidthLayoutItem).block.id],
-        );
-        live.pushEvent("reorder_blocks", { ids });
+        handleDrop(e);
       },
     },
   },

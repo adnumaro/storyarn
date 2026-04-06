@@ -102,6 +102,59 @@ interface UseConnectionsOpts {
   waypointEditOverride?: MaybeComputedRef<WaypointEditOverride | null>;
 }
 
+/** Build label config at the midpoint of a pixel path, or null */
+function buildLabelConfig(conn: ConnectionData, pixelPath: PixelPoint[]): LabelConfig | null {
+  if (conn.showLabel === false || !conn.label) return null;
+  const mid = pathMidpointAndAngle(pixelPath);
+  if (!mid) return null;
+  return {
+    text: conn.label,
+    x: mid.x,
+    y: mid.y,
+    offsetX: 60,
+    offsetY: 10,
+    rotation: mid.angle,
+    fill: LABEL_COLOR,
+    fontSize: 13,
+    fontStyle: "600",
+    align: "center",
+    width: 120,
+    shadowColor: "black",
+    shadowBlur: 3,
+    shadowOpacity: 0.8,
+    listening: false,
+  };
+}
+
+/** Build a single ConnectionConfig from connection data and resolved paths */
+function buildConnectionConfig(
+  conn: ConnectionData,
+  points: number[],
+  pixelPath: PixelPoint[],
+  isSelected: boolean,
+  listening: boolean,
+): ConnectionConfig {
+  const color = conn.color || DEFAULT_COLOR;
+  const strokeWidth = conn.lineWidth || DEFAULT_WIDTH;
+  return {
+    id: conn.id,
+    points,
+    stroke: color,
+    fill: color,
+    strokeWidth: isSelected ? Math.max(strokeWidth, 4) : strokeWidth,
+    dash: DASH_PATTERNS[conn.lineStyle || "solid"] || null,
+    opacity: isSelected ? 1 : DEFAULT_OPACITY,
+    pointerLength: ARROW_POINTER_LENGTH,
+    pointerWidth: ARROW_POINTER_WIDTH,
+    pointerAtBeginning: !!conn.bidirectional,
+    pointerAtEnding: true,
+    labelConfig: buildLabelConfig(conn, pixelPath),
+    isSelected,
+    listening,
+    hitStrokeWidth: 20,
+  };
+}
+
 /**
  * Composable for computing connection render configs.
  * Handles pin position lookup, waypoint conversion, arrowheads, and label placement.
@@ -149,93 +202,56 @@ export function useConnections({
     return vis;
   });
 
+  function isConnectionVisible(conn: ConnectionData): boolean {
+    const fromPos = pinPositions.value[conn.fromPinId];
+    const toPos = pinPositions.value[conn.toPinId];
+    if (!fromPos || !toPos) return false;
+
+    const fromVis = pinVisible.value[conn.fromPinId] !== false;
+    const toVis = pinVisible.value[conn.toPinId] !== false;
+    return fromVis || toVis;
+  }
+
+  function resolveWaypoints(conn: ConnectionData): Waypoint[] {
+    const override = waypointEditOverride?.value;
+    if (override && override.connectionId === conn.id) return override.waypoints;
+    return conn.waypoints || [];
+  }
+
+  function buildPixelPath(conn: ConnectionData, fromPos: PixelPoint, toPos: PixelPoint): PixelPoint[] {
+    const waypoints = resolveWaypoints(conn);
+    const rawPath: PixelPoint[] = [fromPos];
+    for (const wp of waypoints) {
+      rawPath.push(percentToPixel(wp.x, wp.y));
+    }
+    rawPath.push(toPos);
+
+    const fromRadius = pinRadii.value[conn.fromPinId] || 0;
+    const toRadius = pinRadii.value[conn.toPinId] || 0;
+    return offsetEndpoints(rawPath, fromRadius, toRadius);
+  }
+
+  function flattenPath(pixelPath: PixelPoint[]): number[] {
+    const points: number[] = [];
+    for (const p of pixelPath) {
+      points.push(p.x, p.y);
+    }
+    return points;
+  }
+
   const connectionConfigs = computed<ConnectionConfig[]>(() => {
     const result: ConnectionConfig[] = [];
 
     for (const conn of connections.value) {
+      if (!isConnectionVisible(conn)) continue;
+
       const fromPos = pinPositions.value[conn.fromPinId];
       const toPos = pinPositions.value[conn.toPinId];
-      if (!fromPos || !toPos) {
-        continue;
-      }
-
-      // Hide if both endpoint pins are on hidden layers
-      const fromVis = pinVisible.value[conn.fromPinId] !== false;
-      const toVis = pinVisible.value[conn.toPinId] !== false;
-      if (!fromVis && !toVis) {
-        continue;
-      }
-
-      // Build pixel path: [from, ...waypoints, to] (center-to-center)
-      // Use live-edited waypoints if this connection is being edited
-      const override = waypointEditOverride?.value;
-      const waypoints: Waypoint[] =
-        override && override.connectionId === conn.id ? override.waypoints : conn.waypoints || [];
-
-      const rawPath: PixelPoint[] = [fromPos];
-      for (const wp of waypoints) {
-        rawPath.push(percentToPixel(wp.x, wp.y));
-      }
-      rawPath.push(toPos);
-
-      // Offset endpoints from pin center to circle edge so arrowheads are visible
-      const fromRadius = pinRadii.value[conn.fromPinId] || 0;
-      const toRadius = pinRadii.value[conn.toPinId] || 0;
-      const pixelPath = offsetEndpoints(rawPath, fromRadius, toRadius);
-
-      // Flat points for Konva v-arrow
-      const points: number[] = [];
-      for (const p of pixelPath) {
-        points.push(p.x, p.y);
-      }
-
-      const color = conn.color || DEFAULT_COLOR;
-      const strokeWidth = conn.lineWidth || DEFAULT_WIDTH;
-
-      // Label at path midpoint
-      let labelConfig: LabelConfig | null = null;
-      if (conn.showLabel !== false && conn.label) {
-        const mid = pathMidpointAndAngle(pixelPath);
-        if (mid) {
-          labelConfig = {
-            text: conn.label,
-            x: mid.x,
-            y: mid.y,
-            offsetX: 60,
-            offsetY: 10,
-            rotation: mid.angle,
-            fill: LABEL_COLOR,
-            fontSize: 13,
-            fontStyle: "600",
-            align: "center",
-            width: 120,
-            shadowColor: "black",
-            shadowBlur: 3,
-            shadowOpacity: 0.8,
-            listening: false,
-          };
-        }
-      }
+      const pixelPath = buildPixelPath(conn, fromPos, toPos);
+      const points = flattenPath(pixelPath);
 
       const isSelected = selectedType?.value === "connection" && selectedId?.value === conn.id;
-
-      result.push({
-        id: conn.id,
-        points,
-        stroke: color,
-        fill: color,
-        strokeWidth: isSelected ? Math.max(strokeWidth, 4) : strokeWidth,
-        dash: DASH_PATTERNS[conn.lineStyle || "solid"] || null,
-        opacity: isSelected ? 1 : DEFAULT_OPACITY,
-        pointerLength: ARROW_POINTER_LENGTH,
-        pointerWidth: ARROW_POINTER_WIDTH,
-        pointerAtBeginning: !!conn.bidirectional,
-        pointerAtEnding: true,
-        labelConfig,
-        isSelected,
-        listening: isSelectMode?.value ?? false,
-        hitStrokeWidth: 20,
-      });
+      result.push(buildConnectionConfig(conn, points, pixelPath, isSelected, isSelectMode?.value ?? false));
     }
 
     return result;
