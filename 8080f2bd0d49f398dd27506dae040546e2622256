@@ -1,0 +1,29 @@
+assets/vite.config.mjs
+  dde06b034582d0b2 36-38
+assets/app/components/layout/TreePanel.vue
+  dde06b034582d0b2 3,6-8,11-13
+assets/app/modules/flows/nodes/DialogueNode.vue
+  dde06b034582d0b2 5
+jsconfig.json
+  dde06b034582d0b2 8-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "8080f2bd0d49f398dd27506dae040546e2622256",
+  "prompts": {
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 22,
+      "total_deletions": 23,
+      "accepted_lines": 14,
+      "overriden_lines": 0
+    }
+  }
+}
