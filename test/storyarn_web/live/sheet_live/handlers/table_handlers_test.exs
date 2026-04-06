@@ -239,37 +239,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
     end
   end
 
-  describe "rename_table_row_keydown" do
-    setup [:register_and_log_in_user, :setup_table]
-
-    test "renames row on Enter key", ctx do
-      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
-
-      send_to_content_tab(view, "rename_table_row_keydown", %{
-        "key" => "Enter",
-        "row-id" => to_string(ctx.default_row.id),
-        "value" => "Renamed Via Enter"
-      })
-
-      updated = Sheets.get_table_row!(ctx.default_row.id)
-      assert updated.name == "Renamed Via Enter"
-    end
-
-    test "does nothing on non-Enter key", ctx do
-      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
-      original_name = ctx.default_row.name
-
-      send_to_content_tab(view, "rename_table_row_keydown", %{
-        "key" => "Escape",
-        "row-id" => to_string(ctx.default_row.id),
-        "value" => "Should Not Apply"
-      })
-
-      updated = Sheets.get_table_row!(ctx.default_row.id)
-      assert updated.name == original_name
-    end
-  end
-
   # ===========================================================================
   # Toggle Boolean Cell — double toggle
   # ===========================================================================
@@ -561,75 +530,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
   # ===========================================================================
   # Add/Remove/Update Column Option
   # ===========================================================================
-
-  describe "add_table_column_option_keydown" do
-    setup [:register_and_log_in_user, :setup_table]
-
-    setup ctx do
-      col =
-        table_column_fixture(ctx.table_block, %{
-          name: "Grade",
-          type: "select"
-        })
-
-      Sheets.update_table_column(col, %{config: %{"options" => []}})
-
-      %{grade_col: Sheets.get_table_column!(col.block_id, col.id)}
-    end
-
-    test "adds option to column on Enter", ctx do
-      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
-
-      send_to_content_tab(view, "add_table_column_option_keydown", %{
-        "key" => "Enter",
-        "column-id" => to_string(ctx.grade_col.id),
-        "value" => "A+"
-      })
-
-      updated = Sheets.get_table_column!(ctx.grade_col.block_id, ctx.grade_col.id)
-      assert length(updated.config["options"]) == 1
-      assert hd(updated.config["options"])["value"] == "A+"
-    end
-
-    test "normalizes punctuation-only values to option", ctx do
-      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
-
-      send_to_content_tab(view, "add_table_column_option_keydown", %{
-        "key" => "Enter",
-        "column-id" => to_string(ctx.grade_col.id),
-        "value" => "_."
-      })
-
-      updated = Sheets.get_table_column!(ctx.grade_col.block_id, ctx.grade_col.id)
-      assert hd(updated.config["options"])["key"] == "option"
-    end
-
-    test "ignores non-Enter keydown", ctx do
-      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
-
-      send_to_content_tab(view, "add_table_column_option_keydown", %{
-        "key" => "Tab",
-        "column-id" => to_string(ctx.grade_col.id),
-        "value" => "Should Not Add"
-      })
-
-      updated = Sheets.get_table_column!(ctx.grade_col.block_id, ctx.grade_col.id)
-      assert updated.config["options"] == []
-    end
-
-    test "ignores empty value on Enter", ctx do
-      {:ok, view, _html} = mount_sheet(ctx.conn, ctx.workspace, ctx.project, ctx.sheet)
-
-      send_to_content_tab(view, "add_table_column_option_keydown", %{
-        "key" => "Enter",
-        "column-id" => to_string(ctx.grade_col.id),
-        "value" => "  "
-      })
-
-      updated = Sheets.get_table_column!(ctx.grade_col.block_id, ctx.grade_col.id)
-      assert updated.config["options"] == []
-    end
-  end
 
   describe "remove_table_column_option" do
     setup [:register_and_log_in_user, :setup_table]

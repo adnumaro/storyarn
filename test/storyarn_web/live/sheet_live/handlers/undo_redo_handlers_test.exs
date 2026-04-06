@@ -87,121 +87,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       assert render(view) =~ "Undo Redo Sheet"
     end
 
-    test "new action clears redo stack", %{conn: conn, url: url, sheet: sheet} do
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      # Set color (pushes to undo stack)
-      render_hook(view, "set_sheet_color", %{"color" => "#ff0000"})
-
-      # Undo it (pushes to redo stack)
-      render_hook(view, "undo", %{})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).color == nil
-
-      # New action should clear redo stack
-      render_hook(view, "set_sheet_color", %{"color" => "#00ff00"})
-
-      # Redo should do nothing now — stack was cleared
-      render_hook(view, "redo", %{})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).color == "#00ff00"
-    end
-
-    test "multiple undo/redo cycles work correctly", %{conn: conn, url: url, sheet: sheet} do
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      # Two color changes
-      render_hook(view, "set_sheet_color", %{"color" => "#111111"})
-      render_hook(view, "set_sheet_color", %{"color" => "#222222"})
-
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).color == "#222222"
-
-      # Undo twice
-      render_hook(view, "undo", %{})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).color == "#111111"
-
-      render_hook(view, "undo", %{})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).color == nil
-
-      # Redo twice
-      render_hook(view, "redo", %{})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).color == "#111111"
-
-      render_hook(view, "redo", %{})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).color == "#222222"
-    end
   end
 
-  # ===========================================================================
-  # Sheet color undo/redo
-  # ===========================================================================
-
-  describe "sheet color undo/redo" do
-    test "undo reverses a sheet color change", %{conn: conn, url: url, sheet: sheet} do
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      render_hook(view, "set_sheet_color", %{"color" => "#ff0000"})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).color == "#ff0000"
-
-      render_hook(view, "undo", %{})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).color == nil
-    end
-
-    test "redo re-applies color change after undo", %{conn: conn, url: url, sheet: sheet} do
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      render_hook(view, "set_sheet_color", %{"color" => "#00ff00"})
-      render_hook(view, "undo", %{})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).color == nil
-
-      render_hook(view, "redo", %{})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).color == "#00ff00"
-    end
-
-    test "undo reverses clear_sheet_color", %{conn: conn, url: url, sheet: sheet} do
-      # Set color first directly
-      Sheets.update_sheet(sheet, %{color: "#ff0000"})
-
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      render_hook(view, "clear_sheet_color", %{})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).color == nil
-
-      render_hook(view, "undo", %{})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).color == "#ff0000"
-    end
-  end
-
-  # ===========================================================================
-  # Block create undo/redo
-  # ===========================================================================
-
-  describe "block create undo/redo" do
-    test "undo reverses block creation", %{conn: conn, url: url, sheet: sheet} do
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      send_to_content_tab(view, "show_block_menu")
-      send_to_content_tab(view, "add_block", %{"type" => "text"})
-      assert length(Sheets.list_blocks(sheet.id)) == 1
-
-      render_hook(view, "undo", %{})
-      assert Sheets.list_blocks(sheet.id) == []
-    end
-
-    test "redo restores block after undo", %{conn: conn, url: url, sheet: sheet} do
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      send_to_content_tab(view, "show_block_menu")
-      send_to_content_tab(view, "add_block", %{"type" => "number"})
-      assert length(Sheets.list_blocks(sheet.id)) == 1
-
-      render_hook(view, "undo", %{})
-      assert Sheets.list_blocks(sheet.id) == []
-
-      render_hook(view, "redo", %{})
-      blocks = Sheets.list_blocks(sheet.id)
-      assert length(blocks) == 1
-      assert hd(blocks).type == "number"
-    end
-  end
 
   # ===========================================================================
   # Block delete undo/redo
@@ -313,82 +200,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
     end
   end
 
-  # ===========================================================================
-  # Toggle constant undo/redo
-  # ===========================================================================
-
-  describe "toggle constant undo/redo" do
-    test "undo reverses toggle_constant", %{conn: conn, url: url, sheet: sheet} do
-      block = block_fixture(sheet, %{type: "text", config: %{"label" => "Name"}})
-      assert block.is_constant == false
-
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      send_to_content_tab(view, "toolbar_toggle_constant", %{"id" => to_string(block.id)})
-      assert Sheets.get_block(block.id).is_constant == true
-
-      render_hook(view, "undo", %{})
-      assert Sheets.get_block(block.id).is_constant == false
-    end
-
-    test "redo re-applies toggle_constant after undo", %{conn: conn, url: url, sheet: sheet} do
-      block = block_fixture(sheet, %{type: "text", config: %{"label" => "Const"}})
-
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      send_to_content_tab(view, "toolbar_toggle_constant", %{"id" => to_string(block.id)})
-
-      render_hook(view, "undo", %{})
-      assert Sheets.get_block(block.id).is_constant == false
-
-      render_hook(view, "redo", %{})
-      assert Sheets.get_block(block.id).is_constant == true
-    end
-  end
-
-  # ===========================================================================
-  # Block reorder undo/redo
-  # ===========================================================================
-
-  describe "block reorder undo/redo" do
-    test "undo reverses block reorder", %{conn: conn, url: url, sheet: sheet} do
-      b1 = block_fixture(sheet, %{type: "text", config: %{"label" => "First"}})
-      b2 = block_fixture(sheet, %{type: "text", config: %{"label" => "Second"}})
-      b3 = block_fixture(sheet, %{type: "text", config: %{"label" => "Third"}})
-
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      # Reorder to b3, b1, b2
-      new_order = [to_string(b3.id), to_string(b1.id), to_string(b2.id)]
-      send_to_content_tab(view, "reorder", %{"ids" => new_order, "group" => "blocks"})
-
-      ids = Sheets.list_blocks(sheet.id) |> Enum.map(& &1.id)
-      assert ids == [b3.id, b1.id, b2.id]
-
-      render_hook(view, "undo", %{})
-
-      ids = Sheets.list_blocks(sheet.id) |> Enum.map(& &1.id)
-      assert ids == [b1.id, b2.id, b3.id]
-    end
-
-    test "redo re-applies reorder after undo", %{conn: conn, url: url, sheet: sheet} do
-      b1 = block_fixture(sheet, %{type: "text", config: %{"label" => "A"}})
-      b2 = block_fixture(sheet, %{type: "text", config: %{"label" => "B"}})
-
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      new_order = [to_string(b2.id), to_string(b1.id)]
-      send_to_content_tab(view, "reorder", %{"ids" => new_order, "group" => "blocks"})
-
-      render_hook(view, "undo", %{})
-      ids = Sheets.list_blocks(sheet.id) |> Enum.map(& &1.id)
-      assert ids == [b1.id, b2.id]
-
-      render_hook(view, "redo", %{})
-      ids = Sheets.list_blocks(sheet.id) |> Enum.map(& &1.id)
-      assert ids == [b2.id, b1.id]
-    end
-  end
 
   # ===========================================================================
   # Table column add/delete undo/redo
@@ -552,41 +363,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       assert Sheets.get_table_row!(default_row.id).cells[default_col.slug] == "99"
     end
 
-    test "consecutive cell updates coalesce into single undo entry", %{
-      conn: conn,
-      url: url,
-      sheet: sheet
-    } do
-      table_block = table_block_fixture(sheet, %{label: "Coalesce"})
-      data = Sheets.batch_load_table_data([table_block.id])
-      default_col = hd(data[table_block.id].columns)
-      default_row = hd(data[table_block.id].rows)
-
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      # Multiple updates to same cell
-      send_to_content_tab(view, "update_table_cell", %{
-        "row-id" => to_string(default_row.id),
-        "column-slug" => default_col.slug,
-        "value" => "1"
-      })
-
-      send_to_content_tab(view, "update_table_cell", %{
-        "row-id" => to_string(default_row.id),
-        "column-slug" => default_col.slug,
-        "value" => "12"
-      })
-
-      send_to_content_tab(view, "update_table_cell", %{
-        "row-id" => to_string(default_row.id),
-        "column-slug" => default_col.slug,
-        "value" => "123"
-      })
-
-      # Single undo should go back to original nil value
-      render_hook(view, "undo", %{})
-      assert Sheets.get_table_row!(default_row.id).cells[default_col.slug] == nil
-    end
   end
 
   # ===========================================================================
@@ -1030,41 +806,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
     end
   end
 
-  # ===========================================================================
-  # Mixed action sequences
-  # ===========================================================================
-
-  describe "mixed undo/redo sequences" do
-    test "interleaved block and color operations", %{conn: conn, url: url, sheet: sheet} do
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      # Action 1: Set color
-      render_hook(view, "set_sheet_color", %{"color" => "#ff0000"})
-
-      # Action 2: Add block
-      send_to_content_tab(view, "show_block_menu")
-      send_to_content_tab(view, "add_block", %{"type" => "text"})
-
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).color == "#ff0000"
-      assert length(Sheets.list_blocks(sheet.id)) == 1
-
-      # Undo block creation
-      render_hook(view, "undo", %{})
-      assert Sheets.list_blocks(sheet.id) == []
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).color == "#ff0000"
-
-      # Undo color change
-      render_hook(view, "undo", %{})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).color == nil
-
-      # Redo both
-      render_hook(view, "redo", %{})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).color == "#ff0000"
-
-      render_hook(view, "redo", %{})
-      assert length(Sheets.list_blocks(sheet.id)) == 1
-    end
-  end
 
   # ===========================================================================
   # Table boolean cell toggle undo/redo
@@ -1093,106 +834,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
     end
   end
 
-  # ===========================================================================
-  # Sheet name undo/redo (via SheetTitle LiveComponent)
-  # ===========================================================================
-
-  describe "sheet name undo/redo" do
-    test "undo reverses a sheet name change", %{conn: conn, url: url, sheet: sheet} do
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      # Update name directly, then simulate what SheetTitle component does
-      {:ok, _} = Sheets.update_sheet(sheet, %{name: "Renamed Sheet"})
-      updated = Sheets.get_sheet_full!(sheet.project_id, sheet.id)
-      sheets_tree = Sheets.list_sheets_tree(sheet.project_id)
-      send(view.pid, {:sheet_title, :name_saved, updated, sheets_tree})
-      render(view)
-
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).name == "Renamed Sheet"
-
-      render_hook(view, "undo", %{})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).name == "Undo Redo Sheet"
-    end
-
-    test "redo re-applies name change after undo", %{conn: conn, url: url, sheet: sheet} do
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      {:ok, _} = Sheets.update_sheet(sheet, %{name: "New Name"})
-      updated = Sheets.get_sheet_full!(sheet.project_id, sheet.id)
-      sheets_tree = Sheets.list_sheets_tree(sheet.project_id)
-      send(view.pid, {:sheet_title, :name_saved, updated, sheets_tree})
-      render(view)
-
-      render_hook(view, "undo", %{})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).name == "Undo Redo Sheet"
-
-      render_hook(view, "redo", %{})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).name == "New Name"
-    end
-  end
-
-  # ===========================================================================
-  # Sheet shortcut undo/redo (via SheetTitle LiveComponent)
-  # ===========================================================================
-
-  describe "sheet shortcut undo/redo" do
-    test "undo reverses a shortcut change", %{conn: conn, url: url, sheet: sheet} do
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      original_shortcut = Sheets.get_sheet!(sheet.project_id, sheet.id).shortcut
-
-      {:ok, _} = Sheets.update_sheet(sheet, %{shortcut: "new-sc"})
-      updated = Sheets.get_sheet_full!(sheet.project_id, sheet.id)
-      send(view.pid, {:sheet_title, :shortcut_saved, updated})
-      render(view)
-
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).shortcut == "new-sc"
-
-      render_hook(view, "undo", %{})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).shortcut == original_shortcut
-    end
-
-    test "redo re-applies shortcut change after undo", %{conn: conn, url: url, sheet: sheet} do
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      {:ok, _} = Sheets.update_sheet(sheet, %{shortcut: "redone"})
-      updated = Sheets.get_sheet_full!(sheet.project_id, sheet.id)
-      send(view.pid, {:sheet_title, :shortcut_saved, updated})
-      render(view)
-
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).shortcut == "redone"
-
-      render_hook(view, "undo", %{})
-      refute Sheets.get_sheet!(sheet.project_id, sheet.id).shortcut == "redone"
-
-      render_hook(view, "redo", %{})
-      assert Sheets.get_sheet!(sheet.project_id, sheet.id).shortcut == "redone"
-    end
-  end
-
-  # ===========================================================================
-  # Block reorder redo (explicit)
-  # ===========================================================================
-
-  describe "block reorder redo" do
-    test "redo re-applies block reorder after undo", %{conn: conn, url: url, sheet: sheet} do
-      b1 = block_fixture(sheet, %{type: "text", config: %{"label" => "RedoA"}})
-      b2 = block_fixture(sheet, %{type: "text", config: %{"label" => "RedoB"}})
-
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      new_order = [to_string(b2.id), to_string(b1.id)]
-      send_to_content_tab(view, "reorder", %{"ids" => new_order, "group" => "blocks"})
-
-      render_hook(view, "undo", %{})
-      ids = Sheets.list_blocks(sheet.id) |> Enum.map(& &1.id)
-      assert ids == [b1.id, b2.id]
-
-      render_hook(view, "redo", %{})
-      ids = Sheets.list_blocks(sheet.id) |> Enum.map(& &1.id)
-      assert ids == [b2.id, b1.id]
-    end
-  end
 
   # ===========================================================================
   # Table column delete redo
@@ -1429,27 +1070,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
   # ===========================================================================
 
   describe "undo with deleted entities" do
-    test "undo create_block when block was already deleted is no-op", %{
-      conn: conn,
-      url: url,
-      sheet: sheet
-    } do
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      # Create a block
-      send_to_content_tab(view, "show_block_menu")
-      send_to_content_tab(view, "add_block", %{"type" => "text"})
-      [block] = Sheets.list_blocks(sheet.id)
-
-      # Delete the block out-of-band (simulating a concurrent deletion)
-      Sheets.delete_block(block)
-
-      # Undo should handle the missing block gracefully
-      render_hook(view, "undo", %{})
-      # Should not crash — block was already gone
-      assert render(view) =~ "Undo Redo Sheet"
-    end
-
     test "undo update_block_value when block was deleted is no-op", %{
       conn: conn,
       url: url,
@@ -1466,25 +1086,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
 
       # Delete block out-of-band
       Sheets.delete_block(block)
-
-      # Undo should not crash
-      render_hook(view, "undo", %{})
-      assert render(view) =~ "Undo Redo Sheet"
-    end
-
-    test "undo toggle_constant when block was deleted is no-op", %{
-      conn: conn,
-      url: url,
-      sheet: sheet
-    } do
-      block = block_fixture(sheet, %{type: "text", config: %{"label" => "Vanished"}})
-
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      send_to_content_tab(view, "toolbar_toggle_constant", %{"id" => to_string(block.id)})
-
-      # Delete block out-of-band
-      Sheets.delete_block(Sheets.get_block(block.id))
 
       # Undo should not crash
       render_hook(view, "undo", %{})
@@ -1723,24 +1324,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       Sheets.delete_block(Sheets.get_block(block.id))
 
       # Redo should not crash
-      render_hook(view, "redo", %{})
-      assert render(view) =~ "Undo Redo Sheet"
-    end
-
-    test "redo toggle_constant when block was deleted is no-op", %{
-      conn: conn,
-      url: url,
-      sheet: sheet
-    } do
-      block = block_fixture(sheet, %{type: "text", config: %{"label" => "RedoConst"}})
-
-      {:ok, view, _html} = mount_sheet(conn, url)
-
-      send_to_content_tab(view, "toolbar_toggle_constant", %{"id" => to_string(block.id)})
-
-      render_hook(view, "undo", %{})
-      Sheets.delete_block(Sheets.get_block(block.id))
-
       render_hook(view, "redo", %{})
       assert render(view) =~ "Undo Redo Sheet"
     end

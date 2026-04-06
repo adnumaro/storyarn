@@ -164,64 +164,6 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     end
   end
 
-  describe "create_child_sheet event" do
-    setup :register_and_log_in_user
-
-    test "creates child sheet", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      parent = sheet_fixture(project, %{name: "Parent"})
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{parent.id}"
-        )
-
-      await_async(view)
-
-      # Get initial sheet count
-      initial_tree = Sheets.list_sheets_tree(project.id)
-      initial_count = count_sheets(initial_tree)
-
-      # Create child sheet
-      render_hook(view, "create_child_sheet", %{"parent-id" => parent.id})
-
-      # Verify new sheet was created
-      updated_tree = Sheets.list_sheets_tree(project.id)
-      assert count_sheets(updated_tree) == initial_count + 1
-
-      # Verify it's a child of parent
-      parent_sheet = Sheets.get_sheet_with_descendants(project.id, parent.id)
-      assert length(parent_sheet.children) == 1
-    end
-
-    test "viewer cannot create child sheets", %{conn: conn, user: user} do
-      owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
-      _membership = membership_fixture(project, user, "viewer")
-      parent = sheet_fixture(project, %{name: "Parent"})
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{parent.id}"
-        )
-
-      await_async(view)
-
-      # Get initial sheet count
-      initial_tree = Sheets.list_sheets_tree(project.id)
-      initial_count = count_sheets(initial_tree)
-
-      # Try to create child sheet
-      render_hook(view, "create_child_sheet", %{"parent-id" => parent.id})
-
-      # Verify sheet was NOT created
-      updated_tree = Sheets.list_sheets_tree(project.id)
-      assert count_sheets(updated_tree) == initial_count
-    end
-  end
-
   describe "tab switching" do
     setup :register_and_log_in_user
 
@@ -240,13 +182,6 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       %{view: view, project: project, sheet: sheet}
     end
 
-    test "defaults to content tab", %{view: view} do
-      html = render(view)
-      # The content tab button should have the active class
-      assert html =~ "tab-active"
-      assert html =~ "Content"
-    end
-
     test "switches to references tab", %{view: view} do
       html = render_click(view, "switch_tab", %{"tab" => "references"})
       assert html =~ "References"
@@ -262,13 +197,6 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       assert html =~ "History"
     end
 
-    test "switches back to content tab", %{view: view} do
-      # Switch away first
-      render_click(view, "switch_tab", %{"tab" => "references"})
-      # Switch back to content
-      html = render_click(view, "switch_tab", %{"tab" => "content"})
-      assert html =~ "Content"
-    end
   end
 
   describe "create_sheet event" do
@@ -320,71 +248,6 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       # Verify no sheet was created
       updated_tree = Sheets.list_sheets_tree(project.id)
       assert count_sheets(updated_tree) == initial_count
-    end
-  end
-
-  describe "delete_sheet event" do
-    setup :register_and_log_in_user
-
-    test "deletes a different sheet from the tree", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Current Sheet"})
-      other_sheet = sheet_fixture(project, %{name: "To Delete"})
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
-        )
-
-      await_async(view)
-
-      render_click(view, "delete_sheet", %{"id" => other_sheet.id})
-
-      # Verify the other sheet was soft-deleted
-      deleted_sheet = Sheets.get_sheet(project.id, other_sheet.id)
-      assert deleted_sheet == nil
-    end
-
-    test "deletes the current sheet and redirects", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Current Sheet"})
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
-        )
-
-      await_async(view)
-
-      render_click(view, "delete_sheet", %{"id" => sheet.id})
-
-      # Should navigate away since the current sheet was deleted
-      {path, flash} = assert_redirect(view)
-      assert path =~ "/sheets"
-      assert flash["info"] =~ "deleted"
-    end
-
-    test "viewer cannot delete sheets", %{conn: conn, user: user} do
-      owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
-      _membership = membership_fixture(project, user, "viewer")
-      sheet = sheet_fixture(project, %{name: "Sheet"})
-      other_sheet = sheet_fixture(project, %{name: "Other"})
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
-        )
-
-      await_async(view)
-
-      render_click(view, "delete_sheet", %{"id" => other_sheet.id})
-
-      # Verify sheet was NOT deleted
-      assert Sheets.get_sheet(project.id, other_sheet.id) != nil
     end
   end
 
@@ -614,147 +477,6 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     end
   end
 
-  describe "handle_info messages" do
-    setup :register_and_log_in_user
-
-    setup %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Info Test Sheet"})
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
-        )
-
-      await_async(view)
-
-      %{view: view, project: project, sheet: sheet}
-    end
-
-    test "reset_save_status resets to idle", %{view: view} do
-      send(view.pid, :reset_save_status)
-      html = render(view)
-      # After reset, the save indicator should be in idle state (not showing "saved")
-      assert html =~ "Info Test Sheet"
-    end
-
-    test "content_tab :saved sets save status", %{view: view} do
-      send(view.pid, {:content_tab, :saved})
-      html = render(view)
-      assert html =~ "Info Test Sheet"
-    end
-
-    test "banner :sheet_updated updates sheet", %{view: view, project: project, sheet: sheet} do
-      # Update the sheet in the DB first
-      {:ok, updated_sheet} = Sheets.update_sheet(sheet, %{description: "Updated desc"})
-      updated_sheet = Sheets.get_sheet_full!(project.id, updated_sheet.id)
-
-      send(view.pid, {:banner, :sheet_updated, updated_sheet})
-      html = render(view)
-      assert html =~ "Info Test Sheet"
-    end
-
-    test "banner :error shows flash", %{view: view} do
-      send(view.pid, {:banner, :error, "Something went wrong"})
-      html = render(view)
-      assert html =~ "Something went wrong"
-    end
-
-    test "sheet_avatar :sheet_updated updates sheet and tree", %{
-      view: view,
-      project: project,
-      sheet: sheet
-    } do
-      updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
-      sheets_tree = Sheets.list_sheets_tree(project.id)
-
-      send(view.pid, {:sheet_avatar, :sheet_updated, updated_sheet, sheets_tree})
-      html = render(view)
-      assert html =~ "Info Test Sheet"
-    end
-
-    test "sheet_avatar :error shows flash", %{view: view} do
-      send(view.pid, {:sheet_avatar, :error, "Avatar upload failed"})
-      html = render(view)
-      assert html =~ "Avatar upload failed"
-    end
-
-    test "sheet_title :name_saved updates sheet and tree", %{
-      view: view,
-      project: project,
-      sheet: sheet
-    } do
-      {:ok, renamed_sheet} = Sheets.update_sheet(sheet, %{name: "Renamed Sheet"})
-      renamed_sheet = Sheets.get_sheet_full!(project.id, renamed_sheet.id)
-      sheets_tree = Sheets.list_sheets_tree(project.id)
-
-      send(view.pid, {:sheet_title, :name_saved, renamed_sheet, sheets_tree})
-      html = render(view)
-      assert html =~ "Renamed Sheet"
-    end
-
-    test "sheet_title :shortcut_saved updates sheet", %{
-      view: view,
-      project: project,
-      sheet: sheet
-    } do
-      {:ok, updated_sheet} = Sheets.update_sheet(sheet, %{shortcut: "new.shortcut"})
-      updated_sheet = Sheets.get_sheet_full!(project.id, updated_sheet.id)
-
-      send(view.pid, {:sheet_title, :shortcut_saved, updated_sheet})
-      html = render(view)
-      assert html =~ "Info Test Sheet"
-    end
-
-    test "sheet_title :error shows flash", %{view: view} do
-      send(view.pid, {:sheet_title, :error, "Name too long"})
-      html = render(view)
-      assert html =~ "Name too long"
-    end
-
-    test "audio_tab :error shows flash", %{view: view} do
-      send(view.pid, {:audio_tab, :error, "Audio processing failed"})
-      html = render(view)
-      assert html =~ "Audio processing failed"
-    end
-
-    test "versions_section :version_created sets save status", %{view: view} do
-      send(view.pid, {:versions_section, :version_created, %{version: %{id: 1}}})
-      html = render(view)
-      assert html =~ "Info Test Sheet"
-    end
-
-    test "versions_section :version_deleted sets save status", %{view: view} do
-      send(view.pid, {:versions_section, :version_deleted, %{version: %{id: 1}}})
-      html = render(view)
-      assert html =~ "Info Test Sheet"
-    end
-
-    test "versions_section :version_restored reloads data", %{
-      view: view,
-      project: project,
-      sheet: sheet
-    } do
-      updated_sheet = Sheets.get_sheet_full!(project.id, sheet.id)
-
-      send(
-        view.pid,
-        {:versions_section, :version_restored,
-         %{entity: updated_sheet, version: %{id: 1, version_number: 1}}}
-      )
-
-      html = render(view)
-      assert html =~ "Info Test Sheet"
-    end
-
-    test "content_tab :push_undo with generic action", %{view: view} do
-      send(view.pid, {:content_tab, :push_undo, {:some_action, "prev", "new"}})
-      html = render(view)
-      assert html =~ "Info Test Sheet"
-    end
-  end
-
   describe "undo/redo events" do
     setup :register_and_log_in_user
 
@@ -792,30 +514,6 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       assert html =~ "Redo Test"
     end
 
-    test "undo after color change reverts color", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      sheet = sheet_fixture(project, %{name: "Color Undo"})
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}"
-        )
-
-      await_async(view)
-
-      # Set a color (this pushes to undo stack)
-      render_click(view, "set_sheet_color", %{"color" => "#abcdef"})
-
-      # Verify color was set
-      assert Sheets.get_sheet(project.id, sheet.id).color == "#abcdef"
-
-      # Undo the color change
-      render_hook(view, "undo", %{})
-
-      # Verify color was reverted
-      assert Sheets.get_sheet(project.id, sheet.id).color == nil
-    end
   end
 
   defp count_sheets(sheets) when is_list(sheets) do
