@@ -1,7 +1,7 @@
 <script setup>
 import { reactiveOmit } from "@vueuse/core";
 import { ScrollAreaScrollbar, ScrollAreaThumb } from "reka-ui";
-import { cn } from "@lib/utils";
+import { cn } from "@utils/utils";
 
 const props = defineProps({
   orientation: { type: String, required: false, default: "vertical" },

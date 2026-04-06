@@ -4,7 +4,7 @@
  */
 
 import { Plus, Ungroup } from "lucide-vue-next";
-import { generateId } from "@lib/variables.js";
+import { generateId } from "@modules/shared/variables.js";
 import ConditionBlock from "./ConditionBlock.vue";
 import LogicToggle from "./LogicToggle.vue";
 

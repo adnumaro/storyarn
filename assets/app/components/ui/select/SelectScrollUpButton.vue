@@ -2,7 +2,7 @@
 import { reactiveOmit } from "@vueuse/core";
 import { ChevronUp } from "lucide-vue-next";
 import { SelectScrollUpButton, useForwardProps } from "reka-ui";
-import { cn } from "@lib/utils";
+import { cn } from "@utils/utils";
 
 const props = defineProps({
   asChild: { type: Boolean, required: false },

@@ -27,7 +27,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Members do
       <:subtitle>{dgettext("projects", "Manage project members and invitations")}</:subtitle>
 
       <.vue
-        v-component="pages/workspaces/projects/settings/members"
+        v-component="modules/project-settings/Members"
         v-socket={@socket}
         id="project-settings-members"
         members={serialize_members(@members)}

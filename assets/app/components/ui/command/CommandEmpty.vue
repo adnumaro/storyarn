@@ -2,7 +2,7 @@
 import { reactiveOmit } from "@vueuse/core";
 import { Primitive } from "reka-ui";
 import { computed } from "vue";
-import { cn } from "@lib/utils";
+import { cn } from "@utils/utils";
 import { useCommand } from ".";
 
 const props = defineProps({

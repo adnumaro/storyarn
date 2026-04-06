@@ -27,7 +27,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
       <:subtitle>{dgettext("projects", "Translation provider configuration")}</:subtitle>
 
       <.vue
-        v-component="pages/workspaces/projects/settings/localization"
+        v-component="modules/project-settings/Localization"
         v-socket={@socket}
         id="project-settings-localization"
         provider-api-endpoint={provider_endpoint(@provider_form)}

@@ -1,7 +1,7 @@
 <script setup>
 import { reactiveOmit } from "@vueuse/core";
 import { Toggle, useForwardPropsEmits } from "reka-ui";
-import { cn } from "@lib/utils";
+import { cn } from "@utils/utils";
 import { toggleVariants } from ".";
 
 const props = defineProps({

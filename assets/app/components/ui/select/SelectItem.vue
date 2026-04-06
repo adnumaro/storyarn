@@ -2,7 +2,7 @@
 import { reactiveOmit } from "@vueuse/core";
 import { Check } from "lucide-vue-next";
 import { SelectItem, SelectItemIndicator, SelectItemText, useForwardProps } from "reka-ui";
-import { cn } from "@lib/utils";
+import { cn } from "@utils/utils";
 
 const props = defineProps({
   value: { type: null, required: true },

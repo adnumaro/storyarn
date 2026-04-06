@@ -54,7 +54,7 @@ defmodule StoryarnWeb.SettingsLive.Profile do
       current_path={@current_path}
     >
       <.vue
-        v-component="pages/settings/Profile"
+        v-component="modules/settings/Profile"
         v-socket={@socket}
         id="settings-profile-vue"
         profile-form={@profile_form}

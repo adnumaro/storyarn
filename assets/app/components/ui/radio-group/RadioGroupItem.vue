@@ -2,7 +2,7 @@
 import { reactiveOmit } from "@vueuse/core";
 import { CircleIcon } from "lucide-vue-next";
 import { RadioGroupIndicator, RadioGroupItem, useForwardProps } from "reka-ui";
-import { cn } from "@lib/utils";
+import { cn } from "@utils/utils";
 
 const props = defineProps({
   id: { type: String, required: false },

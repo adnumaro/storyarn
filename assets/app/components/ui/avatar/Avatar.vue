@@ -1,6 +1,6 @@
 <script setup>
 import { AvatarRoot } from "reka-ui";
-import { cn } from "@lib/utils";
+import { cn } from "@utils/utils";
 
 const props = defineProps({
   class: {

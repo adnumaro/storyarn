@@ -1,7 +1,7 @@
 <script setup>
 import { ProgressIndicator, ProgressRoot } from "reka-ui";
 import { computed } from "vue";
-import { cn } from "@lib/utils";
+import { cn } from "@utils/utils";
 
 const props = defineProps({
   modelValue: { type: Number, default: 0 },

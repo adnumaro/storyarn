@@ -87,7 +87,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         <%!-- TODO: DraftComponents hidden until draft feature is complete --%>
         <.vue
           :if={@flow}
-          v-component="pages/workspaces/projects/flows/components/FlowHeader"
+          v-component="modules/flows/components/FlowHeader"
           v-socket={@socket}
           id="flow-header"
           flow-name={@flow.name}
@@ -118,7 +118,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           <div class="flex-1 relative">
             <%!-- Vue canvas --%>
             <.vue
-              v-component="pages/workspaces/projects/flows/components/FlowEditor"
+              v-component="modules/flows/components/FlowEditor"
               v-socket={@socket}
               id={"flow-editor-#{@flow && @flow.id || "new"}"}
               class="w-full h-full"
@@ -140,7 +140,7 @@ defmodule StoryarnWeb.FlowLive.Show do
             <%!-- Bottom dock (Vue) --%>
             <.vue
               :if={@flow}
-              v-component="pages/workspaces/projects/flows/components/FlowDock"
+              v-component="modules/flows/components/FlowDock"
               v-socket={@socket}
               id="flow-dock"
               can-edit={@can_edit}
@@ -153,7 +153,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
             <%!-- Version History Panel (Vue) --%>
             <.vue
-              v-component="pages/workspaces/projects/flows/components/FlowVersionHistoryPanel"
+              v-component="modules/flows/components/FlowVersionHistoryPanel"
               v-socket={@socket}
               id="flow-versions-panel"
               open={@versions_panel_open}
@@ -170,7 +170,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
           <%!-- Debug Panel (Vue) --%>
           <.vue
-            v-component="pages/workspaces/projects/flows/components/FlowDebugPanel"
+            v-component="modules/flows/components/FlowDebugPanel"
             v-socket={@socket}
             id="flow-debug-panel"
             open={@debug_panel_open && @debug_state != nil}
@@ -201,7 +201,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
       <%!-- Builder Sidebar (Vue) --%>
       <.vue
-        v-component="pages/workspaces/projects/flows/components/FlowBuilderPanel"
+        v-component="modules/flows/components/FlowBuilderPanel"
         v-socket={@socket}
         id="flow-builder-panel"
         open={@editing_mode == :builder && @selected_node != nil}
@@ -216,7 +216,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
       <%!-- Screenplay Editor sidebar (Vue) --%>
       <.vue
-        v-component="pages/workspaces/projects/flows/components/FlowScreenplayEditor"
+        v-component="modules/flows/components/FlowScreenplayEditor"
         v-socket={@socket}
         id="flow-screenplay-editor"
         open={@editing_mode in [:screenplay, :editor] && @selected_node != nil}
@@ -234,7 +234,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     <Layouts.compare flash={@flash}>
       <div class="h-full relative">
         <.vue
-          v-component="pages/workspaces/projects/flows/components/FlowEditor"
+          v-component="modules/flows/components/FlowEditor"
           v-socket={@socket}
           id={"flow-editor-compact-#{@flow.id}"}
           class="w-full h-full"

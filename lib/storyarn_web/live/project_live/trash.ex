@@ -20,7 +20,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
       has_tree={false}
     >
       <.vue
-        v-component="pages/workspaces/projects/settings/trash"
+        v-component="modules/project-settings/Trash"
         v-socket={@socket}
         id="project-trash-vue"
         trashed-sheets={serialize_trashed_sheets(@trashed_sheets)}

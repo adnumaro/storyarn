@@ -7,8 +7,8 @@
 
 import { X } from "lucide-vue-next";
 import { computed } from "vue";
-import { NO_VALUE_OPERATORS, OPERATOR_LABELS, operatorsForType } from "@lib/condition-operators.js";
-import { findVariable, groupVariablesBySheet } from "@lib/variables.js";
+import { NO_VALUE_OPERATORS, OPERATOR_LABELS, operatorsForType } from "@modules/shared/operators/condition-operators.js";
+import { findVariable, groupVariablesBySheet } from "@modules/shared/variables.js";
 import VariableCombobox from "../../VariableCombobox.vue";
 
 const { rule, variables, disabled } = defineProps({

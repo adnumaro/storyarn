@@ -25,7 +25,7 @@ defmodule StoryarnWeb.LandingLive.Index do
     ~H"""
     <Layouts.public flash={@flash} current_scope={@current_scope} theme="dark">
       <.vue
-        v-component="pages/landing/index"
+        v-component="modules/landing/LandingPage"
         v-socket={@socket}
         id="landing-page"
         is-logged-in={!!@current_scope && !!@current_scope.user}

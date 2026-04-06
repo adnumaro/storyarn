@@ -2,7 +2,7 @@
 import { reactiveOmit } from "@vueuse/core";
 import { ToggleGroupRoot, useForwardPropsEmits } from "reka-ui";
 import { provide } from "vue";
-import { cn } from "@lib/utils";
+import { cn } from "@utils/utils";
 
 const props = defineProps({
   rovingFocus: { type: Boolean, required: false },

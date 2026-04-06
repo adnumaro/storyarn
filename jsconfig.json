@@ -5,8 +5,9 @@
       "@/*": ["./*"],
       "@app/*": ["./app/*"],
       "@components/*": ["./app/components/*"],
-      "@lib/*": ["./app/lib/*"],
-      "@pages/*": ["./app/pages/*"],
+      "@utils/*": ["./app/utils/*"],
+      "@modules/*": ["./app/modules/*"],
+      "@plugins/*": ["./app/plugins/*"],
       "@composables/*": ["./app/composables/*"]
     }
   }

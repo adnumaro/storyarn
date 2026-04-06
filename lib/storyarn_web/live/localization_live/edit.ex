@@ -23,7 +23,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
       can_edit={@can_edit}
     >
       <.vue
-        v-component="pages/workspaces/projects/localization/components/LocalizationEdit"
+        v-component="modules/localization/components/LocalizationEdit"
         v-socket={@socket}
         id="localization-edit-vue"
         text={serialize_text(@text)}

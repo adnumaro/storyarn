@@ -41,7 +41,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     ~H"""
     <div id="exploration-root" class="w-full h-screen" phx-window-keydown="handle_keydown">
       <.vue
-        v-component="pages/workspaces/projects/scenes/exploration/ExplorationPlayer"
+        v-component="modules/scenes/exploration/ExplorationPlayer"
         v-socket={@socket}
         id="exploration-player"
         class="w-full h-full"

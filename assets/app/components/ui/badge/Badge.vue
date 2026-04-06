@@ -1,7 +1,7 @@
 <script setup>
 import { reactiveOmit } from "@vueuse/core";
 import { Primitive } from "reka-ui";
-import { cn } from "@lib/utils";
+import { cn } from "@utils/utils";
 import { badgeVariants } from ".";
 
 const props = defineProps({

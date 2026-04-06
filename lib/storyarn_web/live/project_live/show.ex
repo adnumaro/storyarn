@@ -33,7 +33,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
       restoration_banner={@restoration_banner}
     >
       <.vue
-        v-component="pages/workspaces/projects/index"
+        v-component="modules/workspaces/projects/ProjectDashboard"
         v-socket={@socket}
         id="project-dashboard"
         stats={@stats}

@@ -26,7 +26,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       <:subtitle>{gettext("Export your project data or import from a file.")}</:subtitle>
 
       <.vue
-        v-component="pages/workspaces/projects/settings/export-import"
+        v-component="modules/project-settings/ExportImport"
         v-socket={@socket}
         id="export-import-vue"
         export-config={

@@ -11,7 +11,7 @@ defmodule StoryarnWeb.ProjectLive.Form do
     ~H"""
     <div>
       <.vue
-        v-component="pages/workspaces/projects/new"
+        v-component="modules/workspaces/projects/New"
         v-socket={@socket}
         id="project-form-vue"
         form={@form}

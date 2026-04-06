@@ -1,19 +1,16 @@
 <script setup>
 import { LayoutDashboard, Pin, X } from "lucide-vue-next";
-import { computed, defineAsyncComponent, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useLive } from "@composables/useLive";
 import Sidebar from "./Sidebar.vue";
+import SheetTree from "@modules/sheets/components/tree/SheetTree.vue";
+import FlowTree from "@modules/flows/components/FlowTree.vue";
+import SceneTreePanel from "@modules/scenes/components/SceneTreePanel.vue";
 
 const treeComponents = {
-  sheets: defineAsyncComponent(
-    () => import("@pages/workspaces/projects/sheets/components/tree/SheetTree.vue"),
-  ),
-  flows: defineAsyncComponent(
-    () => import("@pages/workspaces/projects/flows/components/FlowTree.vue"),
-  ),
-  scenes: defineAsyncComponent(
-    () => import("@pages/workspaces/projects/scenes/components/SceneTreePanel.vue"),
-  ),
+  sheets: SheetTree,
+  flows: FlowTree,
+  scenes: SceneTreePanel,
 };
 
 const {

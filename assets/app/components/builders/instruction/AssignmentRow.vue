@@ -15,8 +15,8 @@ import {
   OPERATOR_VERBS,
   operatorsForType,
   typesForOperator,
-} from "@lib/instruction-operators.js";
-import { findVariable, groupVariablesBySheet } from "@lib/variables.js";
+} from "@modules/shared/operators/instruction-operators.js";
+import { findVariable, groupVariablesBySheet } from "@modules/shared/variables.js";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover/index.js";
 import VariableCombobox from "../../VariableCombobox.vue";
 

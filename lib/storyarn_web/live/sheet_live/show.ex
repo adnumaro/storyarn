@@ -159,7 +159,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       class="max-w-4xl mx-auto bg-surface border border-border rounded-2xl p-6 mb-8 shadow-sm"
     >
       <.vue
-        v-component="pages/workspaces/projects/sheets/components/SheetHeader"
+        v-component="modules/sheets/components/SheetHeader"
         v-socket={@socket}
         id="sheet-header"
         sheet={prepare_sheet_for_vue(@sheet)}
@@ -169,7 +169,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       />
       <div class="px-4 pb-6">
         <.vue
-          v-component="pages/workspaces/projects/sheets/components/tabs/SheetTabs"
+          v-component="modules/sheets/components/tabs/SheetTabs"
           v-socket={@socket}
           id="sheet-tabs"
           current-tab={@current_tab}
@@ -178,7 +178,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         />
         <.vue
           :if={@current_tab == "content"}
-          v-component="pages/workspaces/projects/sheets/components/BlockList"
+          v-component="modules/sheets/components/BlockList"
           v-socket={@socket}
           id="block-list"
           blocks={
@@ -213,7 +213,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         />
         <.vue
           :if={@current_tab == "references"}
-          v-component="pages/workspaces/projects/sheets/components/tabs/ReferencesTab"
+          v-component="modules/sheets/components/tabs/ReferencesTab"
           v-socket={@socket}
           id="references-tab"
           variable-usage={@references_data[:variable_usage] || []}
@@ -225,7 +225,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         />
         <.vue
           :if={@current_tab == "audio"}
-          v-component="pages/workspaces/projects/sheets/components/tabs/AudioTab"
+          v-component="modules/sheets/components/tabs/AudioTab"
           v-socket={@socket}
           id="audio-tab"
           grouped-lines={@audio_data[:grouped_lines] || []}
@@ -236,13 +236,13 @@ defmodule StoryarnWeb.SheetLive.Show do
           loading={is_nil(@audio_data)}
         />
         <.vue
-          v-component="pages/workspaces/projects/sheets/components/CollabToast"
+          v-component="modules/sheets/components/CollabToast"
           v-socket={@socket}
           id="collab-toast"
         />
         <.vue
           :if={@current_tab == "history" && !@compact}
-          v-component="pages/workspaces/projects/sheets/components/tabs/HistoryTab"
+          v-component="modules/sheets/components/tabs/HistoryTab"
           v-socket={@socket}
           id="history-tab"
           versions={@history_data[:versions] || []}

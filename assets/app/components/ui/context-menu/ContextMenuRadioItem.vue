@@ -2,7 +2,7 @@
 import { reactiveOmit } from "@vueuse/core";
 import { Circle } from "lucide-vue-next";
 import { ContextMenuItemIndicator, ContextMenuRadioItem, useForwardPropsEmits } from "reka-ui";
-import { cn } from "@lib/utils";
+import { cn } from "@utils/utils";
 
 const props = defineProps({
   value: { type: null, required: true },
