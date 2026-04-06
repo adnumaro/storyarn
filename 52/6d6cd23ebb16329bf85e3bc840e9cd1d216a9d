@@ -1,0 +1,31 @@
+assets/app/modules/shared/operators/instruction-operators.ts
+  dde06b034582d0b2 5,7-12,112-115,117,119,121-127,153-159,161
+assets/app/modules/flows/services/lod.ts
+  dde06b034582d0b2 28-29,31
+assets/app/modules/shared/operators/condition-operators.ts
+  dde06b034582d0b2 83-86,88
+assets/app/composables/useLive.ts
+  dde06b034582d0b2 13-15,17,30-32,34,51-53,55
+assets/app/modules/flows/services/navigation.ts
+  dde06b034582d0b2 59-60,62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "526d6cd23ebb16329bf85e3bc840e9cd1d216a9d",
+  "prompts": {
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 434,
+      "overriden_lines": 10
+    }
+  }
+}
