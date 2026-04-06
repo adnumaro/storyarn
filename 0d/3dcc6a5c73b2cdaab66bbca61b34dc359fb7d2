@@ -1,0 +1,200 @@
+assets/app/modules/scenes/components/layers/WaypointEditorLayer.vue
+  1464e78edb32af56 55,70,72
+assets/app/components/form-fields/SelectField.vue
+  1464e78edb32af56 44-46,48
+assets/app/modules/scenes/components/ElementPropertiesPanel.vue
+  1464e78edb32af56 62
+assets/app/modules/scenes/components/SearchPanel.vue
+  1464e78edb32af56 53
+assets/app/components/ui/popover/PopoverAnchor.vue
+  1464e78edb32af56 6
+assets/app/components/ui/dropdown-menu/DropdownMenuContent.vue
+  1464e78edb32af56 31
+assets/app/components/ui/context-menu/ContextMenuContent.vue
+  1464e78edb32af56 26
+assets/app/modules/flows/components/FlowForm.vue
+  1464e78edb32af56 41,54
+assets/app/modules/project-settings/ImportPanel.vue
+  1464e78edb32af56 72,193,248
+assets/app/modules/project-settings/ExportPanel.vue
+  1464e78edb32af56 99
+assets/app/components/AssetIndex.vue
+  1464e78edb32af56 103,107-110,113,134,138,142,149,155,161,171,175
+assets/app/components/ui/select/SelectContent.vue
+  1464e78edb32af56 39
+assets/app/modules/settings/Security.vue
+  1464e78edb32af56 110,126
+assets/app/modules/scenes/components/SceneFloatingToolbar.vue
+  1464e78edb32af56 71
+assets/app/modules/localization/components/LocalizationReport.vue
+  1464e78edb32af56 179
+assets/app/components/collab/CollabToast.vue
+  1464e78edb32af56 9-14,16-17,20-22,29-31,33
+assets/app/components/version-history/RestorePreviewDialog.vue
+  1464e78edb32af56 40,48,52-53,119
+assets/app/modules/landing/sections/hero/HeroSection.vue
+  1464e78edb32af56 42-43,199-200,272
+assets/app/modules/settings/Profile.vue
+  1464e78edb32af56 75,87,122
+assets/app/components/ui/progress/Progress.vue
+  1464e78edb32af56 14-17
+assets/app/modules/sheets/components/blocks/MultiSelectBlock.vue
+  1464e78edb32af56 90
+assets/app/components/ui/select/SelectTrigger.vue
+  1464e78edb32af56 10
+assets/app/components/ui/tooltip/TooltipTrigger.vue
+  1464e78edb32af56 6
+assets/app/modules/scenes/exploration/SpeechBubble.vue
+  1464e78edb32af56 2,55
+assets/app/modules/scenes/exploration/composables/useMovement.ts
+  1464e78edb32af56 1-9,19-26,38,42-44,51-52,55,57,94,110-111,116,133,188,216,224-226,243-245,251,292,329-338,340-341
+assets/app/modules/flows/components/toolbar-sections/SlugLineToolbar.vue
+  1464e78edb32af56 108,115,122
+assets/app/components/toolbar/ToolbarColorPicker.vue
+  1464e78edb32af56 16,21-22
+assets/app/modules/project-settings/VersionControl.vue
+  1464e78edb32af56 90,111,115,119
+assets/app/modules/scenes/properties/ZoneProperties.vue
+  1464e78edb32af56 89,112-113
+assets/app/modules/sheets/components/SheetAvatarSection.vue
+  1464e78edb32af56 85
+assets/app/modules/sheets/components/tabs/AudioTab.vue
+  1464e78edb32af56 232
+assets/app/modules/sheets/components/blocks/FormulaPanel.vue
+  1464e78edb32af56 144
+assets/app/modules/sheets/components/AvatarGallery.vue
+  1464e78edb32af56 223,243
+assets/app/modules/scenes/exploration/FlowOverlay.vue
+  1464e78edb32af56 45,94,108
+assets/app/modules/scenes/exploration/types.ts
+  1464e78edb32af56 1-33
+assets/app/modules/scenes/exploration/ExplorationCanvas.vue
+  1464e78edb32af56 41,415
+assets/app/modules/sheets/components/blocks/DateBlock.vue
+  1464e78edb32af56 86
+assets/app/modules/landing/sections/discovery/MonitorScene.vue
+  1464e78edb32af56 89
+assets/app/components/toolbar/ToolbarSizePicker.vue
+  1464e78edb32af56 21
+assets/app/modules/sheets/components/blocks/galleryBlock/GalleryBlockContent.vue
+  1464e78edb32af56 191,207
+assets/app/modules/flows/components/FlowTree.vue
+  1464e78edb32af56 209-213,224,238,241-242
+assets/app/modules/workspaces/projects/ProjectDashboard.vue
+  1464e78edb32af56 123,141
+assets/app/components/layout/TreePanel.vue
+  1464e78edb32af56 52,56,59,98
+assets/app/modules/scenes/exploration/SubtitleBar.vue
+  1464e78edb32af56 11
+assets/app/components/ui/popover/PopoverContent.vue
+  1464e78edb32af56 30
+assets/app/modules/sheets/components/tree/SheetTree.vue
+  1464e78edb32af56 276,290
+assets/app/modules/auth/SignUp.vue
+  1464e78edb32af56 31,74,102
+assets/app/modules/workspaces/New.vue
+  1464e78edb32af56 41,54
+assets/app/plugins/tiptap/VariableList.vue
+  1464e78edb32af56 38,43
+assets/app/plugins/tiptap/MentionList.vue
+  1464e78edb32af56 26,31
+assets/app/modules/scenes/components/SceneTreeNode.vue
+  1464e78edb32af56 125,129,241
+assets/app/modules/scenes/components/SceneTree.vue
+  1464e78edb32af56 212
+assets/app/modules/flows/components/toolbar-sections/JumpToolbar.vue
+  1464e78edb32af56 52
+assets/app/modules/scenes/composables/useCanvasCreation.ts
+  1464e78edb32af56 49-50
+assets/app/modules/flows/components/FlowScreenplayEditor.vue
+  1464e78edb32af56 83
+assets/app/modules/sheets/components/blocks/SelectBlock.vue
+  1464e78edb32af56 55,97
+assets/app/components/layout/Sidebar.vue
+  1464e78edb32af56 34-35,76,84,102,107,112,126,129
+assets/app/modules/scenes/components/layers/AnnotationLayer.vue
+  1464e78edb32af56 27-31
+assets/app/modules/sheets/components/blocks/table/TableGrid.vue
+  1464e78edb32af56 168,226-227
+assets/app/components/ColorPicker.vue
+  1464e78edb32af56 38
+assets/app/modules/sheets/components/blocks/NumberBlock.vue
+  1464e78edb32af56 94,113,132,152
+assets/app/modules/scenes/composables/useSelection.ts
+  1464e78edb32af56 86-88
+assets/app/components/form-fields/ButtonGroupField.vue
+  1464e78edb32af56 49
+assets/app/modules/scenes/settings/AmbientFlowRow.vue
+  1464e78edb32af56 50-51
+assets/app/modules/scenes/components/layers/VertexEditorLayer.vue
+  1464e78edb32af56 55,70,72
+assets/app/components/ui/command/Command.vue
+  1464e78edb32af56 74
+assets/app/components/version-history/VersionHistory.vue
+  1464e78edb32af56 51,58,196,199,202,205,208,211,220,345,348,351,354,357,360,369
+assets/app/modules/scenes/components/SceneCanvas.vue
+  1464e78edb32af56 425,428
+tsconfig.json
+  dde06b034582d0b2 6
+assets/app/components/VariableCombobox.vue
+  1464e78edb32af56 78,83-84,87-88,92
+assets/app/components/ui/context-menu/ContextMenuSubContent.vue
+  1464e78edb32af56 25
+assets/app/modules/sheets/components/blocks/table/TextBlock.vue
+  1464e78edb32af56 87
+assets/app/modules/sheets/components/sortable/SortableBlockList.vue
+  1464e78edb32af56 73-77,80-91
+assets/app/modules/scenes/components/layers/ZoneConnectionLayer.vue
+  1464e78edb32af56 20-35,44-46,103-104
+assets/app/components/form-fields/EntityCombobox.vue
+  1464e78edb32af56 54
+assets/app/modules/flows/components/FlowTreeNode.vue
+  1464e78edb32af56 121
+assets/app/components/ColorPickerPopover.vue
+  1464e78edb32af56 32-35,37-38,46,52,93
+assets/app/components/EditableText.vue
+  1464e78edb32af56 26,52
+assets/app/modules/sheets/components/tree/SheetTreeNode.vue
+  1464e78edb32af56 120
+assets/app/components/ui/dropdown-menu/DropdownMenuSubContent.vue
+  1464e78edb32af56 25
+assets/app/modules/landing/sections/hero/PortalRing.vue
+  1464e78edb32af56 58
+assets/app/modules/scenes/components/layers/PinLayer.vue
+  1464e78edb32af56 39-42
+assets/app/modules/settings/Connections.vue
+  1464e78edb32af56 147-148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "0d3dcc6a5c73b2cdaab66bbca61b34dc359fb7d2",
+  "prompts": {
+    "1464e78edb32af56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32241278-aef1-44b1-af40-f90f76d11498",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 348,
+      "total_deletions": 256,
+      "accepted_lines": 343,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 252,
+      "overriden_lines": 0
+    }
+  }
+}
