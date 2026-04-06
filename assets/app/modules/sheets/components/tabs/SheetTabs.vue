@@ -1,18 +1,19 @@
-<script setup>
+<script setup lang="ts">
 import { Headphones, History, LayoutList, Link } from "lucide-vue-next";
 import { computed } from "vue";
 import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
 import { useLive } from "@composables/useLive";
+import type { TabDefinition } from "../../types";
 
-const { currentTab, canEdit, compact } = defineProps({
-  currentTab: { type: String, default: "content" },
-  canEdit: { type: Boolean, default: false },
-  compact: { type: Boolean, default: false },
-});
+const { currentTab = "content", canEdit = false, compact = false } = defineProps<{
+  currentTab?: string;
+  canEdit?: boolean;
+  compact?: boolean;
+}>();
 
 const live = useLive();
 
-const allTabs = [
+const allTabs: TabDefinition[] = [
   { value: "content", label: "Content", icon: LayoutList },
   { value: "references", label: "References", icon: Link },
   { value: "audio", label: "Audio", icon: Headphones },
@@ -21,7 +22,7 @@ const allTabs = [
 
 const tabs = computed(() => (compact ? allTabs.filter((t) => t.value !== "history") : allTabs));
 
-function onTabChange(value) {
+function onTabChange(value: string | number): void {
   if (value !== currentTab) {
     live.pushEvent("switch_tab", { tab: value });
   }

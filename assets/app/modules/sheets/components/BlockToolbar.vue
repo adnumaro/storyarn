@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * Generic floating block toolbar — pure UI, no business logic.
  * Each block type composes this and passes its own config slot content.
@@ -12,26 +12,31 @@ import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
 const configOpen = ref(false);
 
 const {
-  isConstant,
-  isVariable,
-  variableName,
-  scope,
-  required,
-  showConstant,
-  showScope,
-  showConfig,
-} = defineProps({
-  isConstant: { type: Boolean, default: false },
-  isVariable: { type: Boolean, default: false },
-  variableName: { type: String, default: "" },
-  scope: { type: String, default: "self" },
-  required: { type: Boolean, default: false },
-  showConstant: { type: Boolean, default: true },
-  showScope: { type: Boolean, default: true },
-  showConfig: { type: Boolean, default: true },
-});
+  isConstant = false,
+  isVariable = false,
+  variableName = "",
+  scope = "self",
+  required = false,
+  showConstant = true,
+  showScope = true,
+  showConfig = true,
+} = defineProps<{
+  isConstant?: boolean;
+  isVariable?: boolean;
+  variableName?: string;
+  scope?: string;
+  required?: boolean;
+  showConstant?: boolean;
+  showScope?: boolean;
+  showConfig?: boolean;
+}>();
 
-const emit = defineEmits(["toggleConstant", "updateVariableName", "changeScope", "toggleRequired"]);
+const emit = defineEmits<{
+  toggleConstant: [];
+  updateVariableName: [value: string];
+  changeScope: [value: string];
+  toggleRequired: [];
+}>();
 </script>
 
 <template>
@@ -66,10 +71,10 @@ const emit = defineEmits(["toggleConstant", "updateVariableName", "changeScope",
           :value="variableName"
           class="font-mono text-[11px] bg-transparent outline-none border-none px-0 pr-1 text-muted-foreground min-w-[4ch] max-w-[16ch]"
           style="field-sizing: content"
-          @blur="(e) => emit('updateVariableName', e.target.value)"
+          @blur="(e) => emit('updateVariableName', (e.target as HTMLInputElement).value)"
           @keydown.enter.prevent="
             (e) => {
-              e.target.blur();
+              (e.target as HTMLInputElement).blur();
             }
           "
         />
@@ -77,7 +82,7 @@ const emit = defineEmits(["toggleConstant", "updateVariableName", "changeScope",
 
       <!-- Scope tabs -->
       <div v-if="showScope" class="flex items-center gap-1 pl-1 border-l border-border ml-0.5">
-        <Tabs :model-value="scope" @update:model-value="(v) => emit('changeScope', v)">
+        <Tabs :model-value="scope" @update:model-value="(v) => emit('changeScope', v as string)">
           <TabsList class="h-6 p-0.5">
             <TabsTrigger value="self" class="text-[10px] px-1.5 py-0 h-5">Self</TabsTrigger>
             <TabsTrigger value="children" class="text-[10px] px-1.5 py-0 h-5">Children</TabsTrigger>

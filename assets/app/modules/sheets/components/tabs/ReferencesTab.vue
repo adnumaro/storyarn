@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import {
   AlertTriangle,
   ArrowRight,
@@ -16,6 +16,7 @@ import {
   Pencil,
   Zap,
 } from "lucide-vue-next";
+import type { FunctionalComponent } from "vue";
 import { computed, ref } from "vue";
 import { Badge } from "@components/ui/badge/index.ts";
 import {
@@ -23,16 +24,17 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@components/ui/collapsible/index.ts";
+import type { Backlink, SceneAppearance, VariableUsageEntry } from "../../types";
 
-const { variableUsage, backlinks, sceneAppearances, workspaceSlug, projectSlug, loading } =
-  defineProps({
-    variableUsage: { type: Array, default: () => [] },
-    backlinks: { type: Array, default: () => [] },
-    sceneAppearances: { type: Array, default: () => [] },
-    workspaceSlug: { type: String, required: true },
-    projectSlug: { type: String, required: true },
-    loading: { type: Boolean, default: false },
-  });
+const { variableUsage = [], backlinks = [], sceneAppearances = [], workspaceSlug, projectSlug, loading = false } =
+  defineProps<{
+    variableUsage?: VariableUsageEntry[];
+    backlinks?: Backlink[];
+    sceneAppearances?: SceneAppearance[];
+    workspaceSlug: string;
+    projectSlug: string;
+    loading?: boolean;
+  }>();
 
 const variableUsageOpen = ref(true);
 const backlinksOpen = ref(true);
@@ -42,13 +44,13 @@ const totalVariableRefs = computed(() =>
   variableUsage.reduce((sum, v) => sum + v.reads.length + v.writes.length, 0),
 );
 
-function nodeIcon(nodeType) {
+function nodeIcon(nodeType: string | undefined): FunctionalComponent {
   if (nodeType === "instruction") return Zap;
   if (nodeType === "condition") return GitBranch;
   return Circle;
 }
 
-function sourceIcon(sourceType) {
+function sourceIcon(sourceType: string): FunctionalComponent {
   if (sourceType === "sheet") return FileText;
   if (sourceType === "flow") return GitBranch;
   if (sourceType === "screenplay") return BookOpen;
@@ -56,7 +58,7 @@ function sourceIcon(sourceType) {
   return Link;
 }
 
-function sourceColor(sourceType) {
+function sourceColor(sourceType: string): string {
   if (sourceType === "sheet") return "bg-violet-500/15 text-violet-600 dark:text-violet-400";
   if (sourceType === "flow") return "bg-amber-500/15 text-amber-600 dark:text-amber-400";
   if (sourceType === "screenplay")
@@ -65,16 +67,16 @@ function sourceColor(sourceType) {
   return "bg-muted text-muted-foreground";
 }
 
-function flowUrl(flowId, nodeId) {
+function flowUrl(flowId: number | string | undefined, nodeId?: number | string): string {
   const base = `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${flowId}`;
   return nodeId ? `${base}?node=${nodeId}` : base;
 }
 
-function sceneUrl(sceneId) {
+function sceneUrl(sceneId: number | string | undefined): string {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${sceneId}`;
 }
 
-function backlinkUrl(backlink) {
+function backlinkUrl(backlink: Backlink): string {
   const si = backlink.sourceInfo;
   if (si.type === "sheet")
     return `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets/${si.sheetId}`;

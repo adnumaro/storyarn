@@ -1,12 +1,13 @@
-<script setup>
+<script setup lang="ts">
 import { makeDraggable } from "@vue-dnd-kit/core";
 import { useTemplateRef } from "vue";
+import type { TableRow } from "../../../types";
 
-const { index, items, group } = defineProps({
-  index: { type: Number, required: true },
-  items: { type: Array, required: true },
-  group: { type: String, required: true },
-});
+const { index, items, group } = defineProps<{
+  index: number;
+  items: TableRow[];
+  group: string;
+}>();
 
 const rowRef = useTemplateRef("rowRef");
 

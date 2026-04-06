@@ -1,14 +1,15 @@
-<script setup>
+<script setup lang="ts">
 import katex from "katex";
 import { AlertCircle, ChevronRight, Sigma, X } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
 import Sidebar from "@components/layout/Sidebar.vue";
 import { useLive } from "@composables/useLive";
+import type { FormulaEditing } from "../../types";
 import FormulaBindingSelect from "./FormulaBindingSelect.vue";
 
-const { formulaEditing } = defineProps({
-  formulaEditing: { type: Object, default: null },
-});
+const { formulaEditing = null } = defineProps<{
+  formulaEditing?: FormulaEditing | null;
+}>();
 
 const live = useLive();
 
@@ -27,7 +28,7 @@ watch(
 );
 
 // ── LaTeX rendering via v-html ──
-function safeRenderToString(latex) {
+function safeRenderToString(latex: string | undefined): string {
   if (!latex) return "";
   try {
     return katex.renderToString(latex, {
@@ -45,12 +46,12 @@ const resultHtml = computed(() => safeRenderToString(formulaEditing?.result_late
 // ── Actions ──
 const isOpen = computed(() => formulaEditing != null);
 
-function close() {
+function close(): void {
   expressionDirty.value = false;
   live.pushEvent("close_formula_sidebar", {});
 }
 
-function saveExpression() {
+function saveExpression(): void {
   expressionDirty.value = false;
   const fe = formulaEditing;
   if (!fe) return;
@@ -61,11 +62,11 @@ function saveExpression() {
   });
 }
 
-function onExpressionInput() {
+function onExpressionInput(): void {
   expressionDirty.value = true;
 }
 
-function saveBinding(symbol, value) {
+function saveBinding(symbol: string, value: string): void {
   const fe = formulaEditing;
   if (!fe) return;
   live.pushEvent("save_formula_binding", {

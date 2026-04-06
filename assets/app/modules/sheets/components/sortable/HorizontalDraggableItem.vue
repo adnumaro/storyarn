@@ -1,18 +1,29 @@
-<script setup>
+<script setup lang="ts">
 import { makeDraggable, makeDroppable } from "@vue-dnd-kit/core";
+import type { IDragEvent } from "@vue-dnd-kit/core";
 import { GripVertical } from "lucide-vue-next";
 import { computed, useTemplateRef } from "vue";
+import type { Block } from "../../types";
 
-const { blockId, canEdit, groupId, index, items, group } = defineProps({
-  blockId: { type: [Number, String], required: true },
-  canEdit: { type: Boolean, default: false },
-  groupId: { type: String, required: true },
-  index: { type: Number, required: true },
-  items: { type: Array, required: true },
-  group: { type: String, required: true },
-});
+interface InsertFullWidthPayload {
+  draggedBlockId: number | string;
+  groupId: string;
+  side: string;
+  targetBlockId: number | string;
+}
 
-const emit = defineEmits(["insert-full-width"]);
+const { blockId, canEdit = false, groupId, index, items, group } = defineProps<{
+  blockId: number | string;
+  canEdit?: boolean;
+  groupId: string;
+  index: number;
+  items: Block[];
+  group: string;
+}>();
+
+const emit = defineEmits<{
+  "insert-full-width": [payload: InsertFullWidthPayload];
+}>();
 
 const itemRef = useTemplateRef("itemRef");
 
@@ -28,10 +39,10 @@ const { isDragging, isDragOver: intraGroupPlacement } = makeDraggable(
 const { isDragOver: fullWidthPlacement } = makeDroppable(itemRef, {
   groups: ["blocks-vertical"],
   events: {
-    onDrop: (e) => {
-      const draggedItem = e.draggedItems?.[0]?.item;
+    onDrop: (e: IDragEvent) => {
+      const draggedItem = e.draggedItems?.[0]?.item as { type?: string; block?: Block } | undefined;
       const pointer = e.provider?.pointer?.value?.current;
-      const rect = itemRef.value?.getBoundingClientRect();
+      const rect = (itemRef.value as HTMLElement | null)?.getBoundingClientRect();
 
       if (draggedItem?.type !== "full_width" || !pointer || !rect || items.length >= 3) {
         return;
@@ -41,7 +52,7 @@ const { isDragOver: fullWidthPlacement } = makeDroppable(itemRef, {
       const side = relX < 0.5 ? "left" : "right";
 
       emit("insert-full-width", {
-        draggedBlockId: draggedItem.block.id,
+        draggedBlockId: draggedItem.block!.id,
         groupId: groupId,
         side,
         targetBlockId: blockId,

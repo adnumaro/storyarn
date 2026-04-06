@@ -1,16 +1,17 @@
-<script setup>
+<script setup lang="ts">
 import { Hash } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
 import { Input } from "@components/ui/input/index.ts";
 import { useBlockActions } from "../../composables/useBlockActions";
+import type { Block } from "../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 
-const { block, canEdit, inherited } = defineProps({
-  block: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  inherited: { type: Boolean, default: false },
-});
+const { block, canEdit = false, inherited = false } = defineProps<{
+  block: Block;
+  canEdit?: boolean;
+  inherited?: boolean;
+}>();
 
 const { live, label, isSelected, onBlockClick } = useBlockActions({
   get block() {
@@ -21,7 +22,7 @@ const { live, label, isSelected, onBlockClick } = useBlockActions({
   },
 });
 
-function saveLabel(val) {
+function saveLabel(val: string): void {
   live.pushEvent("update_block_config", {
     id: block.id,
     field: "label",
@@ -29,13 +30,17 @@ function saveLabel(val) {
   });
 }
 
-const content = computed(() => block.value?.content);
-const localNumber = ref(content.value ?? "");
+const content = computed(() => {
+  const raw = block.value?.content;
+  if (typeof raw === "string" || typeof raw === "number") return raw;
+  return null;
+});
+const localNumber = ref<string | number>(content.value ?? "");
 watch(content, (v) => {
   localNumber.value = v ?? "";
 });
 
-function save() {
+function save(): void {
   const raw = localNumber.value;
   const val = raw === "" || raw === null ? null : Number(raw);
   if (!Number.isNaN(val) && val !== content.value) {
@@ -43,7 +48,7 @@ function save() {
   }
 }
 
-function onKeydown(e) {
+function onKeydown(e: KeyboardEvent): void {
   if (e.key === "e" || e.key === "E" || e.key === "+") e.preventDefault();
 }
 </script>
@@ -86,7 +91,7 @@ function onKeydown(e) {
                   live.pushEvent('update_block_config', {
                     id: block.id,
                     field: 'min',
-                    value: e.target.value === '' ? null : Number(e.target.value),
+                    value: (e.target as HTMLInputElement).value === '' ? null : Number((e.target as HTMLInputElement).value),
                   })
               "
             />
@@ -102,7 +107,7 @@ function onKeydown(e) {
                   live.pushEvent('update_block_config', {
                     id: block.id,
                     field: 'max',
-                    value: e.target.value === '' ? null : Number(e.target.value),
+                    value: (e.target as HTMLInputElement).value === '' ? null : Number((e.target as HTMLInputElement).value),
                   })
               "
             />
@@ -118,7 +123,7 @@ function onKeydown(e) {
                   live.pushEvent('update_block_config', {
                     id: block.id,
                     field: 'step',
-                    value: e.target.value === '' ? null : Number(e.target.value),
+                    value: (e.target as HTMLInputElement).value === '' ? null : Number((e.target as HTMLInputElement).value),
                   })
               "
             />
@@ -135,7 +140,7 @@ function onKeydown(e) {
                 live.pushEvent('update_block_config', {
                   id: block.id,
                   field: 'placeholder',
-                  value: e.target.value,
+                  value: (e.target as HTMLInputElement).value,
                 })
             "
           />
@@ -168,6 +173,6 @@ function onKeydown(e) {
       @keydown.enter="save"
       @keydown="onKeydown"
     />
-    <p v-else class="text-sm tabular-nums">{{ content ?? "—" }}</p>
+    <p v-else class="text-sm tabular-nums">{{ content ?? "\u2014" }}</p>
   </div>
 </template>

@@ -1,9 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { DnDProvider } from "@vue-dnd-kit/core";
 import { ArrowUpRight, Link2Off } from "lucide-vue-next";
 import { onMounted, onUnmounted, provide, ref } from "vue";
 import UserAvatar from "@components/layout/UserAvatar.vue";
 import { useLive } from "@composables/useLive";
+import type { Block, BlockLock, FormulaEditing, InheritedBlockGroup, LayoutItem } from "../types";
 import AddBlockMenu from "./AddBlockMenu.vue";
 import BooleanBlock from "./blocks/BooleanBlock.vue";
 import DateBlock from "./blocks/DateBlock.vue";
@@ -19,7 +20,7 @@ import TableBlock from "./blocks/table/TableBlock.vue";
 import TextBlock from "./blocks/table/TextBlock.vue";
 import SortableBlockList from "./sortable/SortableBlockList.vue";
 
-const blockComponents = {
+const blockComponents: Record<string, typeof TextBlock> = {
   text: TextBlock,
   number: NumberBlock,
   boolean: BooleanBlock,
@@ -33,57 +34,59 @@ const blockComponents = {
 };
 
 const {
-  blocks,
-  inheritedGroups,
-  canEdit,
-  workspaceSlug,
-  projectSlug,
-  formulaEditing,
-  blockLocks,
-  currentUserId,
-} = defineProps({
-  blocks: { type: Array, default: () => [] },
-  inheritedGroups: { type: Array, default: () => [] },
-  canEdit: { type: Boolean, default: false },
-  workspaceSlug: { type: String, default: "" },
-  projectSlug: { type: String, default: "" },
-  formulaEditing: { type: Object, default: null },
-  blockLocks: { type: Object, default: () => ({}) },
-  currentUserId: { type: Number, default: null },
-});
+  blocks = [],
+  inheritedGroups = [],
+  canEdit = false,
+  workspaceSlug = "",
+  projectSlug = "",
+  formulaEditing = null,
+  blockLocks = {},
+  currentUserId = null,
+} = defineProps<{
+  blocks?: LayoutItem[];
+  inheritedGroups?: InheritedBlockGroup[];
+  canEdit?: boolean;
+  workspaceSlug?: string;
+  projectSlug?: string;
+  formulaEditing?: FormulaEditing | null;
+  blockLocks?: Record<string, BlockLock>;
+  currentUserId?: number | null;
+}>();
 
 const live = useLive();
 
 // ── Block locking ──
-let lockHeartbeatInterval = null;
-const lockedBlockId = ref(null);
+let lockHeartbeatInterval: ReturnType<typeof setInterval> | null = null;
+const lockedBlockId = ref<number | string | null>(null);
 
-function isLockedByOther(blockId) {
+function isLockedByOther(blockId: number | string): boolean {
   const lock = blockLocks[String(blockId)];
-  return lock && lock.userId !== currentUserId;
+  return !!lock && lock.userId !== currentUserId;
 }
 
-function lockInfo(blockId) {
+function lockInfo(blockId: number | string): BlockLock | null {
   return blockLocks[String(blockId)] || null;
 }
 
-function acquireLock(blockId) {
+function acquireLock(blockId: number | string): void {
   if (!canEdit || isLockedByOther(blockId)) return;
   lockedBlockId.value = blockId;
   live.pushEvent("acquire_block_lock", { block_id: blockId });
-  clearInterval(lockHeartbeatInterval);
+  if (lockHeartbeatInterval) clearInterval(lockHeartbeatInterval);
   lockHeartbeatInterval = setInterval(() => {
     live.pushEvent("refresh_block_lock", { block_id: blockId });
   }, 10000);
 }
 
-function releaseLock() {
+function releaseLock(): void {
   if (lockedBlockId.value) {
     live.pushEvent("release_block_lock", { block_id: lockedBlockId.value });
     lockedBlockId.value = null;
   }
-  clearInterval(lockHeartbeatInterval);
-  lockHeartbeatInterval = null;
+  if (lockHeartbeatInterval) {
+    clearInterval(lockHeartbeatInterval);
+    lockHeartbeatInterval = null;
+  }
 }
 
 provide("blockLocks", () => blockLocks);
@@ -92,9 +95,9 @@ provide("isLockedByOther", isLockedByOther);
 provide("lockInfo", lockInfo);
 
 // ── Block selection ──
-const selectedBlockId = ref(null);
+const selectedBlockId = ref<number | string | null>(null);
 
-function selectBlock(id) {
+function selectBlock(id: number | string): void {
   if (isLockedByOther(id)) return;
   // Release previous lock
   if (selectedBlockId.value && selectedBlockId.value !== id) {
@@ -108,7 +111,7 @@ function selectBlock(id) {
   }
 }
 
-function deselectBlock() {
+function deselectBlock(): void {
   releaseLock();
   selectedBlockId.value = null;
 }
@@ -116,14 +119,14 @@ function deselectBlock() {
 provide("selectedBlockId", selectedBlockId);
 provide("selectBlock", selectBlock);
 
-function isInputFocused() {
+function isInputFocused(): boolean {
   const el = document.activeElement;
   if (!el) return false;
   const tag = el.tagName;
-  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (el as HTMLElement).isContentEditable;
 }
 
-function onKeydown(e) {
+function onKeydown(e: KeyboardEvent): void {
   if (!selectedBlockId.value || !canEdit || isInputFocused()) return;
 
   if (e.key === "Backspace" || e.key === "Delete") {
@@ -142,7 +145,7 @@ function onKeydown(e) {
   }
 }
 
-function onUndoRedo(e) {
+function onUndoRedo(e: KeyboardEvent): void {
   if (!(e.metaKey || e.ctrlKey) || isInputFocused()) return;
 
   if (e.key === "z" && !e.shiftKey) {
@@ -173,19 +176,19 @@ onUnmounted(() => {
   releaseLock();
 });
 
-function addBlock({ type, scope }) {
+function addBlock({ type, scope }: { type: string; scope: string }): void {
   live.pushEvent("add_block", { type, scope });
 }
 
-function deleteBlock(id) {
+function deleteBlock(id: number | string): void {
   live.pushEvent("delete_block", { id });
 }
 
-function detachBlock(id) {
+function detachBlock(id: number | string): void {
   live.pushEvent("detach_block", { id });
 }
 
-function resolveComponent(type) {
+function resolveComponent(type: string): typeof TextBlock | null {
   return blockComponents[type] || null;
 }
 </script>

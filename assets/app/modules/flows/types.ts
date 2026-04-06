@@ -2,7 +2,7 @@
  * Shared TypeScript interfaces for flow node Vue components and toolbar sections.
  */
 
-import type { NodeConfig, NodeData } from "./lib/node-configs";
+import type { NodeData } from "./lib/node-configs";
 
 // ---------------------------------------------------------------------------
 // Rete node data shape — the `data` prop passed by rete-vue-plugin to each

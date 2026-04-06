@@ -1,10 +1,12 @@
-<script setup>
+<script setup lang="ts">
 import { makeDroppable } from "@vue-dnd-kit/core";
+import type { IDragEvent } from "@vue-dnd-kit/core";
 import { inject, ref, useTemplateRef, watch } from "vue";
 import { useLive } from "@composables/useLive";
+import type { Block, BlockLock } from "../../types";
 
-const isLockedByOther = inject("isLockedByOther", () => false);
-const lockInfo = inject("lockInfo", () => null);
+const isLockedByOther = inject<(id: number | string) => boolean>("isLockedByOther", () => false);
+const lockInfo = inject<(id: number | string) => BlockLock | null>("lockInfo", () => null);
 
 import UserAvatar from "@components/layout/UserAvatar.vue";
 import BooleanBlock from "../blocks/BooleanBlock.vue";
@@ -18,7 +20,7 @@ import TableBlock from "../blocks/table/TableBlock.vue";
 import TextBlock from "../blocks/table/TextBlock.vue";
 import HorizontalDraggableItem from "./HorizontalDraggableItem.vue";
 
-const blockComponents = {
+const blockComponents: Record<string, typeof TextBlock> = {
   text: TextBlock,
   number: NumberBlock,
   boolean: BooleanBlock,
@@ -30,18 +32,27 @@ const blockComponents = {
   table: TableBlock,
 };
 
-const { groupId, blocks, columnCount, canEdit } = defineProps({
-  groupId: { type: String, required: true },
-  blocks: { type: Array, required: true },
-  columnCount: { type: Number, default: 2 },
-  canEdit: { type: Boolean, default: false },
-});
+interface InsertFullWidthPayload {
+  draggedBlockId: number | string;
+  groupId: string;
+  side: string;
+  targetBlockId: number | string;
+}
 
-const emit = defineEmits(["insert-full-width"]);
+const { groupId, blocks, columnCount = 2, canEdit = false } = defineProps<{
+  groupId: string;
+  blocks: Block[];
+  columnCount?: number;
+  canEdit?: boolean;
+}>();
+
+const emit = defineEmits<{
+  "insert-full-width": [payload: InsertFullWidthPayload];
+}>();
 
 const live = useLive();
 
-const localBlocks = ref([...blocks]);
+const localBlocks = ref<Block[]>([...blocks]);
 watch(
   () => blocks,
   (v) => {
@@ -52,17 +63,23 @@ watch(
 const gridRef = useTemplateRef("gridRef");
 const columnGroup = `column-${groupId}`;
 
+interface ReorderItem {
+  id: number | string;
+  column_group_id: string;
+  column_index: number;
+}
+
 makeDroppable(
   gridRef,
   {
     groups: [columnGroup],
     events: {
-      onDrop: (e) => {
+      onDrop: (e: IDragEvent) => {
         const result = e.helpers.suggestSort("horizontal");
         if (!result) return;
-        localBlocks.value = result.sourceItems;
+        localBlocks.value = result.sourceItems as Block[];
         // Push reorder with column indices
-        const items = localBlocks.value.map((b, i) => ({
+        const items: ReorderItem[] = localBlocks.value.map((b, i) => ({
           id: b.id,
           column_group_id: groupId,
           column_index: i,
@@ -77,11 +94,11 @@ makeDroppable(
   () => localBlocks.value,
 );
 
-function resolveComponent(type) {
+function resolveComponent(type: string): typeof TextBlock | null {
   return blockComponents[type] || null;
 }
 
-function gridClass() {
+function gridClass(): string {
   if (columnCount === 2) return "sm:grid-cols-2";
   if (columnCount === 3) return "sm:grid-cols-3";
   return "sm:grid-cols-1";

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import {
   ArrowUpRight,
   ChevronDown,
@@ -28,20 +28,21 @@ import {
 } from "@components/ui/command/index.ts";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { useLive } from "@composables/useLive";
+import type { AudioAsset, VoiceLineGroup } from "../../types";
 
-const { groupedLines, audioAssets, workspaceSlug, projectSlug, canEdit, loading } = defineProps({
-  groupedLines: { type: Array, default: () => [] },
-  audioAssets: { type: Array, default: () => [] },
-  workspaceSlug: { type: String, required: true },
-  projectSlug: { type: String, required: true },
-  canEdit: { type: Boolean, default: false },
-  loading: { type: Boolean, default: false },
-});
+const { groupedLines = [], audioAssets = [], workspaceSlug, projectSlug, canEdit = false, loading = false } = defineProps<{
+  groupedLines?: VoiceLineGroup[];
+  audioAssets?: AudioAsset[];
+  workspaceSlug: string;
+  projectSlug: string;
+  canEdit?: boolean;
+  loading?: boolean;
+}>();
 
 const live = useLive();
 
-const uploadingNodeId = ref(null);
-const openPopoverNodeId = ref(null);
+const uploadingNodeId = ref<number | string | null>(null);
+const openPopoverNodeId = ref<number | string | null>(null);
 const searchQuery = ref("");
 
 const totalLines = computed(() => groupedLines.reduce((sum, g) => sum + g.lines.length, 0));
@@ -60,15 +61,15 @@ watch(
   },
 );
 
-function flowUrl(flowId) {
+function flowUrl(flowId: number | string): string {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${flowId}`;
 }
 
-function nodeUrl(flowId, nodeId) {
+function nodeUrl(flowId: number | string, nodeId: number | string): string {
   return `${flowUrl(flowId)}?node=${nodeId}`;
 }
 
-function selectAudio(nodeId, assetId) {
+function selectAudio(nodeId: number | string, assetId: number | string): void {
   live.pushEvent("select_audio", {
     "node-id": nodeId,
     audio_asset_id: assetId,
@@ -77,16 +78,16 @@ function selectAudio(nodeId, assetId) {
   searchQuery.value = "";
 }
 
-function removeAudio(nodeId) {
+function removeAudio(nodeId: number | string): void {
   live.pushEvent("remove_audio", { "node-id": nodeId });
 }
 
-function triggerUpload(nodeId) {
+function triggerUpload(nodeId: number | string): void {
   const input = document.createElement("input");
   input.type = "file";
   input.accept = "audio/*";
   input.onchange = (e) => {
-    const file = e.target.files[0];
+    const file = (e.target as HTMLInputElement).files![0];
     if (!file) return;
     if (!file.type.startsWith("audio/")) return;
     if (file.size > 20 * 1024 * 1024) return;
@@ -105,7 +106,7 @@ function triggerUpload(nodeId) {
   input.click();
 }
 
-function openPopover(nodeId) {
+function openPopover(nodeId: number | string): void {
   openPopoverNodeId.value = nodeId;
   searchQuery.value = "";
 }
@@ -221,7 +222,7 @@ function openPopover(nodeId) {
                   <Command :should-filter="false">
                     <CommandInput
                       :model-value="searchQuery"
-                      @update:model-value="(v) => (searchQuery = v)"
+                      @update:model-value="(v) => (searchQuery = v as string)"
                       placeholder="Search audio..."
                     />
                     <CommandList class="max-h-48">

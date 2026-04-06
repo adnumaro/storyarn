@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { DnDProvider } from "@vue-dnd-kit/core";
 import { Plus } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
@@ -13,24 +13,25 @@ import {
 } from "@components/ui/dialog/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { useLive } from "@composables/useLive";
+import type { SheetTreeNodeData } from "../../types";
 import SheetTreeNode from "./SheetTreeNode.vue";
 import SheetTreeRoot from "./SheetTreeRoot.vue";
 
-const { sheetsTree, selectedSheetId, canEdit, workspaceSlug, projectSlug } = defineProps({
-  sheetsTree: { type: Array, default: () => [] },
-  selectedSheetId: { type: [String, Number], default: null },
-  canEdit: { type: Boolean, default: false },
-  workspaceSlug: { type: String, required: true },
-  projectSlug: { type: String, required: true },
-});
+const { sheetsTree = [], selectedSheetId = null, canEdit = false, workspaceSlug, projectSlug } = defineProps<{
+  sheetsTree?: SheetTreeNodeData[];
+  selectedSheetId?: string | number | null;
+  canEdit?: boolean;
+  workspaceSlug: string;
+  projectSlug: string;
+}>();
 
 const live = useLive();
 const searchQuery = ref("");
 const deleteDialogOpen = ref(false);
-const pendingDeleteSheet = ref(null);
+const pendingDeleteSheet = ref<SheetTreeNodeData | null>(null);
 
 // Use a local reactive copy so suggestSort can mutate it
-const localTree = ref([...sheetsTree]);
+const localTree = ref<SheetTreeNodeData[]>([...sheetsTree]);
 watch(
   () => sheetsTree,
   (v) => {
@@ -39,11 +40,11 @@ watch(
   { deep: true },
 );
 
-function sheetHref(sheet) {
+function sheetHref(sheet: SheetTreeNodeData): string {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets/${sheet.id}`;
 }
 
-function matchesSearch(node, query) {
+function matchesSearch(node: SheetTreeNodeData, query: string): boolean {
   if (node.name.toLowerCase().includes(query)) return true;
   if (node.children) {
     return node.children.some((child) => matchesSearch(child, query));
@@ -51,7 +52,7 @@ function matchesSearch(node, query) {
   return false;
 }
 
-function filterTree(nodes, query) {
+function filterTree(nodes: SheetTreeNodeData[], query: string): SheetTreeNodeData[] {
   return nodes
     .filter((node) => matchesSearch(node, query))
     .map((node) => ({
@@ -65,20 +66,20 @@ const filteredTree = computed(() => {
   return filterTree(localTree.value, searchQuery.value.toLowerCase());
 });
 
-function createSheet() {
+function createSheet(): void {
   live.pushEvent("create_sheet", {});
 }
 
-function createChildSheet(parentId) {
+function createChildSheet(parentId: number | string): void {
   live.pushEvent("create_child_sheet", { parent_id: parentId });
 }
 
-function requestDelete(sheet) {
+function requestDelete(sheet: SheetTreeNodeData): void {
   pendingDeleteSheet.value = sheet;
   deleteDialogOpen.value = true;
 }
 
-function confirmDelete() {
+function confirmDelete(): void {
   if (pendingDeleteSheet.value) {
     live.pushEvent("set_pending_delete_sheet", {
       id: pendingDeleteSheet.value.id,
@@ -91,7 +92,7 @@ function confirmDelete() {
 
 // ── Tree mutation (following vue-dnd-kit tree example) ──
 
-function applyToTree(oldArr, newArr) {
+function applyToTree(oldArr: SheetTreeNodeData[], newArr: SheetTreeNodeData[]): void {
   if (oldArr === localTree.value) {
     localTree.value = newArr;
   } else {
@@ -99,7 +100,7 @@ function applyToTree(oldArr, newArr) {
   }
 }
 
-function findAndReplace(nodes, oldArr, newArr) {
+function findAndReplace(nodes: SheetTreeNodeData[], oldArr: SheetTreeNodeData[], newArr: SheetTreeNodeData[]): boolean {
   for (const node of nodes) {
     if (node.children === oldArr) {
       node.children = newArr;
@@ -111,18 +112,18 @@ function findAndReplace(nodes, oldArr, newArr) {
 }
 
 // Find parent_id and position for a node after tree mutation
-function findNodeContext(nodes, nodeId, parentId = null) {
+function findNodeContext(nodes: SheetTreeNodeData[], nodeId: number | string, parentId: number | string | null = null): { parentId: number | string | null; position: number } | null {
   for (let i = 0; i < nodes.length; i++) {
     if (nodes[i].id === nodeId) return { parentId, position: i };
     if (nodes[i].children) {
-      const found = findNodeContext(nodes[i].children, nodeId, nodes[i].id);
+      const found = findNodeContext(nodes[i].children!, nodeId, nodes[i].id);
       if (found) return found;
     }
   }
   return null;
 }
 
-function findNodeById(nodes, nodeId) {
+function findNodeById(nodes: SheetTreeNodeData[], nodeId: number | string): SheetTreeNodeData | null {
   for (const n of nodes) {
     if (n.id === nodeId) return n;
     if (n.children) {
@@ -133,7 +134,7 @@ function findNodeById(nodes, nodeId) {
   return null;
 }
 
-function isDescendantOf(nodes, ancestorId, targetId) {
+function isDescendantOf(nodes: SheetTreeNodeData[], ancestorId: number | string, targetId: number | string): boolean {
   const ancestor = findNodeById(nodes, ancestorId);
   if (!ancestor?.children) return false;
   for (const c of ancestor.children) {
@@ -143,7 +144,7 @@ function isDescendantOf(nodes, ancestorId, targetId) {
   return false;
 }
 
-function pushMove(nodeId, parentId, position) {
+function pushMove(nodeId: number | string, parentId: number | string | null, position: number): void {
   live.pushEvent("move_to_parent", {
     item_id: String(nodeId),
     new_parent_id: parentId != null ? String(parentId) : "",
@@ -151,7 +152,15 @@ function pushMove(nodeId, parentId, position) {
   });
 }
 
-function getPointerZone(e) {
+interface DndDropEvent {
+  draggedItems: { item?: SheetTreeNodeData; items?: SheetTreeNodeData[] }[];
+  hoveredDraggable?: { item?: SheetTreeNodeData; element?: HTMLElement; items?: SheetTreeNodeData[]; placement?: { bottom?: boolean } };
+  dropZone?: { items?: SheetTreeNodeData[] };
+  helpers: { suggestSort: (dir: string) => { sourceItems: SheetTreeNodeData[]; targetItems?: SheetTreeNodeData[]; sameList?: boolean } | null };
+  provider?: { pointer?: { value?: { current?: { x: number; y: number } } } };
+}
+
+function getPointerZone(e: DndDropEvent): "before" | "nest" | "after" | null {
   const el = e.hoveredDraggable?.element;
   const pointer = e.provider?.pointer?.value?.current;
   if (!el || !pointer) return null;
@@ -162,7 +171,7 @@ function getPointerZone(e) {
   return "nest";
 }
 
-function handleDrop(e) {
+function handleDrop(e: DndDropEvent): void {
   const draggedNode = e.draggedItems[0]?.item;
   const hoveredNode = e.hoveredDraggable?.item;
   const zone = getPointerZone(e);
@@ -201,7 +210,7 @@ function handleDrop(e) {
 
   applyToTree(srcArr, r.sourceItems);
   if (!r.sameList) {
-    applyToTree(tgtArr, r.targetItems);
+    applyToTree(tgtArr, r.targetItems!);
   }
 
   const ctx = findNodeContext(localTree.value, draggedNode.id);

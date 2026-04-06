@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { computed } from "vue";
-
 // Define the hardcoded steps mimicking the original HEEx layout
 const steps = [
   {

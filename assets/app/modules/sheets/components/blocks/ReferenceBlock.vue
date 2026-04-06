@@ -1,5 +1,6 @@
-<script setup>
+<script setup lang="ts">
 import { AlertCircle, FileText, GitBranch, Link, X } from "lucide-vue-next";
+import type { ComponentPublicInstance, FunctionalComponent } from "vue";
 import { computed, nextTick, onBeforeUpdate, ref, watch } from "vue";
 import {
   Command,
@@ -13,14 +14,15 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/
 import { useLive } from "@composables/useLive";
 import { useServerSearch } from "@composables/useServerSearch";
 import { useBlockActions } from "../../composables/useBlockActions";
+import type { Block, ReferenceSearchResult } from "../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 
-const { block, canEdit, inherited } = defineProps({
-  block: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  inherited: { type: Boolean, default: false },
-});
+const { block, canEdit = false, inherited = false } = defineProps<{
+  block: Block;
+  canEdit?: boolean;
+  inherited?: boolean;
+}>();
 
 const { live, label, isSelected, onBlockClick } = useBlockActions({
   get block() {
@@ -37,7 +39,7 @@ const referenceTarget = computed(() => block.reference_target);
 const hasReference = computed(() => targetType.value && targetId.value);
 const isDeleted = computed(() => hasReference.value && !referenceTarget.value);
 
-function saveLabel(val) {
+function saveLabel(val: string): void {
   live.pushEvent("update_block_config", {
     id: block.id,
     field: "label",
@@ -48,8 +50,8 @@ function saveLabel(val) {
 // ── Search ──
 const open = ref(false);
 const pendingLoad = ref(false);
-const listRef = ref(null);
-const searchResults = ref([]);
+const listRef = ref<ComponentPublicInstance | null>(null);
+const searchResults = ref<ReferenceSearchResult[]>([]);
 let savedScrollTop = 0;
 
 const { query, loading, search, reset } = useServerSearch({
@@ -60,7 +62,7 @@ const { query, loading, search, reset } = useServerSearch({
 // Listen for results from server
 live.handleEvent("reference_results", (payload) => {
   if (payload.block_id === block.id) {
-    searchResults.value = payload.results || [];
+    searchResults.value = (payload.results as ReferenceSearchResult[]) || [];
     pendingLoad.value = false;
   }
 });
@@ -79,7 +81,7 @@ watch(open, (v) => {
   }
 });
 
-function onSearchInput(q) {
+function onSearchInput(q: string): void {
   pendingLoad.value = false;
   savedScrollTop = 0;
   live.pushEvent("search_references", {
@@ -88,7 +90,7 @@ function onSearchInput(q) {
   });
 }
 
-function selectReference(result) {
+function selectReference(result: ReferenceSearchResult): void {
   live.pushEvent("select_reference", {
     "block-id": block.id,
     type: result.type,
@@ -97,25 +99,25 @@ function selectReference(result) {
   open.value = false;
 }
 
-function clearReference() {
+function clearReference(): void {
   live.pushEvent("clear_reference", { "block-id": block.id });
   open.value = false;
 }
 
-function typeIcon(type) {
+function typeIcon(type: string | undefined): FunctionalComponent {
   return type === "flow" ? GitBranch : FileText;
 }
 
-function typeColor(type) {
+function typeColor(type: string | undefined): string {
   return type === "flow" ? "text-violet-500 bg-violet-500/10" : "text-primary bg-primary/10";
 }
 
 // ── Infinite scroll ──
-function getListEl() {
-  return listRef.value?.$el ?? listRef.value;
+function getListEl(): HTMLElement | null {
+  return (listRef.value?.$el as HTMLElement) ?? (listRef.value as unknown as HTMLElement);
 }
 
-function onScroll() {
+function onScroll(): void {
   // Reference search returns all results (no pagination needed for now)
 }
 
@@ -277,7 +279,7 @@ watch(searchResults, () => {
         <AlertCircle class="size-3.5" />
         Reference not found
       </div>
-      <span v-else class="text-sm text-muted-foreground">—</span>
+      <span v-else class="text-sm text-muted-foreground">\u2014</span>
     </div>
   </div>
 </template>

@@ -1,17 +1,18 @@
-<script setup>
+<script setup lang="ts">
 import { Type } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
 import { Input } from "@components/ui/input/index.ts";
 import { useLive } from "@composables/useLive";
 import { useBlockActions } from "../../../composables/useBlockActions";
+import type { Block } from "../../../types";
 import BlockLabel from "../../BlockLabel.vue";
 import BlockToolbar from "../../BlockToolbar.vue";
 
-const { block, canEdit, inherited } = defineProps({
-  block: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  inherited: { type: Boolean, default: false },
-});
+const { block, canEdit = false, inherited = false } = defineProps<{
+  block: Block;
+  canEdit?: boolean;
+  inherited?: boolean;
+}>();
 
 const { live, label, isSelected, onBlockClick } = useBlockActions({
   get block() {
@@ -22,13 +23,13 @@ const { live, label, isSelected, onBlockClick } = useBlockActions({
   },
 });
 
-const content = computed(() => block.value?.content ?? "");
+const content = computed(() => (block.value?.content as string) ?? "");
 const localText = ref(content.value);
 watch(content, (v) => {
   localText.value = v;
 });
 
-function save() {
+function save(): void {
   if (localText.value !== content.value) {
     live.pushEvent("update_block_value", {
       id: block.id,
@@ -37,7 +38,7 @@ function save() {
   }
 }
 
-function saveLabel(val) {
+function saveLabel(val: string): void {
   live.pushEvent("update_block_config", {
     id: block.id,
     field: "label",
@@ -83,7 +84,7 @@ function saveLabel(val) {
                 live.pushEvent('update_block_config', {
                   id: block.id,
                   field: 'placeholder',
-                  value: e.target.value,
+                  value: (e.target as HTMLInputElement).value,
                 })
             "
           />
@@ -111,6 +112,6 @@ function saveLabel(val) {
       @blur="save"
       @keydown.enter="save"
     />
-    <p v-else class="text-sm">{{ content || "—" }}</p>
+    <p v-else class="text-sm">{{ content || "\u2014" }}</p>
   </div>
 </template>

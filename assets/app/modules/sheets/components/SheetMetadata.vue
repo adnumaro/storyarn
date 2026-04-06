@@ -1,19 +1,20 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from "vue";
 import { useLive } from "@composables/useLive";
+import type { Sheet } from "../types";
 
-const { sheet, canEdit, isDraft, sourceShortcut } = defineProps({
-  sheet: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  isDraft: { type: Boolean, default: false },
-  sourceShortcut: { type: String, default: null },
-});
+const { sheet, canEdit = false, isDraft = false, sourceShortcut = null } = defineProps<{
+  sheet: Sheet;
+  canEdit?: boolean;
+  isDraft?: boolean;
+  sourceShortcut?: string | null;
+}>();
 
 const live = useLive();
 
 // ── Title editing ──
 const editingName = ref(false);
-const nameInput = ref(null);
+const nameInput = ref<HTMLInputElement | null>(null);
 const localName = ref(sheet.name);
 
 watch(
@@ -23,13 +24,13 @@ watch(
   },
 );
 
-function startEditName() {
+function startEditName(): void {
   if (!canEdit) return;
   editingName.value = true;
   setTimeout(() => nameInput.value?.focus(), 0);
 }
 
-function saveName() {
+function saveName(): void {
   editingName.value = false;
   const name = localName.value?.trim();
   if (name && name !== sheet.name) {
@@ -37,7 +38,7 @@ function saveName() {
   }
 }
 
-function onNameKeydown(e) {
+function onNameKeydown(e: KeyboardEvent): void {
   if (e.key === "Enter") {
     e.preventDefault();
     saveName();
@@ -46,7 +47,7 @@ function onNameKeydown(e) {
 
 // ── Shortcut editing ──
 const editingShortcut = ref(false);
-const shortcutInput = ref(null);
+const shortcutInput = ref<HTMLInputElement | null>(null);
 const localShortcut = ref(sheet.shortcut || "");
 
 watch(
@@ -56,13 +57,13 @@ watch(
   },
 );
 
-function startEditShortcut() {
+function startEditShortcut(): void {
   if (!canEdit || isDraft) return;
   editingShortcut.value = true;
   setTimeout(() => shortcutInput.value?.focus(), 0);
 }
 
-function saveShortcut() {
+function saveShortcut(): void {
   editingShortcut.value = false;
   const shortcut = localShortcut.value?.trim();
   if (shortcut !== (sheet.shortcut || "")) {
@@ -70,7 +71,7 @@ function saveShortcut() {
   }
 }
 
-function onShortcutKeydown(e) {
+function onShortcutKeydown(e: KeyboardEvent): void {
   if (e.key === "Enter") {
     e.preventDefault();
     saveShortcut();

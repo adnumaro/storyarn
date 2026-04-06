@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { makeDraggable, makeDroppable } from "@vue-dnd-kit/core";
 import { ChevronRight, FilePlus, FileText, Trash2 } from "lucide-vue-next";
 import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from "vue";
@@ -8,20 +8,25 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@components/ui/context-menu/index.ts";
+import type { SheetTreeNodeData } from "../../types";
 
-const { node, index, siblings, selectedSheetId, canEdit, depth, searchActive, sheetHref } =
-  defineProps({
-    node: { type: Object, required: true },
-    index: { type: Number, required: true },
-    siblings: { type: Array, required: true },
-    selectedSheetId: { type: [String, Number], default: null },
-    canEdit: { type: Boolean, default: false },
-    depth: { type: Number, default: 0 },
-    searchActive: { type: Boolean, default: false },
-    sheetHref: { type: Function, required: true },
-  });
+const { node, index, siblings, selectedSheetId = null, canEdit = false, depth = 0, searchActive = false, sheetHref } =
+  defineProps<{
+    node: SheetTreeNodeData;
+    index: number;
+    siblings: SheetTreeNodeData[];
+    selectedSheetId?: string | number | null;
+    canEdit?: boolean;
+    depth?: number;
+    searchActive?: boolean;
+    sheetHref: (node: SheetTreeNodeData) => string;
+  }>();
 
-const emit = defineEmits(["createChild", "requestDelete", "drop"]);
+const emit = defineEmits<{
+  createChild: [id: number | string];
+  requestDelete: [node: SheetTreeNodeData];
+  drop: [event: unknown];
+}>();
 
 const hasChildren = computed(() => node.children && node.children.length > 0);
 
@@ -30,7 +35,7 @@ const isSelected = computed(
 );
 
 // ── Auto-expand ──
-function hasSelectedDescendant(node, selectedId) {
+function hasSelectedDescendant(node: SheetTreeNodeData, selectedId: string | number | null | undefined): boolean {
   if (!selectedId || !node.children) return false;
   for (const child of node.children) {
     if (String(child.id) === String(selectedId)) return true;
@@ -54,7 +59,7 @@ watch(
   },
 );
 
-function onToggle() {
+function onToggle(): void {
   userToggled.value = true;
   isOpen.value = !isOpen.value;
 }
@@ -72,11 +77,11 @@ const { isDragging, isDragOver: rowPlacement } = makeDraggable(
 );
 
 // Manual center zone detection (avoids dual-role routing issues)
-const pointerZone = ref(null); // "before" | "nest" | "after" | null
+const pointerZone = ref<"before" | "nest" | "after" | null>(null);
 const CENTER_THRESHOLD = 0.3;
 
-function onPointerMove(e) {
-  const el = rowRef.value;
+function onPointerMove(e: PointerEvent): void {
+  const el = rowRef.value as HTMLElement | null;
   if (!el || !rowPlacement.value) {
     pointerZone.value = null;
     return;
@@ -100,15 +105,15 @@ const childrenRef = useTemplateRef("childrenRef");
 
 const { isDragOver: childrenOver } = makeDroppable(
   childrenRef,
-  { events: { onDrop: (e) => emit("drop", e) } },
+  { events: { onDrop: (e: unknown) => emit("drop", e) } },
   () => node.children,
 );
 
 // Auto-expand on hover during drag (600ms)
-let autoExpandTimer = null;
+let autoExpandTimer: ReturnType<typeof setTimeout> | null = null;
 
 watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
-  clearTimeout(autoExpandTimer);
+  if (autoExpandTimer) clearTimeout(autoExpandTimer);
   if ((childOver || zone === "nest") && hasChildren.value && !isOpen.value) {
     autoExpandTimer = setTimeout(() => {
       isOpen.value = true;
@@ -223,7 +228,7 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
         :key="child.id"
         :node="child"
         :index="childIndex"
-        :siblings="node.children"
+        :siblings="node.children!"
         :selected-sheet-id="selectedSheetId"
         :can-edit="canEdit"
         :depth="depth + 1"

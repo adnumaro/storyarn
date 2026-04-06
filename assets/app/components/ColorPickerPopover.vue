@@ -15,7 +15,7 @@ import { useLive } from "@composables/useLive";
 const props = defineProps<{
   color?: string;
   disabled?: boolean;
-  variant?: "swatch" | "inline";
+  variant?: "swatch" | "inline" | "full";
   event?: string | null;
 }>();
 

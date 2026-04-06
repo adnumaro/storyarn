@@ -1,16 +1,17 @@
-<script setup>
+<script setup lang="ts">
 import { Calendar } from "lucide-vue-next";
 import { computed } from "vue";
 import { Input } from "@components/ui/input/index.ts";
 import { useBlockActions } from "../../composables/useBlockActions";
+import type { Block } from "../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 
-const { block, canEdit, inherited } = defineProps({
-  block: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  inherited: { type: Boolean, default: false },
-});
+const { block, canEdit = false, inherited = false } = defineProps<{
+  block: Block;
+  canEdit?: boolean;
+  inherited?: boolean;
+}>();
 
 const { live, label, isSelected, onBlockClick } = useBlockActions({
   get block() {
@@ -21,7 +22,7 @@ const { live, label, isSelected, onBlockClick } = useBlockActions({
   },
 });
 
-function saveLabel(val) {
+function saveLabel(val: string): void {
   live.pushEvent("update_block_config", {
     id: block.id,
     field: "label",
@@ -75,12 +76,12 @@ const content = computed(() => block.value?.content);
     <Input
       v-if="canEdit"
       type="date"
-      :model-value="content || ''"
+      :model-value="(content as string) || ''"
       class="h-9 w-full"
       @change="
-        (e) => live.pushEvent('update_block_value', { id: block.id, value: e.target.value || null })
+        (e) => live.pushEvent('update_block_value', { id: block.id, value: (e.target as HTMLInputElement).value || null })
       "
     />
-    <p v-else class="text-sm">{{ content || "—" }}</p>
+    <p v-else class="text-sm">{{ content || "\u2014" }}</p>
   </div>
 </template>

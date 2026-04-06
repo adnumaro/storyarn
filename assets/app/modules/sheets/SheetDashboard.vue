@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import {
   AlertTriangle,
   ArrowDown,
@@ -15,6 +15,7 @@ import {
   Trash2,
   Variable,
 } from "lucide-vue-next";
+import type { FunctionalComponent } from "vue";
 import { computed } from "vue";
 import { Button } from "@components/ui/button/index.ts";
 import {
@@ -33,45 +34,50 @@ import {
 } from "@components/ui/table/index.ts";
 import { useLive } from "@composables/useLive";
 import { formatRelativeTime } from "@utils/date-utils";
+import type {
+  DashboardColumn,
+  DashboardIssue,
+  DashboardPagination,
+  DashboardRow,
+  DashboardStats,
+  StatCard,
+} from "./types";
 
-const { stats, tableData, pagination, issues, canEdit, workspaceSlug, projectSlug } = defineProps({
-  stats: { type: Object, default: null },
-  tableData: { type: Array, default: () => [] },
-  pagination: {
-    type: Object,
-    default: () => ({ sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 0 }),
-  },
-  issues: { type: Array, default: () => [] },
-  canEdit: { type: Boolean, default: false },
-  workspaceSlug: { type: String, required: true },
-  projectSlug: { type: String, required: true },
-});
+const { stats = null, tableData = [], pagination = { sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 0 }, issues = [], canEdit = false, workspaceSlug, projectSlug } = defineProps<{
+  stats?: DashboardStats | null;
+  tableData?: DashboardRow[];
+  pagination?: DashboardPagination;
+  issues?: DashboardIssue[];
+  canEdit?: boolean;
+  workspaceSlug: string;
+  projectSlug: string;
+}>();
 
 const live = useLive();
 
-function sheetHref(row) {
+function sheetHref(row: DashboardRow): string {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets/${row.id}`;
 }
 
-function sortBy(column) {
+function sortBy(column: string): void {
   live.pushEvent("sort_sheets", { column });
 }
 
-function goToPage(page) {
+function goToPage(page: number): void {
   live.pushEvent("page_sheets", { page });
 }
 
-function requestDelete(id) {
+function requestDelete(id: number | string): void {
   live.pushEvent("set_pending_delete_sheet", { id });
   live.pushEvent("confirm_delete_sheet", {});
 }
 
-function sortIcon(column) {
+function sortIcon(column: string): FunctionalComponent {
   if (pagination.sortBy !== column) return ArrowUpDown;
   return pagination.sortDir === "asc" ? ArrowUp : ArrowDown;
 }
 
-const statCards = computed(() => {
+const statCards = computed<StatCard[]>(() => {
   if (!stats) return [];
   return [
     {
@@ -107,7 +113,7 @@ const statCards = computed(() => {
   ];
 });
 
-const columns = [
+const columns: DashboardColumn[] = [
   { key: "name", label: "Name", align: "left" },
   { key: "block_count", label: "Blocks", align: "right" },
   { key: "variable_count", label: "Variables", align: "right" },
@@ -115,8 +121,8 @@ const columns = [
   { key: "updated_at", label: "Modified", align: "right" },
 ];
 
-const pages = computed(() => {
-  const result = [];
+const pages = computed<number[]>(() => {
+  const result: number[] = [];
   for (let i = 1; i <= pagination.totalPages; i++) {
     result.push(i);
   }

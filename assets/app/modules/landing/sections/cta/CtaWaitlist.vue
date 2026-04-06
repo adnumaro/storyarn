@@ -6,10 +6,6 @@ import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { useRevealOnScroll } from "../../composables/useRevealOnScroll";
 
-const { translations = {} } = defineProps<{
-  translations?: Record<string, string>;
-}>();
-
 const live = useLiveVue();
 const email = ref("");
 const submitting = ref(false);
@@ -19,7 +15,7 @@ const { elementRef: sectionRef, isRevealed } = useRevealOnScroll();
 async function handleSubmit() {
   if (!email.value || submitting.value) return;
   submitting.value = true;
-  live.pushEvent("join_waitlist", { email: email.value });
+  await live.pushEvent("join_waitlist", { email: email.value });
   email.value = "";
   submitting.value = false;
 }
@@ -61,7 +57,7 @@ async function handleSubmit() {
             <Button
               type="submit"
               :disabled="submitting"
-              class="gap-2 font-bold text-teal-950 hover:scale-105 transition-all border-0 h-12 !px-6 rounded-lg text-[15px]"
+              class="gap-2 font-bold text-teal-950 hover:scale-105 transition-all border-0 h-12 px-6! rounded-lg text-[15px]"
               style="
                 background: linear-gradient(135deg, oklch(78% 0.14 185), oklch(68% 0.12 210));
                 box-shadow:

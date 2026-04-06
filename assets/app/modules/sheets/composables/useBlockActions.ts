@@ -1,17 +1,7 @@
 import { computed, inject, ref, watch } from "vue";
 import type { ComputedRef, Ref } from "vue";
 import { useLive } from "@composables/useLive";
-
-interface BlockConfig {
-  label?: string;
-  [key: string]: unknown;
-}
-
-interface Block {
-  id: number | string;
-  config?: BlockConfig;
-  [key: string]: unknown;
-}
+import type { Block } from "../types";
 
 interface BlockActionProps {
   block: Block;

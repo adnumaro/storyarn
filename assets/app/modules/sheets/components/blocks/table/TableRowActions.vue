@@ -1,18 +1,19 @@
-<script setup>
+<script setup lang="ts">
 import { GripVertical, Trash2 } from "lucide-vue-next";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { useLive } from "@composables/useLive";
+import type { TableRow } from "../../../types";
 
-const { row, rows, canManage } = defineProps({
-  row: { type: Object, required: true },
-  rows: { type: Array, required: true },
-  canManage: { type: Boolean, default: false },
-});
+const { row, rows, canManage = false } = defineProps<{
+  row: TableRow;
+  rows: TableRow[];
+  canManage?: boolean;
+}>();
 
 const live = useLive();
 
-function saveRowName(event) {
-  const name = event.target.value.trim();
+function saveRowName(event: Event): void {
+  const name = (event.target as HTMLInputElement).value.trim();
   if (name && name !== row.name) {
     live.pushEvent("rename_table_row", {
       "row-id": row.id,
@@ -21,7 +22,7 @@ function saveRowName(event) {
   }
 }
 
-function deleteRow() {
+function deleteRow(): void {
   live.pushEvent("delete_table_row", { "row-id": row.id });
 }
 </script>

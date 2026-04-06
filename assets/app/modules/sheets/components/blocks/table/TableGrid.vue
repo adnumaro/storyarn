@@ -1,24 +1,26 @@
-<script setup>
+<script setup lang="ts">
 import { makeDroppable } from "@vue-dnd-kit/core";
+import type { IDragEvent } from "@vue-dnd-kit/core";
 import { Check, Plus, Sigma, X } from "lucide-vue-next";
 import { nextTick, ref, useTemplateRef, watch } from "vue";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Checkbox } from "@components/ui/checkbox/index.ts";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { useLive } from "@composables/useLive";
+import type { SelectOption, TableColumn, TableRow } from "../../../types";
 import TableColumnHeader from "./TableColumnHeader.vue";
 import TableDraggableRow from "./TableDraggableRow.vue";
 import TableRowActions from "./TableRowActions.vue";
 import { typeIcon } from "./table-config";
 
-const { blockId, columns, rows, canEdit, canManage } = defineProps({
-  blockId: { type: [Number, String], required: true },
-  columns: { type: Array, default: () => [] },
-  rows: { type: Array, default: () => [] },
-  canEdit: { type: Boolean, default: false },
+const { blockId, columns = [], rows = [], canEdit = false, canManage = false } = defineProps<{
+  blockId: number | string;
+  columns?: TableColumn[];
+  rows?: TableRow[];
+  canEdit?: boolean;
   // canManage: can modify structure (columns/rows). False for inherited (schema_locked) tables.
-  canManage: { type: Boolean, default: false },
-});
+  canManage?: boolean;
+}>();
 
 const live = useLive();
 
@@ -26,7 +28,7 @@ const live = useLive();
 // Row reorder via vue-dnd-kit (canManage only)
 // ══════════════════════════════════════════════════════════════
 const rowGroup = `table-rows-${blockId}`;
-const localRows = ref([...rows]);
+const localRows = ref<TableRow[]>([...rows]);
 watch(
   () => rows,
   (v) => {
@@ -40,10 +42,10 @@ makeDroppable(
   {
     groups: [rowGroup],
     events: {
-      onDrop: (e) => {
+      onDrop: (e: IDragEvent) => {
         const result = e.helpers.suggestSort("vertical");
         if (!result) return;
-        localRows.value = result.sourceItems;
+        localRows.value = result.sourceItems as TableRow[];
         const ids = localRows.value.map((r) => r.id);
         live.pushEvent("reorder_table_rows", {
           block_id: blockId,
@@ -58,18 +60,18 @@ makeDroppable(
 // ══════════════════════════════════════════════════════════════
 // Cell editing — text/number (canEdit)
 // ══════════════════════════════════════════════════════════════
-const editingCell = ref(null);
+const editingCell = ref<{ rowId: number | string; colSlug: string } | null>(null);
 const editingCellValue = ref("");
-const cellInput = ref(null);
+const cellInput = ref<HTMLInputElement | null>(null);
 
-function startEditCell(row, col) {
+function startEditCell(row: TableRow, col: TableColumn): void {
   if (!canEdit) return;
   editingCell.value = { rowId: row.id, colSlug: col.slug };
-  editingCellValue.value = row.cells?.[col.slug] ?? "";
+  editingCellValue.value = String(row.cells?.[col.slug] ?? "");
   nextTick(() => cellInput.value?.focus());
 }
 
-function saveCell(row, col) {
+function saveCell(row: TableRow, col: TableColumn): void {
   editingCell.value = null;
   live.pushEvent("update_table_cell", {
     "row-id": row.id,
@@ -79,14 +81,14 @@ function saveCell(row, col) {
   });
 }
 
-function isCellEditing(row, col) {
+function isCellEditing(row: TableRow, col: TableColumn): boolean {
   return editingCell.value?.rowId === row.id && editingCell.value?.colSlug === col.slug;
 }
 
 // ══════════════════════════════════════════════════════════════
 // Boolean toggle (canEdit)
 // ══════════════════════════════════════════════════════════════
-function toggleBoolean(row, col) {
+function toggleBoolean(row: TableRow, col: TableColumn): void {
   live.pushEvent("toggle_table_cell_boolean", {
     "row-id": row.id,
     "column-slug": col.slug,
@@ -98,7 +100,7 @@ function toggleBoolean(row, col) {
 // ══════════════════════════════════════════════════════════════
 const selectSearch = ref("");
 
-function selectCell(row, col, key) {
+function selectCell(row: TableRow, col: TableColumn, key: string): void {
   live.pushEvent("select_table_cell", {
     "row-id": row.id,
     "column-slug": col.slug,
@@ -106,7 +108,7 @@ function selectCell(row, col, key) {
   });
 }
 
-function toggleMultiSelectCell(row, col, key) {
+function toggleMultiSelectCell(row: TableRow, col: TableColumn, key: string): void {
   live.pushEvent("toggle_table_cell_multi_select", {
     "row-id": row.id,
     "column-slug": col.slug,
@@ -114,7 +116,7 @@ function toggleMultiSelectCell(row, col, key) {
   });
 }
 
-function addCellOption(col, row) {
+function addCellOption(col: TableColumn, row: TableRow): void {
   const label = selectSearch.value.trim();
   if (!label) return;
   live.pushEvent("add_table_cell_option", {
@@ -126,7 +128,7 @@ function addCellOption(col, row) {
   selectSearch.value = "";
 }
 
-function filteredOptions(col) {
+function filteredOptions(col: TableColumn): SelectOption[] {
   const options = col.config?.options || [];
   const q = selectSearch.value.toLowerCase();
   if (!q) return options;
@@ -136,55 +138,57 @@ function filteredOptions(col) {
 // ══════════════════════════════════════════════════════════════
 // Add column / row (canManage only)
 // ══════════════════════════════════════════════════════════════
-function addColumn() {
+function addColumn(): void {
   live.pushEvent("add_table_column", { "block-id": blockId });
 }
 
-function addRow() {
+function addRow(): void {
   live.pushEvent("add_table_row", { "block-id": blockId });
 }
 
 // ══════════════════════════════════════════════════════════════
 // Helpers
 // ══════════════════════════════════════════════════════════════
-function getCellValue(row, col) {
+function getCellValue(row: TableRow, col: TableColumn): unknown {
   return row.cells?.[col.slug] ?? "";
 }
 
-function getFormulaDisplay(row, col) {
+function getFormulaDisplay(row: TableRow, col: TableColumn): string {
   const cell = row.cells?.[col.slug];
-  if (cell == null) return "—";
+  if (cell == null) return "\u2014";
   if (typeof cell === "object") {
     // __result is injected by compute_formulas on the server
-    if ("__result" in cell) {
-      return cell.__result != null ? cell.__result : "—";
+    if ("__result" in (cell as Record<string, unknown>)) {
+      const result = (cell as Record<string, unknown>).__result;
+      return result != null ? String(result) : "\u2014";
     }
     // Has expression but no computed result yet
-    return "—";
+    return "\u2014";
   }
-  return cell !== "" ? cell : "—";
+  return cell !== "" ? String(cell) : "\u2014";
 }
 
-function getFormulaExpression(row, col) {
+function getFormulaExpression(row: TableRow, col: TableColumn): string {
   const cell = row.cells?.[col.slug];
-  if (typeof cell === "object" && cell.expression) return cell.expression;
+  if (typeof cell === "object" && cell && "expression" in (cell as Record<string, unknown>))
+    return String((cell as Record<string, unknown>).expression);
   return "";
 }
 
-function findOptionLabel(options, key) {
+function findOptionLabel(options: SelectOption[], key: unknown): string | null {
   if (!key) return null;
   const opt = options.find((o) => o.key === key);
   return opt?.value || null;
 }
 
-function resolveMultiLabels(value, options) {
+function resolveMultiLabels(value: unknown, options: SelectOption[]): string[] {
   if (!Array.isArray(value) || value.length === 0) return [];
   const map = Object.fromEntries(options.map((o) => [o.key, o.value]));
-  return value.map((k) => map[k] || k);
+  return (value as string[]).map((k) => map[k] || k);
 }
 
-function formatDate(val) {
-  if (!val) return "—";
+function formatDate(val: unknown): string {
+  if (!val) return "\u2014";
   try {
     const d = new Date(val + "T00:00:00");
     return d.toLocaleDateString("en-US", {
@@ -193,19 +197,19 @@ function formatDate(val) {
       day: "numeric",
     });
   } catch {
-    return val;
+    return String(val);
   }
 }
 
-function displayValue(val, fallback) {
+function displayValue(val: unknown, fallback: string): string {
   if (val == null || val === "") return fallback;
   return String(val);
 }
 
-function inputAttrs(col) {
+function inputAttrs(col: TableColumn): Record<string, unknown> {
   if (col.type !== "number") return {};
   const c = col.config || {};
-  const attrs = {};
+  const attrs: Record<string, unknown> = {};
   if (c.min != null) attrs.min = c.min;
   if (c.max != null) attrs.max = c.max;
   attrs.step = c.step || "any";
@@ -291,7 +295,7 @@ function inputAttrs(col) {
                       class="text-[10px] bg-red-500/20 text-red-700 border-0"
                       >No</Badge
                     >
-                    <span v-else class="text-muted-foreground/40 text-sm">—</span>
+                    <span v-else class="text-muted-foreground/40 text-sm">\u2014</span>
                   </div>
                 </template>
 
@@ -372,7 +376,7 @@ function inputAttrs(col) {
                       "
                       class="text-sm"
                       >{{
-                        findOptionLabel(col.config?.options || [], getCellValue(row, col)) || "—"
+                        findOptionLabel(col.config?.options || [], getCellValue(row, col)) || "\u2014"
                       }}</span
                     >
                   </div>
@@ -426,12 +430,12 @@ function inputAttrs(col) {
                             :key="opt.key"
                             class="flex items-center gap-2 w-full px-2 py-1.5 text-sm hover:bg-accent rounded"
                             :class="
-                              (getCellValue(row, col) || []).includes(opt.key) && 'bg-primary/10'
+                              ((getCellValue(row, col) as string[]) || []).includes(opt.key) && 'bg-primary/10'
                             "
                             @click="toggleMultiSelectCell(row, col, opt.key)"
                           >
                             <Checkbox
-                              :checked="(getCellValue(row, col) || []).includes(opt.key)"
+                              :checked="((getCellValue(row, col) as string[]) || []).includes(opt.key)"
                               class="pointer-events-none"
                             />{{ opt.value }}
                           </button>
@@ -464,7 +468,7 @@ function inputAttrs(col) {
                         >{{ lbl }}</Badge
                       >
                     </div>
-                    <span v-else class="text-muted-foreground/40 text-sm">—</span>
+                    <span v-else class="text-muted-foreground/40 text-sm">\u2014</span>
                   </div>
                 </template>
 
@@ -485,7 +489,7 @@ function inputAttrs(col) {
                     <Sigma class="size-3 opacity-30 shrink-0" />
                     <span
                       :class="
-                        getFormulaDisplay(row, col) === '—' && 'text-muted-foreground/40 italic'
+                        getFormulaDisplay(row, col) === '\u2014' && 'text-muted-foreground/40 italic'
                       "
                       >{{ getFormulaDisplay(row, col) }}</span
                     >
@@ -493,7 +497,7 @@ function inputAttrs(col) {
                   <div v-else class="px-2 py-1">
                     <span class="text-sm flex items-center gap-1">
                       <Sigma class="size-3 opacity-30 shrink-0" />
-                      <template v-if="getFormulaDisplay(row, col) !== '—'">{{
+                      <template v-if="getFormulaDisplay(row, col) !== '\u2014'">{{
                         getFormulaDisplay(row, col)
                       }}</template>
                       <span
@@ -503,7 +507,7 @@ function inputAttrs(col) {
                             ? 'font-mono text-info/70 text-xs'
                             : 'text-muted-foreground/40'
                         "
-                        >{{ getFormulaExpression(row, col) || "—" }}</span
+                        >{{ getFormulaExpression(row, col) || "\u2014" }}</span
                       >
                     </span>
                   </div>
@@ -514,13 +518,13 @@ function inputAttrs(col) {
                   <input
                     v-if="canEdit"
                     type="date"
-                    :value="getCellValue(row, col)"
+                    :value="getCellValue(row, col) as string"
                     class="absolute inset-0 px-2 text-sm bg-transparent border-0 rounded-none outline-none"
                     @change="
                       live.pushEvent('update_table_cell', {
                         'row-id': row.id,
                         'column-slug': col.slug,
-                        value: $event.target.value,
+                        value: ($event.target as HTMLInputElement).value,
                         type: 'date',
                       })
                     "
@@ -565,7 +569,7 @@ function inputAttrs(col) {
                       "
                       class="text-sm"
                     >
-                      {{ displayValue(getCellValue(row, col), col.type === "number" ? "0" : "—") }}
+                      {{ displayValue(getCellValue(row, col), col.type === "number" ? "0" : "\u2014") }}
                     </span>
                   </div>
                 </template>

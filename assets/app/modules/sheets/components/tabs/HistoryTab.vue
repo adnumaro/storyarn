@@ -1,25 +1,26 @@
-<script setup>
+<script setup lang="ts">
 import VersionHistory from "@components/version-history/VersionHistory.vue";
+import type { VersionEntry } from "@components/version-history/useVersionHistory";
 
 const {
-  versions,
-  namedVersions,
-  autoVersions,
-  hasMore,
-  canNameVersion,
-  currentVersionId,
-  canEdit,
-  loading,
-} = defineProps({
-  versions: { type: Array, default: () => [] },
-  namedVersions: { type: Array, default: () => [] },
-  autoVersions: { type: Array, default: () => [] },
-  hasMore: { type: Boolean, default: false },
-  canNameVersion: { type: Boolean, default: false },
-  currentVersionId: { type: Number, default: null },
-  canEdit: { type: Boolean, default: false },
-  loading: { type: Boolean, default: false },
-});
+  versions = [],
+  namedVersions = [],
+  autoVersions = [],
+  hasMore = false,
+  canNameVersion = false,
+  currentVersionId = null,
+  canEdit = false,
+  loading = false,
+} = defineProps<{
+  versions?: VersionEntry[];
+  namedVersions?: VersionEntry[];
+  autoVersions?: VersionEntry[];
+  hasMore?: boolean;
+  canNameVersion?: boolean;
+  currentVersionId?: number | null;
+  canEdit?: boolean;
+  loading?: boolean;
+}>();
 </script>
 
 <template>

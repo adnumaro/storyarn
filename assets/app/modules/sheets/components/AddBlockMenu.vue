@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import {
   AlignLeft,
   Calendar,
@@ -12,6 +12,7 @@ import {
   ToggleLeft,
   Type,
 } from "lucide-vue-next";
+import type { FunctionalComponent } from "vue";
 import { ref } from "vue";
 import { Button } from "@components/ui/button/index.ts";
 import {
@@ -24,11 +25,24 @@ import {
 } from "@components/ui/dropdown-menu/index.ts";
 import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
 
-const emit = defineEmits(["select"]);
+interface BlockSelection {
+  type: string;
+  scope: string;
+}
+
+const emit = defineEmits<{
+  select: [payload: BlockSelection];
+}>();
 
 const scope = ref("self");
 
-const basicBlocks = [
+interface BlockTypeEntry {
+  type: string;
+  label: string;
+  icon: FunctionalComponent;
+}
+
+const basicBlocks: BlockTypeEntry[] = [
   { type: "text", label: "Text", icon: Type },
   { type: "rich_text", label: "Rich Text", icon: AlignLeft },
   { type: "number", label: "Number", icon: Hash },
@@ -39,12 +53,12 @@ const basicBlocks = [
   { type: "reference", label: "Reference", icon: Link },
 ];
 
-const structuredBlocks = [
+const structuredBlocks: BlockTypeEntry[] = [
   { type: "table", label: "Table", icon: Table2 },
   { type: "gallery", label: "Gallery", icon: Image },
 ];
 
-function selectBlock(type) {
+function selectBlock(type: string): void {
   emit("select", { type, scope: scope.value });
 }
 </script>

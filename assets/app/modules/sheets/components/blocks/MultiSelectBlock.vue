@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ListChecks } from "lucide-vue-next";
 import { computed } from "vue";
 import { Badge } from "@components/ui/badge/index.ts";
@@ -6,15 +6,16 @@ import { Checkbox } from "@components/ui/checkbox/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { useBlockActions } from "../../composables/useBlockActions";
+import type { Block, SelectOption } from "../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 import OptionEditor from "../OptionEditor.vue";
 
-const { block, canEdit, inherited } = defineProps({
-  block: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  inherited: { type: Boolean, default: false },
-});
+const { block, canEdit = false, inherited = false } = defineProps<{
+  block: Block;
+  canEdit?: boolean;
+  inherited?: boolean;
+}>();
 
 const { live, label, isSelected, onBlockClick } = useBlockActions({
   get block() {
@@ -25,7 +26,7 @@ const { live, label, isSelected, onBlockClick } = useBlockActions({
   },
 });
 
-function saveLabel(val) {
+function saveLabel(val: string): void {
   live.pushEvent("update_block_config", {
     id: block.id,
     field: "label",
@@ -33,17 +34,17 @@ function saveLabel(val) {
   });
 }
 
-const content = computed(() => block.value?.content || []);
-const options = computed(() => block.config?.options || []);
+const content = computed<string[]>(() => (block.value?.content as string[]) || []);
+const options = computed<SelectOption[]>(() => block.config?.options || []);
 const placeholder = computed(() => block.config?.placeholder || "Select...");
 
 const selectedOptions = computed(() =>
   (Array.isArray(content.value) ? content.value : [])
     .map((key) => options.value.find((o) => o.key === key))
-    .filter(Boolean),
+    .filter((o): o is SelectOption => !!o),
 );
 
-function toggle(key) {
+function toggle(key: string): void {
   live.pushEvent("toggle_multi_select", { id: block.id, key });
 }
 </script>
@@ -86,7 +87,7 @@ function toggle(key) {
                 live.pushEvent('update_block_config', {
                   id: block.id,
                   field: 'placeholder',
-                  value: e.target.value,
+                  value: (e.target as HTMLInputElement).value,
                 })
             "
           />
@@ -145,7 +146,7 @@ function toggle(key) {
       <Badge v-for="opt in selectedOptions" :key="opt.key" variant="secondary" class="text-xs">{{
         opt.value
       }}</Badge>
-      <span v-if="selectedOptions.length === 0" class="text-sm text-muted-foreground">—</span>
+      <span v-if="selectedOptions.length === 0" class="text-sm text-muted-foreground">\u2014</span>
     </div>
   </div>
 </template>

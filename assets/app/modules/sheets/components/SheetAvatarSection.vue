@@ -1,16 +1,22 @@
-<script setup>
+<script setup lang="ts">
 import { LayoutGrid, Plus, X } from "lucide-vue-next";
 import { computed } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
+import type { Sheet, SheetAvatar } from "../types";
 
-const { sheet, canEdit } = defineProps({
-  sheet: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-});
+const { sheet, canEdit = false } = defineProps<{
+  sheet: Sheet;
+  canEdit?: boolean;
+}>();
 
-const emit = defineEmits(["trigger-upload", "set-default", "remove", "open-gallery"]);
+const emit = defineEmits<{
+  "trigger-upload": [];
+  "set-default": [id: number | string];
+  remove: [id: number | string];
+  "open-gallery": [];
+}>();
 
-const defaultAvatar = computed(
+const defaultAvatar = computed<SheetAvatar | null>(
   () => sheet.avatars?.find((a) => a.is_default) || sheet.avatars?.[0] || null,
 );
 </script>

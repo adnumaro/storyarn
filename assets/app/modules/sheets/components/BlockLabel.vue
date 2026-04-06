@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * Shared block label: icon + editable name + lock/required/detached badges.
  * Used by all block types except TableBlock (which has its own accordion header).
@@ -7,22 +7,25 @@
  */
 
 import { Lock } from "lucide-vue-next";
+import type { Component } from "vue";
 import { nextTick, ref, watch } from "vue";
 
-const { icon, label, canEdit, isConstant, required, detached } = defineProps({
-  icon: { type: [Object, Function], required: true },
-  label: { type: String, default: "" },
-  canEdit: { type: Boolean, default: false },
-  isConstant: { type: Boolean, default: false },
-  required: { type: Boolean, default: false },
-  detached: { type: Boolean, default: false },
-});
+const { icon, label = "", canEdit = false, isConstant = false, required = false, detached = false } = defineProps<{
+  icon: Component;
+  label?: string;
+  canEdit?: boolean;
+  isConstant?: boolean;
+  required?: boolean;
+  detached?: boolean;
+}>();
 
-const emit = defineEmits(["save"]);
+const emit = defineEmits<{
+  save: [value: string];
+}>();
 
 const editing = ref(false);
 const localLabel = ref(label);
-const inputRef = ref(null);
+const inputRef = ref<HTMLInputElement | null>(null);
 
 watch(
   () => label,
@@ -31,13 +34,13 @@ watch(
   },
 );
 
-function startEdit() {
+function startEdit(): void {
   if (!canEdit) return;
   editing.value = true;
   nextTick(() => inputRef.value?.focus());
 }
 
-function save() {
+function save(): void {
   editing.value = false;
   const val = localLabel.value?.trim();
   if (val && val !== label) {

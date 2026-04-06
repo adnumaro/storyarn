@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import Placeholder from "@tiptap/extension-placeholder";
 import StarterKit from "@tiptap/starter-kit";
 import { EditorContent, useEditor } from "@tiptap/vue-3";
@@ -16,15 +16,17 @@ import {
 } from "lucide-vue-next";
 import { onBeforeUnmount, watch } from "vue";
 
-const { content, editable, placeholder } = defineProps({
-  content: { type: String, default: "" },
-  editable: { type: Boolean, default: false },
-  placeholder: { type: String, default: "Write something..." },
-});
+const { content = "", editable = false, placeholder = "Write something..." } = defineProps<{
+  content?: string;
+  editable?: boolean;
+  placeholder?: string;
+}>();
 
-const emit = defineEmits(["update"]);
+const emit = defineEmits<{
+  update: [html: string];
+}>();
 
-let debounceTimer = null;
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 const editor = useEditor({
   content: content || "",
@@ -36,13 +38,13 @@ const editor = useEditor({
     },
   },
   onUpdate: ({ editor }) => {
-    clearTimeout(debounceTimer);
+    if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       emit("update", editor.getHTML());
     }, 500);
   },
   onBlur: ({ editor }) => {
-    clearTimeout(debounceTimer);
+    if (debounceTimer) clearTimeout(debounceTimer);
     emit("update", editor.getHTML());
   },
 });
@@ -51,7 +53,7 @@ watch(
   () => content,
   (newContent) => {
     if (editor.value && !editor.value.isFocused && newContent !== editor.value.getHTML()) {
-      editor.value.commands.setContent(newContent || "", false);
+      editor.value.commands.setContent(newContent || "", { emitUpdate: false });
     }
   },
 );
@@ -64,41 +66,41 @@ watch(
 );
 
 onBeforeUnmount(() => {
-  clearTimeout(debounceTimer);
+  if (debounceTimer) clearTimeout(debounceTimer);
 });
 
-function toggleBold() {
+function toggleBold(): void {
   editor.value?.chain().focus().toggleBold().run();
 }
-function toggleItalic() {
+function toggleItalic(): void {
   editor.value?.chain().focus().toggleItalic().run();
 }
-function toggleStrike() {
+function toggleStrike(): void {
   editor.value?.chain().focus().toggleStrike().run();
 }
-function toggleH1() {
+function toggleH1(): void {
   editor.value?.chain().focus().toggleHeading({ level: 1 }).run();
 }
-function toggleH2() {
+function toggleH2(): void {
   editor.value?.chain().focus().toggleHeading({ level: 2 }).run();
 }
-function toggleH3() {
+function toggleH3(): void {
   editor.value?.chain().focus().toggleHeading({ level: 3 }).run();
 }
-function toggleBulletList() {
+function toggleBulletList(): void {
   editor.value?.chain().focus().toggleBulletList().run();
 }
-function toggleOrderedList() {
+function toggleOrderedList(): void {
   editor.value?.chain().focus().toggleOrderedList().run();
 }
-function toggleBlockquote() {
+function toggleBlockquote(): void {
   editor.value?.chain().focus().toggleBlockquote().run();
 }
-function setHorizontalRule() {
+function setHorizontalRule(): void {
   editor.value?.chain().focus().setHorizontalRule().run();
 }
 
-function isActive(name, attrs) {
+function isActive(name: string, attrs?: Record<string, unknown>): boolean {
   return editor.value?.isActive(name, attrs) ?? false;
 }
 </script>

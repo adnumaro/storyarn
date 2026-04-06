@@ -1,30 +1,31 @@
-<script setup>
+<script setup lang="ts">
 /**
  * Shared option editor for select/multi_select blocks.
  * Renders editable key+label rows with add/remove.
  */
 import { Plus, X } from "lucide-vue-next";
 import { useLive } from "@composables/useLive";
+import type { SelectOption } from "../types";
 
-const { blockId, options } = defineProps({
-  blockId: { type: [Number, String], required: true },
-  options: { type: Array, default: () => [] },
-});
+const { blockId, options = [] } = defineProps<{
+  blockId: number | string;
+  options?: SelectOption[];
+}>();
 
 const live = useLive();
 
-function addOption() {
+function addOption(): void {
   live.pushEvent("add_select_option", { "block-id": blockId });
 }
 
-function removeOption(index) {
+function removeOption(index: number): void {
   live.pushEvent("remove_select_option", {
     "block-id": blockId,
     index,
   });
 }
 
-function updateOption(index, field, value) {
+function updateOption(index: number, field: string, value: string): void {
   live.pushEvent("update_select_option", {
     "block-id": blockId,
     index,
@@ -43,13 +44,13 @@ function updateOption(index, field, value) {
           :value="opt.key"
           class="h-7 w-14 text-xs font-mono rounded-md border border-input bg-background px-1.5 shrink-0"
           placeholder="key"
-          @blur="(e) => updateOption(idx, 'key', e.target.value)"
+          @blur="(e) => updateOption(idx, 'key', (e.target as HTMLInputElement).value)"
         />
         <input
           :value="opt.value"
           class="h-7 flex-1 min-w-0 text-xs rounded-md border border-input bg-background px-1.5"
           placeholder="Label"
-          @blur="(e) => updateOption(idx, 'value', e.target.value)"
+          @blur="(e) => updateOption(idx, 'value', (e.target as HTMLInputElement).value)"
         />
         <button
           type="button"

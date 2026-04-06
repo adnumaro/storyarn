@@ -1,15 +1,16 @@
-<script setup>
+<script setup lang="ts">
 import { Image } from "lucide-vue-next";
 import { useBlockActions } from "../../../composables/useBlockActions";
+import type { Block } from "../../../types";
 import BlockLabel from "../../BlockLabel.vue";
 import BlockToolbar from "../../BlockToolbar.vue";
 import GalleryBlockContent from "./GalleryBlockContent.vue";
 
-const { block, canEdit, inherited } = defineProps({
-  block: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  inherited: { type: Boolean, default: false },
-});
+const { block, canEdit = false, inherited = false } = defineProps<{
+  block: Block;
+  canEdit?: boolean;
+  inherited?: boolean;
+}>();
 
 const { live, label, isSelected, onBlockClick } = useBlockActions({
   get block() {
@@ -20,7 +21,7 @@ const { live, label, isSelected, onBlockClick } = useBlockActions({
   },
 });
 
-function saveLabel(val) {
+function saveLabel(val: string): void {
   live.pushEvent("update_block_config", {
     id: block.id,
     field: "label",

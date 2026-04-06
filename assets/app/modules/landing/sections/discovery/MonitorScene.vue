@@ -10,7 +10,7 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons";
 import { onMounted, shallowRef, watch } from "vue";
 
-const { activeStep = 0, isVisible = false } = defineProps<{
+const { activeStep = 0 } = defineProps<{
   activeStep?: number;
   isVisible?: boolean;
 }>();

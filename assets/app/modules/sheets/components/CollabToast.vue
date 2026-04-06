@@ -1,7 +1,7 @@
-<script setup>
+<script setup lang="ts">
 import CollabToast from "@components/collab/CollabToast.vue";
 
-const actionLabels = {
+const actionLabels: Record<string, string> = {
   block_created: "added a block",
   block_updated: "edited a block",
   block_deleted: "removed a block",

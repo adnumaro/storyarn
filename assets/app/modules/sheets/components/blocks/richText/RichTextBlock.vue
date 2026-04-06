@@ -1,16 +1,17 @@
-<script setup>
+<script setup lang="ts">
 import { FileText } from "lucide-vue-next";
 import { computed } from "vue";
 import { useBlockActions } from "../../../composables/useBlockActions";
+import type { Block } from "../../../types";
 import BlockLabel from "../../BlockLabel.vue";
 import BlockToolbar from "../../BlockToolbar.vue";
 import RichTextEditor from "./RichTextEditor.vue";
 
-const { block, canEdit, inherited } = defineProps({
-  block: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  inherited: { type: Boolean, default: false },
-});
+const { block, canEdit = false, inherited = false } = defineProps<{
+  block: Block;
+  canEdit?: boolean;
+  inherited?: boolean;
+}>();
 
 const { live, label, isSelected, onBlockClick } = useBlockActions({
   get block() {
@@ -21,7 +22,7 @@ const { live, label, isSelected, onBlockClick } = useBlockActions({
   },
 });
 
-function saveLabel(val) {
+function saveLabel(val: string): void {
   live.pushEvent("update_block_config", {
     id: block.id,
     field: "label",
@@ -29,7 +30,7 @@ function saveLabel(val) {
   });
 }
 
-const content = computed(() => block.value?.content || "");
+const content = computed(() => (block.value?.content as string) || "");
 </script>
 
 <template>
@@ -69,7 +70,7 @@ const content = computed(() => block.value?.content || "");
                 live.pushEvent('update_block_config', {
                   id: block.id,
                   field: 'placeholder',
-                  value: e.target.value,
+                  value: (e.target as HTMLInputElement).value,
                 })
             "
           />

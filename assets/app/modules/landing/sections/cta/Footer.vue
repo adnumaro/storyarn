@@ -1,8 +1,4 @@
 <script setup lang="ts">
-const { translations = {} } = defineProps<{
-  translations?: Record<string, string>;
-}>();
-
 const year = new Date().getFullYear();
 </script>
 
@@ -12,7 +8,7 @@ const year = new Date().getFullYear();
       <!-- Split Structure -->
       <div class="flex flex-col gap-12 sm:flex-row sm:justify-between mb-16">
         <!-- Left: Branding, Tagline, Badges -->
-        <div class="flex flex-col items-start gap-5 max-w-[26rem]">
+        <div class="flex flex-col items-start gap-5 max-w-104">
           <div class="flex items-center gap-3">
             <img
               :src="'/images/logos/logo-name-white.png'"

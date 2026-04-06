@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { CircleDot } from "lucide-vue-next";
 import { computed } from "vue";
 import { Input } from "@components/ui/input/index.ts";
@@ -10,15 +10,16 @@ import {
   SelectValue,
 } from "@components/ui/select/index.ts";
 import { useBlockActions } from "../../composables/useBlockActions";
+import type { Block } from "../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 import OptionEditor from "../OptionEditor.vue";
 
-const { block, canEdit, inherited } = defineProps({
-  block: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  inherited: { type: Boolean, default: false },
-});
+const { block, canEdit = false, inherited = false } = defineProps<{
+  block: Block;
+  canEdit?: boolean;
+  inherited?: boolean;
+}>();
 
 const { live, label, isSelected, onBlockClick } = useBlockActions({
   get block() {
@@ -29,7 +30,7 @@ const { live, label, isSelected, onBlockClick } = useBlockActions({
   },
 });
 
-function saveLabel(val) {
+function saveLabel(val: string): void {
   live.pushEvent("update_block_config", {
     id: block.id,
     field: "label",
@@ -47,7 +48,7 @@ const displayValue = computed(() => {
   return opt?.value || content.value;
 });
 
-function onChange(val) {
+function onChange(val: string): void {
   live.pushEvent("update_block_value", {
     id: block.id,
     value: val === " " ? null : val,
@@ -93,7 +94,7 @@ function onChange(val) {
                 live.pushEvent('update_block_config', {
                   id: block.id,
                   field: 'placeholder',
-                  value: e.target.value,
+                  value: (e.target as HTMLInputElement).value,
                 })
             "
           />
@@ -113,7 +114,7 @@ function onChange(val) {
       <slot name="menu" />
     </BlockLabel>
 
-    <Select v-if="canEdit" :model-value="content || ''" @update:model-value="onChange">
+    <Select v-if="canEdit" :model-value="(content as string) || ''" @update:model-value="onChange">
       <SelectTrigger class="h-9 w-full"><SelectValue :placeholder="placeholder" /></SelectTrigger>
       <SelectContent>
         <SelectItem value=" "><span class="text-muted-foreground">None</span></SelectItem>
@@ -122,6 +123,6 @@ function onChange(val) {
         }}</SelectItem>
       </SelectContent>
     </Select>
-    <p v-else class="text-sm">{{ displayValue || "—" }}</p>
+    <p v-else class="text-sm">{{ displayValue || "\u2014" }}</p>
   </div>
 </template>

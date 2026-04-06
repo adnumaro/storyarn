@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { GripVertical, Plus, Trash2, X } from "lucide-vue-next";
 import { ref } from "vue";
 import { Button } from "@components/ui/button/index.ts";
@@ -6,25 +6,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui
 import { Input } from "@components/ui/input/index.ts";
 import { Textarea } from "@components/ui/textarea/index.ts";
 import { useLive } from "@composables/useLive";
+import type { GalleryImage } from "../../../types";
 
-const { blockId, images, canEdit } = defineProps({
-  blockId: { type: [Number, String], required: true },
-  images: { type: Array, default: () => [] },
-  canEdit: { type: Boolean, default: false },
-});
+const { blockId, images = [], canEdit = false } = defineProps<{
+  blockId: number | string;
+  images?: GalleryImage[];
+  canEdit?: boolean;
+}>();
 
 const live = useLive();
-const detailImage = ref(null);
+const detailImage = ref<GalleryImage | null>(null);
 const detailOpen = ref(false);
 
 // ── Upload ──
-function triggerUpload() {
+function triggerUpload(): void {
   const input = document.createElement("input");
   input.type = "file";
   input.accept = "image/*";
   input.multiple = true;
   input.onchange = (e) => {
-    Array.from(e.target.files).forEach((file) => {
+    Array.from((e.target as HTMLInputElement).files!).forEach((file) => {
       const reader = new FileReader();
       reader.onload = () => {
         live.pushEvent("upload_gallery_image", {
@@ -41,12 +42,12 @@ function triggerUpload() {
 }
 
 // ── Detail modal ──
-function openDetail(image) {
+function openDetail(image: GalleryImage): void {
   detailImage.value = image;
   detailOpen.value = true;
 }
 
-function updateImageField(id, field, value) {
+function updateImageField(id: number | string, field: string, value: string): void {
   live.pushEvent("update_gallery_image", {
     gallery_image_id: id,
     field,
@@ -54,7 +55,7 @@ function updateImageField(id, field, value) {
   });
 }
 
-function removeImage(id) {
+function removeImage(id: number | string): void {
   live.pushEvent("remove_gallery_image", {
     gallery_image_id: id,
     block_id: blockId,
@@ -66,25 +67,25 @@ function removeImage(id) {
 }
 
 // ── Drag & drop reorder ──
-let dragIndex = null;
+let dragIndex: number | null = null;
 
-function onDragStart(e, index) {
+function onDragStart(e: DragEvent, index: number): void {
   dragIndex = index;
-  e.dataTransfer.effectAllowed = "move";
-  e.target.classList.add("opacity-30");
+  e.dataTransfer!.effectAllowed = "move";
+  (e.target as HTMLElement).classList.add("opacity-30");
 }
 
-function onDragEnd(e) {
-  e.target.classList.remove("opacity-30");
+function onDragEnd(e: DragEvent): void {
+  (e.target as HTMLElement).classList.remove("opacity-30");
   dragIndex = null;
 }
 
-function onDragOver(e) {
+function onDragOver(e: DragEvent): void {
   e.preventDefault();
-  e.dataTransfer.dropEffect = "move";
+  e.dataTransfer!.dropEffect = "move";
 }
 
-function onDrop(e, dropIndex) {
+function onDrop(e: DragEvent, dropIndex: number): void {
   e.preventDefault();
   if (dragIndex === null || dragIndex === dropIndex) return;
 
@@ -182,7 +183,7 @@ function onDrop(e, dropIndex) {
             placeholder="Image label..."
             class="h-8 text-sm"
             :disabled="!canEdit"
-            @blur="(e) => updateImageField(detailImage.id, 'label', e.target.value)"
+            @blur="(e) => updateImageField(detailImage!.id, 'label', (e.target as HTMLInputElement).value)"
           />
         </div>
 
@@ -195,7 +196,7 @@ function onDrop(e, dropIndex) {
             :rows="2"
             class="text-sm resize-none"
             :disabled="!canEdit"
-            @blur="(e) => updateImageField(detailImage.id, 'description', e.target.value)"
+            @blur="(e) => updateImageField(detailImage!.id, 'description', (e.target as HTMLTextAreaElement).value)"
           />
         </div>
 

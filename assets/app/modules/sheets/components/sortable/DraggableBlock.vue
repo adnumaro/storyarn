@@ -1,15 +1,16 @@
-<script setup>
+<script setup lang="ts">
 import { makeDraggable } from "@vue-dnd-kit/core";
 import { Grip, GripVertical } from "lucide-vue-next";
 import { computed, onMounted, onUnmounted, ref, useTemplateRef } from "vue";
+import type { LayoutItem } from "../../types";
 
 const SIDE_THRESHOLD = 0.25;
 
-const { canEdit, index, items } = defineProps({
-  canEdit: { type: Boolean, default: false },
-  index: { type: Number, required: true },
-  items: { type: Array, required: true },
-});
+const { canEdit = false, index, items } = defineProps<{
+  canEdit?: boolean;
+  index: number;
+  items: LayoutItem[];
+}>();
 
 const itemRef = useTemplateRef("itemRef");
 
@@ -26,10 +27,10 @@ const isFullWidth = computed(() => items[index]?.type === "full_width");
 
 const pointerRelX = ref(0.5);
 
-function onPointerMove(e) {
+function onPointerMove(e: PointerEvent): void {
   const el = itemRef.value;
   if (!el || !isDragOver.value) return;
-  const rect = el.getBoundingClientRect();
+  const rect = (el as HTMLElement).getBoundingClientRect();
   pointerRelX.value = (e.clientX - rect.left) / rect.width;
 }
 

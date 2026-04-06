@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * Formula binding selector with server-side search + infinite scroll.
  *
@@ -8,6 +8,7 @@
  * Infinite scroll: scroll listener on CommandList $el, with pendingLoad
  * guard unlocked only after DOM settles (scroll position restored).
  */
+import type { ComponentPublicInstance } from "vue";
 import { computed, nextTick, onBeforeUnmount, onBeforeUpdate, ref, watch } from "vue";
 import {
   Command,
@@ -20,20 +21,23 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { useLive } from "@composables/useLive";
 import { useServerSearch } from "@composables/useServerSearch";
+import type { FormulaBindingOption, FormulaSearchGroup } from "../../types";
 
-const { modelValue, sameRowOptions, searchResults, hasMore } = defineProps({
-  modelValue: { type: String, default: "" },
-  sameRowOptions: { type: Array, default: () => [] },
-  searchResults: { type: Array, default: () => [] },
-  hasMore: { type: Boolean, default: false },
-});
+const { modelValue = "", sameRowOptions = [], searchResults = [], hasMore = false } = defineProps<{
+  modelValue?: string;
+  sameRowOptions?: FormulaBindingOption[];
+  searchResults?: FormulaSearchGroup[];
+  hasMore?: boolean;
+}>();
 
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits<{
+  "update:modelValue": [value: string];
+}>();
 
 const open = ref(false);
 const live = useLive();
 const pendingLoad = ref(false);
-const listRef = ref(null);
+const listRef = ref<ComponentPublicInstance | null>(null);
 let savedScrollTop = 0;
 
 const { query, loading, search, reset } = useServerSearch({
@@ -41,11 +45,11 @@ const { query, loading, search, reset } = useServerSearch({
   debounceMs: 250,
 });
 
-function getListEl() {
-  return listRef.value?.$el ?? listRef.value;
+function getListEl(): HTMLElement | null {
+  return (listRef.value?.$el as HTMLElement) ?? (listRef.value as unknown as HTMLElement);
 }
 
-function onScroll() {
+function onScroll(): void {
   if (!hasMore || pendingLoad.value) return;
   const el = getListEl();
   if (!el) return;
@@ -112,12 +116,12 @@ const displayLabel = computed(() => {
   return modelValue;
 });
 
-function onSelect(value) {
+function onSelect(value: string): void {
   emit("update:modelValue", value);
   open.value = false;
 }
 
-function onSearchInput(q) {
+function onSearchInput(q: string): void {
   pendingLoad.value = false;
   savedScrollTop = 0;
   search(q);

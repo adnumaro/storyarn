@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import {
   ArrowLeft,
   ArrowLeftRight,
@@ -17,24 +17,26 @@ import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { Separator } from "@components/ui/separator/index.ts";
 import { useLive } from "@composables/useLive";
+import type { TableColumn } from "../../../types";
+import type { ColumnHeaderPanel } from "../../../types";
 import { allTypes, typeIcon, typeLabels } from "./table-config";
 
-const { column, columns, canManage } = defineProps({
-  column: { type: Object, required: true },
-  columns: { type: Array, required: true },
-  canManage: { type: Boolean, default: false },
-});
+const { column, columns, canManage = false } = defineProps<{
+  column: TableColumn;
+  columns: TableColumn[];
+  canManage?: boolean;
+}>();
 
 const live = useLive();
 
 // ── Dropdown state ──
 const isOpen = ref(false);
-const panel = ref("main");
+const panel = ref<ColumnHeaderPanel>("main");
 const renameValue = ref("");
 const newOptionValue = ref("");
-const optionEdits = ref({});
+const optionEdits = ref<Record<number, string>>({});
 
-function open() {
+function open(): void {
   isOpen.value = true;
   panel.value = "main";
   renameValue.value = column.name;
@@ -42,7 +44,7 @@ function open() {
   optionEdits.value = {};
 }
 
-function close() {
+function close(): void {
   if (renameValue.value.trim() && renameValue.value.trim() !== column.name) {
     live.pushEvent("rename_table_column", {
       "column-id": column.id,
@@ -52,7 +54,7 @@ function close() {
   isOpen.value = false;
 }
 
-function saveRename() {
+function saveRename(): void {
   const name = renameValue.value.trim();
   if (name && name !== column.name) {
     live.pushEvent("rename_table_column", {
@@ -62,19 +64,19 @@ function saveRename() {
   }
 }
 
-function toggleConstant() {
+function toggleConstant(): void {
   live.pushEvent("toggle_table_column_constant", {
     "column-id": column.id,
   });
 }
 
-function toggleRequired() {
+function toggleRequired(): void {
   live.pushEvent("toggle_table_column_required", {
     "column-id": column.id,
   });
 }
 
-function changeType(newType) {
+function changeType(newType: string): void {
   if (column.type !== newType) {
     live.pushEvent("change_table_column_type", {
       "column-id": column.id,
@@ -83,12 +85,12 @@ function changeType(newType) {
   }
 }
 
-function deleteColumn() {
+function deleteColumn(): void {
   live.pushEvent("delete_table_column", { "column-id": column.id });
   isOpen.value = false;
 }
 
-function addOption() {
+function addOption(): void {
   const label = newOptionValue.value.trim();
   if (!label) return;
   live.pushEvent("add_table_column_option", {
@@ -98,7 +100,7 @@ function addOption() {
   newOptionValue.value = "";
 }
 
-function updateOption(index) {
+function updateOption(index: number): void {
   const val = optionEdits.value[index];
   if (val != null && val.trim()) {
     live.pushEvent("update_table_column_option", {
@@ -109,22 +111,22 @@ function updateOption(index) {
   }
 }
 
-function removeOption(key) {
+function removeOption(key: string): void {
   live.pushEvent("remove_table_column_option", {
     "column-id": column.id,
     key,
   });
 }
 
-function updateNumberConstraint(field, event) {
+function updateNumberConstraint(field: string, event: Event): void {
   live.pushEvent("update_number_constraint", {
     "column-id": column.id,
     field,
-    value: event.target.value,
+    value: (event.target as HTMLInputElement).value,
   });
 }
 
-function toggleReferenceMultiple() {
+function toggleReferenceMultiple(): void {
   live.pushEvent("toggle_reference_multiple", {
     "column-id": column.id,
   });
@@ -258,7 +260,7 @@ function toggleReferenceMultiple() {
           <input
             :value="optionEdits[idx] ?? opt.value"
             class="bg-transparent border border-border rounded px-2 py-1 text-xs flex-1 outline-none focus:border-ring"
-            @input="optionEdits[idx] = $event.target.value"
+            @input="optionEdits[idx] = ($event.target as HTMLInputElement).value"
             @blur="updateOption(idx)"
           />
           <button

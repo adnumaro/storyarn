@@ -1,18 +1,19 @@
-<script setup>
+<script setup lang="ts">
 import { ToggleLeft } from "lucide-vue-next";
 import { computed } from "vue";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Checkbox } from "@components/ui/checkbox/index.ts";
 import { Switch } from "@components/ui/switch/index.ts";
 import { useBlockActions } from "../../composables/useBlockActions";
+import type { Block } from "../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 
-const { block, canEdit, inherited } = defineProps({
-  block: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  inherited: { type: Boolean, default: false },
-});
+const { block, canEdit = false, inherited = false } = defineProps<{
+  block: Block;
+  canEdit?: boolean;
+  inherited?: boolean;
+}>();
 
 const { live, label, isSelected, onBlockClick } = useBlockActions({
   get block() {
@@ -23,7 +24,7 @@ const { live, label, isSelected, onBlockClick } = useBlockActions({
   },
 });
 
-function saveLabel(val) {
+function saveLabel(val: string): void {
   live.pushEvent("update_block_config", {
     id: block.id,
     field: "label",
@@ -38,16 +39,16 @@ const booleanLabel = computed(() => {
   const cfg = block.config || {};
   if (content.value === true) return cfg.true_label || "Yes";
   if (content.value === false) return cfg.false_label || "No";
-  return cfg.neutral_label || "—";
+  return cfg.neutral_label || "\u2014";
 });
 
 const booleanChecked = computed({
   get: () => content.value === true,
-  set: (val) => live.pushEvent("update_block_value", { id: block.id, value: val }),
+  set: (val: boolean) => live.pushEvent("update_block_value", { id: block.id, value: val }),
 });
 
-function cycle() {
-  let next;
+function cycle(): void {
+  let next: boolean | null;
   if (content.value === true) next = false;
   else if (content.value === false) next = null;
   else next = true;
@@ -109,7 +110,7 @@ function cycle() {
                   live.pushEvent('update_block_config', {
                     id: block.id,
                     field: 'true_label',
-                    value: e.target.value,
+                    value: (e.target as HTMLInputElement).value,
                   })
               "
             />
@@ -125,7 +126,7 @@ function cycle() {
                   live.pushEvent('update_block_config', {
                     id: block.id,
                     field: 'false_label',
-                    value: e.target.value,
+                    value: (e.target as HTMLInputElement).value,
                   })
               "
             />
@@ -142,7 +143,7 @@ function cycle() {
                 live.pushEvent('update_block_config', {
                   id: block.id,
                   field: 'neutral_label',
-                  value: e.target.value,
+                  value: (e.target as HTMLInputElement).value,
                 })
             "
           />

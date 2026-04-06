@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ChevronLeft, ChevronRight, Image, Plus, Star, Trash2, X } from "lucide-vue-next";
 import { ref, watch } from "vue";
 import { Badge } from "@components/ui/badge/index.ts";
@@ -6,24 +6,25 @@ import { Button } from "@components/ui/button/index.ts";
 import { Dialog, DialogContent } from "@components/ui/dialog/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Textarea } from "@components/ui/textarea/index.ts";
+import type { SheetAvatar } from "../types";
 
-const { open, avatars, canEdit } = defineProps({
-  open: { type: Boolean, default: false },
-  avatars: { type: Array, default: () => [] },
-  canEdit: { type: Boolean, default: false },
-});
+const { open = false, avatars = [], canEdit = false } = defineProps<{
+  open?: boolean;
+  avatars?: SheetAvatar[];
+  canEdit?: boolean;
+}>();
 
-const emit = defineEmits([
-  "update:open",
-  "upload",
-  "setDefault",
-  "remove",
-  "updateName",
-  "updateNotes",
-]);
+const emit = defineEmits<{
+  "update:open": [value: boolean];
+  upload: [];
+  setDefault: [id: number | string];
+  remove: [id: number | string];
+  updateName: [id: number | string, value: string];
+  updateNotes: [id: number | string, value: string];
+}>();
 
 // ── View state ──
-const view = ref("grid"); // "grid" | "single"
+const view = ref<"grid" | "single">("grid");
 const currentIndex = ref(0);
 
 // Reset to grid when dialog opens
@@ -50,30 +51,30 @@ watch(
   },
 );
 
-function openSingle(index) {
+function openSingle(index: number): void {
   currentIndex.value = index;
   view.value = "single";
 }
 
-function navigate(direction) {
+function navigate(direction: number): void {
   const count = avatars.length;
   if (count <= 1) return;
   currentIndex.value = (currentIndex.value + direction + count) % count;
 }
 
 // ── Debounced updates ──
-const nameDebounces = {};
-const notesDebounces = {};
+const nameDebounces: Record<string, ReturnType<typeof setTimeout>> = {};
+const notesDebounces: Record<string, ReturnType<typeof setTimeout>> = {};
 
-function onNameBlur(id, value, original) {
-  clearTimeout(nameDebounces[id]);
+function onNameBlur(id: number | string, value: string, original: string | undefined): void {
+  clearTimeout(nameDebounces[String(id)]);
   if (value !== (original || "")) {
     emit("updateName", id, value);
   }
 }
 
-function onNotesBlur(id, value, original) {
-  clearTimeout(notesDebounces[id]);
+function onNotesBlur(id: number | string, value: string, original: string | undefined): void {
+  clearTimeout(notesDebounces[String(id)]);
   if (value !== (original || "")) {
     emit("updateNotes", id, value);
   }
@@ -147,7 +148,7 @@ function onNotesBlur(id, value, original) {
                 :value="item.name || ''"
                 placeholder="Name..."
                 class="w-full mt-1 text-center text-xs bg-transparent border-0 border-b border-border focus:border-primary rounded-none px-0 outline-none"
-                @blur="(e) => onNameBlur(item.id, e.target.value, item.name)"
+                @blur="(e) => onNameBlur(item.id, (e.target as HTMLInputElement).value, item.name)"
               />
               <p
                 v-else-if="item.name"
@@ -216,7 +217,7 @@ function onNotesBlur(id, value, original) {
               :disabled="!canEdit"
               @blur="
                 (e) =>
-                  onNameBlur(avatars[currentIndex].id, e.target.value, avatars[currentIndex].name)
+                  onNameBlur(avatars[currentIndex].id, (e.target as HTMLInputElement).value, avatars[currentIndex].name)
               "
             />
           </div>
@@ -232,7 +233,7 @@ function onNotesBlur(id, value, original) {
               :disabled="!canEdit"
               @blur="
                 (e) =>
-                  onNotesBlur(avatars[currentIndex].id, e.target.value, avatars[currentIndex].notes)
+                  onNotesBlur(avatars[currentIndex].id, (e.target as HTMLTextAreaElement).value, avatars[currentIndex].notes)
               "
             />
           </div>

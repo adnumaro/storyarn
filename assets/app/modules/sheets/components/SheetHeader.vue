@@ -1,19 +1,20 @@
-<script setup>
+<script setup lang="ts">
 import { Image, Trash2 } from "lucide-vue-next";
 import { ref, watch } from "vue";
 import ColorPickerPopover from "@components/ColorPickerPopover.vue";
 import { Button } from "@components/ui/button/index.ts";
 import { useLive } from "@composables/useLive";
+import type { Sheet } from "../types";
 import AvatarGallery from "./AvatarGallery.vue";
 import SheetAvatarSection from "./SheetAvatarSection.vue";
 import SheetMetadata from "./SheetMetadata.vue";
 
-const { sheet, canEdit, isDraft, sourceShortcut } = defineProps({
-  sheet: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  isDraft: { type: Boolean, default: false },
-  sourceShortcut: { type: String, default: null },
-});
+const { sheet, canEdit = false, isDraft = false, sourceShortcut = null } = defineProps<{
+  sheet: Sheet;
+  canEdit?: boolean;
+  isDraft?: boolean;
+  sourceShortcut?: string | null;
+}>();
 
 const live = useLive();
 
@@ -27,37 +28,37 @@ watch(
   },
 );
 
-function onColorUpdate(color) {
+function onColorUpdate(color: string): void {
   localColor.value = color;
   live.pushEvent("set_sheet_color", { color });
 }
 
 // ── Banner upload ──
-function triggerBannerUpload() {
+function triggerBannerUpload(): void {
   const input = document.createElement("input");
   input.type = "file";
   input.accept = "image/*";
-  input.onchange = (e) => uploadFile(e.target.files[0], "upload_banner");
+  input.onchange = (e) => uploadFile((e.target as HTMLInputElement).files![0], "upload_banner");
   input.click();
 }
 
-function removeBanner() {
+function removeBanner(): void {
   live.pushEvent("remove_banner", {});
 }
 
 // ── Avatar upload ──
-function triggerAvatarUpload() {
+function triggerAvatarUpload(): void {
   const input = document.createElement("input");
   input.type = "file";
   input.accept = "image/*";
   input.multiple = true;
   input.onchange = (e) => {
-    Array.from(e.target.files).forEach((file) => uploadFile(file, "upload_avatar"));
+    Array.from((e.target as HTMLInputElement).files!).forEach((file) => uploadFile(file, "upload_avatar"));
   };
   input.click();
 }
 
-function uploadFile(file, eventName) {
+function uploadFile(file: File, eventName: string): void {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = () => {
@@ -73,19 +74,19 @@ function uploadFile(file, eventName) {
 // ── Avatars ──
 const galleryOpen = ref(false);
 
-function setDefaultAvatar(id) {
+function setDefaultAvatar(id: number | string): void {
   live.pushEvent("set_default_avatar", { id });
 }
 
-function removeAvatar(id) {
+function removeAvatar(id: number | string): void {
   live.pushEvent("remove_avatar", { id });
 }
 
-function updateAvatarName(id, value) {
+function updateAvatarName(id: number | string, value: string): void {
   live.pushEvent("gallery_update_name", { id, value });
 }
 
-function updateAvatarNotes(id, value) {
+function updateAvatarNotes(id: number | string, value: string): void {
   live.pushEvent("gallery_update_notes", { id, value });
 }
 </script>
