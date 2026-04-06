@@ -15,7 +15,7 @@ Cada equipo usa Storyarn de forma diferente, pero así es como un proyecto típi
 
 Crea un **espacio de trabajo (workspace)** para tu equipo. Cada espacio de trabajo tiene sus propios miembros con acceso basado en roles — los propietarios gestionan todo, los administradores manejan las invitaciones, los miembros crean proyectos y los observadores tienen acceso de solo lectura.
 
-Dentro de un espacio de trabajo, crea un **proyecto**. Cada proyecto es independiente — con sus propias hojas, flujos, escenas, guiones, localización y recursos. Los proyectos también tienen su propia membresía: los propietarios configuran los ajustes, los editores crean contenido y los observadores revisan.
+Dentro de un espacio de trabajo, crea un **proyecto**. Cada proyecto es independiente — con sus propias fichas, flujos, escenas, guiones, localización y recursos. Los proyectos también tienen su propia membresía: los propietarios configuran los ajustes, los editores crean contenido y los observadores revisan.
 
 Invita a compañeros de equipo por email. Reciben un enlace con token, lo aceptan, y ya están dentro — con el rol que elegiste.
 
@@ -26,22 +26,22 @@ Invita a compañeros de equipo por email. Reciben un enlace con token, lo acepta
 
 ---
 
-## Define tu mundo con Hojas
+## Define tu mundo con Fichas
 
-Empieza con las **Hojas (Sheets)** — contenedores de datos estructurados para todo el mundo de tu juego. Crea una hoja para cada personaje, objeto, ubicación, facción o misión.
+Empieza con las **Fichas (Sheets)** — contenedores de datos estructurados para todo el mundo de tu juego. Crea una ficha para cada personaje, objeto, ubicación, facción o misión.
 
-Cada campo en una hoja es un **bloque (block)**. Hay 10 tipos de bloques: texto, texto enriquecido, número, booleano, selección, selección múltiple, fecha, tabla, fórmula y referencia. A menos que marques un bloque como **constante**, se convierte automáticamente en una **variable** — referenciable desde flujos, condiciones y otras hojas.
+Cada campo en una ficha es un **bloque (block)**. Hay 10 tipos de bloques: texto, texto enriquecido, número, booleano, selección, selección múltiple, fecha, tabla, fórmula y referencia. A menos que marques un bloque como **constante**, se convierte automáticamente en una **variable** — referenciable desde flujos, condiciones y otras fichas.
 
-Las variables siguen el patrón `{atajo_de_hoja}.{nombre_de_variable}`. Un bloque de Salud en la hoja `mc.jaime` se convierte en `mc.jaime.health`. Cambia ese valor una sola vez y cada flujo que lo comprueba ve la actualización de inmediato.
+Las variables siguen el patrón `{atajo_de_hoja}.{nombre_de_variable}`. Un bloque de Salud en la ficha `mc.jaime` se convierte en `mc.jaime.health`. Cambia ese valor una sola vez y cada flujo que lo comprueba ve la actualización de inmediato.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Editor de hojas — perfil de personaje con bloques de número y selección, mostrando la insignia del nombre de variable en cada campo
+  Editor de fichas — perfil de personaje con bloques de número y selección, mostrando la insignia del nombre de variable en cada campo
 </div>
 
-Las **Tablas** son cuadrículas de hoja de cálculo dentro de una hoja — perfectas para inventarios, árboles de habilidades o matrices de relaciones. Cada celda se convierte en su propia variable. Las **Fórmulas** te permiten calcular valores a partir de otras variables, incluso entre hojas distintas.
+Las **Tablas** son cuadrículas de hoja de cálculo dentro de una ficha — perfectas para inventarios, árboles de habilidades o matrices de relaciones. Cada celda se convierte en su propia variable. Las **Fórmulas** te permiten calcular valores a partir de otras variables, incluso entre fichas distintas.
 
-Organiza las hojas en una jerarquía de árbol. Usa la **herencia de propiedades** para propagar bloques de hojas padre a hijas — crea una "Base de Personaje" con salud, nivel y facción, y cada personaje hijo hereda esos campos automáticamente, cada uno con sus propios valores.
+Organiza las fichas en una jerarquía de árbol. Usa la **herencia de propiedades** para propagar bloques de fichas padre a hijas — crea una "Base de Personaje" con salud, nivel y facción, y cada personaje hijo hereda esos campos automáticamente, cada uno con sus propios valores.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
@@ -93,7 +93,7 @@ El **Modo Depuración** es tu inspector paso a paso. Avanza nodo por nodo, obser
 
 Las **Escenas (Scenes)** son mapas interactivos donde tu mundo se vuelve espacial. Sube una imagen de fondo, dibuja zonas poligonales para áreas, coloca pines para personajes y puntos de interés, añade conexiones entre pines y anota con etiquetas de texto.
 
-Las zonas y los pines no son solo visuales — son interactivos. Adjunta **condiciones** para ocultar o deshabilitar elementos según el estado del juego. Adjunta **instrucciones** para modificar variables al hacer clic. Vincúlalos a flujos, hojas u otras escenas.
+Las zonas y los pines no son solo visuales — son interactivos. Adjunta **condiciones** para ocultar o deshabilitar elementos según el estado del juego. Adjunta **instrucciones** para modificar variables al hacer clic. Vincúlalos a flujos, fichas u otras escenas.
 
 Haz doble clic en una zona para **profundizar** — Storyarn extrae el área de la zona de la imagen de fondo, crea una escena hija y te permite seguir haciendo zoom. Construye jerarquías de mundo completas: continente > región > ciudad > edificio > habitación.
 
@@ -132,7 +132,7 @@ Exporta a formato **Fountain** para Final Draft, Highland o cualquier herramient
 
 ## Localiza todo
 
-Cuando tu contenido esté listo, las herramientas de **Localización** extraen automáticamente cada texto traducible — líneas de diálogo, acotaciones, texto de menú, etiquetas de hojas y valores de bloques.
+Cuando tu contenido esté listo, las herramientas de **Localización** extraen automáticamente cada texto traducible — líneas de diálogo, acotaciones, texto de menú, etiquetas de fichas y valores de bloques.
 
 Configura la **integración con DeepL** para traducción automática como primer paso. Mantén un **glosario** para terminología consistente entre idiomas (nombres de personajes, términos del juego, nombres propios). Haz seguimiento del progreso por idioma con informes que muestran conteos de palabras por personaje, estado de traducción y progreso de doblaje.
 

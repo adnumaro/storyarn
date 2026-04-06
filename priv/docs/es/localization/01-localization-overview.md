@@ -1,65 +1,121 @@
 %{
-title: "Visión General de Localización",
-category_label: "Localización",
+title: "Vista general de Localizacion",
+category_label: "Localizacion",
 order: 1,
-description: "Traduce tu proyecto a múltiples idiomas con extracción automática, API de DeepL y uso glosarios."
+description: "Traduce tu proyecto a multiples idiomas con extraccion automatica, DeepL y glosarios."
 }
 
 ---
 
-El entorno general de traducciones e internalización de idioma en Storyarn te brinda un control extensísimo y profesional con extracciones puras con diccionarios controladas vía hashing sin la duplicación caótica usual, incluyendo DeepL base nativa y supervisión técnica global.
+El sistema de localizacion de Storyarn te da control total sobre la traduccion de tu contenido narrativo -- desde lineas de dialogo y opciones de respuesta hasta nombres de fichas y etiquetas de bloques. Gestiona la {accent}extraccion automatica de texto{/accent}, traduccion automatica via DeepL, aplicacion de glosarios, seguimiento de doblaje y reportes de progreso detallados.
 
-## Fases y Mecanismos de Trabajo 
+## Como funciona
 
-El engranaje o ruta lingüística consta de 4 ejes principales sin abandonar nuestra web minimizando errores en las importaciones.
+El flujo de trabajo de localizacion tiene cuatro etapas, cada una disenada para minimizar el esfuerzo manual manteniendo el control de los traductores.
 
-### 1. Despliegue primario y Setup Multi-Idiomático
+### 1. Configura tus idiomas
 
-Presionar **Localization** adentráte en él; detectarás enseguida tu etiqueta fundacional o bloque referencial nativo e inamovible para traducciones relativas dictado en las raíces web. Desde allí se expanden las opciones plurales superando las {accent}45 lenguas de alta demanda global y en localizaciones gamer{/accent} desde Árabe a Chino Simplificado/Tradicional pasando a cualquier derivación europea u asiática general. 
-
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Menús base fundacionales y opciones plurales a escoger en selectores modulares para el mundo políglota a traducir junto listado primario del juego nativo. 
-</div>
-
-### 2. Barredora o Extracción Masiva (Sync Extractor)
-
-Al pinchar **Sync (Sincronización)** el programa absorbe y lee la estructura profunda del universo y rastrea para recolectar el material legible derivando un indexado de estas zonas principales a aislar.
-
-| Raíz Fontanal        | Capturas textuales de esta base                                                    |
-| -------------- | ---------------------------------------------------------------------------------------------------------- |
-| **Nodos Discursivos/Flujos** | Diálogos crudos, anotacion teatral de actores, textos menu, nomenclaturas bifurcadas, saltos y nombres internos salidas |
-| **Hojas base / Sheets**     | Titulaciones descriptivas de hoja y listado base narrativo|                                                                              
-| **Bloques y variables**     | Rótulos etiquetas o atributos e inventarios enumerados de items|
-| **Cajas y Flujos globales**      | Nombres raiz de archivo y explicaciones anexas pre-menú de subflujos|
-
-Storyarn elabora identificadores irrepetibles o Hashs criptográficos (SHA-256) validando mutaciones. Al re-procesarse una criba a posteriori del primer escaneo, no acumulará residuos repetidos. Evaluará la raíz primigenia al volver y desmentirá concordancias o forzará preavisos de que "El texto principal originario varió post-traducciones; revise o adáptese por obsolescencias referenciales" a diferencia de otros sistemas ciegos, rastrearemos por ID sin estresar y duplicar si te equivocaste en una minúscula general. Las extracciones de oradores guardan su matriz identificativa personal sirviendo para un filtro total posterior para categorizar a los Dobladores (Actors Voice/VoiceOvers - VA) en audios.
-
-### 3. Fases e intromisiones de los Operadores o Traductores
-
-Las tres aproximaciones recomendadas o funcionales serían las de editar o picar **manual puro** (Ediciones puntuales humanizadas a matiz estricto directo picando recuadros blancos paralelos), exportando con envíos cruzados masivos (Excel / CSV puros, entregables a agencias especializadas referenciables e inyectables al terminar con un simple Upload matching file), **O integración artificial directa conectando la llave (Key) generada tuya propia de DeepL API en Ajustes Web del proyecto** abriendo automatismos puros y de un clic tanto colectivas a escala 50 a 50 (Batching/Batch-translate listados) u orientativas menores "destello estelar mágico clicker" para salvarte o sacarte de un nudo léxico particular con una mera previsualización rápida automática en tu pantalla interactiva, todo empapelado y reguardándose del error a código y HTML para que las menciones "{nombre_pj_jugador}" vuelvan de la traducción inmaculados sin desorden del contexto al ser protegidas artificialmente tras barreras "no_translate_span" auto-añadidas temporales para sus lecturas sintácticas algorítmicas de las IAs.
+Abre **Localizacion** en la barra lateral de tu proyecto. El idioma fuente de tu proyecto se detecta automaticamente desde la configuracion de tu espacio de trabajo y se muestra como una insignia principal. Anade idiomas destino desde una lista curada de {accent}45 idiomas soportados{/accent} que cubren todos los mercados principales de localizacion de juegos -- desde ingles, espanol y japones hasta arabe, tailandes y chino (simplificado/tradicional).
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Mesas generales interactuadoras y barra de búsqueda indicando orígenes, contadores de vocablos, recuento lineal, botón rápido estelar MT / Machine Translator 
+  La pagina principal de localizacion mostrando la insignia del idioma fuente, chips de idiomas destino con botones de eliminar y el desplegable de Agregar idioma
 </div>
 
-### 4. Categorizar su Cierre (Stages & Status)
+### 2. Extrae el contenido traducible
 
-Los filtros escalables clasifican tus tareas según avances o prioridades visualmente por un factor cromado (Estados base de proceso en tus botones) y categoriza bajo MT lo procedente directamente de API, dejándolo rotulado "Borradores o en brutos/Draft", requiriendo verificaciones si fuese útil a futuro evitar horrores inútiles y permitiendo un avance fluido a pases superiores "Revisandos" y "Final".
+Haz clic en **Sincronizar** para escanear todo tu proyecto y extraer cada texto traducible. El extractor obtiene contenido de cuatro tipos de fuente:
 
-## Forzados léxicos glosarios "Diccionarios" (Glossary Data)
+| Fuente                | Que se extrae                                                                                              |
+| --------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Nodos de flujo**    | Texto de dialogo, acotaciones, texto de menu, textos de respuestas individuales, descripciones de slug line, etiquetas de salida |
+| **Fichas**            | Nombre de ficha, descripcion de ficha                                                                      |
+| **Bloques**           | Etiquetas de bloque, valores de contenido de texto, etiquetas de opciones de seleccion                     |
+| **Flujos**            | Nombre de flujo, descripcion de flujo                                                                      |
 
-Una de sus potencias mayores incluye fijar léxico e imponer términos clave en las IAs de base para conservar consistencia total global de tu obra (lore). Forja entradas léxicas duales: Fijas la palabra Base, por ejemplo "Varita mágica verde de la luna", luego obligas en ese glosario general que el Español nunca lo dicte "Magic wand", lo preestableces a "La varilla lunar" con indicaciones directrices anexadas informativas de contexto para terceros (Dato para Agencias externas en listado u opción base). Además puedes "Bloquear término Invariante e intransferible y no tocado" si el lugar nativo fuera sagrado "Neo-York 23". La magia surge al mezclarlo al DeepL el cual chupará el Glosario entero internamente mediante sus APIs previas al iniciar dictándole con base estricta inquebrantable el respeto y orden absoluto formal de tu glosario fijado de base de manera que la automatización asimile tu forma interna sin descripciones inconexas masivas.
+Cada texto extraido recibe un hash SHA-256 de su contenido fuente. Cuando vuelves a sincronizar, Storyarn detecta cambios -- si el texto fuente ha sido modificado desde la ultima traduccion, el sistema puede marcarlo para re-traduccion. La extraccion es idempotente: ejecutarla multiples veces nunca crea duplicados gracias a la logica de upsert.
 
-## Reports e informes genereralizados estadísticos
+Los nodos de dialogo tambien rastrean el **ID de ficha del hablante**, para que los reportes puedan desglosar conteos de palabras por personaje.
 
-Verifícalo todo sin rodeos exportables acudiendo al plano de Informes y Progress (reports). Todo estipulado según:
+### 3. Traduce
 
-**Listados completistas Multi-idioma** --  Cortes porcentuales rellenables a modo listados globales verificables de cuánto se realizó frente de vacíos o estropeos en curso y el final porcentaje generalizado concluido y fijado al completo por el equipo final de correctores.
+Tienes tres vias para completar las traducciones:
 
-**Por personaje (Speakers metrics)** -- Desglose absoluto e individualizado a nivel particular dividiéndolos separando y extrayendo contadores numéricos y palabras netas para evaluar un presunto estudio fonético sin sobresaltos financieros, enviando las precisas líneas vocacionales y ahorrando miles de contabilidades ciegas al actor. Separador nato del progreso real audio VO grabando, para dictaminar y cruzar líneas narrables pregrabable ante traducciones aún deshechas visualmente (Estado "sin audio / por grabar", contra estado "Aprobado sonoro interno final con play de comprobación").
+**Edicion manual** -- Abre cualquier entrada de texto para editar la traduccion directamente. Ideal para adaptacion creativa, matices culturales y pulido final.
 
-## Import - Export localizaciones e intercambios
+**Integracion con DeepL** -- Conecta tu clave API de DeepL en la configuracion del proyecto para activar la traduccion automatica. Puedes traducir una entrada individual (haz clic en el icono de destello) o traducir por lotes todos los textos pendientes de un idioma con un solo clic.
 
-Ruta general simple para trasbases de información estática; al elegir tu salida desde su pantalla dedicada, puedes derivar tus datos de tabla filtrada como desees hacia un Excel .XLSX multi-rango o un formato primitivo tipo CSV simple sin sobrecargas que contemple los mismos IDs que el programa te escaneó junto variables contextuales. De igual tipo puedes lanzar y atrapar la matriz invertida devolviendo de tus correctores el mismo resultado para aplicar sustituciones correctivas generales mediante Update IDs internamente. Resguardando lo ya perfecto y descartando los IDs borrados desde la web en ese tiempo mediante fallas. Descrita genéricamente para bases universales de compatibilidad bajo sus correspondientes y estrictas pantallas genéricas.
+Internamente, la traduccion de DeepL es {accent}compatible con HTML{/accent}: el texto enriquecido de los nodos de dialogo se envia con `tag_handling: "html"` para que el formato se preserve. Los marcadores de posicion de variables como `{character_name}` se envuelven en `<span translate="no">` antes de enviar y se desenvuelven despues -- asi vuelven intactos. Las solicitudes por lotes se dividen en grupos de 50 textos (el limite por solicitud de DeepL). Tus entradas de glosario se aplican automaticamente durante la traduccion.
+
+**Exportar para traductores externos** -- Descarga un archivo Excel (.xlsx) o CSV filtrado por idioma, estado o tipo de fuente. Envialo a tu equipo de traduccion y luego importa el archivo completado de vuelta. La importacion empareja filas por ID y actualiza traducciones y estados.
+
+<div class="docs-image-placeholder">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+  La tabla de traducciones mostrando texto fuente, traduccion, insignias de estado, conteos de palabras y botones de accion (editar, traducir con DeepL)
+</div>
+
+### 4. Revisa y finaliza
+
+Cada entrada de texto sigue un {accent}flujo de trabajo de cinco etapas{/accent}:
+
+| Estado            | Significado                                      |
+| ----------------- | ------------------------------------------------ |
+| **Pendiente**     | Extraido pero aun no traducido                   |
+| **Borrador**      | Traduccion automatica o primera pasada completada |
+| **En progreso**   | El traductor esta trabajando activamente en ello  |
+| **Revision**      | Traduccion completada, pendiente de revision      |
+| **Final**         | Aprobado y listo para exportar                    |
+
+Las traducciones automaticas se establecen automaticamente con estado **Borrador**. Si el texto fuente cambia despues de la traduccion, el sistema puede detectar la discrepancia de hash para re-revision.
+
+## Tabla de flujo de trabajo de traduccion
+
+Filtra la tabla de traducciones por idioma, estado y tipo de fuente. Busca tanto en el texto fuente como en el traducido. La tabla esta paginada (50 entradas por pagina) y muestra:
+
+- Icono de tipo de fuente (nodo de flujo, bloque, ficha, flujo)
+- Texto fuente (HTML eliminado para la vista previa)
+- Traduccion actual con una insignia "MT" si es traduccion automatica
+- Insignia de estado
+- Conteo de palabras
+
+## Glosario
+
+El glosario asegura {accent}terminologia consistente{/accent} en todas las traducciones. Cada entrada mapea un termino fuente a un termino destino para un par de idiomas especifico.
+
+| Campo                                  | Proposito                                                            |
+| -------------------------------------- | -------------------------------------------------------------------- |
+| **Termino fuente**                     | El termino en tu idioma fuente                                       |
+| **Termino destino**                    | La traduccion requerida                                              |
+| **Idioma fuente / Idioma destino**     | El par de idiomas al que aplica esta entrada                         |
+| **Contexto**                           | Notas de uso para traductores                                        |
+| **No traducir**                        | Cuando esta habilitado, el termino se mantiene tal cual (nombres propios, marcas) |
+
+Las entradas del glosario se aplican automaticamente durante la traduccion con DeepL mediante la API de Glosarios de DeepL. Al traducir manualmente, el glosario sirve como referencia.
+
+<div class="docs-image-placeholder">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+  La interfaz de gestion de glosarios mostrando una lista de pares de terminos con notas de contexto
+</div>
+
+## Reportes
+
+El reporte de localizacion te da una vista panoramica del progreso de traduccion. Proporciona cuatro tipos de datos:
+
+**Progreso por idioma** -- Para cada idioma destino, ve el numero total de entradas de texto, cuantas han alcanzado el estado "final" y el porcentaje de completado.
+
+**Conteo de palabras por hablante** -- Para cualquier idioma, ve cuantas palabras y lineas tiene cada personaje (ficha de hablante). Util para estimar tiempo y coste de grabacion de doblaje.
+
+**Progreso de doblaje** -- Rastrea el estado de VO en cuatro etapas: ninguno, necesario, grabado y aprobado. Cada entrada de texto de nodos de dialogo tiene su propio estado de VO independiente del estado de traduccion.
+
+**Desglose de contenido** -- Ve cuantas entradas de texto provienen de cada tipo de fuente (nodos de flujo, bloques, fichas, flujos) para un idioma dado.
+
+<div class="docs-image-placeholder">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+  La pagina de reportes de localizacion mostrando barras de progreso por idioma, tabla de conteo de palabras por hablante y desglose de estado de VO
+</div>
+
+## Exportar e importar
+
+**Exportar** -- Descarga traducciones como Excel (.xlsx) o CSV, filtrado por idioma. La exportacion incluye: ID, tipo de fuente, ID de fuente, campo de fuente, locale, texto fuente (HTML eliminado), traduccion, estado, conteo de palabras, flag de traduccion automatica y notas del traductor/revisor (solo Excel).
+
+**Importar** -- Sube un archivo CSV con como minimo una columna de ID. El importador empareja cada fila con una entrada de texto existente por ID, luego actualiza la traduccion y/o el estado. Estados validos para importacion: `pending`, `draft`, `in_progress`, `review`, `final`. Las filas con traducciones vacias o estados no reconocidos se omiten. La importacion reporta cuantas entradas se actualizaron, se omitieron y cualquier error encontrado.

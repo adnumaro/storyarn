@@ -22,7 +22,7 @@ Un nodo de condicion evalua reglas contra las variables de tu proyecto y dirige 
 
 El {accent}**Constructor de Condiciones**{/accent} es una interfaz completamente visual -- no necesitas codigo. Haz doble clic en un nodo de condicion (o haz clic en el boton de configuracion en su barra de herramientas) para abrir el panel del constructor. Cada regla sigue tres pasos:
 
-1. **Elige una variable** -- selecciona una hoja y variable (p. ej., `mc.jaime.health`)
+1. **Elige una variable** -- selecciona una ficha y variable (p. ej., `mc.jaime.health`)
 2. **Elige un operador** -- los operadores disponibles dependen del tipo de la variable
 3. **Establece un valor** de comparacion
 

@@ -7,11 +7,11 @@ description: "Cómo los bloques definen tu estructura de datos y se convierten e
 
 ---
 
-Los bloques (blocks) son los {accent}campos{/accent} de una hoja. Cada bloque tiene un tipo y una etiqueta. A menos que se marque como constante o use un tipo que no genera variables, un bloque se convierte automáticamente en una **variable** que los flujos pueden leer y modificar.
+Los bloques (blocks) son los {accent}campos{/accent} de una ficha. Cada bloque tiene un tipo y una etiqueta. A menos que se marque como constante o use un tipo que no genera variables, un bloque se convierte automáticamente en una **variable** que los flujos pueden leer y modificar.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Una hoja con varios bloques de distintos tipos: texto, número, selección, booleano, mostrando sus etiquetas y valores actuales.
+  Una ficha con varios bloques de distintos tipos: texto, número, selección, booleano, mostrando sus etiquetas y valores actuales.
 </div>
 
 ---
@@ -54,7 +54,7 @@ El nombre de variable se {accent}genera automáticamente{/accent} a partir de la
 | Clase Social  | `clase_social`     | `mc.jaime.clase_social`             |
 | Is Alive      | `is_alive`         | `mc.jaime.is_alive`                 |
 
-Puedes personalizar el nombre de variable después de crearlo. Si una hoja ya tiene una variable con el mismo nombre (p.ej., por herencia), Storyarn añade un sufijo numérico para mantener los nombres únicos.
+Puedes personalizar el nombre de variable después de crearlo. Si una ficha ya tiene una variable con el mismo nombre (p.ej., por herencia), Storyarn añade un sufijo numérico para mantener los nombres únicos.
 
 ---
 
@@ -62,7 +62,7 @@ Puedes personalizar el nombre de variable después de crearlo. Si una hoja ya ti
 
 Marca un bloque como {accent}constante{/accent} para excluirlo del sistema de variables. Las constantes son para datos estáticos que los flujos nunca necesitan comprobar o modificar: descripciones de personajes, texto de ambientación, entradas de lore, imágenes de referencia.
 
-Un bloque constante sigue mostrándose en la hoja y se incluye en las capturas de versión — simplemente no aparecerá en el selector de variables al construir condiciones o instrucciones en los flujos.
+Un bloque constante sigue mostrándose en la ficha y se incluye en las capturas de versión — simplemente no aparecerá en el selector de variables al construir condiciones o instrucciones en los flujos.
 
 ---
 
@@ -84,7 +84,7 @@ Cada tipo de bloque tiene sus propias opciones de configuración:
 Cada bloque tiene un {accent}alcance (scope){/accent} que controla la herencia:
 
 - **Propio (Self)** -- el bloque solo existe en esta hoja. Es el valor predeterminado.
-- **Hijos (Children)** -- la definición del bloque se propaga en cascada a todas las hojas descendientes. Cada hija obtiene una instancia con el mismo tipo, etiqueta y configuración pero su propio valor independiente.
+- **Hijos (Children)** -- la definición del bloque se propaga en cascada a todas las fichas descendientes. Cada hija obtiene una instancia con el mismo tipo, etiqueta y configuración pero su propio valor independiente.
 
 Cuando un bloque padre con alcance "hijos" se actualiza (etiqueta, tipo, opciones), todas las instancias hijas no desvinculadas se sincronizan automáticamente. Si el tipo cambia, los valores de las hijas se restablecen al valor predeterminado del nuevo tipo.
 
@@ -94,7 +94,7 @@ Puedes **desvincular (detach)** una instancia heredada para que deje de sincroni
 
 ## Bloques obligatorios
 
-Marcar un bloque como {accent}obligatorio (required){/accent} lo señala para el seguimiento de completitud. Los bloques obligatorios que estén vacíos se resaltarán, ayudándote a identificar hojas incompletas de un vistazo.
+Marcar un bloque como {accent}obligatorio (required){/accent} lo señala para el seguimiento de completitud. Los bloques obligatorios que estén vacíos se resaltarán, ayudándote a identificar fichas incompletas de un vistazo.
 
 La marca de obligatorio también se hereda: cuando un bloque padre con alcance "hijos" es obligatorio, todas las instancias hijas heredan esa obligación.
 
@@ -106,5 +106,5 @@ Los bloques pueden organizarse en una {accent}disposición multicolumna{/accent}
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Una hoja con bloques organizados en disposición de dos columnas, mostrando Name y Class lado a lado, con Health y Level debajo.
+  Una ficha con bloques organizados en disposición de dos columnas, mostrando Name y Class lado a lado, con Health y Level debajo.
 </div>

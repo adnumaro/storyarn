@@ -7,7 +7,7 @@ description: "Construye un diálogo ramificado que reacciona a las estadísticas
 
 ---
 
-Los Flujos (Flows) son donde tu narrativa cobra vida. En esta guía construirás un diálogo corto que se ramifica según la hoja de personaje de la guía anterior.
+Los Flujos (Flows) son donde tu narrativa cobra vida. En esta guía construirás un diálogo corto que se ramifica según la ficha de personaje de la guía anterior.
 
 ## Crea el flujo
 
@@ -83,7 +83,7 @@ Haz clic en **Paso** (o pulsa `F10`) para avanzar nodo por nodo. El panel de var
   El panel de depuración abierto en la parte inferior mostrando la pestaña de Consola con la salida de ejecución, y el camino Verdadero resaltado en el lienzo
 </div>
 
-Prueba a cambiar el valor de Health a `30` en la hoja de personaje y ejecutar el depurador de nuevo — el flujo tomará el camino Falso en su lugar.
+Prueba a cambiar el valor de Health a `30` en la ficha de personaje y ejecutar el depurador de nuevo — el flujo tomará el camino Falso en su lugar.
 
 ## Tipos de nodos disponibles
 

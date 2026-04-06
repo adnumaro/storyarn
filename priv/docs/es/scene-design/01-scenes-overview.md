@@ -40,8 +40,8 @@ Las zonas son **regiones poligonales** dibujadas en el lienzo. Los vertices se a
 Los pines son **marcadores de punto** para ubicaciones especificas. Soportan cuatro tipos: `ubicacion`, `personaje`, `evento` y `personalizado`.
 
 - **Tamanos** -- pequeno, mediano o grande
-- **Destinos** -- vincula a una hoja, flujo, escena o URL externa
-- **Vinculacion con hoja** -- crea un pin directamente desde una hoja (personajes, objetos) para vincularlo automaticamente
+- **Destinos** -- vincula a una ficha, flujo, escena o URL externa
+- **Vinculacion con ficha** -- crea un pin directamente desde una ficha (personajes, objetos) para vincularlo automaticamente
 - **Acciones y condiciones** -- mismo sistema que las zonas (`instruccion`, `mostrar`, `ocultar`, `deshabilitar`)
 - **Iconos personalizados** -- usa cualquier nombre de icono o sube un recurso de icono personalizado
 - **Conexiones** -- los pines sirven como extremos para las conexiones de escena
@@ -65,7 +65,7 @@ Las anotaciones son **etiquetas de texto** colocadas directamente en el lienzo p
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Vista de cerca de elementos del lienzo: una zona con estilo y tooltip, un pin de personaje vinculado a una hoja, una conexion discontinua con etiqueta y una anotacion
+  Vista de cerca de elementos del lienzo: una zona con estilo y tooltip, un pin de personaje vinculado a una ficha, una conexion discontinua con etiqueta y una anotacion
 </div>
 
 ## Capas
@@ -84,7 +84,7 @@ La barra inferior proporciona **10 herramientas** organizadas en grupos:
 | ----------------- | ----------------------------------------- | ----------------------------------------------------------- |
 | **Navegacion**    | Seleccionar, Desplazar                    | Selecciona elementos o desplazate por el lienzo             |
 | **Formas de zona**| Rectangulo, Triangulo, Circulo, Libre     | Dibuja zonas poligonales en el lienzo                       |
-| **Elementos**     | Pin libre, Pin desde hoja                 | Coloca marcadores de punto (libres o vinculados a una hoja) |
+| **Elementos**     | Pin libre, Pin desde ficha                | Coloca marcadores de punto (libres o vinculados a una ficha) |
 | **Texto**         | Anotacion                                 | Anade notas de texto directamente en el lienzo              |
 | **Vinculacion**   | Conector                                  | Dibuja conexiones entre dos pines                           |
 | **Medicion**      | Regla                                     | Mide distancias entre dos puntos                            |

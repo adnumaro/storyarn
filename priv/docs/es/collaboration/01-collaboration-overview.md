@@ -1,27 +1,83 @@
 %{
-title: "Colaboración en Tiempo Real",
-category_label: "Colaboración",
+title: "Colaboracion en tiempo real",
+category_label: "Colaboracion",
 order: 1,
-description: "Trabaja con tu equipo en tiempo real; presencia, cursores virtuales y protección contra sobrescritura."
+description: "Trabaja con tu equipo en tiempo real -- presencia, cursores y bloqueo."
 }
 
 ---
 
-Storyarn está purificador pura forjado para legiones y de amigos y creadores de legión amigos a cruz pura y lúdica cruz puras de cruz de purificadoras y lúdica a legiones. El Panel de y el {accent}Diagramador de Lienzo Lúdico Y Flujos (Flow Editor){/accent} agobia pura exuda cooperatividad multijugador simultáneo puramente puro nativo multijugadores: persigue a tus avatares amigos cruza persigue ratón cursor de amigo ciego a cursores o a cursor ciego vivo y persigue la cruz cursor y mira vivo bloqueo vivo a vivo ciego su ratón ciego de bloqueo puro de cajas cruces ratones o bloqueos cruz cajas vivos puro vivos y bloqueos.
+Storyarn esta disenado para equipos. El {accent}Editor de Flujos{/accent} soporta colaboracion en tiempo real completa -- puedes ver quien esta en linea, seguir sus cursores por el lienzo y editar nodos sin conflictos gracias al bloqueo automatico.
 
-Otras estaciones purificadoras como editor de lazas u laza cajas puras u de lazas hojas (hojas, mundos perfiles etc) y mundos hojas puras a hojas y puro escenas apañan salvavidas comunes y autoguardado purificadores puro a pura cajas autoguardados y y autoguardado pura salvavidas y puras e hojas guardado base y puras guardados y autoguardados lúdicas base. 
+Las funciones de colaboracion estan disponibles actualmente en el Editor de Flujos, donde el lienzo interactivo y la edicion basada en nodos son los que mas se benefician de la coordinacion en tiempo real. Los demas editores (fichas, escenas, guiones) usan guardado optimista estandar.
 
-## Espectro O Espíritus Espiritual Espectros Señales U Presenciador Señal En Línea En Rastreadores U Vivos y Ojos Vistos Rastreos y Línea Señal Mágica Espíritus Vivos O Señal Visor Señales Espíritu E Líneas E E Presencias Espíritus Vivos U Vislumbramientos Espíritus En Líneas Rastro O Vistos En Visor A Rastro Espiritual U Rastros A Presenciador Presencia (Presence)
+## Presencia
 
-Basta de ingresar a tablero flujos pura para el rastreador purificador de panel y ciego rastreador panel para avistar los "iconitos bola de de cabezas o retratos cabezas de bola cabezas y de bola u avatar de cabezones y amigos u retratos retratos bola" de amigos pura en arriba panel "Online de cruz online vivos o online conectados puros online conectados conectados puros de amigos puros y a línea conectados y de conectados". Se te incrusta ciego un "alma y mágico un de magia de color tu alma de aura puro color o mágico de color aura o aura color mágico de color tu alma puro y color mágico tu alma aura color {accent}tinte un color genético a cromático rígido propio y tuyo tinte cromático ciego propio tinte (deterministic color){/accent}" sacado base del crisol cruz 12 muestras cruza 12 puras 12 gamas 12. Magia pura, esto cruz nunca muda; mutaciones nunca de jamás mudará mudas lúdica jamás al purificador cromático tuyo de tu color o al lúdico nunca a tu tu lúdico jamás cromático propio color a color al lúdica propio tu tinte de tu color de cromático tuyo color. 
+Cuando abres un flujo, cada companero de equipo trabajando en el mismo flujo ve tu avatar aparecer en la lista de usuarios en linea. A cada usuario se le asigna un {accent}color deterministico{/accent} de una paleta de 12 colores disenada para visibilidad tanto en temas claros como oscuros. Tu color se mantiene consistente entre sesiones -- se deriva de tu ID de usuario, asi que tus companeros siempre te reconocen por el mismo color.
 
-## Punteros Cursor Seguidores Lazo Ratón y Ratoneras y Ratón Flecha O Seguimientos Seguimiento O Puntero Vigilante Ciego Cursores Ratón Vigilantes O Flechas A Flechitas Ratón Flechas A Cursores O Ratón En Flecha O Flechitas O Punteras Flecha Cursores O Ratón Seguimiento A De Punteros Puntero (Cursor tracking)
+El sistema de presencia funciona con Phoenix Presence, lo que significa que gestiona las desconexiones de forma elegante. Si cierras la pestana o pierdes la conexion, tu avatar desaparece automaticamente.
 
-Arrastra al pura flecha y muñeco purificador flecha ratón purificadora a tu cruz pura tablero y mapa y mapa tablero cruz a tu tablero mapa, todos en línea de nube y mundo ven al y ven de cruz purificadores a de purificadores luz a purificadora tu luz flecha pura de luz a tu cruz luz de cruz luz de vuelo nube y luz nube nube a tu cruz de nube vuelo a vuelo nube {accent}a flecha mágica laza en ratón y viva y ratón a vivo o de ratón lúdica vivo flecha lúdica o vivo ratón lúdica y vivo a vivo ratón lúdica ciego y lúdica cursor a de vivo cursor (live cursor){/accent} pasear mágico con tinta a letrero cruz etiqueta de cruz cruces y letreros tu letrero nombre nombre tu nombre cruz y de cruz tu correo a tu correo y cruz y cruz de de cruz tu nombre 
+<div class="docs-image-placeholder">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+  La cabecera del editor de flujos mostrando avatares de usuarios en linea, cada uno con su color de colaboracion asignado
+</div>
 
-## Cajas Con Seguro Tranque U Cadena Freno Candado Y Exclusiva Candados Anclaje Candados A Nudo y Cruces Caja Lúdico U Barrera A Cajas Nudos Bloques U Excluidor Bloqueos O Freno Seguro A Nodos U Freno E Caja Freno o Trabas Seguros A Nodos Seguros O Freno Candados U Caja Encadena Y Freno Seguros Cajas Bloqueos O Candado Traba Freno (Node locking)
+## Seguimiento de cursores
 
-Storyarn previene catástrofes guerra de humanos y guerra amigos laza guerra purificadoras con e lazas cruz guerra de guerra purificadores humanos y guerra cruz humanos y de cruz cruz humanos a laza humanos purificadoras con fijos puro y {accent}anclas mágicos e seguros y frenos candado mágico automáticos a freno candados cajas u puros mágicos fijos ciego frenas candado automáticos cruz automáticos y freno automáticos u cajas fijos a de mágicos candados automáticos (automatic node locking){/accent}. Haz u puras y pincha a un nudo cruz nodo pura pincha cruz a pura nodo: laza cruces tu laza de candado tu candado rojo cruz rojo laza de bloqueo purificador se de sella de sella se purificadora sella se pura sella se candado bloqueador lúdica bloqueo seguro bloqueador bloqueo lúdica asegurando seguro candado lúdico y aseguró purificadora a ti cruz a ti seguro. Las demás lúdica las purificadoras de los los además o más de a las ven candaditos o escudos pura candaditos puras pura e ven escudos a escudo candados escudos escudos purificador a escudo cajas candaditos de escudo con tu nombre ven con a escudo de escudo cajas escudo de candaditos de escudo escudos ven candaditos en cajas.
-- Fijos puros automáticos a seguros freno: sin de botón click sin botón.
-- Puros y 30 puras y lúdico de tiempo 30 cronógrafo de tiempo cronógrafo 30 de a tiempo lúdicas 30 de tiempo (30 puras segundos crono).
-- Des-anclaje vacío purificador: soltar cruz cruz botón o purificadora huir y fugar fugar cruz y fugar de tablero.
+Mientras mueves el raton por el lienzo del flujo, tus companeros ven un {accent}cursor en vivo{/accent} etiquetado con tu email y dibujado en tu color asignado. Las posiciones de los cursores se transmiten en tiempo real via PubSub, por lo que el movimiento se siente instantaneo.
+
+Cuando abandonas el flujo (navegas a otro sitio o cierras la pestana), tu cursor desaparece del lienzo de los demas inmediatamente.
+
+<div class="docs-image-placeholder">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+  El lienzo del flujo con dos cursores remotos visibles, cada uno etiquetado con el nombre del usuario y mostrado en su color de colaboracion
+</div>
+
+## Bloqueo de nodos
+
+Para prevenir ediciones conflictivas, Storyarn usa {accent}bloqueo automatico de nodos{/accent}. Cuando seleccionas un nodo, se adquiere un bloqueo para ti de forma transparente. Los demas miembros del equipo ven un indicador de bloqueo en ese nodo mostrando tu email y color -- pueden ver el nodo pero no pueden editarlo mientras tu bloqueo esta activo.
+
+Detalles clave sobre el bloqueo:
+
+- **Adquisicion automatica** -- Los bloqueos se adquieren en el momento en que seleccionas un nodo. No requiere accion manual.
+- **Tiempo de espera de 30 segundos** -- Los bloqueos expiran tras 30 segundos de inactividad. Un mecanismo de heartbeat renueva el bloqueo mientras trabajas activamente.
+- **Liberacion automatica** -- Los bloqueos se liberan cuando deseleccionas el nodo, navegas a otro flujo o te desconectas.
+- **Gestion de conflictos** -- Si intentas seleccionar un nodo que alguien mas ha bloqueado, veras quien tiene el bloqueo para que puedas coordinarte.
+- **Limpieza de bloqueos expirados** -- Un proceso en segundo plano se ejecuta cada 10 segundos para limpiar bloqueos expirados, asegurando que los bloqueos obsoletos nunca bloqueen a tu equipo.
+
+Solo el titular del bloqueo puede liberarlo. Esto previene condiciones de carrera donde dos usuarios podrian intentar editar el mismo nodo simultaneamente.
+
+<div class="docs-image-placeholder">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+  Un nodo de flujo con un indicador de bloqueo mostrando el nombre de otro usuario y su color, indicando que esta siendo editado actualmente
+</div>
+
+## Cambios remotos y notificaciones
+
+Cuando un companero hace un cambio -- creando, actualizando o eliminando un nodo -- el lienzo del flujo se {accent}actualiza automaticamente{/accent} para todos. Los datos del flujo se recargan y el lienzo se rerenderiza para que siempre veas el estado mas reciente.
+
+Las notificaciones de colaboracion aparecen brevemente para informarte de lo que ocurrio:
+
+- Bloqueo adquirido o liberado en un nodo
+- Nodo creado, actualizado, movido o eliminado
+- Conexion anadida o eliminada
+
+Las notificaciones muestran el email del usuario y se colorean con su color de colaboracion. Se descartan automaticamente tras unos segundos.
+
+## La paleta de colores
+
+Storyarn asigna a cada usuario uno de 12 colores basado en su ID de usuario. La paleta usa colores de peso 500 de Tailwind para una visibilidad fuerte:
+
+red, orange, amber, lime, green, teal, cyan, blue, indigo, violet, fuchsia, pink
+
+Una variante mas clara de cada color (peso 300) tambien esta disponible para elementos sutiles como estelas de cursor.
+
+## Roles y permisos
+
+La colaboracion respeta la jerarquia de roles del proyecto. Todos los roles pueden ver la presencia, los cursores y las notificaciones. Solo los usuarios con permisos de edicion (Propietario, Editor) pueden adquirir bloqueos y hacer cambios. Los Lectores ven todo en tiempo real pero no pueden modificar nada -- la adquisicion de bloqueos se deniega en el servidor, no solo se oculta en la interfaz.
+
+| Rol              | Ve presencia | Ve cursores | Puede editar nodos |
+| ---------------- | :----------: | :---------: | :----------------: |
+| **Propietario**  |      Si      |     Si      |         Si         |
+| **Editor**       |      Si      |     Si      |         Si         |
+| **Lector**       |      Si      |     Si      |         No         |

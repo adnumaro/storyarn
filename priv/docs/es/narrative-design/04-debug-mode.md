@@ -22,7 +22,7 @@ El editor de flujos incluye un {accent}depurador{/accent} integrado que te permi
 2. Haz clic en el boton **Debug** en la barra de herramientas
 3. El panel de depuracion aparece anclado en la parte inferior del lienzo
 
-El depurador se inicializa en el nodo de **Entrada** del flujo, cargando todas las variables del proyecto con sus valores actuales desde las hojas.
+El depurador se inicializa en el nodo de **Entrada** del flujo, cargando todas las variables del proyecto con sus valores actuales desde las fichas.
 
 ---
 
@@ -99,7 +99,7 @@ Una tabla en vivo de **cada variable** del proyecto, con cinco columnas:
 
 | Columna      | Muestra                                                            |
 | ------------ | ------------------------------------------------------------------ |
-| **Variable** | La referencia completa (shortcut de hoja + nombre de variable)     |
+| **Variable** | La referencia completa (shortcut de ficha + nombre de variable)    |
 | **Tipo**     | El tipo de bloque de la variable (numero, booleano, texto, seleccion, etc.) |
 | **Inicial**  | El valor cuando se inicio la sesion de depuracion                  |
 | **Anterior** | El valor antes del cambio mas reciente                             |
@@ -169,7 +169,7 @@ Haz clic en el **valor actual** de cualquier variable en la pestana Variables pa
 
 Pulsa Enter para confirmar o Escape para cancelar. El cambio se registra en la pestana Historial con una etiqueta de origen "user", y el valor actual de la variable se vuelve **azul** para indicar una sobreescritura manual.
 
-Despues de cambiar una variable, puedes **reiniciar** y volver a ejecutar el flujo para ver como se comporta con el nuevo valor, o simplemente continuar avanzando desde la posicion actual. Es la forma mas rapida de probar escenarios "que pasaria si" sin modificar los datos reales de tus hojas.
+Despues de cambiar una variable, puedes **reiniciar** y volver a ejecutar el flujo para ver como se comporta con el nuevo valor, o simplemente continuar avanzando desde la posicion actual. Es la forma mas rapida de probar escenarios "que pasaria si" sin modificar los datos reales de tus fichas.
 
 ---
 

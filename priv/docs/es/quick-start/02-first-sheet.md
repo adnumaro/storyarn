@@ -2,18 +2,18 @@
 title: "Tu primera hoja",
 category_label: "Inicio Rápido",
 order: 2,
-description: "Crea una hoja de personaje y comprende cómo funcionan las variables."
+description: "Crea una ficha de personaje y comprende cómo funcionan las variables."
 }
 
 ---
 
-Las Hojas (Sheets) son la columna vertebral de datos de tu proyecto. Cada campo que añadas a una hoja puede convertirse en una {accent}variable{/accent} que tus flujos leen y modifican en tiempo de ejecución.
+Las Fichas (Sheets) son la columna vertebral de datos de tu proyecto. Cada campo que añadas a una ficha puede convertirse en una {accent}variable{/accent} que tus flujos leen y modifican en tiempo de ejecución.
 
-## Crea la hoja
+## Crea la ficha
 
-Abre tu proyecto y selecciona **Hojas** en la barra lateral. Haz clic en el botón **Nueva Hoja** en la parte superior del árbol de hojas.
+Abre tu proyecto y selecciona **Fichas** en la barra lateral. Haz clic en el botón **Nueva Ficha** en la parte superior del árbol de fichas.
 
-Se crea una nueva hoja con un nombre predeterminado. Haz clic en el título para renombrarlo — por ejemplo, "Jaime". El {accent}atajo (shortcut){/accent} (que se muestra debajo del nombre) se genera automáticamente a partir del nombre de la hoja. Puedes editarlo manualmente — para un personaje, algo como `mc.jaime` funciona bien porque crea un espacio de nombres legible para todas las variables de esta hoja.
+Se crea una nueva hoja con un nombre predeterminado. Haz clic en el título para renombrarlo — por ejemplo, "Jaime". El {accent}atajo (shortcut){/accent} (que se muestra debajo del nombre) se genera automáticamente a partir del nombre de la ficha. Puedes editarlo manualmente — para un personaje, algo como `mc.jaime` funciona bien porque crea un espacio de nombres legible para todas las variables de esta hoja.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
@@ -22,7 +22,7 @@ Se crea una nueva hoja con un nombre predeterminado. Haz clic en el título para
 
 ## Añade bloques
 
-Haz clic en el botón **+** en la parte inferior de la hoja para abrir el menú de bloques. Los bloques están organizados en dos categorías:
+Haz clic en el botón **+** en la parte inferior de la ficha para abrir el menú de bloques. Los bloques están organizados en dos categorías:
 
 **Bloques Básicos** -- Texto, Texto Enriquecido, Número, Selección, Selección Múltiple, Fecha, Booleano, Referencia
 

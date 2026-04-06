@@ -44,7 +44,7 @@ Storyarn tiene **9 tipos de nodos**, cada uno con un rol distinto en el grafo de
 | **Instruccion**   | Zap            | Modifica valores de variables cuando el flujo pasa a traves del nodo. Soporta Establecer, Sumar, Restar, Alternar, Limpiar y operaciones especificas para booleanos.                                                       |
 | **Hub**           | Log in         | Un punto de convergencia con nombre donde multiples caminos se unen. Tiene una etiqueta, un ID y un color.                                                                                                                 |
 | **Salto**         | Log out        | Salta a un nodo Hub dentro del mismo flujo. Selecciona un hub destino desde el desplegable de la barra de herramientas; un boton de mira lo localiza en el lienzo.                                                          |
-| **Slug Line**     | Clapperboard   | Encabezado de escena o marcador de ubicacion, tomado de las convenciones de guion. Referencia una hoja de ubicacion, con ajuste INT/EXT y momento del dia (dia, noche, manana, tarde, continuo).                             |
+| **Slug Line**     | Clapperboard   | Encabezado de escena o marcador de ubicacion, tomado de las convenciones de guion. Referencia una ficha de ubicacion, con ajuste INT/EXT y momento del dia (dia, noche, manana, tarde, continuo).                             |
 | **Subflujo**      | Box            | Incrusta otro flujo dentro de este. Los pines de salida dinamicos se generan a partir de los nodos de Salida del flujo referenciado, permitiendo ramificar segun como termina el subflujo. Las referencias circulares se detectan y previenen. |
 
 ---

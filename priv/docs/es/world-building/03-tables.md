@@ -2,12 +2,12 @@
 title: "Tablas",
 category_label: "Construcción de Mundos",
 order: 3,
-description: "Cuadrículas tipo hoja de cálculo dentro de las hojas para inventarios, matrices de estadísticas y listas estructuradas."
+description: "Cuadrículas tipo hoja de cálculo dentro de las fichas para inventarios, matrices de estadísticas y listas estructuradas."
 }
 
 ---
 
-Las Tablas son un tipo de bloque que incrusta una {accent}cuadrícula tipo hoja de cálculo{/accent} dentro de una hoja. Cada tabla tiene columnas tipadas, filas con nombre y referencias a variables a nivel de celda. Úsalas para inventarios, tablas de estadísticas, matrices de relaciones, árboles de habilidades o catálogos de tiendas.
+Las Tablas son un tipo de bloque que incrusta una {accent}cuadrícula tipo hoja de cálculo{/accent} dentro de una ficha. Cada tabla tiene columnas tipadas, filas con nombre y referencias a variables a nivel de celda. Úsalas para inventarios, tablas de estadísticas, matrices de relaciones, árboles de habilidades o catálogos de tiendas.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
@@ -38,7 +38,7 @@ Las columnas de tabla admiten {accent}8 tipos{/accent}:
 | **Selección**    | Elección única de opciones definidas                |
 | **Selección Múltiple** | Múltiples elecciones de opciones definidas    |
 | **Fecha**        | Valor de fecha                                      |
-| **Referencia**   | Enlace a una hoja o flujo (no es variable)          |
+| **Referencia**   | Enlace a una ficha o flujo (no es variable)          |
 | **Fórmula**      | Valor calculado a partir de una expresión matemática con vinculaciones |
 
 Estos reflejan los tipos de bloques regulares, excepto que las tablas usan texto plano en lugar de texto enriquecido y añaden el tipo de columna de fórmula.
@@ -58,7 +58,7 @@ Cada celda que no sea constante ni referencia se convierte en una variable usand
 {atajo_de_hoja}.{variable_de_tabla}.{slug_de_fila}.{slug_de_columna}
 ```
 
-Por ejemplo, en la hoja `mc.jaime` con un bloque de tabla etiquetado "Inventory" (nombre de variable `inventory`), una fila llamada "Healing Potion" y una columna llamada "Quantity":
+Por ejemplo, en la ficha `mc.jaime` con un bloque de tabla etiquetado "Inventory" (nombre de variable `inventory`), una fila llamada "Healing Potion" y una columna llamada "Quantity":
 
 ```
 mc.jaime.inventory.healing_potion.quantity
@@ -93,7 +93,7 @@ Las expresiones usan símbolos de una sola letra o con nombre (`a`, `b`, `con_va
 Cada símbolo en una fórmula se vincula a una fuente de datos. Hay dos tipos de vinculación:
 
 - **Misma fila (Same-row)** -- referencia otra columna en la misma fila. Por ejemplo, vincular `a` a la columna "Base" significa que `a` se resuelve al valor de Base de esa fila.
-- **Variable entre hojas (Cross-sheet variable)** -- referencia cualquier variable del proyecto por su ruta completa. Por ejemplo, vincular `b` a `mc.jaime.level` trae el nivel del personaje a la fórmula.
+- **Variable entre fichas (Cross-sheet variable)** -- referencia cualquier variable del proyecto por su ruta completa. Por ejemplo, vincular `b` a `mc.jaime.level` trae el nivel del personaje a la fórmula.
 
 ### Ejemplo
 
@@ -126,11 +126,11 @@ Las columnas tienen las mismas opciones de configuración que sus tipos de bloqu
 
 ## Herencia
 
-Cuando un bloque de tabla tiene el alcance configurado como "hijos", la estructura completa de la tabla (columnas y filas) se {accent}copia a las hojas hijas{/accent}. Cada hija obtiene su propia tabla con las mismas columnas y filas pero valores de celdas independientes.
+Cuando un bloque de tabla tiene el alcance configurado como "hijos", la estructura completa de la tabla (columnas y filas) se {accent}copia a las fichas hijas{/accent}. Cada hija obtiene su propia tabla con las mismas columnas y filas pero valores de celdas independientes.
 
-Las vinculaciones de fórmulas que referencian la hoja padre se reescriben automáticamente para apuntar a la hoja hija. Por ejemplo, si una hoja padre `main` tiene una vinculación de fórmula a `main.combat.attack`, la hoja hija `seven` obtiene la vinculación reescrita a `seven.combat.attack` (asumiendo que el bloque `combat` también fue heredado).
+Las vinculaciones de fórmulas que referencian la ficha padre se reescriben automáticamente para apuntar a la ficha hija. Por ejemplo, si una ficha padre `main` tiene una vinculación de fórmula a `main.combat.attack`, la ficha hija `seven` obtiene la vinculación reescrita a `seven.combat.attack` (asumiendo que el bloque `combat` también fue heredado).
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El bloque de tabla heredado de una hoja padre y la instancia de la misma tabla en una hoja hija, mostrando estructura idéntica pero valores de celdas diferentes.
+  El bloque de tabla heredado de una ficha padre y la instancia de la misma tabla en una ficha hija, mostrando estructura idéntica pero valores de celdas diferentes.
 </div>

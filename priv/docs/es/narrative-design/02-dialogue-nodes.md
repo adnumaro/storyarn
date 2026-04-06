@@ -20,7 +20,7 @@ Los nodos de Dialogo (Dialogue) son el tipo de nodo mas comun. Representan **lo 
 
 Selecciona un nodo de dialogo para abrir el panel lateral. Encontraras los siguientes campos:
 
-- **Hablante** -- vinculo a una hoja de personaje de tu proyecto. El nombre y avatar del personaje aparecen en el nodo del lienzo, y el contexto del hablante se usa para la extraccion de localizacion y la exportacion de guion.
+- **Hablante** -- vinculo a una ficha de personaje de tu proyecto. El nombre y avatar del personaje aparecen en el nodo del lienzo, y el contexto del hablante se usa para la extraccion de localizacion y la exportacion de guion.
 - **Texto** -- la linea de dialogo en si. Es un campo de texto enriquecido con formato (negrita, cursiva, subrayado, tachado, enlaces). Soporta variables de mencion de personaje para texto dinamico.
 - **Acotaciones** -- notas opcionales de actuacion o puesta en escena que acompanan la linea (p. ej., "suspira profundamente", "se gira hacia la ventana"). Aparecen en las exportaciones de guion.
 - **Texto de menu** -- una version mas corta de la linea para menus de eleccion, usada cuando el texto completo del dialogo es demasiado largo para mostrarse como opcion del jugador.
@@ -43,7 +43,7 @@ Haz doble clic en un nodo de dialogo (o haz clic en el boton de configuracion en
 
 ## Imagen personalizada
 
-Si la hoja de personaje del hablante tiene una galeria con imagenes, aparece un selector de imagenes en la barra de herramientas. Puedes seleccionar una imagen para reemplazar el retrato predeterminado del hablante para esta linea de dialogo especifica -- util para mostrar diferentes expresiones o poses.
+Si la ficha de personaje del hablante tiene una galeria con imagenes, aparece un selector de imagenes en la barra de herramientas. Puedes seleccionar una imagen para reemplazar el retrato predeterminado del hablante para esta linea de dialogo especifica -- util para mostrar diferentes expresiones o poses.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
@@ -90,7 +90,7 @@ Esto mantiene la logica simple cerca del dialogo sin necesitar un nodo de instru
 
 ## Asignacion de hablante
 
-Vincular un nodo de dialogo a una hoja de personaje proporciona varios beneficios:
+Vincular un nodo de dialogo a una ficha de personaje proporciona varios beneficios:
 
 - El **nombre y avatar** del personaje aparecen en el nodo del lienzo, facilitando identificar quien habla de un vistazo
 - La **extraccion de localizacion** incluye el contexto del hablante, para que los traductores sepan que personaje esta hablando
@@ -98,7 +98,7 @@ Vincular un nodo de dialogo a una hoja de personaje proporciona varios beneficio
 - La **generacion de ID tecnico** incluye el nombre del hablante para identificadores significativos
 - Puedes **rastrear que personajes aparecen** en que flujos a lo largo de tu proyecto
 
-Para asignar un hablante, selecciona una hoja desde el desplegable de hablante en el panel lateral o la barra de herramientas. Cualquier hoja de tu proyecto puede usarse como hablante -- hojas de personaje, hojas de NPC o cualquier entidad que quieras asociar con dialogos.
+Para asignar un hablante, selecciona una ficha desde el desplegable de hablante en el panel lateral o la barra de herramientas. Cualquier ficha de tu proyecto puede usarse como hablante -- fichas de personaje, fichas de NPC o cualquier entidad que quieras asociar con dialogos.
 
 ---
 
