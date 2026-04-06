@@ -1,19 +1,25 @@
-<script setup>
+<script setup lang="ts">
 import { Crosshair, LogOut } from "lucide-vue-next";
 import { computed } from "vue";
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
 import { useLive } from "@composables/useLive";
 import { ToolbarSearchableSelect } from "../../toolbar";
+import type { HubMapEntry } from "../../types";
+import type { NodeData } from "../../lib/node-configs";
 
-const { nodeData, nodeId, hubs } = defineProps({
-  nodeData: { type: Object, required: true },
-  nodeId: { type: [String, Number], required: true },
-  hubs: { type: Array, default: () => [] },
-});
+interface JumpToolbarData extends NodeData {
+  target_hub_id?: string;
+}
+
+const { nodeData, nodeId, hubs = [] } = defineProps<{
+  nodeData: JumpToolbarData;
+  nodeId: string | number;
+  hubs?: HubMapEntry[];
+}>();
 
 const live = useLive();
 
-const hubOptions = computed(() => hubs.map((h) => [h.hub_id, h.hub_id]));
+const hubOptions = computed<[string, string][]>(() => hubs.map((h) => [h.hub_id, h.hub_id]));
 
 const selectedHubLabel = computed(() => {
   const target = nodeData.target_hub_id;
@@ -22,7 +28,7 @@ const selectedHubLabel = computed(() => {
   return hub?.hub_id || null;
 });
 
-function selectHub(hubId) {
+function selectHub(hubId: string) {
   live.pushEvent("update_node_data", { node: { target_hub_id: hubId || "" } });
 }
 

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * Flow debug panel — bottom-docked panel for step-through execution.
  * Tabs: Console, Variables, History.
@@ -22,23 +22,57 @@ import { Slider } from "@components/ui/slider/index.ts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
 import { useLive } from "@composables/useLive";
 
-const { open, state, nodes, controls } = defineProps({
-  open: { type: Boolean, default: false },
-  state: { type: Object, default: null },
-  nodes: { type: Object, default: () => ({}) },
-  controls: {
-    type: Object,
-    default: () => ({
-      activeTab: "console",
-      autoPlaying: false,
-      speed: 800,
-      varFilter: "",
-      varChangedOnly: false,
-      flowName: "",
-      stepLimitReached: false,
-    }),
+interface DebugChoice {
+  id: string | number;
+  text: string;
+}
+
+interface DebugVariable {
+  value: string | number | boolean | null;
+  changed: boolean;
+}
+
+interface DebugState {
+  status: string;
+  current_node_id: string | number | null;
+  variables: Record<string, DebugVariable>;
+  execution_path: (string | number)[];
+  pending_choices: DebugChoice[];
+}
+
+interface DebugNodeInfo {
+  label: string;
+}
+
+interface DebugControls {
+  activeTab: string;
+  autoPlaying: boolean;
+  speed: number;
+  varFilter: string;
+  varChangedOnly: boolean;
+  flowName: string;
+  stepLimitReached: boolean;
+}
+
+const {
+  open = false,
+  state = null,
+  nodes = {},
+  controls = {
+    activeTab: "console",
+    autoPlaying: false,
+    speed: 800,
+    varFilter: "",
+    varChangedOnly: false,
+    flowName: "",
+    stepLimitReached: false,
   },
-});
+} = defineProps<{
+  open: boolean;
+  state: DebugState | null;
+  nodes: Record<string, DebugNodeInfo>;
+  controls: DebugControls;
+}>();
 
 const live = useLive();
 const height = ref(280);
@@ -64,7 +98,7 @@ const filteredVariables = computed(() => {
   return filtered;
 });
 
-function formatSpeed(ms) {
+function formatSpeed(ms: number): string {
   return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`;
 }
 
@@ -83,13 +117,13 @@ function stop() {
 function togglePlay() {
   live.pushEvent(controls.autoPlaying ? "debug_pause" : "debug_play", {});
 }
-function setSpeed(val) {
+function setSpeed(val: number[]): void {
   live.pushEvent("debug_set_speed", { speed: val[0] });
 }
-function selectChoice(choiceId) {
+function selectChoice(choiceId: string | number): void {
   live.pushEvent("debug_select_choice", { choice_id: choiceId });
 }
-function switchTab(tab) {
+function switchTab(tab: string | number): void {
   live.pushEvent("debug_switch_tab", { tab });
 }
 </script>

@@ -1,12 +1,15 @@
-<script setup>
+<script setup lang="ts">
 import { makeDroppable } from "@vue-dnd-kit/core";
 import { useTemplateRef } from "vue";
+import type { FlowTreeItem } from "./FlowTree.vue";
 
-const { items } = defineProps({
-  items: { type: Array, required: true },
-});
+const { items } = defineProps<{
+  items: FlowTreeItem[];
+}>();
 
-const emit = defineEmits(["drop"]);
+const emit = defineEmits<{
+  drop: [event: unknown];
+}>();
 
 const rootRef = useTemplateRef("rootRef");
 

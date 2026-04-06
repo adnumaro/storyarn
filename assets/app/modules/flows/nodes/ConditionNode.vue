@@ -1,24 +1,44 @@
-<script setup>
+<script setup lang="ts">
 import { GitBranch, TriangleAlert } from "lucide-vue-next";
 import { Ref } from "rete-vue-plugin";
 import { computed } from "vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
+import type { NodeConfig } from "../lib/node-configs";
+import type {
+  Condition,
+  ConditionBlock,
+  ConditionRule,
+  ReteEmitFn,
+  ReteNodeData,
+} from "../types";
 
-const { data, emit, config, color } = defineProps({
-  data: { type: Object, required: true },
-  emit: { type: Function, required: true },
-  config: { type: Object, required: true },
-  color: { type: String, required: true },
-});
+interface ConditionNodeData {
+  has_stale_refs?: boolean;
+  switch_mode?: boolean;
+  condition?: Condition;
+}
 
-const nodeData = computed(() => data.nodeData || {});
+interface OutputBadge {
+  type: "error" | "indicator";
+  title: string;
+  color?: string;
+}
+
+const { data, emit, config, color } = defineProps<{
+  data: ReteNodeData;
+  emit: ReteEmitFn;
+  config: NodeConfig;
+  color: string;
+}>();
+
+const nodeData = computed<ConditionNodeData>(() => (data.nodeData as ConditionNodeData) || {});
 const hasStaleRefs = computed(() => nodeData.value.has_stale_refs);
 
 // --- Condition formatting (matching V1 condition.js exactly) ---
 
-function getOperatorSymbol(operator) {
-  const symbols = {
+function getOperatorSymbol(operator: string): string {
+  const symbols: Record<string, string> = {
     equals: "=",
     not_equals: "≠",
     greater_than: ">",
@@ -39,35 +59,35 @@ function getOperatorSymbol(operator) {
   return symbols[operator] || operator;
 }
 
-function formatRule(rule) {
+function formatRule(rule: ConditionRule): string {
   if (!rule.sheet || !rule.variable) return "Incomplete rule";
-  const sym = getOperatorSymbol(rule.operator);
+  const sym = getOperatorSymbol(rule.operator || "");
   const val = rule.value !== null && rule.value !== undefined ? rule.value : "";
-  if (["is_empty", "is_true", "is_false", "is_nil"].includes(rule.operator)) {
+  if (["is_empty", "is_true", "is_false", "is_nil"].includes(rule.operator || "")) {
     return `${rule.sheet}.${rule.variable} ${sym}`;
   }
   return `${rule.sheet}.${rule.variable} ${sym} ${val}`;
 }
 
-function formatRuleShort(rule) {
+function formatRuleShort(rule: ConditionRule | undefined): string | null {
   if (!rule?.variable) return null;
-  const sym = getOperatorSymbol(rule.operator);
+  const sym = getOperatorSymbol(rule.operator || "");
   const val = rule.value !== null && rule.value !== undefined ? rule.value : "";
-  if (["is_empty", "is_true", "is_false", "is_nil"].includes(rule.operator)) {
+  if (["is_empty", "is_true", "is_false", "is_nil"].includes(rule.operator || "")) {
     return `${rule.variable} ${sym}`;
   }
   const strVal = String(val);
   return `${rule.variable} ${sym} ${strVal.length > 10 ? `${strVal.substring(0, 10)}…` : strVal}`;
 }
 
-function isRuleComplete(rule) {
+function isRuleComplete(rule: ConditionRule | undefined): boolean {
   if (!rule || !rule.sheet || !rule.variable || !rule.operator) return false;
   const noValueOps = ["is_empty", "is_true", "is_false", "is_nil"];
   if (noValueOps.includes(rule.operator)) return true;
   return rule.value !== null && rule.value !== undefined && rule.value !== "";
 }
 
-function countRulesInBlocks(blocks) {
+function countRulesInBlocks(blocks: ConditionBlock[]): number {
   let count = 0;
   for (const b of blocks) {
     if (b.type === "block") count += (b.rules || []).length;
@@ -78,7 +98,7 @@ function countRulesInBlocks(blocks) {
 
 // --- Summary ---
 
-function formatBlockSummary(blocks, switchMode, condition) {
+function formatBlockSummary(blocks: ConditionBlock[], switchMode: boolean, condition: Condition): string {
   if (blocks.length === 0) return switchMode ? "No conditions" : "No condition";
   if (switchMode) return `${blocks.length} output${blocks.length > 1 ? "s" : ""} + default`;
   const ruleCount = countRulesInBlocks(blocks);
@@ -86,7 +106,7 @@ function formatBlockSummary(blocks, switchMode, condition) {
   return `${ruleCount} rule${ruleCount !== 1 ? "s" : ""} in ${blocks.length} block${blocks.length !== 1 ? "s" : ""} (${logic})`;
 }
 
-function formatFlatSummary(rules, switchMode, condition) {
+function formatFlatSummary(rules: ConditionRule[], switchMode: boolean, condition: Condition): string {
   if (switchMode) return `${rules.length} output${rules.length > 1 ? "s" : ""} + default`;
   const logic = condition.logic === "all" ? "AND" : "OR";
   if (rules.length === 1) return formatRule(rules[0]);
@@ -98,12 +118,12 @@ const summary = computed(() => {
   const condition = d.condition;
 
   if (condition?.blocks) {
-    return formatBlockSummary(condition.blocks, d.switch_mode, condition);
+    return formatBlockSummary(condition.blocks, !!d.switch_mode, condition);
   }
   if (!condition?.rules || condition.rules.length === 0) {
     return d.switch_mode ? "No conditions" : "No condition";
   }
-  return formatFlatSummary(condition.rules, d.switch_mode, condition);
+  return formatFlatSummary(condition.rules, !!d.switch_mode, condition);
 });
 
 // --- Sockets ---
@@ -111,17 +131,17 @@ const summary = computed(() => {
 const inputs = computed(() => Object.entries(data?.inputs || {}));
 const outputs = computed(() => Object.entries(data?.outputs || {}));
 
-function findBlockLabel(blocks, key) {
+function findBlockLabel(blocks: ConditionBlock[], key: string): string {
   const block = blocks.find((b) => b.id === key);
   return block?.label || `Block ${key}`;
 }
 
-function findRuleLabel(rules, key) {
+function findRuleLabel(rules: ConditionRule[], key: string): string {
   const rule = rules.find((r) => r.id === key);
   return rule?.label || formatRuleShort(rule) || key;
 }
 
-function getOutputLabel(key) {
+function getOutputLabel(key: string): string {
   const d = nodeData.value;
   if (!d.switch_mode) {
     if (key === "true") return "True";
@@ -129,12 +149,12 @@ function getOutputLabel(key) {
     return key;
   }
   if (key === "default") return "Default";
-  if (d.condition?.blocks?.length > 0) return findBlockLabel(d.condition.blocks, key);
-  if (d.condition?.rules?.length > 0) return findRuleLabel(d.condition.rules, key);
+  if (d.condition?.blocks && d.condition.blocks.length > 0) return findBlockLabel(d.condition.blocks, key);
+  if (d.condition?.rules && d.condition.rules.length > 0) return findRuleLabel(d.condition.rules, key);
   return key;
 }
 
-function getBlockBadges(blocks, key) {
+function getBlockBadges(blocks: ConditionBlock[], key: string): OutputBadge[] {
   const block = blocks.find((b) => b.id === key);
   if (!block) return [];
   const rules = block.rules || [];
@@ -144,7 +164,7 @@ function getBlockBadges(blocks, key) {
   return [];
 }
 
-function getRuleBadges(rules, key) {
+function getRuleBadges(rules: ConditionRule[], key: string): OutputBadge[] {
   const rule = rules.find((r) => r.id === key);
   if (rule && !isRuleComplete(rule)) {
     return [{ type: "error", title: "Incomplete rule" }];
@@ -152,14 +172,14 @@ function getRuleBadges(rules, key) {
   return [];
 }
 
-function getOutputBadges(key) {
+function getOutputBadges(key: string): OutputBadge[] {
   const d = nodeData.value;
   if (!d.switch_mode || key === "default") return [];
 
-  if (d.condition?.blocks?.length > 0) {
+  if (d.condition?.blocks && d.condition.blocks.length > 0) {
     return getBlockBadges(d.condition.blocks, key);
   }
-  if (d.condition?.rules?.length > 0) {
+  if (d.condition?.rules && d.condition.rules.length > 0) {
     return getRuleBadges(d.condition.rules, key);
   }
   return [];

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import {
   ArrowLeft,
   ArrowRight,
@@ -18,27 +18,58 @@ import { Badge } from "@components/ui/badge/index.ts";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { useLive } from "@composables/useLive";
 
+interface NavEntry {
+  flow_name: string;
+}
+
+interface NavHistory {
+  back: NavEntry | null;
+  forward: NavEntry | null;
+}
+
+interface HealthNode {
+  id: number | string;
+  label: string;
+  reason?: string;
+}
+
+interface FlowHealth {
+  wordCount: number;
+  errorNodes: HealthNode[];
+  infoNodes: HealthNode[];
+}
+
+interface SceneSelected {
+  name: string | null;
+  inherited: boolean;
+}
+
+interface ProjectScene {
+  id: number | string;
+  name: string;
+}
+
 const {
-  flowName,
-  flowShortcut,
-  isMain,
-  canEdit,
-  saveStatus,
-  navHistory,
-  flowHealth,
-  sceneSelected,
-  projectScenes,
-} = defineProps({
-  flowName: { type: String, default: "" },
-  flowShortcut: { type: String, default: "" },
-  isMain: { type: Boolean, default: false },
-  canEdit: { type: Boolean, default: false },
-  saveStatus: { type: String, default: "idle" },
-  navHistory: { type: Object, default: () => ({ back: null, forward: null }) },
-  flowHealth: { type: Object, default: () => ({ wordCount: 0, errorNodes: [], infoNodes: [] }) },
-  sceneSelected: { type: Object, default: () => ({ name: null, inherited: false }) },
-  projectScenes: { type: Array, default: () => [] },
-});
+  flowName = "",
+  flowShortcut = "",
+  isMain = false,
+  canEdit = false,
+  saveStatus = "idle",
+  navHistory = { back: null, forward: null },
+  flowHealth = { wordCount: 0, errorNodes: [], infoNodes: [] },
+  sceneSelected = { name: null, inherited: false },
+  projectScenes = [],
+} = defineProps<{
+  flowName: string;
+  flowShortcut: string;
+  isMain: boolean;
+  canEdit: boolean;
+  saveStatus: string;
+  navHistory: NavHistory;
+  flowHealth: FlowHealth;
+  sceneSelected: SceneSelected;
+  projectScenes: ProjectScene[];
+}>();
 
 const live = useLive();
 const sceneOpen = ref(false);
@@ -48,20 +79,20 @@ const errorCount = computed(() => flowHealth.errorNodes.length);
 const infoCount = computed(() => flowHealth.infoNodes.length);
 const showScene = computed(() => canEdit || sceneSelected.name != null);
 
-function saveName(name) {
+function saveName(name: string): void {
   live.pushEvent("save_name", { name });
 }
 
-function saveShortcut(shortcut) {
+function saveShortcut(shortcut: string): void {
   live.pushEvent("save_shortcut", { shortcut });
 }
 
-function selectScene(sceneId) {
+function selectScene(sceneId: number | string | null): void {
   live.pushEvent("update_scene", { scene_id: sceneId || "" });
   sceneOpen.value = false;
 }
 
-function navigateToNode(nodeId) {
+function navigateToNode(nodeId: number | string): void {
   live.pushEvent("navigate_to_node", { id: nodeId });
   healthOpen.value = false;
 }

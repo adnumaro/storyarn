@@ -1,5 +1,7 @@
-<script setup>
+<script setup lang="ts">
+import type { Component, CSSProperties } from "vue";
 import { computed, nextTick, ref, watch } from "vue";
+import type { NodeData } from "../lib/node-configs";
 import {
   AnnotationToolbar,
   ConditionToolbar,
@@ -13,27 +15,72 @@ import {
   SubflowToolbar,
 } from "./toolbar-sections";
 
+interface ToolbarState {
+  visible: boolean;
+  nodeId: string | number | null;
+  reteNodeId: string | null;
+  nodeType: string | null;
+  nodeData: NodeData | null;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface HubOption {
+  id: number | string;
+  name: string;
+  color?: string;
+}
+
+interface FlowOption {
+  id: number | string;
+  name: string;
+}
+
+interface SheetAvatar {
+  id: number | string;
+  name: string;
+  avatar_url?: string | null;
+}
+
+interface SubflowExit {
+  id: string;
+  label: string;
+}
+
+interface ReferencingJump {
+  id: number | string;
+  label: string;
+  flow_name?: string;
+}
+
+interface ReferencingFlow {
+  id: number | string;
+  name: string;
+}
+
 const {
   toolbarState,
-  canEdit,
-  hubs,
-  projectFlows,
-  sheetAvatars,
-  subflowExits,
-  referencingJumps,
-  referencingFlows,
-} = defineProps({
-  toolbarState: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  hubs: { type: Array, default: () => [] },
-  projectFlows: { type: Array, default: () => [] },
-  sheetAvatars: { type: Array, default: () => [] },
-  subflowExits: { type: Array, default: () => [] },
-  referencingJumps: { type: Array, default: () => [] },
-  referencingFlows: { type: Array, default: () => [] },
-});
+  canEdit = false,
+  hubs = [],
+  projectFlows = [],
+  sheetAvatars = [],
+  subflowExits = [],
+  referencingJumps = [],
+  referencingFlows = [],
+} = defineProps<{
+  toolbarState: ToolbarState;
+  canEdit: boolean;
+  hubs?: HubOption[];
+  projectFlows?: FlowOption[];
+  sheetAvatars?: SheetAvatar[];
+  subflowExits?: SubflowExit[];
+  referencingJumps?: ReferencingJump[];
+  referencingFlows?: ReferencingFlow[];
+}>();
 
-const toolbarRef = ref(null);
+const toolbarRef = ref<HTMLElement | null>(null);
 
 const visible = computed(() => toolbarState.visible && canEdit);
 const nodeType = computed(() => toolbarState.nodeType);
@@ -41,7 +88,7 @@ const nodeData = computed(() => toolbarState.nodeData || {});
 const nodeId = computed(() => toolbarState.nodeId);
 
 // Toolbar position style
-const toolbarStyle = computed(() => {
+const toolbarStyle = computed<CSSProperties>(() => {
   if (!visible.value) return { display: "none" };
   const s = toolbarState;
   const el = toolbarRef.value;
@@ -58,7 +105,7 @@ const toolbarStyle = computed(() => {
 watch([nodeType, visible], () => nextTick(() => {}));
 
 // Map node types to toolbar components
-const TOOLBAR_COMPONENTS = {
+const TOOLBAR_COMPONENTS: Record<string, Component> = {
   entry: EntryToolbar,
   condition: ConditionToolbar,
   instruction: InstructionToolbar,
@@ -71,7 +118,7 @@ const TOOLBAR_COMPONENTS = {
   slug_line: SlugLineToolbar,
 };
 
-const activeComponent = computed(() => TOOLBAR_COMPONENTS[nodeType.value] || null);
+const activeComponent = computed<Component | null>(() => (nodeType.value ? TOOLBAR_COMPONENTS[nodeType.value] ?? null : null));
 </script>
 
 <template>

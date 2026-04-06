@@ -1,11 +1,22 @@
-<script setup>
+<script setup lang="ts">
 import { Ref } from "rete-vue-plugin";
 import { computed } from "vue";
 
-const { data, emit } = defineProps({
-  data: { type: Object, required: true },
-  emit: { type: Function, required: true },
-});
+interface SocketPayload {
+  socket: unknown;
+  label?: string;
+}
+
+interface NodeSocketsData {
+  id: string | number;
+  inputs?: Record<string, SocketPayload>;
+  outputs?: Record<string, SocketPayload>;
+}
+
+const { data, emit: emitFn } = defineProps<{
+  data: NodeSocketsData;
+  emit: (data: { type: string; data: unknown }) => void;
+}>();
 
 const inputs = computed(() => Object.entries(data?.inputs || {}));
 const outputs = computed(() => Object.entries(data?.outputs || {}));
@@ -21,7 +32,7 @@ const isSimple = computed(() => inputs.value.length <= 1 && outputs.value.length
           <Ref
             class="input-socket"
             :data="{ type: 'socket', side: 'input', key, nodeId: data.id, payload: input.socket }"
-            :emit="emit"
+            :emit="emitFn"
             data-testid="input-socket"
           />
           <span class="text-[11px] text-muted-foreground ml-1">{{ key }}</span>
@@ -35,7 +46,7 @@ const isSimple = computed(() => inputs.value.length <= 1 && outputs.value.length
           <Ref
             class="output-socket"
             :data="{ type: 'socket', side: 'output', key, nodeId: data.id, payload: output.socket }"
-            :emit="emit"
+            :emit="emitFn"
             data-testid="output-socket"
           />
         </template>
@@ -52,7 +63,7 @@ const isSimple = computed(() => inputs.value.length <= 1 && outputs.value.length
         <Ref
           class="input-socket"
           :data="{ type: 'socket', side: 'input', key, nodeId: data.id, payload: input.socket }"
-          :emit="emit"
+          :emit="emitFn"
           data-testid="input-socket"
         />
         <span class="ml-2">{{ input.label || key }}</span>
@@ -66,7 +77,7 @@ const isSimple = computed(() => inputs.value.length <= 1 && outputs.value.length
         <Ref
           class="output-socket"
           :data="{ type: 'socket', side: 'output', key, nodeId: data.id, payload: output.socket }"
-          :emit="emit"
+          :emit="emitFn"
           data-testid="output-socket"
         />
       </div>

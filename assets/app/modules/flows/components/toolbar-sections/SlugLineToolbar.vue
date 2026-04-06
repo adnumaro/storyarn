@@ -1,18 +1,34 @@
-<script setup>
+<script setup lang="ts">
 import { Clapperboard } from "lucide-vue-next";
 import { computed } from "vue";
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
 import { useLive } from "@composables/useLive";
 import { ToolbarAvatarPicker, ToolbarSearchableSelect } from "../../toolbar";
+import type { SheetAvatarEntry } from "../../types";
+import type { NodeData } from "../../lib/node-configs";
 
-const { nodeData, sheetAvatars } = defineProps({
-  nodeData: { type: Object, required: true },
-  sheetAvatars: { type: Array, default: () => [] },
-});
+interface SlugLineToolbarData extends NodeData {
+  speaker_sheet_id?: number | string | null;
+  location_sheet_id?: number | string | null;
+  int_ext?: string;
+  time_of_day?: string;
+  avatar_id?: number | string | null;
+}
+
+interface AvatarOption {
+  id: number;
+  url: string;
+  name: string;
+}
+
+const { nodeData, sheetAvatars = [] } = defineProps<{
+  nodeData: SlugLineToolbarData;
+  sheetAvatars?: SheetAvatarEntry[];
+}>();
 
 const live = useLive();
 
-const intExtOptions = [
+const intExtOptions: [string, string][] = [
   ["INT/EXT", "int_ext"],
   ["INT", "int"],
   ["EXT", "ext"],
@@ -26,7 +42,7 @@ const intExtLabel = computed(() => {
   return null;
 });
 
-const sheetOptions = computed(() => sheetAvatars.map((s) => [s.name, s.id]));
+const sheetOptions = computed<[string, number][]>(() => sheetAvatars.map((s) => [s.name, s.id]));
 
 const selectedLocationName = computed(() => {
   const locId = nodeData.location_sheet_id;
@@ -35,7 +51,7 @@ const selectedLocationName = computed(() => {
   return sheet?.name || null;
 });
 
-const timeOptions = [
+const timeOptions: [string, string][] = [
   ["Day", "day"],
   ["Night", "night"],
   ["Morning", "morning"],
@@ -48,7 +64,7 @@ const timeLabel = computed(() => {
   return v ? v.charAt(0).toUpperCase() + v.slice(1) : null;
 });
 
-const speakerAvatars = computed(() => {
+const speakerAvatars = computed<AvatarOption[]>(() => {
   const sheetId = nodeData.speaker_sheet_id || nodeData.location_sheet_id;
   if (!sheetId) return [];
   const sheet = sheetAvatars.find((s) => String(s.id) === String(sheetId));
@@ -56,7 +72,7 @@ const speakerAvatars = computed(() => {
   return sheet.avatars
     .filter((a) => a.asset?.url)
     .sort((a, b) => (a.position || 0) - (b.position || 0))
-    .map((a) => ({ id: a.id, url: a.asset.url, name: a.name }));
+    .map((a) => ({ id: a.id, url: a.asset!.url, name: a.name }));
 });
 
 const hasAvatarOverride = computed(() => {
@@ -64,19 +80,19 @@ const hasAvatarOverride = computed(() => {
   return aid != null && aid !== "" && aid !== 0;
 });
 
-function selectSlugSetting(value) {
+function selectSlugSetting(value: string) {
   live.pushEvent("update_node_data", { node: { int_ext: value } });
 }
 
-function selectSlugLocation(sheetId) {
+function selectSlugLocation(sheetId: number | string) {
   live.pushEvent("update_node_data", { node: { location_sheet_id: sheetId } });
 }
 
-function selectSlugTime(value) {
+function selectSlugTime(value: string) {
   live.pushEvent("update_node_data", { node: { time_of_day: value } });
 }
 
-function selectAvatar(avatarId) {
+function selectAvatar(avatarId: number | null) {
   live.pushEvent("update_node_field", { field: "avatar_id", value: avatarId });
 }
 </script>

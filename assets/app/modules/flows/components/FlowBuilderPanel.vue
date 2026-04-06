@@ -1,26 +1,37 @@
-<script setup>
+<script setup lang="ts">
 import { GitBranch, X, Zap } from "lucide-vue-next";
+import type { Component } from "vue";
 import { computed } from "vue";
 import ConditionBuilder from "@components/builders/ConditionBuilder.vue";
 import InstructionBuilder from "@components/builders/InstructionBuilder.vue";
+import type { Assignment, ConditionData } from "@components/builders/types";
 import Sidebar from "@components/layout/Sidebar.vue";
+import type { Variable } from "@modules/shared/variables";
 import { useLive } from "@composables/useLive";
 
-const { open, nodeType, nodeId, condition, assignments, switchMode, projectVariables, canEdit } =
-  defineProps({
-    open: { type: Boolean, default: false },
-    nodeType: { type: String, default: null },
-    nodeId: { type: [Number, String], default: null },
-    condition: { type: Object, default: null },
-    assignments: { type: Array, default: () => [] },
-    switchMode: { type: Boolean, default: false },
-    projectVariables: { default: "[]" },
-    canEdit: { type: Boolean, default: false },
-  });
+const {
+  open = false,
+  nodeType = null,
+  nodeId = null,
+  condition = null,
+  assignments = [],
+  switchMode = false,
+  projectVariables = "[]",
+  canEdit = false,
+} = defineProps<{
+  open?: boolean;
+  nodeType?: string | null;
+  nodeId?: number | string | null;
+  condition?: ConditionData | null;
+  assignments?: Assignment[];
+  switchMode?: boolean;
+  projectVariables?: Variable[] | string;
+  canEdit?: boolean;
+}>();
 
 const live = useLive();
 
-const parsedVariables = computed(() => {
+const parsedVariables = computed<Variable[]>(() => {
   if (Array.isArray(projectVariables)) return projectVariables;
   try {
     return JSON.parse(projectVariables);
@@ -35,7 +46,7 @@ const title = computed(() => {
   return "Builder";
 });
 
-const icon = computed(() => {
+const icon = computed<Component | null>(() => {
   if (nodeType === "condition") return GitBranch;
   if (nodeType === "instruction") return Zap;
   return null;
@@ -56,12 +67,12 @@ function close() {
   live.pushEvent("close_builder", {});
 }
 
-function onConditionUpdate(condition) {
+function onConditionUpdate(condition: ConditionData): void {
   live.pushEvent("update_condition_builder", { condition });
 }
 
-function onAssignmentsUpdate(assignments) {
-  live.pushEvent("update_instruction_builder", { assignments });
+function onAssignmentsUpdate(updatedAssignments: Assignment[]): void {
+  live.pushEvent("update_instruction_builder", { assignments: updatedAssignments });
 }
 </script>
 

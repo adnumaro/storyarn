@@ -1,7 +1,11 @@
-<script setup>
-const { data } = defineProps({
-  data: { type: Object, default: null },
-});
+<script setup lang="ts">
+interface SocketData {
+  name?: string;
+}
+
+const { data = null } = defineProps<{
+  data: SocketData | null;
+}>();
 </script>
 
 <template>

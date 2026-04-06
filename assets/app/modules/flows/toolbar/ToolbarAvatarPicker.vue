@@ -1,18 +1,26 @@
-<script setup>
+<script setup lang="ts">
 import { Image, X } from "lucide-vue-next";
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 
-const { avatars, hasOverride, disabled } = defineProps({
-  avatars: { type: Array, default: () => [] },
-  hasOverride: { type: Boolean, default: false },
-  disabled: { type: Boolean, default: false },
-});
+interface AvatarOption {
+  id: number;
+  url: string;
+  name: string;
+}
 
-const emit = defineEmits(["select"]);
+const { avatars = [], hasOverride = false, disabled = false } = defineProps<{
+  avatars?: AvatarOption[];
+  hasOverride?: boolean;
+  disabled?: boolean;
+}>();
+
+const emit = defineEmits<{
+  select: [id: number | null];
+}>();
 const open = ref(false);
 
-function selectAvatar(id) {
+function selectAvatar(id: number) {
   emit("select", id);
   open.value = false;
 }

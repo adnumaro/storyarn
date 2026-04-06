@@ -1,23 +1,31 @@
-<script setup>
+<script setup lang="ts">
 import { TriangleAlert, Zap } from "lucide-vue-next";
 import { computed } from "vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
+import type { NodeConfig } from "../lib/node-configs";
+import type { InstructionAssignment, ReteEmitFn, ReteNodeData } from "../types";
 
-const { data, emit, config, color } = defineProps({
-  data: { type: Object, required: true },
-  emit: { type: Function, required: true },
-  config: { type: Object, required: true },
-  color: { type: String, required: true },
-});
+interface InstructionNodeData {
+  assignments?: InstructionAssignment[];
+  has_stale_refs?: boolean;
+  has_type_warnings?: boolean;
+}
 
-const nodeData = computed(() => data.nodeData || {});
+const { data, emit, config, color } = defineProps<{
+  data: ReteNodeData;
+  emit: ReteEmitFn;
+  config: NodeConfig;
+  color: string;
+}>();
+
+const nodeData = computed<InstructionNodeData>(() => (data.nodeData as InstructionNodeData) || {});
 
 // --- Formatting (matching V1 instruction.js exactly) ---
 
-function getBooleanOpString(op, ref) {
-  const map = {
+function getBooleanOpString(op: string, ref: string): string | null {
+  const map: Record<string, string> = {
     set_true: `Set ${ref} to true`,
     set_false: `Set ${ref} to false`,
     toggle: `Toggle ${ref}`,
@@ -26,22 +34,22 @@ function getBooleanOpString(op, ref) {
   return map[op] || null;
 }
 
-function getValueDisplay(assignment) {
+function getValueDisplay(assignment: InstructionAssignment): string {
   if (assignment.value_type === "variable_ref" && assignment.value_sheet && assignment.value) {
     return `${assignment.value_sheet}.${assignment.value}`;
   }
-  return assignment.value || "?";
+  return String(assignment.value || "?");
 }
 
-function getValueOpString(op, ref, val) {
-  const map = {
+function getValueOpString(op: string, ref: string, val: string): string {
+  const map: Record<string, string> = {
     add: `Add ${val} to ${ref}`,
     subtract: `Subtract ${val} from ${ref}`,
   };
   return map[op] || `Set ${ref} to ${val}`;
 }
 
-function formatAssignment(assignment) {
+function formatAssignment(assignment: InstructionAssignment): string | null {
   if (!assignment.sheet || !assignment.variable) return null;
   const ref = `${assignment.sheet}.${assignment.variable}`;
   const op = assignment.operator || "set";

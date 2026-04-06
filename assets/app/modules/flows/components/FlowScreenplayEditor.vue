@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * Screenplay editor for dialogue nodes.
  * Replaces the V1 LiveComponent with a Vue sidebar.
@@ -14,25 +14,59 @@ import { computed, ref, watch } from "vue";
 import ConditionBuilder from "@components/builders/ConditionBuilder.vue";
 import EntityCombobox from "@components/form-fields/EntityCombobox.vue";
 import InstructionBuilder from "@components/builders/InstructionBuilder.vue";
+import type { Assignment, ConditionData } from "@components/builders/types";
 import Sidebar from "@components/layout/Sidebar.vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
+import type { Variable } from "@modules/shared/variables";
 import { useLive } from "@composables/useLive";
 
-const { open, node, canEdit, allSheets, projectVariables } = defineProps({
-  open: { type: Boolean, default: false },
-  node: { type: Object, default: null },
-  canEdit: { type: Boolean, default: false },
-  allSheets: { type: Array, default: () => [] },
-  projectVariables: { default: () => [] },
-});
+interface NodeResponse {
+  id: string | number;
+  text: string;
+  condition?: ConditionData;
+  instruction_assignments?: Assignment[];
+}
+
+interface DialogueNodeData {
+  text?: string;
+  speaker_sheet_id?: number | string | null;
+  stage_directions?: string;
+  menu_text?: string;
+  technical_id?: string;
+  responses?: NodeResponse[];
+}
+
+interface ScreenplayNode {
+  id: number | string;
+  data: DialogueNodeData;
+}
+
+interface SheetOption {
+  id: number | string;
+  name: string;
+}
+
+const {
+  open = false,
+  node = null,
+  canEdit = false,
+  allSheets = [],
+  projectVariables = [],
+} = defineProps<{
+  open?: boolean;
+  node?: ScreenplayNode | null;
+  canEdit?: boolean;
+  allSheets?: SheetOption[];
+  projectVariables?: Variable[] | string;
+}>();
 
 const live = useLive();
 const activeTab = ref("text");
 
-const parsedVariables = computed(() => {
+const parsedVariables = computed<Variable[]>(() => {
   if (Array.isArray(projectVariables)) return projectVariables;
   try {
     return JSON.parse(projectVariables);
@@ -40,13 +74,13 @@ const parsedVariables = computed(() => {
     return [];
   }
 });
-const nodeData = computed(() => node?.data || {});
-const speakerId = computed(() => nodeData.value.speaker_sheet_id || null);
+const nodeData = computed<DialogueNodeData>(() => node?.data || {});
+const speakerId = computed<number | string | null>(() => nodeData.value.speaker_sheet_id || null);
 const speakerOptions = computed(() => allSheets.map((s) => ({ id: s.id, name: s.name })));
-const responses = computed(() => nodeData.value.responses || []);
+const responses = computed<NodeResponse[]>(() => nodeData.value.responses || []);
 
 // TipTap editor for dialogue text
-let debounceTimer = null;
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 const editor = useEditor({
   extensions: [StarterKit, Placeholder.configure({ placeholder: "Write dialogue..." })],
   editable: canEdit,
@@ -67,7 +101,7 @@ watch(
   () => nodeData.value.text,
   (newText) => {
     if (editor.value && newText !== editor.value.getHTML()) {
-      editor.value.commands.setContent(newText || "", false);
+      editor.value.commands.setContent(newText || "", { emitUpdate: false });
     }
   },
 );
@@ -76,31 +110,31 @@ function close() {
   live.pushEvent("close_editor", {});
 }
 
-function updateSpeaker(sheetId) {
+function updateSpeaker(sheetId: number | string | null): void {
   live.pushEvent("update_node_field", {
     field: "speaker_sheet_id",
     value: sheetId,
   });
 }
 
-function updateStageDirections(e) {
+function updateStageDirections(e: Event): void {
   live.pushEvent("update_node_field", {
     field: "stage_directions",
-    value: e.target.value,
+    value: (e.target as HTMLInputElement).value,
   });
 }
 
-function updateMenuText(e) {
+function updateMenuText(e: Event): void {
   live.pushEvent("update_node_field", {
     field: "menu_text",
-    value: e.target.value,
+    value: (e.target as HTMLInputElement).value,
   });
 }
 
-function updateTechnicalId(e) {
+function updateTechnicalId(e: Event): void {
   live.pushEvent("update_node_field", {
     field: "technical_id",
-    value: e.target.value,
+    value: (e.target as HTMLInputElement).value,
   });
 }
 
@@ -108,25 +142,25 @@ function addResponse() {
   live.pushEvent("add_response", {});
 }
 
-function removeResponse(responseId) {
+function removeResponse(responseId: string | number): void {
   live.pushEvent("remove_response", { response_id: responseId });
 }
 
-function updateResponseText(responseId, text) {
+function updateResponseText(responseId: string | number, text: string): void {
   live.pushEvent("update_response_text", { response_id: responseId, text });
 }
 
-function updateResponseCondition(responseId, condition) {
+function updateResponseCondition(responseId: string | number, condition: ConditionData): void {
   live.pushEvent("update_response_condition", {
     response_id: responseId,
     condition,
   });
 }
 
-function updateResponseAssignments(responseId, assignments) {
+function updateResponseAssignments(responseId: string | number, updatedAssignments: Assignment[]): void {
   live.pushEvent("update_response_assignments", {
     response_id: responseId,
-    assignments,
+    assignments: updatedAssignments,
   });
 }
 </script>
@@ -220,7 +254,7 @@ function updateResponseAssignments(responseId, assignments) {
               :model-value="resp.text || ''"
               placeholder="Response text..."
               :disabled="!canEdit"
-              @blur="(e) => updateResponseText(resp.id, e.target.value)"
+              @blur="(e: FocusEvent) => updateResponseText(resp.id, (e.target as HTMLInputElement).value)"
             />
 
             <!-- Condition (collapsible) -->

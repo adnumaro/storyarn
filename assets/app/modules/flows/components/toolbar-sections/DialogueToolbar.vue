@@ -1,23 +1,39 @@
-<script setup>
+<script setup lang="ts">
 import { MessageSquare, Play as PlayIcon, Settings, Volume2 } from "lucide-vue-next";
 import { computed } from "vue";
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
 import { useLive } from "@composables/useLive";
 import { ToolbarAvatarPicker } from "../../toolbar";
+import type { SheetAvatarEntry } from "../../types";
+import type { NodeData } from "../../lib/node-configs";
 
-const { nodeData, nodeId, sheetAvatars } = defineProps({
-  nodeData: { type: Object, required: true },
-  nodeId: { type: [String, Number], required: true },
-  sheetAvatars: { type: Array, default: () => [] },
-});
+interface DialogueToolbarData extends NodeData {
+  speaker_sheet_id?: number | string | null;
+  location_sheet_id?: number | string | null;
+  technical_id?: string;
+  audio_asset_id?: number | string | null;
+  avatar_id?: number | string | null;
+}
+
+interface AvatarOption {
+  id: number;
+  url: string;
+  name: string;
+}
+
+const { nodeData, nodeId, sheetAvatars = [] } = defineProps<{
+  nodeData: DialogueToolbarData;
+  nodeId: string | number;
+  sheetAvatars?: SheetAvatarEntry[];
+}>();
 
 const live = useLive();
 
-function updateField(field, value) {
+function updateField(field: string, value: unknown) {
   live.pushEvent("update_node_data", { node: { [field]: value } });
 }
 
-function updateNodeField(field, value) {
+function updateNodeField(field: string, value: unknown) {
   live.pushEvent("update_node_field", { field, value });
 }
 
@@ -29,11 +45,11 @@ function startPreview() {
   live.pushEvent("start_preview", { id: nodeId });
 }
 
-function selectAvatar(avatarId) {
+function selectAvatar(avatarId: number | null) {
   updateNodeField("avatar_id", avatarId);
 }
 
-const speakerAvatars = computed(() => {
+const speakerAvatars = computed<AvatarOption[]>(() => {
   const sheetId = nodeData.speaker_sheet_id || nodeData.location_sheet_id;
   if (!sheetId) return [];
   const sheet = sheetAvatars.find((s) => String(s.id) === String(sheetId));
@@ -41,7 +57,7 @@ const speakerAvatars = computed(() => {
   return sheet.avatars
     .filter((a) => a.asset?.url)
     .sort((a, b) => (a.position || 0) - (b.position || 0))
-    .map((a) => ({ id: a.id, url: a.asset.url, name: a.name }));
+    .map((a) => ({ id: a.id, url: a.asset!.url, name: a.name }));
 });
 
 const hasAvatarOverride = computed(() => {
@@ -58,8 +74,8 @@ const hasAvatarOverride = computed(() => {
     class="v2-toolbar-input text-xs font-mono"
     placeholder="tech_id"
     :value="nodeData.technical_id || ''"
-    @blur="(e) => updateField('technical_id', e.target.value)"
-    @keydown.enter="(e) => e.target.blur()"
+    @blur="(e: FocusEvent) => updateField('technical_id', (e.target as HTMLInputElement).value)"
+    @keydown.enter="(e: KeyboardEvent) => (e.target as HTMLInputElement).blur()"
     @pointerdown.stop
     @keydown.stop
   />

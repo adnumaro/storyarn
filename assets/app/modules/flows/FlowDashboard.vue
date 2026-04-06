@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import {
   AlertTriangle,
   ArrowDown,
@@ -15,6 +15,7 @@ import {
   TextCursorInput,
   Trash2,
 } from "lucide-vue-next";
+import type { Component } from "vue";
 import { computed } from "vue";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Button } from "@components/ui/button/index.ts";
@@ -35,48 +36,99 @@ import {
 import { useLive } from "@composables/useLive";
 import { formatRelativeTime } from "@utils/date-utils";
 
-const { stats, tableData, pagination, issues, canEdit, workspaceSlug, projectSlug } = defineProps({
-  stats: { type: Object, default: null },
-  tableData: { type: Array, default: () => [] },
-  pagination: {
-    type: Object,
-    default: () => ({ sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 0 }),
-  },
-  issues: { type: Array, default: () => [] },
-  canEdit: { type: Boolean, default: false },
-  workspaceSlug: { type: String, required: true },
-  projectSlug: { type: String, required: true },
-});
+interface FlowStats {
+  flow_count: number;
+  node_count: number;
+  dialogue_count: number;
+  word_count: number;
+}
+
+interface FlowTableRow {
+  id: number | string;
+  name: string;
+  is_main: boolean;
+  node_count: number;
+  dialogue_count: number;
+  condition_count: number;
+  word_count: number;
+  updated_at: string;
+}
+
+interface FlowPagination {
+  sortBy: string;
+  sortDir: "asc" | "desc";
+  page: number;
+  totalPages: number;
+  total: number;
+}
+
+interface FlowIssue {
+  href: string;
+  message: string;
+  severity: "warning" | "info";
+}
+
+interface StatCard {
+  icon: Component;
+  label: string;
+  value: number;
+  color: string;
+}
+
+interface TableColumn {
+  key: string;
+  label: string;
+  align: "left" | "right";
+  hiddenClass?: string;
+}
+
+const {
+  stats = null,
+  tableData = [],
+  pagination = { sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 0 },
+  issues = [],
+  canEdit = false,
+  workspaceSlug,
+  projectSlug,
+} = defineProps<{
+  stats: FlowStats | null;
+  tableData: FlowTableRow[];
+  pagination: FlowPagination;
+  issues: FlowIssue[];
+  canEdit: boolean;
+  workspaceSlug: string;
+  projectSlug: string;
+}>();
 
 const live = useLive();
 
-function flowHref(row) {
+function flowHref(row: FlowTableRow): string {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${row.id}`;
 }
 
-function handleSort(column) {
+function handleSort(column: string): void {
   live.pushEvent("sort_flows", { column });
 }
 
-function goToPage(page) {
+function goToPage(page: number): void {
   live.pushEvent("page_flows", { page });
 }
 
-function setMain(id) {
+function setMain(id: number | string): void {
   live.pushEvent("set_main", { id });
 }
 
-function requestDelete(id) {
+function requestDelete(id: number | string): void {
   live.pushEvent("set_pending_delete", { id });
   live.pushEvent("confirm_delete", {});
 }
 
-function sortIcon(column) {
+function sortIcon(column: string): Component {
   if (pagination.sortBy !== column) return ArrowUpDown;
   return pagination.sortDir === "asc" ? ArrowUp : ArrowDown;
 }
 
-const statCards = computed(() => {
+const statCards = computed<StatCard[]>(() => {
   if (!stats) return [];
   return [
     {
@@ -106,7 +158,7 @@ const statCards = computed(() => {
   ];
 });
 
-const columns = [
+const columns: TableColumn[] = [
   { key: "name", label: "Name", align: "left" },
   { key: "node_count", label: "Nodes", align: "right" },
   {

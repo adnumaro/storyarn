@@ -1,21 +1,34 @@
-<script setup>
+<script setup lang="ts">
 import { computed, inject, nextTick, ref, watch } from "vue";
 import { FLOW_CONTEXT_KEY } from "../setup";
+import type { FlowContextInjection, ReteEmitFn, ReteNodeData } from "../types";
+import type { NodeConfig } from "../lib/node-configs";
 
-const { data, emit, config, color } = defineProps({
-  data: { type: Object, required: true },
-  emit: { type: Function, required: true },
-  config: { type: Object, required: true },
-  color: { type: String, required: true },
-});
+interface AnnotationNodeData {
+  text?: string;
+  color?: string;
+  font_size?: "sm" | "md" | "lg";
+}
 
-const ctx = inject(FLOW_CONTEXT_KEY, {
+const { data, emit, config, color } = defineProps<{
+  data: ReteNodeData;
+  emit: ReteEmitFn;
+  config: NodeConfig;
+  color: string;
+}>();
+
+const ctx = inject<FlowContextInjection>(FLOW_CONTEXT_KEY, {
   editingNodeId: null,
   onInlineEditSave: null,
+  sheetsMap: {},
+  hubsMap: {},
+  labels: {},
+  lod: "full",
+  nodeDataVersion: 0,
 });
-const textareaRef = ref(null);
+const textareaRef = ref<HTMLTextAreaElement | null>(null);
 
-const nodeData = computed(() => data.nodeData || {});
+const nodeData = computed<AnnotationNodeData>(() => (data.nodeData as AnnotationNodeData) || {});
 const text = computed(() => nodeData.value.text || "");
 const annColor = computed(() => nodeData.value.color || "#fbbf24");
 const selected = computed(() => data.selected || false);
@@ -35,16 +48,16 @@ watch(editing, (val) => {
   }
 });
 
-function onBlur(e) {
-  const val = e.target.value;
+function onBlur(e: FocusEvent) {
+  const val = (e.target as HTMLTextAreaElement).value;
   if (val !== text.value) {
     ctx.onInlineEditSave?.(data.id, "text", val);
   }
 }
 
-function onKeydown(e) {
+function onKeydown(e: KeyboardEvent) {
   e.stopPropagation();
-  if (e.key === "Escape") e.target.blur();
+  if (e.key === "Escape") (e.target as HTMLTextAreaElement).blur();
 }
 </script>
 

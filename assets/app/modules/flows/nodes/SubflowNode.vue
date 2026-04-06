@@ -1,18 +1,28 @@
-<script setup>
+<script setup lang="ts">
 import { ArrowRight, Box, CornerDownLeft, Square } from "lucide-vue-next";
 import { Ref } from "rete-vue-plugin";
 import { computed } from "vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
+import type { NodeConfig } from "../lib/node-configs";
+import type { ExitLabel, ReteEmitFn, ReteNodeData } from "../types";
 
-const { data, emit, config, color } = defineProps({
-  data: { type: Object, required: true },
-  emit: { type: Function, required: true },
-  config: { type: Object, required: true },
-  color: { type: String, required: true },
-});
+interface SubflowNodeData {
+  referenced_flow_name?: string;
+  referenced_flow_shortcut?: string;
+  referenced_flow_id?: number | string | null;
+  stale_reference?: boolean;
+  exit_labels?: ExitLabel[];
+}
 
-const nodeData = computed(() => data.nodeData || {});
+const { data, emit, config, color } = defineProps<{
+  data: ReteNodeData;
+  emit: ReteEmitFn;
+  config: NodeConfig;
+  color: string;
+}>();
+
+const nodeData = computed<SubflowNodeData>(() => (data.nodeData as SubflowNodeData) || {});
 const refFlowName = computed(() => nodeData.value.referenced_flow_name);
 const refFlowShortcut = computed(() => nodeData.value.referenced_flow_shortcut);
 const hasRef = computed(() => !!nodeData.value.referenced_flow_id);
@@ -26,9 +36,9 @@ const inputs = computed(() => Object.entries(data?.inputs || {}));
 const outputs = computed(() => Object.entries(data?.outputs || {}));
 
 // Exit labels for dynamic output formatting
-const exitLabels = computed(() => nodeData.value.exit_labels || []);
+const exitLabels = computed<ExitLabel[]>(() => nodeData.value.exit_labels || []);
 
-function getExitInfo(key) {
+function getExitInfo(key: string): ExitLabel | null {
   if (!key.startsWith("exit_")) return null;
   const exitId = Number.parseInt(key.replace("exit_", ""), 10);
   return exitLabels.value.find((e) => e.id === exitId) || null;
@@ -90,11 +100,11 @@ function getExitInfo(key) {
         <span class="px-2 max-w-[220px] break-words text-right inline-flex items-center gap-1">
           <template v-if="getExitInfo(key)">
             <CornerDownLeft
-              v-if="getExitInfo(key).exit_mode === 'caller_return'"
+              v-if="getExitInfo(key)!.exit_mode === 'caller_return'"
               class="size-2.5 shrink-0"
             />
             <Square v-else class="size-2.5 shrink-0" />
-            {{ getExitInfo(key).label || "Exit" }}
+            {{ getExitInfo(key)!.label || "Exit" }}
           </template>
           <template v-else> Output </template>
         </span>

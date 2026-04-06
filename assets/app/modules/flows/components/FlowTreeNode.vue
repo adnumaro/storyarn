@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { makeDraggable, makeDroppable } from "@vue-dnd-kit/core";
 import { ChevronRight, FilePlus, GitBranch, Star, Trash2 } from "lucide-vue-next";
 import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from "vue";
@@ -8,20 +8,34 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@components/ui/context-menu/index.ts";
+import type { FlowTreeItem } from "./FlowTree.vue";
 
-const { node, index, siblings, selectedFlowId, canEdit, depth, searchActive, flowHref } =
-  defineProps({
-    node: { type: Object, required: true },
-    index: { type: Number, required: true },
-    siblings: { type: Array, required: true },
-    selectedFlowId: { type: [String, Number], default: null },
-    canEdit: { type: Boolean, default: false },
-    depth: { type: Number, default: 0 },
-    searchActive: { type: Boolean, default: false },
-    flowHref: { type: Function, required: true },
-  });
+const {
+  node,
+  index,
+  siblings,
+  selectedFlowId = null,
+  canEdit = false,
+  depth = 0,
+  searchActive = false,
+  flowHref,
+} = defineProps<{
+  node: FlowTreeItem;
+  index: number;
+  siblings: FlowTreeItem[];
+  selectedFlowId: string | number | null;
+  canEdit: boolean;
+  depth: number;
+  searchActive: boolean;
+  flowHref: (flow: FlowTreeItem) => string;
+}>();
 
-const emit = defineEmits(["createChild", "requestDelete", "setMain", "drop"]);
+const emit = defineEmits<{
+  createChild: [id: number | string];
+  requestDelete: [flow: FlowTreeItem];
+  setMain: [id: number | string];
+  drop: [event: unknown];
+}>();
 
 const hasChildren = computed(() => node.children && node.children.length > 0);
 
@@ -30,7 +44,7 @@ const isSelected = computed(
 );
 
 // Auto-expand
-function hasSelectedDescendant(node, selectedId) {
+function hasSelectedDescendant(node: FlowTreeItem, selectedId: string | number | null): boolean {
   if (!selectedId || !node.children) return false;
   for (const child of node.children) {
     if (String(child.id) === String(selectedId)) return true;
@@ -71,10 +85,10 @@ const { isDragging, isDragOver: rowPlacement } = makeDraggable(
 );
 
 // Center zone detection
-const pointerZone = ref(null);
+const pointerZone = ref<string | null>(null);
 const CENTER_THRESHOLD = 0.3;
 
-function onPointerMove(e) {
+function onPointerMove(e: PointerEvent): void {
   const el = rowRef.value;
   if (!el || !rowPlacement.value) {
     pointerZone.value = null;
@@ -100,11 +114,11 @@ const childrenRef = useTemplateRef("childrenRef");
 const { isDragOver: childrenOver } = makeDroppable(
   childrenRef,
   { events: { onDrop: (e) => emit("drop", e) } },
-  () => node.children,
+  () => node.children || [],
 );
 
 // Auto-expand on hover during drag
-let autoExpandTimer = null;
+let autoExpandTimer: ReturnType<typeof setTimeout> | null = null;
 
 watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
   clearTimeout(autoExpandTimer);
@@ -225,7 +239,7 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
         :key="child.id"
         :node="child"
         :index="childIndex"
-        :siblings="node.children"
+        :siblings="node.children || []"
         :selected-flow-id="selectedFlowId"
         :can-edit="canEdit"
         :depth="depth + 1"

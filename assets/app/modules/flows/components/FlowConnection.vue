@@ -1,15 +1,24 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from "vue";
 
-const { path, data } = defineProps({
-  path: { type: String, default: "" },
-  data: { type: Object, default: null },
-});
+interface ConnectionData {
+  label?: string;
+}
+
+interface Midpoint {
+  x: number;
+  y: number;
+}
+
+const { path = "", data = null } = defineProps<{
+  path: string;
+  data: ConnectionData | null;
+}>();
 
 /**
  * Calculate midpoint of cubic bezier path at t=0.5 for label positioning.
  */
-const midpoint = computed(() => {
+const midpoint = computed<Midpoint | null>(() => {
   if (!path || !data?.label) return null;
 
   const m = path.match(
@@ -26,7 +35,7 @@ const midpoint = computed(() => {
   };
 });
 
-const labelWidth = computed(() => (data?.label ? Math.min(data.label.length * 6 + 10, 80) : 0));
+const labelWidth = computed<number>(() => (data?.label ? Math.min(data.label.length * 6 + 10, 80) : 0));
 </script>
 
 <template>

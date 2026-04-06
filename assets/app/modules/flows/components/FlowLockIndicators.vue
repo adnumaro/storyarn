@@ -1,15 +1,41 @@
-<script setup>
+<script setup lang="ts">
 import { Lock } from "lucide-vue-next";
 import { computed } from "vue";
 
-const { locks, nodePositions, currentUserId } = defineProps({
-  locks: { type: Object, default: () => ({}) },
-  nodePositions: { type: Object, default: () => ({}) },
-  currentUserId: { type: [Number, String], default: 0 },
-});
+interface LockEntry {
+  user_id: number | string;
+  user_email?: string;
+  user_color?: string;
+}
 
-const otherUserLocks = computed(() => {
-  const result = [];
+interface NodePosition {
+  x: number;
+  y: number;
+  width: number;
+}
+
+interface ResolvedLock {
+  nodeId: string;
+  user_id: number | string;
+  user_email?: string;
+  user_color?: string;
+  x: number;
+  y: number;
+  width: number;
+}
+
+const {
+  locks = {},
+  nodePositions = {},
+  currentUserId = 0,
+} = defineProps<{
+  locks: Record<string, LockEntry>;
+  nodePositions: Record<string, NodePosition>;
+  currentUserId: number | string;
+}>();
+
+const otherUserLocks = computed<ResolvedLock[]>(() => {
+  const result: ResolvedLock[] = [];
   for (const [nodeId, lock] of Object.entries(locks)) {
     if (lock.user_id !== currentUserId && nodePositions[nodeId]) {
       result.push({
@@ -22,7 +48,7 @@ const otherUserLocks = computed(() => {
   return result;
 });
 
-function emailName(email) {
+function emailName(email: string | undefined): string {
   return email?.split("@")[0] || "User";
 }
 </script>

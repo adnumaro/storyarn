@@ -1,7 +1,11 @@
-<script setup>
+<script setup lang="ts">
+import type { Component } from "vue";
 import { computed, inject } from "vue";
+import type { FlowNodeType, NodeConfig, NodeData } from "../lib/node-configs";
 import { NODE_CONFIGS } from "../lib/node-configs";
 import { resolveNodeColor } from "../lib/render-helpers";
+import type { SheetInfo } from "../lib/render-helpers";
+import type { HubMapEntry } from "../types";
 import AnnotationNode from "../nodes/AnnotationNode.vue";
 import ConditionNode from "../nodes/ConditionNode.vue";
 import DialogueNode from "../nodes/DialogueNode.vue";
@@ -14,7 +18,23 @@ import SlugLineNode from "../nodes/SlugLineNode.vue";
 import SubflowNode from "../nodes/SubflowNode.vue";
 import { FLOW_CONTEXT_KEY } from "../setup";
 
-const NODE_COMPONENTS = {
+interface FlowNodeData {
+  id: string | number;
+  nodeType: FlowNodeType;
+  nodeData: NodeData;
+  inputs?: Record<string, { socket: unknown }>;
+  outputs?: Record<string, { socket: unknown; label?: string }>;
+}
+
+interface FlowContextValue {
+  sheetsMap: Record<string, SheetInfo>;
+  hubsMap: Record<string, HubMapEntry>;
+  labels: Record<string, string>;
+  lod: string;
+  nodeDataVersion: number;
+}
+
+const NODE_COMPONENTS: Record<string, Component> = {
   dialogue: DialogueNode,
   entry: EntryNode,
   exit: ExitNode,
@@ -27,16 +47,17 @@ const NODE_COMPONENTS = {
   annotation: AnnotationNode,
 };
 
-const { data, emit } = defineProps({
-  data: { type: Object, required: true },
-  emit: { type: Function, required: true },
-});
+const { data, emit: emitFn } = defineProps<{
+  data: FlowNodeData;
+  emit: (data: { type: string; data: unknown }) => void;
+}>();
 
-const ctx = inject(FLOW_CONTEXT_KEY, {
+const ctx = inject<FlowContextValue>(FLOW_CONTEXT_KEY, {
   sheetsMap: {},
   hubsMap: {},
   labels: {},
   lod: "full",
+  nodeDataVersion: 0,
 });
 
 const nodeType = computed(() => data?.nodeType || "dialogue");
@@ -67,7 +88,7 @@ const reactiveNodeData = computed(() => {
   <component
     :is="nodeComponent"
     :data="data"
-    :emit="emit"
+    :emit="emitFn"
     :config="config"
     :color="nodeColor"
     :sheets-map="ctx.sheetsMap"

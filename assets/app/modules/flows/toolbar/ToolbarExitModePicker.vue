@@ -1,9 +1,17 @@
-<script setup>
+<script setup lang="ts">
 import { ArrowRight, ArrowRightToLine, ChevronDown, Undo2 } from "lucide-vue-next";
+import type { Component } from "vue";
 import { computed, ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 
-const EXIT_MODES = [
+interface ExitMode {
+  value: string;
+  icon: Component;
+  label: string;
+  description: string;
+}
+
+const EXIT_MODES: ExitMode[] = [
   {
     value: "terminal",
     icon: ArrowRightToLine,
@@ -24,17 +32,19 @@ const EXIT_MODES = [
   },
 ];
 
-const { mode, disabled } = defineProps({
-  mode: { type: String, default: "terminal" },
-  disabled: { type: Boolean, default: false },
-});
+const { mode = "terminal", disabled = false } = defineProps<{
+  mode?: string;
+  disabled?: boolean;
+}>();
 
-const emit = defineEmits(["update:mode"]);
+const emit = defineEmits<{
+  "update:mode": [value: string];
+}>();
 const open = ref(false);
 
 const current = computed(() => EXIT_MODES.find((m) => m.value === mode) || EXIT_MODES[0]);
 
-function selectMode(value) {
+function selectMode(value: string) {
   emit("update:mode", value);
   open.value = false;
 }

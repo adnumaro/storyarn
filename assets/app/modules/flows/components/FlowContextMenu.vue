@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import {
   ArrowRightToLine,
   Box,
@@ -17,23 +17,35 @@ import {
   Trash2,
   Zap,
 } from "lucide-vue-next";
+import type { Component } from "vue";
 import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { useLive } from "@composables/useLive";
 
-const { containerEl, canEdit, selectedNodeId, selectedNodeType } = defineProps({
-  containerEl: { type: Object, default: null },
-  canEdit: { type: Boolean, default: false },
-  selectedNodeId: { type: [Number, String], default: null },
-  selectedNodeType: { type: String, default: null },
-});
+interface NodeTypeEntry {
+  type: string;
+  icon: Component;
+  label: string;
+}
+
+const {
+  containerEl = null,
+  canEdit = false,
+  selectedNodeId = null,
+  selectedNodeType = null,
+} = defineProps<{
+  containerEl: HTMLElement | null;
+  canEdit: boolean;
+  selectedNodeId: number | string | null;
+  selectedNodeType: string | null;
+}>();
 
 const live = useLive();
 const visible = ref(false);
 const x = ref(0);
 const y = ref(0);
-const submenu = ref(null);
+const submenu = ref<string | null>(null);
 
-const NODE_TYPES = [
+const NODE_TYPES: NodeTypeEntry[] = [
   { type: "dialogue", icon: MessageSquare, label: "Dialogue" },
   { type: "condition", icon: GitBranch, label: "Condition" },
   { type: "instruction", icon: Zap, label: "Instruction" },
@@ -46,7 +58,7 @@ const NODE_TYPES = [
 
 const isNodeMenu = computed(() => selectedNodeId != null && visible.value);
 
-function onContextMenu(e) {
+function onContextMenu(e: MouseEvent): void {
   e.preventDefault();
   x.value = e.clientX;
   y.value = e.clientY;
@@ -59,7 +71,7 @@ function close() {
   submenu.value = null;
 }
 
-function addNode(type) {
+function addNode(type: string): void {
   live.pushEvent("add_node", { type });
   close();
 }
@@ -96,11 +108,11 @@ function autoLayout() {
 }
 
 // Close on click outside or Escape
-function onKeydown(e) {
+function onKeydown(e: KeyboardEvent): void {
   if (e.key === "Escape") close();
 }
 
-function onClickOutside(e) {
+function onClickOutside(e: PointerEvent): void {
   if (visible.value) close();
 }
 

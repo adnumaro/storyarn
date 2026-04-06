@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ChevronDown } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import {
@@ -11,20 +11,22 @@ import {
 } from "@components/ui/command/index.ts";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 
-const { options, selectedValue, selectedLabel, placeholder, disabled } = defineProps({
-  options: { type: Array, default: () => [] },
-  selectedValue: { type: [String, Number, null], default: null },
-  selectedLabel: { type: String, default: null },
-  placeholder: { type: String, default: "Select..." },
-  disabled: { type: Boolean, default: false },
-});
+const { options = [], selectedValue = null, selectedLabel = null, placeholder = "Select...", disabled = false } = defineProps<{
+  options?: [string, string | number][];
+  selectedValue?: string | number | null;
+  selectedLabel?: string | null;
+  placeholder?: string;
+  disabled?: boolean;
+}>();
 
-const emit = defineEmits(["select"]);
+const emit = defineEmits<{
+  select: [value: string | number];
+}>();
 const open = ref(false);
 
 const displayLabel = computed(() => selectedLabel || null);
 
-function select(value) {
+function select(value: string | number) {
   emit("select", value);
   open.value = false;
 }

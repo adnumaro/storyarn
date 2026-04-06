@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { DnDProvider } from "@vue-dnd-kit/core";
 import { Plus } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
@@ -16,21 +16,42 @@ import { useLive } from "@composables/useLive";
 import FlowTreeNode from "./FlowTreeNode.vue";
 import FlowTreeRoot from "./FlowTreeRoot.vue";
 
-const { flowsTree, selectedFlowId, canEdit, workspaceSlug, projectSlug } = defineProps({
-  flowsTree: { type: Array, default: () => [] },
-  selectedFlowId: { type: [String, Number], default: null },
-  canEdit: { type: Boolean, default: false },
-  workspaceSlug: { type: String, required: true },
-  projectSlug: { type: String, required: true },
-});
+export interface FlowTreeItem {
+  id: number | string;
+  name: string;
+  is_main?: boolean;
+  children?: FlowTreeItem[];
+}
+
+interface DnDDropEvent {
+  draggedItems: { item: FlowTreeItem; items: FlowTreeItem[] }[];
+  hoveredDraggable: { item: FlowTreeItem; items: FlowTreeItem[]; element: HTMLElement } | null;
+  dropZone: { items: FlowTreeItem[] } | null;
+  provider: { pointer: { value: { current: { x: number; y: number } } } } | null;
+  helpers: { suggestSort: (dir: string) => { sourceItems: FlowTreeItem[]; targetItems: FlowTreeItem[]; sameList: boolean } | null };
+}
+
+const {
+  flowsTree = [],
+  selectedFlowId = null,
+  canEdit = false,
+  workspaceSlug,
+  projectSlug,
+} = defineProps<{
+  flowsTree: FlowTreeItem[];
+  selectedFlowId: string | number | null;
+  canEdit: boolean;
+  workspaceSlug: string;
+  projectSlug: string;
+}>();
 
 const live = useLive();
 const searchQuery = ref("");
 const deleteDialogOpen = ref(false);
-const pendingDeleteFlow = ref(null);
+const pendingDeleteFlow = ref<FlowTreeItem | null>(null);
 
 // Local reactive copy for DnD mutations
-const localTree = ref([...flowsTree]);
+const localTree = ref<FlowTreeItem[]>([...flowsTree]);
 watch(
   () => flowsTree,
   (v) => {
@@ -39,11 +60,11 @@ watch(
   { deep: true },
 );
 
-function flowHref(flow) {
+function flowHref(flow: FlowTreeItem): string {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${flow.id}`;
 }
 
-function matchesSearch(node, query) {
+function matchesSearch(node: FlowTreeItem, query: string): boolean {
   if (node.name.toLowerCase().includes(query)) return true;
   if (node.children) {
     return node.children.some((child) => matchesSearch(child, query));
@@ -51,7 +72,7 @@ function matchesSearch(node, query) {
   return false;
 }
 
-function filterTree(nodes, query) {
+function filterTree(nodes: FlowTreeItem[], query: string): FlowTreeItem[] {
   return nodes
     .filter((node) => matchesSearch(node, query))
     .map((node) => ({
@@ -69,15 +90,15 @@ function createFlow() {
   live.pushEvent("create_flow", {});
 }
 
-function createChildFlow(parentId) {
+function createChildFlow(parentId: number | string): void {
   live.pushEvent("create_child_flow", { parent_id: parentId });
 }
 
-function setMainFlow(flowId) {
+function setMainFlow(flowId: number | string): void {
   live.pushEvent("set_main_flow", { id: String(flowId) });
 }
 
-function requestDelete(flow) {
+function requestDelete(flow: FlowTreeItem): void {
   pendingDeleteFlow.value = flow;
   deleteDialogOpen.value = true;
 }
@@ -94,7 +115,7 @@ function confirmDelete() {
 }
 
 // DnD tree mutation helpers
-function applyToTree(oldArr, newArr) {
+function applyToTree(oldArr: FlowTreeItem[], newArr: FlowTreeItem[]): void {
   if (oldArr === localTree.value) {
     localTree.value = newArr;
   } else {
@@ -102,7 +123,7 @@ function applyToTree(oldArr, newArr) {
   }
 }
 
-function findAndReplace(nodes, oldArr, newArr) {
+function findAndReplace(nodes: FlowTreeItem[], oldArr: FlowTreeItem[], newArr: FlowTreeItem[]): boolean {
   for (const node of nodes) {
     if (node.children === oldArr) {
       node.children = newArr;
@@ -113,18 +134,19 @@ function findAndReplace(nodes, oldArr, newArr) {
   return false;
 }
 
-function findNodeContext(nodes, nodeId, parentId = null) {
+function findNodeContext(nodes: FlowTreeItem[], nodeId: number | string, parentId: number | string | null = null): { parentId: number | string | null; position: number } | null {
   for (let i = 0; i < nodes.length; i++) {
-    if (nodes[i].id === nodeId) return { parentId, position: i };
-    if (nodes[i].children) {
-      const found = findNodeContext(nodes[i].children, nodeId, nodes[i].id);
+    const node = nodes[i];
+    if (node.id === nodeId) return { parentId, position: i };
+    if (node.children) {
+      const found = findNodeContext(node.children, nodeId, node.id);
       if (found) return found;
     }
   }
   return null;
 }
 
-function findNodeById(nodes, nodeId) {
+function findNodeById(nodes: FlowTreeItem[], nodeId: number | string): FlowTreeItem | null {
   for (const n of nodes) {
     if (n.id === nodeId) return n;
     if (n.children) {
@@ -135,7 +157,7 @@ function findNodeById(nodes, nodeId) {
   return null;
 }
 
-function isDescendantOf(nodes, ancestorId, targetId) {
+function isDescendantOf(nodes: FlowTreeItem[], ancestorId: number | string, targetId: number | string): boolean {
   const ancestor = findNodeById(nodes, ancestorId);
   if (!ancestor?.children) return false;
   for (const c of ancestor.children) {
@@ -145,7 +167,7 @@ function isDescendantOf(nodes, ancestorId, targetId) {
   return false;
 }
 
-function pushMove(nodeId, parentId, position) {
+function pushMove(nodeId: number | string, parentId: number | string | null, position: number): void {
   live.pushEvent("move_to_parent", {
     item_id: String(nodeId),
     new_parent_id: parentId != null ? String(parentId) : "",
@@ -153,7 +175,7 @@ function pushMove(nodeId, parentId, position) {
   });
 }
 
-function getPointerZone(e) {
+function getPointerZone(e: DnDDropEvent): "before" | "after" | "nest" | null {
   const el = e.hoveredDraggable?.element;
   const pointer = e.provider?.pointer?.value?.current;
   if (!el || !pointer) return null;
@@ -164,7 +186,7 @@ function getPointerZone(e) {
   return "nest";
 }
 
-function handleDrop(e) {
+function handleDrop(e: DnDDropEvent): void {
   const draggedNode = e.draggedItems[0]?.item;
   const hoveredNode = e.hoveredDraggable?.item;
   const zone = getPointerZone(e);

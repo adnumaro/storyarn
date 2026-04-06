@@ -1,19 +1,31 @@
-<script setup>
+<script setup lang="ts">
 import { ArrowRight, ArrowRightToLine, CornerDownLeft } from "lucide-vue-next";
 import { computed } from "vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
+import type { NodeConfig } from "../lib/node-configs";
+import type { ReteEmitFn, ReteNodeData } from "../types";
 
-const { data, emit, config, color, nodeDataOverride } = defineProps({
-  data: { type: Object, required: true },
-  emit: { type: Function, required: true },
-  config: { type: Object, required: true },
-  color: { type: String, required: true },
-  nodeDataOverride: { type: Object, default: null },
-});
+interface ExitNodeData {
+  exit_mode?: string;
+  label?: string;
+  outcome_tags?: string[];
+  referenced_flow_name?: string;
+  referenced_flow_shortcut?: string;
+  referenced_flow_id?: number | string | null;
+  stale_reference?: boolean;
+}
 
-const nodeData = computed(() => nodeDataOverride || data.nodeData || {});
+const { data, emit, config, color, nodeDataOverride = null } = defineProps<{
+  data: ReteNodeData;
+  emit: ReteEmitFn;
+  config: NodeConfig;
+  color: string;
+  nodeDataOverride?: ExitNodeData | null;
+}>();
+
+const nodeData = computed<ExitNodeData>(() => nodeDataOverride || (data.nodeData as ExitNodeData) || {});
 const exitMode = computed(() => nodeData.value.exit_mode || "terminal");
 const label = computed(() => nodeData.value.label || "Exit");
 const tags = computed(() => nodeData.value.outcome_tags || []);

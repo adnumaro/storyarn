@@ -1,12 +1,19 @@
-<script setup>
+<script setup lang="ts">
 import { GitBranch, Settings } from "lucide-vue-next";
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
 import { Badge } from "@components/ui/badge/index.ts";
 import { useLive } from "@composables/useLive";
+import type { Condition } from "../../types";
+import type { NodeData } from "../../lib/node-configs";
 
-const { nodeData } = defineProps({
-  nodeData: { type: Object, required: true },
-});
+interface ConditionToolbarData extends NodeData {
+  switch_mode?: boolean;
+  condition?: Condition;
+}
+
+const { nodeData } = defineProps<{
+  nodeData: ConditionToolbarData;
+}>();
 
 const live = useLive();
 

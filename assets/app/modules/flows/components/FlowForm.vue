@@ -1,26 +1,31 @@
-<script setup>
-import { useLiveForm } from "live_vue";
+<script setup lang="ts">
+import { useLiveForm, type Form } from "live_vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
 import { Textarea } from "@components/ui/textarea/index.ts";
 
+interface FlowFormValues {
+  name: string;
+  description: string;
+}
+
 const {
   form: formProp,
-  title,
-  submitLabel,
-  cancelUrl,
-} = defineProps({
-  form: { type: Object, required: true },
-  title: { type: String, default: "New Flow" },
-  submitLabel: { type: String, default: "Create Flow" },
-  cancelUrl: { type: String, default: null },
-});
+  title = "New Flow",
+  submitLabel = "Create Flow",
+  cancelUrl = null,
+} = defineProps<{
+  form: Form<FlowFormValues>;
+  title?: string;
+  submitLabel?: string;
+  cancelUrl?: string | null;
+}>();
 
 const form = useLiveForm(() => formProp, {
   changeEvent: "validate",
   submitEvent: "save",
-  debounceInMilliseconds: 300,
+  debounceInMiliseconds: 300,
 });
 
 const name = form.field("name");

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from "vue";
 import { useLive } from "@composables/useLive";
 import DockActionsPanel from "./dock-panels/DockActionsPanel.vue";
@@ -7,22 +7,33 @@ import DockLogicPanel from "./dock-panels/DockLogicPanel.vue";
 import DockNarrativePanel from "./dock-panels/DockNarrativePanel.vue";
 import DockNavigationPanel from "./dock-panels/DockNavigationPanel.vue";
 
-const { canEdit, compact, debugPanelOpen, workspaceSlug, projectSlug, flowId } = defineProps({
-  canEdit: { type: Boolean, default: false },
-  compact: { type: Boolean, default: false },
-  debugPanelOpen: { type: Boolean, default: false },
-  workspaceSlug: { type: String, required: true },
-  projectSlug: { type: String, required: true },
-  flowId: { type: [String, Number], required: true },
-});
+interface DockPanelExposed {
+  close: () => void;
+}
+
+const {
+  canEdit = false,
+  compact = false,
+  debugPanelOpen = false,
+  workspaceSlug,
+  projectSlug,
+  flowId,
+} = defineProps<{
+  canEdit: boolean;
+  compact: boolean;
+  debugPanelOpen: boolean;
+  workspaceSlug: string;
+  projectSlug: string;
+  flowId: string | number;
+}>();
 
 const live = useLive();
 
-const narrativeRef = ref(null);
-const logicRef = ref(null);
-const navigationRef = ref(null);
+const narrativeRef = ref<DockPanelExposed | null>(null);
+const logicRef = ref<DockPanelExposed | null>(null);
+const navigationRef = ref<DockPanelExposed | null>(null);
 
-function addNode(type) {
+function addNode(type: string): void {
   live.pushEvent("add_node", { type });
   narrativeRef.value?.close();
   logicRef.value?.close();

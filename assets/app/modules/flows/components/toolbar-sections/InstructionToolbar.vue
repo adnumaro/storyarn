@@ -1,12 +1,18 @@
-<script setup>
+<script setup lang="ts">
 import { Settings, Zap } from "lucide-vue-next";
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
 import { Badge } from "@components/ui/badge/index.ts";
 import { useLive } from "@composables/useLive";
+import type { InstructionAssignment } from "../../types";
+import type { NodeData } from "../../lib/node-configs";
 
-const { nodeData } = defineProps({
-  nodeData: { type: Object, required: true },
-});
+interface InstructionToolbarData extends NodeData {
+  assignments?: InstructionAssignment[];
+}
+
+const { nodeData } = defineProps<{
+  nodeData: InstructionToolbarData;
+}>();
 
 const live = useLive();
 

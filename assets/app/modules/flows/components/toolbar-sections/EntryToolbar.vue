@@ -1,11 +1,12 @@
-<script setup>
+<script setup lang="ts">
 import { PlayIcon } from "lucide-vue-next";
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
 import { Badge } from "@components/ui/badge/index.ts";
+import type { ReferencingFlow } from "../../types";
 
-const { referencingFlows } = defineProps({
-  referencingFlows: { type: Array, default: () => [] },
-});
+const { referencingFlows = [] } = defineProps<{
+  referencingFlows?: ReferencingFlow[];
+}>();
 </script>
 
 <template>

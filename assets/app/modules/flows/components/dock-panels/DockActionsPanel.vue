@@ -1,12 +1,15 @@
-<script setup>
+<script setup lang="ts">
 import { Bug, History, Play } from "lucide-vue-next";
 
-const { debugPanelOpen, playUrl } = defineProps({
-  debugPanelOpen: { type: Boolean, default: false },
-  playUrl: { type: String, required: true },
-});
+const { debugPanelOpen = false, playUrl } = defineProps<{
+  debugPanelOpen: boolean;
+  playUrl: string;
+}>();
 
-const emit = defineEmits(["open-versions", "toggle-debug"]);
+const emit = defineEmits<{
+  "open-versions": [];
+  "toggle-debug": [];
+}>();
 </script>
 
 <template>

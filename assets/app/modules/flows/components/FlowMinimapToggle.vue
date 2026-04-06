@@ -1,12 +1,15 @@
-<script setup>
+<script setup lang="ts">
 import { LayoutGrid, Maximize2 } from "lucide-vue-next";
+import type { NodeEditor } from "rete";
+import type { AreaPlugin } from "rete-area-plugin";
 import { AreaExtensions } from "rete-area-plugin";
 import { ref } from "vue";
+import type { FlowSchemes, FlowAreaExtra } from "../lib/rete-schemes";
 
-const { area, editor } = defineProps({
-  area: { type: Object, default: null },
-  editor: { type: Object, default: null },
-});
+const { area = null, editor = null } = defineProps<{
+  area: AreaPlugin<FlowSchemes, FlowAreaExtra> | null;
+  editor: NodeEditor<FlowSchemes> | null;
+}>();
 
 const minimapVisible = ref(true);
 
@@ -14,7 +17,7 @@ function toggleMinimap() {
   if (!area) return;
   minimapVisible.value = !minimapVisible.value;
 
-  const minimapEl = area.container?.querySelector(".minimap");
+  const minimapEl = area.container?.querySelector(".minimap") as HTMLElement | null;
   if (minimapEl) {
     minimapEl.style.display = minimapVisible.value ? "" : "none";
   }

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { MessageSquare } from "lucide-vue-next";
 import { Ref } from "rete-vue-plugin";
 import { computed, inject, nextTick, ref, watch } from "vue";
@@ -7,25 +7,55 @@ import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import { previewText, stripHtml } from "../lib/render-helpers";
 import { FLOW_CONTEXT_KEY } from "../setup";
+import type { NodeConfig } from "../lib/node-configs";
+import type {
+  DialogueResponse,
+  FlowContextInjection,
+  ReteEmitFn,
+  ReteNodeData,
+  SheetAvatar,
+  SheetMapEntry,
+} from "../types";
 import DialogueAudioPreview from "./DialogueAudioPreview.vue";
 
-const { data, emit, config, color, sheetsMap, labels } = defineProps({
-  data: { type: Object, required: true },
-  emit: { type: Function, required: true },
-  config: { type: Object, required: true },
-  color: { type: String, required: true },
-  sheetsMap: { type: Object, default: () => ({}) },
-  labels: { type: Object, default: () => ({}) },
-});
+interface DialogueNodeData {
+  speaker_sheet_id?: number | string | null;
+  avatar_id?: number | string | null;
+  audio_asset_id?: number | string | null;
+  stage_directions?: string;
+  menu_text?: string;
+  text?: string;
+  responses?: DialogueResponse[];
+  location_sheet_id?: number | string | null;
+}
 
-const ctx = inject(FLOW_CONTEXT_KEY, {
+interface OutputBadge {
+  type: "error" | "indicator";
+  title: string;
+  color?: string;
+}
+
+const { data, emit, config, color, sheetsMap = {}, labels = {} } = defineProps<{
+  data: ReteNodeData;
+  emit: ReteEmitFn;
+  config: NodeConfig;
+  color: string;
+  sheetsMap?: Record<string, SheetMapEntry>;
+  labels?: Record<string, string>;
+}>();
+
+const ctx = inject<FlowContextInjection>(FLOW_CONTEXT_KEY, {
   editingNodeId: null,
   onInlineEditSave: null,
   sheetsMap: {},
+  hubsMap: {},
+  labels: {},
+  lod: "full",
+  nodeDataVersion: 0,
 });
-const dialogueRef = ref(null);
+const dialogueRef = ref<HTMLTextAreaElement | null>(null);
 
-const nodeData = computed(() => data.nodeData || {});
+const nodeData = computed<DialogueNodeData>(() => (data.nodeData as DialogueNodeData) || {});
 const editing = computed(() => ctx.editingNodeId === data.id);
 
 const speaker = computed(() => {
@@ -64,7 +94,7 @@ const hasContent = computed(
 // Sockets
 const inputs = computed(() => Object.entries(data?.inputs || {}));
 const outputs = computed(() => Object.entries(data?.outputs || {}));
-const responses = computed(() => nodeData.value.responses || []);
+const responses = computed<DialogueResponse[]>(() => nodeData.value.responses || []);
 
 // Speaker list for inline edit dropdown
 const speakerOptions = computed(() => {
@@ -79,15 +109,15 @@ watch(editing, (val) => {
   }
 });
 
-function formatOutputLabel(key) {
+function formatOutputLabel(key: string): string {
   const resp = responses.value.find((r) => r.id === key);
   return resp?.text || "";
 }
 
-function getOutputBadges(key) {
+function getOutputBadges(key: string): OutputBadge[] {
   const resp = responses.value.find((r) => r.id === key);
   if (!resp) return [];
-  const badges = [];
+  const badges: OutputBadge[] = [];
   if (!resp.text) badges.push({ type: "error", title: "Empty response text" });
   if (resp.has_type_warnings) badges.push({ type: "error", title: "Type mismatch" });
   if (resp.condition)
@@ -105,41 +135,42 @@ function getOutputBadges(key) {
   return badges;
 }
 
-function save(field, value) {
+function save(field: string, value: unknown) {
   ctx.onInlineEditSave?.(data.id, field, value);
 }
 
-function onStageDirectionsBlur(e) {
-  const val = e.target.value.trim();
+function onStageDirectionsBlur(e: FocusEvent) {
+  const val = (e.target as HTMLInputElement).value.trim();
   if (val !== stageDirections.value) save("stage_directions", val);
 }
 
-function onMenuTextBlur(e) {
-  const val = e.target.value.trim();
+function onMenuTextBlur(e: FocusEvent) {
+  const val = (e.target as HTMLInputElement).value.trim();
   if (val !== menuText.value) save("menu_text", val);
 }
 
-function onDialogueBlur(e) {
-  const val = e.target.value.trim();
+function onDialogueBlur(e: FocusEvent) {
+  const val = (e.target as HTMLTextAreaElement).value.trim();
   if (val !== plainText.value) save("text", val);
 }
 
-function onInputKeydown(e) {
+function onInputKeydown(e: KeyboardEvent) {
   e.stopPropagation();
-  if (e.key === "Enter") e.target.blur();
+  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
 }
 
-function onTextareaKeydown(e) {
+function onTextareaKeydown(e: KeyboardEvent) {
   e.stopPropagation();
-  if (e.key === "Escape") e.target.blur();
+  if (e.key === "Escape") (e.target as HTMLTextAreaElement).blur();
 }
 
-function autoResize(e) {
-  e.target.style.height = "auto";
-  e.target.style.height = `${e.target.scrollHeight}px`;
+function autoResize(e: Event) {
+  const target = e.target as HTMLTextAreaElement;
+  target.style.height = "auto";
+  target.style.height = `${target.scrollHeight}px`;
 }
 
-function onSpeakerSelect(id) {
+function onSpeakerSelect(id: number | string | null) {
   save("speaker_sheet_id", id);
 }
 </script>

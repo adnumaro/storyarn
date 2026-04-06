@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
 import { useLive } from "@composables/useLive";
 import { useFlowEditor } from "../composables/useFlowEditor";
@@ -8,28 +8,28 @@ import FlowFloatingToolbar from "./FlowFloatingToolbar.vue";
 import FlowMinimapToggle from "./FlowMinimapToggle.vue";
 
 const {
-  flowData,
-  variableMap,
-  labels,
-  loading,
-  readonly,
-  userId,
-  userColor,
-  canvasId,
-  toolbarData,
-} = defineProps({
-  flowData: { type: String, default: null },
-  variableMap: { type: String, default: null },
-  labels: { type: String, default: "{}" },
-  loading: { type: Boolean, default: true },
-  readonly: { type: Boolean, default: false },
-  userId: { type: [Number, String], default: 0 },
-  userColor: { type: String, default: "#3b82f6" },
-  canvasId: { type: String, default: "flow-canvas" },
-  toolbarData: { type: String, default: "{}" },
-});
+  flowData = null,
+  variableMap = null,
+  labels = "{}",
+  loading = true,
+  readonly = false,
+  userId = 0,
+  userColor = "#3b82f6",
+  canvasId = "flow-canvas",
+  toolbarData = "{}",
+} = defineProps<{
+  flowData: string | null;
+  variableMap: string | null;
+  labels: string;
+  loading: boolean;
+  readonly: boolean;
+  userId: number | string;
+  userColor: string;
+  canvasId: string;
+  toolbarData: string;
+}>();
 
-const containerRef = ref(null);
+const containerRef = ref<HTMLElement | null>(null);
 const live = useLive();
 let initialized = false;
 
@@ -66,7 +66,7 @@ onMounted(() => {
   if (flowData) initCanvas();
 });
 
-function safeParse(json, fallback = {}) {
+function safeParse(json: string, fallback: Record<string, unknown> = {}): Record<string, unknown> {
   try {
     return JSON.parse(json);
   } catch {

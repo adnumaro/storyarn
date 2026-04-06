@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Trash2 } from "lucide-vue-next";
 import {
   ToolbarColorPicker,
@@ -6,19 +6,25 @@ import {
   ToolbarSizePicker,
 } from "@components/toolbar/index.ts";
 import { useLive } from "@composables/useLive";
+import type { NodeData } from "../../lib/node-configs";
 
-const { nodeData, nodeId } = defineProps({
-  nodeData: { type: Object, required: true },
-  nodeId: { type: [String, Number], required: true },
-});
+interface AnnotationNodeData extends NodeData {
+  color?: string;
+  font_size?: "sm" | "md" | "lg";
+}
+
+const { nodeData, nodeId } = defineProps<{
+  nodeData: AnnotationNodeData;
+  nodeId: string | number;
+}>();
 
 const live = useLive();
 
-function updateAnnotationColor(color) {
+function updateAnnotationColor(color: string) {
   live.pushEvent("update_annotation_color", { value: color });
 }
 
-function updateAnnotationFontSize(size) {
+function updateAnnotationFontSize(size: string) {
   live.pushEvent("update_annotation_font_size", { value: size });
 }
 

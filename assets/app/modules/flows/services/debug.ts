@@ -90,7 +90,7 @@ function findConnectionViewElement(
     if (srcNode?.nodeId === sourceDbId && tgtNode?.nodeId === targetDbId) {
       const view = area.connectionViews.get(conn.id);
       if (view) {
-        return view.element;
+        return view.element as HTMLElement;
       }
     }
   }

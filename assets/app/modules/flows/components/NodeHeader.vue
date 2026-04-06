@@ -1,13 +1,19 @@
-<script setup>
+<script setup lang="ts">
+import type { Component } from "vue";
 import { computed } from "vue";
 import { headerStyle } from "../lib/render-helpers";
 
-const { color, icon, label, avatarUrl } = defineProps({
-  color: { type: String, default: "#3b82f6" },
-  icon: { type: [Object, Function, null], default: null },
-  label: { type: String, default: "" },
-  avatarUrl: { type: String, default: null },
-});
+const {
+  color = "#3b82f6",
+  icon = null,
+  label = "",
+  avatarUrl = null,
+} = defineProps<{
+  color?: string;
+  icon?: Component | null;
+  label?: string;
+  avatarUrl?: string | null;
+}>();
 
 const bgStyle = computed(() => headerStyle(color));
 </script>

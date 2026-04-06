@@ -1,13 +1,23 @@
-<script setup>
+<script setup lang="ts">
 import { GitBranch, Zap } from "lucide-vue-next";
+import type { Component } from "vue";
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 
-const emit = defineEmits(["add-node"]);
+interface DockNodeEntry {
+  type: string;
+  icon: Component;
+  title: string;
+  description: string;
+}
+
+const emit = defineEmits<{
+  "add-node": [type: string];
+}>();
 
 const open = ref(false);
 
-const logicNodes = [
+const logicNodes: DockNodeEntry[] = [
   {
     type: "condition",
     icon: GitBranch,
@@ -22,7 +32,7 @@ const logicNodes = [
   },
 ];
 
-function addNode(type) {
+function addNode(type: string): void {
   emit("add-node", type);
   open.value = false;
 }

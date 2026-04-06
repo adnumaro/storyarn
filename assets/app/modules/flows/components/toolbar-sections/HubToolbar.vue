@@ -1,17 +1,24 @@
-<script setup>
+<script setup lang="ts">
 import { Crosshair, LogIn } from "lucide-vue-next";
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
 import { useLive } from "@composables/useLive";
+import type { NodeData } from "../../lib/node-configs";
+import type { ReferencingJump } from "../../types";
 
-const { nodeData, nodeId, referencingJumps } = defineProps({
-  nodeData: { type: Object, required: true },
-  nodeId: { type: [String, Number], required: true },
-  referencingJumps: { type: Array, default: () => [] },
-});
+interface HubToolbarData extends NodeData {
+  label?: string;
+  hub_id?: string;
+}
+
+const { nodeData, nodeId, referencingJumps = [] } = defineProps<{
+  nodeData: HubToolbarData;
+  nodeId: string | number;
+  referencingJumps?: ReferencingJump[];
+}>();
 
 const live = useLive();
 
-function updateField(field, value) {
+function updateField(field: string, value: unknown) {
   live.pushEvent("update_node_data", { node: { [field]: value } });
 }
 
@@ -28,8 +35,8 @@ function navigateToJumps() {
     class="v2-toolbar-input text-xs"
     placeholder="Label"
     :value="nodeData.label || ''"
-    @blur="(e) => updateField('label', e.target.value)"
-    @keydown.enter="(e) => e.target.blur()"
+    @blur="(e: FocusEvent) => updateField('label', (e.target as HTMLInputElement).value)"
+    @keydown.enter="(e: KeyboardEvent) => (e.target as HTMLInputElement).blur()"
     @pointerdown.stop
     @keydown.stop
   />
@@ -38,8 +45,8 @@ function navigateToJumps() {
     class="v2-toolbar-input text-xs font-mono"
     placeholder="hub_id"
     :value="nodeData.hub_id || ''"
-    @blur="(e) => updateField('hub_id', e.target.value)"
-    @keydown.enter="(e) => e.target.blur()"
+    @blur="(e: FocusEvent) => updateField('hub_id', (e.target as HTMLInputElement).value)"
+    @keydown.enter="(e: KeyboardEvent) => (e.target as HTMLInputElement).blur()"
     @pointerdown.stop
     @keydown.stop
   />

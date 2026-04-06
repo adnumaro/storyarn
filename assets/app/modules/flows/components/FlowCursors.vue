@@ -1,27 +1,57 @@
-<script setup>
+<script setup lang="ts">
 import { MousePointer2 } from "lucide-vue-next";
 import { onMounted, onUnmounted, reactive, ref } from "vue";
 import { useLive } from "@composables/useLive";
 
-const { areaTransform, currentUserId, containerEl } = defineProps({
-  areaTransform: { type: Object, default: () => ({ x: 0, y: 0, k: 1 }) },
-  currentUserId: { type: [Number, String], default: 0 },
-  containerEl: { type: Object, default: null },
-});
+interface AreaTransform {
+  x: number;
+  y: number;
+  k: number;
+}
+
+interface CursorEntry {
+  x: number;
+  y: number;
+  email: string;
+  color: string;
+  opacity: number;
+}
+
+interface CursorUpdatePayload {
+  user_id: number | string;
+  x: number;
+  y: number;
+  user_email: string;
+  user_color?: string;
+}
+
+interface CursorLeavePayload {
+  user_id: number | string;
+}
+
+const {
+  areaTransform = { x: 0, y: 0, k: 1 },
+  currentUserId = 0,
+  containerEl = null,
+} = defineProps<{
+  areaTransform: AreaTransform;
+  currentUserId: number | string;
+  containerEl: HTMLElement | null;
+}>();
 
 const live = useLive();
-const cursors = reactive(new Map());
+const cursors = reactive(new Map<number | string, CursorEntry>());
 let lastSend = 0;
 const THROTTLE_MS = 50;
 const FADE_MS = 3000;
-let fadeTimers = new Map();
+let fadeTimers = new Map<number | string, ReturnType<typeof setTimeout>>();
 
-function emailName(email) {
+function emailName(email: string | undefined): string {
   return email?.split("@")[0] || "User";
 }
 
 // Broadcast local cursor
-function onMouseMove(e) {
+function onMouseMove(e: MouseEvent): void {
   const now = Date.now();
   if (now - lastSend < THROTTLE_MS) return;
   lastSend = now;
@@ -40,7 +70,8 @@ function onMouseMove(e) {
 }
 
 // Receive remote cursor
-live.handleEvent("cursor_update", (data) => {
+live.handleEvent("cursor_update", (rawData) => {
+  const data = rawData as unknown as CursorUpdatePayload;
   if (String(data.user_id) === String(currentUserId)) return;
 
   const t = areaTransform;
@@ -56,7 +87,7 @@ live.handleEvent("cursor_update", (data) => {
   });
 
   // Fade after inactivity
-  if (fadeTimers.has(data.user_id)) clearTimeout(fadeTimers.get(data.user_id));
+  if (fadeTimers.has(data.user_id)) clearTimeout(fadeTimers.get(data.user_id)!);
   fadeTimers.set(
     data.user_id,
     setTimeout(() => {
@@ -69,10 +100,11 @@ live.handleEvent("cursor_update", (data) => {
   );
 });
 
-live.handleEvent("cursor_leave", (data) => {
+live.handleEvent("cursor_leave", (rawData) => {
+  const data = rawData as unknown as CursorLeavePayload;
   cursors.delete(data.user_id);
   if (fadeTimers.has(data.user_id)) {
-    clearTimeout(fadeTimers.get(data.user_id));
+    clearTimeout(fadeTimers.get(data.user_id)!);
     fadeTimers.delete(data.user_id);
   }
 });

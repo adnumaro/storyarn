@@ -1,7 +1,9 @@
-<script setup>
+<script setup lang="ts">
 import { StickyNote } from "lucide-vue-next";
 
-defineEmits(["add"]);
+defineEmits<{
+  add: [];
+}>();
 </script>
 
 <template>

@@ -1,19 +1,25 @@
-<script setup>
+<script setup lang="ts">
 import { ArrowRight, LogOut } from "lucide-vue-next";
 import { computed } from "vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
+import type { NodeConfig } from "../lib/node-configs";
+import type { HubMapEntry, ReteEmitFn, ReteNodeData } from "../types";
 
-const { data, emit, config, color, hubsMap } = defineProps({
-  data: { type: Object, required: true },
-  emit: { type: Function, required: true },
-  config: { type: Object, required: true },
-  color: { type: String, required: true },
-  hubsMap: { type: Object, default: () => ({}) },
-});
+interface JumpNodeData {
+  target_hub_id?: string;
+}
 
-const nodeData = computed(() => data.nodeData || {});
+const { data, emit, config, color, hubsMap = {} } = defineProps<{
+  data: ReteNodeData;
+  emit: ReteEmitFn;
+  config: NodeConfig;
+  color: string;
+  hubsMap?: Record<string, HubMapEntry>;
+}>();
+
+const nodeData = computed<JumpNodeData>(() => (data.nodeData as JumpNodeData) || {});
 const targetHub = computed(() => {
   const id = nodeData.value.target_hub_id;
   return id ? hubsMap[id] : null;

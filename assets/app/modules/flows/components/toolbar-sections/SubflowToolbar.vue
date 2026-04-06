@@ -1,20 +1,26 @@
-<script setup>
+<script setup lang="ts">
 import { Box, ExternalLink } from "lucide-vue-next";
 import { computed } from "vue";
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
 import { Badge } from "@components/ui/badge/index.ts";
 import { useLive } from "@composables/useLive";
 import { ToolbarSearchableSelect } from "../../toolbar";
+import type { ProjectFlow, SubflowExit } from "../../types";
+import type { NodeData } from "../../lib/node-configs";
 
-const { nodeData, projectFlows, subflowExits } = defineProps({
-  nodeData: { type: Object, required: true },
-  projectFlows: { type: Array, default: () => [] },
-  subflowExits: { type: Array, default: () => [] },
-});
+interface SubflowToolbarData extends NodeData {
+  referenced_flow_id?: number | string | null;
+}
+
+const { nodeData, projectFlows = [], subflowExits = [] } = defineProps<{
+  nodeData: SubflowToolbarData;
+  projectFlows?: ProjectFlow[];
+  subflowExits?: SubflowExit[];
+}>();
 
 const live = useLive();
 
-const flowOptions = computed(() => projectFlows.map((f) => [f.name, f.id]));
+const flowOptions = computed<[string, number][]>(() => projectFlows.map((f) => [f.name, f.id]));
 
 const selectedFlowName = computed(() => {
   const refId = nodeData.referenced_flow_id;
@@ -23,11 +29,11 @@ const selectedFlowName = computed(() => {
   return flow?.name || null;
 });
 
-function selectSubflowRef(flowId) {
+function selectSubflowRef(flowId: number | string) {
   live.pushEvent("update_subflow_reference", { referenced_flow_id: flowId });
 }
 
-function navigateToSubflow(flowId) {
+function navigateToSubflow(flowId: number | string) {
   live.pushEvent("navigate_to_subflow", { "flow-id": String(flowId) });
 }
 </script>
@@ -47,7 +53,7 @@ function navigateToSubflow(flowId) {
     type="button"
     class="v2-toolbar-btn"
     title="Open flow"
-    @click="navigateToSubflow(nodeData.referenced_flow_id)"
+    @click="navigateToSubflow(nodeData.referenced_flow_id!)"
   >
     <ExternalLink class="size-3.5" />
   </button>

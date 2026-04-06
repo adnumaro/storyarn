@@ -1,9 +1,9 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from "vue";
 
-const { audioAssetId } = defineProps({
-  audioAssetId: { type: [String, Number], default: null },
-});
+const { audioAssetId } = defineProps<{
+  audioAssetId?: string | number | null;
+}>();
 
 const hasAudio = computed(() => !!audioAssetId);
 </script>

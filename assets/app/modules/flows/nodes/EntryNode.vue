@@ -1,18 +1,24 @@
-<script setup>
+<script setup lang="ts">
 import { Box, Play, Square } from "lucide-vue-next";
 import { computed } from "vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
+import type { NodeConfig } from "../lib/node-configs";
+import type { ReferencingFlow, ReteEmitFn, ReteNodeData } from "../types";
 
-const { data, emit, config, color } = defineProps({
-  data: { type: Object, required: true },
-  emit: { type: Function, required: true },
-  config: { type: Object, required: true },
-  color: { type: String, required: true },
-});
+interface EntryNodeData {
+  referencing_flows?: ReferencingFlow[];
+}
 
-const refs = computed(() => data.nodeData?.referencing_flows || []);
+const { data, emit, config, color } = defineProps<{
+  data: ReteNodeData;
+  emit: ReteEmitFn;
+  config: NodeConfig;
+  color: string;
+}>();
+
+const refs = computed<ReferencingFlow[]>(() => (data.nodeData as EntryNodeData)?.referencing_flows || []);
 </script>
 
 <template>

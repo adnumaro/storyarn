@@ -1,28 +1,36 @@
-<script setup>
+<script setup lang="ts">
 import { ArrowRightToLine, ExternalLink } from "lucide-vue-next";
 import { ToolbarColorPicker, ToolbarSeparator } from "@components/toolbar/index.ts";
 import { useLive } from "@composables/useLive";
 import { ToolbarExitModePicker } from "../../toolbar";
+import type { NodeData } from "../../lib/node-configs";
 
-const { nodeData } = defineProps({
-  nodeData: { type: Object, required: true },
-});
+interface ExitToolbarData extends NodeData {
+  label?: string;
+  exit_mode?: string;
+  outcome_color?: string;
+  referenced_flow_id?: number | string | null;
+}
+
+const { nodeData } = defineProps<{
+  nodeData: ExitToolbarData;
+}>();
 
 const live = useLive();
 
-function updateField(field, value) {
+function updateField(field: string, value: unknown) {
   live.pushEvent("update_node_data", { node: { [field]: value } });
 }
 
-function updateExitMode(mode) {
+function updateExitMode(mode: string) {
   live.pushEvent("update_exit_mode", { mode });
 }
 
-function updateOutcomeColor(color) {
+function updateOutcomeColor(color: string) {
   live.pushEvent("update_outcome_color", { value: color });
 }
 
-function navigateToExitFlow(flowId) {
+function navigateToExitFlow(flowId: number | string) {
   live.pushEvent("navigate_to_exit_flow", { "flow-id": String(flowId) });
 }
 </script>
@@ -35,8 +43,8 @@ function navigateToExitFlow(flowId) {
     class="v2-toolbar-input text-xs"
     placeholder="Label…"
     :value="nodeData.label || ''"
-    @blur="(e) => updateField('label', e.target.value)"
-    @keydown.enter="(e) => e.target.blur()"
+    @blur="(e: FocusEvent) => updateField('label', (e.target as HTMLInputElement).value)"
+    @keydown.enter="(e: KeyboardEvent) => (e.target as HTMLInputElement).blur()"
     @pointerdown.stop
     @keydown.stop
   />
@@ -50,7 +58,7 @@ function navigateToExitFlow(flowId) {
     type="button"
     class="v2-toolbar-btn"
     title="Open referenced flow"
-    @click="navigateToExitFlow(nodeData.referenced_flow_id)"
+    @click="navigateToExitFlow(nodeData.referenced_flow_id!)"
   >
     <ExternalLink class="size-3.5" />
   </button>
