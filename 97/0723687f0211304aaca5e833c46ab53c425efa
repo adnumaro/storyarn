@@ -1,0 +1,36 @@
+test/storyarn_web/live/sheet_live/handlers/block_crud_handlers_test.exs
+  1464e78edb32af56 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "970723687f0211304aaca5e833c46ab53c425efa",
+  "prompts": {
+    "1464e78edb32af56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32241278-aef1-44b1-af40-f90f76d11498",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1924,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 152,
+      "overriden_lines": 0
+    }
+  }
+}
