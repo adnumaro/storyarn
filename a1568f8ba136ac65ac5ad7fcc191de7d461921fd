@@ -1,0 +1,31 @@
+priv/docs/es/collaboration/01-collaboration-overview.md
+  dde06b034582d0b2 2-3,5,10,16,18,20-23,25,27-83
+priv/docs/es/import-export/01-import-export-overview.md
+  dde06b034582d0b2 3,5,10,12,14,16-22,24-113
+priv/docs/es/scene-design/01-scenes-overview.md
+  dde06b034582d0b2 44,87
+priv/docs/es/localization/01-localization-overview.md
+  dde06b034582d0b2 2-3,5,12,14,16,18,22,25,27,29-34,36,38,40,42-50,54,57-59,61-67,69,71,73,75-79,81-94,97,100,102,104,106,108,110,112-115,117,119,121
+priv/docs/es/narrative-design/04-debug-mode.md
+  dde06b034582d0b2 102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "a1568f8ba136ac65ac5ad7fcc191de7d461921fd",
+  "prompts": {
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 268,
+      "total_deletions": 67,
+      "accepted_lines": 652,
+      "overriden_lines": 0
+    }
+  }
+}
