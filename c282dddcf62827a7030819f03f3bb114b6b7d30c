@@ -1,0 +1,419 @@
+assets/app/components/ui/select/SelectItemText.vue
+  dde06b034582d0b2 1-3,5-8
+assets/app/components/ui/select/Select.vue
+  dde06b034582d0b2 1,4-20
+assets/app/components/ui/dialog/DialogFooter.vue
+  dde06b034582d0b2 1-2,7-10
+assets/app/components/ui/textarea/Textarea.vue
+  dde06b034582d0b2 1-2,6-10,12-14
+assets/app/modules/landing/sections/WorkflowGrid.vue
+  dde06b034582d0b2 1
+assets/app/components/ui/table/TableFooter.vue
+  dde06b034582d0b2 1-2,5-7
+assets/app/components/ui/dropdown-menu/DropdownMenuSeparator.vue
+  dde06b034582d0b2 1-2,4,7-11
+assets/app/modules/project-settings/Localization.vue
+  dde06b034582d0b2 1,15-24,52
+assets/app/components/toolbar/ToolbarColorPicker.vue
+  dde06b034582d0b2 1,6-9,11-13
+assets/app/components/builders/condition/ConditionGroup.vue
+  dde06b034582d0b2 1,8-9,13-17,19-22,24,30,36-50,54
+assets/app/components/ui/command/CommandShortcut.vue
+  dde06b034582d0b2 1-2,5-7
+assets/app/components/ui/dropdown-menu/DropdownMenuRadioGroup.vue
+  dde06b034582d0b2 1-3,5-12
+assets/app/components/version-history/PromoteVersionDialog.vue
+  dde06b034582d0b2 1,17-20,22-35,51,62
+assets/app/components/ui/switch/Switch.vue
+  dde06b034582d0b2 1-2,4,7-20,22-24
+assets/app/components/ui/collapsible/CollapsibleTrigger.vue
+  dde06b034582d0b2 1-3,5-8
+assets/app/components/ui/dropdown-menu/DropdownMenuShortcut.vue
+  dde06b034582d0b2 1-2,5-7
+assets/app/modules/settings/Connections.vue
+  dde06b034582d0b2 1,22-31,42,44,48,63
+assets/app/components/ui/sheet/SheetFooter.vue
+  dde06b034582d0b2 1-2,5-7
+assets/app/modules/project-settings/Members.vue
+  dde06b034582d0b2 1,17-27,44,48,52,57-58
+assets/app/modules/landing/sections/discovery/DiscoverSection.vue
+  dde06b034582d0b2 1,9-10
+assets/app/components/ui/sheet/SheetOverlay.vue
+  dde06b034582d0b2 1-2,4,7-12
+assets/app/components/ui/progress/Progress.vue
+  dde06b034582d0b2 1-2,7-11
+assets/app/components/layout/TreePanel.vue
+  dde06b034582d0b2 1-2,11,18-35
+assets/app/components/ui/sheet/SheetTrigger.vue
+  dde06b034582d0b2 1-3,5-8
+assets/app/components/ui/context-menu/ContextMenu.vue
+  dde06b034582d0b2 1,4-11
+assets/app/components/builders/condition/LogicToggle.vue
+  dde06b034582d0b2 1,6-10,12-14
+assets/app/components/ui/dropdown-menu/DropdownMenuSubTrigger.vue
+  dde06b034582d0b2 1-2,5,8-15
+assets/app/components/ui/separator/Separator.vue
+  dde06b034582d0b2 1-2,4,7-13
+assets/app/modules/auth/SignIn.vue
+  dde06b034582d0b2 1,8-14,18,21
+assets/app/components/ui/avatar/AvatarImage.vue
+  dde06b034582d0b2 1-3,5-11,15
+assets/app/components/compare/SceneCompare.vue
+  dde06b034582d0b2 1,4-12
+assets/app/components/compare/CompareView.vue
+  dde06b034582d0b2 1,5-13
+assets/app/components/ui/select/SelectItem.vue
+  dde06b034582d0b2 1-2,5,8-15
+assets/app/modules/project-settings/ExportImport.vue
+  dde06b034582d0b2 1,3,7-77
+assets/app/modules/project-settings/ImportPanel.vue
+  dde06b034582d0b2 1-2,18-45,109,122,128
+assets/app/components/ui/tooltip/TooltipContent.vue
+  dde06b034582d0b2 1-2,4,11-29,31-34
+assets/app/components/layout/UserAvatar.vue
+  dde06b034582d0b2 1,5-10
+assets/app/components/ui/avatar/Avatar.vue
+  dde06b034582d0b2 1-2,6-8
+assets/app/components/ui/collapsible/Collapsible.vue
+  dde06b034582d0b2 1-3,5-15
+assets/app/modules/landing/sections/ExplorationSpotlight.vue
+  dde06b034582d0b2 1,5-13
+assets/app/components/ui/toggle-group/ToggleGroupItem.vue
+  dde06b034582d0b2 1-2,4,9-13,15-25
+assets/app/components/ui/badge/Badge.vue
+  dde06b034582d0b2 1-2,4,8-13
+assets/app/components/layout/Sidebar.vue
+  dde06b034582d0b2 1,25-28,30-32
+assets/app/components/ui/context-menu/ContextMenuRadioGroup.vue
+  dde06b034582d0b2 1-3,5-12
+assets/app/components/ui/popover/Popover.vue
+  dde06b034582d0b2 1,4-11
+assets/app/components/ui/context-menu/ContextMenuPortal.vue
+  dde06b034582d0b2 1,4-9
+assets/app/components/ui/context-menu/ContextMenuSubTrigger.vue
+  dde06b034582d0b2 1-2,5,8-15
+assets/app/components/ui/tabs/TabsTrigger.vue
+  dde06b034582d0b2 1-2,4,7-13
+assets/app/components/ui/table/TableEmpty.vue
+  dde06b034582d0b2 1-2,8-11
+assets/app/components/ui/dialog/DialogOverlay.vue
+  dde06b034582d0b2 1-2,4,7-12
+assets/app/components/version-history/DeleteVersionDialog.vue
+  dde06b034582d0b2 1,14-17,19-22
+assets/app/components/ui/dropdown-menu/DropdownMenuItem.vue
+  dde06b034582d0b2 1-2,4,7-15
+assets/app/components/ui/select/SelectTrigger.vue
+  dde06b034582d0b2 1-2,5,8-15
+assets/app/components/ui/popover/PopoverContent.vue
+  dde06b034582d0b2 1-2,4,11-43
+assets/app/components/ui/select/SelectGroup.vue
+  dde06b034582d0b2 1-3,5-8
+assets/app/components/ui/sheet/Sheet.vue
+  dde06b034582d0b2 1,4-11
+assets/app/components/form-fields/SelectField.vue
+  dde06b034582d0b2 1-2,12-17,19-28,30-32
+assets/app/components/ui/dropdown-menu/DropdownMenuLabel.vue
+  dde06b034582d0b2 1-2,4,7-12
+assets/app/modules/project-settings/Trash.vue
+  dde06b034582d0b2 1,15-24,30,32,36,53,57
+assets/app/components/ui/select/SelectValue.vue
+  dde06b034582d0b2 1-3,5-9
+assets/app/components/ColorPicker.vue
+  dde06b034582d0b2 1,5-18,20-22,61
+assets/app/components/ui/select/SelectLabel.vue
+  dde06b034582d0b2 1-3,6-11
+assets/app/components/ui/dialog/DialogClose.vue
+  dde06b034582d0b2 1-3,5-8
+assets/app/modules/landing/sections/cta/CtaWaitlist.vue
+  dde06b034582d0b2 1,9-11
+assets/app/components/ui/radio-group/RadioGroup.vue
+  dde06b034582d0b2 1-2,4,7-22
+assets/app/components/ui/dialog/Dialog.vue
+  dde06b034582d0b2 1,4-11
+assets/app/components/version-history/useVersionHistory.ts
+  dde06b034582d0b2 4-5,7-12,15-29,31,67,69,73,76-80
+assets/app/components/builders/condition/ConditionBlock.vue
+  dde06b034582d0b2 1,8-9,13-18,20-23,25,29,35,41-48,65-66
+assets/app/components/ui/sheet/SheetDescription.vue
+  dde06b034582d0b2 1-2,4,7-11
+assets/app/components/ui/command/CommandGroup.vue
+  dde06b034582d0b2 1-2,4,9-14
+assets/app/modules/localization/components/LocalizationReport.vue
+  dde06b034582d0b2 1,11,33-58,60-65,67-75,79,106-107,117-118
+assets/app/modules/workspaces/projects/New.vue
+  dde06b034582d0b2 1-2,9-15,18-24,26-28,33,51-52,54,68,87
+assets/app/components/ui/dialog/DialogHeader.vue
+  dde06b034582d0b2 1-2,5-7
+assets/app/components/form-fields/EntityCombobox.vue
+  dde06b034582d0b2 1,14-26,35-37
+assets/app/components/ui/sheet/SheetTitle.vue
+  dde06b034582d0b2 1-2,4,7-11
+assets/app/components/version-history/CreateVersionDialog.vue
+  dde06b034582d0b2 1,17-22,24-29,45,56
+assets/app/components/ui/dialog/DialogTrigger.vue
+  dde06b034582d0b2 1-3,5-8
+assets/app/components/ui/context-menu/ContextMenuSubContent.vue
+  dde06b034582d0b2 1-2,4,7-38
+assets/app/components/builders/condition/ConditionRule.vue
+  dde06b034582d0b2 1,11,13-14,17-21,23-26,77,92
+assets/app/modules/landing/sections/discovery/MonitorScene.vue
+  dde06b034582d0b2 1,13-16,33-34,36,38-39
+assets/app/components/ui/table/TableHead.vue
+  dde06b034582d0b2 1-2,5-7
+assets/app/modules/landing/sections/discovery/DiscoverMonitor.vue
+  dde06b034582d0b2 1,12-15
+assets/app/components/ui/context-menu/ContextMenuLabel.vue
+  dde06b034582d0b2 1-2,4,7-12
+assets/app/components/ui/dropdown-menu/DropdownMenuCheckboxItem.vue
+  dde06b034582d0b2 1-2,5,8-19
+assets/app/modules/shared/variables.ts
+  dde06b034582d0b2 5-9,15
+assets/app/components/ui/sheet/SheetHeader.vue
+  dde06b034582d0b2 1-2,5-7
+assets/app/components/ui/dropdown-menu/DropdownMenuRadioItem.vue
+  dde06b034582d0b2 1-2,5,8-15,17-19
+assets/app/modules/workspaces/New.vue
+  dde06b034582d0b2 1-2,8-16,20
+assets/app/components/ui/label/Label.vue
+  dde06b034582d0b2 1-2,4,7-12
+assets/app/components/ui/command/CommandItem.vue
+  dde06b034582d0b2 1-2,4,9-18
+assets/app/components/builders/InstructionBuilder.vue
+  dde06b034582d0b2 1,12-13,16-20,22-24,41-49,53,60
+assets/app/components/ui/dialog/DialogScrollContent.vue
+  dde06b034582d0b2 1-2,11,19-33,56
+assets/app/components/builders/instruction/AssignmentRow.vue
+  dde06b034582d0b2 1,19,21-22,26-30,32-35,64,73,120,140,150
+assets/app/components/ui/table/TableCaption.vue
+  dde06b034582d0b2 1-2,5-7
+assets/app/components/compare/FlowCompare.vue
+  dde06b034582d0b2 1,4-12
+assets/app/components/builders/ConditionBuilder.vue
+  dde06b034582d0b2 1,10-11,16-21,23-25,27,63,68,75,84,106-108,124,136-137,146,151-152
+assets/app/components/form-fields/TextField.vue
+  dde06b034582d0b2 1-7,9-11,23-24
+assets/app/components/ui/dialog/DialogTitle.vue
+  dde06b034582d0b2 1-2,4,7-11
+assets/app/components/ColorPickerPopover.vue
+  dde06b034582d0b2 1,15-25,27-29,32,36-37,40,46,51,55,61,67,74,84-86,129
+assets/app/components/ui/dropdown-menu/DropdownMenuSub.vue
+  dde06b034582d0b2 1,4-10
+assets/app/modules/settings/Profile.vue
+  dde06b034582d0b2 1-2,15-23,28-32,37,43,86
+assets/app/components/ui/select/SelectScrollDownButton.vue
+  dde06b034582d0b2 1-2,5,8-12
+assets/app/modules/workspaces/projects/ProjectDashboard.vue
+  dde06b034582d0b2 1,15,20-59,61-67,70-82,128,136,140
+assets/app/modules/project-settings/General.vue
+  dde06b034582d0b2 1,20-23,25-40,96,101,130
+assets/app/components/ui/command/index.ts
+  dde06b034582d0b2 1,14-25,27-35
+assets/app/components/ui/dialog/DialogContent.vue
+  dde06b034582d0b2 1-2,5,13-28
+assets/app/components/ui/table/TableCell.vue
+  dde06b034582d0b2 1-2,5-7
+assets/app/components/form-fields/NumberField.vue
+  dde06b034582d0b2 1-9,11-13,27
+assets/app/components/ui/sheet/SheetClose.vue
+  dde06b034582d0b2 1-3,5-8
+assets/app/plugins/tiptap/VariableList.vue
+  dde06b034582d0b2 1-2,6,16-27
+assets/app/components/ui/tooltip/TooltipTrigger.vue
+  dde06b034582d0b2 1-3,5-9
+assets/app/components/ui/context-menu/ContextMenuContent.vue
+  dde06b034582d0b2 1-2,4,11-37
+assets/app/modules/settings/WorkspaceGeneral.vue
+  dde06b034582d0b2 1,30-43,94,98,132
+assets/app/components/ui/table/TableRow.vue
+  dde06b034582d0b2 1-2,5-7
+assets/app/modules/project-settings/VersionControl.vue
+  dde06b034582d0b2 1,9-18,20-31,76
+assets/app/modules/workspaces/WorkspaceDashboard.vue
+  dde06b034582d0b2 1,7,12-39,43-56,62-65
+assets/app/components/ui/slider/Slider.vue
+  dde06b034582d0b2 1-2,4,7-28
+assets/app/modules/landing/sections/VersionSpotlight.vue
+  dde06b034582d0b2 1,5-13
+assets/app/modules/project-settings/ExportPanel.vue
+  dde06b034582d0b2 1,11-51,72,76,80,84,92,97
+assets/app/components/ui/tabs/TabsList.vue
+  dde06b034582d0b2 1-2,4,7-12
+assets/app/components/form-fields/ToggleField.vue
+  dde06b034582d0b2 1-2,5-10,12-14
+assets/app/components/ui/tooltip/TooltipProvider.vue
+  dde06b034582d0b2 1,4-12
+tsconfig.json
+  dde06b034582d0b2 9
+assets/app/components/toolbar/ToolbarSizePicker.vue
+  dde06b034582d0b2 1,9,11-14,16-18
+assets/app/components/ui/command/CommandEmpty.vue
+  dde06b034582d0b2 1-2,4,9-13
+assets/app/components/ui/avatar/AvatarFallback.vue
+  dde06b034582d0b2 1-2,4,7-12
+assets/app/components/ui/radio-group/RadioGroupItem.vue
+  dde06b034582d0b2 1-2,5,8-17
+assets/app/components/ui/select/SelectContent.vue
+  dde06b034582d0b2 1-2,4,12-43
+assets/app/components/ui/select/SelectScrollUpButton.vue
+  dde06b034582d0b2 1-2,5,8-12
+assets/app/components/ui/tabs/TabsContent.vue
+  dde06b034582d0b2 1-2,4,7-13
+assets/app/components/version-history/VersionHistory.vue
+  dde06b034582d0b2 1,17,26-27,29-46
+assets/app/components/ui/dropdown-menu/DropdownMenuSubContent.vue
+  dde06b034582d0b2 1-2,4,7-38
+assets/app/components/ui/table/TableBody.vue
+  dde06b034582d0b2 1-2,5-7
+assets/app/components/form-fields/SliderField.vue
+  dde06b034582d0b2 1,4-12,14-16,38
+assets/app/components/ui/tabs/Tabs.vue
+  dde06b034582d0b2 1-2,4,7-20
+assets/app/modules/landing/sections/hero/PortalScene.vue
+  dde06b034582d0b2 1-44
+assets/app/components/ui/command/Command.vue
+  dde06b034582d0b2 1-2,4,9-24,26-31,37-38,47,49
+assets/app/modules/landing/sections/hero/HeroSection.vue
+  dde06b034582d0b2 1,7-11,13,17,23,28,40,78,195,208,256,339
+assets/app/components/ui/collapsible/CollapsibleContent.vue
+  dde06b034582d0b2 1-3,5-9
+assets/app/plugins/tiptap/MentionList.vue
+  dde06b034582d0b2 1,5-15
+assets/app/components/ui/context-menu/ContextMenuItem.vue
+  dde06b034582d0b2 1-2,4,7-18
+assets/app/components/ui/button/Button.vue
+  dde06b034582d0b2 1-3,7-13
+assets/app/modules/landing/sections/hero/PortalRing.vue
+  dde06b034582d0b2 1,3,5,7,22,26,29,57-58
+assets/app/components/EditableText.vue
+  dde06b034582d0b2 1,4-11,13-16
+assets/app/modules/landing/sections/cta/Footer.vue
+  dde06b034582d0b2 1-4
+assets/app/modules/auth/SignUp.vue
+  dde06b034582d0b2 1-2,9-14,18-23
+assets/app/components/form-fields/ButtonGroupField.vue
+  dde06b034582d0b2 1-2,4-21
+assets/app/components/ui/dropdown-menu/DropdownMenu.vue
+  dde06b034582d0b2 1,4-12
+assets/app/components/ui/select/SelectSeparator.vue
+  dde06b034582d0b2 1-2,4,7-11
+assets/app/components/layout/LeftToolbar.vue
+  dde06b034582d0b2 1,27-33,36-37,40-41,43-52
+assets/app/components/ui/context-menu/ContextMenuSeparator.vue
+  dde06b034582d0b2 1-2,4,7-11
+assets/app/components/ui/tooltip/Tooltip.vue
+  dde06b034582d0b2 1,4-15
+assets/app/modules/settings/WorkspaceDeletedProjects.vue
+  dde06b034582d0b2 1,17-38,43-44,46,50,68,187
+assets/app/components/ui/scroll-area/ScrollBar.vue
+  dde06b034582d0b2 1-2,4,7-13
+assets/app/modules/landing/sections/FeatureGrid.vue
+  dde06b034582d0b2 1,3,16-30,33,80,115,118,154,238
+assets/app/components/docs/DocsShow.vue
+  dde06b034582d0b2 1,4-11
+assets/app/components/ui/dropdown-menu/DropdownMenuTrigger.vue
+  dde06b034582d0b2 1-3,5-9
+assets/app/components/ExpressionEditor.vue
+  dde06b034582d0b2 1,12-13,15-22,24-27
+assets/app/modules/auth/ConfirmAccess.vue
+  dde06b034582d0b2 1,8-12
+assets/app/components/ui/context-menu/ContextMenuTrigger.vue
+  dde06b034582d0b2 1-3,5-9
+assets/app/components/ui/checkbox/Checkbox.vue
+  dde06b034582d0b2 1-2,5,8-24
+assets/app/modules/workspaces/Invitations.vue
+  dde06b034582d0b2 1,5-7
+assets/app/components/ui/command/CommandInput.vue
+  dde06b034582d0b2 1-2,5,13-20
+assets/app/components/ui/command/CommandSeparator.vue
+  dde06b034582d0b2 1-2,4,7-13
+assets/app/components/ui/context-menu/ContextMenuCheckboxItem.vue
+  dde06b034582d0b2 1-2,5,8-19
+assets/app/components/layout/RightToolbar.vue
+  dde06b034582d0b2 1,14-36
+assets/app/components/compare/SheetCompare.vue
+  dde06b034582d0b2 1,4-12
+assets/app/components/ui/toggle-group/ToggleGroup.vue
+  dde06b034582d0b2 1-2,4,8-25,27-29
+assets/app/components/ui/dropdown-menu/DropdownMenuContent.vue
+  dde06b034582d0b2 1-2,4,11-42
+assets/app/components/ui/context-menu/ContextMenuSub.vue
+  dde06b034582d0b2 1,4-10
+assets/app/modules/landing/LandingPage.vue
+  dde06b034582d0b2 1,9-11,18-21
+assets/app/modules/localization/components/LocalizationEdit.vue
+  dde06b034582d0b2 1,17-46,90-92,95
+assets/app/components/SaveIndicator.vue
+  dde06b034582d0b2 1,4-6
+assets/app/components/ui/context-menu/ContextMenuShortcut.vue
+  dde06b034582d0b2 1-2,5-7
+assets/app/modules/settings/WorkspaceMembers.vue
+  dde06b034582d0b2 1,18-29,47,51,55,59,64-65,195
+assets/app/components/version-history/UnsavedChangesDialog.vue
+  dde06b034582d0b2 1,12-16,18-22
+assets/app/components/ui/context-menu/ContextMenuRadioItem.vue
+  dde06b034582d0b2 1-2,5,8-18
+assets/app/components/ui/dropdown-menu/DropdownMenuGroup.vue
+  dde06b034582d0b2 1-3,5-8
+assets/app/components/ui/context-menu/ContextMenuGroup.vue
+  dde06b034582d0b2 1-3,5-8
+assets/app/components/ui/table/Table.vue
+  dde06b034582d0b2 1-2,5-7
+assets/app/modules/workspaces/Loading.vue
+  dde06b034582d0b2 1
+assets/app/components/ui/command/CommandDialog.vue
+  dde06b034582d0b2 1,12-21
+assets/app/components/ui/table/TableHeader.vue
+  dde06b034582d0b2 1-2,5-7
+assets/app/components/ui/popover/PopoverAnchor.vue
+  dde06b034582d0b2 1-3,5-9
+assets/app/components/version-history/RestorePreviewDialog.vue
+  dde06b034582d0b2 1-2,23,25-29,31-34
+assets/app/modules/settings/Security.vue
+  dde06b034582d0b2 1-2,11-16,20,22-27,34,41-42,78
+assets/app/components/ui/command/CommandList.vue
+  dde06b034582d0b2 1-2,4,7-11
+assets/app/components/AssetIndex.vue
+  dde06b034582d0b2 1,20-44,46-53,56-67
+assets/app/components/ui/sheet/SheetContent.vue
+  dde06b034582d0b2 1-2,5,13-28
+assets/app/components/builders/types.ts
+  dde06b034582d0b2 1-44
+assets/app/components/VariableCombobox.vue
+  dde06b034582d0b2 1,21-31,33,35,37,39-40,42,44-45,47-49
+assets/app/components/collab/CollabToast.vue
+  dde06b034582d0b2 1,5-7
+assets/app/components/ui/toggle/Toggle.vue
+  dde06b034582d0b2 1-2,4,8-19,21-23
+assets/app/components/ui/scroll-area/ScrollArea.vue
+  dde06b034582d0b2 1-2,4,8-15
+assets/app/modules/project-settings/Snapshots.vue
+  dde06b034582d0b2 1,20-43,49-50,63,68,77,84,107,114
+assets/app/components/ui/popover/PopoverTrigger.vue
+  dde06b034582d0b2 1-3,5-8
+assets/app/components/ui/dialog/DialogDescription.vue
+  dde06b034582d0b2 1-2,4,7-11
+assets/app/components/layout/WorkspaceSidebar.vue
+  dde06b034582d0b2 1,16-39
+assets/app/components/ui/input/Input.vue
+  dde06b034582d0b2 1-2,6-10,12-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "c282dddcf62827a7030819f03f3bb114b6b7d30c",
+  "prompts": {
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 3125,
+      "total_deletions": 2592,
+      "accepted_lines": 4432,
+      "overriden_lines": 0
+    }
+  }
+}
