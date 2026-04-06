@@ -1,18 +1,22 @@
-<script setup>
-const { zoneConfigs, connectionConfigs, selectionColor, labelColor } = defineProps({
-  zoneConfigs: { type: Array, required: true },
-  connectionConfigs: { type: Array, required: true },
-  selectionColor: { type: String, required: true },
-  labelColor: { type: String, required: true },
-});
+<script setup lang="ts">
+import type { KonvaEventObject } from "konva/lib/Node";
+import type { ZoneConfig } from "../../composables/useZones";
+import type { ConnectionConfig } from "../../composables/useConnections";
 
-const emit = defineEmits([
-  "zone-click",
-  "zone-dblclick",
-  "zone-mousedown",
-  "connection-click",
-  "connection-dblclick",
-]);
+const { zoneConfigs, connectionConfigs, selectionColor, labelColor } = defineProps<{
+  zoneConfigs: ZoneConfig[];
+  connectionConfigs: ConnectionConfig[];
+  selectionColor: string;
+  labelColor: string;
+}>();
+
+const emit = defineEmits<{
+  "zone-click": [id: number | string, e: KonvaEventObject<MouseEvent>];
+  "zone-dblclick": [id: number | string, e: KonvaEventObject<MouseEvent>];
+  "zone-mousedown": [id: number | string, e: KonvaEventObject<MouseEvent>];
+  "connection-click": [id: number | string, e: KonvaEventObject<MouseEvent>];
+  "connection-dblclick": [id: number | string, e: KonvaEventObject<MouseEvent>];
+}>();
 </script>
 
 <template>

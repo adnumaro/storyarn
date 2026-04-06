@@ -1,14 +1,17 @@
-<script setup>
+<script setup lang="ts">
 import { Crown, User } from "lucide-vue-next";
 import { ToggleField } from "@components/form-fields";
 
-const { isPlayable, isLeader, disabled } = defineProps({
-  isPlayable: { type: Boolean, default: false },
-  isLeader: { type: Boolean, default: false },
-  disabled: { type: Boolean, default: false },
-});
+const { isPlayable = false, isLeader = false, disabled = false } = defineProps<{
+  isPlayable?: boolean;
+  isLeader?: boolean;
+  disabled?: boolean;
+}>();
 
-const emit = defineEmits(["togglePlayable", "toggleLeader"]);
+const emit = defineEmits<{
+  togglePlayable: [];
+  toggleLeader: [];
+}>();
 </script>
 
 <template>

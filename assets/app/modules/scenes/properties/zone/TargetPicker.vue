@@ -1,25 +1,39 @@
-<script setup>
+<script setup lang="ts">
 import { ArrowLeft, Link, Map as MapIcon, Workflow, X } from "lucide-vue-next";
+import type { Component } from "vue";
 import { computed, ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 
-const TARGET_TYPES = [
+interface TargetTypeOption {
+  value: string;
+  label: string;
+  icon: Component;
+}
+
+const TARGET_TYPES: TargetTypeOption[] = [
   { value: "flow", label: "Flow", icon: Workflow },
   { value: "scene", label: "Scene", icon: MapIcon },
 ];
 
-const { targetType, targetId, scenes, flows, disabled } = defineProps({
-  targetType: { type: String, default: null },
-  targetId: { type: [Number, null], default: null },
-  scenes: { type: Array, default: () => [] },
-  flows: { type: Array, default: () => [] },
-  disabled: { type: Boolean, default: false },
-});
+interface EntityOption {
+  id: number | string;
+  name: string;
+}
 
-const emit = defineEmits(["update:target"]);
+const { targetType = null, targetId = null, scenes = [], flows = [], disabled = false } = defineProps<{
+  targetType?: string | null;
+  targetId?: number | string | null;
+  scenes?: EntityOption[];
+  flows?: EntityOption[];
+  disabled?: boolean;
+}>();
+
+const emit = defineEmits<{
+  "update:target": [payload: { targetType: string | null; targetId: number | string | null }];
+}>();
 const open = ref(false);
-const step = ref("type"); // "type" | "entity"
-const selectedType = ref(null);
+const step = ref<"type" | "entity">("type");
+const selectedType = ref<string | null>(null);
 
 const currentTargetName = computed(() => {
   if (!targetType || !targetId) return null;
@@ -38,12 +52,12 @@ function openTypeStep() {
   selectedType.value = null;
 }
 
-function chooseType(type) {
+function chooseType(type: string) {
   selectedType.value = type;
   step.value = "entity";
 }
 
-function chooseEntity(id) {
+function chooseEntity(id: number | string) {
   emit("update:target", { targetType: selectedType.value, targetId: id });
   open.value = false;
   openTypeStep();

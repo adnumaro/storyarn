@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Settings } from "lucide-vue-next";
 import { useLive } from "@composables/useLive";
 import {
@@ -10,15 +10,32 @@ import {
   ToolbarTypePicker,
 } from "../../toolbar";
 
-const { element, layers, canEdit } = defineProps({
-  element: { type: Object, required: true },
-  layers: { type: Array, default: () => [] },
-  canEdit: { type: Boolean, default: false },
-});
+interface PinElement {
+  id: number | string;
+  label: string | null;
+  pinType: string | null;
+  color: string | null;
+  opacity: number | null;
+  size: string | null;
+  locked: boolean;
+  layerId: number | string | null;
+}
+
+interface LayerData {
+  id: number | string;
+  name: string;
+  visible: boolean;
+}
+
+const { element, layers = [], canEdit = false } = defineProps<{
+  element: PinElement;
+  layers: LayerData[];
+  canEdit: boolean;
+}>();
 
 const live = useLive();
 
-function updateField(field, value) {
+function updateField(field: string, value: string | number | null): void {
   live.pushEvent("update_pin", {
     id: String(element.id),
     field,
@@ -26,7 +43,7 @@ function updateField(field, value) {
   });
 }
 
-function toggleLock() {
+function toggleLock(): void {
   live.pushEvent("update_pin", {
     id: String(element.id),
     field: "locked",
@@ -34,7 +51,7 @@ function toggleLock() {
   });
 }
 
-function toggleElementPanel() {
+function toggleElementPanel(): void {
   live.pushEvent("toggle_element_panel", {});
 }
 </script>
@@ -47,8 +64,8 @@ function toggleElementPanel() {
     class="v2-toolbar-input w-20"
     placeholder="Label"
     :disabled="element.locked"
-    @blur="(e) => updateField('label', e.target.value)"
-    @keydown.enter="$event.target.blur()"
+    @blur="(e) => updateField('label', (e.target as HTMLInputElement).value)"
+    @keydown.enter="($event.target as HTMLInputElement).blur()"
   />
   <ToolbarSeparator />
 
@@ -77,7 +94,7 @@ function toggleElementPanel() {
             :value="element.opacity ?? 1"
             class="flex-1 h-1 accent-primary"
             :disabled="element.locked"
-            @input="(e) => updateField('opacity', e.target.value)"
+            @input="(e) => updateField('opacity', (e.target as HTMLInputElement).value)"
           />
           <span class="text-xs font-mono w-8 text-right"
             >{{ Math.round((element.opacity ?? 1) * 100) }}%</span

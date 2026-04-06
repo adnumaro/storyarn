@@ -1,8 +1,8 @@
-<script setup>
-const { width, height } = defineProps({
-  width: { type: Number, default: 1000 },
-  height: { type: Number, default: 1000 },
-});
+<script setup lang="ts">
+const { width = 1000, height = 1000 } = defineProps<{
+  width?: number;
+  height?: number;
+}>();
 </script>
 
 <template>

@@ -1,4 +1,4 @@
-import { computed, type Ref } from "vue";
+import { computed, type ComputedRef, type Ref } from "vue";
 import { renderLockBadge } from "../lib/pin-icons";
 import { useHiddenLayerIds, type LayerData } from "./useLayerVisibility";
 
@@ -64,18 +64,20 @@ export interface ZoneConfig {
   hitStrokeWidth: number;
 }
 
+type MaybeComputedRef<T> = Ref<T> | ComputedRef<T>;
+
 interface UseZonesOpts {
-  zones: Ref<ZoneData[]>;
-  layers: Ref<LayerData[]>;
-  entityLocks: Ref<Record<string, EntityLock>>;
-  currentUserId: Ref<number | string>;
+  zones: MaybeComputedRef<ZoneData[]>;
+  layers: MaybeComputedRef<LayerData[]>;
+  entityLocks: MaybeComputedRef<Record<string, EntityLock>>;
+  currentUserId: MaybeComputedRef<number | string>;
   percentToPixel: (pctX: number, pctY: number) => PixelPoint;
-  selectedType?: Ref<string | null>;
-  selectedId?: Ref<number | string | null>;
-  isSelectMode?: Ref<boolean>;
-  zoneDragOverride?: Ref<ZoneDragOverride | null>;
-  editingZoneId?: Ref<number | string | null>;
-  editingVertices?: Ref<Vertex[]>;
+  selectedType?: MaybeComputedRef<string | null>;
+  selectedId?: MaybeComputedRef<number | string | null>;
+  isSelectMode?: MaybeComputedRef<boolean>;
+  zoneDragOverride?: MaybeComputedRef<ZoneDragOverride | null>;
+  editingZoneId?: MaybeComputedRef<number | string | null>;
+  editingVertices?: MaybeComputedRef<Vertex[]>;
 }
 
 /**

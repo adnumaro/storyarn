@@ -1,12 +1,14 @@
-<script setup>
+<script setup lang="ts">
 import { History, Play } from "lucide-vue-next";
 import DockToolButton from "./DockToolButton.vue";
 
-const { playUrl } = defineProps({
-  playUrl: { type: String, required: true },
-});
+const { playUrl } = defineProps<{
+  playUrl: string;
+}>();
 
-const emit = defineEmits(["open-versions"]);
+const emit = defineEmits<{
+  "open-versions": [];
+}>();
 </script>
 
 <template>

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Cable, Hand, MousePointer2, Ruler, StickyNote } from "lucide-vue-next";
 import { useLive } from "@composables/useLive";
 import DockToolButton from "./dock-panels/DockToolButton.vue";
@@ -7,41 +7,52 @@ import PinsDropdown from "./dock-panels/PinsDropdown.vue";
 import DockActions from "./dock-panels/DockActions.vue";
 import PendingSheetIndicator from "./dock-panels/PendingSheetIndicator.vue";
 
+interface PendingSheetData {
+  id: number | string;
+  name: string;
+}
+
+interface ProjectSheet {
+  id: number | string;
+  name: string;
+  shortcut?: string;
+}
+
 const {
-  activeTool,
-  editMode,
-  compact,
-  pendingSheet,
-  projectSheets,
+  activeTool = "select",
+  editMode = true,
+  compact = false,
+  pendingSheet = null,
+  projectSheets = [],
   workspaceSlug,
   projectSlug,
   sceneId,
-} = defineProps({
-  activeTool: { type: String, default: "select" },
-  editMode: { type: Boolean, default: true },
-  compact: { type: Boolean, default: false },
-  pendingSheet: { type: Object, default: null },
-  projectSheets: { type: Array, default: () => [] },
-  workspaceSlug: { type: String, required: true },
-  projectSlug: { type: String, required: true },
-  sceneId: { type: [String, Number], required: true },
-});
+} = defineProps<{
+  activeTool: string;
+  editMode: boolean;
+  compact: boolean;
+  pendingSheet: PendingSheetData | null;
+  projectSheets: ProjectSheet[];
+  workspaceSlug: string;
+  projectSlug: string;
+  sceneId: string | number;
+}>();
 
 const live = useLive();
 
-function setTool(type) {
+function setTool(type: string): void {
   live.pushEvent("set_tool", { type });
 }
 
-function selectSheet(sheetId) {
+function selectSheet(sheetId: number | string): void {
   live.pushEvent("start_pin_from_sheet", { "sheet-id": sheetId });
 }
 
-function cancelPendingSheet() {
+function cancelPendingSheet(): void {
   live.pushEvent("cancel_sheet_picker", {});
 }
 
-function openVersions() {
+function openVersions(): void {
   live.pushEvent("open_versions_panel", {});
 }
 

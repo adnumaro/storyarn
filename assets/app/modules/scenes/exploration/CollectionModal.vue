@@ -1,18 +1,29 @@
-<script setup>
+<script setup lang="ts">
 import { PackageCheck, PackageOpen, X } from "lucide-vue-next";
 import { Button } from "@components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
 import { useLive } from "@composables/useLive";
 
-const { open, zone, items } = defineProps({
-  open: { type: Boolean, default: false },
-  zone: { type: Object, default: null },
-  items: { type: Array, default: () => [] },
-});
+interface CollectionZone {
+  emptyMessage?: string;
+  collectAllEnabled?: boolean;
+}
+
+interface CollectionItem {
+  id: number | string;
+  label?: string;
+  _sheet_name?: string;
+}
+
+const { open = false, zone = null, items = [] } = defineProps<{
+  open?: boolean;
+  zone?: CollectionZone | null;
+  items?: CollectionItem[];
+}>();
 
 const live = useLive();
 
-function takeItem(itemId) {
+function takeItem(itemId: number | string) {
   live.pushEvent("collection_take", { "item-id": itemId });
 }
 

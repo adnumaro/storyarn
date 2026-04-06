@@ -1,4 +1,5 @@
-<script setup>
+<script setup lang="ts">
+import type { CSSProperties, Component } from "vue";
 import { computed, nextTick, ref, watch } from "vue";
 import {
   AnnotationToolbar,
@@ -7,34 +8,60 @@ import {
   ZoneToolbar,
 } from "./toolbar-sections/index.ts";
 
-const {
-  selectedType,
-  selectedElement,
-  layers,
-  canEdit,
-  editMode,
-  stageConfig,
-  elementPosition,
-  isDragging,
-} = defineProps({
-  selectedType: { type: String, default: null },
-  selectedElement: { type: Object, default: null },
-  layers: { type: Array, default: () => [] },
-  canEdit: { type: Boolean, default: false },
-  editMode: { type: Boolean, default: true },
-  stageConfig: { type: Object, required: true },
-  elementPosition: { type: Object, default: null },
-  isDragging: { type: Boolean, default: false },
-});
+interface SelectedElementData {
+  id: number | string;
+}
 
-const toolbarRef = ref(null);
-const toolbarStyle = ref({ display: "none" });
+interface LayerData {
+  id: number | string;
+  visible: boolean;
+  name: string;
+}
+
+interface StageConfig {
+  scaleX: number;
+  scaleY: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface ElementPosition {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+const {
+  selectedType = null,
+  selectedElement = null,
+  layers = [],
+  canEdit = false,
+  editMode = true,
+  stageConfig,
+  elementPosition = null,
+  isDragging = false,
+} = defineProps<{
+  selectedType: string | null;
+  selectedElement: SelectedElementData | null;
+  layers: LayerData[];
+  canEdit: boolean;
+  editMode: boolean;
+  stageConfig: StageConfig;
+  elementPosition: ElementPosition | null;
+  isDragging: boolean;
+}>();
+
+const toolbarRef = ref<HTMLDivElement | null>(null);
+const toolbarStyle = ref<CSSProperties>({ display: "none" });
 
 const visible = computed(
   () => selectedType !== null && selectedElement !== null && canEdit && editMode,
 );
 
-const TOOLBAR_COMPONENTS = {
+const TOOLBAR_COMPONENTS: Record<string, Component> = {
   annotation: AnnotationToolbar,
   connection: ConnectionToolbar,
   pin: PinToolbar,
@@ -43,7 +70,7 @@ const TOOLBAR_COMPONENTS = {
 
 const activeComponent = computed(() => TOOLBAR_COMPONENTS[selectedType] || null);
 
-function updatePosition() {
+function updatePosition(): void {
   if (!visible.value || !elementPosition) {
     toolbarStyle.value = { display: "none" };
     return;

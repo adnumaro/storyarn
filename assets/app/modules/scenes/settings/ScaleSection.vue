@@ -1,12 +1,12 @@
-<script setup>
+<script setup lang="ts">
 import { Ruler } from "lucide-vue-next";
 import { computed } from "vue";
 import { useLive } from "@composables/useLive";
 
-const { scaleValue, scaleUnit } = defineProps({
-  scaleValue: { type: [Number, String], default: null },
-  scaleUnit: { type: String, default: null },
-});
+const { scaleValue = null, scaleUnit = null } = defineProps<{
+  scaleValue?: number | string | null;
+  scaleUnit?: string | null;
+}>();
 
 const live = useLive();
 
@@ -17,8 +17,8 @@ const formattedScale = computed(() => {
   return `1 scene width = ${display} ${scaleUnit}`;
 });
 
-function onBlur(field, e) {
-  live.pushEvent("update_scene_scale", { field, value: e.target.value });
+function onBlur(field: string, e: FocusEvent) {
+  live.pushEvent("update_scene_scale", { field, value: (e.target as HTMLInputElement).value });
 }
 </script>
 

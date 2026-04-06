@@ -1,18 +1,25 @@
-<script setup>
+<script setup lang="ts">
 import { Layers } from "lucide-vue-next";
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 
-const { layerId, layers, disabled } = defineProps({
-  layerId: { type: [Number, null], default: null },
-  layers: { type: Array, default: () => [] },
-  disabled: { type: Boolean, default: false },
-});
+interface Layer {
+  id: number | string;
+  name: string;
+}
 
-const emit = defineEmits(["update:layerId"]);
+const { layerId = null, layers = [], disabled = false } = defineProps<{
+  layerId?: number | string | null;
+  layers?: Layer[];
+  disabled?: boolean;
+}>();
+
+const emit = defineEmits<{
+  "update:layerId": [value: number | string | null];
+}>();
 const open = ref(false);
 
-function selectLayer(id) {
+function selectLayer(id: number | string | null) {
   emit("update:layerId", id);
   open.value = false;
 }

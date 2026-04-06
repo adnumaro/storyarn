@@ -4,6 +4,7 @@ import { AdditiveBlending, type IUniform } from "three";
 import { vertexShader, fragmentShader } from "./shaders/portalShader";
 
 interface PortalUniforms {
+  [uniform: string]: IUniform;
   uTime: IUniform<number>;
   uIntensity: IUniform<number>;
   uScale: IUniform<number>;

@@ -1,4 +1,5 @@
-<script setup>
+<script setup lang="ts">
+import type { Component } from "vue";
 import {
   AlertTriangle,
   ArrowDown,
@@ -33,44 +34,92 @@ import {
 import { useLive } from "@composables/useLive";
 import { formatRelativeTime } from "@utils/date-utils";
 
-const { stats, tableData, pagination, issues, canEdit, workspaceSlug, projectSlug } = defineProps({
-  stats: { type: Object, default: null },
-  tableData: { type: Array, default: () => [] },
-  pagination: {
-    type: Object,
-    default: () => ({ sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 0 }),
-  },
-  issues: { type: Array, default: () => [] },
-  canEdit: { type: Boolean, default: false },
-  workspaceSlug: { type: String, required: true },
-  projectSlug: { type: String, required: true },
-});
+interface StatCard {
+  icon: Component;
+  label: string;
+  value: number;
+  color: string;
+}
+
+interface TableColumn {
+  key: string;
+  label: string;
+  align: "left" | "right";
+}
+
+interface TableDataRow {
+  id: number | string;
+  name: string;
+  zone_count: number;
+  pin_count: number;
+  connection_count: number;
+  updated_at: string;
+}
+
+interface DashboardStats {
+  scene_count: number;
+  zone_count: number;
+  pin_count: number;
+  background_count: number;
+}
+
+interface Pagination {
+  sortBy: string;
+  sortDir: "asc" | "desc";
+  page: number;
+  totalPages: number;
+  total: number;
+}
+
+interface Issue {
+  href: string;
+  severity: string;
+  message: string;
+}
+
+const {
+  stats = null,
+  tableData = [],
+  pagination = { sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 0 },
+  issues = [],
+  canEdit = false,
+  workspaceSlug,
+  projectSlug,
+} = defineProps<{
+  stats: DashboardStats | null;
+  tableData: TableDataRow[];
+  pagination: Pagination;
+  issues: Issue[];
+  canEdit: boolean;
+  workspaceSlug: string;
+  projectSlug: string;
+}>();
 
 const live = useLive();
 
-function sceneHref(row) {
+function sceneHref(row: TableDataRow): string {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${row.id}`;
 }
 
-function handleSort(column) {
+function handleSort(column: string): void {
   live.pushEvent("sort_scenes", { column });
 }
 
-function goToPage(page) {
+function goToPage(page: number): void {
   live.pushEvent("page_scenes", { page });
 }
 
-function requestDelete(id) {
+function requestDelete(id: number | string): void {
   live.pushEvent("set_pending_delete_scene", { id });
   live.pushEvent("confirm_delete_scene", {});
 }
 
-function sortIcon(column) {
+function sortIcon(column: string): Component {
   if (pagination.sortBy !== column) return ArrowUpDown;
   return pagination.sortDir === "asc" ? ArrowUp : ArrowDown;
 }
 
-const statCards = computed(() => {
+const statCards = computed<StatCard[]>(() => {
   if (!stats) return [];
   return [
     {
@@ -100,7 +149,7 @@ const statCards = computed(() => {
   ];
 });
 
-const columns = [
+const columns: TableColumn[] = [
   { key: "name", label: "Name", align: "left" },
   { key: "zone_count", label: "Zones", align: "right" },
   { key: "pin_count", label: "Pins", align: "right" },

@@ -1,25 +1,33 @@
-<script setup>
+<script setup lang="ts">
+import type { KonvaEventObject } from "konva/lib/Node";
+import type { PinConfig } from "../../composables/usePins";
+
 const {
   pinConfigs,
-  sourcePinId,
-  hoveredPinId,
+  sourcePinId = null,
+  hoveredPinId = null,
   selectionColor,
   sourceHighlightColor,
   targetHighlightColor,
   labelColor,
   clipCircle,
-} = defineProps({
-  pinConfigs: { type: Array, required: true },
-  sourcePinId: { type: [Number, String, null], default: null },
-  hoveredPinId: { type: [Number, String, null], default: null },
-  selectionColor: { type: String, required: true },
-  sourceHighlightColor: { type: String, required: true },
-  targetHighlightColor: { type: String, required: true },
-  labelColor: { type: String, required: true },
-  clipCircle: { type: Function, required: true },
-});
+} = defineProps<{
+  pinConfigs: PinConfig[];
+  sourcePinId: number | string | null;
+  hoveredPinId: number | string | null;
+  selectionColor: string;
+  sourceHighlightColor: string;
+  targetHighlightColor: string;
+  labelColor: string;
+  clipCircle: (radius: number) => (ctx: CanvasRenderingContext2D) => void;
+}>();
 
-const emit = defineEmits(["pin-click", "dragstart", "dragmove", "dragend"]);
+const emit = defineEmits<{
+  "pin-click": [id: number | string, e: KonvaEventObject<MouseEvent>];
+  dragstart: [type: string, id: number | string, e: KonvaEventObject<DragEvent>];
+  dragmove: [type: string, id: number | string, e: KonvaEventObject<DragEvent>];
+  dragend: [type: string, id: number | string, e: KonvaEventObject<DragEvent>];
+}>();
 </script>
 
 <template>

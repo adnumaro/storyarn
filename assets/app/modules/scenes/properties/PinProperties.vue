@@ -1,7 +1,9 @@
-<script setup>
+<script setup lang="ts">
 import { EyeOff, Image } from "lucide-vue-next";
 import ConditionBuilder from "@components/builders/ConditionBuilder.vue";
+import type { ConditionData } from "@components/builders/types";
 import { ButtonGroupField, EntityCombobox, TextField, ToggleField } from "@components/form-fields";
+import type { Variable } from "@modules/shared/variables";
 import { useLive } from "@composables/useLive";
 import PinPatrolSection from "./pin/PinPatrolSection.vue";
 import PinPlayableSection from "./pin/PinPlayableSection.vue";
@@ -11,17 +13,46 @@ const CONDITION_EFFECTS = [
   { id: "disable", name: "Disable" },
 ];
 
-const { element, canEdit, projectSheets, projectFlows, projectVariables } = defineProps({
-  element: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-  projectSheets: { type: Array, default: () => [] },
-  projectFlows: { type: Array, default: () => [] },
-  projectVariables: { type: Array, default: () => [] },
-});
+interface PinElement {
+  id: number | string;
+  shortcut?: string;
+  tooltip?: string;
+  sheetId?: number | string | null;
+  flowId?: number | string | null;
+  isPlayable?: boolean;
+  isLeader?: boolean;
+  patrolMode?: string;
+  patrolSpeed?: number;
+  patrolPauseMs?: number;
+  hidden?: boolean;
+  conditionEffect?: string;
+  condition?: ConditionData | null;
+}
+
+interface EntityOption {
+  id: number | string;
+  name: string;
+  shortcut?: string;
+}
+
+const {
+  element,
+  canEdit = false,
+  projectSheets = [],
+  projectFlows = [],
+  projectVariables = [],
+} = defineProps<{
+  element: PinElement;
+  canEdit?: boolean;
+  projectSheets?: EntityOption[];
+  projectFlows?: EntityOption[];
+  projectVariables?: Variable[];
+
+}>();
 
 const live = useLive();
 
-function update(field, value) {
+function update(field: string, value: string | number | null | undefined) {
   live.pushEvent("update_pin", {
     id: String(element.id),
     field,
@@ -33,8 +64,8 @@ function uploadIcon() {
   const input = document.createElement("input");
   input.type = "file";
   input.accept = "image/jpeg,image/png,image/gif,image/webp,image/svg+xml";
-  input.onchange = (e) => {
-    const file = e.target.files[0];
+  input.onchange = (e: Event) => {
+    const file = (e.target as HTMLInputElement).files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
@@ -50,7 +81,7 @@ function uploadIcon() {
   input.click();
 }
 
-function toggle(field, currentValue) {
+function toggle(field: string, currentValue: boolean | undefined) {
   live.pushEvent("update_pin", {
     id: String(element.id),
     field,

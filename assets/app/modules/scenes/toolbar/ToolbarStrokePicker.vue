@@ -1,19 +1,23 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from "vue";
 import { COLOR_SWATCHES } from "@components/toolbar/color-swatches";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 
-const STYLES = ["solid", "dashed", "dotted"];
-const DASH_MAP = { solid: "none", dashed: "6,3", dotted: "2,2" };
+const STYLES = ["solid", "dashed", "dotted"] as const;
+const DASH_MAP: Record<string, string> = { solid: "none", dashed: "6,3", dotted: "2,2" };
 
-const { lineStyle, lineWidth, color, disabled } = defineProps({
-  lineStyle: { type: String, default: "solid" },
-  lineWidth: { type: Number, default: 2 },
-  color: { type: String, default: "#6b7280" },
-  disabled: { type: Boolean, default: false },
-});
+const { lineStyle = "solid", lineWidth = 2, color = "#6b7280", disabled = false } = defineProps<{
+  lineStyle?: string;
+  lineWidth?: number;
+  color?: string;
+  disabled?: boolean;
+}>();
 
-const emit = defineEmits(["update:lineStyle", "update:lineWidth", "update:color"]);
+const emit = defineEmits<{
+  "update:lineStyle": [value: string];
+  "update:lineWidth": [value: number];
+  "update:color": [value: string];
+}>();
 const open = ref(false);
 
 function decWidth() {
@@ -22,11 +26,11 @@ function decWidth() {
 function incWidth() {
   if (lineWidth < 10) emit("update:lineWidth", lineWidth + 1);
 }
-function selectColor(c) {
+function selectColor(c: string) {
   emit("update:color", c);
 }
-function onCustomColor(e) {
-  emit("update:color", e.target.value);
+function onCustomColor(e: Event) {
+  emit("update:color", (e.target as HTMLInputElement).value);
 }
 </script>
 

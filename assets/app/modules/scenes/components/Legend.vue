@@ -1,34 +1,58 @@
-<script setup>
+<script setup lang="ts">
+import type { Component } from "vue";
 import { List, MapPin, Star, User, Zap } from "lucide-vue-next";
 import { useLive } from "@composables/useLive";
 
-const { legendData, legendOpen } = defineProps({
-  legendData: {
-    type: Object,
-    default: () => ({
-      pinGroups: [],
-      zoneGroups: [],
-      connectionGroups: [],
-      hasEntries: false,
-    }),
-  },
-  legendOpen: { type: Boolean, default: false },
-});
+interface PinGroup {
+  label: string;
+  color: string;
+  icon: string;
+  count: number;
+}
+
+interface ZoneGroup {
+  label: string;
+  color: string;
+  opacityHex: string;
+  count: number;
+}
+
+interface ConnectionGroup {
+  label: string;
+  color: string;
+  dashArray: string;
+  count: number;
+}
+
+interface LegendData {
+  pinGroups: PinGroup[];
+  zoneGroups: ZoneGroup[];
+  connectionGroups: ConnectionGroup[];
+  hasEntries: boolean;
+}
+
+const {
+  legendData = { pinGroups: [], zoneGroups: [], connectionGroups: [], hasEntries: false },
+  legendOpen = false,
+} = defineProps<{
+  legendData: LegendData;
+  legendOpen: boolean;
+}>();
 
 const live = useLive();
 
-const pinIcons = {
+const pinIcons: Record<string, Component> = {
   "map-pin": MapPin,
   user: User,
   zap: Zap,
   star: Star,
 };
 
-function toggleLegend() {
+function toggleLegend(): void {
   live.pushEvent("toggle_legend", {});
 }
 
-function getPinIcon(iconName) {
+function getPinIcon(iconName: string): Component {
   return pinIcons[iconName] || MapPin;
 }
 </script>

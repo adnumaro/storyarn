@@ -1,9 +1,17 @@
-<script setup>
+<script setup lang="ts">
 import { BarChart3, Compass, Footprints, PackageOpen, Zap } from "lucide-vue-next";
+import type { Component } from "vue";
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 
-const ACTION_TYPES = [
+interface ActionTypeOption {
+  value: string;
+  label: string;
+  icon: Component;
+  desc: string;
+}
+
+const ACTION_TYPES: ActionTypeOption[] = [
   {
     value: "none",
     label: "Navigation",
@@ -36,20 +44,22 @@ const ACTION_TYPES = [
   },
 ];
 
-const { actionType, disabled } = defineProps({
-  actionType: { type: String, default: "none" },
-  disabled: { type: Boolean, default: false },
-});
+const { actionType = "none", disabled = false } = defineProps<{
+  actionType?: string;
+  disabled?: boolean;
+}>();
 
-const emit = defineEmits(["update:actionType"]);
+const emit = defineEmits<{
+  "update:actionType": [value: string];
+}>();
 const open = ref(false);
 
-function select(value) {
+function select(value: string) {
   emit("update:actionType", value);
   open.value = false;
 }
 
-const current = () => ACTION_TYPES.find((t) => t.value === actionType) || ACTION_TYPES[0];
+const current = (): ActionTypeOption => ACTION_TYPES.find((t) => t.value === actionType) || ACTION_TYPES[0];
 </script>
 
 <template>

@@ -1,26 +1,48 @@
-<script setup>
+<script setup lang="ts">
 import { toRef } from "vue";
 import { useLive } from "@composables/useLive";
 import CollectionModal from "./CollectionModal.vue";
-import { useExplorationKeyboard } from "./composables/useExplorationKeyboard";
+import { useExplorationKeyboard, type FlowSlide } from "./composables/useExplorationKeyboard";
 import ExplorationCanvas from "./ExplorationCanvas.vue";
 import ExplorationToolbar from "./ExplorationToolbar.vue";
 import FlowOverlay from "./FlowOverlay.vue";
 import SessionPromptModal from "./SessionPromptModal.vue";
 
-const { sceneData, explorationData, sceneName, showZones, flowState, collection, session } =
-  defineProps({
-    sceneData: { type: Object, required: true },
-    explorationData: { type: Object, required: true },
-    sceneName: { type: String, default: "" },
-    showZones: { type: Boolean, default: false },
-    flowState: {
-      type: Object,
-      default: () => ({ active: false, slide: null, flowName: null, showContinue: false }),
-    },
-    collection: { type: Object, default: () => ({ open: false, zone: null, items: [] }) },
-    session: { type: Object, default: () => ({ promptOpen: false, pending: null }) },
-  });
+interface FlowState {
+  active: boolean;
+  slide: FlowSlide | null;
+  flowName: string | null;
+  showContinue: boolean;
+}
+
+interface CollectionState {
+  open: boolean;
+  zone: { emptyMessage?: string; collectAllEnabled?: boolean } | null;
+  items: { id: number | string; label?: string; _sheet_name?: string }[];
+}
+
+interface SessionState {
+  promptOpen: boolean;
+  pending: { sceneName?: string; updatedAt?: string } | null;
+}
+
+const {
+  sceneData,
+  explorationData,
+  sceneName = "",
+  showZones = false,
+  flowState = { active: false, slide: null, flowName: null, showContinue: false },
+  collection = { open: false, zone: null, items: [] },
+  session = { promptOpen: false, pending: null },
+} = defineProps<{
+  sceneData: { width?: number; height?: number; backgroundUrl?: string };
+  explorationData: InstanceType<typeof ExplorationCanvas>["$props"]["explorationData"];
+  sceneName?: string;
+  showZones?: boolean;
+  flowState?: FlowState;
+  collection?: CollectionState;
+  session?: SessionState;
+}>();
 
 const live = useLive();
 

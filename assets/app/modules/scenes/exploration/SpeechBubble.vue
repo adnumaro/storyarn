@@ -1,11 +1,17 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import type Konva from "konva";
+import type { BubbleData } from "./composables/useAmbientDisplay";
 
-const { bubble, getPinNode, stageRef } = defineProps({
-  bubble: { type: Object, default: null },
-  getPinNode: { type: Function, required: true },
-  stageRef: { type: Object, default: null },
-});
+interface StageRefProxy {
+  getStage: () => Konva.Stage | undefined;
+}
+
+const { bubble = null, getPinNode, stageRef = null } = defineProps<{
+  bubble?: BubbleData | null;
+  getPinNode: (pinId: number | string) => Konva.Node | null;
+  stageRef?: StageRefProxy | null;
+}>();
 
 const position = ref({ x: 0, y: 0 });
 

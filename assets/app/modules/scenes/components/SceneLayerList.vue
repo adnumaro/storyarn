@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { CloudFog, EllipsisVertical, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-vue-next";
 import { nextTick, ref } from "vue";
 import { Button } from "@components/ui/button";
@@ -18,33 +18,45 @@ import {
 } from "@components/ui/dropdown-menu";
 import { useLive } from "@composables/useLive";
 
-const { layers, activeLayerId, canEdit, editMode } = defineProps({
-  layers: { type: Array, default: () => [] },
-  activeLayerId: { type: [Number, String], default: null },
-  canEdit: { type: Boolean, default: false },
-  editMode: { type: Boolean, default: true },
-});
+interface LayerItem {
+  id: number | string;
+  name: string;
+  visible: boolean;
+  fogEnabled: boolean;
+}
+
+const {
+  layers = [],
+  activeLayerId = null,
+  canEdit = false,
+  editMode = true,
+} = defineProps<{
+  layers: LayerItem[];
+  activeLayerId: number | string | null;
+  canEdit: boolean;
+  editMode: boolean;
+}>();
 
 const live = useLive();
-const renamingLayerId = ref(null);
+const renamingLayerId = ref<number | string | null>(null);
 const renameValue = ref("");
-const renameInputRef = ref(null);
+const renameInputRef = ref<HTMLInputElement | null>(null);
 const deleteDialogOpen = ref(false);
-const pendingDeleteLayer = ref(null);
+const pendingDeleteLayer = ref<LayerItem | null>(null);
 
-function setActiveLayer(id) {
+function setActiveLayer(id: number | string): void {
   live.pushEvent("set_active_layer", { id });
 }
 
-function toggleVisibility(id) {
+function toggleVisibility(id: number | string): void {
   live.pushEvent("toggle_layer_visibility", { id });
 }
 
-function createLayer() {
+function createLayer(): void {
   live.pushEvent("create_layer", {});
 }
 
-function startRename(layer) {
+function startRename(layer: LayerItem): void {
   renamingLayerId.value = layer.id;
   renameValue.value = layer.name;
   nextTick(() => {
@@ -53,7 +65,7 @@ function startRename(layer) {
   });
 }
 
-function finishRename(layerId) {
+function finishRename(layerId: number | string): void {
   const trimmed = renameValue.value.trim();
   if (trimmed && renamingLayerId.value === layerId) {
     live.pushEvent("rename_layer", { id: layerId, name: trimmed });
@@ -61,11 +73,11 @@ function finishRename(layerId) {
   renamingLayerId.value = null;
 }
 
-function cancelRename() {
+function cancelRename(): void {
   renamingLayerId.value = null;
 }
 
-function toggleFog(layer) {
+function toggleFog(layer: LayerItem): void {
   live.pushEvent("update_layer_fog", {
     id: layer.id,
     field: "fog_enabled",
@@ -73,12 +85,12 @@ function toggleFog(layer) {
   });
 }
 
-function requestDelete(layer) {
+function requestDelete(layer: LayerItem): void {
   pendingDeleteLayer.value = layer;
   deleteDialogOpen.value = true;
 }
 
-function confirmDelete() {
+function confirmDelete(): void {
   if (pendingDeleteLayer.value) {
     live.pushEvent("set_pending_delete_layer", {
       id: pendingDeleteLayer.value.id,
@@ -89,7 +101,7 @@ function confirmDelete() {
   pendingDeleteLayer.value = null;
 }
 
-function isActive(layer) {
+function isActive(layer: LayerItem): boolean {
   return activeLayerId != null && String(layer.id) === String(activeLayerId);
 }
 </script>

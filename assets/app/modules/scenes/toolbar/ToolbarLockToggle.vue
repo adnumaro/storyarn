@@ -1,12 +1,14 @@
-<script setup>
+<script setup lang="ts">
 import { Lock, Unlock } from "lucide-vue-next";
 
-const { locked, disabled } = defineProps({
-  locked: { type: Boolean, default: false },
-  disabled: { type: Boolean, default: false },
-});
+const { locked = false, disabled = false } = defineProps<{
+  locked?: boolean;
+  disabled?: boolean;
+}>();
 
-const emit = defineEmits(["toggle"]);
+const emit = defineEmits<{
+  toggle: [];
+}>();
 </script>
 
 <template>

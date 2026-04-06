@@ -1,17 +1,33 @@
-import { onMounted, onUnmounted, type Ref } from "vue";
+import { onMounted, onUnmounted, type ComputedRef, type Ref } from "vue";
 
-interface FlowResponse {
+export interface FlowResponse {
   id: number | string;
+  number?: number;
+  text?: string;
   valid: boolean;
 }
 
-interface FlowSlide {
-  responses: FlowResponse[] | null;
+export interface FlowSlide {
+  type?: string;
+  text?: string;
+  speaker?: string;
+  speakerAvatarUrl?: string;
+  speakerName?: string;
+  speakerInitials?: string;
+  speakerColor?: string;
+  stageDirections?: string;
+  responses?: FlowResponse[] | null;
+  setting?: string;
+  locationName?: string;
+  subLocation?: string;
+  timeOfDay?: string;
+  description?: string;
+  [key: string]: unknown;
 }
 
 interface UseExplorationKeyboardOpts {
-  flowMode: Ref<boolean>;
-  activeFlowSlide: Ref<FlowSlide | null>;
+  flowMode: Ref<boolean> | ComputedRef<boolean>;
+  activeFlowSlide: Ref<FlowSlide | null> | ComputedRef<FlowSlide | null>;
   pushEvent: (event: string, payload: { id: number | string }) => void;
 }
 

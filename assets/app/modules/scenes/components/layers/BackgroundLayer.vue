@@ -1,9 +1,38 @@
-<script setup>
-const { backgroundConfig, gridRectConfig, gridLines } = defineProps({
-  backgroundConfig: { type: Object, default: null },
-  gridRectConfig: { type: Object, required: true },
-  gridLines: { type: Array, required: true },
-});
+<script setup lang="ts">
+interface BackgroundConfig {
+  image: HTMLImageElement;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface GridRectConfig {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+}
+
+interface GridLineConfig {
+  points: number[];
+  stroke: string;
+  strokeWidth: number;
+  opacity: number;
+}
+
+const {
+  backgroundConfig = null,
+  gridRectConfig,
+  gridLines,
+} = defineProps<{
+  backgroundConfig: BackgroundConfig | null;
+  gridRectConfig: GridRectConfig;
+  gridLines: GridLineConfig[];
+}>();
 </script>
 
 <template>

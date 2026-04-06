@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { MapPin } from "lucide-vue-next";
 import { nextTick, ref } from "vue";
 import {
@@ -11,28 +11,40 @@ import {
 } from "@components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 
-const { activeTool, projectSheets } = defineProps({
-  activeTool: { type: String, default: "select" },
-  projectSheets: { type: Array, default: () => [] },
-});
+interface ProjectSheet {
+  id: number | string;
+  name: string;
+  shortcut?: string;
+}
 
-const emit = defineEmits(["set-tool", "select-sheet"]);
+const {
+  activeTool = "select",
+  projectSheets = [],
+} = defineProps<{
+  activeTool: string;
+  projectSheets: ProjectSheet[];
+}>();
+
+const emit = defineEmits<{
+  "set-tool": [type: string];
+  "select-sheet": [sheetId: number | string];
+}>();
 
 const pinsOpen = ref(false);
 const sheetPickerOpen = ref(false);
 
-async function openSheetPicker() {
+async function openSheetPicker(): Promise<void> {
   pinsOpen.value = false;
   await nextTick();
   sheetPickerOpen.value = true;
 }
 
-function setTool(type) {
+function setTool(type: string): void {
   emit("set-tool", type);
   pinsOpen.value = false;
 }
 
-function selectSheet(sheetId) {
+function selectSheet(sheetId: number | string): void {
   sheetPickerOpen.value = false;
   emit("select-sheet", sheetId);
 }

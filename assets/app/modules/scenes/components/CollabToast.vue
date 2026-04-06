@@ -1,7 +1,7 @@
-<script setup>
+<script setup lang="ts">
 import CollabToast from "@components/collab/CollabToast.vue";
 
-const actionLabels = {
+const actionLabels: Record<string, string> = {
   pin_created: "added a pin",
   pin_updated: "updated a pin",
   pin_deleted: "removed a pin",

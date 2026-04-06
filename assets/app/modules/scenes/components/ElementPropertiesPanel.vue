@@ -1,13 +1,25 @@
-<script setup>
+<script setup lang="ts">
 import { X } from "lucide-vue-next";
 import { computed } from "vue";
 import Sidebar from "@components/layout/Sidebar.vue";
+import type { Variable } from "@modules/shared/variables";
 import { useLive } from "@composables/useLive";
 import ConnectionProperties from "../properties/ConnectionProperties.vue";
 import PinProperties from "../properties/PinProperties.vue";
 import ZoneProperties from "../properties/ZoneProperties.vue";
 
-const TITLES = {
+interface ProjectEntity {
+  id: number | string;
+  name: string;
+  shortcut?: string;
+}
+
+interface SelectedElementData {
+  id: number | string;
+  [key: string]: unknown;
+}
+
+const TITLES: Record<string, string> = {
   zone: "Zone Properties",
   pin: "Pin Properties",
   connection: "Connection Properties",
@@ -15,24 +27,24 @@ const TITLES = {
 };
 
 const {
-  selectedType,
-  selectedElement,
-  canEdit,
-  elementPanelOpen,
-  projectSheets,
-  projectFlows,
-  projectScenes,
-  projectVariables,
-} = defineProps({
-  selectedType: { type: String, default: null },
-  selectedElement: { type: Object, default: null },
-  canEdit: { type: Boolean, default: false },
-  elementPanelOpen: { type: Boolean, default: false },
-  projectSheets: { type: Array, default: () => [] },
-  projectFlows: { type: Array, default: () => [] },
-  projectScenes: { type: Array, default: () => [] },
-  projectVariables: { type: Array, default: () => [] },
-});
+  selectedType = null,
+  selectedElement = null,
+  canEdit = false,
+  elementPanelOpen = false,
+  projectSheets = [],
+  projectFlows = [],
+  projectScenes = [],
+  projectVariables = [],
+} = defineProps<{
+  selectedType: string | null;
+  selectedElement: SelectedElementData | null;
+  canEdit: boolean;
+  elementPanelOpen: boolean;
+  projectSheets: ProjectEntity[];
+  projectFlows: ProjectEntity[];
+  projectScenes: ProjectEntity[];
+  projectVariables: Variable[];
+}>();
 
 const live = useLive();
 

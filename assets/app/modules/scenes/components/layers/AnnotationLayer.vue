@@ -1,18 +1,21 @@
-<script setup>
-const { annotationConfigs, selectionColor, isEditingAnnotation, getDisplayText } = defineProps({
-  annotationConfigs: { type: Array, required: true },
-  selectionColor: { type: String, required: true },
-  isEditingAnnotation: { type: Function, required: true },
-  getDisplayText: { type: Function, required: true },
-});
+<script setup lang="ts">
+import type { KonvaEventObject } from "konva/lib/Node";
+import type { AnnotationConfig } from "../../composables/useAnnotations";
 
-const emit = defineEmits([
-  "annotation-click",
-  "annotation-dblclick",
-  "dragstart",
-  "dragmove",
-  "dragend",
-]);
+const { annotationConfigs, selectionColor, isEditingAnnotation, getDisplayText } = defineProps<{
+  annotationConfigs: AnnotationConfig[];
+  selectionColor: string;
+  isEditingAnnotation: (id: number | string) => boolean;
+  getDisplayText: (id: number | string, fallback: string) => string;
+}>();
+
+const emit = defineEmits<{
+  "annotation-click": [id: number | string, e: KonvaEventObject<MouseEvent>];
+  "annotation-dblclick": [config: AnnotationConfig, e: KonvaEventObject<MouseEvent>];
+  dragstart: [type: string, id: number | string, e: KonvaEventObject<DragEvent>];
+  dragmove: [type: string, id: number | string, e: KonvaEventObject<DragEvent>];
+  dragend: [type: string, id: number | string, e: KonvaEventObject<DragEvent>];
+}>();
 </script>
 
 <template>

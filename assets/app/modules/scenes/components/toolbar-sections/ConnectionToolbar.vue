@@ -1,16 +1,26 @@
-<script setup>
+<script setup lang="ts">
 import { ArrowLeftRight, Settings, Tag } from "lucide-vue-next";
 import { useLive } from "@composables/useLive";
 import { ToolbarSeparator, ToolbarStrokePicker } from "../../toolbar";
 
-const { element, canEdit } = defineProps({
-  element: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-});
+interface ConnectionElement {
+  id: number | string;
+  label: string | null;
+  color: string | null;
+  lineStyle: string | null;
+  lineWidth: number | null;
+  showLabel: boolean;
+  bidirectional: boolean;
+}
+
+const { element, canEdit = false } = defineProps<{
+  element: ConnectionElement;
+  canEdit: boolean;
+}>();
 
 const live = useLive();
 
-function updateField(field, value) {
+function updateField(field: string, value: string | number | null): void {
   live.pushEvent("update_connection", {
     id: String(element.id),
     field,
@@ -18,7 +28,7 @@ function updateField(field, value) {
   });
 }
 
-function toggleField(field, currentValue) {
+function toggleField(field: string, currentValue: boolean): void {
   live.pushEvent("update_connection", {
     id: String(element.id),
     field,
@@ -26,11 +36,11 @@ function toggleField(field, currentValue) {
   });
 }
 
-function onLabelBlur(event) {
-  updateField("label", event.target.value);
+function onLabelBlur(event: FocusEvent): void {
+  updateField("label", (event.target as HTMLInputElement).value);
 }
 
-function toggleElementPanel() {
+function toggleElementPanel(): void {
   live.pushEvent("toggle_element_panel", {});
 }
 </script>
@@ -44,7 +54,7 @@ function toggleElementPanel() {
     placeholder="Label"
     :disabled="!canEdit"
     @blur="onLabelBlur"
-    @keydown.enter="$event.target.blur()"
+    @keydown.enter="($event.target as HTMLInputElement).blur()"
   />
   <ToolbarSeparator />
 

@@ -1,9 +1,41 @@
-<script setup>
-const { vertexEditorConfigs } = defineProps({
-  vertexEditorConfigs: { type: Object, default: null },
-});
+<script setup lang="ts">
+import type { KonvaEventObject } from "konva/lib/Node";
 
-const emit = defineEmits(["insert-vertex", "vertex-dragmove", "vertex-dragend", "vertex-click"]);
+interface VertexAnchorConfig {
+  x: number;
+  y: number;
+  radius: number;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+  index: number;
+}
+
+interface MidpointAnchorConfig {
+  x: number;
+  y: number;
+  radius: number;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+  afterIndex: number;
+}
+
+interface VertexEditorConfigs {
+  vertexAnchors: VertexAnchorConfig[];
+  midpointAnchors: MidpointAnchorConfig[];
+}
+
+const { vertexEditorConfigs = null } = defineProps<{
+  vertexEditorConfigs: VertexEditorConfigs | null;
+}>();
+
+const emit = defineEmits<{
+  "insert-vertex": [afterIndex: number, e: KonvaEventObject<MouseEvent>];
+  "vertex-dragmove": [index: number, e: KonvaEventObject<DragEvent>];
+  "vertex-dragend": [];
+  "vertex-click": [index: number, e: KonvaEventObject<MouseEvent>];
+}>();
 </script>
 
 <template>

@@ -1,9 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from "vue";
+import type { SubtitleData } from "./composables/useAmbientDisplay";
 
-const { subtitle } = defineProps({
-  subtitle: { type: Object, default: null },
-});
+const { subtitle = null } = defineProps<{
+  subtitle?: SubtitleData | null;
+}>();
 
 const visible = computed(() => subtitle != null);
 </script>

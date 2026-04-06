@@ -1,13 +1,14 @@
-<script setup>
+<script setup lang="ts">
 import { ChevronRight, CornerDownLeft, MapIcon } from "lucide-vue-next";
 import { computed } from "vue";
 import { useLive } from "@composables/useLive";
+import type { FlowSlide } from "./composables/useExplorationKeyboard";
 
-const { slide, flowName, showContinue } = defineProps({
-  slide: { type: Object, default: null },
-  flowName: { type: String, default: null },
-  showContinue: { type: Boolean, default: false },
-});
+const { slide = null, flowName = null, showContinue = false } = defineProps<{
+  slide?: FlowSlide | null;
+  flowName?: string | null;
+  showContinue?: boolean;
+}>();
 
 const live = useLive();
 
@@ -18,7 +19,7 @@ function flowContinue() {
   live.pushEvent("flow_continue", {});
 }
 
-function chooseResponse(id) {
+function chooseResponse(id: number | string) {
   live.pushEvent("choose_response", { id });
 }
 

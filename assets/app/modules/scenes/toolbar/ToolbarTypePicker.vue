@@ -1,29 +1,38 @@
-<script setup>
+<script setup lang="ts">
 import { MapPin, Star, User, Zap } from "lucide-vue-next";
+import type { Component } from "vue";
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 
-const TYPE_OPTIONS = [
+interface TypeOption {
+  value: string;
+  label: string;
+  icon: Component;
+}
+
+const TYPE_OPTIONS: TypeOption[] = [
   { value: "location", label: "Location", icon: MapPin },
   { value: "character", label: "Character", icon: User },
   { value: "event", label: "Event", icon: Zap },
   { value: "custom", label: "Custom", icon: Star },
 ];
 
-const { type, disabled } = defineProps({
-  type: { type: String, default: "location" },
-  disabled: { type: Boolean, default: false },
-});
+const { type = "location", disabled = false } = defineProps<{
+  type?: string;
+  disabled?: boolean;
+}>();
 
-const emit = defineEmits(["update:type"]);
+const emit = defineEmits<{
+  "update:type": [value: string];
+}>();
 const open = ref(false);
 
-function selectType(t) {
+function selectType(t: string) {
   emit("update:type", t);
   open.value = false;
 }
 
-const currentIcon = () => TYPE_OPTIONS.find((o) => o.value === type)?.icon || MapPin;
+const currentIcon = (): Component => TYPE_OPTIONS.find((o) => o.value === type)?.icon || MapPin;
 </script>
 
 <template>

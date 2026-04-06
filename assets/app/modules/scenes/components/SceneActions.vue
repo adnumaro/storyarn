@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Download, Eye, Pencil, Settings } from "lucide-vue-next";
 import { Button } from "@components/ui/button";
 import {
@@ -9,24 +9,24 @@ import {
 } from "@components/ui/dropdown-menu";
 import { useLive } from "@composables/useLive";
 
-const { editMode, canEdit } = defineProps({
-  editMode: { type: Boolean, default: true },
-  canEdit: { type: Boolean, default: false },
-});
+const { editMode = true, canEdit = false } = defineProps<{
+  editMode: boolean;
+  canEdit: boolean;
+}>();
 
 const live = useLive();
 
-function toggleEditMode() {
+function toggleEditMode(): void {
   live.pushEvent("toggle_edit_mode", {
     mode: editMode ? "view" : "edit",
   });
 }
 
-function exportScene(format) {
+function exportScene(format: string): void {
   live.pushEvent("export_scene", { format });
 }
 
-function openSettings() {
+function openSettings(): void {
   live.pushEvent("open_scene_settings", {});
 }
 </script>

@@ -13,6 +13,8 @@ export interface Variable {
   variable_name: string;
   block_type: string;
   options?: VariableOption[];
+  ref?: string;
+  label?: string;
 }
 
 export interface SheetGroup {

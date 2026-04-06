@@ -1,17 +1,26 @@
-<script setup>
+<script setup lang="ts">
+import type { Component } from "vue";
 import { Circle, PenTool, Square, Triangle } from "lucide-vue-next";
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 
-const { activeTool } = defineProps({
-  activeTool: { type: String, default: "select" },
-});
+const { activeTool = "select" } = defineProps<{
+  activeTool: string;
+}>();
 
-const emit = defineEmits(["set-tool"]);
+const emit = defineEmits<{
+  "set-tool": [type: string];
+}>();
 
 const shapesOpen = ref(false);
 
-const shapeTools = [
+interface ShapeTool {
+  id: string;
+  icon: Component;
+  title: string;
+}
+
+const shapeTools: ShapeTool[] = [
   { id: "rectangle", icon: Square, title: "Rectangle" },
   { id: "triangle", icon: Triangle, title: "Triangle" },
   { id: "circle", icon: Circle, title: "Circle" },
@@ -20,14 +29,14 @@ const shapeTools = [
 
 const shapeToolIds = shapeTools.map((s) => s.id);
 
-const isShapeActive = () => shapeToolIds.includes(activeTool);
+const isShapeActive = (): boolean => shapeToolIds.includes(activeTool);
 
-const activeShapeIcon = () => {
+const activeShapeIcon = (): Component => {
   const shape = shapeTools.find((s) => s.id === activeTool);
   return shape ? shape.icon : PenTool;
 };
 
-function setTool(type) {
+function setTool(type: string): void {
   emit("set-tool", type);
   shapesOpen.value = false;
 }

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Bookmark, Play, RotateCcw } from "lucide-vue-next";
 import { Button } from "@components/ui/button";
 import {
@@ -11,10 +11,15 @@ import {
 } from "@components/ui/dialog";
 import { useLive } from "@composables/useLive";
 
-const { open, pendingSession } = defineProps({
-  open: { type: Boolean, default: false },
-  pendingSession: { type: Object, default: null },
-});
+interface PendingSession {
+  sceneName?: string;
+  updatedAt?: string;
+}
+
+const { open = false, pendingSession = null } = defineProps<{
+  open?: boolean;
+  pendingSession?: PendingSession | null;
+}>();
 
 const live = useLive();
 

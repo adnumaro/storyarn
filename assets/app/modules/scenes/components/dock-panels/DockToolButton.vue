@@ -1,14 +1,25 @@
-<script setup>
-const { icon, active, tooltipTitle, tooltipDescription, tag, href } = defineProps({
-  icon: { type: [Object, Function], required: true },
-  active: { type: Boolean, default: false },
-  tooltipTitle: { type: String, required: true },
-  tooltipDescription: { type: String, default: "" },
-  tag: { type: String, default: "button" },
-  href: { type: String, default: null },
-});
+<script setup lang="ts">
+import type { Component } from "vue";
 
-const emit = defineEmits(["click"]);
+const {
+  icon,
+  active = false,
+  tooltipTitle,
+  tooltipDescription = "",
+  tag = "button",
+  href = null,
+} = defineProps<{
+  icon: Component;
+  active?: boolean;
+  tooltipTitle: string;
+  tooltipDescription?: string;
+  tag?: string;
+  href?: string | null;
+}>();
+
+const emit = defineEmits<{
+  click: [];
+}>();
 </script>
 
 <template>

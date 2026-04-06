@@ -1,11 +1,18 @@
-<script setup>
+<script setup lang="ts">
 import { MapPin, X } from "lucide-vue-next";
 
-const { pendingSheet } = defineProps({
-  pendingSheet: { type: Object, required: true },
-});
+interface PendingSheetData {
+  id: number | string;
+  name: string;
+}
 
-const emit = defineEmits(["cancel"]);
+const { pendingSheet } = defineProps<{
+  pendingSheet: PendingSheetData;
+}>();
+
+const emit = defineEmits<{
+  cancel: [];
+}>();
 </script>
 
 <template>

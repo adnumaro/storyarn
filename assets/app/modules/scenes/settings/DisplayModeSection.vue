@@ -1,23 +1,23 @@
-<script setup>
+<script setup lang="ts">
 import { Maximize, Monitor, Scan } from "lucide-vue-next";
 import { useLive } from "@composables/useLive";
 
-const { displayMode, defaultZoom, canEdit } = defineProps({
-  displayMode: { type: String, default: "fit" },
-  defaultZoom: { type: Number, default: 1.0 },
-  canEdit: { type: Boolean, default: false },
-});
+const { displayMode = "fit", defaultZoom = 1.0, canEdit = false } = defineProps<{
+  displayMode?: string;
+  defaultZoom?: number;
+  canEdit?: boolean;
+}>();
 
 const live = useLive();
 
-function setMode(mode) {
+function setMode(mode: string) {
   live.pushEvent("update_exploration_display_mode", { mode });
 }
 
-function onZoomBlur(e) {
+function onZoomBlur(e: FocusEvent) {
   live.pushEvent("update_scene_scale", {
     field: "default_zoom",
-    value: e.target.value,
+    value: (e.target as HTMLInputElement).value,
   });
 }
 </script>

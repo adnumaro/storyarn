@@ -1,7 +1,23 @@
-<script setup>
-const { drawingOverlay } = defineProps({
-  drawingOverlay: { type: Object, default: null },
-});
+<script setup lang="ts">
+interface VertexCircleConfig {
+  x: number;
+  y: number;
+  radius: number;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+}
+
+interface DrawingOverlayData {
+  ghostPoints: number[];
+  previewLine: number[] | null;
+  closeLine: number[] | null;
+  vertexConfigs: VertexCircleConfig[];
+}
+
+const { drawingOverlay = null } = defineProps<{
+  drawingOverlay: DrawingOverlayData | null;
+}>();
 </script>
 
 <template>

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { DnDProvider } from "@vue-dnd-kit/core";
 import { Plus } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
@@ -16,21 +16,33 @@ import { useLive } from "@composables/useLive";
 import SceneTreeNode from "./SceneTreeNode.vue";
 import SceneTreeRoot from "./SceneTreeRoot.vue";
 
-const { scenesTree, selectedSceneId, canEdit, workspaceSlug, projectSlug } = defineProps({
-  scenesTree: { type: Array, default: () => [] },
-  selectedSceneId: { type: [String, Number], default: null },
-  canEdit: { type: Boolean, default: false },
-  workspaceSlug: { type: String, required: true },
-  projectSlug: { type: String, required: true },
-});
+interface SceneTreeNodeData {
+  id: number | string;
+  name: string;
+  children?: SceneTreeNodeData[];
+}
+
+const {
+  scenesTree = [],
+  selectedSceneId = null,
+  canEdit = false,
+  workspaceSlug,
+  projectSlug,
+} = defineProps<{
+  scenesTree: SceneTreeNodeData[];
+  selectedSceneId: string | number | null;
+  canEdit: boolean;
+  workspaceSlug: string;
+  projectSlug: string;
+}>();
 
 const live = useLive();
 const searchQuery = ref("");
 const deleteDialogOpen = ref(false);
-const pendingDeleteScene = ref(null);
+const pendingDeleteScene = ref<SceneTreeNodeData | null>(null);
 
 // Local reactive copy for DnD mutations
-const localTree = ref([...scenesTree]);
+const localTree = ref<SceneTreeNodeData[]>([...scenesTree]);
 watch(
   () => scenesTree,
   (v) => {
@@ -39,11 +51,11 @@ watch(
   { deep: true },
 );
 
-function sceneHref(scene) {
+function sceneHref(scene: SceneTreeNodeData): string {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${scene.id}`;
 }
 
-function matchesSearch(node, query) {
+function matchesSearch(node: SceneTreeNodeData, query: string): boolean {
   if (node.name.toLowerCase().includes(query)) return true;
   if (node.children) {
     return node.children.some((child) => matchesSearch(child, query));
@@ -51,7 +63,7 @@ function matchesSearch(node, query) {
   return false;
 }
 
-function filterTree(nodes, query) {
+function filterTree(nodes: SceneTreeNodeData[], query: string): SceneTreeNodeData[] {
   return nodes
     .filter((node) => matchesSearch(node, query))
     .map((node) => ({
@@ -65,20 +77,20 @@ const filteredTree = computed(() => {
   return filterTree(localTree.value, searchQuery.value.toLowerCase());
 });
 
-function createScene() {
+function createScene(): void {
   live.pushEvent("create_scene", {});
 }
 
-function createChildScene(parentId) {
+function createChildScene(parentId: number | string): void {
   live.pushEvent("create_child_scene", { parent_id: parentId });
 }
 
-function requestDelete(scene) {
+function requestDelete(scene: SceneTreeNodeData): void {
   pendingDeleteScene.value = scene;
   deleteDialogOpen.value = true;
 }
 
-function confirmDelete() {
+function confirmDelete(): void {
   if (pendingDeleteScene.value) {
     live.pushEvent("set_pending_delete_scene", {
       id: pendingDeleteScene.value.id,
@@ -91,7 +103,7 @@ function confirmDelete() {
 
 // ── Tree mutation (following vue-dnd-kit tree example) ──
 
-function applyToTree(oldArr, newArr) {
+function applyToTree(oldArr: SceneTreeNodeData[], newArr: SceneTreeNodeData[]): void {
   if (oldArr === localTree.value) {
     localTree.value = newArr;
   } else {
@@ -99,7 +111,7 @@ function applyToTree(oldArr, newArr) {
   }
 }
 
-function findAndReplace(nodes, oldArr, newArr) {
+function findAndReplace(nodes: SceneTreeNodeData[], oldArr: SceneTreeNodeData[], newArr: SceneTreeNodeData[]): boolean {
   for (const node of nodes) {
     if (node.children === oldArr) {
       node.children = newArr;
@@ -110,18 +122,18 @@ function findAndReplace(nodes, oldArr, newArr) {
   return false;
 }
 
-function findNodeContext(nodes, nodeId, parentId = null) {
+function findNodeContext(nodes: SceneTreeNodeData[], nodeId: number | string, parentId: number | string | null = null): { parentId: number | string | null; position: number } | null {
   for (let i = 0; i < nodes.length; i++) {
     if (nodes[i].id === nodeId) return { parentId, position: i };
     if (nodes[i].children) {
-      const found = findNodeContext(nodes[i].children, nodeId, nodes[i].id);
+      const found = findNodeContext(nodes[i].children!, nodeId, nodes[i].id);
       if (found) return found;
     }
   }
   return null;
 }
 
-function findNodeById(nodes, nodeId) {
+function findNodeById(nodes: SceneTreeNodeData[], nodeId: number | string): SceneTreeNodeData | null {
   for (const n of nodes) {
     if (n.id === nodeId) return n;
     if (n.children) {
@@ -132,7 +144,7 @@ function findNodeById(nodes, nodeId) {
   return null;
 }
 
-function isDescendantOf(nodes, ancestorId, targetId) {
+function isDescendantOf(nodes: SceneTreeNodeData[], ancestorId: number | string, targetId: number | string): boolean {
   const ancestor = findNodeById(nodes, ancestorId);
   if (!ancestor?.children) return false;
   for (const c of ancestor.children) {
@@ -142,7 +154,7 @@ function isDescendantOf(nodes, ancestorId, targetId) {
   return false;
 }
 
-function pushMove(nodeId, parentId, position) {
+function pushMove(nodeId: number | string, parentId: number | string | null, position: number): void {
   live.pushEvent("move_to_parent", {
     item_id: String(nodeId),
     new_parent_id: parentId != null ? String(parentId) : "",
@@ -150,7 +162,8 @@ function pushMove(nodeId, parentId, position) {
   });
 }
 
-function getPointerZone(e) {
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function getPointerZone(e: any): "before" | "after" | "nest" | null {
   const el = e.hoveredDraggable?.element;
   const pointer = e.provider?.pointer?.value?.current;
   if (!el || !pointer) return null;
@@ -161,7 +174,7 @@ function getPointerZone(e) {
   return "nest";
 }
 
-function handleDrop(e) {
+function handleDrop(e: any): void {
   const draggedNode = e.draggedItems[0]?.item;
   const hoveredNode = e.hoveredDraggable?.item;
   const zone = getPointerZone(e);

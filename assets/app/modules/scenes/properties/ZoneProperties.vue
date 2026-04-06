@@ -1,8 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { EyeOff, Footprints } from "lucide-vue-next";
 import ConditionBuilder from "@components/builders/ConditionBuilder.vue";
+import type { Assignment, ConditionData } from "@components/builders/types";
 import ExpressionEditor from "@components/ExpressionEditor.vue";
 import { EntityCombobox, TextField, ToggleField } from "@components/form-fields";
+import type { Variable } from "@modules/shared/variables";
 import { useLive } from "@composables/useLive";
 import CollectionItemsEditor from "./zone/CollectionItemsEditor.vue";
 import TargetPicker from "./zone/TargetPicker.vue";
@@ -12,19 +14,53 @@ const CONDITION_EFFECTS = [
   { id: "disable", name: "Disable" },
 ];
 
-const { element, canEdit, projectScenes, projectSheets, projectFlows, projectVariables } =
-  defineProps({
-    element: { type: Object, required: true },
-    canEdit: { type: Boolean, default: false },
-    projectScenes: { type: Array, default: () => [] },
-    projectSheets: { type: Array, default: () => [] },
-    projectFlows: { type: Array, default: () => [] },
-    projectVariables: { type: Array, default: () => [] },
-  });
+interface ZoneActionData {
+  assignments?: Assignment[];
+  variable_ref?: string;
+  items?: { id: string; sheet_id?: number | string | null; label?: string; condition?: ConditionData | null }[];
+  collect_all_enabled?: boolean;
+  empty_message?: string;
+}
+
+interface ZoneElement {
+  id: number | string;
+  shortcut?: string;
+  actionType?: string;
+  isWalkable?: boolean;
+  hidden?: boolean;
+  tooltip?: string;
+  targetType?: string;
+  targetId?: number | string | null;
+  actionData?: ZoneActionData;
+  conditionEffect?: string;
+  condition?: ConditionData | null;
+}
+
+interface EntityOption {
+  id: number | string;
+  name: string;
+  shortcut?: string;
+}
+
+const {
+  element,
+  canEdit = false,
+  projectScenes = [],
+  projectSheets = [],
+  projectFlows = [],
+  projectVariables = [],
+} = defineProps<{
+  element: ZoneElement;
+  canEdit?: boolean;
+  projectScenes?: EntityOption[];
+  projectSheets?: EntityOption[];
+  projectFlows?: EntityOption[];
+  projectVariables?: Variable[];
+}>();
 
 const live = useLive();
 
-function update(field, value) {
+function update(field: string, value: string | number | null | undefined) {
   live.pushEvent("update_zone", {
     id: String(element.id),
     field,
@@ -32,7 +68,7 @@ function update(field, value) {
   });
 }
 
-function toggle(field, currentValue) {
+function toggle(field: string, currentValue: boolean | undefined) {
   live.pushEvent("update_zone", {
     id: String(element.id),
     field,
@@ -40,7 +76,7 @@ function toggle(field, currentValue) {
   });
 }
 
-function updateTarget({ targetType, targetId }) {
+function updateTarget({ targetType, targetId }: { targetType: string | null; targetId: number | null }) {
   live.pushEvent("update_zone", {
     id: String(element.id),
     field: "target_type",
@@ -55,14 +91,14 @@ function updateTarget({ targetType, targetId }) {
   }
 }
 
-function updateAssignments(assignments) {
+function updateAssignments(assignments: unknown[]) {
   live.pushEvent("update_zone_assignments", {
     "zone-id": String(element.id),
     assignments,
   });
 }
 
-function selectDisplayVar(varRef) {
+function selectDisplayVar(varRef: string | number) {
   live.pushEvent(`select_zone_display_var:${element.id}`, {
     id: varRef,
   });

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ChevronDown, ChevronUp, Eye, EyeOff, GitBranch, X } from "lucide-vue-next";
 import {
   Select,
@@ -9,10 +9,19 @@ import {
 } from "@components/ui/select";
 import { useLive } from "@composables/useLive";
 
-const { flow, canEdit } = defineProps({
-  flow: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-});
+interface AmbientFlow {
+  id: number | string;
+  flowName: string;
+  enabled: boolean;
+  triggerType: string;
+  triggerConfig?: { interval_ms?: number; variable_ref?: string };
+  priority: number;
+}
+
+const { flow, canEdit = false } = defineProps<{
+  flow: AmbientFlow;
+  canEdit?: boolean;
+}>();
 
 const live = useLive();
 
@@ -23,7 +32,7 @@ const triggerTypes = [
   { value: "one_shot", label: "One Shot" },
 ];
 
-function reorder(direction) {
+function reorder(direction: string) {
   live.pushEvent("reorder_ambient_flow", {
     id: flow.id,
     direction,
@@ -38,34 +47,34 @@ function remove() {
   live.pushEvent("remove_ambient_flow", { id: flow.id });
 }
 
-function onTriggerTypeChange(value) {
+function onTriggerTypeChange(value: string) {
   live.pushEvent(`select_ambient_trigger_type:${flow.id}`, {
     selected: value,
   });
 }
 
-function onVariableRefBlur(e) {
+function onVariableRefBlur(e: FocusEvent) {
   live.pushEvent(`select_ambient_variable_ref:${flow.id}`, {
-    selected: e.target.value,
+    selected: (e.target as HTMLInputElement).value,
   });
 }
 
-function onIntervalBlur(e) {
+function onIntervalBlur(e: FocusEvent) {
   live.pushEvent("update_ambient_flow_trigger", {
     id: flow.id,
     trigger_type: flow.triggerType,
-    interval_ms: e.target.value,
+    interval_ms: (e.target as HTMLInputElement).value,
   });
 }
 
-function onPriorityBlur(e) {
+function onPriorityBlur(e: FocusEvent) {
   live.pushEvent("update_ambient_flow_priority", {
     id: flow.id,
-    priority: e.target.value,
+    priority: (e.target as HTMLInputElement).value,
   });
 }
 
-function triggerLabel(type) {
+function triggerLabel(type: string): string {
   const found = triggerTypes.find((t) => t.value === type);
   return found ? found.label : type;
 }

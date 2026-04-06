@@ -1,4 +1,4 @@
-import { computed, type Ref } from "vue";
+import { computed, type ComputedRef, type Ref } from "vue";
 import { PIN_SIZES } from "../lib/pin-icons";
 import { useHiddenLayerIds, type LayerData } from "./useLayerVisibility";
 
@@ -88,16 +88,18 @@ export interface ConnectionConfig {
   hitStrokeWidth: number;
 }
 
+type MaybeComputedRef<T> = Ref<T> | ComputedRef<T>;
+
 interface UseConnectionsOpts {
-  connections: Ref<ConnectionData[]>;
-  pins: Ref<PinData[]>;
-  layers: Ref<LayerData[]>;
+  connections: MaybeComputedRef<ConnectionData[]>;
+  pins: MaybeComputedRef<PinData[]>;
+  layers: MaybeComputedRef<LayerData[]>;
   percentToPixel: (pctX: number, pctY: number) => PixelPoint;
-  selectedType?: Ref<string | null>;
-  selectedId?: Ref<number | string | null>;
-  isSelectMode?: Ref<boolean>;
-  dragOverrides?: Ref<Record<string | number, PixelPoint>>;
-  waypointEditOverride?: Ref<WaypointEditOverride | null>;
+  selectedType?: MaybeComputedRef<string | null>;
+  selectedId?: MaybeComputedRef<number | string | null>;
+  isSelectMode?: MaybeComputedRef<boolean>;
+  dragOverrides?: MaybeComputedRef<Record<string | number, PixelPoint>>;
+  waypointEditOverride?: MaybeComputedRef<WaypointEditOverride | null>;
 }
 
 /**

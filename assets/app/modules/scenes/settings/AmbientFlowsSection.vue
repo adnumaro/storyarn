@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Plus, Wind } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import {
@@ -13,11 +13,26 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover"
 import { useLive } from "@composables/useLive";
 import AmbientFlowRow from "./AmbientFlowRow.vue";
 
-const { ambientFlows, projectFlows, canEdit } = defineProps({
-  ambientFlows: { type: Array, default: () => [] },
-  projectFlows: { type: Array, default: () => [] },
-  canEdit: { type: Boolean, default: false },
-});
+interface AmbientFlow {
+  id: number | string;
+  flowId: number;
+  flowName: string;
+  enabled: boolean;
+  triggerType: string;
+  triggerConfig?: { interval_ms?: number; variable_ref?: string };
+  priority: number;
+}
+
+interface FlowOption {
+  id: number;
+  name: string;
+}
+
+const { ambientFlows = [], projectFlows = [], canEdit = false } = defineProps<{
+  ambientFlows?: AmbientFlow[];
+  projectFlows?: FlowOption[];
+  canEdit?: boolean;
+}>();
 
 const live = useLive();
 const addOpen = ref(false);
@@ -27,7 +42,7 @@ const availableFlows = computed(() => {
   return projectFlows.filter((f) => !linkedIds.has(f.id));
 });
 
-function selectFlow(flowId) {
+function selectFlow(flowId: number) {
   live.pushEvent("select_add_ambient_flow", { id: flowId });
   addOpen.value = false;
 }

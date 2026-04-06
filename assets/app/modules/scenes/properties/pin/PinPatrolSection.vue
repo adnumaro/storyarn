@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Route } from "lucide-vue-next";
 import { NumberField, SelectField, SliderField } from "@components/form-fields";
 
@@ -9,16 +9,20 @@ const PATROL_MODES = [
   { id: "one_way", name: "One-way" },
 ];
 
-const { patrolMode, patrolSpeed, patrolPauseMs, disabled } = defineProps({
-  patrolMode: { type: String, default: "none" },
-  patrolSpeed: { type: [Number, String], default: 1.0 },
-  patrolPauseMs: { type: [Number, String], default: 0 },
-  disabled: { type: Boolean, default: false },
-});
+const { patrolMode = "none", patrolSpeed = 1.0, patrolPauseMs = 0, disabled = false } = defineProps<{
+  patrolMode?: string;
+  patrolSpeed?: number | string;
+  patrolPauseMs?: number | string;
+  disabled?: boolean;
+}>();
 
-const emit = defineEmits(["updateMode", "updateSpeed", "updatePause"]);
+const emit = defineEmits<{
+  updateMode: [value: string];
+  updateSpeed: [value: string];
+  updatePause: [value: string];
+}>();
 
-function formatSpeed(v) {
+function formatSpeed(v: number): string {
   return `${v}x`;
 }
 </script>

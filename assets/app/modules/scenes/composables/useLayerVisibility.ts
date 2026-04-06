@@ -9,7 +9,7 @@ export interface LayerData {
  * Shared computed for filtering hidden layer IDs.
  * Used by usePins, useZones, useAnnotations, and useConnections.
  */
-export function useHiddenLayerIds(layers: Ref<LayerData[]>): ComputedRef<Set<number | string>> {
+export function useHiddenLayerIds(layers: Ref<LayerData[]> | ComputedRef<LayerData[]>): ComputedRef<Set<number | string>> {
   return computed(() => {
     const set = new Set<number | string>();
     for (const layer of layers.value) {

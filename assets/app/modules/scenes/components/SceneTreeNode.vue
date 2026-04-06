@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { makeDraggable, makeDroppable } from "@vue-dnd-kit/core";
 import { ChevronRight, FilePlus, Map as MapIcon, Trash2 } from "lucide-vue-next";
 import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from "vue";
@@ -9,19 +9,38 @@ import {
   ContextMenuTrigger,
 } from "@components/ui/context-menu";
 
-const { node, index, siblings, selectedSceneId, canEdit, depth, searchActive, sceneHref } =
-  defineProps({
-    node: { type: Object, required: true },
-    index: { type: Number, required: true },
-    siblings: { type: Array, required: true },
-    selectedSceneId: { type: [String, Number], default: null },
-    canEdit: { type: Boolean, default: false },
-    depth: { type: Number, default: 0 },
-    searchActive: { type: Boolean, default: false },
-    sceneHref: { type: Function, required: true },
-  });
+interface SceneTreeNodeData {
+  id: number | string;
+  name: string;
+  children?: SceneTreeNodeData[];
+}
 
-const emit = defineEmits(["createChild", "requestDelete", "drop"]);
+const {
+  node,
+  index,
+  siblings,
+  selectedSceneId = null,
+  canEdit = false,
+  depth = 0,
+  searchActive = false,
+  sceneHref,
+} = defineProps<{
+  node: SceneTreeNodeData;
+  index: number;
+  siblings: SceneTreeNodeData[];
+  selectedSceneId: string | number | null;
+  canEdit: boolean;
+  depth: number;
+  searchActive: boolean;
+  sceneHref: (node: SceneTreeNodeData) => string;
+}>();
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const emit = defineEmits<{
+  createChild: [id: number | string];
+  requestDelete: [scene: SceneTreeNodeData];
+  drop: [e: any];
+}>();
 
 const hasChildren = computed(() => node.children && node.children.length > 0);
 
@@ -30,7 +49,7 @@ const isSelected = computed(
 );
 
 // ── Auto-expand ──
-function hasSelectedDescendant(node, selectedId) {
+function hasSelectedDescendant(node: SceneTreeNodeData, selectedId: string | number | null): boolean {
   if (!selectedId || !node.children) return false;
   for (const child of node.children) {
     if (String(child.id) === String(selectedId)) return true;
@@ -54,7 +73,7 @@ watch(
   },
 );
 
-function onToggle() {
+function onToggle(): void {
   userToggled.value = true;
   isOpen.value = !isOpen.value;
 }
@@ -71,10 +90,10 @@ const { isDragging, isDragOver: rowPlacement } = makeDraggable(
 );
 
 // Manual center zone detection
-const pointerZone = ref(null);
+const pointerZone = ref<"before" | "after" | "nest" | null>(null);
 const CENTER_THRESHOLD = 0.3;
 
-function onPointerMove(e) {
+function onPointerMove(e: PointerEvent): void {
   const el = rowRef.value;
   if (!el || !rowPlacement.value) {
     pointerZone.value = null;
@@ -104,7 +123,7 @@ const { isDragOver: childrenOver } = makeDroppable(
 );
 
 // Auto-expand on hover during drag (600ms)
-let autoExpandTimer = null;
+let autoExpandTimer: ReturnType<typeof setTimeout> | null = null;
 
 watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
   clearTimeout(autoExpandTimer);

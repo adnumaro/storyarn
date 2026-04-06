@@ -1,17 +1,37 @@
-<script setup>
+<script setup lang="ts">
 import { Plus } from "lucide-vue-next";
 import { computed } from "vue";
 import { TextField, ToggleField } from "@components/form-fields";
+import type { Variable } from "@modules/shared/variables";
 import { useLive } from "@composables/useLive";
+import type { ConditionData } from "@components/builders/types";
 import CollectionItemCard from "./CollectionItemCard.vue";
 
-const { zoneId, actionData, canEdit, projectSheets, projectVariables } = defineProps({
-  zoneId: { type: Number, required: true },
-  actionData: { type: Object, default: () => ({}) },
-  canEdit: { type: Boolean, default: false },
-  projectSheets: { type: Array, default: () => [] },
-  projectVariables: { type: Array, default: () => [] },
-});
+interface CollectionActionData {
+  items?: { id: string; sheet_id?: number | string | null; label?: string; condition?: ConditionData | null }[];
+  collect_all_enabled?: boolean;
+  empty_message?: string;
+}
+
+interface EntityOption {
+  id: number | string;
+  name: string;
+  shortcut?: string;
+}
+
+const {
+  zoneId,
+  actionData = {},
+  canEdit = false,
+  projectSheets = [],
+  projectVariables = [],
+} = defineProps<{
+  zoneId: number | string;
+  actionData?: CollectionActionData;
+  canEdit?: boolean;
+  projectSheets?: EntityOption[];
+  projectVariables?: Variable[];
+}>();
 
 const live = useLive();
 
@@ -19,7 +39,7 @@ const items = computed(() => actionData?.items || []);
 const collectAllEnabled = computed(() => actionData?.collect_all_enabled || false);
 const emptyMessage = computed(() => actionData?.empty_message || "");
 
-function updateSetting(field, value) {
+function updateSetting(field: string, value: string | null | undefined) {
   live.pushEvent("update_collection_settings", {
     "zone-id": String(zoneId),
     field,

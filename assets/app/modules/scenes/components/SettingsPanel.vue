@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Settings, X } from "lucide-vue-next";
 import { computed } from "vue";
 import Sidebar from "@components/layout/Sidebar.vue";
@@ -9,18 +9,50 @@ import DimensionsSection from "../settings/DimensionsSection.vue";
 import DisplayModeSection from "../settings/DisplayModeSection.vue";
 import ScaleSection from "../settings/ScaleSection.vue";
 
-const { scene, canEdit, ambientFlows, projectFlows, sceneSettingsOpen } = defineProps({
-  scene: { type: Object, default: null },
-  canEdit: { type: Boolean, default: false },
-  ambientFlows: { type: Array, default: () => [] },
-  projectFlows: { type: Array, default: () => [] },
-  sceneSettingsOpen: { type: Boolean, default: false },
-});
+interface SceneSettings {
+  backgroundUrl: string | null;
+  explorationDisplayMode: string;
+  defaultZoom: number;
+  scaleValue: number;
+  scaleUnit: string;
+  width: number;
+  height: number;
+}
+
+interface AmbientFlow {
+  id: number | string;
+  flowId: number;
+  flowName: string;
+  enabled: boolean;
+  triggerType: string;
+  triggerConfig?: { interval_ms?: number; variable_ref?: string };
+  priority: number;
+}
+
+interface ProjectFlow {
+  id: number;
+  name: string;
+  shortcut?: string;
+}
+
+const {
+  scene = null,
+  canEdit = false,
+  ambientFlows = [],
+  projectFlows = [],
+  sceneSettingsOpen = false,
+} = defineProps<{
+  scene: SceneSettings | null;
+  canEdit: boolean;
+  ambientFlows: AmbientFlow[];
+  projectFlows: ProjectFlow[];
+  sceneSettingsOpen: boolean;
+}>();
 
 const live = useLive();
 const isOpen = computed(() => sceneSettingsOpen && scene != null);
 
-function close() {
+function close(): void {
   live.pushEvent("close_scene_settings", {});
 }
 </script>

@@ -1,16 +1,16 @@
-<script setup>
+<script setup lang="ts">
 import EditableText from "@components/EditableText.vue";
 import { useLive } from "@composables/useLive";
 
-const { canEdit, sceneName, sceneShortcut } = defineProps({
-  canEdit: { type: Boolean, default: false },
-  sceneName: { type: String, default: "" },
-  sceneShortcut: { type: String, default: "" },
-});
+const { canEdit = false, sceneName = "", sceneShortcut = "" } = defineProps<{
+  canEdit: boolean;
+  sceneName: string;
+  sceneShortcut: string;
+}>();
 
 const live = useLive();
 
-function saveName(name) {
+function saveName(name: string): void {
   live.pushEvent("save_name", { name });
 }
 </script>

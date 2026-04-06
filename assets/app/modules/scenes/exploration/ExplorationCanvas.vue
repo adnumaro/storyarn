@@ -1,6 +1,8 @@
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, ref, toRef } from "vue";
+import type Konva from "konva";
 import { useLive } from "@composables/useLive";
+import type { LayerData } from "../composables/useLayerVisibility";
 import { useConnections } from "../composables/useConnections";
 import { useKonvaStage } from "../composables/useKonvaStage";
 import { usePins } from "../composables/usePins";
@@ -12,14 +14,87 @@ import { usePatrols } from "./composables/usePatrols";
 import SpeechBubble from "./SpeechBubble.vue";
 import SubtitleBar from "./SubtitleBar.vue";
 
-const { sceneData, explorationData, showZones, flowMode } = defineProps({
-  sceneData: { type: Object, default: null },
-  explorationData: { type: Object, required: true },
-  showZones: { type: Boolean, default: false },
-  flowMode: { type: Boolean, default: false },
-});
+interface SceneData {
+  width?: number;
+  height?: number;
+  backgroundUrl?: string;
+}
 
-const containerRef = ref(null);
+interface ExplorationPin {
+  id: number | string;
+  positionX: number;
+  positionY: number;
+  size: string | null;
+  color: string | null;
+  opacity: number | null;
+  pinType: string;
+  label: string | null;
+  locked: boolean;
+  layerId: number | string | null;
+  hidden: boolean;
+  iconAssetUrl: string | null;
+  sheetAvatarUrl: string | null;
+  sheetId: number | string | null;
+  position: number | null;
+  visibility: string;
+  isPlayable: boolean;
+  flowId: number | string | null;
+  patrolMode: string | null;
+  patrolRoute: { x: number; y: number; isPinStop?: boolean }[] | null;
+  patrolPauseMs: number;
+  patrolSpeed: number | null;
+  [key: string]: unknown;
+}
+
+interface ExplorationZone {
+  id: number | string;
+  name: string;
+  vertices: { x: number; y: number }[] | null;
+  fillColor: string | null;
+  borderColor: string | null;
+  borderWidth: number | null;
+  borderStyle: string | null;
+  opacity: number | null;
+  position: number | null;
+  layerId: number | string | null;
+  locked: boolean;
+  visibility: string;
+  actionType: string | null;
+  isWalkable: boolean;
+  targetType: string | null;
+  targetId: number | string | null;
+  actionData: Record<string, string | number | boolean | null>;
+  [key: string]: unknown;
+}
+
+interface ExplorationConnection {
+  id: number | string;
+  fromPinId: number | string;
+  toPinId: number | string;
+  waypoints: { x: number; y: number }[] | null;
+  color: string | null;
+  lineWidth: number | null;
+  lineStyle: string | null;
+  label: string | null;
+  showLabel: boolean;
+  bidirectional: boolean;
+  [key: string]: unknown;
+}
+
+interface ExplorationData {
+  zones?: ExplorationZone[];
+  pins?: ExplorationPin[];
+  connections?: ExplorationConnection[];
+}
+
+const { sceneData = null, explorationData, showZones = false, flowMode = false } = defineProps<{
+  sceneData?: SceneData | null;
+  explorationData: ExplorationData;
+  showZones?: boolean;
+  flowMode?: boolean;
+}>();
+
+const containerRef = ref<HTMLDivElement | null>(null);
 const live = useLive();
 
 // --- Stage (pan/zoom/background) ---
@@ -40,10 +115,12 @@ const {
 });
 
 // --- Static refs for read-only mode ---
-const nullRef = ref(null);
+const nullType = ref<string | null>(null);
+const nullId = ref<number | string | null>(null);
 const falseRef = ref(false);
-const emptyObj = ref({});
-const emptyArr = ref([]);
+const emptyLocks = ref<Record<string, { userId: number | string }>>({});
+const emptyDragOverrides = ref<Record<string | number, { x: number; y: number }>>({});
+const emptyLayers = ref<LayerData[]>([]);
 
 // --- Filter visible elements from exploration data ---
 const allZones = computed(() => explorationData?.zones || []);
@@ -71,15 +148,15 @@ const { handleZoneClick, handlePinClick, zoneShowOverride, clickableZoneIds, cli
   });
 
 // --- Pin node refs for direct Konva updates ---
-const pinNodeRefs = {};
+const pinNodeRefs: Record<number | string, { getNode?: () => Konva.Node }> = {};
 
-function setPinRef(pinId, el) {
+function setPinRef(pinId: number | string, el: { getNode?: () => Konva.Node } | null) {
   if (el) {
     pinNodeRefs[pinId] = el;
   }
 }
 
-function getPinNode(pinId) {
+function getPinNode(pinId: number | string): Konva.Node | null {
   const ref = pinNodeRefs[pinId];
   return ref?.getNode?.() || null;
 }
@@ -110,7 +187,7 @@ const { bubble, subtitle } = useAmbientDisplay({
 });
 
 // --- Container click: movement (DOM level for reliable click detection) ---
-function onContainerClick(e) {
+function onContainerClick(e: MouseEvent) {
   const rect = containerRef.value?.getBoundingClientRect();
   if (!rect) return;
 
@@ -129,7 +206,7 @@ function onContainerClick(e) {
 }
 
 // --- Click feedback rings ---
-function showClickFeedback(evt, walkable) {
+function showClickFeedback(evt: MouseEvent, walkable: boolean) {
   const ring = document.createElement("div");
   ring.style.position = "fixed";
   ring.style.left = `${evt.clientX}px`;
@@ -166,7 +243,8 @@ onMounted(() => {
     });
   });
 
-  live.handleEvent("restore_positions", ({ leader, party }) => {
+  live.handleEvent("restore_positions", (payload) => {
+    const { leader, party } = payload as { leader: unknown; party: unknown };
     restorePositions(leader, party);
   });
 
@@ -175,15 +253,18 @@ onMounted(() => {
 });
 
 // --- Composables in read-only mode ---
+const emptyVertices = ref<{ x: number; y: number }[]>([]);
+const nullDragOverride = ref<{ id: number | string; vertices: { x: number; y: number }[] } | null>(null);
+
 const { pinConfigs } = usePins({
   pins: visiblePins,
-  layers: emptyArr,
-  entityLocks: emptyObj,
+  layers: emptyLayers,
+  entityLocks: emptyLocks,
   currentUserId: ref(0),
   percentToPixel,
   activeTool: ref("pan"),
-  selectedType: nullRef,
-  selectedId: nullRef,
+  selectedType: nullType,
+  selectedId: nullId,
   isSelectMode: falseRef,
   editMode: falseRef,
   canEdit: falseRef,
@@ -191,37 +272,37 @@ const { pinConfigs } = usePins({
 
 const { zoneConfigs } = useZones({
   zones: visibleZones,
-  layers: emptyArr,
-  entityLocks: emptyObj,
+  layers: emptyLayers,
+  entityLocks: emptyLocks,
   currentUserId: ref(0),
   percentToPixel,
-  selectedType: nullRef,
-  selectedId: nullRef,
+  selectedType: nullType,
+  selectedId: nullId,
   isSelectMode: falseRef,
-  zoneDragOverride: nullRef,
-  editingZoneId: nullRef,
-  editingVertices: emptyArr,
+  zoneDragOverride: nullDragOverride,
+  editingZoneId: nullId,
+  editingVertices: emptyVertices,
 });
 
 const { connectionConfigs } = useConnections({
   connections,
   pins: visiblePins,
-  layers: emptyArr,
+  layers: emptyLayers,
   percentToPixel,
-  selectedType: nullRef,
-  selectedId: nullRef,
+  selectedType: nullType,
+  selectedId: nullId,
   isSelectMode: falseRef,
-  dragOverrides: emptyObj,
+  dragOverrides: emptyDragOverrides,
 });
 
 // --- Helpers ---
-function clipCircle(radius) {
-  return (ctx) => {
+function clipCircle(radius: number) {
+  return (ctx: CanvasRenderingContext2D) => {
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
   };
 }
 
-function getZoneFill(zone) {
+function getZoneFill(zone: { id: number | string }): { fill: string; opacity: number } {
   const raw = allZones.value.find((z) => z.id === zone.id);
   if (!raw) return { fill: "transparent", opacity: 0 };
   const override = zoneShowOverride(raw);
@@ -229,7 +310,7 @@ function getZoneFill(zone) {
   return { fill: "transparent", opacity: 0 };
 }
 
-function getElementOpacity(id, visMap, fallback) {
+function getElementOpacity(id: number | string, visMap: Record<number | string, string>, fallback: number): number {
   return visMap[id] === "disable" ? 0.3 : fallback;
 }
 

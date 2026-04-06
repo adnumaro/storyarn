@@ -1,17 +1,17 @@
-<script setup>
+<script setup lang="ts">
 import { ImagePlus, RefreshCw, Trash2 } from "lucide-vue-next";
 import { useLive } from "@composables/useLive";
 
-const { backgroundUrl, canEdit } = defineProps({
-  backgroundUrl: { type: String, default: null },
-  canEdit: { type: Boolean, default: false },
-});
+const { backgroundUrl = null, canEdit = false } = defineProps<{
+  backgroundUrl?: string | null;
+  canEdit?: boolean;
+}>();
 
 const live = useLive();
 
 function triggerUpload() {
   const input = document.querySelector("#bg-upload-form input[type=file]");
-  if (input) input.click();
+  if (input) (input as HTMLElement).click();
 }
 
 function removeBackground() {

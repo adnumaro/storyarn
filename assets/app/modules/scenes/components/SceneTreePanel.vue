@@ -1,36 +1,46 @@
-<script setup>
+<script setup lang="ts">
 import { Layers, Map as MapIcon } from "lucide-vue-next";
 import { ref } from "vue";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
 import SceneLayerList from "./SceneLayerList.vue";
 import SceneTree from "./SceneTree.vue";
 
+interface SceneTreeNodeData {
+  id: number | string;
+  name: string;
+  children?: SceneTreeNodeData[];
+}
+
+interface LayerItem {
+  id: number | string;
+  name: string;
+  visible: boolean;
+  fogEnabled: boolean;
+}
+
 const {
-  scenesTree,
-  selectedSceneId,
-  canEdit,
+  scenesTree = [],
+  selectedSceneId = null,
+  canEdit = false,
   workspaceSlug,
   projectSlug,
-  layers,
-  activeLayerId,
-  editMode,
-  hasScene,
-  hasLayers,
-} = defineProps({
-  // SceneTree props
-  scenesTree: { type: Array, default: () => [] },
-  selectedSceneId: { type: [String, Number], default: null },
-  canEdit: { type: Boolean, default: false },
-  workspaceSlug: { type: String, required: true },
-  projectSlug: { type: String, required: true },
-  // Layer props
-  layers: { type: Array, default: () => [] },
-  activeLayerId: { type: [Number, String], default: null },
-  editMode: { type: Boolean, default: true },
-  hasScene: { type: Boolean, default: false },
-  // When false, only show SceneTree without tabs (used by index)
-  hasLayers: { type: Boolean, default: true },
-});
+  layers = [],
+  activeLayerId = null,
+  editMode = true,
+  hasScene = false,
+  hasLayers = true,
+} = defineProps<{
+  scenesTree: SceneTreeNodeData[];
+  selectedSceneId: string | number | null;
+  canEdit: boolean;
+  workspaceSlug: string;
+  projectSlug: string;
+  layers: LayerItem[];
+  activeLayerId: number | string | null;
+  editMode: boolean;
+  hasScene: boolean;
+  hasLayers: boolean;
+}>();
 
 const activeTab = ref("layers");
 </script>

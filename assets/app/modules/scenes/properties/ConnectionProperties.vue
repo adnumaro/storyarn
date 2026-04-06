@@ -1,12 +1,17 @@
-<script setup>
+<script setup lang="ts">
 import { Undo2 } from "lucide-vue-next";
 import { computed } from "vue";
 import { useLive } from "@composables/useLive";
 
-const { element, canEdit } = defineProps({
-  element: { type: Object, required: true },
-  canEdit: { type: Boolean, default: false },
-});
+interface ConnectionElement {
+  id: number | string;
+  waypoints?: unknown[];
+}
+
+const { element, canEdit = false } = defineProps<{
+  element: ConnectionElement;
+  canEdit?: boolean;
+}>();
 
 const live = useLive();
 

@@ -1,4 +1,4 @@
-import { onUnmounted, ref, watch, type Ref } from "vue";
+import { onUnmounted, ref, watch, type ComputedRef, type Ref } from "vue";
 import type { Node as KonvaNode } from "konva/lib/Node";
 
 const PATROL_BASE_SPEED = 8; // %/s
@@ -39,7 +39,7 @@ interface PatrolState {
 }
 
 interface UsePatrolsOpts {
-  explorationPins: Ref<PatrolPin[]>;
+  explorationPins: Ref<PatrolPin[]> | ComputedRef<PatrolPin[]>;
   percentToPixel: (pctX: number, pctY: number) => PixelPoint;
   getPinNode: (pinId: number | string) => KonvaNode | null;
 }

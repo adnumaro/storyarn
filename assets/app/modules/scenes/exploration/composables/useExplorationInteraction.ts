@@ -1,4 +1,4 @@
-import { computed, type Ref } from "vue";
+import { computed, type ComputedRef, type Ref } from "vue";
 
 interface ExplorationZone {
   id: number | string;
@@ -23,11 +23,13 @@ interface ZoneShowOverride {
   opacity: number;
 }
 
+type MaybeComputedRef<T> = Ref<T> | ComputedRef<T>;
+
 interface UseExplorationInteractionOpts {
   pushEvent: (event: string, payload: Record<string, unknown>) => void;
-  explorationZones: Ref<ExplorationZone[]>;
-  explorationPins: Ref<ExplorationPin[]>;
-  showZones: Ref<boolean>;
+  explorationZones: MaybeComputedRef<ExplorationZone[]>;
+  explorationPins: MaybeComputedRef<ExplorationPin[]>;
+  showZones: MaybeComputedRef<boolean>;
 }
 
 /**

@@ -1,21 +1,43 @@
-<script setup>
+<script setup lang="ts">
 import { Trash2 } from "lucide-vue-next";
 import ConditionBuilder from "@components/builders/ConditionBuilder.vue";
+import type { ConditionData } from "@components/builders/types";
 import { EntityCombobox, TextField } from "@components/form-fields";
+import type { Variable } from "@modules/shared/variables";
 import { useLive } from "@composables/useLive";
 
-const { item, idx, zoneId, canEdit, projectSheets, projectVariables } = defineProps({
-  item: { type: Object, required: true },
-  idx: { type: Number, required: true },
-  zoneId: { type: Number, required: true },
-  canEdit: { type: Boolean, default: false },
-  projectSheets: { type: Array, default: () => [] },
-  projectVariables: { type: Array, default: () => [] },
-});
+interface CollectionItem {
+  id: string;
+  sheet_id?: number | string | null;
+  label?: string;
+  condition?: ConditionData | null;
+}
+
+interface EntityOption {
+  id: number | string;
+  name: string;
+  shortcut?: string;
+}
+
+const {
+  item,
+  idx,
+  zoneId,
+  canEdit = false,
+  projectSheets = [],
+  projectVariables = [],
+} = defineProps<{
+  item: CollectionItem;
+  idx: number;
+  zoneId: number | string;
+  canEdit?: boolean;
+  projectSheets?: EntityOption[];
+  projectVariables?: Variable[];
+}>();
 
 const live = useLive();
 
-function updateField(field, value) {
+function updateField(field: string, value: string | number | null | undefined) {
   live.pushEvent("update_collection_item", {
     "zone-id": String(zoneId),
     "item-id": item.id,
@@ -24,7 +46,7 @@ function updateField(field, value) {
   });
 }
 
-function updateCondition(condition) {
+function updateCondition(condition: unknown) {
   live.pushEvent("update_collection_item_condition", {
     "zone-id": String(zoneId),
     "item-id": item.id,
@@ -32,7 +54,7 @@ function updateCondition(condition) {
   });
 }
 
-function updateInstruction(assignments) {
+function updateInstruction(assignments: unknown[]) {
   live.pushEvent("update_collection_item_instruction", {
     "zone-id": String(zoneId),
     "item-id": item.id,

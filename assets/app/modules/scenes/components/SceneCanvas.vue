@@ -1,7 +1,8 @@
-<script setup>
+<script setup lang="ts">
+import type { KonvaEventObject } from "konva/lib/Node";
 import { computed, ref, toRef } from "vue";
 import { useAnnotationEditing } from "../composables/useAnnotationEditing";
-import { useAnnotations } from "../composables/useAnnotations";
+import { useAnnotations, type AnnotationConfig } from "../composables/useAnnotations";
 import { useCanvasCreation } from "../composables/useCanvasCreation";
 import { useConnectionDrawing } from "../composables/useConnectionDrawing";
 import { useConnections } from "../composables/useConnections";
@@ -24,31 +25,110 @@ import WaypointEditorLayer from "./layers/WaypointEditorLayer.vue";
 import ZoneConnectionLayer from "./layers/ZoneConnectionLayer.vue";
 import SceneFloatingToolbar from "./SceneFloatingToolbar.vue";
 
-const {
-  sceneData,
-  pins,
-  zones,
-  connections,
-  annotations,
-  layers,
-  activeTool,
-  editMode,
-  canEdit,
-  collaboration,
-} = defineProps({
-  sceneData: { type: Object, default: null },
-  pins: { type: Array, default: () => [] },
-  zones: { type: Array, default: () => [] },
-  connections: { type: Array, default: () => [] },
-  annotations: { type: Array, default: () => [] },
-  layers: { type: Array, default: () => [] },
-  activeTool: { type: String, default: "select" },
-  editMode: { type: Boolean, default: true },
-  canEdit: { type: Boolean, default: false },
-  collaboration: { type: Object, default: () => ({ userId: 0, locks: {} }) },
-});
+interface SceneDataProps {
+  width: number;
+  height: number;
+  backgroundUrl: string | null;
+  gridEnabled: boolean;
+}
 
-const containerRef = ref(null);
+interface PinData {
+  id: number | string;
+  positionX: number;
+  positionY: number;
+  size: string | null;
+  color: string | null;
+  opacity: number | null;
+  pinType: string;
+  label: string | null;
+  locked: boolean;
+  layerId: number | string | null;
+  hidden: boolean;
+  iconAssetUrl: string | null;
+  sheetAvatarUrl: string | null;
+  sheetId: number | string | null;
+  position: number | null;
+}
+
+interface ZoneData {
+  id: number | string;
+  name: string;
+  vertices: { x: number; y: number }[] | null;
+  fillColor: string | null;
+  borderColor: string | null;
+  borderWidth: number | null;
+  borderStyle: string | null;
+  opacity: number | null;
+  position: number | null;
+  layerId: number | string | null;
+  locked: boolean;
+}
+
+interface ConnectionData {
+  id: number | string;
+  fromPinId: number | string;
+  toPinId: number | string;
+  waypoints: { x: number; y: number }[] | null;
+  color: string | null;
+  lineWidth: number | null;
+  lineStyle: string | null;
+  label: string | null;
+  showLabel: boolean;
+  bidirectional: boolean;
+}
+
+interface AnnotationData {
+  id: number | string;
+  positionX: number;
+  positionY: number;
+  text: string | null;
+  color: string | null;
+  fontSize: string;
+  position: number | null;
+  layerId: number | string | null;
+  locked: boolean;
+}
+
+interface LayerData {
+  id: number | string;
+  visible: boolean;
+  name: string;
+}
+
+interface EntityLock {
+  userId: number | string;
+}
+
+interface CollaborationData {
+  userId: number | string;
+  locks: Record<string, EntityLock>;
+}
+
+const {
+  sceneData = null,
+  pins = [],
+  zones = [],
+  connections = [],
+  annotations = [],
+  layers = [],
+  activeTool = "select",
+  editMode = true,
+  canEdit = false,
+  collaboration = { userId: 0, locks: {} },
+} = defineProps<{
+  sceneData: SceneDataProps | null;
+  pins: PinData[];
+  zones: ZoneData[];
+  connections: ConnectionData[];
+  annotations: AnnotationData[];
+  layers: LayerData[];
+  activeTool: string;
+  editMode: boolean;
+  canEdit: boolean;
+  collaboration: CollaborationData;
+}>();
+
+const containerRef = ref<HTMLDivElement | null>(null);
 const activeToolRef = toRef(() => activeTool);
 
 const {
@@ -118,7 +198,7 @@ const {
 });
 
 // Unified creation click: try pin/annotation first, then zone, then connection cancel
-function onCreationClick(e) {
+function onCreationClick(e: KonvaEventObject<MouseEvent>): boolean {
   if (handleCreationClick(e)) return true;
   if (handleZoneCreationClick(e)) return true;
   if (handleStageClickForConnection(e)) return true;
@@ -249,30 +329,30 @@ const { startEditing, isEditingAnnotation, getDisplayText } = useAnnotationEditi
   stageConfig,
 });
 
-function handleAnnotationDblClick(annConfig, e) {
+function handleAnnotationDblClick(annConfig: AnnotationConfig, e: KonvaEventObject<MouseEvent>): void {
   if (!canEdit || !editMode) return;
   if (e) e.cancelBubble = true;
   startEditing(annConfig);
 }
 
-function handleConnectionDblClick(connectionId, e) {
+function handleConnectionDblClick(connectionId: number | string, e: KonvaEventObject<MouseEvent>): void {
   if (!canEdit || !editMode) return;
   if (e) e.cancelBubble = true;
   startWaypointEditing(connectionId);
 }
 
-function handleZoneDblClick(zoneId, e) {
+function handleZoneDblClick(zoneId: number | string, e: KonvaEventObject<MouseEvent>): void {
   if (!canEdit || !editMode) return;
   if (e) e.cancelBubble = true;
   startVertexEditing(zoneId);
 }
 
-function handlePinClick(pinId, e) {
+function handlePinClick(pinId: number | string, e: KonvaEventObject<MouseEvent>): void {
   if (handlePinClickForConnection(pinId, e)) return;
   handleElementClick("pin", pinId, e);
 }
 
-function handleStageMouseMove(e) {
+function handleStageMouseMove(e: KonvaEventObject<MouseEvent>): void {
   if (isDragging.value) return;
   onStageMouseMove(e);
   onConnectionMouseMove();
@@ -328,7 +408,7 @@ const selectedElementPosition = computed(() => {
   return null;
 });
 
-const ELEMENT_LISTS = {
+const ELEMENT_LISTS: Record<string, () => { id: number | string }[]> = {
   annotation: () => annotations,
   connection: () => connections,
   pin: () => pins,
@@ -341,8 +421,8 @@ const selectedElement = computed(() => {
   return getter().find((e) => e.id === selectedId.value) || null;
 });
 
-function clipCircle(radius) {
-  return (ctx) => {
+function clipCircle(radius: number): (ctx: CanvasRenderingContext2D) => void {
+  return (ctx: CanvasRenderingContext2D) => {
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
   };
 }

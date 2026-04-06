@@ -1,4 +1,4 @@
-import { computed, type Ref } from "vue";
+import { computed, type ComputedRef, type Ref } from "vue";
 import {
   DEFAULT_PIN_COLOR,
   PIN_SIZES,
@@ -55,18 +55,20 @@ export interface PinConfig {
   draggable: boolean;
 }
 
+type MaybeComputedRef<T> = Ref<T> | ComputedRef<T>;
+
 interface UsePinsOpts {
-  pins: Ref<PinData[]>;
-  layers: Ref<LayerData[]>;
-  entityLocks: Ref<Record<string, EntityLock>>;
-  currentUserId: Ref<number | string>;
+  pins: MaybeComputedRef<PinData[]>;
+  layers: MaybeComputedRef<LayerData[]>;
+  entityLocks: MaybeComputedRef<Record<string, EntityLock>>;
+  currentUserId: MaybeComputedRef<number | string>;
   percentToPixel: (pctX: number, pctY: number) => PixelPoint;
-  activeTool?: Ref<string>;
-  selectedType?: Ref<string | null>;
-  selectedId?: Ref<number | string | null>;
-  isSelectMode?: Ref<boolean>;
-  editMode?: Ref<boolean>;
-  canEdit?: Ref<boolean>;
+  activeTool?: MaybeComputedRef<string>;
+  selectedType?: MaybeComputedRef<string | null>;
+  selectedId?: MaybeComputedRef<number | string | null>;
+  isSelectMode?: MaybeComputedRef<boolean>;
+  editMode?: MaybeComputedRef<boolean>;
+  canEdit?: MaybeComputedRef<boolean>;
 }
 
 /**

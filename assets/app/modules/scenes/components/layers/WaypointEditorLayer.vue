@@ -1,14 +1,41 @@
-<script setup>
-const { waypointEditorConfigs } = defineProps({
-  waypointEditorConfigs: { type: Object, default: null },
-});
+<script setup lang="ts">
+import type { KonvaEventObject } from "konva/lib/Node";
 
-const emit = defineEmits([
-  "insert-waypoint",
-  "waypoint-dragmove",
-  "waypoint-dragend",
-  "waypoint-click",
-]);
+interface WaypointAnchorConfig {
+  x: number;
+  y: number;
+  radius: number;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+  index: number;
+}
+
+interface MidpointAnchorConfig {
+  x: number;
+  y: number;
+  radius: number;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+  segmentIndex: number;
+}
+
+interface WaypointEditorConfigs {
+  waypointAnchors: WaypointAnchorConfig[];
+  midpointAnchors: MidpointAnchorConfig[];
+}
+
+const { waypointEditorConfigs = null } = defineProps<{
+  waypointEditorConfigs: WaypointEditorConfigs | null;
+}>();
+
+const emit = defineEmits<{
+  "insert-waypoint": [segmentIndex: number, e: KonvaEventObject<MouseEvent>];
+  "waypoint-dragmove": [index: number, e: KonvaEventObject<DragEvent>];
+  "waypoint-dragend": [];
+  "waypoint-click": [index: number, e: KonvaEventObject<MouseEvent>];
+}>();
 </script>
 
 <template>

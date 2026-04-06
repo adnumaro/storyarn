@@ -1,8 +1,11 @@
-<script setup>
-const { connectionPreviewLine, previewStroke } = defineProps({
-  connectionPreviewLine: { type: Array, default: null },
-  previewStroke: { type: String, required: true },
-});
+<script setup lang="ts">
+const {
+  connectionPreviewLine = null,
+  previewStroke,
+} = defineProps<{
+  connectionPreviewLine: number[] | null;
+  previewStroke: string;
+}>();
 </script>
 
 <template>

@@ -1,13 +1,29 @@
-<script setup>
+<script setup lang="ts">
+import type { Component } from "vue";
 import { Cable, MapPin, Pentagon, Search, StickyNote, X } from "lucide-vue-next";
 import { ref, watch } from "vue";
 import { useLive } from "@composables/useLive";
 
-const { searchQuery, searchFilter, searchResults } = defineProps({
-  searchQuery: { type: String, default: "" },
-  searchFilter: { type: String, default: "all" },
-  searchResults: { type: Array, default: () => [] },
-});
+interface SearchResult {
+  id: number | string;
+  type: string;
+  label: string;
+}
+
+interface FilterOption {
+  label: string;
+  value: string;
+}
+
+const {
+  searchQuery = "",
+  searchFilter = "all",
+  searchResults = [],
+} = defineProps<{
+  searchQuery: string;
+  searchFilter: string;
+  searchResults: SearchResult[];
+}>();
 
 const live = useLive();
 const localQuery = ref(searchQuery);
@@ -19,7 +35,7 @@ watch(
   },
 );
 
-const filters = [
+const filters: FilterOption[] = [
   { label: "All", value: "all" },
   { label: "Pins", value: "pin" },
   { label: "Zones", value: "zone" },
@@ -27,39 +43,39 @@ const filters = [
   { label: "Lines", value: "connection" },
 ];
 
-const resultIcons = {
+const resultIcons: Record<string, Component> = {
   pin: MapPin,
   zone: Pentagon,
   connection: Cable,
   annotation: StickyNote,
 };
 
-let debounceTimer = null;
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-function onInput() {
+function onInput(): void {
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     live.pushEvent("search_elements", { query: localQuery.value });
   }, 300);
 }
 
-function clearSearch() {
+function clearSearch(): void {
   localQuery.value = "";
   live.pushEvent("clear_search", {});
 }
 
-function setFilter(value) {
+function setFilter(value: string): void {
   live.pushEvent("set_search_filter", { filter: value });
 }
 
-function focusResult(result) {
+function focusResult(result: SearchResult): void {
   live.pushEvent("focus_search_result", {
     type: result.type,
     id: result.id,
   });
 }
 
-function getIcon(type) {
+function getIcon(type: string): Component {
   return resultIcons[type] || Search;
 }
 </script>

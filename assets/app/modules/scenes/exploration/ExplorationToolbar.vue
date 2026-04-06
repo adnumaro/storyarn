@@ -1,14 +1,14 @@
-<script setup>
+<script setup lang="ts">
 import { ArrowLeft, Save, Scan } from "lucide-vue-next";
 import { Button } from "@components/ui/button";
 import { useLive } from "@composables/useLive";
 
-const { sceneName, activeFlowName, flowMode, showZones } = defineProps({
-  sceneName: { type: String, default: "" },
-  activeFlowName: { type: String, default: null },
-  flowMode: { type: Boolean, default: false },
-  showZones: { type: Boolean, default: false },
-});
+const { sceneName = "", activeFlowName = null, flowMode = false, showZones = false } = defineProps<{
+  sceneName?: string;
+  activeFlowName?: string | null;
+  flowMode?: boolean;
+  showZones?: boolean;
+}>();
 
 const live = useLive();
 
