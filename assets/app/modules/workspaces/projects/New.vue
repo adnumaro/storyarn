@@ -49,10 +49,7 @@ const showDescriptionError = computed(() => {
 });
 
 function updateField(field: FormField<string>, val: string | number) {
-  (field as unknown as { value: string }).value = String(val);
-  if (field.inputAttrs?.value?.onInput) {
-    field.inputAttrs.value.onInput({ target: { value: String(val) } } as unknown as Event);
-  }
+  field.value.value = String(val);
 }
 </script>
 
@@ -65,7 +62,7 @@ function updateField(field: FormField<string>, val: string | number) {
       <Input
         id="project-name"
         name="project[name]"
-        :model-value="(name.value as unknown as string)"
+        :model-value="(name.value.value as string)"
         @update:model-value="(v) => updateField(name, v)"
         :placeholder="$t('workspace.new_project.fields.name.placeholder')"
         required
@@ -84,7 +81,7 @@ function updateField(field: FormField<string>, val: string | number) {
       <Textarea
         id="project-description"
         name="project[description]"
-        :model-value="(description.value as unknown as string)"
+        :model-value="(description.value.value as string)"
         @update:model-value="(v) => updateField(description, v)"
         :placeholder="$t('workspace.new_project.fields.description.placeholder')"
         :rows="4"

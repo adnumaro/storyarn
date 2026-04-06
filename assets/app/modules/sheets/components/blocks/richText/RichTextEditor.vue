@@ -100,7 +100,7 @@ function setHorizontalRule(): void {
   editor.value?.chain().focus().setHorizontalRule().run();
 }
 
-function isActive(name: string, attrs?: Record<string, unknown>): boolean {
+function isActive(name: string, attrs?: { level?: number }): boolean {
   return editor.value?.isActive(name, attrs) ?? false;
 }
 </script>

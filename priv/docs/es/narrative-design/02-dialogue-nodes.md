@@ -1,83 +1,107 @@
 %{
-title: "Nodos de Diálogo",
-category_label: "Diseño Narrativo",
+title: "Nodos de Dialogo",
+category_label: "Diseno Narrativo",
 order: 2,
-description: "Discurso de los personajes, respuestas del jugador y configuración de diálogos."
+description: "Dialogo de personajes, respuestas del jugador y configuracion de dialogos."
 }
 
 ---
 
-Los nodos de diálogo son el tipo de nodo más común. Representan **lo que dice un personaje** y, opcionalmente, **lo que el jugador puede responder**. Cada nodo de diálogo puede ser tan simple como una sola línea de texto o tan rico como un compás narrativo completamente configurado con personaje, acotaciones y múltiples ramas de respuesta.
+Los nodos de Dialogo (Dialogue) son el tipo de nodo mas comun. Representan **lo que dice un personaje** y opcionalmente **lo que el jugador puede responder**. Cada nodo de dialogo puede ser tan simple como una unica linea de texto o tan completo como un beat de guion completamente configurado con hablante, acotaciones, audio y respuestas ramificadas.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Un nodo de diálogo seleccionado en el editor de flujos con el panel lateral abierto mostrando todos los campos
+  Un nodo de dialogo seleccionado en el editor de flujos con el panel lateral abierto mostrando todos los campos
 </div>
 
 ---
 
-## Escribiendo diálogos
+## Escribir dialogos
 
-Selecciona un nodo de diálogo para abrir el panel lateral. Encontrarás los siguientes campos:
+Selecciona un nodo de dialogo para abrir el panel lateral. Encontraras los siguientes campos:
 
-- **Orador (Speaker)** -- enlace a una hoja de personaje de tu proyecto. El nombre y el avatar del personaje aparecen en el nodo en el lienzo, y el contexto del orador se usa para la extracción de traducciones y exportaciones de guiones (screenplay).
-- **Texto** -- la línea de diálogo en sí. Este es un campo de texto enriquecido con formato (negrita, cursiva, subrayado, tachado, enlaces). Admite variables de mención de personajes para texto dinámico.
-- **Acotaciones (Stage Directions)** -- notas de actuación opcionales que acompañan la línea (p. ej., "suspira profundamente", "se gira hacia la ventana"). Aparecen en las exportaciones de guion.
-- **Texto en el Menú** -- una versión reducida o alternativa de la línea para los menús de elección, útil cuando el texto completo del diálogo es demasiado largo para mostrarse como una opción para elegir por el jugador.
-
----
-
-## Editor de guiones (Screenplay editor)
-
-Haz doble clic en un nodo de diálogo (o haz clic en el botón de ajustes en la barra de herramientas) para abrir el {accent}**editor de guiones**{/accent} -- un modo de escritura a pantalla completa que muestra todos los campos de diálogo en un diseño simplificado enfocado a escrbir fluido. Es la forma más rápida de volcar y revisar los contenidos del diálogo sin desviar la mirada en revisar interconexiones y lienzos.
+- **Hablante** -- vinculo a una hoja de personaje de tu proyecto. El nombre y avatar del personaje aparecen en el nodo del lienzo, y el contexto del hablante se usa para la extraccion de localizacion y la exportacion de guion.
+- **Texto** -- la linea de dialogo en si. Es un campo de texto enriquecido con formato (negrita, cursiva, subrayado, tachado, enlaces). Soporta variables de mencion de personaje para texto dinamico.
+- **Acotaciones** -- notas opcionales de actuacion o puesta en escena que acompanan la linea (p. ej., "suspira profundamente", "se gira hacia la ventana"). Aparecen en las exportaciones de guion.
+- **Texto de menu** -- una version mas corta de la linea para menus de eleccion, usada cuando el texto completo del dialogo es demasiado largo para mostrarse como opcion del jugador.
 
 ---
 
-## Audio y campos técnicos
+## Editor de guion
 
-- **Audio** -- adjunta un archivo de audio para un doblaje de voz (voiceover). Cuando un archivo de audio está enlazado, aparece un icono de audio en el nodo en el lienzo indicando este hecho.
-- **ID Técnico** -- un identificador único para integrarlo dentro del motor de juego de tu preferencia. Pulsa en generar (varita mágica) para que tome parte automática de identificativos descriptivos enlazables y de rastreo único (e.j., `taberna_mision_cantinero_3`). Puedes teclear o establecer propios si lo deseas.
-- **ID de Localización** -- generado de manera autómata y vital. La maquinaria y su sistema rastreará los traslados léxicos vinculándolo por esto. No puede, de normal, ni será necesario modificarse. 
+Haz doble clic en un nodo de dialogo (o haz clic en el boton de configuracion en la barra de herramientas) para abrir el {accent}**editor de guion**{/accent} -- un modo de escritura a pantalla completa que muestra todos los campos de dialogo en un diseno enfocado. Es la forma mas rapida de escribir y editar contenido de dialogo sin la distraccion del lienzo.
 
 ---
 
-## Reemplazo de retrato (Image override)
+## Audio y campos tecnicos
 
-Si se configuran galerías pre-adjuntas en las fojas (hojas base de oradores) se liberará una facultad llamada **revisor fotográfico** en su lista para este bloque.  Esto fuerza una estampa temporal como cara retratada frente al usual para exhibir en tu reproductor la variedad emocional deseada sin re-escribir su retrato primario generalizado del personaje.
+- **Audio** -- adjunta un recurso de audio para doblaje. Cuando se vincula un archivo de audio, un icono indicador de audio aparece en el nodo del lienzo.
+- **ID tecnico** -- un identificador unico para la integracion con el motor. Haz clic en el boton de generar en la barra de herramientas para auto-generar uno basado en el shortcut del flujo, el nombre del hablante y la posicion del nodo (p. ej., `tavern_quest_bartender_3`). Tambien puedes escribir un ID personalizado.
+- **ID de localizacion** -- se genera automaticamente al crear el nodo. Lo usa el sistema de localizacion para rastrear y extraer texto traducible.
+
+---
+
+## Imagen personalizada
+
+Si la hoja de personaje del hablante tiene una galeria con imagenes, aparece un selector de imagenes en la barra de herramientas. Puedes seleccionar una imagen para reemplazar el retrato predeterminado del hablante para esta linea de dialogo especifica -- util para mostrar diferentes expresiones o poses.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Selección previsualizable sobre caras cambiables al nodo individualizado según el listado del actor originario en hoja global vinculada.
+  El selector de imagen personalizada en la barra de herramientas del dialogo mostrando imagenes de la galeria del personaje
 </div>
 
 ---
 
-## Opciones y Respuestas
+## Respuestas del jugador
 
-Dicha ventana te otorga derivaciones: **opciones / opciones elegibles de jugador**. Aquellas portarían sus enlaces separando trazados dependientes al resultado del cliqueo. Muestra en lista lo establecido y ordena la visión real para las interacciones que se observan al ejecutarlas de orden estricto de arriba abajo. Los botones agregan o suprimen los caminos, siendo reajustados para el motor los enlaces dibujados o borrados en tu canvas al hacer esto. 
+Un nodo de dialogo puede tener multiples **respuestas** -- las elecciones que hace el jugador. Cada respuesta tiene su propio texto y su propio pin de salida en el nodo, para que puedas conectar diferentes respuestas a diferentes caminos en el flujo.
 
----
+Haz clic en **Agregar respuesta** para crear una nueva respuesta. El orden en que las defines es el orden en que aparecen en el Story Player.
 
-## Condicionantes de la Elecciones
-
-La misma facultad para prohibir nodos entra aquí para ocultarlas **como derivaciones condicionales directas** sin reasignarlas artificialmente a "nodos constructores condicionales" en línea, que saturarían de flechas la vista. 
-El modo interno es análogo y emplea idénticos menús. Si reprueba y fallan los valores exigidos de los datos del proyecto, no son proyectados (desaparecen) o si prefieres prever las tramas inalcanzables, habilitar la pre-vista y *Análisis Mode (Analizar)* te permite contemplarlas expuestas como tachadas en gris sin acceso. Un glifo y un icono avisa desde tu vista principal que aquella opción dispone de condicional o llave subyacente para no perderse rastro a simple vista.
+Cuando un nodo de dialogo no tiene respuestas, funciona como una simple linea de dialogo con un unico pin de salida. La primera vez que agregas una respuesta, la conexion de salida existente se migra automaticamente al nuevo pin de respuesta.
 
 ---
 
-## Instrucciones In-line de respuesta (Atajos)
+## Condiciones de respuesta
 
-A colación de sus condicionales, idénticamente suceden afectaciones al elegirse dicho sendero: Las **instrucciones de respuesta** asimilan cálculos (Suma, Multiplica, Restablece verdaderos). 
+Cada respuesta puede tener una **condicion** que debe ser verdadera para que aparezca como opcion valida. Las condiciones se definen usando el mismo Constructor de Condiciones visual que usan los nodos de condicion.
 
-Agilizar los datos base sin nodos satelitales, logran sumar limpieza y ligereza si los resultados lógicos y simples sólo suceden para ser impactados bajo aquél hilo sin repetición compleja en múltiples vías unificadas. Mismos listados informantes en el canvas demuestran qué lazo guarda estos procesos silenciosos empotrados e intrínsecos de dichas respuestas opcionales de interatuación de diálogos. 
+> _Ejemplo: "[Fuerza > 15] Derribar la puerta"_
+> Si la fuerza del jugador es 15 o menos, esta opcion no aparece (en modo Reproductor) o aparece en gris con texto tachado (en {accent}Modo de analisis{/accent}).
+
+Un indicador de condicion aparece en la respuesta en el lienzo, para que puedas ver de un vistazo que respuestas tienen condiciones adjuntas.
 
 ---
 
-## Vínculos referenciales Personificados
+## Instrucciones de respuesta
 
-Al adherir en todo acto discursivo a tus pre-trazados fichados (Oradores):
-- **Facilitas su visibilidad visual:** Al imprimir rótulo fotográfico avatar originario.  
-- Acompaña descripciones referenciadas sobre el **intérprete originario en base datos** para un posterior entendimiento preciso a los Equipos de Traducciones de localización léxico-cultural sin error a equivoco de quién emitió en tu guión un exabrupto en cierto caso en un listado Excel plano.
-- Redactores directores y cineastas recibirán su guión con los formatos referenciales al exportarlos. 
+Cada respuesta tambien puede llevar **instrucciones** que modifican variables cuando se elige esa respuesta. Usan el mismo Constructor de Instrucciones que los nodos de instruccion, soportando todas las operaciones: Establecer, Sumar, Restar, Alternar, Establecer verdadero/falso y Limpiar.
 
-Podrás incluir entidades inanimadas (Tótems discursivos), NPCs o Personajes Estelares sin restrincción mientras hayan sido formados y pre-listados en su carpeta "Sheets" originaria.
+> _Ejemplo: El jugador elige "Aceptar la mision" -> establece `quest.tavern.accepted` a verdadero_
+
+Esto mantiene la logica simple cerca del dialogo sin necesitar un nodo de instruccion separado despues de cada rama de respuesta. Para casos complejos con multiples cambios de variables o logica compartida, usa un nodo de instruccion dedicado en su lugar.
+
+<div class="docs-image-placeholder">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+  Un nodo de dialogo con multiples respuestas, una mostrando un indicador de condicion y otra con una instruccion
+</div>
+
+---
+
+## Asignacion de hablante
+
+Vincular un nodo de dialogo a una hoja de personaje proporciona varios beneficios:
+
+- El **nombre y avatar** del personaje aparecen en el nodo del lienzo, facilitando identificar quien habla de un vistazo
+- La **extraccion de localizacion** incluye el contexto del hablante, para que los traductores sepan que personaje esta hablando
+- La **exportacion de guion** atribuye correctamente las lineas a los personajes
+- La **generacion de ID tecnico** incluye el nombre del hablante para identificadores significativos
+- Puedes **rastrear que personajes aparecen** en que flujos a lo largo de tu proyecto
+
+Para asignar un hablante, selecciona una hoja desde el desplegable de hablante en el panel lateral o la barra de herramientas. Cualquier hoja de tu proyecto puede usarse como hablante -- hojas de personaje, hojas de NPC o cualquier entidad que quieras asociar con dialogos.
+
+---
+
+## Reproduccion rapida
+
+Haz clic en el boton **Play** en la barra de herramientas del nodo de dialogo para iniciar el {accent}Story Player{/accent} desde ese nodo especifico. Esto te permite previsualizar rapidamente como se desarrolla un intercambio de dialogo sin tener que navegar desde el nodo de Entrada.

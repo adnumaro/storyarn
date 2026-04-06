@@ -10,16 +10,18 @@ import type { Node } from "@tiptap/core";
 import type { MentionOptions } from "@tiptap/extension-mention";
 import VariableList from "./VariableList.vue";
 
+import type { LiveInterface } from "@composables/useLive";
+
 interface VariableItem {
   id?: string | number;
   ref: string;
   name?: string;
   label?: string;
   block_type?: string;
-  [key: string]: unknown;
+  [key: string]: string | number | undefined;
 }
 
-type PushEventFn = (event: string, payload: Record<string, unknown>) => void;
+type PushEventFn = LiveInterface["pushEvent"];
 type PushEventToFn = (target: string, event: string, payload: Record<string, unknown>) => void;
 
 interface VariableRefExtensionOptions {
@@ -85,7 +87,7 @@ export function createVariableRefExtension(
         allowSpaces: false,
 
         command: ({ editor, range, props }) => {
-          const item = props as unknown as VariableItem;
+          const item = props as VariableItem;
           editor
             .chain()
             .focus()
@@ -120,7 +122,7 @@ export function createVariableRefExtension(
             variableResolve = wrappedResolve;
 
             variableDebounce = setTimeout(() => {
-              const push: PushEventFn =
+              const push =
                 phxTarget && pushEventTo
                   ? (ev: string, payload: Record<string, unknown>) => pushEventTo(phxTarget, ev, payload)
                   : pushEvent;

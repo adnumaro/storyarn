@@ -46,7 +46,7 @@ const { query, loading, search, reset } = useServerSearch({
 });
 
 function getListEl(): HTMLElement | null {
-  return (listRef.value?.$el as HTMLElement) ?? (listRef.value as unknown as HTMLElement);
+  return (listRef.value?.$el ?? listRef.value) as HTMLElement | null;
 }
 
 function onScroll(): void {

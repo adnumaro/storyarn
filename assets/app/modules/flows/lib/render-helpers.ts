@@ -3,10 +3,14 @@
  * Port of assets/js/flow_canvas/nodes/render_helpers.js to Vue-compatible functions.
  */
 
-export interface SheetInfo {
-  color?: string;
-  [key: string]: unknown;
-}
+import type { NodeData } from "./node-configs";
+import type { SheetMapEntry } from "../types";
+
+/**
+ * Re-export as SheetInfo for backward compatibility.
+ * Canonical definition is SheetMapEntry in types.ts.
+ */
+export type SheetInfo = SheetMapEntry;
 
 export interface HubInfo {
   color_hex?: string | null;
@@ -42,9 +46,9 @@ export function headerStyle(color: string): string {
  */
 export function resolveNodeColor(
   nodeType: string,
-  nodeData: Record<string, unknown> | null,
+  nodeData: NodeData | null,
   configColor: string,
-  sheetsMap: Record<string, SheetInfo> | null,
+  sheetsMap: Record<string, SheetMapEntry> | null,
   hubsMap: Record<string, HubInfo> | null,
 ): string {
   const d = nodeData || {};

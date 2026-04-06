@@ -231,14 +231,14 @@ export class NodeDataAction implements Action {
   async undo(): Promise<void> {
     this.hookProxy.pushEvent("restore_node_data", {
       id: this.nodeId,
-      data: this.prevData as unknown as Record<string, unknown>,
+      data: this.prevData,
     });
   }
 
   async redo(): Promise<void> {
     this.hookProxy.pushEvent("restore_node_data", {
       id: this.nodeId,
-      data: this.newData as unknown as Record<string, unknown>,
+      data: this.newData,
     });
   }
 }
@@ -304,7 +304,7 @@ class AutoLayoutAction implements Action {
     }
 
     this.hookProxy.pushEvent("batch_update_positions", {
-      positions: buildBatchPositions(positions) as unknown as Record<string, unknown>,
+      positions: buildBatchPositions(positions),
     });
   }
 }
@@ -315,6 +315,7 @@ class AutoLayoutAction implements Action {
 export function historyPreset(hookProxy: HookProxy): { connect(history: HistoryPlugin<FlowSchemes>): void } {
   return {
     connect(history: HistoryPlugin<FlowSchemes>) {
+      // Rete.js parentScope() returns a generic Scope type; cast needed for typed plugin access
       const area = history.parentScope() as unknown as AreaPlugin<FlowSchemes, FlowAreaExtra>;
       const editor = (area as unknown as { parentScope(): NodeEditor<FlowSchemes> }).parentScope();
       const timing = history.timing * 2;

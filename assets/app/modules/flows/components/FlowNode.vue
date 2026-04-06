@@ -4,8 +4,7 @@ import { computed, inject } from "vue";
 import type { FlowNodeType, NodeConfig, NodeData } from "../lib/node-configs";
 import { NODE_CONFIGS } from "../lib/node-configs";
 import { resolveNodeColor } from "../lib/render-helpers";
-import type { SheetInfo } from "../lib/render-helpers";
-import type { HubMapEntry } from "../types";
+import type { SheetMapEntry, HubMapEntry } from "../types";
 import AnnotationNode from "../nodes/AnnotationNode.vue";
 import ConditionNode from "../nodes/ConditionNode.vue";
 import DialogueNode from "../nodes/DialogueNode.vue";
@@ -27,7 +26,7 @@ interface FlowNodeData {
 }
 
 interface FlowContextValue {
-  sheetsMap: Record<string, SheetInfo>;
+  sheetsMap: Record<string, SheetMapEntry>;
   hubsMap: Record<string, HubMapEntry>;
   labels: Record<string, string>;
   lod: string;

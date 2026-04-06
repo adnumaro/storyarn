@@ -7,7 +7,7 @@ import { Badge } from "@components/ui/badge/index.ts";
 import { Checkbox } from "@components/ui/checkbox/index.ts";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { useLive } from "@composables/useLive";
-import type { SelectOption, TableColumn, TableRow } from "../../../types";
+import type { CellValue, FormulaCellValue, SelectOption, TableColumn, TableRow } from "../../../types";
 import TableColumnHeader from "./TableColumnHeader.vue";
 import TableDraggableRow from "./TableDraggableRow.vue";
 import TableRowActions from "./TableRowActions.vue";
@@ -149,18 +149,21 @@ function addRow(): void {
 // ══════════════════════════════════════════════════════════════
 // Helpers
 // ══════════════════════════════════════════════════════════════
-function getCellValue(row: TableRow, col: TableColumn): unknown {
+function getCellValue(row: TableRow, col: TableColumn): CellValue {
   return row.cells?.[col.slug] ?? "";
+}
+
+function isFormulaCell(cell: CellValue): cell is FormulaCellValue {
+  return typeof cell === "object" && cell !== null && !Array.isArray(cell);
 }
 
 function getFormulaDisplay(row: TableRow, col: TableColumn): string {
   const cell = row.cells?.[col.slug];
   if (cell == null) return "\u2014";
-  if (typeof cell === "object") {
+  if (isFormulaCell(cell)) {
     // __result is injected by compute_formulas on the server
-    if ("__result" in (cell as Record<string, unknown>)) {
-      const result = (cell as Record<string, unknown>).__result;
-      return result != null ? String(result) : "\u2014";
+    if (cell.__result !== undefined) {
+      return cell.__result != null ? String(cell.__result) : "\u2014";
     }
     // Has expression but no computed result yet
     return "\u2014";
@@ -170,27 +173,28 @@ function getFormulaDisplay(row: TableRow, col: TableColumn): string {
 
 function getFormulaExpression(row: TableRow, col: TableColumn): string {
   const cell = row.cells?.[col.slug];
-  if (typeof cell === "object" && cell && "expression" in (cell as Record<string, unknown>))
-    return String((cell as Record<string, unknown>).expression);
+  if (isFormulaCell(cell) && cell.expression) {
+    return cell.expression;
+  }
   return "";
 }
 
-function findOptionLabel(options: SelectOption[], key: unknown): string | null {
+function findOptionLabel(options: SelectOption[], key: CellValue): string | null {
   if (!key) return null;
   const opt = options.find((o) => o.key === key);
   return opt?.value || null;
 }
 
-function resolveMultiLabels(value: unknown, options: SelectOption[]): string[] {
+function resolveMultiLabels(value: CellValue, options: SelectOption[]): string[] {
   if (!Array.isArray(value) || value.length === 0) return [];
   const map = Object.fromEntries(options.map((o) => [o.key, o.value]));
   return (value as string[]).map((k) => map[k] || k);
 }
 
-function formatDate(val: unknown): string {
+function formatDate(val: CellValue): string {
   if (!val) return "\u2014";
   try {
-    const d = new Date(val + "T00:00:00");
+    const d = new Date(String(val) + "T00:00:00");
     return d.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
@@ -201,18 +205,23 @@ function formatDate(val: unknown): string {
   }
 }
 
-function displayValue(val: unknown, fallback: string): string {
+function displayValue(val: CellValue, fallback: string): string {
   if (val == null || val === "") return fallback;
   return String(val);
 }
 
-function inputAttrs(col: TableColumn): Record<string, unknown> {
+interface NumberInputAttrs {
+  min?: number | null;
+  max?: number | null;
+  step: number | string;
+}
+
+function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> {
   if (col.type !== "number") return {};
   const c = col.config || {};
-  const attrs: Record<string, unknown> = {};
+  const attrs: NumberInputAttrs = { step: c.step || "any" };
   if (c.min != null) attrs.min = c.min;
   if (c.max != null) attrs.max = c.max;
-  attrs.step = c.step || "any";
   return attrs;
 }
 </script>

@@ -125,7 +125,7 @@ function formatFileSize(bytes: number) {
   return `${bytes} B`;
 }
 
-function formatImportCount(items: unknown[] | Record<string, unknown> | string | number) {
+function formatImportCount(items: unknown[] | Record<string, string | number> | string | number) {
   if (Array.isArray(items)) return items.length;
   if (typeof items === "object") return JSON.stringify(items);
   return String(items);

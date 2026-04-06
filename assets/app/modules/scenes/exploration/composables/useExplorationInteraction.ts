@@ -1,4 +1,9 @@
 import { computed, type ComputedRef, type Ref } from "vue";
+import type { LiveInterface } from "@composables/useLive";
+
+interface ExplorationActionData {
+  [key: string]: string | number | boolean | null;
+}
 
 interface ExplorationZone {
   id: number | string;
@@ -7,7 +12,7 @@ interface ExplorationZone {
   isWalkable: boolean;
   targetType: string | null;
   targetId: number | string | null;
-  actionData: Record<string, string | number | boolean | null>;
+  actionData: ExplorationActionData;
   fillColor: string | null;
   opacity: number | null;
 }
@@ -26,7 +31,7 @@ interface ZoneShowOverride {
 type MaybeComputedRef<T> = Ref<T> | ComputedRef<T>;
 
 interface UseExplorationInteractionOpts {
-  pushEvent: (event: string, payload: Record<string, unknown>) => void;
+  pushEvent: LiveInterface["pushEvent"];
   explorationZones: MaybeComputedRef<ExplorationZone[]>;
   explorationPins: MaybeComputedRef<ExplorationPin[]>;
   showZones: MaybeComputedRef<boolean>;

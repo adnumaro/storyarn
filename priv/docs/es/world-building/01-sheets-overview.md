@@ -1,124 +1,124 @@
 %{
-title: "Visión General de las Hojas",
-category_label: "Mundos y Bases de Datos",
+title: "Visión general de las Hojas",
+category_label: "Construcción de Mundos",
 order: 1,
-description: "Comprende cómo las Hojas estructuran todos los renglones y la base de datos viva de tu proyecto."
+description: "Comprende cómo las hojas organizan los datos de tu juego en una base de datos viva."
 }
 
 ---
 
-Las Hojas (Sheets) equivalen a {accent}contenedores de datos estrictos y estructurados{/accent} organizando literalmente cada bit o dato de todo tu mundo y su historia. Podrás guardar y modelar perfiles de personaje, inventarios de la tienda central de la aldea, información pura ambiental y descripciones folklóricas extensas del registro para cada facción jugable: no hay barrera, cualquier idea para la base material y narrativa tiene cabida y trazabilidad aquí dentro.
+Las Hojas (Sheets) son {accent}contenedores de datos estructurados{/accent} para los datos del mundo de tu proyecto. Perfiles de personajes, catálogos de objetos, detalles de ubicaciones, registros de facciones — cualquier cosa que necesites definir y rastrear a lo largo de tu narrativa.
 
-A su vez, una Hoja sirve como envoltorio matriz que atrapa dentro a un conjunto visual de celdas o **bloques** (los cuales son campos precisos de ingreso o escritura que definen esa estructura interior bajo un tipo nativo predecible: un número simple, un menú interactivo seleccionable, etc). Salvo que expresamente señales algunos bloques marcándolos como "estrictamente Constantes y literarios formales e inertes", de manera natural y preconfigurada Storyarn promoverá que cada uno de estos termine adoptando vida y alma como **Variables**: datos mágicos orgánicos que tus propios Flujos luego podrán asimilar, ojear y reescribir libremente.
+Cada hoja contiene un conjunto de **bloques (blocks)** (campos tipados como texto, número, selección, booleano) que definen su estructura. Los bloques que no estén marcados como constantes se convierten automáticamente en **variables** que los flujos pueden leer y modificar en tiempo de ejecución.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Hoja visual detallada referente a un perfil global de un personaje que expone el Nombre textual en un bloque, así como la barra numérica para la Salud pura (number), seleccionador de tipo Clase militar básica (select) cerrando todos sobre una cabecera de Imagen estática ornamental tipo banner en lo alto.
+  Una hoja de personaje mostrando bloques como Name (texto), Health (número), Class (selección) y una imagen de banner.
 </div>
 
 ---
 
-## Atajos de Búsqueda y Enlace de Vínculos de Variables
+## Atajos (Shortcuts)
 
-Todas estas Hojas van identificadas nativamente y de manera irrepetible gracias a lo que definimos formalmente como un {accent}Atajo técnico (Shortcut){/accent}: este es un localizador corto informático con formato puro e intuitivo basado en "sintaxis de puntos" o "dot-notation" mediante el cual el marco natural que engloba o que encierra Storyarn logrará encontrarlas desde tus líneas literarias condicionales en su lugar exacto a salvo durante las invocaciones del motor del juego. 
+Cada hoja tiene un {accent}atajo (shortcut){/accent} — un identificador con notación de puntos que los flujos, condiciones e instrucciones usan para referenciarla.
 
-Dicho Atajo es un derivado programable en el segundo momento exacto cuando creamos su texto del Nombre Inicial principal con la diferencia de transformarlo visualmente y pasándolo minúsculas, retirándoles mayúscula para hacerlo estándar puro formal o permitiendo cambiar guiones medios por puntos para delimitar áreas por dominio, de forma a veces parecida a: `pj.jaime` o su equivalente inglés de Main Character: `mc.jaime`. Utilizar pre-rutas de agrupación personal puede ayudarte mucho en un panel de variables final enorme durante futuras fechas:
+Los atajos se generan automáticamente a partir del nombre de la hoja, pero pueden editarse manualmente. El formato es alfanumérico en minúsculas con puntos y guiones (p.ej., `mc.jaime`). Usa prefijos para organizar por dominio:
 
-- `pj.jaime` -- para tu personaje principal u orador líder
-- `objeto.pocion_de_cura` -- o para una manzana (inventario)
-- `lugar.taberna_cabra` -- locación o región física global local del entorno
-- `faccion.gremio_soldados` -- base moral general
+- `mc.jaime` -- personaje principal
+- `item.healing-potion` -- un objeto
+- `loc.tavern` -- una ubicación
+- `faction.guild` -- una facción
 
-Por favor fíjese: Los Atajos no aceptan duplicados a la fuerza: debes de considerarlos universales. Adicionalmente, ten la inmensa paz visual que renombrar caprichosamente de repente tu título visual cabecera principal grande a otro más moderno sin importar si ya pasaste semanas atando cabos, porque en tal caso, este no sobrescribirá sin avisar provocando caos el Atajo. Todo se preserva en tu lógica relacional. 
-
----
-
-## Referencias Matemáticas de las Variables Orgánicas
-
-Bajo el marco, cualquier bloque pasará y tomará la denominación a fondo por variable mediante esquema estructurado estirado del siguiente tipo base de programación e identificador:
-
-```
-{atajo_hoja_contenedor}.{nombre_variable}
-```
-
-El sufijo que porta su nombre visual estático identificador es traducido y derivado en bruto reemplazándose las separaciones nulas por las llamadas barra baja u *underscore formal*. Imagina contar tu Hoja titular en vivo con el Atajo visual local de `pj.jaime`, en cuyo núcleo decidiste pegar amablemente tu bloque de cifra numérica denominado con palabras directas de usuario bajo "Puntos de Vida". Tu resultado mágico quedará plasmado lógicamente por:
-
-```
-pj.jaime.puntos_de_vida
-```
-
-Y esta palabra sintáctica formal u fraseología general informática serán sencillamente las venas maestras inyectadas directamente de las que la red interna natural de un menú relacional de los nodos (las {accent}Condiciones{/accent}) mamarán para dictaminar las rutas narrativas (¿Es en este preciso compás cronometrado `pj.jaime.puntos_de_vida` su valor numérico real superior al umbral de cincuenta?).
+Los atajos deben ser únicos dentro de un proyecto. Si una hoja ya tiene variables referenciadas en flujos, renombrarla no cambiará el atajo para evitar romper referencias.
 
 ---
 
-## Organización General Plena en Carpetas Arbóreas
+## Referencias de variables
 
-En cuanto al manejo macro orgánico, la distribución lateral nativa y en vertical cuenta con control total hacia la clasificación bajo las características estéticas y flexibles funcionales parecidas a una típica {accent}Jerarquía estructural en Árbol{/accent}: Re-ubica, reorganízalo empujando arriba, y en especial asila e inserta y empuja toda una familia hoja base central para embutirla sin fin como hijas formales infinitas a las profundidades estructurales descendientes adidacionadas de una única madre y raíz troncal común superior para pulir estanterías limpias en general.
+Los bloques de una hoja se convierten en variables con el patrón:
 
 ```
-Actores Principales (Carpeta)/
-  pj.jaime
-  pj.elena
-  pj.kai
-Catalogo De Objetos (Carpeta)/
-  Catálogo de Armamento e Ítems Ofensivos/
-    objeto.espada_de_madera
-    objeto.espada_legendaria_fuego
-  Contenedores o Consumibles de Restauración/
-    objeto.pocion_magica_menor
+{atajo_de_hoja}.{nombre_de_variable}
 ```
 
-Que estas ramificaciones visuales y nidos agrupadores sirvan para emular un organizador local no extirpa la cualidad básica originaria particular de sus "Archivos Carpetas". Cada hoja base que es madre troncal también guardará y soportará al unísono bloques puros suyos internamente o de portar propiedades lógicas abstractas completas y perfectas listas para descenderlas o empaparlas y regar por {accent}Herencia generalizada a cascada de información lógica en su prole hija inferior{/accent} (Verifica o busca [Herencia de Propiedades y Valores](#herencia-de-propiedades)).
+El nombre de variable se genera automáticamente a partir de la etiqueta del bloque usando notación con guiones bajos. Por ejemplo, un bloque etiquetado "Health Points" en la hoja `mc.jaime` se convierte en:
+
+```
+mc.jaime.health_points
+```
+
+Estas referencias son las que los flujos usan en condiciones ("¿Es `mc.jaime.health_points` mayor que 50?") e instrucciones ("Establecer `mc.jaime.health_points` a 100").
+
+---
+
+## Organización con carpetas
+
+Las hojas admiten una {accent}estructura de árbol{/accent}. Arrastra y suelta para reordenar, anida hojas dentro de otras para organizarlas.
+
+```
+Main Characters/
+  mc.jaime
+  mc.elena
+  mc.kai
+Items/
+  Weapons/
+    item.iron-sword
+    item.fire-staff
+  Potions/
+    item.healing-potion
+```
+
+Cualquier hoja puede tener tanto hijos como sus propios bloques. Las hojas padre también pueden definir propiedades heredadas que se propagan a sus hijos (ver [Herencia de propiedades](#herencia-de-propiedades) más abajo).
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Detalle puramente a vista vertical tipo listado visual y lateral izquierdo para las Estanterías Naturales arbóreas de ramificaciones hijas agrupadoras.
+  El árbol de hojas en la barra lateral mostrando hojas anidadas con controles de arrastre y jerarquía tipo carpetas.
 </div>
 
 ---
 
-## Herencia generalizada interactiva entre componentes descendientes (Propiedades)
+## Herencia de propiedades
 
-Todo compartimento básico en las ventanas u hojas cuenta o acarrea una pequeña asignación visual lateral e interactiva desde la pequeña barra o de inspector la cual define al alcance por propagar desde lo denominado formal u estructural como su respectivo y valioso {accent}Alcance Perimetral interno absoluto y nativo (Scope){/accent}:
+Los bloques tienen un ajuste de {accent}alcance (scope){/accent} que controla si permanecen locales o se propagan a las hojas hijas:
 
-- **Local (Self)** — La opción común inicial y preestablecida natural; limitará de frente la existencia puramente cerrada a este compartimento bloque exclusivamente y encapsulado y anónimo frente a quienes pertenezcan debajo suya o compartan ruta hija dentro del árbol listado.
-- **Hereditario Hijos Adyacentes Recursivos (Children)** — Dictaminará o ejecutará clonado de propagación transversal de su forma abstracta, diseño y tipo al grupo incesantemente a todos y cada archivo vástago descendiente hoja. Esta particular red hará en general que florezca y salgan instanciados clónicos de sí mismos y sus hermanos abajo, replicando con exactitud base la denominación, reglas y aspecto, a condición individualizada única por regla general de dejar a todos libres y puros en general a que su número interno sea local (valor particular libre) ajeno. 
+- **Propio (Self)** (predeterminado) -- el bloque existe solo en esta hoja.
+- **Hijos (Children)** -- la definición del bloque se propaga a todas las hojas descendientes. Cada hija obtiene su propia instancia con valores locales pero el mismo tipo, etiqueta y configuración.
 
-Es precisamente en base estricta a esto de lo que surge la maravilla relacional a la construcción o creación modular generalizada macro en sí (Plantillas abstractas de Padre-Dios general puramente base sin fin creadas): Traza e invéntate visualizando si consideras un personaje central puramente formal para tu "Hoja Padre Base Tipo NPC General Orco": adjúntale vida, daño al luchar o variables de fuerza o clase bajo la tuerquita general de su alcance u engrane de (Hijos/Children), y tras este movimiento orgánico cada hoja simple u archito descendiente de Orco Grunt que insertas, heredará y arrastrará visual de por vida cada casillita a rellenar preconfigurada. 
+Esto te permite crear hojas padre tipo plantilla. Una hoja "Base de Personaje" con bloques de alcance hijos (salud, nivel, facción) les da automáticamente esos mismos campos a todas las hojas hijas, cada una con sus propios valores independientes.
 
-Un cambio u remodelado gráfico global general e imperativo de las características pilar al panel principal general central, redibujará en los rincones absolutas los reflejos. Ahora, de considerar o surgir alguna hoja general puramente particular bastarda u caso de un Jefe (por ejemplo) donde su ranura precisa y quiere libertad visual sobre un control total particular del origen general base, acciona desde opciones al pequeño eslabón e interruptor visual {accent}Desvincular Instancia Particular Base general Clon{/accent} (Detach) desconectándola formal de sincronización general matriz para poder cambiarle tipos de campos de letras en sí sin sufrir el yugo común o volver a su lugar en {accent}Re-Enlazar matriz origen natural base{/accent} a futuro.
+Las instancias hijas se mantienen sincronizadas con la definición del padre: si cambias la etiqueta, el tipo o las opciones en el bloque padre, todas las instancias no desvinculadas se actualizan. Puedes **desvincular (detach)** una instancia para hacerla completamente independiente, o **volver a vincularla (re-attach)** para sincronizarla de nuevo.
 
-Inclusive si lo apremias, las propias hojas pueden ocultar visualmente algún campo general u elemento inútil y puro desde la estructura heredada proveniente general oculta.
+Las hojas también pueden **ocultar** bloques heredados específicos, evitando que se propaguen más abajo a sus propios hijos.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Hoja y estantería original mostrando al campo Vida bajo su opción Children encendida en las tuercas laterales y mostrando adyacente su hija instanciada general conservando al apartado propio puramente pero manteniendo un número propio libre cincuenta interiormente único e individual.
+  Una hoja padre con el alcance "Hijos" en un bloque de Health, y una hoja hija mostrando el bloque de Health heredado con su propio valor local.
 </div>
 
 ---
 
-## Opciones Extensas Personalizadoras a Presentaciones de las Hojas 
+## Personalización de hojas
 
-Este particular formato general dispone a tu antojo visual u creativo sobre un paquete en sí adicional para presentar y clasificar el aspecto particular con atributos puramente y particulares para su identificación y metadatos:
+Cada hoja admite metadatos adicionales:
 
-- **Emblema u Coloración (Color)** — Selección de pigmento visual y representativo simple del listado general arbóreo que permite el seguimiento cromático.
-- **Foto Principal Simple o Avatar (Avatar)** — Insignia diminuta puramente icónica (o subida manual) visualmente general para su rastro lateral sobre el componente interactivo.
-- **Portadillas o Banda Cabecera Ancha (Banner)** — Panel generalizado puro y rectangular panorámico o fotografía y arte global extendida que otorga peso inmersivo a sus perfiles literales artísticos general.
-- **Libreta e Introductor o Ficha pura del Escritor Libre (Descripción)** — Para anotación, relato de intenciones puras narrativas al rol e información vitalicia para la colaboración de escritor de equipo cruzado (un campo sin impacto natural mecánico puro y sin exportación lógica).
+- **Color** -- un color hexadecimal para identificación visual en la barra lateral y las referencias.
+- **Avatar** -- una imagen subida que se muestra como el icono de la hoja.
+- **Banner** -- una imagen de cabecera que se muestra en la parte superior de la hoja.
+- **Descripción** -- texto enriquecido para notas y anotaciones (no se expone como variable).
 
 ---
 
-## Respaldo en Máquina del Tiempo e Historias Vivas generalizadas del Sistema (Versionado Automático)
+## Versionado
 
-Storyarn custodia con lupa cada paso mediante su herramienta o sistema de seguridad en la captura progresiva sobre {accent}Copias Visuales de Carga Rápida Temporal Snapshot (Versiones de Retroceso){/accent}.
+Storyarn registra el historial de cada hoja mediante {accent}capturas de versión (version snapshots){/accent}.
 
-- **Control general silenciado automático permanente** — Guardar o accionar cualquier altercado particular detendrá a Storyarn ordenándole atrapar sin notificar en bitácora particular un salvado al servidor; restringido o espaciado de golpe por plazos cinco minutos cronológicos entre evento visual automático en vacío visual que evite el amontonado histérico en los cambios a pequeños clics aislados puros.
-- **Bloqueado e Inyecciones puramente seguras o Snapshot forzado e imperativo Manual general** — De forma opcional, impón e impone una marca general estricta y manual e individual de la cual asentar con su respectivo gran nombre, rótulo o leyenda formal una meta final al trabajo concluido en esta hoja antes de lanzarte puramente general contra pruebas mecánicas generales inestables u rediseños puramente bruscos y ciegos formales por tu cuenta u arriesgados generales locales. 
-- **Retroceso y Resurrección general Absoluta Base de Vuelo Fija Total del Pasado Integral General** — Un botón y tu línea volverá íntegra al pasado salvándose u recuperándose en totalidad la imagen portada, metadatos y atajo puro además base a lo absoluto cada uno de las estructuras métricos numéricos abstractas general (los datos vivos).
+- **Auto-versionado** -- se crea automáticamente una captura cuando editas una hoja, con un intervalo mínimo de 5 minutos entre capturas para evitar ruido.
+- **Capturas manuales** -- puedes crear una versión con nombre, con título y descripción, en cualquier momento para marcar un hito significativo.
+- **Restaurar** -- vuelve a cualquier versión anterior. Esto restaura el nombre de la hoja, el atajo, el avatar, el banner y todos los tipos, configuraciones y valores de los bloques.
 
-Tu barra inspector local guarda general de por medio o notifica lateral quién causante, causador y cuándo generó alteraciones y que alteraciones estructurales generales exactas (remociones destructivas visual puramente puros valores altercados métricos absolutos) acontecieron desde este momento local final generalizado visual en general estricto y total u punto.
+Cada versión registra quién hizo el cambio y genera un resumen de lo que cambió (bloques añadidos, eliminados o modificados).
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Detalle en tira lista visual izquierda puramente a panel sobre versión con un registro crudo temporal en su historial listado cronológico u resumido informando del botón de vuelta atrás formal e imperativo.
+  El panel de historial de versiones mostrando una lista de capturas con marcas de tiempo, resúmenes de cambios y un botón de restaurar.
 </div>

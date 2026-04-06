@@ -60,9 +60,15 @@ const { query, loading, search, reset } = useServerSearch({
 });
 
 // Listen for results from server
+interface ReferenceResultsPayload {
+  block_id: number | string;
+  results: ReferenceSearchResult[];
+}
+
 live.handleEvent("reference_results", (payload) => {
-  if (payload.block_id === block.id) {
-    searchResults.value = (payload.results as ReferenceSearchResult[]) || [];
+  const data = payload as unknown as ReferenceResultsPayload;
+  if (data.block_id === block.id) {
+    searchResults.value = data.results || [];
     pendingLoad.value = false;
   }
 });
@@ -114,7 +120,7 @@ function typeColor(type: string | undefined): string {
 
 // ── Infinite scroll ──
 function getListEl(): HTMLElement | null {
-  return (listRef.value?.$el as HTMLElement) ?? (listRef.value as unknown as HTMLElement);
+  return (listRef.value?.$el ?? listRef.value) as HTMLElement | null;
 }
 
 function onScroll(): void {

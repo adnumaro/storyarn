@@ -23,7 +23,7 @@ export interface BlockConfig {
   step?: number | null;
   width?: number;
   multiple?: boolean;
-  [key: string]: unknown;
+  [key: string]: string | number | boolean | SelectOption[] | null | undefined;
 }
 
 export interface BlockValue {
@@ -75,11 +75,18 @@ export interface TableColumn {
   config?: BlockConfig;
 }
 
+export interface FormulaCellValue {
+  expression?: string;
+  __result?: number | string | null;
+}
+
+export type CellValue = string | number | boolean | string[] | FormulaCellValue | null;
+
 export interface TableRow {
   id: number | string;
   name: string;
   slug: string;
-  cells?: Record<string, unknown>;
+  cells?: Record<string, CellValue>;
 }
 
 // ── Sheet types ──

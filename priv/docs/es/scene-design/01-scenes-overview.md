@@ -1,185 +1,186 @@
 %{
-title: "Visión General de las Escenas",
-category_label: "Diseño de Escenas",
+title: "Vista general de Escenas",
+category_label: "Diseno de Escenas",
 order: 1,
 description: "Mapea tu mundo con lienzos espaciales, zonas, pines y conexiones."
 }
 
 ---
 
-Las Escenas son **lienzos espaciales** para mapear tu mundo de juego. Construidas sobre un lienzo de Leaflet.js con soporte completo para pan, zoom y minimapa, te permiten diseñar ubicaciones, definir áreas interactivas, dibujar conexiones entre lugares y —de manera única— explorar el resultado como lo haría un jugador.
+Las Escenas (Scenes) son **lienzos espaciales** para mapear tu mundo de juego. Construidas sobre un lienzo Leaflet.js con soporte completo de desplazamiento, zoom y minimapa, te permiten disponer ubicaciones, definir areas interactivas, dibujar conexiones entre lugares y -- de forma unica -- explorar el resultado como lo haria un jugador.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
   El lienzo del editor de escenas mostrando un mapa del mundo con zonas, pines, conexiones y la barra de herramientas inferior
 </div>
 
-## Cuándo usar Escenas
+## Cuando usar Escenas
 
-- **Mapas del mundo** -- diseños de continentes, regiones o ciudades con una imagen de fondo
-- **Diseño de niveles** -- planos de habitaciones con conexiones navegables entre áreas
-- **Jerarquías de ubicación** -- desglose desde el plano de una taberna hasta habitaciones individuales
-- **Mapas de exploración interactivos** -- áreas navegables por el jugador con visibilidad y acciones controladas por variables
+- **Mapas del mundo** -- disenos de continentes, regiones o ciudades con una imagen de fondo
+- **Bocetos de diseno de niveles** -- distribucion de salas con conexiones navegables entre areas
+- **Jerarquias de ubicaciones** -- profundiza desde el plano de una taberna hasta habitaciones individuales
+- **Mapas de exploracion interactivos** -- areas navegables por el jugador con visibilidad y acciones basadas en variables
 
 ## Elementos del lienzo
 
 ### Zonas
 
-Las Zonas son **regiones poligonales** dibujadas en el lienzo. Los vértices se almacenan como coordenadas porcentuales (0--100) relativas a las dimensiones de la escena, por lo que se escalan con cualquier imagen de fondo.
+Las zonas son **regiones poligonales** dibujadas en el lienzo. Los vertices se almacenan como coordenadas porcentuales (0--100) relativas a las dimensiones de la escena, por lo que escalan con cualquier imagen de fondo.
 
-- **Formas** -- dibuja zonas como rectángulos, triángulos, círculos o polígonos libres
-- **Estilo** -- color de relleno, color de borde, ancho de borde, estilo de borde (sólido, discontinuo, punteado) y opacidad
-- **Objetivos** -- vincula una zona a un flujo u otra escena (para navegación en profundidad o 'drill-down')
-- **Acciones** -- `none`, `instruction` (ejecutar asignaciones de variables al entrar) o `display` (mostrar el valor de una variable)
-- **Condiciones** -- oculta o deshabilita una zona en base a condiciones de variables, usando el mismo constructor de condiciones que los flujos
-- **Tooltips** -- texto dinámico al colocar el cursor encima (hover) para dar mayor contexto
-- **Bloqueo** -- bloquea una zona para evitar ediciones accidentales
+- **Formas** -- dibuja zonas como rectangulos, triangulos, circulos o poligonos libres
+- **Estilo** -- color de relleno, color de borde, grosor de borde, estilo de borde (solido, discontinuo, punteado) y opacidad
+- **Destinos** -- vincula una zona a un flujo o a otra escena (para navegacion con profundizacion)
+- **Acciones** -- `ninguna`, `instruccion` (ejecuta asignaciones de variables al entrar) o `mostrar` (muestra el valor de una variable)
+- **Condiciones** -- oculta o deshabilita una zona segun condiciones de variables, usando el mismo constructor de condiciones que los flujos
+- **Tooltips** -- texto emergente para contexto adicional
+- **Bloqueo** -- bloquea una zona para prevenir ediciones accidentales
 
 ### Pines
 
-Los Pines son **marcadores de puntos** para ubicaciones específicas. Soportan cuatro tipos: `location`, `character`, `event` y `custom`.
+Los pines son **marcadores de punto** para ubicaciones especificas. Soportan cuatro tipos: `ubicacion`, `personaje`, `evento` y `personalizado`.
 
-- **Tamaños** -- pequeño, mediano o grande
-- **Objetivos** -- enlazan a una hoja, flujo, escena o URL externa
-- **Vinculación de hojas** -- crea un pin directamente desde una hoja (personajes, objetos) para enlazarlo automáticamente
-- **Acciones y condiciones** -- el mismo sistema que las zonas (`instruction`, `display`, `hide`, `disable`)
-- **Iconos personalizados** -- usa cualquier nombre de icono o sube un asset de icono personalizado
-- **Conexiones** -- los pines sirven como puntos finales para las conexiones visuales de la escena
+- **Tamanos** -- pequeno, mediano o grande
+- **Destinos** -- vincula a una hoja, flujo, escena o URL externa
+- **Vinculacion con hoja** -- crea un pin directamente desde una hoja (personajes, objetos) para vincularlo automaticamente
+- **Acciones y condiciones** -- mismo sistema que las zonas (`instruccion`, `mostrar`, `ocultar`, `deshabilitar`)
+- **Iconos personalizados** -- usa cualquier nombre de icono o sube un recurso de icono personalizado
+- **Conexiones** -- los pines sirven como extremos para las conexiones de escena
 
 ### Conexiones
 
-Las Conexiones son **líneas visuales entre dos pines**, que representan caminos, rutas o relaciones.
+Las conexiones son **lineas visuales entre dos pines**, representando caminos, rutas o relaciones.
 
-- **Dirección** -- bidireccional (por defecto) o unidireccional
-- **Estilo** -- estilo de línea (sólida, discontinua, punteada), ancho de línea y color
-- **Etiquetas** -- texto opcional con interruptor de mostrar/ocultar
-- **Puntos intermedios** -- añade puntos intermedios (waypoints) para curvar la ruta de conexión (hasta 50 puntos intermedios)
+- **Direccion** -- bidireccional (predeterminado) o unidireccional
+- **Estilo** -- estilo de linea (solido, discontinuo, punteado), grosor de linea y color
+- **Etiquetas** -- etiqueta de texto opcional con alternancia mostrar/ocultar
+- **Waypoints** -- anade puntos intermedios para curvar el trazado de una conexion (hasta 50 waypoints)
 
 ### Anotaciones
 
-Las Anotaciones son **etiquetas de texto** colocadas directamente en el lienzo para notas de diseño, recordatorios o comentarios del equipo.
+Las anotaciones son **etiquetas de texto** colocadas directamente en el lienzo para notas de diseno, recordatorios o feedback del equipo.
 
-- **Tamaños de fuente** -- pequeña, mediana o grande
+- **Tamanos de fuente** -- pequeno, mediano o grande
 - **Colores** -- color de texto personalizable
-- **Bloqueo** -- bloquea para evitar movimientos accidentales
+- **Bloqueo** -- bloquea para prevenir movimientos accidentales
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Un primer plano de los elementos del lienzo: una zona estilizada con tooltip, un pin de personaje vinculado a una hoja, una conexión discontinua con etiqueta y una anotación
+  Vista de cerca de elementos del lienzo: una zona con estilo y tooltip, un pin de personaje vinculado a una hoja, una conexion discontinua con etiqueta y una anotacion
 </div>
 
 ## Capas
 
-Las Escenas soportan múltiples **capas** para organizar el contenido. Cada escena comienza con una capa por defecto.
+Las escenas soportan multiples **capas** para organizar el contenido. Cada escena comienza con una capa predeterminada.
 
-- **Alternar visibilidad** -- muestra u oculta capas de forma independiente para visualizar diferentes aspectos de la misma escena
-- **Asignación de capas** -- cada zona, pin y anotación pertenece a una capa determinada
-- **{accent}Niebla de guerra{/accent}** -- habilita niebla por capa con color y opacidad personalizable, cubriendo áreas sin explorar hasta que el jugador las alcance
+- **Alternancia de visibilidad** -- muestra u oculta capas de forma independiente para ver diferentes aspectos de la misma escena
+- **Asignacion de capa** -- cada zona, pin y anotacion pertenece a una capa
+- **{accent}Niebla de guerra{/accent}** -- habilita niebla por capa con color y opacidad personalizables, cubriendo areas inexploradas hasta que el jugador las alcanza
 
 ## Herramientas de dibujo
 
-El dock inferior proporciona **10 herramientas** organizadas en grupos:
+La barra inferior proporciona **10 herramientas** organizadas en grupos:
 
-| Grupo           | Herramientas                                  | Propósito                                                |
-| --------------- | --------------------------------------------- | -------------------------------------------------------- |
-| **Navegación**  | Seleccionar, Pan (Desplazar)                  | Seleccionar elementos o desplazarse por el lienzo        |
-| **Formas**      | Rectángulo, Triángulo, Círculo, Forma libre   | Dibujar zonas poligonales en el lienzo                   |
-| **Elementos**   | Pin libre, Pin desde hoja                     | Colocar marcadores fijos (libres o desde una hoja)       |
-| **Texto**       | Anotación                                     | Añadir notas de texto directamente en el lienzo          |
-| **Enlaces**     | Conector                                      | Dibujar líneas entre dos pines para definir trayectos    |
-| **Medición**    | Regla                                         | Medir distancias de punto a punto                        |
+| Grupo             | Herramientas                              | Proposito                                                   |
+| ----------------- | ----------------------------------------- | ----------------------------------------------------------- |
+| **Navegacion**    | Seleccionar, Desplazar                    | Selecciona elementos o desplazate por el lienzo             |
+| **Formas de zona**| Rectangulo, Triangulo, Circulo, Libre     | Dibuja zonas poligonales en el lienzo                       |
+| **Elementos**     | Pin libre, Pin desde hoja                 | Coloca marcadores de punto (libres o vinculados a una hoja) |
+| **Texto**         | Anotacion                                 | Anade notas de texto directamente en el lienzo              |
+| **Vinculacion**   | Conector                                  | Dibuja conexiones entre dos pines                           |
+| **Medicion**      | Regla                                     | Mide distancias entre dos puntos                            |
 
-El editor conmuta entre **Modo Edición** (dock visible, elementos alterables) y **Modo Vista** (solo lectura, lienzo limpio).
+El editor alterna entre **Modo edicion** (barra visible, elementos editables) y **Modo visualizacion** (solo lectura, lienzo limpio).
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  La barra de herramientas del dock inferior muestra todos los grupos de herramientas: Seleccionar, Desplazar, desplegable de formas, desplegable de pines, Anotación, Conector y Regla
+  La barra de herramientas inferior mostrando todos los grupos de herramientas: Seleccionar, Desplazar, desplegable de Formas de zona, desplegable de Pin, Anotacion, Conector y Regla
 </div>
 
-## {accent}Inspección de zonas (Drill-down){/accent}
+## {accent}Profundizacion en zonas{/accent}
 
-Haz doble clic en una zona para **explorarla internamente como una escena secundaria**. Storyarn hace lo siguiente automáticamente:
+Haz doble clic en una zona para **profundizar en ella como una escena hija**. Storyarn automaticamente:
 
-1. Recorta la imagen de fondo de la escena principal al tamaño de los límites o delimitadores de la zona
-2. Amplía (o interpola) esa región recortada a un mínimo de 1000px (conservando nitidez) para que el detalle sobreviva al zoom
-3. Crea la nueva escena anidada (child scene) usando ese recorte como fondo principal
-4. Normaliza los vértices de la zona dentro del espacio de coordenadas de esa nueva escena secundaria
+1. Recorta la imagen de fondo de la escena padre al cuadro delimitador de la zona
+2. Escala la region recortada a un minimo de 1000px (con nitidez) para que el detalle se preserve incluso a niveles profundos de zoom
+3. Crea una nueva escena hija con la imagen extraida como fondo
+4. Normaliza los vertices de la zona al espacio de coordenadas de la escena hija
 
-Esto genera **jerarquías** y niveles naturales— un mapa global se ramifica en zonas continentales, y al seleccionarlas entras a la provincia, luego a la ciudad, luego de la ciudad a un edificio o interior. Cada uno poseyendo una estructura independiente con sus propios pines y capas.
+Esto te permite construir **jerarquias de ubicaciones** de forma natural -- un mapa del mundo con zonas de continentes, cada continente profundizando a un mapa regional, cada region a una ciudad, cada ciudad al plano de un edificio. Cada nivel tiene sus propias zonas, pines, conexiones y capas.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Secuencia de drill-down: mapamundi general, zona resaltada y transición directa al mapa local interior resultante.
+  Secuencia de profundizacion: mapa del mundo con una zona resaltada, luego la escena hija mostrando la region recortada y escalada con sus propias zonas y pines
 </div>
 
 ## Acciones y condiciones
 
-Tanto zonas como pines aceptan **acciones** y **condiciones**, entrelazando factores espaciales con tu sistema de variables lógicas.
+Tanto las zonas como los pines soportan **acciones** y **condiciones** que vinculan elementos espaciales con tu sistema de variables.
 
 ### Acciones
 
-| Tipo de acción  | Comportamiento                                                                                                              |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **None**        | Ninguna acción ejecutada (por defecto)                                                                                      |
-| **Instruction** | Ejecuta asignaciones de valores al impactar con el elemento. Emplea la misma lógica de "Action Builder" vista en los flujos.|
-| **Display**     | Dibuja el estado del valor solicitado directamente por referencia de senda, (p.ej., `personaje.moisés.vida`).               |
+| Tipo de accion  | Comportamiento                                                                                                         |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Ninguna**     | Sin accion (predeterminado)                                                                                            |
+| **Instruccion** | Ejecuta asignaciones de variables al hacer clic en el elemento. Usa el mismo constructor de asignaciones que los nodos de instruccion de flujos. |
+| **Mostrar**     | Muestra el valor actual de una variable en el elemento. Referencia una variable por su ruta completa (p. ej., `mc.jaime.health`). |
 
 ### Condiciones
 
-Aplica lógicas al pin/zona bajo las mismas reglas condicionales de flujo. Al reprobar (dar falso):
+Adjunta una condicion a cualquier zona o pin usando el constructor de condiciones. Cuando la condicion se evalua como falsa:
 
-- **Ocultar** (por defecto) -- la propia identidad del ítem o zona será borrada íntegramente
-- **Deshabilitar** -- prevalece visible de manera tenue pero rechaza las interacciones lúdicas
+- **Ocultar** (predeterminado) -- el elemento se elimina completamente del lienzo
+- **Deshabilitar** -- el elemento permanece visible pero no se puede interactuar con el
 
-Esta función construye escenarios donde ciertos candados visuales, murallas evaluadoras u ocultadores reaccionan conforme juegues (p. ej., gruta indetectable sin iluminar variables puras previas).
+Esto te permite crear puertas bloqueadas que se desbloquean cuando se activa un flag de mision, NPCs que aparecen solo despues de un evento narrativo, o areas que se vuelven accesibles segun el progreso del jugador.
 
-## {accent}Modo Exploración{/accent}
+## {accent}Modo de exploracion{/accent}
 
-**Ningún mecanismo de diseño en todo el medio lo hace igual.**
+**Ninguna otra herramienta de diseno narrativo hace esto.**
 
-Experimenta usando **el Modo Explorador inmersivo y a pantalla completa**. Permítele interactuar contigo como un producto de videojuego total final. Sin configuraciones extra de vistas o previas. Simulando lo narrativo en vida plena.
-
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El visor central indicando botones superiores junto al encendido/apagado formalizador del esquema delimitador de cuadrículas invisibles en el juego.
-</div>
-
-### Cómo opera internamente
-
-1. **Inicia** presionando Play con su símbolo correspondiente del escenario primario.
-2. **Navega**: pulsa donde creas pertinente según lo trazado. Condicionantes reales se actualizarán y verás todo variar on-the-fly.
-3. **Acciones directas**: Un tap sobre áreas instructoras o expositivas causan sumas automáticas, mostrando data mutante sin pausa en tu pantalla.
-4. **Flujos anidados**: Pulsa en sitios entrelazados con líneas de diálogos interactivos formales. Oscurecerá sin re-generar nada y aparecerá flotante todo el peso de menús, retornando posteriormente intacto sin alterar un frame de tus ventanas web originarias.
-5. **Navega Escenas**: Hacer clic en una zona vinculada a otra escena navega a esa escena secundaria sin interrupciones.
-6. **Variables Resilientes**: Los estados se mantienen durante toda la exploración de la sesión.
-7. **Visibilidad Zonal**: Usando sus botones, disuelve e ignora trazados estáticos hasta confirmar exactitud artística ideal de juego libre sin líneas superpuestas de diseño.
-8. **Asistentes de mando**: Aprovecha hotkeys en vez del cursor ratonil para mover opciones ágiles de testing acelerado.
-
-### Sobreponer diálogos y fluidez
-
-Dentro de visualizaciones escenificadas, se acatan flujos sin pérdida. Cajas parlantes emergerán como en tu "Story Player" con opciones del usuario. Terminado, un cierre retornará sus focos del mapa en reposo sumado a efectos guardados.
+El Modo de exploracion es una **experiencia inmersiva a pantalla completa** que te permite navegar tu escena como lo haria un jugador. No es una vista previa -- es una simulacion en vivo de tu narrativa espacial.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Un render visual que conjuga oscurecidos con ventanajes interactores flotados durante intercesiones.
+  Modo de exploracion mostrando el mapa a pantalla completa con zonas interactivas resaltadas, la barra de herramientas superior y la alternancia de visibilidad de zonas
 </div>
 
-## Menú Suspendido (Flotante)
+### Como funciona
 
-Tocar atributos evoca comandos relacionales estáticos tipo un cuadro aéreo "FigJam":
+1. **Lanza** el Modo de exploracion desde la cabecera de la escena.
+2. **Navega** haciendo clic en zonas y pines del mapa. Las condiciones se evaluan en tiempo real -- los elementos ocultos desaparecen, los elementos deshabilitados se muestran en gris.
+3. **Ejecuta acciones** -- hacer clic en una zona o pin de instruccion modifica variables inmediatamente. Hacer clic en un elemento de tipo mostrar muestra el valor de la variable.
+4. **Lanza flujos** -- hacer clic en una zona o pin vinculado a un flujo abre una **superposicion de dialogo de flujo** sobre el mapa atenuado. El flujo se reproduce en el lugar (sin cambio de URL), incluyendo saltos y retornos entre flujos completos mediante la pila de llamadas del motor.
+5. **Navega entre escenas** -- hacer clic en una zona vinculada a otra escena navega a esa escena hija de forma fluida.
+6. **El estado de las variables persiste** entre interacciones dentro de la misma sesion de exploracion.
+7. **Alterna la visibilidad de zonas** con el boton de la barra de herramientas para ver u ocultar los limites de las zonas.
+8. **Controles de teclado** -- usa atajos de teclado para navegar e interactuar.
 
-- **Zonas** -- tintes plenos, nivel translúcido, márgenes, selector-escala o candado general, más inspecciones descendientes.
-- **Pines/Anclas** -- títulos identificadores fijos, clavijas o iconografías, medidas y cierres generalizados por color o base inmovilizadora.
-- **Lazos de Unión** -- matizaciones rayado cruzado ancho, nombres optativos o candado direccional biplaza o único.
-- **Notas de Post** -- tamaños legibilidad paleta central protecciones anti-fugas.
+### Superposicion de flujo
 
-Todos los condicionamientos absolutos radicarán centralizados al abrir barras laterales (side panel) del editor matriz.
+Cuando se lanza un flujo durante la exploracion, el mapa se atenua y el dialogo del flujo aparece como una superposicion. Ves la misma experiencia de reproductor por diapositivas que en el Story Player, con texto de dialogo, informacion del hablante y opciones del jugador. Cuando el flujo termina, vuelves al mapa con cualquier cambio de variables aplicado.
 
-## Extraer Imágenes
+<div class="docs-image-placeholder">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+  Modo de exploracion con una superposicion de flujo: el mapa esta atenuado en el fondo y una diapositiva de dialogo con opciones del jugador se muestra en el centro
+</div>
 
-Retira toda composición escénica a **PNG** o **SVG** bajo la cabecilla de comando pertinente en tus mandos del escenario cabecero capturando totalidades vectoriales purificantes.
+## Barra de herramientas flotante
 
-## Categorización Múltiple de Escenas
+Cuando seleccionas un elemento en el lienzo, aparece una **barra de herramientas flotante estilo FigJam** encima de el con controles de edicion rapida especificos para ese tipo de elemento:
 
-Similares parámetros atañen estas carpetas globales al árbol directivo originario principal, registrando manualidades e inspectores en nidos lógicos "Jerárquicos Parentales-Derivados".
-Adueñado de "Claves Racionales" (`mapamundi-completo`) agiliza las intercomunicaciones referenciadoras sumando opcionales coeficientes multiplicadores en regletas si optases por usos rigurosos o métricas para sus barras herramientas.
+- **Zonas** -- color de relleno, opacidad, estilo de borde, color de borde, selector de capa, alternancia de bloqueo, boton de profundizacion
+- **Pines** -- etiqueta, selector de tipo de pin, color, tamano, selector de capa, alternancia de bloqueo
+- **Conexiones** -- estilo de linea, color, etiqueta, alternancia de direccion
+- **Anotaciones** -- texto, tamano de fuente, color, alternancia de bloqueo
+
+Las propiedades avanzadas como destinos, condiciones y acciones se editan en el **panel lateral** que se abre al seleccionar un elemento.
+
+## Exportar
+
+Exporta cualquier escena a formato **PNG** o **SVG** directamente desde la cabecera de la escena. La exportacion captura la vista actual del lienzo incluyendo todas las capas visibles, zonas, pines, conexiones y anotaciones.
+
+## Organizacion de escenas
+
+Como todas las entidades de Storyarn, las escenas soportan una **estructura de arbol** en la barra lateral. Este arbol refleja tanto la organizacion manual como las jerarquias de profundizacion -- las zonas que profundizan en escenas hijas crean relaciones padre-hijo automaticamente.
+
+Cada escena tiene un **shortcut** (p. ej., `world-map`) para referencias cruzadas, y una **escala** opcional con unidad y valor personalizados para la herramienta de regla.

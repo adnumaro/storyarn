@@ -19,7 +19,24 @@ import { FlowNode } from "../lib/flow-node";
 import type { NodeData } from "../lib/node-configs";
 import type { FlowSchemes, FlowAreaExtra, FlowConnection } from "../lib/rete-schemes";
 import { debug } from "../services/debug";
-import { editorHandlers, type EditorHandlers, type FlowContext, type HookProxy } from "../services/editorHandlers";
+import {
+  editorHandlers,
+  type EditorHandlers,
+  type FlowContext,
+  type HookProxy,
+  type SheetMapEntry,
+  type NodeMovedPayload,
+  type NodeServerPayload,
+  type NodeRemovedPayload,
+  type NodeRestoredPayload,
+  type NodeUpdatedPayload,
+  type NodeDataChangedPayload,
+  type FlowMetaChangedPayload,
+  type ConnectionServerPayload,
+  type ConnectionRemovedPayload,
+  type ConnectionUpdatedPayload,
+  type FlowUpdatedPayload,
+} from "../services/editorHandlers";
 import { keyboard, type KeyboardHandler } from "../services/keyboard";
 import { lod, type LodController } from "../services/lod";
 import { navigation, type NavigationHandler } from "../services/navigation";
@@ -45,7 +62,7 @@ interface ToolbarState {
 }
 
 interface InitOpts {
-  sheetsMap?: Record<string, unknown>;
+  sheetsMap?: Record<string, SheetMapEntry>;
   labels?: Record<string, string>;
   readonly?: boolean;
   userId?: number;
@@ -807,13 +824,16 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
       return;
     }
 
-    handleEvent("flow_updated", (data) => _editorHandlers!.handleFlowUpdated(data));
+    handleEvent("flow_updated", (data) =>
+      _editorHandlers!.handleFlowUpdated(data as FlowUpdatedPayload),
+    );
 
     _nodeMoveQueue = Promise.resolve();
-    handleEvent("node_moved", (data) => {
+    handleEvent("node_moved", (raw) => {
       if (!_nodeMoveQueue) {
         return;
       }
+      const data = raw as unknown as NodeMovedPayload;
       _nodeMoveQueue = _nodeMoveQueue
         .then(() => {
           if (!_area || _destroyed) {
@@ -828,26 +848,27 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
       if (_destroyed) {
         return;
       }
-      _editorHandlers!.handleNodeAdded(data);
+      _editorHandlers!.handleNodeAdded(data as unknown as NodeServerPayload);
     });
     handleEvent("node_removed", (data) => {
       if (_destroyed) {
         return;
       }
-      _editorHandlers!.handleNodeRemoved(data);
+      _editorHandlers!.handleNodeRemoved(data as unknown as NodeRemovedPayload);
     });
     handleEvent("node_restored", (data) => {
       if (_destroyed) {
         return;
       }
-      _editorHandlers!.handleNodeRestored(data);
+      _editorHandlers!.handleNodeRestored(data as unknown as NodeRestoredPayload);
     });
 
     _nodeUpdateQueue = Promise.resolve();
-    handleEvent("node_updated", (data) => {
+    handleEvent("node_updated", (raw) => {
       if (!_nodeUpdateQueue) {
         return;
       }
+      const data = raw as unknown as NodeUpdatedPayload;
       _nodeUpdateQueue = _nodeUpdateQueue
         .then(async () => {
           if (!_area || _destroyed) {
@@ -856,7 +877,7 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
           await _editorHandlers!.handleNodeUpdated(data);
           // Sync toolbar if the updated node is the one selected
           if (toolbarState.nodeId && String(data.id) === String(toolbarState.nodeId)) {
-            const reteNode = _nodeMap.get(data.id as string | number);
+            const reteNode = _nodeMap.get(data.id);
             if (reteNode) {
               toolbarState.nodeData = { ...reteNode.nodeData };
             }
@@ -865,11 +886,21 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
         .catch(() => {});
     });
 
-    handleEvent("node_data_changed", (data) => _editorHandlers!.handleNodeDataChanged(data));
-    handleEvent("flow_meta_changed", (data) => _editorHandlers!.handleFlowMetaChanged(data));
-    handleEvent("connection_added", (data) => _editorHandlers!.handleConnectionAdded(data));
-    handleEvent("connection_removed", (data) => _editorHandlers!.handleConnectionRemoved(data));
-    handleEvent("connection_updated", (data) => _editorHandlers!.handleConnectionUpdated(data));
+    handleEvent("node_data_changed", (data) =>
+      _editorHandlers!.handleNodeDataChanged(data as unknown as NodeDataChangedPayload),
+    );
+    handleEvent("flow_meta_changed", (data) =>
+      _editorHandlers!.handleFlowMetaChanged(data as unknown as FlowMetaChangedPayload),
+    );
+    handleEvent("connection_added", (data) =>
+      _editorHandlers!.handleConnectionAdded(data as unknown as ConnectionServerPayload),
+    );
+    handleEvent("connection_removed", (data) =>
+      _editorHandlers!.handleConnectionRemoved(data as unknown as ConnectionRemovedPayload),
+    );
+    handleEvent("connection_updated", (data) =>
+      _editorHandlers!.handleConnectionUpdated(data as unknown as ConnectionUpdatedPayload),
+    );
 
     if (_navigationHandler) {
       handleEvent("navigate_to_hub", (data) =>

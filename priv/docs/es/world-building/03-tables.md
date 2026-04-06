@@ -2,16 +2,16 @@
 title: "Tablas",
 category_label: "Construcción de Mundos",
 order: 3,
-description: "Cuadrículas estilo hoja de cálculo dentro de las hojas para inventarios, matrices de estadísticas y listas estructuradas."
+description: "Cuadrículas tipo hoja de cálculo dentro de las hojas para inventarios, matrices de estadísticas y listas estructuradas."
 }
 
 ---
 
-Las tablas son un tipo de bloque que incrusta una {accent}cuadrícula tipo hoja de cálculo{/accent} dentro de una hoja. Cada tabla tiene columnas tipadas, filas con nombre y referencias a variables a nivel de celda. Úsalas para inventarios, tablas de estadísticas, matrices de relaciones, árboles de habilidades o catálogos de tiendas.
+Las Tablas son un tipo de bloque que incrusta una {accent}cuadrícula tipo hoja de cálculo{/accent} dentro de una hoja. Cada tabla tiene columnas tipadas, filas con nombre y referencias a variables a nivel de celda. Úsalas para inventarios, tablas de estadísticas, matrices de relaciones, árboles de habilidades o catálogos de tiendas.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Un bloque de tabla mostrando una cuadrícula de inventario con columnas para Objeto (texto), Cantidad (número), Equipado (booleano) y una columna de fórmula calculando el peso.
+  Un bloque de tabla mostrando una cuadrícula de inventario con columnas para Item (texto), Quantity (número), Equipped (booleano) y una columna de fórmula calculando el peso.
 </div>
 
 ---
@@ -20,8 +20,8 @@ Las tablas son un tipo de bloque que incrusta una {accent}cuadrícula tipo hoja 
 
 Una tabla se compone de:
 
-- **Columnas** -- campos tipados que definen la estructura de la tabla. Cada columna tiene un nombre, un tipo y un slug (autogenerado a partir del nombre).
-- **Filas** -- registros con nombre. Cada fila tiene un nombre y un slug. Los nombres de las filas deben ser descriptivos: "Poción Curativa", "Espada de Hierro", "Fuerza".
+- **Columnas** -- campos tipados que definen la estructura de la tabla. Cada columna tiene un nombre, un tipo y un slug (generado automáticamente a partir del nombre).
+- **Filas** -- registros con nombre. Cada fila tiene un nombre y un slug. Los nombres de las filas deben ser descriptivos: "Healing Potion", "Iron Sword", "Strength".
 - **Celdas** -- la intersección de una fila y una columna. Los valores de las celdas se almacenan como un mapa JSON indexado por el slug de la columna.
 
 ---
@@ -32,33 +32,33 @@ Las columnas de tabla admiten {accent}8 tipos{/accent}:
 
 | Tipo             | Descripción                                         |
 | ---------------- | --------------------------------------------------- |
-| **Número**       | Valores numéricos (tipo de columna por defecto)     |
-| **Texto**        | Texto plano (no hay texto enriquecido en las tablas)|
-| **Booleano**     | Interruptor de verdadero/falso                      |
-| **Selección**    | Opción única a partir de opciones definidas         |
-| **Sel. Múltiple**| Varias opciones a partir de opciones definidas      |
+| **Número**       | Valores numéricos (tipo de columna predeterminado)  |
+| **Texto**        | Texto plano (sin texto enriquecido en tablas)       |
+| **Booleano**     | Interruptor verdadero/falso                         |
+| **Selección**    | Elección única de opciones definidas                |
+| **Selección Múltiple** | Múltiples elecciones de opciones definidas    |
 | **Fecha**        | Valor de fecha                                      |
-| **Referencia**   | Enlace a una hoja o flujo (no es una variable)      |
+| **Referencia**   | Enlace a una hoja o flujo (no es variable)          |
 | **Fórmula**      | Valor calculado a partir de una expresión matemática con vinculaciones |
 
-Estos reflejan los tipos de bloques normales, excepto que las tablas utilizan texto plano en lugar de texto enriquecido y añaden el tipo de columna de fórmula.
+Estos reflejan los tipos de bloques regulares, excepto que las tablas usan texto plano en lugar de texto enriquecido y añaden el tipo de columna de fórmula.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El selector de tipo de columna mostrando los 8 tipos disponibles.
+  El selector de tipos de columna mostrando los 8 tipos disponibles.
 </div>
 
 ---
 
 ## Variables a nivel de celda
 
-Cada celda que no sea constante ni referencia se convierte en una variable usando una {accent}notación de puntos extendida{/accent}:
+Cada celda que no sea constante ni referencia se convierte en una variable usando {accent}notación de puntos extendida{/accent}:
 
 ```
-{atajo_hoja}.{variable_tabla}.{slug_fila}.{slug_columna}
+{atajo_de_hoja}.{variable_de_tabla}.{slug_de_fila}.{slug_de_columna}
 ```
 
-Por ejemplo, en la hoja `mc.jaime` con un bloque de tabla etiquetado como "Inventario" (variable `inventory`), una fila llamada "Healing Potion" y una columna llamada "Quantity":
+Por ejemplo, en la hoja `mc.jaime` con un bloque de tabla etiquetado "Inventory" (nombre de variable `inventory`), una fila llamada "Healing Potion" y una columna llamada "Quantity":
 
 ```
 mc.jaime.inventory.healing_potion.quantity
@@ -66,7 +66,7 @@ mc.jaime.inventory.healing_potion.quantity
 
 Esto significa que los flujos pueden leer y modificar celdas individuales. Una condición puede comprobar "¿Es `mc.jaime.inventory.healing_potion.quantity` > 0?" y una instrucción puede establecerle un nuevo valor.
 
-Los slugs se autogeneran a partir de los nombres usando notación de guion bajo, al igual que los nombres de variables de bloques.
+Los slugs se generan automáticamente a partir de los nombres usando notación con guiones bajos, igual que los nombres de variables de los bloques.
 
 ---
 
@@ -76,61 +76,61 @@ Las columnas de fórmula te permiten definir {accent}valores calculados{/accent}
 
 ### Sintaxis
 
-Las fórmulas admiten funciones y operaciones matemáticas estándar:
+Las fórmulas admiten operaciones y funciones matemáticas estándar:
 
-| Categoría        | Sintaxis                                                                         |
-| --------------- | -------------------------------------------------------------------------------- |
-| **Operadores**  | `+`, `-`, `*`, `/`, `^` (potencia)                                               |
-| **Menos unario**| `-a`                                                                             |
-| **Paréntesis**  | `(a + b) * c`                                                                    |
-| **Literales**   | `42`, `3.14`                                                                     |
-| **Funciones**   | `sqrt(x)`, `abs(x)`, `floor(x)`, `ceil(x)`, `round(x)`, `min(a, b)`, `max(a, b)` |
+| Categoría       | Sintaxis                                                                             |
+| --------------- | ------------------------------------------------------------------------------------ |
+| **Operadores**  | `+`, `-`, `*`, `/`, `^` (potencia)                                                   |
+| **Menos unario**| `-a`                                                                                 |
+| **Paréntesis**  | `(a + b) * c`                                                                        |
+| **Literales**   | `42`, `3.14`                                                                         |
+| **Funciones**   | `sqrt(x)`, `abs(x)`, `floor(x)`, `ceil(x)`, `round(x)`, `min(a, b)`, `max(a, b)`   |
 
-Las expresiones utilizan símbolos de una sola letra o con nombre (`a`, `b`, `valor_con`) que están vinculados a fuentes de datos reales.
+Las expresiones usan símbolos de una sola letra o con nombre (`a`, `b`, `con_value`) que se vinculan a fuentes de datos reales.
 
-### Tipos de vinculación (Bindings)
+### Tipos de vinculación
 
-Cada símbolo en una fórmula está vinculado a una fuente de datos. Hay dos tipos de vinculación:
+Cada símbolo en una fórmula se vincula a una fuente de datos. Hay dos tipos de vinculación:
 
-- **Misma fila (Same-row)** -- hace referencia a otra columna en la misma fila. Por ejemplo, vincular `a` a la columna "Base" significa que `a` se resuelve como el valor Base de esa fila.
-- **Variable de otras hojas** -- hace referencia a cualquier variable del proyecto por su ruta completa. Por ejemplo, vincular `b` a `mc.jaime.level` introduce el nivel del personaje en la fórmula.
+- **Misma fila (Same-row)** -- referencia otra columna en la misma fila. Por ejemplo, vincular `a` a la columna "Base" significa que `a` se resuelve al valor de Base de esa fila.
+- **Variable entre hojas (Cross-sheet variable)** -- referencia cualquier variable del proyecto por su ruta completa. Por ejemplo, vincular `b` a `mc.jaime.level` trae el nivel del personaje a la fórmula.
 
 ### Ejemplo
 
-Una columna de fórmula "Modificador" en una tabla de estadísticas con la expresión `floor((a - 10) / 2)`, donde `a` está vinculado a la columna "Valor" de la misma fila:
+Una columna de fórmula "Modifier" en una tabla de estadísticas con la expresión `floor((a - 10) / 2)`, donde `a` está vinculado a la columna "Value" de la misma fila:
 
-| Estadística  | Valor | Modificador |
+| Estadística  | Value | Modifier |
 | ------------ | ----- | -------- |
-| Fuerza       | 16    | 3        |
-| Destreza     | 12    | 1        |
-| Constitución | 8     | -1       |
+| Strength     | 16    | 3        |
+| Dexterity    | 12    | 1        |
+| Constitution | 8     | -1       |
 
-El modificador se recalcula siempre que los valores vinculados cambian.
+El modificador se recalcula cada vez que los valores vinculados cambian.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Una configuración de columna de fórmula que muestra el editor de expresiones con enlaces de símbolos: "a" vinculado a la columna "Valor" de la misma fila y la previsualización renderizada en LaTeX de la fórmula.
+  Configuración de una columna de fórmula mostrando el editor de expresiones con vinculaciones de símbolos: "a" vinculado a la columna "Value" de la misma fila, y la vista previa en LaTeX de la fórmula renderizada.
 </div>
 
 ---
 
-## Configuración de columna
+## Configuración de columnas
 
 Las columnas tienen las mismas opciones de configuración que sus tipos de bloque equivalentes:
 
 - Las columnas de **Selección / Selección Múltiple** obtienen una lista de opciones.
-- **Las columnas se pueden marcar como constantes** -- sus celdas no se expondrán como variables.
-- **Las columnas se pueden marcar como obligatorias** -- se advertirá sobre las celdas vacías.
+- **Las columnas pueden marcarse como constantes** -- sus celdas no se expondrán como variables.
+- **Las columnas pueden marcarse como obligatorias** -- las celdas vacías se señalarán.
 
 ---
 
 ## Herencia
 
-Cuando un bloque de tabla tiene su alcance ajustado en "hijos", se copia toda la estructura de la tabla (columnas y filas) {accent}a las hojas secundarias{/accent}. Cada hijo u hoja anidada obtiene su propia tabla con las mismas columnas y filas pero con valores de celdas independientes.
+Cuando un bloque de tabla tiene el alcance configurado como "hijos", la estructura completa de la tabla (columnas y filas) se {accent}copia a las hojas hijas{/accent}. Cada hija obtiene su propia tabla con las mismas columnas y filas pero valores de celdas independientes.
 
-Las vinculaciones a las fórmulas (bindings) que apuntan o hacen referencia a la misma hoja raíz se volverán a mapear y escribirse de manera autónoma para indicar hacia las variables intrínsecas de la hoja hija.  Por ejemplo, si la principal (`main`) formula algo con referencia `main.combat.attack`, su hija llamada o sub-hoja (`seven`) ajustará internamente dicha fórmula hacia sus propios datos rescribiendo su referencia a: `seven.combat.attack` (suponiendo que haya heredado también la sección general de `combat`).
+Las vinculaciones de fórmulas que referencian la hoja padre se reescriben automáticamente para apuntar a la hoja hija. Por ejemplo, si una hoja padre `main` tiene una vinculación de fórmula a `main.combat.attack`, la hoja hija `seven` obtiene la vinculación reescrita a `seven.combat.attack` (asumiendo que el bloque `combat` también fue heredado).
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  El bloque de tabla heredado por en una hoja matriz junto con su contraparte inferior replicada a partir de los datos parentales pero disponiendo de libertad total en sus valores intrarrenales de celdas.
+  El bloque de tabla heredado de una hoja padre y la instancia de la misma tabla en una hoja hija, mostrando estructura idéntica pero valores de celdas diferentes.
 </div>

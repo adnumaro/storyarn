@@ -26,10 +26,8 @@ interface ShowSubtitlePayload {
   duration: number;
 }
 
-type HandleEventFn = (event: string, callback: (payload: Record<string, unknown>) => void) => void;
-
 interface UseAmbientDisplayOpts {
-  handleEvent: HandleEventFn;
+  handleEvent: (event: string, callback: (payload: Record<string, unknown>) => void) => void;
 }
 
 /**

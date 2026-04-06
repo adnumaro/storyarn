@@ -114,6 +114,7 @@ export function magneticConnection(
   connection: ConnectionPlugin<FlowSchemes>,
   props: MagneticConnectionProps,
 ): void {
+  // Rete.js parentScope() returns a generic Scope type; cast needed for typed plugin access
   const area = connection.parentScope(AreaPlugin) as unknown as AreaPlugin<FlowSchemes, FlowAreaExtra>;
   const editor = area.parentScope() as unknown as import("rete").NodeEditor<FlowSchemes>;
   const sockets = new Map<HTMLElement, SocketData>();
@@ -149,6 +150,7 @@ export function magneticConnection(
       const socketsList = Array.from(sockets.values());
 
       // Find nodes near the cursor
+      // Rete node views expose position/element but aren't typed as our NodeView interface
       const rects: NodeRect[] = nodes.map(([id, view]) => ({
         id,
         ...getNodeRect(editor.getNode(id) as NodeWithSize, view as unknown as NodeView),

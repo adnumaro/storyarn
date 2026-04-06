@@ -30,8 +30,8 @@ const {
   activeTool?: string;
   dashboardUrl?: string | null;
   onDashboard?: boolean;
-  treeData?: unknown[] | Record<string, unknown> | null;
-  treeProps?: Record<string, unknown>;
+  treeData?: unknown[] | Record<string, string | number | boolean | null> | null;
+  treeProps?: Record<string, string | number | boolean | unknown[] | null | undefined>;
 }>();
 
 const activeTreeComponent = computed(() => treeComponents[activeTool] || null);

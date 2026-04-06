@@ -12,7 +12,9 @@ import type { FlowNode } from "../lib/flow-node";
 import { FlowNode as FlowNodeClass } from "../lib/flow-node";
 import type { NodeData } from "../lib/node-configs";
 import { needsRebuild } from "../lib/node-configs";
-import type { FlowSchemes, FlowAreaExtra } from "../lib/rete-schemes";
+import type { FlowSchemes, FlowAreaExtra, FlowConnection } from "../lib/rete-schemes";
+import type { SheetMapEntry } from "../types";
+export type { SheetMapEntry };
 import {
   CreateNodeAction,
   DeleteNodeAction,
@@ -22,9 +24,90 @@ import {
   NodeDataAction,
 } from "./historyPreset";
 
+// ---------------------------------------------------------------------------
+// Server event payload interfaces
+// ---------------------------------------------------------------------------
+
+export interface NodeMovedPayload {
+  node_id: string | number;
+  x: number;
+  y: number;
+}
+
+export interface NodeServerPayload {
+  id: string | number;
+  type: string;
+  data: NodeData;
+  position?: { x: number; y: number };
+  self?: boolean;
+}
+
+export interface NodeRemovedPayload {
+  id: string | number;
+  self?: boolean;
+}
+
+export interface NodeRestoredPayload {
+  node: NodeServerPayload;
+  connections?: ConnectionServerPayload[];
+}
+
+export interface NodeUpdatedPayload {
+  id: string | number;
+  data: NodeData;
+}
+
+export interface ConnectionServerPayload {
+  id: number;
+  source_node_id: string | number;
+  target_node_id: string | number;
+  source_pin: string;
+  target_pin: string;
+  label?: string;
+  condition?: unknown;
+}
+
+export interface ConnectionRemovedPayload {
+  source_node_id: string | number;
+  target_node_id: string | number;
+}
+
+export interface ConnectionUpdatedPayload {
+  id: number;
+  label?: string;
+  condition?: unknown;
+}
+
+export interface NodeDataChangedPayload {
+  id: string | number;
+  prev_data: NodeData;
+  new_data: NodeData;
+}
+
+export interface FlowMetaChangedPayload {
+  field: string;
+  prev: unknown;
+  new: unknown;
+}
+
+export interface FlowUpdatedPayload {
+  nodes?: NodeServerPayload[];
+  connections?: ConnectionServerPayload[];
+}
+
+export interface HubMapEntry {
+  color_hex: string | null;
+  label: string;
+  jumpCount: number;
+}
+
+// ---------------------------------------------------------------------------
+// FlowContext & HookProxy
+// ---------------------------------------------------------------------------
+
 export interface FlowContext {
-  sheetsMap: Record<string, unknown>;
-  hubsMap: Record<string, unknown>;
+  sheetsMap: Record<string, SheetMapEntry>;
+  hubsMap: Record<string, HubMapEntry>;
   labels: Record<string, string>;
   lod: string;
   editingNodeId: string | null;
@@ -42,8 +125,8 @@ export interface HookProxy {
   arrange: unknown;
   nodeMap: Map<string | number, FlowNode>;
   connectionDataMap: Map<string, { id: number; label: string | null; condition: unknown }>;
-  sheetsMap: Record<string, unknown>;
-  hubsMap: Record<string, unknown>;
+  sheetsMap: Record<string, SheetMapEntry>;
+  hubsMap: Record<string, HubMapEntry>;
   labels: Record<string, string>;
   currentLod: string;
   readonly: boolean;
@@ -60,8 +143,8 @@ export interface HookProxy {
   el: HTMLElement | null;
   enterLoadingFromServer(): void;
   exitLoadingFromServer(): void;
-  _sheetsMap: Record<string, unknown>;
-  _hubsMap: Record<string, unknown>;
+  _sheetsMap: Record<string, SheetMapEntry>;
+  _hubsMap: Record<string, HubMapEntry>;
   _labels: Record<string, string>;
   _readonly: boolean;
   _currentUserId: number;
@@ -79,12 +162,12 @@ export interface HookProxy {
   debugHandler: unknown;
   keyboardHandler: unknown;
   lodController: unknown;
-  addNodeToEditor(data: Record<string, unknown>): Promise<FlowNode>;
-  addConnectionToEditor(data: Record<string, unknown>): Promise<unknown>;
+  addNodeToEditor(data: NodeServerPayload): Promise<FlowNode>;
+  addConnectionToEditor(data: ConnectionServerPayload): Promise<FlowConnection | undefined>;
   rebuildHubsMap(): Promise<void>;
   syncNodeSize(nodeId: string): Promise<void>;
   syncAllNodeSizes(): Promise<void>;
-  loadFlow(data: Record<string, unknown>): Promise<void>;
+  loadFlow(data: FlowUpdatedPayload): Promise<void>;
 }
 
 interface Position {
@@ -96,18 +179,18 @@ export interface EditorHandlers {
   init(): void;
   throttleNodeMoved(nodeId: string | number, position: Position): void;
   flushNodeMoved(nodeId: string | number): void;
-  handleNodeMoved(data: Record<string, unknown>): Promise<void>;
-  handleFlowUpdated(data: Record<string, unknown>): Promise<void>;
-  handleNodeAdded(data: Record<string, unknown>): Promise<void>;
-  handleNodeRemoved(data: Record<string, unknown>): Promise<void>;
-  handleNodeRestored(data: Record<string, unknown>): Promise<void>;
-  handleNodeUpdated(data: Record<string, unknown>): Promise<void>;
+  handleNodeMoved(data: NodeMovedPayload): Promise<void>;
+  handleFlowUpdated(data: FlowUpdatedPayload): Promise<void>;
+  handleNodeAdded(data: NodeServerPayload): Promise<void>;
+  handleNodeRemoved(data: NodeRemovedPayload): Promise<void>;
+  handleNodeRestored(data: NodeRestoredPayload): Promise<void>;
+  handleNodeUpdated(data: NodeUpdatedPayload): Promise<void>;
   rebuildNode(id: string | number, existingNode: FlowNode, nodeData: NodeData): Promise<void>;
-  handleConnectionAdded(data: Record<string, unknown>): Promise<void>;
-  handleConnectionRemoved(data: Record<string, unknown>): Promise<void>;
-  handleNodeDataChanged(data: Record<string, unknown>): void;
-  handleFlowMetaChanged(data: Record<string, unknown>): void;
-  handleConnectionUpdated(data: Record<string, unknown>): void;
+  handleConnectionAdded(data: ConnectionServerPayload): Promise<void>;
+  handleConnectionRemoved(data: ConnectionRemovedPayload): Promise<void>;
+  handleNodeDataChanged(data: NodeDataChangedPayload): void;
+  handleFlowMetaChanged(data: FlowMetaChangedPayload): void;
+  handleConnectionUpdated(data: ConnectionUpdatedPayload): void;
   destroy(): void;
 }
 
@@ -154,8 +237,8 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
       }
     },
 
-    async handleNodeMoved(data: Record<string, unknown>) {
-      const { node_id, x, y } = data as { node_id: string | number; x: number; y: number };
+    async handleNodeMoved(data: NodeMovedPayload) {
+      const { node_id, x, y } = data;
       const node = hook.nodeMap.get(node_id);
       if (!node) {
         return;
@@ -169,7 +252,7 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
       }
     },
 
-    async handleFlowUpdated(data: Record<string, unknown>) {
+    async handleFlowUpdated(data: FlowUpdatedPayload) {
       hook.history?.clear();
 
       for (const conn of hook.editor.getConnections()) {
@@ -191,23 +274,23 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
       await hook.syncAllNodeSizes();
     },
 
-    async handleNodeAdded(data: Record<string, unknown>) {
+    async handleNodeAdded(data: NodeServerPayload) {
       hook.enterLoadingFromServer();
       try {
         await hook.addNodeToEditor(data);
       } finally {
         hook.exitLoadingFromServer();
       }
-      if ((data as { self?: boolean }).self && hook.history) {
-        hook.history.add(new CreateNodeAction(hook, data.id as string | number));
+      if (data.self && hook.history) {
+        hook.history.add(new CreateNodeAction(hook, data.id));
       }
       if (data.type === "hub" || data.type === "jump") {
         await hook.rebuildHubsMap();
       }
     },
 
-    async handleNodeRemoved(data: Record<string, unknown>) {
-      const node = hook.nodeMap.get(data.id as string | number);
+    async handleNodeRemoved(data: NodeRemovedPayload) {
+      const node = hook.nodeMap.get(data.id);
       if (node) {
         // Exit inline edit if needed
         const ctx = hook._flowContext;
@@ -215,13 +298,13 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
           ctx.editingNodeId = null;
         }
 
-        if (hook._throttleTimers?.[data.id as string | number]) {
-          clearTimeout(hook._throttleTimers[data.id as string | number]);
-          delete hook._throttleTimers[data.id as string | number];
+        if (hook._throttleTimers?.[data.id]) {
+          clearTimeout(hook._throttleTimers[data.id]);
+          delete hook._throttleTimers[data.id];
         }
 
-        if ((data as { self?: boolean }).self && hook._historyTriggeredDelete !== data.id) {
-          hook.history?.add(new DeleteNodeAction(hook, data.id as string | number));
+        if (data.self && hook._historyTriggeredDelete !== data.id) {
+          hook.history?.add(new DeleteNodeAction(hook, data.id));
         }
         if (hook._historyTriggeredDelete === data.id) {
           hook._historyTriggeredDelete = null;
@@ -241,7 +324,7 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
         } finally {
           hook.exitLoadingFromServer();
         }
-        hook.nodeMap.delete(data.id as string | number);
+        hook.nodeMap.delete(data.id);
         if (hook.selectedNodeId === data.id) {
           hook.selectedNodeId = null;
         }
@@ -251,17 +334,15 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
       }
     },
 
-    async handleNodeRestored(data: Record<string, unknown>) {
+    async handleNodeRestored(data: NodeRestoredPayload) {
       hook.enterLoadingFromServer();
       try {
-        const nodeData = (data as { node: Record<string, unknown> }).node;
-        const node = await hook.addNodeToEditor(nodeData);
+        const node = await hook.addNodeToEditor(data.node);
         if (node) {
           await hook.area.update("node", node.id);
           await hook.syncNodeSize(node.id);
         }
-        for (const conn of ((data as { connections?: Record<string, unknown>[] }).connections ||
-          [])) {
+        for (const conn of (data.connections || [])) {
           if (!hook.editor.getConnection(`conn-${conn.id}`)) {
             await hook.addConnectionToEditor(conn);
           }
@@ -269,14 +350,13 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
       } finally {
         hook.exitLoadingFromServer();
       }
-      const nodeData = (data as { node: Record<string, unknown> }).node;
-      if (nodeData.type === "hub" || nodeData.type === "jump") {
+      if (data.node.type === "hub" || data.node.type === "jump") {
         await hook.rebuildHubsMap();
       }
     },
 
-    async handleNodeUpdated(data: Record<string, unknown>) {
-      const { id, data: nodeData } = data as { id: string | number; data: NodeData };
+    async handleNodeUpdated(data: NodeUpdatedPayload) {
+      const { id, data: nodeData } = data;
       const existingNode = hook.nodeMap.get(id);
       if (!existingNode) {
         return;
@@ -380,7 +460,7 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
       }
     },
 
-    async handleConnectionAdded(data: Record<string, unknown>) {
+    async handleConnectionAdded(data: ConnectionServerPayload) {
       const existingConn = hook.editor
         .getConnections()
         .find(
@@ -395,8 +475,8 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
 
       if (existingConn) {
         hook.connectionDataMap.set(existingConn.id, {
-          id: data.id as number,
-          label: (data.label as string) || null,
+          id: data.id,
+          label: data.label || null,
           condition: data.condition || null,
         });
         return;
@@ -410,7 +490,7 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
       }
     },
 
-    async handleConnectionRemoved(data: Record<string, unknown>) {
+    async handleConnectionRemoved(data: ConnectionRemovedPayload) {
       hook.enterLoadingFromServer();
       try {
         const connections = hook.editor.getConnections();
@@ -432,15 +512,11 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
       }
     },
 
-    handleNodeDataChanged(data: Record<string, unknown>) {
+    handleNodeDataChanged(data: NodeDataChangedPayload) {
       if (!hook.history) {
         return;
       }
-      const { id, prev_data: prevData, new_data: newData } = data as {
-        id: string | number;
-        prev_data: NodeData;
-        new_data: NodeData;
-      };
+      const { id, prev_data: prevData, new_data: newData } = data;
 
       const recent = hook.history
         .getRecent(NODE_DATA_COALESCE_MS)
@@ -454,15 +530,11 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
       }
     },
 
-    handleFlowMetaChanged(data: Record<string, unknown>) {
+    handleFlowMetaChanged(data: FlowMetaChangedPayload) {
       if (!hook.history) {
         return;
       }
-      const { field, prev, new: newValue } = data as {
-        field: string;
-        prev: unknown;
-        new: unknown;
-      };
+      const { field, prev, new: newValue } = data;
 
       const recent = hook.history
         .getRecent(FLOW_META_COALESCE_MS)
@@ -476,11 +548,11 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
       }
     },
 
-    handleConnectionUpdated(data: Record<string, unknown>) {
+    handleConnectionUpdated(data: ConnectionUpdatedPayload) {
       const connId = `conn-${data.id}`;
       hook.connectionDataMap.set(connId, {
-        id: data.id as number,
-        label: data.label as string,
+        id: data.id,
+        label: data.label || null,
         condition: data.condition,
       });
 

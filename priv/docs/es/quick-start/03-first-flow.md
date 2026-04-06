@@ -2,101 +2,101 @@
 title: "Tu primer flujo",
 category_label: "Inicio Rápido",
 order: 3,
-description: "Construye un diálogo ramificado de base reaccionando consecuentemente a parámetros condicionales desde hojas gráficas externas."
+description: "Construye un diálogo ramificado que reacciona a las estadísticas del personaje."
 }
 
 ---
 
-Los Flujos (Flows) son ese plano base bidimensional arquitectónico sobre todo lugar que dará chispa o luz viva interactiva final a tus textos y narración. En nuestra guía inicial formativa y de paso, estarás preparando tus guantes gráficos interactivos forjando algo ínfimo pero lógico conectando datos reales a nodos con respecto al estado matemático de esa misma "Hoja personal del PNJ" que dejaste ensamblada estáticamente a atrás el tutorial anterior.
+Los Flujos (Flows) son donde tu narrativa cobra vida. En esta guía construirás un diálogo corto que se ramifica según la hoja de personaje de la guía anterior.
 
-## Crea el mapa de Flujo y su raíz inicial
+## Crea el flujo
 
-Abre tu lista de secciones pulsando "Flujos" (**Flows**) situados directos en panel y tira al final creando "Nuevo Flujo" (New Flow). A modo ejemplo bautiza esto como la trama o guion estático: "Conversación de inicio y llegada a Taberna" de rol.
+Selecciona **Flujos** en la barra lateral y haz clic en **Nuevo Flujo**. Renómbralo a "Tavern Encounter".
 
-Podrás ver expuesto crudo una interfaz gráfica completa o mapa de diseño. En la superficie blanca un terminal bloque flotante morado predeterminado que dice "{accent}Comienzo de Rama (Entry){/accent}" ya estará amarrado como ancla sobre nuestro trabajo base — de esta puerta saldrán o brotarán disparadas y lógicamente activas todas nuestra rutas variables al jugar posteriormente durante su prueba simulada o motor.
-
-<div class="docs-image-placeholder">
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Pizarra de Flujo sin nodos que empieza visual y limpio al contar meramente tan un pequeño recuadro Entry a solas mostrando un botón grande gris "Añadir Bloque y Nodo base"
-</div>
-
-## Demos cuerpo a los nudos narrativos mediante un bloque diálogo plano natural
-
-Abre tu control haciendo toque superior donde luce visible una "Añadir Nodo" (Agregar) cruz azul o seleccionador general global arriba en ventana. Solicita inyectar en parrilla la típica pastilla "Nudo o Diálogo base" (Dialogue). Su manifestación material se verá frente a ti incondicional.
-
-Enlázala. Arrastrando y manteniendo pulsado sobre terminal exterior o pin azul saliente y visual arrastra hilos eléctricos entre puerto original Entry izquierdo al enchufe del panel derecho incrustado inicial. La conexión estará fijada visual permanentemente allí con curvas gráficas vectoriales y perfectas.
-
-Sobre este primer texto clava su interior y di algo directo o golpeando `E` usando interfaz visual y texto:
-
-> _"Parece que tus lamentos en batalla ya hacen mucha mella. Veo que has soportado un horrible infierno al sol, caminante lejano e indeseado."_
+El lienzo se abre con un nodo de {accent}Entrada (Entry){/accent} ya colocado — aquí es donde comienza la ejecución.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Rama Entry primera inicial atada perfectamente en un hilito vectorial visual enganchado de la pastilla "Diálogos e interacción Base humano a Texto PNJ" repletas o ya puestas a rebozar de renglones escritos.
+  Un nuevo lienzo de flujo con el nodo de Entrada y el desplegable "Añadir Nodo" visible en la barra de herramientas superior derecha
 </div>
 
-## La condicionalidad de variables puras lógicas directas cruzadas
+## Añade un nodo de diálogo
 
-Lanza y selecciona ahora al ruedo general un "Bloque de Decisión y Control Lógico" que parte la baraja y suela al ruedo: la "Condición Condicional Estricta base" (**Condition**). Atorníllala en base y cuélgala en cascada pegada por detrás visual de ese globo Diálogo en particular.
+Haz clic en el botón **Añadir Nodo** en la barra de herramientas superior derecha y selecciona **Diálogo**. Un nuevo nodo aparece en el lienzo.
 
-Toma de este bloque sus parámetros del panel derecho o clicando una su engrane lógico veloz:
+Conecta la salida del nodo de Entrada a la entrada del nodo de Diálogo arrastrando de un puerto al otro.
 
-1. Elije con ratón seleccionar a mano nuestro valor estadístico general pre-creado (salud personaje cruzado): `pj.jaime.salud`
-2. Posiciona de comparador directo el símbolo u expresión "**Por el Mayor O Superior Lógico de la Variable**" (Greater than)
-3. Fija constante al objetivo puro métrico natural en `50`
+Selecciona el nodo de Diálogo y escribe la línea del NPC directamente en el nodo (haz doble clic o pulsa `E` para empezar la edición en línea):
 
-Ya logramos magia visual técnica base matemática condicional visual y automática en esta pastilla; partirá inevitable el cauce general bifurcándose en los puentes: Salida del panel "**Cierto**" (True) o "**Falso total base lógica**" (False).
+> _"You look like you've been through a lot, traveler."_
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Detalle global o acercamiento en lupa al Inspector Visual de Control Lógico con una frase o panel base evaluando a mayores pj jaime valor de la salud de vida constante métrica a 50 base puro matemática general sin código.
+  El nodo de Entrada conectado a un nodo de Diálogo con la línea del NPC visible en el cuerpo del nodo
 </div>
 
-## Tejiendo de par en par, o ramificaciones paralelas y conversaciones cruzadas y decisiones
+## Añade una condición
 
-Duplica y tira al ruedo general visual ahora esos bloque globos Diálogo; un par estará de lujo y conéctalos enganchando dos extremos del pinza Condición visual matemática en sí a ambas las siguientes:
+Añade un nodo de **Condición** desde la barra de herramientas y conéctalo después del nodo de Diálogo.
 
-- Salida terminal visual **Cierto Verdadero (True)** -- _"Oh, veo que tus heridas aún aguantan afortunadamente con valor, me engañaban mis ojos viejo tonto. ¿Serviremos sidra a este héroe o más oro quieres que te compre primero aquí para forjar tus cosas en tus grandes bolsas?"_
-- Salida puente inferior o lado **Desaprobación Negativa Falsa Lógica Inferior o Negritud Fracasada estricta Falsa base (False)** -- _"Santa Virgen bendita... tus entrañas huelen un podruño hedor pútrido letal en batalla. No intentes disimular que caerás hoy de este banco seco. A beber pócimas te mando chaval yo viejo."_
+Selecciona el nodo de Condición y haz clic en el icono de ajustes en su barra flotante (o pulsa `E`) para abrir el panel del {accent}Constructor de Condiciones (Condition Builder){/accent}:
 
-Anula y remata enganchando una terminal cruz final `{accent}Salida Directa u Ocultar Flujo O Finalizar Base Narrativa general Lógica de Rama{/accent} (Exit)` y anuda este final con ello. Misión terminada.
+1. Selecciona la variable `mc.jaime.health`
+2. Establece el operador a **Mayor que**
+3. Introduce el valor `50`
+
+El nodo de Condición ahora tiene dos salidas: **Verdadero (True)** y **Falso (False)**.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Árbol fotográfico visual del trabajo montado completo sin agujeros lógicos o hilos vacíos
+  El panel del Constructor de Condiciones abierto a la derecha, con la variable mc.jaime.health seleccionada, operador "Mayor que" y valor 50
 </div>
 
-## Depuración integral con paso a panel del desarrollador inspector interno general
+## Ramifica la conversación
 
-Acciona apretando al final de panel lateral un atajo directo arriba o ratón y pide `Modo de Control Depuración de Juego (Debug)`. Todo se levantará inferior indicando control analítico exhaustivo y en verde un panel en sí en general bajo.
+Añade dos nodos de Diálogo más y conéctalos a las salidas de la Condición:
 
-Las solapas de su panel son tres directivas integradas:
+- Salida **Verdadero (True)** -- _"Ah, you seem in good shape! What can I get you?"_
+- Salida **Falso (False)** -- _"You're barely standing! Sit down, I'll bring a healing potion."_
 
-- **Panel Pantalla Registros Centralizado global Histórico** (Console) -- Vierte texto o bitácora
-- **Panel Control Tabla General Parámetros** (Variables) -- Ve como cada variable está puesta a su número general
-- **Control Base de Saltos a Vidas Recorridas Históricas Cronometro** (History)
-
-Dale o solicita la prueba base presionando de manera simple su accionar cruz en *Pasos Analíticos Lentos O Segundos Manual* (Step over base analítica general o presiona F10 en tu atajo control manual técnico local natural). Este avance general forzado ve todo cruzando hilo. Fija cuenta en inspector y constata puramente `pj.jaime.salud` arrojando número "Vida A: 100 base constante métrico pleno general". Dado la certeza de que el mayor general de Cien cruzará cincuenta, nos regalará a pantalla Cierta y a favor (Trama Positiva). Acierto visual pleno.
+Añade un nodo de {accent}Salida (Exit){/accent} después de cada diálogo para terminar el flujo.
 
 <div class="docs-image-placeholder">
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-  Depurador cruz o barra verde encendiendo el flujo cruz de la parte superpuesta de true o a cierto favorable brillando la pestaña e hilos cruz y registro inferior con cruces textual y tabla control lateral interior de variables en vida activa visual dinámica completa de sistema sin programar
+  El flujo completo: Entrada > Diálogo > Condición > dos Diálogos ramificados > dos nodos de Salida
 </div>
 
-Cambio extremo: corre tu a hojas "Jaime" personal y quítale pura vida hasta 30 constantes general natural sin trampa alguna general base y devuelve al simulador "Play" Debug... de repende veras como automáticamente sin toque manual el propio flujo ha cogido vida y rechazará el camino verdadero con rechazo, forzando y pintándote la terminal inferior cruz de diálogo fracasado u rama inferior (camino oscuro u fracasado condicional a negativo Falso base)
+## Prueba con el depurador
 
-## Breve lista del inventario y cajas herramientas Base (Nodos Base puros)  
+Haz clic en el botón **Depurar** en la barra de herramientas superior derecha (o pulsa `Ctrl+Shift+D`) para abrir el panel de depuración en la parte inferior del lienzo.
 
-Si aprietas en añadir paneles base dispones estos diamantes mágicos narrativos a su disfrute en su flujo de árbol, de fábrica por Storyarn sin extensiones extra a programar o bases externas puros lógicos:
+El panel de depuración tiene tres pestañas:
 
-| Nombre del Bloque            | Su Propósito final e Identidad en la Trama interactiva general a la historia de videojuego completo natural |
-| --------------- | ------------------------------------------------------------------------------ |
-| **Punto Inicial General(Entry)**       | Punto neurálgico primero por el cual la partida e hilos visual entran al marco al iniciar |
-| **Salida Cortar o Destino Fin(Exit)**        | Matar por fin esta ventana u ocio cortando interacciones con natural control cerrándolo  |
-| **Diálogo (Dialogue)**    | Globos visual de burbujas donde ver al actor puramente hablar, con la particular añadida opcional de respuestas humanas para control juego jugador con pistas de sonido puro integradas |
-| **Evaluaciones Parámetro (Condition)**   | Romper rutas con puramente condicional con bifurcado general si variables dicen "positivo" real y cruzan valor superior.   |
-| **Asesino de Variables Puros  (Instruction)** | Te da magia e inyectar valores o restar vidas sumando restas a bases hoja datos variables. (Para castigar personajes puro matemáticamente durante rol en base sin tocar hojas)      |
-| **Receptor Cúmulos  (Hub)**         | Nodo general vacío unificado que actúa atrapando hilos rotos convergentes   |
-| **Salto Hiperespacio visual remoto (Jump)**        | Empuja cruz el progreso narrativa a tele portarlo base al Receptor en sí o Hub mágico. Ideal si tu mapa flujo crece y se ve feo (evitar hilos gigantes cruzando uniones pantalla bases en sí puramente gráfico inmenso)  |
-| **Texto de Director Acción (Slug Line)**   | Cabezales con anotaciones propias y acotamientos teatrales puros de lugar.   |
-| **Cajas Recicladas en Embalajes o Rutinas  (Subflow)**     | Para incrustar todo de un de un mapa flujo puro dentro un punto u rama base para esconder trama base general.  |
+- **Consola** -- muestra la salida de ejecución a medida que ocurre
+- **Variables** -- muestra todas las variables del proyecto y sus valores actuales
+- **Historial** -- un registro paso a paso de los nodos visitados
+
+Haz clic en **Paso** (o pulsa `F10`) para avanzar nodo por nodo. El panel de variables muestra `mc.jaime.health = 100`. Como 100 > 50, el flujo toma el camino Verdadero.
+
+<div class="docs-image-placeholder">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+  El panel de depuración abierto en la parte inferior mostrando la pestaña de Consola con la salida de ejecución, y el camino Verdadero resaltado en el lienzo
+</div>
+
+Prueba a cambiar el valor de Health a `30` en la hoja de personaje y ejecutar el depurador de nuevo — el flujo tomará el camino Falso en su lugar.
+
+## Tipos de nodos disponibles
+
+El editor de flujos admite estos tipos de nodos, todos disponibles desde el desplegable **Añadir Nodo**:
+
+| Nodo            | Propósito                                                                          |
+| --------------- | ---------------------------------------------------------------------------------- |
+| **Entrada (Entry)**      | Punto de inicio del flujo                                                |
+| **Salida (Exit)**        | Termina el flujo (terminal, continuar a otro flujo, o volver al llamador)|
+| **Diálogo (Dialogue)**   | Discurso de personaje con respuestas opcionales, locutor, audio y acotaciones |
+| **Condición (Condition)**| Ramifica según condiciones de variables (modo booleano o switch)         |
+| **Instrucción (Instruction)** | Modifica valores de variables (asignaciones)                        |
+| **Hub**         | Punto de convergencia con nombre al que los nodos de Salto pueden apuntar          |
+| **Salto (Jump)**| Salta la ejecución a un nodo Hub                                                   |
+| **Encabezado de escena (Slug Line)** | Encabezado de escena estilo guion (INT/EXT, ubicación, momento del día) |
+| **Subflujo (Subflow)**   | Incrusta otro flujo como una subrutina reutilizable                     |

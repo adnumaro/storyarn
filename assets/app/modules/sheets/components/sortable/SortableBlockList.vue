@@ -182,8 +182,8 @@ function handleInsertIntoColumnGroup(payload: InsertPayload): void {
   pushColumnLayout(nextItems);
 }
 
-function isColumnGroupBlock(item: { id?: number | string; type?: string }): boolean {
-  return !!item && !!item.id && item.type !== "full_width" && item.type !== "column_group";
+function isColumnGroupBlock(item: LayoutItem | Block): item is Block {
+  return "id" in item && !!item.id && item.type !== "full_width" && item.type !== "column_group";
 }
 
 function extractFromColumnGroup(items: LayoutItem[], block: Block, hoveredItem: LayoutItem | undefined, hoveredPlacement: { bottom?: boolean } | undefined): LayoutItem[] | null {
@@ -234,7 +234,7 @@ makeDroppable(
     groups: ["blocks-vertical"],
     events: {
       onDrop: (e: IDragEvent) => {
-        const draggedItem = e.draggedItems?.[0]?.item as LayoutItem | undefined;
+        const draggedItem = e.draggedItems?.[0]?.item as LayoutItem | Block | undefined;
         const hoveredItem = e.hoveredDraggable?.item as LayoutItem | undefined;
         const side = dropSide(e, e.hoveredDraggable?.element);
 
@@ -255,11 +255,11 @@ makeDroppable(
           return;
         }
 
-        // Case 2: Extract block from column group
-        if (isColumnGroupBlock(draggedItem as { id?: number | string; type?: string })) {
+        // Case 2: Extract block from column group (dragged item is a Block from within a column group)
+        if (draggedItem && isColumnGroupBlock(draggedItem)) {
           const nextItems = extractFromColumnGroup(
             localItems.value,
-            draggedItem as unknown as Block,
+            draggedItem,
             hoveredItem,
             e.hoveredDraggable?.placement,
           );

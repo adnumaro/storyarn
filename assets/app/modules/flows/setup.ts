@@ -104,6 +104,7 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
 
   // Intercept socket "rendered" events during bulk load (same as V1)
   area.addPipe((context) => {
+    // Rete area pipe context is a union type; cast needed to check event type discriminator
     const ctx = context as unknown as { type: string; data?: { type?: string } };
     if (hook._deferSocketCalc && ctx.type === "rendered" && ctx.data?.type === "socket") {
       hook._deferredSockets.push(context);

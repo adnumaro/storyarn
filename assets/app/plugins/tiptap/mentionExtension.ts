@@ -10,15 +10,17 @@ import type { Node } from "@tiptap/core";
 import type { MentionOptions } from "@tiptap/extension-mention";
 import MentionList from "./MentionList.vue";
 
+import type { LiveInterface } from "@composables/useLive";
+
 interface MentionItem {
   id: string | number;
   name?: string;
   label?: string;
   ref?: string;
-  [key: string]: unknown;
+  [key: string]: string | number | boolean | undefined;
 }
 
-type PushEventFn = (event: string, payload: Record<string, unknown>) => void;
+type PushEventFn = LiveInterface["pushEvent"];
 type PushEventToFn = (target: string, event: string, payload: Record<string, unknown>) => void;
 
 interface MentionExtensionOptions {
@@ -83,7 +85,7 @@ export function createMentionExtension(
         allowSpaces: false,
 
         command: ({ editor, range, props }) => {
-          const item = props as unknown as MentionItem;
+          const item = props as MentionItem;
           const $from = editor.state.doc.resolve(range.from);
           const blockNode = $from.parent;
 
@@ -150,7 +152,7 @@ export function createMentionExtension(
             mentionResolve = wrappedResolve;
 
             mentionDebounce = setTimeout(() => {
-              const push: PushEventFn =
+              const push =
                 phxTarget && pushEventTo
                   ? (ev: string, payload: Record<string, unknown>) => pushEventTo(phxTarget, ev, payload)
                   : pushEvent;

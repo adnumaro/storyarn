@@ -46,6 +46,10 @@ const emailForm = useLiveForm(() => emailFormProp, {
 const displayName = profileForm.field("display_name");
 const locale = profileForm.field("locale");
 const email = emailForm.field("email");
+
+function updateLocale(val: string): void {
+  locale.value.value = val;
+}
 </script>
 
 <template>
@@ -80,11 +84,7 @@ const email = emailForm.field("email");
           <Label for="profile-locale">{{ $t("settings.profile.language") }}</Label>
           <Select
             :model-value="locale.inputAttrs.value.value || ''"
-            @update:model-value="
-              (val) =>
-                locale.inputAttrs.value['onUpdate:modelValue']?.(val) ??
-                locale.inputAttrs.value.onInput?.({ target: { value: val } } as unknown as Event)
-            "
+            @update:model-value="updateLocale"
           >
             <SelectTrigger id="profile-locale" class="w-full">
               <SelectValue :placeholder="$t('settings.profile.auto_detect')" />
