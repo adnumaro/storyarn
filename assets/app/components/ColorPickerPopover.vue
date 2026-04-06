@@ -1,3 +1,10 @@
+<script lang="ts">
+declare class EyeDropper {
+  constructor();
+  open(): Promise<{ sRGBHex: string }>;
+}
+</script>
+
 <script setup lang="ts">
 /**
  * Color picker using vanilla-colorful web components inside shadcn Popover.
@@ -12,22 +19,12 @@ import "vanilla-colorful/hex-input.js";
 
 import { useLive } from "@composables/useLive";
 
-const {
-  color = "#3b82f6",
-  disabled = false,
-  variant = "inline",
-  event = null,
-} = defineProps<{
+const props = defineProps<{
   color?: string;
   disabled?: boolean;
   variant?: "swatch" | "inline" | "full";
   event?: string | null;
 }>();
-
-declare class EyeDropper {
-  constructor();
-  open(): Promise<{ sRGBHex: string }>;
-}
 
 const emit = defineEmits<{
   "update:color": [hex: string];
@@ -38,7 +35,7 @@ interface ColorElement extends HTMLElement {
   color: string;
 }
 
-const localColor = ref(color);
+const localColor = ref(props.color ?? "#3b82f6");
 const pickerRef = ref<ColorElement | null>(null);
 const hexInputRef = ref<ColorElement | null>(null);
 const isOpen = ref(false);
@@ -46,7 +43,7 @@ const hasEyeDropper = ref(typeof window !== "undefined" && "EyeDropper" in windo
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 watch(
-  () => color,
+  () => props.color,
   (v) => {
     localColor.value = v ?? "#3b82f6";
   },
@@ -57,7 +54,7 @@ function pushColor(hex: string) {
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     emit("update:color", hex);
-    if (event) live.pushEvent(event, { value: hex });
+    if (props.event) live.pushEvent(props.event, { value: hex });
   }, 150);
 }
 
@@ -103,8 +100,8 @@ onBeforeUnmount(() => {
   <Popover @update:open="onPopoverOpen">
     <PopoverTrigger as-child>
       <button
-        v-if="variant === 'swatch'"
-        :disabled="disabled"
+        v-if="props.variant === 'swatch'"
+        :disabled="props.disabled"
         class="size-7 rounded-full border-2 border-white/50 shadow-sm hover:scale-110 transition-transform"
         :style="{ backgroundColor: localColor }"
         title="Change color"

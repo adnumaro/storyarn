@@ -27,6 +27,7 @@ storyarn-*.tar
 
 # Ignore assets that are produced by build tools.
 /priv/static/assets/
+/priv/static/.vite/
 /priv/static/index.js
 
 # Ignore digested assets cache.

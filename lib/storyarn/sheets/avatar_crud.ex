@@ -74,12 +74,12 @@ defmodule Storyarn.Sheets.AvatarCrud do
   # Delete
   # ===========================================================================
 
-  def remove_avatar(avatar_id) do
+  def remove_avatar(sheet_id, avatar_id) do
     case Repo.get(SheetAvatar, avatar_id) do
       nil ->
         {:error, :not_found}
 
-      avatar ->
+      %SheetAvatar{sheet_id: ^sheet_id} = avatar ->
         result = Repo.delete(avatar)
 
         case result do
@@ -90,6 +90,9 @@ defmodule Storyarn.Sheets.AvatarCrud do
           _ ->
             result
         end
+
+      _wrong_sheet ->
+        {:error, :not_found}
     end
   end
 

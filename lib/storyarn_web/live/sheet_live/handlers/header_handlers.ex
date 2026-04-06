@@ -130,7 +130,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       id = helpers.parse_id.(id)
 
-      case Sheets.remove_avatar(id) do
+      case Sheets.remove_avatar(socket.assigns.sheet.id, id) do
         {:ok, _} ->
           {:noreply,
            socket |> helpers.reload_sheet_and_tree.() |> helpers.broadcast.(:sheet_updated)}

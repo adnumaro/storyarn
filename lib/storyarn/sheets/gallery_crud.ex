@@ -28,6 +28,17 @@ defmodule Storyarn.Sheets.GalleryCrud do
     |> Repo.preload(:asset)
   end
 
+  @doc "Gets a gallery image by ID, verifying it belongs to a block owned by the given sheet."
+  def get_gallery_image_for_sheet(sheet_id, id) do
+    from(gi in BlockGalleryImage,
+      join: b in Block,
+      on: gi.block_id == b.id,
+      where: gi.id == ^id and b.sheet_id == ^sheet_id,
+      preload: [:asset]
+    )
+    |> Repo.one()
+  end
+
   @doc "Gets the first gallery image for a sheet (any gallery block)."
   def get_first_gallery_image(sheet_id) do
     from(gi in BlockGalleryImage,
@@ -94,9 +105,9 @@ defmodule Storyarn.Sheets.GalleryCrud do
   # Delete
   # ===========================================================================
 
-  @doc "Removes a gallery image (hard delete)."
-  def remove_gallery_image(gallery_image_id) do
-    case Repo.get(BlockGalleryImage, gallery_image_id) do
+  @doc "Removes a gallery image (hard delete), verifying it belongs to a block owned by the given sheet."
+  def remove_gallery_image(sheet_id, gallery_image_id) do
+    case get_gallery_image_for_sheet(sheet_id, gallery_image_id) do
       nil ->
         {:error, :not_found}
 

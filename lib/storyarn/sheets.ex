@@ -524,9 +524,10 @@ defmodule Storyarn.Sheets do
 
   defdelegate list_gallery_images(block_id), to: GalleryCrud
   defdelegate get_gallery_image(id), to: GalleryCrud
+  defdelegate get_gallery_image_for_sheet(sheet_id, id), to: GalleryCrud
   defdelegate add_gallery_image(block, asset_id), to: GalleryCrud
   defdelegate add_gallery_images(block, asset_ids), to: GalleryCrud
-  defdelegate remove_gallery_image(gallery_image_id), to: GalleryCrud
+  defdelegate remove_gallery_image(sheet_id, gallery_image_id), to: GalleryCrud
   defdelegate update_gallery_image(gallery_image, attrs), to: GalleryCrud
   defdelegate reorder_gallery_images(block_id, ordered_ids), to: GalleryCrud
   defdelegate batch_load_gallery_data(block_ids), to: GalleryCrud
@@ -544,7 +545,7 @@ defmodule Storyarn.Sheets do
   defdelegate get_default_avatar(sheet_id), to: AvatarCrud
   defdelegate add_avatar(sheet, asset_id, attrs \\ %{}), to: AvatarCrud
   defdelegate update_avatar(avatar, attrs), to: AvatarCrud
-  defdelegate remove_avatar(avatar_id), to: AvatarCrud
+  defdelegate remove_avatar(sheet_id, avatar_id), to: AvatarCrud
   defdelegate set_avatar_default(avatar), to: AvatarCrud, as: :set_default
   defdelegate reorder_avatars(sheet_id, ordered_ids), to: AvatarCrud
   defdelegate batch_load_avatars_by_sheet(project_id), to: AvatarCrud
