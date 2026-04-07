@@ -1,0 +1,36 @@
+test/storyarn_web/components/core_components_test.exs
+  0ac1b342f929655b 1044,1046-1049,1054-1056,1061-1063,1069,1071-1072
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "f3f158d5d2419f9bbf16a8412542f4035994a8a8",
+  "prompts": {
+    "0ac1b342f929655b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b2c83f4-7e93-4ce7-8e94-cb64f65b189b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 24,
+      "total_deletions": 20,
+      "accepted_lines": 15,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 152,
+      "overriden_lines": 0
+    }
+  }
+}
