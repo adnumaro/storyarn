@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.SceneLive.Helpers.SerializerTest do
   use ExUnit.Case, async: true
 
-  alias StoryarnWeb.SceneLive.Helpers.Serializer
+  alias StoryarnWeb.SceneLive.Helpers.SceneSerializer, as: Serializer
 
   # ── serialize_layer/1 ────────────────────────────────────────────────
 
