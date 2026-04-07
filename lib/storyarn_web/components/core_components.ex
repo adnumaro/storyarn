@@ -432,66 +432,6 @@ defmodule StoryarnWeb.Components.CoreComponents do
   end
 
   @doc """
-  Renders a block label with optional constant indicator and inline editing.
-
-  When `can_edit` and `block_id` are provided, double-click activates inline editing.
-
-  ## Examples
-
-      <.block_label label="Health" is_constant={false} />
-      <.block_label label="Max HP" is_constant={true} />
-      <.block_label label="Health" block_id={@block.id} can_edit={true} target={@target} />
-  """
-  attr :label, :string, required: true
-  attr :is_constant, :boolean, default: false
-  attr :block_type, :string, default: nil
-  attr :block_id, :any, default: nil
-  attr :can_edit, :boolean, default: false
-  attr :target, :any, default: nil
-
-  def block_label(assigns) do
-    ~H"""
-    <label :if={@label != ""} class="text-sm text-muted-foreground mb-1 flex items-center gap-1">
-      <.icon
-        :if={block_type_icon(@block_type)}
-        name={block_type_icon(@block_type)}
-        class="size-3 opacity-60"
-      />
-      <span
-        :if={@is_constant}
-        class="text-destructive "
-        data-tip={gettext("Constant")}
-      >
-        <.icon name="lock" class="size-3" />
-      </span>
-      <span
-        :if={@can_edit && @block_id}
-        id={"block-label-#{@block_id}"}
-        phx-update="ignore"
-        data-label={@label}
-        data-block-id={@block_id}
-        data-phx-target={@target}
-        class="cursor-default hover:text-foreground transition-colors"
-      >
-        {@label}
-      </span>
-      <span :if={!@can_edit || !@block_id}>{@label}</span>
-    </label>
-    """
-  end
-
-  defp block_type_icon("text"), do: "type"
-  defp block_type_icon("rich_text"), do: "align-left"
-  defp block_type_icon("number"), do: "hash"
-  defp block_type_icon("select"), do: "circle-dot"
-  defp block_type_icon("multi_select"), do: "list-checks"
-  defp block_type_icon("date"), do: "calendar"
-  defp block_type_icon("boolean"), do: "toggle-left"
-  defp block_type_icon("reference"), do: "link"
-  defp block_type_icon("table"), do: "table-2"
-  defp block_type_icon(_), do: nil
-
-  @doc """
   Renders a back navigation link.
 
   ## Examples
