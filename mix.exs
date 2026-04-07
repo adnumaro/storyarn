@@ -70,7 +70,6 @@ defmodule Storyarn.MixProject do
       {:tailwind, "~> 0.3", runtime: Mix.env() == :dev},
       {:live_vue, "~> 1.0"},
       {:igniter, "~> 0.6"},
-      {:lucide_icons, "~> 2.0"},
       {:swoosh, "~> 1.16"},
       {:gen_smtp, "~> 1.0"},
       {:req, "~> 0.5"},
@@ -121,7 +120,6 @@ defmodule Storyarn.MixProject do
       {:ex_machina, "~> 2.8", only: :test},
       {:mox, "~> 1.2", only: :test},
       {:faker, "~> 0.18", only: :test},
-
       # E2E testing with Playwright
       {:phoenix_test, "~> 0.4", only: :test, runtime: false},
       {:phoenix_test_playwright, "~> 0.10", only: :test, runtime: false}

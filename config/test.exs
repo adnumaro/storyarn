@@ -3,6 +3,9 @@ import Config
 # Only in tests, remove the complexity from the password hashing algorithm
 config :bcrypt_elixir, :log_rounds, 1
 
+# Disable LiveVue props diffing so tests always see full props
+config :live_vue, enable_props_diff: false
+
 # Enable SQL sandbox for E2E tests with Playwright
 config :storyarn, :sql_sandbox, true
 

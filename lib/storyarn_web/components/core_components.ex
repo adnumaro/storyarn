@@ -28,6 +28,7 @@ defmodule StoryarnWeb.Components.CoreComponents do
   """
   use Phoenix.Component
   use Gettext, backend: Storyarn.Gettext
+  use LiveVue
 
   alias Phoenix.LiveView.JS
 
@@ -416,24 +417,18 @@ defmodule StoryarnWeb.Components.CoreComponents do
   attr :rest, :global
 
   def icon(assigns) do
-    icon_name =
-      assigns.name
-      |> String.replace("-", "_")
-      |> String.to_existing_atom()
+    assigns = assign_new(assigns, :uid, fn -> System.unique_integer([:positive]) end)
 
-    # Build assigns map compatible with Phoenix.Component
-    icon_assigns =
-      %{
-        __changed__: %{},
-        class: assigns[:class],
-        style: assigns[:style]
-      }
-      |> Map.merge(assigns[:rest] || %{})
-      |> Enum.reject(fn {_, v} -> is_nil(v) end)
-      |> Map.new()
-      |> Map.put(:__changed__, %{})
-
-    apply(Lucideicons, icon_name, [icon_assigns])
+    ~H"""
+    <.vue
+      v-component="components/LucideIcon"
+      id={"icon-#{@name}-#{@uid}"}
+      name={@name}
+      class={@class}
+      v-ssr={false}
+      {@rest}
+    />
+    """
   end
 
   @doc """

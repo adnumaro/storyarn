@@ -4,13 +4,16 @@ import { Primitive, type AsTag } from "reka-ui";
 import { cn } from "@utils/utils";
 import { buttonVariants } from ".";
 
-const props = defineProps<{
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
-  size?: "default" | "xs" | "sm" | "lg" | "icon" | "icon-sm" | "icon-lg";
-  class?: HTMLAttributes["class"];
-  asChild?: boolean;
-  as?: AsTag | Component;
-}>();
+const props = withDefaults(
+  defineProps<{
+    variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+    size?: "default" | "xs" | "sm" | "lg" | "icon" | "icon-sm" | "icon-lg";
+    class?: HTMLAttributes["class"];
+    asChild?: boolean;
+    as?: AsTag | Component;
+  }>(),
+  { as: "button" },
+);
 </script>
 
 <template>
