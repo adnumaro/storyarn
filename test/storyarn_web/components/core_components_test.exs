@@ -1041,32 +1041,36 @@ defmodule StoryarnWeb.Components.CoreComponentsTest do
   # =============================================================================
 
   describe "icon/1" do
-    test "renders lucide icon as svg" do
+    test "renders as Vue LucideIcon component" do
       html = render_component(&CoreComponents.icon/1, name: "x")
-      assert html =~ "svg"
+      vue = LiveVue.Test.get_vue(html)
+
+      assert vue.component == "components/LucideIcon"
+      assert vue.props["name"] == "x"
     end
 
     test "applies default size-4 class" do
       html = render_component(&CoreComponents.icon/1, name: "x")
-      assert html =~ "size-4"
+      vue = LiveVue.Test.get_vue(html)
+
+      assert vue.class =~ "size-4"
     end
 
     test "applies custom class" do
       html = render_component(&CoreComponents.icon/1, name: "x", class: "size-6 text-red-500")
-      assert html =~ "size-6"
-      assert html =~ "text-red-500"
+      vue = LiveVue.Test.get_vue(html)
+
+      assert vue.class =~ "size-6 text-red-500"
     end
 
     test "renders different icon names" do
       for name <- ["info", "alert-circle", "arrow-left", "lock", "x"] do
         html = render_component(&CoreComponents.icon/1, name: name)
-        assert html =~ "svg", "Expected SVG for icon: #{name}"
-      end
-    end
+        vue = LiveVue.Test.get_vue(html)
 
-    test "applies style attribute" do
-      html = render_component(&CoreComponents.icon/1, name: "x", style: "color: red")
-      assert html =~ "color: red"
+        assert vue.component == "components/LucideIcon"
+        assert vue.props["name"] == name
+      end
     end
   end
 
