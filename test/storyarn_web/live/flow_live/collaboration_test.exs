@@ -32,15 +32,14 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
         )
 
       # Simulate FlowLoader hook + wait for async data load
-      html = load_flow(view)
+      load_flow(view)
 
-      # Canvas should have collaboration data attributes
-      assert html =~ "data-user-id=\"#{user.id}\""
-      assert html =~ "data-user-color"
-      assert html =~ "data-locks"
+      # Collaboration data is now passed as Vue props, not HTML data attributes
+      vue = LiveVue.Test.get_vue(view, name: "modules/flows/components/FlowEditor")
 
-      # View should have online_users assign
-      assert html =~ "flow-canvas-#{flow.id}"
+      assert vue.props["user-id"] == user.id
+      assert is_binary(vue.props["user-color"])
+      assert vue.props["canvas-id"] == "flow-canvas-#{flow.id}"
     end
 
     test "acquires lock on node selection", %{conn: conn, user: user} do
