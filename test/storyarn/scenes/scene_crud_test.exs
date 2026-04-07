@@ -207,15 +207,15 @@ defmodule Storyarn.Scenes.SceneCrudTest do
       assert hd(results).id == scene.id
     end
 
-    test "limits results to 10" do
+    test "limits results to default of 20" do
       %{project: project} = create_project()
 
-      for i <- 1..15 do
+      for i <- 1..25 do
         scene_fixture(project, %{name: "Scene #{i}"})
       end
 
       results = SceneCrud.search_scenes(project.id, "Scene")
-      assert length(results) == 10
+      assert length(results) == 20
     end
 
     test "handles special characters in search query" do

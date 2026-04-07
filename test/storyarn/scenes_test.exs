@@ -429,14 +429,14 @@ defmodule Storyarn.ScenesTest do
       assert "must have at least 3 points" in errors_on(changeset).vertices
     end
 
-    test "create_zone/2 validates coordinates 0-100 range" do
+    test "create_zone/2 allows coordinates outside 0-100 range (no clamp)" do
       user = user_fixture()
       project = project_fixture(user)
       scene = scene_fixture(project)
 
-      {:error, changeset} =
+      {:ok, zone} =
         Scenes.create_zone(scene.id, %{
-          "name" => "Bad Zone",
+          "name" => "Wide Zone",
           "vertices" => [
             %{"x" => -5.0, "y" => 10.0},
             %{"x" => 150.0, "y" => 10.0},
@@ -444,7 +444,7 @@ defmodule Storyarn.ScenesTest do
           ]
         })
 
-      assert "all coordinates must have x and y between 0 and 100" in errors_on(changeset).vertices
+      assert zone.name == "Wide Zone"
     end
 
     test "create_zone/2 validates border_style" do
@@ -741,19 +741,19 @@ defmodule Storyarn.ScenesTest do
       assert pin.size == "lg"
     end
 
-    test "create_pin/2 validates position 0-100" do
+    test "create_pin/2 allows positions outside 0-100 range (no clamp)" do
       user = user_fixture()
       project = project_fixture(user)
       scene = scene_fixture(project)
 
-      {:error, changeset} =
+      {:ok, pin} =
         Scenes.create_pin(scene.id, %{
           "position_x" => 150.0,
           "position_y" => -10.0
         })
 
-      assert errors_on(changeset).position_x != []
-      assert errors_on(changeset).position_y != []
+      assert pin.position_x == 150.0
+      assert pin.position_y == -10.0
     end
 
     test "create_pin/2 validates pin_type" do
@@ -1085,7 +1085,7 @@ defmodule Storyarn.ScenesTest do
       assert hd(updated.waypoints)["x"] == 25.0
     end
 
-    test "update_connection_waypoints/2 validates coordinates" do
+    test "update_connection_waypoints/2 allows coordinates outside 0-100 (no clamp)" do
       user = user_fixture()
       project = project_fixture(user)
       scene = scene_fixture(project)
@@ -1093,12 +1093,12 @@ defmodule Storyarn.ScenesTest do
       pin2 = pin_fixture(scene, %{"label" => "Pin 2"})
       conn = connection_fixture(scene, pin1, pin2)
 
-      {:error, changeset} =
+      {:ok, updated} =
         Scenes.update_connection_waypoints(conn, %{
           "waypoints" => [%{"x" => 150.0, "y" => 50.0}]
         })
 
-      assert "all waypoints must have x and y between 0 and 100" in errors_on(changeset).waypoints
+      assert [%{"x" => 150.0, "y" => 50.0}] = updated.waypoints
     end
 
     test "connection defaults to empty waypoints" do
@@ -1358,20 +1358,20 @@ defmodule Storyarn.ScenesTest do
       assert errors_on(changeset).text != []
     end
 
-    test "create_annotation/2 validates position 0-100" do
+    test "create_annotation/2 allows positions outside 0-100 range (no clamp)" do
       user = user_fixture()
       project = project_fixture(user)
       scene = scene_fixture(project)
 
-      {:error, changeset} =
+      {:ok, annotation} =
         Scenes.create_annotation(scene.id, %{
           "text" => "Note",
           "position_x" => 150.0,
           "position_y" => -10.0
         })
 
-      assert errors_on(changeset).position_x != []
-      assert errors_on(changeset).position_y != []
+      assert annotation.position_x == 150.0
+      assert annotation.position_y == -10.0
     end
 
     test "create_annotation/2 validates font_size enum" do
