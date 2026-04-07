@@ -1,0 +1,36 @@
+test/storyarn_web/live/flow_live/collaboration_test.exs
+  0ac1b342f929655b 35,37-38,40-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "bfd892f9fe07ac12fed5d828e55a3af988130bc7",
+  "prompts": {
+    "0ac1b342f929655b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b2c83f4-7e93-4ce7-8e94-cb64f65b189b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 7,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 152,
+      "overriden_lines": 0
+    }
+  }
+}
