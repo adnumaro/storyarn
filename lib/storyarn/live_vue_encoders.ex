@@ -6,6 +6,11 @@ defmodule Storyarn.LiveVueEncoders do
 
   require Protocol
 
+  # Elixir stdlib structs
+  defimpl LiveVue.Encoder, for: MapSet do
+    def encode(map_set, _opts), do: MapSet.to_list(map_set)
+  end
+
   # Ecto internals
   Protocol.derive(LiveVue.Encoder, Ecto.Association.NotLoaded)
   Protocol.derive(LiveVue.Encoder, Ecto.Schema.Metadata)
@@ -72,4 +77,7 @@ defmodule Storyarn.LiveVueEncoders do
   # Workspaces
   Protocol.derive(LiveVue.Encoder, Storyarn.Workspaces.Workspace)
   Protocol.derive(LiveVue.Encoder, Storyarn.Workspaces.WorkspaceMembership)
+
+  # Flows (debug evaluator)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Flows.Evaluator.State)
 end
