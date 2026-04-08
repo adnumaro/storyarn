@@ -474,15 +474,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     end
   end
 
-  @spec handle_start_preview(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
-  def handle_start_preview(%{"id" => node_id}, socket) do
-    case Flows.get_node(socket.assigns.flow.id, node_id) do
-      nil -> {:noreply, socket}
-      node -> {:noreply, socket |> assign(:preview_show, true) |> assign(:preview_node, node)}
-    end
-  end
-
   # Private helpers
 
   defp format_shortcut_error(changeset) do

@@ -18,6 +18,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
   alias StoryarnWeb.FlowLive.Handlers.NavigationHandlers
+  alias StoryarnWeb.FlowLive.Handlers.PreviewHandlers
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
@@ -217,6 +218,14 @@ defmodule StoryarnWeb.FlowLive.Show do
         can-edit={@can_edit}
         all-sheets={Enum.map(@all_sheets, &%{id: &1.id, name: &1.name})}
         project-variables={Jason.encode!(@project_variables)}
+      />
+
+      <%!-- Dialogue Preview (Vue) --%>
+      <.vue
+        v-component="modules/flows/components/FlowPreview"
+        v-socket={@socket}
+        id="flow-preview"
+        {PreviewHandlers.serialize_preview_state(@socket)}
       />
     </Layouts.app>
     """
@@ -1223,7 +1232,23 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("start_preview", params, socket) do
-    GenericNodeHandlers.handle_start_preview(params, socket)
+    PreviewHandlers.handle_start_preview(params, socket)
+  end
+
+  def handle_event("preview_select_response", params, socket) do
+    PreviewHandlers.handle_select_response(params, socket)
+  end
+
+  def handle_event("preview_continue", params, socket) do
+    PreviewHandlers.handle_continue(params, socket)
+  end
+
+  def handle_event("preview_go_back", params, socket) do
+    PreviewHandlers.handle_go_back(params, socket)
+  end
+
+  def handle_event("preview_close", _params, socket) do
+    PreviewHandlers.handle_close(socket)
   end
 
   def handle_event("request_flow_refresh", _params, socket) do
@@ -1419,7 +1444,11 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:editing_mode, nil)
       |> assign(:save_status, :idle)
       |> assign(:preview_show, false)
-      |> assign(:preview_node, nil)
+      |> assign(:preview_current_node, nil)
+      |> assign(:preview_speaker, nil)
+      |> assign(:preview_responses, [])
+      |> assign(:preview_has_next, false)
+      |> assign(:preview_history, [])
       |> assign(:versions_panel_open, false)
       |> assign(:history_data, nil)
       |> assign(:collab_scope, {:flow, flow.id})
@@ -1515,9 +1544,6 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_info({:node_updated, updated_node}, socket),
     do: EditorInfoHandlers.handle_node_updated(updated_node, socket)
-
-  def handle_info({:close_preview}, socket),
-    do: EditorInfoHandlers.handle_close_preview(socket)
 
   def handle_info({:mention_suggestions, query, component_cid}, socket),
     do: EditorInfoHandlers.handle_mention_suggestions(query, component_cid, socket)

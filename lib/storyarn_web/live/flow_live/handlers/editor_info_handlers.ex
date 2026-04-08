@@ -7,7 +7,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
   Returns `{:noreply, socket}`.
   """
 
-  import Phoenix.Component, only: [assign: 2, assign: 3]
+  import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3]
 
   alias Storyarn.Flows
@@ -47,12 +47,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers do
        id: updated_node.id,
        data: Flows.resolve_node_colors(updated_node.type, updated_node.data)
      })}
-  end
-
-  @spec handle_close_preview(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
-  def handle_close_preview(socket) do
-    {:noreply, assign(socket, preview_show: false, preview_node: nil)}
   end
 
   @spec handle_mention_suggestions(String.t(), any(), Phoenix.LiveView.Socket.t()) ::
