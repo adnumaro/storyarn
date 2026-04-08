@@ -2033,64 +2033,6 @@ defmodule StoryarnWeb.SceneLive.Show do
         socket
       )
 
-  def handle_info({:versions_section, :version_created, %{version: _}}, socket) do
-    {:noreply, socket}
-  end
-
-  def handle_info(
-        {:versions_section, :version_restored, %{entity: updated_scene, version: _}},
-        socket
-      ) do
-    # Cancel any pending auto-snapshot (stale after restore)
-    socket = StoryarnWeb.Helpers.AutoSnapshot.cancel(socket)
-
-    %{project: project, can_edit: can_edit} = socket.assigns
-
-    # Reload scene with all associations
-    scene = Scenes.get_scene(project.id, updated_scene.id)
-    scene_data = build_scene_data(scene, can_edit)
-
-    result =
-      {:noreply,
-       socket
-       |> assign(:scene, scene)
-       |> assign(:layers, scene.layers || [])
-       |> assign(:zones, scene.zones || [])
-       |> assign(:pins, scene.pins || [])
-       |> assign(:connections, scene.connections || [])
-       |> assign(:annotations, scene.annotations || [])
-       |> assign(:scene_data, scene_data)
-       |> assign(:selected_element, nil)
-       |> assign(:selected_type, nil)
-       |> assign(:element_panel_open, false)
-       |> assign(:scene_settings_open, false)
-       |> assign(:versions_panel_open, false)
-       |> assign(:undo_stack, [])
-       |> assign(:redo_stack, [])
-       |> assign(:_broadcast, {:scene_refreshed, %{}})
-       |> push_event("scene_data", scene_data)
-       |> push_event("panel-close", %{to: "#scene-versions-panel"})}
-
-    broadcast_scene_change(result)
-  end
-
-  def handle_info({:versions_section, :version_deleted, %{version: _}}, socket) do
-    {:noreply, socket}
-  end
-
-  def handle_info({:versions_section, :compare_version, %{version: version}}, socket) do
-    %{workspace: workspace, project: project, scene: scene} = socket.assigns
-
-    compare_url =
-      ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}/compare/#{version.version_number}"
-
-    {:noreply, push_navigate(socket, to: compare_url)}
-  end
-
-  def handle_info({:versions_section, :flash, %{kind: kind, message: message}}, socket) do
-    {:noreply, put_flash(socket, kind, message)}
-  end
-
   # ---------------------------------------------------------------------------
   # Handle Info: Collaboration
   # ---------------------------------------------------------------------------
