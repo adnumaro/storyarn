@@ -259,30 +259,6 @@ defmodule StoryarnWeb.Components.CoreComponents do
     """
   end
 
-  @doc """
-  Renders a back navigation link.
-
-  ## Examples
-
-      <.back navigate={~p"/posts"}>Back to posts</.back>
-  """
-  attr :navigate, :any, required: true
-  slot :inner_block, required: true
-
-  def back(assigns) do
-    ~H"""
-    <div class="mb-4">
-      <.link
-        navigate={@navigate}
-        class="text-sm font-semibold leading-6 text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-      >
-        <.icon name="arrow-left" class="size-3" />
-        {render_slot(@inner_block)}
-      </.link>
-    </div>
-    """
-  end
-
   ## JS Commands
 
   def show(js \\ %JS{}, selector) do

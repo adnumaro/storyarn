@@ -473,48 +473,6 @@ defmodule StoryarnWeb.Components.CoreComponentsTest do
   end
 
   # =============================================================================
-  # back/1
-  # =============================================================================
-
-  describe "back/1" do
-    test "renders back link with navigate" do
-      assigns = %{}
-
-      html =
-        rendered_to_string(~H"""
-        <CoreComponents.back navigate="/posts">Back to posts</CoreComponents.back>
-        """)
-
-      assert html =~ "/posts"
-      assert html =~ "Back to posts"
-      assert html =~ "svg"
-    end
-
-    test "renders with arrow icon" do
-      assigns = %{}
-
-      html =
-        rendered_to_string(~H"""
-        <CoreComponents.back navigate="/">Home</CoreComponents.back>
-        """)
-
-      assert html =~ "svg"
-    end
-
-    test "renders as a link" do
-      assigns = %{}
-
-      html =
-        rendered_to_string(~H"""
-        <CoreComponents.back navigate="/items">Go back</CoreComponents.back>
-        """)
-
-      assert html =~ "<a"
-      assert html =~ "/items"
-    end
-  end
-
-  # =============================================================================
   # JS Commands
   # =============================================================================
 
