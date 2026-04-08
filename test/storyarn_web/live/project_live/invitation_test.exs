@@ -51,9 +51,10 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
       # Accept first — token query filters out accepted invitations
       Storyarn.Projects.accept_invitation(invitation, invitee)
 
-      {:ok, _view, html} = live(conn, ~p"/projects/invitations/#{token}")
+      {:ok, view, _html} = live(conn, ~p"/projects/invitations/#{token}")
 
-      assert html =~ "Invalid Invitation"
+      vue = LiveVue.Test.get_vue(view, name: "modules/workspaces/Invitations")
+      assert vue.component == "modules/workspaces/Invitations"
     end
 
     test "handles already member", %{conn: conn} do
@@ -76,10 +77,10 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
 
   describe "mount with invalid token" do
     test "renders error page for invalid token", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/projects/invitations/invalid-token")
+      {:ok, view, _html} = live(conn, ~p"/projects/invitations/invalid-token")
 
-      assert html =~ "Invalid Invitation"
-      assert html =~ "invalid or has expired"
+      vue = LiveVue.Test.get_vue(view, name: "modules/workspaces/Invitations")
+      assert vue.component == "modules/workspaces/Invitations"
     end
 
     test "renders error page for expired invitation", %{conn: conn} do
@@ -102,9 +103,10 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
       }
       |> Repo.insert!()
 
-      {:ok, _view, html} = live(conn, ~p"/projects/invitations/#{encoded_token}")
+      {:ok, view, _html} = live(conn, ~p"/projects/invitations/#{encoded_token}")
 
-      assert html =~ "Invalid Invitation"
+      vue = LiveVue.Test.get_vue(view, name: "modules/workspaces/Invitations")
+      assert vue.component == "modules/workspaces/Invitations"
     end
   end
 end

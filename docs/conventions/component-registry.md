@@ -11,7 +11,6 @@ These are available in ALL HEEx templates without explicit import (via `Storyarn
 | `<.button>`        | Button (nav-aware)  | `variant` (primary/error), `href`/`navigate`/`patch`                                                                                  |
 | `<.input>`         | Form input wrapper  | `field`, `type` (text/textarea/select/checkbox + 13 more HTML5 types), `label`, `errors`                                              |
 | `<.icon>`          | Lucide icon         | `name` (string, required), `class`                                                                                                    |
-| `<.header>`        | Page header         | `inner_block`, `:subtitle` slot, `:actions` slot                                                                                      |
 | `<.modal>`         | Dialog modal        | `id`, `show`, `on_cancel`                                                                                                             |
 | `ConfirmDialog.vue` | Confirmation dialog (Vue) | `open` (v-model), `title`, `description`, `confirmText`, `cancelText`, `variant` (default/destructive/warning), `icon` — `@confirm`, `@cancel` |
 | `<.table>`         | Data table          | `rows`, `row_id`, `row_click`, `:col` slot, `:action` slot                                                                            |

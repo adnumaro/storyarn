@@ -526,12 +526,14 @@ defmodule StoryarnWeb.Layouts do
       <%!-- Main content area --%>
       <main class="flex-1 min-w-0 overflow-y-auto bg-background p-4 pt-16 lg:px-8 lg:py-3 min-vh-100">
         <div class="max-w-3xl mx-auto lg:mt-5">
-          <.header :if={@title != []}>
-            {render_slot(@title)}
-            <:subtitle :if={@subtitle != []}>
+          <header :if={@title != []} class="pb-4">
+            <h1 class="text-lg font-semibold leading-8">
+              {render_slot(@title)}
+            </h1>
+            <p :if={@subtitle != []} class="text-sm text-muted-foreground">
               {render_slot(@subtitle)}
-            </:subtitle>
-          </.header>
+            </p>
+          </header>
 
           <div class="mt-8">
             {render_slot(@inner_block)}
