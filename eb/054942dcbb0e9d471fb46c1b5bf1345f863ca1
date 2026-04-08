@@ -1,0 +1,40 @@
+test/storyarn_web/live/project_live/invitation_test.exs
+  4a17336e40c15eda 54,56-57,80,82-83,106,108-109
+lib/storyarn_web/live/project_live/invitation.ex
+  4a17336e40c15eda 17-22
+lib/storyarn_web/components/layouts.ex
+  4a17336e40c15eda 529-533,535-536
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "eb054942dcbb0e9d471fb46c1b5bf1345f863ca1",
+  "prompts": {
+    "4a17336e40c15eda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e2b34f-aad4-4a3a-9d19-0cf8845fe0de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 22,
+      "total_deletions": 131,
+      "accepted_lines": 23,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 152,
+      "overriden_lines": 0
+    }
+  }
+}
