@@ -794,7 +794,8 @@ defmodule StoryarnWeb.Layouts do
     <div
       id={@id}
       aria-live="polite"
-      class="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 z-[2000] flex flex-col gap-2 w-auto sm:w-96 pointer-events-auto max-w-[420px]"
+      data-slot="toaster"
+      class="fixed bottom-4 right-4 z-[2000] flex flex-col gap-2 w-full max-w-sm pointer-events-none [&>*]:pointer-events-auto"
     >
       <.flash kind={:info} flash={@flash} />
       <.flash kind={:error} flash={@flash} />
@@ -807,8 +808,10 @@ defmodule StoryarnWeb.Layouts do
         phx-connected={hide("#client-error") |> JS.set_attribute({"hidden", ""})}
         hidden
       >
-        {gettext("Attempting to reconnect")}
-        <.icon name="refresh-cw" class="ml-1 size-3 motion-safe:animate-spin" />
+        <span class="flex items-center gap-1.5">
+          {gettext("Attempting to reconnect")}
+          <.icon name="loader-circle" class="size-4 motion-safe:animate-spin" />
+        </span>
       </.flash>
 
       <.flash
@@ -819,8 +822,10 @@ defmodule StoryarnWeb.Layouts do
         phx-connected={hide("#server-error") |> JS.set_attribute({"hidden", ""})}
         hidden
       >
-        {gettext("Attempting to reconnect")}
-        <.icon name="refresh-cw" class="ml-1 size-3 motion-safe:animate-spin" />
+        <span class="flex items-center gap-1.5">
+          {gettext("Attempting to reconnect")}
+          <.icon name="loader-circle" class="size-4 motion-safe:animate-spin" />
+        </span>
       </.flash>
     </div>
     """

@@ -25,7 +25,7 @@ defmodule StoryarnWeb.Components.CoreComponentsTest do
         )
 
       assert html =~ "Record saved successfully"
-      assert html =~ "alert-info"
+      assert html =~ "bg-background"
       assert html =~ "role=\"alert\""
     end
 
@@ -37,7 +37,7 @@ defmodule StoryarnWeb.Components.CoreComponentsTest do
         )
 
       assert html =~ "Something went wrong"
-      assert html =~ "alert-error"
+      assert html =~ "bg-destructive"
     end
 
     test "renders nothing when no flash message for kind" do
@@ -47,7 +47,7 @@ defmodule StoryarnWeb.Components.CoreComponentsTest do
           flash: %{}
         )
 
-      refute html =~ "alert"
+      refute html =~ "data-slot=\"toast\""
       refute html =~ "role=\"alert\""
     end
 
@@ -59,7 +59,6 @@ defmodule StoryarnWeb.Components.CoreComponentsTest do
         )
 
       refute html =~ "Only error set"
-      refute html =~ "alert-info"
     end
 
     test "renders with title" do
@@ -114,7 +113,7 @@ defmodule StoryarnWeb.Components.CoreComponentsTest do
           flash: %{"info" => "Message"}
         )
 
-      assert html =~ "svg"
+      assert html =~ "LucideIcon"
     end
 
     test "error flash renders icon" do
@@ -124,7 +123,7 @@ defmodule StoryarnWeb.Components.CoreComponentsTest do
           flash: %{"error" => "Error message"}
         )
 
-      assert html =~ "svg"
+      assert html =~ "LucideIcon"
     end
 
     test "renders close button" do
@@ -149,7 +148,7 @@ defmodule StoryarnWeb.Components.CoreComponentsTest do
         """)
 
       assert html =~ "Custom flash content"
-      assert html =~ "alert-info"
+      assert html =~ "bg-background"
     end
   end
 

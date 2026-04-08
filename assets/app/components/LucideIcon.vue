@@ -118,14 +118,14 @@ const iconMap: Record<string, Component> = {
   "x-circle": XCircle,
 }
 
-const { name, class: className = "size-4" } = defineProps<{
+const { name, iconClass = "size-4" } = defineProps<{
   name: string
-  class?: string
+  iconClass?: string
 }>()
 
 const iconComponent = computed(() => iconMap[name] ?? null)
 </script>
 
 <template>
-  <component :is="iconComponent" v-if="iconComponent" :class="className" />
+  <component :is="iconComponent" v-if="iconComponent" :class="iconClass" />
 </template>
