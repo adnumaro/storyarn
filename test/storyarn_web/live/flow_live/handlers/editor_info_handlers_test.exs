@@ -22,8 +22,12 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
   defp build_socket(overrides) do
     defaults = %{
       save_status: :idle,
-      preview_show: true,
-      preview_node: %{id: 1},
+      preview_show: false,
+      preview_current_node: nil,
+      preview_speaker: nil,
+      preview_responses: [],
+      preview_has_next: false,
+      preview_history: [],
       project: %{id: 999},
       project_variables: []
     }
@@ -74,29 +78,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
     end
   end
 
-  # ============================================================================
-  # Unit tests: handle_close_preview/1
-  # ============================================================================
-
-  describe "handle_close_preview/1" do
-    test "sets preview_show to false and preview_node to nil" do
-      socket = build_socket(%{preview_show: true, preview_node: %{id: 42}})
-
-      {:noreply, result} = EditorInfoHandlers.handle_close_preview(socket)
-
-      assert result.assigns.preview_show == false
-      assert result.assigns.preview_node == nil
-    end
-
-    test "is idempotent when preview already closed" do
-      socket = build_socket(%{preview_show: false, preview_node: nil})
-
-      {:noreply, result} = EditorInfoHandlers.handle_close_preview(socket)
-
-      assert result.assigns.preview_show == false
-      assert result.assigns.preview_node == nil
-    end
-  end
 
   # ============================================================================
   # Unit tests: handle_variable_suggestions/3
@@ -586,36 +567,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
       load_flow(view)
 
       send(view.pid, {:resolve_variable_defaults, [], nil})
-      render(view)
-
-      assert Process.alive?(view.pid)
-    end
-  end
-
-  # ============================================================================
-  # Integration tests: handle_close_preview via handle_info
-  # ============================================================================
-
-  describe "close_preview through LiveView" do
-    setup :register_and_log_in_user
-
-    setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      flow = flow_fixture(project, %{name: "Test Flow"})
-      %{project: project, flow: flow}
-    end
-
-    test "processes close_preview info message",
-         %{conn: conn, project: project, flow: flow} do
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
-        )
-
-      load_flow(view)
-
-      send(view.pid, {:close_preview})
       render(view)
 
       assert Process.alive?(view.pid)

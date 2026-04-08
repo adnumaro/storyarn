@@ -325,6 +325,12 @@ defmodule StoryarnWeb.FlowLive.Show do
           |> assign(:node_select_loading, false)
           |> assign(:panel_sections, %{})
           |> assign(:project_variables, [])
+          |> assign(:preview_show, false)
+          |> assign(:preview_current_node, nil)
+          |> assign(:preview_speaker, nil)
+          |> assign(:preview_responses, [])
+          |> assign(:preview_has_next, false)
+          |> assign(:preview_history, [])
 
         {:ok, socket}
 

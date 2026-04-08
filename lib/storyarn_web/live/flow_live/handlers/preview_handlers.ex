@@ -110,15 +110,26 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
 
   @spec serialize_preview_state(Phoenix.LiveView.Socket.t()) :: map()
   def serialize_preview_state(socket) do
-    node = socket.assigns[:preview_current_node]
+    assigns = socket.assigns
 
-    %{
-      open: socket.assigns[:preview_show] || false,
-      currentNode: serialize_node(node, socket.assigns),
-      responses: serialize_responses(node),
-      hasNext: socket.assigns[:preview_has_next] || false,
-      hasHistory: (socket.assigns[:preview_history] || []) != []
-    }
+    # Guard: during disconnected static render, assigns may not be populated yet
+    unless is_map(assigns) and is_map_key(assigns, :preview_current_node) do
+      return_default_state()
+    else
+      node = assigns.preview_current_node
+
+      %{
+        open: assigns[:preview_show] || false,
+        currentNode: serialize_node(node, assigns),
+        responses: serialize_responses(node),
+        hasNext: assigns[:preview_has_next] || false,
+        hasHistory: (assigns[:preview_history] || []) != []
+      }
+    end
+  end
+
+  defp return_default_state do
+    %{open: false, currentNode: nil, responses: [], hasNext: false, hasHistory: false}
   end
 
   # ============================================================================
