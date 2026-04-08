@@ -1,0 +1,42 @@
+lib/storyarn_web/components/layouts.ex
+  0ac1b342f929655b 797-798,811-814,825-828
+assets/app/components/LucideIcon.vue
+  0ac1b342f929655b 121,123,130
+lib/storyarn_web/components/core_components.ex
+  0ac1b342f929655b 60,62-65,70-82,84-90,440
+test/storyarn_web/components/core_components_test.exs
+  0ac1b342f929655b 28,40,50,116,126,151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "31c370d33b1309d8cec4005117f5eef1788773ed",
+  "prompts": {
+    "0ac1b342f929655b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b2c83f4-7e93-4ce7-8e94-cb64f65b189b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 127,
+      "total_deletions": 43,
+      "accepted_lines": 46,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 152,
+      "overriden_lines": 0
+    }
+  }
+}
