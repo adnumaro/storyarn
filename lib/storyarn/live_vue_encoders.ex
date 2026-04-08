@@ -26,9 +26,6 @@ defmodule Storyarn.LiveVueEncoders do
   # Billing
   Protocol.derive(LiveVue.Encoder, Storyarn.Billing.Subscription)
 
-  # Drafts
-  Protocol.derive(LiveVue.Encoder, Storyarn.Drafts.Draft)
-
   # Flows
   Protocol.derive(LiveVue.Encoder, Storyarn.Flows.Flow)
   Protocol.derive(LiveVue.Encoder, Storyarn.Flows.FlowConnection)

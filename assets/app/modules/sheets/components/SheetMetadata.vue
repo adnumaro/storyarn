@@ -6,12 +6,10 @@ import type { Sheet } from "../types";
 const {
   sheet,
   canEdit = false,
-  isDraft = false,
   sourceShortcut = null,
 } = defineProps<{
   sheet: Sheet;
   canEdit?: boolean;
-  isDraft?: boolean;
   sourceShortcut?: string | null;
 }>();
 
@@ -63,7 +61,7 @@ watch(
 );
 
 function startEditShortcut(): void {
-  if (!canEdit || isDraft) return;
+  if (!canEdit) return;
   editingShortcut.value = true;
   setTimeout(() => shortcutInput.value?.focus(), 0);
 }
@@ -109,10 +107,7 @@ function onShortcutKeydown(e: KeyboardEvent): void {
     <!-- Shortcut -->
     <div class="mt-1 flex items-center gap-1">
       <span class="text-muted-foreground/50">#</span>
-      <div v-if="isDraft && sourceShortcut" class="text-sm text-muted-foreground/40">
-        {{ sourceShortcut }}
-      </div>
-      <div v-else-if="canEdit && editingShortcut">
+      <div v-if="canEdit && editingShortcut">
         <input
           ref="shortcutInput"
           v-model="localShortcut"

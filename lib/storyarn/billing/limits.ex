@@ -224,15 +224,14 @@ defmodule Storyarn.Billing.Limits do
       join: f in Flow,
       on: n.flow_id == f.id,
       where:
-        f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at) and
-          is_nil(f.draft_id)
+        f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at)
     )
     |> Repo.aggregate(:count)
   end
 
   defp count_active(schema, project_id) do
     from(s in schema,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id)
+      where: s.project_id == ^project_id and is_nil(s.deleted_at)
     )
     |> Repo.aggregate(:count)
   end

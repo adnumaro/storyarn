@@ -27,9 +27,6 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
   @spec root_position(keyword()) :: integer()
   def root_position(opts), do: Keyword.get(opts, :position, 0)
 
-  @spec root_draft_id(keyword()) :: integer() | nil
-  def root_draft_id(opts), do: Keyword.get(opts, :draft_id)
-
   @spec preserve_external_refs?(keyword()) :: boolean()
   def preserve_external_refs?(opts), do: Keyword.get(opts, :preserve_external_refs, true)
 

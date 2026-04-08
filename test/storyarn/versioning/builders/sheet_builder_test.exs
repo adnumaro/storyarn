@@ -119,7 +119,6 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
                )
 
       assert materialized.id != sheet.id
-      assert materialized.draft_id == nil
       assert materialized.position == 7
       assert materialized.shortcut == nil
       assert id_maps.sheet == %{sheet.id => materialized.id}

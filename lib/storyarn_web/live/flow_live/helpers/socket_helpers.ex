@@ -25,10 +25,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   """
   @spec reload_flow_data(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
   def reload_flow_data(socket) do
-    flow =
-      Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id,
-        include_drafts: socket.assigns[:is_draft] || false
-      )
+    flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
 
     flow_data = Flows.serialize_for_canvas(flow)
     flow_hubs = Flows.list_hubs(flow.id)

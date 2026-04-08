@@ -379,16 +379,6 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSONTest do
       assert el["content"] == "The hero enters."
     end
 
-    test "includes draft fields", %{project: project} do
-      _sp = screenplay_fixture(project)
-
-      result = export_and_decode(project)
-      exported = hd(result["screenplays"])
-
-      assert Map.has_key?(exported, "draft_label")
-      assert Map.has_key?(exported, "draft_status")
-      assert Map.has_key?(exported, "draft_of_id")
-    end
   end
 
   # =============================================================================

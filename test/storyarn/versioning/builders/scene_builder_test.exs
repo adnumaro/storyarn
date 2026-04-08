@@ -176,7 +176,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
                )
 
       assert materialized.id != scene.id
-      assert materialized.draft_id == nil
       assert materialized.position == 5
       assert materialized.shortcut == nil
       assert id_maps.scene == %{scene.id => materialized.id}

@@ -270,8 +270,6 @@ function navigateToNode(nodeId: number | string): void {
       </div>
     </div>
 
-    <!-- TODO: Draft button hidden until draft feature is complete -->
-
     <!-- Save indicator -->
     <div v-if="canEdit" class="flex items-center v2-surface-panel px-2">
       <div

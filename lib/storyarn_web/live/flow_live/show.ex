@@ -8,12 +8,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   import StoryarnWeb.Components.CollaborationComponents
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
-  # TODO: Re-enable when draft feature is complete
-  # alias StoryarnWeb.Components.DraftComponents
-  alias StoryarnWeb.Live.Shared.DraftHandlers
-
   alias Storyarn.Collaboration
-  alias Storyarn.Drafts
   alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Scenes
@@ -84,7 +79,6 @@ defmodule StoryarnWeb.FlowLive.Show do
       }
     >
       <:top_bar_extra>
-        <%!-- TODO: DraftComponents hidden until draft feature is complete --%>
         <.vue
           :if={@flow}
           v-component="modules/flows/components/FlowHeader"
@@ -112,7 +106,6 @@ defmodule StoryarnWeb.FlowLive.Show do
           project-scenes={Enum.map(@available_scenes, &Map.take(&1, [:id, :name]))}
         />
       </:top_bar_extra>
-      <%!-- TODO: Draft modals hidden until draft feature is complete --%>
       <div class="h-full relative">
         <div class="absolute inset-0 flex flex-col">
           <div class="flex-1 relative">
@@ -323,15 +316,6 @@ defmodule StoryarnWeb.FlowLive.Show do
           |> assign(:node_select_loading, false)
           |> assign(:panel_sections, %{})
           |> assign(:project_variables, [])
-          |> assign(:is_draft, false)
-          |> assign(:draft, nil)
-          |> assign(:merge_summary, nil)
-          |> assign(:renaming_draft, nil)
-          |> assign(:_draft_touch_ref, nil)
-          |> assign(
-            :my_drafts,
-            Drafts.list_my_drafts(project.id, socket.assigns.current_scope.user.id)
-          )
 
         {:ok, socket}
 
@@ -396,11 +380,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   @impl true
-  def handle_params(%{"id" => _flow_id, "draft_id" => draft_id} = params, _url, socket) do
-    compact = params["layout"] == "compact"
-    {:noreply, socket |> assign(:compact, compact) |> load_draft_flow(draft_id)}
-  end
-
   def handle_params(%{"id" => flow_id} = params, _url, socket) do
     compact = params["layout"] == "compact"
     socket = assign(socket, :compact, compact)
@@ -420,27 +399,6 @@ defmodule StoryarnWeb.FlowLive.Show do
       end
     else
       {:noreply, load_flow(socket, flow_id)}
-    end
-  end
-
-  defp load_draft_flow(socket, draft_id) do
-    %{project: project, current_scope: scope} = socket.assigns
-
-    with draft when not is_nil(draft) <- Drafts.get_my_draft(draft_id, scope.user.id, project.id),
-         true <- draft.entity_type == "flow" and draft.status == "active",
-         entity when not is_nil(entity) <- Drafts.get_draft_entity(draft) do
-      socket
-      |> assign(:loading, true)
-      |> assign(:is_draft, true)
-      |> assign(:draft, draft)
-      |> assign(:flow, entity)
-    else
-      _ ->
-        socket
-        |> put_flash(:error, dgettext("flows", "Draft not found."))
-        |> push_navigate(
-          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
-        )
     end
   end
 
@@ -475,11 +433,10 @@ defmodule StoryarnWeb.FlowLive.Show do
 
         # V2: start async load directly (V1 defers via FlowLoader hook)
         if connected?(socket) do
-          is_draft = socket.assigns.is_draft
           project = socket.assigns.project
 
           start_async(socket, :load_flow_data, fn ->
-            full_flow = Flows.get_flow!(project.id, flow.id, include_drafts: is_draft)
+            full_flow = Flows.get_flow!(project.id, flow.id)
             project_variables = VariableHelpers.list_all_variables(project.id)
 
             %{
@@ -736,11 +693,11 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   # Triggered by the FlowLoader hook after the browser has painted the spinner.
   def handle_event("load_flow_data", _params, socket) do
-    %{flow: flow, project: project, is_draft: is_draft} = socket.assigns
+    %{flow: flow, project: project} = socket.assigns
 
     socket =
       start_async(socket, :load_flow_data, fn ->
-        full_flow = Flows.get_flow!(project.id, flow.id, include_drafts: is_draft)
+        full_flow = Flows.get_flow!(project.id, flow.id)
         project_variables = VariableHelpers.list_all_variables(project.id)
 
         %{
@@ -1339,69 +1296,6 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
-  def handle_event("create_draft", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{flow: flow} = socket.assigns
-
-      DraftHandlers.handle_create_draft(socket, "flow", flow.id, fn s, draft ->
-        %{project: project} = s.assigns
-
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}/drafts/#{draft.id}"
-      end)
-    end)
-  end
-
-  def handle_event("discard_draft", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{project: project} = socket.assigns
-
-      DraftHandlers.handle_discard_draft(
-        socket,
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
-      )
-    end)
-  end
-
-  def handle_event("load_merge_summary", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_load_merge_summary(socket)
-    end)
-  end
-
-  def handle_event("merge_draft", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{draft: draft} = socket.assigns
-
-      DraftHandlers.handle_merge_draft(socket, fn s ->
-        %{project: p} = s.assigns
-
-        ~p"/workspaces/#{p.workspace.slug}/projects/#{p.slug}/flows/#{draft.source_entity_id}"
-      end)
-    end)
-  end
-
-  def handle_event("rename_draft_inline", %{"draft-id" => draft_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_rename_draft_inline(socket, draft_id)
-    end)
-  end
-
-  def handle_event("submit_rename_draft", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_submit_rename_draft(socket, params)
-    end)
-  end
-
-  def handle_event("cancel_rename_draft", _params, socket) do
-    {:noreply, assign(socket, :renaming_draft, nil)}
-  end
-
-  def handle_event("discard_draft_from_list", %{"draft_id" => draft_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_discard_draft_from_list(socket, draft_id)
-    end)
-  end
-
   def handle_event("set_pending_delete_flow", %{"id" => id}, socket) do
     handle_set_pending_delete(socket, id)
   end
@@ -1481,12 +1375,12 @@ defmodule StoryarnWeb.FlowLive.Show do
     flow = data.flow
     user = socket.assigns.current_scope.user
 
-    unless socket.assigns.is_draft or socket.assigns.compact do
+    unless socket.assigns.compact do
       CollaborationHelpers.setup_collaboration(socket, flow, user)
     end
 
     {online_users, node_locks} =
-      if socket.assigns.is_draft or socket.assigns.compact do
+      if socket.assigns.compact do
         {[], %{}}
       else
         CollaborationHelpers.get_initial_collab_state(socket, flow)
@@ -1528,9 +1422,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:preview_node, nil)
       |> assign(:versions_panel_open, false)
       |> assign(:history_data, nil)
-      |> then(fn s ->
-        if s.assigns.is_draft, do: s, else: assign(s, :collab_scope, {:flow, flow.id})
-      end)
+      |> assign(:collab_scope, {:flow, flow.id})
       |> assign(:online_users, online_users)
       |> assign(:node_locks, node_locks)
       |> assign(:collab_toast, nil)
@@ -1615,9 +1507,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info(:reset_save_status, socket) do
     EditorInfoHandlers.handle_reset_save_status(socket)
   end
-
-  # Scheduled by DraftTouchTimer via EditorInfoHandlers.handle_reset_save_status/1
-  def handle_info(:touch_draft, socket), do: DraftHandlers.handle_touch_draft(socket)
 
   def handle_info({:load_node_select_data, node}, socket) do
     socket = NodeTypeRegistry.on_select(node.type, node, socket)

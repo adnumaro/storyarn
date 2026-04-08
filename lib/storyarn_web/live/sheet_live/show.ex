@@ -78,7 +78,6 @@ defmodule StoryarnWeb.SheetLive.Show do
         socket={@socket}
         current_tab={@current_tab}
         can_edit={@can_edit}
-        is_draft={@is_draft}
         source_shortcut={@source_shortcut}
         blocks={@blocks}
         gallery_data={@gallery_data}
@@ -108,7 +107,6 @@ defmodule StoryarnWeb.SheetLive.Show do
         socket={@socket}
         current_tab={@current_tab}
         can_edit={@can_edit}
-        is_draft={@is_draft}
         source_shortcut={@source_shortcut}
         blocks={@blocks}
         gallery_data={@gallery_data}
@@ -134,7 +132,6 @@ defmodule StoryarnWeb.SheetLive.Show do
   attr :socket, :any, required: true
   attr :current_tab, :string, required: true
   attr :can_edit, :boolean, required: true
-  attr :is_draft, :boolean, default: false
   attr :source_shortcut, :string, default: nil
   attr :blocks, :list, default: []
   attr :gallery_data, :map, default: %{}
@@ -164,7 +161,6 @@ defmodule StoryarnWeb.SheetLive.Show do
         id="sheet-header"
         sheet={prepare_sheet_for_vue(@sheet)}
         can-edit={@can_edit}
-        is-draft={@is_draft}
         source-shortcut={@source_shortcut}
       />
       <div class="px-4 pb-6">
@@ -304,7 +300,6 @@ defmodule StoryarnWeb.SheetLive.Show do
          |> assign(:gallery_data, %{})
          |> assign(:table_data, %{})
          |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(project.id)))
-         |> assign(:is_draft, false)
          |> assign(:source_shortcut, nil)
          |> assign(:current_tab, "content")
          |> assign(:references_data, nil)

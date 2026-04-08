@@ -38,11 +38,9 @@ defmodule Storyarn.Screenplays.TreeOperations do
     end
   end
 
-  # Keeps local filter because screenplays need the `is_nil(s.draft_of_id)` filter
-  # that can't be expressed in the generic SharedTree.list_by_parent/3.
   defp list_screenplays_by_parent(project_id, parent_id) do
     from(s in Screenplay,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_of_id),
+      where: s.project_id == ^project_id and is_nil(s.deleted_at),
       order_by: [asc: s.position, asc: s.name]
     )
     |> SharedTree.add_parent_filter(parent_id)

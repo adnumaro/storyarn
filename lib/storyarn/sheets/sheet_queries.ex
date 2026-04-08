@@ -26,7 +26,7 @@ defmodule Storyarn.Sheets.SheetQueries do
     # Single query for all non-deleted sheets, then build tree in memory
     all_sheets =
       from(s in Sheet,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
+        where: s.project_id == ^project_id and is_nil(s.deleted_at),
         order_by: [asc: s.position, asc: s.name],
         preload: [avatars: :asset]
       )
@@ -42,7 +42,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   def get_sheet(project_id, sheet_id) do
     Sheet
     |> where(project_id: ^project_id, id: ^sheet_id)
-    |> where([s], is_nil(s.deleted_at) and is_nil(s.draft_id))
+    |> where([s], is_nil(s.deleted_at))
     |> preload([:blocks, :banner_asset, avatars: :asset])
     |> Repo.one()
   end
@@ -54,7 +54,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   def get_sheet!(project_id, sheet_id) do
     Sheet
     |> where(project_id: ^project_id, id: ^sheet_id)
-    |> where([s], is_nil(s.deleted_at) and is_nil(s.draft_id))
+    |> where([s], is_nil(s.deleted_at))
     |> preload([:blocks, :banner_asset, avatars: :asset])
     |> Repo.one!()
   end
@@ -67,7 +67,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   def get_sheet_full(project_id, sheet_id) do
     Sheet
     |> where(project_id: ^project_id, id: ^sheet_id)
-    |> where([s], is_nil(s.deleted_at) and is_nil(s.draft_id))
+    |> where([s], is_nil(s.deleted_at))
     |> preload([:blocks, :banner_asset, :current_version, avatars: :asset])
     |> Repo.one()
   end
@@ -80,7 +80,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   def get_sheet_full!(project_id, sheet_id) do
     Sheet
     |> where(project_id: ^project_id, id: ^sheet_id)
-    |> where([s], is_nil(s.deleted_at) and is_nil(s.draft_id))
+    |> where([s], is_nil(s.deleted_at))
     |> preload([:blocks, :banner_asset, :current_version, avatars: :asset])
     |> Repo.one!()
   end
@@ -110,7 +110,7 @@ defmodule Storyarn.Sheets.SheetQueries do
         # Load all non-deleted sheets in the project and build subtree from this sheet
         all_sheets =
           from(s in Sheet,
-            where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
+            where: s.project_id == ^project_id and is_nil(s.deleted_at),
             order_by: [asc: s.position, asc: s.name],
             preload: [avatars: :asset]
           )
@@ -155,7 +155,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   @spec list_all_sheets(integer()) :: [Sheet.t()]
   def list_all_sheets(project_id) do
     from(s in Sheet,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
+      where: s.project_id == ^project_id and is_nil(s.deleted_at),
       order_by: [asc: s.position, asc: s.name],
       preload: [:banner_asset, avatars: :asset]
     )
@@ -170,7 +170,7 @@ defmodule Storyarn.Sheets.SheetQueries do
     from(s in Sheet,
       where:
         s.project_id == ^project_id and s.id not in subquery(parent_ids_subquery(project_id)) and
-          is_nil(s.deleted_at) and is_nil(s.draft_id),
+          is_nil(s.deleted_at),
       order_by: [asc: s.position, asc: s.name],
       preload: [avatars: :asset]
     )
@@ -182,8 +182,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   def parent_ids_subquery(project_id) do
     from(s in Sheet,
       where:
-        s.project_id == ^project_id and not is_nil(s.parent_id) and is_nil(s.deleted_at) and
-          is_nil(s.draft_id),
+        s.project_id == ^project_id and not is_nil(s.parent_id) and is_nil(s.deleted_at),
       select: s.parent_id
     )
   end
@@ -210,7 +209,7 @@ defmodule Storyarn.Sheets.SheetQueries do
 
     if query_str == "" do
       from(s in Sheet,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
+        where: s.project_id == ^project_id and is_nil(s.deleted_at),
         order_by: [desc: s.updated_at],
         limit: ^limit,
         offset: ^offset
@@ -220,7 +219,7 @@ defmodule Storyarn.Sheets.SheetQueries do
       search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
 
       from(s in Sheet,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
+        where: s.project_id == ^project_id and is_nil(s.deleted_at),
         where: ilike(s.name, ^search_term) or ilike(s.shortcut, ^search_term),
         order_by: [asc: s.name],
         limit: ^limit,
@@ -238,8 +237,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   def get_sheet_by_shortcut(project_id, shortcut) when is_binary(shortcut) do
     from(s in Sheet,
       where:
-        s.project_id == ^project_id and s.shortcut == ^shortcut and is_nil(s.deleted_at) and
-          is_nil(s.draft_id),
+        s.project_id == ^project_id and s.shortcut == ^shortcut and is_nil(s.deleted_at),
       preload: [:blocks, avatars: :asset]
     )
     |> Repo.one()
@@ -269,7 +267,6 @@ defmodule Storyarn.Sheets.SheetQueries do
       where:
         s.project_id == ^project_id and
           is_nil(s.deleted_at) and
-          is_nil(s.draft_id) and
           is_nil(b.deleted_at) and
           b.type in ^variable_types and
           b.is_constant == false and
@@ -305,7 +302,7 @@ defmodule Storyarn.Sheets.SheetQueries do
         join: tr in TableRow,
         on: tr.block_id == b.id,
         where: s.project_id == ^project_id,
-        where: is_nil(s.deleted_at) and is_nil(s.draft_id) and is_nil(b.deleted_at),
+        where: is_nil(s.deleted_at) and is_nil(b.deleted_at),
         where: b.type == "table",
         where: tc.type in ^variable_column_types,
         where: tc.is_constant == false or tc.type == "formula",
@@ -393,7 +390,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   defp list_sheet_options(project_id) do
     from(s in Sheet,
       where: s.project_id == ^project_id,
-      where: is_nil(s.deleted_at) and is_nil(s.draft_id),
+      where: is_nil(s.deleted_at),
       where: not is_nil(s.shortcut) and s.shortcut != "",
       order_by: [asc: s.name],
       select: %{name: s.name, shortcut: s.shortcut}
@@ -843,7 +840,7 @@ defmodule Storyarn.Sheets.SheetQueries do
 
     query =
       from(s in Sheet,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
+        where: s.project_id == ^project_id and is_nil(s.deleted_at),
         preload: [blocks: ^blocks_query, avatars: :asset],
         order_by: [asc: s.position, asc: s.name]
       )
@@ -858,8 +855,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   """
   def count_sheets(project_id) do
     from(s in Sheet,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id)
-    )
+      where: s.project_id == ^project_id and is_nil(s.deleted_at)    )
     |> Repo.aggregate(:count)
   end
 
@@ -878,7 +874,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   """
   def list_sheets_brief(project_id) do
     from(s in Sheet,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
+      where: s.project_id == ^project_id and is_nil(s.deleted_at),
       select: %{id: s.id, name: s.name, shortcut: s.shortcut}
     )
     |> Repo.all()
@@ -890,7 +886,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   """
   def list_shortcuts(project_id) do
     from(s in Sheet,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.draft_id),
+      where: s.project_id == ^project_id and is_nil(s.deleted_at),
       select: s.shortcut
     )
     |> Repo.all()

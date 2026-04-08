@@ -29,7 +29,7 @@ defmodule Storyarn.Flows.FlowCrud do
   """
   def list_flows(project_id) do
     from(f in Flow,
-      where: f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(f.draft_id),
+      where: f.project_id == ^project_id and is_nil(f.deleted_at),
       order_by: [desc: f.is_main, asc: f.name]
     )
     |> Repo.all()
@@ -42,7 +42,7 @@ defmodule Storyarn.Flows.FlowCrud do
   def list_flows_tree(project_id) do
     all_flows =
       from(f in Flow,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(f.draft_id),
+        where: f.project_id == ^project_id and is_nil(f.deleted_at),
         order_by: [asc: f.position, asc: f.name]
       )
       |> Repo.all()
@@ -72,8 +72,7 @@ defmodule Storyarn.Flows.FlowCrud do
 
     base =
       from(f in Flow,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(f.draft_id)
-      )
+        where: f.project_id == ^project_id and is_nil(f.deleted_at)      )
 
     base = maybe_exclude_flow(base, exclude_id)
 
@@ -124,7 +123,7 @@ defmodule Storyarn.Flows.FlowCrud do
       search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
 
       from(f in Flow,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(f.draft_id),
+        where: f.project_id == ^project_id and is_nil(f.deleted_at),
         where:
           ilike(f.name, ^search_term) or
             ilike(f.shortcut, ^search_term) or
@@ -161,8 +160,7 @@ defmodule Storyarn.Flows.FlowCrud do
 
     from(f in Flow,
       where:
-        f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at) and
-          is_nil(f.draft_id),
+        f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at),
       preload: [:connections, nodes: ^active_nodes_query]
     )
     |> Repo.one()
@@ -175,28 +173,20 @@ defmodule Storyarn.Flows.FlowCrud do
   def get_flow_brief(project_id, flow_id) do
     from(f in Flow,
       where:
-        f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at) and
-          is_nil(f.draft_id)
+        f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at)
     )
     |> Repo.one()
   end
 
-  def get_flow!(project_id, flow_id, opts \\ []) do
+  def get_flow!(project_id, flow_id, _opts \\ []) do
     active_nodes_query =
       from(n in FlowNode, where: is_nil(n.deleted_at), order_by: [asc: n.inserted_at])
 
-    query =
-      from(f in Flow,
-        where: f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at),
-        preload: [:connections, nodes: ^active_nodes_query]
-      )
-
-    query =
-      if Keyword.get(opts, :include_drafts, false),
-        do: query,
-        else: where(query, [f], is_nil(f.draft_id))
-
-    Repo.one!(query)
+    from(f in Flow,
+      where: f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at),
+      preload: [:connections, nodes: ^active_nodes_query]
+    )
+    |> Repo.one!()
   end
 
   @doc """
@@ -484,7 +474,7 @@ defmodule Storyarn.Flows.FlowCrud do
 
     query =
       from(f in Flow,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(f.draft_id),
+        where: f.project_id == ^project_id and is_nil(f.deleted_at),
         preload: [nodes: ^nodes_query, connections: []],
         order_by: [asc: f.position, asc: f.name]
       )
@@ -499,8 +489,7 @@ defmodule Storyarn.Flows.FlowCrud do
   """
   def count_flows(project_id) do
     from(f in Flow,
-      where: f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(f.draft_id)
-    )
+      where: f.project_id == ^project_id and is_nil(f.deleted_at)    )
     |> Repo.aggregate(:count)
   end
 
@@ -632,7 +621,7 @@ defmodule Storyarn.Flows.FlowCrud do
   """
   def list_shortcuts(project_id) do
     from(f in Flow,
-      where: f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(f.draft_id),
+      where: f.project_id == ^project_id and is_nil(f.deleted_at),
       select: f.shortcut
     )
     |> Repo.all()

@@ -7,13 +7,8 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
-  alias StoryarnWeb.Components.DraftComponents
-  alias StoryarnWeb.Helpers.DraftTouchTimer
-  alias StoryarnWeb.Live.Shared.DraftHandlers
-
   alias Storyarn.Assets
   alias Storyarn.Collaboration
-  alias Storyarn.Drafts
   alias Storyarn.Projects
   alias Storyarn.Scenes
   alias Storyarn.Shared.MapUtils
@@ -309,9 +304,6 @@ defmodule StoryarnWeb.SceneLive.Show do
       <% end %>
 
       <%!-- Confirm modals --%>
-      <DraftComponents.discard_draft_modal is_draft={@is_draft} />
-      <DraftComponents.merge_review_modal is_draft={@is_draft} merge_summary={@merge_summary} />
-
       <.confirm_modal
         :if={@can_edit}
         id="delete-scene-show-confirm"
@@ -457,15 +449,6 @@ defmodule StoryarnWeb.SceneLive.Show do
           |> assign(:referencing_flows, [])
           |> assign(:sidebar_loaded, false)
           |> assign(:pending_delete_id, nil)
-          |> assign(:is_draft, false)
-          |> assign(:draft, nil)
-          |> assign(:renaming_draft, nil)
-          |> assign(:_draft_touch_ref, nil)
-          |> assign(
-            :my_drafts,
-            Drafts.list_my_drafts(project.id, socket.assigns.current_scope.user.id)
-          )
-          |> assign(:merge_summary, nil)
           |> maybe_allow_background_upload(can_edit)
 
         {:ok, socket}
@@ -479,19 +462,6 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   @impl true
-  def handle_params(%{"id" => _scene_id, "draft_id" => draft_id} = params, _url, socket) do
-    compact = params["layout"] == "compact"
-
-    socket =
-      socket
-      |> assign(:compact, compact)
-      |> then(fn s ->
-        if compact, do: assign(s, tree_panel_open: true, tree_panel_pinned: true), else: s
-      end)
-
-    {:noreply, load_draft_scene(socket, draft_id)}
-  end
-
   def handle_params(%{"id" => scene_id} = params, _url, socket) do
     compact = params["layout"] == "compact"
 
@@ -716,57 +686,6 @@ defmodule StoryarnWeb.SceneLive.Show do
     |> assign(:auto_snapshot_timer, nil)
     |> assign(:panel_sections, %{})
     |> assign(:referencing_flows, [])
-  end
-
-  defp load_draft_scene(socket, draft_id) do
-    %{project: project, current_scope: scope, can_edit: can_edit} = socket.assigns
-
-    with draft when not is_nil(draft) <- Drafts.get_my_draft(draft_id, scope.user.id, project.id),
-         true <- draft.entity_type == "scene" and draft.status == "active",
-         entity when not is_nil(entity) <- Drafts.get_draft_entity(draft) do
-      # Skip collaboration for drafts
-      has_tree = socket.assigns.sidebar_loaded
-
-      socket
-      |> assign(:scene, entity)
-      |> assign(:is_draft, true)
-      |> assign(:draft, draft)
-      |> assign(:ancestors, [])
-      |> assign(:layers, entity.layers || [])
-      |> assign(:zones, entity.zones || [])
-      |> assign(:pins, entity.pins || [])
-      |> assign(:connections, entity.connections || [])
-      |> assign(:annotations, entity.annotations || [])
-      |> assign(:scene_data, build_scene_data(entity, can_edit))
-      |> assign(:edit_mode, can_edit)
-      |> assign(:active_tool, :select)
-      |> assign(:selected_element, nil)
-      |> assign(:selected_type, nil)
-      |> assign(:element_panel_open, false)
-      |> assign(:scene_settings_open, false)
-      |> assign(:versions_panel_open, false)
-      |> assign(:active_layer_id, default_layer_id(entity.layers))
-      |> assign(:renaming_layer_id, nil)
-      |> assign(:show_pin_icon_upload, false)
-      |> assign(:show_sheet_picker, false)
-      |> assign(:pending_sheet_for_pin, nil)
-      |> assign(:search_query, "")
-      |> assign(:search_filter, "all")
-      |> assign(:search_results, [])
-      |> assign(:legend_open, false)
-      |> assign(:undo_stack, [])
-      |> assign(:redo_stack, [])
-      |> assign(:panel_sections, %{})
-      |> assign(:referencing_flows, [])
-      |> maybe_load_sidebar(has_tree, project)
-    else
-      _ ->
-        socket
-        |> put_flash(:error, dgettext("scenes", "Draft not found."))
-        |> push_navigate(
-          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
-    end
   end
 
   defp maybe_load_sidebar(socket, true, _project), do: socket
@@ -1800,69 +1719,6 @@ defmodule StoryarnWeb.SceneLive.Show do
     end)
   end
 
-  def handle_event("create_draft", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{scene: scene} = socket.assigns
-
-      DraftHandlers.handle_create_draft(socket, "scene", scene.id, fn s, draft ->
-        %{project: project} = s.assigns
-
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}/drafts/#{draft.id}"
-      end)
-    end)
-  end
-
-  def handle_event("discard_draft", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{project: project} = socket.assigns
-
-      DraftHandlers.handle_discard_draft(
-        socket,
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-      )
-    end)
-  end
-
-  def handle_event("load_merge_summary", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_load_merge_summary(socket)
-    end)
-  end
-
-  def handle_event("merge_draft", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      %{draft: draft} = socket.assigns
-
-      DraftHandlers.handle_merge_draft(socket, fn s ->
-        %{project: p} = s.assigns
-
-        ~p"/workspaces/#{p.workspace.slug}/projects/#{p.slug}/scenes/#{draft.source_entity_id}"
-      end)
-    end)
-  end
-
-  def handle_event("rename_draft_inline", %{"draft-id" => draft_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_rename_draft_inline(socket, draft_id)
-    end)
-  end
-
-  def handle_event("submit_rename_draft", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_submit_rename_draft(socket, params)
-    end)
-  end
-
-  def handle_event("cancel_rename_draft", _params, socket) do
-    {:noreply, assign(socket, :renaming_draft, nil)}
-  end
-
-  def handle_event("discard_draft_from_list", %{"draft_id" => draft_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      DraftHandlers.handle_discard_draft_from_list(socket, draft_id)
-    end)
-  end
-
   def handle_event("set_pending_delete_scene", %{"id" => id}, socket) do
     handle_set_pending_delete(socket, id)
   end
@@ -2076,8 +1932,6 @@ defmodule StoryarnWeb.SceneLive.Show do
     {:noreply, schedule_lock_heartbeat(socket)}
   end
 
-  def handle_info(:touch_draft, socket), do: DraftHandlers.handle_touch_draft(socket)
-
   @impl true
   def terminate(_reason, socket) do
     teardown_scene_collab(socket)
@@ -2164,9 +2018,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     end
 
     {:noreply,
-     socket
-     |> assign(:_broadcast, nil)
-     |> DraftTouchTimer.schedule_touch()}
+     assign(socket, :_broadcast, nil)}
   end
 
   # ---------------------------------------------------------------------------

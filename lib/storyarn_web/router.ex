@@ -166,10 +166,6 @@ defmodule StoryarnWeb.Router do
       live "/workspaces/:workspace_slug/projects/:project_slug/sheets", SheetLive.Index, :index
       live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id", SheetLive.Show, :show
 
-      live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/drafts/:draft_id",
-           SheetLive.Show,
-           :draft
-
       live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/edit",
            SheetLive.Show,
            :edit
@@ -205,10 +201,6 @@ defmodule StoryarnWeb.Router do
       live "/workspaces/:workspace_slug/projects/:project_slug/flows", FlowLive.Index, :index
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id", FlowLive.Show, :show
 
-      live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/drafts/:draft_id",
-           FlowLive.Show,
-           :draft
-
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/play",
            FlowLive.PlayerLive,
            :play
@@ -221,10 +213,6 @@ defmodule StoryarnWeb.Router do
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes", SceneLive.Index, :index
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/new", SceneLive.Index, :new
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id", SceneLive.Show, :show
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/drafts/:draft_id",
-           SceneLive.Show,
-           :draft
 
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/explore",
            SceneLive.ExplorationLive,

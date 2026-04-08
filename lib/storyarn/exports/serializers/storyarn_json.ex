@@ -375,9 +375,6 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSON do
       "parent_id" => maybe_to_string(sp.parent_id),
       "position" => sp.position,
       "linked_flow_id" => maybe_to_string(sp.linked_flow_id),
-      "draft_label" => sp.draft_label,
-      "draft_status" => sp.draft_status,
-      "draft_of_id" => maybe_to_string(sp.draft_of_id),
       "elements" => Enum.map(sp.elements, &serialize_element/1)
     }
   end

@@ -149,7 +149,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       flow_attrs =
         %{
           project_id: project_id,
-          draft_id: MaterializationHelpers.root_draft_id(opts),
           name: snapshot["name"],
           shortcut: MaterializationHelpers.root_shortcut(snapshot, opts),
           description: snapshot["description"],

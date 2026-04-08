@@ -97,11 +97,6 @@
   color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
 }
 
-.screenplay-toolbar-draft {
-  color: var(--color-warning);
-  font-weight: 500;
-}
-
 /* Toolbar separator */
 .screenplay-toolbar-separator {
   width: 1px;

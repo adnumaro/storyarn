@@ -12,12 +12,10 @@ import SheetMetadata from "./SheetMetadata.vue";
 const {
   sheet,
   canEdit = false,
-  isDraft = false,
   sourceShortcut = null,
 } = defineProps<{
   sheet: Sheet;
   canEdit?: boolean;
-  isDraft?: boolean;
   sourceShortcut?: string | null;
 }>();
 
@@ -163,7 +161,6 @@ function updateAvatarNotes(id: number | string, value: string): void {
       <SheetMetadata
         :sheet="sheet"
         :can-edit="canEdit"
-        :is-draft="isDraft"
         :source-shortcut="sourceShortcut"
       />
     </div>

@@ -244,7 +244,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       scene_attrs =
         %{
           project_id: project_id,
-          draft_id: MaterializationHelpers.root_draft_id(opts),
           name: snapshot["name"],
           shortcut: MaterializationHelpers.root_shortcut(snapshot, opts),
           description: snapshot["description"],

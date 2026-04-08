@@ -843,7 +843,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         end
       end)
 
-    # Pass 2: parent_id + draft_of_id
+    # Pass 2: parent_id
     link_screenplay_refs(sp_records, id_map)
 
     {id_map, Enum.map(sp_records, fn {sp, _} -> sp end)}
@@ -860,8 +860,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     extra_changes =
       %{}
       |> maybe_put_extra(:linked_flow_id, remap_id(map, :flow, sp_data["linked_flow_id"]))
-      |> maybe_put_extra(:draft_label, sp_data["draft_label"])
-      |> maybe_put_extra(:draft_status, sp_data["draft_status"] || "active")
 
     sp =
       facade_insert_or_rollback!(
@@ -880,7 +878,6 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       changes =
         %{}
         |> maybe_remap_ref(:parent_id, id_map, :screenplay, sp_data["parent_id"])
-        |> maybe_remap_ref(:draft_of_id, id_map, :screenplay, sp_data["draft_of_id"])
 
       if changes != %{} do
         Screenplays.link_screenplay_import_refs(sp, changes)

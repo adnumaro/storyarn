@@ -29,18 +29,6 @@ defmodule Storyarn.Screenplays.ScreenplayQueries do
   end
 
   @doc """
-  Lists all drafts of a given screenplay.
-  Excludes soft-deleted drafts.
-  """
-  def list_drafts(screenplay_id) do
-    from(s in Screenplay,
-      where: s.draft_of_id == ^screenplay_id and is_nil(s.deleted_at),
-      order_by: [asc: s.inserted_at]
-    )
-    |> Repo.all()
-  end
-
-  @doc """
   Resolves screenplay element source info for entity reference backlinks.
   Joins entity_references with screenplay_elements and screenplays to return enriched backlink data.
   Used by the Sheets.ReferenceTracker to avoid cross-context schema queries.

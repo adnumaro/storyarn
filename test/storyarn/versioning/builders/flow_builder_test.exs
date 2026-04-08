@@ -105,7 +105,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
                )
 
       assert materialized.id != flow.id
-      assert materialized.draft_id == nil
       assert materialized.position == 11
       assert materialized.shortcut == nil
       assert id_maps.flow == %{flow.id => materialized.id}

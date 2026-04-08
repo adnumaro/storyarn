@@ -114,7 +114,6 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       sheet_attrs =
         %{
           project_id: project_id,
-          draft_id: MaterializationHelpers.root_draft_id(opts),
           name: snapshot["name"],
           shortcut: MaterializationHelpers.root_shortcut(snapshot, opts),
           description: snapshot["description"],
@@ -167,9 +166,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   end
 
   @impl true
-  def restore_snapshot(%Sheet{} = sheet, snapshot, opts \\ []) do
-    baseline_block_ids = Keyword.get(opts, :baseline_block_ids)
-
+  def restore_snapshot(%Sheet{} = sheet, snapshot, _opts \\ []) do
     avatar_asset_id =
       AssetHashResolver.resolve_asset_fk(
         snapshot["avatar_asset_id"],
@@ -211,10 +208,10 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       end
     end)
     |> Multi.delete_all(:delete_blocks, fn _changes ->
-      delete_blocks_query(sheet.id, baseline_block_ids)
+      from(b in Block, where: b.sheet_id == ^sheet.id)
     end)
     |> Multi.run(:restore_blocks, fn repo, _changes ->
-      restore_blocks_from_snapshot(repo, sheet.id, snapshot["blocks"] || [], baseline_block_ids)
+      restore_blocks_from_snapshot(repo, sheet.id, snapshot["blocks"] || [])
     end)
     |> Repo.transaction()
     |> case do
@@ -226,54 +223,22 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     end
   end
 
-  # Full replacement (version restore): delete all blocks
-  defp delete_blocks_query(sheet_id, nil) do
-    from(b in Block, where: b.sheet_id == ^sheet_id)
-  end
+  defp restore_blocks_from_snapshot(_repo, _sheet_id, []), do: {:ok, 0}
 
-  # Selective merge (draft merge): only delete blocks from the baseline
-  # Blocks added to the original after draft creation are preserved
-  defp delete_blocks_query(sheet_id, baseline_block_ids) do
-    from(b in Block, where: b.sheet_id == ^sheet_id and b.id in ^baseline_block_ids)
-  end
-
-  defp restore_blocks_from_snapshot(_repo, _sheet_id, [], _baseline), do: {:ok, 0}
-
-  defp restore_blocks_from_snapshot(repo, sheet_id, blocks_data, baseline_block_ids) do
+  defp restore_blocks_from_snapshot(repo, sheet_id, blocks_data) do
     now = MaterializationHelpers.now()
     existing_source_ids = load_existing_source_ids(repo, blocks_data)
-
-    # When doing selective merge, collect variable names from preserved blocks
-    # (blocks not in the baseline that remain on the original)
-    preserved_var_names = load_preserved_variable_names(repo, sheet_id, baseline_block_ids)
 
     sorted_data = Enum.sort_by(blocks_data, & &1["position"])
 
     blocks =
       sorted_data
       |> Enum.map(&snapshot_to_block_entry(&1, sheet_id, existing_source_ids, now))
-      |> deduplicate_variable_names(preserved_var_names)
+      |> deduplicate_variable_names(MapSet.new())
 
     {count, inserted} = repo.insert_all(Block, blocks, returning: [:id, :type, :position])
     restore_table_data(repo, inserted, sorted_data, now)
     {:ok, count}
-  end
-
-  # No preserved blocks in full replacement mode
-  defp load_preserved_variable_names(_repo, _sheet_id, nil), do: MapSet.new()
-
-  # Load variable names from blocks that will survive the merge (not in baseline)
-  defp load_preserved_variable_names(repo, sheet_id, baseline_block_ids) do
-    from(b in Block,
-      where:
-        b.sheet_id == ^sheet_id and
-          b.id not in ^baseline_block_ids and
-          is_nil(b.deleted_at) and
-          not is_nil(b.variable_name),
-      select: b.variable_name
-    )
-    |> repo.all()
-    |> MapSet.new()
   end
 
   defp load_existing_source_ids(repo, blocks_data) do

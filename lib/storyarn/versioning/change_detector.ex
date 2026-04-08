@@ -48,7 +48,6 @@ defmodule Storyarn.Versioning.ChangeDetector do
         where:
           e.project_id == ^project_id and
             is_nil(e.deleted_at) and
-            is_nil(e.draft_id) and
             e.updated_at > ^since
       )
       |> Repo.exists?()
