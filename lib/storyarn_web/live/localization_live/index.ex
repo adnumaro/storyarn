@@ -4,9 +4,10 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   use StoryarnWeb, :live_view
   alias StoryarnWeb.Helpers.Authorize
 
-  import StoryarnWeb.Components.UIComponents, only: [empty_state: 1]
   import StoryarnWeb.Live.Shared.TreePanelHandlers, only: [focus_layout_defaults: 0]
+
   alias Storyarn.Localization
+  alias Storyarn.Localization.Languages
   alias Storyarn.Projects
 
   import StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers
@@ -25,318 +26,42 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       socket={@socket}
       active_tool={:localization}
       on_dashboard={true}
-      has_tree={false}
+      has_tree={true}
+      tree_panel_open={@tree_panel_open}
+      tree_panel_pinned={@tree_panel_pinned}
+      show_pin={false}
       can_edit={@can_edit}
+      tree_props={sidebar_props(assigns)}
     >
       <:top_bar_extra_right :if={@can_edit && @target_languages != []}>
-        <div class="flex items-center gap-1 px-1.5 py-1 surface-panel">
-          <.link
-            navigate={
-              ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/report"
-            }
-            class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors gap-1.5"
-          >
-            <.icon name="bar-chart-3" class="size-4" />
-            <span class="hidden xl:inline">{dgettext("localization", "Report")}</span>
-          </.link>
-          <div :if={@selected_locale} class="relative">
-            <div
-              tabindex="0"
-              role="button"
-              class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors gap-1.5"
-            >
-              <.icon name="download" class="size-4" />
-              <span class="hidden xl:inline">{dgettext("localization", "Export")}</span>
-            </div>
-            <ul
-              tabindex="0"
-              class="absolute top-full mt-1 menu bg-background rounded-box z-50 w-40 p-2 shadow-lg border border-border mt-2"
-            >
-              <li>
-                <a href={
-                  ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/xlsx/#{@selected_locale}"
-                }>
-                  {dgettext("localization", "Excel (.xlsx)")}
-                </a>
-              </li>
-              <li>
-                <a href={
-                  ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/csv/#{@selected_locale}"
-                }>
-                  {dgettext("localization", "CSV (.csv)")}
-                </a>
-              </li>
-            </ul>
-          </div>
-          <button
-            :if={@has_provider}
-            phx-click="translate_batch"
-            phx-disable-with={dgettext("localization", "Translating...")}
-            class="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors gap-1.5"
-          >
-            <.icon name="languages" class="size-4" />
-            <span class="hidden xl:inline">{dgettext("localization", "Translate All Pending")}</span>
-          </button>
-        </div>
-      </:top_bar_extra_right>
-      <div class="mx-auto mt-4 max-w-6xl space-y-6">
-        <.header>
-          {dgettext("localization", "Localization")}
-          <:subtitle>
-            {dgettext(
-              "localization",
-              "Review source strings, filter translations, and track progress for every target language."
-            )}
-          </:subtitle>
-        </.header>
-
-        <%!-- No target languages yet --%>
-        <div :if={@target_languages == []}>
-          <.empty_state icon="globe">
-            {dgettext(
-              "localization",
-              "Use the sidebar to add a target language and start translating."
-            )}
-          </.empty_state>
-        </div>
-
-        <%!-- Filters + Progress (only when target languages exist) --%>
-        <div :if={@target_languages != []} class="space-y-4">
-          <div
-            :if={@progress}
-            id="localization-progress-summary"
-            class="rounded-[1.5rem] border border-border bg-muted/60 p-4"
-          >
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div class="space-y-1">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {dgettext("localization", "Progress")}
-                </p>
-                <h2 class="text-lg font-semibold">
-                  {dgettext("localization", "Final translations")}
-                </h2>
-                <p class="text-sm text-muted-foreground">
-                  {dgettext(
-                    "localization",
-                    "Measure the strings that are ready to ship in the active language."
-                  )}
-                </p>
-              </div>
-              <div class="min-w-0 lg:w-72 space-y-2">
-                <progress
-                  class="progress progress-primary w-full"
-                  value={@progress.final}
-                  max={max(@progress.total, 1)}
-                />
-                <div class="flex items-center justify-between text-sm text-muted-foreground">
-                  <span>
-                    {dgettext("localization", "%{done} / %{total} final",
-                      done: @progress.final,
-                      total: @progress.total
-                    )}
-                  </span>
-                  <span class="tabular-nums">
-                    {if @progress.total > 0,
-                      do: round(@progress.final * 100 / @progress.total),
-                      else: 0}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <%!-- Filters row --%>
-          <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <.vue
-              v-component="form-fields/SelectField"
-              v-socket={@socket}
-              id="localization-status-filter"
-              options={[
-                %{value: "", label: dgettext("localization", "All statuses")},
-                %{value: "pending", label: dgettext("localization", "Pending")},
-                %{value: "draft", label: dgettext("localization", "Draft")},
-                %{value: "in_progress", label: dgettext("localization", "In progress")},
-                %{value: "review", label: dgettext("localization", "Review")},
-                %{value: "final", label: dgettext("localization", "Final")}
-              ]}
-              value={@filter_status || ""}
-              placeholder={dgettext("localization", "All statuses")}
-              event="change_filter"
-              param-key="status"
-            />
-            <.vue
-              v-component="form-fields/SelectField"
-              v-socket={@socket}
-              id="localization-source-type-filter"
-              options={[
-                %{value: "", label: dgettext("localization", "All types")},
-                %{value: "flow_node", label: dgettext("localization", "Flow node")},
-                %{value: "block", label: dgettext("localization", "Block")},
-                %{value: "sheet", label: dgettext("localization", "Sheet")},
-                %{value: "flow", label: dgettext("localization", "Flow")},
-                %{value: "scene", label: dgettext("localization", "Scene")}
-              ]}
-              value={@filter_source_type || ""}
-              placeholder={dgettext("localization", "All types")}
-              event="change_filter"
-              param-key="source_type"
-            />
-
-            <%!-- Search --%>
-            <form id="localization-search-form" phx-change="search" class="flex-1">
-              <label class="h-8 rounded-md border border-input bg-background px-2 text-sm input-bordered flex items-center gap-2">
-                <.icon name="search" class="size-4 opacity-50" />
-                <input
-                  id="localization-search-input"
-                  type="text"
-                  name="search"
-                  value={@search}
-                  placeholder={dgettext("localization", "Search in source or translation...")}
-                  phx-debounce="300"
-                  class="grow"
-                />
-              </label>
-            </form>
-          </div>
-
-          <%!-- Empty state --%>
-          <.empty_state :if={@texts == []} icon="file-text">
-            {dgettext("localization", "No translations found matching your filters.")}
-          </.empty_state>
-
-          <%!-- Translation table --%>
-          <div :if={@texts != []} class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr>
-                  <th class="w-12">{dgettext("localization", "Type")}</th>
-                  <th>{dgettext("localization", "Source Text")}</th>
-                  <th>{dgettext("localization", "Translation")}</th>
-                  <th class="w-28">{dgettext("localization", "Status")}</th>
-                  <th class="w-16">{dgettext("localization", "Words")}</th>
-                  <th :if={@can_edit} class="w-20"></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr :for={text <- @texts} class="hover">
-                  <td>
-                    <span
-                      class="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground badge-sm"
-                      title={source_type_label(text.source_type)}
-                    >
-                      <.icon name={source_type_icon(text.source_type)} class="size-3" />
-                    </span>
-                  </td>
-                  <td class="max-w-xs">
-                    <div class="truncate text-sm" title={strip_html(text.source_text)}>
-                      {strip_html(text.source_text)}
-                    </div>
-                    <div class="text-xs opacity-50">{text.source_field}</div>
-                  </td>
-                  <td class="max-w-xs">
-                    <div :if={text.translated_text} class="truncate text-sm">
-                      {strip_html(text.translated_text)}
-                    </div>
-                    <div :if={!text.translated_text} class="text-sm opacity-30 italic">
-                      {dgettext("localization", "Not translated")}
-                    </div>
-                    <span
-                      :if={text.machine_translated}
-                      class="text-[10px] px-1 rounded bg-muted text-muted-foreground badge-outline opacity-60"
-                    >
-                      {dgettext("localization", "MT")}
-                    </span>
-                  </td>
-                  <td>
-                    <.status_badge status={text.status} />
-                  </td>
-                  <td class="text-sm opacity-60">{text.word_count || 0}</td>
-                  <td :if={@can_edit}>
-                    <.link
-                      navigate={
-                        ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/#{text.id}"
-                      }
-                      class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors btn-xs"
-                    >
-                      <.icon name="pencil" class="size-3.5" />
-                    </.link>
-                    <button
-                      :if={@has_provider && !text.translated_text}
-                      phx-click="translate_single"
-                      phx-value-id={text.id}
-                      class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors btn-xs"
-                      title={dgettext("localization", "Translate with DeepL")}
-                    >
-                      <.icon name="sparkles" class="size-3.5" />
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <%!-- Pagination --%>
-          <div :if={@total_count > @page_size} class="flex justify-center mt-4">
-            <div class="join">
-              <button
-                class="join-item inline-flex items-center justify-center h-8 px-3 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
-                disabled={@page == 1}
-                phx-click="change_page"
-                phx-value-page={@page - 1}
-              >
-                «
-              </button>
-              <button class="join-item inline-flex items-center justify-center h-8 px-3 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 btn-disabled">
-                {dgettext("localization", "Page %{page} of %{total}",
-                  page: @page,
-                  total: ceil(@total_count / @page_size)
-                )}
-              </button>
-              <button
-                class="join-item inline-flex items-center justify-center h-8 px-3 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
-                disabled={@page * @page_size >= @total_count}
-                phx-click="change_page"
-                phx-value-page={@page + 1}
-              >
-                »
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <%!-- Remove language confirmation modals --%>
-        <.confirm_modal
-          :for={lang <- @target_languages}
-          id={"remove-language-#{lang.id}"}
-          title={dgettext("localization", "Remove language?")}
-          message={
-            dgettext(
-              "localization",
-              "This will remove %{name} (%{code}) and all its translations from this project.",
-              name: lang.name,
-              code: lang.locale_code
-            )
-          }
-          confirm_text={dgettext("localization", "Remove")}
-          confirm_variant="error"
-          icon="trash-2"
-          on_confirm={JS.push("remove_language", value: %{id: lang.id})}
+        <.vue
+          v-component="modules/localization/LocalizationToolbar"
+          v-socket={@socket}
+          id="localization-toolbar"
+          report-url={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/report"}
+          export-csv-url={@selected_locale && ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/csv/#{@selected_locale}"}
+          export-xlsx-url={@selected_locale && ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/xlsx/#{@selected_locale}"}
+          has-provider={@has_provider}
         />
-      </div>
+      </:top_bar_extra_right>
+
+      <.vue
+        v-component="modules/localization/LocalizationIndex"
+        v-socket={@socket}
+        id="localization-index"
+        texts={serialize_texts(assigns)}
+        progress={@progress}
+        total-count={@total_count}
+        page={@page}
+        page-size={@page_size}
+        filter-status={@filter_status || ""}
+        filter-source-type={@filter_source_type || ""}
+        search={@search}
+        can-edit={@can_edit}
+        has-provider={@has_provider}
+        has-target-languages={@target_languages != []}
+      />
     </Layouts.app>
-    """
-  end
-
-  attr :status, :string, required: true
-
-  defp status_badge(assigns) do
-    ~H"""
-    <span class={[
-      "text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground",
-      status_class(@status)
-    ]}>
-      {status_label(@status)}
-    </span>
     """
   end
 
@@ -478,6 +203,73 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       LocalizationHandlers.handle_translate_single(params, socket)
     end)
   end
+
+  # ============================================================================
+  # Serializers
+  # ============================================================================
+
+  defp sidebar_props(assigns) do
+    existing_codes =
+      MapSet.new(
+        [assigns.source_language && assigns.source_language.locale_code | Enum.map(assigns.target_languages, & &1.locale_code)]
+        |> List.flatten()
+        |> Enum.reject(&is_nil/1)
+      )
+
+    source_code = assigns.source_language && assigns.source_language.locale_code
+
+    %{
+      sourceLanguage: serialize_language(assigns.source_language),
+      targetLanguages: Enum.map(assigns.target_languages, &serialize_language/1),
+      selectedLocale: assigns.selected_locale,
+      canEdit: assigns.can_edit,
+      sourceLanguageOptions:
+        Languages.options_for_select(exclude: [source_code] |> Enum.reject(&is_nil/1))
+        |> Enum.map(fn {label, value} -> %{label: label, value: value} end),
+      addLanguageOptions:
+        Languages.options_for_select(exclude: MapSet.to_list(existing_codes))
+        |> Enum.map(fn {label, value} -> %{label: label, value: value} end)
+    }
+  end
+
+  defp serialize_language(nil), do: nil
+
+  defp serialize_language(lang) do
+    flag_code = Languages.flag_code(lang.locale_code)
+
+    %{
+      id: lang.id,
+      localeCode: lang.locale_code,
+      name: lang.name || Languages.name(lang.locale_code) || lang.locale_code,
+      flagUrl: flag_code && "/images/flags/1x1/#{flag_code}.svg",
+      shortLabel: Languages.short_label(lang.locale_code)
+    }
+  end
+
+  defp serialize_texts(assigns) do
+    ws_slug = assigns.workspace.slug
+    proj_slug = assigns.project.slug
+
+    Enum.map(assigns.texts, fn text ->
+      %{
+        id: text.id,
+        sourceText: strip_html(text.source_text),
+        translatedText: text.translated_text && strip_html(text.translated_text),
+        status: text.status,
+        statusLabel: status_label(text.status),
+        sourceType: text.source_type,
+        sourceTypeLabel: source_type_label(text.source_type),
+        sourceField: text.source_field,
+        wordCount: text.word_count || 0,
+        machineTranslated: text.machine_translated || false,
+        editUrl: ~p"/workspaces/#{ws_slug}/projects/#{proj_slug}/localization/#{text.id}"
+      }
+    end)
+  end
+
+  # ============================================================================
+  # Private helpers
+  # ============================================================================
 
   defp with_auth(action, socket, fun) do
     case Authorize.authorize(socket, action) do

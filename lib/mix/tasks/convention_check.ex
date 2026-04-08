@@ -281,7 +281,7 @@ defmodule Mix.Tasks.Convention.Check do
 
   defp check_native_dialog(line, line_num, file, _trimmed) do
     if String.match?(line, ~r/window\.(confirm|alert|prompt)\b|data-confirm/) do
-      [{:native_dialog, file, line_num, "No browser-native dialogs — use <.confirm_modal>"}]
+      [{:native_dialog, file, line_num, "No browser-native dialogs — use ConfirmDialog.vue"}]
     else
       []
     end
@@ -359,7 +359,7 @@ defmodule Mix.Tasks.Convention.Check do
     do: "Use gettext(\"msg\") or dgettext(\"domain\", \"msg\")"
 
   defp fix_suggestion(:native_dialog),
-    do: "Use <.confirm_modal> component instead"
+    do: "Use ConfirmDialog.vue component instead"
 
   defp fix_suggestion(:inline_slugify),
     do: "Use NameNormalizer.slugify/1, variablify/1, or shortcutify/1"

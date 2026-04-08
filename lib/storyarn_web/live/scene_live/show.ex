@@ -303,33 +303,6 @@ defmodule StoryarnWeb.SceneLive.Show do
         <div class="h-full"></div>
       <% end %>
 
-      <%!-- Confirm modals --%>
-      <.confirm_modal
-        :if={@can_edit}
-        id="delete-scene-show-confirm"
-        title={dgettext("scenes", "Delete scene?")}
-        message={dgettext("scenes", "Are you sure you want to delete this scene?")}
-        confirm_text={dgettext("scenes", "Delete")}
-        confirm_variant="error"
-        icon="alert-triangle"
-        on_confirm={JS.push("confirm_delete_scene")}
-      />
-
-      <.confirm_modal
-        :if={@can_edit}
-        id="delete-layer-confirm"
-        title={dgettext("scenes", "Delete layer?")}
-        message={
-          dgettext(
-            "scenes",
-            "This layer will be deleted. All elements on this layer will be moved to no layer."
-          )
-        }
-        confirm_text={dgettext("scenes", "Delete")}
-        confirm_variant="error"
-        icon="alert-triangle"
-        on_confirm={JS.push("confirm_delete_layer")}
-      />
     </Layouts.app>
     """
   end

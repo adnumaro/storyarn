@@ -187,7 +187,7 @@ check_conventions() {
        ! echo "$line" | grep -q '^\s*#\|^\s*//\|^\s*\*'; then
       if ! is_suppressed "$line" "native_dialog" "$code" "$line_num"; then
         add_violation "native_dialog" "$file" "$line_num" \
-          "No browser-native dialogs — use <.confirm_modal>"
+          "No browser-native dialogs — use ConfirmDialog.vue"
       fi
     fi
   done <<< "$code"

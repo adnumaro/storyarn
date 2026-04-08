@@ -123,7 +123,7 @@ Per-type architecture: each `lib/storyarn_web/live/flow_live/nodes/{type}/node.e
 
 **NEVER use browser-native dialogs.** No `window.confirm()`, `window.alert()`, `window.prompt()`, or `data-confirm`.
 
-Use `<.confirm_modal>` + `show_modal(id)` or `<.modal>` from `core_components.ex`.
+Use `ConfirmDialog.vue` (`assets/app/components/ConfirmDialog.vue`) for Vue contexts, or `<.modal>` from `core_components.ex` for HEEx.
 
 ## Popover & Dropdown Positioning Policy
 

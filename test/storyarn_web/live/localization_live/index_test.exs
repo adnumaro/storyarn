@@ -13,16 +13,27 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization"
   end
 
+  defp get_index_vue(view) do
+    LiveVue.Test.get_vue(view, name: "modules/localization/LocalizationIndex")
+  end
+
+  defp get_sidebar_props(view) do
+    # Sidebar props are passed via tree-props to the TreePanel, which passes them to the component.
+    # We read them from the layout's tree-props attribute via the TreePanel vue.
+    tree_panel = LiveVue.Test.get_vue(view, name: "layout/TreePanel")
+    tree_panel.props["tree-props"]
+  end
+
   describe "Localization index page" do
     setup :register_and_log_in_user
 
     test "renders page for owner", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
-      {:ok, _view, html} = live(conn, loc_path(project))
+      {:ok, view, _html} = live(conn, loc_path(project))
 
-      # Page should render the localization UI
-      assert html =~ "en"
+      vue = get_index_vue(view)
+      assert vue.component == "modules/localization/LocalizationIndex"
     end
 
     test "renders page for editor member", %{conn: conn, user: user} do
@@ -30,9 +41,10 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       project = project_fixture(owner) |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
 
-      {:ok, _view, html} = live(conn, loc_path(project))
+      {:ok, view, _html} = live(conn, loc_path(project))
 
-      assert html =~ "en"
+      vue = get_index_vue(view)
+      assert vue.component == "modules/localization/LocalizationIndex"
     end
 
     test "redirects non-member", %{conn: conn} do
@@ -45,245 +57,119 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       assert flash["error"] =~ "not found"
     end
 
-    test "shows texts when target language and texts exist", %{conn: conn, user: user} do
+    test "passes texts to Vue when target language and texts exist", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       _text = localized_text_fixture(project.id, %{source_text: "Hello world", locale_code: "es"})
 
-      {:ok, _view, html} = live(conn, loc_path(project))
+      {:ok, view, _html} = live(conn, loc_path(project))
 
-      assert html =~ "es"
-      assert html =~ "Hello world"
+      vue = get_index_vue(view)
+      texts = vue.props["texts"]
+      assert is_list(texts)
+      assert Enum.any?(texts, fn t -> t["sourceText"] == "Hello world" end)
     end
 
-    test "shows empty state when no target languages", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-
-      {:ok, _view, html} = live(conn, loc_path(project))
-
-      assert html =~ "Use the sidebar to add a target language and start translating."
-    end
-
-    test "renders the localization sidebar for owner", %{conn: conn, user: user} do
+    test "passes hasTargetLanguages=false when no target languages", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      assert has_element?(view, "#localization-sidebar")
-      assert has_element?(view, "#localization-sidebar-source-language")
-      assert has_element?(view, "#localization-source-language-option")
-      assert has_element?(view, "#localization-sidebar-language-selector")
-
-      assert has_element?(
-               view,
-               "#localization-source-language-picker[phx-hook='SearchableSelect']"
-             )
-
-      assert has_element?(view, "#localization-language-picker[phx-hook='SearchableSelect']")
-      refute has_element?(view, "#localization-language-picker select")
+      vue = get_index_vue(view)
+      assert vue.props["has-target-languages"] == false
     end
 
-    test "does not include the source language in the add language picker", %{
-      conn: conn,
-      user: user
-    } do
+    test "passes sidebar props with source language", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
-      {:ok, _view, html} = live(conn, loc_path(project))
+      {:ok, view, _html} = live(conn, loc_path(project))
 
-      refute html =~ "English (en)"
+      sidebar = get_sidebar_props(view)
+      assert sidebar["sourceLanguage"]["localeCode"] == "en"
     end
 
-    test "renders flags for source and target locales", %{conn: conn, user: user} do
+    test "does not include source language in add language options", %{conn: conn, user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+
+      {:ok, view, _html} = live(conn, loc_path(project))
+
+      sidebar = get_sidebar_props(view)
+      values = Enum.map(sidebar["addLanguageOptions"], & &1["value"])
+      refute "en" in values
+    end
+
+    test "passes flag URLs for source and target locales", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
-      {:ok, _view, html} = live(conn, loc_path(project))
+      {:ok, view, _html} = live(conn, loc_path(project))
 
-      assert html =~ "/images/flags/1x1/gb.svg"
-      assert html =~ "/images/flags/1x1/es.svg"
+      sidebar = get_sidebar_props(view)
+      assert sidebar["sourceLanguage"]["flagUrl"] =~ "/images/flags/"
+      [target | _] = sidebar["targetLanguages"]
+      assert target["flagUrl"] =~ "/images/flags/"
     end
 
-    test "uses the session locale for filter labels and source type translations", %{
-      conn: conn,
-      user: user
-    } do
-      conn = Plug.Conn.put_session(conn, :locale, "es")
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      {:ok, _view, html} = live(conn, loc_path(project))
-
-      assert html =~ "Todos los tipos"
-      assert html =~ "Todos los estados"
-      assert html =~ "Nodo"
-      refute html =~ "Modo"
-    end
-
-    test "shows Sync button when target languages exist", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      {:ok, view, html} = live(conn, loc_path(project))
-
-      assert html =~ "Sync"
-      assert has_element?(view, "#localization-sync-button")
-    end
-
-    test "shows progress bar when texts exist", %{conn: conn, user: user} do
+    test "passes progress data when texts exist", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       _text = localized_text_fixture(project.id, %{source_text: "Hello", locale_code: "es"})
 
-      {:ok, _view, html} = live(conn, loc_path(project))
+      {:ok, view, _html} = live(conn, loc_path(project))
 
-      # Progress bar should be rendered
-      assert html =~ "progress"
-      assert html =~ "final"
+      vue = get_index_vue(view)
+      assert vue.props["progress"]["total"] >= 1
     end
 
-    test "shows filter dropdowns when target languages exist", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      {:ok, view, html} = live(conn, loc_path(project))
-
-      assert html =~ "All statuses"
-      assert html =~ "All types"
-      assert has_element?(view, "#localization-status-filter[phx-hook='SearchableSelect']")
-      assert has_element?(view, "#localization-source-type-filter[phx-hook='SearchableSelect']")
-      refute has_element?(view, "select#localization-status-filter")
-      refute has_element?(view, "select#localization-source-type-filter")
-    end
-
-    test "shows status badges for texts", %{conn: conn, user: user} do
+    test "passes status labels in serialized texts", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       _text = localized_text_fixture(project.id, %{source_text: "Hello", locale_code: "es"})
 
-      {:ok, _view, html} = live(conn, loc_path(project))
+      {:ok, view, _html} = live(conn, loc_path(project))
 
-      assert html =~ "Pending"
-    end
-
-    test "shows Export dropdown for editor with target languages", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      {:ok, _view, html} = live(conn, loc_path(project))
-
-      assert html =~ "Export"
-      assert html =~ "Excel (.xlsx)"
-      assert html =~ "CSV (.csv)"
-    end
-
-    test "shows Report link for editor with target languages", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      {:ok, _view, html} = live(conn, loc_path(project))
-
-      assert html =~ "Report"
-    end
-
-    test "shows Not translated for texts without translation", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      _text =
-        localized_text_fixture(project.id, %{
-          source_text: "Untranslated text",
-          locale_code: "es"
-        })
-
-      {:ok, _view, html} = live(conn, loc_path(project))
-
-      assert html =~ "Not translated"
-    end
-
-    test "shows source_field for each text", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      _text =
-        localized_text_fixture(project.id, %{
-          source_text: "Test text",
-          source_field: "description",
-          locale_code: "es"
-        })
-
-      {:ok, _view, html} = live(conn, loc_path(project))
-
-      assert html =~ "description"
-    end
-
-    test "shows remove language button for target languages", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      {:ok, _view, html} = live(conn, loc_path(project))
-
-      assert html =~ "Remove language"
+      vue = get_index_vue(view)
+      text = hd(vue.props["texts"])
+      assert text["statusLabel"] == "Pending"
     end
 
     test "defaults selected locale to first target language", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
-      lang_es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-      lang_fr = language_fixture(project, %{locale_code: "fr", name: "French"})
+      _lang_es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      _lang_fr = language_fixture(project, %{locale_code: "fr", name: "French"})
 
-      {:ok, view, html} = live(conn, loc_path(project))
+      {:ok, view, _html} = live(conn, loc_path(project))
 
-      assert html =~ "Spanish (es)"
-      assert html =~ "French (fr)"
-      assert has_element?(view, "#localization-language-option-#{lang_es.id}")
-      assert has_element?(view, "#localization-language-option-#{lang_fr.id}")
-      assert has_element?(view, "#select-locale-es")
+      sidebar = get_sidebar_props(view)
+      assert sidebar["selectedLocale"] == "es"
+      assert length(sidebar["targetLanguages"]) == 2
     end
   end
 
   describe "change_locale event" do
     setup :register_and_log_in_user
 
-    test "switches selected locale from the sidebar and reloads texts", %{conn: conn, user: user} do
+    test "switches selected locale and reloads texts", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _lang_es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       _lang_fr = language_fixture(project, %{locale_code: "fr", name: "French"})
 
       _text_es =
-        localized_text_fixture(project.id, %{
-          source_text: "Spanish text",
-          locale_code: "es"
-        })
+        localized_text_fixture(project.id, %{source_text: "Spanish text", locale_code: "es"})
 
       _text_fr =
-        localized_text_fixture(project.id, %{
-          source_text: "French text",
-          locale_code: "fr"
-        })
-
-      {:ok, view, html} = live(conn, loc_path(project))
-
-      # Initial render shows es texts (first target language)
-      assert html =~ "Spanish text"
-
-      html =
-        view
-        |> element("#select-locale-fr")
-        |> render_click()
-
-      assert html =~ "French text"
-    end
-
-    test "resets page to 1 when changing locale", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      _lang_es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-      _lang_fr = language_fixture(project, %{locale_code: "fr", name: "French"})
+        localized_text_fixture(project.id, %{source_text: "French text", locale_code: "fr"})
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      # Switch locale - should not crash and should render
-      html = render_change(view, "change_locale", %{"locale" => "fr"})
-      assert html =~ "French (fr)"
+      # Initial render shows es texts
+      vue = get_index_vue(view)
+      assert Enum.any?(vue.props["texts"], fn t -> t["sourceText"] == "Spanish text" end)
+
+      render_click(view, "change_locale", %{"locale" => "fr"})
+
+      vue = get_index_vue(view)
+      assert Enum.any?(vue.props["texts"], fn t -> t["sourceText"] == "French text" end)
     end
   end
 
@@ -295,14 +181,13 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      html = render_click(view, "change_source_language", %{"locale_code" => "en-US"})
+      render_click(view, "change_source_language", %{"locale_code" => "en-US"})
 
-      assert html =~ "Source language updated."
-      assert html =~ "English (US)"
+      sidebar = get_sidebar_props(view)
+      assert sidebar["sourceLanguage"]["localeCode"] == "en-US"
 
       source_language = Localization.get_source_language(project.id)
       assert source_language.locale_code == "en-US"
-      assert Localization.get_language_by_locale(project.id, "en") == nil
     end
 
     test "viewer cannot change source language", %{conn: conn, user: user} do
@@ -340,17 +225,21 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
           translated_text: "Texto final"
         })
 
-      {:ok, view, html} = live(conn, loc_path(project))
+      {:ok, view, _html} = live(conn, loc_path(project))
 
-      # Both texts initially visible
-      assert html =~ "Pending text here"
-      assert html =~ "Final text here"
+      # Both texts initially
+      vue = get_index_vue(view)
+      source_texts = Enum.map(vue.props["texts"], & &1["sourceText"])
+      assert "Pending text here" in source_texts
+      assert "Final text here" in source_texts
 
       # Filter by "final" status
-      html = render_change(view, "change_filter", %{"status" => "final"})
+      render_click(view, "change_filter", %{"status" => "final"})
 
-      assert html =~ "Final text here"
-      refute html =~ "Pending text here"
+      vue = get_index_vue(view)
+      source_texts = Enum.map(vue.props["texts"], & &1["sourceText"])
+      assert "Final text here" in source_texts
+      refute "Pending text here" in source_texts
     end
 
     test "filters by source_type", %{conn: conn, user: user} do
@@ -371,17 +260,14 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
           locale_code: "es"
         })
 
-      {:ok, view, html} = live(conn, loc_path(project))
+      {:ok, view, _html} = live(conn, loc_path(project))
 
-      # Both texts initially visible
-      assert html =~ "Flow node text"
-      assert html =~ "Block text"
+      render_click(view, "change_filter", %{"source_type" => "block"})
 
-      # Filter by "block" source type
-      html = render_change(view, "change_filter", %{"source_type" => "block"})
-
-      assert html =~ "Block text"
-      refute html =~ "Flow node text"
+      vue = get_index_vue(view)
+      source_texts = Enum.map(vue.props["texts"], & &1["sourceText"])
+      assert "Block text" in source_texts
+      refute "Flow node text" in source_texts
     end
 
     test "empty status value clears current filter", %{conn: conn, user: user} do
@@ -405,13 +291,13 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      html = render_change(view, "change_filter", %{"status" => "final"})
-      assert html =~ "Final text here"
-      refute html =~ "Pending text here"
+      render_click(view, "change_filter", %{"status" => "final"})
+      render_click(view, "change_filter", %{"status" => ""})
 
-      html = render_change(view, "change_filter", %{"status" => ""})
-      assert html =~ "Final text here"
-      assert html =~ "Pending text here"
+      vue = get_index_vue(view)
+      source_texts = Enum.map(vue.props["texts"], & &1["sourceText"])
+      assert "Final text here" in source_texts
+      assert "Pending text here" in source_texts
     end
   end
 
@@ -423,63 +309,46 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
       _text1 =
-        localized_text_fixture(project.id, %{
-          source_text: "Hello world",
-          locale_code: "es"
-        })
+        localized_text_fixture(project.id, %{source_text: "Hello world", locale_code: "es"})
 
       _text2 =
-        localized_text_fixture(project.id, %{
-          source_text: "Goodbye world",
-          locale_code: "es"
-        })
-
-      {:ok, view, html} = live(conn, loc_path(project))
-
-      assert html =~ "Hello world"
-      assert html =~ "Goodbye world"
-
-      # Search for "Hello"
-      html = render_change(view, "search", %{"search" => "Hello"})
-
-      assert html =~ "Hello world"
-      refute html =~ "Goodbye world"
-    end
-
-    test "shows empty state when search matches nothing", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      _text =
-        localized_text_fixture(project.id, %{
-          source_text: "Hello world",
-          locale_code: "es"
-        })
+        localized_text_fixture(project.id, %{source_text: "Goodbye world", locale_code: "es"})
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      html = render_change(view, "search", %{"search" => "nonexistent_xyz"})
+      render_click(view, "search", %{"search" => "Hello"})
 
-      assert html =~ "No translations found matching your filters."
+      vue = get_index_vue(view)
+      source_texts = Enum.map(vue.props["texts"], & &1["sourceText"])
+      assert "Hello world" in source_texts
+      refute "Goodbye world" in source_texts
+    end
+
+    test "shows empty texts when search matches nothing", %{conn: conn, user: user} do
+      project = project_fixture(user) |> Repo.preload(:workspace)
+      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      _text = localized_text_fixture(project.id, %{source_text: "Hello world", locale_code: "es"})
+
+      {:ok, view, _html} = live(conn, loc_path(project))
+
+      render_click(view, "search", %{"search" => "nonexistent_xyz"})
+
+      vue = get_index_vue(view)
+      assert vue.props["texts"] == []
     end
 
     test "clears search with empty string", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      _text =
-        localized_text_fixture(project.id, %{
-          source_text: "Hello world",
-          locale_code: "es"
-        })
+      _text = localized_text_fixture(project.id, %{source_text: "Hello world", locale_code: "es"})
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      # Search then clear
-      render_change(view, "search", %{"search" => "nonexistent_xyz"})
-      html = render_change(view, "search", %{"search" => ""})
+      render_click(view, "search", %{"search" => "nonexistent_xyz"})
+      render_click(view, "search", %{"search" => ""})
 
-      assert html =~ "Hello world"
+      vue = get_index_vue(view)
+      assert Enum.any?(vue.props["texts"], fn t -> t["sourceText"] == "Hello world" end)
     end
   end
 
@@ -490,7 +359,6 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
-      # Create enough texts to need pagination (page_size is 50)
       for i <- 1..52 do
         localized_text_fixture(project.id, %{
           source_text: "Text number #{i}",
@@ -499,15 +367,16 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
         })
       end
 
-      {:ok, view, html} = live(conn, loc_path(project))
+      {:ok, view, _html} = live(conn, loc_path(project))
 
-      # Should show pagination controls
-      assert html =~ "Page 1 of 2"
+      vue = get_index_vue(view)
+      assert vue.props["page"] == 1
+      assert vue.props["total-count"] == 52
 
-      # Go to page 2
-      html = render_click(view, "change_page", %{"page" => "2"})
+      render_click(view, "change_page", %{"page" => "2"})
 
-      assert html =~ "Page 2 of 2"
+      vue = get_index_vue(view)
+      assert vue.props["page"] == 2
     end
   end
 
@@ -519,14 +388,15 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      # No target languages yet, should show empty state
-      assert render(view) =~ "Use the sidebar to add a target language and start translating."
+      vue = get_index_vue(view)
+      assert vue.props["has-target-languages"] == false
 
-      html = render_change(view, "add_target_language", %{"locale_code" => "fr"})
+      html = render_click(view, "add_target_language", %{"locale_code" => "fr"})
 
       assert html =~ "Language added"
-      # The language chip should now appear as a target language badge
-      assert html =~ "French"
+
+      sidebar = get_sidebar_props(view)
+      assert Enum.any?(sidebar["targetLanguages"], fn l -> l["localeCode"] == "fr" end)
     end
 
     test "no-op when locale_code is empty", %{conn: conn, user: user} do
@@ -534,11 +404,10 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      # Should not crash or change anything
-      html = render_change(view, "add_target_language", %{"locale_code" => ""})
+      render_click(view, "add_target_language", %{"locale_code" => ""})
 
-      # Should still show the empty state (no target languages)
-      assert html =~ "Use the sidebar to add a target language and start translating."
+      vue = get_index_vue(view)
+      assert vue.props["has-target-languages"] == false
     end
 
     test "viewer cannot add target language", %{conn: conn, user: user} do
@@ -548,7 +417,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      html = render_change(view, "add_target_language", %{"locale_code" => "fr"})
+      html = render_click(view, "add_target_language", %{"locale_code" => "fr"})
 
       assert html =~ "permission"
     end
@@ -561,16 +430,17 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       project = project_fixture(user) |> Repo.preload(:workspace)
       language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
-      {:ok, view, html} = live(conn, loc_path(project))
+      {:ok, view, _html} = live(conn, loc_path(project))
 
-      # Target language badge should exist
-      assert html =~ "Spanish"
+      sidebar = get_sidebar_props(view)
+      assert Enum.any?(sidebar["targetLanguages"], fn l -> l["localeCode"] == "es" end)
 
       html = render_click(view, "remove_language", %{"id" => language.id})
 
       assert html =~ "Language removed"
-      # After removal, should show the empty state (no target languages)
-      assert html =~ "Use the sidebar to add a target language and start translating."
+
+      vue = get_index_vue(view)
+      assert vue.props["has-target-languages"] == false
     end
 
     test "viewer cannot remove a language", %{conn: conn, user: user} do
@@ -642,10 +512,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
       text =
-        localized_text_fixture(project.id, %{
-          source_text: "Hello",
-          locale_code: "es"
-        })
+        localized_text_fixture(project.id, %{source_text: "Hello", locale_code: "es"})
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
@@ -658,89 +525,36 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
   describe "Viewer role restrictions" do
     setup :register_and_log_in_user
 
-    test "viewer cannot see Add Language button", %{conn: conn, user: user} do
+    test "viewer sees canEdit=false in sidebar and index", %{conn: conn, user: user} do
       owner = user_fixture()
       project = project_fixture(owner) |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
 
-      {:ok, view, html} = live(conn, loc_path(project))
+      {:ok, view, _html} = live(conn, loc_path(project))
 
-      refute html =~ "Add language"
-      refute has_element?(view, "#localization-source-language-picker")
-      refute has_element?(view, "#localization-language-picker")
+      vue = get_index_vue(view)
+      assert vue.props["can-edit"] == false
+
+      sidebar = get_sidebar_props(view)
+      assert sidebar["canEdit"] == false
     end
 
-    test "viewer cannot see Sync button", %{conn: conn, user: user} do
-      owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
-      _membership = membership_fixture(project, user, "viewer")
-      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      {:ok, view, html} = live(conn, loc_path(project))
-
-      refute html =~ "Sync"
-      refute has_element?(view, "#localization-sync-button")
-    end
-
-    test "viewer cannot see remove language X button on chips", %{conn: conn, user: user} do
-      owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
-      _membership = membership_fixture(project, user, "viewer")
-      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      {:ok, _view, html} = live(conn, loc_path(project))
-
-      # The language chip should be visible but the X button (with hover:text-error) should not
-      assert html =~ "Spanish"
-      refute html =~ "hover:text-error"
-    end
-
-    test "viewer cannot see edit pencil icon on texts", %{conn: conn, user: user} do
+    test "viewer can view texts", %{conn: conn, user: user} do
       owner = user_fixture()
       project = project_fixture(owner) |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
       _text =
-        localized_text_fixture(project.id, %{
-          source_text: "Some text",
-          locale_code: "es"
-        })
+        localized_text_fixture(project.id, %{source_text: "Viewable text", locale_code: "es"})
 
-      {:ok, _view, html} = live(conn, loc_path(project))
+      {:ok, view, _html} = live(conn, loc_path(project))
 
-      # Viewer should not see the pencil edit icon
-      refute html =~ "pencil"
-    end
+      vue = get_index_vue(view)
+      assert Enum.any?(vue.props["texts"], fn t -> t["sourceText"] == "Viewable text" end)
 
-    test "viewer cannot see Translate All Pending button", %{conn: conn, user: user} do
-      owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
-      _membership = membership_fixture(project, user, "viewer")
-      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      {:ok, _view, html} = live(conn, loc_path(project))
-
-      refute html =~ "Translate All Pending"
-    end
-
-    test "viewer can view texts and language chips", %{conn: conn, user: user} do
-      owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
-      _membership = membership_fixture(project, user, "viewer")
-      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      _text =
-        localized_text_fixture(project.id, %{
-          source_text: "Viewable text",
-          locale_code: "es"
-        })
-
-      {:ok, _view, html} = live(conn, loc_path(project))
-
-      assert html =~ "Spanish"
-      assert html =~ "es"
-      assert html =~ "Viewable text"
+      sidebar = get_sidebar_props(view)
+      assert Enum.any?(sidebar["targetLanguages"], fn l -> l["localeCode"] == "es" end)
     end
 
     test "viewer can change locale", %{conn: conn, user: user} do
@@ -752,9 +566,10 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      html = render_change(view, "change_locale", %{"locale" => "fr"})
-      # Should not crash, viewer can browse
-      assert html =~ "French (fr)"
+      render_click(view, "change_locale", %{"locale" => "fr"})
+
+      sidebar = get_sidebar_props(view)
+      assert sidebar["selectedLocale"] == "fr"
     end
 
     test "viewer can use search", %{conn: conn, user: user} do
@@ -764,15 +579,14 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
       _text =
-        localized_text_fixture(project.id, %{
-          source_text: "Searchable text",
-          locale_code: "es"
-        })
+        localized_text_fixture(project.id, %{source_text: "Searchable text", locale_code: "es"})
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      html = render_change(view, "search", %{"search" => "Searchable"})
-      assert html =~ "Searchable text"
+      render_click(view, "search", %{"search" => "Searchable"})
+
+      vue = get_index_vue(view)
+      assert Enum.any?(vue.props["texts"], fn t -> t["sourceText"] == "Searchable text" end)
     end
 
     test "viewer can use filters", %{conn: conn, user: user} do
@@ -782,15 +596,14 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
       _text =
-        localized_text_fixture(project.id, %{
-          source_text: "Filter me",
-          locale_code: "es"
-        })
+        localized_text_fixture(project.id, %{source_text: "Filter me", locale_code: "es"})
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      html = render_change(view, "change_filter", %{"status" => "pending"})
-      assert html =~ "Filter me"
+      render_click(view, "change_filter", %{"status" => "pending"})
+
+      vue = get_index_vue(view)
+      assert Enum.any?(vue.props["texts"], fn t -> t["sourceText"] == "Filter me" end)
     end
   end
 

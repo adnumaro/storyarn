@@ -7,11 +7,13 @@ import Sidebar from "./Sidebar.vue";
 import SheetTree from "@modules/sheets/components/tree/SheetTree.vue";
 import FlowTree from "@modules/flows/components/FlowTree.vue";
 import SceneTreePanel from "@modules/scenes/components/SceneTreePanel.vue";
+import LocalizationSidebar from "@modules/localization/components/LocalizationSidebar.vue";
 
 const treeComponents: Record<string, Component> = {
   sheets: SheetTree,
   flows: FlowTree,
   scenes: SceneTreePanel,
+  localization: LocalizationSidebar,
 };
 
 const {

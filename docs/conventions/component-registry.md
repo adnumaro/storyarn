@@ -13,7 +13,7 @@ These are available in ALL HEEx templates without explicit import (via `Storyarn
 | `<.icon>`          | Lucide icon         | `name` (string, required), `class`                                                                                                    |
 | `<.header>`        | Page header         | `inner_block`, `:subtitle` slot, `:actions` slot                                                                                      |
 | `<.modal>`         | Dialog modal        | `id`, `show`, `on_cancel`                                                                                                             |
-| `<.confirm_modal>` | Confirmation dialog | `id`, `title`, `message`, `confirm_text`, `cancel_text`, `confirm_variant` (primary/error/warning), `on_confirm`, `on_cancel`, `icon` |
+| `ConfirmDialog.vue` | Confirmation dialog (Vue) | `open` (v-model), `title`, `description`, `confirmText`, `cancelText`, `variant` (default/destructive/warning), `icon` — `@confirm`, `@cancel` |
 | `<.table>`         | Data table          | `rows`, `row_id`, `row_click`, `:col` slot, `:action` slot                                                                            |
 | `<.list>`          | Key-value list      | `:item` slot (with title)                                                                                                             |
 | `<.flash>`         | Flash notification  | `kind`, `flash`                                                                                                                       |
