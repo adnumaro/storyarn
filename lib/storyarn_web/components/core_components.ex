@@ -283,61 +283,6 @@ defmodule StoryarnWeb.Components.CoreComponents do
     """
   end
 
-  @doc """
-  Renders a modal dialog.
-
-  ## Examples
-
-      <.modal id="confirm-modal">
-        Are you sure?
-        <:actions>
-          <.button phx-click="delete">Delete</.button>
-        </:actions>
-      </.modal>
-
-  JS commands may be passed to the `:on_cancel` attribute for the caller
-  to react to the modal being closed.
-
-  ## Examples
-
-      <.modal id="confirm" on_cancel={JS.navigate(~p"/posts")}>
-        Are you sure?
-      </.modal>
-  """
-  attr :id, :string, required: true
-  attr :show, :boolean, default: false
-  attr :on_cancel, JS, default: %JS{}
-  slot :inner_block, required: true
-
-  def modal(assigns) do
-    ~H"""
-    <dialog
-      id={@id}
-      class="p-0 m-auto bg-transparent border-none shadow-none outline-none w-full max-w-lg backdrop:bg-background/80 backdrop:backdrop-blur-sm open:animate-in open:fade-in-90 open:zoom-in-95"
-      phx-mounted={@show && show_modal(@id)}
-      phx-remove={hide_modal(@id)}
-    >
-      <div
-        id={"#{@id}-container"}
-        class="relative border border-border bg-background p-6 shadow-lg rounded-lg sm:rounded-xl text-foreground"
-        phx-click-away={@on_cancel |> hide_modal(@id)}
-        phx-key="escape"
-        phx-window-keydown={@on_cancel |> hide_modal(@id)}
-      >
-        <button
-          type="button"
-          class="absolute right-4 top-4 inline-flex items-center justify-center rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-          aria-label={gettext("close")}
-          phx-click={@on_cancel |> hide_modal(@id)}
-        >
-          <.icon name="x" class="size-4" />
-        </button>
-        {render_slot(@inner_block)}
-      </div>
-    </dialog>
-    """
-  end
-
   ## JS Commands
 
   def show(js \\ %JS{}, selector) do
@@ -359,18 +304,6 @@ defmodule StoryarnWeb.Components.CoreComponents do
         {"transition-all ease-in duration-200", "opacity-100 translate-y-0 sm:scale-100",
          "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"}
     )
-  end
-
-  def show_modal(js \\ %JS{}, id) when is_binary(id) do
-    js
-    |> JS.dispatch("phx:show-modal", to: "##{id}")
-    |> JS.focus_first(to: "##{id}-container")
-  end
-
-  def hide_modal(js \\ %JS{}, id) do
-    js
-    |> JS.dispatch("phx:hide-modal", to: "##{id}")
-    |> JS.pop_focus()
   end
 
   @doc """

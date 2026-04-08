@@ -11,7 +11,7 @@ defmodule StoryarnWeb.Components.UIComponents do
 
   alias Phoenix.LiveView.JS
 
-  import StoryarnWeb.Components.CoreComponents, only: [icon: 1, modal: 1, hide_modal: 1]
+  import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
 
   @doc """
   Renders a role badge.
@@ -284,109 +284,4 @@ defmodule StoryarnWeb.Components.UIComponents do
     """
   end
 
-  @doc """
-  Renders a danger zone section with consistent styling.
-
-  ## Examples
-
-      <.danger_zone message={gettext("This cannot be undone.")} on_click={show_modal("confirm")}>
-        Delete
-      </.danger_zone>
-  """
-  attr :message, :string, required: true, doc: "warning message"
-  attr :on_click, :any, required: true, doc: "action for the button (JS command or event)"
-  slot :inner_block, required: true, doc: "button label"
-
-  def danger_zone(assigns) do
-    ~H"""
-    <section>
-      <h3 class="text-lg font-semibold mb-4 text-destructive">{gettext("Danger Zone")}</h3>
-      <div class="border border-error/30 rounded-lg p-4">
-        <p class="text-sm text-muted-foreground mb-4">{@message}</p>
-        <.form_actions>
-          <button
-            type="button"
-            phx-click={@on_click}
-            class="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md bg-destructive text-white hover:bg-destructive/90 transition-colors"
-          >
-            {render_slot(@inner_block)}
-          </button>
-        </.form_actions>
-      </div>
-    </section>
-    """
-  end
-
-  @doc """
-  Renders a right-aligned actions row for form buttons.
-
-  Use at the end of a form to align submit/action buttons consistently.
-
-  ## Examples
-
-      <.form_actions>
-        <.button variant="primary">Save</.button>
-      </.form_actions>
-  """
-  slot :inner_block, required: true
-
-  def form_actions(assigns) do
-    ~H"""
-    <div class="flex justify-end gap-3">
-      {render_slot(@inner_block)}
-    </div>
-    """
-  end
-
-  @doc """
-  Renders an image optimization warning modal.
-
-  Used by upload hooks to warn users that PNG/GIF images will be converted to WebP.
-  The modal is opened from JS via `HTMLDialogElement.showModal()` on the underlying
-  `<dialog>` element. Uses `data-proceed-upload` / `data-cancel-upload` /
-  `data-skip-warning` attributes for file_upload_handler.js to bind to.
-
-  ## Examples
-
-      <.optimization_warning_dialog
-        id="optimization-warning-avatar"
-        message="For best results, upload a 192×192 WebP or JPEG."
-      />
-  """
-  attr :id, :string, required: true
-  attr :message, :string, required: true
-
-  def optimization_warning_dialog(assigns) do
-    ~H"""
-    <.modal id={@id} on_cancel={hide_modal(@id)}>
-      <div class="flex items-center gap-3 mb-2">
-        <div class="text-amber-600 dark:text-amber-400">
-          <.icon name="image" class="size-8" />
-        </div>
-        <h3 class="font-bold text-lg">{gettext("Image Optimization")}</h3>
-      </div>
-      <p class="text-muted-foreground mb-4">{@message}</p>
-      <label class="flex items-center gap-2 mb-4 cursor-pointer">
-        <input type="checkbox" class="checkbox checkbox-sm" data-skip-warning />
-        <span class="text-sm text-muted-foreground">{gettext("Don't show this again")}</span>
-      </label>
-      <div class="flex justify-end gap-2 mt-4 justify-end gap-2">
-        <button
-          type="button"
-          class="inline-flex items-center justify-center px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
-          data-cancel-upload
-        >
-          {gettext("Cancel")}
-        </button>
-        <button
-          type="button"
-          class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-          data-proceed-upload
-        >
-          {gettext("Upload")}
-        </button>
-      </div>
-    </.modal>
-    """
-  end
 end
