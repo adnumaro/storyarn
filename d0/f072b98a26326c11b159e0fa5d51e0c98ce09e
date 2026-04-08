@@ -1,0 +1,56 @@
+docs/conventions/component-registry.md
+  4a17336e40c15eda 16
+assets/app/modules/localization/components/LocalizationSidebar.vue
+  4a17336e40c15eda 1-278
+test/storyarn_web/live/localization_live/index_test.exs
+  4a17336e40c15eda 16-26,33,35-36,44,46-47,60,67-70,73,76,78-79,82,85,87-88,91,94,96-98,101,105,107-110,113,118,120-121,124,129,131-133,138-139,141,143-145,152,158,161,163,165-167,169,171-172,184,186-187,228,230-234,237,239-242,263,265,267-270,294-295,297-300,312,315,317,319,321-324,327,330,334,336-337,343,347-348,350-351,370,372-374,376,378-379,391-392,394,397-399,407,409-410,420,433,435-436,441-443,515,528,533,535-536,538-539,542,549,551,553-554,556-557,569-572,582,586-589,599,603,605-606
+assets/app/components/layout/TreePanel.vue
+  4a17336e40c15eda 10,16
+lib/mix/tasks/convention_check.ex
+  4a17336e40c15eda 284,362
+.claude/hooks/scripts/convention-rules.sh
+  4a17336e40c15eda 190
+assets/app/modules/localization/components/LocalizationToolbar.vue
+  4a17336e40c15eda 1-76
+CLAUDE.md
+  4a17336e40c15eda 126
+assets/app/components/ConfirmDialog.vue
+  4a17336e40c15eda 1-78
+assets/app/modules/localization/components/LocalizationIndex.vue
+  4a17336e40c15eda 1-345
+lib/storyarn_web/live/localization_live/index.ex
+  4a17336e40c15eda 8,10,29-32,34,37-44,46,48-64,207-266,269-272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "d0f072b98a26326c11b159e0fa5d51e0c98ce09e",
+  "prompts": {
+    "4a17336e40c15eda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e2b34f-aad4-4a3a-9d19-0cf8845fe0de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 1139,
+      "total_deletions": 955,
+      "accepted_lines": 1046,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 152,
+      "overriden_lines": 0
+    }
+  }
+}
