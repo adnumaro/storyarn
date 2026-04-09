@@ -8,34 +8,37 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
 
   alias Storyarn.Repo
 
+  defp report_url(project) do
+    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
+  end
+
+  defp get_report_vue(view) do
+    LiveVue.Test.get_vue(view, name: "modules/localization/components/LocalizationReport")
+  end
+
   describe "Localization report page" do
     setup :register_and_log_in_user
 
-    test "renders page for owner", %{conn: conn, user: user} do
+    test "renders Vue report component for owner", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
-      {:ok, _view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      assert html =~ "Localization Report"
-      assert html =~ "Progress by Language"
+      vue = get_report_vue(view)
+      assert vue.component == "modules/localization/components/LocalizationReport"
+      assert is_list(vue.props["language-progress"])
+      assert is_list(vue.props["target-languages"])
     end
 
-    test "renders page for editor member", %{conn: conn, user: user} do
+    test "renders for editor member", %{conn: conn, user: user} do
       owner = user_fixture()
       project = project_fixture(owner) |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
 
-      {:ok, _view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      assert html =~ "Localization Report"
+      vue = get_report_vue(view)
+      assert vue.component == "modules/localization/components/LocalizationReport"
     end
 
     test "redirects non-member", %{conn: conn} do
@@ -43,73 +46,57 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
       project = project_fixture(owner) |> Repo.preload(:workspace)
 
       {:error, {:redirect, %{to: path, flash: flash}}} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
+        live(conn, report_url(project))
 
       assert path == "/workspaces"
       assert flash["error"] =~ "not found"
     end
 
-    test "shows empty state when no target languages", %{conn: conn, user: user} do
+    test "passes empty target-languages when no languages", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
-      {:ok, _view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      assert html =~ "No target languages configured"
+      vue = get_report_vue(view)
+      assert vue.props["target-languages"] == []
+      assert vue.props["selected-locale"] == nil
     end
 
-    test "shows language progress when target languages exist", %{conn: conn, user: user} do
+    test "passes target languages when they exist", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
-      {:ok, _view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      assert html =~ "es"
-      assert html =~ "Spanish"
+      vue = get_report_vue(view)
+      target_codes = Enum.map(vue.props["target-languages"], & &1["localeCode"])
+      assert "es" in target_codes
     end
 
-    test "shows back link to localization index", %{conn: conn, user: user} do
+    test "passes back-url to Vue", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
-      {:ok, _view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      assert html =~ "Back to Translations"
+      vue = get_report_vue(view)
+      assert vue.props["back-url"] =~ "/localization"
     end
   end
 
   describe "Locale selection" do
     setup :register_and_log_in_user
 
-    test "change_locale event reloads report data", %{conn: conn, user: user} do
+    test "change_locale event updates selected-locale prop", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _lang_es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       _lang_fr = language_fixture(project, %{locale_code: "fr", name: "French"})
 
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      # Change locale to French
-      html = view |> render_change("change_locale", %{"locale" => "fr"})
+      render_change(view, "change_locale", %{"locale" => "fr"})
 
-      # Page still renders without crash
-      assert html =~ "Localization Report"
+      vue = get_report_vue(view)
+      assert vue.props["selected-locale"] == "fr"
     end
 
     test "selected_locale defaults to first target language", %{conn: conn, user: user} do
@@ -117,66 +104,45 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
       _lang_es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       _lang_fr = language_fixture(project, %{locale_code: "fr", name: "French"})
 
-      {:ok, _view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      # The select should have es selected (first language)
-      assert html =~ "es"
-      assert html =~ "Spanish"
+      vue = get_report_vue(view)
+      assert vue.props["selected-locale"] == "es"
     end
   end
 
   describe "Report data sections" do
     setup :register_and_log_in_user
 
-    test "shows VO progress section when locale selected", %{conn: conn, user: user} do
+    test "passes vo-progress when locale selected", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _lang_es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
-      {:ok, _view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      assert html =~ "Voice-Over Progress"
-      assert html =~ "None"
-      assert html =~ "Needed"
-      assert html =~ "Recorded"
-      assert html =~ "Approved"
+      vue = get_report_vue(view)
+      assert is_map(vue.props["vo-progress"])
     end
 
-    test "language progress shows percentage and counts", %{conn: conn, user: user} do
+    test "passes language-progress with language info", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _lang_es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
-      {:ok, _view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      # Should show progress bar area with the language
-      assert html =~ "es"
-      assert html =~ "Spanish"
-      assert html =~ "%"
+      vue = get_report_vue(view)
+      assert is_list(vue.props["language-progress"])
+      assert length(vue.props["language-progress"]) >= 1
     end
 
     test "handles project with no localized texts", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _lang = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
-      {:ok, _view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      # Should still render VO progress with zero values
-      assert html =~ "Voice-Over Progress"
+      vue = get_report_vue(view)
+      assert vue.component == "modules/localization/components/LocalizationReport"
     end
   end
 
@@ -188,13 +154,10 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
       project = project_fixture(owner) |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
 
-      {:ok, _view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      assert html =~ "Localization Report"
+      vue = get_report_vue(view)
+      assert vue.component == "modules/localization/components/LocalizationReport"
     end
 
     test "viewer can change locale", %{conn: conn, user: user} do
@@ -204,14 +167,12 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
       _lang_es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       _lang_fr = language_fixture(project, %{locale_code: "fr", name: "French"})
 
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      html = view |> render_change("change_locale", %{"locale" => "fr"})
-      assert html =~ "Localization Report"
+      render_change(view, "change_locale", %{"locale" => "fr"})
+
+      vue = get_report_vue(view)
+      assert vue.props["selected-locale"] == "fr"
     end
   end
 
@@ -226,21 +187,10 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
     end
   end
 
-  # ===========================================================================
-  # Coverage expansion: type_icon/1 and type_label/1 (via content breakdown)
-  # ===========================================================================
-
   describe "Content breakdown with various source types" do
     setup :register_and_log_in_user
 
-    defp report_url(project) do
-      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-    end
-
-    test "renders flow_node type icon and label in content breakdown", %{
-      conn: conn,
-      user: user
-    } do
+    test "type-counts includes flow_node", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _lang = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
@@ -251,17 +201,15 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
           locale_code: "es"
         })
 
-      {:ok, _view, html} = live(conn, report_url(project))
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      # flow_node type_icon returns "message-square", type_label returns "Nodes"
-      assert html =~ "Nodes"
-      assert html =~ "message-square"
+      vue = get_report_vue(view)
+      type_counts = vue.props["type-counts"]
+      assert is_map(type_counts)
+      assert Map.has_key?(type_counts, "flow_node")
     end
 
-    test "renders block type icon and label in content breakdown", %{
-      conn: conn,
-      user: user
-    } do
+    test "type-counts includes block", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _lang = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
@@ -272,15 +220,14 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
           locale_code: "es"
         })
 
-      {:ok, _view, html} = live(conn, report_url(project))
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      assert html =~ "Blocks"
+      vue = get_report_vue(view)
+      type_counts = vue.props["type-counts"]
+      assert Map.has_key?(type_counts, "block")
     end
 
-    test "renders sheet type icon and label in content breakdown", %{
-      conn: conn,
-      user: user
-    } do
+    test "type-counts includes sheet", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _lang = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
@@ -291,16 +238,13 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
           locale_code: "es"
         })
 
-      {:ok, _view, html} = live(conn, report_url(project))
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      assert html =~ "Sheets"
-      assert html =~ "file-text"
+      vue = get_report_vue(view)
+      assert Map.has_key?(vue.props["type-counts"], "sheet")
     end
 
-    test "renders flow type icon and label in content breakdown", %{
-      conn: conn,
-      user: user
-    } do
+    test "type-counts includes flow", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _lang = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
@@ -311,16 +255,13 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
           locale_code: "es"
         })
 
-      {:ok, _view, html} = live(conn, report_url(project))
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      assert html =~ "Flows"
-      assert html =~ "git-branch"
+      vue = get_report_vue(view)
+      assert Map.has_key?(vue.props["type-counts"], "flow")
     end
 
-    test "renders screenplay type icon and label in content breakdown", %{
-      conn: conn,
-      user: user
-    } do
+    test "type-counts includes screenplay", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _lang = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
@@ -331,13 +272,13 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
           locale_code: "es"
         })
 
-      {:ok, _view, html} = live(conn, report_url(project))
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      assert html =~ "Screenplays"
-      assert html =~ "clapperboard"
+      vue = get_report_vue(view)
+      assert Map.has_key?(vue.props["type-counts"], "screenplay")
     end
 
-    test "renders multiple source types in content breakdown", %{conn: conn, user: user} do
+    test "type-counts includes multiple source types", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _lang = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
@@ -355,131 +296,48 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
           locale_code: "es"
         })
 
-      {:ok, _view, html} = live(conn, report_url(project))
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      # Both types should appear in the content breakdown
-      assert html =~ "Content Breakdown"
-      assert html =~ "Nodes"
-      assert html =~ "Blocks"
+      vue = get_report_vue(view)
+      type_counts = vue.props["type-counts"]
+      assert Map.has_key?(type_counts, "flow_node")
+      assert Map.has_key?(type_counts, "block")
     end
   end
 
-  # ===========================================================================
-  # Coverage expansion: speaker_stats hidden when empty, type_counts hidden when empty
-  # ===========================================================================
-
-  describe "Conditional section visibility" do
+  describe "Empty state props" do
     setup :register_and_log_in_user
 
-    test "speaker_stats section is hidden when locale is selected but no speaker stats", %{
-      conn: conn,
-      user: user
-    } do
+    test "speaker-stats is empty list when no texts with speakers", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _lang = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
-      # No localized texts with speakers, so speaker_stats will be []
-      {:ok, _view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      # The "Word Counts by Speaker" section requires @selected_locale && @speaker_stats != []
-      # With no texts, speaker_stats is [], so it should not appear
-      refute html =~ "Word Counts by Speaker"
-
-      # But VO progress should still appear (requires @selected_locale only)
-      assert html =~ "Voice-Over Progress"
+      vue = get_report_vue(view)
+      assert vue.props["speaker-stats"] == []
     end
 
-    test "content breakdown section is hidden when type_counts is empty", %{
-      conn: conn,
-      user: user
-    } do
+    test "type-counts is empty map when no texts", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       _lang = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
-      # No localized texts at all, so type_counts will be %{}
-      {:ok, _view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      # Content Breakdown requires @selected_locale && @type_counts != %{}
-      refute html =~ "Content Breakdown"
+      vue = get_report_vue(view)
+      assert vue.props["type-counts"] == %{}
     end
 
-    test "content breakdown section appears when there are localized texts", %{
-      conn: conn,
-      user: user
-    } do
+    test "selected-locale is nil when no target languages exist", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
-      _lang = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
-      _text =
-        localized_text_fixture(project.id, %{
-          source_type: "flow_node",
-          source_field: "text",
-          locale_code: "es"
-        })
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      {:ok, _view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
-
-      assert html =~ "Content Breakdown"
+      vue = get_report_vue(view)
+      assert vue.props["selected-locale"] == nil
+      assert vue.props["target-languages"] == []
     end
   end
-
-  # ===========================================================================
-  # Coverage expansion: nil locale path (no target languages)
-  # ===========================================================================
-
-  describe "Nil locale path" do
-    setup :register_and_log_in_user
-
-    test "selected_locale is nil when no target languages exist", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-
-      # No languages created — selected_locale should be nil
-      {:ok, _view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
-
-      # With nil locale, conditional sections should not render
-      refute html =~ "Voice-Over Progress"
-      refute html =~ "Word Counts by Speaker"
-      refute html =~ "Content Breakdown"
-
-      # But the empty state for languages should appear
-      assert html =~ "No target languages configured"
-    end
-
-    test "VO progress section hidden when no locale selected", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-
-      {:ok, _view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
-
-      refute html =~ "None"
-      refute html =~ "Needed"
-      refute html =~ "Recorded"
-      refute html =~ "Approved"
-    end
-  end
-
-  # ===========================================================================
-  # Coverage expansion: locale change between multiple languages
-  # ===========================================================================
 
   describe "Locale switching with content" do
     setup :register_and_log_in_user
@@ -489,7 +347,6 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
       _lang_es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       _lang_fr = language_fixture(project, %{locale_code: "fr", name: "French"})
 
-      # Create texts for Spanish locale
       _text_es =
         localized_text_fixture(project.id, %{
           source_type: "flow_node",
@@ -497,20 +354,15 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
           locale_code: "es"
         })
 
-      {:ok, view, html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
-        )
+      {:ok, view, _html} = live(conn, report_url(project))
 
-      # Initially shows Spanish data with content breakdown
-      assert html =~ "Content Breakdown"
+      vue = get_report_vue(view)
+      assert vue.props["selected-locale"] == "es"
 
-      # Switch to French — no texts exist for French
-      html = view |> render_change("change_locale", %{"locale" => "fr"})
+      render_change(view, "change_locale", %{"locale" => "fr"})
 
-      # French should still show VO Progress (always shown with locale)
-      assert html =~ "Voice-Over Progress"
+      vue = get_report_vue(view)
+      assert vue.props["selected-locale"] == "fr"
     end
   end
 end
