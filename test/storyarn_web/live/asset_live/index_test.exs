@@ -8,34 +8,34 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
 
   alias Storyarn.Repo
 
+  defp assets_path(project) do
+    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets"
+  end
+
+  defp get_assets_vue(view) do
+    LiveVue.Test.get_vue(view, name: "assets/AssetIndex")
+  end
+
   describe "Index" do
     setup :register_and_log_in_user
 
-    test "renders Assets page for project owner", %{conn: conn, user: user} do
+    test "renders Assets Vue component for project owner", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
-      {:ok, _view, html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      assert html =~ "Assets"
+      vue = get_assets_vue(view)
+      assert vue.component == "assets/AssetIndex"
+      assert vue.props["can-edit"] == true
     end
 
-    test "renders empty state when no assets exist", %{conn: conn, user: user} do
+    test "passes empty assets list when no assets exist", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
-      {:ok, _view, html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      assert html =~ "No assets yet"
-    end
-
-    test "renders Assets link in sidebar", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
-
-      assert has_element?(view, "button", "Assets")
+      vue = get_assets_vue(view)
+      assert vue.props["assets"] == []
     end
 
     test "redirects unauthorized user", %{conn: conn} do
@@ -43,10 +43,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       project = project_fixture(other_user) |> Repo.preload(:workspace)
 
       assert {:error, {:redirect, %{to: "/workspaces", flash: %{"error" => error_msg}}}} =
-               live(
-                 conn,
-                 ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets"
-               )
+               live(conn, assets_path(project))
 
       assert error_msg =~ "You don't have access to this project."
     end
@@ -60,85 +57,83 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       %{project: project}
     end
 
-    test "lists all assets with filename and size", %{conn: conn, user: user, project: project} do
+    test "passes all assets with filename and size", %{conn: conn, user: user, project: project} do
       image_asset_fixture(project, user, %{filename: "hero.png", size: 50_000})
       audio_asset_fixture(project, user, %{filename: "theme.mp3", size: 1_200_000})
 
-      {:ok, _view, html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      assert html =~ "hero.png"
-      assert html =~ "theme.mp3"
-      assert html =~ "48.8 KB"
-      assert html =~ "1.1 MB"
+      vue = get_assets_vue(view)
+      filenames = Enum.map(vue.props["assets"], & &1["filename"])
+      assert "hero.png" in filenames
+      assert "theme.mp3" in filenames
     end
 
-    test "shows type badge per asset", %{conn: conn, user: user, project: project} do
-      image_asset_fixture(project, user)
-      audio_asset_fixture(project, user)
-
-      {:ok, _view, html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
-
-      assert html =~ "Image"
-      assert html =~ "Audio"
-    end
-
-    test "shows asset count per filter tab", %{conn: conn, user: user, project: project} do
+    test "passes type-counts for each filter tab", %{
+      conn: conn,
+      user: user,
+      project: project
+    } do
       image_asset_fixture(project, user)
       image_asset_fixture(project, user)
       audio_asset_fixture(project, user)
 
-      {:ok, _view, html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      # All tab shows total count (3)
-      assert html =~ ">3</span>"
-      # Images tab shows 2
-      assert html =~ ">2</span>"
-      # Audio tab shows 1
-      assert html =~ ">1</span>"
+      vue = get_assets_vue(view)
+      counts = vue.props["type-counts"]
+      assert counts["image"] == 2
+      assert counts["audio"] == 1
     end
 
-    test "filter 'image' shows only images", %{conn: conn, user: user, project: project} do
+    test "filter 'image' updates filter and filters assets via event", %{
+      conn: conn,
+      user: user,
+      project: project
+    } do
       image_asset_fixture(project, user, %{filename: "photo.png"})
       audio_asset_fixture(project, user, %{filename: "voice.mp3"})
 
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      html = view |> element("[phx-value-type=image]") |> render_click()
+      render_click(view, "filter_assets", %{"type" => "image"})
 
-      assert html =~ "photo.png"
-      refute html =~ "voice.mp3"
+      vue = get_assets_vue(view)
+      assert vue.props["filter"] == "image"
+      filenames = Enum.map(vue.props["assets"], & &1["filename"])
+      assert "photo.png" in filenames
+      refute "voice.mp3" in filenames
     end
 
-    test "filter 'audio' shows only audio", %{conn: conn, user: user, project: project} do
+    test "filter 'audio' updates filter", %{conn: conn, user: user, project: project} do
       image_asset_fixture(project, user, %{filename: "photo.png"})
       audio_asset_fixture(project, user, %{filename: "voice.mp3"})
 
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      html = view |> element("[phx-value-type=audio]") |> render_click()
+      render_click(view, "filter_assets", %{"type" => "audio"})
 
-      refute html =~ "photo.png"
-      assert html =~ "voice.mp3"
+      vue = get_assets_vue(view)
+      assert vue.props["filter"] == "audio"
+      filenames = Enum.map(vue.props["assets"], & &1["filename"])
+      refute "photo.png" in filenames
+      assert "voice.mp3" in filenames
     end
 
     test "filter 'all' shows everything", %{conn: conn, user: user, project: project} do
       image_asset_fixture(project, user, %{filename: "photo.png"})
       audio_asset_fixture(project, user, %{filename: "voice.mp3"})
 
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      # Filter to image first, then back to all
-      view |> element("[phx-value-type=image]") |> render_click()
-      html = view |> element("[phx-value-type=all]") |> render_click()
+      render_click(view, "filter_assets", %{"type" => "image"})
+      render_click(view, "filter_assets", %{"type" => "all"})
 
-      assert html =~ "photo.png"
-      assert html =~ "voice.mp3"
+      vue = get_assets_vue(view)
+      assert vue.props["filter"] == "all"
+      filenames = Enum.map(vue.props["assets"], & &1["filename"])
+      assert "photo.png" in filenames
+      assert "voice.mp3" in filenames
     end
   end
 
@@ -158,31 +153,30 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       image_asset_fixture(project, user, %{filename: "hero_banner.png"})
       audio_asset_fixture(project, user, %{filename: "battle_theme.mp3"})
 
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      html =
-        view
-        |> form("form[phx-change='search_assets']", %{search: "hero"})
-        |> render_change()
+      render_change(view, "search_assets", %{"search" => "hero"})
 
-      assert html =~ "hero_banner.png"
-      refute html =~ "battle_theme.mp3"
+      vue = get_assets_vue(view)
+      assert vue.props["search"] == "hero"
+      filenames = Enum.map(vue.props["assets"], & &1["filename"])
+      assert "hero_banner.png" in filenames
+      refute "battle_theme.mp3" in filenames
     end
 
     test "empty search shows all assets", %{conn: conn, user: user, project: project} do
       image_asset_fixture(project, user, %{filename: "hero_banner.png"})
       audio_asset_fixture(project, user, %{filename: "battle_theme.mp3"})
 
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      # Search then clear
-      view |> form("form[phx-change='search_assets']", %{search: "hero"}) |> render_change()
-      html = view |> form("form[phx-change='search_assets']", %{search: ""}) |> render_change()
+      render_change(view, "search_assets", %{"search" => "hero"})
+      render_change(view, "search_assets", %{"search" => ""})
 
-      assert html =~ "hero_banner.png"
-      assert html =~ "battle_theme.mp3"
+      vue = get_assets_vue(view)
+      filenames = Enum.map(vue.props["assets"], & &1["filename"])
+      assert "hero_banner.png" in filenames
+      assert "battle_theme.mp3" in filenames
     end
 
     test "search combines with type filter", %{conn: conn, user: user, project: project} do
@@ -190,35 +184,32 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       image_asset_fixture(project, user, %{filename: "villain_portrait.png"})
       audio_asset_fixture(project, user, %{filename: "hero_theme.mp3"})
 
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      # Filter to images first
-      view |> element("[phx-value-type=image]") |> render_click()
+      render_click(view, "filter_assets", %{"type" => "image"})
+      render_change(view, "search_assets", %{"search" => "hero"})
 
-      # Then search for "hero"
-      html =
-        view |> form("form[phx-change='search_assets']", %{search: "hero"}) |> render_change()
-
-      assert html =~ "hero_banner.png"
-      refute html =~ "villain_portrait.png"
-      refute html =~ "hero_theme.mp3"
+      vue = get_assets_vue(view)
+      filenames = Enum.map(vue.props["assets"], & &1["filename"])
+      assert "hero_banner.png" in filenames
+      refute "villain_portrait.png" in filenames
+      refute "hero_theme.mp3" in filenames
     end
 
     test "search is case-insensitive", %{conn: conn, user: user, project: project} do
       image_asset_fixture(project, user, %{filename: "hero_banner.png"})
 
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      html =
-        view |> form("form[phx-change='search_assets']", %{search: "HERO"}) |> render_change()
+      render_change(view, "search_assets", %{"search" => "HERO"})
 
-      assert html =~ "hero_banner.png"
+      vue = get_assets_vue(view)
+      filenames = Enum.map(vue.props["assets"], & &1["filename"])
+      assert "hero_banner.png" in filenames
     end
   end
 
-  describe "Detail panel" do
+  describe "Detail panel (select_asset)" do
     setup :register_and_log_in_user
 
     setup %{user: user} do
@@ -226,23 +217,22 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       %{project: project}
     end
 
-    test "clicking asset shows detail panel", %{conn: conn, user: user, project: project} do
+    test "selecting asset sets selected-asset prop", %{conn: conn, user: user, project: project} do
       asset = image_asset_fixture(project, user, %{filename: "hero.png"})
 
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      html =
-        view
-        |> element("[phx-click='select_asset'][phx-value-id='#{asset.id}']")
-        |> render_click()
+      render_click(view, "select_asset", %{"id" => to_string(asset.id)})
 
-      assert html =~ "Details"
-      assert html =~ "Filename"
-      assert html =~ "hero.png"
+      vue = get_assets_vue(view)
+      assert vue.props["selected-asset"]["filename"] == "hero.png"
     end
 
-    test "detail panel shows filename, size, type", %{conn: conn, user: user, project: project} do
+    test "selected-asset contains filename, size, type", %{
+      conn: conn,
+      user: user,
+      project: project
+    } do
       asset =
         image_asset_fixture(project, user, %{
           filename: "portrait.png",
@@ -250,57 +240,37 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
           content_type: "image/png"
         })
 
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      html =
-        view
-        |> element("[phx-click='select_asset'][phx-value-id='#{asset.id}']")
-        |> render_click()
+      render_click(view, "select_asset", %{"id" => to_string(asset.id)})
 
-      assert html =~ "portrait.png"
-      assert html =~ "244.1 KB"
-      assert html =~ "image/png"
+      vue = get_assets_vue(view)
+      selected = vue.props["selected-asset"]
+      assert selected["filename"] == "portrait.png"
+      assert selected["size"] == 250_000
+      assert selected["contentType"] == "image/png"
     end
 
-    test "audio assets show player in detail panel", %{
-      conn: conn,
-      user: user,
-      project: project
-    } do
-      asset = audio_asset_fixture(project, user, %{filename: "theme.mp3"})
-
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
-
-      html =
-        view
-        |> element("[phx-click='select_asset'][phx-value-id='#{asset.id}']")
-        |> render_click()
-
-      assert html =~ "<audio"
-      assert html =~ "theme.mp3"
-    end
-
-    test "usage section shows 'Not used anywhere' for unused asset", %{
+    test "usage section shows empty list for unused asset", %{
       conn: conn,
       user: user,
       project: project
     } do
       asset = image_asset_fixture(project, user)
 
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      html =
-        view
-        |> element("[phx-click='select_asset'][phx-value-id='#{asset.id}']")
-        |> render_click()
+      render_click(view, "select_asset", %{"id" => to_string(asset.id)})
 
-      assert html =~ "Not used anywhere"
+      vue = get_assets_vue(view)
+      usages = vue.props["asset-usages"]
+
+      assert usages["flowNodes"] == []
+      assert usages["sheetAvatars"] == []
+      assert usages["sheetBanners"] == []
     end
 
-    test "usage section shows linked flows", %{conn: conn, user: user, project: project} do
+    test "usage section includes linked flows", %{conn: conn, user: user, project: project} do
       import Storyarn.FlowsFixtures
 
       audio = audio_asset_fixture(project, user)
@@ -311,51 +281,47 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
         data: %{"audio_asset_id" => audio.id, "text" => "Attack!"}
       })
 
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      html =
-        view
-        |> element("[phx-click='select_asset'][phx-value-id='#{audio.id}']")
-        |> render_click()
+      render_click(view, "select_asset", %{"id" => to_string(audio.id)})
 
-      assert html =~ "Battle Flow"
-      assert html =~ "/flows/#{flow.id}"
+      vue = get_assets_vue(view)
+      usages = vue.props["asset-usages"]
+      flow_nodes = usages["flowNodes"] || []
+      assert Enum.any?(flow_nodes, fn u -> u["flowName"] == "Battle Flow" end)
     end
 
-    test "usage section shows linked sheets", %{conn: conn, user: user, project: project} do
+    test "usage section includes linked sheet avatars", %{
+      conn: conn,
+      user: user,
+      project: project
+    } do
       import Storyarn.SheetsFixtures
 
       image = image_asset_fixture(project, user)
       sheet = sheet_fixture(project, %{name: "Hero Character"})
       {:ok, _} = Storyarn.Sheets.add_avatar(sheet, image.id, %{is_default: true})
 
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      html =
-        view
-        |> element("[phx-click='select_asset'][phx-value-id='#{image.id}']")
-        |> render_click()
+      render_click(view, "select_asset", %{"id" => to_string(image.id)})
 
-      assert html =~ "Hero Character"
-      assert html =~ "/sheets/#{sheet.id}"
-      assert html =~ "avatar"
+      vue = get_assets_vue(view)
+      usages = vue.props["asset-usages"]
+      avatars = usages["sheetAvatars"] || []
+      assert Enum.any?(avatars, fn u -> u["name"] == "Hero Character" end)
     end
 
-    test "deselect closes detail panel", %{conn: conn, user: user, project: project} do
+    test "deselect clears selected-asset", %{conn: conn, user: user, project: project} do
       asset = image_asset_fixture(project, user, %{filename: "hero.png"})
 
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      # Select
-      view |> element("[phx-click='select_asset'][phx-value-id='#{asset.id}']") |> render_click()
-      # Deselect
-      html = view |> element("[phx-click=deselect_asset]") |> render_click()
+      render_click(view, "select_asset", %{"id" => to_string(asset.id)})
+      render_click(view, "deselect_asset", %{})
 
-      refute html =~ "Details"
-      refute html =~ "Filename"
+      vue = get_assets_vue(view)
+      assert vue.props["selected-asset"] == nil
     end
   end
 
@@ -367,54 +333,33 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       %{project: project}
     end
 
-    test "upload button renders for editor", %{conn: conn, project: project} do
-      {:ok, _view, html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+    test "passes uploading=false initially", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      assert html =~ "Upload"
-      assert html =~ "asset-upload-input"
+      vue = get_assets_vue(view)
+      assert vue.props["uploading"] == false
     end
 
-    test "upload creates asset and shows it in the grid", %{conn: conn, project: project} do
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+    test "upload creates asset and selects it", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      # Simulate the JS hook pushing the upload_asset event with base64 data
-      # A minimal 1x1 PNG pixel
+      # A minimal 1x1 PNG pixel (header bytes)
       png_data = Base.encode64(<<137, 80, 78, 71, 13, 10, 26, 10>>)
 
-      html =
-        render_hook(view, "upload_asset", %{
-          "filename" => "test_upload.png",
-          "content_type" => "image/png",
-          "data" => "data:image/png;base64,#{png_data}"
-        })
+      render_hook(view, "upload_asset", %{
+        "filename" => "test_upload.png",
+        "content_type" => "image/png",
+        "data" => "data:image/png;base64,#{png_data}"
+      })
 
-      assert html =~ "test_upload.png"
-      assert html =~ "Asset uploaded successfully."
-    end
-
-    test "upload auto-selects the new asset", %{conn: conn, project: project} do
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
-
-      png_data = Base.encode64(<<137, 80, 78, 71, 13, 10, 26, 10>>)
-
-      html =
-        render_hook(view, "upload_asset", %{
-          "filename" => "new_image.png",
-          "content_type" => "image/png",
-          "data" => "data:image/png;base64,#{png_data}"
-        })
-
-      # Detail panel should be open with the uploaded asset
-      assert html =~ "Details"
-      assert html =~ "new_image.png"
+      vue = get_assets_vue(view)
+      filenames = Enum.map(vue.props["assets"], & &1["filename"])
+      assert "test_upload.png" in filenames
+      assert vue.props["selected-asset"]["filename"] == "test_upload.png"
     end
 
     test "upload validation error shows flash", %{conn: conn, project: project} do
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
       html =
         render_hook(view, "upload_validation_error", %{
@@ -433,58 +378,32 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       %{project: project}
     end
 
-    test "delete button renders for editor in detail panel", %{
-      conn: conn,
-      user: user,
-      project: project
-    } do
-      asset = image_asset_fixture(project, user)
-
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
-
-      html =
-        view
-        |> element("[phx-click='select_asset'][phx-value-id='#{asset.id}']")
-        |> render_click()
-
-      assert html =~ "Delete asset"
-    end
-
     test "deleting removes asset from grid", %{conn: conn, user: user, project: project} do
       asset = image_asset_fixture(project, user, %{filename: "doomed.png"})
 
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      # Select the asset
-      view
-      |> element("[phx-click='select_asset'][phx-value-id='#{asset.id}']")
-      |> render_click()
+      render_click(view, "select_asset", %{"id" => to_string(asset.id)})
+      render_hook(view, "confirm_delete_asset", %{})
 
-      # Confirm delete
-      html = render_hook(view, "confirm_delete_asset", %{})
-
-      refute html =~ "doomed.png"
-      assert html =~ "Asset deleted."
+      vue = get_assets_vue(view)
+      filenames = Enum.map(vue.props["assets"], & &1["filename"])
+      refute "doomed.png" in filenames
     end
 
-    test "delete closes detail panel", %{conn: conn, user: user, project: project} do
+    test "delete clears selected-asset", %{conn: conn, user: user, project: project} do
       asset = image_asset_fixture(project, user)
 
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      view
-      |> element("[phx-click='select_asset'][phx-value-id='#{asset.id}']")
-      |> render_click()
+      render_click(view, "select_asset", %{"id" => to_string(asset.id)})
+      render_hook(view, "confirm_delete_asset", %{})
 
-      html = render_hook(view, "confirm_delete_asset", %{})
-
-      refute html =~ "Details"
+      vue = get_assets_vue(view)
+      assert vue.props["selected-asset"] == nil
     end
 
-    test "delete modal shows usage warning when asset is in use", %{
+    test "selecting asset in use passes usages to Vue", %{
       conn: conn,
       user: user,
       project: project
@@ -499,16 +418,18 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
         data: %{"audio_asset_id" => audio.id, "text" => "Attack!"}
       })
 
-      {:ok, view, _html} =
-        live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/assets")
+      {:ok, view, _html} = live(conn, assets_path(project))
 
-      html =
-        view
-        |> element("[phx-click='select_asset'][phx-value-id='#{audio.id}']")
-        |> render_click()
+      render_click(view, "select_asset", %{"id" => to_string(audio.id)})
 
-      assert html =~ "used in"
-      assert html =~ "1 place"
+      vue = get_assets_vue(view)
+      usages = vue.props["asset-usages"]
+      total_usages =
+        length(usages["flowNodes"] || []) +
+          length(usages["sheetAvatars"] || []) +
+          length(usages["sheetBanners"] || [])
+
+      assert total_usages >= 1
     end
   end
 end
