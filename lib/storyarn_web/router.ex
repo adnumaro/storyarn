@@ -1,6 +1,18 @@
 defmodule StoryarnWeb.Router do
   use StoryarnWeb, :router
 
+  # Content Security Policy
+  @csp_policy "default-src 'self'; " <>
+                "script-src 'self'; " <>
+                "style-src 'self' 'unsafe-inline'; " <>
+                "img-src 'self' data: blob: https:; " <>
+                "font-src 'self' data:; " <>
+                "connect-src 'self' ws: wss: https://*.ingest.sentry.io https://*.ingest.us.sentry.io; " <>
+                "frame-src 'self'; " <>
+                "frame-ancestors 'self'; " <>
+                "base-uri 'self'; " <>
+                "form-action 'self'"
+
   @user_auth_hook Module.concat(["StoryarnWeb", "UserAuth"])
 
   pipeline :browser do
@@ -9,7 +21,7 @@ defmodule StoryarnWeb.Router do
     plug :fetch_live_flash
     plug :put_root_layout, html: {StoryarnWeb.Layouts, :root}
     plug :protect_from_forgery
-    plug :put_secure_browser_headers
+    plug :put_secure_browser_headers, %{"content-security-policy" => @csp_policy}
     plug :fetch_current_scope_for_user
     plug StoryarnWeb.Plugs.Locale
   end
