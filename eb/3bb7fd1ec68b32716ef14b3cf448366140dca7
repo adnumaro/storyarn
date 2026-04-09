@@ -1,0 +1,40 @@
+test/storyarn/sheets/sheet_queries_test.exs
+  4a17336e40c15eda 436,439,445
+test/storyarn/sheets/property_inheritance_test.exs
+  4a17336e40c15eda 388,405,412,414-415,614,617-620,625,627-636,740,743-746,755-756,758-767
+test/storyarn_web/live/scene_live/handlers/element_handlers_test.exs
+  4a17336e40c15eda 642,645-646,649,653,664,670
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.6",
+  "base_commit_sha": "eb3bb7fd1ec68b32716ef14b3cf448366140dca7",
+  "prompts": {
+    "4a17336e40c15eda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e2b34f-aad4-4a3a-9d19-0cf8845fe0de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 50,
+      "total_deletions": 30,
+      "accepted_lines": 51,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 152,
+      "overriden_lines": 0
+    }
+  }
+}
