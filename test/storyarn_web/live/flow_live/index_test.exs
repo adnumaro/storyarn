@@ -8,6 +8,10 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
 
   alias Storyarn.Repo
 
+  defp get_dashboard_vue(view) do
+    LiveVue.Test.get_vue(view, name: "modules/flows/FlowDashboard")
+  end
+
   describe "Flow index page" do
     setup :register_and_log_in_user
 
@@ -15,14 +19,18 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
       project = project_fixture(user) |> Repo.preload(:workspace)
       flow_fixture(project, %{name: "Chapter One"})
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
         )
 
-      assert html =~ "Flows"
-      assert html =~ "Chapter One"
+      await_async(view)
+
+      vue = get_dashboard_vue(view)
+      assert vue.component == "modules/flows/FlowDashboard"
+      table_data = vue.props["table-data"]
+      assert Enum.any?(table_data, fn row -> row["name"] == "Chapter One" end)
     end
 
     test "renders page for editor member", %{conn: conn, user: user} do
@@ -31,14 +39,17 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
       _membership = membership_fixture(project, user, "editor")
       flow_fixture(project, %{name: "Shared Flow"})
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
         )
 
-      assert html =~ "Flows"
-      assert html =~ "Shared Flow"
+      await_async(view)
+
+      vue = get_dashboard_vue(view)
+      table_data = vue.props["table-data"]
+      assert Enum.any?(table_data, fn row -> row["name"] == "Shared Flow" end)
     end
 
     test "redirects non-member", %{conn: conn} do
@@ -55,19 +66,22 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
       assert flash["error"] =~ "access"
     end
 
-    test "renders empty state when no flows exist", %{conn: conn, user: user} do
+    test "renders empty table when no flows exist", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
         )
 
-      assert html =~ "No flows yet"
+      await_async(view)
+
+      vue = get_dashboard_vue(view)
+      assert vue.props["table-data"] == []
     end
 
-    test "renders dashboard with stat cards when flows exist", %{conn: conn, user: user} do
+    test "passes stats to Vue when flows exist", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Main Story"})
 
@@ -80,11 +94,13 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
         )
 
-      html = await_async(view)
+      await_async(view)
 
-      assert html =~ "Main Story"
-      assert html =~ "Nodes"
-      assert html =~ "Words"
+      vue = get_dashboard_vue(view)
+      stats = vue.props["stats"]
+      assert is_map(stats)
+      table_data = vue.props["table-data"]
+      assert Enum.any?(table_data, fn row -> row["name"] == "Main Story" end)
     end
 
     test "sort_flows event toggles table order", %{conn: conn, user: user} do
@@ -95,21 +111,22 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")
 
-      html = await_async(view)
-
-      # Extract table body to avoid matching sidebar tree occurrences
-      [_, table_body] = String.split(html, "<tbody>", parts: 2)
+      await_async(view)
 
       # Default: name asc — Alpha before Zeta
-      alpha_pos = :binary.match(table_body, "Alpha Flow") |> elem(0)
-      zeta_pos = :binary.match(table_body, "Zeta Flow") |> elem(0)
+      vue = get_dashboard_vue(view)
+      names = Enum.map(vue.props["table-data"], & &1["name"])
+      alpha_pos = Enum.find_index(names, &(&1 == "Alpha Flow"))
+      zeta_pos = Enum.find_index(names, &(&1 == "Zeta Flow"))
       assert alpha_pos < zeta_pos
 
-      # Click Name to toggle to desc — Zeta before Alpha
-      html = view |> element("button", "Name") |> render_click()
-      [_, table_body] = String.split(html, "<tbody>", parts: 2)
-      alpha_pos = :binary.match(table_body, "Alpha Flow") |> elem(0)
-      zeta_pos = :binary.match(table_body, "Zeta Flow") |> elem(0)
+      # Toggle sort via event — Zeta before Alpha
+      render_click(view, "sort_flows", %{"column" => "name"})
+
+      vue = get_dashboard_vue(view)
+      names = Enum.map(vue.props["table-data"], & &1["name"])
+      alpha_pos = Enum.find_index(names, &(&1 == "Alpha Flow"))
+      zeta_pos = Enum.find_index(names, &(&1 == "Zeta Flow"))
       assert zeta_pos < alpha_pos
     end
   end

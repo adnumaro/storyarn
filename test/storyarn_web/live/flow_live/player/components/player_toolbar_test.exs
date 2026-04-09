@@ -186,8 +186,10 @@ defmodule StoryarnWeb.FlowLive.Player.Components.PlayerToolbarTest do
     test "renders close icon (x)" do
       html = render_component(&PlayerToolbar.player_toolbar/1, default_assigns())
 
-      # The back-to-editor link has the "x" icon rendered as an SVG with lucide-x class
-      assert html =~ "lucide-x"
+      # The back-to-editor link has the "x" icon rendered via the LucideIcon Vue component
+      # (HTML-encoded because props are serialized in data-props attribute)
+      assert html =~ ~s(id="icon-x-)
+      assert html =~ ~s(data-name="components/LucideIcon")
     end
   end
 

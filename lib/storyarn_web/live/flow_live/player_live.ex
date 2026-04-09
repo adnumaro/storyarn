@@ -34,9 +34,12 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     <div id="story-player" class="player-layout">
       <div class="player-main relative">
         <%!-- Scene backdrop (dimmed map background) --%>
-        <div :if={@scene_backdrop} class="scene-backdrop scene-backdrop-transition">
+        <div
+          :if={@scene_backdrop && @scene_backdrop.background_asset}
+          class="scene-backdrop scene-backdrop-transition"
+        >
           <img
-            src={@scene_backdrop && @scene_backdrop.background_url}
+            src={Storyarn.Assets.Asset.display_url(@scene_backdrop.background_asset)}
             alt=""
             class="scene-backdrop-img"
             draggable="false"

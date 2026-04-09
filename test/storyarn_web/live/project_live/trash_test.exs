@@ -9,33 +9,40 @@ defmodule StoryarnWeb.ProjectLive.TrashTest do
   alias Storyarn.Repo
   alias Storyarn.Sheets
 
+  defp get_trash_vue(view) do
+    LiveVue.Test.get_vue(view, name: "modules/project-settings/Trash")
+  end
+
   describe "Trash page" do
     setup :register_and_log_in_user
 
-    test "renders page for owner", %{conn: conn, user: user} do
+    test "renders Trash Vue component for owner", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/trash"
         )
 
-      assert html =~ "Trash"
+      vue = get_trash_vue(view)
+      assert vue.component == "modules/project-settings/Trash"
+      assert vue.props["can-manage"] == true
     end
 
-    test "renders page for editor member", %{conn: conn, user: user} do
+    test "renders for editor member", %{conn: conn, user: user} do
       owner = user_fixture()
       project = project_fixture(owner) |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/trash"
         )
 
-      assert html =~ "Trash"
+      vue = get_trash_vue(view)
+      assert vue.component == "modules/project-settings/Trash"
     end
 
     test "redirects non-member", %{conn: conn} do
@@ -52,32 +59,34 @@ defmodule StoryarnWeb.ProjectLive.TrashTest do
       assert flash["error"] =~ "not found"
     end
 
-    test "renders empty state when trash is empty", %{conn: conn, user: user} do
+    test "passes empty list when trash is empty", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/trash"
         )
 
-      assert html =~ "Trash is empty"
+      vue = get_trash_vue(view)
+      assert vue.props["trashed-sheets"] == []
     end
 
-    test "shows trashed sheets", %{conn: conn, user: user} do
+    test "passes trashed sheets to Vue", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Deleted Sheet"})
 
       # Soft-delete the sheet
       {:ok, _} = Sheets.delete_sheet(sheet)
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/trash"
         )
 
-      assert html =~ "Deleted Sheet"
+      vue = get_trash_vue(view)
+      assert Enum.any?(vue.props["trashed-sheets"], fn s -> s["name"] == "Deleted Sheet" end)
     end
   end
 

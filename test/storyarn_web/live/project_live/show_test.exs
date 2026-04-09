@@ -7,6 +7,10 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
 
   alias Storyarn.Repo
 
+  defp get_left_toolbar_vue(view) do
+    LiveVue.Test.get_vue(view, name: "layout/LeftToolbar")
+  end
+
   describe "Show" do
     setup :register_and_log_in_user
 
@@ -15,13 +19,13 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
         project_fixture(user, %{name: "My Project"})
         |> Repo.preload(:workspace)
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
 
-      # Project name in toolbar
-      assert html =~ "My Project"
-      # Dashboard tool is active (icon rendered)
-      assert html =~ "layout-dashboard"
+      # Project name shows in the left toolbar
+      toolbar = get_left_toolbar_vue(view)
+      assert toolbar.props["project-name"] == "My Project"
+      assert toolbar.props["active-tool"] == "dashboard"
     end
 
     test "renders project dashboard for member", %{conn: conn, user: user} do
@@ -29,10 +33,11 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
       project = project_fixture(owner, %{name: "Shared Project"}) |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
 
-      assert html =~ "Shared Project"
+      toolbar = get_left_toolbar_vue(view)
+      assert toolbar.props["project-name"] == "Shared Project"
     end
 
     test "redirects for non-member", %{conn: conn} do
@@ -46,15 +51,14 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
       assert flash["error"] =~ "not found"
     end
 
-    test "shows tool switcher with other tools", %{conn: conn, user: user} do
+    test "shows tool switcher enabled", %{conn: conn, user: user} do
       project = project_fixture(user) |> Repo.preload(:workspace)
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
 
-      # Tool switcher shows other tools (not Dashboard since it's active)
-      assert html =~ "Sheets"
-      assert html =~ "Flows"
+      toolbar = get_left_toolbar_vue(view)
+      assert toolbar.props["show-tool-switcher"] == true
     end
   end
 end
