@@ -1228,13 +1228,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       render_click(view, "debug_start", %{})
       render_click(view, "debug_play", %{})
 
-      html = render(view)
-      assert html =~ "debug_pause"
+      vue = LiveVue.Test.get_vue(view, name: "modules/flows/components/FlowDebugPanel")
+      assert vue.props["controls"]["autoPlaying"] == true
 
       render_click(view, "debug_pause", %{})
 
-      html = render(view)
-      assert html =~ "debug_play"
+      vue = LiveVue.Test.get_vue(view, name: "modules/flows/components/FlowDebugPanel")
+      assert vue.props["controls"]["autoPlaying"] == false
     end
 
     test "debug_set_speed changes the speed display", %{
@@ -1253,8 +1253,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       render_click(view, "debug_start", %{})
       render_click(view, "debug_set_speed", %{"speed" => "1500"})
 
-      html = render(view)
-      assert html =~ "1.5s"
+      vue = LiveVue.Test.get_vue(view, name: "modules/flows/components/FlowDebugPanel")
+      assert vue.props["controls"]["speed"] == 1500
     end
 
     test "debug_stop closes the debug panel", %{
@@ -1384,9 +1384,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       # Step to dialogue — should enter waiting_input with choices
       render_click(view, "debug_step", %{})
 
-      html = render(view)
-      assert html =~ "Waiting"
-      assert html =~ "Choose a response"
+      vue = LiveVue.Test.get_vue(view, name: "modules/flows/components/FlowDebugPanel")
+      assert vue.props["state"]["status"] == "waiting_input"
+      responses = vue.props["state"]["pending_choices"]["responses"]
+      assert is_list(responses)
+      assert length(responses) > 0
     end
 
     test "choosing a response advances past dialogue", %{
