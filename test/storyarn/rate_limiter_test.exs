@@ -37,33 +37,6 @@ defmodule Storyarn.RateLimiterTest do
     end
   end
 
-  describe "check_magic_link/1" do
-    test "blocks requests over the limit when enabled" do
-      with_rate_limiting_enabled(fn ->
-        email = "test-ml-block-#{System.unique_integer([:positive])}@example.com"
-
-        # 3 allowed
-        for _ <- 1..3, do: assert(:ok = RateLimiter.check_magic_link(email))
-
-        # 4th blocked
-        assert {:error, :rate_limited} = RateLimiter.check_magic_link(email)
-      end)
-    end
-
-    test "normalizes email to lowercase when enabled" do
-      with_rate_limiting_enabled(fn ->
-        base = "test-ml-case-#{System.unique_integer([:positive])}"
-        email_lower = "#{base}@example.com"
-        email_upper = "#{String.upcase(base)}@EXAMPLE.COM"
-
-        # Both should count against the same bucket
-        for _ <- 1..3, do: RateLimiter.check_magic_link(email_lower)
-
-        assert {:error, :rate_limited} = RateLimiter.check_magic_link(email_upper)
-      end)
-    end
-  end
-
   describe "check_registration/1" do
     test "blocks requests over the limit when enabled" do
       with_rate_limiting_enabled(fn ->

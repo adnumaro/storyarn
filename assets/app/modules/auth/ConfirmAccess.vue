@@ -1,25 +1,23 @@
 <script setup lang="ts">
 import { Shield } from "lucide-vue-next";
+import { ref } from "vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
-import { useLive } from "@composables/useLive";
 
 const {
   email,
   loginAction,
   backUrl = "/workspaces",
+  csrfToken,
 } = defineProps<{
   email: string;
   loginAction: string;
   backUrl?: string;
+  csrfToken: string;
 }>();
 
-const live = useLive();
-
-function onSubmit() {
-  live.pushEvent("submit_magic", { user: { email } });
-}
+const passwordValue = ref("");
 </script>
 
 <template>
@@ -33,13 +31,13 @@ function onSubmit() {
       <div>
         <h1 class="text-2xl font-bold tracking-tight">Confirm access</h1>
         <p class="text-sm text-muted-foreground mt-2">
-          This is a protected area. To continue, please verify your identity by requesting a new
-          login link.
+          This is a protected area. Please enter your password to continue.
         </p>
       </div>
     </div>
 
-    <form :action="loginAction" method="post" @submit.prevent="onSubmit">
+    <form :action="loginAction" method="post">
+      <input type="hidden" name="_csrf_token" :value="csrfToken" />
       <div class="space-y-1.5 mb-4">
         <Label for="confirm-email">Email</Label>
         <Input
@@ -52,8 +50,20 @@ function onSubmit() {
           required
         />
       </div>
+      <div class="space-y-1.5 mb-4">
+        <Label for="confirm-password">Password</Label>
+        <Input
+          id="confirm-password"
+          v-model="passwordValue"
+          type="password"
+          name="user[password]"
+          autocomplete="current-password"
+          required
+          autofocus
+        />
+      </div>
       <Button type="submit" class="w-full">
-        Send verification link <span aria-hidden="true" class="ml-1">&rarr;</span>
+        Continue <span aria-hidden="true" class="ml-1">&rarr;</span>
       </Button>
     </form>
 

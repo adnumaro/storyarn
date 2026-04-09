@@ -16,7 +16,6 @@ defmodule Storyarn.Accounts do
 
   alias Storyarn.Accounts.{
     Emails,
-    MagicLinks,
     OAuth,
     Passwords,
     Profiles,
@@ -160,29 +159,6 @@ defmodule Storyarn.Accounts do
   """
   @spec delete_user_session_token(binary()) :: :ok
   defdelegate delete_user_session_token(token), to: Sessions
-
-  # =============================================================================
-  # Magic Links
-  # =============================================================================
-
-  @doc """
-  Gets the user with the given magic link token.
-  """
-  @spec get_user_by_magic_link_token(String.t()) :: user() | nil
-  defdelegate get_user_by_magic_link_token(token), to: MagicLinks
-
-  @doc """
-  Logs the user in by magic link.
-  """
-  @spec login_user_by_magic_link(String.t()) ::
-          {:ok, {user(), [user_token()]}} | {:error, :not_found}
-  defdelegate login_user_by_magic_link(token), to: MagicLinks
-
-  @doc """
-  Delivers the magic link login instructions to the given user.
-  """
-  @spec deliver_login_instructions(user(), (String.t() -> String.t())) :: {:ok, map()}
-  defdelegate deliver_login_instructions(user, magic_link_url_fun), to: MagicLinks
 
   # =============================================================================
   # Emails

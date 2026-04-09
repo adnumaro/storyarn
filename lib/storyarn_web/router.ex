@@ -257,7 +257,6 @@ defmodule StoryarnWeb.Router do
       live "/", LandingLive.Index, :index
       live "/users/register/:token", UserLive.Registration, :new
       live "/users/log-in", UserLive.Login, :new
-      live "/users/log-in/:token", UserLive.Confirmation, :new
       live "/users/confirm-access", UserLive.ConfirmAccess, :new
 
       # Project invitations (accessible with or without auth)

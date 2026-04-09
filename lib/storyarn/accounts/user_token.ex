@@ -7,9 +7,6 @@ defmodule Storyarn.Accounts.UserToken do
   alias Storyarn.Accounts.UserToken
   alias Storyarn.Shared.{TimeHelpers, TokenGenerator}
 
-  # It is very important to keep the magic link token expiry short,
-  # since someone with access to the email may take over the account.
-  @magic_link_validity_in_minutes 15
   @change_email_validity_in_days 7
   @session_validity_in_days 14
   @invite_validity_in_days 14
@@ -105,32 +102,6 @@ defmodule Storyarn.Accounts.UserToken do
        sent_to: sent_to,
        user_id: user.id
      }}
-  end
-
-  @doc """
-  Checks if the token is valid and returns its underlying lookup query.
-
-  If found, the query returns a tuple of the form `{user, token}`.
-
-  The given token is valid if it matches its hashed counterpart in the
-  database. This function also checks if the token is being used within
-  15 minutes. The context of a magic link token is always "login".
-  """
-  def verify_magic_link_token_query(token) do
-    case TokenGenerator.decode_and_hash(token) do
-      {:ok, hashed_token} ->
-        query =
-          from t in by_token_and_context_query(hashed_token, "login"),
-            join: user in assoc(t, :user),
-            where: t.inserted_at > ago(^@magic_link_validity_in_minutes, "minute"),
-            where: t.sent_to == user.email,
-            select: {user, t}
-
-        {:ok, query}
-
-      :error ->
-        :error
-    end
   end
 
   @doc """

@@ -34,10 +34,6 @@ defmodule Storyarn.RateLimiter do
   @login_limit 5
   @login_window_ms 60_000
 
-  # Magic link: 3 requests per minute per email
-  @magic_link_limit 3
-  @magic_link_window_ms 60_000
-
   # Registration: 3 attempts per minute per IP
   @registration_limit 3
   @registration_window_ms 60_000
@@ -54,17 +50,6 @@ defmodule Storyarn.RateLimiter do
   @spec check_login(String.t()) :: :ok | {:error, :rate_limited}
   def check_login(ip_address) do
     check_rate("login:#{ip_address}", @login_window_ms, @login_limit)
-  end
-
-  @doc """
-  Checks if a magic link request is allowed for the given email.
-
-  Returns `:ok` if allowed, `{:error, :rate_limited}` if blocked.
-  """
-  @spec check_magic_link(String.t()) :: :ok | {:error, :rate_limited}
-  def check_magic_link(email) do
-    normalized_email = String.downcase(email)
-    check_rate("magic_link:#{normalized_email}", @magic_link_window_ms, @magic_link_limit)
   end
 
   @doc """
