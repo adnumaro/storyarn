@@ -1,0 +1,49 @@
+test/storyarn_web/live/scene_live/index_test.exs
+  692c4d6e3ef78f81 11-25,33,35-37,41,50,52-54,57,64,70,73,75-78,88,105,107,109,120,123,141,144,147,149,157,165,176,181,187,189,191,200,202,204,218,236,251,253-258,260,267,273,278-284,286,298,303,307,311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.6",
+  "base_commit_sha": "91f7571b28860e64d3dadc1141c08bed9157a490",
+  "prompts": {
+    "4a17336e40c15eda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e2b34f-aad4-4a3a-9d19-0cf8845fe0de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "692c4d6e3ef78f81": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b206848b-dfdf-411e-b2ae-db2df0376827",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 77,
+      "total_deletions": 191,
+      "accepted_lines": 77,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 152,
+      "overriden_lines": 0
+    }
+  }
+}
