@@ -32,6 +32,10 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
   end
 
+  defp get_exploration_vue(view) do
+    LiveVue.Test.get_vue(view, name: "modules/scenes/exploration/ExplorationPlayer")
+  end
+
   defp setup_project_with_scene(%{user: user}) do
     project = project_fixture(user) |> Repo.preload(:workspace)
     scene = scene_fixture(project, %{name: "Test World"})
@@ -188,22 +192,23 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       project: project,
       scene: scene
     } do
-      {:ok, _view, html} = live(conn, explore_path(project, scene))
+      {:ok, view, _html} = live(conn, explore_path(project, scene))
 
-      assert html =~ "Test World"
-      assert html =~ "Exit"
-      assert html =~ "exploration-player"
+      vue = get_exploration_vue(view)
+      assert vue.component == "modules/scenes/exploration/ExplorationPlayer"
+      assert vue.props["scene-name"] == "Test World"
     end
 
-    test "renders the ExplorationPlayer hook element", %{
+    test "mounts the ExplorationPlayer Vue component", %{
       conn: conn,
       project: project,
       scene: scene
     } do
-      {:ok, _view, html} = live(conn, explore_path(project, scene))
+      {:ok, view, _html} = live(conn, explore_path(project, scene))
 
-      assert html =~ ~s(id="exploration-player")
-      assert html =~ ~s(phx-hook="ExplorationPlayer")
+      vue = get_exploration_vue(view)
+      assert vue.id == "exploration-player"
+      assert vue.component == "modules/scenes/exploration/ExplorationPlayer"
     end
 
     test "uses layout: false (no standard layout wrapper)", %{
@@ -213,7 +218,10 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     } do
       {:ok, _view, html} = live(conn, explore_path(project, scene))
 
-      assert html =~ "player-layout"
+      # layout: false means no app sidebar / top-toolbar wrappers.
+      refute html =~ ~s(id="left-toolbar")
+      refute html =~ ~s(id="right-toolbar")
+      refute html =~ ~s(id="main-sidebar")
     end
 
     test "does not show flow overlay initially", %{
@@ -221,20 +229,26 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       project: project,
       scene: scene
     } do
-      {:ok, _view, html} = live(conn, explore_path(project, scene))
+      {:ok, view, _html} = live(conn, explore_path(project, scene))
 
-      refute html =~ "exploration-flow-overlay"
-      refute html =~ "Return to map"
+      vue = get_exploration_vue(view)
+      assert vue.props["flow-state"]["active"] == false
+      assert vue.props["flow-state"]["slide"] == nil
     end
 
-    test "includes exploration data as JSON", %{
+    test "includes serialized exploration data as a Vue prop", %{
       conn: conn,
       project: project,
       scene: scene
     } do
-      {:ok, _view, html} = live(conn, explore_path(project, scene))
+      {:ok, view, _html} = live(conn, explore_path(project, scene))
 
-      assert html =~ "data-exploration="
+      vue = get_exploration_vue(view)
+      data = vue.props["exploration-data"]
+      assert is_map(data)
+      assert Map.has_key?(data, "zones")
+      assert Map.has_key?(data, "pins")
+      assert Map.has_key?(data, "connections")
     end
   end
 
@@ -250,10 +264,14 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       project: project,
       scene: scene
     } do
-      {:ok, _view, html} = live(conn, explore_path(project, scene))
+      {:ok, view, _html} = live(conn, explore_path(project, scene))
 
-      assert html =~ "data-exploration="
-      assert html =~ "exploration-player"
+      vue = get_exploration_vue(view)
+      data = vue.props["exploration-data"]
+      assert length(data["zones"]) == 1
+      assert length(data["pins"]) == 1
+      assert hd(data["zones"])["name"] == "Town Square"
+      assert hd(data["pins"])["label"] == "Tavern"
     end
   end
 
@@ -683,9 +701,14 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
           "condition_effect" => "hide"
         })
 
-      {:ok, _view, html} = live(conn, explore_path(project, scene))
+      {:ok, view, _html} = live(conn, explore_path(project, scene))
 
-      assert html =~ "data-exploration="
+      vue = get_exploration_vue(view)
+      data = vue.props["exploration-data"]
+      zone = Enum.find(data["zones"], &(&1["name"] == "Open Zone"))
+      pin = Enum.find(data["pins"], &(&1["label"] == "Open Pin"))
+      assert zone["visibility"] == "visible"
+      assert pin["visibility"] == "visible"
     end
 
     test "zones with empty condition map are visible", %{conn: conn, user: user} do
@@ -704,9 +727,12 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
           "condition_effect" => "hide"
         })
 
-      {:ok, _view, html} = live(conn, explore_path(project, scene))
+      {:ok, view, _html} = live(conn, explore_path(project, scene))
 
-      assert html =~ "data-exploration="
+      vue = get_exploration_vue(view)
+      data = vue.props["exploration-data"]
+      zone = Enum.find(data["zones"], &(&1["name"] == "Empty Cond Zone"))
+      assert zone["visibility"] == "visible"
     end
 
     test "zone with failing condition and hide effect gets hidden", %{conn: conn, user: user} do
@@ -1035,10 +1061,13 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
           "condition" => %{}
         })
 
-      {:ok, _view, html} = live(conn, explore_path(project, scene))
+      {:ok, view, _html} = live(conn, explore_path(project, scene))
 
-      assert html =~ "Mixed World"
-      assert html =~ "data-exploration="
+      vue = get_exploration_vue(view)
+      assert vue.props["scene-name"] == "Mixed World"
+      data = vue.props["exploration-data"]
+      assert length(data["zones"]) == 2
+      assert length(data["pins"]) == 1
     end
   end
 
@@ -1452,23 +1481,26 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
 
       {:ok, view, _html} = live(conn, explore_path(project, scene))
 
-      # Enter flow mode — should stop at first dialogue
+      # Enter flow mode — stops at an interactive dialogue slide
       render_click(view, "exploration_element_click", %{
         "target_type" => "flow",
         "target_id" => to_string(flow.id)
       })
 
-      html = render(view)
-      assert html =~ "exploration-flow-overlay"
+      vue = get_exploration_vue(view)
+      assert vue.props["flow-state"]["active"] == true
+      assert vue.props["flow-state"]["slide"] != nil
 
-      # Continue — should advance to second dialogue (not finish)
-      html = render_click(view, "flow_continue")
-      assert html =~ "exploration-flow-overlay"
+      # Continue — should still be in flow mode (advanced to next stop)
+      render_click(view, "flow_continue")
+      vue = get_exploration_vue(view)
+      assert vue.props["flow-state"]["active"] == true
 
-      # Continue again — should advance through exit to outcome
-      html = render_click(view, "flow_continue")
-      # Should either show outcome (Return to map) or have returned to exploration
-      assert (html =~ "Return to map" or refute(html =~ "exploration-flow-overlay")) || true
+      # Continue again — reaches outcome or exits flow mode back to exploration.
+      render_click(view, "flow_continue")
+      vue = get_exploration_vue(view)
+      assert (vue.props["flow-state"]["slide"] || %{})["type"] == "outcome" or
+               vue.props["flow-state"]["active"] == false
     end
 
     test "flow_continue through all dialogues to exit returns to exploration", %{
@@ -1531,13 +1563,15 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
         "target_id" => to_string(flow.id)
       })
 
-      html = render(view)
-      assert html =~ "exploration-flow-overlay"
+      vue = get_exploration_vue(view)
+      assert vue.props["flow-state"]["active"] == true
+      assert vue.props["flow-state"]["slide"]["text"] =~ "Choose your path"
 
       # Choose response A — should advance to dialogue_after
-      html = render_click(view, "choose_response", %{"id" => resp_a_id})
-      # Should advance (still in flow mode showing next dialogue or outcome)
-      assert html =~ "exploration-flow-overlay"
+      render_click(view, "choose_response", %{"id" => resp_a_id})
+      vue = get_exploration_vue(view)
+      # Still in flow mode, showing either the next dialogue or an outcome slide.
+      assert vue.props["flow-state"]["active"] == true
     end
 
     test "choosing response B exits to outcome", %{conn: conn, user: user} do
@@ -1585,13 +1619,16 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
         "target_id" => to_string(flow.id)
       })
 
-      html = render(view)
-      assert html =~ "exploration-flow-overlay"
+      vue = get_exploration_vue(view)
+      assert vue.props["flow-state"]["active"] == true
+      # Waiting for a response choice — slide is the dialogue with 2 responses
+      assert length(vue.props["flow-state"]["slide"]["responses"]) == 2
 
-      # Press "1" — should select first response (Path A)
-      html = render_keydown(view, "handle_keydown", %{"key" => "1"})
-      # Should advance to the next node
-      assert is_binary(html)
+      # Press "1" — should select first response (Path A). Should not crash.
+      render_keydown(view, "handle_keydown", %{"key" => "1"})
+      vue = get_exploration_vue(view)
+      # Still in flow mode after selection.
+      assert vue.props["flow-state"]["active"] == true
     end
 
     test "pressing 2 selects the second valid response via keyboard", %{
@@ -1634,8 +1671,11 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       })
 
       # Press "9" — out of range (only 2 responses), should be no-op
-      html = render_keydown(view, "handle_keydown", %{"key" => "9"})
-      assert html =~ "exploration-flow-overlay"
+      render_keydown(view, "handle_keydown", %{"key" => "9"})
+      vue = get_exploration_vue(view)
+      assert vue.props["flow-state"]["active"] == true
+      # Still on the same choice dialogue (no advancement happened).
+      assert vue.props["flow-state"]["slide"]["text"] =~ "Choose your path"
     end
   end
 
@@ -1729,20 +1769,19 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
 
       {:ok, view, _html} = live(conn, explore_path(project, scene))
 
-      # Enter flow mode at first dialogue
+      # Enter flow mode
       render_click(view, "exploration_element_click", %{
         "target_type" => "flow",
         "target_id" => to_string(flow.id)
       })
 
-      # Advance to second dialogue
+      # Advance
       render_click(view, "flow_continue")
 
-      # Go back
-      html = render_click(view, "go_back")
-
-      # Should still be in flow mode (restored to previous state)
-      assert html =~ "exploration-flow-overlay"
+      # Go back — should still be in flow mode (restored to previous state)
+      render_click(view, "go_back")
+      vue = get_exploration_vue(view)
+      assert vue.props["flow-state"]["active"] == true
     end
 
     test "ArrowLeft triggers go_back after advancing", %{conn: conn, user: user} do
@@ -1763,8 +1802,9 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       render_click(view, "flow_continue")
 
       # Go back via keyboard
-      html = render_keydown(view, "handle_keydown", %{"key" => "ArrowLeft"})
-      assert html =~ "exploration-flow-overlay"
+      render_keydown(view, "handle_keydown", %{"key" => "ArrowLeft"})
+      vue = get_exploration_vue(view)
+      assert vue.props["flow-state"]["active"] == true
     end
   end
 
@@ -1969,16 +2009,18 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
         "target_id" => to_string(flow.id)
       })
 
-      html = render(view)
-      assert html =~ "exploration-flow-overlay"
+      vue = get_exploration_vue(view)
+      assert vue.props["flow-state"]["active"] == true
+      assert vue.props["flow-state"]["slide"]["text"] =~ "Before subflow"
 
       # flow_continue advances through dialogue -> subflow_node -> flow_jump
       # This triggers handle_exploration_flow_jump, which enters the sub flow
-      html = render_click(view, "flow_continue")
+      render_click(view, "flow_continue")
 
       # Should still be in flow mode (now inside the sub flow's dialogue)
-      # or may have traversed through to finished state
-      assert is_binary(html)
+      vue = get_exploration_vue(view)
+      assert vue.props["flow-state"]["active"] == true
+      assert vue.props["flow-state"]["slide"]["text"] =~ "Inside the subflow"
     end
 
     test "subflow with exit (caller_return) triggers flow_return", %{
@@ -2065,19 +2107,25 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       })
 
       # Continue -> subflow_node -> flow_jump to sub flow -> sub_dialogue
-      html = render_click(view, "flow_continue")
-      assert html =~ "exploration-flow-overlay"
+      render_click(view, "flow_continue")
+      vue = get_exploration_vue(view)
+      assert vue.props["flow-state"]["active"] == true
+      assert vue.props["flow-state"]["slide"]["text"] =~ "Inside sub"
 
       # Continue in sub flow -> sub_dialogue steps to sub_exit (caller_return)
       # This triggers flow_return -> handle_exploration_flow_return
       # which pops the call stack and continues in the parent flow at dialogue_after
-      html = render_click(view, "flow_continue")
-      assert html =~ "exploration-flow-overlay"
+      render_click(view, "flow_continue")
+      vue = get_exploration_vue(view)
+      assert vue.props["flow-state"]["active"] == true
+      assert vue.props["flow-state"]["slide"]["text"] =~ "After sub"
 
       # Continue again to finish through dialogue_after -> exit
-      html = render_click(view, "flow_continue")
-      # Should reach outcome or return to exploration
-      assert is_binary(html)
+      render_click(view, "flow_continue")
+      vue = get_exploration_vue(view)
+      # Should reach outcome slide or return to exploration.
+      assert vue.props["flow-state"]["slide"]["type"] == "outcome" or
+               vue.props["flow-state"]["active"] == false
     end
   end
 end
