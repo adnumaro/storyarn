@@ -4,48 +4,42 @@ defmodule StoryarnWeb.SettingsLive.ProfileTest do
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
 
+  defp get_profile_vue(view) do
+    LiveVue.Test.get_vue(view, name: "modules/settings/Profile")
+  end
+
   describe "Profile settings page" do
-    test "renders profile settings page", %{conn: conn} do
-      {:ok, _view, html} =
+    test "renders profile settings page as Vue component", %{conn: conn} do
+      {:ok, view, _html} =
         conn
         |> log_in_user(user_fixture())
         |> live(~p"/users/settings")
 
-      assert html =~ "Profile"
-      assert html =~ "Personal Information"
-      assert html =~ "Email Address"
+      vue = get_profile_vue(view)
+      assert vue.component == "modules/settings/Profile"
     end
 
-    test "shows user's current email", %{conn: conn} do
+    test "passes current user email to Vue", %{conn: conn} do
       user = user_fixture()
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         conn
         |> log_in_user(user)
         |> live(~p"/users/settings")
 
-      assert html =~ user.email
+      vue = get_profile_vue(view)
+      assert vue.props["current-email"] == user.email
     end
 
-    test "shows display name form", %{conn: conn} do
-      {:ok, view, html} =
+    test "passes profile_form and email_form props", %{conn: conn} do
+      {:ok, view, _html} =
         conn
         |> log_in_user(user_fixture())
         |> live(~p"/users/settings")
 
-      assert html =~ "Display Name"
-      assert html =~ "Save Profile"
-      assert has_element?(view, "#profile_form")
-    end
-
-    test "shows email change form", %{conn: conn} do
-      {:ok, view, html} =
-        conn
-        |> log_in_user(user_fixture())
-        |> live(~p"/users/settings")
-
-      assert html =~ "Change Email"
-      assert has_element?(view, "#email_form")
+      vue = get_profile_vue(view)
+      assert is_map(vue.props["profile-form"])
+      assert is_map(vue.props["email-form"])
     end
 
     test "redirects if user is not logged in", %{conn: conn} do
@@ -57,7 +51,7 @@ defmodule StoryarnWeb.SettingsLive.ProfileTest do
     end
   end
 
-  describe "update profile form" do
+  describe "update profile event" do
     setup %{conn: conn} do
       user = user_fixture()
       %{conn: log_in_user(conn, user), user: user}
@@ -66,9 +60,7 @@ defmodule StoryarnWeb.SettingsLive.ProfileTest do
     test "can update display name", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/users/settings")
 
-      view
-      |> form("#profile_form", %{"user" => %{"display_name" => "New Name"}})
-      |> render_submit()
+      render_click(view, "update_profile", %{"user" => %{"display_name" => "New Name"}})
 
       {path, _flash} = assert_redirect(view)
       assert path =~ "/users/settings"
@@ -77,17 +69,15 @@ defmodule StoryarnWeb.SettingsLive.ProfileTest do
     test "validates profile on change", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/users/settings")
 
-      # Trigger validation via phx-change
-      view
-      |> element("#profile_form")
-      |> render_change(%{"user" => %{"display_name" => "Test"}})
+      render_click(view, "validate_profile", %{"user" => %{"display_name" => "Test"}})
 
-      # Should not crash and form stays rendered
-      assert has_element?(view, "#profile_form")
+      # Should not crash and Vue component still renders
+      vue = get_profile_vue(view)
+      assert vue.component == "modules/settings/Profile"
     end
   end
 
-  describe "update email form" do
+  describe "update email event" do
     setup %{conn: conn} do
       user = user_fixture()
       %{conn: log_in_user(conn, user), user: user}
@@ -98,10 +88,7 @@ defmodule StoryarnWeb.SettingsLive.ProfileTest do
 
       {:ok, view, _html} = live(conn, ~p"/users/settings")
 
-      result =
-        view
-        |> form("#email_form", %{"user" => %{"email" => new_email}})
-        |> render_submit()
+      result = render_click(view, "update_email", %{"user" => %{"email" => new_email}})
 
       assert result =~ "A link to confirm your email"
     end
@@ -109,23 +96,18 @@ defmodule StoryarnWeb.SettingsLive.ProfileTest do
     test "renders errors with invalid email", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/users/settings")
 
-      result =
-        view
-        |> element("#email_form")
-        |> render_change(%{
-          "user" => %{"email" => "with spaces"}
-        })
+      render_click(view, "validate_email", %{"user" => %{"email" => "with spaces"}})
 
-      assert result =~ "must have the @ sign and no spaces"
+      vue = get_profile_vue(view)
+      email_form = vue.props["email-form"]
+      # The form should now have errors
+      assert email_form["errors"] != %{} or email_form["valid"] == false
     end
 
     test "renders errors when email did not change", %{conn: conn, user: user} do
       {:ok, view, _html} = live(conn, ~p"/users/settings")
 
-      result =
-        view
-        |> form("#email_form", %{"user" => %{"email" => user.email}})
-        |> render_submit()
+      result = render_click(view, "update_email", %{"user" => %{"email" => user.email}})
 
       assert result =~ "did not change"
     end

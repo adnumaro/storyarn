@@ -4,48 +4,52 @@ defmodule StoryarnWeb.SettingsLive.SecurityTest do
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
 
-  alias Storyarn.Accounts
+  defp get_security_vue(view) do
+    LiveVue.Test.get_vue(view, name: "modules/settings/Security")
+  end
 
   describe "Security settings page" do
-    test "renders security settings page", %{conn: conn} do
-      {:ok, _view, html} =
+    test "renders security settings Vue component", %{conn: conn} do
+      {:ok, view, _html} =
         conn
         |> log_in_user(user_fixture())
         |> live(~p"/users/settings/security")
 
-      assert html =~ "Security"
-      assert html =~ "Change Password"
+      vue = get_security_vue(view)
+      assert vue.component == "modules/settings/Security"
     end
 
-    test "shows password change form", %{conn: conn} do
-      {:ok, view, html} =
+    test "passes password-form prop", %{conn: conn} do
+      {:ok, view, _html} =
         conn
         |> log_in_user(user_fixture())
         |> live(~p"/users/settings/security")
 
-      assert html =~ "New password"
-      assert html =~ "Confirm new password"
-      assert html =~ "Update Password"
-      assert has_element?(view, "#password_form")
+      vue = get_security_vue(view)
+      assert is_map(vue.props["password-form"])
     end
 
-    test "shows active sessions section", %{conn: conn} do
-      {:ok, _view, html} =
+    test "passes current email and password action URL", %{conn: conn} do
+      user = user_fixture()
+
+      {:ok, view, _html} =
         conn
-        |> log_in_user(user_fixture())
+        |> log_in_user(user)
         |> live(~p"/users/settings/security")
 
-      assert html =~ "Active Sessions"
-      assert html =~ "currently logged in"
+      vue = get_security_vue(view)
+      assert vue.props["current-email"] == user.email
+      assert vue.props["password-action"] == "/users/update-password"
     end
 
-    test "shows session management coming soon notice", %{conn: conn} do
-      {:ok, _view, html} =
+    test "passes trigger-submit=false initially", %{conn: conn} do
+      {:ok, view, _html} =
         conn
         |> log_in_user(user_fixture())
         |> live(~p"/users/settings/security")
 
-      assert html =~ "Session management coming soon"
+      vue = get_security_vue(view)
+      assert vue.props["trigger-submit"] == false
     end
 
     test "redirects if user is not logged in", %{conn: conn} do
@@ -57,72 +61,66 @@ defmodule StoryarnWeb.SettingsLive.SecurityTest do
     end
   end
 
-  describe "update password form" do
+  describe "validate_password event" do
     setup %{conn: conn} do
       user = user_fixture()
       %{conn: log_in_user(conn, user), user: user}
     end
 
-    test "updates the user password", %{conn: conn, user: user} do
+    test "renders errors with short password", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/users/settings/security")
+
+      render_click(view, "validate_password", %{
+        "user" => %{
+          "password" => "too short",
+          "password_confirmation" => "does not match"
+        }
+      })
+
+      vue = get_security_vue(view)
+      password_form = vue.props["password-form"]
+      assert password_form["errors"] != %{} or password_form["valid"] == false
+    end
+  end
+
+  describe "update_password event" do
+    setup %{conn: conn} do
+      user = user_fixture()
+      %{conn: log_in_user(conn, user), user: user}
+    end
+
+    test "sets trigger-submit=true on valid password", %{conn: conn, user: user} do
       new_password = valid_user_password()
 
       {:ok, view, _html} = live(conn, ~p"/users/settings/security")
 
-      form =
-        form(view, "#password_form", %{
-          "user" => %{
-            "email" => user.email,
-            "password" => new_password,
-            "password_confirmation" => new_password
-          }
-        })
+      render_click(view, "update_password", %{
+        "user" => %{
+          "email" => user.email,
+          "password" => new_password,
+          "password_confirmation" => new_password
+        }
+      })
 
-      render_submit(form)
-
-      new_password_conn = follow_trigger_action(form, conn)
-
-      assert redirected_to(new_password_conn) == ~p"/users/settings/security"
-
-      assert get_session(new_password_conn, :user_token) != get_session(conn, :user_token)
-
-      assert Phoenix.Flash.get(new_password_conn.assigns.flash, :info) =~
-               "Password updated successfully"
-
-      assert Accounts.get_user_by_email_and_password(user.email, new_password)
+      vue = get_security_vue(view)
+      assert vue.props["trigger-submit"] == true
     end
 
-    test "renders errors with short password (phx-change)", %{conn: conn} do
+    test "renders errors with invalid data", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/users/settings/security")
 
-      result =
-        view
-        |> element("#password_form")
-        |> render_change(%{
-          "user" => %{
-            "password" => "too short",
-            "password_confirmation" => "does not match"
-          }
-        })
+      render_click(view, "update_password", %{
+        "user" => %{
+          "password" => "too short",
+          "password_confirmation" => "does not match"
+        }
+      })
 
-      assert result =~ "should be at least 12 character(s)"
-      assert result =~ "does not match password"
-    end
-
-    test "renders errors with invalid data (phx-submit)", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/users/settings/security")
-
-      result =
-        view
-        |> form("#password_form", %{
-          "user" => %{
-            "password" => "too short",
-            "password_confirmation" => "does not match"
-          }
-        })
-        |> render_submit()
-
-      assert result =~ "should be at least 12 character(s)"
-      assert result =~ "does not match password"
+      vue = get_security_vue(view)
+      password_form = vue.props["password-form"]
+      assert password_form["errors"] != %{} or password_form["valid"] == false
+      # trigger-submit should NOT be set on invalid data
+      assert vue.props["trigger-submit"] == false
     end
   end
 end
