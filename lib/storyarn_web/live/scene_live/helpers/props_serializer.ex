@@ -421,6 +421,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
 
   # ---- Private helpers ----
 
+  defp background_url(%{background_asset: %Ecto.Association.NotLoaded{}}), do: nil
   defp background_url(%{background_asset: %{} = asset}), do: Assets.display_url(asset)
   defp background_url(_), do: nil
 
