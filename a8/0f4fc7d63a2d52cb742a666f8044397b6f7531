@@ -1,0 +1,42 @@
+test/support/fixtures/accounts_fixtures.ex
+  4a17336e40c15eda 10-11,33-34,60
+assets/app/modules/auth/ConfirmAccess.vue
+  4a17336e40c15eda 3,12,17,20,34,39-40,53-60,62,66
+lib/storyarn_web/live/user_live/confirm_access.ex
+  4a17336e40c15eda 8-9,22,25,41
+test/storyarn/accounts_test.exs
+  4a17336e40c15eda 438-440
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.6",
+  "base_commit_sha": "a80f4fc7d63a2d52cb742a666f8044397b6f7531",
+  "prompts": {
+    "4a17336e40c15eda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e2b34f-aad4-4a3a-9d19-0cf8845fe0de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 39,
+      "total_deletions": 403,
+      "accepted_lines": 40,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 152,
+      "overriden_lines": 0
+    }
+  }
+}
