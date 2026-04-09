@@ -7,65 +7,70 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
 
   alias Storyarn.Workspaces
 
+  defp get_general_vue(view) do
+    LiveVue.Test.get_vue(view, name: "modules/settings/WorkspaceGeneral")
+  end
+
   describe "mount" do
-    test "renders workspace general settings page for owner", %{conn: conn} do
+    test "renders workspace general settings Vue for owner", %{conn: conn} do
       user = user_fixture()
       workspace = workspace_fixture(user, %{name: "Test Workspace"})
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         conn
         |> log_in_user(user)
         |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
 
-      assert html =~ "General"
-      assert html =~ workspace.name
-      assert html =~ "Workspace name"
-      assert html =~ "Save Changes"
+      vue = get_general_vue(view)
+      assert vue.component == "modules/settings/WorkspaceGeneral"
+      assert vue.props["workspace-name"] == "Test Workspace"
+      assert vue.props["is-owner"] == true
     end
 
-    test "renders workspace general settings page for admin", %{conn: conn} do
+    test "renders Vue for admin", %{conn: conn} do
       owner = user_fixture()
       workspace = workspace_fixture(owner, %{name: "Admin Test Workspace"})
 
       admin = user_fixture()
       workspace_membership_fixture(workspace, admin, "admin")
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         conn
         |> log_in_user(admin)
         |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
 
-      assert html =~ "General"
-      assert html =~ workspace.name
+      vue = get_general_vue(view)
+      assert vue.props["workspace-name"] == "Admin Test Workspace"
+      assert vue.props["is-owner"] == false
     end
 
-    test "shows danger zone only for owner", %{conn: conn} do
+    test "is-owner=true only for owner", %{conn: conn} do
       owner = user_fixture()
       workspace = workspace_fixture(owner)
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         conn
         |> log_in_user(owner)
         |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
 
-      assert html =~ "Danger Zone"
-      assert html =~ "Delete Workspace"
+      vue = get_general_vue(view)
+      assert vue.props["is-owner"] == true
     end
 
-    test "hides danger zone for admin", %{conn: conn} do
+    test "is-owner=false for admin", %{conn: conn} do
       owner = user_fixture()
       workspace = workspace_fixture(owner)
 
       admin = user_fixture()
       workspace_membership_fixture(workspace, admin, "admin")
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         conn
         |> log_in_user(admin)
         |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
 
-      refute html =~ "Danger Zone"
-      refute html =~ "Delete Workspace"
+      vue = get_general_vue(view)
+      assert vue.props["is-owner"] == false
     end
 
     test "redirects member (non-admin) to settings with error", %{conn: conn} do
@@ -117,50 +122,20 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       assert %{"error" => "You must log in to access this page."} = flash
     end
 
-    test "shows form fields with current workspace values", %{conn: conn} do
+    test "passes current workspace values to Vue props", %{conn: conn} do
       user = user_fixture()
       workspace = workspace_fixture(user, %{description: "My test description"})
 
-      {:ok, view, html} =
+      {:ok, view, _html} =
         conn
         |> log_in_user(user)
         |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
 
-      assert html =~ "Workspace name"
-      assert html =~ "Description"
-      assert html =~ "Banner URL"
-      assert html =~ "Source language"
-      assert has_element?(view, "input[name='workspace[name]']")
-    end
-  end
-
-  describe "validate event" do
-    setup %{conn: conn} do
-      user = user_fixture()
-      workspace = workspace_fixture(user)
-      %{conn: log_in_user(conn, user), user: user, workspace: workspace}
-    end
-
-    test "validates form on change", %{conn: conn, workspace: workspace} do
-      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
-
-      result =
-        view
-        |> form("form[phx-submit='save']", %{"workspace" => %{"name" => "Updated Name"}})
-        |> render_change()
-
-      assert result =~ "Updated Name"
-    end
-
-    test "shows validation error for empty name", %{conn: conn, workspace: workspace} do
-      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
-
-      result =
-        view
-        |> form("form[phx-submit='save']", %{"workspace" => %{"name" => ""}})
-        |> render_change()
-
-      assert result =~ "can&#39;t be blank"
+      vue = get_general_vue(view)
+      assert vue.props["workspace-name"] == workspace.name
+      assert vue.props["workspace-description"] == "My test description"
+      assert vue.props["source-locale"] == workspace.source_locale
+      assert is_list(vue.props["language-options"])
     end
   end
 
@@ -175,9 +150,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
 
       result =
-        view
-        |> form("form[phx-submit='save']", %{"workspace" => %{"name" => "New Workspace Name"}})
-        |> render_submit()
+        render_click(view, "save", %{"workspace" => %{"name" => "New Workspace Name"}})
 
       assert result =~ "Workspace updated successfully."
 
@@ -189,11 +162,9 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
 
       result =
-        view
-        |> form("form[phx-submit='save']", %{
+        render_click(view, "save", %{
           "workspace" => %{"description" => "A brand new description"}
         })
-        |> render_submit()
 
       assert result =~ "Workspace updated successfully."
 
@@ -205,25 +176,12 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
 
       result =
-        view
-        |> form("form[phx-submit='save']", %{"workspace" => %{"source_locale" => "es"}})
-        |> render_submit()
+        render_click(view, "save", %{"workspace" => %{"source_locale" => "es"}})
 
       assert result =~ "Workspace updated successfully."
 
       updated = Workspaces.get_workspace!(workspace.id)
       assert updated.source_locale == "es"
-    end
-
-    test "shows validation error on invalid submit", %{conn: conn, workspace: workspace} do
-      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
-
-      result =
-        view
-        |> form("form[phx-submit='save']", %{"workspace" => %{"name" => ""}})
-        |> render_submit()
-
-      assert result =~ "can&#39;t be blank"
     end
 
     test "admin can update workspace", %{conn: conn} do
@@ -238,11 +196,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
         |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
 
       result =
-        view
-        |> form("form[phx-submit='save']", %{
-          "workspace" => %{"name" => "Admin Updated Name"}
-        })
-        |> render_submit()
+        render_click(view, "save", %{"workspace" => %{"name" => "Admin Updated Name"}})
 
       assert result =~ "Workspace updated successfully."
     end
@@ -258,7 +212,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
         |> log_in_user(user)
         |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
 
-      # Push the delete event directly (modal confirm triggers JS.push("delete"))
       render_click(view, "delete", %{})
 
       flash = assert_redirect(view, ~p"/users/settings")

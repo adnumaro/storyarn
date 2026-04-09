@@ -7,52 +7,58 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
 
   alias Storyarn.Workspaces
 
+  defp get_members_vue(view) do
+    LiveVue.Test.get_vue(view, name: "modules/settings/WorkspaceMembers")
+  end
+
   describe "mount" do
-    test "renders workspace members page for owner", %{conn: conn} do
+    test "renders workspace members Vue for owner", %{conn: conn} do
       user = user_fixture()
       workspace = workspace_fixture(user)
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         conn
         |> log_in_user(user)
         |> live(~p"/users/settings/workspaces/#{workspace.slug}/members")
 
-      assert html =~ "Members"
-      assert html =~ "Team Members"
-      assert html =~ "Request member invitation"
-      assert html =~ "Request Invitation"
+      vue = get_members_vue(view)
+      assert vue.component == "modules/settings/WorkspaceMembers"
+      assert vue.props["can-manage"] == true
     end
 
-    test "renders workspace members page for admin", %{conn: conn} do
+    test "renders Vue for admin with can-manage=false", %{conn: conn} do
       owner = user_fixture()
       workspace = workspace_fixture(owner)
 
       admin = user_fixture()
       workspace_membership_fixture(workspace, admin, "admin")
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         conn
         |> log_in_user(admin)
         |> live(~p"/users/settings/workspaces/#{workspace.slug}/members")
 
-      assert html =~ "Members"
-      assert html =~ "Team Members"
+      vue = get_members_vue(view)
+      assert vue.component == "modules/settings/WorkspaceMembers"
+      assert vue.props["can-manage"] == false
     end
 
-    test "shows existing members in the list", %{conn: conn} do
+    test "passes existing members in props", %{conn: conn} do
       owner = user_fixture()
       workspace = workspace_fixture(owner)
 
       member = user_fixture()
       workspace_membership_fixture(workspace, member, "member")
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         conn
         |> log_in_user(owner)
         |> live(~p"/users/settings/workspaces/#{workspace.slug}/members")
 
-      assert html =~ owner.email
-      assert html =~ member.email
+      vue = get_members_vue(view)
+      emails = Enum.map(vue.props["members"], & &1["email"])
+      assert owner.email in emails
+      assert member.email in emails
     end
 
     test "redirects member (non-admin) to settings with error", %{conn: conn} do
@@ -103,20 +109,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
       assert path == ~p"/users/log-in"
       assert %{"error" => "You must log in to access this page."} = flash
     end
-
-    test "shows invite form with email and role fields", %{conn: conn} do
-      user = user_fixture()
-      workspace = workspace_fixture(user)
-
-      {:ok, view, _html} =
-        conn
-        |> log_in_user(user)
-        |> live(~p"/users/settings/workspaces/#{workspace.slug}/members")
-
-      assert has_element?(view, "#invite-form")
-      assert has_element?(view, "input[name='invite[email]']")
-      assert has_element?(view, "select[name='invite[role]']")
-    end
   end
 
   describe "send_invitation event" do
@@ -130,11 +122,9 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
       {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/members")
 
       result =
-        view
-        |> form("#invite-form", %{
+        render_click(view, "send_invitation", %{
           "invite" => %{"email" => "newmember@example.com", "role" => "member"}
         })
-        |> render_submit()
 
       assert result =~ "Invitation request sent"
     end
@@ -147,11 +137,9 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
             {"viewer@example.com", "viewer"}
           ] do
         result =
-          view
-          |> form("#invite-form", %{
+          render_click(view, "send_invitation", %{
             "invite" => %{"email" => email, "role" => role}
           })
-          |> render_submit()
 
         assert result =~ "Invitation request sent"
       end
@@ -280,7 +268,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
     end
 
     test "cannot remove the workspace owner", %{conn: conn, workspace: workspace, owner: owner} do
-      # Find the owner membership
       owner_membership = Workspaces.get_membership(workspace, owner)
 
       {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/members")

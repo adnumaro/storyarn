@@ -22,6 +22,10 @@ defmodule StoryarnWeb.LayoutsTest do
     %{id: 1, email: "t@t.com", display_name: "Test User"}
   end
 
+  defp mock_socket do
+    %Phoenix.LiveView.Socket{}
+  end
+
   defp base_app_assigns(overrides) do
     defaults = %{
       flash: %{},
@@ -35,6 +39,7 @@ defmodule StoryarnWeb.LayoutsTest do
       can_edit: false,
       online_users: [],
       canvas_mode: false,
+      socket: mock_socket(),
       inner_block: inner_block("<p>App content</p>")
     }
 
@@ -107,9 +112,8 @@ defmodule StoryarnWeb.LayoutsTest do
           inner_block: inner_block("<p>Dark landing</p>")
         )
 
-      assert html =~ ~s(data-theme="dark")
-      assert html =~ ~s(color-scheme: dark;)
-      assert html =~ "backdrop-blur-xl"
+      # Tailwind dark mode uses a "dark" class on the root element
+      assert html =~ ~r/class="[^"]*\bdark\b/
     end
   end
 
@@ -139,18 +143,6 @@ defmodule StoryarnWeb.LayoutsTest do
       assert html =~ "max-w-md"
       assert html =~ "items-center"
       assert html =~ "justify-center"
-    end
-
-    test "renders theme toggle" do
-      html =
-        render_component(&Layouts.auth/1,
-          flash: %{},
-          current_scope: nil,
-          inner_block: inner_block("<p>Auth</p>")
-        )
-
-      # Theme toggle is present
-      assert html =~ "theme"
     end
 
     test "renders logo link to root" do
@@ -203,8 +195,8 @@ defmodule StoryarnWeb.LayoutsTest do
           base_app_assigns(%{current_scope: nil})
         )
 
-      # Right toolbar is conditional on current_user_id
-      assert html =~ "App content"
+      # Right toolbar Vue component is conditional on current_user_id
+      refute html =~ ~s(data-name="layout/RightToolbar")
     end
 
     test "renders canvas mode without padding" do
@@ -321,21 +313,6 @@ defmodule StoryarnWeb.LayoutsTest do
       assert html =~ "Profile"
       assert html =~ "Security"
       assert html =~ "Connected accounts"
-    end
-
-    test "highlights active nav item based on current_path" do
-      html =
-        render_component(&Layouts.settings/1,
-          flash: %{},
-          current_scope: %{user: user_map()},
-          workspaces: [],
-          current_path: ~p"/users/settings/security",
-          title: slot(:title, "Security"),
-          inner_block: inner_block("<p>Content</p>")
-        )
-
-      # Active item has highlight style
-      assert html =~ "bg-base-content/5"
     end
 
     test "renders workspace sections in navigation" do
