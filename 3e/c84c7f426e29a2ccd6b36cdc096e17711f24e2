@@ -1,0 +1,36 @@
+test/storyarn_web/live/asset_live/index_test.exs
+  4a17336e40c15eda 11-13,15-17,19-20,22,25,27-29,32,35,37-38,46,60,64,66-69,72-76,81,83-86,89-93,97,99,101-105,108,112,114,116-120,127,129-130,132-136,156,158,160-164,171,173-174,176-179,187,189-190,192-196,202,204,206-208,212,220,223,225,227-228,231-235,243,245,247-251,254,261,263,265-266,268-270,273,284,286,288-291,294-298,305,307,309-312,315,318,320-321,323-324,336-337,339-340,343-344,346,349-353,355-358,362,384,386-387,389-391,394,397,399-400,402-403,406,421,423-430,432
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.6",
+  "base_commit_sha": "3ec84c7f426e29a2ccd6b36cdc096e17711f24e2",
+  "prompts": {
+    "4a17336e40c15eda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e2b34f-aad4-4a3a-9d19-0cf8845fe0de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 192,
+      "total_deletions": 271,
+      "accepted_lines": 182,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 152,
+      "overriden_lines": 0
+    }
+  }
+}
