@@ -385,7 +385,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
   describe "recalculate_on_move/1" do
     setup :setup_hierarchy
 
-    test "soft-deletes old instances (not hard-deletes)", %{
+    test "detaches old instances (not hard-deletes)", %{
       project: project,
       parent: parent,
       child: child
@@ -402,16 +402,17 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       # Move child to new parent
       {:ok, _} = Sheets.move_sheet(child, new_parent.id)
 
-      # Old inherited blocks should be soft-deleted (not hard-deleted)
+      # Old inherited blocks should be detached (not deleted)
       all_blocks =
         from(b in Block,
           where: b.sheet_id == ^child.id and b.inherited_from_block_id == ^block.id
         )
         |> Repo.all()
 
-      # Should still exist in DB but be soft-deleted
+      # Should still exist in DB, not soft-deleted, but marked detached
       assert [_ | _] = all_blocks
-      assert Enum.all?(all_blocks, &(not is_nil(&1.deleted_at)))
+      assert Enum.all?(all_blocks, &is_nil(&1.deleted_at))
+      assert Enum.all?(all_blocks, & &1.detached)
     end
 
     test "creates new instances from new ancestor chain", %{
@@ -610,17 +611,29 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       new_parent = sheet_fixture(project, %{name: "New Parent"})
       new_block = inheritable_block_fixture(new_parent, label: "New Parent Block")
 
-      # Verify child has old block
+      # Verify child has old block attached
       child_blocks_before = Sheets.list_blocks(child.id)
-      assert Enum.any?(child_blocks_before, &(&1.inherited_from_block_id == old_block.id))
+
+      assert Enum.any?(
+               child_blocks_before,
+               &(&1.inherited_from_block_id == old_block.id and not &1.detached)
+             )
 
       # Move child to new parent
       {:ok, _} = Sheets.move_sheet(child, new_parent.id)
 
-      # Child should now have new parent's block, not old parent's
+      # Child should now have new parent's block attached, old parent's detached
       child_blocks_after = Sheets.list_blocks(child.id)
-      assert Enum.any?(child_blocks_after, &(&1.inherited_from_block_id == new_block.id))
-      refute Enum.any?(child_blocks_after, &(&1.inherited_from_block_id == old_block.id))
+
+      assert Enum.any?(
+               child_blocks_after,
+               &(&1.inherited_from_block_id == new_block.id and not &1.detached)
+             )
+
+      refute Enum.any?(
+               child_blocks_after,
+               &(&1.inherited_from_block_id == old_block.id and not &1.detached)
+             )
     end
   end
 
@@ -724,9 +737,13 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
     } do
       old_block = inheritable_block_fixture(parent, label: "Old Ancestor Block")
 
-      # Verify grandchild inherited from the old ancestor
+      # Verify grandchild inherited from the old ancestor (attached)
       gc_blocks_before = Sheets.list_blocks(grandchild.id)
-      assert Enum.any?(gc_blocks_before, &(&1.inherited_from_block_id == old_block.id))
+
+      assert Enum.any?(
+               gc_blocks_before,
+               &(&1.inherited_from_block_id == old_block.id and not &1.detached)
+             )
 
       # Create a new root with a different inheritable block
       new_root = sheet_fixture(project, %{name: "New Root"})
@@ -735,10 +752,19 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       # Move child to new_root (child still has grandchild under it)
       {:ok, _} = Sheets.move_sheet(child, new_root.id)
 
-      # Grandchild should now have new_root's block, NOT old parent's
+      # Grandchild should now have new_root's block attached, and old_block's
+      # instance should be detached (kept but no longer linked to its source)
       gc_blocks_after = Sheets.list_blocks(grandchild.id)
-      assert Enum.any?(gc_blocks_after, &(&1.inherited_from_block_id == new_block.id))
-      refute Enum.any?(gc_blocks_after, &(&1.inherited_from_block_id == old_block.id))
+
+      assert Enum.any?(
+               gc_blocks_after,
+               &(&1.inherited_from_block_id == new_block.id and not &1.detached)
+             )
+
+      refute Enum.any?(
+               gc_blocks_after,
+               &(&1.inherited_from_block_id == old_block.id and not &1.detached)
+             )
     end
   end
 

@@ -433,16 +433,16 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
       assert length(results) == 1
     end
 
-    test "returns at most 10 results" do
+    test "returns at most the default limit of 20 results" do
       %{project: project} = setup_project()
 
-      for i <- 1..15 do
+      for i <- 1..25 do
         sheet_fixture(project, %{name: "Match Sheet #{i}"})
       end
 
       results = SheetQueries.search_sheets(project.id, "Match")
 
-      assert length(results) == 10
+      assert length(results) == 20
     end
 
     test "case-insensitive search" do
