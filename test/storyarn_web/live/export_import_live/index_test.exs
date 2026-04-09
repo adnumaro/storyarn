@@ -7,6 +7,18 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
   alias Storyarn.Repo
 
+  defp get_ei_vue(view) do
+    LiveVue.Test.get_vue(view, name: "modules/project-settings/ExportImport")
+  end
+
+  defp export_config(view), do: get_ei_vue(view).props["export-config"]
+  defp import_state(view), do: get_ei_vue(view).props["import-state"]
+  defp format_extension(view), do: export_config(view)["formatConfig"]["extension"]
+  defp selected_format(view), do: export_config(view)["formatConfig"]["selected"]
+  defp download_url(view), do: export_config(view)["downloadUrl"]
+  defp validation_status(view), do: (export_config(view)["validation"] || %{})["status"]
+  defp entity_counts(view), do: export_config(view)["sectionConfig"]["entityCounts"]
+
   describe "Export/Import page" do
     setup :register_and_log_in_user
 
@@ -38,59 +50,57 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert html =~ "Import"
     end
 
-    test "shows format selection options", %{conn: conn, project: project} do
-      {:ok, _view, html} = live(conn, export_import_url(project))
+    test "exposes the list of export formats", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, export_import_url(project))
 
-      assert html =~ "Format"
-      # At minimum the StoryarnJSON format should be listed
-      assert html =~ "storyarn"
+      formats = export_config(view)["formatConfig"]["formats"]
+      assert is_list(formats)
+      assert Enum.any?(formats, &(&1["format"] == "storyarn"))
     end
 
-    test "shows content section checkboxes", %{conn: conn, project: project} do
-      {:ok, _view, html} = live(conn, export_import_url(project))
+    test "exposes supported content sections", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, export_import_url(project))
 
-      assert html =~ "Content"
-      assert html =~ "Sheets"
-      assert html =~ "Flows"
-      assert html =~ "Scenes"
-      assert html =~ "Screenplays"
-      assert html =~ "Localization"
+      section_config = export_config(view)["sectionConfig"]
+      # All 5 sections selected by default
+      for section <- ~w(sheets flows scenes screenplays localization) do
+        assert section in section_config["selected"]
+      end
     end
 
-    test "shows asset mode options", %{conn: conn, project: project} do
-      {:ok, _view, html} = live(conn, export_import_url(project))
+    test "exposes the default asset mode", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, export_import_url(project))
 
-      assert html =~ "Assets"
-      assert html =~ "References only"
-      assert html =~ "Embedded"
-      assert html =~ "Bundled"
+      options = export_config(view)["options"]
+      assert options["assetMode"] == "references"
     end
 
-    test "shows export options (validate and pretty print)", %{conn: conn, project: project} do
-      {:ok, _view, html} = live(conn, export_import_url(project))
+    test "exposes the default export options", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, export_import_url(project))
 
-      assert html =~ "Options"
-      assert html =~ "Validate before export"
-      assert html =~ "Pretty print output"
+      options = export_config(view)["options"]
+      assert options["validateBeforeExport"] == true
+      assert options["prettyPrint"] == true
     end
 
-    test "shows validate button", %{conn: conn, project: project} do
-      {:ok, _view, html} = live(conn, export_import_url(project))
+    test "exposes no validation result on initial load", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, export_import_url(project))
 
-      assert html =~ "Validate"
+      assert export_config(view)["validation"] == nil
     end
 
-    test "shows download button", %{conn: conn, project: project} do
-      {:ok, _view, html} = live(conn, export_import_url(project))
+    test "exposes a download URL", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, export_import_url(project))
 
-      assert html =~ "Download"
+      assert download_url(view) =~ "/export/storyarn"
     end
 
-    test "shows file upload section for editors", %{conn: conn, project: project} do
-      {:ok, _view, html} = live(conn, export_import_url(project))
+    test "exposes an upload config for editors", %{conn: conn, project: project} do
+      {:ok, view, _html} = live(conn, export_import_url(project))
 
-      assert html =~ ".storyarn.json"
-      assert html =~ "Upload"
+      upload_config = get_ei_vue(view).props["upload-config"]
+      # The uploads.import_file struct is serialized to the Vue component
+      assert is_map(upload_config)
     end
 
     test "toggling a content section updates the UI", %{conn: conn, project: project} do
@@ -143,9 +153,10 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     } do
       {:ok, view, _html} = live(conn, ei_url(project))
 
-      html = view |> render_click("set_format", %{"format" => "ink"})
+      render_click(view, "set_format", %{"format" => "ink"})
 
-      assert html =~ "Download .ink"
+      assert format_extension(view) == "ink"
+      assert selected_format(view) == "ink"
     end
 
     test "switching to yarn format updates the download extension", %{
@@ -154,9 +165,10 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     } do
       {:ok, view, _html} = live(conn, ei_url(project))
 
-      html = view |> render_click("set_format", %{"format" => "yarn"})
+      render_click(view, "set_format", %{"format" => "yarn"})
 
-      assert html =~ "Download .yarn"
+      assert format_extension(view) == "yarn"
+      assert selected_format(view) == "yarn"
     end
 
     test "switching to articy format updates the download extension", %{
@@ -165,9 +177,10 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     } do
       {:ok, view, _html} = live(conn, ei_url(project))
 
-      html = view |> render_click("set_format", %{"format" => "articy"})
+      render_click(view, "set_format", %{"format" => "articy"})
 
-      assert html =~ "Download .xml"
+      assert format_extension(view) == "xml"
+      assert selected_format(view) == "articy"
     end
 
     test "switching to godot format updates the download extension", %{
@@ -176,9 +189,10 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     } do
       {:ok, view, _html} = live(conn, ei_url(project))
 
-      html = view |> render_click("set_format", %{"format" => "godot"})
+      render_click(view, "set_format", %{"format" => "godot"})
 
-      assert html =~ "Download .dtl"
+      assert format_extension(view) == "dtl"
+      assert selected_format(view) == "godot"
     end
 
     test "switching to unreal format updates the download extension", %{
@@ -187,47 +201,48 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     } do
       {:ok, view, _html} = live(conn, ei_url(project))
 
-      html = view |> render_click("set_format", %{"format" => "unreal"})
+      render_click(view, "set_format", %{"format" => "unreal"})
 
-      assert html =~ "Download .csv"
+      assert format_extension(view) == "csv"
+      assert selected_format(view) == "unreal"
     end
 
     test "switching format clears validation result", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, ei_url(project))
 
       # First validate
-      view |> render_click("validate_export", %{})
-      # Then switch format — validation_result should be cleared
-      html = view |> render_click("set_format", %{"format" => "ink"})
+      render_click(view, "validate_export", %{})
+      assert validation_status(view) != nil
 
-      # The validation result badges (Passed/Warnings/Errors) should not appear
-      # after switching format
-      refute html =~ "badge-success"
-      refute html =~ "badge-error"
+      # Then switch format — validation_result should be cleared
+      render_click(view, "set_format", %{"format" => "ink"})
+      assert export_config(view)["validation"] == nil
     end
 
     test "invalid format is ignored", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, ei_url(project))
 
       # Should not crash on invalid format
-      html = view |> render_click("set_format", %{"format" => "nonexistent_format"})
+      render_click(view, "set_format", %{"format" => "nonexistent_format"})
 
-      # Still shows default format
-      assert html =~ "Download .json"
+      # Still on default format
+      assert selected_format(view) == "storyarn"
+      assert format_extension(view) == "json"
     end
 
     test "default format is storyarn with json extension", %{conn: conn, project: project} do
-      {:ok, _view, html} = live(conn, ei_url(project))
+      {:ok, view, _html} = live(conn, ei_url(project))
 
-      assert html =~ "Download .json"
+      assert selected_format(view) == "storyarn"
+      assert format_extension(view) == "json"
     end
 
     test "download link includes format in URL", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, ei_url(project))
 
-      html = view |> render_click("set_format", %{"format" => "ink"})
+      render_click(view, "set_format", %{"format" => "ink"})
 
-      assert html =~ "/export/ink"
+      assert download_url(view) =~ "/export/ink"
     end
   end
 
@@ -451,19 +466,17 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     test "validate_export renders validation results", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, validate_url(project))
 
-      html = view |> render_click("validate_export", %{})
+      render_click(view, "validate_export", %{})
 
-      # Should show one of the validation status badges
-      assert html =~ "Passed" or html =~ "Warnings" or html =~ "Errors"
+      assert validation_status(view) in ~w(passed warnings errors)
     end
 
     test "validation on empty project passes", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, validate_url(project))
 
-      html = view |> render_click("validate_export", %{})
+      render_click(view, "validate_export", %{})
 
-      # Empty project should pass validation (no broken references)
-      assert html =~ "Passed"
+      assert validation_status(view) == "passed"
     end
   end
 
@@ -515,11 +528,10 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     test "reset_import returns to upload step", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, reset_url(project))
 
-      html = view |> render_click("reset_import", %{})
+      render_click(view, "reset_import", %{})
 
-      # Should show the upload form
-      assert html =~ ".storyarn.json"
-      assert html =~ "Upload"
+      assert import_state(view)["step"] == "upload"
+      assert import_state(view)["preview"] == nil
     end
   end
 
@@ -538,34 +550,32 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     test "download URL includes workspace and project slugs", %{conn: conn, project: project} do
-      {:ok, _view, html} = live(conn, dl_url(project))
+      {:ok, view, _html} = live(conn, dl_url(project))
 
-      assert html =~
+      assert download_url(view) =~
                "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/export/storyarn"
     end
 
     test "download URL changes when format changes to ink", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, dl_url(project))
 
-      html = view |> render_click("set_format", %{"format" => "ink"})
+      render_click(view, "set_format", %{"format" => "ink"})
 
-      assert html =~ "/export/ink"
-      refute html =~ "/export/storyarn"
+      assert download_url(view) =~ "/export/ink"
+      refute download_url(view) =~ "/export/storyarn"
     end
 
     test "download URL has no query params when all defaults", %{conn: conn, project: project} do
-      {:ok, _view, html} = live(conn, dl_url(project))
+      {:ok, view, _html} = live(conn, dl_url(project))
 
       # With all defaults (all sections on, references, validate on, pretty on)
-      # there should be no query params
-      assert html =~
-               ~r"/export/storyarn\"" or
-               html =~ ~r"/export/storyarn\?"
-
-      # Specifically, the default URL should end cleanly without params
-      refute html =~ "validate=false"
-      refute html =~ "pretty=false"
-      refute html =~ "sheets=false"
+      # the URL should not include any of the "false" overrides.
+      url = download_url(view)
+      assert url =~ "/export/storyarn"
+      refute url =~ "validate=false"
+      refute url =~ "pretty=false"
+      refute url =~ "sheets=false"
+      refute url =~ "?"
     end
 
     test "toggling off multiple settings builds correct query string", %{
@@ -574,15 +584,16 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     } do
       {:ok, view, _html} = live(conn, dl_url(project))
 
-      view |> render_click("toggle_option", %{"option" => "validate_before_export"})
-      view |> render_click("toggle_option", %{"option" => "pretty_print"})
-      view |> render_click("toggle_section", %{"section" => "sheets"})
-      html = view |> render_click("set_asset_mode", %{"mode" => "embedded"})
+      render_click(view, "toggle_option", %{"option" => "validate_before_export"})
+      render_click(view, "toggle_option", %{"option" => "pretty_print"})
+      render_click(view, "toggle_section", %{"section" => "sheets"})
+      render_click(view, "set_asset_mode", %{"mode" => "embedded"})
 
-      assert html =~ "validate=false"
-      assert html =~ "pretty=false"
-      assert html =~ "sheets=false"
-      assert html =~ "assets=embedded"
+      url = download_url(view)
+      assert url =~ "validate=false"
+      assert url =~ "pretty=false"
+      assert url =~ "sheets=false"
+      assert url =~ "assets=embedded"
     end
   end
 
@@ -617,12 +628,11 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       _flow = flow_fixture(project)
 
       {:ok, view, _html} = live(conn, counts_url(project))
-      :timer.sleep(100)
-      html = render(view)
+      _ = await_async(view)
 
-      # The counts should appear next to the section labels
-      assert html =~ "Sheets"
-      assert html =~ "Flows"
+      counts = entity_counts(view)
+      assert counts["sheets"] >= 1
+      assert counts["flows"] >= 1
     end
   end
 
@@ -644,9 +654,9 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       _sheet = sheet_fixture(project, %{name: "Hero"})
 
       {:ok, view, _html} = live(conn, data_url(project))
-      html = view |> render_click("validate_export", %{})
+      render_click(view, "validate_export", %{})
 
-      assert html =~ "Passed" or html =~ "Warnings" or html =~ "Errors"
+      assert validation_status(view) in ~w(passed warnings errors)
     end
 
     test "validate_export with flows returns results", %{conn: conn, project: project} do
@@ -655,20 +665,20 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       _flow = flow_fixture(project, %{name: "Intro"})
 
       {:ok, view, _html} = live(conn, data_url(project))
-      html = view |> render_click("validate_export", %{})
+      render_click(view, "validate_export", %{})
 
-      assert html =~ "Passed" or html =~ "Warnings" or html =~ "Errors"
+      assert validation_status(view) in ~w(passed warnings errors)
     end
 
     test "export options reflect toggled sections in validate", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, data_url(project))
 
       # Turn off sheets and validate
-      view |> render_click("toggle_section", %{"section" => "sheets"})
-      html = view |> render_click("validate_export", %{})
+      render_click(view, "toggle_section", %{"section" => "sheets"})
+      render_click(view, "validate_export", %{})
 
       # Should still validate successfully (just without sheets)
-      assert html =~ "Passed" or html =~ "Warnings" or html =~ "Errors"
+      assert validation_status(view) in ~w(passed warnings errors)
     end
   end
 
@@ -681,18 +691,16 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       project = project_fixture(owner) |> Repo.preload(:workspace)
       _membership = membership_fixture(project, viewer, "viewer")
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
         )
 
-      # Viewer should not see the file input
-      refute html =~ "import-form"
-      refute html =~ "file-input"
-
-      # Viewer should see the locked message
-      assert html =~ "edit permissions to import"
+      # Viewers can't import: can-edit is false and the upload-config is nil
+      vue = get_ei_vue(view)
+      assert vue.props["can-edit"] == false
+      assert vue.props["upload-config"] == nil
     end
 
     test "viewer can still see export section", %{conn: conn} do
@@ -703,21 +711,19 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       project = project_fixture(owner) |> Repo.preload(:workspace)
       _membership = membership_fixture(project, viewer, "viewer")
 
-      {:ok, view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
         )
 
-      # Viewer should still see export controls
-      assert html =~ "Format"
-      assert html =~ "Content"
-      assert html =~ "Download"
-      assert html =~ "Validate"
+      # Viewer still gets full export config
+      assert is_list(export_config(view)["formatConfig"]["formats"])
+      assert download_url(view) =~ "/export/storyarn"
 
-      # Viewer can change export format
-      html = view |> render_click("set_format", %{"format" => "ink"})
-      assert html =~ "Download .ink"
+      # And can change the export format
+      render_click(view, "set_format", %{"format" => "ink"})
+      assert format_extension(view) == "ink"
     end
 
     test "viewer can validate export", %{conn: conn} do
@@ -734,8 +740,8 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
         )
 
-      html = view |> render_click("validate_export", %{})
-      assert html =~ "Passed" or html =~ "Warnings" or html =~ "Errors"
+      render_click(view, "validate_export", %{})
+      assert validation_status(view) in ~w(passed warnings errors)
     end
   end
 
@@ -782,7 +788,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert html =~ "Export"
     end
 
-    test "viewer sees import locked message", %{conn: conn} do
+    test "viewer cannot upload (can-edit is false)", %{conn: conn} do
       viewer = user_fixture()
       conn = log_in_user(conn, viewer)
 
@@ -790,16 +796,18 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       project = project_fixture(owner) |> Repo.preload(:workspace)
       _membership = membership_fixture(project, viewer, "viewer")
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
         )
 
-      assert html =~ "edit permissions to import"
+      vue = get_ei_vue(view)
+      assert vue.props["can-edit"] == false
+      assert vue.props["upload-config"] == nil
     end
 
-    test "editor can see the upload form", %{conn: conn} do
+    test "editor sees an upload-config", %{conn: conn} do
       editor = user_fixture()
       conn = log_in_user(conn, editor)
 
@@ -807,14 +815,15 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       project = project_fixture(owner) |> Repo.preload(:workspace)
       _membership = membership_fixture(project, editor, "editor")
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
         )
 
-      assert html =~ ".storyarn.json"
-      refute html =~ "edit permissions to import"
+      vue = get_ei_vue(view)
+      assert vue.props["can-edit"] == true
+      assert is_map(vue.props["upload-config"])
     end
   end
 
@@ -834,13 +843,13 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
     end
 
-    test "file upload entry shows KB for kilobyte-sized files", %{
+    test "file upload entry for kilobyte-sized files reports size in bytes", %{
       conn: conn,
       project: project
     } do
       {:ok, view, _html} = live(conn, filesize_url(project))
 
-      # Generate content > 1024 bytes to trigger KB branch
+      # Generate content > 1024 bytes
       content = String.duplicate("x", 2048)
 
       file =
@@ -853,18 +862,19 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
         ])
 
       render_upload(file, "medium_file.json")
-      html = render(view)
 
-      assert html =~ "KB"
+      [entry] = get_ei_vue(view).props["upload-config"]["entries"]
+      assert entry["client_size"] == 2048
+      assert entry["client_name"] == "medium_file.json"
     end
 
-    test "file upload entry shows B for small files", %{
+    test "file upload entry for small files reports size in bytes", %{
       conn: conn,
       project: project
     } do
       {:ok, view, _html} = live(conn, filesize_url(project))
 
-      # Content < 1024 bytes triggers B branch
+      # Content < 1024 bytes
       file =
         file_input(view, "#import-form", :import_file, [
           %{
@@ -875,9 +885,10 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
         ])
 
       render_upload(file, "tiny_file.json")
-      html = render(view)
 
-      assert html =~ " B)"
+      [entry] = get_ei_vue(view).props["upload-config"]["entries"]
+      assert entry["client_size"] == 2
+      assert entry["client_name"] == "tiny_file.json"
     end
   end
 
@@ -910,9 +921,10 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
         ])
 
       render_upload(file, "bad_file.txt")
-      html = render(view)
 
-      assert html =~ "Only .json files"
+      # The rejected entry is reflected in the upload-config errors list.
+      errors = get_ei_vue(view).props["upload-config"]["errors"]
+      assert Enum.any?(errors, &(&1["error"] == "not_accepted"))
     end
   end
 
@@ -932,20 +944,21 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
     end
 
-    test "validation passed on empty project shows badge-success and no-issues message", %{
+    test "validation passed on empty project reports passed with no issues", %{
       conn: conn,
       project: project
     } do
       {:ok, view, _html} = live(conn, val_url(project))
 
-      html = view |> render_click("validate_export", %{})
+      render_click(view, "validate_export", %{})
 
-      assert html =~ "badge-success"
-      assert html =~ "Passed"
-      assert html =~ "No issues found"
+      validation = export_config(view)["validation"]
+      assert validation["status"] == "passed"
+      assert validation["errors"] == []
+      assert validation["warnings"] == []
     end
 
-    test "validation result shows warning badge when there are warnings", %{
+    test "validation result reports findings when there are broken references", %{
       conn: conn,
       project: project
     } do
@@ -962,10 +975,9 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
       {:ok, view, _html} = live(conn, val_url(project))
 
-      html = view |> render_click("validate_export", %{})
+      render_click(view, "validate_export", %{})
 
-      # Should render some validation findings (warnings or errors depending on check)
-      assert html =~ "Passed" or html =~ "Warnings" or html =~ "Errors"
+      assert validation_status(view) in ~w(passed warnings errors)
     end
   end
 
@@ -1001,10 +1013,10 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
         ])
 
       render_upload(file, "bad.json")
+      view |> form("#import-form") |> render_submit()
 
-      html = view |> form("#import-form") |> render_submit()
-
-      assert html =~ "alert-error"
+      assert import_state(view)["step"] == "error"
+      assert import_state(view)["error"] != nil
     end
 
     test "parse_import with valid JSON but invalid structure shows error", %{
@@ -1023,10 +1035,10 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
         ])
 
       render_upload(file, "invalid_structure.json")
+      view |> form("#import-form") |> render_submit()
 
-      html = view |> form("#import-form") |> render_submit()
-
-      assert html =~ "alert-error"
+      assert import_state(view)["step"] == "error"
+      assert import_state(view)["error"] != nil
     end
 
     test "parse_import with array JSON shows invalid structure error", %{
@@ -1045,10 +1057,10 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
         ])
 
       render_upload(file, "array.json")
+      view |> form("#import-form") |> render_submit()
 
-      html = view |> form("#import-form") |> render_submit()
-
-      assert html =~ "alert-error"
+      assert import_state(view)["step"] == "error"
+      assert import_state(view)["error"] != nil
     end
 
     test "reset_import after error returns to upload step", %{
@@ -1068,10 +1080,12 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
       render_upload(file, "bad.json")
       view |> form("#import-form") |> render_submit()
+      assert import_state(view)["step"] == "error"
 
-      html = view |> render_click("reset_import", %{})
+      render_click(view, "reset_import", %{})
 
-      assert html =~ ".storyarn.json"
+      assert import_state(view)["step"] == "upload"
+      assert import_state(view)["error"] == nil
     end
   end
 
@@ -1124,12 +1138,10 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
         ])
 
       render_upload(file, "valid.json")
+      view |> form("#import-form") |> render_submit()
 
-      html = view |> render_submit("parse_import", %{})
-
-      # Should show preview step or error (depending on parse validation)
-      # The point is that the code path is exercised
-      assert html =~ "Import preview" or html =~ "alert-error"
+      # Should reach preview step or error step (depending on parse validation).
+      assert import_state(view)["step"] in ["preview", "error"]
     end
   end
 
@@ -1209,9 +1221,10 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     } do
       {:ok, view, _html} = live(conn, staging_url(project))
 
-      html = upload_and_parse(view, valid_import_data())
+      upload_and_parse(view, valid_import_data())
 
-      assert html =~ "Import preview"
+      assert import_state(view)["step"] == "preview"
+      assert import_state(view)["preview"] != nil
     end
 
     test "execute_import with valid data transitions to done step", %{
@@ -1221,10 +1234,10 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       {:ok, view, _html} = live(conn, staging_url(project))
 
       upload_and_parse(view, valid_import_data())
+      render_click(view, "execute_import", %{})
 
-      html = view |> render_click("execute_import", %{})
-
-      assert html =~ "Import completed successfully"
+      assert import_state(view)["step"] == "done"
+      assert import_state(view)["result"] != nil
     end
 
     test "execute_import cleans up ETS data", %{conn: conn, project: project} do
@@ -1254,10 +1267,10 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       # Manually clear all ETS entries to simulate session expiration
       :ets.delete_all_objects(:import_staging)
 
-      html = view |> render_click("execute_import", %{})
+      render_click(view, "execute_import", %{})
 
-      assert html =~ "alert-error"
-      assert html =~ "session expired"
+      assert import_state(view)["step"] == "error"
+      assert import_state(view)["error"] =~ "expired"
     end
 
     test "reset_import cleans up ETS data", %{conn: conn, project: project} do
@@ -1280,12 +1293,12 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       {:ok, view, _html} = live(conn, staging_url(project))
 
       upload_and_parse(view, valid_import_data())
+      assert import_state(view)["step"] == "preview"
 
-      html = view |> render_click("reset_import", %{})
+      render_click(view, "reset_import", %{})
 
-      assert html =~ ".storyarn.json"
-      assert html =~ "Upload"
-      refute html =~ "Import preview"
+      assert import_state(view)["step"] == "upload"
+      assert import_state(view)["preview"] == nil
     end
 
     test "terminate/2 cleans up ETS on disconnect", %{conn: conn, project: project} do
@@ -1425,11 +1438,10 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       upload_and_parse_for_conflict(view, import_data)
 
       # Ensure strategy is skip (the default)
-      view |> render_click("set_strategy", %{"strategy" => "skip"})
+      render_click(view, "set_strategy", %{"strategy" => "skip"})
+      render_click(view, "execute_import", %{})
 
-      html = view |> render_click("execute_import", %{})
-
-      assert html =~ "Import completed successfully"
+      assert import_state(view)["step"] == "done"
 
       # Verify the original sheet is preserved
       existing_after = Storyarn.Sheets.get_sheet_by_shortcut(project.id, "hero")

@@ -62,6 +62,22 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         }
         upload-config={if @can_edit, do: @uploads.import_file, else: nil}
       />
+
+      <%!--
+      Hidden file upload form. The Vue component owns the visible import UI,
+      but LiveView's upload plumbing needs a <.live_file_input> mounted in the
+      DOM to receive the file entries. Keeping it hidden (and outside the Vue
+      island) leaves the UX untouched while making the upload flow testable.
+      --%>
+      <form
+        :if={@can_edit && @uploads[:import_file]}
+        id="import-form"
+        phx-change="validate_upload"
+        phx-submit="parse_import"
+        class="hidden"
+      >
+        <.live_file_input upload={@uploads.import_file} />
+      </form>
     </Layouts.settings>
     """
   end
