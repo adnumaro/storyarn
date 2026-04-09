@@ -1,0 +1,36 @@
+test/storyarn/collaboration/locks_test.exs
+  4a17336e40c15eda 6,24,36-37,47,49,56-57,64-65,72,74-75,82,84,88,96-98,100,102-104,111-112,114,116-117,124-125,127,129-130,138,143,145,151,153,157,164,166,171,180-181,183,190,196-197,199,208,210,215,217,221,366-367,371-372
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.6",
+  "base_commit_sha": "e99d1dabbc77ecbce82ec5a263fb694b2ab24ce6",
+  "prompts": {
+    "4a17336e40c15eda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e2b34f-aad4-4a3a-9d19-0cf8845fe0de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 58,
+      "total_deletions": 58,
+      "accepted_lines": 59,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 152,
+      "overriden_lines": 0
+    }
+  }
+}
