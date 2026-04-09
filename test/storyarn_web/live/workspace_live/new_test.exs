@@ -3,39 +3,35 @@ defmodule StoryarnWeb.WorkspaceLive.NewTest do
 
   import Phoenix.LiveViewTest
 
+  defp get_new_vue(view) do
+    LiveVue.Test.get_vue(view, name: "modules/workspaces/New")
+  end
+
   describe "New workspace page" do
     setup :register_and_log_in_user
 
-    test "renders the new workspace form", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/workspaces/new")
-
-      assert html =~ "Create a new workspace"
-      assert html =~ "Workspace name"
-    end
-
-    test "shows workspace name and description inputs", %{conn: conn} do
+    test "renders the new workspace Vue component", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/workspaces/new")
 
-      assert has_element?(view, "input[name='workspace[name]']")
-      assert has_element?(view, "textarea[name='workspace[description]']")
+      vue = get_new_vue(view)
+      assert vue.component == "modules/workspaces/New"
     end
 
-    test "shows cancel link back to workspaces", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/workspaces/new")
+    test "passes form and cancel-url props", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/workspaces/new")
 
-      assert html =~ "Cancel"
-      assert html =~ ~r/href="\/workspaces"/
+      vue = get_new_vue(view)
+      assert is_map(vue.props["form"])
+      assert vue.props["cancel-url"] == "/workspaces"
     end
 
     test "redirects with limit error when workspace limit reached", %{conn: conn} do
       # User already has a default workspace from registration (free plan limit is 1)
       {:ok, view, _html} = live(conn, ~p"/workspaces/new")
 
-      view
-      |> form("form", %{
+      render_click(view, "save", %{
         "workspace" => %{"name" => "Second Workspace", "description" => "Should be blocked"}
       })
-      |> render_submit()
 
       {path, flash} = assert_redirect(view)
       assert path == "/workspaces"

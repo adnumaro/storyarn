@@ -8,36 +8,43 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
 
   alias Storyarn.Repo
 
+  defp get_dashboard_vue(view) do
+    LiveVue.Test.get_vue(view, name: "modules/workspaces/WorkspaceDashboard")
+  end
+
   describe "Workspace show page" do
     setup :register_and_log_in_user
 
-    test "renders workspace for owner", %{conn: conn, user: user} do
+    test "renders workspace dashboard for owner", %{conn: conn, user: user} do
       workspace = workspace_fixture(user, %{name: "My Studio"})
 
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
-      assert html =~ "My Studio"
+      vue = get_dashboard_vue(view)
+      assert vue.component == "modules/workspaces/WorkspaceDashboard"
+      assert vue.props["workspace"]["name"] == "My Studio"
     end
 
-    test "renders workspace with projects", %{conn: conn, user: user} do
+    test "passes projects to Vue", %{conn: conn, user: user} do
       workspace = workspace_fixture(user, %{name: "Game Studio"})
 
       _project =
         project_fixture(user, %{name: "Epic RPG", workspace: workspace})
         |> Repo.preload(:workspace)
 
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
-      assert html =~ "Game Studio"
-      assert html =~ "Epic RPG"
+      vue = get_dashboard_vue(view)
+      assert Enum.any?(vue.props["projects"], fn p -> p["project"]["name"] == "Epic RPG" end)
     end
 
-    test "renders empty state when no projects", %{conn: conn, user: user} do
+    test "passes empty projects list when no projects exist", %{conn: conn, user: user} do
       workspace = workspace_fixture(user)
 
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
-      assert html =~ "No projects yet"
+      vue = get_dashboard_vue(view)
+      assert vue.props["projects"] == []
     end
 
     test "renders for workspace member", %{conn: conn, user: user} do
@@ -45,9 +52,11 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
       workspace = workspace_fixture(owner, %{name: "Shared Studio"})
       _ws_membership = workspace_membership_fixture(workspace, user, "member")
 
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
-      assert html =~ "Shared Studio"
+      vue = get_dashboard_vue(view)
+      assert vue.props["workspace"]["name"] == "Shared Studio"
+      assert vue.props["membership"]["role"] == "member"
     end
 
     test "redirects non-member to workspaces", %{conn: conn} do
@@ -60,99 +69,85 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
       assert path == "/workspaces"
     end
 
-    test "shows new project button for owner", %{conn: conn, user: user} do
+    test "passes can-create-project=true for owner", %{conn: conn, user: user} do
       workspace = workspace_fixture(user)
 
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
-      assert html =~ "New Project"
+      vue = get_dashboard_vue(view)
+      assert vue.props["can-create-project"] == true
     end
 
-    test "shows settings link for owner/admin", %{conn: conn, user: user} do
+    test "passes settings-url for owner", %{conn: conn, user: user} do
       workspace = workspace_fixture(user)
 
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
-      assert html =~ "settings"
+      vue = get_dashboard_vue(view)
+      assert vue.props["settings-url"] =~ "/users/settings/workspaces/"
+      assert vue.props["membership"]["role"] == "owner"
     end
 
-    test "admin member sees settings link", %{conn: conn, user: user} do
+    test "admin member role passed to Vue", %{conn: conn, user: user} do
       owner = user_fixture()
       workspace = workspace_fixture(owner, %{name: "Admin Studio"})
       _ws_membership = workspace_membership_fixture(workspace, user, "admin")
 
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
-      assert html =~ "settings"
+      vue = get_dashboard_vue(view)
+      assert vue.props["membership"]["role"] == "admin"
     end
 
-    test "viewer does not see settings link", %{conn: conn, user: user} do
+    test "viewer membership role passed to Vue", %{conn: conn, user: user} do
       owner = user_fixture()
       workspace = workspace_fixture(owner, %{name: "Viewer Studio"})
       _ws_membership = workspace_membership_fixture(workspace, user, "viewer")
 
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
-      # The settings icon/link in the workspace header should not be present for viewers
-      refute html =~ ~p"/users/settings/workspaces/#{workspace.slug}/general"
+      vue = get_dashboard_vue(view)
+      assert vue.props["membership"]["role"] == "viewer"
     end
 
-    test "viewer does not see new project button", %{conn: conn, user: user} do
-      owner = user_fixture()
-      workspace = workspace_fixture(owner, %{name: "Read Only Studio"})
-      _ws_membership = workspace_membership_fixture(workspace, user, "viewer")
-
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
-
-      refute html =~ "New Project"
-    end
-
-    test "member sees new project button", %{conn: conn, user: user} do
+    test "member role passed to Vue", %{conn: conn, user: user} do
       owner = user_fixture()
       workspace = workspace_fixture(owner, %{name: "Member Studio"})
       _ws_membership = workspace_membership_fixture(workspace, user, "member")
 
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
-      assert html =~ "New Project"
+      vue = get_dashboard_vue(view)
+      assert vue.props["membership"]["role"] == "member"
     end
 
-    test "renders workspace with banner image", %{conn: conn, user: user} do
+    test "passes workspace banner_url to Vue", %{conn: conn, user: user} do
       workspace =
         workspace_fixture(user, %{
           name: "Banner Studio",
           banner_url: "https://example.com/banner.jpg"
         })
 
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
-      assert html =~ "https://example.com/banner.jpg"
-      assert html =~ "<img"
+      vue = get_dashboard_vue(view)
+      assert vue.props["workspace"]["banner_url"] == "https://example.com/banner.jpg"
     end
 
-    test "renders workspace without banner uses gradient", %{conn: conn, user: user} do
-      workspace = workspace_fixture(user, %{name: "No Banner Studio"})
-
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
-
-      # Banner img should not be present (class="w-full h-full object-cover" is unique to banner)
-      refute html =~ "object-cover"
-      assert html =~ "bg-gradient-to-r"
-    end
-
-    test "renders workspace description", %{conn: conn, user: user} do
+    test "passes workspace description to Vue", %{conn: conn, user: user} do
       workspace =
         workspace_fixture(user, %{
           name: "Described Studio",
           description: "A very creative workspace"
         })
 
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
-      assert html =~ "A very creative workspace"
+      vue = get_dashboard_vue(view)
+      assert vue.props["workspace"]["description"] == "A very creative workspace"
     end
 
-    test "renders project card with description", %{conn: conn, user: user} do
+    test "passes project name and description in projects list", %{conn: conn, user: user} do
       workspace = workspace_fixture(user, %{name: "Card Studio"})
 
       _project =
@@ -163,159 +158,51 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
         })
         |> Repo.preload(:workspace)
 
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
-
-      assert html =~ "Described Project"
-      assert html =~ "An epic adventure game"
-    end
-
-    test "renders project card with creation date", %{conn: conn, user: user} do
-      workspace = workspace_fixture(user, %{name: "Date Studio"})
-
-      project =
-        project_fixture(user, %{name: "Dated Project", workspace: workspace})
-        |> Repo.preload(:workspace)
-
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
-
-      expected_date = Calendar.strftime(project.inserted_at, "%b %d, %Y")
-      assert html =~ expected_date
-    end
-
-    test "renders time_ago as 'just now' for recently updated projects", %{conn: conn, user: user} do
-      workspace = workspace_fixture(user, %{name: "Time Studio"})
-
-      _project =
-        project_fixture(user, %{name: "Fresh Project", workspace: workspace})
-        |> Repo.preload(:workspace)
-
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
-
-      assert html =~ "just now"
-    end
-
-    test "renders time_ago as minutes for projects updated minutes ago", %{conn: conn, user: user} do
-      workspace = workspace_fixture(user, %{name: "Minutes Studio"})
-
-      project =
-        project_fixture(user, %{name: "Minutes Project", workspace: workspace})
-        |> Repo.preload(:workspace)
-
-      # Update updated_at to 15 minutes ago
-      minutes_ago =
-        DateTime.add(DateTime.utc_now(), -15 * 60, :second) |> DateTime.truncate(:second)
-
-      Ecto.Changeset.change(project, %{updated_at: minutes_ago})
-      |> Repo.update!()
-
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
-
-      assert html =~ "min ago"
-    end
-
-    test "renders time_ago as hours for projects updated hours ago", %{conn: conn, user: user} do
-      workspace = workspace_fixture(user, %{name: "Hours Studio"})
-
-      project =
-        project_fixture(user, %{name: "Hours Project", workspace: workspace})
-        |> Repo.preload(:workspace)
-
-      # Update updated_at to 5 hours ago
-      hours_ago =
-        DateTime.add(DateTime.utc_now(), -5 * 3600, :second) |> DateTime.truncate(:second)
-
-      Ecto.Changeset.change(project, %{updated_at: hours_ago})
-      |> Repo.update!()
-
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
-
-      assert html =~ "hours ago"
-    end
-
-    test "renders time_ago as days for projects updated days ago", %{conn: conn, user: user} do
-      workspace = workspace_fixture(user, %{name: "Days Studio"})
-
-      project =
-        project_fixture(user, %{name: "Days Project", workspace: workspace})
-        |> Repo.preload(:workspace)
-
-      # Update updated_at to 3 days ago
-      days_ago =
-        DateTime.add(DateTime.utc_now(), -3 * 86_400, :second) |> DateTime.truncate(:second)
-
-      Ecto.Changeset.change(project, %{updated_at: days_ago})
-      |> Repo.update!()
-
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
-
-      assert html =~ "days ago"
-    end
-
-    test "opens new project modal via live_patch", %{conn: conn, user: user} do
-      workspace = workspace_fixture(user, %{name: "Modal Studio"})
-
       {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
-      assert view
-             |> element("a", "New Project")
-             |> render_click()
+      vue = get_dashboard_vue(view)
 
-      assert render(view) =~ "Project Name"
-      assert render(view) =~ "new-project-modal"
+      entry =
+        Enum.find(vue.props["projects"], fn p -> p["project"]["name"] == "Described Project" end)
+
+      assert entry["project"]["description"] == "An epic adventure game"
     end
 
-    test "new project modal renders via direct navigation", %{conn: conn, user: user} do
-      workspace = workspace_fixture(user, %{name: "Direct Modal Studio"})
-
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}/projects/new")
-
-      assert html =~ "New Project"
-      assert html =~ "Project Name"
-      assert html =~ "new-project-modal"
-    end
-
-    test "search event renders without crash", %{conn: conn, user: user} do
+    test "search event filters projects", %{conn: conn, user: user} do
       workspace = workspace_fixture(user, %{name: "Search Studio"})
 
+      _p1 = project_fixture(user, %{name: "Alpha Game", workspace: workspace})
+      _p2 = project_fixture(user, %{name: "Beta Game", workspace: workspace})
+
       {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
-      html = render_change(view, "search", %{"search" => "some query"})
-      assert html =~ "Search Studio"
+      render_change(view, "search", %{"search" => "Alpha"})
+
+      vue = get_dashboard_vue(view)
+      names = Enum.map(vue.props["projects"], & &1["project"]["name"])
+      assert "Alpha Game" in names
+      refute "Beta Game" in names
+      assert vue.props["search-query"] == "Alpha"
     end
 
-    test "project card links to project page", %{conn: conn, user: user} do
+    test "includes project id in projects list", %{conn: conn, user: user} do
       workspace = workspace_fixture(user, %{name: "Link Studio"})
 
       project =
         project_fixture(user, %{name: "Linked Project", workspace: workspace})
         |> Repo.preload(:workspace)
 
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
-      assert html =~ ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}"
-    end
-
-    test "handle_info saved project redirects to project page", %{conn: conn, user: user} do
-      workspace = workspace_fixture(user, %{name: "Save Studio"})
-
-      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}/projects/new")
-
-      # Submit the project form to trigger the handle_info callback
-      view
-      |> form("#project-form", project: %{name: "Created Project"})
-      |> render_submit()
-
-      {path, flash} = assert_redirect(view)
-      assert path =~ "/workspaces/"
-      assert path =~ "/projects/"
-      assert flash["info"] =~ "Project created successfully"
+      vue = get_dashboard_vue(view)
+      assert Enum.any?(vue.props["projects"], fn p -> p["project"]["id"] == project.id end)
     end
   end
 
   describe "billing limits" do
     setup :register_and_log_in_user
 
-    test "disables New Project button when project limit reached", %{conn: conn, user: user} do
+    test "passes can-create-project=false when project limit reached", %{conn: conn, user: user} do
       workspace = workspace_fixture(user)
       scope = Storyarn.Accounts.Scope.for_user(user)
 
@@ -328,13 +215,10 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
           })
       end
 
-      {:ok, _view, html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+      {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
-      # The button should be disabled with tooltip
-      assert html =~ "btn-disabled"
-      assert html =~ "Project limit reached for your plan"
-      # Should not render the link version
-      refute html =~ ~s(patch="/workspaces/#{workspace.slug}/projects/new")
+      vue = get_dashboard_vue(view)
+      assert vue.props["can-create-project"] == false
     end
   end
 
