@@ -345,6 +345,12 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
           {:content, ready_state, _slide} ->
             {:noreply, update_flow_slide(socket, ready_state)}
+
+          {:flow_jump, jumped_state, target_flow_id} ->
+            handle_exploration_flow_jump(socket, jumped_state, target_flow_id)
+
+          {:flow_return, returned_state} ->
+            handle_exploration_flow_return(socket, returned_state)
         end
     end
   end
@@ -608,6 +614,34 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
                    engine_state: ready_state,
                    slide: slide
                  })}
+
+              {:flow_jump, jumped_state, target_flow_id} ->
+                # Flow immediately hit a subflow before reaching interactive content.
+                # Set up main flow context so handle_exploration_flow_jump can push it.
+                socket =
+                  socket
+                  |> assign(:flow_mode, true)
+                  |> assign(:flow_nodes, nodes_map)
+                  |> assign(:flow_connections, connections)
+                  |> assign(:flow_sheets_map, sheets_map)
+                  |> push_event("patrol_pause", %{})
+                  |> pause_ambient_flow()
+                  |> assign(:active_flow, %{
+                    flow_id: flow.id,
+                    flow: flow,
+                    engine_state: jumped_state,
+                    slide: Slide.build(nil, jumped_state, sheets_map, project.id)
+                  })
+
+                {:noreply, socket} =
+                  handle_exploration_flow_jump(socket, jumped_state, target_flow_id)
+
+                {:ok, socket}
+
+              {:flow_return, returned_state} ->
+                # Unexpected flow_return during init — treat as finished
+                new_variables = FormulaRuntime.recompute_formulas(returned_state.variables)
+                {:ok, apply_variable_update(socket, new_variables)}
             end
         end
     end
@@ -829,6 +863,12 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
           else
             {:finished, new_state}
           end
+
+        {:flow_jump, new_state, target_flow_id, _} ->
+          {:flow_jump, new_state, target_flow_id}
+
+        {:flow_return, new_state, _} ->
+          {:flow_return, new_state}
 
         {_status, new_state, _} ->
           do_build_slide_or_advance(
