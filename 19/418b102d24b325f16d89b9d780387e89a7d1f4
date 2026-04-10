@@ -1,0 +1,75 @@
+assets/app/composables/useKeyboard.test.ts
+  9f017135ba34bb9b 1-243
+package.json
+  9f017135ba34bb9b 76
+assets/app/composables/useServerSearch.test.ts
+  9f017135ba34bb9b 1-154
+assets/app/composables/useUndoRedo.test.ts
+  9f017135ba34bb9b 1-191
+assets/app/composables/usePresence.test.ts
+  9f017135ba34bb9b 1-112
+assets/vitest.config.js
+  9f017135ba34bb9b 1-2,4-14
+assets/app/modules/shared/operators/condition-operators.test.ts
+  9f017135ba34bb9b 1-110
+assets/app/modules/shared/operators/instruction-operators.test.ts
+  9f017135ba34bb9b 1-250
+assets/app/utils/date-utils.test.ts
+  9f017135ba34bb9b 1-44
+assets/app/modules/shared/operators/expression-serializer.test.ts
+  9f017135ba34bb9b 1-585
+tsconfig.json
+  9f017135ba34bb9b 28
+assets/app/utils/utils.test.ts
+  9f017135ba34bb9b 1-53
+assets/app/test/setup.ts
+  9f017135ba34bb9b 1-49
+assets/app/modules/shared/variables.test.ts
+  9f017135ba34bb9b 1-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "19418b102d24b325f16d89b9d780387e89a7d1f4",
+  "prompts": {
+    "4a17336e40c15eda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e2b34f-aad4-4a3a-9d19-0cf8845fe0de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "9f017135ba34bb9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78f3f27b-e90b-4cd0-9420-fe6ad297bfba",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 2676,
+      "total_deletions": 1982,
+      "accepted_lines": 2671,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 152,
+      "overriden_lines": 0
+    }
+  }
+}
