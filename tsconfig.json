@@ -25,7 +25,7 @@
       "@plugins/*": ["./app/plugins/*"],
       "@composables/*": ["./app/composables/*"]
     },
-    "types": ["vite/client"]
+    "types": ["vite/client", "vitest/globals"]
   },
   "include": ["assets/app/**/*.ts", "assets/app/**/*.vue", "assets/app/**/*.js"],
   "exclude": ["node_modules", "priv", "assets/js"]
