@@ -390,6 +390,9 @@ defmodule Storyarn.Exports.Serializers.Yarn do
         |> Enum.filter(&Map.has_key?(@custom_function_ops, &1))
         |> Enum.map(&Map.fetch!(@custom_function_ops, &1))
 
+      %{"type" => "group", "blocks" => inner} when is_list(inner) ->
+        extract_ops_from_condition(%{"blocks" => inner})
+
       _ ->
         []
     end)

@@ -951,6 +951,30 @@ defmodule Storyarn.Scenes.SceneCrud do
     |> Repo.update!()
   end
 
+  @doc """
+  Links a pin's flow_id after import. Used in the second pass since
+  scenes are imported before flows, so flow_id isn't available at pin creation time.
+  """
+  def link_pin_import_flow_id(pin_id, flow_id) do
+    alias Storyarn.Scenes.ScenePin
+
+    Repo.get!(ScenePin, pin_id)
+    |> Ecto.Changeset.change(%{flow_id: flow_id})
+    |> Repo.update!()
+  end
+
+  @doc """
+  Links a zone's target_id after import. Used in the second pass since
+  scenes are imported before flows, so flow target_ids aren't available at zone creation time.
+  """
+  def link_zone_import_target(zone_id, target_type, target_id) do
+    alias Storyarn.Scenes.SceneZone
+
+    Repo.get!(SceneZone, zone_id)
+    |> Ecto.Changeset.change(%{target_type: target_type, target_id: target_id})
+    |> Repo.update!()
+  end
+
   # =============================================================================
   # Variable Queries (for condition/instruction builders)
   # =============================================================================

@@ -1052,6 +1052,64 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
       meta = metadata(export_yarn(project))
       refute Map.has_key?(meta, "required_functions")
     end
+
+    test "metadata includes required_functions from nested condition groups", %{
+      project: project
+    } do
+      sheet = sheet_fixture(project, %{name: "Nested"})
+
+      block_fixture(sheet, %{
+        type: "text",
+        config: %{"label" => "Note"},
+        value: %{"text" => "hello"}
+      })
+
+      flow = flow_fixture(project, %{name: "Nested Groups"})
+      flow = reload_flow(flow)
+      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
+
+      condition =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{
+            "condition" =>
+              Jason.encode!(%{
+                "logic" => "all",
+                "blocks" => [
+                  %{
+                    "id" => "g1",
+                    "type" => "group",
+                    "logic" => "any",
+                    "blocks" => [
+                      %{
+                        "id" => "b1",
+                        "type" => "block",
+                        "logic" => "all",
+                        "rules" => [
+                          %{
+                            "sheet" => sheet.shortcut,
+                            "variable" => "note",
+                            "operator" => "contains",
+                            "value" => "world"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }),
+            "cases" => [
+              %{"id" => "true", "value" => "true", "label" => "True"},
+              %{"id" => "false", "value" => "false", "label" => "False"}
+            ]
+          }
+        })
+
+      connection_fixture(flow, entry, condition)
+
+      meta = metadata(export_yarn(project))
+      assert "string_contains" in meta["required_functions"]
+    end
   end
 
   # =============================================================================

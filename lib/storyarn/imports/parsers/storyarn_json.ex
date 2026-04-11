@@ -194,11 +194,14 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
           {id_map, sheet_results} =
             import_sheets(project, data, id_map, strategy, existing_shortcuts)
 
+          {id_map, scene_results} =
+            import_scenes(project, data, id_map, strategy, existing_shortcuts)
+
           {id_map, flow_results} =
             import_flows(project, data, id_map, strategy, existing_shortcuts)
 
-          {id_map, scene_results} =
-            import_scenes(project, data, id_map, strategy, existing_shortcuts)
+          # Pass 3: link scene→flow references now that flows exist in id_map
+          link_scene_flow_references(data, id_map)
 
           {id_map, screenplay_results} =
             import_screenplays(project, data, id_map, strategy, existing_shortcuts)
@@ -1180,6 +1183,31 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
   defp link_import_parent(:scene, entity, parent_id),
     do: Scenes.link_scene_import_parent(entity, parent_id)
+
+  # Scenes are imported before flows, so flow references in pins and zones
+  # are nil at creation time. This pass links them after flows exist in the id_map.
+  defp link_scene_flow_references(data, id_map) do
+    for scene_data <- data["scenes"] || [] do
+      # Link pin flow_ids
+      for pin_data <- scene_data["pins"] || [],
+          flow_id = resolve_pin_flow_id(pin_data, id_map),
+          not is_nil(flow_id),
+          pin_new_id = Map.get(id_map, {:pin, pin_data["id"]}),
+          not is_nil(pin_new_id) do
+        Scenes.link_pin_import_flow_id(pin_new_id, flow_id)
+      end
+
+      # Link zone target_ids that reference flows
+      for zone_data <- scene_data["zones"] || [],
+          zone_data["target_type"] == "flow",
+          target_id = remap_id(id_map, :flow, zone_data["target_id"]),
+          not is_nil(target_id),
+          zone_new_id = Map.get(id_map, {:zone, zone_data["id"]}),
+          not is_nil(zone_new_id) do
+        Scenes.link_zone_import_target(zone_new_id, "flow", target_id)
+      end
+    end
+  end
 
   defp maybe_remap_ref(changes, field, id_map, type, nil) when is_map(changes) do
     _ = {field, id_map, type}

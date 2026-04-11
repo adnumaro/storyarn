@@ -120,14 +120,6 @@ defmodule Storyarn.Collaboration.Locks do
           acquire_new_lock(key, user, now, expires_at)
       end
 
-    case result do
-      {:ok, lock_info} ->
-        broadcast_lock_acquired(scope, entity_id, lock_info)
-
-      _ ->
-        :ok
-    end
-
     {:reply, result, state}
   end
 
@@ -135,9 +127,8 @@ defmodule Storyarn.Collaboration.Locks do
     key = {scope, entity_id}
 
     case :ets.lookup(@table_name, key) do
-      [{^key, %{user_id: ^user_id} = lock_info}] ->
+      [{^key, %{user_id: ^user_id}}] ->
         :ets.delete(@table_name, key)
-        broadcast_lock_released(scope, entity_id, lock_info)
         {:reply, :ok, state}
 
       [{^key, _lock_info}] ->
@@ -309,19 +300,6 @@ defmodule Storyarn.Collaboration.Locks do
     end
 
     length(expired)
-  end
-
-  defp broadcast_lock_acquired(scope, entity_id, lock_info) do
-    Phoenix.PubSub.broadcast(
-      Storyarn.PubSub,
-      "#{elem(scope, 0)}:#{elem(scope, 1)}:locks",
-      {:lock_change, :lock_acquired,
-       %{
-         entity_id: entity_id,
-         user_id: lock_info.user_id,
-         user_email: lock_info.user_email
-       }}
-    )
   end
 
   defp broadcast_lock_released(scope, entity_id, lock_info) do

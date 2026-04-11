@@ -625,6 +625,12 @@ defmodule Storyarn.Scenes do
   @doc "Updates a scene's parent_id after import."
   defdelegate link_scene_import_parent(scene, parent_id), to: SceneCrud, as: :link_import_parent
 
+  @doc "Links a pin's flow_id after import (second pass, since flows are imported after scenes)."
+  defdelegate link_pin_import_flow_id(pin_id, flow_id), to: SceneCrud
+
+  @doc "Links a zone's target after import (second pass, since flows are imported after scenes)."
+  defdelegate link_zone_import_target(zone_id, target_type, target_id), to: SceneCrud
+
   # =============================================================================
   # Dashboard Stats
   # =============================================================================

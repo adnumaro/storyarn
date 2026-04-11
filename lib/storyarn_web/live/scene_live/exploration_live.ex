@@ -670,7 +670,17 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   # Private — Cross-flow Handling
   # ===========================================================================
 
-  defp handle_exploration_flow_jump(socket, state, target_flow_id) do
+  @max_exploration_jump_depth 50
+
+  defp handle_exploration_flow_jump(socket, state, target_flow_id, depth \\ 0)
+
+  defp handle_exploration_flow_jump(socket, _state, _target_flow_id, depth)
+       when depth > @max_exploration_jump_depth do
+    {:noreply,
+     put_flash(socket, :error, dgettext("scenes", "Too many nested subflows. Stopping execution."))}
+  end
+
+  defp handle_exploration_flow_jump(socket, state, target_flow_id, depth) do
     state =
       Flows.evaluator_push_flow_context(
         state,
@@ -703,11 +713,11 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         case PlayerEngine.step_until_interactive(new_state, target_nodes, target_connections) do
           {:flow_jump, stepped, next_flow_id, _} ->
             socket = update_active_flow(socket, stepped, target_nodes, target_connections)
-            handle_exploration_flow_jump(socket, stepped, next_flow_id)
+            handle_exploration_flow_jump(socket, stepped, next_flow_id, depth + 1)
 
           {:flow_return, stepped, _} ->
             socket = update_active_flow(socket, stepped, target_nodes, target_connections)
-            handle_exploration_flow_return(socket, stepped)
+            handle_exploration_flow_return(socket, stepped, depth + 1)
 
           {:finished, stepped, _} ->
             socket = update_active_flow(socket, stepped, target_nodes, target_connections)
@@ -719,7 +729,15 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     end
   end
 
-  defp handle_exploration_flow_return(socket, state) do
+  defp handle_exploration_flow_return(socket, state, depth \\ 0)
+
+  defp handle_exploration_flow_return(socket, _state, depth)
+       when depth > @max_exploration_jump_depth do
+    {:noreply,
+     put_flash(socket, :error, dgettext("scenes", "Too many nested subflows. Stopping execution."))}
+  end
+
+  defp handle_exploration_flow_return(socket, state, depth) do
     case Flows.evaluator_pop_flow_context(state) do
       {:ok, frame, new_state} ->
         parent_nodes = frame.nodes
@@ -752,11 +770,11 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         case PlayerEngine.step_until_interactive(new_state, parent_nodes, parent_connections) do
           {:flow_jump, stepped, next_flow_id, _} ->
             socket = update_active_flow(socket, stepped, parent_nodes, parent_connections)
-            handle_exploration_flow_jump(socket, stepped, next_flow_id)
+            handle_exploration_flow_jump(socket, stepped, next_flow_id, depth + 1)
 
           {:flow_return, stepped, _} ->
             socket = update_active_flow(socket, stepped, parent_nodes, parent_connections)
-            handle_exploration_flow_return(socket, stepped)
+            handle_exploration_flow_return(socket, stepped, depth + 1)
 
           {:finished, stepped, _} ->
             socket = update_active_flow(socket, stepped, parent_nodes, parent_connections)
