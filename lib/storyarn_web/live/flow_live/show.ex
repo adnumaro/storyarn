@@ -430,16 +430,24 @@ defmodule StoryarnWeb.FlowLive.Show do
 
       flow ->
         # Teardown collaboration for previous flow (if switching)
-        case socket.assigns.flow do
-          %{id: prev_id} when prev_id != flow.id ->
-            CollaborationHelpers.teardown_collaboration(
-              prev_id,
-              socket.assigns.current_scope.user.id
-            )
+        socket =
+          case socket.assigns.flow do
+            %{id: prev_id} when prev_id != flow.id ->
+              if ref = socket.assigns[:lock_heartbeat_ref], do: Process.cancel_timer(ref)
 
-          _ ->
-            :ok
-        end
+              CollaborationHelpers.teardown_collaboration(
+                prev_id,
+                socket.assigns.current_scope.user.id
+              )
+
+              socket
+              |> assign(:locked_node_id, nil)
+              |> assign(:lock_heartbeat_ref, nil)
+              |> assign(:collab_scope, nil)
+
+            _ ->
+              socket
+          end
 
         socket =
           socket

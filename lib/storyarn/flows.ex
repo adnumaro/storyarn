@@ -946,6 +946,9 @@ defmodule Storyarn.Flows do
   @doc "Updates a flow's parent_id after import."
   defdelegate link_flow_import_parent(flow, parent_id), to: FlowCrud, as: :link_import_parent
 
+  @doc "Updates a node's data map after import (deferred flow ID remapping)."
+  defdelegate link_node_import_data(node_id, data), to: FlowCrud
+
   # =============================================================================
   # Versioning
   # =============================================================================

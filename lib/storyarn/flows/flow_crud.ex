@@ -685,6 +685,15 @@ defmodule Storyarn.Flows.FlowCrud do
     |> Repo.update!()
   end
 
+  @doc """
+  Updates a node's data map after import (deferred ID remapping).
+  Used for flow-to-flow references that can't be resolved until all flows are imported.
+  """
+  def link_node_import_data(node_id, data) do
+    from(n in FlowNode, where: n.id == ^node_id)
+    |> Repo.update_all(set: [data: data])
+  end
+
   defp maybe_filter_export_ids(query, :all), do: query
 
   defp maybe_filter_export_ids(query, ids) when is_list(ids) do

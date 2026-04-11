@@ -8,6 +8,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.LockHandlers do
 
   alias Storyarn.Collaboration
   alias Storyarn.Shared.MapUtils
+  alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
 
   def handle_acquire(%{"block_id" => block_id}, socket) do
     block_id = MapUtils.parse_int(block_id)
@@ -18,6 +19,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.LockHandlers do
 
       case Collaboration.acquire_lock(scope, block_id, user) do
         {:ok, _lock_info} ->
+          Collab.broadcast_lock_change(socket, scope, :block_locked, block_id)
           block_locks = Collaboration.list_locks(scope)
           {:noreply, assign(socket, :block_locks, block_locks)}
 
@@ -41,6 +43,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.LockHandlers do
     if scope do
       user_id = socket.assigns.current_scope.user.id
       Collaboration.release_lock(scope, block_id, user_id)
+      Collab.broadcast_lock_change(socket, scope, :block_unlocked, block_id)
       block_locks = Collaboration.list_locks(scope)
       {:noreply, assign(socket, :block_locks, block_locks)}
     else
