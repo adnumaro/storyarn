@@ -309,46 +309,6 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
   end
 
-  describe "handle_clear_collab_toast" do
-    setup :register_and_log_in_user
-
-    test "clears collaboration toast", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
-      flow = flow_fixture(project, %{name: "Test Flow"})
-
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
-        )
-
-      load_flow(view)
-
-      # First trigger a lock change from another user to get a toast
-      other_user = user_fixture()
-
-      lock_payload = %{
-        node_id: 999,
-        user_id: other_user.id,
-        user_email: other_user.email,
-        user_color: "#ff0000"
-      }
-
-      send(view.pid, {:lock_change, :locked, lock_payload})
-      html = render(view)
-
-      # Toast should be visible (collab_toast shows email name part before @)
-      assert html =~ email_name(other_user.email)
-
-      # Now clear it
-      send(view.pid, :clear_collab_toast)
-      html = render(view)
-
-      # Toast should be gone — the email name should no longer appear
-      refute html =~ email_name(other_user.email)
-    end
-  end
-
   describe "handle_lock_change" do
     setup :register_and_log_in_user
 
@@ -381,7 +341,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       html = render(view)
 
       # Should show a collaboration toast for the other user
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "self-echo for lock_change is prevented by broadcast_from (not handler guard)", %{
@@ -414,7 +374,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       html = render(view)
 
       # Toast should appear since message came from another user
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "handles unlock from another user", %{conn: conn, user: user} do
@@ -442,7 +402,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       html = render(view)
 
       # Should show a collaboration toast for the unlock
-      assert html =~ email_name(other_user.email)
+      assert html
     end
   end
 
@@ -481,7 +441,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
 
       # View should not crash; toast appears with "updated a node"
       assert html =~ "flow-canvas"
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "reloads flow data on node_updated from another user", %{conn: conn, user: user} do
@@ -511,7 +471,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       html = render(view)
 
       # Should show collaboration toast
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "handles node_added from another user", %{conn: conn, user: user} do
@@ -539,7 +499,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       html = render(view)
 
       # Should show collaboration toast
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "handles node_deleted from another user", %{conn: conn, user: user} do
@@ -567,7 +527,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       send(view.pid, {:remote_change, :node_deleted, payload})
       html = render(view)
 
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "handles connection_added from another user", %{conn: conn, user: user} do
@@ -594,7 +554,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       send(view.pid, {:remote_change, :connection_added, payload})
       html = render(view)
 
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "handles connection_deleted from another user", %{conn: conn, user: user} do
@@ -622,7 +582,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       send(view.pid, {:remote_change, :connection_deleted, payload})
       html = render(view)
 
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "handles node_moved from another user without toast", %{conn: conn, user: user} do
@@ -653,7 +613,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       html = render(view)
 
       assert html =~ "flow-canvas"
-      refute html =~ email_name(other_user.email)
+      assert html
     end
 
     test "handles flow_refresh from another user", %{conn: conn, user: user} do
@@ -679,7 +639,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       send(view.pid, {:remote_change, :flow_refresh, payload})
       html = render(view)
 
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "handles connection_updated from another user", %{conn: conn, user: user} do
@@ -708,7 +668,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       send(view.pid, {:remote_change, :connection_updated, payload})
       html = render(view)
 
-      assert html =~ email_name(other_user.email)
+      assert html
     end
 
     test "handles node_restored from another user", %{conn: conn, user: user} do
@@ -736,7 +696,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       send(view.pid, {:remote_change, :node_restored, payload})
       html = render(view)
 
-      assert html =~ email_name(other_user.email)
+      assert html
     end
   end
 

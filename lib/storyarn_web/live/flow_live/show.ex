@@ -5,7 +5,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.RestorationHandlers
 
-  import StoryarnWeb.Components.CollaborationComponents
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
   alias Storyarn.Collaboration
@@ -184,12 +183,11 @@ defmodule StoryarnWeb.FlowLive.Show do
           />
         </div>
 
-        <%!-- Collaboration Toast --%>
-        <.collab_toast
-          :if={@collab_toast}
-          action={@collab_toast.action}
-          user_email={@collab_toast.user_email}
-          user_color={@collab_toast.user_color}
+        <%!-- Collaboration Toast (Vue) --%>
+        <.vue
+          v-component="modules/flows/components/CollabToast"
+          v-socket={@socket}
+          id="flow-collab-toast"
         />
       </div>
 
@@ -309,8 +307,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           |> assign(:debug_var_filter, "")
           |> assign(:debug_var_changed_only, false)
           |> assign(:debug_step_limit_reached, false)
-          |> assign(:collab_toast, nil)
-          |> assign(:versions_panel_open, false)
+                    |> assign(:versions_panel_open, false)
           |> assign(:history_data, nil)
           |> assign(:all_sheets, [])
           |> assign(:gallery_by_sheet, %{})
@@ -1468,8 +1465,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:collab_scope, {:flow, flow.id})
       |> assign(:online_users, online_users)
       |> assign(:node_locks, node_locks)
-      |> assign(:collab_toast, nil)
-      |> assign(:remote_cursors, %{})
+            |> assign(:remote_cursors, %{})
       |> assign(:panel_sections, %{})
       |> assign(:debug_state, nil)
       |> assign(:debug_panel_open, false)
@@ -1571,8 +1567,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info(:debug_auto_step, socket),
     do: DebugHandlers.handle_debug_auto_step(socket)
 
-  def handle_info(:clear_collab_toast, socket),
-    do: CollaborationEventHandlers.handle_clear_collab_toast(socket)
 
   def handle_info({Storyarn.Collaboration.Presence, {:join, _} = event}, socket),
     do: CollaborationEventHandlers.handle_presence_event(event, socket)

@@ -23,25 +23,12 @@ defmodule StoryarnWeb.AssetLive.Index do
       can_edit={@can_edit}
     >
       <:top_bar_extra_right :if={@can_edit}>
-        <div class="flex items-center px-1.5 py-1 surface-panel">
-          <label class={[
-            "inline-flex items-center justify-center h-8 px-3 text-sm rounded-md hover:bg-accent transition-colors gap-1.5",
-            @uploading && "btn-disabled"
-          ]}>
-            <.icon name="upload" class="size-4" />
-            <span class="hidden xl:inline">
-              {if @uploading,
-                do: dgettext("assets", "Uploading..."),
-                else: dgettext("assets", "Upload")}
-            </span>
-            <input
-              type="file"
-              accept="image/*,audio/*"
-              class="hidden"
-              id="asset-upload-input"
-            />
-          </label>
-        </div>
+        <.vue
+          v-component="components/AssetUploadButton"
+          v-socket={@socket}
+          id="asset-upload-button"
+          uploading={@uploading}
+        />
       </:top_bar_extra_right>
       <.vue
         v-component="assets/AssetIndex"

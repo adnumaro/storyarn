@@ -8,8 +8,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
 
   alias Storyarn.Collaboration
 
-  @collab_toast_duration 3000
-
   @doc """
   Sets up collaboration subscriptions for a flow.
   """
@@ -44,14 +42,11 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
   @spec show_collab_toast(Phoenix.LiveView.Socket.t(), atom(), map()) ::
           Phoenix.LiveView.Socket.t()
   def show_collab_toast(socket, action, payload) do
-    toast = %{
-      action: action,
-      user_email: payload[:user_email] || "Unknown",
-      user_color: payload[:user_color] || "#666"
-    }
-
-    Process.send_after(self(), :clear_collab_toast, @collab_toast_duration)
-    assign(socket, :collab_toast, toast)
+    push_event(socket, "collab_toast", %{
+      action: to_string(action),
+      userEmail: payload[:user_email] || "Unknown",
+      userColor: payload[:user_color] || "#666"
+    })
   end
 
   @doc """

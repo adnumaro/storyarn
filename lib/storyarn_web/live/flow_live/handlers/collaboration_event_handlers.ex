@@ -97,9 +97,4 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
     {:noreply, socket}
   end
 
-  @spec handle_clear_collab_toast(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
-  def handle_clear_collab_toast(socket) do
-    {:noreply, assign(socket, :collab_toast, nil)}
-  end
 end
