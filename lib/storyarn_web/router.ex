@@ -11,7 +11,7 @@ defmodule StoryarnWeb.Router do
                 "script-src 'self'#{@csp_dev_extras}; " <>
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com#{@csp_dev_extras}; " <>
                 "img-src 'self' data: blob: https:; " <>
-                "font-src 'self' data: https://fonts.gstatic.com; " <>
+                "font-src 'self' data: https://fonts.gstatic.com#{@csp_dev_extras}; " <>
                 "connect-src 'self' ws: wss: https://*.ingest.sentry.io https://*.ingest.us.sentry.io#{@csp_dev_extras}; " <>
                 "frame-src 'self'; " <>
                 "frame-ancestors 'self'; " <>
