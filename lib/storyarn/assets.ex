@@ -284,7 +284,7 @@ defmodule Storyarn.Assets do
   Uploads a file from a temporary path and creates the corresponding asset record.
 
   Used by LiveView's `consume_uploaded_entries/3` to process file uploads directly
-  from the parent LiveView (without going through the AssetUpload LiveComponent).
+  from the parent LiveView.
 
   Returns `{:ok, asset}` on success or `{:error, reason}` on failure.
   """

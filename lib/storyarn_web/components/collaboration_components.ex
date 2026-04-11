@@ -3,91 +3,12 @@ defmodule StoryarnWeb.Components.CollaborationComponents do
   Components for real-time collaboration features in the Flow Editor.
 
   Includes:
-  - Online users display (avatars with colored rings)
   - Collaboration toasts for remote change notifications
   """
   use Phoenix.Component
   use Gettext, backend: Storyarn.Gettext
 
-  import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
-
   alias Phoenix.LiveView.JS
-
-  @doc """
-  Renders the online users indicator showing avatars of users currently in the flow.
-
-  ## Examples
-
-      <.online_users users={@online_users} current_user_id={@current_scope.user.id} />
-  """
-  attr :users, :list, required: true, doc: "List of online user presence maps"
-
-  attr :current_user_id, :integer,
-    required: true,
-    doc: "Current user's ID to exclude from display"
-
-  def online_users(assigns) do
-    other_users = Enum.reject(assigns.users, &(&1.user_id == assigns.current_user_id))
-    assigns = assign(assigns, :other_users, other_users)
-
-    ~H"""
-    <div :if={@other_users != []} class="flex items-center gap-1">
-      <div class="flex -space-x-2">
-        <div
-          :for={user <- Enum.take(@other_users, 5)}
-          class="avatar placeholder group relative"
-          data-tip={user.display_name || user.email}
-        >
-          <div
-            class="size-8 rounded-full ring-2 bg-border text-foreground"
-            style={"ring-color: #{user.color};"}
-          >
-            <span class="text-xs">{get_initials(user)}</span>
-          </div>
-        </div>
-        <div
-          :if={length(@other_users) > 5}
-          class="avatar placeholder group relative"
-          data-tip={
-            ngettext(
-              "%{count} more user",
-              "%{count} more users",
-              length(@other_users) - 5,
-              count: length(@other_users) - 5
-            )
-          }
-        >
-          <div class="size-8 rounded-full bg-border text-foreground text-xs ring-2 ring-border">
-            +{length(@other_users) - 5}
-          </div>
-        </div>
-      </div>
-      <span class="text-xs text-muted-foreground ml-1">
-        {ngettext("%{count} collaborator", "%{count} collaborators", length(@other_users),
-          count: length(@other_users)
-        )}
-      </span>
-    </div>
-    """
-  end
-
-  defp get_initials(%{display_name: name}) when is_binary(name) and name != "" do
-    name
-    |> String.split(~r/\s+/)
-    |> Enum.take(2)
-    |> Enum.map_join(&String.first/1)
-    |> String.upcase()
-  end
-
-  defp get_initials(%{email: email}) when is_binary(email) do
-    email
-    |> String.split("@")
-    |> List.first()
-    |> String.slice(0, 2)
-    |> String.upcase()
-  end
-
-  defp get_initials(_), do: "?"
 
   @doc """
   Renders a toast notification for collaboration events.
@@ -160,27 +81,4 @@ defmodule StoryarnWeb.Components.CollaborationComponents do
 
   defp get_email_name(_), do: "Someone"
 
-  @doc """
-  Renders a lock indicator on a node.
-
-  ## Examples
-
-      <.node_lock_indicator lock={@node_lock} />
-  """
-  attr :lock, :map, default: nil, doc: "Lock info map with user_email and user_color"
-
-  def node_lock_indicator(assigns) do
-    ~H"""
-    <div
-      :if={@lock}
-      class="absolute -top-2 -right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs bg-background shadow-sm border border-border"
-      style={"border-color: #{@lock.user_color};"}
-    >
-      <.icon name="lock" class="size-3" style={"color: #{@lock.user_color};"} />
-      <span class="font-medium" style={"color: #{@lock.user_color};"}>
-        {get_email_name(@lock.user_email)}
-      </span>
-    </div>
-    """
-  end
 end

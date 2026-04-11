@@ -78,47 +78,6 @@ defmodule Storyarn.Collaboration do
   end
 
   # =============================================================================
-  # Project-level Presence
-  # =============================================================================
-
-  @doc """
-  Tracks a user's presence at the project level.
-  Used to show "User A is editing Sheet 3" in the project sidebar.
-  """
-  def track_project_presence(pid, project_id, user, meta \\ %{}) do
-    topic = project_presence_topic(project_id)
-    Presence.track_user(pid, topic, user, meta)
-  end
-
-  @doc """
-  Updates a user's project-level presence metadata.
-  Call when the user navigates to a different entity within the same editor.
-  """
-  def update_project_presence(project_id, user_id, meta_update) do
-    topic = project_presence_topic(project_id)
-
-    Presence.update(self(), topic, user_id, fn metas ->
-      Map.merge(metas, meta_update)
-    end)
-  end
-
-  @doc """
-  Subscribes to project-level presence updates.
-  """
-  def subscribe_project_presence(project_id) do
-    topic = project_presence_topic(project_id)
-    PubSub.subscribe(Storyarn.PubSub, "proxy:#{topic}")
-  end
-
-  @doc """
-  Returns a list of users currently in a project.
-  """
-  def list_project_users(project_id) do
-    topic = project_presence_topic(project_id)
-    Presence.list_users(topic)
-  end
-
-  # =============================================================================
   # Cursors
   # =============================================================================
 
@@ -285,11 +244,6 @@ defmodule Storyarn.Collaboration do
 
   @doc false
   def cursors_topic({type, id}), do: "#{type}:#{id}:cursors"
-
-  @doc """
-  Returns the topic for project-level presence.
-  """
-  def project_presence_topic(project_id), do: "project:#{project_id}:presence"
 
   # =============================================================================
   # Project Restoration

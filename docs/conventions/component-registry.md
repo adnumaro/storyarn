@@ -73,11 +73,9 @@ Submodules: `TextBlocks`, `SelectBlocks`, `LayoutBlocks`, `BooleanBlocks`, `Refe
 import StoryarnWeb.Components.CollaborationComponents
 ```
 
-| Component                | Purpose                                                                           |
-| ------------------------ | --------------------------------------------------------------------------------- |
-| `<.online_users>`        | Online user avatars. Attrs: `users`, `current_user_id`                            |
-| `<.collab_toast>`        | Collaboration event toast. Attrs: `action`, `user_email`, `user_color`, `details` |
-| `<.node_lock_indicator>` | Lock indicator on nodes. Attrs: `lock` (map)                                      |
+| Component         | Purpose                                                                           |
+| ----------------- | --------------------------------------------------------------------------------- |
+| `<.collab_toast>` | Collaboration event toast. Attrs: `action`, `user_email`, `user_color`, `details` |
 
 ### SaveIndicator
 
