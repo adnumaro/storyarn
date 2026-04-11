@@ -1,0 +1,87 @@
+docs/audit/migration-flow-live-show.md
+  9f017135ba34bb9b 1-41
+lib/storyarn_web/live/shared/collaboration_helpers.ex
+  9f017135ba34bb9b 160-162
+docs/audit/collab-lock-genserver-single-point-of-failure.md
+  9f017135ba34bb9b 1-68
+docs/audit/export-import-node-data-ids-not-remapped.md
+  9f017135ba34bb9b 1-98
+docs/audit/migration-asset-live-index.md
+  9f017135ba34bb9b 1-43
+lib/storyarn/collaboration/locks.ex
+  9f017135ba34bb9b 130
+test/storyarn/exports/serializers/yarn_test.exs
+  9f017135ba34bb9b 1055-1112
+lib/storyarn/imports/parsers/storyarn_json.ex
+  9f017135ba34bb9b 197-199,203-204,1187-1211
+lib/storyarn/scenes.ex
+  9f017135ba34bb9b 628-633
+docs/audit/collab-flow-lock-not-released-on-patch.md
+  9f017135ba34bb9b 1-55
+lib/storyarn_web/live/scene_live/exploration_live.ex
+  9f017135ba34bb9b 673-683,716,720,732-740,773,777
+lib/storyarn/scenes/scene_crud.ex
+  9f017135ba34bb9b 954-977
+docs/audit/migration-scene-live-show.md
+  9f017135ba34bb9b 1-88
+docs/audit/collab-lock-ets-race-condition.md
+  9f017135ba34bb9b 1-48
+docs/audit/migration-docs-live-show.md
+  9f017135ba34bb9b 1-55
+docs/audit/migration-summary.md
+  9f017135ba34bb9b 1-172
+docs/audit/engine-flow-jump-unhandled-in-player-init.md
+  9f017135ba34bb9b 1-57
+docs/audit/migration-flow-live-player-live.md
+  9f017135ba34bb9b 1-53
+docs/audit/collab-sheet-no-change-broadcast-on-block-edit.md
+  9f017135ba34bb9b 1-54
+lib/storyarn/exports/serializers/yarn.ex
+  9f017135ba34bb9b 393-395
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "a901648e8ea42697bb9fb77c5ac2a1784e60b15c",
+  "prompts": {
+    "4a17336e40c15eda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e2b34f-aad4-4a3a-9d19-0cf8845fe0de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "9f017135ba34bb9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78f3f27b-e90b-4cd0-9420-fe6ad297bfba",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 161,
+      "total_deletions": 326,
+      "accepted_lines": 2318,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 152,
+      "overriden_lines": 0
+    }
+  }
+}
