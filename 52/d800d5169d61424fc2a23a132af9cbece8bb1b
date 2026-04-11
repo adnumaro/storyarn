@@ -1,0 +1,87 @@
+test/storyarn_web/live/flow_live/nodes/condition_node_test.exs
+  9f017135ba34bb9b 95-102,110-112,166-171,188-190
+test/storyarn/flows/evaluator/condition_eval_test.exs
+  9f017135ba34bb9b 31-36,48-49,52-53,106,108-119
+test/storyarn/exports/serializers/godot_dialogic_test.exs
+  9f017135ba34bb9b 314,316-325,857,859-869,1001,1003-1012,1339,1341-1351
+test/storyarn/flows/variable_reference_tracker_test.exs
+  9f017135ba34bb9b 222,224-235,260,262-280,305,307-318,500,502-513,595,597-608,690,692-703,831,833-844,861,1089,1091-1109,1125,1473,1475-1486,1923,1925-1936,1950,2027,2029-2039
+lib/storyarn/flows/condition.ex
+  9f017135ba34bb9b 8,23,109,111,124-125,168
+assets/app/components/builders/ConditionBuilder.vue
+  9f017135ba34bb9b 37-38
+lib/storyarn/flows/evaluator/node_evaluators/condition_node_evaluator.ex
+  9f017135ba34bb9b 105-110
+lib/storyarn/exports/expression_transpiler/helpers.ex
+  9f017135ba34bb9b 120,122-123,131,140,151,153,157,168
+test/storyarn/exports/expression_transpiler/helpers_test.exs
+  9f017135ba34bb9b 168-170,180-182,185,187,190-191,194-195,237-239
+lib/storyarn/flows.ex
+  9f017135ba34bb9b 850
+test/storyarn/exports/expression_transpiler/condition_test.exs
+  9f017135ba34bb9b 21-26,377-379,392-394,407-409,544-557,562-565
+test/storyarn/flows/evaluator/engine_test.exs
+  9f017135ba34bb9b 393,395-406,449,451-462,718,720-731,787,1358,1360-1371,1889,1891-1902,1969,1971-1982
+test/storyarn/flows/evaluator/condition_node_evaluator_test.exs
+  9f017135ba34bb9b 63,65-76,102,104-115,141,143-154,181,183-194
+lib/storyarn/exports/expression_transpiler/base.ex
+  9f017135ba34bb9b 51-53
+test/storyarn_web/live/sheet_live/variable_usage_test.exs
+  9f017135ba34bb9b 598,600-611
+test/storyarn/exports/serializers/yarn_test.exs
+  9f017135ba34bb9b 368,370-380,769,771-780,1021,1023-1033,1210,1212-1222
+test/storyarn/exports/serializers/articy_xml_test.exs
+  9f017135ba34bb9b 293,295-305,513,515-525
+test/storyarn/flows/condition_test.exs
+  9f017135ba34bb9b 34,37,46-47,50-51,110-112,274,277
+test/storyarn/exports/expression_transpiler/base_test.exs
+  9f017135ba34bb9b 59-64,100-101,113,122,128,131,137,515-517,524-526
+lib/storyarn/flows/variable_reference_tracker.ex
+  9f017135ba34bb9b 452
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "52d800d5169d61424fc2a23a132af9cbece8bb1b",
+  "prompts": {
+    "4a17336e40c15eda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e2b34f-aad4-4a3a-9d19-0cf8845fe0de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "9f017135ba34bb9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78f3f27b-e90b-4cd0-9420-fe6ad297bfba",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 46,
+      "total_deletions": 189,
+      "accepted_lines": 3346,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 152,
+      "overriden_lines": 0
+    }
+  }
+}
