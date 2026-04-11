@@ -3,6 +3,7 @@
 ## Severity: medium
 
 ## Files:
+
 - `lib/storyarn/collaboration/locks.ex` (lines 1-343)
 
 ## Description

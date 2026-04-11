@@ -2,12 +2,7 @@
 import { ArrowLeft, ArrowRight, Info, X } from "lucide-vue-next";
 import { watch } from "vue";
 import { Button } from "@components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
 import { useLive } from "@composables/useLive";
 
 interface CurrentNode {
@@ -80,9 +75,7 @@ function closePreview(): void {
               <DialogTitle class="text-base">
                 {{ currentNode.speaker || "Narrator" }}
               </DialogTitle>
-              <p class="text-xs text-muted-foreground">
-                Node {{ currentNode.id }}
-              </p>
+              <p class="text-xs text-muted-foreground">Node {{ currentNode.id }}</p>
             </div>
           </div>
         </DialogHeader>
@@ -142,9 +135,7 @@ function closePreview(): void {
             Back
           </Button>
           <div v-else />
-          <Button variant="ghost" size="sm" @click="closePreview">
-            Close
-          </Button>
+          <Button variant="ghost" size="sm" @click="closePreview"> Close </Button>
         </div>
       </template>
 

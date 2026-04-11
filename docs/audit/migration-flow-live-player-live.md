@@ -1,6 +1,7 @@
 # Migration: FlowLive.PlayerLive
 
 ## Status: not-migrated
+
 ## Complexity: medium
 
 ## Files
@@ -25,6 +26,7 @@ This is the only fully V1 LiveView in the project. It renders a full-screen cine
 CSS classes are custom `player-*` classes (not DaisyUI), defined in a CSS file. Layout uses `layout: false` (no Phoenix layout wrapper).
 
 The LiveView handles:
+
 - Keyboard shortcuts (via `phx-window-keydown` presumably in JS)
 - Cross-flow navigation (jumping between subflows)
 - Scene backdrop transitions

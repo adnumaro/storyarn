@@ -114,7 +114,7 @@ function toggle(key: string): void {
     <Popover v-if="canEdit">
       <PopoverTrigger as-child>
         <button
-          class="flex flex-wrap gap-1 min-h-[36px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm items-center"
+          class="flex flex-wrap gap-1 min-h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm items-center"
         >
           <Badge
             v-for="opt in selectedOptions"
@@ -128,7 +128,7 @@ function toggle(key: string): void {
           }}</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" class="w-[var(--reka-popover-trigger-width)] p-1">
+      <PopoverContent align="start" class="w-(--reka-popover-trigger-width) p-1">
         <div class="max-h-48 overflow-y-auto">
           <button
             v-for="opt in options"

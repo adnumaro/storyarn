@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronRight, Lock, Table2 } from "lucide-vue-next";
+import { ChevronDown, ChevronRight, Table2 } from "lucide-vue-next";
 import { computed } from "vue";
 import { useBlockActions } from "../../../composables/useBlockActions";
 import type { Block } from "../../../types";

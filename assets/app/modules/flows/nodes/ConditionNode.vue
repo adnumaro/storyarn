@@ -195,7 +195,7 @@ function getOutputBadges(key: string): OutputBadge[] {
 
     <!-- Summary preview -->
     <div
-      class="text-[11px] text-muted-foreground px-3 py-2 max-w-[200px] border-b border-border/10 break-words"
+      class="text-[11px] text-muted-foreground px-3 py-2 max-w-50 border-b border-border/10 wrap-break-word"
     >
       <div class="line-clamp-4 leading-[1.4]">
         <span v-if="hasStaleRefs" class="inline-flex items-center gap-0.5 text-destructive mr-1">
@@ -233,7 +233,7 @@ function getOutputBadges(key: string): OutputBadge[] {
             !
           </div>
         </template>
-        <span class="px-2 max-w-[220px] break-words text-right" :title="getOutputLabel(key)">
+        <span class="px-2 max-w-55 wrap-break-word text-right" :title="getOutputLabel(key)">
           {{ getOutputLabel(key) }}
         </span>
         <Ref

@@ -1,8 +1,6 @@
 {
   "people": [],
-  "projects": [
-    "Storyarn"
-  ],
+  "projects": ["Storyarn"],
   "entities": {
     "Storyarn": "STY",
     "Workspace": "WSP",

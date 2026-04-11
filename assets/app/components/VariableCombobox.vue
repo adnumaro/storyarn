@@ -166,7 +166,7 @@ function autoSize(el: HTMLInputElement | null) {
 <style scoped>
 /* Placeholder style inside the sentence-slot button */
 .sentence-slot-placeholder {
-  color: color-mix(in oklch, var(--color-base-content, currentColor) 25%, transparent);
+  color: color-mix(in oklch, var(--color-foreground, currentColor) 25%, transparent);
   font-weight: 400;
   font-style: italic;
 }

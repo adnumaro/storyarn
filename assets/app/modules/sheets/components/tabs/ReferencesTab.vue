@@ -5,7 +5,6 @@ import {
   ArrowUpRight,
   BookOpen,
   ChevronDown,
-  ChevronRight,
   Circle,
   Database,
   Eye,

@@ -20,16 +20,15 @@
         "maxProps": 10
       }
     ],
-    "tailwindcss/no-unknown-classes": "error",
     "tailwindcss/no-duplicate-classes": "error",
     "tailwindcss/no-conflicting-classes": "error",
     "tailwindcss/no-deprecated-classes": "error",
     "tailwindcss/no-unnecessary-whitespace": "error",
-    "tailwindcss/enforce-sort-order": "warn",
-    "tailwindcss/enforce-shorthand": "warn",
-    "tailwindcss/no-hardcoded-colors": "warn"
+    "tailwindcss/enforce-sort-order": "error",
+    "tailwindcss/enforce-shorthand": "error",
+    "tailwindcss/no-hardcoded-colors": "error"
   },
-  "ignorePatterns": ["assets/app/components/ui/**"],
+  "ignorePatterns": ["assets/app/components/ui/**", "assets/app/components/ColorPickerPopover.vue"],
   "env": {
     "builtin": true
   }

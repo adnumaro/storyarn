@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { mount } from "@vue/test-utils";
-import InstructionBuilder from "./InstructionBuilder.vue";
-import type { Assignment } from "./types";
+import InstructionBuilder from "@components/builders/InstructionBuilder.vue";
+import type { Assignment } from "@components/builders/types";
 
 function makeAssignment(overrides: Partial<Assignment> = {}): Assignment {
   return {

@@ -6,11 +6,9 @@ import {
   NO_VALUE_OPERATORS,
   ALL_OPERATORS,
   OPERATORS_BY_TYPE,
-  TYPES_FOR_OPERATOR,
   OPERATOR_VERBS,
   OPERATOR_DROPDOWN_LABELS,
-} from "./instruction-operators";
-import type { InstructionOperator } from "./instruction-operators";
+} from "@modules/shared/operators/instruction-operators";
 
 describe("operatorsForType", () => {
   it("returns number operators", () => {

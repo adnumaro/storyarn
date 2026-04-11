@@ -2,10 +2,10 @@
  * Debug composable for the flow debugger visual feedback.
  *
  * Manages CSS classes on node elements to show debug state:
- * - `.debug-current`  -- pulsing highlight on the node being evaluated
- * - `.debug-visited`  -- subtle border on already-visited nodes
- * - `.debug-waiting`  -- amber pulse when waiting for user input
- * - `.debug-error`    -- red indicator when node caused an error
+ * - `.debug-current` -- pulsing highlight on the node being evaluated
+ * - `.debug-visited` -- subtle border on already-visited nodes
+ * - `.debug-waiting` -- amber pulse when waiting for user input
+ * - `.debug-error` -- red indicator when node caused an error
  *
  * Connection highlighting uses CSS custom properties on the connection
  * view wrapper div. These properties inherit through Shadow DOM boundaries

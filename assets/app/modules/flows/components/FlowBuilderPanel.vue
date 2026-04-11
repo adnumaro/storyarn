@@ -12,7 +12,6 @@ import { useLive } from "@composables/useLive";
 const {
   open = false,
   nodeType = null,
-  nodeId = null,
   condition = null,
   assignments = [],
   switchMode = false,
@@ -54,8 +53,7 @@ const icon = computed<Component | null>(() => {
 
 const hasContent = computed(() => {
   if (nodeType === "condition") {
-    const rules = condition?.rules || condition?.blocks || [];
-    return rules.length > 0;
+    return (condition?.blocks?.length ?? 0) > 0;
   }
   if (nodeType === "instruction") {
     return assignments.length > 0;

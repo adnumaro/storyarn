@@ -11,7 +11,6 @@ import {
   CommandList,
 } from "@components/ui/command/index.ts";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
-import { useLive } from "@composables/useLive";
 import { useServerSearch } from "@composables/useServerSearch";
 import { useBlockActions } from "../../composables/useBlockActions";
 import type { Block, ReferenceSearchResult } from "../../types";
@@ -184,7 +183,7 @@ watch(searchResults, () => {
       <PopoverTrigger as-child>
         <button
           type="button"
-          class="flex items-center gap-2 w-full min-h-[36px] rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent/30 transition-colors"
+          class="flex items-center gap-2 w-full min-h-9 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent/30 transition-colors"
         >
           <!-- Selected reference -->
           <template v-if="hasReference && referenceTarget">
@@ -212,11 +211,7 @@ watch(searchResults, () => {
           </template>
         </button>
       </PopoverTrigger>
-      <PopoverContent
-        class="w-[var(--reka-popover-trigger-width)] p-0"
-        align="start"
-        :side-offset="4"
-      >
+      <PopoverContent class="w-(--reka-popover-trigger-width) p-0" align="start" :side-offset="4">
         <Command :should-filter="false">
           <CommandInput
             placeholder="Search sheets & flows..."

@@ -67,7 +67,7 @@ function setTool(type: string): void {
             @click="setTool(shape.id)"
           >
             <component :is="shape.icon" class="size-4 mt-0.5 shrink-0" />
-            <div class="font-medium">{{ shape.title }}</div>
+            <span class="font-medium">{{ shape.title }}</span>
           </button>
         </div>
       </PopoverContent>

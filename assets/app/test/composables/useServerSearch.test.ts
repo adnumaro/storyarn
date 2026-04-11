@@ -1,5 +1,5 @@
-import { createMockLive, withSetup } from "../test/setup";
-import type { UseServerSearchReturn } from "./useServerSearch";
+import { createMockLive, withSetup } from "../setup";
+import type { UseServerSearchReturn } from "@composables/useServerSearch";
 
 const mockLive = createMockLive();
 
@@ -8,7 +8,7 @@ vi.mock("@composables/useLive", () => ({
 }));
 
 // Import after mock is set up
-const { useServerSearch } = await import("./useServerSearch");
+const { useServerSearch } = await import("@composables/useServerSearch");
 
 describe("useServerSearch", () => {
   let ss: UseServerSearchReturn;
@@ -85,7 +85,7 @@ describe("useServerSearch", () => {
       expect(ss.loading.value).toBe(true);
 
       // Simulate server callback
-      const callback = mockLive.pushEvent.mock.calls[0][2] as () => void;
+      const callback = vi.mocked(mockLive.pushEvent).mock.calls[0][2] as () => void;
       callback();
 
       expect(ss.loading.value).toBe(false);
@@ -118,9 +118,7 @@ describe("useServerSearch", () => {
     });
 
     it("respects custom debounce timing", () => {
-      const { result, app } = withSetup(() =>
-        useServerSearch({ debounceMs: 500 }),
-      );
+      const { result, app } = withSetup(() => useServerSearch({ debounceMs: 500 }));
 
       result.search("test");
       vi.advanceTimersByTime(300);

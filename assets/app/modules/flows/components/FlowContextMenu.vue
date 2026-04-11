@@ -112,7 +112,7 @@ function onKeydown(e: KeyboardEvent): void {
   if (e.key === "Escape") close();
 }
 
-function onClickOutside(e: PointerEvent): void {
+function onClickOutside(_e: PointerEvent): void {
   if (visible.value) close();
 }
 
@@ -133,7 +133,7 @@ onUnmounted(() => {
   <Teleport to="body">
     <div
       v-if="visible && canEdit"
-      class="fixed z-[9999] min-w-[180px] bg-background border border-border rounded-lg shadow-xl py-1 text-sm"
+      class="fixed z-9999 min-w-45 bg-background border border-border rounded-lg shadow-xl py-1 text-sm"
       :style="{ left: `${x}px`, top: `${y}px` }"
       @pointerdown.stop
     >
@@ -167,7 +167,7 @@ onUnmounted(() => {
           </button>
           <div
             v-if="submenu === 'add'"
-            class="absolute left-full top-0 min-w-[180px] bg-background border border-border rounded-lg shadow-xl py-1 -ml-1"
+            class="absolute left-full top-0 min-w-45 bg-background border border-border rounded-lg shadow-xl py-1 -ml-1"
           >
             <button
               v-for="nt in NODE_TYPES"

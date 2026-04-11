@@ -50,7 +50,7 @@ defineExpose({ onKeyDown });
 <template>
   <div
     v-if="items.length > 0"
-    class="bg-popover border border-border rounded-lg shadow-lg p-1 max-h-60 overflow-y-auto min-w-[200px] max-w-[300px]"
+    class="bg-popover border border-border rounded-lg shadow-lg p-1 max-h-60 overflow-y-auto min-w-50 max-w-75"
   >
     <button
       v-for="(item, index) in items"
@@ -61,7 +61,7 @@ defineExpose({ onKeyDown });
       @click="selectItem(index)"
     >
       <span
-        class="flex-shrink-0 size-5 rounded flex items-center justify-center text-xs"
+        class="shrink-0 size-5 rounded flex items-center justify-center text-xs"
         :class="
           item.type === 'sheet' ? 'bg-primary/20 text-primary' : 'bg-violet-500/20 text-violet-500'
         "

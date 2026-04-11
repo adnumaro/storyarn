@@ -43,13 +43,6 @@ const csrfToken = ref(
   document.querySelector("meta[name=csrf-token]")?.getAttribute("content") ?? "",
 );
 
-// Watch for triggerSubmit from server
-const checkTriggerSubmit = () => {
-  if (triggerSubmit && hiddenFormRef.value) {
-    hiddenFormRef.value.submit();
-  }
-};
-
 // Use a watcher effect
 import { watch } from "vue";
 

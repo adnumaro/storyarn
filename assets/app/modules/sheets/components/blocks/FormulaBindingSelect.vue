@@ -145,7 +145,7 @@ function onSearchInput(q: string): void {
         <span v-else class="sentence-slot-placeholder">Select source...</span>
       </button>
     </PopoverTrigger>
-    <PopoverContent class="w-[260px] p-0 z-50" align="start" :side-offset="4">
+    <PopoverContent class="w-65 p-0 z-50" align="start" :side-offset="4">
       <Command :should-filter="false">
         <CommandInput
           placeholder="Search variables..."
@@ -199,7 +199,7 @@ function onSearchInput(q: string): void {
 
 <style scoped>
 .sentence-slot-placeholder {
-  color: color-mix(in oklch, var(--color-base-content, currentColor) 25%, transparent);
+  color: color-mix(in oklch, var(--color-foreground, currentColor) 25%, transparent);
   font-weight: 400;
   font-style: italic;
 }

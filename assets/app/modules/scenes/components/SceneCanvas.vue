@@ -141,7 +141,6 @@ const {
   handleWheel,
   percentToPixel,
   pixelToPercent,
-  stagePointerToWorld,
 } = useKonvaStage({
   containerRef,
   sceneData: toRef(() => sceneData),
@@ -162,25 +161,19 @@ const { handleCreationClick } = useCanvasCreation({
   ...editRefs,
 });
 
-const {
-  isDrawing: isDrawingZone,
-  drawingOverlay,
-  handleZoneCreationClick,
-  onStageMouseMove,
-  onStageDblClick,
-} = useZoneDrawing({
-  stageRef,
-  stageConfig,
-  pixelToPercent,
-  percentToPixel,
-  activeTool: activeToolRef,
-  ...editRefs,
-});
+const { drawingOverlay, handleZoneCreationClick, onStageMouseMove, onStageDblClick } =
+  useZoneDrawing({
+    stageRef,
+    stageConfig,
+    pixelToPercent,
+    percentToPixel,
+    activeTool: activeToolRef,
+    ...editRefs,
+  });
 
 const {
   sourcePinId,
   hoveredPinId,
-  isDrawingConnection,
   handlePinClickForConnection,
   handleStageClickForConnection,
   onMouseMove: onConnectionMouseMove,
@@ -247,9 +240,7 @@ const { pinConfigs } = usePins({
 const {
   editingZoneId,
   editingVertices,
-  isEditing: isEditingVertices,
   startEditing: startVertexEditing,
-  stopEditing: stopVertexEditing,
   onVertexDragMove,
   onVertexDragEnd,
   onVertexClick,
@@ -310,7 +301,6 @@ const {
   editingWaypoints,
   isEditing: isEditingWaypoints,
   startEditing: startWaypointEditing,
-  stopEditing: stopWaypointEditing,
   onWaypointDragMove,
   onWaypointDragEnd,
   onWaypointClick,
@@ -379,7 +369,9 @@ function getAnnotationPosition(id: number | string): ElementRect | null {
 
 function getPinPosition(id: number | string): ElementRect | null {
   const pin = pinConfigs.value.find((p) => p.id === id);
-  return pin ? { x: pin.x - pin.radius, y: pin.y - pin.radius, width: pin.diameter, height: pin.diameter } : null;
+  return pin
+    ? { x: pin.x - pin.radius, y: pin.y - pin.radius, width: pin.diameter, height: pin.diameter }
+    : null;
 }
 
 function getZonePosition(id: number | string): ElementRect | null {

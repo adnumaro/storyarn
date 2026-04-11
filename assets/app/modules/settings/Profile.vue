@@ -21,11 +21,7 @@ interface EmailFormValues {
   email: string;
 }
 
-const {
-  profileForm: profileFormProp,
-  emailForm: emailFormProp,
-  currentEmail,
-} = defineProps<{
+const { profileForm: profileFormProp, emailForm: emailFormProp } = defineProps<{
   profileForm: Form<ProfileFormValues>;
   emailForm: Form<EmailFormValues>;
   currentEmail: string;
@@ -84,7 +80,9 @@ function updateLocale(val: string): void {
           <Label for="profile-locale">{{ $t("settings.profile.language") }}</Label>
           <Select
             :model-value="locale.inputAttrs.value.value || ''"
-            @update:model-value="(v: string | string[]) => updateLocale(Array.isArray(v) ? v[0] : v)"
+            @update:model-value="
+              (v: string | string[]) => updateLocale(Array.isArray(v) ? v[0] : v)
+            "
           >
             <SelectTrigger id="profile-locale" class="w-full">
               <SelectValue :placeholder="$t('settings.profile.auto_detect')" />

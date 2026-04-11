@@ -1,5 +1,5 @@
-import { withSetup } from "../test/setup";
-import { useKeyboard, type KeyboardBindings } from "./useKeyboard";
+import { withSetup } from "../setup";
+import { useKeyboard, type KeyboardBindings } from "@composables/useKeyboard";
 
 function fireKey(
   target: EventTarget,
@@ -135,9 +135,7 @@ describe("useKeyboard", () => {
       Object.defineProperty(div, "isContentEditable", { value: true });
       document.body.appendChild(div);
 
-      div.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Delete", bubbles: true }),
-      );
+      div.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true }));
 
       expect(handler).not.toHaveBeenCalled();
       document.body.removeChild(div);
@@ -166,9 +164,7 @@ describe("useKeyboard", () => {
 
     it("does not call preventDefault when prevent is false", () => {
       const handler = vi.fn();
-      const { app } = withSetup(() =>
-        useKeyboard({ escape: handler }, { prevent: false }),
-      );
+      const { app } = withSetup(() => useKeyboard({ escape: handler }, { prevent: false }));
 
       const event = new KeyboardEvent("keydown", {
         key: "Escape",
@@ -189,9 +185,7 @@ describe("useKeyboard", () => {
       const handler = vi.fn();
       const customTarget = new EventTarget();
 
-      const { app } = withSetup(() =>
-        useKeyboard({ escape: handler }, { target: customTarget }),
-      );
+      const { app } = withSetup(() => useKeyboard({ escape: handler }, { target: customTarget }));
 
       fireKey(document, "Escape");
       expect(handler).not.toHaveBeenCalled();

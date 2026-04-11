@@ -4,16 +4,7 @@
  * Tabs: Console, Variables, History.
  */
 
-import {
-  Bug,
-  ChevronDown,
-  Pause,
-  Play,
-  RotateCcw,
-  SkipForward,
-  Square,
-  StepBack,
-} from "lucide-vue-next";
+import { Bug, Pause, Play, RotateCcw, SkipForward, Square, StepBack } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Button } from "@components/ui/button/index.ts";
@@ -80,14 +71,12 @@ const varFilter = ref(controls.varFilter);
 
 const status = computed(() => state?.status || "idle");
 const stepCount = computed(() => state?.execution_path?.length || 0);
-const currentNodeId = computed(() => state?.current_node_id);
 const variables = computed(() => state?.variables || {});
 const executionPath = computed(() => state?.execution_path || []);
 const pendingChoices = computed(() => state?.pending_choices || []);
 
 const filteredVariables = computed(() => {
-  const vars = Object.entries(variables.value);
-  let filtered = vars;
+  let filtered = Object.entries(variables.value);
   if (varFilter.value) {
     const q = varFilter.value.toLowerCase();
     filtered = filtered.filter(([key]) => key.toLowerCase().includes(q));
@@ -192,7 +181,7 @@ function switchTab(tab: string | number): void {
       />
 
       <!-- Flow name -->
-      <span class="ml-auto text-xs text-muted-foreground truncate max-w-[150px]">
+      <span class="ml-auto text-xs text-muted-foreground truncate max-w-37.5">
         {{ controls.flowName }}
       </span>
     </div>
@@ -253,7 +242,7 @@ function switchTab(tab: string | number): void {
             :class="val.changed ? 'bg-amber-500/10' : ''"
           >
             <span class="font-mono truncate">{{ key }}</span>
-            <span class="text-muted-foreground ml-2 truncate max-w-[150px]">{{
+            <span class="text-muted-foreground ml-2 truncate max-w-37.5">{{
               val.value ?? "nil"
             }}</span>
           </div>

@@ -680,7 +680,10 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
 
   // --- Hub map ---
 
-  function buildHubMap(): Record<string, { color_hex: string | null; label: string; jumpCount: number }> {
+  function buildHubMap(): Record<
+    string,
+    { color_hex: string | null; label: string; jumpCount: number }
+  > {
     const map: Record<string, { color_hex: string | null; label: string; jumpCount: number }> = {};
     for (const [, node] of _nodeMap) {
       if (node.nodeType === "hub" && node.nodeData?.hub_id) {
@@ -694,7 +697,9 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     return map;
   }
 
-  function countHubJumps(map: Record<string, { color_hex: string | null; label: string; jumpCount: number }>): void {
+  function countHubJumps(
+    map: Record<string, { color_hex: string | null; label: string; jumpCount: number }>,
+  ): void {
     for (const [, node] of _nodeMap) {
       if (node.nodeType === "jump" && node.nodeData?.target_hub_id) {
         const entry = map[node.nodeData.target_hub_id as string];
@@ -741,8 +746,7 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     if (hookProxy.isLoadingFromServer) {
       return;
     }
-    const ctxData = (context as { data: { id: string; position: { x: number; y: number } } })
-      .data;
+    const ctxData = (context as { data: { id: string; position: { x: number; y: number } } }).data;
     const node = _editor!.getNode(ctxData.id);
     if (node?.nodeId) {
       _editorHandlers!.throttleNodeMoved(node.nodeId, ctxData.position);

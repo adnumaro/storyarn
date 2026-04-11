@@ -218,7 +218,7 @@ function onSpeakerSelect(id: number | string | null) {
         v-if="overrideAvatarUrl"
         :src="overrideAvatarUrl"
         alt=""
-        class="block w-[calc(100%-24px)] max-h-[200px] object-contain rounded-lg mx-3 mt-3"
+        class="block w-[calc(100%-24px)] max-h-50 object-contain rounded-lg mx-3 mt-3"
       />
       <div
         v-else-if="defaultAvatarUrl"
@@ -266,15 +266,18 @@ function onSpeakerSelect(id: number | string | null) {
 
     <!-- VIEW MODE BODY -->
     <div v-else-if="hasTextContent" class="px-3.5 pt-2.5 pb-3">
-      <div v-if="stageDirections" class="italic text-muted-foreground/55 text-xs mb-1 break-words">
+      <div
+        v-if="stageDirections"
+        class="italic text-muted-foreground/55 text-xs mb-1 wrap-break-word"
+      >
         {{ stageDirections }}
       </div>
-      <div v-if="menuText" class="text-xs text-primary/70 font-medium mb-1 break-words">
+      <div v-if="menuText" class="text-xs text-primary/70 font-medium mb-1 wrap-break-word">
         ≡ {{ menuText }}
       </div>
       <div
         v-if="preview"
-        class="text-sm text-foreground/85 leading-relaxed break-words whitespace-pre-wrap"
+        class="text-sm text-foreground/85 leading-relaxed wrap-break-word whitespace-pre-wrap"
       >
         {{ preview }}
       </div>
@@ -318,7 +321,7 @@ function onSpeakerSelect(id: number | string | null) {
           />
         </template>
         <!-- Response label -->
-        <span class="px-2 max-w-[220px] break-words text-right" :title="formatOutputLabel(key)">
+        <span class="px-2 max-w-55 wrap-break-word text-right" :title="formatOutputLabel(key)">
           {{ formatOutputLabel(key) }}
         </span>
         <Ref

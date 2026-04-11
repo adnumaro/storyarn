@@ -109,7 +109,7 @@ function formatTimeAgo(datetime: string | null) {
         >
           <div class="flex items-center gap-3 min-w-0">
             <div
-              class="flex-shrink-0 size-10 rounded-lg bg-muted-foreground/10 flex items-center justify-center text-sm font-medium"
+              class="shrink-0 size-10 rounded-lg bg-muted-foreground/10 flex items-center justify-center text-sm font-medium"
             >
               {{ sheet.name?.charAt(0)?.toUpperCase() || "?" }}
             </div>
@@ -121,7 +121,7 @@ function formatTimeAgo(datetime: string | null) {
             </div>
           </div>
 
-          <div v-if="canManage" class="flex items-center gap-2 flex-shrink-0">
+          <div v-if="canManage" class="flex items-center gap-2 shrink-0">
             <Button variant="ghost" size="sm" @click="restoreSheet(sheet.id)">
               <Undo2 class="size-4 mr-1" />
               Restore

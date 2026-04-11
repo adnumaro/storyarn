@@ -96,7 +96,11 @@ function validateExport() {
 }
 
 function validationStatusLabel(status: string) {
-  const labels: Record<string, string> = { passed: "Passed", warnings: "Warnings", errors: "Errors" };
+  const labels: Record<string, string> = {
+    passed: "Passed",
+    warnings: "Warnings",
+    errors: "Errors",
+  };
   return labels[status] || status;
 }
 

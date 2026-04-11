@@ -158,11 +158,7 @@ function updateAvatarNotes(id: number | string, value: string): void {
       />
 
       <!-- Title + Shortcut -->
-      <SheetMetadata
-        :sheet="sheet"
-        :can-edit="canEdit"
-        :source-shortcut="sourceShortcut"
-      />
+      <SheetMetadata :sheet="sheet" :can-edit="canEdit" :source-shortcut="sourceShortcut" />
     </div>
 
     <!-- Avatar Gallery Dialog -->

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, type Component } from "vue"
+import { computed, type Component } from "vue";
 import {
   AlertCircle,
   AlertTriangle,
@@ -57,7 +57,7 @@ import {
   Variable,
   X,
   XCircle,
-} from "lucide-vue-next"
+} from "lucide-vue-next";
 
 const iconMap: Record<string, Component> = {
   "alert-circle": AlertCircle,
@@ -116,14 +116,14 @@ const iconMap: Record<string, Component> = {
   variable: Variable,
   x: X,
   "x-circle": XCircle,
-}
+};
 
 const { name, iconClass = "size-4" } = defineProps<{
-  name: string
-  iconClass?: string
-}>()
+  name: string;
+  iconClass?: string;
+}>();
 
-const iconComponent = computed(() => iconMap[name] ?? null)
+const iconComponent = computed(() => iconMap[name] ?? null);
 </script>
 
 <template>

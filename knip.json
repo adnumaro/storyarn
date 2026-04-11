@@ -1,0 +1,23 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["assets/**/*.{vue,ts,js,mjs}"],
+  "project": ["assets/**/*.{vue,ts,js,mjs}"],
+  "ignoreDependencies": [
+    "shadcn-vue",
+    "phoenix_vite",
+    "@codemirror/autocomplete",
+    "@codemirror/commands",
+    "@codemirror/language",
+    "@codemirror/lint",
+    "@codemirror/state",
+    "@codemirror/view",
+    "tw-animate-css",
+    "modern-screenshot",
+    "flag-icons",
+    "rete-context-menu-plugin",
+    "@lezer/lr"
+  ],
+  "tags": [
+    "-lintignore"
+  ]
+}

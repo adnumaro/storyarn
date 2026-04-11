@@ -120,7 +120,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="absolute inset-0 pointer-events-none z-[100]">
+  <div class="absolute inset-0 pointer-events-none z-100">
     <div
       v-for="[userId, cursor] in cursors"
       :key="userId"

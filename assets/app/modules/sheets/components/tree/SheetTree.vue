@@ -187,9 +187,7 @@ interface DndDropEvent {
   };
   dropZone?: { items?: SheetTreeNodeData[] };
   helpers: {
-    suggestSort: (
-      dir: string,
-    ) => {
+    suggestSort: (dir: string) => {
       sourceItems: SheetTreeNodeData[];
       targetItems?: SheetTreeNodeData[];
       sameList?: boolean;
@@ -209,7 +207,11 @@ function getPointerZone(e: DndDropEvent): "before" | "nest" | "after" | null {
   return "nest";
 }
 
-function handleNestDrop(e: DndDropEvent, draggedNode: SheetTreeNodeData, hoveredNode: SheetTreeNodeData): void {
+function handleNestDrop(
+  e: DndDropEvent,
+  draggedNode: SheetTreeNodeData,
+  hoveredNode: SheetTreeNodeData,
+): void {
   if (isDescendantOf(localTree.value, draggedNode.id, hoveredNode.id)) return;
 
   const targetNode = findNodeById(localTree.value, hoveredNode.id);
@@ -217,7 +219,10 @@ function handleNestDrop(e: DndDropEvent, draggedNode: SheetTreeNodeData, hovered
 
   const srcArr = e.draggedItems[0]?.items;
   if (srcArr) {
-    applyToTree(srcArr, srcArr.filter((n) => n.id !== draggedNode.id));
+    applyToTree(
+      srcArr,
+      srcArr.filter((n) => n.id !== draggedNode.id),
+    );
   }
 
   if (!targetNode.children) targetNode.children = [];

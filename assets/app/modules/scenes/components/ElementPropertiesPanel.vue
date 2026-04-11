@@ -59,7 +59,9 @@ function close() {
   <Sidebar side="right" :open="isOpen" @close="close">
     <template #header>
       <div class="flex items-center gap-2 px-3 py-2.5">
-        <span class="font-medium text-sm flex-1">{{ (selectedType && TITLES[selectedType]) || "Properties" }}</span>
+        <span class="font-medium text-sm flex-1">{{
+          (selectedType && TITLES[selectedType]) || "Properties"
+        }}</span>
         <button
           type="button"
           class="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"

@@ -35,7 +35,7 @@ export function locks(_handleEvent: unknown, currentUserId: number): LocksHandle
 
     isNodeLocked(nodeId: string | number): boolean {
       const lockInfo = nodeLocks[nodeId];
-      return !!(lockInfo && lockInfo.user_id !== currentUserId);
+      return lockInfo && lockInfo.user_id !== currentUserId;
     },
 
     getLocks(): Record<string | number, LockInfo> {

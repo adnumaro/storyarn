@@ -52,7 +52,7 @@ const labelWidth = computed<number>(() =>
       fill="none"
       stroke="transparent"
       stroke-width="20"
-      class="pointer-events-auto [&:hover+path]:!stroke-primary [&:hover+path]:!stroke-[3px]"
+      class="pointer-events-auto [&:hover+path]:stroke-primary! [&:hover+path]:stroke-[3px]!"
     />
     <!-- Visible line -->
     <path

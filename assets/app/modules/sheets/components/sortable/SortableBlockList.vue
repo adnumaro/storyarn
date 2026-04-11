@@ -289,7 +289,12 @@ function handleColumnGroupExtraction(
   hoveredItem: LayoutItem | undefined,
   hoveredPlacement: { bottom?: boolean } | undefined,
 ): boolean {
-  const nextItems = extractFromColumnGroup(localItems.value, draggedItem, hoveredItem, hoveredPlacement);
+  const nextItems = extractFromColumnGroup(
+    localItems.value,
+    draggedItem,
+    hoveredItem,
+    hoveredPlacement,
+  );
   if (!nextItems) return false;
   localItems.value = nextItems;
   pushColumnLayout(nextItems);
@@ -331,7 +336,11 @@ function handleDrop(e: IDragEvent): void {
   const side = dropSide(e, hoveredElement);
 
   if (isColumnGroupDrop(draggedItem, hoveredItem, side)) {
-    handleColumnGroupCreation(draggedItem as FullWidthLayoutItem, hoveredItem as FullWidthLayoutItem, side!);
+    handleColumnGroupCreation(
+      draggedItem as FullWidthLayoutItem,
+      hoveredItem as FullWidthLayoutItem,
+      side!,
+    );
     return;
   }
 

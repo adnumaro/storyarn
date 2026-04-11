@@ -2,7 +2,6 @@
 import { Type } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
 import { Input } from "@components/ui/input/index.ts";
-import { useLive } from "@composables/useLive";
 import { useBlockActions } from "../../../composables/useBlockActions";
 import type { Block } from "../../../types";
 import BlockLabel from "../../BlockLabel.vue";

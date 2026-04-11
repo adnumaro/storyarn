@@ -177,7 +177,7 @@ When viewing a draft:
 A screenplay draft can have its own `linked_flow_id`, independent of the original:
 
 | Scenario                  | Screenplay         | linked_flow_id            |
-|---------------------------|--------------------|---------------------------|
+| ------------------------- | ------------------ | ------------------------- |
 | Original with flow        | Scene 3 (original) | → Flow Scene 3 (original) |
 | Draft with same flow      | Scene 3 draft A    | → Flow Scene 3 (original) |
 | Draft with own flow draft | Scene 3 draft B    | → Flow Scene 3 draft X    |

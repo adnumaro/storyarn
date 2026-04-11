@@ -104,7 +104,7 @@ interface UseConnectionsOpts {
 
 /** Build label config at the midpoint of a pixel path, or null */
 function buildLabelConfig(conn: ConnectionData, pixelPath: PixelPoint[]): LabelConfig | null {
-  if (conn.showLabel === false || !conn.label) return null;
+  if (!conn.showLabel || !conn.label) return null;
   const mid = pathMidpointAndAngle(pixelPath);
   if (!mid) return null;
   return {
@@ -146,7 +146,7 @@ function buildConnectionConfig(
     opacity: isSelected ? 1 : DEFAULT_OPACITY,
     pointerLength: ARROW_POINTER_LENGTH,
     pointerWidth: ARROW_POINTER_WIDTH,
-    pointerAtBeginning: !!conn.bidirectional,
+    pointerAtBeginning: conn.bidirectional,
     pointerAtEnding: true,
     labelConfig: buildLabelConfig(conn, pixelPath),
     isSelected,
@@ -207,8 +207,8 @@ export function useConnections({
     const toPos = pinPositions.value[conn.toPinId];
     if (!fromPos || !toPos) return false;
 
-    const fromVis = pinVisible.value[conn.fromPinId] !== false;
-    const toVis = pinVisible.value[conn.toPinId] !== false;
+    const fromVis = pinVisible.value[conn.fromPinId];
+    const toVis = pinVisible.value[conn.toPinId];
     return fromVis || toVis;
   }
 
@@ -218,7 +218,11 @@ export function useConnections({
     return conn.waypoints || [];
   }
 
-  function buildPixelPath(conn: ConnectionData, fromPos: PixelPoint, toPos: PixelPoint): PixelPoint[] {
+  function buildPixelPath(
+    conn: ConnectionData,
+    fromPos: PixelPoint,
+    toPos: PixelPoint,
+  ): PixelPoint[] {
     const waypoints = resolveWaypoints(conn);
     const rawPath: PixelPoint[] = [fromPos];
     for (const wp of waypoints) {
@@ -251,7 +255,9 @@ export function useConnections({
       const points = flattenPath(pixelPath);
 
       const isSelected = selectedType?.value === "connection" && selectedId?.value === conn.id;
-      result.push(buildConnectionConfig(conn, points, pixelPath, isSelected, isSelectMode?.value ?? false));
+      result.push(
+        buildConnectionConfig(conn, points, pixelPath, isSelected, isSelectMode?.value ?? false),
+      );
     }
 
     return result;

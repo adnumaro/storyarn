@@ -6,11 +6,8 @@ import type { KonvaEventObject } from "konva/lib/Node";
 const PRESET_TOOLS = new Set(["rectangle", "triangle", "circle"]);
 const CLOSE_THRESHOLD_PX = 12;
 const VERTEX_RADIUS = 5;
-const _GHOST_FILL = "rgba(99,102,241,0.15)";
 const GHOST_STROKE = "#6366f1";
 const VERTEX_FILL = "#6366f1";
-const _PREVIEW_STROKE = "#6366f1";
-
 interface Vertex {
   x: number;
   y: number;
@@ -261,6 +258,5 @@ export function useZoneDrawing({
     handleZoneCreationClick,
     onStageMouseMove,
     onStageDblClick,
-    cancelFreeform,
   };
 }

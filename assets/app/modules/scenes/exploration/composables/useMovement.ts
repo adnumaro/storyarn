@@ -1,11 +1,5 @@
 import { onUnmounted, ref, watch, type ComputedRef, type Ref } from "vue";
-import type {
-  ExplorationPin,
-  ExplorationZone,
-  PartyPosition,
-  PixelPoint,
-  Vertex,
-} from "../types";
+import type { ExplorationPin, ExplorationZone, PartyPosition, PixelPoint, Vertex } from "../types";
 import type { Node as KonvaNode } from "konva/lib/Node";
 
 // --- Constants (matching V1 exactly) ---
@@ -366,6 +360,5 @@ export function useMovement({
     handleStageClick,
     getPositions,
     restorePositions,
-    isPointInWalkableArea,
   };
 }

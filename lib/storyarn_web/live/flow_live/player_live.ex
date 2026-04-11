@@ -10,10 +10,6 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   use StoryarnWeb, :live_view
 
   import StoryarnWeb.Layouts, only: [flash_group: 1]
-  import StoryarnWeb.FlowLive.Player.Components.PlayerSlide
-  import StoryarnWeb.FlowLive.Player.Components.PlayerChoices
-  import StoryarnWeb.FlowLive.Player.Components.PlayerToolbar
-  import StoryarnWeb.FlowLive.Player.Components.PlayerOutcome
 
   alias Storyarn.Flows
   alias Storyarn.Projects
@@ -32,44 +28,18 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   def render(assigns) do
     ~H"""
     <div id="story-player" class="player-layout">
-      <div class="player-main relative">
-        <%!-- Scene backdrop (dimmed map background) --%>
-        <div
-          :if={@scene_backdrop && @scene_backdrop.background_asset}
-          class="scene-backdrop scene-backdrop-transition"
-        >
-          <img
-            src={Storyarn.Assets.Asset.display_url(@scene_backdrop.background_asset)}
-            alt=""
-            class="scene-backdrop-img"
-            draggable="false"
-          />
-        </div>
-
-        <%!-- Flow content (on top) --%>
-        <div class="relative z-10 flex flex-col items-center justify-center flex-1 w-full">
-          <%= if @slide.type == :outcome do %>
-            <.player_outcome
-              slide={@slide}
-              workspace={@workspace}
-              project={@project}
-              flow={@flow}
-            />
-          <% else %>
-            <.player_slide slide={@slide} />
-            <.player_choices responses={@slide[:responses] || []} player_mode={@player_mode} />
-          <% end %>
-        </div>
-      </div>
-
-      <.player_toolbar
-        can_go_back={@can_go_back}
-        show_continue={show_continue?(@slide)}
-        player_mode={@player_mode}
-        is_finished={@engine_state.status == :finished}
-        workspace={@workspace}
-        project={@project}
-        flow={@flow}
+      <.vue
+        v-component="modules/flows/player/FlowPlayer"
+        v-socket={@socket}
+        id="flow-player"
+        slide={serialize_slide(@slide)}
+        player-mode={to_string(@player_mode)}
+        can-go-back={@can_go_back}
+        show-continue={show_continue?(@slide)}
+        is-finished={@engine_state.status == :finished}
+        scene-backdrop-url={scene_backdrop_url(@scene_backdrop)}
+        editor-url={editor_url(assigns)}
+        responses={serialize_responses(@slide)}
       />
 
       <.flash_group flash={@flash} />
@@ -496,4 +466,71 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   defp show_continue?(%{type: :dialogue}), do: false
   defp show_continue?(%{type: :slug_line}), do: true
   defp show_continue?(_), do: false
+
+  # ===========================================================================
+  # Vue serialization
+  # ===========================================================================
+
+  defp serialize_slide(slide) do
+    base = %{
+      type: to_string(slide.type)
+    }
+
+    case slide.type do
+      :dialogue ->
+        Map.merge(base, %{
+          speaker_name: slide[:speaker_name],
+          speaker_initials: slide[:speaker_initials] || "?",
+          speaker_avatar_url: slide[:speaker_avatar_url],
+          speaker_color: slide[:speaker_color],
+          text: slide[:text] || "",
+          stage_directions: slide[:stage_directions] || ""
+        })
+
+      :slug_line ->
+        Map.merge(base, %{
+          setting: slide[:setting] || "INT",
+          location_name: slide[:location_name] || "",
+          sub_location: slide[:sub_location] || "",
+          time_of_day: slide[:time_of_day] || "",
+          description: slide[:description] || ""
+        })
+
+      :outcome ->
+        Map.merge(base, %{
+          label: slide[:label] || "The End",
+          outcome_color: slide[:outcome_color],
+          outcome_tags: slide[:outcome_tags] || [],
+          step_count: slide[:step_count] || 0,
+          choices_made: slide[:choices_made] || 0,
+          variables_changed: slide[:variables_changed] || 0
+        })
+
+      _ ->
+        base
+    end
+  end
+
+  defp serialize_responses(slide) do
+    (slide[:responses] || [])
+    |> Enum.map(fn resp ->
+      %{
+        id: resp.id,
+        text: resp.text,
+        valid: resp.valid,
+        number: resp.number,
+        has_condition: resp.has_condition
+      }
+    end)
+  end
+
+  defp scene_backdrop_url(%{background_asset: asset}) when not is_nil(asset) do
+    Storyarn.Assets.Asset.display_url(asset)
+  end
+
+  defp scene_backdrop_url(_), do: nil
+
+  defp editor_url(assigns) do
+    ~p"/workspaces/#{assigns.workspace.slug}/projects/#{assigns.project.slug}/flows/#{assigns.flow.id}"
+  end
 end

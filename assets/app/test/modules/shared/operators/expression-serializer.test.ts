@@ -1,4 +1,7 @@
-import { serializeCondition, serializeAssignments } from "./expression-serializer";
+import {
+  serializeCondition,
+  serializeAssignments,
+} from "@modules/shared/operators/expression-serializer";
 
 describe("serializeCondition", () => {
   describe("null/empty handling", () => {
@@ -23,10 +26,12 @@ describe("serializeCondition", () => {
     it("serializes equals operator", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "char", variable: "name", operator: "equals", value: "Alice" }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "char", variable: "name", operator: "equals", value: "Alice" }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe('char.name == "Alice"');
     });
@@ -34,10 +39,12 @@ describe("serializeCondition", () => {
     it("serializes not_equals operator", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "char", variable: "hp", operator: "not_equals", value: 0 }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "char", variable: "hp", operator: "not_equals", value: 0 }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe("char.hp != 0");
     });
@@ -45,10 +52,12 @@ describe("serializeCondition", () => {
     it("serializes greater_than operator", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "char", variable: "hp", operator: "greater_than", value: 50 }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "char", variable: "hp", operator: "greater_than", value: 50 }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe("char.hp > 50");
     });
@@ -56,10 +65,12 @@ describe("serializeCondition", () => {
     it("serializes less_than operator", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "char", variable: "hp", operator: "less_than", value: 10 }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "char", variable: "hp", operator: "less_than", value: 10 }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe("char.hp < 10");
     });
@@ -67,10 +78,12 @@ describe("serializeCondition", () => {
     it("serializes greater_than_or_equal operator", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "s", variable: "v", operator: "greater_than_or_equal", value: 5 }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "s", variable: "v", operator: "greater_than_or_equal", value: 5 }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe("s.v >= 5");
     });
@@ -78,10 +91,12 @@ describe("serializeCondition", () => {
     it("serializes less_than_or_equal operator", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "s", variable: "v", operator: "less_than_or_equal", value: 100 }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "s", variable: "v", operator: "less_than_or_equal", value: 100 }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe("s.v <= 100");
     });
@@ -89,10 +104,12 @@ describe("serializeCondition", () => {
     it("serializes contains operator", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "s", variable: "v", operator: "contains", value: "hello" }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "s", variable: "v", operator: "contains", value: "hello" }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe('s.v contains "hello"');
     });
@@ -100,10 +117,12 @@ describe("serializeCondition", () => {
     it("serializes starts_with operator", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "s", variable: "v", operator: "starts_with", value: "pre" }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "s", variable: "v", operator: "starts_with", value: "pre" }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe('s.v starts_with "pre"');
     });
@@ -111,10 +130,12 @@ describe("serializeCondition", () => {
     it("serializes ends_with operator", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "s", variable: "v", operator: "ends_with", value: "suf" }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "s", variable: "v", operator: "ends_with", value: "suf" }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe('s.v ends_with "suf"');
     });
@@ -122,10 +143,12 @@ describe("serializeCondition", () => {
     it("serializes not_contains operator", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "s", variable: "v", operator: "not_contains", value: "bad" }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "s", variable: "v", operator: "not_contains", value: "bad" }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe('s.v not_contains "bad"');
     });
@@ -133,10 +156,12 @@ describe("serializeCondition", () => {
     it("serializes before operator (date)", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "s", variable: "v", operator: "before", value: "2024-01-01" }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "s", variable: "v", operator: "before", value: "2024-01-01" }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe('s.v < "2024-01-01"');
     });
@@ -144,10 +169,12 @@ describe("serializeCondition", () => {
     it("serializes after operator (date)", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "s", variable: "v", operator: "after", value: "2024-01-01" }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "s", variable: "v", operator: "after", value: "2024-01-01" }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe('s.v > "2024-01-01"');
     });
@@ -157,10 +184,12 @@ describe("serializeCondition", () => {
     it("serializes is_true as bare reference", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "char", variable: "alive", operator: "is_true" }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "char", variable: "alive", operator: "is_true" }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe("char.alive");
     });
@@ -168,10 +197,12 @@ describe("serializeCondition", () => {
     it("serializes is_false with negation prefix", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "char", variable: "dead", operator: "is_false" }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "char", variable: "dead", operator: "is_false" }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe("!char.dead");
     });
@@ -179,21 +210,25 @@ describe("serializeCondition", () => {
     it("serializes is_nil as equals nil", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "char", variable: "weapon", operator: "is_nil" }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "char", variable: "weapon", operator: "is_nil" }],
+          },
+        ],
       };
-      expect(serializeCondition(condition)).toBe('char.weapon == nil');
+      expect(serializeCondition(condition)).toBe("char.weapon == nil");
     });
 
     it("serializes is_empty as equals empty string", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "char", variable: "notes", operator: "is_empty" }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "char", variable: "notes", operator: "is_empty" }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe('char.notes == ""');
     });
@@ -203,10 +238,12 @@ describe("serializeCondition", () => {
     it("formats numeric values without quotes", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "s", variable: "v", operator: "equals", value: 42 }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "s", variable: "v", operator: "equals", value: 42 }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe("s.v == 42");
     });
@@ -214,10 +251,12 @@ describe("serializeCondition", () => {
     it("formats string-numeric values without quotes", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "s", variable: "v", operator: "equals", value: "42" }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "s", variable: "v", operator: "equals", value: "42" }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe("s.v == 42");
     });
@@ -225,10 +264,12 @@ describe("serializeCondition", () => {
     it("formats non-numeric strings with quotes", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "s", variable: "v", operator: "equals", value: "hello" }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "s", variable: "v", operator: "equals", value: "hello" }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe('s.v == "hello"');
     });
@@ -236,10 +277,12 @@ describe("serializeCondition", () => {
     it("formats null value as ?", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "s", variable: "v", operator: "equals", value: null }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "s", variable: "v", operator: "equals", value: null }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe("s.v == ?");
     });
@@ -247,10 +290,12 @@ describe("serializeCondition", () => {
     it("formats undefined value as ?", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "s", variable: "v", operator: "equals" }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "s", variable: "v", operator: "equals" }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe("s.v == ?");
     });
@@ -258,10 +303,12 @@ describe("serializeCondition", () => {
     it("escapes quotes in string values", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "s", variable: "v", operator: "equals", value: 'say "hi"' }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "s", variable: "v", operator: "equals", value: 'say "hi"' }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe('s.v == "say \\"hi\\""');
     });
@@ -269,10 +316,12 @@ describe("serializeCondition", () => {
     it("escapes backslashes in string values", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "s", variable: "v", operator: "equals", value: "path\\to" }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "s", variable: "v", operator: "equals", value: "path\\to" }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe('s.v == "path\\\\to"');
     });
@@ -282,13 +331,15 @@ describe("serializeCondition", () => {
     it("joins rules with && for 'all' logic", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [
-            { sheet: "s", variable: "a", operator: "equals", value: 1 },
-            { sheet: "s", variable: "b", operator: "equals", value: 2 },
-          ],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [
+              { sheet: "s", variable: "a", operator: "equals", value: 1 },
+              { sheet: "s", variable: "b", operator: "equals", value: 2 },
+            ],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe("(s.a == 1 && s.b == 2)");
     });
@@ -296,13 +347,15 @@ describe("serializeCondition", () => {
     it("joins rules with || for 'any' logic", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "any" as const,
-          rules: [
-            { sheet: "s", variable: "a", operator: "equals", value: 1 },
-            { sheet: "s", variable: "b", operator: "equals", value: 2 },
-          ],
-        }],
+        blocks: [
+          {
+            logic: "any" as const,
+            rules: [
+              { sheet: "s", variable: "a", operator: "equals", value: 1 },
+              { sheet: "s", variable: "b", operator: "equals", value: 2 },
+            ],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe("(s.a == 1 || s.b == 2)");
     });
@@ -341,8 +394,14 @@ describe("serializeCondition", () => {
             type: "group" as const,
             logic: "any" as const,
             blocks: [
-              { logic: "all" as const, rules: [{ sheet: "s", variable: "a", operator: "is_true" }] },
-              { logic: "all" as const, rules: [{ sheet: "s", variable: "b", operator: "is_true" }] },
+              {
+                logic: "all" as const,
+                rules: [{ sheet: "s", variable: "a", operator: "is_true" }],
+              },
+              {
+                logic: "all" as const,
+                rules: [{ sheet: "s", variable: "b", operator: "is_true" }],
+              },
             ],
           },
         ],
@@ -358,8 +417,14 @@ describe("serializeCondition", () => {
             type: "group" as const,
             logic: "all" as const,
             blocks: [
-              { logic: "all" as const, rules: [{ sheet: "s", variable: "x", operator: "equals", value: 1 }] },
-              { logic: "all" as const, rules: [{ sheet: "s", variable: "y", operator: "equals", value: 2 }] },
+              {
+                logic: "all" as const,
+                rules: [{ sheet: "s", variable: "x", operator: "equals", value: 1 }],
+              },
+              {
+                logic: "all" as const,
+                rules: [{ sheet: "s", variable: "y", operator: "equals", value: 2 }],
+              },
             ],
           },
         ],
@@ -375,7 +440,10 @@ describe("serializeCondition", () => {
             type: "group" as const,
             logic: "any" as const,
             blocks: [
-              { logic: "all" as const, rules: [{ sheet: "s", variable: "a", operator: "is_true" }] },
+              {
+                logic: "all" as const,
+                rules: [{ sheet: "s", variable: "a", operator: "is_true" }],
+              },
             ],
           },
         ],
@@ -388,13 +456,15 @@ describe("serializeCondition", () => {
     it("skips rules with empty sheet", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [
-            { sheet: "", variable: "v", operator: "equals", value: 1 },
-            { sheet: "s", variable: "v", operator: "equals", value: 2 },
-          ],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [
+              { sheet: "", variable: "v", operator: "equals", value: 1 },
+              { sheet: "s", variable: "v", operator: "equals", value: 2 },
+            ],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe("s.v == 2");
     });
@@ -402,13 +472,15 @@ describe("serializeCondition", () => {
     it("skips rules with empty variable", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [
-            { sheet: "s", variable: "", operator: "equals", value: 1 },
-            { sheet: "s", variable: "v", operator: "equals", value: 2 },
-          ],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [
+              { sheet: "s", variable: "", operator: "equals", value: 1 },
+              { sheet: "s", variable: "v", operator: "equals", value: 2 },
+            ],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe("s.v == 2");
     });
@@ -416,10 +488,12 @@ describe("serializeCondition", () => {
     it("returns empty string when all rules are incomplete", () => {
       const condition = {
         logic: "all" as const,
-        blocks: [{
-          logic: "all" as const,
-          rules: [{ sheet: "", variable: "", operator: "equals", value: 1 }],
-        }],
+        blocks: [
+          {
+            logic: "all" as const,
+            rules: [{ sheet: "", variable: "", operator: "equals", value: 1 }],
+          },
+        ],
       };
       expect(serializeCondition(condition)).toBe("");
     });

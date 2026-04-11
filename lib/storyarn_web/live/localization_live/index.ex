@@ -52,8 +52,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
         texts={serialize_texts(assigns)}
         progress={@progress}
         total-count={@total_count}
-        page={@page}
-        page-size={@page_size}
+        pagination={%{page: @page, pageSize: @page_size}}
         filter-status={@filter_status || ""}
         filter-source-type={@filter_source_type || ""}
         search={@search}

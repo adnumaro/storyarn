@@ -16,7 +16,7 @@ const borderColor = computed(() => `${color}40`);
 
 <template>
   <div
-    class="node relative bg-background rounded-xl min-w-[180px] border-[1.5px]"
+    class="node relative bg-background rounded-xl min-w-45 border-[1.5px]"
     :class="[selected && 'selected', extraClass]"
     :style="{ borderColor, '--node-border-color': borderColor, '--node-color': color }"
     data-testid="node"

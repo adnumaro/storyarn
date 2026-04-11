@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useLiveForm, type Form, type FormField } from "live_vue";
-import { computed, ref, watch } from "vue";
+import { computed, ref } from "vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";

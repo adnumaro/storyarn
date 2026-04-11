@@ -60,7 +60,7 @@ function getExitInfo(key: string): ExitLabel | null {
     <!-- Referenced flow name -->
     <div
       v-if="refFlowName"
-      class="text-[11px] text-muted-foreground px-3 py-2 max-w-[200px] border-b border-border/10 break-words"
+      class="text-[11px] text-muted-foreground px-3 py-2 max-w-50 border-b border-border/10 wrap-break-word"
     >
       <div class="line-clamp-4 leading-[1.4]">
         <span class="inline-flex items-center gap-1">
@@ -71,7 +71,7 @@ function getExitInfo(key: string): ExitLabel | null {
     </div>
     <div
       v-else-if="!hasRef"
-      class="text-[11px] text-muted-foreground px-3 py-2 max-w-[200px] border-b border-border/10 break-words"
+      class="text-[11px] text-muted-foreground px-3 py-2 max-w-50 border-b border-border/10 wrap-break-word"
     >
       <div class="line-clamp-4 leading-[1.4] opacity-50">No flow selected</div>
     </div>
@@ -97,7 +97,7 @@ function getExitInfo(key: string): ExitLabel | null {
         :key="'o-' + key"
         class="flex items-center py-1 text-[11px] text-muted-foreground justify-end"
       >
-        <span class="px-2 max-w-[220px] break-words text-right inline-flex items-center gap-1">
+        <span class="px-2 max-w-55 wrap-break-word text-right inline-flex items-center gap-1">
           <template v-if="getExitInfo(key)">
             <CornerDownLeft
               v-if="getExitInfo(key)!.exit_mode === 'caller_return'"

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ChevronDown, ChevronUp, Folder, RotateCcw, Trash2 } from "lucide-vue-next";
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Button } from "@components/ui/button/index.ts";
 import {

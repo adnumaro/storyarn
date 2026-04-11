@@ -174,7 +174,7 @@ const isNewProjectModalOpen = ref(false);
             <h3 class="text-lg font-semibold truncate group-hover:text-primary transition-colors">
               {{ projectData.project.name }}
             </h3>
-            <div class="mt-2 text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
+            <div class="mt-2 text-sm text-muted-foreground line-clamp-2 min-h-10">
               <template v-if="projectData.project.description">
                 {{ projectData.project.description }}
               </template>

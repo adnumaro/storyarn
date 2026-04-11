@@ -13,7 +13,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/
 
 const {
   options = [],
-  selectedValue = null,
   selectedLabel = null,
   placeholder = "Select...",
   disabled = false,
@@ -41,7 +40,7 @@ function select(value: string | number) {
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <button type="button" class="v2-toolbar-btn gap-1 text-xs max-w-[140px]" :disabled="disabled">
+      <button type="button" class="v2-toolbar-btn gap-1 text-xs max-w-35" :disabled="disabled">
         <span class="truncate" :class="displayLabel ? '' : 'opacity-50'">
           {{ displayLabel || placeholder }}
         </span>

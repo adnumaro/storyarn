@@ -243,72 +243,6 @@ export class NodeDataAction implements Action {
 }
 
 /**
- * Converts a Map<reteNodeId, {x, y}> to the server batch payload format.
- * Shared by AutoLayoutAction and performAutoLayout.
- */
-export function buildBatchPositions(
-  positionsMap: Map<string, Position>,
-): { id: number; position_x: number; position_y: number }[] {
-  const result: { id: number; position_x: number; position_y: number }[] = [];
-  for (const [reteNodeId, pos] of positionsMap) {
-    const serverId = reteNodeId.replace("node-", "");
-    const id = Number.parseInt(serverId, 10);
-    if (Number.isNaN(id)) {
-      continue;
-    }
-    result.push({ id, position_x: pos.x, position_y: pos.y });
-  }
-  return result;
-}
-
-/**
- * Undo/redo action for auto-layout.
- * Stores full position snapshots (before and after) for all nodes.
- * Both operations push batch_update_positions to persist.
- */
-class AutoLayoutAction implements Action {
-  hookProxy: HookProxy;
-  prevPositions: Map<string, Position>;
-  newPositions: Map<string, Position>;
-
-  constructor(
-    hookProxy: HookProxy,
-    prevPositions: Map<string, Position>,
-    newPositions: Map<string, Position>,
-  ) {
-    this.hookProxy = hookProxy;
-    this.prevPositions = prevPositions;
-    this.newPositions = newPositions;
-  }
-
-  async undo(): Promise<void> {
-    await this._applyPositions(this.prevPositions);
-  }
-
-  async redo(): Promise<void> {
-    await this._applyPositions(this.newPositions);
-  }
-
-  async _applyPositions(positions: Map<string, Position>): Promise<void> {
-    this.hookProxy.enterLoadingFromServer();
-    try {
-      for (const [reteNodeId, pos] of positions) {
-        const view = this.hookProxy.area.nodeViews.get(reteNodeId);
-        if (view) {
-          await this.hookProxy.area.translate(reteNodeId, pos);
-        }
-      }
-    } finally {
-      this.hookProxy.exitLoadingFromServer();
-    }
-
-    this.hookProxy.pushEvent("batch_update_positions", {
-      positions: buildBatchPositions(positions),
-    });
-  }
-}
-
-/**
  * Creates a custom history preset for the flow canvas.
  */
 export function historyPreset(hookProxy: HookProxy): {
@@ -410,5 +344,3 @@ export function historyPreset(hookProxy: HookProxy): {
     },
   };
 }
-
-export { AutoLayoutAction };

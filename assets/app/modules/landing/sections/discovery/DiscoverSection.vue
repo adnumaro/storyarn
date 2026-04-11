@@ -65,10 +65,10 @@ const features = computed(() => [
           >
             {{ $t(feature.titleKey) }}
           </h3>
-          <p class="mt-3 max-w-[34rem] leading-relaxed text-foreground/70">
+          <p class="mt-3 max-w-136 leading-relaxed text-foreground/70">
             {{ $t(feature.descKey) }}
           </p>
-          <ul class="mx-auto mt-4 grid max-w-[28rem] gap-2.5 text-start">
+          <ul class="mx-auto mt-4 grid max-w-md gap-2.5 text-start">
             <li
               v-for="(item, j) in $tm(feature.itemsKey)"
               :key="j"
@@ -193,9 +193,6 @@ const features = computed(() => [
   transform: translateX(-50%) translateY(20px);
   text-align: center;
   max-width: 600px;
-}
-.discover-text--center.is-active {
-  transform: translateX(-50%) translateY(0);
 }
 
 /* Tab indicators — bottom center */

@@ -3,26 +3,43 @@ import {
   CONDITION_OPERATORS_BY_TYPE,
   OPERATOR_LABELS,
   NO_VALUE_OPERATORS,
-} from "./condition-operators";
-import type { ConditionOperator, VariableType } from "./condition-operators";
+} from "@modules/shared/operators/condition-operators";
+import type {
+  ConditionOperator,
+  VariableType,
+} from "@modules/shared/operators/condition-operators";
 
 describe("operatorsForType", () => {
   it("returns text operators for type 'text'", () => {
     expect(operatorsForType("text")).toEqual([
-      "equals", "not_equals", "contains", "starts_with", "ends_with", "is_empty",
+      "equals",
+      "not_equals",
+      "contains",
+      "starts_with",
+      "ends_with",
+      "is_empty",
     ]);
   });
 
   it("returns rich_text operators (same as text)", () => {
     expect(operatorsForType("rich_text")).toEqual([
-      "equals", "not_equals", "contains", "starts_with", "ends_with", "is_empty",
+      "equals",
+      "not_equals",
+      "contains",
+      "starts_with",
+      "ends_with",
+      "is_empty",
     ]);
   });
 
   it("returns number operators", () => {
     expect(operatorsForType("number")).toEqual([
-      "equals", "not_equals", "greater_than", "greater_than_or_equal",
-      "less_than", "less_than_or_equal",
+      "equals",
+      "not_equals",
+      "greater_than",
+      "greater_than_or_equal",
+      "less_than",
+      "less_than_or_equal",
     ]);
   });
 
@@ -98,7 +115,14 @@ describe("NO_VALUE_OPERATORS", () => {
 
 describe("CONDITION_OPERATORS_BY_TYPE completeness", () => {
   const expectedTypes: VariableType[] = [
-    "text", "rich_text", "number", "boolean", "select", "multi_select", "date", "reference",
+    "text",
+    "rich_text",
+    "number",
+    "boolean",
+    "select",
+    "multi_select",
+    "date",
+    "reference",
   ];
 
   it("covers all variable types", () => {

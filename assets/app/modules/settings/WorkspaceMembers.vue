@@ -5,7 +5,6 @@ import { Badge } from "@components/ui/badge/index.ts";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
-import { Separator } from "@components/ui/separator/index.ts";
 import {
   Select,
   SelectContent,
@@ -175,7 +174,7 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
         >
           <div class="flex items-center gap-4">
             <div
-              class="size-10 rounded-full bg-primary/10 text-primary border border-primary/20 flex flex-shrink-0 items-center justify-center text-sm font-semibold tracking-wide shadow-sm"
+              class="size-10 rounded-full bg-primary/10 text-primary border border-primary/20 flex shrink-0 items-center justify-center text-sm font-semibold tracking-wide shadow-sm"
             >
               {{ memberInitials(member) }}
             </div>

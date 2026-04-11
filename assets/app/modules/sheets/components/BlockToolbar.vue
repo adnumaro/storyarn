@@ -16,7 +16,6 @@ const {
   isVariable = false,
   variableName = "",
   scope = "self",
-  required = false,
   showConstant = true,
   showScope = true,
   showConfig = true,

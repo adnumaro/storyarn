@@ -3,6 +3,7 @@
 ## Severity: high
 
 ## Files
+
 - `lib/storyarn_web/live/flow_live/player_live.ex` (lines 158-174: `init_and_step/4`)
 
 ## Description
@@ -30,6 +31,7 @@ end
 ```
 
 `PlayerEngine.step_until_interactive` spec shows the 4-tuple return:
+
 ```elixir
 @spec step_until_interactive(State.t(), map(), list(), keyword()) ::
         {:ok | :waiting_input | :finished | :error, State.t(), list()}

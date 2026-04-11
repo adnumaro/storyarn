@@ -230,9 +230,15 @@ function fadeOutVolume(video: HTMLVideoElement) {
     vol: 0,
     duration: 0.4,
     onUpdate: () => {
-      try { video.volume = volProxy.vol; } catch (_e) { /* muted or detached */ }
+      try {
+        video.volume = volProxy.vol;
+      } catch (_e) {
+        /* muted or detached */
+      }
     },
-    onComplete: () => { video.muted = true; },
+    onComplete: () => {
+      video.muted = true;
+    },
   });
 }
 
@@ -288,20 +294,38 @@ function buildCloseTimeline(
     },
   });
 
-  currentTimeline.to(video, {
-    top: targetRect.top, left: targetRect.left, width: targetRect.width, height: targetRect.height,
-    borderRadius: targetRadius, boxShadow: targetShadow, opacity: 0.7,
-    filter: "saturate(0.84) brightness(0.72) contrast(1.08)", duration: 0.72, ease: "power2.out",
-  }, 0);
+  currentTimeline.to(
+    video,
+    {
+      top: targetRect.top,
+      left: targetRect.left,
+      width: targetRect.width,
+      height: targetRect.height,
+      borderRadius: targetRadius,
+      boxShadow: targetShadow,
+      opacity: 0.7,
+      filter: "saturate(0.84) brightness(0.72) contrast(1.08)",
+      duration: 0.72,
+      ease: "power2.out",
+    },
+    0,
+  );
 
   if (topbar) {
     currentTimeline.to(topbar, { opacity: 1, y: 0, duration: 0.72, ease: "power2.out" }, 0);
   }
 
-  currentTimeline.to(maskProxy, {
-    solid: 5, fade: 55, duration: 0.58, ease: "power2.out",
-    onUpdate: () => setVideoMask(video, maskProxy.solid, maskProxy.fade),
-  }, 0.08);
+  currentTimeline.to(
+    maskProxy,
+    {
+      solid: 5,
+      fade: 55,
+      duration: 0.58,
+      ease: "power2.out",
+      onUpdate: () => setVideoMask(video, maskProxy.solid, maskProxy.fade),
+    },
+    0.08,
+  );
 
   currentTimeline.to(frame, { opacity: 1, duration: 0.18, ease: "power2.inOut" }, 0.56);
 
@@ -309,13 +333,20 @@ function buildCloseTimeline(
     currentTimeline.to(portalBadge, { opacity: 1, duration: 0.18, ease: "power2.inOut" }, 0.62);
   }
 
-  currentTimeline.to(zoomProxy, {
-    scale: 1, intensity: 1, duration: 0.6, ease: "power2.out",
-    onUpdate() {
-      portalRef.value?.setScale(zoomProxy.scale);
-      portalRef.value?.setIntensity(zoomProxy.intensity);
+  currentTimeline.to(
+    zoomProxy,
+    {
+      scale: 1,
+      intensity: 1,
+      duration: 0.6,
+      ease: "power2.out",
+      onUpdate() {
+        portalRef.value?.setScale(zoomProxy.scale);
+        portalRef.value?.setIntensity(zoomProxy.intensity);
+      },
     },
-  }, 0);
+    0,
+  );
 
   if (heroContent) {
     gsap.to(heroContent, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", delay: 0.2 });

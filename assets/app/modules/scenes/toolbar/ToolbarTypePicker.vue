@@ -43,7 +43,7 @@ const currentIcon = (): Component => TYPE_OPTIONS.find((o) => o.value === type)?
       </button>
     </PopoverTrigger>
     <PopoverContent class="w-auto p-1" :side-offset="8" side="top">
-      <div class="min-w-[120px]">
+      <div class="min-w-30">
         <button
           v-for="opt in TYPE_OPTIONS"
           :key="opt.value"

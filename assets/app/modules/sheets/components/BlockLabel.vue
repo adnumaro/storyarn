@@ -16,7 +16,6 @@ const {
   canEdit = false,
   isConstant = false,
   required = false,
-  detached = false,
 } = defineProps<{
   icon: Component;
   label?: string;

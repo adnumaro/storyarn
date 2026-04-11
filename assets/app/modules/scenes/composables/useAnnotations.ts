@@ -106,7 +106,10 @@ interface UseAnnotationsOpts {
 }
 
 /** Build shape geometry (body + fold polygons) for an annotation */
-function buildAnnotationShape(dims: AnnotationSizeDims): { bodyPoints: number[]; foldPoints: number[] } {
+function buildAnnotationShape(dims: AnnotationSizeDims): {
+  bodyPoints: number[];
+  foldPoints: number[];
+} {
   const w = dims.width;
   const h = dims.minHeight;
   const f = FOLD_SIZE;
@@ -193,7 +196,13 @@ export function useAnnotations({
   }
 
   function isAnnotationDraggable(ann: AnnotationData, isLockedByOther: boolean): boolean {
-    return !!(isSelectMode?.value && editMode?.value && canEdit?.value && !ann.locked && !isLockedByOther);
+    return !!(
+      isSelectMode?.value &&
+      editMode?.value &&
+      canEdit?.value &&
+      !ann.locked &&
+      !isLockedByOther
+    );
   }
 
   const annotationConfigs = computed<AnnotationConfig[]>(() =>
@@ -206,8 +215,15 @@ export function useAnnotations({
         const isLockedByOther = checkAnnotationLock(ann);
 
         return buildAnnotationConfig(
-          ann, pos, dims, color, shape, isLockedByOther,
-          isAnnotationSelected(ann), isSelectMode?.value ?? false, isAnnotationDraggable(ann, isLockedByOther),
+          ann,
+          pos,
+          dims,
+          color,
+          shape,
+          isLockedByOther,
+          isAnnotationSelected(ann),
+          isSelectMode?.value ?? false,
+          isAnnotationDraggable(ann, isLockedByOther),
         );
       }),
   );

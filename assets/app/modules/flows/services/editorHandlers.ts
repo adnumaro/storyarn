@@ -258,7 +258,10 @@ async function removeAffectedConnections(hook: HookProxy, reteNodeId: string): P
   }
 }
 
-async function reconnectNode(hook: HookProxy, affectedConnections: AffectedConnection[]): Promise<void> {
+async function reconnectNode(
+  hook: HookProxy,
+  affectedConnections: AffectedConnection[],
+): Promise<void> {
   for (const connInfo of affectedConnections) {
     const sourceNode = hook.nodeMap.get(connInfo.source!);
     const targetNode = hook.nodeMap.get(connInfo.target!);

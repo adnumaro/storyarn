@@ -53,15 +53,6 @@ function updateCondition(condition: unknown) {
     condition,
   });
 }
-
-function updateInstruction(assignments: unknown[]) {
-  live.pushEvent("update_collection_item_instruction", {
-    "zone-id": String(zoneId),
-    "item-id": item.id,
-    assignments,
-  });
-}
-
 function remove() {
   live.pushEvent("remove_collection_item", {
     "zone-id": String(zoneId),

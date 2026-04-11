@@ -6,18 +6,18 @@ These are available in ALL HEEx templates without explicit import (via `Storyarn
 
 ### CoreComponents (`core_components.ex`)
 
-| Component          | Purpose             | Key Attributes                                                                                                                        |
-| ------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `<.button>`        | Button (nav-aware)  | `variant` (primary/error), `href`/`navigate`/`patch`                                                                                  |
-| `<.input>`         | Form input wrapper  | `field`, `type` (text/textarea/select/checkbox + 13 more HTML5 types), `label`, `errors`                                              |
-| `<.icon>`          | Lucide icon         | `name` (string, required), `class`                                                                                                    |
-| `<.modal>`         | Dialog modal        | `id`, `show`, `on_cancel`                                                                                                             |
+| Component           | Purpose                   | Key Attributes                                                                                                                                 |
+| ------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<.button>`         | Button (nav-aware)        | `variant` (primary/error), `href`/`navigate`/`patch`                                                                                           |
+| `<.input>`          | Form input wrapper        | `field`, `type` (text/textarea/select/checkbox + 13 more HTML5 types), `label`, `errors`                                                       |
+| `<.icon>`           | Lucide icon               | `name` (string, required), `class`                                                                                                             |
+| `<.modal>`          | Dialog modal              | `id`, `show`, `on_cancel`                                                                                                                      |
 | `ConfirmDialog.vue` | Confirmation dialog (Vue) | `open` (v-model), `title`, `description`, `confirmText`, `cancelText`, `variant` (default/destructive/warning), `icon` — `@confirm`, `@cancel` |
-| `<.table>`         | Data table          | `rows`, `row_id`, `row_click`, `:col` slot, `:action` slot                                                                            |
-| `<.list>`          | Key-value list      | `:item` slot (with title)                                                                                                             |
-| `<.flash>`         | Flash notification  | `kind`, `flash`                                                                                                                       |
-| `<.back>`          | Back link           | `navigate`                                                                                                                            |
-| `<.block_label>`   | Block field label   | `label`, `is_constant`                                                                                                                |
+| `<.table>`          | Data table                | `rows`, `row_id`, `row_click`, `:col` slot, `:action` slot                                                                                     |
+| `<.list>`           | Key-value list            | `:item` slot (with title)                                                                                                                      |
+| `<.flash>`          | Flash notification        | `kind`, `flash`                                                                                                                                |
+| `<.back>`           | Back link                 | `navigate`                                                                                                                                     |
+| `<.block_label>`    | Block field label         | `label`, `is_constant`                                                                                                                         |
 
 **Helper functions:**
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { mount } from "@vue/test-utils";
-import ConditionBuilder from "./ConditionBuilder.vue";
-import type { ConditionData, ConditionBlock, ConditionGroup } from "./types";
+import ConditionBuilder from "@components/builders/ConditionBuilder.vue";
+import type { ConditionData, ConditionBlock, ConditionGroup } from "@components/builders/types";
 
 function makeBlock(overrides: Partial<ConditionBlock> = {}): ConditionBlock {
   return {
@@ -43,7 +43,9 @@ describe("ConditionBuilder", () => {
         blocks: [makeBlock()],
       };
       const w = mountBuilder(condition);
-      w.findAll("button").find((b) => b.text().includes("Add block"))?.trigger("click");
+      w.findAll("button")
+        .find((b) => b.text().includes("Add block"))
+        ?.trigger("click");
       const emitted = lastEmitted(w);
       expect(emitted.logic).toBe("any");
       expect(emitted.blocks.length).toBe(2);
@@ -54,7 +56,10 @@ describe("ConditionBuilder", () => {
   describe("addBlock", () => {
     it("adds a new block with default rule", async () => {
       const w = mountBuilder({ logic: "all", blocks: [] });
-      await w.findAll("button").find((b) => b.text().includes("Add block"))!.trigger("click");
+      await w
+        .findAll("button")
+        .find((b) => b.text().includes("Add block"))!
+        .trigger("click");
       const emitted = lastEmitted(w);
       expect(emitted.blocks).toHaveLength(1);
       const block = emitted.blocks[0] as ConditionBlock;
@@ -66,7 +71,10 @@ describe("ConditionBuilder", () => {
 
     it("adds label field in switchMode", async () => {
       const w = mountBuilder({ logic: "all", blocks: [] }, { switchMode: true });
-      await w.findAll("button").find((b) => b.text().includes("Add block"))!.trigger("click");
+      await w
+        .findAll("button")
+        .find((b) => b.text().includes("Add block"))!
+        .trigger("click");
       const emitted = lastEmitted(w);
       const block = emitted.blocks[0] as ConditionBlock;
       expect(block).toHaveProperty("label", "");
@@ -74,7 +82,10 @@ describe("ConditionBuilder", () => {
 
     it("appends to existing blocks", async () => {
       const w = mountBuilder({ logic: "all", blocks: [makeBlock()] });
-      await w.findAll("button").find((b) => b.text().includes("Add block"))!.trigger("click");
+      await w
+        .findAll("button")
+        .find((b) => b.text().includes("Add block"))!
+        .trigger("click");
       const emitted = lastEmitted(w);
       expect(emitted.blocks).toHaveLength(2);
       expect(emitted.blocks[0].id).toBe("b1");
@@ -148,7 +159,10 @@ describe("ConditionBuilder", () => {
       expect(w.findAll("button").some((b) => b.text().includes("Cancel"))).toBe(true);
 
       // Cancel
-      await w.findAll("button").find((b) => b.text().includes("Cancel"))!.trigger("click");
+      await w
+        .findAll("button")
+        .find((b) => b.text().includes("Cancel"))!
+        .trigger("click");
       // Back to normal — Group button visible again
       expect(w.findAll("button").some((b) => b.text().includes("Group"))).toBe(true);
     });
@@ -160,7 +174,10 @@ describe("ConditionBuilder", () => {
       const w = mountBuilder({ logic: "all", blocks: [b1, b2, b3] });
 
       // Enter selection mode
-      await w.findAll("button").find((b) => b.text().includes("Group"))!.trigger("click");
+      await w
+        .findAll("button")
+        .find((b) => b.text().includes("Group"))!
+        .trigger("click");
 
       // Select b1 and b3 via checkboxes
       const checkboxes = w.findAll("input[type='checkbox']");
@@ -168,7 +185,10 @@ describe("ConditionBuilder", () => {
       await checkboxes[2].setValue(true);
 
       // Click "Group selected"
-      await w.findAll("button").find((b) => b.text().includes("Group selected"))!.trigger("click");
+      await w
+        .findAll("button")
+        .find((b) => b.text().includes("Group selected"))!
+        .trigger("click");
 
       const emitted = lastEmitted(w);
       // b1 and b3 grouped, b2 remains standalone
@@ -184,7 +204,10 @@ describe("ConditionBuilder", () => {
       const b2 = makeBlock({ id: "b2" });
       const w = mountBuilder({ logic: "all", blocks: [b1, b2] });
 
-      await w.findAll("button").find((b) => b.text().includes("Group"))!.trigger("click");
+      await w
+        .findAll("button")
+        .find((b) => b.text().includes("Group"))!
+        .trigger("click");
 
       // Select only one
       const checkboxes = w.findAll("input[type='checkbox']");
@@ -203,12 +226,18 @@ describe("ConditionBuilder", () => {
     });
 
     it("is shown when 2+ blocks exist", () => {
-      const w = mountBuilder({ logic: "all", blocks: [makeBlock({ id: "b1" }), makeBlock({ id: "b2" })] });
+      const w = mountBuilder({
+        logic: "all",
+        blocks: [makeBlock({ id: "b1" }), makeBlock({ id: "b2" })],
+      });
       expect(w.findComponent({ name: "LogicToggle" }).exists()).toBe(true);
     });
 
     it("emits updated logic when toggled", () => {
-      const w = mountBuilder({ logic: "all", blocks: [makeBlock({ id: "b1" }), makeBlock({ id: "b2" })] });
+      const w = mountBuilder({
+        logic: "all",
+        blocks: [makeBlock({ id: "b1" }), makeBlock({ id: "b2" })],
+      });
       w.findComponent({ name: "LogicToggle" }).vm.$emit("update:logic", "any");
       const emitted = lastEmitted(w);
       expect(emitted.logic).toBe("any");

@@ -19,13 +19,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@components/ui/collapsible/index.ts";
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@components/ui/command/index.ts";
+import { Command, CommandInput, CommandItem, CommandList } from "@components/ui/command/index.ts";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { useLive } from "@composables/useLive";
 import type { AudioAsset, VoiceLineGroup } from "../../types";
@@ -51,8 +45,6 @@ const live = useLive();
 const uploadingNodeId = ref<number | string | null>(null);
 const openPopoverNodeId = ref<number | string | null>(null);
 const searchQuery = ref("");
-
-const totalLines = computed(() => groupedLines.reduce((sum, g) => sum + g.lines.length, 0));
 
 const filteredAssets = computed(() => {
   if (!searchQuery.value) return audioAssets;

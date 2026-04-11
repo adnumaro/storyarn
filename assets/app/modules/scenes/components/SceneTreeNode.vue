@@ -231,7 +231,7 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
     <div
       ref="childrenRef"
       v-show="isOpen || !hasChildren"
-      :class="['min-h-[2px] transition-colors', childrenOver && 'bg-primary/5']"
+      :class="['min-h-0.5 transition-colors', childrenOver && 'bg-primary/5']"
     >
       <SceneTreeNode
         v-for="(child, childIndex) in node.children"

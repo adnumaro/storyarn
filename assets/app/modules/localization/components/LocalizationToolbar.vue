@@ -70,7 +70,9 @@ function translateBatch(): void {
       @click="translateBatch"
     >
       <Languages class="size-4" />
-      <span class="hidden xl:inline">{{ translating ? "Translating..." : "Translate All Pending" }}</span>
+      <span class="hidden xl:inline">{{
+        translating ? "Translating..." : "Translate All Pending"
+      }}</span>
     </Button>
   </div>
 </template>

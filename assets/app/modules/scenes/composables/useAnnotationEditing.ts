@@ -156,6 +156,5 @@ export function useAnnotationEditing({ containerRef, stageConfig }: UseAnnotatio
     startEditing,
     isEditingAnnotation,
     getDisplayText,
-    clearOverride,
   };
 }

@@ -1,15 +1,5 @@
 <script setup lang="ts">
-import {
-  BarChart3,
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  Globe,
-  Languages,
-  Pencil,
-  Search,
-  Sparkles,
-} from "lucide-vue-next";
+import { ChevronLeft, ChevronRight, Globe, Pencil, Search, Sparkles } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -21,12 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@components/ui/dropdown-menu";
 import { useLive } from "@composables/useLive";
 
 interface TextEntry {
@@ -48,34 +32,24 @@ const {
   texts = [],
   progress = null,
   totalCount = 0,
-  page = 1,
-  pageSize = 50,
+  pagination = { page: 1, pageSize: 50 },
   filterStatus = "",
   filterSourceType = "",
   search = "",
   canEdit = false,
   hasProvider = false,
   hasTargetLanguages = false,
-  reportUrl = "",
-  exportCsvUrl = null,
-  exportXlsxUrl = null,
-  translatingBatch = false,
 } = defineProps<{
   texts?: TextEntry[];
   progress?: { total: number; final: number } | null;
   totalCount?: number;
-  page?: number;
-  pageSize?: number;
+  pagination?: { page: number; pageSize: number };
   filterStatus?: string;
   filterSourceType?: string;
   search?: string;
   canEdit?: boolean;
   hasProvider?: boolean;
   hasTargetLanguages?: boolean;
-  reportUrl?: string;
-  exportCsvUrl?: string | null;
-  exportXlsxUrl?: string | null;
-  translatingBatch?: boolean;
 }>();
 
 const live = useLive();
@@ -105,15 +79,11 @@ function changePage(newPage: number): void {
   live.pushEvent("change_page", { page: String(newPage) });
 }
 
-function translateBatch(): void {
-  live.pushEvent("translate_batch", {});
-}
-
 function translateSingle(id: number): void {
   live.pushEvent("translate_single", { id });
 }
 
-const totalPages = computed(() => Math.max(1, Math.ceil(totalCount / pageSize)));
+const totalPages = computed(() => Math.max(1, Math.ceil(totalCount / pagination.pageSize)));
 const progressPercent = computed(() => {
   if (!progress || progress.total === 0) return 0;
   return Math.round((progress.final * 100) / progress.total);
@@ -152,10 +122,7 @@ const statusVariant: Record<string, string> = {
     <!-- Content (when target languages exist) -->
     <template v-else>
       <!-- Progress card -->
-      <div
-        v-if="progress"
-        class="rounded-2xl border border-border bg-muted/60 p-4"
-      >
+      <div v-if="progress" class="rounded-2xl border border-border bg-muted/60 p-4">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div class="space-y-1">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -180,9 +147,9 @@ const statusVariant: Record<string, string> = {
       <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
         <Select
           :model-value="filterStatus"
-          @update:model-value="(v: string) => changeFilter('status', v)"
+          @update:model-value="(v: string | string[]) => changeFilter('status', String(v))"
         >
-          <SelectTrigger class="w-[180px]">
+          <SelectTrigger class="w-45">
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -197,9 +164,9 @@ const statusVariant: Record<string, string> = {
 
         <Select
           :model-value="filterSourceType"
-          @update:model-value="(v: string) => changeFilter('source_type', v)"
+          @update:model-value="(v: string | string[]) => changeFilter('source_type', String(v))"
         >
-          <SelectTrigger class="w-[180px]">
+          <SelectTrigger class="w-45">
             <SelectValue placeholder="All types" />
           </SelectTrigger>
           <SelectContent>
@@ -229,9 +196,7 @@ const statusVariant: Record<string, string> = {
         class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border p-12 text-center"
       >
         <Search class="size-10 text-muted-foreground/50 mb-3" />
-        <p class="text-sm text-muted-foreground">
-          No translations found matching your filters.
-        </p>
+        <p class="text-sm text-muted-foreground">No translations found matching your filters.</p>
       </div>
 
       <!-- Translation table -->
@@ -317,24 +282,24 @@ const statusVariant: Record<string, string> = {
       </div>
 
       <!-- Pagination -->
-      <div v-if="totalCount > pageSize" class="flex justify-center">
+      <div v-if="totalCount > pagination.pageSize" class="flex justify-center">
         <div class="flex items-center gap-1">
           <Button
             variant="outline"
             size="sm"
-            :disabled="page === 1"
-            @click="changePage(page - 1)"
+            :disabled="pagination.page === 1"
+            @click="changePage(pagination.page - 1)"
           >
             <ChevronLeft class="size-4" />
           </Button>
           <span class="px-3 text-sm text-muted-foreground tabular-nums">
-            Page {{ page }} of {{ totalPages }}
+            Page {{ pagination.page }} of {{ totalPages }}
           </span>
           <Button
             variant="outline"
             size="sm"
-            :disabled="page >= totalPages"
-            @click="changePage(page + 1)"
+            :disabled="pagination.page >= totalPages"
+            @click="changePage(pagination.page + 1)"
           >
             <ChevronRight class="size-4" />
           </Button>

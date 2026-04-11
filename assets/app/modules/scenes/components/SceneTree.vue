@@ -193,7 +193,11 @@ function getPointerZone(e: any): "before" | "after" | "nest" | null {
   return "nest";
 }
 
-function handleNestDrop(e: any, draggedNode: SceneTreeNodeData, hoveredNode: SceneTreeNodeData): void {
+function handleNestDrop(
+  e: any,
+  draggedNode: SceneTreeNodeData,
+  hoveredNode: SceneTreeNodeData,
+): void {
   if (isDescendantOf(localTree.value, draggedNode.id, hoveredNode.id)) return;
 
   const targetNode = findNodeById(localTree.value, hoveredNode.id);
@@ -201,7 +205,10 @@ function handleNestDrop(e: any, draggedNode: SceneTreeNodeData, hoveredNode: Sce
 
   const srcArr = e.draggedItems[0]?.items;
   if (srcArr) {
-    applyToTree(srcArr, srcArr.filter((n: SceneTreeNodeData) => n.id !== draggedNode.id));
+    applyToTree(
+      srcArr,
+      srcArr.filter((n: SceneTreeNodeData) => n.id !== draggedNode.id),
+    );
   }
 
   if (!targetNode.children) targetNode.children = [];

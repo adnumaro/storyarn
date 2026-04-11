@@ -86,7 +86,7 @@ const hasStaleRefs = computed(() => nodeData.value.has_stale_refs);
 
     <div
       v-if="summary || hasStaleRefs"
-      class="text-[11px] text-muted-foreground px-3 py-2 max-w-[200px] border-b border-border/10 break-words"
+      class="text-[11px] text-muted-foreground px-3 py-2 max-w-50 border-b border-border/10 wrap-break-word"
     >
       <div class="line-clamp-4 leading-[1.4] whitespace-pre-line">
         <span v-if="hasStaleRefs" class="inline-flex items-center gap-0.5 text-destructive mr-1">

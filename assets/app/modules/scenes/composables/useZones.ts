@@ -182,7 +182,12 @@ export function useZones({
       .slice()
       .sort((a, b) => (a.position || 0) - (b.position || 0))
       .map((zone) => {
-        const vertices = resolveZoneVertices(zone, editingZoneId, editingVertices, zoneDragOverride);
+        const vertices = resolveZoneVertices(
+          zone,
+          editingZoneId,
+          editingVertices,
+          zoneDragOverride,
+        );
         const pixelCoords = vertices.map((v) => percentToPixel(v.x, v.y));
         const geo = calculateZoneGeometry(pixelCoords);
 
@@ -190,7 +195,13 @@ export function useZones({
         const isLockedByOther = !!lock && String(lock.userId) !== String(currentUserId.value);
         const isSelected = selectedType?.value === "zone" && selectedId?.value === zone.id;
 
-        return buildZoneConfig(zone, geo, isLockedByOther, isSelected, isSelectMode?.value ?? false);
+        return buildZoneConfig(
+          zone,
+          geo,
+          isLockedByOther,
+          isSelected,
+          isSelectMode?.value ?? false,
+        );
       }),
   );
 

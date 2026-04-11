@@ -90,9 +90,17 @@ function determinePinRenderMode(
   }
   if (pin.sheetId && !pin.sheetAvatarUrl) {
     const initials = (pin.label || "?").slice(0, 2).toUpperCase();
-    return { image: null, iconCanvas: null, initialsCanvas: renderInitialsCanvas(initials, color, sizeKey, opacity) };
+    return {
+      image: null,
+      iconCanvas: null,
+      initialsCanvas: renderInitialsCanvas(initials, color, sizeKey, opacity),
+    };
   }
-  return { image: null, iconCanvas: renderPinIcon(pin.pinType, color, sizeKey, opacity), initialsCanvas: null };
+  return {
+    image: null,
+    iconCanvas: renderPinIcon(pin.pinType, color, sizeKey, opacity),
+    initialsCanvas: null,
+  };
 }
 
 /** Build a single PinConfig from pin data */
@@ -190,7 +198,13 @@ export function usePins({
   }
 
   function isPinDraggable(pin: PinData, isLockedByOther: boolean): boolean {
-    return !!(isSelectMode?.value && editMode?.value && canEdit?.value && !pin.locked && !isLockedByOther);
+    return !!(
+      isSelectMode?.value &&
+      editMode?.value &&
+      canEdit?.value &&
+      !pin.locked &&
+      !isLockedByOther
+    );
   }
 
   function checkPinLock(pin: PinData): boolean {
@@ -208,8 +222,16 @@ export function usePins({
         const isLockedByOther = checkPinLock(pin);
 
         return buildPinConfig(
-          pin, pos, render, dims, color, opacity, isLockedByOther,
-          isPinSelected(pin), isPinListening(), isPinDraggable(pin, isLockedByOther),
+          pin,
+          pos,
+          render,
+          dims,
+          color,
+          opacity,
+          isLockedByOther,
+          isPinSelected(pin),
+          isPinListening(),
+          isPinDraggable(pin, isLockedByOther),
         );
       }),
   );

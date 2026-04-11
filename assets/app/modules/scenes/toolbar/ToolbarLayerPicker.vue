@@ -37,7 +37,7 @@ function selectLayer(id: number | string | null) {
       </button>
     </PopoverTrigger>
     <PopoverContent class="w-auto p-1" :side-offset="8" side="top">
-      <div class="flex flex-col gap-0.5 min-w-[120px]">
+      <div class="flex flex-col gap-0.5 min-w-30">
         <button
           type="button"
           class="px-2 py-1 text-xs text-left rounded cursor-pointer transition-colors"

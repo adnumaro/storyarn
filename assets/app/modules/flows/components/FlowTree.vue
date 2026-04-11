@@ -206,7 +206,11 @@ function getPointerZone(e: DnDDropEvent): "before" | "after" | "nest" | null {
   return "nest";
 }
 
-function handleNestDrop(dropEvent: DnDDropEvent, draggedNode: FlowTreeItem, hoveredNode: FlowTreeItem): void {
+function handleNestDrop(
+  dropEvent: DnDDropEvent,
+  draggedNode: FlowTreeItem,
+  hoveredNode: FlowTreeItem,
+): void {
   if (isDescendantOf(localTree.value, draggedNode.id, hoveredNode.id)) return;
 
   const targetNode = findNodeById(localTree.value, hoveredNode.id);
@@ -214,7 +218,10 @@ function handleNestDrop(dropEvent: DnDDropEvent, draggedNode: FlowTreeItem, hove
 
   const srcArr = dropEvent.draggedItems[0]?.items;
   if (srcArr) {
-    applyToTree(srcArr, srcArr.filter((n) => n.id !== draggedNode.id));
+    applyToTree(
+      srcArr,
+      srcArr.filter((n) => n.id !== draggedNode.id),
+    );
   }
 
   if (!targetNode.children) targetNode.children = [];

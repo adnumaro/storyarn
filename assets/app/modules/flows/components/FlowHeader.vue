@@ -108,7 +108,7 @@ function navigateToNode(nodeId: number | string): void {
       <button
         v-if="navHistory.back"
         type="button"
-        class="v2-toolbar-btn gap-1 text-muted-foreground max-w-[140px]"
+        class="v2-toolbar-btn gap-1 text-muted-foreground max-w-35"
         title="Alt+Left"
         @click="live.pushEvent('nav_back', {})"
       >
@@ -118,7 +118,7 @@ function navigateToNode(nodeId: number | string): void {
       <button
         v-if="navHistory.forward"
         type="button"
-        class="v2-toolbar-btn gap-1 text-muted-foreground max-w-[140px]"
+        class="v2-toolbar-btn gap-1 text-muted-foreground max-w-35"
         title="Alt+Right"
         @click="live.pushEvent('nav_forward', {})"
       >
@@ -133,7 +133,7 @@ function navigateToNode(nodeId: number | string): void {
         :model-value="flowName"
         placeholder="Untitled"
         tag="span"
-        class="text-sm font-medium max-w-[200px] truncate"
+        class="text-sm font-medium max-w-50 truncate"
         :disabled="!canEdit"
         @save="saveName"
       />
@@ -142,7 +142,7 @@ function navigateToNode(nodeId: number | string): void {
         :model-value="flowShortcut"
         placeholder="add-shortcut"
         tag="span"
-        class="text-xs text-muted-foreground max-w-[120px] truncate"
+        class="text-xs text-muted-foreground max-w-30 truncate"
         :disabled="!canEdit"
         @save="saveShortcut"
       />
@@ -164,7 +164,7 @@ function navigateToNode(nodeId: number | string): void {
               title="Scene backdrop"
             >
               <MapIcon class="size-3.5" />
-              <span v-if="sceneSelected.name" class="truncate max-w-[120px]">{{
+              <span v-if="sceneSelected.name" class="truncate max-w-30">{{
                 sceneSelected.name
               }}</span>
               <span v-else>No scene</span>

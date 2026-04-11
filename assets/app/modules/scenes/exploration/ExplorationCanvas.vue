@@ -112,7 +112,6 @@ const {
   handleWheel,
   percentToPixel,
   pixelToPercent,
-  stagePointerToWorld,
 } = useKonvaStage({
   containerRef,
   sceneData: toRef(() => sceneData),

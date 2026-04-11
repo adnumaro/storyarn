@@ -4,7 +4,7 @@ import { ArrowUpRight, Link2Off } from "lucide-vue-next";
 import { onMounted, onUnmounted, provide, ref } from "vue";
 import UserAvatar from "@components/layout/UserAvatar.vue";
 import { useLive } from "@composables/useLive";
-import type { Block, BlockLock, FormulaEditing, InheritedBlockGroup, LayoutItem } from "../types";
+import type { BlockLock, FormulaEditing, InheritedBlockGroup, LayoutItem } from "../types";
 import AddBlockMenu from "./AddBlockMenu.vue";
 import BooleanBlock from "./blocks/BooleanBlock.vue";
 import DateBlock from "./blocks/DateBlock.vue";

@@ -91,19 +91,19 @@ const hasContent = computed(() => slugLine.value || description.value || hasVisu
       v-if="overrideAvatarUrl"
       :src="overrideAvatarUrl"
       alt=""
-      class="block w-[calc(100%-24px)] max-h-[200px] object-contain rounded-lg mx-3 mt-3"
+      class="block w-[calc(100%-24px)] max-h-50 object-contain rounded-lg mx-3 mt-3"
     />
     <img
       v-else-if="bannerUrl"
       :src="bannerUrl"
       alt=""
-      class="block w-[calc(100%-24px)] max-h-[200px] object-contain rounded-lg mx-3 mt-3"
+      class="block w-[calc(100%-24px)] max-h-50 object-contain rounded-lg mx-3 mt-3"
     />
 
     <!-- Slug line -->
     <div
       v-if="slugLine"
-      class="text-[11px] text-muted-foreground px-3 py-2 max-w-[200px] border-b border-border/10 break-words"
+      class="text-[11px] text-muted-foreground px-3 py-2 max-w-50 border-b border-border/10 wrap-break-word"
     >
       <div class="line-clamp-4 leading-[1.4] font-bold text-xs tracking-wide">
         {{ slugLine }}
@@ -113,7 +113,7 @@ const hasContent = computed(() => slugLine.value || description.value || hasVisu
     <!-- Description -->
     <div
       v-if="description"
-      class="text-[11px] text-muted-foreground px-3 py-2 max-w-[200px] border-b border-border/10 break-words"
+      class="text-[11px] text-muted-foreground px-3 py-2 max-w-50 border-b border-border/10 wrap-break-word"
     >
       <div class="line-clamp-4 leading-[1.4]">{{ description }}</div>
     </div>

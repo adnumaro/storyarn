@@ -147,10 +147,7 @@ function syncTexts(): void {
         <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Target languages
         </p>
-        <span
-          v-if="targetLanguages.length > 0"
-          class="text-xs text-muted-foreground"
-        >
+        <span v-if="targetLanguages.length > 0" class="text-xs text-muted-foreground">
           {{ targetLanguages.length }}
         </span>
       </div>

@@ -46,7 +46,12 @@ const emit = defineEmits<{
           (opt.id ?? opt.value) === value ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
         "
         :disabled="disabled"
-        @click="() => { const v = opt.id ?? opt.value; if (v !== undefined) emit('update', v); }"
+        @click="
+          () => {
+            const v = opt.id ?? opt.value;
+            if (v !== undefined) emit('update', v);
+          }
+        "
       >
         {{ opt.name ?? opt.label }}
       </button>

@@ -50,12 +50,7 @@ function handleFileChange(event: Event): void {
       <span class="hidden xl:inline">
         {{ uploading ? "Uploading..." : "Upload" }}
       </span>
-      <input
-        type="file"
-        accept="image/*,audio/*"
-        class="hidden"
-        @change="handleFileChange"
-      />
+      <input type="file" accept="image/*,audio/*" class="hidden" @change="handleFileChange" />
     </label>
   </div>
 </template>

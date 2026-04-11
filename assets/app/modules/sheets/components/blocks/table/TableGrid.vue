@@ -286,14 +286,12 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
               v-slot="{ isDragOver }"
             >
               <!-- ══ Row label cell ══ -->
-              <td
-                class="relative sticky left-0 z-10 bg-card font-medium text-muted-foreground/60 text-sm"
-              >
+              <td class="sticky left-0 z-10 bg-card font-medium text-muted-foreground/60 text-sm">
                 <TableRowActions :row="row" :rows="rows" :can-manage="canManage" />
               </td>
 
               <!-- ══ Data cells ══ -->
-              <td v-for="col in columns" :key="col.id" class="!p-0 relative h-1">
+              <td v-for="col in columns" :key="col.id" class="p-0! relative h-1">
                 <!-- ── Boolean ── -->
                 <template v-if="col.type === 'boolean'">
                   <label

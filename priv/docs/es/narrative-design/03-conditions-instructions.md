@@ -58,9 +58,9 @@ igual, antes de, despues de, no esta establecido
 
 Combina multiples reglas con logica **Todas (AND)** o **Alguna (OR)**:
 
-> *"Cumplir **todas** las reglas: Jaime tiene mas de 50 de salud Y tiene la llave"* Ambas deben ser verdaderas para que la condicion se cumpla.
+> _"Cumplir **todas** las reglas: Jaime tiene mas de 50 de salud Y tiene la llave"_ Ambas deben ser verdaderas para que la condicion se cumpla.
 
-> *"Cumplir **alguna** de las reglas: El jugador es un Mago O tiene el pergamino de hechizo"* Basta con que una se cumpla.
+> _"Cumplir **alguna** de las reglas: El jugador es un Mago O tiene el pergamino de hechizo"_ Basta con que una se cumpla.
 
 Tambien puedes agrupar reglas en **bloques** para logica anidada mas compleja. Selecciona varias reglas y haz clic en **Agrupar seleccion** para combinarlas en un subgrupo con su propio selector AND/OR.
 
@@ -166,7 +166,7 @@ El Constructor de Instrucciones con tres asignaciones: Establecer salud, Sumar o
 
 Por defecto, los valores de las instrucciones son **literales** -- escribes un numero o texto directamente. Pero puedes cambiar cualquier campo de valor a una **referencia de variable**, que lee el valor actual de otra variable en tiempo de ejecucion.
 
-> *Ejemplo: Establecer `mc.jaime` . `health` a `mc.jaime` . `max_health`* Esto copia el valor de max_health en health.
+> _Ejemplo: Establecer `mc.jaime` . `health` a `mc.jaime` . `max_health`_ Esto copia el valor de max_health en health.
 
 Haz clic en el icono de alternancia junto al campo de valor para cambiar entre modo de valor literal y modo de referencia de variable.
 
@@ -176,10 +176,10 @@ Haz clic en el icono de alternancia junto al campo de valor para cambiar entre m
 
 Las respuestas de dialogo soportan condiciones e instrucciones en linea para casos simples (consulta la [guia de Nodos de Dialogo](/es/narrative-design/dialogue-nodes)). Usa nodos de Condicion e Instruccion dedicados cuando:
 
--   La misma condicion es comprobada por **multiples caminos** en el flujo
--   La logica involucra **multiples reglas** con agrupacion AND/OR compleja
--   Varias variables necesitan **cambiar juntas** como un unico paso logico
--   Quieres que la logica sea **visible en el lienzo** para facilitar la depuracion y la colaboracion
--   Necesitas **modo switch** para ramificacion multiple
+- La misma condicion es comprobada por **multiples caminos** en el flujo
+- La logica involucra **multiples reglas** con agrupacion AND/OR compleja
+- Varias variables necesitan **cambiar juntas** como un unico paso logico
+- Quieres que la logica sea **visible en el lienzo** para facilitar la depuracion y la colaboracion
+- Necesitas **modo switch** para ramificacion multiple
 
 Como regla general: si la logica pertenece a una respuesta especifica, ponla en linea. Si pertenece a la estructura del flujo, usa un nodo.

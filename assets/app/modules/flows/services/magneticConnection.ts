@@ -200,7 +200,10 @@ export function magneticConnection(
   }
 
   function isSocketRender(context: { type: string }): boolean {
-    return context.type === "render" && (context as unknown as { data: { type: string } }).data.type === "socket";
+    return (
+      context.type === "render" &&
+      (context as unknown as { data: { type: string } }).data.type === "socket"
+    );
   }
 
   async function dispatchPipeEvent(context: { type: string }): Promise<void> {

@@ -43,8 +43,7 @@ const refFlowShortcut = computed(() => nodeData.value.referenced_flow_shortcut);
 // Error indicators
 const hasError = computed(() => {
   if (exitMode.value === "flow_reference" && !nodeData.value.referenced_flow_id) return true;
-  if (nodeData.value.stale_reference) return true;
-  return false;
+  return !!nodeData.value.stale_reference;
 });
 const errorTitle = computed(() =>
   nodeData.value.stale_reference ? "Referenced flow was deleted" : "No flow referenced",
@@ -73,7 +72,7 @@ const tagsText = computed(() => {
 
     <!-- Preview: label + exit mode icon -->
     <div
-      class="text-[11px] text-muted-foreground px-3 py-2 max-w-[200px] border-b border-border/10 break-words"
+      class="text-[11px] text-muted-foreground px-3 py-2 max-w-50 border-b border-border/10 wrap-break-word"
     >
       <div class="line-clamp-4 leading-[1.4]">
         <span class="inline-flex items-center gap-1">
@@ -87,7 +86,7 @@ const tagsText = computed(() => {
     <!-- Flow reference nav link -->
     <div
       v-if="exitMode === 'flow_reference' && refFlowName"
-      class="text-[11px] text-muted-foreground px-3 py-2 max-w-[200px] border-b border-border/10 break-words"
+      class="text-[11px] text-muted-foreground px-3 py-2 max-w-50 border-b border-border/10 wrap-break-word"
     >
       <div class="line-clamp-4 leading-[1.4]">
         <span class="inline-flex items-center gap-1">
@@ -100,7 +99,7 @@ const tagsText = computed(() => {
     <!-- Outcome tags -->
     <div
       v-if="tagsText"
-      class="text-[11px] text-muted-foreground px-3 py-2 max-w-[200px] border-b border-border/10 break-words"
+      class="text-[11px] text-muted-foreground px-3 py-2 max-w-50 border-b border-border/10 wrap-break-word"
     >
       <div class="line-clamp-4 leading-[1.4] opacity-60 text-[0.7em]">
         {{ tagsText }}
