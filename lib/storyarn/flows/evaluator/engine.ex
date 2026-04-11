@@ -501,13 +501,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
         "Unknown node type '#{node.type}' — skipping"
       )
 
-    case EngineHelpers.find_connection(connections, node.id, "output") do
-      nil ->
-        EngineHelpers.follow_output(state, node.id, label, connections)
-
-      conn ->
-        EngineHelpers.advance_to(state, conn.target_node_id)
-    end
+    EngineHelpers.follow_output(state, node.id, label, connections)
   end
 
   # =============================================================================

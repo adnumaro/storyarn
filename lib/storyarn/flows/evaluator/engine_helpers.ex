@@ -30,10 +30,7 @@ defmodule Storyarn.Flows.Evaluator.EngineHelpers do
   Follow the default/output pin from a node, finishing if no connection exists.
   """
   def follow_output(state, node_id, label, connections) do
-    # Check both pin names: "default" is canonical, "output" is legacy.
-    conn =
-      find_connection(connections, node_id, "default") ||
-        find_connection(connections, node_id, "output")
+    conn = find_connection(connections, node_id, "default")
 
     case conn do
       nil ->

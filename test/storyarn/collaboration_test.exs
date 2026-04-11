@@ -74,9 +74,9 @@ defmodule Storyarn.CollaborationTest do
   describe "broadcast_change/3" do
     test "broadcasts change notification to subscribers" do
       flow_id = System.unique_integer([:positive])
-      Collaboration.subscribe_changes(flow_id)
+      Collaboration.subscribe_changes({:flow, flow_id})
 
-      Collaboration.broadcast_change(flow_id, :node_updated, %{node_id: 1})
+      Collaboration.broadcast_change({:flow, flow_id}, :node_updated, %{node_id: 1})
 
       assert_receive {:remote_change, :node_updated, %{node_id: 1}}
     end
@@ -85,9 +85,9 @@ defmodule Storyarn.CollaborationTest do
   describe "broadcast_lock_change/3" do
     test "broadcasts lock change notification to subscribers" do
       flow_id = System.unique_integer([:positive])
-      Collaboration.subscribe_locks(flow_id)
+      Collaboration.subscribe_locks({:flow, flow_id})
 
-      Collaboration.broadcast_lock_change(flow_id, :lock_acquired, %{node_id: 1, user_id: 42})
+      Collaboration.broadcast_lock_change({:flow, flow_id}, :lock_acquired, %{node_id: 1, user_id: 42})
 
       assert_receive {:lock_change, :lock_acquired, %{node_id: 1, user_id: 42}}
     end
@@ -108,7 +108,7 @@ defmodule Storyarn.CollaborationTest do
     end
 
     test "acquires lock through facade", %{user: user, flow_id: flow_id} do
-      assert {:ok, lock_info} = Collaboration.acquire_lock(flow_id, 100, user)
+      assert {:ok, lock_info} = Collaboration.acquire_lock({:flow, flow_id}, 100, user)
       assert lock_info.user_id == user.id
     end
   end
@@ -121,8 +121,8 @@ defmodule Storyarn.CollaborationTest do
     end
 
     test "releases lock through facade", %{user: user, flow_id: flow_id} do
-      {:ok, _} = Collaboration.acquire_lock(flow_id, 100, user)
-      assert :ok = Collaboration.release_lock(flow_id, 100, user.id)
+      {:ok, _} = Collaboration.acquire_lock({:flow, flow_id}, 100, user)
+      assert :ok = Collaboration.release_lock({:flow, flow_id}, 100, user.id)
     end
   end
 
@@ -134,11 +134,11 @@ defmodule Storyarn.CollaborationTest do
     end
 
     test "releases all locks through facade", %{user: user, flow_id: flow_id} do
-      {:ok, _} = Collaboration.acquire_lock(flow_id, 100, user)
-      {:ok, _} = Collaboration.acquire_lock(flow_id, 101, user)
+      {:ok, _} = Collaboration.acquire_lock({:flow, flow_id}, 100, user)
+      {:ok, _} = Collaboration.acquire_lock({:flow, flow_id}, 101, user)
 
-      assert :ok = Collaboration.release_all_locks(flow_id, user.id)
-      assert Collaboration.list_locks(flow_id) == %{}
+      assert :ok = Collaboration.release_all_locks({:flow, flow_id}, user.id)
+      assert Collaboration.list_locks({:flow, flow_id}) == %{}
     end
   end
 
@@ -150,13 +150,13 @@ defmodule Storyarn.CollaborationTest do
     end
 
     test "returns lock info through facade", %{user: user, flow_id: flow_id} do
-      {:ok, _} = Collaboration.acquire_lock(flow_id, 100, user)
-      assert {:ok, lock_info} = Collaboration.get_lock(flow_id, 100)
+      {:ok, _} = Collaboration.acquire_lock({:flow, flow_id}, 100, user)
+      assert {:ok, lock_info} = Collaboration.get_lock({:flow, flow_id}, 100)
       assert lock_info.user_id == user.id
     end
 
     test "returns error when not locked", %{flow_id: flow_id} do
-      assert {:error, :not_locked} = Collaboration.get_lock(flow_id, 999)
+      assert {:error, :not_locked} = Collaboration.get_lock({:flow, flow_id}, 999)
     end
   end
 
@@ -168,11 +168,11 @@ defmodule Storyarn.CollaborationTest do
     end
 
     test "returns correct values through facade", %{user: user, flow_id: flow_id} do
-      {:ok, _} = Collaboration.acquire_lock(flow_id, 100, user)
+      {:ok, _} = Collaboration.acquire_lock({:flow, flow_id}, 100, user)
 
-      refute Collaboration.locked_by_other?(flow_id, 100, user.id)
-      assert Collaboration.locked_by_other?(flow_id, 100, user.id + 1)
-      refute Collaboration.locked_by_other?(flow_id, 999, user.id)
+      refute Collaboration.locked_by_other?({:flow, flow_id}, 100, user.id)
+      assert Collaboration.locked_by_other?({:flow, flow_id}, 100, user.id + 1)
+      refute Collaboration.locked_by_other?({:flow, flow_id}, 999, user.id)
     end
   end
 
@@ -184,13 +184,13 @@ defmodule Storyarn.CollaborationTest do
     end
 
     test "returns all locks through facade", %{user: user, flow_id: flow_id} do
-      {:ok, _} = Collaboration.acquire_lock(flow_id, 100, user)
-      locks = Collaboration.list_locks(flow_id)
+      {:ok, _} = Collaboration.acquire_lock({:flow, flow_id}, 100, user)
+      locks = Collaboration.list_locks({:flow, flow_id})
       assert map_size(locks) == 1
     end
 
     test "returns empty map when no locks", %{flow_id: flow_id} do
-      assert Collaboration.list_locks(flow_id) == %{}
+      assert Collaboration.list_locks({:flow, flow_id}) == %{}
     end
   end
 
@@ -202,20 +202,20 @@ defmodule Storyarn.CollaborationTest do
     end
 
     test "refreshes lock through facade", %{user: user, flow_id: flow_id} do
-      {:ok, _} = Collaboration.acquire_lock(flow_id, 100, user)
-      assert :ok = Collaboration.refresh_lock(flow_id, 100, user.id)
+      {:ok, _} = Collaboration.acquire_lock({:flow, flow_id}, 100, user)
+      assert :ok = Collaboration.refresh_lock({:flow, flow_id}, 100, user.id)
     end
 
     test "fails for non-holder", %{user: user, flow_id: flow_id} do
-      {:ok, _} = Collaboration.acquire_lock(flow_id, 100, user)
-      assert {:error, :not_lock_holder} = Collaboration.refresh_lock(flow_id, 100, user.id + 1)
+      {:ok, _} = Collaboration.acquire_lock({:flow, flow_id}, 100, user)
+      assert {:error, :not_lock_holder} = Collaboration.refresh_lock({:flow, flow_id}, 100, user.id + 1)
     end
   end
 
   describe "list_online_users/1" do
     test "returns empty list when no users" do
       flow_id = System.unique_integer([:positive])
-      assert Collaboration.list_online_users(flow_id) == []
+      assert Collaboration.list_online_users({:flow, flow_id}) == []
     end
   end
 end

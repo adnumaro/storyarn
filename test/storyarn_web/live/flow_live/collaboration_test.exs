@@ -59,7 +59,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       render_click(view, "node_selected", %{"id" => node.id})
 
       # Lock should be acquired
-      {:ok, lock_info} = Collaboration.get_lock(flow.id, node.id)
+      {:ok, lock_info} = Collaboration.get_lock({:flow, flow.id}, node.id)
       assert lock_info.user_id == user.id
     end
 
@@ -81,7 +81,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       render_click(view, "deselect_node", %{})
 
       # Lock should be released
-      assert {:error, :not_locked} = Collaboration.get_lock(flow.id, node.id)
+      assert {:error, :not_locked} = Collaboration.get_lock({:flow, flow.id}, node.id)
     end
 
     test "prevents editing node locked by another user", %{conn: conn, user: user} do
@@ -91,7 +91,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
 
       # Another user locks the node
       other_user = user_fixture()
-      Collaboration.acquire_lock(flow.id, node.id, other_user)
+      Collaboration.acquire_lock({:flow, flow.id}, node.id, other_user)
 
       {:ok, view, _html} =
         live(
@@ -129,7 +129,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       # Subscribe to changes
-      Collaboration.subscribe_changes(flow.id)
+      Collaboration.subscribe_changes({:flow, flow.id})
 
       {:ok, view, _html} =
         live(
@@ -152,7 +152,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       node = node_fixture(flow, %{type: "hub", data: %{"label" => "Test Hub"}})
 
       # Subscribe to changes
-      Collaboration.subscribe_changes(flow.id)
+      Collaboration.subscribe_changes({:flow, flow.id})
 
       {:ok, view, _html} =
         live(
@@ -368,7 +368,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       other_user = user_fixture()
 
       # Actually acquire the lock so list_locks returns it
-      Collaboration.acquire_lock(flow.id, node.id, other_user)
+      Collaboration.acquire_lock({:flow, flow.id}, node.id, other_user)
 
       lock_payload = %{
         node_id: node.id,

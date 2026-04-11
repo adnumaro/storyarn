@@ -52,7 +52,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilderTest do
       [conn] = snapshot["connections"]
       assert is_integer(conn["source_node_index"])
       assert is_integer(conn["target_node_index"])
-      assert conn["source_pin"] == "output"
+      assert conn["source_pin"] == "default"
       assert conn["target_pin"] == "input"
     end
 

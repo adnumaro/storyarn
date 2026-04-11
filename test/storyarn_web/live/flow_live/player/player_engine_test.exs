@@ -661,28 +661,6 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
     end
   end
 
-  describe "step_until_interactive/4 with entry that has 'output' pin (legacy)" do
-    test "follows 'output' pin as fallback" do
-      nodes =
-        nodes_map([
-          make_node(1, "entry"),
-          make_node(2, "exit")
-        ])
-
-      # Use legacy "output" pin name instead of "default"
-      connections = [make_connection(1, 2, "output")]
-
-      state = init_state(1)
-
-      {status, _state, skipped} =
-        PlayerEngine.step_until_interactive(state, nodes, connections)
-
-      # EngineHelpers.follow_output checks "default" first, then "output"
-      assert status == :finished
-      assert {1, "entry"} in skipped
-    end
-  end
-
   describe "step_until_interactive/4 with jump node missing target" do
     test "returns :finished when jump has no target_hub_id" do
       nodes =
@@ -991,12 +969,19 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
       condition_data = %{
         "condition" => %{
           "logic" => "all",
-          "rules" => [
+          "blocks" => [
             %{
-              "sheet" => "mc",
-              "variable" => "health",
-              "operator" => "greater_than",
-              "value" => "50"
+              "id" => "b1",
+              "type" => "block",
+              "logic" => "all",
+              "rules" => [
+                %{
+                  "sheet" => "mc",
+                  "variable" => "health",
+                  "operator" => "greater_than",
+                  "value" => "50"
+                }
+              ]
             }
           ]
         }

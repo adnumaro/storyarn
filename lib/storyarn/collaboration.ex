@@ -9,8 +9,7 @@ defmodule Storyarn.Collaboration do
   - Change notifications (see remote changes)
 
   All functions accept an `editor_scope` tuple `{type, id}` to identify the
-  editor instance. For backward compatibility, bare integers are treated as
-  `{:flow, id}`.
+  editor instance.
 
   ## Editor scopes
 
@@ -35,12 +34,7 @@ defmodule Storyarn.Collaboration do
           | {:scene, integer()}
           | {:screenplay, integer()}
 
-  # =============================================================================
-  # Scope normalization (backward compat)
-  # =============================================================================
-
   defp normalize_scope({_type, _id} = scope), do: scope
-  defp normalize_scope(id) when is_integer(id), do: {:flow, id}
 
   # =============================================================================
   # Colors

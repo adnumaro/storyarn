@@ -759,13 +759,13 @@ defmodule Storyarn.FlowsTest do
 
       {:ok, connection} =
         Flows.create_connection(flow, source, target, %{
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
       assert connection.source_node_id == source.id
       assert connection.target_node_id == target.id
-      assert connection.source_pin == "output"
+      assert connection.source_pin == "default"
       assert connection.target_pin == "input"
     end
 
@@ -777,7 +777,7 @@ defmodule Storyarn.FlowsTest do
 
       {:error, changeset} =
         Flows.create_connection(flow, node, node, %{
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
@@ -855,7 +855,7 @@ defmodule Storyarn.FlowsTest do
         Flows.create_connection_with_attrs(flow, %{
           source_node_id: exit_node.id,
           target_node_id: target.id,
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
@@ -874,7 +874,7 @@ defmodule Storyarn.FlowsTest do
         Flows.create_connection_with_attrs(flow, %{
           source_node_id: source.id,
           target_node_id: entry_node.id,
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 
@@ -900,7 +900,7 @@ defmodule Storyarn.FlowsTest do
         Flows.create_connection_with_attrs(flow, %{
           source_node_id: jump.id,
           target_node_id: target.id,
-          source_pin: "output",
+          source_pin: "default",
           target_pin: "input"
         })
 

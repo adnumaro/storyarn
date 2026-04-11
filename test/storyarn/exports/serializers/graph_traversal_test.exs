@@ -11,7 +11,7 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
     %{id: id, type: type, data: data}
   end
 
-  defp make_conn(source_id, target_id, source_pin \\ "output", target_pin \\ "input") do
+  defp make_conn(source_id, target_id, source_pin \\ "default", target_pin \\ "input") do
     %{
       id: "#{source_id}_#{target_id}_#{source_pin}",
       source_node_id: source_id,
