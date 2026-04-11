@@ -1,0 +1,280 @@
+assets/app/modules/flows/nodes/ExitNode.vue
+  0f94942b1e739532 46,75,89,102
+assets/app/components/AssetUploadButton.vue
+  0f94942b1e739532 53
+assets/app/modules/localization/components/LocalizationReport.vue
+  0f94942b1e739532 179-182
+assets/app/test/utils/date-utils.test.ts
+  0f94942b1e739532 1-44
+assets/app/modules/settings/Profile.vue
+  0f94942b1e739532 24,83-85
+docs/audit/collab-lock-ets-race-condition.md
+  0f94942b1e739532 6
+assets/app/modules/flows/services/magneticConnection.ts
+  0f94942b1e739532 203-206
+assets/app/modules/sheets/components/sortable/SortableBlockList.vue
+  0f94942b1e739532 292-297,339-343
+assets/app/test/composables/usePresence.test.ts
+  0f94942b1e739532 1-112
+assets/vitest.config.js
+  0f94942b1e739532 9
+assets/app/plugins/tiptap/VariableList.vue
+  0f94942b1e739532 65
+assets/app/components/LucideIcon.vue
+  0f94942b1e739532 2,60,119,122-124,126
+assets/app/modules/flows/player/PlayerSlide.vue
+  0f94942b1e739532 1-2,4-19,21-24,26-34,36-40,42-48,50-55,57-68
+assets/app/test/modules/flows/player/FlowPlayer.test.ts
+  0f94942b1e739532 1-193
+docs/audit/engine-flow-jump-unhandled-in-player-init.md
+  0f94942b1e739532 6,34
+assets/app/test/composables/useServerSearch.test.ts
+  0f94942b1e739532 1-152
+assets/app/test/modules/flows/player/PlayerOutcome.test.ts
+  0f94942b1e739532 1-103
+.oxlintrc.json
+  0f94942b1e739532 27-29,31
+assets/app/modules/scenes/toolbar/ToolbarLockToggle.vue
+  0f94942b1e739532 18
+assets/app/modules/flows/player/PlayerOutcome.vue
+  0f94942b1e739532 1-4,6-14,16-19,21-24,26-31,33-40,43-50,52-54,58-73,75-76
+assets/app/modules/flows/services/editorHandlers.ts
+  0f94942b1e739532 261-264
+assets/app/components/form-fields/ButtonGroupField.vue
+  0f94942b1e739532 49-54
+assets/app/modules/project-settings/VersionControl.vue
+  0f94942b1e739532 90-93
+assets/app/modules/settings/WorkspaceMembers.vue
+  0f94942b1e739532 177
+assets/app/modules/sheets/components/blocks/MultiSelectBlock.vue
+  0f94942b1e739532 117,131
+assets/app/components/VariableCombobox.vue
+  0f94942b1e739532 169
+package.json
+  0f94942b1e739532 13-14,76,80,86
+assets/app/modules/scenes/composables/useZones.ts
+  0f94942b1e739532 185-190,198-204
+assets/app/modules/flows/nodes/DialogueNode.vue
+  0f94942b1e739532 221,269-272,275,280,324
+assets/app/modules/landing/sections/hero/HeroSection.vue
+  0f94942b1e739532 233-237,239-240,297-312,318-328,336-346,348-349
+assets/app/modules/scenes/toolbar/ToolbarTypePicker.vue
+  0f94942b1e739532 46
+docs/audit/collab-lock-genserver-single-point-of-failure.md
+  0f94942b1e739532 6
+assets/app/test/components/builders/InstructionBuilder.test.ts
+  0f94942b1e739532 1-130
+assets/app/modules/scenes/components/SceneFloatingToolbar.vue
+  0f94942b1e739532 71-73
+assets/app/modules/localization/components/LocalizationToolbar.vue
+  0f94942b1e739532 73-75
+lib/storyarn_web/live/localization_live/index.ex
+  0f94942b1e739532 55
+assets/app/modules/flows/components/FlowBuilderPanel.vue
+  0f94942b1e739532 56
+assets/css/screenplay.css
+  0f94942b1e739532 80,97,117,144,159,163,306,316,335,364,404,416,444,453,474,488,566,622,632,659,669,686,692,710,721,743,789,812,823,858,880,897,929,977,988,1000,1006,1037,1045-1046,1050-1051
+docs/audit/migration-summary.md
+  0f94942b1e739532 7-9,11-13,21-25,29-31,35-40,44-49,53-56,60-65,69-73,77-81,85-86,91-95,99-104,109-110,115-121,126-127,136-139,141-145,149-153,159-164
+FUTURE_FEATURES.md
+  0f94942b1e739532 180
+assets/app/modules/flows/nodes/ConditionNode.vue
+  0f94942b1e739532 198,236
+assets/app/modules/scenes/composables/usePins.ts
+  0f94942b1e739532 93-97,99-103,201-207,225-234
+test/storyarn_web/live/flow_live/player/player_live_test.exs
+  0f94942b1e739532 29-32,140,144-148,176,178-179,201-202,205-208,211-214,249,251,253,262,264-266,269-272,285,287-288,291,293-294,306-307,322,324-325,334,337-338,351,353-354,357,359-360,366-367,373,375-376,379-382,395,397-398,404-407,433,462,465-467,497,499-500,503-506,667,669-670,689-692,708-712,717-720,765,767-768,771-774,792-795,797-801,806,809,816,818-819,828,830-832,835,838,840-843,846,849,851-852
+assets/app/test/modules/flows/player/PlayerToolbar.test.ts
+  0f94942b1e739532 1-114
+assets/app/modules/flows/services/debug.ts
+  0f94942b1e739532 5-8
+assets/app/test/modules/shared/variables.test.ts
+  0f94942b1e739532 1-159
+assets/app/test/modules/flows/player/PlayerSlide.test.ts
+  0f94942b1e739532 1-16,19,22-34,37-53,56-68,71-84,86-97,100-101,103-104,106-108,110-112,115-116,118-119,121-122,124-126,129-130,132-144,149-150,152-155,157-159,161,164-165,167-168,170-172,177-178,180-182,184-186,188,191-192,194-195,197-199,204-205,207-209,211-213,218-244
+assets/app/modules/flows/services/locks.ts
+  0f94942b1e739532 38
+assets/app/modules/landing/sections/discovery/DiscoverSection.vue
+  0f94942b1e739532 68,71
+assets/app/modules/scenes/components/dock-panels/PendingSheetIndicator.vue
+  0f94942b1e739532 26
+assets/app/modules/scenes/composables/useConnections.ts
+  0f94942b1e739532 107,149,210-211,221-225,258-260
+assets/app/modules/scenes/components/ElementPropertiesPanel.vue
+  0f94942b1e739532 62-64
+assets/app/modules/project-settings/Trash.vue
+  0f94942b1e739532 112,124
+assets/app/modules/sheets/components/blocks/table/TableRowActions.vue
+  0f94942b1e739532 38
+assets/app/test/modules/shared/operators/instruction-operators.test.ts
+  0f94942b1e739532 1-248
+assets/app/test/modules/flows/player/PlayerChoices.test.ts
+  0f94942b1e739532 1-140
+assets/app/modules/flows/nodes/InstructionNode.vue
+  0f94942b1e739532 89
+assets/app/modules/settings/WorkspaceDeletedProjects.vue
+  0f94942b1e739532 3
+knip.json
+  0f94942b1e739532 1-23
+assets/app/test/utils/utils.test.ts
+  0f94942b1e739532 1-53
+assets/app/modules/flows/components/FlowTree.vue
+  0f94942b1e739532 209-213,221-224
+assets/app/modules/flows/nodes/JumpNode.vue
+  0f94942b1e739532 50
+assets/app/modules/scenes/composables/useAnnotations.ts
+  0f94942b1e739532 109-112,199-205,218-226
+assets/app/modules/sheets/components/tabs/AudioTab.vue
+  0f94942b1e739532 22
+assets/app/test/composables/useKeyboard.test.ts
+  0f94942b1e739532 1-237
+assets/app/modules/flows/player/PlayerToolbar.vue
+  0f94942b1e739532 1-4,6-12,14-20,22-43,45-50,52-54,56-73,75-76
+assets/app/test/modules/shared/operators/condition-operators.test.ts
+  0f94942b1e739532 1-8,10-134
+assets/app/modules/scenes/exploration/composables/useMovement.ts
+  0f94942b1e739532 2
+assets/app/modules/sheets/components/SheetHeader.vue
+  0f94942b1e739532 161
+assets/app/modules/sheets/components/tree/SheetTree.vue
+  0f94942b1e739532 190,210-214,222-225
+assets/app/modules/sheets/components/tree/SheetTreeNode.vue
+  0f94942b1e739532 235
+docs/audit/migration-flow-live-player-live.md
+  0f94942b1e739532 4,29
+assets/app/modules/scenes/components/SceneTree.vue
+  0f94942b1e739532 196-200,208-211
+docs/conventions/component-registry.md
+  0f94942b1e739532 9-14,16-20
+entities.json
+  0f94942b1e739532 3
+assets/app/test/composables/useUndoRedo.test.ts
+  0f94942b1e739532 1-191
+assets/app/modules/flows/components/FlowConnection.vue
+  0f94942b1e739532 55
+assets/app/modules/flows/components/FlowHeader.vue
+  0f94942b1e739532 111,121,136,145,167
+priv/docs/es/narrative-design/03-conditions-instructions.md
+  0f94942b1e739532 61,63,169,179-183,185
+assets/app/modules/flows/components/FlowContextMenu.vue
+  0f94942b1e739532 115,136,170
+assets/app/modules/sheets/components/blocks/ReferenceBlock.vue
+  0f94942b1e739532 186,214
+assets/app/modules/flows/player/FlowPlayer.vue
+  0f94942b1e739532 1-146
+assets/app/modules/flows/components/FlowPreview.vue
+  0f94942b1e739532 5,78,138
+assets/app/plugins/tiptap/MentionList.vue
+  0f94942b1e739532 53,64
+assets/app/modules/flows/composables/useFlowEditor.ts
+  0f94942b1e739532 683-686,700-702,749
+assets/app/test/components/builders/ConditionBuilder.test.ts
+  0f94942b1e739532 1-258
+assets/app/modules/scenes/components/SceneTreeNode.vue
+  0f94942b1e739532 234
+assets/app/modules/scenes/toolbar/ToolbarLayerPicker.vue
+  0f94942b1e739532 40
+assets/app/modules/flows/components/FlowTreeNode.vue
+  0f94942b1e739532 235
+assets/app/modules/sheets/components/blocks/galleryBlock/GalleryBlockContent.vue
+  0f94942b1e739532 2
+assets/app/modules/workspaces/WorkspaceDashboard.vue
+  0f94942b1e739532 177
+assets/app/modules/workspaces/projects/New.vue
+  0f94942b1e739532 3
+assets/app/modules/flows/player/PlayerChoices.vue
+  0f94942b1e739532 1-47
+assets/app/modules/flows/nodes/SlugLineNode.vue
+  0f94942b1e739532 94,100,106,116
+lib/storyarn_web/live/flow_live/player_live.ex
+  0f94942b1e739532 31-42,469-535
+assets/app/modules/project-settings/ExportPanel.vue
+  0f94942b1e739532 99-103
+assets/app/modules/flows/nodes/SubflowNode.vue
+  0f94942b1e739532 63,74,100
+assets/app/modules/sheets/components/blocks/table/TableBlock.vue
+  0f94942b1e739532 2
+assets/app/test/modules/shared/operators/expression-serializer.test.ts
+  0f94942b1e739532 1-2,4-659
+assets/app/modules/flows/nodes/HubNode.vue
+  0f94942b1e739532 39
+assets/app/modules/localization/components/LocalizationIndex.vue
+  0f94942b1e739532 2,35,46,86,150,167,285,290-291,296,301-302
+assets/app/modules/sheets/components/blocks/FormulaBindingSelect.vue
+  0f94942b1e739532 202
+assets/app/modules/flows/nodes/EntryNode.vue
+  0f94942b1e739532 32
+.mcp.json
+  0f94942b1e739532 5,9,12
+assets/app/modules/sheets/components/BlockList.vue
+  0f94942b1e739532 7
+assets/app/modules/flows/components/FlowDebugPanel.vue
+  0f94942b1e739532 7,79,184,245
+assets/app/modules/sheets/components/blocks/table/TableGrid.vue
+  0f94942b1e739532 289,294
+assets/app/modules/flows/components/NodeShell.vue
+  0f94942b1e739532 19
+assets/app/modules/localization/components/LocalizationSidebar.vue
+  0f94942b1e739532 150
+assets/app/modules/scenes/components/dock-panels/ZonesDropdown.vue
+  0f94942b1e739532 70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "41e1605745f5eed93981a2a7ac4f5a8a58eb2d31",
+  "prompts": {
+    "0f94942b1e739532": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81d0c940-128b-41fa-8ea1-7a2d2eb90b8a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 18046,
+      "total_deletions": 2387,
+      "accepted_lines": 7340,
+      "overriden_lines": 2
+    },
+    "4a17336e40c15eda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e2b34f-aad4-4a3a-9d19-0cf8845fe0de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "9f017135ba34bb9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78f3f27b-e90b-4cd0-9420-fe6ad297bfba",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 316,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 152,
+      "overriden_lines": 0
+    }
+  }
+}
