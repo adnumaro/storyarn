@@ -449,8 +449,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
           updated_blocks = Enum.map(condition["blocks"], &repair_block(&1, read_refs))
           Map.put(condition, "blocks", updated_blocks)
         else
-          updated_rules = repair_condition_rules(condition["rules"] || [], read_refs)
-          Map.put(condition, "rules", updated_rules)
+          condition
         end
 
       Map.put(data, "condition", updated_condition)

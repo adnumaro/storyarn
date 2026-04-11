@@ -6,12 +6,6 @@
 import type { NodeData } from "./node-configs";
 import type { SheetMapEntry } from "../types";
 
-/**
- * Re-export as SheetInfo for backward compatibility.
- * Canonical definition is SheetMapEntry in types.ts.
- */
-export type SheetInfo = SheetMapEntry;
-
 export interface HubInfo {
   color_hex?: string | null;
   label?: string;

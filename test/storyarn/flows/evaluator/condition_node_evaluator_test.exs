@@ -60,13 +60,20 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluatorTest do
         make_node(1, %{
           "condition" => %{
             "logic" => "all",
-            "rules" => [
+            "blocks" => [
               %{
-                "id" => "r1",
-                "sheet" => "mc",
-                "variable" => "health",
-                "operator" => "greater_than",
-                "value" => "50"
+                "id" => "b1",
+                "type" => "block",
+                "logic" => "all",
+                "rules" => [
+                  %{
+                    "id" => "r1",
+                    "sheet" => "mc",
+                    "variable" => "health",
+                    "operator" => "greater_than",
+                    "value" => "50"
+                  }
+                ]
               }
             ]
           }
@@ -92,13 +99,20 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluatorTest do
         make_node(1, %{
           "condition" => %{
             "logic" => "all",
-            "rules" => [
+            "blocks" => [
               %{
-                "id" => "r1",
-                "sheet" => "mc",
-                "variable" => "health",
-                "operator" => "greater_than",
-                "value" => "50"
+                "id" => "b1",
+                "type" => "block",
+                "logic" => "all",
+                "rules" => [
+                  %{
+                    "id" => "r1",
+                    "sheet" => "mc",
+                    "variable" => "health",
+                    "operator" => "greater_than",
+                    "value" => "50"
+                  }
+                ]
               }
             ]
           }
@@ -124,13 +138,20 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluatorTest do
         make_node(1, %{
           "condition" => %{
             "logic" => "all",
-            "rules" => [
+            "blocks" => [
               %{
-                "id" => "r1",
-                "sheet" => "mc",
-                "variable" => "health",
-                "operator" => "greater_than",
-                "value" => "50"
+                "id" => "b1",
+                "type" => "block",
+                "logic" => "all",
+                "rules" => [
+                  %{
+                    "id" => "r1",
+                    "sheet" => "mc",
+                    "variable" => "health",
+                    "operator" => "greater_than",
+                    "value" => "50"
+                  }
+                ]
               }
             ]
           }
@@ -157,13 +178,20 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluatorTest do
         make_node(1, %{
           "condition" => %{
             "logic" => "all",
-            "rules" => [
+            "blocks" => [
               %{
-                "id" => "r1",
-                "sheet" => "mc",
-                "variable" => "health",
-                "operator" => "greater_than",
-                "value" => "50"
+                "id" => "b1",
+                "type" => "block",
+                "logic" => "all",
+                "rules" => [
+                  %{
+                    "id" => "r1",
+                    "sheet" => "mc",
+                    "variable" => "health",
+                    "operator" => "greater_than",
+                    "value" => "50"
+                  }
+                ]
               }
             ]
           }

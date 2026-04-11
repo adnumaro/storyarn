@@ -92,7 +92,14 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.NodeTest do
     test "updates condition data on condition node", %{socket: socket} do
       condition_data = %{
         "logic" => "any",
-        "rules" => [%{"variable" => "health", "operator" => "greater_than", "value" => "50"}]
+        "blocks" => [
+          %{
+            "id" => "b1",
+            "type" => "block",
+            "logic" => "all",
+            "rules" => [%{"variable" => "health", "operator" => "greater_than", "value" => "50"}]
+          }
+        ]
       }
 
       {:noreply, result} =
@@ -100,8 +107,9 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.NodeTest do
 
       node = Storyarn.Flows.get_node!(result.assigns.flow.id, result.assigns.selected_node.id)
       assert node.data["condition"]["logic"] == "any"
-      assert length(node.data["condition"]["rules"]) == 1
-      assert hd(node.data["condition"]["rules"])["variable"] == "health"
+      block = hd(node.data["condition"]["blocks"])
+      assert length(block["rules"]) == 1
+      assert hd(block["rules"])["variable"] == "health"
     end
 
     test "ignores update when no node selected", %{socket: socket} do
@@ -155,7 +163,12 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.NodeTest do
           }
         })
 
-      condition_data = %{"logic" => "all", "rules" => [%{"variable" => "hp"}]}
+      condition_data = %{
+        "logic" => "all",
+        "blocks" => [
+          %{"id" => "b1", "type" => "block", "logic" => "all", "rules" => [%{"variable" => "hp"}]}
+        ]
+      }
 
       {:noreply, result} =
         ConditionNode.handle_update_response_condition_builder(
@@ -172,8 +185,9 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.NodeTest do
       condition = response["condition"]
 
       assert condition["logic"] == "all"
-      assert length(condition["rules"]) == 1
-      assert hd(condition["rules"])["variable"] == "hp"
+      block = hd(condition["blocks"])
+      assert length(block["rules"]) == 1
+      assert hd(block["rules"])["variable"] == "hp"
     end
 
     test "handles missing node-id", %{socket: socket} do

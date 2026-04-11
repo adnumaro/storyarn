@@ -31,7 +31,6 @@ export interface ConditionGroup {
 export interface ConditionData {
   logic: "all" | "any";
   blocks: (ConditionBlock | ConditionGroup)[];
-  rules?: ConditionRule[];
 }
 
 export interface Assignment {

@@ -28,7 +28,12 @@ defmodule Storyarn.Flows.Evaluator.ConditionEvalTest do
   end
 
   defp make_condition(logic, rules) do
-    %{"logic" => logic, "rules" => rules}
+    %{
+      "logic" => logic,
+      "blocks" => [
+        %{"id" => "b1", "type" => "block", "logic" => logic, "rules" => rules}
+      ]
+    }
   end
 
   # =============================================================================
@@ -40,12 +45,12 @@ defmodule Storyarn.Flows.Evaluator.ConditionEvalTest do
       assert {true, []} = ConditionEval.evaluate(nil, %{})
     end
 
-    test "empty rules passes" do
-      assert {true, []} = ConditionEval.evaluate(%{"logic" => "all", "rules" => []}, %{})
+    test "empty blocks passes" do
+      assert {true, []} = ConditionEval.evaluate(%{"logic" => "all", "blocks" => []}, %{})
     end
 
-    test "nil rules passes" do
-      assert {true, []} = ConditionEval.evaluate(%{"rules" => nil}, %{})
+    test "nil blocks passes" do
+      assert {true, []} = ConditionEval.evaluate(%{"blocks" => nil}, %{})
     end
 
     test "invalid structure passes" do
@@ -98,13 +103,20 @@ defmodule Storyarn.Flows.Evaluator.ConditionEvalTest do
       json =
         Jason.encode!(%{
           "logic" => "all",
-          "rules" => [
+          "blocks" => [
             %{
-              "id" => "r1",
-              "sheet" => "mc.jaime",
-              "variable" => "health",
-              "operator" => "greater_than",
-              "value" => "50"
+              "id" => "b1",
+              "type" => "block",
+              "logic" => "all",
+              "rules" => [
+                %{
+                  "id" => "r1",
+                  "sheet" => "mc.jaime",
+                  "variable" => "health",
+                  "operator" => "greater_than",
+                  "value" => "50"
+                }
+              ]
             }
           ]
         })

@@ -390,13 +390,20 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       condition_json =
         Jason.encode!(%{
           "logic" => "all",
-          "rules" => [
+          "blocks" => [
             %{
-              "id" => "rule1",
-              "sheet" => "mc.jaime",
-              "variable" => "health",
-              "operator" => "greater_than",
-              "value" => "50"
+              "id" => "b1",
+              "type" => "block",
+              "logic" => "all",
+              "rules" => [
+                %{
+                  "id" => "rule1",
+                  "sheet" => "mc.jaime",
+                  "variable" => "health",
+                  "operator" => "greater_than",
+                  "value" => "50"
+                }
+              ]
             }
           ]
         })
@@ -439,13 +446,20 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       condition_json =
         Jason.encode!(%{
           "logic" => "all",
-          "rules" => [
+          "blocks" => [
             %{
-              "id" => "rule1",
-              "sheet" => "mc.jaime",
-              "variable" => "health",
-              "operator" => "greater_than",
-              "value" => "100"
+              "id" => "b1",
+              "type" => "block",
+              "logic" => "all",
+              "rules" => [
+                %{
+                  "id" => "rule1",
+                  "sheet" => "mc.jaime",
+                  "variable" => "health",
+                  "operator" => "greater_than",
+                  "value" => "100"
+                }
+              ]
             }
           ]
         })
@@ -701,13 +715,20 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
     setup do
       condition = %{
         "logic" => "all",
-        "rules" => [
+        "blocks" => [
           %{
-            "id" => "rule1",
-            "sheet" => "mc.jaime",
-            "variable" => "health",
-            "operator" => "greater_than",
-            "value" => "50"
+            "id" => "b1",
+            "type" => "block",
+            "logic" => "all",
+            "rules" => [
+              %{
+                "id" => "rule1",
+                "sheet" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "greater_than",
+                "value" => "50"
+              }
+            ]
           }
         ]
       }
@@ -763,7 +784,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         1 => node(1, "entry"),
         2 =>
           node(2, "condition", %{
-            "condition" => %{"logic" => "all", "rules" => []},
+            "condition" => %{"logic" => "all", "blocks" => [%{"id" => "b1", "type" => "block", "logic" => "all", "rules" => []}]},
             "switch_mode" => false
           })
       }
@@ -1334,13 +1355,20 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
     test "complete flow with variable mutations and branching" do
       condition = %{
         "logic" => "all",
-        "rules" => [
+        "blocks" => [
           %{
-            "id" => "rule1",
-            "sheet" => "mc.jaime",
-            "variable" => "health",
-            "operator" => "greater_than",
-            "value" => "50"
+            "id" => "b1",
+            "type" => "block",
+            "logic" => "all",
+            "rules" => [
+              %{
+                "id" => "rule1",
+                "sheet" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "greater_than",
+                "value" => "50"
+              }
+            ]
           }
         ]
       }
@@ -1858,13 +1886,20 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
 
       condition = %{
         "logic" => "all",
-        "rules" => [
+        "blocks" => [
           %{
-            "id" => "rule1",
-            "sheet" => "mc.jaime",
-            "variable" => "attributes.strength.value",
-            "operator" => "greater_than",
-            "value" => "10"
+            "id" => "b1",
+            "type" => "block",
+            "logic" => "all",
+            "rules" => [
+              %{
+                "id" => "rule1",
+                "sheet" => "mc.jaime",
+                "variable" => "attributes.strength.value",
+                "operator" => "greater_than",
+                "value" => "10"
+              }
+            ]
           }
         ]
       }
@@ -1931,13 +1966,20 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
 
       condition = %{
         "logic" => "all",
-        "rules" => [
+        "blocks" => [
           %{
-            "id" => "rule1",
-            "sheet" => "mc.jaime",
-            "variable" => "health",
-            "operator" => "greater_than",
-            "value" => "50"
+            "id" => "b1",
+            "type" => "block",
+            "logic" => "all",
+            "rules" => [
+              %{
+                "id" => "rule1",
+                "sheet" => "mc.jaime",
+                "variable" => "health",
+                "operator" => "greater_than",
+                "value" => "50"
+              }
+            ]
           }
         ]
       }

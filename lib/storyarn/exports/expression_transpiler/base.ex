@@ -45,19 +45,12 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Base do
 
       @impl true
       def transpile_condition(nil, _ctx), do: {:ok, "", []}
-      def transpile_condition(%{"rules" => []}, _ctx), do: {:ok, "", []}
       def transpile_condition(%{"blocks" => []}, _ctx), do: {:ok, "", []}
 
       def transpile_condition(condition, _ctx) do
-        case Helpers.extract_condition_structure(condition) do
-          {:flat, logic, rules} ->
-            {parts, warnings} = transpile_rules(rules)
-            {:ok, join_condition(logic, parts), warnings}
-
-          {:blocks, top_logic, groups} ->
-            {parts, warnings} = transpile_groups(groups)
-            {:ok, join_condition(top_logic, parts), warnings}
-        end
+        {:blocks, top_logic, groups} = Helpers.extract_condition_structure(condition)
+        {parts, warnings} = transpile_groups(groups)
+        {:ok, join_condition(top_logic, parts), warnings}
       end
 
       defp join_condition(logic, parts) do

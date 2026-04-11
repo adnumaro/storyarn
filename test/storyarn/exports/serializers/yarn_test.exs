@@ -365,12 +365,19 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
             "condition" =>
               Jason.encode!(%{
                 "logic" => "all",
-                "rules" => [
+                "blocks" => [
                   %{
-                    "sheet" => sheet.shortcut,
-                    "variable" => "health",
-                    "operator" => "greater_than",
-                    "value" => "50"
+                    "id" => "b1",
+                    "type" => "block",
+                    "logic" => "all",
+                    "rules" => [
+                      %{
+                        "sheet" => sheet.shortcut,
+                        "variable" => "health",
+                        "operator" => "greater_than",
+                        "value" => "50"
+                      }
+                    ]
                   }
                 ]
               }),
@@ -759,11 +766,18 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
             "condition" =>
               Jason.encode!(%{
                 "logic" => "all",
-                "rules" => [
+                "blocks" => [
                   %{
-                    "sheet" => sheet.shortcut,
-                    "variable" => "alive",
-                    "operator" => "is_true"
+                    "id" => "b1",
+                    "type" => "block",
+                    "logic" => "all",
+                    "rules" => [
+                      %{
+                        "sheet" => sheet.shortcut,
+                        "variable" => "alive",
+                        "operator" => "is_true"
+                      }
+                    ]
                   }
                 ]
               }),
@@ -1004,12 +1018,19 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
             "condition" =>
               Jason.encode!(%{
                 "logic" => "all",
-                "rules" => [
+                "blocks" => [
                   %{
-                    "sheet" => sheet.shortcut,
-                    "variable" => "desc",
-                    "operator" => "contains",
-                    "value" => "test"
+                    "id" => "b1",
+                    "type" => "block",
+                    "logic" => "all",
+                    "rules" => [
+                      %{
+                        "sheet" => sheet.shortcut,
+                        "variable" => "desc",
+                        "operator" => "contains",
+                        "value" => "test"
+                      }
+                    ]
                   }
                 ]
               }),
@@ -1186,12 +1207,19 @@ defmodule Storyarn.Exports.Serializers.YarnTest do
                 "condition" =>
                   Jason.encode!(%{
                     "logic" => "all",
-                    "rules" => [
+                    "blocks" => [
                       %{
-                        "sheet" => sheet.shortcut,
-                        "variable" => "gold",
-                        "operator" => "greater_than",
-                        "value" => "50"
+                        "id" => "b1",
+                        "type" => "block",
+                        "logic" => "all",
+                        "rules" => [
+                          %{
+                            "sheet" => sheet.shortcut,
+                            "variable" => "gold",
+                            "operator" => "greater_than",
+                            "value" => "50"
+                          }
+                        ]
                       }
                     ]
                   }),

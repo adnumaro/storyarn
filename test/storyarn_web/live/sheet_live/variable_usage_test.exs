@@ -595,13 +595,20 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "r1",
-                  "sheet" => "icon",
-                  "variable" => "power",
-                  "operator" => "greater_than",
-                  "value" => "50"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "r1",
+                      "sheet" => "icon",
+                      "variable" => "power",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    }
+                  ]
                 }
               ]
             }

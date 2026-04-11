@@ -847,7 +847,7 @@ defmodule Storyarn.Flows do
   # =============================================================================
 
   defdelegate condition_sanitize(condition), to: Condition, as: :sanitize
-  defdelegate condition_new(), to: Condition, as: :new
+  defdelegate condition_new(), to: Condition, as: :new_block_condition
   defdelegate condition_has_rules?(condition), to: Condition, as: :has_rules?
   defdelegate condition_to_json(condition), to: Condition, as: :to_json
   defdelegate condition_parse(condition), to: Condition, as: :parse

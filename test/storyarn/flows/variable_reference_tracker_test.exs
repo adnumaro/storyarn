@@ -219,13 +219,20 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "rule_1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "health",
-                  "operator" => "greater_than",
-                  "value" => "50"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "rule_1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "health",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    }
+                  ]
                 }
               ]
             }
@@ -250,20 +257,27 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "rule_1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "health",
-                  "operator" => "greater_than",
-                  "value" => "50"
-                },
-                %{
-                  "id" => "rule_2",
-                  "sheet" => "global.quests",
-                  "variable" => "sword_done",
-                  "operator" => "is_true",
-                  "value" => nil
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "rule_1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "health",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    },
+                    %{
+                      "id" => "rule_2",
+                      "sheet" => "global.quests",
+                      "variable" => "sword_done",
+                      "operator" => "is_true",
+                      "value" => nil
+                    }
+                  ]
                 }
               ]
             }
@@ -288,13 +302,20 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "rule_1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "health",
-                  "operator" => "greater_than",
-                  "value" => "50"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "rule_1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "health",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    }
+                  ]
                 }
               ]
             }
@@ -476,13 +497,20 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "rule_1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "health",
-                  "operator" => "greater_than",
-                  "value" => "50"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "rule_1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "health",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    }
+                  ]
                 }
               ]
             }
@@ -564,13 +592,20 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "rule_1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "health",
-                  "operator" => "greater_than",
-                  "value" => "50"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "rule_1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "health",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    }
+                  ]
                 }
               ]
             }
@@ -652,13 +687,20 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "rule_1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "health",
-                  "operator" => "greater_than",
-                  "value" => "50"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "rule_1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "health",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    }
+                  ]
                 }
               ]
             }
@@ -786,13 +828,20 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "rule_1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "health",
-                  "operator" => "greater_than",
-                  "value" => "50"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "rule_1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "health",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    }
+                  ]
                 }
               ]
             }
@@ -809,7 +858,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
       # Verify node data was updated
       updated_node = Storyarn.Repo.get!(Storyarn.Flows.FlowNode, node.id)
-      rule = hd(updated_node.data["condition"]["rules"])
+      rule = hd(hd(updated_node.data["condition"]["blocks"])["rules"])
       assert rule["sheet"] == "mc.renamed"
       assert rule["variable"] == "health"
     end
@@ -1037,20 +1086,27 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "r1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "health",
-                  "operator" => "greater_than",
-                  "value" => "50"
-                },
-                %{
-                  "id" => "r2",
-                  "sheet" => "global.quests",
-                  "variable" => "sword_done",
-                  "operator" => "is_true",
-                  "value" => nil
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "r1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "health",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    },
+                    %{
+                      "id" => "r2",
+                      "sheet" => "global.quests",
+                      "variable" => "sword_done",
+                      "operator" => "is_true",
+                      "value" => nil
+                    }
+                  ]
                 }
               ]
             }
@@ -1066,7 +1122,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       assert count == 1
 
       updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
-      [r1, r2] = updated_node.data["condition"]["rules"]
+      [r1, r2] = hd(updated_node.data["condition"]["blocks"])["rules"]
 
       assert r1["sheet"] == "mc.renamed"
       assert r1["variable"] == "health"
@@ -1414,13 +1470,20 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "rule_1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "attributes.strength.value",
-                  "operator" => "greater_than",
-                  "value" => "5"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "rule_1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "attributes.strength.value",
+                      "operator" => "greater_than",
+                      "value" => "5"
+                    }
+                  ]
                 }
               ]
             }
@@ -1857,13 +1920,20 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "id" => "r1",
-                  "sheet" => "mc.jaime",
-                  "variable" => "attributes.strength.value",
-                  "operator" => "greater_than",
-                  "value" => "5"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "id" => "r1",
+                      "sheet" => "mc.jaime",
+                      "variable" => "attributes.strength.value",
+                      "operator" => "greater_than",
+                      "value" => "5"
+                    }
+                  ]
                 }
               ]
             }
@@ -1877,7 +1947,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
       assert count == 1
 
       updated_node = Repo.get!(Storyarn.Flows.FlowNode, node.id)
-      rule = hd(updated_node.data["condition"]["rules"])
+      rule = hd(hd(updated_node.data["condition"]["blocks"])["rules"])
       assert rule["sheet"] == "mc.renamed"
       assert rule["variable"] == "attributes.strength.value"
     end
@@ -1954,12 +2024,19 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
           data: %{
             "condition" => %{
               "logic" => "all",
-              "rules" => [
+              "blocks" => [
                 %{
-                  "sheet" => "mc.jaime",
-                  "variable" => "health",
-                  "operator" => "greater_than",
-                  "value" => "50"
+                  "id" => "b1",
+                  "type" => "block",
+                  "logic" => "all",
+                  "rules" => [
+                    %{
+                      "sheet" => "mc.jaime",
+                      "variable" => "health",
+                      "operator" => "greater_than",
+                      "value" => "50"
+                    }
+                  ]
                 }
               ]
             }

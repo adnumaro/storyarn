@@ -37,13 +37,10 @@ defmodule Storyarn.Flows.Evaluator.ConditionEval do
 
   Special cases:
   - `nil` or empty condition → `{true, []}` (no condition = always passes)
-  - `:legacy` condition → `{true, []}` (legacy plain text, can't evaluate)
   - Condition with no complete rules → `{true, []}` (nothing to evaluate)
   """
   @spec evaluate(map() | nil, map()) :: {boolean(), [rule_result()]}
   def evaluate(nil, _variables), do: {true, []}
-  def evaluate(%{"rules" => []}, _variables), do: {true, []}
-  def evaluate(%{"rules" => nil}, _variables), do: {true, []}
   def evaluate(%{"blocks" => []}, _variables), do: {true, []}
   def evaluate(%{"blocks" => nil}, _variables), do: {true, []}
 
@@ -60,29 +57,12 @@ defmodule Storyarn.Flows.Evaluator.ConditionEval do
     end
   end
 
-  def evaluate(%{"logic" => logic, "rules" => rules}, variables)
-      when is_list(rules) do
-    rule_results =
-      rules
-      |> Enum.filter(&complete_rule?/1)
-      |> Enum.map(&evaluate_rule(&1, variables))
-
-    # No complete rules → pass
-    if rule_results == [] do
-      {true, []}
-    else
-      passed_list = Enum.map(rule_results, & &1.passed)
-      {apply_logic(logic, passed_list), rule_results}
-    end
-  end
-
   def evaluate(_invalid, _variables), do: {true, []}
 
   @doc """
   Evaluates a condition stored as a JSON string (as found in dialogue node fields).
 
   Parses the string first using `Condition.parse/1`, then evaluates.
-  Legacy plain-text conditions pass automatically.
   """
   @spec evaluate_string(String.t() | nil, map()) :: {boolean(), [rule_result()]}
   def evaluate_string(nil, _variables), do: {true, []}
@@ -90,7 +70,6 @@ defmodule Storyarn.Flows.Evaluator.ConditionEval do
 
   def evaluate_string(condition_string, variables) when is_binary(condition_string) do
     case Condition.parse(condition_string) do
-      :legacy -> {true, []}
       nil -> {true, []}
       condition_map -> evaluate(condition_map, variables)
     end

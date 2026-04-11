@@ -34,21 +34,8 @@ const emit = defineEmits<{
 }>();
 
 function ensureBlockFormat(condition: ConditionData | null | undefined): ConditionData {
-  if (!condition) return { logic: "all", blocks: [] };
-  if (condition.blocks) return condition;
-  const rules = condition.rules || [];
-  if (rules.length === 0) return { logic: "all", blocks: [] };
-  return {
-    logic: "all",
-    blocks: [
-      {
-        id: generateId("block"),
-        type: "block",
-        logic: condition.logic || "all",
-        rules: [...rules],
-      },
-    ],
-  };
+  if (!condition || !condition.blocks) return { logic: "all", blocks: [] };
+  return condition;
 }
 
 const internalCondition = ref(ensureBlockFormat(condition));

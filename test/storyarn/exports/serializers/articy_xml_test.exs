@@ -290,12 +290,19 @@ defmodule Storyarn.Exports.Serializers.ArticyXMLTest do
             "condition" =>
               Jason.encode!(%{
                 "logic" => "all",
-                "rules" => [
+                "blocks" => [
                   %{
-                    "sheet" => sheet.shortcut,
-                    "variable" => "health",
-                    "operator" => "greater_than",
-                    "value" => "50"
+                    "id" => "b1",
+                    "type" => "block",
+                    "logic" => "all",
+                    "rules" => [
+                      %{
+                        "sheet" => sheet.shortcut,
+                        "variable" => "health",
+                        "operator" => "greater_than",
+                        "value" => "50"
+                      }
+                    ]
                   }
                 ]
               }),
@@ -503,12 +510,19 @@ defmodule Storyarn.Exports.Serializers.ArticyXMLTest do
                 "condition" =>
                   Jason.encode!(%{
                     "logic" => "all",
-                    "rules" => [
+                    "blocks" => [
                       %{
-                        "sheet" => sheet.shortcut,
-                        "variable" => "health",
-                        "operator" => "greater_than",
-                        "value" => "50"
+                        "id" => "b1",
+                        "type" => "block",
+                        "logic" => "all",
+                        "rules" => [
+                          %{
+                            "sheet" => sheet.shortcut,
+                            "variable" => "health",
+                            "operator" => "greater_than",
+                            "value" => "50"
+                          }
+                        ]
                       }
                     ]
                   }),
