@@ -239,7 +239,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       _subflow =
         node_fixture(flow, %{
           type: "subflow",
-          data: %{"target_flow_id" => -999}
+          data: %{"referenced_flow_id" => -999}
         })
 
       result = Validator.validate_project(project.id)
@@ -348,14 +348,17 @@ defmodule Storyarn.Exports.ValidatorTest do
       _subflow_a =
         node_fixture(flow_a, %{
           type: "subflow",
-          data: %{"target_flow_id" => flow_b.id}
+          data: %{"referenced_flow_id" => flow_b.id}
         })
 
-      # B references A (circular)
-      _subflow_b =
-        node_fixture(flow_b, %{
+      # B references A (circular) — insert directly to bypass circular reference check
+      {:ok, _subflow_b} =
+        Storyarn.Repo.insert(%Storyarn.Flows.FlowNode{
+          flow_id: flow_b.id,
           type: "subflow",
-          data: %{"target_flow_id" => flow_a.id}
+          data: %{"referenced_flow_id" => flow_a.id},
+          position_x: 100.0,
+          position_y: 100.0
         })
 
       result = Validator.validate_project(project.id)
@@ -375,7 +378,7 @@ defmodule Storyarn.Exports.ValidatorTest do
       _subflow =
         node_fixture(flow_a, %{
           type: "subflow",
-          data: %{"target_flow_id" => flow_b.id}
+          data: %{"referenced_flow_id" => flow_b.id}
         })
 
       result = Validator.validate_project(project.id)

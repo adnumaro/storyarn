@@ -86,6 +86,9 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngine do
 
       {:error, new_state, _reason} ->
         {:error, new_state, Enum.reverse(skipped)}
+
+      {:step_limit, new_state} ->
+        {:error, new_state, Enum.reverse(skipped)}
     end
   end
 end

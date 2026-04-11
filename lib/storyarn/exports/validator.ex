@@ -303,7 +303,7 @@ defmodule Storyarn.Exports.Validator do
         targets =
           flow.nodes
           |> Enum.filter(&(&1.type == "subflow"))
-          |> Enum.map(&get_in(&1.data, ["target_flow_id"]))
+          |> Enum.map(&get_in(&1.data, ["referenced_flow_id"]))
           |> Enum.reject(&is_nil/1)
 
         if targets != [], do: Map.put(acc, flow.id, targets), else: acc
@@ -380,7 +380,7 @@ defmodule Storyarn.Exports.Validator do
     Enum.flat_map(flows, fn flow ->
       flow.nodes
       |> Enum.filter(fn node ->
-        node.type == "subflow" and has_broken_ref?(node, "target_flow_id", valid_flow_ids)
+        node.type == "subflow" and has_broken_ref?(node, "referenced_flow_id", valid_flow_ids)
       end)
       |> Enum.map(fn node ->
         %{

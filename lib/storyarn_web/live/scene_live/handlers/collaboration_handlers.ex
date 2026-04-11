@@ -21,7 +21,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
   @spec handle_cursor_moved(map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_cursor_moved(%{"x" => x, "y" => y}, socket)
-      when is_number(x) and is_number(y) and x >= 0 and x <= 100 and y >= 0 and y <= 100 do
+      when is_number(x) and is_number(y) do
     if scope = socket.assigns[:collab_scope] do
       user = socket.assigns.current_scope.user
       Collaboration.broadcast_cursor(scope, user, x, y)

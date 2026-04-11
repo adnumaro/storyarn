@@ -2,12 +2,17 @@ defmodule StoryarnWeb.Router do
   use StoryarnWeb, :router
 
   # Content Security Policy
+  @csp_dev_extras if(Mix.env() == :dev,
+                    do: " http://localhost:5173 'unsafe-inline' 'unsafe-eval'",
+                    else: ""
+                  )
+
   @csp_policy "default-src 'self'; " <>
-                "script-src 'self'; " <>
-                "style-src 'self' 'unsafe-inline'; " <>
+                "script-src 'self'#{@csp_dev_extras}; " <>
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com#{@csp_dev_extras}; " <>
                 "img-src 'self' data: blob: https:; " <>
-                "font-src 'self' data:; " <>
-                "connect-src 'self' ws: wss: https://*.ingest.sentry.io https://*.ingest.us.sentry.io; " <>
+                "font-src 'self' data: https://fonts.gstatic.com; " <>
+                "connect-src 'self' ws: wss: https://*.ingest.sentry.io https://*.ingest.us.sentry.io#{@csp_dev_extras}; " <>
                 "frame-src 'self'; " <>
                 "frame-ancestors 'self'; " <>
                 "base-uri 'self'; " <>

@@ -84,7 +84,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
           ["localization"]
 
         true ->
-          ~w(languages texts glossary)
+          ~w(languages strings glossary)
           |> Enum.filter(fn k -> (v = loc[k]) != nil and not is_list(v) end)
           |> Enum.map(&"localization.#{&1}")
       end
