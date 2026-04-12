@@ -1,0 +1,105 @@
+assets/app/plugins/expression-editor/tree-parser.ts
+  0f94942b1e739532 1-533
+assets/app/plugins/expression-editor/parser-generated.terms.js
+  769a3cdf86698a9b 28
+  0f94942b1e739532 1-27
+assets/app/components/layout/DashboardContent.vue
+  0f94942b1e739532 1-50
+assets/app/plugins/expression-editor/storyarn-expr.grammar
+  0f94942b1e739532 1-73
+lib/storyarn_web/live/localization_live/index.ex
+  769a3cdf86698a9b 7-8,50,100,128-130
+assets/app/plugins/expression-editor/linter.ts
+  0f94942b1e739532 1-110
+assets/app/plugins/expression-editor/autocomplete.ts
+  0f94942b1e739532 1-189
+assets/app/modules/landing/LandingPage.vue
+  769a3cdf86698a9b 34-39
+assets/app/modules/shared/variables.ts
+  0f94942b1e739532 18-21
+assets/app/plugins/expression-editor/parser-generated.js
+  0f94942b1e739532 1,3-17
+  769a3cdf86698a9b 2,18-20
+assets/app/plugins/expression-editor/parser.ts
+  0f94942b1e739532 1-52
+package.json
+  0f94942b1e739532 11
+assets/app/plugins/expression-editor/formatter.ts
+  0f94942b1e739532 1-149
+lib/storyarn_web/live/asset_live/index.ex
+  769a3cdf86698a9b 34
+assets/app/plugins/expression-editor/theme.ts
+  0f94942b1e739532 1-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "c219a2a356768cde0fb9ebdd267400d91478378a",
+  "prompts": {
+    "0f94942b1e739532": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81d0c940-128b-41fa-8ea1-7a2d2eb90b8a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 308,
+      "total_deletions": 240,
+      "accepted_lines": 6555,
+      "overriden_lines": 69
+    },
+    "4a17336e40c15eda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e2b34f-aad4-4a3a-9d19-0cf8845fe0de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "769a3cdf86698a9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9457d33d-145d-462b-997f-0715403d950f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 14,
+      "total_deletions": 5,
+      "accepted_lines": 23,
+      "overriden_lines": 0
+    },
+    "9f017135ba34bb9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78f3f27b-e90b-4cd0-9420-fe6ad297bfba",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 316,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 150,
+      "overriden_lines": 0
+    }
+  }
+}
