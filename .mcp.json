@@ -7,6 +7,10 @@
     "konva-documentation": {
       "command": "npx",
       "args": ["crawl-chat-mcp", "--id=67d221efb4b9de65095a2579", "--name=konva_documentation"]
+    },
+    "dnd-kit Docs": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://gitmcp.io/clauderic/dnd-kit"]
     }
   }
 }
