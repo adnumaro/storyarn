@@ -1,0 +1,172 @@
+assets/app/components/ui/tabs/TabsList.vue
+  3cfa3896788f6dfd 23
+assets/app/modules/flows/components/FlowTree.vue
+  3cfa3896788f6dfd 277
+assets/app/modules/sheets/components/BlockToolbar.vue
+  3cfa3896788f6dfd 11-13,18,27,55,57,59-61,67,88-90,98-101,105,111
+assets/app/modules/sheets/components/blocks/FormulaBindingSelect.vue
+  3cfa3896788f6dfd 25,141
+assets/app/modules/sheets/components/blocks/ReferenceBlock.vue
+  3cfa3896788f6dfd 19,162,187
+assets/app/modules/sheets/components/blocks/NumberBlock.vue
+  3cfa3896788f6dfd 9-10,74,89-106,109,111,114,129,131,134,149,151,153-154,192
+lib/storyarn_web/controllers/upload_controller.ex
+  3cfa3896788f6dfd 1-58
+assets/app/test/plugins/expression-editor/tree-parser.test.ts
+  0f94942b1e739532 1-149
+assets/app/modules/settings/WorkspaceMembers.vue
+  3cfa3896788f6dfd 118
+lib/storyarn_web/components/layouts/root.html.heex
+  769a3cdf86698a9b 21
+assets/app/modules/sheets/components/OptionEditor.vue
+  3cfa3896788f6dfd 9-10,45-48,50,52-55,57,59-62,66
+assets/app/components/ExpressionEditor.vue
+  0f94942b1e739532 6,9-11,14-15,17-18,42-99,130-142,164,167-169
+assets/app/components/ui/input/Input.vue
+  3cfa3896788f6dfd 2,10,21-28,37,40
+lib/storyarn_web/live/sheet_live/show.ex
+  3cfa3896788f6dfd 464-465,467-468,537-538
+assets/app/composables/useCodeEditor.ts
+  0f94942b1e739532 1-169
+assets/app/modules/sheets/components/blocks/richText/RichTextEditor.vue
+  3cfa3896788f6dfd 220-221
+assets/app/modules/sheets/components/blocks/DateBlock.vue
+  3cfa3896788f6dfd 52,85
+assets/app/modules/sheets/components/blocks/MultiSelectBlock.vue
+  3cfa3896788f6dfd 2,13-14,70,86,88,91-92,103,122-123,125-130,132-137,142,151
+assets/app/test/plugins/expression-editor/formatter.test.ts
+  0f94942b1e739532 1,3-63
+lib/storyarn_web/router.ex
+  3cfa3896788f6dfd 113-116
+assets/app/modules/sheets/components/sortable/SortableBlockList.vue
+  3cfa3896788f6dfd 31
+assets/app/composables/useUpload.ts
+  3cfa3896788f6dfd 1-79
+assets/app/modules/sheets/components/AddBlockMenu.vue
+  3cfa3896788f6dfd 27,71
+assets/app/modules/sheets/components/blocks/table/TableBlock.vue
+  3cfa3896788f6dfd 68
+assets/app/modules/sheets/components/BlockList.vue
+  3cfa3896788f6dfd 20
+lib/storyarn_web/live/sheet_live/handlers/gallery_handlers.ex
+  3cfa3896788f6dfd 13,18-20,22-24
+assets/app/modules/sheets/components/blocks/SelectBlock.vue
+  3cfa3896788f6dfd 2,10-12,71,87,89,92-93,104,120-161
+assets/app/modules/sheets/components/SheetHeader.vue
+  3cfa3896788f6dfd 7,24,46-51,65-70
+assets/app/plugins/expression-editor/autocomplete.ts
+  0f94942b1e739532 143-183,191,202-203
+vite.config.mjs
+  769a3cdf86698a9b 11,22,27
+lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex
+  3cfa3896788f6dfd 150-184
+assets/app/modules/sheets/components/blocks/galleryBlock/GalleryBlockContent.vue
+  3cfa3896788f6dfd 9,23,33-38
+assets/app/modules/sheets/components/BlockLabel.vue
+  3cfa3896788f6dfd 70
+assets/app/plugins/expression-editor/tree-parser.ts
+  0f94942b1e739532 318-334,354
+package.json
+  3cfa3896788f6dfd 25
+assets/app/components/AssetIndex.vue
+  3cfa3896788f6dfd 208
+assets/app/modules/flows/components/FlowDebugPanel.vue
+  3cfa3896788f6dfd 235
+assets/app/modules/sheets/components/blocks/BooleanBlock.vue
+  3cfa3896788f6dfd 75
+assets/app/modules/sheets/components/SheetAvatarSection.vue
+  3cfa3896788f6dfd 6,28
+assets/app/modules/sheets/components/sortable/SortableColumnGroup.vue
+  3cfa3896788f6dfd 20
+assets/app/modules/sheets/components/blocks/galleryBlock/GalleryBlock.vue
+  3cfa3896788f6dfd 49
+assets/css/app.css
+  3cfa3896788f6dfd 5-6
+assets/app/modules/scenes/components/SceneTree.vue
+  3cfa3896788f6dfd 263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "5660e5113c0af1e96ff545aebf83f1bccb9df521",
+  "prompts": {
+    "0f94942b1e739532": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81d0c940-128b-41fa-8ea1-7a2d2eb90b8a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 3329,
+      "total_deletions": 57,
+      "accepted_lines": 8394,
+      "overriden_lines": 1
+    },
+    "3cfa3896788f6dfd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "293146a5-d7c9-4d3c-ba96-ac8b84bdf4fd",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 548,
+      "total_deletions": 594,
+      "accepted_lines": 545,
+      "overriden_lines": 0
+    },
+    "4a17336e40c15eda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e2b34f-aad4-4a3a-9d19-0cf8845fe0de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "769a3cdf86698a9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9457d33d-145d-462b-997f-0715403d950f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 5,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    },
+    "9f017135ba34bb9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78f3f27b-e90b-4cd0-9420-fe6ad297bfba",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 316,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 150,
+      "overriden_lines": 0
+    }
+  }
+}
