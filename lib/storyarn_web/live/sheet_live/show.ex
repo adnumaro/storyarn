@@ -153,7 +153,7 @@ defmodule StoryarnWeb.SheetLive.Show do
     ~H"""
     <div
       :if={@sheet}
-      class="max-w-4xl mx-auto bg-surface border border-border rounded-2xl p-6 mb-8 shadow-sm"
+      class="max-w-4xl mx-auto bg-surface border border-border rounded-2xl p-6 shadow-sm"
     >
       <.vue
         v-component="modules/sheets/components/SheetHeader"
@@ -163,7 +163,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         can-edit={@can_edit}
         source-shortcut={@source_shortcut}
       />
-      <div class="px-4 pb-6">
+      <div class="pb-6">
         <.vue
           v-component="modules/sheets/components/tabs/SheetTabs"
           v-socket={@socket}
