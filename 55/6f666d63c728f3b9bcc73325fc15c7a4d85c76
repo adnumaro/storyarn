@@ -1,0 +1,86 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "556f666d63c728f3b9bcc73325fc15c7a4d85c76",
+  "prompts": {
+    "0f94942b1e739532": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81d0c940-128b-41fa-8ea1-7a2d2eb90b8a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 7927,
+      "overriden_lines": 0
+    },
+    "3cfa3896788f6dfd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "293146a5-d7c9-4d3c-ba96-ac8b84bdf4fd",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 234,
+      "total_deletions": 0,
+      "accepted_lines": 288,
+      "overriden_lines": 0
+    },
+    "4a17336e40c15eda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e2b34f-aad4-4a3a-9d19-0cf8845fe0de",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "769a3cdf86698a9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9457d33d-145d-462b-997f-0715403d950f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    },
+    "9f017135ba34bb9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78f3f27b-e90b-4cd0-9420-fe6ad297bfba",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 316,
+      "overriden_lines": 0
+    },
+    "dde06b034582d0b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "268c60fe-868c-450e-9d57-825bf049ff3f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 150,
+      "overriden_lines": 0
+    }
+  }
+}
