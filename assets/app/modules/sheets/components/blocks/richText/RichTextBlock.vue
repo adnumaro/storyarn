@@ -6,6 +6,8 @@ import type { Block } from "../../../types";
 import BlockLabel from "../../BlockLabel.vue";
 import BlockToolbar from "../../BlockToolbar.vue";
 import RichTextEditor from "./RichTextEditor.vue";
+import { Input } from '@components/ui/input'
+import { useId } from 'reka-ui'
 
 const {
   block,
@@ -49,6 +51,7 @@ const content = computed(() => (block.value?.content as string) || "");
   >
     <BlockToolbar
       v-if="canEdit"
+      :block-id="block.id"
       :is-constant="block.is_constant"
       :is-variable="!block.is_constant && !!block.variable_name"
       :variable-name="block.variable_name || ''"
@@ -64,13 +67,15 @@ const content = computed(() => (block.value?.content as string) || "");
     >
       <template #config>
         <div class="space-y-1">
-          <label class="text-xs font-medium">Placeholder</label>
-          <input
+          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">Placeholder</label>
+          <Input
+            :id="`placeholder-${useId()}`"
             :value="block.config?.placeholder || ''"
             placeholder="Write something..."
-            class="h-7 w-full text-xs rounded-md border border-input bg-background px-2"
+            size="xs"
+            class="bg-background dark:bg-background"
             @blur="
-              (e) =>
+             (e: Event) =>
                 live.pushEvent('update_block_config', {
                   id: block.id,
                   field: 'placeholder',

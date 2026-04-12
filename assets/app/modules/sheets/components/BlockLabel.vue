@@ -67,6 +67,7 @@ function save(): void {
         class="font-medium bg-transparent outline-none border-none px-0 text-sm"
         @blur="save"
         @keydown.enter.prevent="save"
+        @keydown.stop
       />
       <span v-else class="font-medium" :class="canEdit && 'cursor-text'" @click="startEdit">{{
         localLabel

@@ -49,6 +49,7 @@ const content = computed(() => block.value?.content);
   >
     <BlockToolbar
       v-if="canEdit"
+      :block-id="block.id"
       :is-constant="block.is_constant"
       :is-variable="!block.is_constant && !!block.variable_name"
       :variable-name="block.variable_name || ''"
@@ -81,7 +82,7 @@ const content = computed(() => block.value?.content);
       v-if="canEdit"
       type="date"
       :model-value="(content as string) || ''"
-      class="h-9 w-full"
+      class="w-full"
       @change="
         (e: Event) =>
           live.pushEvent('update_block_value', {

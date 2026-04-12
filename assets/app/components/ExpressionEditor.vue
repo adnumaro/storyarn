@@ -3,14 +3,19 @@
  * Tabbed expression editor: Builder | Code.
  *
  * Builder tab: ConditionBuilder or InstructionBuilder (visual).
- * Code tab: TODO — needs CodeMirror with Lezer grammar rebuild for V2.
+ * Code tab: CodeMirror 6 with Lezer grammar, autocomplete, linting, formatting.
  */
 
-import { ref } from "vue";
+import { AlignLeft } from "lucide-vue-next";
+import { ref, toRef, watch } from "vue";
+import { Button } from "@components/ui/button";
 import ConditionBuilder from "./builders/ConditionBuilder.vue";
 import InstructionBuilder from "./builders/InstructionBuilder.vue";
+import { useCodeEditor } from "@composables/useCodeEditor";
+import { serializeCondition, serializeAssignments } from "@modules/shared/operators/expression-serializer";
 import type { Variable } from "@modules/shared/variables";
-import type { ConditionData, Assignment } from "./builders/types";
+import type { ConditionData, ConditionBlock, ConditionRule, Assignment } from "./builders/types";
+import type { ParsedCondition, ParsedAssignment } from "@plugins/expression-editor/tree-parser";
 
 const {
   mode,
@@ -34,6 +39,64 @@ const emit = defineEmits<{
 }>();
 
 const activeTab = ref("builder");
+const codeEditorRef = ref<HTMLDivElement | null>(null);
+
+const { setContent, format } = useCodeEditor(codeEditorRef, {
+  mode: toRef(() => mode),
+  variables: toRef(() => variables),
+  disabled: toRef(() => disabled),
+  placeholder: mode === "condition" ? "mc.health > 50 && mc.alive" : "mc.health = 100",
+  onConditionChange(parsed: ParsedCondition) {
+    emit("update:condition", parsedConditionToConditionData(parsed));
+  },
+  onAssignmentsChange(parsed: ParsedAssignment[]) {
+    emit("update:assignments", parsedAssignmentsToAssignments(parsed));
+  },
+});
+
+// When switching to Code tab, serialize current Builder data into the editor
+watch(activeTab, (tab) => {
+  if (tab === "code") {
+    const text =
+      mode === "condition"
+        ? serializeCondition(condition as Parameters<typeof serializeCondition>[0])
+        : serializeAssignments(assignments as Parameters<typeof serializeAssignments>[0]);
+    setContent(text);
+  }
+});
+
+// -- Type conversions (parsed tree types → builder types) --
+
+function parsedConditionToConditionData(parsed: ParsedCondition): ConditionData {
+  return {
+    logic: parsed.logic,
+    blocks: parsed.rules.map((rule): ConditionBlock => ({
+      id: rule.id,
+      type: "block",
+      logic: "all",
+      rules: [
+        {
+          id: `${rule.id}_r`,
+          sheet: rule.sheet,
+          variable: rule.variable,
+          operator: rule.operator as ConditionRule["operator"],
+          value: rule.value,
+        },
+      ],
+    })),
+  };
+}
+
+function parsedAssignmentsToAssignments(parsed: ParsedAssignment[]): Assignment[] {
+  return parsed.map((a) => ({
+    operator: a.operator as Assignment["operator"],
+    sheet: a.sheet,
+    variable: a.variable,
+    value_type: a.value_type,
+    value: a.value,
+    value_sheet: a.value_sheet,
+  }));
+}
 </script>
 
 <template>
@@ -64,6 +127,19 @@ const activeTab = ref("builder");
       >
         Code
       </button>
+
+      <!-- Format button (only on Code tab) -->
+      <Button
+        v-if="activeTab === 'code' && !disabled"
+        variant="ghost"
+        size="xs"
+        class="ml-auto"
+        title="Format code"
+        @click="format()"
+      >
+        <AlignLeft :size="14" />
+        Format
+      </Button>
     </div>
 
     <!-- Builder tab -->
@@ -85,12 +161,11 @@ const activeTab = ref("builder");
       />
     </div>
 
-    <!-- Code tab (pending CodeMirror rebuild) -->
+    <!-- Code tab -->
     <div
       v-show="activeTab === 'code'"
-      class="min-h-[120px] rounded-lg border border-border p-4 flex items-center justify-center"
-    >
-      <span class="text-sm text-muted-foreground">Code editor pending migration</span>
-    </div>
+      ref="codeEditorRef"
+      class="min-h-[120px] rounded-lg border border-border overflow-hidden"
+    />
   </div>
 </template>

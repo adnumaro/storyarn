@@ -46,6 +46,7 @@ function saveLabel(val: string): void {
   >
     <BlockToolbar
       v-if="canEdit"
+      :block-id="block.id"
       :show-constant="false"
       :show-config="false"
       :show-scope="!inherited"

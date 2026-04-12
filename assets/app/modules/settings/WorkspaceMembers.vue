@@ -115,7 +115,7 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
               v-model="inviteEmail"
               :placeholder="$t('settings.workspace.members.invitation.email_placeholder')"
               required
-              class="h-10 bg-background"
+              class="bg-background"
             />
           </div>
           <div class="w-full sm:w-40 space-y-1.5">

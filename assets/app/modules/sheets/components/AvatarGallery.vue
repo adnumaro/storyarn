@@ -217,7 +217,7 @@ function onNotesBlur(id: number | string, value: string, original: string | unde
             <Input
               :model-value="avatars[currentIndex].name || ''"
               placeholder="e.g. happy, angry, combat..."
-              class="h-8 text-sm"
+              class="text-sm"
               :disabled="!canEdit"
               @blur="
                 (e: Event) =>

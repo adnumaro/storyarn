@@ -3,6 +3,7 @@ import { LayoutGrid, Plus, X } from "lucide-vue-next";
 import { computed } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import type { Sheet, SheetAvatar } from "../types";
+import { generateId } from '@modules/shared/variables.ts'
 
 const { sheet, canEdit = false } = defineProps<{
   sheet: Sheet;
@@ -24,7 +25,7 @@ const defaultAvatar = computed<SheetAvatar | null>(
 <template>
   <Popover>
     <PopoverTrigger as-child>
-      <button class="shrink-0 group/avatar relative" :disabled="!canEdit">
+      <button :id="`avatar-trigger-${generateId()}`" class="shrink-0 group/avatar relative" :disabled="!canEdit">
         <img
           v-if="defaultAvatar?.url"
           :src="defaultAvatar.url"

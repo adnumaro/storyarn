@@ -22,6 +22,7 @@
     "@codemirror/view": "^6.41.0",
     "@floating-ui/dom": "^1.7.6",
     "@sentry/browser": "^10.47.0",
+    "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/vue-table": "^8.21.3",
     "@tiptap/core": "^3.22.0",

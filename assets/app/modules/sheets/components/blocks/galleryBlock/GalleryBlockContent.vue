@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui
 import { Input } from "@components/ui/input/index.ts";
 import { Textarea } from "@components/ui/textarea/index.ts";
 import { useLive } from "@composables/useLive";
+import { useUpload } from "@composables/useUpload";
 import type { GalleryImage } from "../../../types";
 
 const {
@@ -19,6 +20,7 @@ const {
 }>();
 
 const live = useLive();
+const { uploadFiles } = useUpload();
 const detailImage = ref<GalleryImage | null>(null);
 const detailOpen = ref(false);
 
@@ -28,19 +30,12 @@ function triggerUpload(): void {
   input.type = "file";
   input.accept = "image/*";
   input.multiple = true;
-  input.onchange = (e) => {
-    Array.from((e.target as HTMLInputElement).files!).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        live.pushEvent("upload_gallery_image", {
-          block_id: blockId,
-          filename: file.name,
-          content_type: file.type,
-          data: reader.result,
-        });
-      };
-      reader.readAsDataURL(file);
-    });
+  input.onchange = async (e) => {
+    const files = Array.from((e.target as HTMLInputElement).files ?? []);
+    const results = await uploadFiles(files, "gallery");
+    for (const result of results) {
+      live.pushEvent("attach_gallery_image", { block_id: blockId, asset_id: result.id });
+    }
   };
   input.click();
 }
@@ -185,7 +180,7 @@ function onDrop(e: DragEvent, dropIndex: number): void {
           <Input
             :model-value="detailImage.label || ''"
             placeholder="Image label..."
-            class="h-8 text-sm"
+            class="text-sm"
             :disabled="!canEdit"
             @blur="
               (e: Event) =>

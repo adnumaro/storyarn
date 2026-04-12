@@ -6,6 +6,8 @@
 import { Plus, X } from "lucide-vue-next";
 import { useLive } from "@composables/useLive";
 import type { SelectOption } from "../types";
+import { Button } from '@components/ui/button'
+import { Input } from '@components/ui/input'
 
 const { blockId, options = [] } = defineProps<{
   blockId: number | string;
@@ -40,25 +42,28 @@ function updateOption(index: number, field: string, value: string): void {
     <label class="text-xs font-medium mb-1 block">Options</label>
     <div class="space-y-1">
       <div v-for="(opt, idx) in options" :key="opt.key" class="flex items-center gap-1">
-        <input
-          :value="opt.key"
-          class="h-7 w-14 text-xs font-mono rounded-md border border-input bg-background px-1.5 shrink-0"
+        <Input
+          :model-value="opt.key"
+          class="bg-background dark:bg-background"
+          size="xs"
           placeholder="key"
-          @blur="(e) => updateOption(idx, 'key', (e.target as HTMLInputElement).value)"
+          @blur="(e: Event) => updateOption(idx, 'key', (e.target as HTMLInputElement).value)"
         />
-        <input
-          :value="opt.value"
-          class="h-7 flex-1 min-w-0 text-xs rounded-md border border-input bg-background px-1.5"
+        <Input
+          :model-value="opt.value"
+          size="xs"
+          class="bg-background dark:bg-background"
           placeholder="Label"
-          @blur="(e) => updateOption(idx, 'value', (e.target as HTMLInputElement).value)"
+          @blur="(e: Event) => updateOption(idx, 'value', (e.target as HTMLInputElement).value)"
         />
-        <button
-          type="button"
-          class="size-6 rounded flex items-center justify-center text-destructive hover:bg-destructive/10 shrink-0"
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          class="size-6 text-destructive dark:text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/10"
           @click="removeOption(idx)"
         >
           <X class="size-3" />
-        </button>
+        </Button>
       </div>
     </div>
     <button

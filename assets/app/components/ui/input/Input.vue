@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue";
+import { computed, HTMLAttributes } from 'vue'
 import { useVModel } from "@vueuse/core";
 import { cn } from "@utils/utils";
 
@@ -7,6 +7,7 @@ const props = defineProps<{
   defaultValue?: string | number;
   modelValue?: string | number;
   class?: HTMLAttributes["class"];
+  size?: "xs" | "sm" | "base";
 }>();
 
 const emits = defineEmits<{
@@ -17,6 +18,14 @@ const modelValue = useVModel(props, "modelValue", emits, {
   passive: true,
   defaultValue: props.defaultValue,
 });
+
+const size = computed(() => props.size || "base");
+
+const SIZES = {
+  xs: "h-6 px-2 text-xs",
+  sm: "h-8 px-3 py-1 text-sm file:text-xs md:text-xs",
+  base: "h-9 px-3 py-1 text-base file:text-sm md:text-sm",
+}
 </script>
 
 <template>
@@ -25,9 +34,10 @@ const modelValue = useVModel(props, "modelValue", emits, {
     data-slot="input"
     :class="
       cn(
-        'file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground border-input h-9 w-full min-w-0 rounded-md border bg-background dark:bg-card px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+        'file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground border-input w-full min-w-0 rounded-md border bg-background dark:bg-card shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50',
         'focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]',
         'aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive',
+        SIZES[size],
         props.class,
       )
     "

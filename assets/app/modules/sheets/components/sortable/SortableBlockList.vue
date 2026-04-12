@@ -28,7 +28,7 @@ import RichTextBlock from "../blocks/richText/RichTextBlock.vue";
 import SelectBlock from "../blocks/SelectBlock.vue";
 import TableBlock from "../blocks/table/TableBlock.vue";
 // Block type components
-import TextBlock from "../blocks/table/TextBlock.vue";
+import TextBlock from "../blocks/TextBlock.vue";
 
 const blockComponents: Record<string, typeof TextBlock> = {
   text: TextBlock,

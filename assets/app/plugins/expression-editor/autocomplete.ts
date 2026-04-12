@@ -140,6 +140,47 @@ function completeTableColumns(
   return options.length > 0 ? { from: rowFrom, options } : null;
 }
 
+function completeTablePath(
+  parts: string[],
+  endsWithDot: boolean,
+  baseFrom: number,
+  sheetVars: Variable[],
+): CompletionResult | null {
+  const tableName = parts[0];
+  const tableVars = sheetVars.filter((v) => v.table_name === tableName);
+  if (tableVars.length === 0) return null;
+
+  const tableFrom = baseFrom + tableName.length + 1;
+
+  if (parts.length === 1 && endsWithDot) return completeTableRows(tableFrom, tableVars, "");
+  if (parts.length === 2 && !endsWithDot) return completeTableRows(tableFrom, tableVars, parts[1].toLowerCase());
+
+  const rowName = parts[1];
+  const rowVars = tableVars.filter((v) => v.row_name === rowName);
+  if (rowVars.length === 0) return null;
+
+  const rowFrom = tableFrom + rowName.length + 1;
+  if (parts.length === 2 && endsWithDot) return completeTableColumns(rowFrom, rowVars, "");
+  if (parts.length === 3) return completeTableColumns(rowFrom, rowVars, parts[2].toLowerCase());
+
+  return null;
+}
+
+function parseAfterSheetParts(text: string, matchedSheet: string): { parts: string[]; afterSheet: string; endsWithDot: boolean } {
+  const endsWithDot = text.endsWith(".");
+  const afterSheet = text.slice(matchedSheet.length + 1);
+  const cleanAfter = endsWithDot && afterSheet.endsWith(".") ? afterSheet.slice(0, -1) : afterSheet;
+  const parts = cleanAfter ? cleanAfter.split(".") : [];
+  return { parts, afterSheet, endsWithDot };
+}
+
+function completeFallbackVars(baseFrom: number, prefix: string, regularVars: Variable[]): CompletionResult | null {
+  const options = regularVars
+    .filter((v) => v.variable_name.toLowerCase().startsWith(prefix))
+    .map((v) => ({ label: v.variable_name, detail: `(${v.block_type})`, type: "variable" as const }));
+  return options.length > 0 ? { from: baseFrom, options } : null;
+}
+
 function completeAfterSheet(
   text: string,
   from: number,
@@ -147,11 +188,7 @@ function completeAfterSheet(
   bySheet: Map<string, Variable[]>,
 ): CompletionResult | null {
   const sheetVars = bySheet.get(matchedSheet) || [];
-  const endsWithDot = text.endsWith(".");
-
-  const afterSheet = text.slice(matchedSheet.length + 1);
-  const cleanAfter = endsWithDot && afterSheet.endsWith(".") ? afterSheet.slice(0, -1) : afterSheet;
-  const parts = cleanAfter ? cleanAfter.split(".") : [];
+  const { parts, afterSheet, endsWithDot } = parseAfterSheetParts(text, matchedSheet);
 
   const regularVars = sheetVars.filter((v) => !v.table_name);
   const tableNames = [...new Set(sheetVars.filter((v) => v.table_name).map((v) => v.table_name!))];
@@ -162,28 +199,6 @@ function completeAfterSheet(
     return completeVarsAndTables(baseFrom, prefix, regularVars, tableNames);
   }
 
-  const tableName = parts[0];
-  const tableVars = sheetVars.filter((v) => v.table_name === tableName);
-
-  if (tableVars.length > 0) {
-    const tableFrom = baseFrom + tableName.length + 1;
-
-    if (parts.length === 1 && endsWithDot) return completeTableRows(tableFrom, tableVars, "");
-    if (parts.length === 2 && !endsWithDot) return completeTableRows(tableFrom, tableVars, parts[1].toLowerCase());
-
-    const rowName = parts[1];
-    const rowVars = tableVars.filter((v) => v.row_name === rowName);
-    if (rowVars.length > 0) {
-      const rowFrom = tableFrom + rowName.length + 1;
-      if (parts.length === 2 && endsWithDot) return completeTableColumns(rowFrom, rowVars, "");
-      if (parts.length === 3) return completeTableColumns(rowFrom, rowVars, parts[2].toLowerCase());
-    }
-  }
-
-  // Fallback: filter regular variables
-  const varPrefix = afterSheet.toLowerCase();
-  const options = regularVars
-    .filter((v) => v.variable_name.toLowerCase().startsWith(varPrefix))
-    .map((v) => ({ label: v.variable_name, detail: `(${v.block_type})`, type: "variable" as const }));
-  return options.length > 0 ? { from: baseFrom, options } : null;
+  return completeTablePath(parts, endsWithDot, baseFrom, sheetVars)
+    || completeFallbackVars(baseFrom, afterSheet.toLowerCase(), regularVars);
 }

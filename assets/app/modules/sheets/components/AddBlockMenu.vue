@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu/index.ts";
 import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
+import { generateId } from '@modules/shared/variables.ts'
 
 interface BlockSelection {
   type: string;
@@ -67,6 +68,7 @@ function selectBlock(type: string): void {
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
       <Button
+        :id="`add-block-menu-${generateId()}`"
         variant="ghost"
         size="sm"
         class="w-full justify-start gap-2 text-xs text-muted-foreground border border-dashed border-border"

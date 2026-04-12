@@ -205,7 +205,7 @@ function usageSheetHref(sheet: SheetUsage) {
           type="text"
           :model-value="searchValue"
           placeholder="Search files..."
-          class="pl-8 h-8 w-48"
+          class="pl-8 w-48"
           @input="handleSearch"
         />
       </div>

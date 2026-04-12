@@ -18,7 +18,7 @@
       {assigns[:page_title]}
     </.live_title>
     <PhoenixVite.Components.assets
-      names={["js/app.js", "css/app.css"]}
+      names={["assets/js/app.js", "assets/css/app.css"]}
       manifest={{:storyarn, "priv/static/.vite/manifest.json"}}
       dev_server={PhoenixVite.Components.has_vite_watcher?(StoryarnWeb.Endpoint)}
       to_url={fn p -> static_url(assigns[:conn] || assigns[:socket], p) end}

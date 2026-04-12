@@ -1,19 +1,15 @@
 <script setup lang="ts">
-import { CircleDot } from "lucide-vue-next";
+import { ChevronDown, CircleDot, Check } from 'lucide-vue-next'
 import { computed } from "vue";
 import { Input } from "@components/ui/input/index.ts";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@components/ui/select/index.ts";
 import { useBlockActions } from "../../composables/useBlockActions";
 import type { Block } from "../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 import OptionEditor from "../OptionEditor.vue";
+import { useId } from 'reka-ui'
+import { Popover, PopoverContent, PopoverTrigger } from '@components/ui/popover'
+import { generateId } from '@modules/shared/variables.ts'
 
 const {
   block,
@@ -72,6 +68,7 @@ function onChange(val: string | string[]): void {
   >
     <BlockToolbar
       v-if="canEdit"
+      :block-id="block.id"
       :is-constant="block.is_constant"
       :is-variable="!block.is_constant && !!block.variable_name"
       :variable-name="block.variable_name || ''"
@@ -86,13 +83,14 @@ function onChange(val: string | string[]): void {
       @toggle-required="live.pushEvent('toggle_required', { id: block.id })"
     >
       <template #config>
-        <OptionEditor :block-id="block.id" :options="options" />
         <div class="space-y-1">
-          <label class="text-xs font-medium">Placeholder</label>
+          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">Placeholder</label>
           <Input
+            :id="`placeholder-${useId()}`"
             :model-value="block.config?.placeholder || ''"
             placeholder="Select..."
-            class="h-7 text-xs"
+            size="xs"
+            class="bg-background dark:bg-background"
             @blur="
               (e: Event) =>
                 live.pushEvent('update_block_config', {
@@ -103,6 +101,7 @@ function onChange(val: string | string[]): void {
             "
           />
         </div>
+        <OptionEditor :block-id="block.id" :options="options" />
       </template>
     </BlockToolbar>
 
@@ -118,15 +117,48 @@ function onChange(val: string | string[]): void {
       <slot name="menu" />
     </BlockLabel>
 
-    <Select v-if="canEdit" :model-value="(content as string) || ''" @update:model-value="onChange">
-      <SelectTrigger class="h-9 w-full"><SelectValue :placeholder="placeholder" /></SelectTrigger>
-      <SelectContent>
-        <SelectItem value=" "><span class="text-muted-foreground">None</span></SelectItem>
-        <SelectItem v-for="opt in options" :key="opt.key" :value="opt.key">{{
-          opt.value
-        }}</SelectItem>
-      </SelectContent>
-    </Select>
+    <Popover v-if="canEdit">
+      <PopoverTrigger as-child>
+        <button
+          :id="`select-trigger-${ block.id }-${generateId()}`"
+          class="flex justify-between flex-wrap gap-1 min-h-9 w-full rounded-md border border-input bg-card px-3 py-2 text-sm items-center"
+        >
+          <span>
+            <span v-if="content">{{ options.find((opt) => opt.key === content)?.value }}</span>
+            <span v-else class="text-muted-foreground">{{
+                placeholder
+              }}</span>
+          </span>
+          <ChevronDown class="h-4 w-4 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" class="w-(--reka-popover-trigger-width) p-1">
+        <div class="max-h-48 overflow-y-auto">
+          <div v-if="options.length === 0" class="text-muted-foreground p-2">No options available</div>
+          <button
+            v-else
+            type="button"
+            class="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
+            @click="onChange(' ')"
+          >
+            <span class="text-muted-foreground">None</span>
+          </button>
+          <button
+            v-for="opt in options"
+            :key="opt.key"
+            type="button"
+            class="flex items-center justify-between gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
+            @click="onChange(opt.key)"
+          >
+            {{ opt.value }}
+            <Check
+              v-if="content === opt.key"
+              class="h-4 w-4 opacity-50"
+            />
+          </button>
+        </div>
+      </PopoverContent>
+    </Popover>
     <p v-else class="text-sm">{{ displayValue || "\u2014" }}</p>
   </div>
 </template>

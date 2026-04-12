@@ -8,7 +8,7 @@ import path from "path";
 export default defineConfig({
   root: ".",
   server: {
-    host: "127.0.0.1",
+    host: "localhost",
     port: 5173,
     strictPort: true,
     cors: { origin: "http://localhost:4000" },
@@ -19,26 +19,26 @@ export default defineConfig({
   },
   ssr: { noExternal: process.env.NODE_ENV === "production" ? true : undefined },
   build: {
-    manifest: false,
+    manifest: true,
     ssrManifest: false,
     rollupOptions: {
-      input: ["js/app.js", "css/app.css"],
+      input: ["assets/js/app.js", "assets/css/app.css"],
     },
-    outDir: "../priv/static",
+    outDir: "priv/static",
     emptyOutDir: false,
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname),
-      "@app": path.resolve(__dirname, "app"),
-      "@components": path.resolve(__dirname, "app", "components"),
-      "@composables": path.resolve(__dirname, "app", "composables"),
-      "@utils": path.resolve(__dirname, "app", "utils"),
-      "@modules": path.resolve(__dirname, "app", "modules"),
-      "@plugins": path.resolve(__dirname, "app", "plugins"),
+      "@": path.resolve(__dirname, "assets"),
+      "@app": path.resolve(__dirname, "assets", "app"),
+      "@components": path.resolve(__dirname, "assets", "app", "components"),
+      "@composables": path.resolve(__dirname, "assets", "app", "composables"),
+      "@utils": path.resolve(__dirname, "assets", "app", "utils"),
+      "@modules": path.resolve(__dirname, "assets", "app", "modules"),
+      "@plugins": path.resolve(__dirname, "assets", "app", "plugins"),
       "phoenix-colocated": `${process.env.MIX_BUILD_PATH}/phoenix-colocated`,
     },
-    modules: [path.resolve(__dirname, ".."), "node_modules"],
+    modules: [path.resolve(__dirname), "node_modules"],
   },
   plugins: [
     tailwindcss(),

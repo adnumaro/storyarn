@@ -461,11 +461,11 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_event("remove_banner", params, socket),
     do: HeaderHandlers.handle_remove_banner(params, socket, header_helpers())
 
-  def handle_event("upload_banner", params, socket),
-    do: HeaderHandlers.handle_upload_banner(params, socket, header_helpers())
+  def handle_event("attach_banner", params, socket),
+    do: HeaderHandlers.handle_attach_banner(params, socket, header_helpers())
 
-  def handle_event("upload_avatar", params, socket),
-    do: HeaderHandlers.handle_upload_avatar(params, socket, header_helpers())
+  def handle_event("attach_avatar", params, socket),
+    do: HeaderHandlers.handle_attach_avatar(params, socket, header_helpers())
 
   def handle_event("remove_avatar", params, socket),
     do: HeaderHandlers.handle_remove_avatar(params, socket, header_helpers())
@@ -534,8 +534,8 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   # --- Gallery blocks ---
 
-  def handle_event("upload_gallery_image", params, socket),
-    do: GalleryHandlers.handle_upload(params, socket, content_helpers())
+  def handle_event("attach_gallery_image", params, socket),
+    do: GalleryHandlers.handle_attach(params, socket, content_helpers())
 
   def handle_event("update_gallery_image", params, socket),
     do: GalleryHandlers.handle_update(params, socket, content_helpers())

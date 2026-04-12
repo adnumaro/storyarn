@@ -315,6 +315,23 @@ function buildVariableRefAssignment(ref: VarRef, operator: string, valRef: VarRe
   };
 }
 
+function resolveAssignmentValue(
+  ref: VarRef,
+  operator: string,
+  valueChild: ChildInfo,
+  text: string,
+  knownLookup: KnownLookup | null,
+): ParsedAssignment {
+  if (valueChild.name === "Boolean" && operator === "set") {
+    return buildBooleanAssignment(ref, valueChild, text);
+  }
+  if (valueChild.name === "VariableRef") {
+    const valRef = extractVariableRef(valueChild.node, text, knownLookup);
+    if (valRef) return buildVariableRefAssignment(ref, operator, valRef);
+  }
+  return buildAssignment(ref, operator, extractLiteralValue(valueChild, text));
+}
+
 function parseAssignmentGroup(
   children: ChildInfo[],
   text: string,
@@ -334,17 +351,7 @@ function parseAssignmentGroup(
   const valueChild = valueChildren.find((c) => VALUE_TYPES.has(c.name));
 
   if (!valueChild) return buildAssignment(ref, operator, null);
-
-  if (valueChild.name === "Boolean" && operator === "set") {
-    return buildBooleanAssignment(ref, valueChild, text);
-  }
-
-  if (valueChild.name === "VariableRef") {
-    const valRef = extractVariableRef(valueChild.node, text, knownLookup);
-    if (valRef) return buildVariableRefAssignment(ref, operator, valRef);
-  }
-
-  return buildAssignment(ref, operator, extractLiteralValue(valueChild, text));
+  return resolveAssignmentValue(ref, operator, valueChild, text, knownLookup);
 }
 
 function buildAssignment(ref: VarRef, operator: string, value: string | null): ParsedAssignment {

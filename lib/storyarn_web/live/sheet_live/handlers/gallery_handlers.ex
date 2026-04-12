@@ -8,50 +8,20 @@ defmodule StoryarnWeb.SheetLive.Handlers.GalleryHandlers do
 
   alias StoryarnWeb.Helpers.Authorize
   alias Storyarn.Assets
-  alias Storyarn.Billing
   alias Storyarn.Sheets
 
-  def handle_upload(params, socket, helpers) do
-    %{
-      "block_id" => block_id,
-      "filename" => filename,
-      "content_type" => content_type,
-      "data" => data
-    } = params
-
+  def handle_attach(%{"block_id" => block_id, "asset_id" => asset_id}, socket, helpers) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       block = Sheets.get_block(helpers.parse_id.(block_id))
 
       if block && block.sheet_id == socket.assigns.sheet.id && block.type == "gallery" do
-        with [_header, base64_data] <- String.split(data, ",", parts: 2),
-             {:ok, binary_data} <- Base.decode64(base64_data) do
-          case Billing.can_upload_asset_for_project?(
-                 socket.assigns.project,
-                 byte_size(binary_data)
-               ) do
-            :ok ->
-              case Assets.upload_binary_and_create_asset(
-                     binary_data,
-                     %{filename: filename, content_type: content_type, purpose: :gallery},
-                     socket.assigns.project,
-                     socket.assigns.current_scope.user
-                   ) do
-                {:ok, asset} ->
-                  Sheets.add_gallery_image(block, asset.id)
+        case Assets.get_asset(socket.assigns.project.id, asset_id) do
+          nil ->
+            {:noreply, put_flash(socket, :error, dgettext("sheets", "Asset not found."))}
 
-                  {:noreply,
-                   socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
-
-                {:error, _} ->
-                  {:noreply,
-                   put_flash(socket, :error, dgettext("sheets", "Could not upload image."))}
-              end
-
-            {:error, :limit_reached, _} ->
-              {:noreply, put_flash(socket, :error, dgettext("sheets", "Storage limit reached."))}
-          end
-        else
-          _ -> {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid file data."))}
+          _asset ->
+            Sheets.add_gallery_image(block, asset_id)
+            {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
         end
       else
         {:noreply, socket}

@@ -22,6 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/
 import { useLive } from "@composables/useLive";
 import { useServerSearch } from "@composables/useServerSearch";
 import type { FormulaBindingOption, FormulaSearchGroup } from "../../types";
+import { generateId } from '@modules/shared/variables.ts'
 
 const {
   modelValue = "",
@@ -137,6 +138,7 @@ function onSearchInput(q: string): void {
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
       <button
+        :id="`formula-binding-trigger-${generateId()}`"
         type="button"
         :class="['sentence-slot', { filled: !!modelValue }]"
         :style="{ minWidth: `${Math.max((displayLabel || 'Select source...').length, 3) + 1}ch` }"

@@ -260,7 +260,7 @@ function handleDrop(e: any): void {
         v-model="searchQuery"
         type="search"
         placeholder="Filter scenes..."
-        class="h-7 text-xs"
+        class="text-xs"
       />
     </div>
 

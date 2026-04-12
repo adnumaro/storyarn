@@ -274,7 +274,7 @@ function handleDrop(e: unknown): void {
         v-model="searchQuery"
         type="search"
         placeholder="Filter flows..."
-        class="h-7 text-xs"
+        class="text-xs"
       />
     </div>
 

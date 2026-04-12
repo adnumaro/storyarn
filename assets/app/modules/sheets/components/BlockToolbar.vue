@@ -8,10 +8,14 @@ import { Hash, Lock, Settings, Unlock } from "lucide-vue-next";
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
+import ToolbarBase from '@components/toolbar/ToolbarBase.vue'
+import { Button } from '@components/ui/button'
+import { generateId } from '@modules/shared/variables.ts'
 
 const configOpen = ref(false);
 
 const {
+  blockId,
   isConstant = false,
   isVariable = false,
   variableName = "",
@@ -20,6 +24,7 @@ const {
   showScope = true,
   showConfig = true,
 } = defineProps<{
+  blockId: string | number
   isConstant?: boolean;
   isVariable?: boolean;
   variableName?: string;
@@ -47,21 +52,19 @@ const emit = defineEmits<{
         : 'opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto',
     ]"
   >
-    <div class="flex items-center gap-1 rounded-lg v2-surface-panel px-1.5 py-1">
+    <ToolbarBase>
       <!-- Constant toggle -->
-      <button
+      <Button
         v-if="showConstant"
-        type="button"
-        :class="[
-          'size-7 rounded flex items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-foreground',
-          isConstant && 'text-primary',
-        ]"
+        size="icon-sm"
+        variant="ghost"
+        :class="[isConstant && 'text-primary']"
         :title="isConstant ? 'Make variable' : 'Make constant'"
         @click="emit('toggleConstant')"
       >
         <Lock v-if="isConstant" class="size-4" />
         <Unlock v-else class="size-4" />
-      </button>
+      </Button>
 
       <!-- Variable name -->
       <div v-if="isVariable" class="flex items-center gap-1 pl-1 border-l border-border ml-0.5">
@@ -82,9 +85,9 @@ const emit = defineEmits<{
       <!-- Scope tabs -->
       <div v-if="showScope" class="flex items-center gap-1 pl-1 border-l border-border ml-0.5">
         <Tabs :model-value="scope" @update:model-value="(v) => emit('changeScope', v as string)">
-          <TabsList class="h-6 p-0.5">
-            <TabsTrigger value="self" class="text-[10px] px-1.5 py-0 h-5">Self</TabsTrigger>
-            <TabsTrigger value="children" class="text-[10px] px-1.5 py-0 h-5">Children</TabsTrigger>
+          <TabsList class="h-7 p-0.5 bg-background">
+            <TabsTrigger value="self" class="text-[10px] px-1.5 py-0 h-6">Self</TabsTrigger>
+            <TabsTrigger value="children" class="text-[10px] px-1.5 py-0 h-6">Children</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -92,18 +95,19 @@ const emit = defineEmits<{
       <!-- Config gear + slot for type-specific popover -->
       <Popover v-if="showConfig" @update:open="(v) => (configOpen = v)">
         <PopoverTrigger as-child>
-          <button
-            type="button"
-            class="size-6 rounded flex items-center justify-center text-muted-foreground hover:bg-accent transition-colors ml-0.5 border-l border-border pl-1"
+          <Button
+            :id="`block-toolbar-${ blockId }-${generateId()}`"
+            size="icon-sm"
+            variant="ghost"
             title="Configure"
           >
             <Settings class="size-4" />
-          </button>
+          </Button>
         </PopoverTrigger>
         <PopoverContent align="center" :side-offset="8" class="w-64 p-3 space-y-3">
           <slot name="config" />
         </PopoverContent>
       </Popover>
-    </div>
+    </ToolbarBase>
   </div>
 </template>

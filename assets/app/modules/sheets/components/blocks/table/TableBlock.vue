@@ -65,6 +65,7 @@ function toggleCollapse(): void {
   >
     <BlockToolbar
       v-if="canManage"
+      :block-id="block.id"
       :is-constant="block.is_constant"
       :is-variable="!block.is_constant && !!block.variable_name"
       :variable-name="block.variable_name || ''"

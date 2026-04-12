@@ -10,8 +10,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
 
   alias StoryarnWeb.Helpers.Authorize
   alias Storyarn.Assets
-  alias Storyarn.Billing
-  alias Storyarn.Collaboration
   alias Storyarn.Sheets
 
   def handle_save_name(%{"name" => name}, socket, helpers) do
@@ -94,38 +92,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
     end)
   end
 
-  def handle_upload_banner(
-        %{"filename" => filename, "content_type" => content_type, "data" => data},
-        socket,
-        helpers
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with [_header, base64_data] <- String.split(data, ",", parts: 2),
-           {:ok, binary_data} <- Base.decode64(base64_data) do
-        upload_asset(socket, filename, content_type, binary_data, :banner, helpers)
-      else
-        _ ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid file data."))}
-      end
-    end)
-  end
-
-  def handle_upload_avatar(
-        %{"filename" => filename, "content_type" => content_type, "data" => data},
-        socket,
-        helpers
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with [_header, base64_data] <- String.split(data, ",", parts: 2),
-           {:ok, binary_data} <- Base.decode64(base64_data) do
-        upload_asset(socket, filename, content_type, binary_data, :avatar, helpers)
-      else
-        _ ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid file data."))}
-      end
-    end)
-  end
-
   def handle_remove_avatar(%{"id" => id}, socket, helpers) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       id = helpers.parse_id.(id)
@@ -181,6 +147,41 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
     end)
   end
 
+  # --- Attach pre-uploaded assets (from multipart upload controller) ---
+
+  def handle_attach_banner(%{"asset_id" => asset_id}, socket, helpers) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      attach_asset(socket, asset_id, :banner, helpers)
+    end)
+  end
+
+  def handle_attach_avatar(%{"asset_id" => asset_id}, socket, helpers) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      attach_asset(socket, asset_id, :avatar, helpers)
+    end)
+  end
+
+  defp attach_asset(socket, asset_id, purpose, helpers) do
+    sheet = socket.assigns.sheet
+    project = socket.assigns.project
+
+    case Assets.get_asset(project.id, asset_id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Asset not found."))}
+
+      _asset ->
+        case purpose do
+          :banner -> Sheets.update_sheet(sheet, %{banner_asset_id: asset_id})
+          :avatar -> Sheets.add_avatar(sheet, asset_id)
+        end
+
+        {:noreply,
+         socket
+         |> helpers.reload_sheet_and_tree.()
+         |> helpers.broadcast.(:sheet_updated)}
+    end
+  end
+
   # --- Shared helpers used by header event delegates ---
 
   def update_sheet_field(socket, attrs, helpers) do
@@ -196,44 +197,4 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
     end
   end
 
-  def upload_asset(socket, filename, content_type, binary_data, purpose, helpers) do
-    project = socket.assigns.project
-
-    case Billing.can_upload_asset_for_project?(project, byte_size(binary_data)) do
-      :ok ->
-        user = socket.assigns.current_scope.user
-        sheet = socket.assigns.sheet
-
-        case Assets.upload_binary_and_create_asset(
-               binary_data,
-               %{filename: filename, content_type: content_type, purpose: purpose},
-               project,
-               user
-             ) do
-          {:ok, asset} ->
-            case purpose do
-              :banner -> Sheets.update_sheet(sheet, %{banner_asset_id: asset.id})
-              :avatar -> Sheets.add_avatar(sheet, asset.id)
-            end
-
-            Collaboration.broadcast_change({:assets, project.id}, :asset_created, %{})
-
-            {:noreply,
-             socket
-             |> helpers.reload_sheet_and_tree.()
-             |> helpers.broadcast.(:sheet_updated)}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not upload file."))}
-        end
-
-      {:error, :limit_reached, _} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("sheets", "Storage limit reached. Upgrade your plan.")
-         )}
-    end
-  end
 end

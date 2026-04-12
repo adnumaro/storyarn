@@ -232,7 +232,7 @@ function switchTab(tab: string | number): void {
           v-model="varFilter"
           type="search"
           placeholder="Filter variables..."
-          class="h-7 text-xs mb-2"
+          class="text-xs mb-2"
         />
         <div class="space-y-0.5">
           <div

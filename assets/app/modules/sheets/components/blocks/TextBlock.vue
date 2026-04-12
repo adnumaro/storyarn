@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { Type } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
-import { Input } from "@components/ui/input/index.ts";
-import { useBlockActions } from "../../../composables/useBlockActions";
-import type { Block } from "../../../types";
-import BlockLabel from "../../BlockLabel.vue";
-import BlockToolbar from "../../BlockToolbar.vue";
+import { Input } from "@components/ui/input";
+import { useBlockActions } from "../../composables/useBlockActions.ts";
+import type { Block } from "../../types.ts";
+import BlockLabel from "../BlockLabel.vue";
+import BlockToolbar from "../BlockToolbar.vue";
+import { useId } from 'reka-ui'
 
 const {
   block,
@@ -62,6 +63,7 @@ function saveLabel(val: string): void {
   >
     <BlockToolbar
       v-if="canEdit"
+      :block-id="block.id"
       :is-constant="block.is_constant"
       :is-variable="!block.is_constant && !!block.variable_name"
       :variable-name="block.variable_name || ''"
@@ -77,11 +79,13 @@ function saveLabel(val: string): void {
     >
       <template #config>
         <div class="space-y-1">
-          <label class="text-xs font-medium">Placeholder</label>
+          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">Placeholder</label>
           <Input
+            :id="`placeholder-${useId()}`"
             :model-value="block.config?.placeholder || ''"
             placeholder="Placeholder text..."
-            class="h-7 text-xs"
+            size="xs"
+            class="bg-background dark:bg-background"
             @blur="
               (e: Event) =>
                 live.pushEvent('update_block_config', {
@@ -111,7 +115,7 @@ function saveLabel(val: string): void {
       v-if="canEdit"
       v-model="localText"
       :placeholder="block.config?.placeholder || 'Enter text...'"
-      class="h-9 w-full"
+      class="w-full"
       @blur="save"
       @keydown.enter="save"
     />

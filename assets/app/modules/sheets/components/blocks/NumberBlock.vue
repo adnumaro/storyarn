@@ -6,6 +6,8 @@ import { useBlockActions } from "../../composables/useBlockActions";
 import type { Block } from "../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
+import { useId } from 'reka-ui'
+import { generateId } from '@modules/shared/variables.ts'
 
 const {
   block,
@@ -69,6 +71,7 @@ function onKeydown(e: KeyboardEvent): void {
   >
     <BlockToolbar
       v-if="canEdit"
+      :block-id="block.id"
       :is-constant="block.is_constant"
       :is-variable="!block.is_constant && !!block.variable_name"
       :variable-name="block.variable_name || ''"
@@ -83,13 +86,32 @@ function onKeydown(e: KeyboardEvent): void {
       @toggle-required="live.pushEvent('toggle_required', { id: block.id })"
     >
       <template #config>
+        <div class="space-y-1">
+          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">Placeholder</label>
+          <Input
+            :id="`placeholder-${useId()}`"
+            :model-value="block.config?.placeholder || ''"
+            placeholder="Default value..."
+            size="xs"
+            class="bg-background dark:bg-background"
+            @blur="
+              (e: Event) =>
+                live.pushEvent('update_block_config', {
+                  id: block.id,
+                  field: 'placeholder',
+                  value: (e.target as HTMLInputElement).value,
+                })
+            "
+          />
+        </div>
         <div class="grid grid-cols-3 gap-2">
           <div class="space-y-1">
-            <label class="text-xs font-medium">Min</label>
+            <label :for="`min-${useId()}`" class="text-xs font-medium">Min</label>
             <Input
+              :id="`min-${useId()}`"
               type="number"
               :model-value="block.config?.min ?? ''"
-              class="h-7 text-xs"
+              size="xs"
               @blur="
                 (e: Event) =>
                   live.pushEvent('update_block_config', {
@@ -104,11 +126,12 @@ function onKeydown(e: KeyboardEvent): void {
             />
           </div>
           <div class="space-y-1">
-            <label class="text-xs font-medium">Max</label>
+            <label :for="`max-${useId()}`" class="text-xs font-medium">Max</label>
             <Input
+              :id="`max-${useId()}`"
               type="number"
               :model-value="block.config?.max ?? ''"
-              class="h-7 text-xs"
+              size="xs"
               @blur="
                 (e: Event) =>
                   live.pushEvent('update_block_config', {
@@ -123,11 +146,12 @@ function onKeydown(e: KeyboardEvent): void {
             />
           </div>
           <div class="space-y-1">
-            <label class="text-xs font-medium">Step</label>
+            <label :for="`step-${useId()}`" class="text-xs font-medium">Step</label>
             <Input
+              :id="`step-${useId()}`"
               type="number"
-              :model-value="block.config?.step ?? ''"
-              class="h-7 text-xs"
+              :model-value="block.config?.step ?? 1"
+              size="xs"
               @blur="
                 (e: Event) =>
                   live.pushEvent('update_block_config', {
@@ -141,22 +165,6 @@ function onKeydown(e: KeyboardEvent): void {
               "
             />
           </div>
-        </div>
-        <div class="space-y-1">
-          <label class="text-xs font-medium">Placeholder</label>
-          <Input
-            :model-value="block.config?.placeholder || ''"
-            placeholder="0"
-            class="h-7 text-xs"
-            @blur="
-              (e: Event) =>
-                live.pushEvent('update_block_config', {
-                  id: block.id,
-                  field: 'placeholder',
-                  value: (e.target as HTMLInputElement).value,
-                })
-            "
-          />
         </div>
       </template>
     </BlockToolbar>
@@ -181,7 +189,7 @@ function onKeydown(e: KeyboardEvent): void {
       :min="block.config?.min"
       :max="block.config?.max"
       :step="block.config?.step || 'any'"
-      class="h-9 w-full"
+      class="w-full"
       @blur="save"
       @keydown.enter="save"
       @keydown="onKeydown"

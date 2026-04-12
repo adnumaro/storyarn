@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ListChecks } from "lucide-vue-next";
+import { ListChecks, ChevronDown } from "lucide-vue-next";
 import { computed } from "vue";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Checkbox } from "@components/ui/checkbox/index.ts";
@@ -10,6 +10,8 @@ import type { Block, SelectOption } from "../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 import OptionEditor from "../OptionEditor.vue";
+import { useId } from 'reka-ui'
+import { generateId } from '@modules/shared/variables.ts'
 
 const {
   block,
@@ -65,6 +67,7 @@ function toggle(key: string): void {
   >
     <BlockToolbar
       v-if="canEdit"
+      :block-id="block.id"
       :is-constant="block.is_constant"
       :is-variable="!block.is_constant && !!block.variable_name"
       :variable-name="block.variable_name || ''"
@@ -79,13 +82,14 @@ function toggle(key: string): void {
       @toggle-required="live.pushEvent('toggle_required', { id: block.id })"
     >
       <template #config>
-        <OptionEditor :block-id="block.id" :options="options" />
         <div class="space-y-1">
-          <label class="text-xs font-medium">Placeholder</label>
+          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">Placeholder</label>
           <Input
+            :id="`placeholder-${useId()}-${generateId()}`"
             :model-value="block.config?.placeholder || ''"
             placeholder="Select..."
-            class="h-7 text-xs"
+            size="xs"
+            class="bg-background dark:bg-background"
             @blur="
               (e: Event) =>
                 live.pushEvent('update_block_config', {
@@ -96,6 +100,7 @@ function toggle(key: string): void {
             "
           />
         </div>
+        <OptionEditor :block-id="block.id" :options="options" />
       </template>
     </BlockToolbar>
 
@@ -114,22 +119,27 @@ function toggle(key: string): void {
     <Popover v-if="canEdit">
       <PopoverTrigger as-child>
         <button
-          class="flex flex-wrap gap-1 min-h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm items-center"
+          :id="`multi-select-trigger-${ block.id }-${generateId()}`"
+          class="flex justify-between flex-wrap gap-1 min-h-9 w-full rounded-md border border-input bg-card px-3 py-2 text-sm items-center"
         >
-          <Badge
-            v-for="opt in selectedOptions"
-            :key="opt.key"
-            variant="secondary"
-            class="text-xs"
+          <span>
+            <Badge
+              v-for="opt in selectedOptions"
+              :key="opt.key"
+              variant="secondary"
+              class="text-xs mx-0.5"
             >{{ opt.value }}</Badge
-          >
-          <span v-if="selectedOptions.length === 0" class="text-muted-foreground">{{
-            placeholder
-          }}</span>
+            >
+            <span v-if="selectedOptions.length === 0" class="text-muted-foreground">{{
+                placeholder
+              }}</span>
+          </span>
+          <ChevronDown class="h-4 w-4 opacity-50" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" class="w-(--reka-popover-trigger-width) p-1">
         <div class="max-h-48 overflow-y-auto">
+          <div v-if="options.length === 0" class="text-muted-foreground p-2">No options available</div>
           <button
             v-for="opt in options"
             :key="opt.key"
@@ -138,7 +148,7 @@ function toggle(key: string): void {
             @click="toggle(opt.key)"
           >
             <Checkbox
-              :checked="Array.isArray(content) && content.includes(opt.key)"
+              :model-value="Array.isArray(content) && content.includes(opt.key)"
               class="pointer-events-none"
             />
             {{ opt.value }}

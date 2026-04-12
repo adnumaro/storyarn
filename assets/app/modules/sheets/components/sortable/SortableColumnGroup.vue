@@ -17,7 +17,7 @@ import NumberBlock from "../blocks/NumberBlock.vue";
 import RichTextBlock from "../blocks/richText/RichTextBlock.vue";
 import SelectBlock from "../blocks/SelectBlock.vue";
 import TableBlock from "../blocks/table/TableBlock.vue";
-import TextBlock from "../blocks/table/TextBlock.vue";
+import TextBlock from "../blocks/TextBlock.vue";
 import HorizontalDraggableItem from "./HorizontalDraggableItem.vue";
 
 const blockComponents: Record<string, typeof TextBlock> = {

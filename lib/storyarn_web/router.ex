@@ -110,6 +110,10 @@ defmodule StoryarnWeb.Router do
   scope "/", StoryarnWeb do
     pipe_through [:browser, :require_authenticated_user, :sudo_return_to]
 
+    post "/workspaces/:workspace_slug/projects/:project_slug/upload",
+         UploadController,
+         :create
+
     get "/workspaces/:workspace_slug/projects/:project_slug/localization/export/:format/:locale",
         LocalizationExportController,
         :export

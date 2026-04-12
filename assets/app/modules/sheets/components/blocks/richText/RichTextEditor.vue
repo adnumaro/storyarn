@@ -217,8 +217,8 @@ function isActive(name: string, attrs?: { level?: number }): boolean {
       </button>
     </div>
 
-    <!-- Editor -->
-    <EditorContent :editor="editor" />
+    <!-- Editor — stop keydown propagation to prevent @vue-dnd-kit from intercepting -->
+    <EditorContent :editor="editor" @keydown.stop />
   </div>
 </template>
 

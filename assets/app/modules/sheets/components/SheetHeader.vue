@@ -4,6 +4,7 @@ import { ref, watch } from "vue";
 import ColorPickerPopover from "@components/ColorPickerPopover.vue";
 import { Button } from "@components/ui/button/index.ts";
 import { useLive } from "@composables/useLive";
+import { useUpload } from "@composables/useUpload";
 import type { Sheet } from "../types";
 import AvatarGallery from "./AvatarGallery.vue";
 import SheetAvatarSection from "./SheetAvatarSection.vue";
@@ -20,6 +21,7 @@ const {
 }>();
 
 const live = useLive();
+const { uploadFile, uploadFiles } = useUpload();
 
 // ── Color picker ──
 const localColor = ref(sheet.color || "#3b82f6");
@@ -41,7 +43,12 @@ function triggerBannerUpload(): void {
   const input = document.createElement("input");
   input.type = "file";
   input.accept = "image/*";
-  input.onchange = (e) => uploadFile((e.target as HTMLInputElement).files![0], "upload_banner");
+  input.onchange = async (e) => {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    const result = await uploadFile(file, "banner");
+    if (result) live.pushEvent("attach_banner", { asset_id: result.id });
+  };
   input.click();
 }
 
@@ -55,25 +62,14 @@ function triggerAvatarUpload(): void {
   input.type = "file";
   input.accept = "image/*";
   input.multiple = true;
-  input.onchange = (e) => {
-    Array.from((e.target as HTMLInputElement).files!).forEach((file) =>
-      uploadFile(file, "upload_avatar"),
-    );
+  input.onchange = async (e) => {
+    const files = Array.from((e.target as HTMLInputElement).files ?? []);
+    const results = await uploadFiles(files, "avatar");
+    for (const result of results) {
+      live.pushEvent("attach_avatar", { asset_id: result.id });
+    }
   };
   input.click();
-}
-
-function uploadFile(file: File, eventName: string): void {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    live.pushEvent(eventName, {
-      filename: file.name,
-      content_type: file.type,
-      data: reader.result,
-    });
-  };
-  reader.readAsDataURL(file);
 }
 
 // ── Avatars ──

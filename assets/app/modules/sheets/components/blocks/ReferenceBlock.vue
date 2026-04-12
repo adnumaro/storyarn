@@ -16,6 +16,7 @@ import { useBlockActions } from "../../composables/useBlockActions";
 import type { Block, ReferenceSearchResult } from "../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
+import { generateId } from '@modules/shared/variables.ts'
 
 const {
   block,
@@ -158,6 +159,7 @@ watch(searchResults, () => {
   >
     <BlockToolbar
       v-if="canEdit"
+      :block-id="block.id"
       :show-constant="false"
       :show-config="false"
       :show-scope="!inherited"
@@ -182,6 +184,7 @@ watch(searchResults, () => {
     <Popover v-if="canEdit" v-model:open="open">
       <PopoverTrigger as-child>
         <button
+          :id="`reference-trigger-${ block.id }-${generateId()}`"
           type="button"
           class="flex items-center gap-2 w-full min-h-9 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent/30 transition-colors"
         >
