@@ -49,7 +49,7 @@ const displayName = computed(
 </script>
 
 <template>
-  <nav class="flex items-center gap-1 px-1 py-1 v2-surface-panel">
+  <nav class="flex items-center gap-1 px-1 py-1 surface-panel">
     <!-- Online users -->
     <TooltipProvider v-if="otherUsers.length > 0" :delay-duration="300">
       <div class="flex -space-x-1 mx-1.5">
@@ -72,7 +72,7 @@ const displayName = computed(
     <!-- User dropdown -->
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
-        <button class="v2-toolbar-btn rounded-full p-0">
+        <button class="toolbar-btn rounded-full p-0">
           <UserAvatar
             :email="currentUser.email"
             :display-name="currentUser.displayName"

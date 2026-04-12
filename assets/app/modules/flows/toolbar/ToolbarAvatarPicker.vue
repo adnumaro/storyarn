@@ -40,7 +40,7 @@ function clearAvatar() {
     <PopoverTrigger as-child>
       <button
         type="button"
-        class="v2-toolbar-btn text-xs"
+        class="toolbar-btn text-xs"
         :class="{ 'text-primary': hasOverride }"
         :disabled="disabled"
         title="Select avatar"

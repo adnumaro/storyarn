@@ -110,7 +110,7 @@ function isActive(name: string, attrs?: { level?: number }): boolean {
 </script>
 
 <template>
-  <div class="rounded-md border border-input overflow-hidden bg-background">
+  <div class="rounded-md border border-input overflow-hidden bg-card">
     <!-- Toolbar (only if editable) -->
     <div
       v-if="editable && editor"

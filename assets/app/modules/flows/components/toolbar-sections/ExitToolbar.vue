@@ -40,7 +40,7 @@ function navigateToExitFlow(flowId: number | string) {
   <ToolbarSeparator />
   <input
     type="text"
-    class="v2-toolbar-input text-xs"
+    class="toolbar-input text-xs"
     placeholder="Label…"
     :value="nodeData.label || ''"
     @blur="(e: FocusEvent) => updateField('label', (e.target as HTMLInputElement).value)"
@@ -56,7 +56,7 @@ function navigateToExitFlow(flowId: number | string) {
   <button
     v-if="nodeData.referenced_flow_id"
     type="button"
-    class="v2-toolbar-btn"
+    class="toolbar-btn"
     title="Open referenced flow"
     @click="navigateToExitFlow(nodeData.referenced_flow_id!)"
   >

@@ -70,7 +70,7 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
       
     <!-- Fixed Left Sidebar (Desktop) -->
       <aside class={[
-        "flex-none w-[252px] v2-surface-panel flex flex-col z-40 shrink-0 overflow-hidden rounded-lg",
+        "flex-none w-[252px] surface-panel flex flex-col z-40 shrink-0 overflow-hidden rounded-lg",
         "fixed lg:relative top-3 bottom-3 left-3 lg:top-0 lg:bottom-0 lg:left-0 h-[calc(100vh-1.5rem)] lg:h-auto",
         "lg:ml-3 lg:my-3",
         "transition-transform duration-200",

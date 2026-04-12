@@ -53,7 +53,7 @@ function selectMode(value: string) {
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <button type="button" class="v2-toolbar-btn gap-1 px-1.5" :disabled="disabled">
+      <button type="button" class="toolbar-btn gap-1 px-1.5" :disabled="disabled">
         <component :is="current.icon" class="size-3.5" />
         <span class="text-xs">{{ current.label }}</span>
         <ChevronDown class="size-3 opacity-50" />

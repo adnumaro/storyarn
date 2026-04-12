@@ -36,7 +36,7 @@ function navigateToJumps() {
   <ToolbarSeparator />
   <input
     type="text"
-    class="v2-toolbar-input text-xs"
+    class="toolbar-input text-xs"
     placeholder="Label"
     :value="nodeData.label || ''"
     @blur="(e: FocusEvent) => updateField('label', (e.target as HTMLInputElement).value)"
@@ -46,7 +46,7 @@ function navigateToJumps() {
   />
   <input
     type="text"
-    class="v2-toolbar-input text-xs font-mono"
+    class="toolbar-input text-xs font-mono"
     placeholder="hub_id"
     :value="nodeData.hub_id || ''"
     @blur="(e: FocusEvent) => updateField('hub_id', (e.target as HTMLInputElement).value)"
@@ -57,7 +57,7 @@ function navigateToJumps() {
   <button
     v-if="referencingJumps.length > 0"
     type="button"
-    class="v2-toolbar-btn"
+    class="toolbar-btn"
     title="Locate jumps"
     @click="navigateToJumps"
   >

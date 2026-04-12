@@ -73,7 +73,7 @@ const isNewProjectModalOpen = ref(false)
 </script>
 
 <template>
-  <div class="v2-surface-panel h-full p-4">
+  <div class="surface-panel h-full p-4">
     <!-- Workspace Banner -->
     <header class="relative">
       <div

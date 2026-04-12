@@ -29,7 +29,7 @@ function openBuilder() {
 <template>
   <component :is="GitBranch" class="size-4 opacity-60" />
   <ToolbarSeparator />
-  <button type="button" class="v2-toolbar-btn text-xs" @click="toggleSwitchMode">
+  <button type="button" class="toolbar-btn text-xs" @click="toggleSwitchMode">
     {{ nodeData.switch_mode ? "Routes" : "Multi" }}
   </button>
   <Badge
@@ -40,7 +40,7 @@ function openBuilder() {
     {{ nodeData.condition.rules.length }} rule{{ nodeData.condition.rules.length === 1 ? "" : "s" }}
   </Badge>
   <ToolbarSeparator />
-  <button type="button" class="v2-toolbar-btn" title="Edit condition" @click="openBuilder">
+  <button type="button" class="toolbar-btn" title="Edit condition" @click="openBuilder">
     <Settings class="size-3.5" />
   </button>
 </template>

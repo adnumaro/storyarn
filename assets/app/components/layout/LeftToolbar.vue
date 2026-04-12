@@ -79,14 +79,14 @@ function toggleTreePanel() {
 </script>
 
 <template>
-  <nav class="flex items-center gap-1 px-1 py-1 v2-surface-panel">
+  <nav class="flex items-center gap-1 px-1 py-1 surface-panel">
     <!-- Tree panel toggle -->
     <TooltipProvider v-if="hasTree" :delay-duration="300">
       <Tooltip>
         <TooltipTrigger as-child>
           <button
             type="button"
-            :class="['v2-toolbar-btn size-8', treePanelOpen && 'bg-accent']"
+            :class="['toolbar-btn size-8', treePanelOpen && 'bg-accent']"
             @click="toggleTreePanel"
           >
             <PanelLeft class="size-4" />
@@ -103,7 +103,7 @@ function toggleTreePanel() {
     <!-- Project dropdown -->
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
-        <button class="v2-toolbar-btn gap-1.5 font-medium max-w-52">
+        <button class="toolbar-btn gap-1.5 font-medium max-w-52">
           <Folder class="size-4 opacity-60 shrink-0" />
           <span class="hidden xl:inline truncate text-sm">{{ projectName }}</span>
           <ChevronDown class="size-3 opacity-50" />
@@ -140,7 +140,7 @@ function toggleTreePanel() {
     <!-- Tool switcher -->
     <DropdownMenu v-if="showToolSwitcher">
       <DropdownMenuTrigger as-child>
-        <button class="v2-toolbar-btn gap-1.5">
+        <button class="toolbar-btn gap-1.5">
           <component :is="activeToolDef.icon" class="size-4" />
           <span class="hidden xl:inline text-sm font-medium">{{ activeToolDef.label }}</span>
           <ChevronDown class="size-3 opacity-50" />

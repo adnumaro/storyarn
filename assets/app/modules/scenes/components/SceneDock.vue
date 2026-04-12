@@ -62,7 +62,7 @@ const playUrl = `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${s
 <template>
   <div v-if="editMode">
     <div
-      class="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 v2-surface-panel px-2 py-2"
+      class="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 surface-panel px-2 py-2"
     >
       <!-- Navigation group -->
       <DockToolButton

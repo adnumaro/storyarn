@@ -75,7 +75,7 @@ const hasAvatarOverride = computed(() => {
   <ToolbarSeparator />
   <input
     type="text"
-    class="v2-toolbar-input text-xs font-mono"
+    class="toolbar-input text-xs font-mono"
     placeholder="tech_id"
     :value="nodeData.technical_id || ''"
     @blur="(e: FocusEvent) => updateField('technical_id', (e.target as HTMLInputElement).value)"
@@ -91,10 +91,10 @@ const hasAvatarOverride = computed(() => {
     @select="selectAvatar"
   />
   <ToolbarSeparator />
-  <button type="button" class="v2-toolbar-btn" title="Screenplay editor" @click="openScreenplay">
+  <button type="button" class="toolbar-btn" title="Screenplay editor" @click="openScreenplay">
     <Settings class="size-3.5" />
   </button>
-  <button type="button" class="v2-toolbar-btn" title="Preview" @click="startPreview">
+  <button type="button" class="toolbar-btn" title="Preview" @click="startPreview">
     <PlayIcon class="size-3" />
   </button>
 </template>

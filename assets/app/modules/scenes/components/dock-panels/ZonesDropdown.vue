@@ -43,13 +43,13 @@ function setTool(type: string): void {
 </script>
 
 <template>
-  <div class="v2-dock-item group relative">
+  <div class="dock-item group relative">
     <Popover v-model:open="shapesOpen">
       <PopoverTrigger as-child>
         <button
           type="button"
-          class="v2-dock-btn"
-          :class="{ 'v2-dock-btn-active': isShapeActive() }"
+          class="dock-btn"
+          :class="{ 'dock-btn-active': isShapeActive() }"
         >
           <component :is="isShapeActive() ? activeShapeIcon() : PenTool" class="size-5" />
         </button>
@@ -72,7 +72,7 @@ function setTool(type: string): void {
         </div>
       </PopoverContent>
     </Popover>
-    <div v-if="!shapesOpen" class="v2-dock-tooltip">
+    <div v-if="!shapesOpen" class="dock-tooltip">
       <div class="text-sm font-semibold mb-0.5">Zones</div>
       <div class="text-xs text-muted-foreground leading-relaxed">
         Draw shapes to define areas on the map

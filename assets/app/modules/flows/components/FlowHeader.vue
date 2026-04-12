@@ -103,12 +103,12 @@ function navigateToNode(nodeId: number | string): void {
     <!-- Nav history -->
     <div
       v-if="navHistory.back || navHistory.forward"
-      class="flex items-center gap-0.5 v2-surface-panel px-1"
+      class="flex items-center gap-0.5 surface-panel px-1"
     >
       <button
         v-if="navHistory.back"
         type="button"
-        class="v2-toolbar-btn gap-1 text-muted-foreground max-w-35"
+        class="toolbar-btn gap-1 text-muted-foreground max-w-35"
         title="Alt+Left"
         @click="live.pushEvent('nav_back', {})"
       >
@@ -118,7 +118,7 @@ function navigateToNode(nodeId: number | string): void {
       <button
         v-if="navHistory.forward"
         type="button"
-        class="v2-toolbar-btn gap-1 text-muted-foreground max-w-35"
+        class="toolbar-btn gap-1 text-muted-foreground max-w-35"
         title="Alt+Right"
         @click="live.pushEvent('nav_forward', {})"
       >
@@ -128,7 +128,7 @@ function navigateToNode(nodeId: number | string): void {
     </div>
 
     <!-- Flow title pill -->
-    <div class="flex items-center gap-1.5 v2-surface-panel px-3 h-full">
+    <div class="flex items-center gap-1.5 surface-panel px-3 h-full">
       <EditableText
         :model-value="flowName"
         placeholder="Untitled"
@@ -152,14 +152,14 @@ function navigateToNode(nodeId: number | string): void {
     </div>
 
     <!-- Stats + Scene panel -->
-    <div class="hidden lg:flex items-center gap-1 px-1 py-1 v2-surface-panel text-xs">
+    <div class="hidden lg:flex items-center gap-1 px-1 py-1 surface-panel text-xs">
       <!-- Scene selector -->
       <template v-if="showScene">
         <Popover v-model:open="sceneOpen">
           <PopoverTrigger as-child>
             <button
               type="button"
-              class="v2-toolbar-btn gap-1.5"
+              class="toolbar-btn gap-1.5"
               :class="sceneSelected.name ? 'text-foreground' : 'text-muted-foreground'"
               title="Scene backdrop"
             >
@@ -201,7 +201,7 @@ function navigateToNode(nodeId: number | string): void {
 
       <!-- Word count -->
       <div
-        class="v2-toolbar-btn gap-1.5 text-muted-foreground"
+        class="toolbar-btn gap-1.5 text-muted-foreground"
         :title="`${flowHealth.wordCount} words in this flow`"
       >
         <Text class="size-3.5" />
@@ -212,7 +212,7 @@ function navigateToNode(nodeId: number | string): void {
       <template v-if="errorCount > 0 || infoCount > 0">
         <Popover v-model:open="healthOpen">
           <PopoverTrigger as-child>
-            <button type="button" class="v2-toolbar-btn gap-0">
+            <button type="button" class="toolbar-btn gap-0">
               <span v-if="errorCount > 0" class="flex items-center gap-1.5 text-destructive">
                 <TriangleAlert class="size-3.5" />
                 <span>{{ errorCount }}</span>
@@ -265,13 +265,13 @@ function navigateToNode(nodeId: number | string): void {
           </PopoverContent>
         </Popover>
       </template>
-      <div v-else class="v2-toolbar-btn text-green-500/60" title="This flow looks great!">
+      <div v-else class="toolbar-btn text-green-500/60" title="This flow looks great!">
         <CircleCheck class="size-3.5" />
       </div>
     </div>
 
     <!-- Save indicator -->
-    <div v-if="canEdit" class="flex items-center v2-surface-panel px-2">
+    <div v-if="canEdit" class="flex items-center surface-panel px-2">
       <div
         v-if="saveStatus === 'saving'"
         class="flex items-center gap-1 text-xs text-muted-foreground"

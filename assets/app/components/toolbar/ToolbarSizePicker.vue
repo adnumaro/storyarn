@@ -31,7 +31,7 @@ const currentLabel = () => SIZE_OPTIONS.find((o) => o.value === size)?.label || 
     <PopoverTrigger as-child>
       <button
         type="button"
-        class="v2-toolbar-btn text-xs font-semibold min-w-7"
+        class="toolbar-btn text-xs font-semibold min-w-7"
         :disabled="disabled"
         title="Size"
       >

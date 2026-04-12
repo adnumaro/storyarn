@@ -127,7 +127,7 @@ const activeComponent = computed<Component | null>(() =>
   <div
     ref="toolbarRef"
     :style="toolbarStyle"
-    class="absolute z-30 items-center gap-1.5 v2-surface-panel px-2 py-1.5 text-sm pointer-events-auto"
+    class="absolute z-30 items-center gap-1.5 surface-panel px-2 py-1.5 text-sm pointer-events-auto"
   >
     <component
       :is="activeComponent"

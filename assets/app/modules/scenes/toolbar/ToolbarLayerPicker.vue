@@ -32,7 +32,7 @@ function selectLayer(id: number | string | null) {
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <button type="button" class="v2-toolbar-btn" :disabled="disabled" title="Layer">
+      <button type="button" class="toolbar-btn" :disabled="disabled" title="Layer">
         <Layers class="size-3.5" />
       </button>
     </PopoverTrigger>

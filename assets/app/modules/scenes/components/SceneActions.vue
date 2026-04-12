@@ -32,7 +32,7 @@ function openSettings(): void {
 </script>
 
 <template>
-  <div class="flex items-center gap-1 v2-surface-panel px-1.5 h-full">
+  <div class="flex items-center gap-1 surface-panel px-1.5 h-full">
     <!-- Settings -->
     <Button
       v-if="canEdit && editMode"

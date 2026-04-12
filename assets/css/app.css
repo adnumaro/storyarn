@@ -152,7 +152,7 @@
    ================================================================ */
 
 /* Frosted glass panel shared by all floating UI chrome */
-.v2-surface-panel {
+.surface-panel {
   background-color: hsl(var(--surface) / 0.92);
   backdrop-filter: blur(12px);
   border: 1px solid hsl(var(--border));
@@ -161,7 +161,7 @@
 }
 
 /* Toolbar button — ghost style with subtle hover */
-.v2-toolbar-btn {
+.toolbar-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -177,17 +177,17 @@
   white-space: nowrap;
 }
 
-.v2-toolbar-btn:hover {
+.toolbar-btn:hover {
   background-color: hsl(var(--accent));
 }
 
-.v2-toolbar-btn:disabled {
+.toolbar-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
   pointer-events: none;
 }
 
-.v2-toolbar-input {
+.toolbar-input {
   background: transparent;
   border: 0;
   border-bottom: 1px solid hsl(var(--border));
@@ -198,7 +198,7 @@
   max-width: 120px;
 }
 
-.v2-toolbar-input:focus {
+.toolbar-input:focus {
   border-color: hsl(var(--primary));
 }
 
@@ -223,7 +223,7 @@
 }
 
 /* Compact text input for floating toolbar (label fields) */
-.v2-toolbar-input {
+.toolbar-input {
   background: transparent;
   border: 1px solid transparent;
   border-radius: 0.375rem;
@@ -234,15 +234,15 @@
   transition: border-color 0.15s ease;
 }
 
-.v2-toolbar-input:focus {
+.toolbar-input:focus {
   border-color: hsl(var(--ring));
 }
 
-.v2-toolbar-input::placeholder {
+.toolbar-input::placeholder {
   color: hsl(var(--muted-foreground));
 }
 
-.v2-toolbar-input:disabled {
+.toolbar-input:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
@@ -251,7 +251,7 @@
    Dock — floating bottom tool palette for canvas editors
    ================================================================ */
 
-.v2-dock-btn {
+.dock-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -267,26 +267,26 @@
   background: transparent;
 }
 
-.v2-dock-btn:hover {
+.dock-btn:hover {
   background-color: hsl(var(--accent));
 }
 
-.v2-dock-btn-active {
+.dock-btn-active {
   background-color: hsl(var(--primary)) !important;
   color: hsl(var(--primary-foreground)) !important;
 }
 
 /* Hover bounce animation — items pop up out of the dock */
-.v2-dock-item {
+.dock-item {
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.v2-dock-item:hover {
+.dock-item:hover {
   transform: translateY(-3px);
 }
 
 /* Hover mega-tooltip (delayed appearance) */
-.v2-dock-tooltip {
+.dock-tooltip {
   position: absolute;
   bottom: calc(100% + 12px);
   left: 50%;
@@ -303,12 +303,12 @@
   z-index: 10;
 }
 
-.v2-dock-item:hover .v2-dock-tooltip {
+.dock-item:hover .dock-tooltip {
   opacity: 1;
 }
 
 /* Hide tooltip when dropdown/popover is open */
-.v2-dock-item:focus-within .v2-dock-tooltip {
+.dock-item:focus-within .dock-tooltip {
   opacity: 0;
   transition-delay: 0s;
 }

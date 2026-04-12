@@ -36,7 +36,7 @@ function fitToView() {
   <div class="absolute bottom-3 right-3 z-20 flex flex-col gap-1">
     <button
       type="button"
-      class="v2-toolbar-btn v2-surface-panel !rounded-lg size-8"
+      class="toolbar-btn surface-panel !rounded-lg size-8"
       :class="{ 'opacity-50': !minimapVisible }"
       title="Toggle minimap"
       @click="toggleMinimap"
@@ -45,7 +45,7 @@ function fitToView() {
     </button>
     <button
       type="button"
-      class="v2-toolbar-btn v2-surface-panel !rounded-lg size-8"
+      class="toolbar-btn surface-panel !rounded-lg size-8"
       title="Fit to view"
       @click="fitToView"
     >

@@ -48,14 +48,14 @@ function selectSheet(sheetId: number | string): void {
 </script>
 
 <template>
-  <div class="v2-dock-item group relative">
+  <div class="dock-item group relative">
     <!-- Pin menu (Free Pin / From Sheet) -->
     <Popover v-if="!sheetPickerOpen" v-model:open="pinsOpen">
       <PopoverTrigger as-child>
         <button
           type="button"
-          class="v2-dock-btn"
-          :class="{ 'v2-dock-btn-active': activeTool === 'pin' }"
+          class="dock-btn"
+          :class="{ 'dock-btn-active': activeTool === 'pin' }"
         >
           <MapPin class="size-5" />
         </button>
@@ -93,7 +93,7 @@ function selectSheet(sheetId: number | string): void {
     <!-- Sheet picker (replaces pin menu when open) -->
     <Popover v-else v-model:open="sheetPickerOpen">
       <PopoverTrigger as-child>
-        <button type="button" class="v2-dock-btn v2-dock-btn-active">
+        <button type="button" class="dock-btn dock-btn-active">
           <MapPin class="size-5" />
         </button>
       </PopoverTrigger>
@@ -119,7 +119,7 @@ function selectSheet(sheetId: number | string): void {
         </Command>
       </PopoverContent>
     </Popover>
-    <div v-if="!pinsOpen && !sheetPickerOpen" class="v2-dock-tooltip">
+    <div v-if="!pinsOpen && !sheetPickerOpen" class="dock-tooltip">
       <div class="text-sm font-semibold mb-0.5">Pin</div>
       <div class="text-xs text-muted-foreground leading-relaxed">
         Place markers on the map, optionally linked to a sheet

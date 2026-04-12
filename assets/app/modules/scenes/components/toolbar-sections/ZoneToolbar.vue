@@ -81,7 +81,7 @@ function toggleElementPanel(): void {
   <input
     type="text"
     :value="element.name || ''"
-    class="v2-toolbar-input w-20"
+    class="toolbar-input w-20"
     placeholder="Name"
     :disabled="element.locked"
     @blur="(e) => updateField('name', (e.target as HTMLInputElement).value)"
@@ -142,7 +142,7 @@ function toggleElementPanel(): void {
   <ToolbarSeparator />
 
   <!-- Settings cog -->
-  <button type="button" class="v2-toolbar-btn" title="Properties" @click="toggleElementPanel">
+  <button type="button" class="toolbar-btn" title="Properties" @click="toggleElementPanel">
     <Settings class="size-3.5" />
   </button>
 </template>

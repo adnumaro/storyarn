@@ -20,7 +20,7 @@ function saveName(name: string): void {
 </script>
 
 <template>
-  <div class="flex items-center gap-1.5 v2-surface-panel px-3 h-full">
+  <div class="flex items-center gap-1.5 surface-panel px-3 h-full">
     <EditableText
       :model-value="sceneName"
       placeholder="Scene name"

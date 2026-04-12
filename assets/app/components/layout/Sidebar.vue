@@ -52,7 +52,7 @@ onClickOutside(
   },
   {
     ignore: [
-      ".v2-surface-panel",
+      ".surface-panel",
       "[data-radix-popper-content-wrapper]",
       "[data-reka-popper-content-wrapper]",
     ],
@@ -153,7 +153,7 @@ watch(
     ref="panelRef"
     :inert="!open"
     :class="[
-      'fixed top-19 bottom-3 left-3 right-3 flex flex-col v2-surface-panel overflow-hidden',
+      'fixed top-19 bottom-3 left-3 right-3 flex flex-col surface-panel overflow-hidden',
       side === 'right' ? 'z-1010' : 'z-40',
       side === 'right' ? 'right-sidebar' : 'left-sidebar',
     ]"

@@ -66,7 +66,7 @@ const current = (): ActionTypeOption =>
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <button type="button" class="v2-toolbar-btn gap-1" :disabled="disabled" title="Action type">
+      <button type="button" class="toolbar-btn gap-1" :disabled="disabled" title="Action type">
         <component :is="current().icon" class="size-3.5" />
       </button>
     </PopoverTrigger>

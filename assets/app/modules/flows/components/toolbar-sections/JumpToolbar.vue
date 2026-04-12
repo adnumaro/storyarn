@@ -54,7 +54,7 @@ function navigateToHub() {
   <button
     v-if="nodeData.target_hub_id"
     type="button"
-    class="v2-toolbar-btn"
+    class="toolbar-btn"
     title="Locate target hub"
     @click="navigateToHub"
   >

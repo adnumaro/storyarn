@@ -32,7 +32,7 @@ function openBuilder() {
     {{ nodeData.assignments.length }} assignment{{ nodeData.assignments.length === 1 ? "" : "s" }}
   </Badge>
   <ToolbarSeparator />
-  <button type="button" class="v2-toolbar-btn" title="Edit instructions" @click="openBuilder">
+  <button type="button" class="toolbar-btn" title="Edit instructions" @click="openBuilder">
     <Settings class="size-3.5" />
   </button>
 </template>

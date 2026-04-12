@@ -14,7 +14,7 @@ const emit = defineEmits<{
 <template>
   <button
     type="button"
-    class="v2-toolbar-btn"
+    class="toolbar-btn"
     :class="{ 'text-red-500!': locked }"
     :disabled="disabled"
     :title="locked ? 'Unlock' : 'Lock'"

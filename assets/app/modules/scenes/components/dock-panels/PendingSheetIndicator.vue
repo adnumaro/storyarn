@@ -23,7 +23,7 @@ const emit = defineEmits<{
     <span>
       Click on canvas to place <strong>{{ pendingSheet.name }}</strong>
     </span>
-    <button type="button" class="v2-dock-btn size-5! rounded-md!" @click="emit('cancel')">
+    <button type="button" class="dock-btn size-5! rounded-md!" @click="emit('cancel')">
       <X class="size-3" />
     </button>
   </div>

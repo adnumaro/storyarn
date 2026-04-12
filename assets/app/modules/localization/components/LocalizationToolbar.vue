@@ -34,7 +34,7 @@ function translateBatch(): void {
 </script>
 
 <template>
-  <div class="flex items-center gap-1 px-1.5 py-1 v2-surface-panel">
+  <div class="flex items-center gap-1 px-1.5 py-1 surface-panel">
     <a
       :href="reportUrl"
       data-phx-link="redirect"

@@ -55,7 +55,7 @@ function navigateToSubflow(flowId: number | string) {
   <button
     v-if="nodeData.referenced_flow_id"
     type="button"
-    class="v2-toolbar-btn"
+    class="toolbar-btn"
     title="Open flow"
     @click="navigateToSubflow(nodeData.referenced_flow_id!)"
   >

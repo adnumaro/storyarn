@@ -40,7 +40,7 @@ function select(value: string | number) {
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <button type="button" class="v2-toolbar-btn gap-1 text-xs max-w-35" :disabled="disabled">
+      <button type="button" class="toolbar-btn gap-1 text-xs max-w-35" :disabled="disabled">
         <span class="truncate" :class="displayLabel ? '' : 'opacity-50'">
           {{ displayLabel || placeholder }}
         </span>

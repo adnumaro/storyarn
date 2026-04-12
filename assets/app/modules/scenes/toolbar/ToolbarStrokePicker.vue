@@ -42,7 +42,7 @@ function onCustomColor(e: Event) {
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <button type="button" class="v2-toolbar-btn" :disabled="disabled" title="Line style">
+      <button type="button" class="toolbar-btn" :disabled="disabled" title="Line style">
         <span class="flex items-center gap-1">
           <svg width="16" height="16" viewBox="0 0 16 16" class="text-current">
             <line
@@ -73,7 +73,7 @@ function onCustomColor(e: Event) {
                 v-for="style in STYLES"
                 :key="style"
                 type="button"
-                class="v2-toolbar-btn h-7 w-10"
+                class="toolbar-btn h-7 w-10"
                 :class="{ 'bg-primary text-primary-foreground': style === lineStyle }"
                 :disabled="disabled"
                 @click="emit('update:lineStyle', style)"
@@ -97,7 +97,7 @@ function onCustomColor(e: Event) {
             <div class="flex items-center gap-1">
               <button
                 type="button"
-                class="v2-toolbar-btn h-6 w-6 text-xs"
+                class="toolbar-btn h-6 w-6 text-xs"
                 :disabled="disabled || lineWidth <= 0"
                 @click="decWidth"
               >
@@ -106,7 +106,7 @@ function onCustomColor(e: Event) {
               <span class="w-5 text-center text-xs font-mono">{{ lineWidth }}</span>
               <button
                 type="button"
-                class="v2-toolbar-btn h-6 w-6 text-xs"
+                class="toolbar-btn h-6 w-6 text-xs"
                 :disabled="disabled || lineWidth >= 10"
                 @click="incWidth"
               >

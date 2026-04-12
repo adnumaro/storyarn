@@ -45,10 +45,10 @@ defineExpose({
 </script>
 
 <template>
-  <div class="v2-dock-item group relative">
+  <div class="dock-item group relative">
     <Popover v-model:open="open">
       <PopoverTrigger as-child>
-        <button type="button" class="v2-dock-btn">
+        <button type="button" class="dock-btn">
           <MessageSquare class="size-5" />
         </button>
       </PopoverTrigger>
@@ -73,7 +73,7 @@ defineExpose({
         </div>
       </PopoverContent>
     </Popover>
-    <div v-if="!open" class="v2-dock-tooltip">
+    <div v-if="!open" class="dock-tooltip">
       <div class="text-sm font-semibold mb-0.5">Narrative</div>
       <div class="text-xs text-muted-foreground leading-relaxed">Story and dialogue nodes</div>
     </div>

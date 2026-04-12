@@ -38,7 +38,7 @@ const currentIcon = (): Component => TYPE_OPTIONS.find((o) => o.value === type)?
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <button type="button" class="v2-toolbar-btn" :disabled="disabled" title="Pin type">
+      <button type="button" class="toolbar-btn" :disabled="disabled" title="Pin type">
         <component :is="currentIcon()" class="size-3.5" />
       </button>
     </PopoverTrigger>
