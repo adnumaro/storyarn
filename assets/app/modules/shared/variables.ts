@@ -15,6 +15,10 @@ export interface Variable {
   options?: VariableOption[];
   ref?: string;
   label?: string;
+  // Table variable path fields (for autocomplete)
+  table_name?: string;
+  row_name?: string;
+  column_name?: string;
 }
 
 export interface SheetGroup {

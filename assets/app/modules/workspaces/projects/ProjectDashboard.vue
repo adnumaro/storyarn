@@ -16,6 +16,7 @@ import type { Component } from "vue";
 import { computed } from "vue";
 import { useLive } from "@composables/useLive";
 import { formatRelativeTime } from "@utils/date-utils";
+import DashboardContent from '@components/layout/DashboardContent.vue'
 
 interface ProjectStats {
   sheet_count: number;
@@ -149,16 +150,9 @@ function activityTypeLabel(type: string) {
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-    <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center py-12">
-      <div
-        class="size-6 border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin"
-      />
-    </div>
-
+  <DashboardContent :loading="loading">
     <!-- Dashboard Content -->
-    <div v-else class="space-y-6">
+    <div class="space-y-6">
       <!-- Section 1: Stats -->
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <a
@@ -309,5 +303,5 @@ function activityTypeLabel(type: string) {
         </div>
       </div>
     </div>
-  </div>
+  </DashboardContent>
 </template>

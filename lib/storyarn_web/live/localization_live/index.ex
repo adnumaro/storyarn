@@ -4,7 +4,8 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   use StoryarnWeb, :live_view
   alias StoryarnWeb.Helpers.Authorize
 
-  import StoryarnWeb.Live.Shared.TreePanelHandlers, only: [focus_layout_defaults: 0]
+  import StoryarnWeb.Live.Shared.TreePanelHandlers,
+    only: [focus_layout_defaults: 0, handle_tree_panel_event: 3]
 
   alias Storyarn.Localization
   alias Storyarn.Localization.Languages
@@ -46,7 +47,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       </:top_bar_extra_right>
 
       <.vue
-        v-component="modules/localization/LocalizationIndex"
+        v-component="modules/localization/components/LocalizationIndex"
         v-socket={@socket}
         id="localization-index"
         texts={serialize_texts(assigns)}
@@ -96,6 +97,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
         socket =
           socket
           |> assign(focus_layout_defaults())
+          |> assign(:tree_panel_open, true)
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
           |> assign(:membership, membership)
@@ -123,6 +125,9 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   end
 
   @impl true
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: handle_tree_panel_event(event, params, socket)
+
   def handle_event("change_locale", %{"locale" => locale}, socket) do
     {:noreply,
      socket

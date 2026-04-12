@@ -5,19 +5,10 @@
   "ignoreDependencies": [
     "shadcn-vue",
     "phoenix_vite",
-    "@codemirror/autocomplete",
-    "@codemirror/commands",
-    "@codemirror/language",
-    "@codemirror/lint",
-    "@codemirror/state",
-    "@codemirror/view",
     "tw-animate-css",
     "modern-screenshot",
     "flag-icons",
-    "rete-context-menu-plugin",
-    "@lezer/lr"
+    "rete-context-menu-plugin"
   ],
-  "tags": [
-    "-lintignore"
-  ]
+  "tags": ["-lintignore"]
 }

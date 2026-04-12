@@ -31,7 +31,12 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  document.documentElement.classList.remove("dark");
+  // Restore user's theme preference instead of blindly removing dark
+  const stored = localStorage.getItem("phx:theme");
+  const shouldBeDark = stored
+    ? stored === "dark"
+    : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.classList.toggle("dark", shouldBeDark);
   document.documentElement.style.scrollBehavior = "";
   window.removeEventListener("storyarn:force-scroll", handleForceScroll);
 });

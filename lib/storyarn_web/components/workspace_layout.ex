@@ -17,27 +17,27 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
 
   def workspace(assigns) do
     current_user =
-      case assigns.current_scope do
-        %{user: user} ->
-          %{
-            id: user.id,
-            email: user.email,
-            displayName: user.display_name
-          }
+    case assigns.current_scope do
+      %{user: user} ->
+        %{
+          id: user.id,
+          email: user.email,
+          displayName: user.display_name
+        }
 
-        _ ->
-          %{id: nil, email: "", displayName: ""}
-      end
+      _ ->
+        %{id: nil, email: "", displayName: ""}
+    end
 
     formatted_workspaces =
-      Enum.map(assigns.workspaces, fn w ->
-        %{
-          id: w.id,
-          name: w.name,
-          slug: w.slug,
-          href: ~p"/workspaces/#{w.slug}"
-        }
-      end)
+    Enum.map(assigns.workspaces, fn w ->
+      %{
+        id: w.id,
+        name: w.name,
+        slug: w.slug,
+        href: ~p"/workspaces/#{w.slug}"
+      }
+    end)
 
     urls = %{
       accountSettings: ~p"/users/settings",
@@ -46,10 +46,13 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
     }
 
     assigns =
-      assigns
-      |> assign(:current_user, current_user)
-      |> assign(:formatted_workspaces, formatted_workspaces)
-      |> assign(:urls, urls)
+    assigns
+    |>
+    assign(:current_user, current_user)
+    |>
+    assign(:formatted_workspaces, formatted_workspaces)
+    |>
+    assign(:urls, urls)
 
     ~H"""
     <div
@@ -88,7 +91,7 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
     <!-- Main fluid content -->
       <main
         id="main-content"
-        class="flex-1 min-w-0 overflow-y-auto p-4 lg:px-8 lg:py-3 min-vh-100"
+        class="overflow-y-auto p-4 lg:px-8 lg:py-3 min-dvh-100"
       >
         {render_slot(@inner_block)}
       </main>

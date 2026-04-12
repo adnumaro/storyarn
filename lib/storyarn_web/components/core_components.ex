@@ -59,7 +59,7 @@ defmodule StoryarnWeb.Components.CoreComponents do
       role="alert"
       data-slot="toast"
       class={[
-        "absolute z-30 right-5 top-5 w-fit group pointer-events-auto flex items-start gap-3 overflow-hidden rounded-lg border p-4 shadow-lg transition-all cursor-pointer",
+        "absolute z-30 right-5 bottom-5 w-fit group pointer-events-auto flex items-start gap-3 overflow-hidden rounded-lg border p-4 shadow-lg transition-all cursor-pointer",
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         @kind == :info && "border-border bg-background text-foreground",
         @kind == :error && "border-destructive/50 bg-destructive text-destructive-foreground"

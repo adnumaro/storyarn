@@ -21,23 +21,35 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
         can_create_project = Billing.can_create_project?(workspace) == :ok
 
         {:ok,
-         socket
-         |> assign(:page_title, workspace.name)
-         |> assign(:workspace, workspace)
-         |> assign(:workspaces, workspaces)
-         |> assign(:current_workspace, workspace)
-         |> assign(:membership, membership)
-         |> assign(:all_projects, projects)
-         |> assign(:projects, format_projects(projects, workspace))
-         |> assign(:search_query, "")
-         |> assign(:can_create_project, can_create_project)
-         |> assign(:project_form, to_form(Projects.change_project(%Project{})))}
+          socket
+          |>
+          assign(:page_title, workspace.name)
+          |>
+          assign(:workspace, workspace)
+          |>
+          assign(:workspaces, workspaces)
+          |>
+          assign(:current_workspace, workspace)
+          |>
+          assign(:membership, membership)
+          |>
+          assign(:all_projects, projects)
+          |>
+          assign(:projects, format_projects(projects, workspace))
+          |>
+          assign(:search_query, "")
+          |>
+          assign(:can_create_project, can_create_project)
+          |>
+          assign(:project_form, to_form(Projects.change_project(%Project{})))}
 
       {:error, :not_found} ->
         {:ok,
-         socket
-         |> put_flash(:error, dgettext("workspaces", "Workspace not found."))
-         |> push_navigate(to: ~p"/workspaces")}
+          socket
+          |>
+          put_flash(:error, dgettext("workspaces", "Workspace not found."))
+          |>
+          push_navigate(to: ~p"/workspaces")}
     end
   end
 
@@ -67,7 +79,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
             banner_url: @workspace.banner_url
           }
         }
-        class="container mx-auto"
+        class="container mx-auto h-full"
         membership={%{role: @membership.role}}
         projects={@projects}
         search-query={@search_query}
@@ -84,10 +96,10 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     filtered = filter_projects(socket.assigns.all_projects, query)
 
     {:noreply,
-     assign(socket,
-       projects: format_projects(filtered, socket.assigns.workspace),
-       search_query: query
-     )}
+      assign(socket,
+      projects: format_projects(filtered, socket.assigns.workspace),
+      search_query: query
+      )}
   end
 
 
@@ -95,9 +107,11 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   @impl true
   def handle_event("validate_project", %{"project" => project_params}, socket) do
     changeset =
-      %Project{}
-      |> Projects.change_project(project_params)
-      |> Map.put(:action, :validate)
+    %Project{}
+    |>
+    Projects.change_project(project_params)
+    |>
+    Map.put(:action, :validate)
 
     {:noreply, assign(socket, :project_form, to_form(changeset))}
   end
@@ -108,18 +122,21 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     case Projects.create_project(socket.assigns.current_scope, project_params) do
       {:ok, project} ->
         socket =
-          socket
-          |> put_flash(:info, dgettext("workspaces", "Project created successfully."))
-          |> push_navigate(
-            to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{project.slug}/sheets"
-          )
+        socket
+        |>
+        put_flash(:info, dgettext("workspaces", "Project created successfully."))
+        |>
+        push_navigate(
+        to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{project.slug}/sheets"
+        )
 
         {:noreply, socket}
 
       {:error, :limit_reached, _details} ->
         {:noreply,
-         socket
-         |> put_flash(:error, dgettext("workspaces", "Project limit reached for your plan"))}
+          socket
+          |>
+          put_flash(:error, dgettext("workspaces", "Project limit reached for your plan"))}
 
       {:error, changeset} ->
         {:noreply, assign(socket, :project_form, to_form(changeset))}
@@ -132,23 +149,23 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     downcased = String.downcase(query)
 
     Enum.filter(projects, fn %{project: project} ->
-      String.contains?(String.downcase(project.name), downcased) or
-        (project.description && String.contains?(String.downcase(project.description), downcased))
-    end)
-  end
+String.contains?(String.downcase(project.name), downcased) or
+(project.description && String.contains?(String.downcase(project.description), downcased))
+end)
+end
 
-  defp format_projects(projects, workspace) do
-    Enum.map(projects, fn %{project: project} ->
-      %{
-        project: %{
-          id: project.id,
-          name: project.name,
-          description: project.description,
-          inserted_at_formatted: Calendar.strftime(project.inserted_at, "%b %d, %Y"),
-          updated_at: project.updated_at && DateTime.to_iso8601(project.updated_at)
-        },
-        href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets"
-      }
-    end)
-  end
+defp format_projects(projects, workspace) do
+Enum.map(projects, fn %{project: project} ->
+%{
+project: %{
+id: project.id,
+name: project.name,
+description: project.description,
+inserted_at_formatted: Calendar.strftime(project.inserted_at, "%b %d, %Y"),
+updated_at: project.updated_at && DateTime.to_iso8601(project.updated_at)
+},
+href: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets"
+}
+end)
+end
 end

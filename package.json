@@ -8,7 +8,7 @@
     "lint:fix": "node_modules/.bin/oxlint --fix",
     "fmt": "node_modules/.bin/oxfmt",
     "fmt:check": "node_modules/.bin/oxfmt --check",
-    "build:grammar": "node_modules/.bin/lezer-generator assets/js/expression_editor/storyarn_expr.grammar -o assets/js/expression_editor/parser_generated.js",
+    "build:grammar": "node_modules/.bin/lezer-generator assets/app/plugins/expression-editor/storyarn-expr.grammar -o assets/app/plugins/expression-editor/parser-generated.js",
     "test": "node_modules/.bin/vitest run",
     "test:watch": "node_modules/.bin/vitest",
     "knip": "knip"

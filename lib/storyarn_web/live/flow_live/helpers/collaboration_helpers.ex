@@ -3,7 +3,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
   Collaboration helpers for the flow editor - handles presence, cursors, locks, and real-time changes.
   """
 
-  import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3]
 
   alias Storyarn.Collaboration

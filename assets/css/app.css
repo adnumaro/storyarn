@@ -127,19 +127,6 @@
   --cm-tooltip-border: #3e4451;
 }
 
-#workspace-show[data-v-app] {
-  height: calc(100% + 20px);
-  display: flex;
-  flex-direction: column;
-
-  div.v2-surface-panel {
-    flex: 1;
-    height: initial;
-    position: relative;
-    top: -20px;
-  }
-}
-
 /* Hide RightSidebar hook panels until opened */
 [phx-hook="RightSidebar"]:not([data-panel-open]) {
   display: none;
