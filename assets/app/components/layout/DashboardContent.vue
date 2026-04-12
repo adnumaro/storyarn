@@ -1,8 +1,6 @@
 <script setup lang="ts">
-
-import { LucideProps } from 'lucide-vue-next'
-import { FunctionalComponent } from 'vue'
-
+import { LucideProps } from "lucide-vue-next";
+import { FunctionalComponent } from "vue";
 
 defineProps<{
   isEmpty?: boolean;
@@ -10,8 +8,8 @@ defineProps<{
   subtitle?: string;
   loading?: boolean;
   emptyMessage?: string;
-  emptyIcon?: FunctionalComponent<LucideProps, {}, any, {}>
-}>()
+  emptyIcon?: FunctionalComponent<LucideProps, {}, any, {}>;
+}>();
 </script>
 
 <template>
@@ -45,6 +43,4 @@ defineProps<{
   </div>
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>

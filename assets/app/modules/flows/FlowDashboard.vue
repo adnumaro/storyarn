@@ -14,21 +14,28 @@ import {
   Star,
   TextCursorInput,
   Trash2,
-} from 'lucide-vue-next'
-import type { Component } from 'vue'
-import { computed } from 'vue'
-import { Badge } from '@components/ui/badge/index.ts'
-import { Button } from '@components/ui/button/index.ts'
+} from "lucide-vue-next";
+import type { Component } from "vue";
+import { computed } from "vue";
+import { Badge } from "@components/ui/badge/index.ts";
+import { Button } from "@components/ui/button/index.ts";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@components/ui/dropdown-menu/index.ts'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@components/ui/table/index.ts'
-import { useLive } from '@composables/useLive'
-import { formatRelativeTime } from '@utils/date-utils'
-import DashboardContent from '@components/layout/DashboardContent.vue'
+} from "@components/ui/dropdown-menu/index.ts";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@components/ui/table/index.ts";
+import { useLive } from "@composables/useLive";
+import { formatRelativeTime } from "@utils/date-utils";
+import DashboardContent from "@components/layout/DashboardContent.vue";
 
 interface FlowStats {
   flow_count: number;
@@ -50,7 +57,7 @@ interface FlowTableRow {
 
 interface FlowPagination {
   sortBy: string;
-  sortDir: 'asc' | 'desc';
+  sortDir: "asc" | "desc";
   page: number;
   totalPages: number;
   total: number;
@@ -59,7 +66,7 @@ interface FlowPagination {
 interface FlowIssue {
   href: string;
   message: string;
-  severity: 'warning' | 'info';
+  severity: "warning" | "info";
 }
 
 interface StatCard {
@@ -72,14 +79,14 @@ interface StatCard {
 interface TableColumn {
   key: string;
   label: string;
-  align: 'left' | 'right';
+  align: "left" | "right";
   hiddenClass?: string;
 }
 
 const {
   stats = null,
   tableData = [],
-  pagination = { sortBy: 'name', sortDir: 'asc', page: 1, totalPages: 1, total: 0 },
+  pagination = { sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 0 },
   issues = [],
   canEdit = false,
   workspaceSlug,
@@ -92,106 +99,106 @@ const {
   canEdit: boolean;
   workspaceSlug: string;
   projectSlug: string;
-}>()
+}>();
 
-const live = useLive()
+const live = useLive();
 
 function flowHref(row: FlowTableRow): string {
-  return `/workspaces/${ workspaceSlug }/projects/${ projectSlug }/flows/${ row.id }`
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${row.id}`;
 }
 
 function handleSort(column: string): void {
-  live.pushEvent('sort_flows', { column })
+  live.pushEvent("sort_flows", { column });
 }
 
 function goToPage(page: number): void {
-  live.pushEvent('page_flows', { page })
+  live.pushEvent("page_flows", { page });
 }
 
 function setMain(id: number | string): void {
-  live.pushEvent('set_main', { id })
+  live.pushEvent("set_main", { id });
 }
 
 function requestDelete(id: number | string): void {
-  live.pushEvent('set_pending_delete', { id })
-  live.pushEvent('confirm_delete', {})
+  live.pushEvent("set_pending_delete", { id });
+  live.pushEvent("confirm_delete", {});
 }
 
 function sortIcon(column: string): Component {
   if (pagination.sortBy !== column) {
-    return ArrowUpDown
+    return ArrowUpDown;
   }
-  return pagination.sortDir === 'asc' ? ArrowUp : ArrowDown
+  return pagination.sortDir === "asc" ? ArrowUp : ArrowDown;
 }
 
 const statCards = computed<StatCard[]>(() => {
   if (!stats) {
-    return []
+    return [];
   }
   return [
     {
       icon: GitBranch,
-      label: 'Flows',
+      label: "Flows",
       value: stats.flow_count,
-      color: 'text-primary',
+      color: "text-primary",
     },
     {
       icon: Box,
-      label: 'Nodes',
+      label: "Nodes",
       value: stats.node_count,
-      color: 'text-blue-400',
+      color: "text-blue-400",
     },
     {
       icon: MessageSquare,
-      label: 'Dialogue',
+      label: "Dialogue",
       value: stats.dialogue_count,
-      color: 'text-violet-400',
+      color: "text-violet-400",
     },
     {
       icon: TextCursorInput,
-      label: 'Words',
+      label: "Words",
       value: stats.word_count,
-      color: 'text-emerald-400',
+      color: "text-emerald-400",
     },
-  ]
-})
+  ];
+});
 
 const columns: TableColumn[] = [
-  { key: 'name', label: 'Name', align: 'left' },
-  { key: 'node_count', label: 'Nodes', align: 'right' },
+  { key: "name", label: "Name", align: "left" },
+  { key: "node_count", label: "Nodes", align: "right" },
   {
-    key: 'dialogue_count',
-    label: 'Dialogue',
-    align: 'right',
-    hiddenClass: 'hidden sm:table-cell',
+    key: "dialogue_count",
+    label: "Dialogue",
+    align: "right",
+    hiddenClass: "hidden sm:table-cell",
   },
   {
-    key: 'condition_count',
-    label: 'Conditions',
-    align: 'right',
-    hiddenClass: 'hidden sm:table-cell',
+    key: "condition_count",
+    label: "Conditions",
+    align: "right",
+    hiddenClass: "hidden sm:table-cell",
   },
   {
-    key: 'word_count',
-    label: 'Words',
-    align: 'right',
-    hiddenClass: 'hidden md:table-cell',
+    key: "word_count",
+    label: "Words",
+    align: "right",
+    hiddenClass: "hidden md:table-cell",
   },
   {
-    key: 'updated_at',
-    label: 'Modified',
-    align: 'right',
-    hiddenClass: 'hidden md:table-cell',
+    key: "updated_at",
+    label: "Modified",
+    align: "right",
+    hiddenClass: "hidden md:table-cell",
   },
-]
+];
 
 const pages = computed(() => {
-  const result = []
+  const result = [];
   for (let i = 1; i <= pagination.totalPages; i++) {
-    result.push(i)
+    result.push(i);
   }
-  return result
-})
+  return result;
+});
 </script>
 
 <template>
@@ -229,10 +236,10 @@ const pages = computed(() => {
                 v-for="col in columns"
                 :key="col.key"
                 :class="[
-                    'font-medium text-xs text-muted-foreground uppercase',
-                    col.align === 'right' ? 'text-right' : 'text-left',
-                    col.hiddenClass,
-                  ]"
+                  'font-medium text-xs text-muted-foreground uppercase',
+                  col.align === 'right' ? 'text-right' : 'text-left',
+                  col.hiddenClass,
+                ]"
               >
                 <button
                   type="button"
@@ -261,17 +268,14 @@ const pages = computed(() => {
                 </a>
               </TableCell>
               <TableCell class="text-right tabular-nums">{{ row.node_count }}</TableCell>
-              <TableCell class="text-right tabular-nums hidden sm:table-cell">{{
-                  row.dialogue_count
-                }}
+              <TableCell class="text-right tabular-nums hidden sm:table-cell"
+                >{{ row.dialogue_count }}
               </TableCell>
-              <TableCell class="text-right tabular-nums hidden sm:table-cell">{{
-                  row.condition_count
-                }}
+              <TableCell class="text-right tabular-nums hidden sm:table-cell"
+                >{{ row.condition_count }}
               </TableCell>
-              <TableCell class="text-right tabular-nums hidden md:table-cell">{{
-                  row.word_count
-                }}
+              <TableCell class="text-right tabular-nums hidden md:table-cell"
+                >{{ row.word_count }}
               </TableCell>
               <TableCell class="text-right text-muted-foreground text-xs hidden md:table-cell">
                 {{ formatRelativeTime(row.updated_at) }}

@@ -10,8 +10,8 @@ import type { Block, SelectOption } from "../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 import OptionEditor from "../OptionEditor.vue";
-import { useId } from 'reka-ui'
-import { generateId } from '@modules/shared/variables.ts'
+import { useId } from "reka-ui";
+import { generateId } from "@modules/shared/variables.ts";
 
 const {
   block,
@@ -119,7 +119,7 @@ function toggle(key: string): void {
     <Popover v-if="canEdit">
       <PopoverTrigger as-child>
         <button
-          :id="`multi-select-trigger-${ block.id }-${generateId()}`"
+          :id="`multi-select-trigger-${block.id}-${generateId()}`"
           class="flex justify-between flex-wrap gap-1 min-h-9 w-full rounded-md border border-input bg-card px-3 py-2 text-sm items-center"
         >
           <span>
@@ -128,18 +128,20 @@ function toggle(key: string): void {
               :key="opt.key"
               variant="secondary"
               class="text-xs mx-0.5"
-            >{{ opt.value }}</Badge
+              >{{ opt.value }}</Badge
             >
             <span v-if="selectedOptions.length === 0" class="text-muted-foreground">{{
-                placeholder
-              }}</span>
+              placeholder
+            }}</span>
           </span>
           <ChevronDown class="h-4 w-4 opacity-50" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" class="w-(--reka-popover-trigger-width) p-1">
         <div class="max-h-48 overflow-y-auto">
-          <div v-if="options.length === 0" class="text-muted-foreground p-2">No options available</div>
+          <div v-if="options.length === 0" class="text-muted-foreground p-2">
+            No options available
+          </div>
           <button
             v-for="opt in options"
             :key="opt.key"

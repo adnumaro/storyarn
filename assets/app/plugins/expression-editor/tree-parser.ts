@@ -64,8 +64,16 @@ const ASSIGN_OP_MAP: Record<string, string> = {
 };
 
 const COMPARE_OPS = new Set([
-  "Eq", "Neq", "Gt", "Lt", "Gte", "Lte",
-  "StartsWithOp", "EndsWithOp", "ContainsOp", "NotContainsOp",
+  "Eq",
+  "Neq",
+  "Gt",
+  "Lt",
+  "Gte",
+  "Lte",
+  "StartsWithOp",
+  "EndsWithOp",
+  "ContainsOp",
+  "NotContainsOp",
 ]);
 
 const COMPARE_OP_MAP: Record<string, string> = {
@@ -284,7 +292,11 @@ function splitIntoAssignmentGroups(children: ChildInfo[]): ChildInfo[][] {
   return groups;
 }
 
-function buildBooleanAssignment(ref: VarRef, valueChild: ChildInfo, text: string): ParsedAssignment {
+function buildBooleanAssignment(
+  ref: VarRef,
+  valueChild: ChildInfo,
+  text: string,
+): ParsedAssignment {
   const boolVal = text.slice(valueChild.from, valueChild.to);
   return {
     id: generateId("assign"),
@@ -299,7 +311,11 @@ function buildBooleanAssignment(ref: VarRef, valueChild: ChildInfo, text: string
   };
 }
 
-function buildVariableRefAssignment(ref: VarRef, operator: string, valRef: VarRef): ParsedAssignment {
+function buildVariableRefAssignment(
+  ref: VarRef,
+  operator: string,
+  valRef: VarRef,
+): ParsedAssignment {
   return {
     id: generateId("assign"),
     sheet: ref.sheet,

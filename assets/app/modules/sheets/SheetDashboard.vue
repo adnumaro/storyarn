@@ -14,19 +14,26 @@ import {
   TextCursorInput,
   Trash2,
   Variable,
-} from 'lucide-vue-next'
-import type { FunctionalComponent } from 'vue'
-import { computed } from 'vue'
-import { Button } from '@components/ui/button/index.ts'
+} from "lucide-vue-next";
+import type { FunctionalComponent } from "vue";
+import { computed } from "vue";
+import { Button } from "@components/ui/button/index.ts";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@components/ui/dropdown-menu/index.ts'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@components/ui/table/index.ts'
-import { useLive } from '@composables/useLive'
-import { formatRelativeTime } from '@utils/date-utils'
+} from "@components/ui/dropdown-menu/index.ts";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@components/ui/table/index.ts";
+import { useLive } from "@composables/useLive";
+import { formatRelativeTime } from "@utils/date-utils";
 import type {
   DashboardColumn,
   DashboardIssue,
@@ -34,13 +41,13 @@ import type {
   DashboardRow,
   DashboardStats,
   StatCard,
-} from './types'
-import DashboardContent from '@components/layout/DashboardContent.vue'
+} from "./types";
+import DashboardContent from "@components/layout/DashboardContent.vue";
 
 const {
   stats = null,
   tableData = [],
-  pagination = { sortBy: 'name', sortDir: 'asc', page: 1, totalPages: 1, total: 0 },
+  pagination = { sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 0 },
   issues = [],
   canEdit = false,
   workspaceSlug,
@@ -53,87 +60,87 @@ const {
   canEdit?: boolean;
   workspaceSlug: string;
   projectSlug: string;
-}>()
+}>();
 
-const live = useLive()
+const live = useLive();
 
 function sheetHref(row: DashboardRow): string {
-  return `/workspaces/${ workspaceSlug }/projects/${ projectSlug }/sheets/${ row.id }`
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets/${row.id}`;
 }
 
 function sortBy(column: string): void {
-  live.pushEvent('sort_sheets', { column })
+  live.pushEvent("sort_sheets", { column });
 }
 
 function goToPage(page: number): void {
-  live.pushEvent('page_sheets', { page })
+  live.pushEvent("page_sheets", { page });
 }
 
 function requestDelete(id: number | string): void {
-  live.pushEvent('set_pending_delete_sheet', { id })
-  live.pushEvent('confirm_delete_sheet', {})
+  live.pushEvent("set_pending_delete_sheet", { id });
+  live.pushEvent("confirm_delete_sheet", {});
 }
 
 function sortIcon(column: string): FunctionalComponent {
   if (pagination.sortBy !== column) {
-    return ArrowUpDown
+    return ArrowUpDown;
   }
-  return pagination.sortDir === 'asc' ? ArrowUp : ArrowDown
+  return pagination.sortDir === "asc" ? ArrowUp : ArrowDown;
 }
 
 const statCards = computed<StatCard[]>(() => {
   if (!stats) {
-    return []
+    return [];
   }
   return [
     {
       icon: FileText,
-      label: 'Sheets',
+      label: "Sheets",
       value: stats.sheet_count,
-      color: 'text-primary',
+      color: "text-primary",
     },
     {
       icon: Layers,
-      label: 'Blocks',
+      label: "Blocks",
       value: stats.block_count,
-      color: 'text-blue-400',
+      color: "text-blue-400",
     },
     {
       icon: Variable,
-      label: 'Variables',
+      label: "Variables",
       value: stats.variable_count,
-      color: 'text-violet-400',
+      color: "text-violet-400",
     },
     {
       icon: Link,
-      label: 'Vars in use',
+      label: "Vars in use",
       value: stats.variables_in_use,
-      color: 'text-amber-400',
+      color: "text-amber-400",
     },
     {
       icon: TextCursorInput,
-      label: 'Words',
+      label: "Words",
       value: stats.word_count,
-      color: 'text-emerald-400',
+      color: "text-emerald-400",
     },
-  ]
-})
+  ];
+});
 
 const columns: DashboardColumn[] = [
-  { key: 'name', label: 'Name', align: 'left' },
-  { key: 'block_count', label: 'Blocks', align: 'right' },
-  { key: 'variable_count', label: 'Variables', align: 'right' },
-  { key: 'word_count', label: 'Words', align: 'right' },
-  { key: 'updated_at', label: 'Modified', align: 'right' },
-]
+  { key: "name", label: "Name", align: "left" },
+  { key: "block_count", label: "Blocks", align: "right" },
+  { key: "variable_count", label: "Variables", align: "right" },
+  { key: "word_count", label: "Words", align: "right" },
+  { key: "updated_at", label: "Modified", align: "right" },
+];
 
 const pages = computed<number[]>(() => {
-  const result: number[] = []
+  const result: number[] = [];
   for (let i = 1; i <= pagination.totalPages; i++) {
-    result.push(i)
+    result.push(i);
   }
-  return result
-})
+  return result;
+});
 </script>
 
 <template>
@@ -171,9 +178,9 @@ const pages = computed<number[]>(() => {
                 v-for="col in columns"
                 :key="col.key"
                 :class="[
-                    'font-medium text-xs text-muted-foreground uppercase',
-                    col.align === 'right' ? 'text-right' : 'text-left',
-                  ]"
+                  'font-medium text-xs text-muted-foreground uppercase',
+                  col.align === 'right' ? 'text-right' : 'text-left',
+                ]"
               >
                 <button
                   type="button"

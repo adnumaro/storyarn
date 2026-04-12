@@ -256,12 +256,7 @@ function handleDrop(e: any): void {
   <div class="space-y-2">
     <!-- Search -->
     <div class="px-1">
-      <Input
-        v-model="searchQuery"
-        type="search"
-        placeholder="Filter scenes..."
-        class="text-xs"
-      />
+      <Input v-model="searchQuery" type="search" placeholder="Filter scenes..." class="text-xs" />
     </div>
 
     <!-- Empty state -->

@@ -75,9 +75,7 @@ describe("parseCondition", () => {
   });
 
   it("parses with known variables for disambiguation", () => {
-    const vars = [
-      { sheet_shortcut: "mc", variable_name: "health", block_type: "number" },
-    ];
+    const vars = [{ sheet_shortcut: "mc", variable_name: "health", block_type: "number" }];
     const { condition } = parseCondition("mc.health > 50", vars);
     expect(condition.rules[0].sheet).toBe("mc");
     expect(condition.rules[0].variable).toBe("health");

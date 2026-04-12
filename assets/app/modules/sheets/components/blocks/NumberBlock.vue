@@ -6,8 +6,8 @@ import { useBlockActions } from "../../composables/useBlockActions";
 import type { Block } from "../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
-import { useId } from 'reka-ui'
-import { generateId } from '@modules/shared/variables.ts'
+import { useId } from "reka-ui";
+import { generateId } from "@modules/shared/variables.ts";
 
 const {
   block,

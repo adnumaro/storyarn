@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, HTMLAttributes } from 'vue'
+import { computed, HTMLAttributes } from "vue";
 import { useVModel } from "@vueuse/core";
 import { cn } from "@utils/utils";
 
@@ -25,7 +25,7 @@ const SIZES = {
   xs: "h-6 px-2 text-xs",
   sm: "h-8 px-3 py-1 text-sm file:text-xs md:text-xs",
   base: "h-9 px-3 py-1 text-base file:text-sm md:text-sm",
-}
+};
 </script>
 
 <template>

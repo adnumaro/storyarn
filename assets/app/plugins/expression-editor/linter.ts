@@ -10,7 +10,10 @@
 import { linter, type Diagnostic } from "@codemirror/lint";
 import type { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
-import { operatorsForType as instructionOpsForType, OPERATOR_VERBS } from "@modules/shared/operators/instruction-operators";
+import {
+  operatorsForType as instructionOpsForType,
+  OPERATOR_VERBS,
+} from "@modules/shared/operators/instruction-operators";
 import { parseAssignments, parseCondition } from "./tree-parser";
 import type { Variable } from "@modules/shared/variables";
 
@@ -48,9 +51,24 @@ export function createLintSource(
       for (const a of result.assignments) {
         checkVariableRef(diagnostics, variableSet, a.sheet, a.variable, a.ref_from, a.ref_to);
         if (a.value_type === "variable_ref" && a.value_sheet) {
-          checkVariableRef(diagnostics, variableSet, a.value_sheet, a.value, a.value_ref_from, a.value_ref_to);
+          checkVariableRef(
+            diagnostics,
+            variableSet,
+            a.value_sheet,
+            a.value,
+            a.value_ref_from,
+            a.value_ref_to,
+          );
         }
-        checkOperatorType(diagnostics, variableTypeMap, a.sheet, a.variable, a.operator, a.ref_from, a.ref_to);
+        checkOperatorType(
+          diagnostics,
+          variableTypeMap,
+          a.sheet,
+          a.variable,
+          a.operator,
+          a.ref_from,
+          a.ref_to,
+        );
       }
     } else {
       const result = parseCondition(text, variables);

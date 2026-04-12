@@ -8,9 +8,9 @@ import { Hash, Lock, Settings, Unlock } from "lucide-vue-next";
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
-import ToolbarBase from '@components/toolbar/ToolbarBase.vue'
-import { Button } from '@components/ui/button'
-import { generateId } from '@modules/shared/variables.ts'
+import ToolbarBase from "@components/toolbar/ToolbarBase.vue";
+import { Button } from "@components/ui/button";
+import { generateId } from "@modules/shared/variables.ts";
 
 const configOpen = ref(false);
 
@@ -24,7 +24,7 @@ const {
   showScope = true,
   showConfig = true,
 } = defineProps<{
-  blockId: string | number
+  blockId: string | number;
   isConstant?: boolean;
   isVariable?: boolean;
   variableName?: string;
@@ -96,7 +96,7 @@ const emit = defineEmits<{
       <Popover v-if="showConfig" @update:open="(v) => (configOpen = v)">
         <PopoverTrigger as-child>
           <Button
-            :id="`block-toolbar-${ blockId }-${generateId()}`"
+            :id="`block-toolbar-${blockId}-${generateId()}`"
             size="icon-sm"
             variant="ghost"
             title="Configure"

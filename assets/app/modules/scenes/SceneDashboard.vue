@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { Component } from 'vue'
-import { computed } from 'vue'
+import type { Component } from "vue";
+import { computed } from "vue";
 import {
   AlertTriangle,
   ArrowDown,
@@ -15,13 +15,25 @@ import {
   MoreHorizontal,
   Pentagon,
   Trash2,
-} from 'lucide-vue-next'
-import { Button } from '@components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@components/ui/dropdown-menu'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@components/ui/table'
-import { useLive } from '@composables/useLive'
-import { formatRelativeTime } from '@utils/date-utils'
-import DashboardContent from '@components/layout/DashboardContent.vue'
+} from "lucide-vue-next";
+import { Button } from "@components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@components/ui/table";
+import { useLive } from "@composables/useLive";
+import { formatRelativeTime } from "@utils/date-utils";
+import DashboardContent from "@components/layout/DashboardContent.vue";
 
 interface StatCard {
   icon: Component;
@@ -33,7 +45,7 @@ interface StatCard {
 interface TableColumn {
   key: string;
   label: string;
-  align: 'left' | 'right';
+  align: "left" | "right";
 }
 
 interface TableDataRow {
@@ -54,7 +66,7 @@ interface DashboardStats {
 
 interface Pagination {
   sortBy: string;
-  sortDir: 'asc' | 'desc';
+  sortDir: "asc" | "desc";
   page: number;
   totalPages: number;
   total: number;
@@ -69,7 +81,7 @@ interface Issue {
 const {
   stats = null,
   tableData = [],
-  pagination = { sortBy: 'name', sortDir: 'asc', page: 1, totalPages: 1, total: 0 },
+  pagination = { sortBy: "name", sortDir: "asc", page: 1, totalPages: 1, total: 0 },
   issues = [],
   canEdit = false,
   workspaceSlug,
@@ -82,81 +94,81 @@ const {
   canEdit: boolean;
   workspaceSlug: string;
   projectSlug: string;
-}>()
+}>();
 
-const live = useLive()
+const live = useLive();
 
 function sceneHref(row: TableDataRow): string {
-  return `/workspaces/${ workspaceSlug }/projects/${ projectSlug }/scenes/${ row.id }`
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${row.id}`;
 }
 
 function handleSort(column: string): void {
-  live.pushEvent('sort_scenes', { column })
+  live.pushEvent("sort_scenes", { column });
 }
 
 function goToPage(page: number): void {
-  live.pushEvent('page_scenes', { page })
+  live.pushEvent("page_scenes", { page });
 }
 
 function requestDelete(id: number | string): void {
-  live.pushEvent('set_pending_delete_scene', { id })
-  live.pushEvent('confirm_delete_scene', {})
+  live.pushEvent("set_pending_delete_scene", { id });
+  live.pushEvent("confirm_delete_scene", {});
 }
 
 function sortIcon(column: string): Component {
   if (pagination.sortBy !== column) {
-    return ArrowUpDown
+    return ArrowUpDown;
   }
-  return pagination.sortDir === 'asc' ? ArrowUp : ArrowDown
+  return pagination.sortDir === "asc" ? ArrowUp : ArrowDown;
 }
 
 const statCards = computed<StatCard[]>(() => {
   if (!stats) {
-    return []
+    return [];
   }
   return [
     {
       icon: MapIcon,
-      label: 'Scenes',
+      label: "Scenes",
       value: stats.scene_count,
-      color: 'text-primary',
+      color: "text-primary",
     },
     {
       icon: Pentagon,
-      label: 'Zones',
+      label: "Zones",
       value: stats.zone_count,
-      color: 'text-blue-400',
+      color: "text-blue-400",
     },
     {
       icon: MapPin,
-      label: 'Pins',
+      label: "Pins",
       value: stats.pin_count,
-      color: 'text-violet-400',
+      color: "text-violet-400",
     },
     {
       icon: Image,
-      label: 'Backgrounds',
+      label: "Backgrounds",
       value: stats.background_count,
-      color: 'text-emerald-400',
+      color: "text-emerald-400",
     },
-  ]
-})
+  ];
+});
 
 const columns: TableColumn[] = [
-  { key: 'name', label: 'Name', align: 'left' },
-  { key: 'zone_count', label: 'Zones', align: 'right' },
-  { key: 'pin_count', label: 'Pins', align: 'right' },
-  { key: 'connection_count', label: 'Connections', align: 'right' },
-  { key: 'updated_at', label: 'Modified', align: 'right' },
-]
+  { key: "name", label: "Name", align: "left" },
+  { key: "zone_count", label: "Zones", align: "right" },
+  { key: "pin_count", label: "Pins", align: "right" },
+  { key: "connection_count", label: "Connections", align: "right" },
+  { key: "updated_at", label: "Modified", align: "right" },
+];
 
 const pages = computed(() => {
-  const result = []
+  const result = [];
   for (let i = 1; i <= pagination.totalPages; i++) {
-    result.push(i)
+    result.push(i);
   }
-  return result
-})
+  return result;
+});
 </script>
 
 <template>
@@ -194,9 +206,9 @@ const pages = computed(() => {
                 v-for="col in columns"
                 :key="col.key"
                 :class="[
-                    'font-medium text-xs text-muted-foreground uppercase',
-                    col.align === 'right' ? 'text-right' : 'text-left',
-                  ]"
+                  'font-medium text-xs text-muted-foreground uppercase',
+                  col.align === 'right' ? 'text-right' : 'text-left',
+                ]"
               >
                 <button
                   type="button"

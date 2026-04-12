@@ -6,7 +6,11 @@
  * Supports 3-level table paths: sheet.table.row.column
  */
 
-import { autocompletion, type CompletionContext, type CompletionResult } from "@codemirror/autocomplete";
+import {
+  autocompletion,
+  type CompletionContext,
+  type CompletionResult,
+} from "@codemirror/autocomplete";
 import type { Extension } from "@codemirror/state";
 import type { Variable } from "@modules/shared/variables";
 
@@ -52,7 +56,11 @@ function findLongestMatchingSheet(text: string, sheets: string[]): string | null
   return matched;
 }
 
-function completePartialSheet(text: string, from: number, sheets: string[]): CompletionResult | null {
+function completePartialSheet(
+  text: string,
+  from: number,
+  sheets: string[],
+): CompletionResult | null {
   const lastDotIdx = text.lastIndexOf(".");
   if (lastDotIdx <= 0) return null;
 
@@ -66,7 +74,11 @@ function completePartialSheet(text: string, from: number, sheets: string[]): Com
   return options.length > 0 ? { from, options } : null;
 }
 
-function completeSheetShortcuts(text: string, from: number, sheets: string[]): CompletionResult | null {
+function completeSheetShortcuts(
+  text: string,
+  from: number,
+  sheets: string[],
+): CompletionResult | null {
   const lowerText = text.toLowerCase();
   const options = sheets
     .filter((s) => s.toLowerCase().startsWith(lowerText))
@@ -101,10 +113,20 @@ function completeVarsAndTables(
   const options = [
     ...regularVars
       .filter((v) => v.variable_name.toLowerCase().startsWith(prefix))
-      .map((v) => ({ label: v.variable_name, detail: `(${v.block_type})`, type: "variable" as const })),
+      .map((v) => ({
+        label: v.variable_name,
+        detail: `(${v.block_type})`,
+        type: "variable" as const,
+      })),
     ...tableNames
       .filter((t) => t.toLowerCase().startsWith(prefix))
-      .map((t) => ({ label: t, apply: `${t}.`, detail: "table \u2192", type: "namespace" as const, boost: -1 })),
+      .map((t) => ({
+        label: t,
+        apply: `${t}.`,
+        detail: "table \u2192",
+        type: "namespace" as const,
+        boost: -1,
+      })),
   ];
   return options.length > 0 ? { from: baseFrom, options } : null;
 }
@@ -117,7 +139,10 @@ function completeTableRows(
 ): CompletionResult | null {
   const rowNames = [...new Set(tableVars.map((v) => v.row_name!))];
   if (!rowPrefix) {
-    return { from: tableFrom, options: rowNames.map((r) => ({ label: r, apply: `${r}.`, type: "namespace" as const })) };
+    return {
+      from: tableFrom,
+      options: rowNames.map((r) => ({ label: r, apply: `${r}.`, type: "namespace" as const })),
+    };
   }
   const options = rowNames
     .filter((r) => r.toLowerCase().startsWith(rowPrefix))
@@ -132,11 +157,22 @@ function completeTableColumns(
   colPrefix: string,
 ): CompletionResult | null {
   if (!colPrefix) {
-    return { from: rowFrom, options: rowVars.map((v) => ({ label: v.column_name!, detail: `(${v.block_type})`, type: "variable" as const })) };
+    return {
+      from: rowFrom,
+      options: rowVars.map((v) => ({
+        label: v.column_name!,
+        detail: `(${v.block_type})`,
+        type: "variable" as const,
+      })),
+    };
   }
   const options = rowVars
     .filter((v) => v.column_name!.toLowerCase().startsWith(colPrefix))
-    .map((v) => ({ label: v.column_name!, detail: `(${v.block_type})`, type: "variable" as const }));
+    .map((v) => ({
+      label: v.column_name!,
+      detail: `(${v.block_type})`,
+      type: "variable" as const,
+    }));
   return options.length > 0 ? { from: rowFrom, options } : null;
 }
 
@@ -153,7 +189,8 @@ function completeTablePath(
   const tableFrom = baseFrom + tableName.length + 1;
 
   if (parts.length === 1 && endsWithDot) return completeTableRows(tableFrom, tableVars, "");
-  if (parts.length === 2 && !endsWithDot) return completeTableRows(tableFrom, tableVars, parts[1].toLowerCase());
+  if (parts.length === 2 && !endsWithDot)
+    return completeTableRows(tableFrom, tableVars, parts[1].toLowerCase());
 
   const rowName = parts[1];
   const rowVars = tableVars.filter((v) => v.row_name === rowName);
@@ -166,7 +203,10 @@ function completeTablePath(
   return null;
 }
 
-function parseAfterSheetParts(text: string, matchedSheet: string): { parts: string[]; afterSheet: string; endsWithDot: boolean } {
+function parseAfterSheetParts(
+  text: string,
+  matchedSheet: string,
+): { parts: string[]; afterSheet: string; endsWithDot: boolean } {
   const endsWithDot = text.endsWith(".");
   const afterSheet = text.slice(matchedSheet.length + 1);
   const cleanAfter = endsWithDot && afterSheet.endsWith(".") ? afterSheet.slice(0, -1) : afterSheet;
@@ -174,10 +214,18 @@ function parseAfterSheetParts(text: string, matchedSheet: string): { parts: stri
   return { parts, afterSheet, endsWithDot };
 }
 
-function completeFallbackVars(baseFrom: number, prefix: string, regularVars: Variable[]): CompletionResult | null {
+function completeFallbackVars(
+  baseFrom: number,
+  prefix: string,
+  regularVars: Variable[],
+): CompletionResult | null {
   const options = regularVars
     .filter((v) => v.variable_name.toLowerCase().startsWith(prefix))
-    .map((v) => ({ label: v.variable_name, detail: `(${v.block_type})`, type: "variable" as const }));
+    .map((v) => ({
+      label: v.variable_name,
+      detail: `(${v.block_type})`,
+      type: "variable" as const,
+    }));
   return options.length > 0 ? { from: baseFrom, options } : null;
 }
 
@@ -199,6 +247,8 @@ function completeAfterSheet(
     return completeVarsAndTables(baseFrom, prefix, regularVars, tableNames);
   }
 
-  return completeTablePath(parts, endsWithDot, baseFrom, sheetVars)
-    || completeFallbackVars(baseFrom, afterSheet.toLowerCase(), regularVars);
+  return (
+    completeTablePath(parts, endsWithDot, baseFrom, sheetVars) ||
+    completeFallbackVars(baseFrom, afterSheet.toLowerCase(), regularVars)
+  );
 }

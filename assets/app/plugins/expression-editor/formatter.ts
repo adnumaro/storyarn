@@ -82,7 +82,11 @@ interface StringScanState {
  * "consumed" if the character is part of a string literal,
  * or "normal" if the character is outside any string.
  */
-function scanStringChar(ch: string, nextCh: string | undefined, state: StringScanState): "escape" | "consumed" | "normal" {
+function scanStringChar(
+  ch: string,
+  nextCh: string | undefined,
+  state: StringScanState,
+): "escape" | "consumed" | "normal" {
   if (state.inString) {
     if (ch === "\\" && nextCh !== undefined) return "escape";
     if (ch === state.stringChar) state.inString = false;
@@ -106,11 +110,25 @@ function splitTopLevel(text: string, op: string): string[] {
   while (i < text.length) {
     const ch = text[i];
     const scan = scanStringChar(ch, text[i + 1], ss);
-    if (scan === "escape") { i += 2; continue; }
-    if (scan === "consumed") { i++; continue; }
+    if (scan === "escape") {
+      i += 2;
+      continue;
+    }
+    if (scan === "consumed") {
+      i++;
+      continue;
+    }
 
-    if (ch === "(") { depth++; i++; continue; }
-    if (ch === ")") { depth--; i++; continue; }
+    if (ch === "(") {
+      depth++;
+      i++;
+      continue;
+    }
+    if (ch === ")") {
+      depth--;
+      i++;
+      continue;
+    }
 
     if (depth === 0 && text.startsWith(op, i)) {
       parts.push(text.slice(start, i));
@@ -135,7 +153,10 @@ function isWrappedInParens(text: string): boolean {
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     const scan = scanStringChar(ch, text[i + 1], ss);
-    if (scan === "escape") { i++; continue; }
+    if (scan === "escape") {
+      i++;
+      continue;
+    }
     if (scan === "consumed") continue;
 
     if (ch === "(") depth++;

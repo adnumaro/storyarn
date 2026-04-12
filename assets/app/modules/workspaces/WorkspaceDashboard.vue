@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { FolderOpen, Menu, Plus, Search, Settings } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@components/ui/dialog/index.ts'
-import { Button } from '@components/ui/button/index.ts'
-import { Input } from '@components/ui/input/index.ts'
-import type { Form } from 'live_vue'
-import NewProjectForm from './projects/New.vue'
-import { useLive } from '@composables/useLive'
-import { formatRelativeTime } from '@utils/date-utils'
+import { FolderOpen, Menu, Plus, Search, Settings } from "lucide-vue-next";
+import { computed, ref } from "vue";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog/index.ts";
+import { Button } from "@components/ui/button/index.ts";
+import { Input } from "@components/ui/input/index.ts";
+import type { Form } from "live_vue";
+import NewProjectForm from "./projects/New.vue";
+import { useLive } from "@composables/useLive";
+import { formatRelativeTime } from "@utils/date-utils";
 
 interface Workspace {
   name: string;
@@ -41,7 +41,7 @@ const {
   workspace,
   membership,
   projects = [],
-  searchQuery = '',
+  searchQuery = "",
   canCreateProject = false,
   newProjectForm = null,
   settingsUrl = null,
@@ -53,23 +53,23 @@ const {
   canCreateProject?: boolean;
   newProjectForm?: Form<NewProjectFormValues> | null;
   settingsUrl?: string | null;
-}>()
+}>();
 
-const live = useLive()
+const live = useLive();
 
-const localSearch = ref(searchQuery)
+const localSearch = ref(searchQuery);
 
 function onSearch(e: Event) {
-  const value = (e.target as HTMLInputElement).value
-  localSearch.value = value
-  live.pushEvent('search', { search: value })
+  const value = (e.target as HTMLInputElement).value;
+  localSearch.value = value;
+  live.pushEvent("search", { search: value });
 }
 
-const canManage = computed(() => ['owner', 'admin'].includes(membership.role))
+const canManage = computed(() => ["owner", "admin"].includes(membership.role));
 
-const canCreate = computed(() => ['owner', 'admin', 'member'].includes(membership.role))
+const canCreate = computed(() => ["owner", "admin", "member"].includes(membership.role));
 
-const isNewProjectModalOpen = ref(false)
+const isNewProjectModalOpen = ref(false);
 </script>
 
 <template>
@@ -78,9 +78,9 @@ const isNewProjectModalOpen = ref(false)
     <header class="relative">
       <div
         :class="[
-        'h-86 overflow-hidden rounded-xl',
-        !workspace.banner_url && 'bg-linear-to-r from-primary to-secondary',
-      ]"
+          'h-86 overflow-hidden rounded-xl',
+          !workspace.banner_url && 'bg-linear-to-r from-primary to-secondary',
+        ]"
       >
         <img
           v-if="workspace.banner_url"
@@ -144,17 +144,17 @@ const isNewProjectModalOpen = ref(false)
             @click="isNewProjectModalOpen = true"
           >
             <Plus class="size-4 mr-1" />
-            {{ $t('workspace.dashboard.new_project') }}
+            {{ $t("workspace.dashboard.new_project") }}
           </Button>
           <div v-else-if="canCreate && !canCreateProject" class="relative group">
             <Button size="sm" disabled>
               <Plus class="size-4 mr-1" />
-              {{ $t('workspace.dashboard.new_project') }}
+              {{ $t("workspace.dashboard.new_project") }}
             </Button>
             <div
               class="absolute right-0 top-full mt-1 px-2 py-1 text-xs rounded bg-popover border border-border shadow-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10"
             >
-              {{ $t('workspace.dashboard.limit_reached') }}
+              {{ $t("workspace.dashboard.limit_reached") }}
             </div>
           </div>
         </div>
@@ -167,9 +167,9 @@ const isNewProjectModalOpen = ref(false)
       class="flex flex-col items-center justify-center py-12 text-center h-full"
     >
       <FolderOpen class="size-12 text-muted-foreground/40 mb-4" />
-      <h3 class="text-lg font-medium mb-1">{{ $t('workspace.dashboard.empty_projects.title') }}</h3>
+      <h3 class="text-lg font-medium mb-1">{{ $t("workspace.dashboard.empty_projects.title") }}</h3>
       <p class="text-sm text-muted-foreground">
-        {{ $t('workspace.dashboard.empty_projects.description') }}
+        {{ $t("workspace.dashboard.empty_projects.description") }}
       </p>
     </div>
 
@@ -178,9 +178,9 @@ const isNewProjectModalOpen = ref(false)
       class="flex flex-col items-center justify-center py-12 text-center h-full"
     >
       <Search class="size-12 text-muted-foreground/40 mb-4" />
-      <h3 class="text-lg font-medium mb-1">{{ $t('workspace.dashboard.empty_search.title') }}</h3>
+      <h3 class="text-lg font-medium mb-1">{{ $t("workspace.dashboard.empty_search.title") }}</h3>
       <p class="text-sm text-muted-foreground">
-        {{ $t('workspace.dashboard.empty_search.description') }}
+        {{ $t("workspace.dashboard.empty_search.description") }}
       </p>
     </div>
 
@@ -205,8 +205,8 @@ const isNewProjectModalOpen = ref(false)
               </template>
               <template v-else>
                 <span class="italic opacity-50">{{
-                    $t('workspace.dashboard.no_description')
-                  }}</span>
+                  $t("workspace.dashboard.no_description")
+                }}</span>
               </template>
             </div>
           </div>
@@ -220,7 +220,7 @@ const isNewProjectModalOpen = ref(false)
               </div>
               <div class="text-xs font-medium text-muted-foreground/70">
                 {{
-                  $t('workspace.dashboard.updated_at', {
+                  $t("workspace.dashboard.updated_at", {
                     time: formatRelativeTime(projectData.project.updated_at).toLowerCase(),
                   })
                 }}
@@ -236,7 +236,7 @@ const isNewProjectModalOpen = ref(false)
   <Dialog :open="isNewProjectModalOpen" @update:open="(val) => (isNewProjectModalOpen = val)">
     <DialogContent class="sm:max-w-106.25">
       <DialogHeader>
-        <DialogTitle class="hidden">{{ $t('workspace.dashboard.new_project') }}</DialogTitle>
+        <DialogTitle class="hidden">{{ $t("workspace.dashboard.new_project") }}</DialogTitle>
       </DialogHeader>
       <NewProjectForm
         v-if="newProjectForm"

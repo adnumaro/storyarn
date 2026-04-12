@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown, CircleDot, Check } from 'lucide-vue-next'
+import { ChevronDown, CircleDot, Check } from "lucide-vue-next";
 import { computed } from "vue";
 import { Input } from "@components/ui/input/index.ts";
 import { useBlockActions } from "../../composables/useBlockActions";
@@ -7,9 +7,9 @@ import type { Block } from "../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
 import OptionEditor from "../OptionEditor.vue";
-import { useId } from 'reka-ui'
-import { Popover, PopoverContent, PopoverTrigger } from '@components/ui/popover'
-import { generateId } from '@modules/shared/variables.ts'
+import { useId } from "reka-ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+import { generateId } from "@modules/shared/variables.ts";
 
 const {
   block,
@@ -120,21 +120,21 @@ function onChange(val: string | string[]): void {
     <Popover v-if="canEdit">
       <PopoverTrigger as-child>
         <button
-          :id="`select-trigger-${ block.id }-${generateId()}`"
+          :id="`select-trigger-${block.id}-${generateId()}`"
           class="flex justify-between flex-wrap gap-1 min-h-9 w-full rounded-md border border-input bg-card px-3 py-2 text-sm items-center"
         >
           <span>
             <span v-if="content">{{ options.find((opt) => opt.key === content)?.value }}</span>
-            <span v-else class="text-muted-foreground">{{
-                placeholder
-              }}</span>
+            <span v-else class="text-muted-foreground">{{ placeholder }}</span>
           </span>
           <ChevronDown class="h-4 w-4 opacity-50" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" class="w-(--reka-popover-trigger-width) p-1">
         <div class="max-h-48 overflow-y-auto">
-          <div v-if="options.length === 0" class="text-muted-foreground p-2">No options available</div>
+          <div v-if="options.length === 0" class="text-muted-foreground p-2">
+            No options available
+          </div>
           <button
             v-else
             type="button"
@@ -151,10 +151,7 @@ function onChange(val: string | string[]): void {
             @click="onChange(opt.key)"
           >
             {{ opt.value }}
-            <Check
-              v-if="content === opt.key"
-              class="h-4 w-4 opacity-50"
-            />
+            <Check v-if="content === opt.key" class="h-4 w-4 opacity-50" />
           </button>
         </div>
       </PopoverContent>

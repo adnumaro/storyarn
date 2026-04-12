@@ -6,8 +6,8 @@
 import { Plus, X } from "lucide-vue-next";
 import { useLive } from "@composables/useLive";
 import type { SelectOption } from "../types";
-import { Button } from '@components/ui/button'
-import { Input } from '@components/ui/input'
+import { Button } from "@components/ui/button";
+import { Input } from "@components/ui/input";
 
 const { blockId, options = [] } = defineProps<{
   blockId: number | string;

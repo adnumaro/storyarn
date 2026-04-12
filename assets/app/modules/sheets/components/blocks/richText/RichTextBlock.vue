@@ -6,8 +6,8 @@ import type { Block } from "../../../types";
 import BlockLabel from "../../BlockLabel.vue";
 import BlockToolbar from "../../BlockToolbar.vue";
 import RichTextEditor from "./RichTextEditor.vue";
-import { Input } from '@components/ui/input'
-import { useId } from 'reka-ui'
+import { Input } from "@components/ui/input";
+import { useId } from "reka-ui";
 
 const {
   block,
@@ -75,7 +75,7 @@ const content = computed(() => (block.value?.content as string) || "");
             size="xs"
             class="bg-background dark:bg-background"
             @blur="
-             (e: Event) =>
+              (e: Event) =>
                 live.pushEvent('update_block_config', {
                   id: block.id,
                   field: 'placeholder',

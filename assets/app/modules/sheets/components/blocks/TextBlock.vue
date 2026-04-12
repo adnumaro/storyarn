@@ -6,7 +6,7 @@ import { useBlockActions } from "../../composables/useBlockActions.ts";
 import type { Block } from "../../types.ts";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
-import { useId } from 'reka-ui'
+import { useId } from "reka-ui";
 
 const {
   block,

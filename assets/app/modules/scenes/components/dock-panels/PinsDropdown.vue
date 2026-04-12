@@ -52,11 +52,7 @@ function selectSheet(sheetId: number | string): void {
     <!-- Pin menu (Free Pin / From Sheet) -->
     <Popover v-if="!sheetPickerOpen" v-model:open="pinsOpen">
       <PopoverTrigger as-child>
-        <button
-          type="button"
-          class="dock-btn"
-          :class="{ 'dock-btn-active': activeTool === 'pin' }"
-        >
+        <button type="button" class="dock-btn" :class="{ 'dock-btn-active': activeTool === 'pin' }">
           <MapPin class="size-5" />
         </button>
       </PopoverTrigger>

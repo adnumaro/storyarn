@@ -12,7 +12,10 @@ import { Button } from "@components/ui/button";
 import ConditionBuilder from "./builders/ConditionBuilder.vue";
 import InstructionBuilder from "./builders/InstructionBuilder.vue";
 import { useCodeEditor } from "@composables/useCodeEditor";
-import { serializeCondition, serializeAssignments } from "@modules/shared/operators/expression-serializer";
+import {
+  serializeCondition,
+  serializeAssignments,
+} from "@modules/shared/operators/expression-serializer";
 import type { Variable } from "@modules/shared/variables";
 import type { ConditionData, ConditionBlock, ConditionRule, Assignment } from "./builders/types";
 import type { ParsedCondition, ParsedAssignment } from "@plugins/expression-editor/tree-parser";
@@ -70,20 +73,22 @@ watch(activeTab, (tab) => {
 function parsedConditionToConditionData(parsed: ParsedCondition): ConditionData {
   return {
     logic: parsed.logic,
-    blocks: parsed.rules.map((rule): ConditionBlock => ({
-      id: rule.id,
-      type: "block",
-      logic: "all",
-      rules: [
-        {
-          id: `${rule.id}_r`,
-          sheet: rule.sheet,
-          variable: rule.variable,
-          operator: rule.operator as ConditionRule["operator"],
-          value: rule.value,
-        },
-      ],
-    })),
+    blocks: parsed.rules.map(
+      (rule): ConditionBlock => ({
+        id: rule.id,
+        type: "block",
+        logic: "all",
+        rules: [
+          {
+            id: `${rule.id}_r`,
+            sheet: rule.sheet,
+            variable: rule.variable,
+            operator: rule.operator as ConditionRule["operator"],
+            value: rule.value,
+          },
+        ],
+      }),
+    ),
   };
 }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatExpression } from '@plugins/expression-editor/formatter.ts';
+import { formatExpression } from "@plugins/expression-editor/formatter.ts";
 
 describe("formatExpression", () => {
   describe("instruction mode", () => {
@@ -47,8 +47,7 @@ describe("formatExpression", () => {
     });
 
     it("unwraps and re-indents parenthesized expressions", () => {
-      const input =
-        "(mc.hp > 50 && mc.mana > 30 && mc.stamina > 20 && mc.alive && mc.level > 10)";
+      const input = "(mc.hp > 50 && mc.mana > 30 && mc.stamina > 20 && mc.alive && mc.level > 10)";
       const result = formatExpression(input, "condition", 40);
       expect(result).toContain("(");
       expect(result).toContain(")");

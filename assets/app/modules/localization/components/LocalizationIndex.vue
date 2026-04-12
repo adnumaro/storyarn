@@ -1,12 +1,18 @@
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight, Globe, Pencil, Search, Sparkles } from 'lucide-vue-next'
-import { computed, ref, watch } from 'vue'
-import { Button } from '@components/ui/button'
-import { Input } from '@components/ui/input'
-import { Progress } from '@components/ui/progress'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@components/ui/select'
-import { useLive } from '@composables/useLive'
-import DashboardContent from '@components/layout/DashboardContent.vue'
+import { ChevronLeft, ChevronRight, Globe, Pencil, Search, Sparkles } from "lucide-vue-next";
+import { computed, ref, watch } from "vue";
+import { Button } from "@components/ui/button";
+import { Input } from "@components/ui/input";
+import { Progress } from "@components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@components/ui/select";
+import { useLive } from "@composables/useLive";
+import DashboardContent from "@components/layout/DashboardContent.vue";
 
 interface TextEntry {
   id: number;
@@ -28,9 +34,9 @@ const {
   progress = null,
   totalCount = 0,
   pagination = { page: 1, pageSize: 50 },
-  filterStatus = '',
-  filterSourceType = '',
-  search = '',
+  filterStatus = "",
+  filterSourceType = "",
+  search = "",
   canEdit = false,
   hasProvider = false,
   hasTargetLanguages = false,
@@ -45,56 +51,56 @@ const {
   canEdit?: boolean;
   hasProvider?: boolean;
   hasTargetLanguages?: boolean;
-}>()
+}>();
 
-const live = useLive()
+const live = useLive();
 
-const localSearch = ref(search)
-let searchTimeout: ReturnType<typeof setTimeout> | null = null
+const localSearch = ref(search);
+let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 watch(
   () => search,
   (v) => {
-    localSearch.value = v
+    localSearch.value = v;
   },
-)
+);
 
 function onSearchInput(): void {
   if (searchTimeout) {
-    clearTimeout(searchTimeout)
+    clearTimeout(searchTimeout);
   }
   searchTimeout = setTimeout(() => {
-    live.pushEvent('search', { search: localSearch.value })
-  }, 300)
+    live.pushEvent("search", { search: localSearch.value });
+  }, 300);
 }
 
 function changeFilter(key: string, value: string): void {
-  live.pushEvent('change_filter', { [key]: value })
+  live.pushEvent("change_filter", { [key]: value });
 }
 
 function changePage(newPage: number): void {
-  live.pushEvent('change_page', { page: String(newPage) })
+  live.pushEvent("change_page", { page: String(newPage) });
 }
 
 function translateSingle(id: number): void {
-  live.pushEvent('translate_single', { id })
+  live.pushEvent("translate_single", { id });
 }
 
-const totalPages = computed(() => Math.max(1, Math.ceil(totalCount / pagination.pageSize)))
+const totalPages = computed(() => Math.max(1, Math.ceil(totalCount / pagination.pageSize)));
 const progressPercent = computed(() => {
   if (!progress || progress.total === 0) {
-    return 0
+    return 0;
   }
-  return Math.round((progress.final * 100) / progress.total)
-})
+  return Math.round((progress.final * 100) / progress.total);
+});
 
 const statusVariant: Record<string, string> = {
-  pending: 'text-muted-foreground bg-muted',
-  draft: 'text-warning-foreground bg-warning/20',
-  in_progress: 'text-blue-600 bg-blue-500/10 dark:text-blue-400',
-  review: 'text-muted-foreground bg-secondary',
-  final: 'text-green-600 bg-green-500/10 dark:text-green-400',
-}
+  pending: "text-muted-foreground bg-muted",
+  draft: "text-warning-foreground bg-warning/20",
+  in_progress: "text-blue-600 bg-blue-500/10 dark:text-blue-400",
+  review: "text-muted-foreground bg-secondary",
+  final: "text-green-600 bg-green-500/10 dark:text-green-400",
+};
 </script>
 
 <template>
@@ -187,80 +193,80 @@ const statusVariant: Record<string, string> = {
     <div v-else class="overflow-x-auto rounded-md border">
       <table class="w-full text-sm">
         <thead>
-        <tr class="border-b bg-muted/50">
-          <th class="w-12 px-3 py-2 text-left font-medium text-muted-foreground">Type</th>
-          <th class="px-3 py-2 text-left font-medium text-muted-foreground">Source Text</th>
-          <th class="px-3 py-2 text-left font-medium text-muted-foreground">Translation</th>
-          <th class="w-28 px-3 py-2 text-left font-medium text-muted-foreground">Status</th>
-          <th class="w-16 px-3 py-2 text-left font-medium text-muted-foreground">Words</th>
-          <th v-if="canEdit" class="w-20 px-3 py-2" />
-        </tr>
+          <tr class="border-b bg-muted/50">
+            <th class="w-12 px-3 py-2 text-left font-medium text-muted-foreground">Type</th>
+            <th class="px-3 py-2 text-left font-medium text-muted-foreground">Source Text</th>
+            <th class="px-3 py-2 text-left font-medium text-muted-foreground">Translation</th>
+            <th class="w-28 px-3 py-2 text-left font-medium text-muted-foreground">Status</th>
+            <th class="w-16 px-3 py-2 text-left font-medium text-muted-foreground">Words</th>
+            <th v-if="canEdit" class="w-20 px-3 py-2" />
+          </tr>
         </thead>
         <tbody>
-        <tr
-          v-for="text in texts"
-          :key="text.id"
-          class="border-b transition-colors hover:bg-muted/50"
-        >
-          <td class="px-3 py-2">
-                <span
-                  class="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground"
-                  :title="text.sourceTypeLabel"
-                >
-                  {{ text.sourceTypeLabel }}
-                </span>
-          </td>
-          <td class="max-w-xs px-3 py-2">
-            <div class="truncate text-sm" :title="text.sourceText">{{ text.sourceText }}</div>
-            <div class="text-xs text-muted-foreground">{{ text.sourceField }}</div>
-          </td>
-          <td class="max-w-xs px-3 py-2">
-            <div v-if="text.translatedText" class="truncate text-sm">
-              {{ text.translatedText }}
-            </div>
-            <div v-else class="text-sm text-muted-foreground/50 italic">Not translated</div>
-            <span
-              v-if="text.machineTranslated"
-              class="text-[10px] px-1 rounded border text-muted-foreground"
-            >
-                  MT
-                </span>
-          </td>
-          <td class="px-3 py-2">
-                <span
-                  :class="[
-                    'text-xs px-1.5 py-0.5 rounded font-medium',
-                    statusVariant[text.status] || statusVariant.pending,
-                  ]"
-                >
-                  {{ text.statusLabel }}
-                </span>
-          </td>
-          <td class="px-3 py-2 text-sm text-muted-foreground tabular-nums">
-            {{ text.wordCount || 0 }}
-          </td>
-          <td v-if="canEdit" class="px-3 py-2">
-            <div class="flex items-center gap-1">
-              <a
-                :href="text.editUrl"
-                data-phx-link="redirect"
-                data-phx-link-state="push"
-                class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent transition-colors"
+          <tr
+            v-for="text in texts"
+            :key="text.id"
+            class="border-b transition-colors hover:bg-muted/50"
+          >
+            <td class="px-3 py-2">
+              <span
+                class="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground"
+                :title="text.sourceTypeLabel"
               >
-                <Pencil class="size-3.5" />
-              </a>
-              <button
-                v-if="hasProvider && !text.translatedText"
-                type="button"
-                class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent transition-colors"
-                title="Translate with DeepL"
-                @click="translateSingle(text.id)"
+                {{ text.sourceTypeLabel }}
+              </span>
+            </td>
+            <td class="max-w-xs px-3 py-2">
+              <div class="truncate text-sm" :title="text.sourceText">{{ text.sourceText }}</div>
+              <div class="text-xs text-muted-foreground">{{ text.sourceField }}</div>
+            </td>
+            <td class="max-w-xs px-3 py-2">
+              <div v-if="text.translatedText" class="truncate text-sm">
+                {{ text.translatedText }}
+              </div>
+              <div v-else class="text-sm text-muted-foreground/50 italic">Not translated</div>
+              <span
+                v-if="text.machineTranslated"
+                class="text-[10px] px-1 rounded border text-muted-foreground"
               >
-                <Sparkles class="size-3.5" />
-              </button>
-            </div>
-          </td>
-        </tr>
+                MT
+              </span>
+            </td>
+            <td class="px-3 py-2">
+              <span
+                :class="[
+                  'text-xs px-1.5 py-0.5 rounded font-medium',
+                  statusVariant[text.status] || statusVariant.pending,
+                ]"
+              >
+                {{ text.statusLabel }}
+              </span>
+            </td>
+            <td class="px-3 py-2 text-sm text-muted-foreground tabular-nums">
+              {{ text.wordCount || 0 }}
+            </td>
+            <td v-if="canEdit" class="px-3 py-2">
+              <div class="flex items-center gap-1">
+                <a
+                  :href="text.editUrl"
+                  data-phx-link="redirect"
+                  data-phx-link-state="push"
+                  class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent transition-colors"
+                >
+                  <Pencil class="size-3.5" />
+                </a>
+                <button
+                  v-if="hasProvider && !text.translatedText"
+                  type="button"
+                  class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent transition-colors"
+                  title="Translate with DeepL"
+                  @click="translateSingle(text.id)"
+                >
+                  <Sparkles class="size-3.5" />
+                </button>
+              </div>
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -277,8 +283,8 @@ const statusVariant: Record<string, string> = {
           <ChevronLeft class="size-4" />
         </Button>
         <span class="px-3 text-sm text-muted-foreground tabular-nums">
-            Page {{ pagination.page }} of {{ totalPages }}
-          </span>
+          Page {{ pagination.page }} of {{ totalPages }}
+        </span>
         <Button
           variant="outline"
           size="sm"
