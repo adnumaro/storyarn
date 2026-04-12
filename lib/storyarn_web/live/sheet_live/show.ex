@@ -505,11 +505,8 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_event("redo", params, socket),
     do: BlockHandlers.handle_redo(params, socket, content_helpers())
 
-  def handle_event("reorder_column_group", params, socket),
-    do: BlockHandlers.handle_reorder_column_group(params, socket, content_helpers())
-
-  def handle_event("reorder_with_columns", params, socket),
-    do: BlockHandlers.handle_reorder_with_columns(params, socket, content_helpers())
+  def handle_event("reorder_layout", params, socket),
+    do: BlockHandlers.handle_reorder_layout(params, socket, content_helpers())
 
   def handle_event("toggle_constant", params, socket),
     do: BlockHandlers.handle_toggle_constant(params, socket, content_helpers())
@@ -522,9 +519,6 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   def handle_event("toggle_required", params, socket),
     do: BlockHandlers.handle_toggle_required(params, socket, content_helpers())
-
-  def handle_event("reorder_blocks", params, socket),
-    do: BlockHandlers.handle_reorder(params, socket, content_helpers())
 
   def handle_event("detach_block", params, socket),
     do: BlockHandlers.handle_detach(params, socket, content_helpers())

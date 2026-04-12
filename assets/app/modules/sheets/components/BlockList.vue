@@ -16,9 +16,8 @@ import ReferenceBlock from "./blocks/ReferenceBlock.vue";
 import RichTextBlock from "./blocks/richText/RichTextBlock.vue";
 import SelectBlock from "./blocks/SelectBlock.vue";
 import TableBlock from "./blocks/table/TableBlock.vue";
-// Block type components (for inherited blocks, rendered without sortable)
 import TextBlock from "./blocks/TextBlock.vue";
-import SortableBlockList from "./sortable/SortableBlockList.vue";
+import BlockDndRoot from "./dnd/BlockDndRoot.vue";
 
 const blockComponents: Record<string, typeof TextBlock> = {
   text: TextBlock,
@@ -69,10 +68,14 @@ function lockInfo(blockId: number | string): BlockLock | null {
 }
 
 function acquireLock(blockId: number | string): void {
-  if (!canEdit || isLockedByOther(blockId)) return;
+  if (!canEdit || isLockedByOther(blockId)) {
+    return;
+  }
   lockedBlockId.value = blockId;
   live.pushEvent("acquire_block_lock", { block_id: blockId });
-  if (lockHeartbeatInterval) clearInterval(lockHeartbeatInterval);
+  if (lockHeartbeatInterval) {
+    clearInterval(lockHeartbeatInterval);
+  }
   lockHeartbeatInterval = setInterval(() => {
     live.pushEvent("refresh_block_lock", { block_id: blockId });
   }, 10000);
@@ -98,8 +101,9 @@ provide("lockInfo", lockInfo);
 const selectedBlockId = ref<number | string | null>(null);
 
 function selectBlock(id: number | string): void {
-  if (isLockedByOther(id)) return;
-  // Release previous lock
+  if (isLockedByOther(id)) {
+    return;
+  }
   if (selectedBlockId.value && selectedBlockId.value !== id) {
     releaseLock();
   }
@@ -121,7 +125,9 @@ provide("selectBlock", selectBlock);
 
 function isInputFocused(): boolean {
   const el = document.activeElement;
-  if (!el) return false;
+  if (!el) {
+    return false;
+  }
   const tag = el.tagName;
   return (
     tag === "INPUT" ||
@@ -132,7 +138,9 @@ function isInputFocused(): boolean {
 }
 
 function onKeydown(e: KeyboardEvent): void {
-  if (!selectedBlockId.value || !canEdit || isInputFocused()) return;
+  if (!selectedBlockId.value || !canEdit || isInputFocused()) {
+    return;
+  }
 
   if (e.key === "Backspace" || e.key === "Delete") {
     e.preventDefault();
@@ -151,7 +159,9 @@ function onKeydown(e: KeyboardEvent): void {
 }
 
 function onUndoRedo(e: KeyboardEvent): void {
-  if (!(e.metaKey || e.ctrlKey) || isInputFocused()) return;
+  if (!(e.metaKey || e.ctrlKey) || isInputFocused()) {
+    return;
+  }
 
   if (e.key === "z" && !e.shiftKey) {
     e.preventDefault();
@@ -183,10 +193,6 @@ onUnmounted(() => {
 
 function addBlock({ type, scope }: { type: string; scope: string }): void {
   live.pushEvent("add_block", { type, scope });
-}
-
-function deleteBlock(id: number | string): void {
-  live.pushEvent("delete_block", { id });
 }
 
 function detachBlock(id: number | string): void {
@@ -261,8 +267,8 @@ function resolveComponent(type: string): typeof TextBlock | null {
         <div class="h-px flex-1 bg-border" />
       </div>
 
-      <!-- ═══ OWN BLOCKS (sortable) ═══ -->
-      <SortableBlockList :layout-items="blocks" :can-edit="canEdit" />
+      <!-- ═══ OWN BLOCKS ═══ -->
+      <BlockDndRoot :layout-items="blocks" :can-edit="canEdit" />
 
       <div
         v-if="blocks.length === 0 && inheritedGroups.length === 0 && !canEdit"

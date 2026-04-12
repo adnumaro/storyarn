@@ -174,70 +174,34 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockHandlers do
   # Block reorder
   # ===========================================================================
 
-  def handle_reorder_column_group(%{"group_id" => _group_id, "items" => items}, socket, helpers) do
+  def handle_reorder_layout(%{"layout" => layout}, socket, helpers) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      Enum.each(items, fn item ->
-        block = Sheets.get_block(helpers.parse_id.(item["id"]))
-
-        if block && block.sheet_id == socket.assigns.sheet.id do
-          Sheets.update_block(block, %{column_index: item["column_index"]})
-        end
-      end)
-
-      {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_reordered)}
-    end)
-  end
-
-  def handle_reorder_with_columns(%{"items" => items}, socket, helpers) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      sanitized =
-        items
-        |> Enum.map(fn item ->
-          %{
-            id: helpers.parse_id.(item["id"]),
-            column_group_id: normalize_column_group_id(item["column_group_id"]),
-            column_index: item["column_index"] || 0
-          }
-        end)
-
       sheet_id = socket.assigns.sheet.id
 
-      prev_layout =
-        Sheets.list_blocks(sheet_id)
-        |> Enum.sort_by(& &1.position)
-        |> Enum.map(fn b ->
-          %{id: b.id, column_group_id: b.column_group_id, column_index: b.column_index}
-        end)
+      case flatten_layout(layout, helpers.parse_id) do
+        {:ok, sanitized} ->
+          prev_layout =
+            Sheets.list_blocks(sheet_id)
+            |> Enum.sort_by(& &1.position)
+            |> Enum.map(fn b ->
+              %{id: b.id, column_group_id: b.column_group_id, column_index: b.column_index}
+            end)
 
-      case Sheets.reorder_blocks_with_columns(sheet_id, sanitized) do
-        {:ok, _} ->
-          {:noreply,
-           socket
-           |> helpers.push_undo.({:reorder_blocks_with_columns, prev_layout, sanitized})
-           |> helpers.reload_blocks.()
-           |> helpers.broadcast.(:block_reordered)}
+          case Sheets.reorder_blocks_with_columns(sheet_id, sanitized) do
+            {:ok, _} ->
+              {:noreply,
+               socket
+               |> helpers.push_undo.({:reorder_blocks_with_columns, prev_layout, sanitized})
+               |> helpers.reload_blocks.()
+               |> helpers.broadcast.(:block_reordered)}
 
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not reorder blocks."))}
-      end
-    end)
-  end
+            {:error, _} ->
+              {:noreply,
+               put_flash(socket, :error, dgettext("sheets", "Could not reorder blocks."))}
+          end
 
-  def handle_reorder(%{"ids" => ids}, socket, helpers) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      int_ids = Enum.map(ids, &helpers.parse_id.(&1))
-      prev_ids = Sheets.list_blocks(socket.assigns.sheet.id) |> Enum.map(& &1.id)
-
-      case Sheets.reorder_blocks(socket.assigns.sheet.id, int_ids) do
-        {:ok, _} ->
-          {:noreply,
-           socket
-           |> helpers.push_undo.({:reorder_blocks, prev_ids, int_ids})
-           |> helpers.reload_blocks.()
-           |> helpers.broadcast.(:block_reordered)}
-
-        {:error, _} ->
-          {:noreply, helpers.reload_blocks.(socket)}
+        :error ->
+          {:noreply, put_flash(socket, :error, dgettext("sheets", "Invalid layout."))}
       end
     end)
   end
@@ -353,8 +317,30 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockHandlers do
   # Private
   # ===========================================================================
 
-  defp normalize_column_group_id(nil), do: nil
-  defp normalize_column_group_id(""), do: nil
-  defp normalize_column_group_id("null"), do: nil
-  defp normalize_column_group_id(id), do: id
+  defp flatten_layout(layout, parse_id) when is_list(layout) do
+    try do
+      items =
+        Enum.flat_map(layout, fn
+          %{"kind" => "full_width", "block_id" => id} ->
+            [%{id: parse_id.(id), column_group_id: nil, column_index: 0}]
+
+          %{"kind" => "column_group", "group_id" => group_id, "block_ids" => ids}
+          when is_list(ids) and length(ids) >= 2 and length(ids) <= 3 ->
+            ids
+            |> Enum.with_index()
+            |> Enum.map(fn {id, idx} ->
+              %{id: parse_id.(id), column_group_id: group_id, column_index: idx}
+            end)
+
+          _ ->
+            throw(:invalid)
+        end)
+
+      {:ok, items}
+    catch
+      :invalid -> :error
+    end
+  end
+
+  defp flatten_layout(_, _), do: :error
 end
