@@ -90,7 +90,7 @@ function cycle(): void {
         <div class="space-y-1">
           <label class="flex items-center gap-2 text-xs">
             <Checkbox
-              :checked="mode === 'tri_state'"
+              :model-value="mode === 'tri_state'"
               @update:model-value="
                 (v) =>
                   live.pushEvent('update_block_config', {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlertCircle, FileText, GitBranch, Link, X } from "lucide-vue-next";
+import { AlertCircle, FileText, GitBranch, Link, X, ChevronDown } from "lucide-vue-next";
 import type { ComponentPublicInstance, FunctionalComponent } from "vue";
 import { computed, nextTick, onBeforeUpdate, ref, watch } from "vue";
 import {
@@ -186,22 +186,27 @@ watch(searchResults, () => {
         <button
           :id="`reference-trigger-${block.id}-${generateId()}`"
           type="button"
-          class="flex items-center gap-2 w-full min-h-9 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent/30 transition-colors"
+          class="flex items-center gap-2 w-full min-h-9 rounded-md border border-input bg-card px-3 py-2 text-sm transition-colors"
         >
           <!-- Selected reference -->
           <template v-if="hasReference && referenceTarget">
-            <span
-              :class="[
-                'size-5 rounded flex items-center justify-center shrink-0',
-                typeColor(targetType),
-              ]"
-            >
-              <component :is="typeIcon(targetType)" class="size-3" />
+            <span class="flex items-center gap-2 flex-1">
+              <span
+                :class="[
+                  'size-5 rounded flex items-center justify-center shrink-0',
+                  typeColor(targetType),
+                ]"
+              >
+                <component :is="typeIcon(targetType)" class="size-3" />
+              </span>
+              <span class="flex-1 text-left truncate">{{ referenceTarget.name }}</span>
             </span>
-            <span class="flex-1 text-left truncate">{{ referenceTarget.name }}</span>
-            <span v-if="referenceTarget.shortcut" class="text-xs text-muted-foreground">{{
-              referenceTarget.shortcut
-            }}</span>
+            <span class="flex items-center gap-2">
+              <span v-if="referenceTarget.shortcut" class="text-xs text-muted-foreground">{{
+                referenceTarget.shortcut
+              }}</span>
+              <ChevronDown class="h-4 w-4 opacity-50" />
+            </span>
           </template>
           <!-- Deleted reference -->
           <template v-else-if="isDeleted">
@@ -233,7 +238,7 @@ watch(searchResults, () => {
               <CommandItem
                 v-if="hasReference"
                 value="__clear__"
-                class="gap-2 text-xs text-muted-foreground"
+                class="gap-2 text-xs text-muted-foreground data-highlighted:bg-transparent"
                 @select="clearReference"
               >
                 <X class="size-3.5" />
