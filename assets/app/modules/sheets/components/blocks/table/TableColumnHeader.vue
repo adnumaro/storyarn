@@ -151,7 +151,7 @@ function toggleReferenceMultiple(): void {
           <span v-if="column.required" class="text-destructive text-xs shrink-0">*</span>
           <ChevronDown class="size-3 opacity-40 shrink-0" />
         </span>
-        <span class="text-[10px] font-normal text-muted-foreground/30 truncate max-w-full">{{
+        <span class="text-xs font-normal text-foreground/70 truncate max-w-full">{{
           column.slug
         }}</span>
       </button>
@@ -172,57 +172,62 @@ function toggleReferenceMultiple(): void {
           class="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-sm hover:bg-accent"
           @click="toggleConstant()"
         >
-          <Lock class="size-3.5 opacity-60" /><span class="flex-1 text-left">Constant</span
-          ><Check v-if="column.is_constant" class="size-3.5 opacity-60" />
+          <Lock class="size-3.5 opacity-60" />
+          <span class="flex-1 text-left">Constant</span>
+          <Check v-if="column.is_constant" class="size-3.5 opacity-60" />
         </button>
         <button
           class="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-sm hover:bg-accent"
           @click="toggleRequired()"
         >
-          <Asterisk class="size-3.5 opacity-60" /><span class="flex-1 text-left">Required</span
-          ><Check v-if="column.required" class="size-3.5 opacity-60" />
+          <Asterisk class="size-3.5 opacity-60" />
+          <span class="flex-1 text-left">Required</span>
+          <Check v-if="column.required" class="size-3.5 opacity-60" />
         </button>
         <Separator class="my-1" />
         <button
           class="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-sm hover:bg-accent"
           @click="panel = 'type'"
         >
-          <ArrowLeftRight class="size-3.5 opacity-60" /><span class="flex-1 text-left"
-            >Change type</span
-          ><ChevronRight class="size-3.5 opacity-40" />
+          <ArrowLeftRight class="size-3.5 opacity-60" />
+          <span class="flex-1 text-left">Change type</span>
+          <ChevronRight class="size-3.5 opacity-40" />
         </button>
         <button
           v-if="column.type === 'select' || column.type === 'multi_select'"
           class="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-sm hover:bg-accent"
           @click="panel = 'options'"
         >
-          <Settings class="size-3.5 opacity-60" /><span class="flex-1 text-left">Options</span
-          ><ChevronRight class="size-3.5 opacity-40" />
+          <Settings class="size-3.5 opacity-60" />
+          <span class="flex-1 text-left">Options</span>
+          <ChevronRight class="size-3.5 opacity-40" />
         </button>
         <button
           v-if="column.type === 'number'"
           class="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-sm hover:bg-accent"
           @click="panel = 'number'"
         >
-          <SlidersHorizontal class="size-3.5 opacity-60" /><span class="flex-1 text-left"
-            >Constraints</span
-          ><ChevronRight class="size-3.5 opacity-40" />
+          <SlidersHorizontal class="size-3.5 opacity-60" />
+          <span class="flex-1 text-left">Constraints</span>
+          <ChevronRight class="size-3.5 opacity-40" />
         </button>
         <button
           v-if="column.type === 'reference'"
           class="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-sm hover:bg-accent"
           @click="panel = 'reference'"
         >
-          <Settings class="size-3.5 opacity-60" /><span class="flex-1 text-left">Settings</span
-          ><ChevronRight class="size-3.5 opacity-40" />
+          <Settings class="size-3.5 opacity-60" />
+          <span class="flex-1 text-left">Settings</span>
+          <ChevronRight class="size-3.5 opacity-40" />
         </button>
         <Separator class="my-1" />
         <button
           :disabled="columns.length <= 1"
-          class="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-sm hover:bg-accent text-destructive disabled:opacity-30 disabled:pointer-events-none"
+          class="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-sm hover:bg-accent cursor-pointer text-destructive disabled:opacity-30 disabled:pointer-events-none"
           @click="deleteColumn()"
         >
-          <Trash2 class="size-3.5" /><span>Delete column</span>
+          <Trash2 class="size-3.5" />
+          <span>Delete column</span>
         </button>
       </div>
       <!-- Type panel -->
@@ -231,7 +236,8 @@ function toggleReferenceMultiple(): void {
           class="flex items-center gap-2 w-full px-2 py-1.5 text-xs font-medium opacity-70 rounded-sm hover:bg-accent mb-1"
           @click="panel = 'main'"
         >
-          <ArrowLeft class="size-3.5" /><span>Change type</span>
+          <ArrowLeft class="size-3.5" />
+          <span>Change type</span>
         </button>
         <Separator class="mb-1" />
         <button
@@ -241,10 +247,9 @@ function toggleReferenceMultiple(): void {
           :class="column.type === t && 'bg-accent'"
           @click="changeType(t)"
         >
-          <component :is="typeIcon(t)" class="size-3.5 opacity-60" /><span
-            class="flex-1 text-left"
-            >{{ typeLabels[t] }}</span
-          ><Check v-if="column.type === t" class="size-3.5 opacity-60" />
+          <component :is="typeIcon(t)" class="size-3.5 opacity-60" />
+          <span class="flex-1 text-left">{{ typeLabels[t] }}</span>
+          <Check v-if="column.type === t" class="size-3.5 opacity-60" />
         </button>
       </div>
       <!-- Options panel -->
@@ -253,7 +258,8 @@ function toggleReferenceMultiple(): void {
           class="flex items-center gap-2 w-full px-2 py-1.5 text-xs font-medium opacity-70 rounded-sm hover:bg-accent mb-1"
           @click="panel = 'main'"
         >
-          <ArrowLeft class="size-3.5" /><span>Options</span>
+          <ArrowLeft class="size-3.5" />
+          <span>Options</span>
         </button>
         <Separator class="mb-1" />
         <div
@@ -289,13 +295,14 @@ function toggleReferenceMultiple(): void {
           class="flex items-center gap-2 w-full px-2 py-1.5 text-xs font-medium opacity-70 rounded-sm hover:bg-accent mb-1"
           @click="panel = 'main'"
         >
-          <ArrowLeft class="size-3.5" /><span>Constraints</span>
+          <ArrowLeft class="size-3.5" />
+          <span>Constraints</span>
         </button>
         <Separator class="mb-2" />
         <div class="space-y-2 px-2 pb-2">
           <div>
-            <label class="text-xs font-medium opacity-70">Min value</label
-            ><input
+            <label class="text-xs font-medium opacity-70"> Min value </label>
+            <input
               type="number"
               :value="column.config?.min"
               placeholder="No limit"
@@ -304,8 +311,8 @@ function toggleReferenceMultiple(): void {
             />
           </div>
           <div>
-            <label class="text-xs font-medium opacity-70">Max value</label
-            ><input
+            <label class="text-xs font-medium opacity-70"> Max value </label>
+            <input
               type="number"
               :value="column.config?.max"
               placeholder="No limit"
@@ -314,8 +321,8 @@ function toggleReferenceMultiple(): void {
             />
           </div>
           <div>
-            <label class="text-xs font-medium opacity-70">Step</label
-            ><input
+            <label class="text-xs font-medium opacity-70"> Step </label>
+            <input
               type="number"
               :value="column.config?.step"
               placeholder="1"
@@ -332,15 +339,17 @@ function toggleReferenceMultiple(): void {
           class="flex items-center gap-2 w-full px-2 py-1.5 text-xs font-medium opacity-70 rounded-sm hover:bg-accent mb-1"
           @click="panel = 'main'"
         >
-          <ArrowLeft class="size-3.5" /><span>Settings</span>
+          <ArrowLeft class="size-3.5" />
+          <span>Settings</span>
         </button>
         <Separator class="mb-1" />
         <button
           class="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-sm hover:bg-accent"
           @click="toggleReferenceMultiple()"
         >
-          <Layers class="size-3.5 opacity-60" /><span class="flex-1 text-left">Allow multiple</span
-          ><Check v-if="column.config?.multiple" class="size-3.5 opacity-60" />
+          <Layers class="size-3.5 opacity-60" />
+          <span class="flex-1 text-left">Allow multiple</span>
+          <Check v-if="column.config?.multiple" class="size-3.5 opacity-60" />
         </button>
       </div>
     </PopoverContent>
@@ -353,8 +362,8 @@ function toggleReferenceMultiple(): void {
       <span class="truncate">{{ column.name }}</span>
       <span v-if="column.required" class="text-destructive text-xs shrink-0">*</span>
     </span>
-    <span class="text-[10px] font-normal text-muted-foreground/30 truncate block max-w-full">{{
-      column.slug
-    }}</span>
+    <span class="text-[10px] font-normal text-muted-foreground/30 truncate block max-w-full">
+      {{ column.slug }}
+    </span>
   </div>
 </template>

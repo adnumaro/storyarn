@@ -89,7 +89,7 @@ function toggleCollapse(): void {
       >
         <component
           :is="collapsed ? ChevronRight : ChevronDown"
-          class="size-3 text-muted-foreground/40 hover:text-muted-foreground/70"
+          class="size-3 text-foreground/50 hover:text-foreground/70"
         />
       </button>
       <BlockLabel

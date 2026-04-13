@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { makeDroppable } from "@vue-dnd-kit/core";
 import type { IDragEvent } from "@vue-dnd-kit/core";
+import { makeDroppable } from "@vue-dnd-kit/core";
 import { Check, Plus, Sigma, X } from "lucide-vue-next";
 import { nextTick, ref, useTemplateRef, watch } from "vue";
 import { Badge } from "@components/ui/badge/index.ts";
@@ -17,7 +17,6 @@ import type {
 import TableColumnHeader from "./TableColumnHeader.vue";
 import TableDraggableRow from "./TableDraggableRow.vue";
 import TableRowActions from "./TableRowActions.vue";
-import { typeIcon } from "./table-config";
 
 const {
   blockId,
@@ -56,7 +55,9 @@ makeDroppable(
     events: {
       onDrop: (e: IDragEvent) => {
         const result = e.helpers.suggestSort("vertical");
-        if (!result) return;
+        if (!result) {
+          return;
+        }
         localRows.value = result.sourceItems as TableRow[];
         const ids = localRows.value.map((r) => r.id);
         live.pushEvent("reorder_table_rows", {
@@ -77,7 +78,9 @@ const editingCellValue = ref("");
 const cellInput = ref<HTMLInputElement | null>(null);
 
 function startEditCell(row: TableRow, col: TableColumn): void {
-  if (!canEdit) return;
+  if (!canEdit) {
+    return;
+  }
   editingCell.value = { rowId: row.id, colSlug: col.slug };
   editingCellValue.value = String(row.cells?.[col.slug] ?? "");
   nextTick(() => cellInput.value?.focus());
@@ -130,7 +133,9 @@ function toggleMultiSelectCell(row: TableRow, col: TableColumn, key: string): vo
 
 function addCellOption(col: TableColumn, row: TableRow): void {
   const label = selectSearch.value.trim();
-  if (!label) return;
+  if (!label) {
+    return;
+  }
   live.pushEvent("add_table_cell_option", {
     "column-id": col.id,
     "row-id": row.id,
@@ -143,7 +148,9 @@ function addCellOption(col: TableColumn, row: TableRow): void {
 function filteredOptions(col: TableColumn): SelectOption[] {
   const options = col.config?.options || [];
   const q = selectSearch.value.toLowerCase();
-  if (!q) return options;
+  if (!q) {
+    return options;
+  }
   return options.filter((o) => (o.value || "").toLowerCase().includes(q));
 }
 
@@ -171,7 +178,9 @@ function isFormulaCell(cell: CellValue | undefined): cell is FormulaCellValue {
 
 function getFormulaDisplay(row: TableRow, col: TableColumn): string {
   const cell = row.cells?.[col.slug];
-  if (cell == null) return "\u2014";
+  if (cell == null) {
+    return "\u2014";
+  }
   if (isFormulaCell(cell)) {
     // __result is injected by compute_formulas on the server
     if (cell.__result !== undefined) {
@@ -192,19 +201,25 @@ function getFormulaExpression(row: TableRow, col: TableColumn): string {
 }
 
 function findOptionLabel(options: SelectOption[], key: CellValue): string | null {
-  if (!key) return null;
+  if (!key) {
+    return null;
+  }
   const opt = options.find((o) => o.key === key);
   return opt?.value || null;
 }
 
 function resolveMultiLabels(value: CellValue, options: SelectOption[]): string[] {
-  if (!Array.isArray(value) || value.length === 0) return [];
+  if (!Array.isArray(value) || value.length === 0) {
+    return [];
+  }
   const map = Object.fromEntries(options.map((o) => [o.key, o.value]));
   return (value as string[]).map((k) => map[k] || k);
 }
 
 function formatDate(val: CellValue): string {
-  if (!val) return "\u2014";
+  if (!val) {
+    return "\u2014";
+  }
   try {
     const d = new Date(String(val) + "T00:00:00");
     return d.toLocaleDateString("en-US", {
@@ -218,7 +233,9 @@ function formatDate(val: CellValue): string {
 }
 
 function displayValue(val: CellValue, fallback: string): string {
-  if (val == null || val === "") return fallback;
+  if (val == null || val === "") {
+    return fallback;
+  }
   return String(val);
 }
 
@@ -229,11 +246,17 @@ interface NumberInputAttrs {
 }
 
 function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> {
-  if (col.type !== "number") return {};
+  if (col.type !== "number") {
+    return {};
+  }
   const c = col.config || {};
   const attrs: NumberInputAttrs = { step: c.step || "any" };
-  if (c.min != null) attrs.min = c.min;
-  if (c.max != null) attrs.max = c.max;
+  if (c.min != null) {
+    attrs.min = c.min;
+  }
+  if (c.max != null) {
+    attrs.max = c.max;
+  }
   return attrs;
 }
 </script>
@@ -259,16 +282,16 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
           <!-- ═══ HEADER ═══ -->
           <thead>
             <tr
-              class="bg-muted/50 border-b border-border [&>th:first-child]:rounded-tl-lg [&>th:last-child]:rounded-tr-lg"
+              class="bg-card/60 border-b border-border [&>th:first-child]:rounded-tl-lg [&>th:last-child]:rounded-tr-lg"
             >
               <!-- Row label header (empty) -->
-              <th class="font-medium text-muted-foreground/60 sticky left-0 z-10 bg-muted/50" />
+              <th class="font-medium sticky left-0 z-10 bg-card/60" />
 
               <!-- Column headers -->
               <th
                 v-for="col in columns"
                 :key="col.id"
-                class="font-medium text-muted-foreground/70 relative overflow-hidden"
+                class="font-medium text-foreground/70 relative overflow-hidden"
               >
                 <TableColumnHeader :column="col" :columns="columns" :can-manage="canManage" />
               </th>
@@ -286,7 +309,7 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
               v-slot="{ isDragOver }"
             >
               <!-- ══ Row label cell ══ -->
-              <td class="sticky left-0 z-10 bg-card font-medium text-muted-foreground/60 text-sm">
+              <td class="sticky left-0 z-10 bg-card/60 font-medium text-foreground text-sm">
                 <TableRowActions :row="row" :rows="rows" :can-manage="canManage" />
               </td>
 
@@ -307,13 +330,15 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
                     <Badge
                       v-if="getCellValue(row, col) === true"
                       class="text-[10px] bg-green-500/20 text-green-700 border-0"
-                      >Yes</Badge
                     >
+                      Yes
+                    </Badge>
                     <Badge
                       v-else-if="getCellValue(row, col) === false"
                       class="text-[10px] bg-red-500/20 text-red-700 border-0"
-                      >No</Badge
                     >
+                      No
+                    </Badge>
                     <span v-else class="text-muted-foreground/40 text-sm">\u2014</span>
                   </div>
                 </template>
@@ -330,17 +355,16 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
                     >
                       <PopoverTrigger as-child>
                         <button
-                          class="flex items-center gap-1 w-full h-full px-2 text-sm text-left cursor-pointer hover:bg-muted/50"
+                          class="flex items-center gap-1 w-full h-full px-2 text-sm text-left cursor-pointer bg-card/40 hover:bg-card/50"
                         >
                           <span
                             v-if="
                               findOptionLabel(col.config?.options || [], getCellValue(row, col))
                             "
                             class="truncate"
-                            >{{
-                              findOptionLabel(col.config?.options || [], getCellValue(row, col))
-                            }}</span
                           >
+                            {{ findOptionLabel(col.config?.options || [], getCellValue(row, col)) }}
+                          </span>
                           <span v-else class="text-muted-foreground/40 truncate">Select...</span>
                         </button>
                       </PopoverTrigger>
@@ -358,7 +382,8 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
                             class="flex items-center gap-2 w-full px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent rounded"
                             @click="selectCell(row, col, '')"
                           >
-                            <X class="size-3" /> Clear
+                            <X class="size-3" />
+                            Clear
                           </button>
                           <button
                             v-for="opt in filteredOptions(col)"
@@ -369,8 +394,8 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
                             "
                             @click="selectCell(row, col, opt.key)"
                           >
-                            {{ opt.value
-                            }}<Check
+                            {{ opt.value }}
+                            <Check
                               v-if="getCellValue(row, col) === opt.key"
                               class="size-3 ml-auto opacity-60"
                             />
@@ -414,7 +439,7 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
                     >
                       <PopoverTrigger as-child>
                         <button
-                          class="flex items-center gap-1 w-full h-full px-2 text-sm text-left cursor-pointer hover:bg-muted/50"
+                          class="flex items-center gap-1 w-full h-full px-2 text-sm text-left cursor-pointer bg-card/40 hover:bg-card/50"
                         >
                           <div
                             v-if="
@@ -430,8 +455,8 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
                               )"
                               :key="lbl"
                               class="text-[10px]"
-                              >{{ lbl }}</Badge
-                            >
+                              >{{ lbl }}
+                            </Badge>
                           </div>
                           <span v-else class="text-muted-foreground/40 truncate">Select...</span>
                         </button>
@@ -460,7 +485,8 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
                                 ((getCellValue(row, col) as string[]) || []).includes(opt.key)
                               "
                               class="pointer-events-none"
-                            />{{ opt.value }}
+                            />
+                            {{ opt.value }}
                           </button>
                         </div>
                         <div v-if="canManage" class="border-t border-border p-2">
@@ -488,8 +514,8 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
                         )"
                         :key="lbl"
                         class="text-[10px]"
-                        >{{ lbl }}</Badge
-                      >
+                        >{{ lbl }}
+                      </Badge>
                     </div>
                     <span v-else class="text-muted-foreground/40 text-sm">\u2014</span>
                   </div>
@@ -500,7 +526,7 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
                   <button
                     v-if="canEdit"
                     type="button"
-                    class="absolute inset-0 px-2 flex items-center gap-1.5 text-sm cursor-pointer text-left hover:bg-muted/50"
+                    class="absolute inset-0 px-2 flex items-center gap-1.5 text-sm cursor-pointer text-left bg-background/20 hover:bg-background/25"
                     @click="
                       live.pushEvent('open_formula_sidebar', {
                         'row-id': row.id,
@@ -509,11 +535,10 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
                       })
                     "
                   >
-                    <Sigma class="size-3 opacity-30 shrink-0" />
+                    <Sigma class="size-3 opacity-70 shrink-0" />
                     <span
                       :class="
-                        getFormulaDisplay(row, col) === '\u2014' &&
-                        'text-muted-foreground/40 italic'
+                        getFormulaDisplay(row, col) === '\u2014' && 'text-foreground/70 italic'
                       "
                       >{{ getFormulaDisplay(row, col) }}</span
                     >
@@ -543,7 +568,7 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
                     v-if="canEdit"
                     type="date"
                     :value="getCellValue(row, col) as string"
-                    class="absolute inset-0 px-2 text-sm bg-transparent border-0 rounded-none outline-none"
+                    class="absolute inset-0 px-2 text-sm bg-background/20 hover:bg-background/25 border-0 rounded-none outline-none"
                     @change="
                       live.pushEvent('update_table_cell', {
                         'row-id': row.id,
@@ -555,7 +580,7 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
                   />
                   <div v-else class="px-2 py-1">
                     <span
-                      :class="!getCellValue(row, col) && 'text-muted-foreground/40'"
+                      :class="!getCellValue(row, col) && 'text-foreground/40'"
                       class="text-sm"
                       >{{ formatDate(getCellValue(row, col)) }}</span
                     >
@@ -571,7 +596,7 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
                         v-model="editingCellValue"
                         :type="col.type === 'number' ? 'number' : 'text'"
                         v-bind="inputAttrs(col)"
-                        class="absolute inset-0 px-2 text-sm bg-transparent border-0 rounded-none outline-none"
+                        class="absolute inset-0 px-2 text-sm bg-background/20 hover:bg-background/25 border-0 rounded-none outline-none"
                         @blur="saveCell(row, col)"
                         @keydown.enter.prevent="saveCell(row, col)"
                       />
@@ -604,21 +629,26 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
 
             <!-- Empty state -->
             <tr v-if="localRows.length === 0">
-              <td
-                :colspan="columns.length + 1"
-                class="text-center text-sm text-muted-foreground py-6"
-              >
+              <td :colspan="columns.length + 1" class="text-center text-sm text-foreground py-6">
                 No rows yet.
               </td>
             </tr>
           </tbody>
         </table>
+
+        <button
+          v-if="canManage"
+          class="flex items-center justify-center w-full h-6 mt-2 rounded-lg border border-border/50 bg-card/80 hover:bg-card text-foreground/50 hover:text-foreground transition-all cursor-pointer opacity-0 group-hover/table:opacity-100"
+          @click="addRow"
+        >
+          <Plus class="size-3.5" />
+        </button>
       </div>
 
       <!-- ═══ ADD COLUMN BAR (canManage only) ═══ -->
       <button
         v-if="canManage"
-        class="flex items-center justify-center w-6 shrink-0 rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/50 text-muted-foreground/30 hover:text-muted-foreground/60 transition-all cursor-pointer opacity-0 group-hover/table:opacity-100"
+        class="flex items-center justify-center w-6 mb-6 shrink-0 rounded-lg border border-border/50 bg-card/80 hover:bg-card text-foreground/50 hover:text-foreground transition-all cursor-pointer opacity-0 group-hover/table:opacity-100"
         @click="addColumn"
       >
         <Plus class="size-3.5" />
@@ -626,12 +656,5 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
     </div>
 
     <!-- ═══ ADD ROW BAR (canManage only) ═══ -->
-    <button
-      v-if="canManage"
-      class="flex items-center justify-center w-full h-6 mt-2 rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/50 text-muted-foreground/30 hover:text-muted-foreground/60 transition-all cursor-pointer opacity-0 group-hover/table:opacity-100"
-      @click="addRow"
-    >
-      <Plus class="size-3.5" />
-    </button>
   </div>
 </template>
