@@ -524,96 +524,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   end
 
   # ===========================================================================
-  # Select/Multi-Select options management
-  # ===========================================================================
-
-  @doc "Adds a new option to a select/multi_select column."
-  def handle_add_column_option(params, socket, helpers) do
-    column_id = MapUtils.parse_int(params["column-id"])
-    label = String.trim(params["value"] || "")
-
-    if label == "" do
-      {:noreply, socket}
-    else
-      case find_block_id_for_column(socket, column_id) do
-        {:ok, block_id} ->
-          column = Sheets.get_table_column!(block_id, column_id)
-          do_add_column_option(column, label, socket, helpers)
-
-        :not_found ->
-          {:noreply, err(socket, :column_update)}
-      end
-    end
-  end
-
-  @doc "Removes an option from a select/multi_select column by key."
-  def handle_remove_column_option(params, socket, helpers) do
-    column_id = MapUtils.parse_int(params["column-id"])
-    key = params["key"]
-
-    case find_block_id_for_column(socket, column_id) do
-      {:ok, block_id} ->
-        column = Sheets.get_table_column!(block_id, column_id)
-        prev_config = column.config
-        existing_options = (prev_config || %{})["options"] || []
-        new_options = Enum.reject(existing_options, fn opt -> opt["key"] == key end)
-        new_config = Map.put(prev_config || %{}, "options", new_options)
-
-        case Sheets.update_table_column(column, %{config: new_config}) do
-          {:ok, _} ->
-            helpers.push_undo.(
-              {:update_table_column_config, column.block_id, column.id, prev_config, new_config}
-            )
-
-            save_and_reload(socket, helpers)
-
-          {:error, _} ->
-            {:noreply, err(socket, :column_update)}
-        end
-
-      :not_found ->
-        {:noreply, err(socket, :column_update)}
-    end
-  end
-
-  @doc "Updates an option value at a given index in a select/multi_select column."
-  def handle_update_column_option(params, socket, helpers) do
-    column_id = MapUtils.parse_int(params["column-id"])
-    index = MapUtils.parse_int(params["index"])
-    new_value = String.trim(params["value"] || "")
-
-    case find_block_id_for_column(socket, column_id) do
-      {:ok, block_id} ->
-        column = Sheets.get_table_column!(block_id, column_id)
-        prev_config = column.config
-        existing_options = (prev_config || %{})["options"] || []
-
-        new_options =
-          List.update_at(existing_options, index, fn opt ->
-            %{"key" => option_key_for(new_value), "value" => new_value}
-            |> Map.merge(Map.drop(opt, ["key", "value"]))
-          end)
-
-        new_config = Map.put(prev_config || %{}, "options", new_options)
-
-        case Sheets.update_table_column(column, %{config: new_config}) do
-          {:ok, _} ->
-            helpers.push_undo.(
-              {:update_table_column_config, column.block_id, column.id, prev_config, new_config}
-            )
-
-            save_and_reload(socket, helpers)
-
-          {:error, _} ->
-            {:noreply, err(socket, :column_update)}
-        end
-
-      :not_found ->
-        {:noreply, err(socket, :column_update)}
-    end
-  end
-
-  # ===========================================================================
   # Private helpers — IDOR verification
   # ===========================================================================
 
@@ -881,26 +791,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     )
 
     save_and_reload(socket, helpers)
-  end
-
-  defp do_add_column_option(column, label, socket, helpers) do
-    prev_config = column.config
-    existing_options = (prev_config || %{})["options"] || []
-    key = option_key_for(label)
-    new_option = %{"key" => key, "value" => label}
-    new_config = Map.put(prev_config || %{}, "options", existing_options ++ [new_option])
-
-    case Sheets.update_table_column(column, %{config: new_config}) do
-      {:ok, _} ->
-        helpers.push_undo.(
-          {:update_table_column_config, column.block_id, column.id, prev_config, new_config}
-        )
-
-        save_and_reload(socket, helpers)
-
-      {:error, _} ->
-        {:noreply, err(socket, :column_update)}
-    end
   end
 
   defp option_key_for(label) do

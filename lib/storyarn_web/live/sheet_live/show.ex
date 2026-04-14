@@ -692,39 +692,15 @@ defmodule StoryarnWeb.SheetLive.Show do
     end)
   end
 
-  def handle_event("add_table_column_option", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with_table_broadcast(socket, fn ->
-        TableHandlers.handle_add_column_option(params, socket, table_helpers(socket))
-      end)
-    end)
-  end
+  # --- Select option management (unified: block + column) ---
 
-  def handle_event("remove_table_column_option", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with_table_broadcast(socket, fn ->
-        TableHandlers.handle_remove_column_option(params, socket, table_helpers(socket))
-      end)
-    end)
-  end
-
-  def handle_event("update_table_column_option", params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with_table_broadcast(socket, fn ->
-        TableHandlers.handle_update_column_option(params, socket, table_helpers(socket))
-      end)
-    end)
-  end
-
-  # --- Select option management ---
-
-  def handle_event("add_select_option", params, socket),
+  def handle_event("add_option", params, socket),
     do: SelectOptionHandlers.handle_add(params, socket, content_helpers())
 
-  def handle_event("remove_select_option", params, socket),
+  def handle_event("remove_option", params, socket),
     do: SelectOptionHandlers.handle_remove(params, socket, content_helpers())
 
-  def handle_event("update_select_option", params, socket),
+  def handle_event("update_option", params, socket),
     do: SelectOptionHandlers.handle_update(params, socket, content_helpers())
 
   # --- Reference blocks ---

@@ -100,7 +100,7 @@ function toggle(key: string): void {
             "
           />
         </div>
-        <OptionEditor :block-id="block.id" :options="options" />
+        <OptionEditor scope="block" :id="block.id" :options="options" />
       </template>
     </BlockToolbar>
 
@@ -130,9 +130,9 @@ function toggle(key: string): void {
               class="text-xs mx-0.5"
               >{{ opt.value }}</Badge
             >
-            <span v-if="selectedOptions.length === 0" class="text-muted-foreground">{{
-              placeholder
-            }}</span>
+            <span v-if="selectedOptions.length === 0" class="text-muted-foreground">
+              {{ placeholder }}
+            </span>
           </span>
           <ChevronDown class="h-4 w-4 opacity-50" />
         </button>
@@ -159,10 +159,12 @@ function toggle(key: string): void {
       </PopoverContent>
     </Popover>
     <div v-else class="flex flex-wrap gap-1">
-      <Badge v-for="opt in selectedOptions" :key="opt.key" variant="secondary" class="text-xs">{{
-        opt.value
-      }}</Badge>
-      <span v-if="selectedOptions.length === 0" class="text-sm text-muted-foreground">\u2014</span>
+      <Badge v-for="opt in selectedOptions" :key="opt.key" variant="secondary" class="text-xs">
+        {{ opt.value }}
+      </Badge>
+      <span v-if="selectedOptions.length === 0" class="text-sm text-muted-foreground">
+        \u2014
+      </span>
     </div>
   </div>
 </template>

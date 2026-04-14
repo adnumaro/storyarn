@@ -309,7 +309,7 @@ export interface ReferenceSearchResult {
 
 // ── Column header panel type ──
 
-export type ColumnHeaderPanel = "main" | "type" | "options" | "number" | "reference";
+export type THeadMenuType = "main" | "type" | "options" | "number" | "reference";
 
 // ── Stat card ──
 

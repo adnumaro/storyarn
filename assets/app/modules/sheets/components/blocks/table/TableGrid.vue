@@ -14,9 +14,9 @@ import type {
   TableColumn,
   TableRow,
 } from "../../../types";
-import TableColumnHeader from "./TableColumnHeader.vue";
 import TableDraggableRow from "./TableDraggableRow.vue";
 import TableRowActions from "./TableRowActions.vue";
+import THead from "@modules/sheets/components/blocks/table/THead.vue";
 
 const {
   blockId,
@@ -280,23 +280,7 @@ function inputAttrs(col: TableColumn): NumberInputAttrs | Record<string, never> 
           </colgroup>
 
           <!-- ═══ HEADER ═══ -->
-          <thead>
-            <tr
-              class="bg-card/60 border-b border-border [&>th:first-child]:rounded-tl-lg [&>th:last-child]:rounded-tr-lg"
-            >
-              <!-- Row label header (empty) -->
-              <th class="font-medium sticky left-0 z-10 bg-card/60" />
-
-              <!-- Column headers -->
-              <th
-                v-for="col in columns"
-                :key="col.id"
-                class="font-medium text-foreground/70 relative overflow-hidden"
-              >
-                <TableColumnHeader :column="col" :columns="columns" :can-manage="canManage" />
-              </th>
-            </tr>
-          </thead>
+          <THead :columns="columns" :can-manage="canManage" />
 
           <!-- ═══ BODY ═══ -->
           <tbody ref="tbodyRef">

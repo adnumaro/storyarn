@@ -101,7 +101,7 @@ function onChange(val: string | string[]): void {
             "
           />
         </div>
-        <OptionEditor :block-id="block.id" :options="options" />
+        <OptionEditor scope="block" :id="block.id" :options="options" />
       </template>
     </BlockToolbar>
 
