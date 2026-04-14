@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LayoutDashboard, User } from "lucide-vue-next";
+import { LayoutDashboard, LogOut, User } from "lucide-vue-next";
 import { computed } from "vue";
 import {
   DropdownMenu,
@@ -27,6 +27,7 @@ interface OnlineUser {
 interface RightToolbarUrls {
   accountSettings: string;
   workspaces: string;
+  logout: string;
 }
 
 const {
@@ -46,6 +47,30 @@ const otherUsers = computed(() =>
 const displayName = computed(
   () => currentUser.displayName || currentUser.email?.split("@")[0] || "",
 );
+
+function handleLogout(): void {
+  const token = document.querySelector("meta[name='csrf-token']")?.getAttribute("content");
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = urls.logout;
+
+  const methodInput = document.createElement("input");
+  methodInput.type = "hidden";
+  methodInput.name = "_method";
+  methodInput.value = "delete";
+  form.appendChild(methodInput);
+
+  if (token) {
+    const csrfInput = document.createElement("input");
+    csrfInput.type = "hidden";
+    csrfInput.name = "_csrf_token";
+    csrfInput.value = token;
+    form.appendChild(csrfInput);
+  }
+
+  document.body.appendChild(form);
+  form.submit();
+}
 </script>
 
 <template>
@@ -97,6 +122,11 @@ const displayName = computed(
             <LayoutDashboard class="size-4" />
             All workspaces
           </a>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem class="flex items-center gap-2" @select="handleLogout">
+          <LogOut class="size-4" />
+          Log out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

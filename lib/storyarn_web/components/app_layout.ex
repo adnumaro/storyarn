@@ -51,6 +51,7 @@ defmodule StoryarnWeb.Components.AppLayout do
       trash: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/trash",
       accountSettings: ~p"/users/settings",
       workspaces: ~p"/workspaces",
+      logout: ~p"/users/log-out",
       tools: tool_urls
     }
   end
