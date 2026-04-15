@@ -55,6 +55,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       active_tool={:sheets}
       is_super_admin={@is_super_admin}
       online_users={@online_users}
+      restoration_banner={@restoration_banner}
       sidebar_module={StoryarnWeb.SheetsSidebarLive}
       sidebar_session={
         %{
@@ -64,8 +65,7 @@ defmodule StoryarnWeb.SheetLive.Show do
           "sheet_id" => @sheet && to_string(@sheet.id),
           "can_edit" => @can_edit,
           "active_tool" => "sheets",
-          "dashboard_url" =>
-            ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets",
+          "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets",
           "current_scope" => @current_scope
         }
       }

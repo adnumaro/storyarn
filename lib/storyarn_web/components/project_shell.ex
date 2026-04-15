@@ -63,29 +63,51 @@ defmodule StoryarnWeb.Components.ProjectShell do
 
   attr :online_users, :list,
     default: [],
-    doc:
-      "current presence list. Kept in sync by `PresenceLive` broadcasting `{:online_users, list}` on the shell topic."
+    doc: "current presence list. Kept in sync by `PresenceLive` broadcasting `{:online_users, list}` on the shell topic."
 
   attr :sidebar_module, :atom,
-    required: true,
-    doc: "per-tool sidebar LiveView module (e.g. `SheetsSidebarLive`)"
+    default: nil,
+    doc:
+      "per-tool sidebar LiveView module (e.g. `SheetsSidebarLive`). When nil, no sidebar is rendered and the LeftToolbar tree toggle is hidden."
 
   attr :sidebar_session, :map,
     default: %{},
     doc: "session map passed to the sidebar LV on mount"
 
+  attr :restoration_banner, :map,
+    default: nil,
+    doc:
+      "when non-nil, renders a fixed top banner announcing an in-progress project restoration. Shape: `%{user_email: binary}`."
+
   slot :top_bar_extras_left,
     doc: "page-provided content rendered next to LeftToolbar"
 
   slot :top_bar_extras_right,
-    doc:
-      "page-provided content rendered next to RightToolbar (typically a `live_render` of a tool-specific sticky LV)"
+    doc: "page-provided content rendered next to RightToolbar (typically a `live_render` of a tool-specific sticky LV)"
 
   slot :inner_block, required: true
 
   def project_shell(assigns) do
     ~H"""
     <div class="h-screen w-screen overflow-hidden relative bg-background">
+      <%!-- Restoration banner (rendered above toolbars when a project-wide
+           restoration is in progress). --%>
+      <div
+        :if={@restoration_banner}
+        class="fixed top-0 left-0 right-0 z-42 flex justify-center pointer-events-none"
+      >
+        <div class="bg-destructive text-destructive-foreground px-4 py-2 rounded-b-lg shadow-lg flex items-center gap-2 text-sm pointer-events-auto">
+          <.icon name="loader" class="size-4 animate-spin" />
+          <span>
+            {dgettext(
+              "projects",
+              "Project is being restored by %{user}. Editing is temporarily disabled.",
+              user: @restoration_banner.user_email
+            )}
+          </span>
+        </div>
+      </div>
+
       <%!-- Invisible sticky LV that owns project-level presence tracking. --%>
       {live_render(@socket, StoryarnWeb.PresenceLive,
         id: "presence-#{@project.id}",
@@ -104,7 +126,7 @@ defmodule StoryarnWeb.Components.ProjectShell do
             v-socket={@socket}
             id="shell-left-toolbar"
             active-tool={to_string(@active_tool)}
-            has-tree={true}
+            has-tree={@sidebar_module != nil}
             tree-panel-open={true}
             project-name={@project.name}
             workspace-name={@workspace.name}
@@ -142,11 +164,13 @@ defmodule StoryarnWeb.Components.ProjectShell do
         </div>
       </div>
 
-      {live_render(@socket, @sidebar_module,
-        id: "sidebar-#{@project.id}",
-        sticky: true,
-        session: @sidebar_session
-      )}
+      <%= if @sidebar_module do %>
+        {live_render(@socket, @sidebar_module,
+          id: "sidebar-#{@project.id}",
+          sticky: true,
+          session: @sidebar_session
+        )}
+      <% end %>
 
       <main
         id="main-content"
