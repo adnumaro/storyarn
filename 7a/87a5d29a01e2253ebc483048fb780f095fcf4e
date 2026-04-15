@@ -1,0 +1,51 @@
+lib/storyarn_web/components/project_shell.ex
+  b8630343f6f433e9 66,69-71,77-80,86,93-110,129,167-173
+lib/storyarn_web/live/sheet_live/show.ex
+  b8630343f6f433e9 58,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "7a87a5d29a01e2253ebc483048fb780f095fcf4e",
+  "prompts": {
+    "082d411772561179": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb0f1880-45b8-4773-bd9d-ac0a40feea47",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 89,
+      "overriden_lines": 0
+    },
+    "b5d0547deb69dd47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d4274e7-2553-4708-ae62-7e1cb751c457",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1437,
+      "overriden_lines": 0
+    },
+    "b8630343f6f433e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8e627c6-a926-4e61-b666-cd7947895de7",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 173,
+      "total_deletions": 157,
+      "accepted_lines": 166,
+      "overriden_lines": 0
+    }
+  }
+}
