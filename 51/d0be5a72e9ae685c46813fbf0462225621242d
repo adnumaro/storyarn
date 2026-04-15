@@ -1,0 +1,42 @@
+lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex
+  b5d0547deb69dd47 99,116,177
+lib/storyarn_web/live/sheet_live/index.ex
+  b5d0547deb69dd47 235
+lib/storyarn_web/live/sidebar_live.ex
+  b5d0547deb69dd47 12,49,198-206
+lib/storyarn_web/live/sheet_live/show.ex
+  b5d0547deb69dd47 926-928,990
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "51d0be5a72e9ae685c46813fbf0462225621242d",
+  "prompts": {
+    "082d411772561179": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb0f1880-45b8-4773-bd9d-ac0a40feea47",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 104,
+      "overriden_lines": 0
+    },
+    "b5d0547deb69dd47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d4274e7-2553-4708-ae62-7e1cb751c457",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 19,
+      "total_deletions": 56,
+      "accepted_lines": 19,
+      "overriden_lines": 0
+    }
+  }
+}
