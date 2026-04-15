@@ -1,0 +1,25 @@
+lib/storyarn_web/live/sheet_live/helpers/formula_helpers.ex
+  082d411772561179 216-220
+assets/app/components/layout/Sidebar.vue
+  082d411772561179 157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "eaeccd8e8790c31beb86a47b124786498ee373de",
+  "prompts": {
+    "082d411772561179": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb0f1880-45b8-4773-bd9d-ac0a40feea47",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 110,
+      "total_deletions": 7,
+      "accepted_lines": 110,
+      "overriden_lines": 0
+    }
+  }
+}
