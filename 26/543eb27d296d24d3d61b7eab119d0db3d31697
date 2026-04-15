@@ -1,0 +1,37 @@
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TTextNumberCell.vue
+  082d411772561179 1-115
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TMultiSelectCell.vue
+  082d411772561179 1-157
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TFormulaCell.vue
+  082d411772561179 1-93
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TBooleanCell.vue
+  082d411772561179 1-57
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TDateCell.vue
+  082d411772561179 1-64
+assets/app/modules/sheets/components/blocks/table/TBody.vue
+  082d411772561179 1-143
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TSelectCell.vue
+  082d411772561179 1-146
+assets/app/modules/sheets/components/blocks/table/tbodyCells/get-cell-value-helpers.ts
+  082d411772561179 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "26543eb27d296d24d3d61b7eab119d0db3d31697",
+  "prompts": {
+    "082d411772561179": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb0f1880-45b8-4773-bd9d-ac0a40feea47",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 780,
+      "total_deletions": 0,
+      "accepted_lines": 780,
+      "overriden_lines": 0
+    }
+  }
+}
