@@ -6,29 +6,26 @@ defmodule StoryarnWeb.ProjectLive.Show do
   use StoryarnWeb, :live_view
   use StoryarnWeb.Live.Shared.DashboardHandlers
 
-  import StoryarnWeb.Live.Shared.TreePanelHandlers
-
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Localization
   alias Storyarn.Projects
+  alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app
+    <StoryarnWeb.Components.ProjectShell.project_shell
       socket={@socket}
-      flash={@flash}
-      current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
+      current_scope={@current_scope}
+      current_user={@current_user}
+      urls={@urls}
       active_tool={:dashboard}
-      has_tree={false}
-      tree_panel_open={@tree_panel_open}
-      tree_panel_pinned={@tree_panel_pinned}
-      on_dashboard={true}
-      can_edit={@can_manage}
+      is_super_admin={@is_super_admin}
+      online_users={@online_users}
       restoration_banner={@restoration_banner}
     >
       <.vue
@@ -46,51 +43,45 @@ defmodule StoryarnWeb.ProjectLive.Show do
         project-slug={@project.slug}
         loading={is_nil(@stats)}
       />
-    </Layouts.app>
+    </StoryarnWeb.Components.ProjectShell.project_shell>
     """
   end
 
   @impl true
-  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
-    case Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug) do
-      {:ok, project, membership} ->
-        can_manage = Projects.can?(membership.role, :manage_project)
-        {_, restoration_banner} = RestorationHandlers.check_restoration_lock(project.id, false)
+  def mount(_params, _session, socket) do
+    %{project: project, membership: membership} = socket.assigns
+    can_manage = Projects.can?(membership.role, :manage_project)
+    {_, restoration_banner} = RestorationHandlers.check_restoration_lock(project.id, false)
 
-        socket =
-          socket
-          |> assign(:page_title, project.name)
-          |> assign(:project, project)
-          |> assign(:workspace, project.workspace)
-          |> assign(:membership, membership)
-          |> assign(:can_manage, can_manage)
-          |> assign(:restoration_banner, restoration_banner)
-          |> assign(:stats, nil)
-          |> assign(:node_dist, nil)
-          |> assign(:speakers, nil)
-          |> assign(:issues, nil)
-          |> assign(:localization, [])
-          |> assign(:activity, [])
-          |> assign(focus_layout_defaults())
+    socket =
+      socket
+      |> assign(:page_title, project.name)
+      |> assign(:can_manage, can_manage)
+      |> assign(:restoration_banner, restoration_banner)
+      |> assign(:stats, nil)
+      |> assign(:node_dist, nil)
+      |> assign(:speakers, nil)
+      |> assign(:issues, nil)
+      |> assign(:localization, [])
+      |> assign(:activity, [])
+      |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
 
-        if connected?(socket) do
-          Collaboration.subscribe_dashboard(project.id)
-          Collaboration.subscribe_restoration(project.id)
-          send(self(), :load_dashboard_data)
-        end
-
-        {:ok, socket}
-
-      {:error, :not_found} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("projects", "Project not found."))
-         |> redirect(to: ~p"/workspaces")}
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Storyarn.PubSub, ProjectChromeHelpers.shell_topic(project.id))
+      Collaboration.subscribe_dashboard(project.id)
+      Collaboration.subscribe_restoration(project.id)
+      send(self(), :load_dashboard_data)
     end
+
+    {:ok, socket}
   end
 
   @impl true
-  def handle_event("tree_panel_" <> _ = event, params, socket), do: handle_tree_panel_event(event, params, socket)
+  def handle_params(_params, _url, socket), do: {:noreply, socket}
+
+  @impl true
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: ProjectChromeHelpers.forward_tree_panel(socket, event, params)
 
   @impl true
   def handle_info({:project_restoration_started, payload}, socket),
@@ -103,6 +94,10 @@ defmodule StoryarnWeb.ProjectLive.Show do
   @impl true
   def handle_info({:project_restoration_failed, payload}, socket),
     do: RestorationHandlers.handle_restoration_event({:project_restoration_failed, payload}, socket)
+
+  def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
+
+  def handle_info({:toolbar_event, _name, _params}, socket), do: {:noreply, socket}
 
   def handle_info(:load_dashboard_data, socket) do
     project = socket.assigns.project

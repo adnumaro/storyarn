@@ -156,9 +156,6 @@ defmodule StoryarnWeb.Router do
       live "/workspaces/new", WorkspaceLive.New, :new
       live "/workspaces/:workspace_slug", WorkspaceLive.Show, :show
 
-      # Projects (nested under workspaces)
-      live "/workspaces/:workspace_slug/projects/:project_slug", ProjectLive.Show, :show
-
       live "/workspaces/:workspace_slug/projects/:project_slug/settings",
            ProjectSettingsLive.General,
            :edit
@@ -186,11 +183,6 @@ defmodule StoryarnWeb.Router do
       live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/compare/:version_number",
            CompareLive.Sheet,
            :compare
-
-      # Assets
-      live "/workspaces/:workspace_slug/projects/:project_slug/assets",
-           AssetLive.Index,
-           :index
 
       # Trash
       live "/workspaces/:workspace_slug/projects/:project_slug/trash",
@@ -265,6 +257,14 @@ defmodule StoryarnWeb.Router do
       live "/workspaces/:workspace_slug/projects/:project_slug/localization/text/:id",
            LocalizationLive.Edit,
            :edit
+
+      # Project dashboard
+      live "/workspaces/:workspace_slug/projects/:project_slug", ProjectLive.Show, :show
+
+      # Assets
+      live "/workspaces/:workspace_slug/projects/:project_slug/assets",
+           AssetLive.Index,
+           :index
     end
 
     post "/users/update-password", UserSessionController, :update_password
