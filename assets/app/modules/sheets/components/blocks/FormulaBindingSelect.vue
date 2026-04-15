@@ -135,11 +135,11 @@ function onSearchInput(q: string): void {
       <button
         :id="`formula-binding-trigger-${generateId()}`"
         type="button"
-        :class="['sentence-slot', { filled: !!modelValue }]"
-        :style="{ minWidth: `${Math.max((displayLabel || 'Select source...').length, 3) + 1}ch` }"
+        :title="displayLabel || ''"
+        class="flex-1 min-w-0 h-9 px-3 py-1 rounded-md border border-input bg-card text-sm text-left truncate font-mono focus:outline-none focus:ring-2 focus:ring-ring"
       >
         <span v-if="displayLabel">{{ displayLabel }}</span>
-        <span v-else class="sentence-slot-placeholder">Select source...</span>
+        <span v-else class="text-muted-foreground/60 italic">Select source...</span>
       </button>
     </PopoverTrigger>
     <PopoverContent class="w-65 p-0 z-50" align="start" :side-offset="4">
