@@ -1,0 +1,23 @@
+assets/app/modules/sheets/components/dnd/BlockDndItem.vue
+  082d411772561179 107,113-114,116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "0594be9b49c045a7125981869b50db1a7e594c59",
+  "prompts": {
+    "082d411772561179": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb0f1880-45b8-4773-bd9d-ac0a40feea47",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 6,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  }
+}
