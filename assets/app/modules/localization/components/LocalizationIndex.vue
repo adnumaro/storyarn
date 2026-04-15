@@ -143,7 +143,7 @@ const statusVariant: Record<string, string> = {
           <SelectValue placeholder="All statuses" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">All statuses</SelectItem>
+          <SelectItem value="all">All statuses</SelectItem>
           <SelectItem value="pending">Pending</SelectItem>
           <SelectItem value="draft">Draft</SelectItem>
           <SelectItem value="in_progress">In progress</SelectItem>
@@ -160,7 +160,7 @@ const statusVariant: Record<string, string> = {
           <SelectValue placeholder="All types" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">All types</SelectItem>
+          <SelectItem value="all">All types</SelectItem>
           <SelectItem value="flow_node">Flow node</SelectItem>
           <SelectItem value="block">Block</SelectItem>
           <SelectItem value="sheet">Sheet</SelectItem>

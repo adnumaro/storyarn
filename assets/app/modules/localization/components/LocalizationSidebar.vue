@@ -33,6 +33,8 @@ const {
   canEdit = false,
   sourceLanguageOptions = [],
   addLanguageOptions = [],
+  workspaceSlug = "",
+  projectSlug = "",
 } = defineProps<{
   sourceLanguage?: Language | null;
   targetLanguages?: Language[];
@@ -40,6 +42,8 @@ const {
   canEdit?: boolean;
   sourceLanguageOptions?: LanguageOption[];
   addLanguageOptions?: LanguageOption[];
+  workspaceSlug?: string;
+  projectSlug?: string;
 }>();
 
 const live = useLive();
@@ -50,8 +54,8 @@ const deleteDialogOpen = ref(false);
 const pendingDeleteLanguage = ref<Language | null>(null);
 const syncing = ref(false);
 
-function selectLocale(localeCode: string): void {
-  live.pushEvent("change_locale", { locale: localeCode });
+function textsUrl(localeCode: string): string {
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/localization/texts/${localeCode}`;
 }
 
 function changeSourceLanguage(localeCode: string): void {
@@ -170,10 +174,11 @@ function syncTexts(): void {
               : 'border-border bg-background hover:bg-accent/50',
           ]"
         >
-          <button
-            type="button"
+          <a
+            :href="textsUrl(lang.localeCode)"
+            data-phx-link="patch"
+            data-phx-link-state="push"
             class="flex min-w-0 flex-1 items-center gap-3 text-left"
-            @click="selectLocale(lang.localeCode)"
           >
             <img
               v-if="lang.flagUrl"
@@ -191,7 +196,7 @@ function syncTexts(): void {
               {{ lang.shortLabel }}
             </span>
             <span class="min-w-0 truncate text-sm font-medium">{{ lang.name }}</span>
-          </button>
+          </a>
 
           <button
             v-if="canEdit"

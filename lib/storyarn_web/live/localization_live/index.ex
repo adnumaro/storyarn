@@ -85,13 +85,6 @@ defmodule StoryarnWeb.LocalizationLive.Index do
     languages = Localization.list_languages(project.id)
     target_languages = Localization.get_target_languages(project.id)
 
-    # Default to first target language
-    selected_locale =
-      case target_languages do
-        [first | _] -> first.locale_code
-        [] -> nil
-      end
-
     has_provider = has_active_provider?(project.id)
 
     if connected?(socket) do
@@ -106,18 +99,43 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       |> assign(:source_language, source_language)
       |> assign(:languages, languages)
       |> assign(:target_languages, target_languages)
-      |> assign(:selected_locale, selected_locale)
+      # selected_locale is driven by the URL — filled in by handle_params
+      |> assign(:selected_locale, nil)
       |> assign(:has_provider, has_provider)
       |> assign(:filter_status, nil)
       |> assign(:filter_source_type, nil)
       |> assign(:search, "")
       |> assign(:page, 1)
       |> assign(:page_size, @page_size)
+      |> assign(:texts, [])
+      |> assign(:total_count, 0)
+      |> assign(:progress, %{total: 0, pending: 0, draft: 0, in_progress: 0, review: 0, final: 0})
       |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
-      |> load_texts()
 
     {:ok, socket}
   end
+
+  @impl true
+  def handle_params(%{"locale" => locale}, _url, socket) do
+    if locale == socket.assigns.selected_locale do
+      {:noreply, socket}
+    else
+      # Broadcast so LocalizationSidebarLive updates the highlighted target.
+      Phoenix.PubSub.broadcast(
+        Storyarn.PubSub,
+        StoryarnWeb.LocalizationSidebarLive.shell_topic(socket.assigns.project.id),
+        {:active_locale, locale}
+      )
+
+      {:noreply,
+       socket
+       |> assign(:selected_locale, locale)
+       |> assign(:page, 1)
+       |> load_texts()}
+    end
+  end
+
+  def handle_params(_params, _url, socket), do: {:noreply, socket}
 
   # Tree panel + localization mutations (change_locale, add/remove language,
   # sync_texts) live in LocalizationSidebarLive. translate_batch lives in
@@ -222,7 +240,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
         sourceField: text.source_field,
         wordCount: text.word_count || 0,
         machineTranslated: text.machine_translated || false,
-        editUrl: ~p"/workspaces/#{ws_slug}/projects/#{proj_slug}/localization/#{text.id}"
+        editUrl: ~p"/workspaces/#{ws_slug}/projects/#{proj_slug}/localization/text/#{text.id}"
       }
     end)
   end
@@ -254,6 +272,9 @@ defmodule StoryarnWeb.LocalizationLive.Index do
     end
   end
 
+  # Treat blanks and the "all" sentinel (used by the Vue select to clear
+  # filter selection) as "no filter".
   defp blank_to_nil(""), do: nil
+  defp blank_to_nil("all"), do: nil
   defp blank_to_nil(value), do: value
 end

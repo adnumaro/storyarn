@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-  ArrowLeft,
   Box,
   Clapperboard,
   FileText,
@@ -11,7 +10,6 @@ import {
 import type { Component } from "vue";
 import { computed } from "vue";
 import { Badge } from "@components/ui/badge";
-import { Button } from "@components/ui/button";
 import { Progress } from "@components/ui/progress";
 import {
   Select,
@@ -63,7 +61,6 @@ const {
   speakerStats = [],
   voProgress = { none: 0, needed: 0, recorded: 0, approved: 0 },
   typeCounts = {},
-  backUrl,
 } = defineProps<{
   languageProgress?: LanguageProgress[];
   targetLanguages?: TargetLanguage[];
@@ -71,7 +68,6 @@ const {
   speakerStats?: SpeakerStat[];
   voProgress?: VoProgress;
   typeCounts?: Record<string, number>;
-  backUrl: string;
 }>();
 
 const live = useLive();
@@ -134,17 +130,6 @@ function typeLabel(type: string) {
         <h1 class="text-lg font-semibold">Localization Report</h1>
         <p class="text-sm text-muted-foreground">Translation progress and statistics</p>
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        as="a"
-        :href="backUrl"
-        data-phx-link="redirect"
-        data-phx-link-state="push"
-      >
-        <ArrowLeft class="size-4" />
-        Back to Translations
-      </Button>
     </div>
 
     <!-- Progress by Language -->

@@ -53,7 +53,6 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
         v-component="modules/localization/components/LocalizationToolbar"
         v-socket={@socket}
         id="localization-toolbar"
-        report-url={report_url(assigns)}
         export-csv-url={export_url(assigns, :csv)}
         export-xlsx-url={export_url(assigns, :xlsx)}
         has-provider={@has_provider}
@@ -135,12 +134,6 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
   def handle_info(_msg, socket), do: {:noreply, socket}
 
   # ── URL helpers ───────────────────────────────────────────────────────────
-  defp report_url(%{workspace_slug: ws, project_slug: p}) when is_binary(ws) and is_binary(p) do
-    ~p"/workspaces/#{ws}/projects/#{p}/localization/report"
-  end
-
-  defp report_url(_), do: ""
-
   defp export_url(%{selected_locale: nil}, _format), do: nil
 
   defp export_url(

@@ -252,16 +252,17 @@ defmodule StoryarnWeb.Router do
            SheetLive.Show,
            :edit
 
-      # Localization
+      # Localization — Report is the tool "dashboard" (default landing);
+      # Index shows the text list filtered by locale; Edit is a single text.
       live "/workspaces/:workspace_slug/projects/:project_slug/localization",
+           LocalizationLive.Report,
+           :show
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/localization/texts/:locale",
            LocalizationLive.Index,
            :index
 
-      live "/workspaces/:workspace_slug/projects/:project_slug/localization/report",
-           LocalizationLive.Report,
-           :report
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/localization/:id",
+      live "/workspaces/:workspace_slug/projects/:project_slug/localization/text/:id",
            LocalizationLive.Edit,
            :edit
     end

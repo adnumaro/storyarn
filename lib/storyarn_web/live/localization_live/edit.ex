@@ -45,7 +45,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
         form={@form}
         has-provider={@has_provider}
         can-edit={@can_edit}
-        back-url={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization"}
+        back-url={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/texts/#{@text.locale_code}"}
       />
     </StoryarnWeb.Components.ProjectShell.project_shell>
     """
@@ -81,6 +81,14 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
         Storyarn.PubSub,
         StoryarnWeb.LocalizationSidebarLive.shell_topic(project.id)
       )
+
+      # Keep the sticky sidebar's highlight in sync when the user lands on
+      # a text directly (or navigates back from Report/Index).
+      Phoenix.PubSub.broadcast(
+        Storyarn.PubSub,
+        StoryarnWeb.LocalizationSidebarLive.shell_topic(project.id),
+        {:active_locale, text.locale_code}
+      )
     end
 
     socket =
@@ -92,6 +100,9 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
 
     {:ok, socket}
   end
+
+  @impl true
+  def handle_params(_params, _url, socket), do: {:noreply, socket}
 
   @impl true
   def handle_info({:online_users, users}, socket),

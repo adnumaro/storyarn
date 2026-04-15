@@ -25,7 +25,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
           "project_id" => @project.id,
           "workspace_slug" => @workspace.slug,
           "project_slug" => @project.slug,
-          "selected_locale" => @selected_locale,
+          "selected_locale" => nil,
           "can_edit" => @can_edit,
           "active_tool" => "localization",
           "dashboard_url" =>
@@ -44,7 +44,6 @@ defmodule StoryarnWeb.LocalizationLive.Report do
         speaker-stats={serialize_speaker_stats(@speaker_stats)}
         vo-progress={@vo_progress}
         type-counts={@type_counts}
-        back-url={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization"}
       />
     </StoryarnWeb.Components.ProjectShell.project_shell>
     """
@@ -66,6 +65,15 @@ defmodule StoryarnWeb.LocalizationLive.Report do
         Storyarn.PubSub,
         StoryarnWeb.LocalizationSidebarLive.shell_topic(project.id)
       )
+
+      # Report is the tool "dashboard" — clear any locale highlight the
+      # sticky sidebar may have carried over from a previous Index/Edit
+      # visit so the dashboard link looks active instead.
+      Phoenix.PubSub.broadcast(
+        Storyarn.PubSub,
+        StoryarnWeb.LocalizationSidebarLive.shell_topic(project.id),
+        {:active_locale, nil}
+      )
     end
 
     socket =
@@ -77,6 +85,9 @@ defmodule StoryarnWeb.LocalizationLive.Report do
 
     {:ok, socket}
   end
+
+  @impl true
+  def handle_params(_params, _url, socket), do: {:noreply, socket}
 
   @impl true
   def handle_event("tree_panel_" <> _ = event, params, socket),

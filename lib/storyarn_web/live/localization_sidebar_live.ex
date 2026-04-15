@@ -72,13 +72,13 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
       <.vue
         v-component="layout/TreePanel"
         v-socket={@socket}
-        id={"localization-sidebar-#{languages_key(@source_language, @target_languages)}-#{@selected_locale || "none"}"}
+        id="localization-sidebar"
         tree-panel-open={@tree_panel_open}
         tree-panel-pinned={@tree_panel_pinned}
         show-pin={false}
         active-tool={@active_tool}
         dashboard-url={@dashboard_url}
-        on-dashboard={false}
+        on-dashboard={is_nil(@selected_locale)}
         tree-props={build_tree_props(assigns)}
       />
     </div>
@@ -109,10 +109,10 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
 
   # ── Localization mutations ────────────────────────────────────────────────
 
-  def handle_event("change_locale", %{"locale" => locale}, socket) do
-    broadcast_active_locale(socket, locale)
-    {:noreply, assign(socket, :selected_locale, locale)}
-  end
+  # Locale selection is URL-driven (target language items in LocalizationSidebar.vue
+  # are `data-phx-link="patch"` anchors that navigate to /localization/texts/:locale).
+  # `LocalizationLive.Index.handle_params` broadcasts `{:active_locale, locale}` on
+  # the shell topic so this sidebar updates its highlight.
 
   # Empty locale codes — user selected the placeholder. No-op.
   def handle_event("change_source_language", %{"locale_code" => ""}, socket),
@@ -312,14 +312,6 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
     )
   end
 
-  defp broadcast_active_locale(socket, locale) do
-    Phoenix.PubSub.broadcast(
-      Storyarn.PubSub,
-      shell_topic(socket.assigns.project_id),
-      {:active_locale, locale}
-    )
-  end
-
   defp load_languages(nil), do: {nil, []}
 
   defp load_languages(project_id) do
@@ -350,6 +342,8 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
       targetLanguages: Enum.map(assigns.target_languages, &serialize_language/1),
       selectedLocale: assigns.selected_locale,
       canEdit: assigns.can_edit,
+      workspaceSlug: assigns.workspace_slug,
+      projectSlug: assigns.project_slug,
       sourceLanguageOptions:
         [exclude: Enum.reject([source_code], &is_nil/1)]
         |> Languages.options_for_select()
@@ -373,22 +367,6 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
       flagUrl: flag_code && "/images/flags/1x1/#{flag_code}.svg",
       shortLabel: Languages.short_label(lang.locale_code)
     }
-  end
-
-  # Dynamic-id signature — forces Vue remount when the set of languages
-  # changes (so TreePanel picks up the fresh list without needing a live
-  # diff on a `phx-update=\"ignore\"` wrapper).
-  defp languages_key(source, targets) do
-    codes =
-      [
-        source && source.locale_code
-        | Enum.map(targets, & &1.locale_code)
-      ]
-      |> Enum.reject(&is_nil/1)
-      |> Enum.sort()
-      |> Enum.join("-")
-
-    if codes == "", do: "empty", else: codes
   end
 
   @doc """
