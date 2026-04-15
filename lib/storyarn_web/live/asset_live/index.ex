@@ -2,12 +2,12 @@ defmodule StoryarnWeb.AssetLive.Index do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Assets
   alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Projects
+  alias StoryarnWeb.Helpers.Authorize
 
   @impl true
   def render(assigns) do
@@ -54,11 +54,7 @@ defmodule StoryarnWeb.AssetLive.Index do
   # ===========================================================================
 
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
     case Projects.get_project_by_slugs(
            socket.assigns.current_scope,
            workspace_slug,
@@ -117,8 +113,7 @@ defmodule StoryarnWeb.AssetLive.Index do
   # ===========================================================================
 
   @impl true
-  def handle_event("filter_assets", %{"type" => type}, socket)
-      when type in ["all", "image", "audio"] do
+  def handle_event("filter_assets", %{"type" => type}, socket) when type in ["all", "image", "audio"] do
     {:noreply,
      socket
      |> assign(:filter, type)
@@ -165,11 +160,7 @@ defmodule StoryarnWeb.AssetLive.Index do
      |> put_flash(:error, message)}
   end
 
-  def handle_event(
-        "upload_asset",
-        %{"filename" => filename, "content_type" => content_type, "data" => data},
-        socket
-      ) do
+  def handle_event("upload_asset", %{"filename" => filename, "content_type" => content_type, "data" => data}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       process_upload(socket, filename, content_type, data)
     end)

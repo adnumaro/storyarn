@@ -5,14 +5,17 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
 
   import Phoenix.LiveView, only: [push_event: 3]
 
+  alias Phoenix.LiveView.Socket
   alias Storyarn.Collaboration
+  alias StoryarnWeb.Live.Shared.CollaborationHelpers
 
   @doc """
   Sets up collaboration subscriptions for a flow.
   """
-  @spec setup_collaboration(Phoenix.LiveView.Socket.t(), map(), map()) :: :ok
+  @spec setup_collaboration(Socket.t(), map(), map()) :: :ok
   def setup_collaboration(socket, flow, user) do
-    alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: SharedCollab
+    alias CollaborationHelpers, as: SharedCollab
+
     SharedCollab.setup(socket, {:flow, flow.id}, user, cursors: true, locks: true, changes: true)
   end
 
@@ -22,24 +25,26 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
   """
   @spec teardown_collaboration(integer(), integer()) :: :ok
   def teardown_collaboration(flow_id, user_id) do
-    alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: SharedCollab
+    alias CollaborationHelpers, as: SharedCollab
+
     SharedCollab.teardown({:flow, flow_id}, user_id)
   end
 
   @doc """
   Gets the initial collaboration state (online users and node locks).
   """
-  @spec get_initial_collab_state(Phoenix.LiveView.Socket.t(), map()) :: {list(), map()}
+  @spec get_initial_collab_state(Socket.t(), map()) :: {list(), map()}
   def get_initial_collab_state(socket, flow) do
-    alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: SharedCollab
+    alias CollaborationHelpers, as: SharedCollab
+
     SharedCollab.get_initial_state(socket, {:flow, flow.id})
   end
 
   @doc """
   Shows a collaboration toast notification.
   """
-  @spec show_collab_toast(Phoenix.LiveView.Socket.t(), atom(), map()) ::
-          Phoenix.LiveView.Socket.t()
+  @spec show_collab_toast(Socket.t(), atom(), map()) ::
+          Socket.t()
   def show_collab_toast(socket, action, payload) do
     push_event(socket, "collab_toast", %{
       action: to_string(action),
@@ -51,8 +56,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
   @doc """
   Pushes a remote change event to the client.
   """
-  @spec push_remote_change_event(Phoenix.LiveView.Socket.t(), atom(), map()) ::
-          Phoenix.LiveView.Socket.t()
+  @spec push_remote_change_event(Socket.t(), atom(), map()) ::
+          Socket.t()
   def push_remote_change_event(socket, :node_added, payload) do
     push_event(socket, "node_added", payload.node_data)
   end
@@ -107,8 +112,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
   @doc """
   Broadcasts a change to other users in the flow.
   """
-  @spec broadcast_change(Phoenix.LiveView.Socket.t(), atom(), map()) ::
-          Phoenix.LiveView.Socket.t()
+  @spec broadcast_change(Socket.t(), atom(), map()) ::
+          Socket.t()
   def broadcast_change(socket, action, payload) do
     user = socket.assigns.current_scope.user
 
@@ -132,7 +137,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
   @doc """
   Broadcasts a lock change (node locked/unlocked) to other users.
   """
-  @spec broadcast_lock_change(Phoenix.LiveView.Socket.t(), atom(), any()) :: :ok
+  @spec broadcast_lock_change(Socket.t(), atom(), any()) :: :ok
   def broadcast_lock_change(socket, action, node_id) do
     user = socket.assigns.current_scope.user
 
@@ -154,7 +159,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
   @doc """
   Checks if a node is locked by another user.
   """
-  @spec node_locked_by_other?(Phoenix.LiveView.Socket.t(), any()) :: boolean()
+  @spec node_locked_by_other?(Socket.t(), any()) :: boolean()
   def node_locked_by_other?(socket, node_id) do
     Collaboration.locked_by_other?(
       {:flow, socket.assigns.flow.id},

@@ -3,10 +3,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   LiveView for workspace general settings.
   """
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Localization
   alias Storyarn.Workspaces
+  alias StoryarnWeb.Helpers.Authorize
 
   @impl true
   def mount(%{"slug" => slug}, _session, socket) do
@@ -155,8 +155,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
            |> push_navigate(to: ~p"/users/settings")}
 
         {:error, _} ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("workspaces", "Failed to delete workspace."))}
+          {:noreply, put_flash(socket, :error, dgettext("workspaces", "Failed to delete workspace."))}
       end
     else
       {:noreply,

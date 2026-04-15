@@ -10,8 +10,10 @@ defmodule Storyarn.Scenes.SceneAmbientFlow do
   """
   use Ecto.Schema
   use Gettext, backend: Storyarn.Gettext
+
   import Ecto.Changeset
 
+  alias Ecto.Association.NotLoaded
   alias Storyarn.Flows.Flow
   alias Storyarn.Scenes.Scene
 
@@ -23,9 +25,9 @@ defmodule Storyarn.Scenes.SceneAmbientFlow do
           enabled: boolean(),
           position: integer(),
           scene_id: integer() | nil,
-          scene: Scene.t() | Ecto.Association.NotLoaded.t() | nil,
+          scene: Scene.t() | NotLoaded.t() | nil,
           flow_id: integer() | nil,
-          flow: Flow.t() | Ecto.Association.NotLoaded.t() | nil,
+          flow: Flow.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }

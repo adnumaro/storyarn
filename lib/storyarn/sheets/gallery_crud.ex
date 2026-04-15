@@ -5,7 +5,9 @@ defmodule Storyarn.Sheets.GalleryCrud do
 
   alias Storyarn.Localization
   alias Storyarn.Repo
-  alias Storyarn.Sheets.{Block, BlockGalleryImage, Sheet}
+  alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.BlockGalleryImage
+  alias Storyarn.Sheets.Sheet
 
   # ===========================================================================
   # Queries
@@ -13,12 +15,9 @@ defmodule Storyarn.Sheets.GalleryCrud do
 
   @doc "Lists all gallery images for a block, ordered by position, with asset preloaded."
   def list_gallery_images(block_id) do
-    from(gi in BlockGalleryImage,
-      where: gi.block_id == ^block_id,
-      order_by: [asc: gi.position],
-      preload: [:asset]
+    Repo.all(
+      from(gi in BlockGalleryImage, where: gi.block_id == ^block_id, order_by: [asc: gi.position], preload: [:asset])
     )
-    |> Repo.all()
   end
 
   @doc "Gets a gallery image by ID with asset preloaded."
@@ -30,26 +29,28 @@ defmodule Storyarn.Sheets.GalleryCrud do
 
   @doc "Gets a gallery image by ID, verifying it belongs to a block owned by the given sheet."
   def get_gallery_image_for_sheet(sheet_id, id) do
-    from(gi in BlockGalleryImage,
-      join: b in Block,
-      on: gi.block_id == b.id,
-      where: gi.id == ^id and b.sheet_id == ^sheet_id,
-      preload: [:asset]
+    Repo.one(
+      from(gi in BlockGalleryImage,
+        join: b in Block,
+        on: gi.block_id == b.id,
+        where: gi.id == ^id and b.sheet_id == ^sheet_id,
+        preload: [:asset]
+      )
     )
-    |> Repo.one()
   end
 
   @doc "Gets the first gallery image for a sheet (any gallery block)."
   def get_first_gallery_image(sheet_id) do
-    from(gi in BlockGalleryImage,
-      join: b in Block,
-      on: gi.block_id == b.id,
-      where: b.sheet_id == ^sheet_id and b.type == "gallery" and is_nil(b.deleted_at),
-      order_by: [asc: b.position, asc: gi.position],
-      limit: 1,
-      preload: [:asset]
+    Repo.one(
+      from(gi in BlockGalleryImage,
+        join: b in Block,
+        on: gi.block_id == b.id,
+        where: b.sheet_id == ^sheet_id and b.type == "gallery" and is_nil(b.deleted_at),
+        order_by: [asc: b.position, asc: gi.position],
+        limit: 1,
+        preload: [:asset]
+      )
     )
-    |> Repo.one()
   end
 
   # ===========================================================================
@@ -64,14 +65,13 @@ defmodule Storyarn.Sheets.GalleryCrud do
     |> BlockGalleryImage.create_changeset(%{asset_id: asset_id, position: position})
     |> Repo.insert()
     |> tap(fn
-      {:ok, _gallery_image} -> Repo.get(Block, block_id) |> Localization.extract_block()
+      {:ok, _gallery_image} -> Block |> Repo.get(block_id) |> Localization.extract_block()
       _ -> :ok
     end)
   end
 
   @doc "Adds multiple images to a gallery block in batch."
-  def add_gallery_images(%Block{id: _block_id, type: "gallery"} = block, asset_ids)
-      when is_list(asset_ids) do
+  def add_gallery_images(%Block{id: _block_id, type: "gallery"} = block, asset_ids) when is_list(asset_ids) do
     results =
       Enum.reduce_while(asset_ids, {:ok, []}, fn asset_id, {:ok, acc} ->
         case add_gallery_image(block, asset_id) do
@@ -94,7 +94,7 @@ defmodule Storyarn.Sheets.GalleryCrud do
     |> Repo.update()
     |> tap(fn
       {:ok, _updated_image} ->
-        Repo.get(Block, gallery_image.block_id) |> Localization.extract_block()
+        Block |> Repo.get(gallery_image.block_id) |> Localization.extract_block()
 
       _ ->
         :ok
@@ -112,9 +112,10 @@ defmodule Storyarn.Sheets.GalleryCrud do
         {:error, :not_found}
 
       gi ->
-        Repo.delete(gi)
+        gi
+        |> Repo.delete()
         |> tap(fn
-          {:ok, _deleted_image} -> Repo.get(Block, gi.block_id) |> Localization.extract_block()
+          {:ok, _deleted_image} -> Block |> Repo.get(gi.block_id) |> Localization.extract_block()
           _ -> :ok
         end)
     end
@@ -130,10 +131,9 @@ defmodule Storyarn.Sheets.GalleryCrud do
       ordered_ids
       |> Enum.with_index()
       |> Enum.each(fn {id, index} ->
-        from(gi in BlockGalleryImage,
-          where: gi.id == ^id and gi.block_id == ^block_id
+        Repo.update_all(from(gi in BlockGalleryImage, where: gi.id == ^id and gi.block_id == ^block_id),
+          set: [position: index]
         )
-        |> Repo.update_all(set: [position: index])
       end)
     end)
   end

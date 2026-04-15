@@ -5,7 +5,9 @@ defmodule Storyarn.Billing do
   Handles plan limits, subscriptions, and usage tracking.
   """
 
-  alias Storyarn.Billing.{Limits, Plan, SubscriptionCrud}
+  alias Storyarn.Billing.Limits
+  alias Storyarn.Billing.Plan
+  alias Storyarn.Billing.SubscriptionCrud
 
   # Plan queries
   defdelegate get_plan(plan_key), to: Plan, as: :get

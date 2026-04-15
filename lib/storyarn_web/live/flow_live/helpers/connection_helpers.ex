@@ -5,13 +5,13 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
 
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
+  import StoryarnWeb.FlowLive.Helpers.SocketHelpers
+  import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
+  import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
 
+  alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
-
-  import StoryarnWeb.FlowLive.Helpers.SocketHelpers
-  import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
-  import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
 
   # Note: FormHelpers import removed - connection forms no longer need condition fields
 
@@ -19,8 +19,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
   Creates a new connection from canvas event.
   Returns {:noreply, socket} tuple.
   """
-  @spec create_connection(Phoenix.LiveView.Socket.t(), map()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec create_connection(Socket.t(), map()) ::
+          {:noreply, Socket.t()}
   def create_connection(socket, %{
         "source_node_id" => source_id,
         "source_pin" => source_pin,
@@ -68,8 +68,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
   Handles connection deletion by node IDs (from canvas).
   Returns {:noreply, socket} tuple.
   """
-  @spec delete_connection_by_nodes(Phoenix.LiveView.Socket.t(), any(), any()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec delete_connection_by_nodes(Socket.t(), any(), any()) ::
+          {:noreply, Socket.t()}
   def delete_connection_by_nodes(socket, source_id, target_id) do
     Flows.delete_connection_by_nodes(socket.assigns.flow.id, source_id, target_id)
     flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)

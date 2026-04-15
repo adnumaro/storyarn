@@ -98,9 +98,7 @@ defmodule Storyarn.Flows.Condition do
   Returns true if the operator requires a value input.
   """
   @spec operator_requires_value?(String.t()) :: boolean()
-  def operator_requires_value?(operator)
-      when operator in ["is_empty", "is_true", "is_false", "is_nil"],
-      do: false
+  def operator_requires_value?(operator) when operator in ["is_empty", "is_true", "is_false", "is_nil"], do: false
 
   def operator_requires_value?(_operator), do: true
 
@@ -118,7 +116,7 @@ defmodule Storyarn.Flows.Condition do
       when logic in @logic_types and is_list(blocks) ->
         %{
           "logic" => logic,
-          "blocks" => Enum.map(blocks, &normalize_block/1) |> Enum.reject(&is_nil/1)
+          "blocks" => blocks |> Enum.map(&normalize_block/1) |> Enum.reject(&is_nil/1)
         }
 
       _ ->
@@ -137,7 +135,7 @@ defmodule Storyarn.Flows.Condition do
   def to_json(%{"blocks" => nil}), do: nil
 
   def to_json(%{"logic" => logic, "blocks" => blocks}) when is_list(blocks) do
-    normalized_blocks = Enum.map(blocks, &normalize_block/1) |> Enum.reject(&is_nil/1)
+    normalized_blocks = blocks |> Enum.map(&normalize_block/1) |> Enum.reject(&is_nil/1)
     Jason.encode!(%{"logic" => logic, "blocks" => normalized_blocks})
   end
 
@@ -172,8 +170,7 @@ defmodule Storyarn.Flows.Condition do
   Returns {:ok, condition} or {:error, reason}.
   """
   @spec validate(map()) :: {:ok, map()} | {:error, String.t()}
-  def validate(%{"logic" => logic, "blocks" => blocks})
-      when logic in @logic_types and is_list(blocks) do
+  def validate(%{"logic" => logic, "blocks" => blocks}) when logic in @logic_types and is_list(blocks) do
     if Enum.all?(blocks, &valid_block_structure?/1) do
       {:ok, %{"logic" => logic, "blocks" => blocks}}
     else
@@ -189,8 +186,7 @@ defmodule Storyarn.Flows.Condition do
   @spec has_rules?(map() | nil) :: boolean()
   def has_rules?(nil), do: false
 
-  def has_rules?(%{"blocks" => blocks}) when is_list(blocks),
-    do: Enum.any?(blocks, &block_has_rules?/1)
+  def has_rules?(%{"blocks" => blocks}) when is_list(blocks), do: Enum.any?(blocks, &block_has_rules?/1)
 
   def has_rules?(_), do: false
 
@@ -296,8 +292,7 @@ defmodule Storyarn.Flows.Condition do
     if Map.has_key?(block, "label"), do: Map.put(base, "label", block["label"]), else: base
   end
 
-  defp process_block(%{"type" => "group", "blocks" => inner_blocks} = group, mode)
-       when is_list(inner_blocks) do
+  defp process_block(%{"type" => "group", "blocks" => inner_blocks} = group, mode) when is_list(inner_blocks) do
     normalized_inner =
       inner_blocks
       |> Enum.filter(fn b -> is_map(b) and b["type"] == "block" end)

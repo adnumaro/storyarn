@@ -377,10 +377,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
     end
   end
 
-  defp undo_action(
-         {:update_table_column_config, block_id, col_id, prev_config, _new_config},
-         socket
-       ) do
+  defp undo_action({:update_table_column_config, block_id, col_id, prev_config, _new_config}, socket) do
     case Sheets.get_table_column(block_id, col_id) do
       nil ->
         {:error, socket}
@@ -390,8 +387,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
 
         case Sheets.update_table_column(column, %{config: prev_config}) do
           {:ok, _} ->
-            {:ok, socket,
-             {:update_table_column_config, block_id, col_id, prev_config, current_config}}
+            {:ok, socket, {:update_table_column_config, block_id, col_id, prev_config, current_config}}
 
           {:error, _} ->
             {:error, socket}
@@ -417,10 +413,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
     end
   end
 
-  defp undo_action(
-         {:change_column_type, block_id, col_id, prev_type, _new_type, prev_cells},
-         socket
-       ) do
+  defp undo_action({:change_column_type, block_id, col_id, prev_type, _new_type, prev_cells}, socket) do
     case Sheets.get_table_column(block_id, col_id) do
       nil ->
         {:error, socket}
@@ -431,8 +424,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
 
         with {:ok, _} <- Sheets.update_table_column(column, %{type: prev_type}),
              :ok <- restore_column_cells(column.slug, prev_cells) do
-          {:ok, socket,
-           {:change_column_type, block_id, col_id, prev_type, current_type, current_cells}}
+          {:ok, socket, {:change_column_type, block_id, col_id, prev_type, current_type, current_cells}}
         else
           _ -> {:error, socket}
         end
@@ -525,7 +517,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
   defp redo_action({:reorder_blocks, _prev_order, new_order}, socket) do
     case Sheets.reorder_blocks(socket.assigns.sheet.id, new_order) do
       {:ok, _} ->
-        current_ids = Sheets.list_blocks(socket.assigns.sheet.id) |> Enum.map(& &1.id)
+        current_ids = socket.assigns.sheet.id |> Sheets.list_blocks() |> Enum.map(& &1.id)
         {:ok, socket, {:reorder_blocks, current_ids, new_order}}
 
       {:error, _} ->
@@ -537,7 +529,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
     sheet_id = socket.assigns.sheet.id
 
     current_layout =
-      Sheets.list_blocks(sheet_id)
+      sheet_id
+      |> Sheets.list_blocks()
       |> Enum.sort_by(& &1.position)
       |> Enum.map(fn b ->
         %{id: b.id, column_group_id: b.column_group_id, column_index: b.column_index}
@@ -702,7 +695,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
   end
 
   defp redo_action({:reorder_table_rows, block_id, _prev_order, new_order}, socket) do
-    current_order = Sheets.list_table_rows(block_id) |> Enum.map(& &1.id)
+    current_order = block_id |> Sheets.list_table_rows() |> Enum.map(& &1.id)
 
     case Sheets.reorder_table_rows(block_id, new_order) do
       {:ok, _} -> {:ok, socket, {:reorder_table_rows, block_id, current_order, new_order}}
@@ -710,10 +703,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
     end
   end
 
-  defp redo_action(
-         {:update_table_column_config, block_id, col_id, _prev_config, new_config},
-         socket
-       ) do
+  defp redo_action({:update_table_column_config, block_id, col_id, _prev_config, new_config}, socket) do
     case Sheets.get_table_column(block_id, col_id) do
       nil ->
         {:error, socket}
@@ -723,8 +713,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
 
         case Sheets.update_table_column(column, %{config: new_config}) do
           {:ok, _} ->
-            {:ok, socket,
-             {:update_table_column_config, block_id, col_id, current_config, new_config}}
+            {:ok, socket, {:update_table_column_config, block_id, col_id, current_config, new_config}}
 
           {:error, _} ->
             {:error, socket}
@@ -750,10 +739,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
     end
   end
 
-  defp redo_action(
-         {:change_column_type, block_id, col_id, _prev_type, new_type, _prev_cells},
-         socket
-       ) do
+  defp redo_action({:change_column_type, block_id, col_id, _prev_type, new_type, _prev_cells}, socket) do
     case Sheets.get_table_column(block_id, col_id) do
       nil ->
         {:error, socket}
@@ -764,8 +750,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
 
         case Sheets.update_table_column(column, %{type: new_type}) do
           {:ok, _} ->
-            {:ok, socket,
-             {:change_column_type, block_id, col_id, current_type, new_type, current_cells}}
+            {:ok, socket, {:change_column_type, block_id, col_id, current_type, new_type, current_cells}}
 
           {:error, _} ->
             {:error, socket}
@@ -858,7 +843,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
   end
 
   defp load_blocks_with_references(sheet_id, project_id) do
-    Sheets.list_blocks(sheet_id)
+    sheet_id
+    |> Sheets.list_blocks()
     |> Enum.map(fn block ->
       if block.type == "reference" do
         target_type = get_in(block.value, ["target_type"])

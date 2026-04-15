@@ -1,12 +1,12 @@
 defmodule Storyarn.Versioning.VersionCrudTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Versioning
-  alias Storyarn.Versioning.EntityVersion
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Versioning
+  alias Storyarn.Versioning.EntityVersion
 
   setup do
     user = user_fixture()
@@ -47,7 +47,7 @@ defmodule Storyarn.Versioning.VersionCrudTest do
       user: user
     } do
       {:ok, version} = Versioning.create_version("sheet", sheet, project.id, user.id)
-      assert version.change_summary != nil
+      assert version.change_summary
       assert version.title == nil
     end
 
@@ -59,7 +59,7 @@ defmodule Storyarn.Versioning.VersionCrudTest do
       {:ok, version} =
         Versioning.create_version("sheet", sheet, project.id, user.id, title: "Manual")
 
-      assert version.change_summary != nil
+      assert version.change_summary
       assert version.title == "Manual"
     end
 
@@ -77,8 +77,8 @@ defmodule Storyarn.Versioning.VersionCrudTest do
       modified_sheet = Storyarn.Repo.preload(modified_sheet, :blocks, force: true)
 
       {:ok, v2} = Versioning.create_version("sheet", modified_sheet, project.id, user.id)
-      assert v2.change_summary != nil
-      assert v2.change_details != nil
+      assert v2.change_summary
+      assert v2.change_details
       assert is_map(v2.change_details)
       assert is_list(v2.change_details["changes"])
       assert is_map(v2.change_details["stats"])
@@ -112,9 +112,7 @@ defmodule Storyarn.Versioning.VersionCrudTest do
 
       # With 0 second interval, should always create
       assert {:ok, %EntityVersion{}} =
-               Versioning.maybe_create_version("sheet", sheet, project.id, user.id,
-                 min_interval: 0
-               )
+               Versioning.maybe_create_version("sheet", sheet, project.id, user.id, min_interval: 0)
     end
   end
 

@@ -68,7 +68,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers do
   end
 
   defp build_backlinks(sheet_id, project_id) do
-    Sheets.get_backlinks_with_sources("sheet", sheet_id, project_id)
+    "sheet"
+    |> Sheets.get_backlinks_with_sources(sheet_id, project_id)
     |> Enum.map(fn backlink ->
       si = backlink.source_info
 
@@ -184,33 +185,21 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers do
 
   defp format_ref_detail(_ref, _sheet, _block), do: nil
 
-  defp format_assignment_detail(%{"operator" => "set", "value" => v, "value_type" => "literal"})
-       when is_binary(v),
-       do: "= #{v}"
+  defp format_assignment_detail(%{"operator" => "set", "value" => v, "value_type" => "literal"}) when is_binary(v),
+    do: "= #{v}"
 
-  defp format_assignment_detail(%{"operator" => "add", "value" => v, "value_type" => "literal"})
-       when is_binary(v),
-       do: "+= #{v}"
+  defp format_assignment_detail(%{"operator" => "add", "value" => v, "value_type" => "literal"}) when is_binary(v),
+    do: "+= #{v}"
 
-  defp format_assignment_detail(%{
-         "operator" => "subtract",
-         "value" => v,
-         "value_type" => "literal"
-       })
-       when is_binary(v),
-       do: "-= #{v}"
+  defp format_assignment_detail(%{"operator" => "subtract", "value" => v, "value_type" => "literal"}) when is_binary(v),
+    do: "-= #{v}"
 
   defp format_assignment_detail(%{"operator" => "set_true"}), do: "= true"
   defp format_assignment_detail(%{"operator" => "set_false"}), do: "= false"
   defp format_assignment_detail(%{"operator" => "toggle"}), do: "toggle"
   defp format_assignment_detail(%{"operator" => "clear"}), do: "clear"
 
-  defp format_assignment_detail(%{
-         "operator" => op,
-         "value_type" => "variable_ref",
-         "value_sheet" => vp,
-         "value" => v
-       })
+  defp format_assignment_detail(%{"operator" => op, "value_type" => "variable_ref", "value_sheet" => vp, "value" => v})
        when is_binary(vp) and is_binary(v) do
     op_label =
       case op do

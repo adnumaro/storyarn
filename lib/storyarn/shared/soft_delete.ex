@@ -16,11 +16,9 @@ defmodule Storyarn.Shared.SoftDelete do
   Lists soft-deleted entities for a project, ordered by deletion time (most recent first).
   """
   def list_deleted(schema, project_id) do
-    from(s in schema,
-      where: s.project_id == ^project_id and not is_nil(s.deleted_at),
-      order_by: [desc: s.deleted_at]
+    Repo.all(
+      from(s in schema, where: s.project_id == ^project_id and not is_nil(s.deleted_at), order_by: [desc: s.deleted_at])
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -40,20 +38,14 @@ defmodule Storyarn.Shared.SoftDelete do
     now = TimeHelpers.now()
 
     children =
-      from(s in schema,
-        where:
-          s.project_id == ^project_id and
-            s.parent_id == ^parent_id and
-            is_nil(s.deleted_at)
+      Repo.all(
+        from(s in schema, where: s.project_id == ^project_id and s.parent_id == ^parent_id and is_nil(s.deleted_at))
       )
-      |> Repo.all()
 
     Enum.each(children, fn child ->
       if pre_delete, do: pre_delete.(child)
 
-      from(s in schema, where: s.id == ^child.id)
-      |> Repo.update_all(set: [deleted_at: now])
-
+      Repo.update_all(from(s in schema, where: s.id == ^child.id), set: [deleted_at: now])
       soft_delete_children(schema, project_id, child.id, opts)
     end)
   end

@@ -6,7 +6,10 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Screenplays.Screenplay
-  alias Storyarn.Shared.{ImportHelpers, MapUtils, ShortcutHelpers, SoftDelete}
+  alias Storyarn.Shared.ImportHelpers
+  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Shared.ShortcutHelpers
+  alias Storyarn.Shared.SoftDelete
   alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Shortcuts
 
@@ -14,13 +17,12 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   Lists all non-deleted screenplays for a project.
   """
   def list_screenplays(project_id) do
-    from(s in Screenplay,
-      where:
-        s.project_id == ^project_id and
-          is_nil(s.deleted_at),
-      order_by: [asc: s.position, asc: s.name]
+    Repo.all(
+      from(s in Screenplay,
+        where: s.project_id == ^project_id and is_nil(s.deleted_at),
+        order_by: [asc: s.position, asc: s.name]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -30,13 +32,12 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   """
   def list_screenplays_tree(project_id) do
     all =
-      from(s in Screenplay,
-        where:
-          s.project_id == ^project_id and
-            is_nil(s.deleted_at),
-        order_by: [asc: s.position, asc: s.name]
+      Repo.all(
+        from(s in Screenplay,
+          where: s.project_id == ^project_id and is_nil(s.deleted_at),
+          order_by: [asc: s.position, asc: s.name]
+        )
       )
-      |> Repo.all()
 
     SharedTree.build_tree_from_flat_list(all)
   end
@@ -47,16 +48,12 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   Preloads elements ordered by position.
   """
   def get_screenplay(project_id, screenplay_id) do
-    from(s in Screenplay,
-      where:
-        s.project_id == ^project_id and
-          s.id == ^screenplay_id and
-          is_nil(s.deleted_at),
-      preload: [
-        elements: ^from(e in Storyarn.Screenplays.ScreenplayElement, order_by: e.position)
-      ]
+    Repo.one(
+      from(s in Screenplay,
+        where: s.project_id == ^project_id and s.id == ^screenplay_id and is_nil(s.deleted_at),
+        preload: [elements: ^from(e in Storyarn.Screenplays.ScreenplayElement, order_by: e.position)]
+      )
     )
-    |> Repo.one()
   end
 
   @doc """
@@ -65,16 +62,12 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   Preloads elements ordered by position.
   """
   def get_screenplay!(project_id, screenplay_id) do
-    from(s in Screenplay,
-      where:
-        s.project_id == ^project_id and
-          s.id == ^screenplay_id and
-          is_nil(s.deleted_at),
-      preload: [
-        elements: ^from(e in Storyarn.Screenplays.ScreenplayElement, order_by: e.position)
-      ]
+    Repo.one!(
+      from(s in Screenplay,
+        where: s.project_id == ^project_id and s.id == ^screenplay_id and is_nil(s.deleted_at),
+        preload: [elements: ^from(e in Storyarn.Screenplays.ScreenplayElement, order_by: e.position)]
+      )
     )
-    |> Repo.one!()
   end
 
   @doc """
@@ -145,12 +138,9 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   Checks if a screenplay exists within a project (non-deleted).
   """
   def screenplay_exists?(project_id, screenplay_id) do
-    from(s in Screenplay,
-      where:
-        s.id == ^screenplay_id and s.project_id == ^project_id and
-          is_nil(s.deleted_at)
+    Repo.exists?(
+      from(s in Screenplay, where: s.id == ^screenplay_id and s.project_id == ^project_id and is_nil(s.deleted_at))
     )
-    |> Repo.exists?()
   end
 
   @doc """
@@ -215,22 +205,20 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
 
     elements_query = from(e in ScreenplayElement, order_by: [asc: e.position])
 
-    from(sp in Screenplay,
-      where: sp.project_id == ^project_id and is_nil(sp.deleted_at),
-      preload: [elements: ^elements_query],
-      order_by: [asc: sp.position, asc: sp.name]
+    Repo.all(
+      from(sp in Screenplay,
+        where: sp.project_id == ^project_id and is_nil(sp.deleted_at),
+        preload: [elements: ^elements_query],
+        order_by: [asc: sp.position, asc: sp.name]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
   Counts non-deleted screenplays for a project.
   """
   def count_screenplays(project_id) do
-    from(sp in Screenplay,
-      where: sp.project_id == ^project_id and is_nil(sp.deleted_at)
-    )
-    |> Repo.aggregate(:count)
+    Repo.aggregate(from(sp in Screenplay, where: sp.project_id == ^project_id and is_nil(sp.deleted_at)), :count)
   end
 
   @doc """
@@ -263,9 +251,7 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   Returns `{:ok, screenplay}` or `{:error, changeset}`.
   """
   def import_screenplay(project_id, attrs, extra_changes \\ %{}) do
-    changeset =
-      %Screenplay{project_id: project_id}
-      |> Screenplay.create_changeset(attrs)
+    changeset = Screenplay.create_changeset(%Screenplay{project_id: project_id}, attrs)
 
     changeset =
       Enum.reduce(extra_changes, changeset, fn
@@ -285,9 +271,7 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   def import_element(screenplay_id, attrs, extra_changes \\ %{}) do
     alias Storyarn.Screenplays.ScreenplayElement
 
-    changeset =
-      %ScreenplayElement{screenplay_id: screenplay_id}
-      |> ScreenplayElement.create_changeset(attrs)
+    changeset = ScreenplayElement.create_changeset(%ScreenplayElement{screenplay_id: screenplay_id}, attrs)
 
     changeset =
       Enum.reduce(extra_changes, changeset, fn

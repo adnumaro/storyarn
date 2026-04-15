@@ -32,15 +32,7 @@ defmodule StoryarnWeb.CompareLive.Flow do
   # ========== Mount ==========
 
   @impl true
-  def mount(
-        %{
-          "workspace_slug" => workspace_slug,
-          "project_slug" => project_slug,
-          "id" => flow_id_str
-        },
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => flow_id_str}, _session, socket) do
     with {flow_id, ""} <- Integer.parse(flow_id_str),
          {:ok, project, _membership} <-
            Projects.get_project_by_slugs(

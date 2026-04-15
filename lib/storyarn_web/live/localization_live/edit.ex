@@ -2,12 +2,12 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Localization
   alias Storyarn.Projects
   alias Storyarn.Shared.HtmlSanitizer
   alias Storyarn.Shared.TimeHelpers
+  alias StoryarnWeb.Helpers.Authorize
 
   @impl true
   def render(assigns) do
@@ -53,15 +53,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
   end
 
   @impl true
-  def mount(
-        %{
-          "workspace_slug" => workspace_slug,
-          "project_slug" => project_slug,
-          "id" => text_id
-        },
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => text_id}, _session, socket) do
     case Projects.get_project_by_slugs(
            socket.assigns.current_scope,
            workspace_slug,
@@ -145,7 +137,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
 
   defp build_form(text) do
     changeset =
-      Storyarn.Localization.change_localized_text(text)
+      Localization.change_localized_text(text)
 
     to_form(changeset, as: "localized_text")
   end

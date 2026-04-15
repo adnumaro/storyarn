@@ -3,12 +3,12 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
   LiveView for recovering deleted projects from their snapshots.
   """
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Billing
   alias Storyarn.Projects
   alias Storyarn.Versioning
   alias Storyarn.Workspaces
+  alias StoryarnWeb.Helpers.Authorize
 
   @impl true
   def mount(%{"slug" => slug}, _session, socket) do
@@ -80,8 +80,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
       %{
         id: project.id,
         name: project.name,
-        deleted_time_ago:
-          gettext("Deleted %{time_ago}", time_ago: format_time_ago(project.deleted_at)),
+        deleted_time_ago: gettext("Deleted %{time_ago}", time_ago: format_time_ago(project.deleted_at)),
         deleted_by_text:
           if(project.deleted_by,
             do: gettext("by %{email}", email: project.deleted_by.email)
@@ -103,8 +102,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
     end)
   end
 
-
-
   @impl true
   def handle_event("toggle_project", %{"id" => id}, socket) do
     project_id = String.to_integer(id)
@@ -125,11 +122,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
   end
 
   @impl true
-  def handle_event(
-        "recover_project",
-        %{"snapshot_id" => snapshot_id, "project_id" => project_id},
-        socket
-      ) do
+  def handle_event("recover_project", %{"snapshot_id" => snapshot_id, "project_id" => project_id}, socket) do
     Authorize.with_authorization(socket, :manage_workspace, fn socket ->
       workspace = socket.assigns.workspace
 
@@ -154,9 +147,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
            put_flash(
              socket,
              :error,
-             gettext(
-               "Workspace project limit reached. Upgrade your plan to recover this project."
-             )
+             gettext("Workspace project limit reached. Upgrade your plan to recover this project.")
            )}
       end
     end)
@@ -189,19 +180,13 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
         gettext("just now")
 
       diff < 3600 ->
-        ngettext("%{count} minute ago", "%{count} minutes ago", div(diff, 60),
-          count: div(diff, 60)
-        )
+        ngettext("%{count} minute ago", "%{count} minutes ago", div(diff, 60), count: div(diff, 60))
 
       diff < 86_400 ->
-        ngettext("%{count} hour ago", "%{count} hours ago", div(diff, 3600),
-          count: div(diff, 3600)
-        )
+        ngettext("%{count} hour ago", "%{count} hours ago", div(diff, 3600), count: div(diff, 3600))
 
       true ->
-        ngettext("%{count} day ago", "%{count} days ago", div(diff, 86_400),
-          count: div(diff, 86_400)
-        )
+        ngettext("%{count} day ago", "%{count} days ago", div(diff, 86_400), count: div(diff, 86_400))
     end
   end
 end

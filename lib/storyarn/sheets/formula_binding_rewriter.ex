@@ -15,6 +15,7 @@ defmodule Storyarn.Sheets.FormulaBindingRewriter do
   """
 
   import Ecto.Query, warn: false
+
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
 
@@ -67,12 +68,7 @@ defmodule Storyarn.Sheets.FormulaBindingRewriter do
     end)
   end
 
-  defp rewrite_binding(
-         %{"type" => "variable", "ref" => ref} = binding,
-         prefix,
-         child_shortcut,
-         mapping
-       ) do
+  defp rewrite_binding(%{"type" => "variable", "ref" => ref} = binding, prefix, child_shortcut, mapping) do
     if String.starts_with?(ref, prefix) do
       ref
       |> String.slice(String.length(prefix)..-1//1)

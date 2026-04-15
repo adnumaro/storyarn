@@ -12,17 +12,15 @@ defmodule Storyarn.Versioning do
   - `Builders.*` - Entity-specific snapshot building and restoration
   """
 
-  alias Storyarn.Versioning.{
-    ChangeDetector,
-    ConflictDetector,
-    EntityVersion,
-    ProjectRecovery,
-    ProjectSnapshot,
-    ProjectSnapshotCrud,
-    SnapshotDiff,
-    SnapshotViewer,
-    VersionCrud
-  }
+  alias Storyarn.Versioning.ChangeDetector
+  alias Storyarn.Versioning.ConflictDetector
+  alias Storyarn.Versioning.EntityVersion
+  alias Storyarn.Versioning.ProjectRecovery
+  alias Storyarn.Versioning.ProjectSnapshot
+  alias Storyarn.Versioning.ProjectSnapshotCrud
+  alias Storyarn.Versioning.SnapshotDiff
+  alias Storyarn.Versioning.SnapshotViewer
+  alias Storyarn.Versioning.VersionCrud
 
   @type version :: EntityVersion.t()
   @type project_snapshot :: ProjectSnapshot.t()

@@ -10,7 +10,8 @@ defmodule Storyarn.Shared.FormulaRuntime do
   to cascade changes through dependent formulas.
   """
 
-  alias Storyarn.Shared.{FormulaEngine, MapUtils}
+  alias Storyarn.Shared.FormulaEngine
+  alias Storyarn.Shared.MapUtils
 
   @doc """
   Recompute all formula variables in dependency order.
@@ -72,8 +73,7 @@ defmodule Storyarn.Shared.FormulaRuntime do
   # Private
   # ---------------------------------------------------------------------------
 
-  defp translate_binding(%{"type" => "same_row", "column_slug" => col_slug}, row_prefix)
-       when is_binary(row_prefix) do
+  defp translate_binding(%{"type" => "same_row", "column_slug" => col_slug}, row_prefix) when is_binary(row_prefix) do
     "#{row_prefix}.#{col_slug}"
   end
 

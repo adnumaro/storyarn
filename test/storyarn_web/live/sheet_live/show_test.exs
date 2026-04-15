@@ -3,8 +3,8 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
-  import Storyarn.SheetsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Repo
   alias Storyarn.Sheets
@@ -13,7 +13,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     setup :register_and_log_in_user
 
     test "renders sheet for owner", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Test Sheet"})
 
       {:ok, view, _html} =
@@ -28,7 +28,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
     test "renders sheet for editor member", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
       sheet = sheet_fixture(project, %{name: "Shared Sheet"})
 
@@ -44,7 +44,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
     test "redirects for non-member", %{conn: conn} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project)
 
       {:error, {:redirect, %{to: path, flash: flash}}} =
@@ -62,7 +62,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     setup :register_and_log_in_user
 
     test "moves sheet to new parent", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet1 = sheet_fixture(project, %{name: "Sheet 1"})
       sheet2 = sheet_fixture(project, %{name: "Sheet 2"})
 
@@ -87,7 +87,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     end
 
     test "moves sheet to root level", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent = sheet_fixture(project, %{name: "Parent"})
       child = sheet_fixture(project, %{name: "Child", parent_id: parent.id})
 
@@ -112,7 +112,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     end
 
     test "prevents cycle creation", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent = sheet_fixture(project, %{name: "Parent"})
       child = sheet_fixture(project, %{name: "Child", parent_id: parent.id})
 
@@ -138,7 +138,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
     test "viewer cannot move sheets", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       sheet1 = sheet_fixture(project, %{name: "Sheet 1"})
       sheet2 = sheet_fixture(project, %{name: "Sheet 2"})
@@ -168,7 +168,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     setup :register_and_log_in_user
 
     setup %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Tab Test Sheet"})
 
       {:ok, view, _html} =
@@ -196,14 +196,13 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       html = render_click(view, "switch_tab", %{"tab" => "history"})
       assert html =~ "History"
     end
-
   end
 
   describe "create_sheet event" do
     setup :register_and_log_in_user
 
     test "creates a new root sheet and navigates to it", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Existing Sheet"})
 
       {:ok, view, _html} =
@@ -228,7 +227,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
     test "viewer cannot create sheets", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       sheet = sheet_fixture(project, %{name: "Existing"})
 
@@ -255,7 +254,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     setup :register_and_log_in_user
 
     test "sets pending delete and confirms", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Current"})
       other_sheet = sheet_fixture(project, %{name: "To Delete"})
 
@@ -278,7 +277,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     end
 
     test "confirm_delete_sheet does nothing without pending id", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Current"})
 
       {:ok, view, _html} =
@@ -293,7 +292,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       render_click(view, "confirm_delete_sheet", %{})
 
       # The current sheet should still exist
-      assert Sheets.get_sheet(project.id, sheet.id) != nil
+      assert Sheets.get_sheet(project.id, sheet.id)
     end
   end
 
@@ -301,7 +300,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     setup :register_and_log_in_user
 
     test "sets sheet color", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Color Sheet"})
 
       {:ok, view, _html} =
@@ -319,7 +318,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     end
 
     test "clears sheet color", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Color Sheet"})
 
       {:ok, view, _html} =
@@ -342,7 +341,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
     test "viewer cannot set sheet color", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       sheet = sheet_fixture(project, %{name: "Color Sheet"})
 
@@ -365,7 +364,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     setup :register_and_log_in_user
 
     test "redirects when sheet does not exist", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:error, {:live_redirect, %{to: path, flash: flash}}} =
         live(
@@ -382,7 +381,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     setup :register_and_log_in_user
 
     test "renders breadcrumb for child sheet with ancestors", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent = sheet_fixture(project, %{name: "Grandparent Sheet"})
       child = child_sheet_fixture(project, parent, %{name: "Child Sheet"})
 
@@ -400,7 +399,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     end
 
     test "does not render breadcrumb for root sheet", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Root Sheet"})
 
       {:ok, view, _html} =
@@ -421,7 +420,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     setup :register_and_log_in_user
 
     test "toggles tree panel", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Test Sheet"})
 
       {:ok, view, _html} =
@@ -441,7 +440,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     end
 
     test "pins tree panel", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Test Sheet"})
 
       {:ok, view, _html} =
@@ -459,7 +458,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     end
 
     test "tree panel init with pinned state", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Test Sheet"})
 
       {:ok, view, _html} =
@@ -481,7 +480,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     setup :register_and_log_in_user
 
     test "undo with empty stack is a no-op", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Undo Test"})
 
       {:ok, view, _html} =
@@ -498,7 +497,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     end
 
     test "redo with empty stack is a no-op", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Redo Test"})
 
       {:ok, view, _html} =
@@ -513,7 +512,6 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       html = render_hook(view, "redo", %{})
       assert html =~ "Redo Test"
     end
-
   end
 
   defp count_sheets(sheets) when is_list(sheets) do

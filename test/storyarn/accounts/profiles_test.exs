@@ -1,9 +1,9 @@
 defmodule Storyarn.Accounts.ProfilesTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Accounts.Profiles
-
   import Storyarn.AccountsFixtures
+
+  alias Storyarn.Accounts.Profiles
 
   describe "change_user_profile/2" do
     test "returns a changeset for valid attrs" do
@@ -89,7 +89,7 @@ defmodule Storyarn.Accounts.ProfilesTest do
 
     test "returns false when authenticated long ago" do
       user = user_fixture()
-      old_time = DateTime.utc_now() |> DateTime.add(-30, :minute)
+      old_time = DateTime.add(DateTime.utc_now(), -30, :minute)
       user = %{user | authenticated_at: old_time}
       refute Profiles.sudo_mode?(user)
     end
@@ -103,7 +103,7 @@ defmodule Storyarn.Accounts.ProfilesTest do
     test "respects custom minutes parameter" do
       user = user_fixture()
       # Authenticated 5 minutes ago
-      five_min_ago = DateTime.utc_now() |> DateTime.add(-5, :minute)
+      five_min_ago = DateTime.add(DateTime.utc_now(), -5, :minute)
       user = %{user | authenticated_at: five_min_ago}
 
       # With 10-minute window, should be in sudo
@@ -115,7 +115,7 @@ defmodule Storyarn.Accounts.ProfilesTest do
 
     test "boundary: exactly at the limit" do
       user = user_fixture()
-      exactly_20_min_ago = Storyarn.Shared.TimeHelpers.now() |> DateTime.add(-20, :minute)
+      exactly_20_min_ago = DateTime.add(Storyarn.Shared.TimeHelpers.now(), -20, :minute)
       user = %{user | authenticated_at: exactly_20_min_ago}
       # At exactly the boundary, should return false (not after)
       refute Profiles.sudo_mode?(user)

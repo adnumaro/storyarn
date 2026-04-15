@@ -3,9 +3,9 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
+  import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
-  import Storyarn.AssetsFixtures
 
   alias Storyarn.Repo
   alias StoryarnWeb.Components.SheetComponents
@@ -32,7 +32,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
 
     test "renders image when avatars has a default avatar with image asset" do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       asset = image_asset_fixture(project, user)
 
       html =
@@ -49,7 +49,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
 
     test "renders fallback icon for non-image asset" do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       asset =
         asset_fixture(project, user, %{
@@ -68,7 +68,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
 
     test "uses default alt text when name is nil" do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       asset = image_asset_fixture(project, user)
 
       html =
@@ -118,7 +118,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
 
     test "applies size class to image when avatar present" do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       asset = image_asset_fixture(project, user)
 
       html =
@@ -139,7 +139,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
   describe "sheet_breadcrumb/1" do
     setup do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       workspace = project.workspace
 
       %{user: user, project: project, workspace: workspace}
@@ -169,9 +169,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
       grandparent = sheet_fixture(project, %{name: "Grandparent"})
       parent = sheet_fixture(project, %{name: "Parent", parent_id: grandparent.id})
 
-      ancestors =
-        [grandparent, parent]
-        |> Enum.map(&Repo.preload(&1, avatars: :asset))
+      ancestors = Enum.map([grandparent, parent], &Repo.preload(&1, avatars: :asset))
 
       html =
         render_component(&SheetComponents.sheet_breadcrumb/1,
@@ -190,8 +188,8 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
       project: project,
       workspace: workspace
     } do
-      ancestor1 = sheet_fixture(project, %{name: "Ancestor1"}) |> Repo.preload(avatars: :asset)
-      ancestor2 = sheet_fixture(project, %{name: "Ancestor2"}) |> Repo.preload(avatars: :asset)
+      ancestor1 = project |> sheet_fixture(%{name: "Ancestor1"}) |> Repo.preload(avatars: :asset)
+      ancestor2 = project |> sheet_fixture(%{name: "Ancestor2"}) |> Repo.preload(avatars: :asset)
 
       html =
         render_component(&SheetComponents.sheet_breadcrumb/1,
@@ -211,7 +209,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
     end
 
     test "renders sheet avatars for each ancestor", %{project: project, workspace: workspace} do
-      ancestor = sheet_fixture(project, %{name: "Ancestor"}) |> Repo.preload(avatars: :asset)
+      ancestor = project |> sheet_fixture(%{name: "Ancestor"}) |> Repo.preload(avatars: :asset)
 
       html =
         render_component(&SheetComponents.sheet_breadcrumb/1,
@@ -225,7 +223,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
     end
 
     test "has correct container styling", %{project: project, workspace: workspace} do
-      ancestor = sheet_fixture(project, %{name: "Test"}) |> Repo.preload(avatars: :asset)
+      ancestor = project |> sheet_fixture(%{name: "Test"}) |> Repo.preload(avatars: :asset)
 
       html =
         render_component(&SheetComponents.sheet_breadcrumb/1,
@@ -238,7 +236,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
     end
 
     test "truncates long ancestor names", %{project: project, workspace: workspace} do
-      ancestor = sheet_fixture(project, %{name: "Very Long"}) |> Repo.preload(avatars: :asset)
+      ancestor = project |> sheet_fixture(%{name: "Very Long"}) |> Repo.preload(avatars: :asset)
 
       html =
         render_component(&SheetComponents.sheet_breadcrumb/1,
@@ -260,7 +258,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
     setup :register_and_log_in_user
 
     test "breadcrumb appears for nested sheet", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent = sheet_fixture(project, %{name: "Parent Character"})
       child = sheet_fixture(project, %{name: "Child Character", parent_id: parent.id})
 
@@ -275,7 +273,7 @@ defmodule StoryarnWeb.Components.SheetComponentsTest do
     end
 
     test "no breadcrumb for root-level sheet", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Root Sheet"})
 
       {:ok, view, _html} =

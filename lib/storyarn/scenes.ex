@@ -17,34 +17,33 @@ defmodule Storyarn.Scenes do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Scenes.{
-    AmbientFlowCrud,
-    AnnotationCrud,
-    ConnectionCrud,
-    ExplorationSessionCrud,
-    LayerCrud,
-    PinCrud,
-    Scene,
-    SceneAmbientFlow,
-    SceneAnnotation,
-    SceneConnection,
-    SceneCrud,
-    SceneLayer,
-    ScenePin,
-    SceneStats,
-    SceneZone,
-    TreeOperations,
-    ZoneCrud,
-    ZoneImageExtractor
-  }
-
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
+  alias Storyarn.Scenes.AmbientFlowCrud
+  alias Storyarn.Scenes.AnnotationCrud
+  alias Storyarn.Scenes.ConnectionCrud
+  alias Storyarn.Scenes.ExplorationSessionCrud
+  alias Storyarn.Scenes.LayerCrud
+  alias Storyarn.Scenes.PinCrud
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.SceneAmbientFlow
+  alias Storyarn.Scenes.SceneAnnotation
+  alias Storyarn.Scenes.SceneConnection
+  alias Storyarn.Scenes.SceneCrud
+  alias Storyarn.Scenes.SceneLayer
+  alias Storyarn.Scenes.ScenePin
+  alias Storyarn.Scenes.SceneStats
+  alias Storyarn.Scenes.SceneZone
+  alias Storyarn.Scenes.TreeOperations
+  alias Storyarn.Scenes.ZoneCrud
+  alias Storyarn.Scenes.ZoneImageExtractor
 
   # =============================================================================
   # Type Definitions
   # =============================================================================
+
+  alias Storyarn.Versioning
 
   @type scene_record :: Scene.t()
   @type layer :: SceneLayer.t()
@@ -507,20 +506,14 @@ defmodule Storyarn.Scenes do
   @spec get_elements_for_target(String.t(), integer()) :: %{zones: [zone()], pins: [pin()]}
   def get_elements_for_target(target_type, target_id) do
     zones =
-      from(z in SceneZone,
-        where: z.target_type == ^target_type and z.target_id == ^target_id,
-        preload: [:scene]
+      Repo.all(
+        from(z in SceneZone, where: z.target_type == ^target_type and z.target_id == ^target_id, preload: [:scene])
       )
-      |> Repo.all()
 
     # Pins only have flow_id now (no generic target_type/target_id)
     pins =
       if target_type == "flow" do
-        from(p in ScenePin,
-          where: p.flow_id == ^target_id,
-          preload: [:scene]
-        )
-        |> Repo.all()
+        Repo.all(from(p in ScenePin, where: p.flow_id == ^target_id, preload: [:scene]))
       else
         []
       end
@@ -675,8 +668,6 @@ defmodule Storyarn.Scenes do
   # Versioning
   # =============================================================================
 
-  alias Storyarn.Versioning
-
   @doc """
   Creates a new version snapshot of the given scene.
   """
@@ -744,7 +735,7 @@ defmodule Storyarn.Scenes do
   Sets the current version for a scene.
   """
   def set_current_version(%Scene{} = scene, version_or_nil) do
-    version_id = if version_or_nil, do: version_or_nil.id, else: nil
+    version_id = if version_or_nil, do: version_or_nil.id
 
     scene
     |> Scene.version_changeset(%{current_version_id: version_id})

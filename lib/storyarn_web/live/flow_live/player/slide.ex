@@ -37,7 +37,8 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
     responses =
       case state.pending_choices do
         %{responses: resps} when is_list(resps) ->
-          Enum.with_index(resps, 1)
+          resps
+          |> Enum.with_index(1)
           |> Enum.map(fn {resp, idx} ->
             %{
               id: resp.id,
@@ -70,12 +71,10 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
     data = node.data || %{}
 
     variables_changed =
-      state.variables
-      |> Enum.count(fn {_key, %{value: v, initial_value: iv}} -> v != iv end)
+      Enum.count(state.variables, fn {_key, %{value: v, initial_value: iv}} -> v != iv end)
 
     choices_made =
-      state.console
-      |> Enum.count(fn entry -> String.starts_with?(entry.message, "Selected:") end)
+      Enum.count(state.console, fn entry -> String.starts_with?(entry.message, "Selected:") end)
 
     %{
       type: :outcome,
@@ -118,8 +117,7 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   # Speaker resolution
   # ===========================================================================
 
-  defp resolve_sheet_info(sheet_id, sheets_map)
-       when is_integer(sheet_id) or is_binary(sheet_id) do
+  defp resolve_sheet_info(sheet_id, sheets_map) when is_integer(sheet_id) or is_binary(sheet_id) do
     id = parse_sheet_id(sheet_id)
     Map.get(sheets_map, to_string(id))
   end
@@ -237,8 +235,7 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   defp format_value(false), do: "false"
   defp format_value(val) when is_list(val), do: Enum.join(val, ", ")
 
-  defp format_value(val) when is_binary(val),
-    do: Phoenix.HTML.html_escape(val) |> Phoenix.HTML.safe_to_string()
+  defp format_value(val) when is_binary(val), do: val |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
   defp format_value(val), do: to_string(val)
 end

@@ -20,7 +20,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.{Repo, Sheets}
+  alias Storyarn.Repo
+  alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
 
   # ===========================================================================
@@ -30,7 +31,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
   setup :register_and_log_in_user
 
   setup %{user: user} do
-    project = project_fixture(user) |> Repo.preload(:workspace)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
     sheet = sheet_fixture(project, %{name: "Undo Redo Sheet"})
     ws = project.workspace
 
@@ -86,9 +87,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
 
       assert render(view) =~ "Undo Redo Sheet"
     end
-
   end
-
 
   # ===========================================================================
   # Block delete undo/redo
@@ -199,7 +198,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       assert Sheets.get_block(block.id).value["content"] == ""
     end
   end
-
 
   # ===========================================================================
   # Table column add/delete undo/redo
@@ -362,7 +360,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       render_hook(view, "redo", %{})
       assert Sheets.get_table_row!(default_row.id).cells[default_col.slug] == "99"
     end
-
   end
 
   # ===========================================================================
@@ -460,7 +457,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       data = Sheets.batch_load_table_data([table_block.id])
       default_row = hd(data[table_block.id].rows)
 
-      original_order = Sheets.list_table_rows(table_block.id) |> Enum.map(& &1.id)
+      original_order = table_block.id |> Sheets.list_table_rows() |> Enum.map(& &1.id)
 
       {:ok, view, _html} = mount_sheet(conn, url)
 
@@ -471,12 +468,12 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
         "row_ids" => Enum.map(new_order, &to_string/1)
       })
 
-      ids = Sheets.list_table_rows(table_block.id) |> Enum.map(& &1.id)
+      ids = table_block.id |> Sheets.list_table_rows() |> Enum.map(& &1.id)
       assert ids == new_order
 
       render_hook(view, "undo", %{})
 
-      ids = Sheets.list_table_rows(table_block.id) |> Enum.map(& &1.id)
+      ids = table_block.id |> Sheets.list_table_rows() |> Enum.map(& &1.id)
       assert ids == original_order
     end
   end
@@ -594,7 +591,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       })
 
       updated_config = Sheets.get_table_column!(column.block_id, column.id).config
-      assert updated_config["min"] != nil
+      assert updated_config["min"]
 
       render_hook(view, "undo", %{})
       assert Sheets.get_table_column!(column.block_id, column.id).config == original_config
@@ -680,7 +677,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
 
       # Should contain the row with value "hello"
       row_cell = Enum.find(cells, fn {id, _val} -> id == default_row.id end)
-      assert row_cell != nil
+      assert row_cell
       {_id, value} = row_cell
       assert value == "hello"
     end
@@ -806,7 +803,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
     end
   end
 
-
   # ===========================================================================
   # Table boolean cell toggle undo/redo
   # ===========================================================================
@@ -833,7 +829,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       assert cell_val == nil or cell_val == false
     end
   end
-
 
   # ===========================================================================
   # Table column delete redo
@@ -902,7 +897,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
       data = Sheets.batch_load_table_data([table_block.id])
       default_row = hd(data[table_block.id].rows)
 
-      original_order = Sheets.list_table_rows(table_block.id) |> Enum.map(& &1.id)
+      original_order = table_block.id |> Sheets.list_table_rows() |> Enum.map(& &1.id)
       new_order = [row3.id, default_row.id, row2.id]
 
       {:ok, view, _html} = mount_sheet(conn, url)
@@ -912,15 +907,15 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
         "row_ids" => Enum.map(new_order, &to_string/1)
       })
 
-      ids = Sheets.list_table_rows(table_block.id) |> Enum.map(& &1.id)
+      ids = table_block.id |> Sheets.list_table_rows() |> Enum.map(& &1.id)
       assert ids == new_order
 
       render_hook(view, "undo", %{})
-      ids = Sheets.list_table_rows(table_block.id) |> Enum.map(& &1.id)
+      ids = table_block.id |> Sheets.list_table_rows() |> Enum.map(& &1.id)
       assert ids == original_order
 
       render_hook(view, "redo", %{})
-      ids = Sheets.list_table_rows(table_block.id) |> Enum.map(& &1.id)
+      ids = table_block.id |> Sheets.list_table_rows() |> Enum.map(& &1.id)
       assert ids == new_order
     end
   end
@@ -1048,7 +1043,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlersTest do
 
       # Verify cell was set
       row = Sheets.get_table_row!(default_row.id)
-      assert row.cells[column.slug] != nil
+      assert row.cells[column.slug]
 
       # Undo the compound action — should revert both config and cell
       render_hook(view, "undo", %{})

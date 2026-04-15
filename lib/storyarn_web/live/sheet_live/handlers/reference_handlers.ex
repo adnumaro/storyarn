@@ -3,11 +3,12 @@ defmodule StoryarnWeb.SheetLive.Handlers.ReferenceHandlers do
   Handles reference block events for the V2 sheet editor.
   """
 
-  import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
   use Gettext, backend: Storyarn.Gettext
 
-  alias StoryarnWeb.Helpers.Authorize
+  import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
+
   alias Storyarn.Sheets
+  alias StoryarnWeb.Helpers.Authorize
 
   def handle_search(%{"block-id" => block_id} = params, socket, helpers) do
     query = params["query"] || ""
@@ -48,8 +49,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.ReferenceHandlers do
             {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
 
           {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("sheets", "Reference target not found."))}
+            {:noreply, put_flash(socket, :error, dgettext("sheets", "Reference target not found."))}
         end
       else
         {:noreply, socket}

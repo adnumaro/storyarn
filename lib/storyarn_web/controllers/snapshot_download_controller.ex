@@ -14,11 +14,7 @@ defmodule StoryarnWeb.SnapshotDownloadController do
   Generates a presigned R2 URL and redirects the browser for direct download.
   Falls back to streaming through Phoenix for local storage.
   """
-  def download(conn, %{
-        "workspace_slug" => workspace_slug,
-        "project_slug" => project_slug,
-        "id" => snapshot_id_str
-      }) do
+  def download(conn, %{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => snapshot_id_str}) do
     scope = conn.assigns.current_scope
 
     with {:ok, project, _membership} <-

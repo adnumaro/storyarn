@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { Checkbox } from '@components/ui/checkbox'
-import { Badge } from '@components/ui/badge'
-import { TableColumn, TableRow } from '@modules/sheets/types.ts'
-import { useLive } from '@composables/useLive.ts'
-import { getCellValue } from '@modules/sheets/components/blocks/table/tbodyCells/get-cell-value-helpers.ts'
+import { Checkbox } from "@components/ui/checkbox";
+import { Badge } from "@components/ui/badge";
+import { TableColumn, TableRow } from "@modules/sheets/types.ts";
+import { useLive } from "@composables/useLive.ts";
+import { getCellValue } from "@modules/sheets/components/blocks/table/tbodyCells/get-cell-value-helpers.ts";
 
 const {
   column,
@@ -26,10 +26,7 @@ function toggleBoolean(row: TableRow, col: TableColumn): void {
 </script>
 
 <template>
-  <label
-    v-if="canEdit"
-    class="absolute inset-0 flex items-center justify-center cursor-pointer"
-  >
+  <label v-if="canEdit" class="absolute inset-0 flex items-center justify-center cursor-pointer">
     <Checkbox
       :checked="getCellValue(row, column) === true"
       @update:checked="toggleBoolean(row, column)"
@@ -52,6 +49,4 @@ function toggleBoolean(row: TableRow, col: TableColumn): void {
   </div>
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>

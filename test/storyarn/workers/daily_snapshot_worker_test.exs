@@ -2,11 +2,11 @@ defmodule Storyarn.Workers.DailySnapshotWorkerTest do
   use Storyarn.DataCase, async: true
   use Oban.Testing, repo: Storyarn.Repo
 
+  import Storyarn.FlowsFixtures
+  import Storyarn.ProjectsFixtures
+
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Workers.DailySnapshotWorker
-
-  import Storyarn.ProjectsFixtures
-  import Storyarn.FlowsFixtures
 
   describe "perform/1" do
     test "skips projects with auto_snapshots_enabled: false" do

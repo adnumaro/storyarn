@@ -9,23 +9,21 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   @behaviour Storyarn.Versioning.SnapshotBuilder
 
-  import Ecto.Query, warn: false
   use Gettext, backend: Storyarn.Gettext
+
+  import Ecto.Query, warn: false
 
   alias Ecto.Multi
   alias Storyarn.Repo
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.SceneAnnotation
+  alias Storyarn.Scenes.SceneConnection
+  alias Storyarn.Scenes.SceneLayer
+  alias Storyarn.Scenes.ScenePin
+  alias Storyarn.Scenes.SceneZone
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.DiffHelpers
   alias Storyarn.Versioning.MaterializationHelpers
-
-  alias Storyarn.Scenes.{
-    Scene,
-    SceneAnnotation,
-    SceneConnection,
-    SceneLayer,
-    ScenePin,
-    SceneZone
-  }
 
   # ========== Build Snapshot ==========
 
@@ -54,9 +52,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       |> Enum.sort_by(&{&1.position, &1.id})
 
     # Group annotations by layer_id for snapshot building
-    annotations_by_layer =
-      scene.annotations
-      |> Enum.group_by(& &1.layer_id)
+    annotations_by_layer = Enum.group_by(scene.annotations, & &1.layer_id)
 
     # Build pin ID → (layer_index, pin_index) map for connections
     pin_index_map = build_pin_index_map(sorted_layers, orphan_pins)
@@ -132,7 +128,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     sorted_pins = Enum.sort_by(layer.pins, &{&1.position, &1.id})
 
     sorted_annotations =
-      Map.get(annotations_by_layer, layer.id, [])
+      annotations_by_layer
+      |> Map.get(layer.id, [])
       |> Enum.sort_by(&{&1.position, &1.id})
 
     %{
@@ -238,40 +235,37 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   @impl true
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
-    Repo.transaction(fn ->
+    fn ->
       now = MaterializationHelpers.now()
 
       scene_attrs =
-        %{
-          project_id: project_id,
-          name: snapshot["name"],
-          shortcut: MaterializationHelpers.root_shortcut(snapshot, opts),
-          description: snapshot["description"],
-          width: snapshot["width"],
-          height: snapshot["height"],
-          default_zoom: snapshot["default_zoom"],
-          default_center_x: snapshot["default_center_x"],
-          default_center_y: snapshot["default_center_y"],
-          scale_unit: snapshot["scale_unit"],
-          scale_value: snapshot["scale_value"],
-          exploration_display_mode: snapshot["exploration_display_mode"] || "fit",
-          background_asset_id:
-            resolve_scene_background_asset(
-              snapshot["background_asset_id"],
-              snapshot,
-              project_id,
-              opts
-            ),
-          parent_id: MaterializationHelpers.root_parent_id(opts),
-          position: MaterializationHelpers.root_position(opts)
-        }
-        |> Map.merge(MaterializationHelpers.timestamps(now))
+        Map.merge(
+          %{
+            project_id: project_id,
+            name: snapshot["name"],
+            shortcut: MaterializationHelpers.root_shortcut(snapshot, opts),
+            description: snapshot["description"],
+            width: snapshot["width"],
+            height: snapshot["height"],
+            default_zoom: snapshot["default_zoom"],
+            default_center_x: snapshot["default_center_x"],
+            default_center_y: snapshot["default_center_y"],
+            scale_unit: snapshot["scale_unit"],
+            scale_value: snapshot["scale_value"],
+            exploration_display_mode: snapshot["exploration_display_mode"] || "fit",
+            background_asset_id:
+              resolve_scene_background_asset(snapshot["background_asset_id"], snapshot, project_id, opts),
+            parent_id: MaterializationHelpers.root_parent_id(opts),
+            position: MaterializationHelpers.root_position(opts)
+          },
+          MaterializationHelpers.timestamps(now)
+        )
 
       with {:ok, scene_id} <-
              MaterializationHelpers.insert_one_returning_id(Repo, Scene, scene_attrs),
            {:ok, inserted_layers} <-
              insert_scene_layers(Repo, scene_id, snapshot["layers"] || [], now),
-           layer_id_map <-
+           layer_id_map =
              MaterializationHelpers.build_id_map(snapshot["layers"] || [], inserted_layers),
            {:ok, nested_results} <-
              insert_scene_layer_children(
@@ -293,7 +287,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
                now,
                opts
              ),
-           pin_ids_by_layer <-
+           pin_ids_by_layer =
              Map.put(nested_results.pin_ids_by_layer, -1, orphan_results.pin_ids),
            {:ok, connection_id_map} <-
              insert_scene_connections(
@@ -302,36 +296,37 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
                snapshot["connections"] || [],
                pin_ids_by_layer,
                now
-             ),
-           scene <-
-             Scene
-             |> Repo.get!(scene_id)
-             |> Repo.preload(
-               [
-                 :background_asset,
-                 :connections,
-                 :annotations,
-                 :zones,
-                 [pins: [:icon_asset, sheet: [avatars: :asset]]],
-                 {:layers, [:zones, :pins]}
-               ],
-               force: true
              ) do
+        scene =
+          Scene
+          |> Repo.get!(scene_id)
+          |> Repo.preload(
+            [
+              :background_asset,
+              :connections,
+              :annotations,
+              :zones,
+              [pins: [:icon_asset, sheet: [avatars: :asset]]],
+              {:layers, [:zones, :pins]}
+            ],
+            force: true
+          )
+
         id_maps = %{
           scene: MaterializationHelpers.root_id_map(snapshot, scene_id),
           layer: layer_id_map,
           zone: Map.merge(nested_results.zone_id_map, orphan_results.zone_id_map),
           pin: Map.merge(nested_results.pin_id_map, orphan_results.pin_id_map),
           connection: connection_id_map,
-          annotation:
-            Map.merge(nested_results.annotation_id_map, orphan_results.annotation_id_map)
+          annotation: Map.merge(nested_results.annotation_id_map, orphan_results.annotation_id_map)
         }
 
         {scene, id_maps}
       else
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
     |> case do
       {:ok, {scene, id_maps}} -> {:ok, scene, id_maps}
       {:error, reason} -> {:error, reason}
@@ -443,16 +438,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     {:ok, layer_data}
   end
 
-  defp restore_single_layer(
-         repo,
-         scene_id,
-         layer_data,
-         layer_idx,
-         now,
-         snapshot,
-         project_id,
-         opts
-       ) do
+  defp restore_single_layer(repo, scene_id, layer_data, layer_idx, now, snapshot, project_id, opts) do
     layer_id = insert_layer(repo, scene_id, layer_data, layer_idx, now)
     insert_layer_zones(repo, scene_id, layer_id, layer_data["zones"] || [], now)
 
@@ -526,14 +512,16 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   end
 
   defp zone_defaulted_attrs(d) do
-    %{
-      border_width: d["border_width"] || 2,
-      border_style: d["border_style"] || "solid",
-      opacity: d["opacity"] || 0.3,
-      position: d["position"] || 0,
-      locked: d["locked"] || false
-    }
-    |> Map.merge(zone_action_defaults(d))
+    Map.merge(
+      %{
+        border_width: d["border_width"] || 2,
+        border_style: d["border_style"] || "solid",
+        opacity: d["opacity"] || 0.3,
+        position: d["position"] || 0,
+        locked: d["locked"] || false
+      },
+      zone_action_defaults(d)
+    )
   end
 
   defp zone_action_defaults(d) do
@@ -552,8 +540,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     end
   end
 
-  defp insert_layer_pins(_repo, _scene_id, _layer_id, [], _now, _snapshot, _project_id, _opts),
-    do: []
+  defp insert_layer_pins(_repo, _scene_id, _layer_id, [], _now, _snapshot, _project_id, _opts), do: []
 
   defp insert_layer_pins(repo, scene_id, layer_id, pins_data, now, snapshot, project_id, opts) do
     Enum.map(pins_data, fn pin_data ->
@@ -573,8 +560,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       scene_id: scene_id,
       layer_id: layer_id,
       sheet_id: resolve_scene_sheet_id(pin_data["sheet_id"], project_id, opts),
-      icon_asset_id:
-        AssetHashResolver.resolve_asset_fk(pin_data["icon_asset_id"], snapshot, project_id),
+      icon_asset_id: AssetHashResolver.resolve_asset_fk(pin_data["icon_asset_id"], snapshot, project_id),
       inserted_at: now,
       updated_at: now
     })
@@ -599,14 +585,16 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   end
 
   defp pin_defaulted_attrs(d) do
-    %{
-      pin_type: d["pin_type"] || "location",
-      opacity: d["opacity"] || 1.0,
-      size: d["size"] || "md",
-      position: d["position"] || 0,
-      locked: d["locked"] || false
-    }
-    |> Map.merge(pin_action_defaults(d))
+    Map.merge(
+      %{
+        pin_type: d["pin_type"] || "location",
+        opacity: d["opacity"] || 1.0,
+        size: d["size"] || "md",
+        position: d["position"] || 0,
+        locked: d["locked"] || false
+      },
+      pin_action_defaults(d)
+    )
   end
 
   defp pin_action_defaults(d) do
@@ -694,33 +682,27 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       layers_data
       |> Enum.with_index()
       |> Enum.map(fn {layer_data, layer_idx} ->
-        %{
-          scene_id: scene_id,
-          name: layer_data["name"],
-          is_default: layer_data["is_default"] || false,
-          position: layer_data["position"] || layer_idx,
-          visible: Map.get(layer_data, "visible", true),
-          fog_enabled: layer_data["fog_enabled"] || false,
-          fog_color: layer_data["fog_color"] || "#000000",
-          fog_opacity: layer_data["fog_opacity"] || 0.85
-        }
-        |> Map.merge(MaterializationHelpers.timestamps(now))
+        Map.merge(
+          %{
+            scene_id: scene_id,
+            name: layer_data["name"],
+            is_default: layer_data["is_default"] || false,
+            position: layer_data["position"] || layer_idx,
+            visible: Map.get(layer_data, "visible", true),
+            fog_enabled: layer_data["fog_enabled"] || false,
+            fog_color: layer_data["fog_color"] || "#000000",
+            fog_opacity: layer_data["fog_opacity"] || 0.85
+          },
+          MaterializationHelpers.timestamps(now)
+        )
       end)
 
     MaterializationHelpers.insert_all_returning(repo, SceneLayer, entries, [:id])
   end
 
-  defp insert_scene_layer_children(
-         repo,
-         scene_id,
-         layers_data,
-         inserted_layers,
-         snapshot,
-         project_id,
-         now,
-         opts
-       ) do
-    Enum.zip(layers_data, inserted_layers)
+  defp insert_scene_layer_children(repo, scene_id, layers_data, inserted_layers, snapshot, project_id, now, opts) do
+    layers_data
+    |> Enum.zip(inserted_layers)
     |> Enum.with_index()
     |> Enum.reduce_while(
       {:ok, %{zone_id_map: %{}, pin_id_map: %{}, annotation_id_map: %{}, pin_ids_by_layer: %{}}},
@@ -820,10 +802,8 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
            ) do
       {:ok,
        %{
-         zone_id_map:
-           MaterializationHelpers.build_id_map(snapshot["orphan_zones"] || [], zone_inserted),
-         pin_id_map:
-           MaterializationHelpers.build_id_map(snapshot["orphan_pins"] || [], pin_inserted),
+         zone_id_map: MaterializationHelpers.build_id_map(snapshot["orphan_zones"] || [], zone_inserted),
+         pin_id_map: MaterializationHelpers.build_id_map(snapshot["orphan_pins"] || [], pin_inserted),
          annotation_id_map:
            MaterializationHelpers.build_id_map(
              snapshot["orphan_annotations"] || [],
@@ -844,7 +824,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     now = MaterializationHelpers.now()
 
     with :ok <- insert_layer_zones(repo, scene_id, nil, snapshot["orphan_zones"] || [], now),
-         orphan_pin_ids <-
+         orphan_pin_ids =
            insert_layer_pins(
              repo,
              scene_id,
@@ -864,8 +844,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
              now
            ) do
       {:ok, %{pin_ids: orphan_pin_ids}}
-    else
-      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -895,28 +873,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     })
   end
 
-  defp insert_layer_pins_with_ids(
-         _repo,
-         _scene_id,
-         _layer_id,
-         [],
-         _now,
-         _snapshot,
-         _project_id,
-         _opts
-       ),
-       do: {:ok, []}
+  defp insert_layer_pins_with_ids(_repo, _scene_id, _layer_id, [], _now, _snapshot, _project_id, _opts), do: {:ok, []}
 
-  defp insert_layer_pins_with_ids(
-         repo,
-         scene_id,
-         layer_id,
-         pins_data,
-         now,
-         snapshot,
-         project_id,
-         opts
-       ) do
+  defp insert_layer_pins_with_ids(repo, scene_id, layer_id, pins_data, now, snapshot, project_id, opts) do
     entries =
       Enum.map(pins_data, fn pin_data ->
         build_materialized_pin_attrs(
@@ -961,18 +920,20 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   defp insert_layer_annotations_with_ids(repo, scene_id, layer_id, annotations_data, now) do
     entries =
       Enum.map(annotations_data, fn ann_data ->
-        %{
-          scene_id: scene_id,
-          layer_id: layer_id,
-          text: ann_data["text"],
-          position_x: ann_data["position_x"],
-          position_y: ann_data["position_y"],
-          font_size: ann_data["font_size"] || "md",
-          color: ann_data["color"],
-          position: ann_data["position"] || 0,
-          locked: ann_data["locked"] || false
-        }
-        |> Map.merge(MaterializationHelpers.timestamps(now))
+        Map.merge(
+          %{
+            scene_id: scene_id,
+            layer_id: layer_id,
+            text: ann_data["text"],
+            position_x: ann_data["position_x"],
+            position_y: ann_data["position_y"],
+            font_size: ann_data["font_size"] || "md",
+            color: ann_data["color"],
+            position: ann_data["position"] || 0,
+            locked: ann_data["locked"] || false
+          },
+          MaterializationHelpers.timestamps(now)
+        )
       end)
 
     MaterializationHelpers.insert_all_returning(repo, SceneAnnotation, entries, [:id])
@@ -991,19 +952,21 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
         if from_pin_id && to_pin_id do
           entry =
-            %{
-              scene_id: scene_id,
-              from_pin_id: from_pin_id,
-              to_pin_id: to_pin_id,
-              line_style: conn["line_style"] || "solid",
-              line_width: conn["line_width"] || 2,
-              color: conn["color"],
-              label: conn["label"],
-              bidirectional: Map.get(conn, "bidirectional", true),
-              show_label: Map.get(conn, "show_label", true),
-              waypoints: conn["waypoints"] || []
-            }
-            |> Map.merge(MaterializationHelpers.timestamps(now))
+            Map.merge(
+              %{
+                scene_id: scene_id,
+                from_pin_id: from_pin_id,
+                to_pin_id: to_pin_id,
+                line_style: conn["line_style"] || "solid",
+                line_width: conn["line_width"] || 2,
+                color: conn["color"],
+                label: conn["label"],
+                bidirectional: Map.get(conn, "bidirectional", true),
+                show_label: Map.get(conn, "show_label", true),
+                waypoints: conn["waypoints"] || []
+              },
+              MaterializationHelpers.timestamps(now)
+            )
 
           {[entry | acc_entries], [conn | acc_snapshots]}
         else
@@ -1029,21 +992,15 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     |> Enum.at(pin_idx)
   end
 
-  defp resolve_scene_background_asset(_asset_id, _snapshot, _project_id, opts)
-       when not is_list(opts),
-       do: nil
+  defp resolve_scene_background_asset(_asset_id, _snapshot, _project_id, opts) when not is_list(opts), do: nil
 
   defp resolve_scene_background_asset(asset_id, snapshot, project_id, opts) do
     if MaterializationHelpers.preserve_external_refs?(opts) do
       AssetHashResolver.resolve_asset_fk(asset_id, snapshot, project_id)
-    else
-      nil
     end
   end
 
   # ========== Diff Snapshots ==========
-
-  alias Storyarn.Versioning.DiffHelpers
 
   @layer_compare_fields ~w(name is_default visible fog_enabled fog_color fog_opacity)
   @pin_compare_fields ~w(pin_type icon color opacity label shortcut hidden size flow_id tooltip sheet_id icon_asset_id condition condition_effect locked)
@@ -1166,13 +1123,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     |> diff_connections(old_conns, new_conns, pin_index_remap)
   end
 
-  defp build_pin_index_remap(
-         matched_layers,
-         old_layers,
-         new_layers,
-         old_orphan_pins,
-         new_orphan_pins
-       ) do
+  defp build_pin_index_remap(matched_layers, old_layers, new_layers, old_orphan_pins, new_orphan_pins) do
     old_layer_index = old_layers |> Enum.with_index() |> Map.new()
     new_layer_index = new_layers |> Enum.with_index() |> Map.new()
 
@@ -1300,8 +1251,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       end)
 
     key_fn = fn conn ->
-      {conn["from_layer_index"], conn["from_pin_index"], conn["to_layer_index"],
-       conn["to_pin_index"]}
+      {conn["from_layer_index"], conn["from_pin_index"], conn["to_layer_index"], conn["to_pin_index"]}
     end
 
     {matched, added, removed} = DiffHelpers.match_by_keys(remapped_old_conns, new_conns, [key_fn])
@@ -1343,11 +1293,9 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   # Detail formatters
 
-  defp layer_detail(:added, layer),
-    do: dgettext("scenes", "Added layer \"%{name}\"", name: layer["name"] || "")
+  defp layer_detail(:added, layer), do: dgettext("scenes", "Added layer \"%{name}\"", name: layer["name"] || "")
 
-  defp layer_detail(:removed, layer),
-    do: dgettext("scenes", "Removed layer \"%{name}\"", name: layer["name"] || "")
+  defp layer_detail(:removed, layer), do: dgettext("scenes", "Removed layer \"%{name}\"", name: layer["name"] || "")
 
   defp pin_detail(action, pin, layer) do
     label = pin["label"] || ""
@@ -1355,19 +1303,19 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
     case action do
       :added ->
-        dgettext("scenes", "Added pin \"%{label}\" in layer \"%{layer}\"",
+        dgettext("scenes", ~s(Added pin "%{label}" in layer "%{layer}"),
           label: label,
           layer: layer_name
         )
 
       :removed ->
-        dgettext("scenes", "Removed pin \"%{label}\" in layer \"%{layer}\"",
+        dgettext("scenes", ~s(Removed pin "%{label}" in layer "%{layer}"),
           label: label,
           layer: layer_name
         )
 
       :modified ->
-        dgettext("scenes", "Modified pin \"%{label}\" in layer \"%{layer}\"",
+        dgettext("scenes", ~s(Modified pin "%{label}" in layer "%{layer}"),
           label: label,
           layer: layer_name
         )
@@ -1380,19 +1328,19 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
     case action do
       :added ->
-        dgettext("scenes", "Added zone \"%{name}\" in layer \"%{layer}\"",
+        dgettext("scenes", ~s(Added zone "%{name}" in layer "%{layer}"),
           name: name,
           layer: layer_name
         )
 
       :removed ->
-        dgettext("scenes", "Removed zone \"%{name}\" in layer \"%{layer}\"",
+        dgettext("scenes", ~s(Removed zone "%{name}" in layer "%{layer}"),
           name: name,
           layer: layer_name
         )
 
       :modified ->
-        dgettext("scenes", "Modified zone \"%{name}\" in layer \"%{layer}\"",
+        dgettext("scenes", ~s(Modified zone "%{name}" in layer "%{layer}"),
           name: name,
           layer: layer_name
         )
@@ -1505,8 +1453,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   defp maybe_add_ref(refs, _type, nil, _context), do: refs
 
-  defp maybe_add_ref(refs, type, id, context),
-    do: [%{type: type, id: id, context: context} | refs]
+  defp maybe_add_ref(refs, type, id, context), do: [%{type: type, id: id, context: context} | refs]
 
   defp resolve_scene_sheet_id(sheet_id, project_id, opts) do
     MaterializationHelpers.resolve_project_external_ref(

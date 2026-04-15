@@ -18,7 +18,6 @@ defmodule StoryarnWeb.RouterTest do
       conn = get(conn, ~p"/users/log-in")
       assert html_response(conn, 200)
     end
-
   end
 
   # ── Auth gating ────────────────────────────────────────────────
@@ -161,7 +160,7 @@ defmodule StoryarnWeb.RouterTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 

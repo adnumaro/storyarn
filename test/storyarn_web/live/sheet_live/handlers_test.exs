@@ -52,7 +52,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Delete Block Sheet"})
       block = block_fixture(sheet, %{type: "text", config: %{"label" => "Name"}})
       %{project: project, workspace: project.workspace, sheet: sheet, block: block}
@@ -88,7 +88,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
 
       # View should still be alive and the real block should be untouched
       assert render(view) =~ "Delete Block Sheet"
-      assert Sheets.get_block(block.id) != nil
+      assert Sheets.get_block(block.id)
     end
   end
 
@@ -96,7 +96,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Update Value Sheet"})
       block = block_fixture(sheet, %{type: "text", config: %{"label" => "Description"}})
       %{project: project, workspace: project.workspace, sheet: sheet, block: block}
@@ -149,7 +149,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Table Column Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Inventory"})
       %{project: project, workspace: project.workspace, sheet: sheet, table_block: table_block}
@@ -182,7 +182,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Table Row Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Items"})
       %{project: project, workspace: project.workspace, sheet: sheet, table_block: table_block}
@@ -215,7 +215,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Rename Column Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Stats"})
       column = table_column_fixture(table_block, %{name: "Health"})
@@ -270,7 +270,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Rename Row Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Characters"})
       row = table_row_fixture(table_block, %{name: "Warrior"})
@@ -325,7 +325,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Delete Column Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Weapons"})
       # Table blocks come with a default column; add a second one so we can delete it
@@ -365,7 +365,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Delete Row Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Items"})
       # Table blocks come with a default row; add a second one so we can delete it
@@ -405,7 +405,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Cell Update Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Stats"})
 
@@ -449,7 +449,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Collapse Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Collapsible"})
       %{project: project, workspace: project.workspace, sheet: sheet, table_block: table_block}
@@ -477,7 +477,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Column Type Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Typed Table"})
       column = table_column_fixture(table_block, %{name: "Field"})
@@ -514,7 +514,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Column Constant Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Constants"})
       column = table_column_fixture(table_block, %{name: "Fixed"})
@@ -552,7 +552,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Column Required Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Required Table"})
       column = table_column_fixture(table_block, %{name: "Mandatory"})
@@ -590,7 +590,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Reorder Rows Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Ordered"})
       row2 = table_row_fixture(table_block, %{name: "Second"})
@@ -639,7 +639,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Bool Cell Sheet"})
       table_block = table_block_fixture(sheet, %{label: "Flags"})
       bool_column = table_column_fixture(table_block, %{name: "Active", type: "boolean"})
@@ -689,7 +689,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent_sheet = sheet_fixture(project, %{name: "Parent Character"})
 
       # Create an inheritable block on the parent (scope: "children")
@@ -751,7 +751,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent_sheet = sheet_fixture(project, %{name: "Required Sheet"})
 
       inheritable_block =
@@ -791,7 +791,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
 
     setup %{user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       sheet = sheet_fixture(project, %{name: "Viewer Sheet"})
       block = block_fixture(sheet, %{type: "text", config: %{"label" => "ReadOnly"}})
@@ -812,7 +812,7 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
       refute html =~ "phx-click=\"delete_block\""
 
       # Block should still exist
-      assert Sheets.get_block(block.id) != nil
+      assert Sheets.get_block(block.id)
     end
 
     test "viewer cannot add a block", %{
@@ -836,5 +836,4 @@ defmodule StoryarnWeb.SheetLive.HandlersTest do
   # ===========================================================================
   # Block label update
   # ===========================================================================
-
 end

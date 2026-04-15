@@ -6,9 +6,12 @@ defmodule Storyarn.Flows.FlowConnection do
   Connections have source and target pins, and can optionally have labels.
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
-  alias Storyarn.Flows.{Flow, FlowNode}
+  alias Ecto.Association.NotLoaded
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowNode
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -16,11 +19,11 @@ defmodule Storyarn.Flows.FlowConnection do
           target_pin: String.t() | nil,
           label: String.t() | nil,
           flow_id: integer() | nil,
-          flow: Flow.t() | Ecto.Association.NotLoaded.t() | nil,
+          flow: Flow.t() | NotLoaded.t() | nil,
           source_node_id: integer() | nil,
-          source_node: FlowNode.t() | Ecto.Association.NotLoaded.t() | nil,
+          source_node: FlowNode.t() | NotLoaded.t() | nil,
           target_node_id: integer() | nil,
-          target_node: FlowNode.t() | Ecto.Association.NotLoaded.t() | nil,
+          target_node: FlowNode.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }

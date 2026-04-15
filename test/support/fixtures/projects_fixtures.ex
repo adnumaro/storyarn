@@ -7,6 +7,7 @@ defmodule Storyarn.ProjectsFixtures do
   alias Storyarn.AccountsFixtures
   alias Storyarn.Projects
   alias Storyarn.Projects.ProjectInvitation
+  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.WorkspacesFixtures
 
   def unique_project_name, do: "Project #{System.unique_integer([:positive])}"
@@ -43,8 +44,8 @@ defmodule Storyarn.ProjectsFixtures do
   """
   def membership_fixture(project, user, role \\ "editor") do
     {:ok, membership} =
-      %Storyarn.Projects.ProjectMembership{}
-      |> Storyarn.Projects.ProjectMembership.changeset(%{
+      %ProjectMembership{}
+      |> ProjectMembership.changeset(%{
         project_id: project.id,
         user_id: user.id,
         role: role

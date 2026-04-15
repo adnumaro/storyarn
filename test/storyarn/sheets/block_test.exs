@@ -381,7 +381,7 @@ defmodule Storyarn.Sheets.BlockTest do
   describe "delete_changeset/1" do
     test "sets deleted_at" do
       cs = Block.delete_changeset(%Block{type: "text"})
-      assert Ecto.Changeset.get_change(cs, :deleted_at) != nil
+      assert Ecto.Changeset.get_change(cs, :deleted_at)
     end
   end
 

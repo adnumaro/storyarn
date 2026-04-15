@@ -8,11 +8,14 @@ defmodule Storyarn.Scenes.SceneLayer do
   Every map has at least one layer (the default layer created automatically).
   """
   use Ecto.Schema
-  import Ecto.Changeset
 
+  import Ecto.Changeset
   import Storyarn.Scenes.ChangesetHelpers
 
-  alias Storyarn.Scenes.{Scene, ScenePin, SceneZone}
+  alias Ecto.Association.NotLoaded
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.ScenePin
+  alias Storyarn.Scenes.SceneZone
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -24,9 +27,9 @@ defmodule Storyarn.Scenes.SceneLayer do
           fog_color: String.t() | nil,
           fog_opacity: float(),
           scene_id: integer() | nil,
-          scene: Scene.t() | Ecto.Association.NotLoaded.t() | nil,
-          zones: [SceneZone.t()] | Ecto.Association.NotLoaded.t(),
-          pins: [ScenePin.t()] | Ecto.Association.NotLoaded.t(),
+          scene: Scene.t() | NotLoaded.t() | nil,
+          zones: [SceneZone.t()] | NotLoaded.t(),
+          pins: [ScenePin.t()] | NotLoaded.t(),
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }

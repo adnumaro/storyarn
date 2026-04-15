@@ -35,14 +35,13 @@ defmodule Storyarn.Shared.HtmlSanitizer do
         tree |> strip_unsafe_nodes() |> Floki.raw_html()
 
       _ ->
-        Phoenix.HTML.html_escape(html) |> Phoenix.HTML.safe_to_string()
+        html |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
     end
   end
 
   def sanitize_html(_), do: ""
 
-  defp strip_unsafe_nodes(nodes) when is_list(nodes),
-    do: Enum.flat_map(nodes, &strip_unsafe_node/1)
+  defp strip_unsafe_nodes(nodes) when is_list(nodes), do: Enum.flat_map(nodes, &strip_unsafe_node/1)
 
   defp strip_unsafe_node({tag, attrs, children}) do
     if tag in @allowed_tags do

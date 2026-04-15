@@ -1,10 +1,10 @@
 defmodule Storyarn.Assets.BlobStoreTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Assets.BlobStore
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias Storyarn.Assets.BlobStore
 
   setup do
     user = user_fixture()

@@ -93,15 +93,14 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
 
       expired_at = DateTime.utc_now() |> DateTime.add(-1, :day) |> DateTime.truncate(:second)
 
-      %ProjectInvitation{
+      Repo.insert!(%ProjectInvitation{
         project_id: project.id,
         invited_by_id: owner.id,
         email: "expired@example.com",
         token: hashed_token,
         role: "editor",
         expires_at: expired_at
-      }
-      |> Repo.insert!()
+      })
 
       {:ok, view, _html} = live(conn, ~p"/projects/invitations/#{encoded_token}")
 

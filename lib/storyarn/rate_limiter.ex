@@ -29,6 +29,8 @@ defmodule Storyarn.RateLimiter do
         {:error, :rate_limited} -> show_error(...)
       end
   """
+  alias Storyarn.RateLimiter.ETSBackend
+  alias Storyarn.RateLimiter.RedisBackend
 
   # Login: 5 attempts per minute per IP
   @login_limit 5
@@ -91,8 +93,8 @@ defmodule Storyarn.RateLimiter do
   """
   def backend do
     case Application.get_env(:storyarn, :rate_limiter_backend) do
-      :redis -> Storyarn.RateLimiter.RedisBackend
-      _ -> Storyarn.RateLimiter.ETSBackend
+      :redis -> RedisBackend
+      _ -> ETSBackend
     end
   end
 
@@ -104,10 +106,10 @@ defmodule Storyarn.RateLimiter do
     case Application.get_env(:storyarn, :rate_limiter_backend) do
       :redis ->
         redis_url = System.get_env("REDIS_URL") || "redis://localhost:6379"
-        {Storyarn.RateLimiter.RedisBackend, url: redis_url}
+        {RedisBackend, url: redis_url}
 
       _ ->
-        {Storyarn.RateLimiter.ETSBackend, clean_period: :timer.minutes(10)}
+        {ETSBackend, clean_period: to_timeout(minute: 10)}
     end
   end
 
@@ -125,7 +127,8 @@ defmodule Storyarn.RateLimiter do
   end
 
   defp enabled? do
-    Application.get_env(:storyarn, __MODULE__, [])
+    :storyarn
+    |> Application.get_env(__MODULE__, [])
     |> Keyword.get(:enabled, true)
   end
 end

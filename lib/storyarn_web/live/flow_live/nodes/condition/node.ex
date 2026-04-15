@@ -9,6 +9,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Flows
+  alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
   def type, do: "condition"
   def icon_name, do: "git-branch"
@@ -34,8 +35,6 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
   def duplicate_data_cleanup(data), do: data
 
   # -- Condition-specific event handlers --
-
-  alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
   @doc "Handles full-state push from the JS condition builder hook."
   def handle_update_condition_builder(%{"condition" => condition_data}, socket) do

@@ -3,8 +3,8 @@ defmodule StoryarnWeb.ProjectLive.TrashTest do
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
-  import Storyarn.SheetsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Repo
   alias Storyarn.Sheets
@@ -17,7 +17,7 @@ defmodule StoryarnWeb.ProjectLive.TrashTest do
     setup :register_and_log_in_user
 
     test "renders Trash Vue component for owner", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} =
         live(
@@ -32,7 +32,7 @@ defmodule StoryarnWeb.ProjectLive.TrashTest do
 
     test "renders for editor member", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
 
       {:ok, view, _html} =
@@ -47,7 +47,7 @@ defmodule StoryarnWeb.ProjectLive.TrashTest do
 
     test "redirects non-member", %{conn: conn} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
 
       {:error, {:redirect, %{to: path, flash: flash}}} =
         live(
@@ -60,7 +60,7 @@ defmodule StoryarnWeb.ProjectLive.TrashTest do
     end
 
     test "passes empty list when trash is empty", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} =
         live(
@@ -73,7 +73,7 @@ defmodule StoryarnWeb.ProjectLive.TrashTest do
     end
 
     test "passes trashed sheets to Vue", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Deleted Sheet"})
 
       # Soft-delete the sheet

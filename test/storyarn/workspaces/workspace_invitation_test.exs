@@ -1,10 +1,10 @@
 defmodule Storyarn.Workspaces.WorkspaceInvitationTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Workspaces.WorkspaceInvitation
-
   import Storyarn.AccountsFixtures
   import Storyarn.WorkspacesFixtures
+
+  alias Storyarn.Workspaces.WorkspaceInvitation
 
   describe "changeset/2" do
     setup do
@@ -104,8 +104,8 @@ defmodule Storyarn.Workspaces.WorkspaceInvitationTest do
       assert invitation.invited_by_id == user.id
       assert invitation.email == "invitee@example.com"
       assert invitation.role == "member"
-      assert invitation.token != nil
-      assert invitation.expires_at != nil
+      assert invitation.token
+      assert invitation.expires_at
     end
 
     test "downcases email", %{workspace: workspace, user: user} do
@@ -162,7 +162,7 @@ defmodule Storyarn.Workspaces.WorkspaceInvitationTest do
       assert %Ecto.Query{} = query
 
       result = Repo.one(query)
-      assert result != nil
+      assert result
       assert result.email == "invitee@example.com"
     end
 

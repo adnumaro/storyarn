@@ -11,24 +11,24 @@ defmodule Storyarn.Sheets do
   - `TreeOperations` - Tree reordering and movement operations
   """
 
-  alias Storyarn.Sheets.{
-    AvatarCrud,
-    Block,
-    BlockCrud,
-    GalleryCrud,
-    PropertyInheritance,
-    Sheet,
-    SheetAvatar,
-    SheetCrud,
-    SheetQueries,
-    SheetStats,
-    TableCrud,
-    TreeOperations
-  }
-
+  alias Storyarn.Accounts.User
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
+  alias Storyarn.References
   alias Storyarn.Repo
+  alias Storyarn.Sheets.AvatarCrud
+  alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.BlockCrud
+  alias Storyarn.Sheets.Constraints.Number
+  alias Storyarn.Sheets.GalleryCrud
+  alias Storyarn.Sheets.PropertyInheritance
+  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.SheetAvatar
+  alias Storyarn.Sheets.SheetCrud
+  alias Storyarn.Sheets.SheetQueries
+  alias Storyarn.Sheets.SheetStats
+  alias Storyarn.Sheets.TableCrud
+  alias Storyarn.Sheets.TreeOperations
   alias Storyarn.Versioning
   alias Storyarn.Versioning.EntityVersion
 
@@ -314,14 +314,14 @@ defmodule Storyarn.Sheets do
   Parses a string value, clamps to min/max constraints, and formats back to string.
   """
   defdelegate number_clamp_and_format(value, config),
-    to: Storyarn.Sheets.Constraints.Number,
+    to: Number,
     as: :clamp_and_format
 
   @doc """
   Parses a constraint value (from form params or config) into a number or nil.
   """
   defdelegate number_parse_constraint(value),
-    to: Storyarn.Sheets.Constraints.Number,
+    to: Number,
     as: :parse_constraint
 
   @doc """
@@ -331,19 +331,16 @@ defmodule Storyarn.Sheets do
   Rich text values pass through unclamped.
   """
   @spec clamp_to_constraints(any(), map() | nil, String.t()) :: any()
-  def clamp_to_constraints(value, constraints, "number"),
-    do: Storyarn.Sheets.Constraints.Number.clamp(value, constraints)
+  def clamp_to_constraints(value, constraints, "number"), do: Number.clamp(value, constraints)
 
-  def clamp_to_constraints(value, constraints, "text"),
-    do: Storyarn.Sheets.Constraints.String.clamp(value, constraints)
+  def clamp_to_constraints(value, constraints, "text"), do: Storyarn.Sheets.Constraints.String.clamp(value, constraints)
 
   def clamp_to_constraints(value, _constraints, "rich_text"), do: value
 
   def clamp_to_constraints(value, constraints, type) when type in ["select", "multi_select"],
     do: Storyarn.Sheets.Constraints.Selector.clamp(value, constraints)
 
-  def clamp_to_constraints(value, constraints, "date"),
-    do: Storyarn.Sheets.Constraints.Date.clamp(value, constraints)
+  def clamp_to_constraints(value, constraints, "date"), do: Storyarn.Sheets.Constraints.Date.clamp(value, constraints)
 
   def clamp_to_constraints(value, constraints, "boolean"),
     do: Storyarn.Sheets.Constraints.Boolean.clamp(value, constraints)
@@ -587,7 +584,7 @@ defmodule Storyarn.Sheets do
   """
   def create_version(sheet, user_or_id, opts \\ [])
 
-  def create_version(%Sheet{} = sheet, %Storyarn.Accounts.User{} = user, opts) do
+  def create_version(%Sheet{} = sheet, %User{} = user, opts) do
     create_version(sheet, user.id, opts)
   end
 
@@ -628,7 +625,7 @@ defmodule Storyarn.Sheets do
   """
   def maybe_create_version(sheet, user_or_id, opts \\ [])
 
-  def maybe_create_version(%Sheet{} = sheet, %Storyarn.Accounts.User{} = user, opts) do
+  def maybe_create_version(%Sheet{} = sheet, %User{} = user, opts) do
     maybe_create_version(sheet, user.id, opts)
   end
 
@@ -661,7 +658,7 @@ defmodule Storyarn.Sheets do
   Sets the current version for a sheet.
   """
   def set_current_version(%Sheet{} = sheet, version_or_nil) do
-    version_id = if version_or_nil, do: version_or_nil.id, else: nil
+    version_id = if version_or_nil, do: version_or_nil.id
 
     sheet
     |> Sheet.version_changeset(%{current_version_id: version_id})
@@ -750,8 +747,6 @@ defmodule Storyarn.Sheets do
   # =============================================================================
   # Reference Tracking (Backlinks)
   # =============================================================================
-
-  alias Storyarn.References
 
   @doc """
   Gets backlinks for a target with resolved source information.

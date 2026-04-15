@@ -31,11 +31,11 @@ end
 
 # Sentry error tracking
 if sentry_dsn = System.get_env("SENTRY_DSN") do
-  config :sentry, dsn: sentry_dsn
-
   config :logger, :sentry,
     level: :error,
     metadata: [:request_id, :user_id]
+
+  config :sentry, dsn: sentry_dsn
 end
 
 # Trust X-Forwarded-For header when behind a reverse proxy (CloudFlare, AWS ELB, etc.)
@@ -61,14 +61,6 @@ if config_env() == :prod do
       Generate one with: 32 |> :crypto.strong_rand_bytes() |> Base.encode64()
       """
 
-  config :storyarn, Storyarn.Vault,
-    ciphers: [
-      default: {
-        Cloak.Ciphers.AES.GCM,
-        tag: "AES.GCM.V1", key: Base.decode64!(cloak_key), iv_length: 12
-      }
-    ]
-
   database_url =
     System.get_env("DATABASE_URL") ||
       raise """
@@ -77,14 +69,6 @@ if config_env() == :prod do
       """
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
-
-  config :storyarn, Storyarn.Repo,
-    ssl: if(System.get_env("DATABASE_SSL") != "false", do: true, else: false),
-    url: database_url,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
-    # For machines with several cores, consider starting multiple pools of `pool_size`
-    # pool_count: 4,
-    socket_options: maybe_ipv6
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
@@ -101,11 +85,21 @@ if config_env() == :prod do
   host = System.get_env("PHX_HOST") || "example.com"
   port = String.to_integer(System.get_env("PORT") || "4000")
 
-  config :storyarn, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
+  config :storyarn, Storyarn.Repo,
+    ssl: if(System.get_env("DATABASE_SSL") == "false", do: false, else: true),
+    url: database_url,
+    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
+    # For machines with several cores, consider starting multiple pools of `pool_size`
+    # pool_count: 4,
+    socket_options: maybe_ipv6
 
-  # Session and LiveView salts are compile-time values (used in endpoint.ex
-  # with compile_env!). They are set in config.exs and cannot be overridden
-  # at runtime. Security comes from SECRET_KEY_BASE, not these salts.
+  config :storyarn, Storyarn.Vault,
+    ciphers: [
+      default: {
+        Cloak.Ciphers.AES.GCM,
+        tag: "AES.GCM.V1", key: Base.decode64!(cloak_key), iv_length: 12
+      }
+    ]
 
   config :storyarn, StoryarnWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
@@ -113,9 +107,14 @@ if config_env() == :prod do
       # Bind on all IPv4 and IPv6 interfaces.
       # Fly.io health checks connect via IPv4 (0.0.0.0), so we must listen on IPv4.
       ip: {0, 0, 0, 0},
+      # Session and LiveView salts are compile-time values (used in endpoint.ex
+      # with compile_env!). They are set in config.exs and cannot be overridden
+      # at runtime. Security comes from SECRET_KEY_BASE, not these salts.
       port: port
     ],
     secret_key_base: secret_key_base
+
+  config :storyarn, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   # ## SSL Support
   #
@@ -157,12 +156,6 @@ if config_env() == :prod do
       api_key: resend_api_key
   end
 
-  # Default "from" email address (tuple format matching notifier expectations)
-  config :storyarn,
-         :mailer_sender,
-         {System.get_env("MAILER_FROM_NAME", "Storyarn"),
-          System.get_env("MAILER_FROM_EMAIL", "noreply@storyarn.com")}
-
   # S3-compatible Storage Configuration
   # Supports Cloudflare R2 (R2_* vars) and Fly Tigris (AWS_* vars)
   {s3_access_key, s3_secret_key, s3_bucket, s3_endpoint, s3_public_url} =
@@ -195,16 +188,21 @@ if config_env() == :prod do
         {nil, nil, nil, nil, nil}
     end
 
+  # Default "from" email address (tuple format matching notifier expectations)
+  config :storyarn,
+         :mailer_sender,
+         {System.get_env("MAILER_FROM_NAME", "Storyarn"), System.get_env("MAILER_FROM_EMAIL", "noreply@storyarn.com")}
+
   if s3_access_key do
     %URI{host: s3_host} = URI.parse(s3_endpoint)
-
-    config :ex_aws,
-      access_key_id: s3_access_key,
-      secret_access_key: s3_secret_key
 
     config :ex_aws, :s3,
       host: s3_host,
       scheme: "https://"
+
+    config :ex_aws,
+      access_key_id: s3_access_key,
+      secret_access_key: s3_secret_key
 
     config :storyarn, :r2,
       bucket: s3_bucket,

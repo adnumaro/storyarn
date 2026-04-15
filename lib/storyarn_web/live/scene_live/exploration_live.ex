@@ -23,9 +23,10 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Scenes
-  alias Storyarn.Shared.{FormulaRuntime, HtmlUtils, MapUtils}
+  alias Storyarn.Shared.FormulaRuntime
+  alias Storyarn.Shared.HtmlUtils
+  alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
-
   alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
@@ -105,8 +106,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     }
 
     responses =
-      (slide[:responses] || [])
-      |> Enum.map(fn r ->
+      Enum.map(slide[:responses] || [], fn r ->
         %{id: r.id, text: r.text, valid: r.valid, number: r.number}
       end)
 
@@ -118,15 +118,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   # ===========================================================================
 
   @impl true
-  def mount(
-        %{
-          "workspace_slug" => workspace_slug,
-          "project_slug" => project_slug,
-          "id" => scene_id
-        },
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => scene_id}, _session, socket) do
     case Projects.get_project_by_slugs(
            socket.assigns.current_scope,
            workspace_slug,
@@ -149,9 +141,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         {:ok,
          socket
          |> put_flash(:error, dgettext("scenes", "Scene not found."))
-         |> redirect(
-           to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-         )}
+         |> redirect(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes")}
 
       scene ->
         user_id = socket.assigns.current_scope.user.id
@@ -377,8 +367,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         end
 
       {:error, _state, _reason} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("scenes", "Could not select that response."))}
+        {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not select that response."))}
     end
   end
 
@@ -485,10 +474,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   # Private — Element Click Handling
   # ===========================================================================
 
-  defp handle_element_action(
-         %{"action_type" => "instruction", "action_data" => action_data},
-         socket
-       ) do
+  defp handle_element_action(%{"action_type" => "instruction", "action_data" => action_data}, socket) do
     assignments = action_data["assignments"] || []
 
     case Flows.execute_instructions(assignments, socket.assigns.variables) do
@@ -496,11 +482,11 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         new_variables = FormulaRuntime.recompute_formulas(new_variables)
         socket = refresh_exploration_state(socket, new_variables)
 
-        if warnings != [] do
+        if warnings == [] do
+          socket
+        else
           msg = Enum.map_join(warnings, "\n", & &1.message)
           put_flash(socket, :warning, msg)
-        else
-          socket
         end
 
       _ ->
@@ -540,8 +526,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     end
   end
 
-  defp handle_element_target(%{"element_type" => "pin", "flow_id" => flow_id}, socket)
-       when is_integer(flow_id) do
+  defp handle_element_target(%{"element_type" => "pin", "flow_id" => flow_id}, socket) when is_integer(flow_id) do
     case init_flow(socket, flow_id) do
       {:ok, socket} -> socket
       {:error, socket} -> socket
@@ -654,7 +639,8 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
       entry_id ->
         state =
-          Flows.evaluator_init(variables, entry_id)
+          variables
+          |> Flows.evaluator_init(entry_id)
           |> Map.put(:current_flow_id, flow_id)
 
         case PlayerEngine.step_until_interactive(state, nodes_map, connections) do
@@ -674,10 +660,8 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   defp handle_exploration_flow_jump(socket, state, target_flow_id, depth \\ 0)
 
-  defp handle_exploration_flow_jump(socket, _state, _target_flow_id, depth)
-       when depth > @max_exploration_jump_depth do
-    {:noreply,
-     put_flash(socket, :error, dgettext("scenes", "Too many nested subflows. Stopping execution."))}
+  defp handle_exploration_flow_jump(socket, _state, _target_flow_id, depth) when depth > @max_exploration_jump_depth do
+    {:noreply, put_flash(socket, :error, dgettext("scenes", "Too many nested subflows. Stopping execution."))}
   end
 
   defp handle_exploration_flow_jump(socket, state, target_flow_id, depth) do
@@ -695,8 +679,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
     case DebugExecutionHandlers.find_entry_node(target_nodes) do
       nil ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("scenes", "Target flow has no entry node."))}
+        {:noreply, put_flash(socket, :error, dgettext("scenes", "Target flow has no entry node."))}
 
       entry_id ->
         log_entry = %{node_id: entry_id, depth: length(state.call_stack)}
@@ -731,10 +714,8 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   defp handle_exploration_flow_return(socket, state, depth \\ 0)
 
-  defp handle_exploration_flow_return(socket, _state, depth)
-       when depth > @max_exploration_jump_depth do
-    {:noreply,
-     put_flash(socket, :error, dgettext("scenes", "Too many nested subflows. Stopping execution."))}
+  defp handle_exploration_flow_return(socket, _state, depth) when depth > @max_exploration_jump_depth do
+    {:noreply, put_flash(socket, :error, dgettext("scenes", "Too many nested subflows. Stopping execution."))}
   end
 
   defp handle_exploration_flow_return(socket, state, depth) do
@@ -857,8 +838,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     do_build_slide_or_advance(engine_state, nodes_map, connections, sheets_map, project_id, 0)
   end
 
-  defp do_build_slide_or_advance(state, _nodes, _conns, _sheets, _pid, attempts)
-       when attempts >= @max_empty_advances do
+  defp do_build_slide_or_advance(state, _nodes, _conns, _sheets, _pid, attempts) when attempts >= @max_empty_advances do
     {:finished, state}
   end
 
@@ -1188,7 +1168,8 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     project_id = socket.assigns.project.id
 
     attrs =
-      build_session_attrs(socket)
+      socket
+      |> build_session_attrs()
       |> Map.merge(%{
         player_positions: %{
           "leader" => position_params["leader"],
@@ -1226,7 +1207,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   end
 
   defp init_ambient_triggers(socket, scene_id) do
-    all_flows = Scenes.list_ambient_flows(scene_id) |> Enum.filter(& &1.enabled)
+    all_flows = scene_id |> Scenes.list_ambient_flows() |> Enum.filter(& &1.enabled)
     completed = socket.assigns.completed_ambient_ids
 
     {on_enter, rest} = Enum.split_with(all_flows, &(&1.trigger_type == "on_enter"))
@@ -1543,8 +1524,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   defp handle_ambient_flow_jump(socket, current, state, target_flow_id, depth \\ 0)
 
-  defp handle_ambient_flow_jump(socket, _current, _state, _target_flow_id, depth)
-       when depth > @max_ambient_jump_depth do
+  defp handle_ambient_flow_jump(socket, _current, _state, _target_flow_id, depth) when depth > @max_ambient_jump_depth do
     finish_ambient_flow(socket)
   end
 
@@ -1622,8 +1602,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   defp handle_ambient_flow_return(socket, current, state, depth \\ 0)
 
-  defp handle_ambient_flow_return(socket, _current, _state, depth)
-       when depth > @max_ambient_jump_depth do
+  defp handle_ambient_flow_return(socket, _current, _state, depth) when depth > @max_ambient_jump_depth do
     finish_ambient_flow(socket)
   end
 
@@ -1725,11 +1704,11 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   defp sync_ambient_variables(socket, engine_state) do
     new_variables = engine_state.variables
 
-    if new_variables != socket.assigns.variables do
+    if new_variables == socket.assigns.variables do
+      socket
+    else
       new_variables = FormulaRuntime.recompute_formulas(new_variables)
       apply_variable_update(socket, new_variables)
-    else
-      socket
     end
   end
 

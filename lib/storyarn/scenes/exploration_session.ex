@@ -7,6 +7,7 @@ defmodule Storyarn.Scenes.ExplorationSession do
   """
 
   use Ecto.Schema
+
   import Ecto.Changeset
 
   schema "exploration_sessions" do

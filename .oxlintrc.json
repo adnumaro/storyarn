@@ -28,7 +28,11 @@
     "tailwindcss/enforce-shorthand": "error",
     "tailwindcss/no-hardcoded-colors": "error"
   },
-  "ignorePatterns": ["assets/app/components/ui/**", "assets/app/components/ColorPickerPopover.vue", "priv/**"],
+  "ignorePatterns": [
+    "assets/app/components/ui/**",
+    "assets/app/components/ColorPickerPopover.vue",
+    "priv/**"
+  ],
   "env": {
     "builtin": true
   }

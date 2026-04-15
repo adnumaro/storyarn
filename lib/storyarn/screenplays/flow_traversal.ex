@@ -10,7 +10,8 @@ defmodule Storyarn.Screenplays.FlowTraversal do
   No side effects — all functions are deterministic and database-free.
   """
 
-  alias Storyarn.Flows.{FlowConnection, FlowNode}
+  alias Storyarn.Flows.FlowConnection
+  alias Storyarn.Flows.FlowNode
 
   # ---------------------------------------------------------------------------
   # Adjacency list: %{source_node_id => %{source_pin => target_node_id}}
@@ -61,8 +62,7 @@ defmodule Storyarn.Screenplays.FlowTraversal do
         nodes_by_id = Map.new(nodes, &{&1.id, &1})
 
         {result, _visited} =
-          Enum.reduce(entries, {%{nodes: [], branches: []}, MapSet.new()}, fn entry,
-                                                                              {acc, visited} ->
+          Enum.reduce(entries, {%{nodes: [], branches: []}, MapSet.new()}, fn entry, {acc, visited} ->
             {tree, visited} = traverse_tree(entry, adjacency, nodes_by_id, visited)
             {%{nodes: acc.nodes ++ tree.nodes, branches: acc.branches ++ tree.branches}, visited}
           end)

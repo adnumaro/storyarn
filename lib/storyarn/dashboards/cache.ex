@@ -10,8 +10,8 @@ defmodule Storyarn.Dashboards.Cache do
   use GenServer
 
   @table :storyarn_dashboard_cache
-  @ttl_ms :timer.seconds(30)
-  @cleanup_interval_ms :timer.seconds(15)
+  @ttl_ms to_timeout(second: 30)
+  @cleanup_interval_ms to_timeout(second: 15)
 
   # ===========================================================================
   # Client API

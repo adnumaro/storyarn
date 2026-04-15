@@ -1,7 +1,8 @@
 defmodule Storyarn.Accounts.Passwords do
   @moduledoc false
 
-  alias Storyarn.Accounts.{Sessions, User}
+  alias Storyarn.Accounts.Sessions
+  alias Storyarn.Accounts.User
   alias Storyarn.Repo
 
   @doc """

@@ -9,12 +9,15 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   Delegates heavy lifting to NodeHelpers. Returns `{:noreply, socket}`.
   """
 
-  import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, push_patch: 2, put_flash: 3]
-
   use StoryarnWeb, :verified_routes
   use Gettext, backend: Storyarn.Gettext
 
+  import Phoenix.Component, only: [assign: 3]
+  import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, push_patch: 2, put_flash: 3]
+  import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
+  import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
+
+  alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
   alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
@@ -22,11 +25,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
-  import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
-  import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
-
-  @spec handle_add_node(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_add_node(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_add_node(%{"type" => type} = params, socket) do
     opts =
       case {params["position_x"], params["position_y"]} do
@@ -37,8 +37,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     NodeHelpers.add_node(socket, type, opts)
   end
 
-  @spec handle_save_name(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_save_name(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_save_name(%{"name" => name}, socket) do
     flow = socket.assigns.flow
     prev_name = flow.name
@@ -57,8 +57,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     end
   end
 
-  @spec handle_save_shortcut(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_save_shortcut(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_save_shortcut(%{"shortcut" => shortcut}, socket) do
     flow = socket.assigns.flow
     prev_shortcut = flow.shortcut
@@ -83,8 +83,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     end
   end
 
-  @spec handle_restore_flow_meta(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_restore_flow_meta(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_restore_flow_meta(%{"field" => "name", "value" => value}, socket) do
     flow = socket.assigns.flow
 
@@ -127,8 +127,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   def handle_restore_flow_meta(_params, socket), do: {:noreply, socket}
 
-  @spec handle_node_selected(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_node_selected(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_node_selected(%{"id" => node_id}, socket) do
     node = Flows.get_node(socket.assigns.flow.id, node_id)
     if is_nil(node), do: {:noreply, socket}, else: do_handle_node_selected(node_id, node, socket)
@@ -159,8 +159,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
      |> assign(:referencing_flows, [])}
   end
 
-  @spec handle_node_double_clicked(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_node_double_clicked(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_node_double_clicked(%{"id" => node_id}, socket) do
     case Flows.get_node(socket.assigns.flow.id, node_id) do
       nil -> {:noreply, socket}
@@ -192,8 +192,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
     {:noreply,
      push_patch(socket,
-       to:
-         ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}"
+       to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}"
      )}
   end
 
@@ -224,14 +223,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     {:noreply, socket}
   end
 
-  @spec handle_open_sidebar(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_open_sidebar(Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_open_sidebar(socket) do
     {:noreply, assign(socket, :editing_mode, :toolbar)}
   end
 
-  @spec handle_close_editor(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_close_editor(Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_close_editor(socket) do
     # Release the edit lock but keep selected_node set.
     # Clearing selected_node here desynchronises server state from the client's
@@ -252,8 +251,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
      |> assign(:editing_mode, nil)}
   end
 
-  @spec handle_deselect_node(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_deselect_node(Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_deselect_node(socket) do
     socket =
       if socket.assigns.selected_node && socket.assigns.can_edit do
@@ -269,8 +268,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
      |> assign(:editing_mode, nil)}
   end
 
-  @spec handle_create_sheet(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_create_sheet(Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_create_sheet(socket) do
     case Sheets.create_sheet(socket.assigns.project, %{name: dgettext("sheets", "Untitled")}) do
       {:ok, new_sheet} ->
@@ -288,10 +287,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     end
   end
 
-  @spec handle_batch_update_positions(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
-  def handle_batch_update_positions(%{"positions" => positions}, socket)
-      when is_list(positions) do
+  @spec handle_batch_update_positions(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_batch_update_positions(%{"positions" => positions}, socket) when is_list(positions) do
     flow = socket.assigns.flow
 
     parsed =
@@ -315,15 +313,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          |> CollaborationHelpers.broadcast_change(:flow_refresh, %{})}
 
       {:error, _reason} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("flows", "Could not update node positions."))}
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not update node positions."))}
     end
   end
 
   def handle_batch_update_positions(_params, socket), do: {:noreply, socket}
 
-  @spec handle_search_available_flows(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_search_available_flows(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_search_available_flows(%{"query" => query}, socket) when is_binary(query) do
     project_id = socket.assigns.project.id
     current_flow_id = socket.assigns.flow.id
@@ -341,8 +338,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   def handle_search_available_flows(_params, socket), do: {:noreply, socket}
 
-  @spec handle_toggle_deep_search(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_toggle_deep_search(Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_toggle_deep_search(socket) do
     deep = !socket.assigns[:flow_search_deep]
     socket = assign(socket, :flow_search_deep, deep)
@@ -352,8 +349,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     handle_search_available_flows(%{"query" => query}, socket)
   end
 
-  @spec handle_search_flows_more(Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_search_flows_more(Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_search_flows_more(socket) do
     project_id = socket.assigns.project.id
     current_flow_id = socket.assigns.flow.id
@@ -378,8 +375,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   defp search_limit, do: Flows.default_search_limit()
 
-  @spec handle_node_dragging(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_node_dragging(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_node_dragging(%{"id" => node_id, "position_x" => x, "position_y" => y}, socket) do
     # Broadcast-only (no DB write) for real-time drag preview on remote clients.
     # No node existence check — JS validates via nodeMap, and auth is required.
@@ -391,8 +388,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
      })}
   end
 
-  @spec handle_node_moved(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_node_moved(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_node_moved(%{"id" => node_id, "position_x" => x, "position_y" => y}, socket) do
     # Use non-raising get_node/2 — the node may have been deleted while a
     # debounced move event was still in flight.
@@ -418,20 +415,20 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     end
   end
 
-  @spec handle_update_node_data(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_update_node_data(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_update_node_data(%{"node" => node_params}, socket) do
     NodeHelpers.update_node_data(socket, node_params)
   end
 
-  @spec handle_update_node_text(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_update_node_text(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_update_node_text(%{"id" => node_id, "content" => content}, socket) do
     NodeHelpers.update_node_text(socket, node_id, content)
   end
 
-  @spec handle_mention_suggestions(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_mention_suggestions(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_mention_suggestions(%{"query" => query}, socket) do
     project_id = socket.assigns.project.id
     results = Sheets.search_referenceable(project_id, query, ["sheet", "flow"])
@@ -450,20 +447,20 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     {:noreply, push_event(socket, "mention_suggestions_result", %{items: items})}
   end
 
-  @spec handle_delete_node(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_delete_node(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_delete_node(%{"id" => node_id}, socket) do
     NodeHelpers.delete_node(socket, node_id)
   end
 
-  @spec handle_duplicate_node(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_duplicate_node(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_duplicate_node(%{"id" => node_id}, socket) do
     NodeHelpers.duplicate_node(socket, node_id)
   end
 
-  @spec handle_update_node_field(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_update_node_field(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_update_node_field(%{"field" => field, "value" => value}, socket) do
     node = socket.assigns.selected_node
 

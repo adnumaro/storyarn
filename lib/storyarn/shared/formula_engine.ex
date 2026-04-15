@@ -452,33 +452,24 @@ defmodule Storyarn.Shared.FormulaEngine do
 
   defp ast_to_latex({:symbol, s}), do: s
 
-  defp ast_to_latex({:binary_op, :add, l, r}),
-    do: "#{ast_to_latex(l)} + #{ast_to_latex(r)}"
+  defp ast_to_latex({:binary_op, :add, l, r}), do: "#{ast_to_latex(l)} + #{ast_to_latex(r)}"
 
-  defp ast_to_latex({:binary_op, :sub, l, r}),
-    do: "#{ast_to_latex(l)} - #{ast_to_latex(r)}"
+  defp ast_to_latex({:binary_op, :sub, l, r}), do: "#{ast_to_latex(l)} - #{ast_to_latex(r)}"
 
-  defp ast_to_latex({:binary_op, :mul, l, r}),
-    do: "#{wrap_if_additive(l)} \\times #{wrap_if_additive(r)}"
+  defp ast_to_latex({:binary_op, :mul, l, r}), do: "#{wrap_if_additive(l)} \\times #{wrap_if_additive(r)}"
 
-  defp ast_to_latex({:binary_op, :div, l, r}),
-    do: "\\frac{#{ast_to_latex(l)}}{#{ast_to_latex(r)}}"
+  defp ast_to_latex({:binary_op, :div, l, r}), do: "\\frac{#{ast_to_latex(l)}}{#{ast_to_latex(r)}}"
 
-  defp ast_to_latex({:binary_op, :pow, l, r}),
-    do: "{#{wrap_if_complex(l)}}^{#{ast_to_latex(r)}}"
+  defp ast_to_latex({:binary_op, :pow, l, r}), do: "{#{wrap_if_complex(l)}}^{#{ast_to_latex(r)}}"
 
-  defp ast_to_latex({:unary_op, :neg, arg}),
-    do: "-#{wrap_if_complex(arg)}"
+  defp ast_to_latex({:unary_op, :neg, arg}), do: "-#{wrap_if_complex(arg)}"
 
-  defp ast_to_latex({:func, :sqrt, [arg]}),
-    do: "\\sqrt{#{ast_to_latex(arg)}}"
+  defp ast_to_latex({:func, :sqrt, [arg]}), do: "\\sqrt{#{ast_to_latex(arg)}}"
 
-  defp ast_to_latex({:func, name, args}),
-    do: "\\mathrm{#{name}}(#{Enum.map_join(args, ", ", &ast_to_latex/1)})"
+  defp ast_to_latex({:func, name, args}), do: "\\mathrm{#{name}}(#{Enum.map_join(args, ", ", &ast_to_latex/1)})"
 
   # Wrap in parens if the sub-expression is additive (for multiplication display)
-  defp wrap_if_additive({:binary_op, op, _, _} = ast) when op in [:add, :sub],
-    do: "(#{ast_to_latex(ast)})"
+  defp wrap_if_additive({:binary_op, op, _, _} = ast) when op in [:add, :sub], do: "(#{ast_to_latex(ast)})"
 
   defp wrap_if_additive(ast), do: ast_to_latex(ast)
 

@@ -1,4 +1,5 @@
 defmodule TestWaitlist do
+  @moduledoc false
   def run do
     {:ok, view, _html} =
       Phoenix.LiveViewTest.live_isolated(StoryarnWeb.Endpoint, StoryarnWeb.LandingLive.Index)

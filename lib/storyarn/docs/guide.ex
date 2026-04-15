@@ -25,7 +25,8 @@ defmodule Storyarn.Docs.Guide do
 
   @doc "List categories in display order with their labels."
   def list_categories(locale \\ @default_locale) do
-    list_guides(locale)
+    locale
+    |> list_guides()
     |> Enum.map(fn g -> {g.category, g.category_label} end)
     |> Enum.uniq_by(fn {cat, _} -> cat end)
   end
@@ -63,7 +64,7 @@ defmodule Storyarn.Docs.Guide do
 
   @doc "Get the first guide (for index redirect)."
   def first_guide(locale \\ @default_locale) do
-    list_guides(locale) |> List.first()
+    locale |> list_guides() |> List.first()
   end
 
   @doc "Get previous and next guides for navigation."

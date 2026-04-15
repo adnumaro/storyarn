@@ -5,7 +5,10 @@ defmodule Storyarn.Scenes.SceneStats do
 
   alias Storyarn.Localization.LocalizableWords
   alias Storyarn.Repo
-  alias Storyarn.Scenes.{Scene, SceneConnection, ScenePin, SceneZone}
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.SceneConnection
+  alias Storyarn.Scenes.ScenePin
+  alias Storyarn.Scenes.SceneZone
 
   # ===========================================================================
   # Stats
@@ -42,13 +45,12 @@ defmodule Storyarn.Scenes.SceneStats do
   Returns an integer.
   """
   def scenes_with_background_count(project_id) do
-    from(s in Scene,
-      where:
-        s.project_id == ^project_id and is_nil(s.deleted_at) and
-          not is_nil(s.background_asset_id),
-      select: count(s.id)
+    Repo.one(
+      from(s in Scene,
+        where: s.project_id == ^project_id and is_nil(s.deleted_at) and not is_nil(s.background_asset_id),
+        select: count(s.id)
+      )
     )
-    |> Repo.one()
   end
 
   @doc """
@@ -77,36 +79,35 @@ defmodule Storyarn.Scenes.SceneStats do
   end
 
   defp detect_empty_scenes(project_id) do
-    from(s in Scene,
-      left_join: z in SceneZone,
-      on: z.scene_id == s.id,
-      left_join: p in ScenePin,
-      on: p.scene_id == s.id,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at),
-      group_by: [s.id, s.name],
-      having: count(z.id) == 0 and count(p.id) == 0,
-      select: %{issue_type: :empty_scene, scene_id: s.id, scene_name: s.name}
+    Repo.all(
+      from(s in Scene,
+        left_join: z in SceneZone,
+        on: z.scene_id == s.id,
+        left_join: p in ScenePin,
+        on: p.scene_id == s.id,
+        where: s.project_id == ^project_id and is_nil(s.deleted_at),
+        group_by: [s.id, s.name],
+        having: count(z.id) == 0 and count(p.id) == 0,
+        select: %{issue_type: :empty_scene, scene_id: s.id, scene_name: s.name}
+      )
     )
-    |> Repo.all()
   end
 
   defp detect_no_background(project_id) do
-    from(s in Scene,
-      where:
-        s.project_id == ^project_id and is_nil(s.deleted_at) and
-          is_nil(s.background_asset_id),
-      select: %{issue_type: :no_background, scene_id: s.id, scene_name: s.name}
+    Repo.all(
+      from(s in Scene,
+        where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(s.background_asset_id),
+        select: %{issue_type: :no_background, scene_id: s.id, scene_name: s.name}
+      )
     )
-    |> Repo.all()
   end
 
   defp detect_missing_shortcuts(project_id) do
-    from(s in Scene,
-      where:
-        s.project_id == ^project_id and is_nil(s.deleted_at) and
-          (is_nil(s.shortcut) or s.shortcut == ""),
-      select: %{issue_type: :missing_shortcut, scene_id: s.id, scene_name: s.name}
+    Repo.all(
+      from(s in Scene,
+        where: s.project_id == ^project_id and is_nil(s.deleted_at) and (is_nil(s.shortcut) or s.shortcut == ""),
+        select: %{issue_type: :missing_shortcut, scene_id: s.id, scene_name: s.name}
+      )
     )
-    |> Repo.all()
   end
 end

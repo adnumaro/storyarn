@@ -1,6 +1,7 @@
 defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
   use ExUnit.Case, async: true
 
+  alias Storyarn.Flows.DebugSessionStore
   alias Storyarn.Flows.Evaluator.Engine
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
 
@@ -367,7 +368,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
       assert result.redirected
 
       # Stored debug state should have parent flow data restored
-      stored = Storyarn.Flows.DebugSessionStore.take({1, 1})
+      stored = DebugSessionStore.take({1, 1})
       assert stored.debug_nodes == parent_nodes
       assert stored.debug_connections == parent_conns
       assert stored.debug_state.current_node_id == 3
@@ -405,7 +406,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
       {:noreply, _result} = DebugHandlers.handle_debug_step(socket)
 
       # Verify stored state has correct next node
-      stored = Storyarn.Flows.DebugSessionStore.take({1, 1})
+      stored = DebugSessionStore.take({1, 1})
       assert stored.debug_state.current_node_id == 3
       assert stored.debug_state.current_flow_id == 1
     end
@@ -437,7 +438,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
 
       {:noreply, _result} = DebugHandlers.handle_debug_step(socket)
 
-      stored = Storyarn.Flows.DebugSessionStore.take({1, 1})
+      stored = DebugSessionStore.take({1, 1})
       assert stored.debug_state.status == :finished
     end
 
@@ -483,7 +484,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugHandlersTest do
       # First return: back to parent flow
       {:noreply, _result} = DebugHandlers.handle_debug_step(socket)
 
-      stored = Storyarn.Flows.DebugSessionStore.take({1, 1})
+      stored = DebugSessionStore.take({1, 1})
       assert stored.debug_nodes == parent_nodes
       assert stored.debug_connections == parent_conns
       assert stored.debug_state.current_node_id == 12

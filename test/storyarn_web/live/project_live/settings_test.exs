@@ -21,7 +21,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     setup :register_and_log_in_user
 
     test "renders general settings Vue component", %{conn: conn, user: user} do
-      project = project_fixture(user, %{name: "My Project"}) |> Repo.preload(:workspace)
+      project = user |> project_fixture(%{name: "My Project"}) |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, settings_path(project))
 
@@ -33,7 +33,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
     test "redirects non-owner", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
 
       {:error, {:redirect, %{to: path, flash: flash}}} =
@@ -44,7 +44,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     end
 
     test "updates project details via update_project event", %{conn: conn, user: user} do
-      project = project_fixture(user, %{name: "Old Name"}) |> Repo.preload(:workspace)
+      project = user |> project_fixture(%{name: "Old Name"}) |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, settings_path(project))
 
@@ -61,7 +61,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, settings_path(project))
 
@@ -78,7 +78,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     end
 
     test "deletes project via delete_project event", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, settings_path(project))
 
@@ -94,7 +94,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     setup :register_and_log_in_user
 
     test "passes members list to Vue", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       member = user_fixture(%{email: "member@example.com"})
       _membership = membership_fixture(project, member, "editor")
 
@@ -108,7 +108,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     end
 
     test "sends invitation request via invite_member event", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, settings_path(project, "members"))
 
@@ -121,7 +121,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     end
 
     test "removes member via remove_member event", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       member = user_fixture(%{email: "removeme@example.com"})
       membership = membership_fixture(project, member, "editor")
 

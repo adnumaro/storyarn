@@ -319,7 +319,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       {:waiting_input, state} = Engine.step(state, nodes, conns)
 
       assert state.status == :waiting_input
-      refute is_nil(state.pending_choices)
+      assert state.pending_choices
       assert length(state.pending_choices.responses) == 2
       assert Enum.all?(state.pending_choices.responses, & &1.valid)
     end
@@ -774,7 +774,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
       {:ok, state} = Engine.step(state, nodes, conns)
 
       condition_entry = Enum.find(state.console, &(&1.message =~ "Condition →"))
-      assert condition_entry.rule_details != nil
+      assert condition_entry.rule_details
       assert length(condition_entry.rule_details) == 1
       assert hd(condition_entry.rule_details).passed == true
     end
@@ -784,7 +784,10 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
         1 => node(1, "entry"),
         2 =>
           node(2, "condition", %{
-            "condition" => %{"logic" => "all", "blocks" => [%{"id" => "b1", "type" => "block", "logic" => "all", "rules" => []}]},
+            "condition" => %{
+              "logic" => "all",
+              "blocks" => [%{"id" => "b1", "type" => "block", "logic" => "all", "rules" => []}]
+            },
             "switch_mode" => false
           })
       }
@@ -1836,7 +1839,8 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
 
     test "recomputes dependent formulas when base variable overridden" do
       formula_var =
-        var(7, "formula")
+        7
+        |> var("formula")
         |> Map.put(:formula, %{expression: "a - 3", bindings: %{"a" => "mc.health"}})
 
       variables = %{
@@ -1855,7 +1859,8 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
 
     test "does NOT recompute when formula variable itself is overridden" do
       formula_var =
-        var(7, "formula")
+        7
+        |> var("formula")
         |> Map.put(:formula, %{expression: "a - 3", bindings: %{"a" => "mc.health"}})
 
       variables = %{
@@ -1880,8 +1885,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
   describe "table variable support" do
     test "condition evaluates table variable" do
       vars = %{
-        "mc.jaime.attributes.strength.value" =>
-          var(18, "number", sheet: "mc.jaime", name: "attributes.strength.value")
+        "mc.jaime.attributes.strength.value" => var(18, "number", sheet: "mc.jaime", name: "attributes.strength.value")
       }
 
       condition = %{
@@ -1925,8 +1929,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
 
     test "instruction mutates table variable" do
       vars = %{
-        "mc.jaime.attributes.strength.value" =>
-          var(18, "number", sheet: "mc.jaime", name: "attributes.strength.value")
+        "mc.jaime.attributes.strength.value" => var(18, "number", sheet: "mc.jaime", name: "attributes.strength.value")
       }
 
       nodes = %{
@@ -1960,8 +1963,7 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
     test "mixed regular and table variables" do
       vars = %{
         "mc.jaime.health" => var(100, "number", sheet: "mc.jaime", name: "health"),
-        "mc.jaime.attributes.strength.value" =>
-          var(18, "number", sheet: "mc.jaime", name: "attributes.strength.value")
+        "mc.jaime.attributes.strength.value" => var(18, "number", sheet: "mc.jaime", name: "attributes.strength.value")
       }
 
       condition = %{
@@ -2025,10 +2027,8 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
 
     test "variable_ref between table variables" do
       vars = %{
-        "mc.jaime.attributes.charisma.value" =>
-          var(12, "number", sheet: "mc.jaime", name: "attributes.charisma.value"),
-        "mc.morte.attributes.charisma.value" =>
-          var(16, "number", sheet: "mc.morte", name: "attributes.charisma.value")
+        "mc.jaime.attributes.charisma.value" => var(12, "number", sheet: "mc.jaime", name: "attributes.charisma.value"),
+        "mc.morte.attributes.charisma.value" => var(16, "number", sheet: "mc.morte", name: "attributes.charisma.value")
       }
 
       nodes = %{

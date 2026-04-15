@@ -1,10 +1,11 @@
 defmodule Storyarn.Flows.NodeCrudTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Flows
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias Storyarn.Flows
 
   # ===========================================================================
   # Setup helpers
@@ -18,11 +19,11 @@ defmodule Storyarn.Flows.NodeCrudTest do
   end
 
   defp get_entry_node(flow) do
-    Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+    flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
   end
 
   defp get_exit_node(flow) do
-    Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "exit"))
+    flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "exit"))
   end
 
   # ===========================================================================
@@ -829,7 +830,8 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
       # Verify jump was updated
       jumps =
-        Flows.list_nodes(flow.id)
+        flow.id
+        |> Flows.list_nodes()
         |> Enum.filter(&(&1.type == "jump"))
 
       jump = hd(jumps)
@@ -976,7 +978,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
       {:ok, deleted, meta} = Flows.delete_node(node)
 
       assert deleted.id == node.id
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
       assert meta == %{orphaned_jumps: 0}
       assert Flows.get_node(flow.id, node.id) == nil
     end
@@ -988,7 +990,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
         Flows.create_node(flow, %{type: "instruction", data: %{"assignments" => []}})
 
       {:ok, deleted, _meta} = Flows.delete_node(node)
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
     end
 
     test "soft-deletes a condition node" do
@@ -998,7 +1000,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
         Flows.create_node(flow, %{type: "condition", data: %{"expression" => ""}})
 
       {:ok, deleted, _meta} = Flows.delete_node(node)
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
     end
 
     test "soft-deletes a slug_line node" do
@@ -1008,7 +1010,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
         Flows.create_node(flow, %{type: "slug_line", data: %{"location" => "INT. OFFICE"}})
 
       {:ok, deleted, _meta} = Flows.delete_node(node)
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
     end
 
     test "soft-deletes a jump node" do
@@ -1018,7 +1020,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
         Flows.create_node(flow, %{type: "jump", data: %{"target_hub_id" => ""}})
 
       {:ok, deleted, _meta} = Flows.delete_node(node)
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
     end
 
     test "soft-deletes a subflow node" do
@@ -1028,7 +1030,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
         Flows.create_node(flow, %{type: "subflow", data: %{"referenced_flow_id" => nil}})
 
       {:ok, deleted, _meta} = Flows.delete_node(node)
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
     end
 
     test "cannot delete entry node" do
@@ -1194,7 +1196,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
       hubs = Flows.list_hubs(flow.id)
 
       assert length(hubs) == 2
-      hub_ids = Enum.map(hubs, & &1.hub_id) |> Enum.sort()
+      hub_ids = hubs |> Enum.map(& &1.hub_id) |> Enum.sort()
       assert hub_ids == ["h1", "h2"]
     end
 
@@ -1540,7 +1542,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
       refs = Flows.list_nodes_referencing_flow(target_flow.id, project.id)
 
       assert length(refs) == 2
-      types = Enum.map(refs, & &1.node_type) |> Enum.sort()
+      types = refs |> Enum.map(& &1.node_type) |> Enum.sort()
       assert types == ["exit", "subflow"]
     end
   end
@@ -1639,8 +1641,8 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
       assert Flows.get_node(flow.id, node_b.id) == nil
       # Other nodes remain
-      assert Flows.get_node(flow.id, node_a.id) != nil
-      assert Flows.get_node(flow.id, node_c.id) != nil
+      assert Flows.get_node(flow.id, node_a.id)
+      assert Flows.get_node(flow.id, node_c.id)
 
       # Both connections are excluded since node_b is soft-deleted
       assert Flows.list_connections(flow.id) == []
@@ -1759,6 +1761,8 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
   describe "delete_node/1 — hub with nil/empty hub_id" do
     test "deleting hub with nil hub_id does not crash" do
+      alias Storyarn.Flows.FlowNode
+
       %{flow: flow} = create_project_and_flow()
 
       # Create a hub node with a valid hub_id
@@ -1770,15 +1774,13 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
       # Bypass validation to set hub_id to nil in data using low-level changeset
       # This exercises the clear_orphaned_jumps(_flow_id, _hub_id) fallback on L88
-      alias Storyarn.Flows.FlowNode
-
       {:ok, updated_hub} =
         hub
         |> FlowNode.data_changeset(%{data: %{"hub_id" => nil, "label" => "Nil Hub"}})
         |> Storyarn.Repo.update()
 
       {:ok, deleted, meta} = Flows.delete_node(updated_hub)
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
       # With nil hub_id, the fallback clause returns 0
       assert meta.orphaned_jumps == 0
     end

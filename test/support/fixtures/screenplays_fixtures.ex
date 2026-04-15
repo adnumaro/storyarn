@@ -6,7 +6,8 @@ defmodule Storyarn.ScreenplaysFixtures do
 
   alias Storyarn.ProjectsFixtures
   alias Storyarn.Repo
-  alias Storyarn.Screenplays.{Screenplay, ScreenplayElement}
+  alias Storyarn.Screenplays.Screenplay
+  alias Storyarn.Screenplays.ScreenplayElement
 
   def unique_screenplay_name, do: "Screenplay #{System.unique_integer([:positive])}"
 

@@ -2,13 +2,13 @@ defmodule Storyarn.Workers.RecoverProjectWorkerTest do
   use Storyarn.DataCase, async: true
   use Oban.Testing, repo: Storyarn.Repo
 
-  alias Storyarn.Versioning
-  alias Storyarn.Workers.RecoverProjectWorker
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Versioning
+  alias Storyarn.Workers.RecoverProjectWorker
 
   setup do
     user = user_fixture()

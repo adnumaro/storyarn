@@ -3,27 +3,29 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
   Handles version history events for the sheet editor.
   """
 
+  use Gettext, backend: Storyarn.Gettext
+  use StoryarnWeb, :verified_routes
+
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, put_flash: 3]
   import StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers
 
-  use Gettext, backend: Storyarn.Gettext
-  use StoryarnWeb, :verified_routes
-
-  alias StoryarnWeb.Helpers.Authorize
   alias Storyarn.Sheets
   alias Storyarn.Versioning
+  alias StoryarnWeb.Helpers.Authorize
 
   def handle_compare(%{"version_number" => version_number}, socket, _helpers) do
-    with {:ok, number} <- parse_version_number(version_number) do
-      %{workspace: workspace, project: project, sheet: sheet} = socket.assigns
+    case parse_version_number(version_number) do
+      {:ok, number} ->
+        %{workspace: workspace, project: project, sheet: sheet} = socket.assigns
 
-      compare_url =
-        ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}/compare/#{number}"
+        compare_url =
+          ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}/compare/#{number}"
 
-      {:noreply, push_navigate(socket, to: compare_url)}
-    else
-      _ -> {:noreply, socket}
+        {:noreply, push_navigate(socket, to: compare_url)}
+
+      _ ->
+        {:noreply, socket}
     end
   end
 
@@ -50,8 +52,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
              |> put_flash(:info, dgettext("versioning", "Version created."))}
 
           {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
+            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
         end
       end
     end)
@@ -75,8 +76,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
              |> put_flash(:info, dgettext("versioning", "Version named successfully."))}
 
           {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("versioning", "Could not name version."))}
+            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not name version."))}
         end
       else
         _ ->
@@ -98,8 +98,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
              |> put_flash(:info, dgettext("versioning", "Version deleted."))}
 
           {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("versioning", "Could not delete version."))}
+            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not delete version."))}
         end
       else
         _ ->
@@ -142,18 +141,14 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
         project_id = socket.assigns.project.id
 
         case Versioning.create_version("sheet", sheet, project_id, user_id,
-               title:
-                 dgettext("versioning", "Before restore to v%{number}",
-                   number: version.version_number
-                 ),
+               title: dgettext("versioning", "Before restore to v%{number}", number: version.version_number),
                skip_diff: true
              ) do
           {:ok, _} ->
             show_conflict_preview(socket, version, true)
 
           {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("versioning", "Could not save current state."))}
+            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not save current state."))}
         end
       else
         _ ->
@@ -205,9 +200,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
              |> helpers.broadcast.(:sheet_restored)
              |> put_flash(
                :info,
-               dgettext("versioning", "Restored to version %{number}",
-                 number: version.version_number
-               )
+               dgettext("versioning", "Restored to version %{number}", number: version.version_number)
              )}
 
           {:error, {:pre_restore_snapshot_failed, _}} ->
@@ -222,8 +215,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HistoryHandlers do
              )}
 
           {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("versioning", "Could not restore version."))}
+            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not restore version."))}
         end
       else
         _ ->

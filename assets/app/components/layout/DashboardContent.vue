@@ -2,7 +2,7 @@
 import { LucideProps } from "lucide-vue-next";
 import { FunctionalComponent } from "vue";
 
-defineProps<{
+const { isEmpty, title, subtitle, loading, emptyMessage, emptyIcon } = defineProps<{
   isEmpty?: boolean;
   title?: string;
   subtitle?: string;

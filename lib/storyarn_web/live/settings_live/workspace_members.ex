@@ -3,10 +3,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   LiveView for workspace team management settings.
   """
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Accounts
   alias Storyarn.Workspaces
+  alias StoryarnWeb.Helpers.Authorize
 
   @impl true
   def mount(%{"slug" => slug}, _session, socket) do
@@ -84,29 +84,29 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
 
   @impl true
   def handle_event("change_role", %{"role" => role, "member-id" => member_id}, socket) do
-    if socket.assigns.membership.role != "owner" do
+    if socket.assigns.membership.role == "owner" do
+      do_change_role(socket, member_id, role)
+    else
       {:noreply,
        put_flash(
          socket,
          :error,
          dgettext("workspaces", "Only the workspace owner can change member roles.")
        )}
-    else
-      do_change_role(socket, member_id, role)
     end
   end
 
   @impl true
   def handle_event("remove_member", %{"id" => id}, socket) do
-    if socket.assigns.membership.role != "owner" do
+    if socket.assigns.membership.role == "owner" do
+      do_remove_member(socket, id)
+    else
       {:noreply,
        put_flash(
          socket,
          :error,
          dgettext("workspaces", "Only the workspace owner can remove members.")
        )}
-    else
-      do_remove_member(socket, id)
     end
   end
 
@@ -181,8 +181,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
         {:noreply, socket}
 
       {:error, :cannot_change_owner_role} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("workspaces", "Cannot change the owner's role."))}
+        {:noreply, put_flash(socket, :error, dgettext("workspaces", "Cannot change the owner's role."))}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("workspaces", "Failed to update role."))}
@@ -212,8 +211,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
         {:noreply, socket}
 
       {:error, :cannot_remove_owner} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("workspaces", "Cannot remove the workspace owner."))}
+        {:noreply, put_flash(socket, :error, dgettext("workspaces", "Cannot remove the workspace owner."))}
     end
   end
 end

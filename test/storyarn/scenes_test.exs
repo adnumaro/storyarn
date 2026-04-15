@@ -1,14 +1,14 @@
 defmodule Storyarn.ScenesTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Scenes
-
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures, only: [flow_fixture: 1]
-  import Storyarn.ScenesFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Scenes
 
   # =============================================================================
   # Scenes
@@ -172,7 +172,7 @@ defmodule Storyarn.ScenesTest do
       {:ok, restored} = Scenes.restore_scene(deleted_scene)
 
       assert restored.deleted_at == nil
-      assert Scenes.get_scene(project.id, scene.id) != nil
+      assert Scenes.get_scene(project.id, scene.id)
     end
 
     test "hard_delete_scene/1 permanently deletes scene" do
@@ -204,9 +204,7 @@ defmodule Storyarn.ScenesTest do
       {:error, changeset} =
         Scenes.create_scene(project, %{name: "Test", shortcut: "INVALID SHORTCUT!"})
 
-      assert "must be lowercase, alphanumeric, with dots or hyphens (e.g., world-map)" in errors_on(
-               changeset
-             ).shortcut
+      assert "must be lowercase, alphanumeric, with dots or hyphens (e.g., world-map)" in errors_on(changeset).shortcut
     end
   end
 
@@ -680,7 +678,7 @@ defmodule Storyarn.ScenesTest do
 
       actionable = Scenes.list_actionable_zones(scene.id)
       assert length(actionable) == 2
-      names = Enum.map(actionable, & &1.name) |> Enum.sort()
+      names = actionable |> Enum.map(& &1.name) |> Enum.sort()
       assert names == ["Disp", "Inst"]
     end
   end

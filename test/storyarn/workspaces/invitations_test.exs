@@ -1,11 +1,12 @@
 defmodule Storyarn.Workspaces.InvitationsTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Workspaces
-  alias Storyarn.Workspaces.{WorkspaceInvitation, WorkspaceMembership}
-
   import Storyarn.AccountsFixtures
   import Storyarn.WorkspacesFixtures
+
+  alias Storyarn.Workspaces
+  alias Storyarn.Workspaces.WorkspaceInvitation
+  alias Storyarn.Workspaces.WorkspaceMembership
 
   # --------------------------------------------------------------------------
   # Helpers
@@ -360,7 +361,7 @@ defmodule Storyarn.Workspaces.InvitationsTest do
         Workspaces.create_invitation(workspace, owner, unique_user_email(), "member")
 
       result = Workspaces.get_pending_invitation(invitation.id)
-      assert result != nil
+      assert result
       assert result.id == invitation.id
     end
 

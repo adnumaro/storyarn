@@ -1,10 +1,11 @@
 defmodule Storyarn.Sheets.TableRowTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Sheets.TableRow
   import Storyarn.AccountsFixtures
-  import Storyarn.SheetsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
+
+  alias Storyarn.Sheets.TableRow
 
   defp setup_table(_context) do
     user = user_fixture()
@@ -24,8 +25,7 @@ defmodule Storyarn.Sheets.TableRowTest do
 
     test "valid attrs produce a valid changeset", %{block: block} do
       changeset =
-        %TableRow{block_id: block.id}
-        |> TableRow.create_changeset(%{name: "Strength", position: 5, cells: %{"value" => 10}})
+        TableRow.create_changeset(%TableRow{block_id: block.id}, %{name: "Strength", position: 5, cells: %{"value" => 10}})
 
       assert changeset.valid?
       assert get_change(changeset, :name) == "Strength"
@@ -35,43 +35,33 @@ defmodule Storyarn.Sheets.TableRowTest do
     end
 
     test "generates slug from name", %{block: block} do
-      changeset =
-        %TableRow{block_id: block.id}
-        |> TableRow.create_changeset(%{name: "Health Points"})
+      changeset = TableRow.create_changeset(%TableRow{block_id: block.id}, %{name: "Health Points"})
 
       assert get_change(changeset, :slug) == "health_points"
     end
 
     test "slug handles Unicode characters", %{block: block} do
-      changeset =
-        %TableRow{block_id: block.id}
-        |> TableRow.create_changeset(%{name: "Fuerza Magica"})
+      changeset = TableRow.create_changeset(%TableRow{block_id: block.id}, %{name: "Fuerza Magica"})
 
       assert get_change(changeset, :slug) == "fuerza_magica"
     end
 
     test "requires name", %{block: block} do
-      changeset =
-        %TableRow{block_id: block.id}
-        |> TableRow.create_changeset(%{})
+      changeset = TableRow.create_changeset(%TableRow{block_id: block.id}, %{})
 
       refute changeset.valid?
-      assert errors_on(changeset)[:name] != nil
+      assert errors_on(changeset)[:name]
     end
 
     test "requires name to be non-nil", %{block: block} do
-      changeset =
-        %TableRow{block_id: block.id}
-        |> TableRow.create_changeset(%{name: nil})
+      changeset = TableRow.create_changeset(%TableRow{block_id: block.id}, %{name: nil})
 
       refute changeset.valid?
-      assert errors_on(changeset)[:name] != nil
+      assert errors_on(changeset)[:name]
     end
 
     test "defaults cells to empty map when not provided", %{block: block} do
-      changeset =
-        %TableRow{block_id: block.id}
-        |> TableRow.create_changeset(%{name: "Row 1"})
+      changeset = TableRow.create_changeset(%TableRow{block_id: block.id}, %{name: "Row 1"})
 
       # cells not in changes, but default on schema is %{}
       assert changeset.valid?
@@ -80,36 +70,28 @@ defmodule Storyarn.Sheets.TableRowTest do
     test "accepts cells map", %{block: block} do
       cells = %{"value" => 42, "description" => "test"}
 
-      changeset =
-        %TableRow{block_id: block.id}
-        |> TableRow.create_changeset(%{name: "Row 1", cells: cells})
+      changeset = TableRow.create_changeset(%TableRow{block_id: block.id}, %{name: "Row 1", cells: cells})
 
       assert changeset.valid?
       assert get_change(changeset, :cells) == cells
     end
 
     test "accepts block_id in attrs", _context do
-      changeset =
-        %TableRow{}
-        |> TableRow.create_changeset(%{name: "Row 1", block_id: 999})
+      changeset = TableRow.create_changeset(%TableRow{}, %{name: "Row 1", block_id: 999})
 
       # block_id gets cast
       assert get_change(changeset, :block_id) == 999
     end
 
     test "generates slug with special characters stripped", %{block: block} do
-      changeset =
-        %TableRow{block_id: block.id}
-        |> TableRow.create_changeset(%{name: "HP (Max)"})
+      changeset = TableRow.create_changeset(%TableRow{block_id: block.id}, %{name: "HP (Max)"})
 
       slug = get_change(changeset, :slug)
       assert slug == "hp_max"
     end
 
     test "has unique constraint on block_id + slug", %{block: block} do
-      changeset =
-        %TableRow{block_id: block.id}
-        |> TableRow.create_changeset(%{name: "Test"})
+      changeset = TableRow.create_changeset(%TableRow{block_id: block.id}, %{name: "Test"})
 
       assert {:unique, _} =
                changeset.constraints
@@ -270,14 +252,14 @@ defmodule Storyarn.Sheets.TableRowTest do
         |> TableRow.create_changeset(%{name: "Strength", position: 5, cells: %{"value" => 18}})
         |> Repo.insert()
 
-      assert row.id != nil
+      assert row.id
       assert row.name == "Strength"
       assert row.slug == "strength"
       assert row.position == 5
       assert row.cells == %{"value" => 18}
       assert row.block_id == block.id
-      assert row.inserted_at != nil
-      assert row.updated_at != nil
+      assert row.inserted_at
+      assert row.updated_at
     end
 
     test "enforces slug uniqueness per block via constraint", %{block: block} do
@@ -351,17 +333,13 @@ defmodule Storyarn.Sheets.TableRowTest do
     setup :setup_table
 
     test "generates slug from name with numbers", %{block: block} do
-      changeset =
-        %TableRow{block_id: block.id}
-        |> TableRow.create_changeset(%{name: "Row 123"})
+      changeset = TableRow.create_changeset(%TableRow{block_id: block.id}, %{name: "Row 123"})
 
       assert get_change(changeset, :slug) == "row_123"
     end
 
     test "generates slug from name with leading/trailing spaces", %{block: block} do
-      changeset =
-        %TableRow{block_id: block.id}
-        |> TableRow.create_changeset(%{name: "  Trimmed  "})
+      changeset = TableRow.create_changeset(%TableRow{block_id: block.id}, %{name: "  Trimmed  "})
 
       slug = get_change(changeset, :slug)
       # NameNormalizer.variablify handles trimming
@@ -369,17 +347,13 @@ defmodule Storyarn.Sheets.TableRowTest do
     end
 
     test "generates slug from name with uppercase", %{block: block} do
-      changeset =
-        %TableRow{block_id: block.id}
-        |> TableRow.create_changeset(%{name: "UPPERCASE"})
+      changeset = TableRow.create_changeset(%TableRow{block_id: block.id}, %{name: "UPPERCASE"})
 
       assert get_change(changeset, :slug) == "uppercase"
     end
 
     test "generates slug from mixed case name", %{block: block} do
-      changeset =
-        %TableRow{block_id: block.id}
-        |> TableRow.create_changeset(%{name: "CamelCase Name"})
+      changeset = TableRow.create_changeset(%TableRow{block_id: block.id}, %{name: "CamelCase Name"})
 
       assert get_change(changeset, :slug) == "camelcase_name"
     end

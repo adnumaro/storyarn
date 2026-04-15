@@ -22,7 +22,8 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
 
   @behaviour Storyarn.Exports.Serializer
 
-  alias Storyarn.Exports.{ExportOptions, ExpressionTranspiler}
+  alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.ExpressionTranspiler
   alias Storyarn.Exports.Serializers.Helpers
 
   # UUID v5 namespace for deterministic GUID generation
@@ -341,7 +342,8 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
     # Deterministic: same input always produces same GUID
     # UUID v5 (SHA-1 based) with URL namespace
     hash =
-      :crypto.hash(:sha, "#{@storyarn_namespace}:#{input}")
+      :sha
+      |> :crypto.hash("#{@storyarn_namespace}:#{input}")
       |> Base.encode16(case: :upper)
       |> binary_part(0, 32)
 

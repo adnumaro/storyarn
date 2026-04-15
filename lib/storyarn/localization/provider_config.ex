@@ -14,6 +14,7 @@ defmodule Storyarn.Localization.ProviderConfig do
   - `deepl_glossary_ids` - Map of language pairs to DeepL glossary IDs
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
   alias Storyarn.Projects.Project

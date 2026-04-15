@@ -22,7 +22,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     setup :register_and_log_in_user
 
     test "renders flow editor with collaboration assigns", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -43,7 +43,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "acquires lock on node selection", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       node = node_fixture(flow, %{type: "hub", data: %{"label" => "Test Hub"}})
 
@@ -64,7 +64,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "releases lock on node deselection", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       node = node_fixture(flow, %{type: "hub", data: %{"label" => "Test Hub"}})
 
@@ -85,7 +85,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "prevents editing node locked by another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       node = node_fixture(flow, %{type: "hub", data: %{"label" => "Test Hub"}})
 
@@ -109,7 +109,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "cursor_moved event is handled", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -125,7 +125,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "broadcasts changes on node creation", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       # Subscribe to changes
@@ -147,7 +147,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "broadcasts changes on node deletion", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       node = node_fixture(flow, %{type: "hub", data: %{"label" => "Test Hub"}})
 
@@ -174,7 +174,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     setup :register_and_log_in_user
 
     test "updates online_users assign when presence join received", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -213,7 +213,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     setup :register_and_log_in_user
 
     test "ignores cursor updates from own user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -241,7 +241,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "stores remote cursor from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -275,7 +275,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     setup :register_and_log_in_user
 
     test "removes user from remote cursors", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -313,7 +313,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     setup :register_and_log_in_user
 
     test "updates node_locks when another user locks a node", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       node = node_fixture(flow, %{type: "hub", data: %{"label" => "Test Hub"}})
 
@@ -348,7 +348,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -378,7 +378,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "handles unlock from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -413,7 +413,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -445,7 +445,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "reloads flow data on node_updated from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       node = node_fixture(flow, %{type: "hub", data: %{"label" => "Test Hub"}})
 
@@ -475,7 +475,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "handles node_added from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -503,7 +503,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "handles node_deleted from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       node = node_fixture(flow, %{type: "hub", data: %{"label" => "Test Hub"}})
 
@@ -531,7 +531,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "handles connection_added from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -558,7 +558,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "handles connection_deleted from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -586,7 +586,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "handles node_moved from another user without toast", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -617,7 +617,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "handles flow_refresh from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -643,7 +643,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "handles connection_updated from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -672,7 +672,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
     end
 
     test "handles node_restored from another user", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
 
       {:ok, view, _html} =
@@ -705,7 +705,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
 
     test "viewer cannot edit nodes", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       node = node_fixture(flow, %{type: "hub", data: %{"label" => "Test Hub"}})
 

@@ -3,9 +3,10 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
   Pure utility helpers for the map LiveView.
   """
 
-  import Phoenix.Component, only: [assign: 3]
   use StoryarnWeb, :verified_routes
   use Gettext, backend: Storyarn.Gettext
+
+  import Phoenix.Component, only: [assign: 3]
 
   alias Storyarn.Scenes
   alias Storyarn.Shared.MapUtils
@@ -60,9 +61,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
   def search_connections(connections, q) do
     connections
     |> Enum.filter(&matches_text?(&1.label, q))
-    |> Enum.map(
-      &%{type: "connection", id: &1.id, label: &1.label || dgettext("scenes", "Connection")}
-    )
+    |> Enum.map(&%{type: "connection", id: &1.id, label: &1.label || dgettext("scenes", "Connection")})
   end
 
   def matches_text?(nil, _q), do: false
@@ -181,21 +180,15 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
   def action_type_label(_), do: dgettext("scenes", "Navigation")
 
   def action_type_description("none"),
-    do:
-      dgettext(
-        "scenes",
-        "Navigate to another scene or launch a flow as overlay. Condition controls zone visibility"
-      )
+    do: dgettext("scenes", "Navigate to another scene or launch a flow as overlay. Condition controls zone visibility")
 
   def action_type_description("walkable"),
-    do:
-      dgettext("scenes", "Defines traversable ground for character movement in exploration mode")
+    do: dgettext("scenes", "Defines traversable ground for character movement in exploration mode")
 
   def action_type_description("instruction"),
     do: dgettext("scenes", "Like Navigation, but also sets variables on click before navigating")
 
-  def action_type_description("display"),
-    do: dgettext("scenes", "Shows a variable value on the map")
+  def action_type_description("display"), do: dgettext("scenes", "Shows a variable value on the map")
 
   def action_type_description("collection"),
     do: dgettext("scenes", "Opens a collection modal with items the player can take")

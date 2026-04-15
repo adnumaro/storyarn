@@ -12,17 +12,15 @@ defmodule Storyarn.Workspaces do
   - `Invitations` - Invitation management
   """
 
-  alias Storyarn.Accounts.{Scope, User}
+  alias Storyarn.Accounts.Scope
+  alias Storyarn.Accounts.User
   alias Storyarn.Shared.NameNormalizer
-
-  alias Storyarn.Workspaces.{
-    Invitations,
-    Memberships,
-    Workspace,
-    WorkspaceCrud,
-    WorkspaceInvitation,
-    WorkspaceMembership
-  }
+  alias Storyarn.Workspaces.Invitations
+  alias Storyarn.Workspaces.Memberships
+  alias Storyarn.Workspaces.Workspace
+  alias Storyarn.Workspaces.WorkspaceCrud
+  alias Storyarn.Workspaces.WorkspaceInvitation
+  alias Storyarn.Workspaces.WorkspaceMembership
 
   # =============================================================================
   # Type Definitions
@@ -251,8 +249,7 @@ defmodule Storyarn.Workspaces do
   """
   @spec accept_invitation(invitation(), user()) ::
           {:ok, membership()}
-          | {:error,
-             :email_mismatch | :already_member | :already_accepted | :expired | changeset()}
+          | {:error, :email_mismatch | :already_member | :already_accepted | :expired | changeset()}
   defdelegate accept_invitation(invitation, user), to: Invitations
 
   @doc """

@@ -71,7 +71,13 @@ defmodule StoryarnWeb.Components.CoreComponents do
           <.icon :if={@kind == :info} name="info" class="size-4 shrink-0" />
           <.icon :if={@kind == :error} name="alert-circle" class="size-4 shrink-0" />
           <p :if={@title} data-slot="toast-title" class="text-sm font-semibold">{@title}</p>
-          <p :if={!@title} data-slot="toast-description" class={["text-sm", @kind == :info && "text-muted-foreground"]}>{msg}</p>
+          <p
+            :if={!@title}
+            data-slot="toast-description"
+            class={["text-sm", @kind == :info && "text-muted-foreground"]}
+          >
+            {msg}
+          </p>
         </div>
         <div
           :if={@title}
@@ -118,9 +124,9 @@ defmodule StoryarnWeb.Components.CoreComponents do
     sizes = %{"xs" => "btn-xs", "sm" => "btn-sm", "md" => nil, "lg" => "btn-lg"}
 
     assigns =
-    assign_new(assigns, :class, fn ->
-      ["btn", Map.fetch!(variants, assigns[:variant]), Map.fetch!(sizes, assigns[:size])]
-    end)
+      assign_new(assigns, :class, fn ->
+        ["btn", Map.fetch!(variants, assigns[:variant]), Map.fetch!(sizes, assigns[:size])]
+      end)
 
     if rest[:href] || rest[:navigate] || rest[:patch] do
       ~H"""
@@ -153,8 +159,8 @@ defmodule StoryarnWeb.Components.CoreComponents do
   attr :row_click, :any, default: nil, doc: "the function for handling phx-click on each row"
 
   attr :row_item, :any,
-  default: &Function.identity / 1,
-  doc: "the function for mapping each row before calling the :col and :action slots"
+    default: &Function.identity/1,
+    doc: "the function for mapping each row before calling the :col and :action slots"
 
   slot :col, required: true do
     attr :label, :string
@@ -164,9 +170,9 @@ defmodule StoryarnWeb.Components.CoreComponents do
 
   def table(assigns) do
     assigns =
-    with %{rows: %Phoenix.LiveView.LiveStream{}} <- assigns do
-      assign(assigns, row_id: assigns.row_id || fn {id, _item} -> id end)
-    end
+      with %{rows: %Phoenix.LiveView.LiveStream{}} <- assigns do
+        assign(assigns, row_id: assigns.row_id || fn {id, _item} -> id end)
+      end
 
     ~H"""
     <table class="w-full text-sm">
@@ -263,22 +269,21 @@ defmodule StoryarnWeb.Components.CoreComponents do
 
   def show(js \\ %JS{}, selector) do
     JS.show(js,
-    to: selector,
-    time: 300,
-    transition:
-    {"transition-all ease-out duration-300",
-      "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95",
-      "opacity-100 translate-y-0 sm:scale-100"}
+      to: selector,
+      time: 300,
+      transition:
+        {"transition-all ease-out duration-300", "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95",
+         "opacity-100 translate-y-0 sm:scale-100"}
     )
   end
 
   def hide(js \\ %JS{}, selector) do
     JS.hide(js,
-    to: selector,
-    time: 200,
-    transition:
-    {"transition-all ease-in duration-200", "opacity-100 translate-y-0 sm:scale-100",
-      "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"}
+      to: selector,
+      time: 200,
+      transition:
+        {"transition-all ease-in duration-200", "opacity-100 translate-y-0 sm:scale-100",
+         "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"}
     )
   end
 

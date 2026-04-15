@@ -60,8 +60,7 @@ defmodule Storyarn.Exports.SerializerRegistry do
   `[%{format: :storyarn, label: "Storyarn JSON", extension: "json", sections: [...]}]`
   """
   def list_with_metadata do
-    @display_order
-    |> Enum.map(fn format ->
+    Enum.map(@display_order, fn format ->
       module = Map.fetch!(@serializers, format)
 
       %{

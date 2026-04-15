@@ -139,7 +139,7 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
 
       assert status == :waiting_input
       assert final_state.status == :waiting_input
-      assert final_state.pending_choices != nil
+      assert final_state.pending_choices
       # Entry was traversed as non-interactive
       assert {1, "entry"} in skipped
     end
@@ -788,7 +788,7 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
         PlayerEngine.step_until_interactive(ctx.state, ctx.nodes, ctx.connections)
 
       assert status == :waiting_input
-      assert final_state.pending_choices != nil
+      assert final_state.pending_choices
       assert {1, "entry"} in skipped
       assert {2, "condition"} in skipped
     end

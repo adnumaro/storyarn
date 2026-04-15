@@ -3,8 +3,9 @@ defmodule StoryarnWeb.SheetLive.Handlers.AudioHandlers do
   Handles audio tab events for the V2 sheet editor.
   """
 
-  import Phoenix.LiveView, only: [put_flash: 3]
   use Gettext, backend: Storyarn.Gettext
+
+  import Phoenix.LiveView, only: [put_flash: 3]
 
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.SheetLive.Helpers.AudioDataHelpers

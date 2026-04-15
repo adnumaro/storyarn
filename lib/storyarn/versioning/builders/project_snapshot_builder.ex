@@ -6,14 +6,22 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   using the per-entity builders for serialization and restoration.
   """
 
-  require Logger
-
   import Ecto.Query, warn: false
 
-  alias Storyarn.{Flows, Localization, Repo, Scenes, Sheets}
-  alias Storyarn.Localization.{GlossaryEntry, LocalizedText, ProjectLanguage}
+  alias Storyarn.Flows
+  alias Storyarn.Localization
+  alias Storyarn.Localization.GlossaryEntry
+  alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.ProjectLanguage
+  alias Storyarn.Repo
+  alias Storyarn.Scenes
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Versioning.Builders.{FlowBuilder, SceneBuilder, SheetBuilder}
+  alias Storyarn.Sheets
+  alias Storyarn.Versioning.Builders.FlowBuilder
+  alias Storyarn.Versioning.Builders.SceneBuilder
+  alias Storyarn.Versioning.Builders.SheetBuilder
+
+  require Logger
 
   @doc """
   Builds a full project snapshot containing all non-deleted entities.
@@ -30,9 +38,9 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     locale_codes = Enum.map(languages, & &1.locale_code)
 
     texts =
-      if locale_codes != [],
-        do: Localization.list_texts_for_export(project_id, locale_codes),
-        else: []
+      if locale_codes == [],
+        do: [],
+        else: Localization.list_texts_for_export(project_id, locale_codes)
 
     glossary = Localization.list_glossary_for_export(project_id)
 
@@ -135,7 +143,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
           details: results
         }
       end,
-      timeout: :timer.minutes(5)
+      timeout: to_timeout(minute: 5)
     )
   end
 
@@ -153,9 +161,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
           {:skipped, entity_id}
 
         {:error, reason} ->
-          Logger.warning(
-            "Failed to restore #{entity_key} #{entity_id} in project #{project_id}: #{inspect(reason)}"
-          )
+          Logger.warning("Failed to restore #{entity_key} #{entity_id} in project #{project_id}: #{inspect(reason)}")
 
           Repo.rollback({:restore_failed, entity_key, entity_id, reason})
       end
@@ -252,10 +258,9 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
     now = TimeHelpers.now()
 
     # Delete existing localization data (order: texts first due to no FK deps)
-    from(lt in LocalizedText, where: lt.project_id == ^project_id) |> Repo.delete_all()
-    from(g in GlossaryEntry, where: g.project_id == ^project_id) |> Repo.delete_all()
-    from(l in ProjectLanguage, where: l.project_id == ^project_id) |> Repo.delete_all()
-
+    Repo.delete_all(from(lt in LocalizedText, where: lt.project_id == ^project_id))
+    Repo.delete_all(from(g in GlossaryEntry, where: g.project_id == ^project_id))
+    Repo.delete_all(from(l in ProjectLanguage, where: l.project_id == ^project_id))
     restore_languages(project_id, Map.get(localization, "languages", []), now)
     restore_texts(project_id, Map.get(localization, "texts", []), now)
     restore_glossary(project_id, Map.get(localization, "glossary", []), now)

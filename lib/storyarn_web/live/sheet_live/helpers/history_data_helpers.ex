@@ -1,9 +1,10 @@
 defmodule StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers do
   @moduledoc false
 
+  use Gettext, backend: Storyarn.Gettext
+
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
-  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Billing
   alias Storyarn.Versioning

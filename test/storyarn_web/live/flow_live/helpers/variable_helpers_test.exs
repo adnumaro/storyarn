@@ -1,13 +1,13 @@
 defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpersTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Sheets
-  alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Sheets
+  alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
 
   defp setup_project(_context \\ %{}) do
     user = user_fixture()
@@ -372,7 +372,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpersTest do
 
       # Reference blocks don't generate variable_name
       {:ok, _block} =
-        Storyarn.Sheets.create_block(sheet, %{
+        Sheets.create_block(sheet, %{
           type: "reference",
           config: %{"label" => "Link", "allowed_types" => ["sheet"]}
         })
@@ -519,7 +519,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpersTest do
       row = table_row_fixture(table_block, %{name: "Potions"})
 
       # Set a cell value
-      Storyarn.Sheets.update_table_cell(row, col.slug, "5")
+      Sheets.update_table_cell(row, col.slug, "5")
 
       result = VariableHelpers.build_variables(project.id)
 

@@ -4,10 +4,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
   breakpoints, and tab/speed controls.
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
-
-  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
@@ -48,7 +48,18 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
   def handle_debug_reset(socket) do
     state = socket.assigns.debug_state
 
-    if state.call_stack != [] do
+    if state.call_stack == [] do
+      new_state = Flows.evaluator_reset(state)
+
+      {:noreply,
+       socket
+       |> DebugExecutionHandlers.cancel_auto_timer()
+       |> assign(:debug_state, new_state)
+       |> assign(:debug_auto_playing, false)
+       |> assign(:debug_step_limit_reached, false)
+       |> push_event("debug_clear_highlights", %{})
+       |> DebugExecutionHandlers.push_debug_canvas(new_state)}
+    else
       root_frame = List.last(state.call_stack)
       root_flow_id = root_frame.flow_id
 
@@ -68,17 +79,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
         DebugExecutionHandlers.store_and_navigate(socket, root_flow_id)
 
       {:noreply, navigated_socket}
-    else
-      new_state = Flows.evaluator_reset(state)
-
-      {:noreply,
-       socket
-       |> DebugExecutionHandlers.cancel_auto_timer()
-       |> assign(:debug_state, new_state)
-       |> assign(:debug_auto_playing, false)
-       |> assign(:debug_step_limit_reached, false)
-       |> push_event("debug_clear_highlights", %{})
-       |> DebugExecutionHandlers.push_debug_canvas(new_state)}
     end
   end
 
@@ -179,8 +179,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
 
     case DebugExecutionHandlers.find_entry_node(nodes_map) do
       nil ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("flows", "No entry node found in this flow."))}
+        {:noreply, put_flash(socket, :error, dgettext("flows", "No entry node found in this flow."))}
 
       entry_node_id ->
         variables = VariableHelpers.build_variables(project.id)
@@ -209,12 +208,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
 
       :error ->
         warning =
-          if raw != "",
-            do:
-              dgettext("flows", "Invalid number \"%{value}\", using 0",
-                value: String.slice(raw, 0, 20)
-              ),
-            else: nil
+          if raw == "",
+            do: nil,
+            else: dgettext("flows", "Invalid number \"%{value}\", using 0", value: String.slice(raw, 0, 20))
 
         {0, warning}
     end

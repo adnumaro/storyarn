@@ -3,18 +3,18 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
   Tree/navigation handlers for the scene LiveView.
   """
 
-  import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, push_patch: 2, put_flash: 3]
   use StoryarnWeb, :verified_routes
   use Gettext, backend: Storyarn.Gettext
 
-  require Logger
+  import Phoenix.Component, only: [assign: 3]
+  import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, push_patch: 2, put_flash: 3]
+  import StoryarnWeb.SceneLive.Helpers.SceneHelpers
+  import StoryarnWeb.SceneLive.Helpers.SceneSerializer
 
   alias Storyarn.Scenes
   alias Storyarn.Shared.MapUtils
 
-  import StoryarnWeb.SceneLive.Helpers.SceneHelpers
-  import StoryarnWeb.SceneLive.Helpers.SceneSerializer
+  require Logger
 
   def handle_create_scene(_params, socket) do
     case Scenes.create_scene(socket.assigns.project, %{name: dgettext("scenes", "Untitled")}) do
@@ -63,10 +63,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
     end
   end
 
-  def handle_move_to_parent(
-        %{"item_id" => item_id, "new_parent_id" => new_parent_id, "position" => position},
-        socket
-      ) do
+  def handle_move_to_parent(%{"item_id" => item_id, "new_parent_id" => new_parent_id, "position" => position}, socket) do
     case Scenes.get_scene(socket.assigns.project.id, item_id) do
       nil -> {:noreply, socket}
       scene -> do_move_scene_in_show(socket, scene, new_parent_id, position)
@@ -80,7 +77,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
          :ok <- validate_zone_has_name(zone),
          {:ok, bg_asset, img_dims} <-
            Scenes.extract_zone_image(scene, zone, socket.assigns.project),
-         child_attrs <- build_child_scene_attrs(zone, scene, bg_asset, img_dims),
+         child_attrs = build_child_scene_attrs(zone, scene, bg_asset, img_dims),
          {:ok, child_scene} <- Scenes.create_scene(socket.assigns.project, child_attrs),
          {:ok, _updated_zone} <-
            Scenes.update_zone(zone, %{target_type: "scene", target_id: child_scene.id}) do
@@ -138,8 +135,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
       _scene ->
         {:noreply,
          push_patch(socket,
-           to:
-             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{project.slug}/scenes/#{id}"
+           to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{project.slug}/scenes/#{id}"
          )}
     end
   end
@@ -185,8 +181,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
 
     child_scale =
       if parent_scene.scale_value && bw_percent > 0,
-        do: parent_scene.scale_value * bw_percent / 100.0,
-        else: nil
+        do: parent_scene.scale_value * bw_percent / 100.0
 
     %{
       name: zone.name,
@@ -229,8 +224,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
           {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
 
         {:error, _} ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("scenes", "Could not create child scene."))}
+          {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not create child scene."))}
       end
     else
       {:noreply, put_flash(socket, :error, dgettext("scenes", "Zone not found."))}
@@ -254,8 +248,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlers do
 
     if to_string(deleted_scene_id) == to_string(socket.assigns.scene.id) do
       push_navigate(socket,
-        to:
-          ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes"
+        to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes"
       )
     else
       reload_scenes_tree(socket)

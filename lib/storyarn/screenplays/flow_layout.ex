@@ -29,13 +29,7 @@ defmodule Storyarn.Screenplays.FlowLayout do
   # Private
   # ---------------------------------------------------------------------------
 
-  defp layout_page(
-         %{node_attrs_list: attrs, branches: branches},
-         all_nodes,
-         offset,
-         x_center,
-         y_start
-       ) do
+  defp layout_page(%{node_attrs_list: attrs, branches: branches}, all_nodes, offset, x_center, y_start) do
     branches_by_index = Enum.group_by(branches, & &1.source_node_index)
     initial_child_offset = offset + length(attrs)
 
@@ -72,8 +66,7 @@ defmodule Storyarn.Screenplays.FlowLayout do
     {positions, max_y_end, final_offset, _x} =
       branches
       |> Enum.zip(branch_widths)
-      |> Enum.reduce({%{}, branch_y, child_offset, start_x}, fn {branch, width},
-                                                                {pos, max_y, c_off, x} ->
+      |> Enum.reduce({%{}, branch_y, child_offset, start_x}, fn {branch, width}, {pos, max_y, c_off, x} ->
         center = x + width / 2.0
 
         {child_pos, child_y_end, new_c_off} =

@@ -18,7 +18,8 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
-  alias StoryarnWeb.FlowLive.Player.{PlayerEngine, Slide}
+  alias StoryarnWeb.FlowLive.Player.PlayerEngine
+  alias StoryarnWeb.FlowLive.Player.Slide
 
   # ===========================================================================
   # Render
@@ -52,11 +53,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   # ===========================================================================
 
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => flow_id},
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => flow_id}, _session, socket) do
     case Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug) do
       {:ok, project, _membership} ->
         mount_player(socket, project, flow_id)
@@ -94,9 +91,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         {:ok,
          socket
          |> put_flash(:error, reason)
-         |> redirect(
-           to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
-         )}
+         |> redirect(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")}
 
       {:ok, engine_state} ->
         node = Map.get(nodes_map, engine_state.current_node_id)
@@ -147,7 +142,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   defp maybe_restore_player_session(socket, project) do
     # Only restore on connected mount — disconnected mount would consume the
     # session from the Agent, leaving nothing for the connected mount.
-    if connected?(socket), do: do_restore_player_session(socket, project), else: nil
+    if connected?(socket), do: do_restore_player_session(socket, project)
   end
 
   defp do_restore_player_session(socket, project) do
@@ -175,8 +170,6 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
           |> assign(:can_go_back, restored.engine_state.snapshots != [])
           |> assign(:scene_backdrop, restored[:scene_backdrop])
           |> assign(:current_scene_id, restored[:current_scene_id])
-        else
-          nil
         end
     end
   end
@@ -222,8 +215,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         end
 
       {:error, _state, _reason} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("flows", "Could not select that response."))}
+        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not select that response."))}
     end
   end
 
@@ -278,8 +270,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   def handle_event("exit_player", _params, socket) do
     %{workspace: ws, project: proj, flow: flow} = socket.assigns
 
-    {:noreply,
-     push_navigate(socket, to: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/flows/#{flow.id}")}
+    {:noreply, push_navigate(socket, to: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/flows/#{flow.id}")}
   end
 
   # ===========================================================================
@@ -327,17 +318,19 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
         case PlayerEngine.step_until_interactive(new_state, target_nodes, target_connections) do
           {:flow_jump, stepped_state, next_flow_id, _skipped} ->
-            handle_flow_jump(
-              assign(socket, :nodes, target_nodes) |> assign(:connections, target_connections),
+            socket
+            |> assign(:nodes, target_nodes)
+            |> assign(:connections, target_connections)
+            |> handle_flow_jump(
               stepped_state,
               next_flow_id
             )
 
           {:flow_return, stepped_state, _skipped} ->
-            handle_flow_return(
-              assign(socket, :nodes, target_nodes) |> assign(:connections, target_connections),
-              stepped_state
-            )
+            socket
+            |> assign(:nodes, target_nodes)
+            |> assign(:connections, target_connections)
+            |> handle_flow_return(stepped_state)
 
           {_status, stepped_state, _skipped} ->
             store_and_navigate_player(
@@ -385,17 +378,19 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
         case PlayerEngine.step_until_interactive(new_state, parent_nodes, parent_connections) do
           {:flow_jump, stepped_state, next_flow_id, _skipped} ->
-            handle_flow_jump(
-              assign(socket, :nodes, parent_nodes) |> assign(:connections, parent_connections),
+            socket
+            |> assign(:nodes, parent_nodes)
+            |> assign(:connections, parent_connections)
+            |> handle_flow_jump(
               stepped_state,
               next_flow_id
             )
 
           {:flow_return, stepped_state, _skipped} ->
-            handle_flow_return(
-              assign(socket, :nodes, parent_nodes) |> assign(:connections, parent_connections),
-              stepped_state
-            )
+            socket
+            |> assign(:nodes, parent_nodes)
+            |> assign(:connections, parent_connections)
+            |> handle_flow_return(stepped_state)
 
           {_status, stepped_state, _skipped} ->
             store_and_navigate_player(
@@ -512,8 +507,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   end
 
   defp serialize_responses(slide) do
-    (slide[:responses] || [])
-    |> Enum.map(fn resp ->
+    Enum.map(slide[:responses] || [], fn resp ->
       %{
         id: resp.id,
         text: resp.text,

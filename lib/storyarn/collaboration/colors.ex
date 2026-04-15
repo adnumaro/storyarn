@@ -42,5 +42,4 @@ defmodule Storyarn.Collaboration.Colors do
       "#ec4899"
     ]
   end
-
 end

@@ -11,15 +11,16 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
   """
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Exports.{DataCollector, ExportOptions}
-  alias Storyarn.Exports.Serializers.Yarn
-  alias Storyarn.Repo
-  alias Storyarn.Test.YarnCompiler
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Exports.DataCollector
+  alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.Serializers.Yarn
+  alias Storyarn.Repo
+  alias Storyarn.Test.YarnCompiler
 
   @moduletag :ysc_validation
 

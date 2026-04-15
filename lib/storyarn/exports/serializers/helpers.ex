@@ -55,27 +55,21 @@ defmodule Storyarn.Exports.Serializers.Helpers do
   @doc """
   Extracts a reasonable default value from a block.
   """
-  def infer_default_value(%{type: "number", value: %{"number" => val}}) when is_number(val),
-    do: val
+  def infer_default_value(%{type: "number", value: %{"number" => val}}) when is_number(val), do: val
 
   def infer_default_value(%{type: "number"}), do: 0
 
-  def infer_default_value(%{type: "boolean", value: %{"boolean" => val}}) when is_boolean(val),
-    do: val
+  def infer_default_value(%{type: "boolean", value: %{"boolean" => val}}) when is_boolean(val), do: val
 
   def infer_default_value(%{type: "boolean"}), do: false
 
-  def infer_default_value(%{type: "text", value: %{"text" => val}}) when is_binary(val),
-    do: val
+  def infer_default_value(%{type: "text", value: %{"text" => val}}) when is_binary(val), do: val
 
-  def infer_default_value(%{type: "rich_text", value: %{"rich_text" => val}}) when is_binary(val),
-    do: strip_html(val)
+  def infer_default_value(%{type: "rich_text", value: %{"rich_text" => val}}) when is_binary(val), do: strip_html(val)
 
-  def infer_default_value(%{type: "select", value: %{"select" => val}}) when is_binary(val),
-    do: val
+  def infer_default_value(%{type: "select", value: %{"select" => val}}) when is_binary(val), do: val
 
-  def infer_default_value(%{type: "date", value: %{"date" => val}}) when is_binary(val),
-    do: val
+  def infer_default_value(%{type: "date", value: %{"date" => val}}) when is_binary(val), do: val
 
   def infer_default_value(_), do: ""
 
@@ -250,8 +244,7 @@ defmodule Storyarn.Exports.Serializers.Helpers do
   Returns a list of response maps with parsed instructions.
   """
   def dialogue_responses(data) do
-    (data["responses"] || [])
-    |> Enum.map(fn resp ->
+    Enum.map(data["responses"] || [], fn resp ->
       Map.put(resp, "instruction_assignments", parse_instruction_json(resp["instruction"]))
     end)
   end
@@ -300,16 +293,13 @@ defmodule Storyarn.Exports.Serializers.Helpers do
   @doc """
   Formats a variable default for Ink/Yarn VAR declarations.
   """
-  def format_var_declaration_value(%{type: :number, default: val}) when is_number(val),
-    do: to_string(val)
+  def format_var_declaration_value(%{type: :number, default: val}) when is_number(val), do: to_string(val)
 
-  def format_var_declaration_value(%{type: :boolean, default: val}) when is_boolean(val),
-    do: to_string(val)
+  def format_var_declaration_value(%{type: :boolean, default: val}) when is_boolean(val), do: to_string(val)
 
-  def format_var_declaration_value(%{type: :string, default: val})
-      when is_binary(val) and val != "",
-      do:
-        ~s("#{val |> String.replace("\\", "\\\\") |> String.replace("\"", "\\\"") |> String.replace("\n", "\\n") |> String.replace("\r", "\\r")}")
+  def format_var_declaration_value(%{type: :string, default: val}) when is_binary(val) and val != "",
+    do:
+      ~s("#{val |> String.replace("\\", "\\\\") |> String.replace("\"", "\\\"") |> String.replace("\n", "\\n") |> String.replace("\r", "\\r")}")
 
   def format_var_declaration_value(%{type: :number}), do: "0"
   def format_var_declaration_value(%{type: :boolean}), do: "false"

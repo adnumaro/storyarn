@@ -29,6 +29,8 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlers do
 
   import Phoenix.Component, only: [assign: 3]
 
+  alias Storyarn.Shared.MapUtils
+
   @doc """
   Handles tree panel events. Call from your LiveView's handle_event/3.
   """
@@ -309,8 +311,8 @@ defmodule StoryarnWeb.Live.Shared.TreePanelHandlers do
     error_msg = Keyword.fetch!(opts, :error_msg)
 
     entity = get_fn.(socket.assigns.project.id, entity_id)
-    new_parent_id = Storyarn.Shared.MapUtils.parse_int(new_parent_id)
-    position = Storyarn.Shared.MapUtils.parse_int(position) || 0
+    new_parent_id = MapUtils.parse_int(new_parent_id)
+    position = MapUtils.parse_int(position) || 0
 
     case move_fn.(entity, new_parent_id, position) do
       {:ok, _} ->

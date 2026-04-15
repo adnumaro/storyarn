@@ -20,10 +20,8 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
   @session_options [
     store: :cookie,
     key: "_storyarn_key",
-    signing_salt:
-      Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_signing_salt]),
-    encryption_salt:
-      Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_encryption_salt])
+    signing_salt: Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_signing_salt]),
+    encryption_salt: Application.compile_env!(:storyarn, [StoryarnWeb.Endpoint, :session_encryption_salt])
   ]
 
   # Authenticate by injecting a signed session cookie directly.
@@ -62,7 +60,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
 
     test "shows project list when user has projects", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user, %{name: "My Narrative Project"}) |> Repo.preload(:workspace)
+      project = user |> project_fixture(%{name: "My Narrative Project"}) |> Repo.preload(:workspace)
 
       conn
       |> authenticate(user)
@@ -101,7 +99,8 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
       user = user_fixture()
 
       project =
-        project_fixture(user, %{name: "Epic Tale", description: "An epic story"})
+        user
+        |> project_fixture(%{name: "Epic Tale", description: "An epic story"})
         |> Repo.preload(:workspace)
 
       conn
@@ -113,7 +112,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
 
     test "shows project settings in dropdown for owner", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       conn
       |> authenticate(user)
@@ -126,7 +125,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
   describe "project settings (authenticated)" do
     test "owner can access settings sheet", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user, %{name: "Settings Test"}) |> Repo.preload(:workspace)
+      project = user |> project_fixture(%{name: "Settings Test"}) |> Repo.preload(:workspace)
 
       conn
       |> authenticate(user)
@@ -136,7 +135,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
 
     test "owner can update project name", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user, %{name: "Old Name"}) |> Repo.preload(:workspace)
+      project = user |> project_fixture(%{name: "Old Name"}) |> Repo.preload(:workspace)
 
       conn
       |> authenticate(user)
@@ -149,7 +148,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
 
     test "shows team members section", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       conn
       |> authenticate(user)
@@ -159,7 +158,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
 
     test "shows invite form", %{conn: conn} do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       conn
       |> authenticate(user)
@@ -171,7 +170,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
     test "non-owner cannot access settings", %{conn: conn} do
       owner = user_fixture()
       viewer = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       membership_fixture(project, viewer, "viewer")
 
       conn
@@ -208,7 +207,7 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
         create_invitation_with_token(project, owner, "double-accept@example.com")
 
       # Accept the invitation first
-      {:ok, user} = Storyarn.Accounts.find_or_register_confirmed_user("double-accept@example.com")
+      {:ok, user} = Accounts.find_or_register_confirmed_user("double-accept@example.com")
       {:ok, _} = Storyarn.Projects.accept_invitation(invitation, user)
 
       # Already-accepted token is filtered out by verify_token_query, shows invalid page

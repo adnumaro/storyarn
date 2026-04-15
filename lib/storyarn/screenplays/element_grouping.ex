@@ -7,7 +7,8 @@ defmodule Storyarn.Screenplays.ElementGrouping do
   This module provides O(n) single-pass algorithms over element lists.
   """
 
-  alias Storyarn.Screenplays.{CharacterExtension, ScreenplayElement}
+  alias Storyarn.Screenplays.CharacterExtension
+  alias Storyarn.Screenplays.ScreenplayElement
 
   @dialogue_group_types ScreenplayElement.dialogue_group_types()
   @non_mappeable_types ScreenplayElement.non_mappeable_types()
@@ -79,8 +80,7 @@ defmodule Storyarn.Screenplays.ElementGrouping do
     annotated = compute_dialogue_groups(elements)
 
     {continuations, _last_speaker} =
-      Enum.reduce(annotated, {MapSet.new(), nil}, fn {element, group_id},
-                                                     {cont_set, last_speaker} ->
+      Enum.reduce(annotated, {MapSet.new(), nil}, fn {element, group_id}, {cont_set, last_speaker} ->
         cond do
           element.type == "character" and not is_nil(group_id) ->
             check_continuation(element, last_speaker, cont_set, sheets_map)
@@ -98,7 +98,7 @@ defmodule Storyarn.Screenplays.ElementGrouping do
 
   defp check_continuation(element, last_speaker, cont_set, sheets_map) do
     current_base =
-      CharacterExtension.base_name_from_element(element, sheets_map) |> String.upcase()
+      element |> CharacterExtension.base_name_from_element(sheets_map) |> String.upcase()
 
     if last_speaker && current_base == last_speaker do
       {MapSet.put(cont_set, element.id), current_base}
@@ -157,8 +157,7 @@ defmodule Storyarn.Screenplays.ElementGrouping do
     {:continue, group_id}
   end
 
-  defp compute_group_transition(type, _prev_type, _prev_group_id)
-       when type in @dialogue_group_types do
+  defp compute_group_transition(type, _prev_type, _prev_group_id) when type in @dialogue_group_types do
     # Orphan dialogue/parenthetical without proper predecessor
     :break
   end
@@ -233,6 +232,6 @@ defmodule Storyarn.Screenplays.ElementGrouping do
   end
 
   defp generate_group_id do
-    :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
+    8 |> :crypto.strong_rand_bytes() |> Base.encode16(case: :lower)
   end
 end

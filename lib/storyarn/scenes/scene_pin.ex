@@ -7,13 +7,16 @@ defmodule Storyarn.Scenes.ScenePin do
   Position is stored as percentage pairs (0-100) relative to the scene dimensions.
   """
   use Ecto.Schema
-  import Ecto.Changeset
 
+  import Ecto.Changeset
   import Storyarn.Scenes.ChangesetHelpers
 
+  alias Ecto.Association.NotLoaded
   alias Storyarn.Assets.Asset
   alias Storyarn.Flows.Flow
-  alias Storyarn.Scenes.{Scene, SceneConnection, SceneLayer}
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.SceneConnection
+  alias Storyarn.Scenes.SceneLayer
   alias Storyarn.Shared.Validations
   alias Storyarn.Sheets.Sheet
 
@@ -44,11 +47,11 @@ defmodule Storyarn.Scenes.ScenePin do
           patrol_speed: float(),
           patrol_pause_ms: integer(),
           scene_id: integer() | nil,
-          scene: Scene.t() | Ecto.Association.NotLoaded.t() | nil,
+          scene: Scene.t() | NotLoaded.t() | nil,
           layer_id: integer() | nil,
-          layer: SceneLayer.t() | Ecto.Association.NotLoaded.t() | nil,
+          layer: SceneLayer.t() | NotLoaded.t() | nil,
           flow_id: integer() | nil,
-          flow: Flow.t() | Ecto.Association.NotLoaded.t() | nil,
+          flow: Flow.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }

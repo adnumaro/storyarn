@@ -124,12 +124,12 @@ defmodule Storyarn.Shared.NameNormalizer do
     str = String.replace(str, ~r/#{Regex.escape(separator)}+/, separator)
 
     str =
-      if extra_chars != "" do
+      if extra_chars == "" do
+        str
+      else
         Enum.reduce(String.graphemes(extra_chars), str, fn char, acc ->
           String.replace(acc, ~r/#{Regex.escape(char)}+/, char)
         end)
-      else
-        str
       end
 
     trim_chars = separator <> extra_chars
@@ -152,6 +152,6 @@ defmodule Storyarn.Shared.NameNormalizer do
   end
 
   defp generate_suffix do
-    :crypto.strong_rand_bytes(4) |> Base.encode16(case: :lower)
+    4 |> :crypto.strong_rand_bytes() |> Base.encode16(case: :lower)
   end
 end

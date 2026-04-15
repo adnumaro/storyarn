@@ -14,8 +14,10 @@ defmodule Storyarn.Exports.Serializers.Yarn do
 
   @behaviour Storyarn.Exports.Serializer
 
-  alias Storyarn.Exports.{ExportOptions, ExpressionTranspiler}
-  alias Storyarn.Exports.Serializers.{GraphTraversal, Helpers}
+  alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.ExpressionTranspiler
+  alias Storyarn.Exports.Serializers.GraphTraversal
+  alias Storyarn.Exports.Serializers.Helpers
 
   @impl true
   def content_type, do: "text/plain"
@@ -322,8 +324,7 @@ defmodule Storyarn.Exports.Serializers.Yarn do
 
     flow_mapping =
       Map.new(flows, fn flow ->
-        {flow.shortcut || flow.name,
-         Helpers.shortcut_to_identifier(flow.shortcut || flow.name || "flow_#{flow.id}")}
+        {flow.shortcut || flow.name, Helpers.shortcut_to_identifier(flow.shortcut || flow.name || "flow_#{flow.id}")}
       end)
 
     required_functions = collect_required_functions(flows)
@@ -353,8 +354,7 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   defp collect_required_functions(flows) do
     flows
     |> Enum.flat_map(fn flow ->
-      (flow.nodes || [])
-      |> Enum.flat_map(&extract_condition_operators/1)
+      Enum.flat_map(flow.nodes || [], &extract_condition_operators/1)
     end)
     |> Enum.uniq()
     |> Enum.sort()
@@ -366,8 +366,7 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   end
 
   defp extract_condition_operators(%{type: "dialogue", data: data}) when is_map(data) do
-    (data["responses"] || [])
-    |> Enum.flat_map(fn resp ->
+    Enum.flat_map(data["responses"] || [], fn resp ->
       condition = Helpers.extract_condition(resp["condition"])
       extract_ops_from_condition(condition)
     end)

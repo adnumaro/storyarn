@@ -429,7 +429,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlersTest do
     end
 
     test "removes existing breakpoint" do
-      state = Engine.init(%{}, 1) |> Engine.toggle_breakpoint(5)
+      state = %{} |> Engine.init(1) |> Engine.toggle_breakpoint(5)
       socket = build_socket(%{debug_state: state})
 
       {:noreply, result} =

@@ -2,14 +2,14 @@ defmodule Storyarn.Workers.SnapshotRetentionWorkerTest do
   use Storyarn.DataCase, async: true
   use Oban.Testing, repo: Storyarn.Repo
 
+  import Storyarn.AccountsFixtures
+  import Storyarn.FlowsFixtures
+  import Storyarn.ProjectsFixtures
+
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Versioning
   alias Storyarn.Workers.SnapshotRetentionWorker
-
-  import Storyarn.AccountsFixtures
-  import Storyarn.FlowsFixtures
-  import Storyarn.ProjectsFixtures
 
   setup do
     user = user_fixture()
@@ -27,7 +27,7 @@ defmodule Storyarn.Workers.SnapshotRetentionWorkerTest do
         Versioning.create_project_snapshot(project.id, nil, title: "Daily backup", is_auto: true)
 
       # Backdate the snapshot to 60 days ago (beyond free plan's 30-day retention)
-      past = DateTime.add(DateTime.utc_now(), -60 * 86_400, :second) |> DateTime.truncate(:second)
+      past = DateTime.utc_now() |> DateTime.add(-60 * 86_400, :second) |> DateTime.truncate(:second)
 
       Repo.query!("UPDATE project_snapshots SET inserted_at = $1 WHERE id = $2", [
         past,
@@ -52,7 +52,7 @@ defmodule Storyarn.Workers.SnapshotRetentionWorkerTest do
         Versioning.create_project_snapshot(project.id, user.id, title: "Gold Master")
 
       # Backdate beyond retention
-      past = DateTime.add(DateTime.utc_now(), -60 * 86_400, :second) |> DateTime.truncate(:second)
+      past = DateTime.utc_now() |> DateTime.add(-60 * 86_400, :second) |> DateTime.truncate(:second)
 
       Repo.query!("UPDATE project_snapshots SET inserted_at = $1 WHERE id = $2", [
         past,

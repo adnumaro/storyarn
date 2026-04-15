@@ -3,8 +3,8 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
-  import Storyarn.ProjectsFixtures
   import Storyarn.LocalizationFixtures
+  import Storyarn.ProjectsFixtures
 
   alias Storyarn.Localization
   alias Storyarn.Repo
@@ -28,7 +28,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     setup :register_and_log_in_user
 
     test "renders page for owner", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
@@ -38,7 +38,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
     test "renders page for editor member", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
 
       {:ok, view, _html} = live(conn, loc_path(project))
@@ -49,7 +49,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
     test "redirects non-member", %{conn: conn} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
 
       {:error, {:redirect, %{to: path, flash: flash}}} = live(conn, loc_path(project))
 
@@ -58,7 +58,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     end
 
     test "passes texts to Vue when target language and texts exist", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       _text = localized_text_fixture(project.id, %{source_text: "Hello world", locale_code: "es"})
 
@@ -71,7 +71,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     end
 
     test "passes hasTargetLanguages=false when no target languages", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
@@ -80,7 +80,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     end
 
     test "passes sidebar props with source language", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
@@ -89,7 +89,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     end
 
     test "does not include source language in add language options", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
@@ -99,7 +99,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     end
 
     test "passes flag URLs for source and target locales", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
       {:ok, view, _html} = live(conn, loc_path(project))
@@ -111,7 +111,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     end
 
     test "passes progress data when texts exist", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       _text = localized_text_fixture(project.id, %{source_text: "Hello", locale_code: "es"})
 
@@ -122,7 +122,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     end
 
     test "passes status labels in serialized texts", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       _text = localized_text_fixture(project.id, %{source_text: "Hello", locale_code: "es"})
 
@@ -134,7 +134,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     end
 
     test "defaults selected locale to first target language", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       _lang_es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       _lang_fr = language_fixture(project, %{locale_code: "fr", name: "French"})
 
@@ -150,7 +150,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     setup :register_and_log_in_user
 
     test "switches selected locale and reloads texts", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       _lang_es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       _lang_fr = language_fixture(project, %{locale_code: "fr", name: "French"})
 
@@ -177,7 +177,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     setup :register_and_log_in_user
 
     test "updates the project's source language", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
@@ -192,7 +192,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
     test "viewer cannot change source language", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
 
       {:ok, view, _html} = live(conn, loc_path(project))
@@ -207,7 +207,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     setup :register_and_log_in_user
 
     test "filters by status", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
       _pending_text =
@@ -243,7 +243,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     end
 
     test "filters by source_type", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
       _flow_text =
@@ -271,7 +271,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     end
 
     test "empty status value clears current filter", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
       _pending_text =
@@ -305,7 +305,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     setup :register_and_log_in_user
 
     test "filters texts by search term", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
       _text1 =
@@ -325,7 +325,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     end
 
     test "shows empty texts when search matches nothing", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       _text = localized_text_fixture(project.id, %{source_text: "Hello world", locale_code: "es"})
 
@@ -338,7 +338,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     end
 
     test "clears search with empty string", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       _text = localized_text_fixture(project.id, %{source_text: "Hello world", locale_code: "es"})
 
@@ -356,7 +356,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     setup :register_and_log_in_user
 
     test "paginates to next page", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
       for i <- 1..52 do
@@ -384,7 +384,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     setup :register_and_log_in_user
 
     test "adds a new target language", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
@@ -400,7 +400,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     end
 
     test "no-op when locale_code is empty", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
@@ -412,7 +412,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
     test "viewer cannot add target language", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
 
       {:ok, view, _html} = live(conn, loc_path(project))
@@ -427,7 +427,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     setup :register_and_log_in_user
 
     test "removes a target language", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
       {:ok, view, _html} = live(conn, loc_path(project))
@@ -445,7 +445,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
     test "viewer cannot remove a language", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
@@ -461,7 +461,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     setup :register_and_log_in_user
 
     test "syncs texts for the project", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
       {:ok, view, _html} = live(conn, loc_path(project))
@@ -473,7 +473,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
     test "viewer cannot sync texts", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
@@ -490,7 +490,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
     test "viewer cannot translate batch", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
@@ -507,7 +507,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
     test "viewer cannot translate single text", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
@@ -527,7 +527,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
     test "viewer sees canEdit=false in sidebar and index", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
 
       {:ok, view, _html} = live(conn, loc_path(project))
@@ -541,7 +541,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
     test "viewer can view texts", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
@@ -559,7 +559,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
     test "viewer can change locale", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       _lang_es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       _lang_fr = language_fixture(project, %{locale_code: "fr", name: "French"})
@@ -574,7 +574,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
     test "viewer can use search", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
@@ -591,7 +591,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
     test "viewer can use filters", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 

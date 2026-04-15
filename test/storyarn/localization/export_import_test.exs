@@ -1,11 +1,11 @@
 defmodule Storyarn.Localization.ExportImportTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Localization
-
   import Storyarn.AccountsFixtures
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
+
+  alias Storyarn.Localization
 
   describe "export_csv/2" do
     test "exports texts as CSV" do

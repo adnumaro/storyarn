@@ -2,15 +2,15 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
   use Storyarn.DataCase, async: true
 
   import Ecto.Query, warn: false
-
-  alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
-  alias Storyarn.Versioning.ProjectRecovery
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
+  alias Storyarn.Versioning.ProjectRecovery
 
   setup do
     user = user_fixture()
@@ -33,9 +33,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
       assert {:ok, recovered} =
-               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id,
-                 name: "My RPG (Recovered)"
-               )
+               ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id, name: "My RPG (Recovered)")
 
       assert recovered.name == "My RPG (Recovered)"
       assert recovered.workspace_id == workspace_id
@@ -106,7 +104,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
         ProjectRecovery.recover_project(workspace_id, snapshot_data, user.id)
 
       membership = Storyarn.Projects.get_membership(recovered.id, user.id)
-      assert membership != nil
+      assert membership
       assert membership.role == "owner"
     end
 
@@ -261,11 +259,13 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
           config: %{"label" => "Descendant"}
         })
 
-      from(b in Storyarn.Sheets.Block, where: b.id == ^inherited_block.id)
-      |> Storyarn.Repo.update_all(set: [inherited_from_block_id: source_block.id])
+      Storyarn.Repo.update_all(from(b in Storyarn.Sheets.Block, where: b.id == ^inherited_block.id),
+        set: [inherited_from_block_id: source_block.id]
+      )
 
-      from(s in Storyarn.Sheets.Sheet, where: s.id == ^child.id)
-      |> Storyarn.Repo.update_all(set: [hidden_inherited_block_ids: [source_block.id]])
+      Storyarn.Repo.update_all(from(s in Sheet, where: s.id == ^child.id),
+        set: [hidden_inherited_block_ids: [source_block.id]]
+      )
 
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
 
@@ -281,7 +281,7 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
 
       recovered_source_block = Enum.find(parent_blocks, &(&1.variable_name == "ancestor"))
       recovered_inherited_block = Enum.find(child_blocks, &(&1.variable_name == "descendant"))
-      recovered_child = Storyarn.Repo.get!(Storyarn.Sheets.Sheet, recovered_child.id)
+      recovered_child = Storyarn.Repo.get!(Sheet, recovered_child.id)
 
       assert recovered_inherited_block.inherited_from_block_id == recovered_source_block.id
       assert recovered_child.hidden_inherited_block_ids == [recovered_source_block.id]

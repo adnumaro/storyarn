@@ -1,32 +1,32 @@
 <script setup lang="ts">
-import { Plus, X } from 'lucide-vue-next'
-import { Button } from '@components/ui/button'
-import { Input } from '@components/ui/input'
-import { useLive } from '@composables/useLive'
-import type { SelectOption } from '../types'
+import { Plus, X } from "lucide-vue-next";
+import { Button } from "@components/ui/button";
+import { Input } from "@components/ui/input";
+import { useLive } from "@composables/useLive";
+import type { SelectOption } from "../types";
 
 const {
   scope,
   id,
   options = [],
 } = defineProps<{
-  scope: 'block' | 'column';
+  scope: "block" | "column";
   id: number | string;
   options?: SelectOption[];
-}>()
+}>();
 
-const live = useLive()
+const live = useLive();
 
 function addOption(): void {
-  live.pushEvent('add_option', { scope, id })
+  live.pushEvent("add_option", { scope, id });
 }
 
 function removeOption(index: number): void {
-  live.pushEvent('remove_option', { scope, id, index })
+  live.pushEvent("remove_option", { scope, id, index });
 }
 
-function updateOption(index: number, field: 'key' | 'value', value: string): void {
-  live.pushEvent('update_option', { scope, id, index, field, value })
+function updateOption(index: number, field: "key" | "value", value: string): void {
+  live.pushEvent("update_option", { scope, id, index, field, value });
 }
 </script>
 

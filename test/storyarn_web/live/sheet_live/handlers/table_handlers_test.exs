@@ -38,7 +38,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
   end
 
   defp setup_table(%{user: user}) do
-    project = project_fixture(user) |> Repo.preload(:workspace)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
     sheet = sheet_fixture(project, %{name: "Table Test Sheet"})
     table_block = table_block_fixture(sheet, %{label: "Test Table"})
 
@@ -154,7 +154,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
       })
 
       # Column still exists — deletion was prevented
-      assert Sheets.get_table_column!(ctx.default_col.block_id, ctx.default_col.id) != nil
+      assert Sheets.get_table_column!(ctx.default_col.block_id, ctx.default_col.id)
 
       # Table data still has exactly 1 column
       data = Sheets.batch_load_table_data([ctx.table_block.id])
@@ -176,7 +176,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
       })
 
       # Row still exists — deletion was prevented
-      assert Sheets.get_table_row!(ctx.default_row.id) != nil
+      assert Sheets.get_table_row!(ctx.default_row.id)
 
       # Table data still has exactly 1 row
       data = Sheets.batch_load_table_data([ctx.table_block.id])
@@ -1053,7 +1053,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlersTest do
       updated_row = Sheets.get_table_row!(ctx.default_row.id)
       # The value should be clamped to max 100
       cell_val = updated_row.cells[ctx.clamp_col.slug]
-      assert cell_val != nil
+      assert cell_val
     end
   end
 

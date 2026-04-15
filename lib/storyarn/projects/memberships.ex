@@ -1,7 +1,8 @@
 defmodule Storyarn.Projects.Memberships do
   @moduledoc false
 
-  alias Storyarn.Projects.{Project, ProjectMembership}
+  alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
   alias Storyarn.Shared.MembershipOperations
   alias Storyarn.Workspaces.WorkspaceMembership
@@ -20,11 +21,9 @@ defmodule Storyarn.Projects.Memberships do
     "viewer" => "viewer"
   }
 
-  def list_project_members(project_id),
-    do: MembershipOperations.list_members(@config, project_id)
+  def list_project_members(project_id), do: MembershipOperations.list_members(@config, project_id)
 
-  def get_membership(project_id, user_id),
-    do: MembershipOperations.get_membership(@config, project_id, user_id)
+  def get_membership(project_id, user_id), do: MembershipOperations.get_membership(@config, project_id, user_id)
 
   @doc """
   Gets the effective membership for a user on a project.
@@ -60,12 +59,9 @@ defmodule Storyarn.Projects.Memberships do
   def create_membership(project_id, user_id, role),
     do: MembershipOperations.create_membership(@config, project_id, user_id, role)
 
-  def update_member_role(membership, role),
-    do: MembershipOperations.update_member_role(@config, membership, role)
+  def update_member_role(membership, role), do: MembershipOperations.update_member_role(@config, membership, role)
 
-  def remove_member(membership),
-    do: MembershipOperations.remove_member(membership)
+  def remove_member(membership), do: MembershipOperations.remove_member(membership)
 
-  def authorize(scope, project_id, action),
-    do: MembershipOperations.authorize(@config, scope, project_id, action)
+  def authorize(scope, project_id, action), do: MembershipOperations.authorize(@config, scope, project_id, action)
 end

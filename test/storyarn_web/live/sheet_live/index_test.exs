@@ -3,8 +3,8 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
-  import Storyarn.SheetsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Repo
 
@@ -13,7 +13,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
 
     test "redirects non-member", %{conn: conn} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
 
       {:error, {:redirect, %{to: path, flash: flash}}} =
         live(
@@ -24,7 +24,6 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
       assert path == "/workspaces"
       assert flash["error"] =~ "access"
     end
-
   end
 
   describe "Authentication" do
@@ -42,7 +41,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       ws = project.workspace
       url = ~p"/workspaces/#{ws.slug}/projects/#{project.slug}/sheets"
       %{project: project, workspace: ws, url: url}
@@ -65,15 +64,14 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
 
     test "viewer cannot create sheet", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       ws = project.workspace
 
       url = ~p"/workspaces/#{ws.slug}/projects/#{project.slug}/sheets"
       {:ok, view, _html} = live(conn, url)
 
-      view |> render_click("create_sheet")
-
+      render_click(view, "create_sheet")
       assert render(view) =~ "permission"
     end
   end
@@ -82,7 +80,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       ws = project.workspace
       url = ~p"/workspaces/#{ws.slug}/projects/#{project.slug}/sheets"
       %{project: project, workspace: ws, url: url}
@@ -106,7 +104,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
 
     test "viewer cannot delete sheet", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       ws = project.workspace
 
@@ -128,7 +126,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       ws = project.workspace
       url = ~p"/workspaces/#{ws.slug}/projects/#{project.slug}/sheets"
       %{project: project, workspace: ws, url: url}
@@ -153,7 +151,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
       # Verify the tree updated: child is now under parent
       tree = Storyarn.Sheets.list_sheets_tree(project.id)
       parent_in_tree = Enum.find(tree, &(&1.id == parent.id))
-      assert parent_in_tree != nil
+      assert parent_in_tree
       assert Enum.any?(parent_in_tree.children, &(&1.id == child.id))
     end
 
@@ -202,7 +200,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
 
     test "viewer cannot move sheet", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       ws = project.workspace
 

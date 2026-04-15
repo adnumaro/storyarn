@@ -209,8 +209,7 @@ defmodule Storyarn.Localization.Providers.DeepL do
     end
   end
 
-  defp get_glossary_id(config, source_lang, target_lang)
-       when is_binary(source_lang) and is_binary(target_lang) do
+  defp get_glossary_id(config, source_lang, target_lang) when is_binary(source_lang) and is_binary(target_lang) do
     pair = "#{normalize_lang(source_lang)}-#{normalize_lang(target_lang)}"
     Map.get(config.deepl_glossary_ids || %{}, pair)
   end

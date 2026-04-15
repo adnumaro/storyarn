@@ -9,8 +9,8 @@ defmodule StoryarnWeb.LiveSandbox do
   Only compiled when `:sql_sandbox` is enabled (test environment).
   """
 
-  import Phoenix.LiveView
   import Phoenix.Component
+  import Phoenix.LiveView
 
   def on_mount(:default, _params, _session, socket) do
     socket =

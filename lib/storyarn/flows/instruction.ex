@@ -85,9 +85,7 @@ defmodule Storyarn.Flows.Instruction do
   Returns true if the operator requires a value input.
   """
   @spec operator_requires_value?(String.t()) :: boolean()
-  def operator_requires_value?(operator)
-      when operator in ["set_true", "set_false", "toggle", "clear"],
-      do: false
+  def operator_requires_value?(operator) when operator in ["set_true", "set_false", "toggle", "clear"], do: false
 
   def operator_requires_value?(_operator), do: true
 

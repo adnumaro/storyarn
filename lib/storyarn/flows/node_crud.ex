@@ -9,7 +9,11 @@ defmodule Storyarn.Flows.NodeCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.{Flow, FlowNode, NodeCreate, NodeDelete, NodeUpdate}
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.NodeCreate
+  alias Storyarn.Flows.NodeDelete
+  alias Storyarn.Flows.NodeUpdate
   alias Storyarn.Repo
 
   # =============================================================================
@@ -20,11 +24,7 @@ defmodule Storyarn.Flows.NodeCrud do
   Lists all non-deleted nodes for a flow, ordered by insertion time.
   """
   def list_nodes(flow_id) do
-    from(n in FlowNode,
-      where: n.flow_id == ^flow_id and is_nil(n.deleted_at),
-      order_by: [asc: n.inserted_at]
-    )
-    |> Repo.all()
+    Repo.all(from(n in FlowNode, where: n.flow_id == ^flow_id and is_nil(n.deleted_at), order_by: [asc: n.inserted_at]))
   end
 
   @doc """
@@ -32,11 +32,12 @@ defmodule Storyarn.Flows.NodeCrud do
   Returns nil if not found.
   """
   def get_node(flow_id, node_id) do
-    from(n in FlowNode,
-      where: n.flow_id == ^flow_id and n.id == ^node_id and is_nil(n.deleted_at),
-      preload: [:outgoing_connections, :incoming_connections]
+    Repo.one(
+      from(n in FlowNode,
+        where: n.flow_id == ^flow_id and n.id == ^node_id and is_nil(n.deleted_at),
+        preload: [:outgoing_connections, :incoming_connections]
+      )
     )
-    |> Repo.one()
   end
 
   @doc """
@@ -44,21 +45,19 @@ defmodule Storyarn.Flows.NodeCrud do
   Raises if not found.
   """
   def get_node!(flow_id, node_id) do
-    from(n in FlowNode,
-      where: n.flow_id == ^flow_id and n.id == ^node_id and is_nil(n.deleted_at),
-      preload: [:outgoing_connections, :incoming_connections]
+    Repo.one!(
+      from(n in FlowNode,
+        where: n.flow_id == ^flow_id and n.id == ^node_id and is_nil(n.deleted_at),
+        preload: [:outgoing_connections, :incoming_connections]
+      )
     )
-    |> Repo.one!()
   end
 
   @doc """
   Gets a node by ID scoped to a flow, without preloads. Raises if not found.
   """
   def get_node_by_id!(flow_id, node_id) do
-    from(n in FlowNode,
-      where: n.flow_id == ^flow_id and n.id == ^node_id and is_nil(n.deleted_at)
-    )
-    |> Repo.one!()
+    Repo.one!(from(n in FlowNode, where: n.flow_id == ^flow_id and n.id == ^node_id and is_nil(n.deleted_at)))
   end
 
   @doc """
@@ -86,16 +85,13 @@ defmodule Storyarn.Flows.NodeCrud do
   Useful for populating Jump node target dropdown.
   """
   def list_hubs(flow_id) do
-    from(n in FlowNode,
-      where: n.flow_id == ^flow_id and n.type == "hub" and is_nil(n.deleted_at),
-      select: %{
-        id: n.id,
-        hub_id: fragment("?->>'hub_id'", n.data),
-        label: fragment("?->>'label'", n.data)
-      },
-      order_by: [asc: fragment("?->>'hub_id'", n.data)]
+    Repo.all(
+      from(n in FlowNode,
+        where: n.flow_id == ^flow_id and n.type == "hub" and is_nil(n.deleted_at),
+        select: %{id: n.id, hub_id: fragment("?->>'hub_id'", n.data), label: fragment("?->>'label'", n.data)},
+        order_by: [asc: fragment("?->>'hub_id'", n.data)]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -103,11 +99,12 @@ defmodule Storyarn.Flows.NodeCrud do
   Returns nil if not found.
   """
   def get_hub_by_hub_id(flow_id, hub_id) do
-    from(n in FlowNode,
-      where: n.flow_id == ^flow_id and n.type == "hub" and is_nil(n.deleted_at),
-      where: fragment("?->>'hub_id' = ?", n.data, ^hub_id)
+    Repo.one(
+      from(n in FlowNode,
+        where: n.flow_id == ^flow_id and n.type == "hub" and is_nil(n.deleted_at),
+        where: fragment("?->>'hub_id' = ?", n.data, ^hub_id)
+      )
     )
-    |> Repo.one()
   end
 
   @doc """
@@ -115,13 +112,14 @@ defmodule Storyarn.Flows.NodeCrud do
   Returns a list of maps with :id and :label (or position info).
   """
   def list_referencing_jumps(flow_id, hub_id) when is_binary(hub_id) and hub_id != "" do
-    from(n in FlowNode,
-      where: n.flow_id == ^flow_id and n.type == "jump" and is_nil(n.deleted_at),
-      where: fragment("?->>'target_hub_id' = ?", n.data, ^hub_id),
-      order_by: [asc: n.position_y, asc: n.position_x],
-      select: %{id: n.id, position_x: n.position_x, position_y: n.position_y}
+    Repo.all(
+      from(n in FlowNode,
+        where: n.flow_id == ^flow_id and n.type == "jump" and is_nil(n.deleted_at),
+        where: fragment("?->>'target_hub_id' = ?", n.data, ^hub_id),
+        order_by: [asc: n.position_y, asc: n.position_x],
+        select: %{id: n.id, position_x: n.position_x, position_y: n.position_y}
+      )
     )
-    |> Repo.all()
   end
 
   def list_referencing_jumps(_flow_id, _hub_id), do: []
@@ -133,17 +131,18 @@ defmodule Storyarn.Flows.NodeCrud do
   def list_dialogue_nodes_by_speaker(project_id, sheet_id) do
     sheet_id_str = to_string(sheet_id)
 
-    from(n in FlowNode,
-      join: f in Flow,
-      on: n.flow_id == f.id,
-      where: f.project_id == ^project_id,
-      where: n.type == "dialogue",
-      where: is_nil(n.deleted_at),
-      where: fragment("?->>'speaker_sheet_id' = ?", n.data, ^sheet_id_str),
-      preload: [flow: f],
-      order_by: [asc: f.name, asc: n.inserted_at]
+    Repo.all(
+      from(n in FlowNode,
+        join: f in Flow,
+        on: n.flow_id == f.id,
+        where: f.project_id == ^project_id,
+        where: n.type == "dialogue",
+        where: is_nil(n.deleted_at),
+        where: fragment("?->>'speaker_sheet_id' = ?", n.data, ^sheet_id_str),
+        preload: [flow: f],
+        order_by: [asc: f.name, asc: n.inserted_at]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -165,18 +164,19 @@ defmodule Storyarn.Flows.NodeCrud do
   Used by subflow nodes to generate dynamic output pins.
   """
   def list_exit_nodes_for_flow(flow_id) do
-    from(n in FlowNode,
-      where: n.flow_id == ^flow_id and n.type == "exit" and is_nil(n.deleted_at),
-      select: %{
-        id: n.id,
-        label: fragment("?->>'label'", n.data),
-        outcome_tags: fragment("?->'outcome_tags'", n.data),
-        outcome_color: fragment("coalesce(?->>'outcome_color', '#22c55e')", n.data),
-        exit_mode: fragment("coalesce(?->>'exit_mode', 'terminal')", n.data)
-      },
-      order_by: [asc: n.inserted_at]
+    Repo.all(
+      from(n in FlowNode,
+        where: n.flow_id == ^flow_id and n.type == "exit" and is_nil(n.deleted_at),
+        select: %{
+          id: n.id,
+          label: fragment("?->>'label'", n.data),
+          outcome_tags: fragment("?->'outcome_tags'", n.data),
+          outcome_color: fragment("coalesce(?->>'outcome_color', '#22c55e')", n.data),
+          exit_mode: fragment("coalesce(?->>'exit_mode', 'terminal')", n.data)
+        },
+        order_by: [asc: n.inserted_at]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -202,15 +202,16 @@ defmodule Storyarn.Flows.NodeCrud do
   def list_subflow_nodes_referencing(flow_id, project_id) do
     flow_id_str = to_string(flow_id)
 
-    from(n in FlowNode,
-      join: f in Flow,
-      on: n.flow_id == f.id,
-      where: f.project_id == ^project_id,
-      where: n.type == "subflow",
-      where: fragment("?->>'referenced_flow_id' = ?", n.data, ^flow_id_str),
-      select: %{id: n.id, flow_id: n.flow_id}
+    Repo.all(
+      from(n in FlowNode,
+        join: f in Flow,
+        on: n.flow_id == f.id,
+        where: f.project_id == ^project_id,
+        where: n.type == "subflow",
+        where: fragment("?->>'referenced_flow_id' = ?", n.data, ^flow_id_str),
+        select: %{id: n.id, flow_id: n.flow_id}
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -221,24 +222,19 @@ defmodule Storyarn.Flows.NodeCrud do
   def list_nodes_referencing_flow(flow_id, project_id) do
     flow_id_str = to_string(flow_id)
 
-    from(n in FlowNode,
-      join: f in Flow,
-      on: n.flow_id == f.id,
-      where: f.project_id == ^project_id and is_nil(f.deleted_at),
-      where:
-        (n.type == "subflow" and fragment("?->>'referenced_flow_id' = ?", n.data, ^flow_id_str)) or
-          (n.type == "exit" and fragment("?->>'exit_mode'", n.data) == "flow_reference" and
-             fragment("?->>'referenced_flow_id' = ?", n.data, ^flow_id_str)),
-      select: %{
-        node_id: n.id,
-        node_type: n.type,
-        flow_id: f.id,
-        flow_name: f.name,
-        flow_shortcut: f.shortcut
-      },
-      order_by: [asc: f.name]
+    Repo.all(
+      from(n in FlowNode,
+        join: f in Flow,
+        on: n.flow_id == f.id,
+        where: f.project_id == ^project_id and is_nil(f.deleted_at),
+        where:
+          (n.type == "subflow" and fragment("?->>'referenced_flow_id' = ?", n.data, ^flow_id_str)) or
+            (n.type == "exit" and fragment("?->>'exit_mode'", n.data) == "flow_reference" and
+               fragment("?->>'referenced_flow_id' = ?", n.data, ^flow_id_str)),
+        select: %{node_id: n.id, node_type: n.type, flow_id: f.id, flow_name: f.name, flow_shortcut: f.shortcut},
+        order_by: [asc: f.name]
+      )
     )
-    |> Repo.all()
   end
 
   # =============================================================================
@@ -336,12 +332,10 @@ defmodule Storyarn.Flows.NodeCrud do
     end
   end
 
-  defp resolve_subflow_from_cached(data, _int_id, %{flow: nil}),
-    do: mark_stale_subflow(data)
+  defp resolve_subflow_from_cached(data, _int_id, %{flow: nil}), do: mark_stale_subflow(data)
 
-  defp resolve_subflow_from_cached(data, _int_id, %{flow: %Flow{deleted_at: d}})
-       when not is_nil(d),
-       do: mark_stale_subflow(data)
+  defp resolve_subflow_from_cached(data, _int_id, %{flow: %Flow{deleted_at: d}}) when not is_nil(d),
+    do: mark_stale_subflow(data)
 
   defp resolve_subflow_from_cached(data, _int_id, %{flow: flow, exit_labels: exit_labels}),
     do: enrich_subflow_data(data, flow, exit_labels)

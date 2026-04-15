@@ -8,20 +8,15 @@ defmodule Storyarn.Workers.RecoverProjectWorker do
 
   use Oban.Worker, queue: :snapshots, max_attempts: 1
 
-  require Logger
-
   alias Storyarn.Projects
   alias Storyarn.Versioning
   alias Storyarn.Versioning.SnapshotStorage
 
+  require Logger
+
   @impl Oban.Worker
   def perform(%Oban.Job{
-        args:
-          %{
-            "workspace_id" => workspace_id,
-            "snapshot_id" => snapshot_id,
-            "user_id" => user_id
-          } = args
+        args: %{"workspace_id" => workspace_id, "snapshot_id" => snapshot_id, "user_id" => user_id} = args
       }) do
     project_id = args["project_id"]
     snapshot = Versioning.get_project_snapshot(project_id, snapshot_id)

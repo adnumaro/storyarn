@@ -195,8 +195,7 @@ defmodule Storyarn.Exports.Validator do
         %{
           level: :warning,
           rule: :orphan_nodes,
-          message:
-            "#{node.type} node (id: #{node.id}) in flow \"#{flow.name}\" has no connections",
+          message: "#{node.type} node (id: #{node.id}) in flow \"#{flow.name}\" has no connections",
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id,
@@ -230,8 +229,7 @@ defmodule Storyarn.Exports.Validator do
         %{
           level: :warning,
           rule: :unreachable_nodes,
-          message:
-            "#{node.type} node (id: #{node.id}) in flow \"#{flow.name}\" is not reachable from Entry",
+          message: "#{node.type} node (id: #{node.id}) in flow \"#{flow.name}\" is not reachable from Entry",
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id,
@@ -274,14 +272,13 @@ defmodule Storyarn.Exports.Validator do
       flow.nodes
       |> Enum.filter(fn node ->
         node.type == "dialogue" and
-          get_in(node.data, ["speaker_sheet_id"]) |> nil_or_empty?()
+          node.data |> get_in(["speaker_sheet_id"]) |> nil_or_empty?()
       end)
       |> Enum.map(fn node ->
         %{
           level: :warning,
           rule: :missing_speakers,
-          message:
-            "Dialogue node (id: #{node.id}) in flow \"#{flow.name}\" has no speaker assigned",
+          message: "Dialogue node (id: #{node.id}) in flow \"#{flow.name}\" has no speaker assigned",
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id
@@ -306,7 +303,7 @@ defmodule Storyarn.Exports.Validator do
           |> Enum.map(&get_in(&1.data, ["referenced_flow_id"]))
           |> Enum.reject(&is_nil/1)
 
-        if targets != [], do: Map.put(acc, flow.id, targets), else: acc
+        if targets == [], do: acc, else: Map.put(acc, flow.id, targets)
       end)
 
     # Find cycles using DFS
@@ -362,8 +359,7 @@ defmodule Storyarn.Exports.Validator do
         %{
           level: :error,
           rule: :broken_references,
-          message:
-            "Jump node (id: #{node.id}) in flow \"#{flow.name}\" references non-existent hub \"#{target}\"",
+          message: "Jump node (id: #{node.id}) in flow \"#{flow.name}\" references non-existent hub \"#{target}\"",
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id,
@@ -386,8 +382,7 @@ defmodule Storyarn.Exports.Validator do
         %{
           level: :error,
           rule: :broken_references,
-          message:
-            "Subflow node (id: #{node.id}) in flow \"#{flow.name}\" references non-existent flow",
+          message: "Subflow node (id: #{node.id}) in flow \"#{flow.name}\" references non-existent flow",
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id,
@@ -409,8 +404,7 @@ defmodule Storyarn.Exports.Validator do
         %{
           level: :error,
           rule: :broken_references,
-          message:
-            "Slug line node (id: #{node.id}) in flow \"#{flow.name}\" references non-existent scene",
+          message: "Slug line node (id: #{node.id}) in flow \"#{flow.name}\" references non-existent scene",
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id,
@@ -446,8 +440,7 @@ defmodule Storyarn.Exports.Validator do
       %{
         level: :warning,
         rule: :missing_translations,
-        message:
-          "#{pending} of #{total_sources} strings are untranslated for locale \"#{locale}\"",
+        message: "#{pending} of #{total_sources} strings are untranslated for locale \"#{locale}\"",
         locale: locale,
         pending_count: pending,
         total_count: total_sources
@@ -514,8 +507,10 @@ defmodule Storyarn.Exports.Validator do
 
   defp bfs(queue, adj, visited) do
     next_queue =
-      Enum.flat_map(queue, fn node_id ->
-        Map.get(adj, node_id, [])
+      queue
+      |> Enum.flat_map(fn node_id ->
+        adj
+        |> Map.get(node_id, [])
         |> Enum.reject(&MapSet.member?(visited, &1))
       end)
       |> Enum.uniq()
@@ -530,7 +525,8 @@ defmodule Storyarn.Exports.Validator do
     else
       visited = MapSet.put(visited, start_id)
 
-      Map.get(graph, start_id, [])
+      graph
+      |> Map.get(start_id, [])
       |> Enum.any?(&has_cycle?(&1, graph, visited))
     end
   end

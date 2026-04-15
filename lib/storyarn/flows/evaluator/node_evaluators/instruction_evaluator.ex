@@ -6,7 +6,8 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluator do
   each change to the console and history.
   """
 
-  alias Storyarn.Flows.Evaluator.{EngineHelpers, InstructionExec}
+  alias Storyarn.Flows.Evaluator.EngineHelpers
+  alias Storyarn.Flows.Evaluator.InstructionExec
   alias Storyarn.Shared.FormulaRuntime
 
   @doc """

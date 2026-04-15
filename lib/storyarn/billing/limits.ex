@@ -7,13 +7,17 @@ defmodule Storyarn.Billing.Limits do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets.Asset
-  alias Storyarn.Billing.{Plan, SubscriptionCrud}
-  alias Storyarn.Flows.{Flow, FlowNode}
-  alias Storyarn.Projects.{Project, ProjectMembership}
+  alias Storyarn.Billing.Plan
+  alias Storyarn.Billing.SubscriptionCrud
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Sheets.Sheet
-  alias Storyarn.Workspaces.{Workspace, WorkspaceMembership}
+  alias Storyarn.Workspaces.Workspace
+  alias Storyarn.Workspaces.WorkspaceMembership
 
   @doc """
   Checks if a user can create another workspace.
@@ -76,8 +80,7 @@ defmodule Storyarn.Billing.Limits do
         :ok
 
       true ->
-        {:error, :limit_reached,
-         %{resource: :storage_bytes_per_workspace, used: used, limit: limit}}
+        {:error, :limit_reached, %{resource: :storage_bytes_per_workspace, used: used, limit: limit}}
     end
   end
 
@@ -176,15 +179,11 @@ defmodule Storyarn.Billing.Limits do
   end
 
   defp count_user_workspaces(user_id) do
-    from(w in Workspace, where: w.owner_id == ^user_id)
-    |> Repo.aggregate(:count)
+    Repo.aggregate(from(w in Workspace, where: w.owner_id == ^user_id), :count)
   end
 
   defp count_workspace_projects(workspace_id) do
-    from(p in Project,
-      where: p.workspace_id == ^workspace_id and is_nil(p.deleted_at)
-    )
-    |> Repo.aggregate(:count)
+    Repo.aggregate(from(p in Project, where: p.workspace_id == ^workspace_id and is_nil(p.deleted_at)), :count)
   end
 
   @doc false
@@ -207,8 +206,7 @@ defmodule Storyarn.Billing.Limits do
 
     union_query = union(wm_query, ^pm_query)
 
-    from(u in subquery(union_query), select: count(u.user_id))
-    |> Repo.one()
+    Repo.one(from(u in subquery(union_query), select: count(u.user_id)))
   end
 
   @doc false
@@ -220,29 +218,28 @@ defmodule Storyarn.Billing.Limits do
   end
 
   defp count_nodes(project_id) do
-    from(n in FlowNode,
-      join: f in Flow,
-      on: n.flow_id == f.id,
-      where:
-        f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at)
+    Repo.aggregate(
+      from(n in FlowNode,
+        join: f in Flow,
+        on: n.flow_id == f.id,
+        where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at)
+      ),
+      :count
     )
-    |> Repo.aggregate(:count)
   end
 
   defp count_active(schema, project_id) do
-    from(s in schema,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at)
-    )
-    |> Repo.aggregate(:count)
+    Repo.aggregate(from(s in schema, where: s.project_id == ^project_id and is_nil(s.deleted_at)), :count)
   end
 
   defp total_workspace_storage(workspace_id) do
-    from(a in Asset,
-      join: p in Project,
-      on: a.project_id == p.id,
-      where: p.workspace_id == ^workspace_id,
-      select: coalesce(sum(a.size), 0)
+    Repo.one(
+      from(a in Asset,
+        join: p in Project,
+        on: a.project_id == p.id,
+        where: p.workspace_id == ^workspace_id,
+        select: coalesce(sum(a.size), 0)
+      )
     )
-    |> Repo.one()
   end
 end

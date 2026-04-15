@@ -59,8 +59,7 @@ defmodule Storyarn.Screenplays.CharacterExtension do
   and uppercases it. Otherwise falls back to `base_name/1` on the element's content.
   """
   @spec base_name_from_element(map(), map()) :: String.t()
-  def base_name_from_element(%{data: %{"sheet_id" => sheet_id}} = _element, sheets_map)
-      when not is_nil(sheet_id) do
+  def base_name_from_element(%{data: %{"sheet_id" => sheet_id}} = _element, sheets_map) when not is_nil(sheet_id) do
     sheet_id = if is_binary(sheet_id), do: String.to_integer(sheet_id), else: sheet_id
 
     case Map.get(sheets_map, sheet_id) do

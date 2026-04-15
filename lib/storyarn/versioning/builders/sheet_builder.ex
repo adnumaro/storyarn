@@ -8,13 +8,19 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   @behaviour Storyarn.Versioning.SnapshotBuilder
 
-  import Ecto.Query, warn: false
   use Gettext, backend: Storyarn.Gettext
+
+  import Ecto.Query, warn: false
 
   alias Ecto.Multi
   alias Storyarn.Repo
-  alias Storyarn.Sheets.{Block, Sheet, TableColumn, TableRow}
+  alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.SheetAvatar
+  alias Storyarn.Sheets.TableColumn
+  alias Storyarn.Sheets.TableRow
   alias Storyarn.Versioning.Builders.AssetHashResolver
+  alias Storyarn.Versioning.DiffHelpers
   alias Storyarn.Versioning.MaterializationHelpers
 
   # ========== Build Snapshot ==========
@@ -99,7 +105,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   @impl true
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
-    Repo.transaction(fn ->
+    fn ->
       now = MaterializationHelpers.now()
       preserve_external_refs? = MaterializationHelpers.preserve_external_refs?(opts)
 
@@ -112,24 +118,21 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
         )
 
       sheet_attrs =
-        %{
-          project_id: project_id,
-          name: snapshot["name"],
-          shortcut: MaterializationHelpers.root_shortcut(snapshot, opts),
-          description: snapshot["description"],
-          color: snapshot["color"],
-          hidden_inherited_block_ids: snapshot["hidden_inherited_block_ids"] || [],
-          banner_asset_id:
-            resolve_sheet_asset(
-              snapshot["banner_asset_id"],
-              snapshot,
-              project_id,
-              preserve_external_refs?
-            ),
-          parent_id: MaterializationHelpers.root_parent_id(opts),
-          position: MaterializationHelpers.root_position(opts)
-        }
-        |> Map.merge(MaterializationHelpers.timestamps(now))
+        Map.merge(
+          %{
+            project_id: project_id,
+            name: snapshot["name"],
+            shortcut: MaterializationHelpers.root_shortcut(snapshot, opts),
+            description: snapshot["description"],
+            color: snapshot["color"],
+            hidden_inherited_block_ids: snapshot["hidden_inherited_block_ids"] || [],
+            banner_asset_id:
+              resolve_sheet_asset(snapshot["banner_asset_id"], snapshot, project_id, preserve_external_refs?),
+            parent_id: MaterializationHelpers.root_parent_id(opts),
+            position: MaterializationHelpers.root_position(opts)
+          },
+          MaterializationHelpers.timestamps(now)
+        )
 
       with {:ok, sheet_id} <-
              MaterializationHelpers.insert_one_returning_id(Repo, Sheet, sheet_attrs),
@@ -158,7 +161,8 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       else
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
     |> case do
       {:ok, {sheet, id_maps}} -> {:ok, sheet, id_maps}
       {:error, reason} -> {:error, reason}
@@ -189,13 +193,13 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       })
     end)
     |> Multi.delete_all(:delete_avatars, fn _changes ->
-      from(sa in Storyarn.Sheets.SheetAvatar, where: sa.sheet_id == ^sheet.id)
+      from(sa in SheetAvatar, where: sa.sheet_id == ^sheet.id)
     end)
     |> Multi.run(:restore_avatar, fn _repo, _changes ->
       if avatar_asset_id do
         now = Storyarn.Shared.TimeHelpers.now()
 
-        Repo.insert(%Storyarn.Sheets.SheetAvatar{
+        Repo.insert(%SheetAvatar{
           sheet_id: sheet.id,
           asset_id: avatar_asset_id,
           is_default: true,
@@ -365,20 +369,22 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
     entries =
       Enum.map(sorted_data, fn block_data ->
-        %{
-          sheet_id: sheet_id,
-          type: block_data["type"],
-          position: block_data["position"],
-          config: block_data["config"] || %{},
-          value: block_data["value"] || %{},
-          is_constant: block_data["is_constant"] || false,
-          variable_name: block_data["variable_name"],
-          scope: block_data["scope"] || "self",
-          inherited_from_block_id: block_data["inherited_from_block_id"],
-          detached: block_data["detached"] || false,
-          required: block_data["required"] || false
-        }
-        |> Map.merge(MaterializationHelpers.timestamps(now))
+        Map.merge(
+          %{
+            sheet_id: sheet_id,
+            type: block_data["type"],
+            position: block_data["position"],
+            config: block_data["config"] || %{},
+            value: block_data["value"] || %{},
+            is_constant: block_data["is_constant"] || false,
+            variable_name: block_data["variable_name"],
+            scope: block_data["scope"] || "self",
+            inherited_from_block_id: block_data["inherited_from_block_id"],
+            detached: block_data["detached"] || false,
+            required: block_data["required"] || false
+          },
+          MaterializationHelpers.timestamps(now)
+        )
       end)
 
     case MaterializationHelpers.insert_all_returning(Repo, Block, entries, [:id, :position]) do
@@ -390,12 +396,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     end
   end
 
-  defp remap_sheet_block_inheritance(
-         inserted_blocks,
-         blocks_data,
-         block_id_map,
-         preserve_external_refs?
-       ) do
+  defp remap_sheet_block_inheritance(inserted_blocks, blocks_data, block_id_map, preserve_external_refs?) do
     inserted_by_position = Map.new(inserted_blocks, &{&1.position, &1.id})
 
     Enum.reduce_while(blocks_data, :ok, fn block_data, :ok ->
@@ -436,7 +437,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   defp maybe_create_avatar(_sheet_id, nil, _now), do: :ok
 
   defp maybe_create_avatar(sheet_id, asset_id, now) do
-    case Repo.insert(%Storyarn.Sheets.SheetAvatar{
+    case Repo.insert(%SheetAvatar{
            sheet_id: sheet_id,
            asset_id: asset_id,
            is_default: true,
@@ -469,8 +470,6 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   end
 
   # ========== Diff Snapshots ==========
-
-  alias Storyarn.Versioning.DiffHelpers
 
   @block_compare_fields ~w(type config value is_constant variable_name scope required detached inherited_from_block_id table_data)
 
@@ -608,6 +607,5 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   defp maybe_add_ref(refs, _type, nil, _context), do: refs
 
-  defp maybe_add_ref(refs, type, id, context),
-    do: [%{type: type, id: id, context: context} | refs]
+  defp maybe_add_ref(refs, type, id, context), do: [%{type: type, id: id, context: context} | refs]
 end

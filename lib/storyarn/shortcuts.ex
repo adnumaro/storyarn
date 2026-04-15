@@ -10,7 +10,9 @@ defmodule Storyarn.Shortcuts do
 
   alias Storyarn.Flows.Flow
   alias Storyarn.Repo
-  alias Storyarn.Scenes.{Scene, ScenePin, SceneZone}
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.ScenePin
+  alias Storyarn.Scenes.SceneZone
   alias Storyarn.Screenplays.Screenplay
   alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Sheets.Sheet

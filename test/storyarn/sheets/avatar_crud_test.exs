@@ -1,12 +1,12 @@
 defmodule Storyarn.Sheets.AvatarCrudTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Sheets
-
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Sheets
 
   setup do
     user = user_fixture()
@@ -236,14 +236,15 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
       result = Sheets.batch_load_avatars_by_sheet(project.id)
       assert Map.has_key?(result, sheet.id)
       assert length(result[sheet.id]) == 1
-      assert hd(result[sheet.id]).asset != nil
+      assert hd(result[sheet.id]).asset
     end
 
     test "excludes soft-deleted sheets", %{project: project, asset1: asset1} do
       deleted_sheet = sheet_fixture(project, %{name: "Deleted"})
       {:ok, _} = Sheets.add_avatar(deleted_sheet, asset1.id)
 
-      Ecto.Changeset.change(deleted_sheet, deleted_at: Storyarn.Shared.TimeHelpers.now())
+      deleted_sheet
+      |> Ecto.Changeset.change(deleted_at: Storyarn.Shared.TimeHelpers.now())
       |> Storyarn.Repo.update!()
 
       result = Sheets.batch_load_avatars_by_sheet(project.id)

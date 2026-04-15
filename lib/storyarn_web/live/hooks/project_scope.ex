@@ -21,12 +21,7 @@ defmodule StoryarnWeb.Live.Hooks.ProjectScope do
   alias Storyarn.Projects
   alias StoryarnWeb.Components.AppLayout
 
-  def on_mount(
-        :load_project,
-        %{"workspace_slug" => ws_slug, "project_slug" => p_slug},
-        _session,
-        socket
-      ) do
+  def on_mount(:load_project, %{"workspace_slug" => ws_slug, "project_slug" => p_slug}, _session, socket) do
     case Projects.get_project_by_slugs(socket.assigns.current_scope, ws_slug, p_slug) do
       {:ok, project, membership} ->
         can_edit = Projects.can?(membership.role, :edit_content)

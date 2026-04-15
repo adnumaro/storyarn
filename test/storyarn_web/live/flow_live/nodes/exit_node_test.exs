@@ -1,10 +1,11 @@
 defmodule StoryarnWeb.FlowLive.Nodes.Exit.NodeTest do
   use Storyarn.DataCase, async: true
 
-  alias StoryarnWeb.FlowLive.Nodes.Exit.Node, as: ExitNode
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias Phoenix.LiveView.Socket
+  alias StoryarnWeb.FlowLive.Nodes.Exit.Node, as: ExitNode
 
   # =============================================================================
   # Metadata functions
@@ -179,7 +180,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.NodeTest do
       project = project_fixture(user_fixture())
       flow = Storyarn.FlowsFixtures.flow_fixture(project)
 
-      socket = %Phoenix.LiveView.Socket{
+      socket = %Socket{
         assigns: %{
           __changed__: %{},
           flow: flow,
@@ -414,7 +415,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.NodeTest do
     flow = Storyarn.Flows.get_flow!(project.id, flow.id)
     flow_data = Storyarn.Flows.serialize_for_canvas(flow)
 
-    socket = %Phoenix.LiveView.Socket{
+    socket = %Socket{
       assigns: %{
         __changed__: %{},
         flash: %{},

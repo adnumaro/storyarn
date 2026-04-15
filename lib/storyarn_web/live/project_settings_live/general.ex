@@ -2,12 +2,12 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
   alias Storyarn.Localization
   alias Storyarn.Projects
+  alias StoryarnWeb.Helpers.Authorize
 
   # ===========================================================================
   # Render
@@ -58,11 +58,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   # ===========================================================================
 
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
     case Projects.get_project_by_slugs(
            socket.assigns.current_scope,
            workspace_slug,
@@ -256,8 +252,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
           {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to save theme."))}
       end
     else
-      {:noreply,
-       put_flash(socket, :error, dgettext("projects", "Invalid color format. Use #RRGGBB."))}
+      {:noreply, put_flash(socket, :error, dgettext("projects", "Invalid color format. Use #RRGGBB."))}
     end
   end
 

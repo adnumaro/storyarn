@@ -2,9 +2,7 @@ defmodule StoryarnWeb.FlowLive.Index do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
-
-  import StoryarnWeb.Live.Shared.TreePanelHandlers
+  use StoryarnWeb.Live.Shared.DashboardHandlers
 
   import StoryarnWeb.Components.DashboardComponents,
     only: [
@@ -15,7 +13,7 @@ defmodule StoryarnWeb.FlowLive.Index do
       reload_dashboard: 6
     ]
 
-  use StoryarnWeb.Live.Shared.DashboardHandlers
+  import StoryarnWeb.Live.Shared.TreePanelHandlers
 
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
@@ -23,6 +21,7 @@ defmodule StoryarnWeb.FlowLive.Index do
   alias Storyarn.Projects
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
+  alias StoryarnWeb.Helpers.Authorize
 
   @impl true
   def render(assigns) do
@@ -79,11 +78,7 @@ defmodule StoryarnWeb.FlowLive.Index do
   # ===========================================================================
 
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
     case Projects.get_project_by_slugs(
            socket.assigns.current_scope,
            workspace_slug,
@@ -233,25 +228,21 @@ defmodule StoryarnWeb.FlowLive.Index do
 
   @impl true
   # Tree panel events (from AppLayout)
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: handle_tree_panel_event(event, params, socket)
+  def handle_event("tree_panel_" <> _ = event, params, socket), do: handle_tree_panel_event(event, params, socket)
 
   def handle_event("sort_flows", %{"column" => column}, socket) do
-    {:noreply,
-     handle_sort(socket, column, :all_flow_table_data, :flow_table_data, flow_sort_columns())}
+    {:noreply, handle_sort(socket, column, :all_flow_table_data, :flow_table_data, flow_sort_columns())}
   end
 
   def handle_event("page_flows", %{"page" => page}, socket) do
     {:noreply, handle_page(socket, page, :all_flow_table_data, :flow_table_data)}
   end
 
-  def handle_event(event, %{"id" => id}, socket)
-      when event in ~w(set_pending_delete set_pending_delete_flow) do
+  def handle_event(event, %{"id" => id}, socket) when event in ~w(set_pending_delete set_pending_delete_flow) do
     {:noreply, assign(socket, :pending_delete_id, id)}
   end
 
-  def handle_event(event, _params, socket)
-      when event in ~w(confirm_delete confirm_delete_flow) do
+  def handle_event(event, _params, socket) when event in ~w(confirm_delete confirm_delete_flow) do
     if id = socket.assigns[:pending_delete_id] do
       handle_event("delete", %{"id" => id}, socket)
     else
@@ -259,8 +250,7 @@ defmodule StoryarnWeb.FlowLive.Index do
     end
   end
 
-  def handle_event(event, %{"id" => flow_id}, socket)
-      when event in ~w(delete delete_flow) do
+  def handle_event(event, %{"id" => flow_id}, socket) when event in ~w(delete delete_flow) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       with %{} = flow <- Flows.get_flow(socket.assigns.project.id, flow_id),
            {:ok, _} <- Flows.delete_flow(flow) do
@@ -278,8 +268,7 @@ defmodule StoryarnWeb.FlowLive.Index do
     end)
   end
 
-  def handle_event(event, %{"id" => flow_id}, socket)
-      when event in ~w(set_main set_main_flow) do
+  def handle_event(event, %{"id" => flow_id}, socket) when event in ~w(set_main set_main_flow) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       with %{} = flow <- Flows.get_flow(socket.assigns.project.id, flow_id),
            {:ok, _} <- Flows.set_main_flow(flow) do
@@ -406,8 +395,7 @@ defmodule StoryarnWeb.FlowLive.Index do
       {severity, message} =
         case issue.issue_type do
           :no_entry ->
-            {:error,
-             dgettext("flows", "Flow \"%{name}\" has no entry node", name: issue.flow_name)}
+            {:error, dgettext("flows", "Flow \"%{name}\" has no entry node", name: issue.flow_name)}
 
           :disconnected_nodes ->
             {:warning,

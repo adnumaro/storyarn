@@ -2,16 +2,16 @@ defmodule StoryarnWeb.FlowLive.Show do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
-  alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   import StoryarnWeb.Live.Shared.TreePanelHandlers
 
   alias Storyarn.Collaboration
+  alias Storyarn.Collaboration.Presence
   alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Scenes
   alias Storyarn.Sheets
+  alias Storyarn.Versioning
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers
@@ -32,9 +32,10 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Nodes.SlugLine
   alias StoryarnWeb.FlowLive.Nodes.Subflow
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
+  alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.VersionHistoryHelpers
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
-  alias Storyarn.Versioning
+  alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   # Node types are now rendered by flow_dock.ex
   @lock_heartbeat_interval 10_000
@@ -258,11 +259,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   # ===========================================================================
 
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
     case Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug) do
       {:ok, project, membership} ->
         can_edit = Projects.can?(membership.role, :edit_content)
@@ -307,7 +304,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           |> assign(:debug_var_filter, "")
           |> assign(:debug_var_changed_only, false)
           |> assign(:debug_step_limit_reached, false)
-                    |> assign(:versions_panel_open, false)
+          |> assign(:versions_panel_open, false)
           |> assign(:history_data, nil)
           |> assign(:all_sheets, [])
           |> assign(:gallery_by_sheet, %{})
@@ -421,9 +418,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       nil ->
         socket
         |> put_flash(:error, dgettext("flows", "Flow not found."))
-        |> push_navigate(
-          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
-        )
+        |> push_navigate(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows")
 
       flow ->
         # Teardown collaboration for previous flow (if switching)
@@ -461,8 +456,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
             %{
               flow: full_flow,
-              flow_data:
-                Flows.serialize_for_canvas(full_flow, project_variables: project_variables),
+              flow_data: Flows.serialize_for_canvas(full_flow, project_variables: project_variables),
               all_sheets: Sheets.list_all_sheets(project.id),
               gallery_by_sheet: Sheets.batch_load_gallery_data_by_sheet(project.id),
               flow_hubs: Flows.list_hubs(flow.id),
@@ -492,8 +486,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   @impl true
   # Tree panel events (from AppLayout)
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: handle_tree_panel_event(event, params, socket)
+  def handle_event("tree_panel_" <> _ = event, params, socket), do: handle_tree_panel_event(event, params, socket)
 
   def handle_event("open_versions_panel", _params, %{assigns: %{compact: true}} = socket) do
     {:noreply, socket}
@@ -547,8 +540,7 @@ defmodule StoryarnWeb.FlowLive.Show do
              |> put_flash(:info, dgettext("versioning", "Version created."))}
 
           {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
+            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
         end
       end
     end)
@@ -571,8 +563,7 @@ defmodule StoryarnWeb.FlowLive.Show do
              |> put_flash(:info, dgettext("versioning", "Version named successfully."))}
 
           {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("versioning", "Could not name version."))}
+            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not name version."))}
         end
       else
         _ -> {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
@@ -593,8 +584,7 @@ defmodule StoryarnWeb.FlowLive.Show do
              |> put_flash(:info, dgettext("versioning", "Version deleted."))}
 
           {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("versioning", "Could not delete version."))}
+            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not delete version."))}
         end
       else
         _ -> {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
@@ -608,8 +598,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     if history do
       next_page = (history[:page] || 1) + 1
 
-      {:noreply,
-       VersionHistoryHelpers.load_more_history(socket, "flow", socket.assigns.flow.id, next_page)}
+      {:noreply, VersionHistoryHelpers.load_more_history(socket, "flow", socket.assigns.flow.id, next_page)}
     else
       {:noreply, socket}
     end
@@ -675,9 +664,7 @@ defmodule StoryarnWeb.FlowLive.Show do
              Versioning.get_version("flow", socket.assigns.flow.id, number) do
         skip = params["skip_pre_snapshot"] == true
 
-        case Versioning.restore_version(version, "flow", socket.assigns.flow,
-               skip_pre_snapshot: skip
-             ) do
+        case Versioning.restore_version(version, "flow", socket.assigns.flow, skip_pre_snapshot: skip) do
           {:ok, _} ->
             {:noreply,
              socket
@@ -689,8 +676,7 @@ defmodule StoryarnWeb.FlowLive.Show do
              )}
 
           {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("versioning", "Could not restore version."))}
+            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not restore version."))}
         end
       else
         _ -> {:noreply, socket}
@@ -699,15 +685,17 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("compare_version", %{"version_number" => vn}, socket) do
-    with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn) do
-      %{workspace: workspace, project: project, flow: flow} = socket.assigns
+    case VersionHistoryHelpers.parse_version_number(vn) do
+      {:ok, number} ->
+        %{workspace: workspace, project: project, flow: flow} = socket.assigns
 
-      compare_url =
-        ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{flow.id}/compare/#{number}"
+        compare_url =
+          ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{flow.id}/compare/#{number}"
 
-      {:noreply, push_navigate(socket, to: compare_url)}
-    else
-      _ -> {:noreply, socket}
+        {:noreply, push_navigate(socket, to: compare_url)}
+
+      _ ->
+        {:noreply, socket}
     end
   end
 
@@ -928,8 +916,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
-  def handle_event("update_annotation_font_size", %{"value" => size}, socket)
-      when size in ["sm", "md", "lg"] do
+  def handle_event("update_annotation_font_size", %{"value" => size}, socket) when size in ["sm", "md", "lg"] do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       update_selected_node_data(socket, "font_size", size)
     end)
@@ -979,11 +966,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
-  def handle_event(
-        "connection_deleted",
-        %{"source_node_id" => source_id, "target_node_id" => target_id},
-        socket
-      ) do
+  def handle_event("connection_deleted", %{"source_node_id" => source_id, "target_node_id" => target_id}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       ConnectionHelpers.delete_connection_by_nodes(socket, source_id, target_id)
     end)
@@ -1343,8 +1326,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           current_entity_id: socket.assigns.flow.id,
           get_fn: &Flows.get_flow!/2,
           delete_fn: &Flows.delete_flow/1,
-          index_path:
-            ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows",
+          index_path: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows",
           reload_tree_fn: &reload_flows_tree/1,
           success_msg: dgettext("flows", "Flow moved to trash."),
           error_msg: dgettext("flows", "Could not delete flow.")
@@ -1359,8 +1341,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         current_entity_id: socket.assigns.flow.id,
         get_fn: &Flows.get_flow!/2,
         delete_fn: &Flows.delete_flow/1,
-        index_path:
-          ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows",
+        index_path: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows",
         reload_tree_fn: &reload_flows_tree/1,
         success_msg: dgettext("flows", "Flow moved to trash."),
         error_msg: dgettext("flows", "Could not delete flow.")
@@ -1411,7 +1392,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     flow = data.flow
     user = socket.assigns.current_scope.user
 
-    unless socket.assigns.compact do
+    if !socket.assigns.compact do
       CollaborationHelpers.setup_collaboration(socket, flow, user)
     end
 
@@ -1424,10 +1405,10 @@ defmodule StoryarnWeb.FlowLive.Show do
 
     # Reuse tree if already loaded (patch navigation)
     flows_tree =
-      if socket.assigns.flows_tree != [] do
-        socket.assigns.flows_tree
-      else
+      if socket.assigns.flows_tree == [] do
         data.flows_tree
+      else
+        socket.assigns.flows_tree
       end
 
     socket =
@@ -1465,7 +1446,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:collab_scope, {:flow, flow.id})
       |> assign(:online_users, online_users)
       |> assign(:node_locks, node_locks)
-            |> assign(:remote_cursors, %{})
+      |> assign(:remote_cursors, %{})
       |> assign(:panel_sections, %{})
       |> assign(:debug_state, nil)
       |> assign(:debug_panel_open, false)
@@ -1510,27 +1491,15 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   @impl true
   def handle_info({:project_restoration_started, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_started, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_started, payload}, socket)
 
   @impl true
   def handle_info({:project_restoration_completed, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_completed, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_completed, payload}, socket)
 
   @impl true
   def handle_info({:project_restoration_failed, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_failed, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_failed, payload}, socket)
 
   @impl true
   def handle_info({:try_auto_snapshot, token}, socket) do
@@ -1552,8 +1521,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     {:noreply, assign(socket, :node_select_loading, false)}
   end
 
-  def handle_info({:node_updated, updated_node}, socket),
-    do: EditorInfoHandlers.handle_node_updated(updated_node, socket)
+  def handle_info({:node_updated, updated_node}, socket), do: EditorInfoHandlers.handle_node_updated(updated_node, socket)
 
   def handle_info({:mention_suggestions, query, component_cid}, socket),
     do: EditorInfoHandlers.handle_mention_suggestions(query, component_cid, socket)
@@ -1564,21 +1532,18 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info({:resolve_variable_defaults, refs, component_cid}, socket),
     do: EditorInfoHandlers.handle_resolve_variable_defaults(refs, component_cid, socket)
 
-  def handle_info(:debug_auto_step, socket),
-    do: DebugHandlers.handle_debug_auto_step(socket)
+  def handle_info(:debug_auto_step, socket), do: DebugHandlers.handle_debug_auto_step(socket)
 
-
-  def handle_info({Storyarn.Collaboration.Presence, {:join, _} = event}, socket),
+  def handle_info({Presence, {:join, _} = event}, socket),
     do: CollaborationEventHandlers.handle_presence_event(event, socket)
 
-  def handle_info({Storyarn.Collaboration.Presence, {:leave, _} = event}, socket),
+  def handle_info({Presence, {:leave, _} = event}, socket),
     do: CollaborationEventHandlers.handle_presence_event(event, socket)
 
   def handle_info({:cursor_update, cursor_data}, socket),
     do: CollaborationEventHandlers.handle_cursor_update(cursor_data, socket)
 
-  def handle_info({:cursor_leave, user_id}, socket),
-    do: CollaborationEventHandlers.handle_cursor_leave(user_id, socket)
+  def handle_info({:cursor_leave, user_id}, socket), do: CollaborationEventHandlers.handle_cursor_leave(user_id, socket)
 
   def handle_info({:lock_change, action, payload}, socket),
     do: CollaborationEventHandlers.handle_lock_change(action, payload, socket)

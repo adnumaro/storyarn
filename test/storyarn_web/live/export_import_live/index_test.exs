@@ -23,7 +23,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -107,7 +107,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       {:ok, view, _html} = live(conn, export_import_url(project))
 
       # Toggle sheets off
-      html = view |> render_click("toggle_section", %{"section" => "sheets"})
+      html = render_click(view, "toggle_section", %{"section" => "sheets"})
 
       # Page still renders (no crash)
       assert html =~ "Export"
@@ -117,7 +117,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       {:ok, view, _html} = live(conn, export_import_url(project))
 
       # Set format to storyarn (the default; just verify it doesn't crash)
-      html = view |> render_click("set_format", %{"format" => "storyarn"})
+      html = render_click(view, "set_format", %{"format" => "storyarn"})
 
       assert html =~ "Export"
     end
@@ -127,7 +127,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -212,7 +212,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
       # First validate
       render_click(view, "validate_export", %{})
-      assert validation_status(view) != nil
+      assert validation_status(view)
 
       # Then switch format — validation_result should be cleared
       render_click(view, "set_format", %{"format" => "ink"})
@@ -250,7 +250,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -262,14 +262,14 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       {:ok, view, _html} = live(conn, section_url(project))
 
       # Toggle sheets off
-      view |> render_click("toggle_section", %{"section" => "sheets"})
+      render_click(view, "toggle_section", %{"section" => "sheets"})
 
       # Download link should include sheets=false parameter
       html = render(view)
       assert html =~ "sheets=false"
 
       # Toggle sheets back on
-      html = view |> render_click("toggle_section", %{"section" => "sheets"})
+      html = render_click(view, "toggle_section", %{"section" => "sheets"})
 
       # sheets=false should no longer appear
       refute html =~ "sheets=false"
@@ -281,8 +281,8 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     } do
       {:ok, view, _html} = live(conn, section_url(project))
 
-      view |> render_click("toggle_section", %{"section" => "flows"})
-      html = view |> render_click("toggle_section", %{"section" => "scenes"})
+      render_click(view, "toggle_section", %{"section" => "flows"})
+      html = render_click(view, "toggle_section", %{"section" => "scenes"})
 
       assert html =~ "flows=false"
       assert html =~ "scenes=false"
@@ -291,7 +291,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     test "invalid section name is ignored", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, section_url(project))
 
-      html = view |> render_click("toggle_section", %{"section" => "nonexistent"})
+      html = render_click(view, "toggle_section", %{"section" => "nonexistent"})
 
       # Page still renders normally
       assert html =~ "Export"
@@ -300,7 +300,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     test "toggling screenplays off", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, section_url(project))
 
-      html = view |> render_click("toggle_section", %{"section" => "screenplays"})
+      html = render_click(view, "toggle_section", %{"section" => "screenplays"})
 
       assert html =~ "screenplays=false"
     end
@@ -308,7 +308,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     test "toggling localization off", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, section_url(project))
 
-      html = view |> render_click("toggle_section", %{"section" => "localization"})
+      html = render_click(view, "toggle_section", %{"section" => "localization"})
 
       assert html =~ "localization=false"
     end
@@ -318,7 +318,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -343,7 +343,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     } do
       {:ok, view, _html} = live(conn, asset_url(project))
 
-      html = view |> render_click("set_asset_mode", %{"mode" => "embedded"})
+      html = render_click(view, "set_asset_mode", %{"mode" => "embedded"})
 
       assert html =~ "assets=embedded"
     end
@@ -354,7 +354,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     } do
       {:ok, view, _html} = live(conn, asset_url(project))
 
-      html = view |> render_click("set_asset_mode", %{"mode" => "bundled"})
+      html = render_click(view, "set_asset_mode", %{"mode" => "bundled"})
 
       assert html =~ "assets=bundled"
     end
@@ -365,8 +365,8 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     } do
       {:ok, view, _html} = live(conn, asset_url(project))
 
-      view |> render_click("set_asset_mode", %{"mode" => "embedded"})
-      html = view |> render_click("set_asset_mode", %{"mode" => "references"})
+      render_click(view, "set_asset_mode", %{"mode" => "embedded"})
+      html = render_click(view, "set_asset_mode", %{"mode" => "references"})
 
       refute html =~ "assets="
     end
@@ -374,7 +374,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     test "invalid asset mode is ignored", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, asset_url(project))
 
-      html = view |> render_click("set_asset_mode", %{"mode" => "invalid_mode"})
+      html = render_click(view, "set_asset_mode", %{"mode" => "invalid_mode"})
 
       # Page still renders normally, default asset mode unchanged
       assert html =~ "Export"
@@ -386,7 +386,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -400,7 +400,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     } do
       {:ok, view, _html} = live(conn, opts_url(project))
 
-      html = view |> render_click("toggle_option", %{"option" => "validate_before_export"})
+      html = render_click(view, "toggle_option", %{"option" => "validate_before_export"})
 
       assert html =~ "validate=false"
     end
@@ -411,8 +411,8 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     } do
       {:ok, view, _html} = live(conn, opts_url(project))
 
-      view |> render_click("toggle_option", %{"option" => "validate_before_export"})
-      html = view |> render_click("toggle_option", %{"option" => "validate_before_export"})
+      render_click(view, "toggle_option", %{"option" => "validate_before_export"})
+      html = render_click(view, "toggle_option", %{"option" => "validate_before_export"})
 
       refute html =~ "validate=false"
     end
@@ -423,7 +423,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     } do
       {:ok, view, _html} = live(conn, opts_url(project))
 
-      html = view |> render_click("toggle_option", %{"option" => "pretty_print"})
+      html = render_click(view, "toggle_option", %{"option" => "pretty_print"})
 
       assert html =~ "pretty=false"
     end
@@ -434,8 +434,8 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     } do
       {:ok, view, _html} = live(conn, opts_url(project))
 
-      view |> render_click("toggle_option", %{"option" => "pretty_print"})
-      html = view |> render_click("toggle_option", %{"option" => "pretty_print"})
+      render_click(view, "toggle_option", %{"option" => "pretty_print"})
+      html = render_click(view, "toggle_option", %{"option" => "pretty_print"})
 
       refute html =~ "pretty=false"
     end
@@ -443,8 +443,8 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     test "both options can be toggled independently", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, opts_url(project))
 
-      view |> render_click("toggle_option", %{"option" => "validate_before_export"})
-      html = view |> render_click("toggle_option", %{"option" => "pretty_print"})
+      render_click(view, "toggle_option", %{"option" => "validate_before_export"})
+      html = render_click(view, "toggle_option", %{"option" => "pretty_print"})
 
       assert html =~ "validate=false"
       assert html =~ "pretty=false"
@@ -455,7 +455,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -484,7 +484,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -499,7 +499,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       {:ok, view, _html} = live(conn, strategy_url(project))
 
       for strategy <- ~w(overwrite rename skip) do
-        html = view |> render_click("set_strategy", %{"strategy" => strategy})
+        html = render_click(view, "set_strategy", %{"strategy" => strategy})
         assert html =~ "Export", "page should still render after setting strategy to #{strategy}"
       end
     end
@@ -507,7 +507,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     test "invalid strategy is ignored", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, strategy_url(project))
 
-      html = view |> render_click("set_strategy", %{"strategy" => "invalid_strategy"})
+      html = render_click(view, "set_strategy", %{"strategy" => "invalid_strategy"})
 
       assert html =~ "Export"
     end
@@ -517,7 +517,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -541,7 +541,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -601,7 +601,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -621,8 +621,8 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     test "entity counts show with project data", %{conn: conn, project: project} do
-      import Storyarn.SheetsFixtures
       import Storyarn.FlowsFixtures
+      import Storyarn.SheetsFixtures
 
       _sheet = sheet_fixture(project)
       _flow = flow_fixture(project)
@@ -640,7 +640,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -688,7 +688,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       conn = log_in_user(conn, viewer)
 
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, viewer, "viewer")
 
       {:ok, view, _html} =
@@ -708,7 +708,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       conn = log_in_user(conn, viewer)
 
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, viewer, "viewer")
 
       {:ok, view, _html} =
@@ -731,7 +731,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       conn = log_in_user(conn, viewer)
 
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, viewer, "viewer")
 
       {:ok, view, _html} =
@@ -760,7 +760,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       conn = log_in_user(conn, user)
 
       other_user = user_fixture()
-      project = project_fixture(other_user) |> Repo.preload(:workspace)
+      project = other_user |> project_fixture() |> Repo.preload(:workspace)
 
       assert {:error, {:redirect, %{to: "/workspaces", flash: %{"error" => error_msg}}}} =
                live(
@@ -776,7 +776,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       conn = log_in_user(conn, viewer)
 
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, viewer, "viewer")
 
       {:ok, _view, html} =
@@ -793,7 +793,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       conn = log_in_user(conn, viewer)
 
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, viewer, "viewer")
 
       {:ok, view, _html} =
@@ -812,7 +812,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       conn = log_in_user(conn, editor)
 
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, editor, "editor")
 
       {:ok, view, _html} =
@@ -835,7 +835,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -900,7 +900,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -936,7 +936,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -989,7 +989,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -1016,7 +1016,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       view |> form("#import-form") |> render_submit()
 
       assert import_state(view)["step"] == "error"
-      assert import_state(view)["error"] != nil
+      assert import_state(view)["error"]
     end
 
     test "parse_import with valid JSON but invalid structure shows error", %{
@@ -1038,7 +1038,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       view |> form("#import-form") |> render_submit()
 
       assert import_state(view)["step"] == "error"
-      assert import_state(view)["error"] != nil
+      assert import_state(view)["error"]
     end
 
     test "parse_import with array JSON shows invalid structure error", %{
@@ -1060,7 +1060,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       view |> form("#import-form") |> render_submit()
 
       assert import_state(view)["step"] == "error"
-      assert import_state(view)["error"] != nil
+      assert import_state(view)["error"]
     end
 
     test "reset_import after error returns to upload step", %{
@@ -1097,7 +1097,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -1159,7 +1159,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -1224,7 +1224,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       upload_and_parse(view, valid_import_data())
 
       assert import_state(view)["step"] == "preview"
-      assert import_state(view)["preview"] != nil
+      assert import_state(view)["preview"]
     end
 
     test "execute_import with valid data transitions to done step", %{
@@ -1237,7 +1237,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       render_click(view, "execute_import", %{})
 
       assert import_state(view)["step"] == "done"
-      assert import_state(view)["result"] != nil
+      assert import_state(view)["result"]
     end
 
     test "execute_import cleans up ETS data", %{conn: conn, project: project} do
@@ -1249,7 +1249,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       baseline_count = length(:ets.tab2list(:import_staging))
       assert baseline_count >= 1
 
-      view |> render_click("execute_import", %{})
+      render_click(view, "execute_import", %{})
 
       # After execute, the entry should be removed
       # The view's ref was deleted by take_import_data
@@ -1281,8 +1281,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       baseline_count = length(:ets.tab2list(:import_staging))
       assert baseline_count >= 1
 
-      view |> render_click("reset_import", %{})
-
+      render_click(view, "reset_import", %{})
       assert length(:ets.tab2list(:import_staging)) < baseline_count
     end
 
@@ -1335,8 +1334,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert count_after_first == baseline_count + 1
 
       # Reset cleans the entry, then re-parse creates a new one
-      view |> render_click("reset_import", %{})
-
+      render_click(view, "reset_import", %{})
       count_after_reset = length(:ets.tab2list(:import_staging))
       assert count_after_reset == baseline_count
 
@@ -1356,7 +1354,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -1398,7 +1396,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       upload_and_parse_for_conflict(view, import_data)
 
       # Set strategy to overwrite
-      html = view |> render_click("set_strategy", %{"strategy" => "overwrite"})
+      html = render_click(view, "set_strategy", %{"strategy" => "overwrite"})
 
       # Page should still render (strategy is stored in assigns)
       assert html =~ "Import preview" or html =~ "Import"

@@ -78,7 +78,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
     end
   end
 
-
   # ============================================================================
   # Unit tests: handle_variable_suggestions/3
   # ============================================================================
@@ -111,7 +110,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
       {:noreply, result} = EditorInfoHandlers.handle_variable_suggestions("health", nil, socket)
 
       payload = find_push_event(result, "variable_suggestions_result")
-      assert payload != nil
+      assert payload
       assert length(payload.items) == 1
       assert hd(payload.items).ref == "mc.jaime.health"
       assert hd(payload.items).block_type == "number"
@@ -273,7 +272,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -415,7 +414,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -449,7 +448,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -497,7 +496,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       sheet = sheet_fixture(project, %{name: "MC Jaime", shortcut: "mc.jaime"})
 
@@ -535,7 +534,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -581,7 +580,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -612,7 +611,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -650,7 +649,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.EditorInfoHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       sheet = sheet_fixture(project, %{name: "Hero", shortcut: "hero"})
       %{project: project, flow: flow, sheet: sheet}

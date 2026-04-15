@@ -9,9 +9,9 @@ defmodule StoryarnWeb.Components.UIComponents do
   use Phoenix.Component
   use Gettext, backend: Storyarn.Gettext
 
-  alias Phoenix.LiveView.JS
-
   import StoryarnWeb.Components.CoreComponents, only: [icon: 1]
+
+  alias Phoenix.LiveView.JS
 
   @doc """
   Renders a role badge.
@@ -283,5 +283,4 @@ defmodule StoryarnWeb.Components.UIComponents do
     </div>
     """
   end
-
 end

@@ -45,8 +45,7 @@ defmodule Storyarn.Emails.Templates do
     #{dgettext("emails", "If you didn't request this change, please ignore this email.")}
     """
 
-    {subject, Layout.render(content, preview: dgettext("emails", "Confirm your email change")),
-     text}
+    {subject, Layout.render(content, preview: dgettext("emails", "Confirm your email change")), text}
   end
 
   @doc "Project invitation email."
@@ -177,8 +176,7 @@ defmodule Storyarn.Emails.Templates do
     #{dgettext("emails", "You can log in with this email address (%{email}).", email: email)}
     """
 
-    {subject,
-     Layout.render(content, preview: dgettext("emails", "Your Storyarn access is ready")), text}
+    {subject, Layout.render(content, preview: dgettext("emails", "Your Storyarn access is ready")), text}
   end
 
   # --- Admin-only templates (no Gettext, always English) ---

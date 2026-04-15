@@ -1,13 +1,13 @@
 defmodule Storyarn.Versioning.ProjectSnapshotCrudTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Versioning
-  alias Storyarn.Versioning.ProjectSnapshot
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Versioning
+  alias Storyarn.Versioning.ProjectSnapshot
 
   setup do
     user = user_fixture()

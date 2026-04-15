@@ -234,7 +234,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
       avg_opacity =
         Enum.reduce(items, 0, fn z, acc -> acc + (z.opacity || 0.3) end) / max(length(items), 1)
 
-      hex = round(avg_opacity * 255) |> Integer.to_string(16) |> String.pad_leading(2, "0")
+      hex = (avg_opacity * 255) |> round() |> Integer.to_string(16) |> String.pad_leading(2, "0")
 
       %{
         color: color,
@@ -434,8 +434,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
 
   defp pin_avatar_url(_), do: nil
 
-  defp pin_icon_asset_url(%{icon_asset: %Storyarn.Assets.Asset{} = asset}),
-    do: Assets.display_url(asset)
+  defp pin_icon_asset_url(%{icon_asset: %Storyarn.Assets.Asset{} = asset}), do: Assets.display_url(asset)
 
   defp pin_icon_asset_url(_), do: nil
 end

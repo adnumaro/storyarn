@@ -1,9 +1,10 @@
 defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
   @moduledoc false
 
+  use Gettext, backend: Storyarn.Gettext
+
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [put_flash: 3]
-  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Assets
   alias Storyarn.Billing
@@ -40,7 +41,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
       end)
 
     audio_assets =
-      Assets.list_assets(project.id, content_type: "audio/")
+      project.id
+      |> Assets.list_assets(content_type: "audio/")
       |> Enum.map(&serialize_audio_asset/1)
 
     assign(socket, :audio_data, %{
@@ -91,8 +93,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
               update_node_audio(socket, node_id, asset.id)
 
             {:error, _reason} ->
-              {:noreply,
-               put_flash(socket, :error, dgettext("sheets", "Could not upload audio file."))}
+              {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not upload audio file."))}
           end
 
         {:error, :limit_reached, _details} ->

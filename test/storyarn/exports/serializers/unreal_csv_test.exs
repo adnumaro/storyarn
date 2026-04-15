@@ -1,15 +1,16 @@
 defmodule Storyarn.Exports.Serializers.UnrealCSVTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Exports.{DataCollector, ExportOptions}
-  alias Storyarn.Exports.Serializers.UnrealCSV
-
-  alias Storyarn.Repo
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Exports.DataCollector
+  alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.Serializers.Helpers
+  alias Storyarn.Exports.Serializers.UnrealCSV
+  alias Storyarn.Repo
 
   # =============================================================================
   # Setup
@@ -351,7 +352,7 @@ defmodule Storyarn.Exports.Serializers.UnrealCSVTest do
       meta = Jason.decode!(json)
 
       conv_key =
-        Storyarn.Exports.Serializers.Helpers.shortcut_to_identifier(flow.shortcut || flow.name)
+        Helpers.shortcut_to_identifier(flow.shortcut || flow.name)
 
       conv = meta["conversations"][conv_key]
       assert conv
@@ -365,7 +366,7 @@ defmodule Storyarn.Exports.Serializers.UnrealCSVTest do
       json = get_file(export_files(project), "Conversations.json")
       meta = Jason.decode!(json)
 
-      char_key = Storyarn.Exports.Serializers.Helpers.shortcut_to_identifier(sheet.shortcut)
+      char_key = Helpers.shortcut_to_identifier(sheet.shortcut)
       assert meta["characters"][char_key]
     end
 

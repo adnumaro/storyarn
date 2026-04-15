@@ -53,11 +53,11 @@ defmodule StoryarnWeb.Plugs.Locale do
   end
 
   defp get_locale_from_params(conn) do
-    conn.params["locale"] |> validate_locale()
+    validate_locale(conn.params["locale"])
   end
 
   defp get_locale_from_session(conn) do
-    get_session(conn, :locale) |> validate_locale()
+    conn |> get_session(:locale) |> validate_locale()
   end
 
   defp get_locale_from_header(conn) do

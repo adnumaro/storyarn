@@ -3,7 +3,8 @@ defmodule Storyarn.Accounts.OAuth do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.{User, UserIdentity}
+  alias Storyarn.Accounts.User
+  alias Storyarn.Accounts.UserIdentity
   alias Storyarn.Repo
 
   @doc """

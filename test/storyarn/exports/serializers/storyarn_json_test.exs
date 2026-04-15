@@ -1,10 +1,6 @@
 defmodule Storyarn.Exports.Serializers.StoryarnJSONTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Exports
-  alias Storyarn.Exports.{DataCollector, ExportOptions}
-  alias Storyarn.Exports.Serializers.StoryarnJSON
-
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures, except: [connection_fixture: 3, connection_fixture: 4]
@@ -13,6 +9,11 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSONTest do
   import Storyarn.ScenesFixtures
   import Storyarn.ScreenplaysFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Exports
+  alias Storyarn.Exports.DataCollector
+  alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.Serializers.StoryarnJSON
 
   # =============================================================================
   # Setup
@@ -378,7 +379,6 @@ defmodule Storyarn.Exports.Serializers.StoryarnJSONTest do
       assert el["type"] == "action"
       assert el["content"] == "The hero enters."
     end
-
   end
 
   # =============================================================================

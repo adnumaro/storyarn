@@ -1,10 +1,10 @@
 defmodule Storyarn.Assets.VariantGenerationTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Assets
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias Storyarn.Assets
 
   @test_png_path "test/fixtures/images/quadrant_map.png"
   @test_jpg_path "test/fixtures/images/test_image.jpg"
@@ -38,8 +38,8 @@ defmodule Storyarn.Assets.VariantGenerationTest do
 
       # Reload the asset to check if metadata was updated with web_url
       updated = Assets.get_asset(project.id, asset.id)
-      assert updated.metadata["web_url"] != nil
-      assert updated.metadata["web_asset_id"] != nil
+      assert updated.metadata["web_url"]
+      assert updated.metadata["web_asset_id"]
 
       # Cleanup
       Assets.storage_delete(asset.key)
@@ -130,10 +130,10 @@ defmodule Storyarn.Assets.VariantGenerationTest do
       Process.sleep(2000)
 
       updated = Assets.get_asset(project.id, asset.id)
-      assert updated.metadata["web_url"] != nil
+      assert updated.metadata["web_url"]
 
       variant = Assets.get_asset(project.id, updated.metadata["web_asset_id"])
-      assert variant != nil
+      assert variant
       assert variant.content_type == "image/webp"
       assert variant.metadata["is_variant"] == true
       assert variant.metadata["original_asset_id"] == asset.id

@@ -23,7 +23,10 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   import Ecto.Query
 
-  alias Storyarn.Flows.{Condition, Flow, FlowNode, VariableReference}
+  alias Storyarn.Flows.Condition
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.VariableReference
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
 
@@ -49,11 +52,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   """
   @spec delete_references(integer()) :: :ok
   def delete_references(node_id) do
-    from(vr in VariableReference,
-      where: vr.source_type == "flow_node" and vr.source_id == ^node_id
-    )
-    |> Repo.delete_all()
-
+    Repo.delete_all(from(vr in VariableReference, where: vr.source_type == "flow_node" and vr.source_id == ^node_id))
     :ok
   end
 
@@ -88,11 +87,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   """
   @spec delete_map_zone_references(integer()) :: :ok
   def delete_map_zone_references(zone_id) do
-    from(vr in VariableReference,
-      where: vr.source_type == "scene_zone" and vr.source_id == ^zone_id
-    )
-    |> Repo.delete_all()
-
+    Repo.delete_all(from(vr in VariableReference, where: vr.source_type == "scene_zone" and vr.source_id == ^zone_id))
     :ok
   end
 
@@ -127,11 +122,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   """
   @spec delete_map_pin_references(integer()) :: :ok
   def delete_map_pin_references(pin_id) do
-    from(vr in VariableReference,
-      where: vr.source_type == "scene_pin" and vr.source_id == ^pin_id
-    )
-    |> Repo.delete_all()
-
+    Repo.delete_all(from(vr in VariableReference, where: vr.source_type == "scene_pin" and vr.source_id == ^pin_id))
     :ok
   end
 
@@ -149,27 +140,28 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   end
 
   defp get_flow_node_variable_usage(block_id, project_id) do
-    from(vr in VariableReference,
-      join: n in FlowNode,
-      on: vr.source_type == "flow_node" and n.id == vr.source_id,
-      join: f in Flow,
-      on: f.id == n.flow_id,
-      where: vr.block_id == ^block_id,
-      where: f.project_id == ^project_id,
-      where: is_nil(f.deleted_at),
-      select: %{
-        source_type: vr.source_type,
-        kind: vr.kind,
-        flow_id: f.id,
-        flow_name: f.name,
-        flow_shortcut: f.shortcut,
-        node_id: n.id,
-        node_type: n.type,
-        node_data: n.data
-      },
-      order_by: [asc: vr.kind, asc: f.name]
+    Repo.all(
+      from(vr in VariableReference,
+        join: n in FlowNode,
+        on: vr.source_type == "flow_node" and n.id == vr.source_id,
+        join: f in Flow,
+        on: f.id == n.flow_id,
+        where: vr.block_id == ^block_id,
+        where: f.project_id == ^project_id,
+        where: is_nil(f.deleted_at),
+        select: %{
+          source_type: vr.source_type,
+          kind: vr.kind,
+          flow_id: f.id,
+          flow_name: f.name,
+          flow_shortcut: f.shortcut,
+          node_id: n.id,
+          node_type: n.type,
+          node_data: n.data
+        },
+        order_by: [asc: vr.kind, asc: f.name]
+      )
     )
-    |> Repo.all()
   end
 
   defp get_scene_zone_variable_usage(block_id, project_id) do
@@ -253,7 +245,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   def repair_stale_references(project_id) do
     # Get all variable references for this project with current block info + source fields
     refs_with_info =
-      Storyarn.Sheets.list_variable_refs_with_block_info_for_repair(project_id)
+      project_id
+      |> Storyarn.Sheets.list_variable_refs_with_block_info_for_repair()
       |> Enum.map(&compute_table_current_variable/1)
 
     # Group by node_id to batch repairs per node
@@ -264,10 +257,10 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
         first = hd(refs)
         repaired_data = repair_node_data(first.node_type, first.node_data, refs)
 
-        if repaired_data != first.node_data do
-          Map.put(acc, node_id, repaired_data)
-        else
+        if repaired_data == first.node_data do
           acc
+        else
+          Map.put(acc, node_id, repaired_data)
         end
       end)
 
@@ -391,13 +384,11 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   end
 
   defp get_project_id(flow_id) do
-    from(f in Flow, where: f.id == ^flow_id, select: f.project_id)
-    |> Repo.one()
+    Repo.one(from(f in Flow, where: f.id == ^flow_id, select: f.project_id))
   end
 
   defp resolve_block(project_id, sheet_shortcut, variable_name)
-       when is_binary(sheet_shortcut) and sheet_shortcut != "" and
-              is_binary(variable_name) and variable_name != "" do
+       when is_binary(sheet_shortcut) and sheet_shortcut != "" and is_binary(variable_name) and variable_name != "" do
     case String.split(variable_name, ".", parts: 3) do
       [table_name, row_slug, column_slug] ->
         resolve_table_block(project_id, sheet_shortcut, table_name, row_slug, column_slug)
@@ -610,11 +601,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   defp replace_references(source_type, source_id, refs, opts \\ []) do
     Repo.transaction(fn ->
-      from(vr in VariableReference,
-        where: vr.source_type == ^source_type and vr.source_id == ^source_id
-      )
-      |> Repo.delete_all()
-
+      Repo.delete_all(from(vr in VariableReference, where: vr.source_type == ^source_type and vr.source_id == ^source_id))
       unique_refs = Enum.uniq_by(refs, fn r -> {r.block_id, r.kind, r.source_variable} end)
       now = TimeHelpers.now()
 

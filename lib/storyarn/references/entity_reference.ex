@@ -16,6 +16,7 @@ defmodule Storyarn.References.EntityReference do
   """
 
   use Ecto.Schema
+
   import Ecto.Changeset
 
   @type t :: %__MODULE__{}

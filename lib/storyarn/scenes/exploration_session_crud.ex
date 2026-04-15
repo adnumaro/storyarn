@@ -63,7 +63,6 @@ defmodule Storyarn.Scenes.ExplorationSessionCrud do
   def cleanup_old_sessions(days \\ 30) do
     cutoff = DateTime.add(TimeHelpers.now(), -days * 86_400, :second)
 
-    from(s in ExplorationSession, where: s.updated_at < ^cutoff)
-    |> Repo.delete_all()
+    Repo.delete_all(from(s in ExplorationSession, where: s.updated_at < ^cutoff))
   end
 end

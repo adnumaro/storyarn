@@ -1,11 +1,11 @@
 defmodule Storyarn.LocalizationTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Localization
-
   import Storyarn.AccountsFixtures
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
+
+  alias Storyarn.Localization
 
   # =============================================================================
   # Project Languages
@@ -585,7 +585,7 @@ defmodule Storyarn.LocalizationTest do
 
       assert count == 1
       # Main text should still exist
-      assert Localization.get_text_by_source("flow_node", 42, "text", "es") != nil
+      assert Localization.get_text_by_source("flow_node", 42, "text", "es")
     end
 
     test "get_progress/2 returns translation stats" do
@@ -755,6 +755,6 @@ defmodule Storyarn.LocalizationTest do
   # =============================================================================
 
   defp hash(text) do
-    :crypto.hash(:sha256, text) |> Base.encode16(case: :lower)
+    :sha256 |> :crypto.hash(text) |> Base.encode16(case: :lower)
   end
 end

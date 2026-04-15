@@ -57,12 +57,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ExitEvaluator do
   defp evaluate_caller_return(node, state) do
     label = EngineHelpers.node_label(node)
 
-    if state.call_stack != [] do
-      state =
-        EngineHelpers.add_console(state, :info, node.id, label, "Exit → return to caller")
-
-      {:flow_return, state}
-    else
+    if state.call_stack == [] do
       state =
         EngineHelpers.add_console(
           state,
@@ -73,6 +68,11 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ExitEvaluator do
         )
 
       {:finished, %{state | status: :finished}}
+    else
+      state =
+        EngineHelpers.add_console(state, :info, node.id, label, "Exit → return to caller")
+
+      {:flow_return, state}
     end
   end
 
@@ -84,8 +84,6 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ExitEvaluator do
     exit_transition =
       if target_type in ["scene", "flow"] and target_id do
         %{type: target_type, id: target_id}
-      else
-        nil
       end
 
     state = EngineHelpers.add_console(state, :info, node.id, label, "Execution finished")

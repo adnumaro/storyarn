@@ -123,8 +123,6 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
   end
 
   defp project_owned_ref?(schema, source_id, project_id) do
-    Repo.exists?(
-      from record in schema, where: record.id == ^source_id and record.project_id == ^project_id
-    )
+    Repo.exists?(from record in schema, where: record.id == ^source_id and record.project_id == ^project_id)
   end
 end

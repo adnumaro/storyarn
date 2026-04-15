@@ -148,7 +148,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluatorTest do
       result = InstructionEvaluator.evaluate(node, state, [])
 
       assert {:finished, final_state} = result
-      error_messages = final_state.console |> Enum.filter(&(&1.level == :error))
+      error_messages = Enum.filter(final_state.console, &(&1.level == :error))
       assert error_messages != []
     end
   end

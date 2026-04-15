@@ -90,15 +90,14 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
 
       expired_at = DateTime.utc_now() |> DateTime.add(-1, :day) |> DateTime.truncate(:second)
 
-      %WorkspaceInvitation{
+      Repo.insert!(%WorkspaceInvitation{
         workspace_id: workspace.id,
         invited_by_id: owner.id,
         email: "expired@example.com",
         token: hashed_token,
         role: "member",
         expires_at: expired_at
-      }
-      |> Repo.insert!()
+      })
 
       {:ok, view, _html} = live(conn, ~p"/workspaces/invitations/#{encoded_token}")
 

@@ -2,6 +2,7 @@ defmodule Storyarn.Scenes.ScenePinTest do
   use ExUnit.Case, async: true
 
   import Ecto.Changeset, only: [get_change: 2]
+
   alias Storyarn.Scenes.ScenePin
 
   defp valid_attrs do

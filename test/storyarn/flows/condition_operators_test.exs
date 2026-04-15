@@ -132,5 +132,4 @@ defmodule Storyarn.Flows.ConditionOperatorsTest do
       assert Condition.operator_requires_value?("after")
     end
   end
-
 end

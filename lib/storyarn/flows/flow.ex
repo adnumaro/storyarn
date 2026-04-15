@@ -15,12 +15,16 @@ defmodule Storyarn.Flows.Flow do
   the flow contains. This matches the Sheets model for consistency.
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
-  alias Storyarn.Flows.{FlowConnection, FlowNode}
+  alias Ecto.Association.NotLoaded
+  alias Storyarn.Flows.FlowConnection
+  alias Storyarn.Flows.FlowNode
   alias Storyarn.Projects.Project
   alias Storyarn.Scenes
-  alias Storyarn.Shared.{HierarchicalSchema, Validations}
+  alias Storyarn.Shared.HierarchicalSchema
+  alias Storyarn.Shared.Validations
   alias Storyarn.Versioning.EntityVersion
 
   @type t :: %__MODULE__{
@@ -32,16 +36,16 @@ defmodule Storyarn.Flows.Flow do
           is_main: boolean(),
           settings: map(),
           scene_id: integer() | nil,
-          scene: Scenes.Scene.t() | Ecto.Association.NotLoaded.t() | nil,
+          scene: Scenes.Scene.t() | NotLoaded.t() | nil,
           project_id: integer() | nil,
-          project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
+          project: Project.t() | NotLoaded.t() | nil,
           parent_id: integer() | nil,
-          parent: t() | Ecto.Association.NotLoaded.t() | nil,
-          children: [t()] | Ecto.Association.NotLoaded.t(),
-          nodes: [FlowNode.t()] | Ecto.Association.NotLoaded.t(),
-          connections: [FlowConnection.t()] | Ecto.Association.NotLoaded.t(),
+          parent: t() | NotLoaded.t() | nil,
+          children: [t()] | NotLoaded.t(),
+          nodes: [FlowNode.t()] | NotLoaded.t(),
+          connections: [FlowConnection.t()] | NotLoaded.t(),
           current_version_id: integer() | nil,
-          current_version: EntityVersion.t() | Ecto.Association.NotLoaded.t() | nil,
+          current_version: EntityVersion.t() | NotLoaded.t() | nil,
           deleted_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
@@ -153,9 +157,7 @@ defmodule Storyarn.Flows.Flow do
 
   defp validate_shortcut(changeset) do
     changeset
-    |> Validations.validate_shortcut(
-      message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., chapter-1)"
-    )
+    |> Validations.validate_shortcut(message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., chapter-1)")
     |> unique_constraint(:shortcut,
       name: :flows_project_shortcut_unique,
       message: "is already taken in this project"

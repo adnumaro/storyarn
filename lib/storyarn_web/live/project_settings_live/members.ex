@@ -2,11 +2,11 @@ defmodule StoryarnWeb.ProjectSettingsLive.Members do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
   alias Storyarn.Projects
+  alias StoryarnWeb.Helpers.Authorize
 
   # ===========================================================================
   # Render
@@ -57,11 +57,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Members do
   # ===========================================================================
 
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
     case Projects.get_project_by_slugs(
            socket.assigns.current_scope,
            workspace_slug,

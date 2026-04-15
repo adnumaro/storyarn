@@ -3,16 +3,17 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
   Layer management handlers for the scene LiveView.
   """
 
-  import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
   use StoryarnWeb, :verified_routes
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Scenes
+  import Phoenix.Component, only: [assign: 3]
+  import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
   import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
+  import StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers, only: [push_undo: 2]
   import StoryarnWeb.SceneLive.Helpers.SceneHelpers
   import StoryarnWeb.SceneLive.Helpers.SceneSerializer
-  import StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers, only: [push_undo: 2]
+
+  alias Storyarn.Scenes
 
   def handle_create_layer(_params, socket) do
     case Scenes.create_layer(socket.assigns.scene.id, %{name: dgettext("scenes", "New Layer")}) do
@@ -117,8 +118,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
     end
   end
 
-  def handle_update_exploration_display_mode(%{"mode" => mode}, socket)
-      when mode in ~w(fit scaled) do
+  def handle_update_exploration_display_mode(%{"mode" => mode}, socket) when mode in ~w(fit scaled) do
     case Scenes.update_scene(socket.assigns.scene, %{"exploration_display_mode" => mode}) do
       {:ok, updated} ->
         {:noreply,
@@ -211,8 +211,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
          |> reload_scene()}
 
       {:error, _} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("scenes", "Could not toggle layer visibility."))}
+        {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not toggle layer visibility."))}
     end
   end
 
@@ -238,8 +237,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
          |> reload_scene()}
 
       {:error, _} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("scenes", "Could not update fog settings."))}
+        {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update fog settings."))}
     end
   end
 
@@ -256,8 +254,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
          |> reload_scene()}
 
       {:error, :cannot_delete_last_layer} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("scenes", "Cannot delete the last layer of a scene."))}
+        {:noreply, put_flash(socket, :error, dgettext("scenes", "Cannot delete the last layer of a scene."))}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not delete layer."))}

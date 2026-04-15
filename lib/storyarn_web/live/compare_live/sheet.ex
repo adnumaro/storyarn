@@ -33,15 +33,7 @@ defmodule StoryarnWeb.CompareLive.Sheet do
   # ========== Mount ==========
 
   @impl true
-  def mount(
-        %{
-          "workspace_slug" => workspace_slug,
-          "project_slug" => project_slug,
-          "id" => sheet_id_str
-        },
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => sheet_id_str}, _session, socket) do
     with {sheet_id, ""} <- Integer.parse(sheet_id_str),
          {:ok, project, _membership} <-
            Projects.get_project_by_slugs(

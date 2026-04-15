@@ -1,12 +1,12 @@
 defmodule Storyarn.Shared.TreeOperationsTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Shared.TreeOperations
-  alias Storyarn.Sheets.Sheet
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Shared.TreeOperations
+  alias Storyarn.Sheets.Sheet
 
   # Helper to list sheets by parent
   defp list_sheets(project_id, parent_id) do
@@ -102,7 +102,7 @@ defmodule Storyarn.Shared.TreeOperationsTest do
       # Soft-delete sheet2
       Storyarn.Repo.update_all(
         from(s in Sheet, where: s.id == ^sheet2.id),
-        set: [deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)]
+        set: [deleted_at: DateTime.truncate(DateTime.utc_now(), :second)]
       )
 
       roots = TreeOperations.list_by_parent(Sheet, project.id, nil)
@@ -146,7 +146,7 @@ defmodule Storyarn.Shared.TreeOperationsTest do
           &list_sheets/2
         )
 
-      positions = Enum.map(reordered, fn s -> {s.id, s.position} end) |> Map.new()
+      positions = Map.new(reordered, fn s -> {s.id, s.position} end)
       assert positions[sheet3.id] < positions[sheet2.id]
       assert positions[sheet2.id] < positions[sheet1.id]
     end
@@ -200,7 +200,7 @@ defmodule Storyarn.Shared.TreeOperationsTest do
 
       Storyarn.Repo.update_all(
         from(s in Sheet, where: s.id == ^sheet.id),
-        set: [deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)]
+        set: [deleted_at: DateTime.truncate(DateTime.utc_now(), :second)]
       )
 
       {count, _} = TreeOperations.update_position_only(Sheet, sheet.id, 99)
@@ -223,10 +223,10 @@ defmodule Storyarn.Shared.TreeOperationsTest do
       _child = child_sheet_fixture(project, parent, %{name: "Child"})
 
       query =
-        from(s in Sheet,
-          where: s.project_id == ^project.id and is_nil(s.deleted_at)
+        TreeOperations.add_parent_filter(
+          from(s in Sheet, where: s.project_id == ^project.id and is_nil(s.deleted_at)),
+          nil
         )
-        |> TreeOperations.add_parent_filter(nil)
 
       results = Storyarn.Repo.all(query)
 
@@ -243,10 +243,10 @@ defmodule Storyarn.Shared.TreeOperationsTest do
       child2 = child_sheet_fixture(project, parent, %{name: "Child 2"})
 
       query =
-        from(s in Sheet,
-          where: s.project_id == ^project.id and is_nil(s.deleted_at)
+        TreeOperations.add_parent_filter(
+          from(s in Sheet, where: s.project_id == ^project.id and is_nil(s.deleted_at)),
+          parent.id
         )
-        |> TreeOperations.add_parent_filter(parent.id)
 
       results = Storyarn.Repo.all(query)
 

@@ -1,10 +1,10 @@
 defmodule StoryarnWeb.FlowLive.Nodes.Condition.NodeTest do
   use Storyarn.DataCase, async: true
 
-  alias StoryarnWeb.FlowLive.Nodes.Condition.Node, as: ConditionNode
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias StoryarnWeb.FlowLive.Nodes.Condition.Node, as: ConditionNode
 
   # =============================================================================
   # Metadata functions

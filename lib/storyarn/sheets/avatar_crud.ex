@@ -4,19 +4,15 @@ defmodule Storyarn.Sheets.AvatarCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
-  alias Storyarn.Sheets.{Sheet, SheetAvatar}
+  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.SheetAvatar
 
   # ===========================================================================
   # Queries
   # ===========================================================================
 
   def list_avatars(sheet_id) do
-    from(a in SheetAvatar,
-      where: a.sheet_id == ^sheet_id,
-      order_by: [asc: a.position],
-      preload: [:asset]
-    )
-    |> Repo.all()
+    Repo.all(from(a in SheetAvatar, where: a.sheet_id == ^sheet_id, order_by: [asc: a.position], preload: [:asset]))
   end
 
   def get_avatar(id) do
@@ -26,12 +22,7 @@ defmodule Storyarn.Sheets.AvatarCrud do
   end
 
   def get_default_avatar(sheet_id) do
-    from(a in SheetAvatar,
-      where: a.sheet_id == ^sheet_id and a.is_default == true,
-      preload: [:asset],
-      limit: 1
-    )
-    |> Repo.one()
+    Repo.one(from(a in SheetAvatar, where: a.sheet_id == ^sheet_id and a.is_default == true, preload: [:asset], limit: 1))
   end
 
   # ===========================================================================
@@ -43,9 +34,7 @@ defmodule Storyarn.Sheets.AvatarCrud do
     is_first = position == 0
 
     %SheetAvatar{sheet_id: sheet_id}
-    |> SheetAvatar.create_changeset(
-      Map.merge(attrs, %{asset_id: asset_id, position: position, is_default: is_first})
-    )
+    |> SheetAvatar.create_changeset(Map.merge(attrs, %{asset_id: asset_id, position: position, is_default: is_first}))
     |> Repo.insert()
   end
 
@@ -61,8 +50,9 @@ defmodule Storyarn.Sheets.AvatarCrud do
 
   def set_default(%SheetAvatar{} = avatar) do
     Repo.transaction(fn ->
-      from(a in SheetAvatar, where: a.sheet_id == ^avatar.sheet_id and a.id != ^avatar.id)
-      |> Repo.update_all(set: [is_default: false])
+      Repo.update_all(from(a in SheetAvatar, where: a.sheet_id == ^avatar.sheet_id and a.id != ^avatar.id),
+        set: [is_default: false]
+      )
 
       avatar
       |> Ecto.Changeset.change(is_default: true)
@@ -105,10 +95,7 @@ defmodule Storyarn.Sheets.AvatarCrud do
       ordered_ids
       |> Enum.with_index()
       |> Enum.each(fn {id, index} ->
-        from(a in SheetAvatar,
-          where: a.id == ^id and a.sheet_id == ^sheet_id
-        )
-        |> Repo.update_all(set: [position: index])
+        Repo.update_all(from(a in SheetAvatar, where: a.id == ^id and a.sheet_id == ^sheet_id), set: [position: index])
       end)
     end)
   end
@@ -144,12 +131,7 @@ defmodule Storyarn.Sheets.AvatarCrud do
   end
 
   defp promote_next_default(sheet_id) do
-    case from(a in SheetAvatar,
-           where: a.sheet_id == ^sheet_id,
-           order_by: [asc: a.position],
-           limit: 1
-         )
-         |> Repo.one() do
+    case Repo.one(from(a in SheetAvatar, where: a.sheet_id == ^sheet_id, order_by: [asc: a.position], limit: 1)) do
       nil -> :ok
       next -> Repo.update!(Ecto.Changeset.change(next, is_default: true))
     end

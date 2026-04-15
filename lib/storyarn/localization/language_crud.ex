@@ -7,47 +7,36 @@ defmodule Storyarn.Localization.LanguageCrud do
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Shared.{MapUtils, TreeOperations}
+  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Shared.TreeOperations
 
   # =============================================================================
   # Queries
   # =============================================================================
 
   def list_languages(project_id) do
-    from(l in ProjectLanguage,
-      where: l.project_id == ^project_id,
-      order_by: [asc: l.position, asc: l.name]
-    )
-    |> Repo.all()
+    Repo.all(from(l in ProjectLanguage, where: l.project_id == ^project_id, order_by: [asc: l.position, asc: l.name]))
   end
 
   def get_language(project_id, language_id) do
-    from(l in ProjectLanguage,
-      where: l.project_id == ^project_id and l.id == ^language_id
-    )
-    |> Repo.one()
+    Repo.one(from(l in ProjectLanguage, where: l.project_id == ^project_id and l.id == ^language_id))
   end
 
   def get_language_by_locale(project_id, locale_code) do
-    from(l in ProjectLanguage,
-      where: l.project_id == ^project_id and l.locale_code == ^locale_code
-    )
-    |> Repo.one()
+    Repo.one(from(l in ProjectLanguage, where: l.project_id == ^project_id and l.locale_code == ^locale_code))
   end
 
   def get_source_language(project_id) do
-    from(l in ProjectLanguage,
-      where: l.project_id == ^project_id and l.is_source == true
-    )
-    |> Repo.one()
+    Repo.one(from(l in ProjectLanguage, where: l.project_id == ^project_id and l.is_source == true))
   end
 
   def get_target_languages(project_id) do
-    from(l in ProjectLanguage,
-      where: l.project_id == ^project_id and l.is_source == false,
-      order_by: [asc: l.position, asc: l.name]
+    Repo.all(
+      from(l in ProjectLanguage,
+        where: l.project_id == ^project_id and l.is_source == false,
+        order_by: [asc: l.position, asc: l.name]
+      )
     )
-    |> Repo.all()
   end
 
   # =============================================================================
@@ -82,10 +71,9 @@ defmodule Storyarn.Localization.LanguageCrud do
   def set_source_language(%ProjectLanguage{} = language) do
     Repo.transaction(fn ->
       # Unset any existing source language
-      from(l in ProjectLanguage,
-        where: l.project_id == ^language.project_id and l.is_source == true
+      Repo.update_all(from(l in ProjectLanguage, where: l.project_id == ^language.project_id and l.is_source == true),
+        set: [is_source: false]
       )
-      |> Repo.update_all(set: [is_source: false])
 
       # Set the new source language
       case language
@@ -105,7 +93,7 @@ defmodule Storyarn.Localization.LanguageCrud do
   is removed, so the project keeps a single configured source language.
   """
   def change_source_language(%Project{} = project, locale_code) when is_binary(locale_code) do
-    Repo.transaction(fn ->
+    fn ->
       current_source = current_source_or_rollback(project.id)
 
       if current_source.locale_code == locale_code do
@@ -115,7 +103,8 @@ defmodule Storyarn.Localization.LanguageCrud do
         |> find_or_create_source_candidate(locale_code)
         |> promote_source_language(project.id, current_source)
       end
-    end)
+    end
+    |> Repo.transaction()
     |> case do
       {:ok, %ProjectLanguage{} = language} -> {:ok, language}
       {:error, reason} -> {:error, reason}
@@ -129,9 +118,7 @@ defmodule Storyarn.Localization.LanguageCrud do
     pairs = Enum.with_index(language_ids)
 
     Repo.transaction(fn ->
-      TreeOperations.batch_set_positions("project_languages", pairs,
-        scope: {"project_id", project_id}
-      )
+      TreeOperations.batch_set_positions("project_languages", pairs, scope: {"project_id", project_id})
     end)
   end
 
@@ -213,10 +200,9 @@ defmodule Storyarn.Localization.LanguageCrud do
   end
 
   defp promote_source_language(next_source, project_id, current_source) do
-    from(l in ProjectLanguage,
-      where: l.project_id == ^project_id and l.is_source == true
+    Repo.update_all(from(l in ProjectLanguage, where: l.project_id == ^project_id and l.is_source == true),
+      set: [is_source: false]
     )
-    |> Repo.update_all(set: [is_source: false])
 
     next_source =
       case next_source

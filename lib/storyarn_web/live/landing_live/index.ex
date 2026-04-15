@@ -1,4 +1,5 @@
 defmodule StoryarnWeb.LandingLive.Index do
+  @moduledoc false
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts
@@ -44,8 +45,7 @@ defmodule StoryarnWeb.LandingLive.Index do
         do_join_waitlist(socket, email, ip)
 
       {:error, :rate_limited} ->
-        {:noreply,
-         put_flash(socket, :error, gettext("Too many requests. Please try again later."))}
+        {:noreply, put_flash(socket, :error, gettext("Too many requests. Please try again later."))}
     end
   end
 
@@ -115,19 +115,13 @@ defmodule StoryarnWeb.LandingLive.Index do
         ),
       feature_2_title: gettext("Flows you can actually play"),
       feature_2_desc:
-        gettext(
-          "Build branching dialogue, then play it, debug it, and verify it — without ever leaving the editor."
-        ),
+        gettext("Build branching dialogue, then play it, debug it, and verify it — without ever leaving the editor."),
       feature_3_title: gettext("Scenes with real exploration"),
       feature_3_desc:
-        gettext(
-          "Place zones, pins, and triggers on a canvas. Walk through the world before it reaches the engine."
-        ),
+        gettext("Place zones, pins, and triggers on a canvas. Walk through the world before it reaches the engine."),
       feature_4_title: gettext("Play it. Debug it. Ship it."),
       feature_4_desc:
-        gettext(
-          "Experience the story as a player, or step through it with every variable and condition visible."
-        ),
+        gettext("Experience the story as a player, or step through it with every variable and condition visible."),
       feature_5_title: gettext("Integrated localization"),
       feature_5_desc:
         gettext(
@@ -185,9 +179,7 @@ defmodule StoryarnWeb.LandingLive.Index do
       ],
       version_title: gettext("Every change, always recoverable"),
       version_desc:
-        gettext(
-          "Automatic version snapshots mean you can always go back. Compare any two versions side by side."
-        ),
+        gettext("Automatic version snapshots mean you can always go back. Compare any two versions side by side."),
       version_items: [
         gettext("Automatic snapshots on every save"),
         gettext("Side-by-side visual diff for any version"),
@@ -195,8 +187,7 @@ defmodule StoryarnWeb.LandingLive.Index do
       ],
       # Workflow
       workflow_title: gettext("From first draft to engine-ready"),
-      workflow_subtitle:
-        gettext("Storyarn follows your natural workflow — define, write, test, export."),
+      workflow_subtitle: gettext("Storyarn follows your natural workflow — define, write, test, export."),
       workflow_step_1_title: gettext("Define the world"),
       workflow_step_1_desc:
         gettext(
@@ -204,19 +195,13 @@ defmodule StoryarnWeb.LandingLive.Index do
         ),
       workflow_step_2_title: gettext("Write and branch"),
       workflow_step_2_desc:
-        gettext(
-          "Build dialogue flows with conditions, instructions, and branching — all connected to your project data."
-        ),
+        gettext("Build dialogue flows with conditions, instructions, and branching — all connected to your project data."),
       workflow_step_3_title: gettext("Explore and debug"),
       workflow_step_3_desc:
-        gettext(
-          "Play through flows, walk through scenes, and step-debug every variable and condition."
-        ),
+        gettext("Play through flows, walk through scenes, and step-debug every variable and condition."),
       workflow_step_4_title: gettext("Localize and export"),
       workflow_step_4_desc:
-        gettext(
-          "Extract lines, translate, and export to Yarn Spinner, Ink, Godot Dialogic, Unity, or Unreal."
-        ),
+        gettext("Extract lines, translate, and export to Yarn Spinner, Ink, Godot Dialogic, Unity, or Unreal."),
       # CTA
       cta_title: gettext("Start building your next narrative"),
       cta_desc:

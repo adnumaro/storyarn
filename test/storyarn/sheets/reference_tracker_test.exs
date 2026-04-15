@@ -1,13 +1,13 @@
 defmodule Storyarn.Sheets.ReferenceTrackerTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Sheets
-  alias Storyarn.Sheets.ReferenceTracker
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
-  import Storyarn.SheetsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
+
+  alias Storyarn.Sheets
+  alias Storyarn.Sheets.ReferenceTracker
 
   defp setup_project(_context \\ %{}) do
     user = user_fixture()
@@ -113,7 +113,7 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
       assert backlinks != []
 
       speaker_ref = Enum.find(backlinks, &(&1.context == "speaker"))
-      assert speaker_ref != nil
+      assert speaker_ref
       assert speaker_ref.source_type == "flow_node"
       assert speaker_ref.source_id == node.id
     end
@@ -138,7 +138,7 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
       assert backlinks != []
 
       dialogue_ref = Enum.find(backlinks, &(&1.context == "dialogue"))
-      assert dialogue_ref != nil
+      assert dialogue_ref
     end
 
     test "returns :ok for node without data map" do

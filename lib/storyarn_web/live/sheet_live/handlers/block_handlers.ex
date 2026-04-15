@@ -3,11 +3,12 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockHandlers do
   Handles block CRUD, toolbar, reorder, and inheritance events for the sheet editor.
   """
 
-  import Phoenix.LiveView, only: [put_flash: 3]
   use Gettext, backend: Storyarn.Gettext
 
-  alias StoryarnWeb.Helpers.Authorize
+  import Phoenix.LiveView, only: [put_flash: 3]
+
   alias Storyarn.Sheets
+  alias StoryarnWeb.Helpers.Authorize
 
   # ===========================================================================
   # Block CRUD
@@ -143,8 +144,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockHandlers do
              |> helpers.broadcast.(:block_created)}
 
           {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("sheets", "Could not duplicate block."))}
+            {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not duplicate block."))}
         end
       else
         {:noreply, socket}
@@ -154,19 +154,15 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockHandlers do
 
   def handle_undo(params, socket, helpers) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      case helpers.handle_undo.(params, socket) do
-        {:noreply, socket} ->
-          {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
-      end
+      {:noreply, socket} = helpers.handle_undo.(params, socket)
+      {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
     end)
   end
 
   def handle_redo(params, socket, helpers) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
-      case helpers.handle_redo.(params, socket) do
-        {:noreply, socket} ->
-          {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
-      end
+      {:noreply, socket} = helpers.handle_redo.(params, socket)
+      {:noreply, socket |> helpers.reload_blocks.() |> helpers.broadcast.(:block_updated)}
     end)
   end
 
@@ -181,7 +177,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockHandlers do
       case flatten_layout(layout, helpers.parse_id) do
         {:ok, sanitized} ->
           prev_layout =
-            Sheets.list_blocks(sheet_id)
+            sheet_id
+            |> Sheets.list_blocks()
             |> Enum.sort_by(& &1.position)
             |> Enum.map(fn b ->
               %{id: b.id, column_group_id: b.column_group_id, column_index: b.column_index}
@@ -196,8 +193,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockHandlers do
                |> helpers.broadcast.(:block_reordered)}
 
             {:error, _} ->
-              {:noreply,
-               put_flash(socket, :error, dgettext("sheets", "Could not reorder blocks."))}
+              {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not reorder blocks."))}
           end
 
         :error ->
@@ -318,28 +314,26 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockHandlers do
   # ===========================================================================
 
   defp flatten_layout(layout, parse_id) when is_list(layout) do
-    try do
-      items =
-        Enum.flat_map(layout, fn
-          %{"kind" => "full_width", "block_id" => id} ->
-            [%{id: parse_id.(id), column_group_id: nil, column_index: 0}]
+    items =
+      Enum.flat_map(layout, fn
+        %{"kind" => "full_width", "block_id" => id} ->
+          [%{id: parse_id.(id), column_group_id: nil, column_index: 0}]
 
-          %{"kind" => "column_group", "group_id" => group_id, "block_ids" => ids}
-          when is_list(ids) and length(ids) >= 2 and length(ids) <= 3 ->
-            ids
-            |> Enum.with_index()
-            |> Enum.map(fn {id, idx} ->
-              %{id: parse_id.(id), column_group_id: group_id, column_index: idx}
-            end)
+        %{"kind" => "column_group", "group_id" => group_id, "block_ids" => ids}
+        when is_list(ids) and length(ids) >= 2 and length(ids) <= 3 ->
+          ids
+          |> Enum.with_index()
+          |> Enum.map(fn {id, idx} ->
+            %{id: parse_id.(id), column_group_id: group_id, column_index: idx}
+          end)
 
-          _ ->
-            throw(:invalid)
-        end)
+        _ ->
+          throw(:invalid)
+      end)
 
-      {:ok, items}
-    catch
-      :invalid -> :error
-    end
+    {:ok, items}
+  catch
+    :invalid -> :error
   end
 
   defp flatten_layout(_, _), do: :error

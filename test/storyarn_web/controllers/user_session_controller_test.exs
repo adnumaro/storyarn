@@ -2,6 +2,7 @@ defmodule StoryarnWeb.UserSessionControllerTest do
   use StoryarnWeb.ConnCase, async: true
 
   import Storyarn.AccountsFixtures
+
   alias Storyarn.Accounts
 
   setup do

@@ -11,13 +11,15 @@ defmodule Storyarn.Exports.Serializer do
   - `serialize_to_file/4` for production streaming (constant memory)
   """
 
+  alias Storyarn.Exports.ExportOptions
+
   @type output :: binary() | [{filename :: String.t(), content :: binary()}]
 
   @doc """
   Serialize project data to the target format in memory.
   Used for small projects (sync export) and tests.
   """
-  @callback serialize(project_data :: map(), options :: Storyarn.Exports.ExportOptions.t()) ::
+  @callback serialize(project_data :: map(), options :: ExportOptions.t()) ::
               {:ok, output()} | {:error, term()}
 
   @doc """
@@ -28,7 +30,7 @@ defmodule Storyarn.Exports.Serializer do
   @callback serialize_to_file(
               data :: term(),
               file_path :: Path.t(),
-              options :: Storyarn.Exports.ExportOptions.t(),
+              options :: ExportOptions.t(),
               callbacks :: keyword()
             ) :: :ok | {:error, term()}
 

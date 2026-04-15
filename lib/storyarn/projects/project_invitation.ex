@@ -12,6 +12,7 @@ defmodule Storyarn.Projects.ProjectInvitation do
     default_role: "editor",
     verify_preloads: [[project: :workspace], :invited_by]
 
+  alias Ecto.Association.NotLoaded
   alias Storyarn.Projects.Project
 
   @type t :: %__MODULE__{
@@ -22,9 +23,9 @@ defmodule Storyarn.Projects.ProjectInvitation do
           expires_at: DateTime.t() | nil,
           accepted_at: DateTime.t() | nil,
           project_id: integer() | nil,
-          project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
+          project: Project.t() | NotLoaded.t() | nil,
           invited_by_id: integer() | nil,
-          invited_by: User.t() | Ecto.Association.NotLoaded.t() | nil,
+          invited_by: User.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }

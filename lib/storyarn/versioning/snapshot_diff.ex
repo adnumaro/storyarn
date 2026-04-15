@@ -8,7 +8,8 @@ defmodule Storyarn.Versioning.SnapshotDiff do
 
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Versioning.{SnapshotBuilder, VersionCrud}
+  alias Storyarn.Versioning.SnapshotBuilder
+  alias Storyarn.Versioning.VersionCrud
 
   @type change :: SnapshotBuilder.change()
 
@@ -42,9 +43,7 @@ defmodule Storyarn.Versioning.SnapshotDiff do
   full diff when the cheap check can't determine the answer.
   """
   @spec has_changes?(String.t(), map(), map()) :: boolean()
-  def has_changes?(_entity_type, old_snapshot, new_snapshot)
-      when old_snapshot == new_snapshot,
-      do: false
+  def has_changes?(_entity_type, old_snapshot, new_snapshot) when old_snapshot == new_snapshot, do: false
 
   def has_changes?(entity_type, old_snapshot, new_snapshot) do
     diff(entity_type, old_snapshot, new_snapshot).has_changes

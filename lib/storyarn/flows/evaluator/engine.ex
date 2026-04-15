@@ -24,15 +24,13 @@ defmodule Storyarn.Flows.Evaluator.Engine do
       [%{source_node_id: 1, source_pin: "default", target_node_id: 2, target_pin: "input"}, ...]
   """
 
-  alias Storyarn.Flows.Evaluator.{EngineHelpers, State}
+  alias Storyarn.Flows.Evaluator.EngineHelpers
+  alias Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluator
+  alias Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator
+  alias Storyarn.Flows.Evaluator.NodeEvaluators.ExitEvaluator
+  alias Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluator
+  alias Storyarn.Flows.Evaluator.State
   alias Storyarn.Shared.FormulaRuntime
-
-  alias Storyarn.Flows.Evaluator.NodeEvaluators.{
-    ConditionNodeEvaluator,
-    DialogueEvaluator,
-    ExitEvaluator,
-    InstructionEvaluator
-  }
 
   # =============================================================================
   # Public API
@@ -96,8 +94,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
     {:waiting_input, state}
   end
 
-  def step(%State{step_count: count, max_steps: max} = state, _nodes, _connections)
-      when count >= max do
+  def step(%State{step_count: count, max_steps: max} = state, _nodes, _connections) when count >= max do
     state =
       EngineHelpers.add_console(
         state,

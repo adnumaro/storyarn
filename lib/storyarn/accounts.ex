@@ -14,23 +14,23 @@ defmodule Storyarn.Accounts do
   - `Profiles` - User profile and sudo mode
   """
 
-  alias Storyarn.Accounts.{
-    Emails,
-    OAuth,
-    Passwords,
-    Profiles,
-    Registration,
-    Sessions,
-    User,
-    UserIdentity,
-    UserNotifier,
-    Users,
-    UserToken
-  }
+  alias Storyarn.Accounts.Emails
+  alias Storyarn.Accounts.OAuth
+  alias Storyarn.Accounts.Passwords
+  alias Storyarn.Accounts.Profiles
+  alias Storyarn.Accounts.Registration
+  alias Storyarn.Accounts.Sessions
+  alias Storyarn.Accounts.User
+  alias Storyarn.Accounts.UserIdentity
+  alias Storyarn.Accounts.UserNotifier
+  alias Storyarn.Accounts.Users
+  alias Storyarn.Accounts.UserToken
 
   # =============================================================================
   # Type Definitions
   # =============================================================================
+
+  alias Storyarn.Accounts.WaitlistEntry
 
   @type user :: User.t()
   @type user_identity :: UserIdentity.t()
@@ -231,8 +231,6 @@ defmodule Storyarn.Accounts do
   defdelegate sudo_mode?(user, minutes \\ -20), to: Profiles
 
   ## Waitlist
-
-  alias Storyarn.Accounts.WaitlistEntry
 
   @doc """
   Adds an email to the beta waitlist. Returns `{:ok, entry}` or `{:error, changeset}`.

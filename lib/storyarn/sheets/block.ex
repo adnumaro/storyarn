@@ -42,9 +42,12 @@ defmodule Storyarn.Sheets.Block do
   ```
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
-  alias Storyarn.Shared.{NameNormalizer, TimeHelpers}
+  alias Ecto.Association.NotLoaded
+  alias Storyarn.Shared.NameNormalizer
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Sheet
 
   @block_types ~w(text rich_text number select multi_select date boolean reference table gallery)
@@ -101,9 +104,9 @@ defmodule Storyarn.Sheets.Block do
           column_group_id: Ecto.UUID.t() | nil,
           column_index: integer(),
           sheet_id: integer() | nil,
-          sheet: Sheet.t() | Ecto.Association.NotLoaded.t() | nil,
-          inherited_from_block: t() | Ecto.Association.NotLoaded.t() | nil,
-          inherited_instances: [t()] | Ecto.Association.NotLoaded.t(),
+          sheet: Sheet.t() | NotLoaded.t() | nil,
+          inherited_from_block: t() | NotLoaded.t() | nil,
+          inherited_instances: [t()] | NotLoaded.t(),
           deleted_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
@@ -197,8 +200,7 @@ defmodule Storyarn.Sheets.Block do
   Changeset for updating only the value of a block.
   """
   def value_changeset(block, attrs) do
-    block
-    |> cast(attrs, [:value])
+    cast(block, attrs, [:value])
   end
 
   @doc """
@@ -215,16 +217,14 @@ defmodule Storyarn.Sheets.Block do
   Changeset for updating variable settings.
   """
   def variable_changeset(block, attrs) do
-    block
-    |> cast(attrs, [:is_constant, :variable_name])
+    cast(block, attrs, [:is_constant, :variable_name])
   end
 
   @doc """
   Changeset for reordering blocks.
   """
   def position_changeset(block, attrs) do
-    block
-    |> cast(attrs, [:position])
+    cast(block, attrs, [:position])
   end
 
   # Validates config based on block type
@@ -273,16 +273,14 @@ defmodule Storyarn.Sheets.Block do
   Changeset for soft deleting a block.
   """
   def delete_changeset(block) do
-    block
-    |> change(%{deleted_at: TimeHelpers.now()})
+    change(block, %{deleted_at: TimeHelpers.now()})
   end
 
   @doc """
   Changeset for restoring a soft-deleted block.
   """
   def restore_changeset(block) do
-    block
-    |> change(%{deleted_at: nil})
+    change(block, %{deleted_at: nil})
   end
 
   @doc """
@@ -330,7 +328,7 @@ defmodule Storyarn.Sheets.Block do
         changeset
 
       true ->
-        label = (get_field(changeset, :config) || %{}) |> Map.get("label")
+        label = Map.get(get_field(changeset, :config) || %{}, "label")
 
         if label,
           do: put_change(changeset, :variable_name, NameNormalizer.variablify(label)),

@@ -16,7 +16,8 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
 
   @behaviour Storyarn.Exports.Serializer
 
-  alias Storyarn.Exports.{ExportOptions, ExpressionTranspiler}
+  alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.ExpressionTranspiler
   alias Storyarn.Exports.Serializers.Helpers
 
   @impl true
@@ -312,7 +313,7 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
          %{
            "name" => flow.name,
            "shortcut" => flow.shortcut,
-           "start_node" => if(entry, do: to_string(entry.id), else: nil),
+           "start_node" => if(entry, do: to_string(entry.id)),
            "nodes" => nodes_meta
          }}
       end)

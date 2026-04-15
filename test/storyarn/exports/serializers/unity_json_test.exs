@@ -1,15 +1,15 @@
 defmodule Storyarn.Exports.Serializers.UnityJSONTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Exports.{DataCollector, ExportOptions}
-  alias Storyarn.Exports.Serializers.UnityJSON
-
-  alias Storyarn.Repo
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Exports.DataCollector
+  alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.Serializers.UnityJSON
+  alias Storyarn.Repo
 
   # =============================================================================
   # Setup

@@ -3,11 +3,14 @@ defmodule Storyarn.Flows.NodeUpdate do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.{FlowNode, NodeCrud}
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.NodeCrud
   alias Storyarn.Localization
   alias Storyarn.References
   alias Storyarn.Repo
-  alias Storyarn.Shared.{TimeHelpers, WordCount}
+  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Shared.WordCount
 
   def update_node(%FlowNode{} = node, attrs) do
     node
@@ -38,8 +41,7 @@ defmodule Storyarn.Flows.NodeUpdate do
 
     Repo.transaction(fn ->
       {ids, xs, ys} =
-        Enum.reduce(positions, {[], [], []}, fn %{id: id, position_x: x, position_y: y},
-                                                {ids, xs, ys} ->
+        Enum.reduce(positions, {[], [], []}, fn %{id: id, position_x: x, position_y: y}, {ids, xs, ys} ->
           {[id | ids], [x / 1 | xs], [y / 1 | ys]}
         end)
 
@@ -73,9 +75,7 @@ defmodule Storyarn.Flows.NodeUpdate do
   end
 
   defp maybe_broadcast_dashboard({:ok, _, _}, node) do
-    project_id =
-      from(f in Storyarn.Flows.Flow, where: f.id == ^node.flow_id, select: f.project_id)
-      |> Repo.one()
+    project_id = Repo.one(from(f in Flow, where: f.id == ^node.flow_id, select: f.project_id))
 
     if project_id, do: Storyarn.Collaboration.broadcast_dashboard_change(project_id, :flows)
   end
@@ -97,16 +97,16 @@ defmodule Storyarn.Flows.NodeUpdate do
   end
 
   defp update_hub_in_transaction(node, data, hub_id) do
-    Repo.transaction(fn ->
-      from(f in Storyarn.Flows.Flow, where: f.id == ^node.flow_id, lock: "FOR UPDATE")
-      |> Repo.one!()
+    fn ->
+      Repo.one!(from(f in Flow, where: f.id == ^node.flow_id, lock: "FOR UPDATE"))
 
       if NodeCrud.hub_id_exists?(node.flow_id, hub_id, node.id) do
         Repo.rollback(:hub_id_not_unique)
       else
         apply_hub_update_or_rollback(node, data, hub_id)
       end
-    end)
+    end
+    |> Repo.transaction()
     |> case do
       {:ok, {updated_node, meta}} -> {:ok, updated_node, meta}
       {:error, reason} -> {:error, reason}
@@ -126,9 +126,9 @@ defmodule Storyarn.Flows.NodeUpdate do
     case do_update_node_data(node, data) do
       {:ok, updated_node} ->
         renamed_count =
-          if old_hub_id != hub_id,
-            do: cascade_hub_id_rename(node.flow_id, old_hub_id, hub_id),
-            else: 0
+          if old_hub_id == hub_id,
+            do: 0,
+            else: cascade_hub_id_rename(node.flow_id, old_hub_id, hub_id)
 
         {:ok, updated_node, %{renamed_jumps: renamed_count}}
 
@@ -157,9 +157,8 @@ defmodule Storyarn.Flows.NodeUpdate do
     end)
   end
 
-  defp cascade_hub_id_rename(flow_id, old_hub_id, new_hub_id)
-       when is_binary(old_hub_id) and old_hub_id != "" do
-    now = Storyarn.Shared.TimeHelpers.now()
+  defp cascade_hub_id_rename(flow_id, old_hub_id, new_hub_id) when is_binary(old_hub_id) and old_hub_id != "" do
+    now = TimeHelpers.now()
 
     query =
       from(n in FlowNode,
@@ -167,8 +166,7 @@ defmodule Storyarn.Flows.NodeUpdate do
         where: fragment("?->>'target_hub_id' = ?", n.data, ^old_hub_id),
         update: [
           set: [
-            data:
-              fragment("jsonb_set(?, '{target_hub_id}', to_jsonb(?::text))", n.data, ^new_hub_id),
+            data: fragment("jsonb_set(?, '{target_hub_id}', to_jsonb(?::text))", n.data, ^new_hub_id),
             updated_at: ^now
           ]
         ]

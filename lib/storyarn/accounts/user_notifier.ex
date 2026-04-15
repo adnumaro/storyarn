@@ -3,10 +3,11 @@ defmodule Storyarn.Accounts.UserNotifier do
   Handles email notifications for user account actions.
   """
   import Swoosh.Email
-  require Logger
 
   alias Storyarn.Emails.Templates
   alias Storyarn.Mailer
+
+  require Logger
 
   defp deliver(recipient, subject, html_body, text_body) do
     {sender_name, sender_email} = sender()

@@ -26,7 +26,10 @@ defmodule Storyarn.Collaboration do
   """
 
   alias Phoenix.PubSub
-  alias Storyarn.Collaboration.{Colors, CursorTracker, Locks, Presence}
+  alias Storyarn.Collaboration.Colors
+  alias Storyarn.Collaboration.CursorTracker
+  alias Storyarn.Collaboration.Locks
+  alias Storyarn.Collaboration.Presence
 
   @type editor_scope ::
           {:flow, integer()}

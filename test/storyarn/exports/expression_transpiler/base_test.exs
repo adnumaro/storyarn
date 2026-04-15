@@ -14,6 +14,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.BaseTest do
   # ---------------------------------------------------------------------------
 
   defmodule TestEmitter do
+    @moduledoc false
     use Storyarn.Exports.ExpressionTranspiler.Base,
       var_style: :underscore,
       logic_opts: [and_keyword: " AND ", or_keyword: " OR "],

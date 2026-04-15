@@ -3,7 +3,10 @@ defmodule Storyarn.Accounts.User do
   User schema and changesets for authentication and profile management.
   """
   use Ecto.Schema
+
   import Ecto.Changeset
+
+  alias Storyarn.Accounts.UserIdentity
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -15,7 +18,7 @@ defmodule Storyarn.Accounts.User do
           display_name: String.t() | nil,
           avatar_url: String.t() | nil,
           locale: String.t() | nil,
-          identities: [Storyarn.Accounts.UserIdentity.t()] | Ecto.Association.NotLoaded.t(),
+          identities: [UserIdentity.t()] | Ecto.Association.NotLoaded.t(),
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -31,7 +34,7 @@ defmodule Storyarn.Accounts.User do
     field :locale, :string
     field :is_super_admin, :boolean, default: false
 
-    has_many :identities, Storyarn.Accounts.UserIdentity
+    has_many :identities, UserIdentity
 
     timestamps(type: :utc_datetime)
   end

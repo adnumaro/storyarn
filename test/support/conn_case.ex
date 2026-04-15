@@ -17,18 +17,19 @@ defmodule StoryarnWeb.ConnCase do
 
   use ExUnit.CaseTemplate
 
+  alias Storyarn.Accounts.Scope
+
   using do
     quote do
+      use StoryarnWeb, :verified_routes
+      import Phoenix.ConnTest
+      import Plug.Conn
+      import Storyarn.Factory
+      import StoryarnWeb.ConnCase
       # The default endpoint for testing
       @endpoint StoryarnWeb.Endpoint
 
-      use StoryarnWeb, :verified_routes
-
       # Import conveniences for testing with connections
-      import Plug.Conn
-      import Phoenix.ConnTest
-      import StoryarnWeb.ConnCase
-      import Storyarn.Factory
     end
   end
 
@@ -47,12 +48,12 @@ defmodule StoryarnWeb.ConnCase do
   """
   def register_and_log_in_user(%{conn: conn} = context) do
     user = Storyarn.AccountsFixtures.user_fixture()
-    scope = Storyarn.Accounts.Scope.for_user(user)
+    scope = Scope.for_user(user)
 
     opts =
       context
       |> Map.take([:token_authenticated_at])
-      |> Enum.into([])
+      |> Enum.to_list()
 
     %{conn: log_in_user(conn, user, opts), user: user, scope: scope}
   end
@@ -67,12 +68,12 @@ defmodule StoryarnWeb.ConnCase do
   def register_and_log_in_super_admin(%{conn: conn} = context) do
     user = Storyarn.AccountsFixtures.user_fixture()
     user = Storyarn.AccountsFixtures.set_super_admin(user)
-    scope = Storyarn.Accounts.Scope.for_user(user)
+    scope = Scope.for_user(user)
 
     opts =
       context
       |> Map.take([:token_authenticated_at])
-      |> Enum.into([])
+      |> Enum.to_list()
 
     %{conn: log_in_user(conn, user, opts), user: user, scope: scope}
   end

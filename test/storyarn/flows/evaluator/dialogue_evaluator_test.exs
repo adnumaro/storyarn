@@ -263,7 +263,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluatorTest do
       {:waiting_input, waiting_state} = DialogueEvaluator.evaluate(node, state, connections)
 
       assert waiting_state.status == :waiting_input
-      assert waiting_state.pending_choices != nil
+      assert waiting_state.pending_choices
       assert waiting_state.pending_choices.node_id == 1
       assert length(waiting_state.pending_choices.responses) == 2
     end

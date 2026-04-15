@@ -5,25 +5,6 @@ defmodule StoryarnWeb.SheetLive.Show do
   """
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
-  alias StoryarnWeb.Helpers.UndoRedoStack
-
-  alias StoryarnWeb.SheetLive.Handlers.{
-    AudioHandlers,
-    BlockHandlers,
-    FormulaHandlers,
-    GalleryHandlers,
-    HeaderHandlers,
-    HistoryHandlers,
-    LockHandlers,
-    ReferenceHandlers,
-    SelectOptionHandlers,
-    TableHandlers,
-    UndoRedoHandlers
-  }
-
-  alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
-  alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   import StoryarnWeb.Live.Shared.RestorationHandlers, only: [check_restoration_lock: 2]
   import StoryarnWeb.SheetLive.Helpers.AudioDataHelpers
@@ -33,8 +14,24 @@ defmodule StoryarnWeb.SheetLive.Show do
   import StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers
 
   alias Storyarn.Collaboration
+  alias Storyarn.Collaboration.Presence
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
+  alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.UndoRedoStack
+  alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
+  alias StoryarnWeb.Live.Shared.RestorationHandlers
+  alias StoryarnWeb.SheetLive.Handlers.AudioHandlers
+  alias StoryarnWeb.SheetLive.Handlers.BlockHandlers
+  alias StoryarnWeb.SheetLive.Handlers.FormulaHandlers
+  alias StoryarnWeb.SheetLive.Handlers.GalleryHandlers
+  alias StoryarnWeb.SheetLive.Handlers.HeaderHandlers
+  alias StoryarnWeb.SheetLive.Handlers.HistoryHandlers
+  alias StoryarnWeb.SheetLive.Handlers.LockHandlers
+  alias StoryarnWeb.SheetLive.Handlers.ReferenceHandlers
+  alias StoryarnWeb.SheetLive.Handlers.SelectOptionHandlers
+  alias StoryarnWeb.SheetLive.Handlers.TableHandlers
+  alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
 
   @impl true
   def render(assigns) do
@@ -322,7 +319,6 @@ defmodule StoryarnWeb.SheetLive.Show do
     {:noreply, socket}
   end
 
-
   defp load_sheet(socket, sheet_id) do
     socket = teardown_sheet_collab(socket)
     %{project: project} = socket.assigns
@@ -331,9 +327,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       nil ->
         socket
         |> put_flash(:error, dgettext("sheets", "Sheet not found."))
-        |> push_navigate(
-          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets"
-        )
+        |> push_navigate(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
 
       sheet ->
         # Setup collaboration
@@ -356,19 +350,20 @@ defmodule StoryarnWeb.SheetLive.Show do
           all_blocks |> Enum.filter(&(&1.type == "gallery")) |> Enum.map(& &1.id)
 
         gallery_data =
-          if gallery_block_ids != [],
-            do: Sheets.batch_load_gallery_data(gallery_block_ids),
-            else: %{}
+          if gallery_block_ids == [],
+            do: %{},
+            else: Sheets.batch_load_gallery_data(gallery_block_ids)
 
         table_block_ids =
           all_blocks |> Enum.filter(&(&1.type == "table")) |> Enum.map(& &1.id)
 
         table_data =
-          if table_block_ids != [],
-            do:
-              Sheets.batch_load_table_data(table_block_ids)
-              |> compute_formulas(project.id),
-            else: %{}
+          if table_block_ids == [],
+            do: %{},
+            else:
+              table_block_ids
+              |> Sheets.batch_load_table_data()
+              |> compute_formulas(project.id)
 
         socket
         |> assign(:sheet, sheet)
@@ -396,8 +391,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   @impl true
 
-  def handle_event("switch_tab", %{"tab" => tab}, socket)
-      when tab in ~w(content references audio history) do
+  def handle_event("switch_tab", %{"tab" => tab}, socket) when tab in ~w(content references audio history) do
     if tab == "history" and socket.assigns.compact do
       {:noreply, socket}
     else
@@ -426,8 +420,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   # --- Header (title, shortcut, color, banner, avatars) ---
 
-  def handle_event("save_name", params, socket),
-    do: HeaderHandlers.handle_save_name(params, socket, header_helpers())
+  def handle_event("save_name", params, socket), do: HeaderHandlers.handle_save_name(params, socket, header_helpers())
 
   def handle_event("save_shortcut", params, socket),
     do: HeaderHandlers.handle_save_shortcut(params, socket, header_helpers())
@@ -461,8 +454,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   # --- Blocks (CRUD, toolbar, reorder, inheritance) ---
 
-  def handle_event("add_block", params, socket),
-    do: BlockHandlers.handle_add(params, socket, content_helpers())
+  def handle_event("add_block", params, socket), do: BlockHandlers.handle_add(params, socket, content_helpers())
 
   def handle_event("update_block_value", params, socket),
     do: BlockHandlers.handle_update_value(params, socket, content_helpers())
@@ -473,17 +465,14 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_event("update_block_config", params, socket),
     do: BlockHandlers.handle_update_config(params, socket, content_helpers())
 
-  def handle_event("delete_block", params, socket),
-    do: BlockHandlers.handle_delete(params, socket, content_helpers())
+  def handle_event("delete_block", params, socket), do: BlockHandlers.handle_delete(params, socket, content_helpers())
 
   def handle_event("duplicate_block", params, socket),
     do: BlockHandlers.handle_duplicate(params, socket, content_helpers())
 
-  def handle_event("undo", params, socket),
-    do: BlockHandlers.handle_undo(params, socket, content_helpers())
+  def handle_event("undo", params, socket), do: BlockHandlers.handle_undo(params, socket, content_helpers())
 
-  def handle_event("redo", params, socket),
-    do: BlockHandlers.handle_redo(params, socket, content_helpers())
+  def handle_event("redo", params, socket), do: BlockHandlers.handle_redo(params, socket, content_helpers())
 
   def handle_event("reorder_layout", params, socket),
     do: BlockHandlers.handle_reorder_layout(params, socket, content_helpers())
@@ -500,11 +489,9 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_event("toggle_required", params, socket),
     do: BlockHandlers.handle_toggle_required(params, socket, content_helpers())
 
-  def handle_event("detach_block", params, socket),
-    do: BlockHandlers.handle_detach(params, socket, content_helpers())
+  def handle_event("detach_block", params, socket), do: BlockHandlers.handle_detach(params, socket, content_helpers())
 
-  def handle_event("reattach_block", params, socket),
-    do: BlockHandlers.handle_reattach(params, socket, content_helpers())
+  def handle_event("reattach_block", params, socket), do: BlockHandlers.handle_reattach(params, socket, content_helpers())
 
   # --- Gallery blocks ---
 
@@ -674,8 +661,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   # --- Select option management (unified: block + column) ---
 
-  def handle_event("add_option", params, socket),
-    do: SelectOptionHandlers.handle_add(params, socket, content_helpers())
+  def handle_event("add_option", params, socket), do: SelectOptionHandlers.handle_add(params, socket, content_helpers())
 
   def handle_event("remove_option", params, socket),
     do: SelectOptionHandlers.handle_remove(params, socket, content_helpers())
@@ -718,28 +704,23 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   # --- Audio tab ---
 
-  def handle_event("select_audio", params, socket),
-    do: AudioHandlers.handle_select(params, socket, content_helpers())
+  def handle_event("select_audio", params, socket), do: AudioHandlers.handle_select(params, socket, content_helpers())
 
-  def handle_event("remove_audio", params, socket),
-    do: AudioHandlers.handle_remove(params, socket, content_helpers())
+  def handle_event("remove_audio", params, socket), do: AudioHandlers.handle_remove(params, socket, content_helpers())
 
-  def handle_event("upload_audio", params, socket),
-    do: AudioHandlers.handle_upload(params, socket, content_helpers())
+  def handle_event("upload_audio", params, socket), do: AudioHandlers.handle_upload(params, socket, content_helpers())
 
   # --- History (versions, restore) ---
 
   def handle_event("compare_version", params, socket),
     do: HistoryHandlers.handle_compare(params, socket, history_helpers())
 
-  def handle_event("create_version", params, socket),
-    do: HistoryHandlers.handle_create(params, socket, history_helpers())
+  def handle_event("create_version", params, socket), do: HistoryHandlers.handle_create(params, socket, history_helpers())
 
   def handle_event("promote_version", params, socket),
     do: HistoryHandlers.handle_promote(params, socket, history_helpers())
 
-  def handle_event("delete_version", params, socket),
-    do: HistoryHandlers.handle_delete(params, socket, history_helpers())
+  def handle_event("delete_version", params, socket), do: HistoryHandlers.handle_delete(params, socket, history_helpers())
 
   def handle_event("load_more_versions", params, socket),
     do: HistoryHandlers.handle_load_more(params, socket, history_helpers())
@@ -758,14 +739,11 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   # --- Block locking ---
 
-  def handle_event("acquire_block_lock", params, socket),
-    do: LockHandlers.handle_acquire(params, socket)
+  def handle_event("acquire_block_lock", params, socket), do: LockHandlers.handle_acquire(params, socket)
 
-  def handle_event("release_block_lock", params, socket),
-    do: LockHandlers.handle_release(params, socket)
+  def handle_event("release_block_lock", params, socket), do: LockHandlers.handle_release(params, socket)
 
-  def handle_event("refresh_block_lock", params, socket),
-    do: LockHandlers.handle_refresh(params, socket)
+  def handle_event("refresh_block_lock", params, socket), do: LockHandlers.handle_refresh(params, socket)
 
   # ===========================================================================
   # Handle Info
@@ -773,25 +751,13 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   @impl true
   def handle_info({:project_restoration_started, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_started, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_started, payload}, socket)
 
   def handle_info({:project_restoration_completed, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_completed, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_completed, payload}, socket)
 
   def handle_info({:project_restoration_failed, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_failed, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_failed, payload}, socket)
 
   # Shell-topic messages from SidebarLive:
   def handle_info({:open_sheet, sheet_id}, socket) do
@@ -805,11 +771,11 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_info({:tree_changed, :sheets}, socket), do: {:noreply, socket}
   def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
 
-  def handle_info({Storyarn.Collaboration.Presence, {:join, presence}}, socket) do
+  def handle_info({Presence, {:join, presence}}, socket) do
     Collab.handle_presence_join(socket, presence)
   end
 
-  def handle_info({Storyarn.Collaboration.Presence, {:leave, _} = event}, socket) do
+  def handle_info({Presence, {:leave, _} = event}, socket) do
     Collab.handle_presence_leave(socket, elem(event, 1))
   end
 
@@ -1015,18 +981,19 @@ defmodule StoryarnWeb.SheetLive.Show do
     gallery_block_ids = all_blocks |> Enum.filter(&(&1.type == "gallery")) |> Enum.map(& &1.id)
 
     gallery_data =
-      if gallery_block_ids != [], do: Sheets.batch_load_gallery_data(gallery_block_ids), else: %{}
+      if gallery_block_ids == [], do: %{}, else: Sheets.batch_load_gallery_data(gallery_block_ids)
 
     table_block_ids = all_blocks |> Enum.filter(&(&1.type == "table")) |> Enum.map(& &1.id)
 
     project_id = socket.assigns.project.id
 
     table_data =
-      if table_block_ids != [],
-        do:
-          Sheets.batch_load_table_data(table_block_ids)
-          |> compute_formulas(project_id),
-        else: %{}
+      if table_block_ids == [],
+        do: %{},
+        else:
+          table_block_ids
+          |> Sheets.batch_load_table_data()
+          |> compute_formulas(project_id)
 
     socket
     |> assign(:blocks, own_blocks)
@@ -1034,5 +1001,4 @@ defmodule StoryarnWeb.SheetLive.Show do
     |> assign(:gallery_data, gallery_data)
     |> assign(:table_data, table_data)
   end
-
 end

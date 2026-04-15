@@ -4,7 +4,10 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpers do
   and the formula sidebar (ContentTab).
   """
 
+  import Phoenix.Component, only: [assign: 3]
+
   alias Storyarn.Shared.FormulaEngine
+  alias Storyarn.Sheets
 
   @doc "Extract symbol names from an expression string."
   def formula_symbols(expression) when is_binary(expression) do
@@ -136,10 +139,6 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpers do
   # Formula sidebar data helpers
   # ===========================================================================
 
-  import Phoenix.Component, only: [assign: 3]
-
-  alias Storyarn.Sheets
-
   @formula_page_size 20
 
   def refresh_formula_editing(socket) do
@@ -246,7 +245,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpers do
   def merge_search_results(existing, new_page) do
     existing_map = Map.new(existing, fn g -> {g.heading, g.items} end)
 
-    Enum.reduce(new_page, existing_map, fn group, acc ->
+    new_page
+    |> Enum.reduce(existing_map, fn group, acc ->
       existing_items = Map.get(acc, group.heading, [])
       Map.put(acc, group.heading, existing_items ++ group.items)
     end)
@@ -281,9 +281,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpers do
             formula_results = Map.get(computed, row.id, %{})
 
             updated_cells =
-              Enum.reduce(formula_results, row.cells, fn {slug,
-                                                          %{result: result} = computed_entry},
-                                                         cells ->
+              Enum.reduce(formula_results, row.cells, fn {slug, %{result: result} = computed_entry}, cells ->
                 current = cells[slug]
                 resolved = Map.get(computed_entry, :resolved, %{})
 

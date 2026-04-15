@@ -9,8 +9,6 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   use Gettext, backend: Storyarn.Gettext
   use StoryarnWeb, :verified_routes
 
-  require Logger
-
   import Phoenix.Component, only: [assign: 3, to_form: 2]
   import Phoenix.LiveView, only: [put_flash: 3]
 
@@ -22,6 +20,8 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   alias Storyarn.Projects
   alias Storyarn.Versioning
   alias Storyarn.Workers.RestoreProjectWorker
+
+  require Logger
 
   # ---------------------------------------------------------------------------
   # Form changesets
@@ -131,7 +131,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
          assign(
            socket,
            :provider_form,
-           to_form(changeset |> Map.put(:action, :validate), as: "provider")
+           changeset |> Map.put(:action, :validate) |> to_form(as: "provider")
          )}
     end
   end
@@ -161,14 +161,11 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
     |> Ecto.Changeset.validate_length(:description, max: 500)
   end
 
-  def format_snapshot_size(bytes) when is_integer(bytes) and bytes < 1024,
-    do: "#{bytes} B"
+  def format_snapshot_size(bytes) when is_integer(bytes) and bytes < 1024, do: "#{bytes} B"
 
-  def format_snapshot_size(bytes) when is_integer(bytes) and bytes < 1_048_576,
-    do: "#{Float.round(bytes / 1024, 1)} KB"
+  def format_snapshot_size(bytes) when is_integer(bytes) and bytes < 1_048_576, do: "#{Float.round(bytes / 1024, 1)} KB"
 
-  def format_snapshot_size(bytes) when is_integer(bytes),
-    do: "#{Float.round(bytes / 1_048_576, 1)} MB"
+  def format_snapshot_size(bytes) when is_integer(bytes), do: "#{Float.round(bytes / 1_048_576, 1)} MB"
 
   def format_snapshot_size(_), do: "—"
 
@@ -179,8 +176,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
     case Billing.can_create_project_snapshot?(project.id, project.workspace_id) do
       :ok ->
         opts =
-          [title: params["title"], description: params["description"]]
-          |> Enum.reject(fn {_k, v} -> v == "" or is_nil(v) end)
+          Enum.reject([title: params["title"], description: params["description"]], fn {_k, v} -> v == "" or is_nil(v) end)
 
         case Versioning.create_project_snapshot(project.id, user_id, opts) do
           {:ok, _snapshot} ->
@@ -206,8 +202,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
         end
 
       {:error, :limit_reached, _info} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("projects", "Snapshot limit reached for your plan."))}
+        {:noreply, put_flash(socket, :error, dgettext("projects", "Snapshot limit reached for your plan."))}
     end
   end
 
@@ -272,8 +267,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
              |> put_flash(:info, dgettext("projects", "Snapshot deleted."))}
 
           {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("projects", "Failed to delete snapshot."))}
+            {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to delete snapshot."))}
         end
     end
   end

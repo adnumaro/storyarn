@@ -7,7 +7,10 @@ defmodule Storyarn.Scenes.ZoneCrud do
   alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Scenes
-  alias Storyarn.Scenes.{PositionUtils, Scene, SceneZone}
+  alias Storyarn.Scenes.PositionUtils
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.SceneZone
+  alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
   alias Storyarn.Shortcuts
 
@@ -42,21 +45,19 @@ defmodule Storyarn.Scenes.ZoneCrud do
   Gets a zone by ID, scoped to a specific map. Returns `nil` if not found.
   """
   def get_zone(scene_id, zone_id) do
-    from(z in SceneZone, where: z.scene_id == ^scene_id and z.id == ^zone_id)
-    |> Repo.one()
+    Repo.one(from(z in SceneZone, where: z.scene_id == ^scene_id and z.id == ^zone_id))
   end
 
   @doc """
   Gets a zone by ID, scoped to a specific map. Raises if not found.
   """
   def get_zone!(scene_id, zone_id) do
-    from(z in SceneZone, where: z.scene_id == ^scene_id and z.id == ^zone_id)
-    |> Repo.one!()
+    Repo.one!(from(z in SceneZone, where: z.scene_id == ^scene_id and z.id == ^zone_id))
   end
 
   def create_zone(scene_id, attrs) do
     position = PositionUtils.next_position(SceneZone, scene_id)
-    attrs = Storyarn.Shared.MapUtils.stringify_keys(attrs)
+    attrs = MapUtils.stringify_keys(attrs)
     attrs = maybe_generate_zone_shortcut(attrs, scene_id, nil)
 
     result =
@@ -69,7 +70,7 @@ defmodule Storyarn.Scenes.ZoneCrud do
         project_id = Scenes.get_scene_project_id(scene_id)
         Sheets.update_scene_zone_references(zone)
         Flows.update_scene_zone_references(zone, project_id: project_id)
-        Repo.get(Scene, scene_id) |> Localization.extract_scene()
+        Scene |> Repo.get(scene_id) |> Localization.extract_scene()
 
       _ ->
         :ok
@@ -95,7 +96,7 @@ defmodule Storyarn.Scenes.ZoneCrud do
           project_id: project_id
         )
 
-        Repo.get(Scene, zone.scene_id) |> Localization.extract_scene()
+        Scene |> Repo.get(zone.scene_id) |> Localization.extract_scene()
 
       _ ->
         :ok
@@ -145,11 +146,9 @@ defmodule Storyarn.Scenes.ZoneCrud do
   Lists zones with a non-none action_type, ordered by position.
   """
   def list_actionable_zones(scene_id) do
-    from(z in SceneZone,
-      where: z.scene_id == ^scene_id and z.action_type != "none",
-      order_by: [asc: z.position]
+    Repo.all(
+      from(z in SceneZone, where: z.scene_id == ^scene_id and z.action_type != "none", order_by: [asc: z.position])
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -157,14 +156,12 @@ defmodule Storyarn.Scenes.ZoneCrud do
   Returns `nil` if no linking zone is found.
   """
   def get_zone_linking_to_scene(parent_scene_id, child_scene_id) do
-    from(z in SceneZone,
-      where:
-        z.scene_id == ^parent_scene_id and
-          z.target_type == "scene" and
-          z.target_id == ^child_scene_id,
-      limit: 1
+    Repo.one(
+      from(z in SceneZone,
+        where: z.scene_id == ^parent_scene_id and z.target_type == "scene" and z.target_id == ^child_scene_id,
+        limit: 1
+      )
     )
-    |> Repo.one()
   end
 
   # Generate shortcut from name on create if name present and no shortcut in attrs
@@ -181,7 +178,7 @@ defmodule Storyarn.Scenes.ZoneCrud do
 
   # Regenerate shortcut on update when name changes
   defp maybe_regenerate_zone_shortcut(zone, attrs) do
-    attrs = Storyarn.Shared.MapUtils.stringify_keys(attrs)
+    attrs = MapUtils.stringify_keys(attrs)
     new_name = attrs["name"]
 
     cond do

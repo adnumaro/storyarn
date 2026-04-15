@@ -1,10 +1,11 @@
 defmodule StoryarnWeb.FlowLive.Nodes.Subflow.NodeTest do
   use Storyarn.DataCase, async: true
 
-  alias StoryarnWeb.FlowLive.Nodes.Subflow.Node, as: SubflowNode
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias Phoenix.LiveView.Socket
+  alias StoryarnWeb.FlowLive.Nodes.Subflow.Node, as: SubflowNode
 
   # =============================================================================
   # Metadata functions
@@ -83,7 +84,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.NodeTest do
       project = project_fixture(user_fixture())
       flow = Storyarn.FlowsFixtures.flow_fixture(project)
 
-      socket = %Phoenix.LiveView.Socket{
+      socket = %Socket{
         assigns: %{
           __changed__: %{},
           flow: flow,
@@ -198,7 +199,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.NodeTest do
     flow = Storyarn.Flows.get_flow!(project.id, flow.id)
     flow_data = Storyarn.Flows.serialize_for_canvas(flow)
 
-    socket = %Phoenix.LiveView.Socket{
+    socket = %Socket{
       assigns: %{
         __changed__: %{},
         flash: %{},

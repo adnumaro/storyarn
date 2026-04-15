@@ -1,10 +1,10 @@
 defmodule Storyarn.Localization.GlossaryCrudTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Localization
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias Storyarn.Localization
 
   describe "glossary entries" do
     test "create_glossary_entry/2 creates an entry" do
@@ -278,7 +278,7 @@ defmodule Storyarn.Localization.GlossaryCrudTest do
     test "bulk_import_glossary_entries/1 inserts entries in bulk" do
       user = user_fixture()
       project = project_fixture(user)
-      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      now = DateTime.truncate(DateTime.utc_now(), :second)
 
       attrs_list = [
         %{

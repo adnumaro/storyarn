@@ -14,8 +14,10 @@ defmodule Storyarn.Exports.Serializers.Ink do
 
   @behaviour Storyarn.Exports.Serializer
 
-  alias Storyarn.Exports.{ExportOptions, ExpressionTranspiler}
-  alias Storyarn.Exports.Serializers.{GraphTraversal, Helpers}
+  alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.ExpressionTranspiler
+  alias Storyarn.Exports.Serializers.GraphTraversal
+  alias Storyarn.Exports.Serializers.Helpers
 
   @impl true
   def content_type, do: "text/plain"
@@ -38,12 +40,11 @@ defmodule Storyarn.Exports.Serializers.Ink do
     tunnel_targets = collect_tunnel_targets(flows)
 
     ink_lines =
-      [
+      List.flatten([
         header_lines(project_data.project),
         variable_declaration_lines(variables),
         Enum.flat_map(flows, &flow_to_knot(&1, speaker_map, tunnel_targets))
-      ]
-      |> List.flatten()
+      ])
 
     ink_source =
       ink_lines

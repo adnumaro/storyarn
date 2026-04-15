@@ -1,10 +1,11 @@
 defmodule Storyarn.Flows.NodeUpdateTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Flows
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias Storyarn.Flows
 
   defp create_project_and_flow(_context \\ %{}) do
     user = user_fixture()

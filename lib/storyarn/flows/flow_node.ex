@@ -18,9 +18,12 @@ defmodule Storyarn.Flows.FlowNode do
   - `slug_line` - A slug line establishing location and time context
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
-  alias Storyarn.Flows.{Flow, FlowConnection}
+  alias Ecto.Association.NotLoaded
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowConnection
   alias Storyarn.Shared.TimeHelpers
 
   @node_types ~w(annotation dialogue hub condition instruction jump entry exit subflow slug_line)
@@ -46,9 +49,9 @@ defmodule Storyarn.Flows.FlowNode do
           source: String.t(),
           deleted_at: DateTime.t() | nil,
           flow_id: integer() | nil,
-          flow: Flow.t() | Ecto.Association.NotLoaded.t() | nil,
-          outgoing_connections: [FlowConnection.t()] | Ecto.Association.NotLoaded.t(),
-          incoming_connections: [FlowConnection.t()] | Ecto.Association.NotLoaded.t(),
+          flow: Flow.t() | NotLoaded.t() | nil,
+          outgoing_connections: [FlowConnection.t()] | NotLoaded.t(),
+          incoming_connections: [FlowConnection.t()] | NotLoaded.t(),
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -110,8 +113,7 @@ defmodule Storyarn.Flows.FlowNode do
   Used for editing node properties.
   """
   def data_changeset(node, attrs) do
-    node
-    |> cast(attrs, [:data])
+    cast(node, attrs, [:data])
   end
 
   @doc """

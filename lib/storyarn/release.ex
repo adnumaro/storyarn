@@ -62,7 +62,7 @@ defmodule Storyarn.Release do
       when is_binary(email) and type in ["project", "workspace"] do
     allowed_roles = if type == "project", do: @project_roles, else: @workspace_roles
 
-    unless role in allowed_roles do
+    if role not in allowed_roles do
       raise ArgumentError,
             "Invalid role #{inspect(role)} for #{type}. Allowed: #{inspect(allowed_roles)}"
     end
@@ -75,9 +75,7 @@ defmodule Storyarn.Release do
 
     case context_module.create_admin_invitation(entity, email, role, inviter_name: inviter_name) do
       {:ok, _invitation} ->
-        IO.puts(
-          "Invitation created and email sent to #{email} as #{role} to #{type} ##{entity_id}"
-        )
+        IO.puts("Invitation created and email sent to #{email} as #{role} to #{type} ##{entity_id}")
 
       {:error, :already_member} ->
         IO.puts("#{email} is already a member of this #{type}")

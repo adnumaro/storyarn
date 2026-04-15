@@ -6,9 +6,11 @@ defmodule Storyarn.Accounts.UserIdentity do
   OAuth tokens are encrypted at rest using Cloak.
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
   alias Storyarn.Accounts.User
+  alias Storyarn.Shared.EncryptedBinary
 
   @providers ~w(github google discord)
 
@@ -39,8 +41,8 @@ defmodule Storyarn.Accounts.UserIdentity do
     field :provider_meta, :map, default: %{}
 
     # Encrypted token storage
-    field :provider_token_encrypted, Storyarn.Shared.EncryptedBinary
-    field :provider_refresh_token_encrypted, Storyarn.Shared.EncryptedBinary
+    field :provider_token_encrypted, EncryptedBinary
+    field :provider_refresh_token_encrypted, EncryptedBinary
 
     # Virtual fields for API compatibility (input only)
     field :provider_token, :string, virtual: true, redact: true
@@ -104,8 +106,7 @@ defmodule Storyarn.Accounts.UserIdentity do
   """
   def get_provider_refresh_token(%__MODULE__{provider_refresh_token_encrypted: nil}), do: nil
 
-  def get_provider_refresh_token(%__MODULE__{provider_refresh_token_encrypted: token}),
-    do: token
+  def get_provider_refresh_token(%__MODULE__{provider_refresh_token_encrypted: token}), do: token
 
   @doc """
   Returns the list of supported OAuth providers.

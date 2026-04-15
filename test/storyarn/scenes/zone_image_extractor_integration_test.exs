@@ -25,11 +25,12 @@ defmodule Storyarn.Scenes.ZoneImageExtractorIntegrationTest do
   # with libvips, which races under heavy parallel I/O (flaky :enoent)
   use Storyarn.DataCase, async: false
 
-  alias Storyarn.Assets
-  alias Storyarn.Scenes.{SceneZone, ZoneImageExtractor}
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias Storyarn.Assets
+  alias Storyarn.Scenes.SceneZone
+  alias Storyarn.Scenes.ZoneImageExtractor
 
   @test_image_path "test/fixtures/images/test_image.jpg"
   @quadrant_image_path "test/fixtures/images/quadrant_map.png"
@@ -73,7 +74,7 @@ defmodule Storyarn.Scenes.ZoneImageExtractorIntegrationTest do
   # ===========================================================================
 
   defp sha256(path) do
-    :crypto.hash(:sha256, File.read!(path)) |> Base.encode16(case: :lower)
+    :sha256 |> :crypto.hash(File.read!(path)) |> Base.encode16(case: :lower)
   end
 
   defp rect(x1, y1, x2, y2) do

@@ -3,12 +3,13 @@ defmodule StoryarnWeb.SheetLive.Handlers.GalleryHandlers do
   Handles gallery block image events for the V2 sheet editor.
   """
 
-  import Phoenix.LiveView, only: [put_flash: 3]
   use Gettext, backend: Storyarn.Gettext
 
-  alias StoryarnWeb.Helpers.Authorize
+  import Phoenix.LiveView, only: [put_flash: 3]
+
   alias Storyarn.Assets
   alias Storyarn.Sheets
+  alias StoryarnWeb.Helpers.Authorize
 
   def handle_attach(%{"block_id" => block_id, "asset_id" => asset_id}, socket, helpers) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->

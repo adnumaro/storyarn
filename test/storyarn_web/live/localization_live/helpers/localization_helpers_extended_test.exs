@@ -2,10 +2,11 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpersExtendedTest d
   use StoryarnWeb.ConnCase, async: true
 
   import Storyarn.AccountsFixtures
-  import Storyarn.ProjectsFixtures
   import Storyarn.LocalizationFixtures
+  import Storyarn.ProjectsFixtures
 
-  alias Storyarn.{Localization, Repo}
+  alias Storyarn.Localization
+  alias Storyarn.Repo
   alias StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers
 
   # ── strip_html/1 ────────────────────────────────────────────────
@@ -40,7 +41,7 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpersExtendedTest d
   describe "has_active_provider?/1" do
     setup do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -54,7 +55,7 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpersExtendedTest d
   describe "language_picker_options/1" do
     setup do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -82,7 +83,7 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpersExtendedTest d
   describe "load_texts/1" do
     setup do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       _source = language_fixture(project, %{locale_code: "en", name: "English", is_source: true})
       _target = language_fixture(project, %{locale_code: "es", name: "Spanish"})
@@ -127,7 +128,7 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpersExtendedTest d
   describe "reload_languages/1" do
     setup do
       user = user_fixture()
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 

@@ -1,28 +1,29 @@
 defmodule StoryarnWeb.Helpers.AuthorizeTest do
   use ExUnit.Case, async: true
 
+  alias Phoenix.LiveView.Socket
   alias StoryarnWeb.Helpers.Authorize
 
   defp socket_with_membership(role) do
-    %Phoenix.LiveView.Socket{
+    %Socket{
       assigns: %{__changed__: %{}, flash: %{}, membership: %{role: role}}
     }
   end
 
   defp socket_without_membership do
-    %Phoenix.LiveView.Socket{
+    %Socket{
       assigns: %{__changed__: %{}, flash: %{}}
     }
   end
 
   defp socket_with_nil_membership do
-    %Phoenix.LiveView.Socket{
+    %Socket{
       assigns: %{__changed__: %{}, flash: %{}, membership: nil}
     }
   end
 
   defp socket_with_can_edit(can_edit) do
-    %Phoenix.LiveView.Socket{
+    %Socket{
       assigns: %{__changed__: %{}, flash: %{}, can_edit: can_edit}
     }
   end
@@ -162,7 +163,7 @@ defmodule StoryarnWeb.Helpers.AuthorizeTest do
           {:noreply, socket}
         end)
 
-      assert {:noreply, %Phoenix.LiveView.Socket{}} = result
+      assert {:noreply, %Socket{}} = result
     end
 
     test "returns unauthorized flash when not authorized" do
@@ -173,8 +174,8 @@ defmodule StoryarnWeb.Helpers.AuthorizeTest do
           raise "should not be called"
         end)
 
-      assert {:noreply, %Phoenix.LiveView.Socket{} = result_socket} = result
-      assert result_socket.assigns.flash["error"] != nil
+      assert {:noreply, %Socket{} = result_socket} = result
+      assert result_socket.assigns.flash["error"]
     end
   end
 
@@ -187,7 +188,7 @@ defmodule StoryarnWeb.Helpers.AuthorizeTest do
           {:noreply, socket}
         end)
 
-      assert {:noreply, %Phoenix.LiveView.Socket{}} = result
+      assert {:noreply, %Socket{}} = result
     end
 
     test "returns unauthorized flash when can_edit is false" do
@@ -198,8 +199,8 @@ defmodule StoryarnWeb.Helpers.AuthorizeTest do
           raise "should not be called"
         end)
 
-      assert {:noreply, %Phoenix.LiveView.Socket{} = result_socket} = result
-      assert result_socket.assigns.flash["error"] != nil
+      assert {:noreply, %Socket{} = result_socket} = result
+      assert result_socket.assigns.flash["error"]
     end
 
     test "returns unauthorized flash when can_edit is nil" do
@@ -210,8 +211,8 @@ defmodule StoryarnWeb.Helpers.AuthorizeTest do
           raise "should not be called"
         end)
 
-      assert {:noreply, %Phoenix.LiveView.Socket{} = result_socket} = result
-      assert result_socket.assigns.flash["error"] != nil
+      assert {:noreply, %Socket{} = result_socket} = result
+      assert result_socket.assigns.flash["error"]
     end
   end
 end

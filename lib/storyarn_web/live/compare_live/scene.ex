@@ -32,15 +32,7 @@ defmodule StoryarnWeb.CompareLive.Scene do
   # ========== Mount ==========
 
   @impl true
-  def mount(
-        %{
-          "workspace_slug" => workspace_slug,
-          "project_slug" => project_slug,
-          "id" => scene_id_str
-        },
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => scene_id_str}, _session, socket) do
     with {scene_id, ""} <- Integer.parse(scene_id_str),
          {:ok, project, _membership} <-
            Projects.get_project_by_slugs(

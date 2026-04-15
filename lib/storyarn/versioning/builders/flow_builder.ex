@@ -8,12 +8,16 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   @behaviour Storyarn.Versioning.SnapshotBuilder
 
-  import Ecto.Query, warn: false
   use Gettext, backend: Storyarn.Gettext
 
+  import Ecto.Query, warn: false
+
   alias Ecto.Multi
-  alias Storyarn.Flows.{Flow, FlowConnection, FlowNode}
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowConnection
+  alias Storyarn.Flows.FlowNode
   alias Storyarn.Repo
+  alias Storyarn.Scenes.Scene
   alias Storyarn.Sheets
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.DiffHelpers
@@ -48,8 +52,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
     # Collect asset IDs from node data
     asset_ids =
-      sorted_nodes
-      |> Enum.map(fn node ->
+      Enum.map(sorted_nodes, fn node ->
         (node.data || %{})["audio_asset_id"]
       end)
 
@@ -143,29 +146,25 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   @impl true
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
-    Repo.transaction(fn ->
+    fn ->
       now = MaterializationHelpers.now()
 
       flow_attrs =
-        %{
-          project_id: project_id,
-          name: snapshot["name"],
-          shortcut: MaterializationHelpers.root_shortcut(snapshot, opts),
-          description: snapshot["description"],
-          is_main: snapshot["is_main"] || false,
-          settings: snapshot["settings"] || %{},
-          scene_id:
-            MaterializationHelpers.resolve_project_external_ref(
-              snapshot["scene_id"],
-              Storyarn.Scenes.Scene,
-              :scene,
-              project_id,
-              opts
-            ),
-          parent_id: MaterializationHelpers.root_parent_id(opts),
-          position: MaterializationHelpers.root_position(opts)
-        }
-        |> Map.merge(MaterializationHelpers.timestamps(now))
+        Map.merge(
+          %{
+            project_id: project_id,
+            name: snapshot["name"],
+            shortcut: MaterializationHelpers.root_shortcut(snapshot, opts),
+            description: snapshot["description"],
+            is_main: snapshot["is_main"] || false,
+            settings: snapshot["settings"] || %{},
+            scene_id:
+              MaterializationHelpers.resolve_project_external_ref(snapshot["scene_id"], Scene, :scene, project_id, opts),
+            parent_id: MaterializationHelpers.root_parent_id(opts),
+            position: MaterializationHelpers.root_position(opts)
+          },
+          MaterializationHelpers.timestamps(now)
+        )
 
       with {:ok, flow_id} <-
              MaterializationHelpers.insert_one_returning_id(Repo, Flow, flow_attrs),
@@ -179,7 +178,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
                now,
                opts
              ),
-           node_id_map <-
+           node_id_map =
              MaterializationHelpers.build_id_map(snapshot["nodes"] || [], inserted_nodes),
            {:ok, connection_id_map} <-
              insert_flow_connections(
@@ -188,11 +187,12 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
                snapshot["connections"] || [],
                Enum.map(inserted_nodes, & &1.id),
                now
-             ),
-           flow <-
-             Flow
-             |> Repo.get!(flow_id)
-             |> Repo.preload([:nodes, :connections], force: true) do
+             ) do
+        flow =
+          Flow
+          |> Repo.get!(flow_id)
+          |> Repo.preload([:nodes, :connections], force: true)
+
         id_maps = %{
           flow: MaterializationHelpers.root_id_map(snapshot, flow_id),
           node: node_id_map,
@@ -203,7 +203,8 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       else
         {:error, reason} -> Repo.rollback(reason)
       end
-    end)
+    end
+    |> Repo.transaction()
     |> case do
       {:ok, {flow, id_maps}} -> {:ok, flow, id_maps}
       {:error, reason} -> {:error, reason}
@@ -223,7 +224,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
         scene_id:
           MaterializationHelpers.resolve_project_external_ref(
             snapshot["scene_id"],
-            Storyarn.Scenes.Scene,
+            Scene,
             :scene,
             flow.project_id,
             opts
@@ -332,17 +333,18 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   defp insert_flow_nodes(repo, flow_id, nodes_data, snapshot, project_id, now, opts) do
     entries =
       Enum.map(nodes_data, fn node_data ->
-        %{
-          flow_id: flow_id,
-          type: node_data["type"],
-          position_x: node_data["position_x"] || 0.0,
-          position_y: node_data["position_y"] || 0.0,
-          data:
-            resolve_materialized_node_data(node_data["data"] || %{}, snapshot, project_id, opts),
-          word_count: node_data["word_count"] || 0,
-          source: node_data["source"] || "manual"
-        }
-        |> Map.merge(MaterializationHelpers.timestamps(now))
+        Map.merge(
+          %{
+            flow_id: flow_id,
+            type: node_data["type"],
+            position_x: node_data["position_x"] || 0.0,
+            position_y: node_data["position_y"] || 0.0,
+            data: resolve_materialized_node_data(node_data["data"] || %{}, snapshot, project_id, opts),
+            word_count: node_data["word_count"] || 0,
+            source: node_data["source"] || "manual"
+          },
+          MaterializationHelpers.timestamps(now)
+        )
       end)
 
     MaterializationHelpers.insert_all_returning(repo, FlowNode, entries, [:id])
@@ -352,22 +354,23 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   defp insert_flow_connections(repo, flow_id, connections_data, node_ids, now) do
     {entries, snapshots} =
-      connections_data
-      |> Enum.reduce({[], []}, fn conn, {acc_entries, acc_snapshots} ->
+      Enum.reduce(connections_data, {[], []}, fn conn, {acc_entries, acc_snapshots} ->
         source_node_id = Enum.at(node_ids, conn["source_node_index"])
         target_node_id = Enum.at(node_ids, conn["target_node_index"])
 
         if source_node_id && target_node_id do
           entry =
-            %{
-              flow_id: flow_id,
-              source_node_id: source_node_id,
-              target_node_id: target_node_id,
-              source_pin: conn["source_pin"],
-              target_pin: conn["target_pin"],
-              label: conn["label"]
-            }
-            |> Map.merge(MaterializationHelpers.timestamps(now))
+            Map.merge(
+              %{
+                flow_id: flow_id,
+                source_node_id: source_node_id,
+                target_node_id: target_node_id,
+                source_pin: conn["source_pin"],
+                target_pin: conn["target_pin"],
+                label: conn["label"]
+              },
+              MaterializationHelpers.timestamps(now)
+            )
 
           {[entry | acc_entries], [conn | acc_snapshots]}
         else
@@ -484,8 +487,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     new_node_index = new_nodes |> Enum.with_index() |> Map.new()
 
     old_index_to_new =
-      matched
-      |> Enum.reduce(%{}, fn {old_node, new_node}, acc ->
+      Enum.reduce(matched, %{}, fn {old_node, new_node}, acc ->
         old_idx = Map.get(old_node_index, old_node)
         new_idx = Map.get(new_node_index, new_node)
         if old_idx && new_idx, do: Map.put(acc, old_idx, new_idx), else: acc
@@ -555,8 +557,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
       end)
 
     key_fn = fn conn ->
-      {conn["source_node_index"], conn["target_node_index"], conn["source_pin"],
-       conn["target_pin"]}
+      {conn["source_node_index"], conn["target_node_index"], conn["source_pin"], conn["target_pin"]}
     end
 
     {matched, added, removed} = DiffHelpers.match_by_keys(remapped_old_conns, new_conns, [key_fn])
@@ -640,8 +641,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
   defp maybe_add_ref(refs, _type, nil, _context), do: refs
 
-  defp maybe_add_ref(refs, type, id, context),
-    do: [%{type: type, id: id, context: context} | refs]
+  defp maybe_add_ref(refs, type, id, context), do: [%{type: type, id: id, context: context} | refs]
 
   # Identity key for a snapshot node used by the positional fallback matcher.
   # Uses type + spatial position as a lightweight fingerprint.

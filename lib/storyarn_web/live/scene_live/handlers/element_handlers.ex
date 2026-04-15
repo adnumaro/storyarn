@@ -3,19 +3,20 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   Element (pin/zone/connection/annotation) handlers for the scene LiveView.
   """
 
-  import Phoenix.Component, only: [assign: 2, assign: 3]
-  import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
   use StoryarnWeb, :verified_routes
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Scenes
-  import StoryarnWeb.SceneLive.Helpers.SceneHelpers
-  import StoryarnWeb.SceneLive.Helpers.SceneSerializer
-
+  import Phoenix.Component, only: [assign: 2, assign: 3]
+  import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
   import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
 
   import StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers,
     only: [push_undo: 2, push_undo_coalesced: 2]
+
+  import StoryarnWeb.SceneLive.Helpers.SceneHelpers
+  import StoryarnWeb.SceneLive.Helpers.SceneSerializer
+
+  alias Storyarn.Scenes
 
   # ---------------------------------------------------------------------------
   # Editable field allowlists (matches schema changeset cast lists,
@@ -174,7 +175,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   @doc "Selects a sheet and switches to pin placement mode."
   def handle_start_pin_from_sheet(%{"sheet-id" => sheet_id}, socket) do
     raw_sheet = Storyarn.Sheets.get_sheet(socket.assigns.project.id, sheet_id)
-    sheet = if raw_sheet, do: Scenes.preload_sheet_avatar(raw_sheet), else: nil
+    sheet = if raw_sheet, do: Scenes.preload_sheet_avatar(raw_sheet)
 
     if sheet do
       {:noreply,
@@ -213,8 +214,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     end
   end
 
-  def handle_update_pin(%{"field" => field} = params, socket)
-      when field in @pin_editable_fields do
+  def handle_update_pin(%{"field" => field} = params, socket) when field in @pin_editable_fields do
     id = params["id"] || params["element_id"]
 
     case Scenes.get_pin(socket.assigns.scene.id, id) do
@@ -296,8 +296,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     end
   end
 
-  def handle_update_zone(%{"field" => field} = params, socket)
-      when field in @zone_editable_fields do
+  def handle_update_zone(%{"field" => field} = params, socket) when field in @zone_editable_fields do
     id = params["id"] || params["element_id"]
 
     case Scenes.get_zone(socket.assigns.scene.id, id) do
@@ -375,22 +374,19 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
         {:noreply, socket}
 
       zone ->
-        new_data = Map.merge(zone.action_data || %{}, %{"assignments" => assignments})
+        new_data = Map.put(zone.action_data || %{}, "assignments", assignments)
         do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
     end
   end
 
   @doc "Updates a single field in a zone's action_data (e.g., event_name, variable_ref)."
-  def handle_update_zone_action_data(
-        %{"zone-id" => id, "field" => field, "value" => value},
-        socket
-      ) do
+  def handle_update_zone_action_data(%{"zone-id" => id, "field" => field, "value" => value}, socket) do
     case Scenes.get_zone(socket.assigns.scene.id, id) do
       nil ->
         {:noreply, socket}
 
       zone ->
-        new_data = Map.merge(zone.action_data || %{}, %{field => value})
+        new_data = Map.put(zone.action_data || %{}, field, value)
         do_update_zone_attrs(socket, zone, %{"action_data" => new_data})
     end
   end
@@ -458,10 +454,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   end
 
   @doc "Updates a field on a collection item (label, sheet_id)."
-  def handle_update_collection_item(
-        %{"zone-id" => zone_id, "item-id" => item_id, "field" => field} = params,
-        socket
-      ) do
+  def handle_update_collection_item(%{"zone-id" => zone_id, "item-id" => item_id, "field" => field} = params, socket) do
     value = Map.get(params, "value", "")
     update_fn = fn item -> Map.put(item, field, value) end
     do_update_collection_item(socket, zone_id, item_id, update_fn)
@@ -505,10 +498,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   end
 
   @doc "Updates collection-level settings (collect_all_enabled, empty_message)."
-  def handle_update_collection_settings(
-        %{"zone-id" => zone_id, "field" => field, "value" => value},
-        socket
-      ) do
+  def handle_update_collection_settings(%{"zone-id" => zone_id, "field" => field, "value" => value}, socket) do
     case Scenes.get_zone(socket.assigns.scene.id, zone_id) do
       nil ->
         {:noreply, socket}
@@ -575,8 +565,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   end
 
   @doc "Updates a single field on a connection (e.g., label, color, style)."
-  def handle_update_connection(%{"field" => field} = params, socket)
-      when field in @connection_editable_fields do
+  def handle_update_connection(%{"field" => field} = params, socket) when field in @connection_editable_fields do
     id = params["id"] || params["element_id"]
 
     case Scenes.get_connection(socket.assigns.scene.id, id) do
@@ -652,8 +641,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   end
 
   @doc "Updates a single field on an annotation (e.g., text, font_size, color)."
-  def handle_update_annotation(%{"field" => field} = params, socket)
-      when field in @annotation_editable_fields do
+  def handle_update_annotation(%{"field" => field} = params, socket) when field in @annotation_editable_fields do
     id = params["id"] || params["element_id"]
     value = params["value"] || params[field]
 
@@ -743,8 +731,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   # Private do_* helpers
   # ---------------------------------------------------------------------------
 
-  defp do_create_pin_from_sheet(socket, _x, _y)
-       when is_nil(socket.assigns.pending_sheet_for_pin) do
+  defp do_create_pin_from_sheet(socket, _x, _y) when is_nil(socket.assigns.pending_sheet_for_pin) do
     {:noreply, put_flash(socket, :error, dgettext("scenes", "No sheet selected."))}
   end
 
@@ -834,8 +821,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     end
   end
 
-  defp do_update_pin(socket, pin, "flow_id", ""),
-    do: do_update_pin_attrs(socket, pin, %{"flow_id" => nil})
+  defp do_update_pin(socket, pin, "flow_id", ""), do: do_update_pin_attrs(socket, pin, %{"flow_id" => nil})
 
   defp do_update_pin(socket, pin, field, value) do
     prev_value = safe_field_get(pin, field)
@@ -917,8 +903,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
     end
   end
 
-  defp build_zone_update_attrs(_zone, "target_type", ""),
-    do: %{"target_type" => nil, "target_id" => nil}
+  defp build_zone_update_attrs(_zone, "target_type", ""), do: %{"target_type" => nil, "target_id" => nil}
 
   defp build_zone_update_attrs(_zone, field, value), do: %{field => value}
 
@@ -1079,9 +1064,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
       {:ok, updated} ->
         {:noreply,
          socket
-         |> push_undo(
-           {:update_annotation, annotation.id, %{field => prev_value}, %{field => value}}
-         )
+         |> push_undo({:update_annotation, annotation.id, %{field => prev_value}, %{field => value}})
          |> assign(:annotations, replace_in_list(socket.assigns.annotations, updated))
          |> maybe_update_selected_element("annotation", updated)
          |> assign(:_broadcast, {:annotation_updated, %{id: updated.id}})
@@ -1140,8 +1123,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   end
 
   defp do_duplicate_pin(socket, %{locked: true}) do
-    {:noreply,
-     put_flash(socket, :error, dgettext("scenes", "Cannot duplicate a locked element."))}
+    {:noreply, put_flash(socket, :error, dgettext("scenes", "Cannot duplicate a locked element."))}
   end
 
   defp do_duplicate_pin(socket, pin) do
@@ -1173,8 +1155,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
   end
 
   defp do_duplicate_annotation(socket, %{locked: true}) do
-    {:noreply,
-     put_flash(socket, :error, dgettext("scenes", "Cannot duplicate a locked element."))}
+    {:noreply, put_flash(socket, :error, dgettext("scenes", "Cannot duplicate a locked element."))}
   end
 
   defp do_duplicate_annotation(socket, annotation) do
@@ -1200,8 +1181,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
          |> put_flash(:info, dgettext("scenes", "Annotation duplicated."))}
 
       {:error, _} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("scenes", "Could not duplicate annotation."))}
+        {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not duplicate annotation."))}
     end
   end
 

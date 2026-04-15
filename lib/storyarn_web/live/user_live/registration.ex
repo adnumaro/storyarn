@@ -23,8 +23,7 @@ defmodule StoryarnWeb.UserLive.Registration do
   end
 
   @impl true
-  def mount(_params, _session, %{assigns: %{current_scope: %{user: user}}} = socket)
-      when not is_nil(user) do
+  def mount(_params, _session, %{assigns: %{current_scope: %{user: user}}} = socket) when not is_nil(user) do
     {:ok, redirect(socket, to: StoryarnWeb.UserAuth.signed_in_path(socket))}
   end
 

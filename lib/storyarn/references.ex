@@ -3,7 +3,10 @@ defmodule Storyarn.References do
   Public facade for entity and variable reference tracking.
   """
 
-  alias Storyarn.References.{Backlinks, EntityTracker, VariableTracker, VariableUsage}
+  alias Storyarn.References.Backlinks
+  alias Storyarn.References.EntityTracker
+  alias Storyarn.References.VariableTracker
+  alias Storyarn.References.VariableUsage
 
   defdelegate update_block_references(block), to: EntityTracker
   defdelegate delete_block_references(block_id), to: EntityTracker

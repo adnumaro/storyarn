@@ -1,10 +1,11 @@
 defmodule Storyarn.WorkspacesTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Workspaces
-
   import Storyarn.AccountsFixtures
   import Storyarn.WorkspacesFixtures
+
+  alias Storyarn.Workspaces
+  alias Storyarn.Workspaces.WorkspaceMembership
 
   describe "workspaces" do
     test "list_workspaces/1 returns workspaces user has access to" do
@@ -43,7 +44,7 @@ defmodule Storyarn.WorkspacesTest do
       user = user_fixture()
 
       workspace = Workspaces.get_default_workspace(user)
-      assert workspace != nil
+      assert workspace
       # Default workspace name should include user's name or email prefix
       assert workspace.name =~ "workspace"
     end
@@ -300,7 +301,7 @@ defmodule Storyarn.WorkspacesTest do
       Storyarn.ProjectsFixtures.membership_fixture(project, invitee, "editor")
 
       result = Workspaces.get_default_workspace(invitee)
-      assert result != nil
+      assert result
       assert result.id == workspace.id
     end
 
@@ -308,10 +309,10 @@ defmodule Storyarn.WorkspacesTest do
       assert {:ok, _workspace, membership} =
                Workspaces.get_workspace(ctx.invitee_scope, ctx.workspace.id)
 
-      refute Storyarn.Workspaces.WorkspaceMembership.can?(membership.role, :manage_workspace)
-      refute Storyarn.Workspaces.WorkspaceMembership.can?(membership.role, :manage_members)
-      refute Storyarn.Workspaces.WorkspaceMembership.can?(membership.role, :create_project)
-      refute Storyarn.Workspaces.WorkspaceMembership.can?(membership.role, :view)
+      refute WorkspaceMembership.can?(membership.role, :manage_workspace)
+      refute WorkspaceMembership.can?(membership.role, :manage_members)
+      refute WorkspaceMembership.can?(membership.role, :create_project)
+      refute WorkspaceMembership.can?(membership.role, :view)
     end
   end
 

@@ -12,7 +12,7 @@ defmodule Storyarn.Projects.DashboardTest do
 
   setup do
     user = user_fixture()
-    project = project_fixture(user) |> Repo.preload(:workspace)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
     %{project: project, user: user}
   end
 
@@ -100,7 +100,7 @@ defmodule Storyarn.Projects.DashboardTest do
       table_row_fixture(table_block, %{name: "Front Line"})
 
       stats = Dashboard.project_stats(project.id)
-      sheet_words = Storyarn.Sheets.sheet_word_counts(project.id) |> Map.values() |> Enum.sum()
+      sheet_words = project.id |> Storyarn.Sheets.sheet_word_counts() |> Map.values() |> Enum.sum()
 
       assert sheet_words == 21
       assert stats.total_word_count == sheet_words
@@ -133,7 +133,7 @@ defmodule Storyarn.Projects.DashboardTest do
       annotation_fixture(scene, %{"text" => "Secret route", "layer_id" => layer.id})
       Storyarn.ScenesFixtures.connection_fixture(scene, pin_1, pin_2, %{"label" => "Patrol path"})
 
-      scene_words = Storyarn.Scenes.scene_word_counts(project.id) |> Map.values() |> Enum.sum()
+      scene_words = project.id |> Storyarn.Scenes.scene_word_counts() |> Map.values() |> Enum.sum()
       stats = Dashboard.project_stats(project.id)
 
       assert scene_words == 22

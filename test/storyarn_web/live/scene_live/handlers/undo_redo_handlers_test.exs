@@ -8,8 +8,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlersTest do
   use StoryarnWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
-  import Storyarn.ScenesFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
 
   alias Storyarn.Repo
   alias Storyarn.Scenes
@@ -25,7 +25,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlersTest do
   end
 
   defp setup_scene(%{conn: conn, user: user}) do
-    project = project_fixture(user) |> Repo.preload(:workspace)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
     scene = scene_fixture(project)
     {:ok, project: project, scene: scene, conn: conn, user: user}
   end
@@ -134,12 +134,8 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlersTest do
     test "moves for different annotations do not coalesce" do
       socket =
         mock_socket()
-        |> UndoRedoHandlers.push_undo_coalesced(
-          {:move_annotation, "a1", %{x: 0, y: 0}, %{x: 1, y: 1}}
-        )
-        |> UndoRedoHandlers.push_undo_coalesced(
-          {:move_annotation, "a2", %{x: 5, y: 5}, %{x: 6, y: 6}}
-        )
+        |> UndoRedoHandlers.push_undo_coalesced({:move_annotation, "a1", %{x: 0, y: 0}, %{x: 1, y: 1}})
+        |> UndoRedoHandlers.push_undo_coalesced({:move_annotation, "a2", %{x: 5, y: 5}, %{x: 6, y: 6}})
 
       assert length(socket.assigns.undo_stack) == 2
     end
@@ -745,17 +741,17 @@ defmodule StoryarnWeb.SceneLive.Handlers.UndoRedoHandlersTest do
 
       # Delete pin1 — its connections should also be deleted
       render_hook(view, "delete_pin", %{"id" => to_string(pin1.id)})
-      assert Scenes.list_pins(ctx.scene.id) |> length() == 1
+      assert ctx.scene.id |> Scenes.list_pins() |> length() == 1
       assert Scenes.list_connections(ctx.scene.id) == []
 
       # Undo — pin and connection restored (compound)
       render_hook(view, "undo", %{})
-      assert Scenes.list_pins(ctx.scene.id) |> length() == 2
-      assert Scenes.list_connections(ctx.scene.id) |> length() == 1
+      assert ctx.scene.id |> Scenes.list_pins() |> length() == 2
+      assert ctx.scene.id |> Scenes.list_connections() |> length() == 1
 
       # Redo — all deleted again
       render_hook(view, "redo", %{})
-      assert Scenes.list_pins(ctx.scene.id) |> length() == 1
+      assert ctx.scene.id |> Scenes.list_pins() |> length() == 1
       assert Scenes.list_connections(ctx.scene.id) == []
     end
   end

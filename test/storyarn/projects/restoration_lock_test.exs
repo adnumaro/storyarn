@@ -1,10 +1,10 @@
 defmodule Storyarn.Projects.RestorationLockTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Projects
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias Storyarn.Projects
 
   setup do
     user = user_fixture()
@@ -17,7 +17,7 @@ defmodule Storyarn.Projects.RestorationLockTest do
       assert {:ok, locked_project} = Projects.acquire_restoration_lock(project.id, user.id)
       assert locked_project.restoration_in_progress == true
       assert locked_project.restoration_started_by_id == user.id
-      assert locked_project.restoration_started_at != nil
+      assert locked_project.restoration_started_at
     end
 
     test "fails on already-locked project", %{project: project, user: user} do

@@ -12,6 +12,7 @@ defmodule Storyarn.Localization.ProjectLanguage do
   - `position` - Sort order in the UI
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
   alias Storyarn.Projects.Project

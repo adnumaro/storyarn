@@ -1,10 +1,10 @@
 defmodule StoryarnWeb.FlowLive.Nodes.Hub.NodeTest do
   use Storyarn.DataCase, async: true
 
-  alias StoryarnWeb.FlowLive.Nodes.Hub.Node, as: HubNode
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias StoryarnWeb.FlowLive.Nodes.Hub.Node, as: HubNode
 
   # =============================================================================
   # Metadata functions

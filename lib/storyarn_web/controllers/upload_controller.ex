@@ -22,7 +22,7 @@ defmodule StoryarnWeb.UploadController do
     with {:ok, project, membership} <-
            Projects.get_project_by_slugs(scope, workspace_slug, project_slug),
          true <- Projects.can?(membership.role, :edit_content),
-         binary_data <- File.read!(upload.path),
+         binary_data = File.read!(upload.path),
          :ok <- Billing.can_upload_asset_for_project?(project, byte_size(binary_data)),
          {:ok, asset} <-
            Assets.upload_binary_and_create_asset(

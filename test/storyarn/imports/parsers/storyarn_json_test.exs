@@ -1,15 +1,15 @@
 defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Exports
-  alias Storyarn.Imports
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures, except: [connection_fixture: 3, connection_fixture: 4]
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
-  import Storyarn.SheetsFixtures
   import Storyarn.ScreenplaysFixtures
+  import Storyarn.SheetsFixtures
+
+  alias Storyarn.Exports
+  alias Storyarn.Imports
 
   # =============================================================================
   # Setup
@@ -198,7 +198,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
       hero_sheets = Enum.filter(sheets, &String.starts_with?(&1.name, "Hero"))
       assert length(hero_sheets) == 2
 
-      shortcuts = Enum.map(hero_sheets, & &1.shortcut) |> Enum.sort()
+      shortcuts = hero_sheets |> Enum.map(& &1.shortcut) |> Enum.sort()
       # One original, one with suffix
       assert Enum.any?(shortcuts, &String.contains?(&1, "-"))
     end
@@ -220,7 +220,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
 
       # The existing sheet should be soft-deleted
       reloaded = Storyarn.Repo.get(Storyarn.Sheets.Sheet, existing.id)
-      assert reloaded.deleted_at != nil
+      assert reloaded.deleted_at
 
       # Should have a new active "Hero" sheet
       active_sheets = Storyarn.Sheets.list_all_sheets(target.id)
@@ -251,7 +251,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSONTest do
 
       sheets = Storyarn.Sheets.list_all_sheets(target.id)
       hero = Enum.find(sheets, &(&1.name == "Hero"))
-      assert hero != nil
+      assert hero
 
       hero_with_blocks = Storyarn.Repo.preload(hero, :blocks)
       assert hero_with_blocks.blocks != []

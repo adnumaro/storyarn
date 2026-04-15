@@ -79,8 +79,7 @@ defmodule Storyarn.Accounts.Registration do
   @doc """
   Delivers the waitlist invite instructions to the given user.
   """
-  def deliver_waitlist_invite_instructions(%User{} = user, invite_url_fun)
-      when is_function(invite_url_fun, 1) do
+  def deliver_waitlist_invite_instructions(%User{} = user, invite_url_fun) when is_function(invite_url_fun, 1) do
     {encoded_token, user_token} = UserToken.build_email_token(user, "invite")
     Repo.insert!(user_token)
 

@@ -127,8 +127,8 @@ defmodule Storyarn.Projects.ProjectInvitationTest do
       assert invitation.invited_by_id == 7
       assert invitation.email == "user@example.com"
       assert invitation.role == "editor"
-      assert invitation.token != nil
-      assert invitation.expires_at != nil
+      assert invitation.token
+      assert invitation.expires_at
     end
 
     test "defaults role to editor" do
@@ -156,7 +156,7 @@ defmodule Storyarn.Projects.ProjectInvitationTest do
       {_token, invitation} =
         ProjectInvitation.build_invitation(%{id: 1}, %{id: 1}, "a@b.com")
 
-      assert DateTime.compare(invitation.expires_at, DateTime.utc_now()) == :gt
+      assert DateTime.after?(invitation.expires_at, DateTime.utc_now())
     end
   end
 

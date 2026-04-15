@@ -12,7 +12,8 @@ defmodule Storyarn.Sheets.FormulaResolver do
   Called during table data loading to inject computed values into formula cells.
   """
 
-  alias Storyarn.Shared.{FormulaEngine, MapUtils}
+  alias Storyarn.Shared.FormulaEngine
+  alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
 
   @doc """
@@ -57,7 +58,7 @@ defmodule Storyarn.Sheets.FormulaResolver do
   # ---------------------------------------------------------------------------
 
   defp compute_single(cell_value, row_cells, columns, cross_values) do
-    expression = if is_map(cell_value), do: cell_value["expression"], else: nil
+    expression = if is_map(cell_value), do: cell_value["expression"]
     bindings = if is_map(cell_value), do: cell_value["bindings"] || %{}, else: %{}
 
     if is_nil(expression) or expression == "" do

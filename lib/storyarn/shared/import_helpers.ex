@@ -6,6 +6,7 @@ defmodule Storyarn.Shared.ImportHelpers do
   """
 
   import Ecto.Query
+
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
 
@@ -17,11 +18,12 @@ defmodule Storyarn.Shared.ImportHelpers do
   def detect_shortcut_conflicts(_schema, _project_id, []), do: []
 
   def detect_shortcut_conflicts(schema, project_id, shortcuts) when is_list(shortcuts) do
-    from(e in schema,
-      where: e.project_id == ^project_id and e.shortcut in ^shortcuts and is_nil(e.deleted_at),
-      select: e.shortcut
+    Repo.all(
+      from(e in schema,
+        where: e.project_id == ^project_id and e.shortcut in ^shortcuts and is_nil(e.deleted_at),
+        select: e.shortcut
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -30,10 +32,10 @@ defmodule Storyarn.Shared.ImportHelpers do
   def soft_delete_by_shortcut(schema, project_id, shortcut) do
     now = TimeHelpers.now()
 
-    from(e in schema,
-      where: e.project_id == ^project_id and e.shortcut == ^shortcut and is_nil(e.deleted_at)
+    Repo.update_all(
+      from(e in schema, where: e.project_id == ^project_id and e.shortcut == ^shortcut and is_nil(e.deleted_at)),
+      set: [deleted_at: now]
     )
-    |> Repo.update_all(set: [deleted_at: now])
   end
 
   @doc """

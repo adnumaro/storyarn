@@ -126,7 +126,7 @@ defmodule StoryarnWeb.SettingsLive.Profile do
             "A link to confirm your email change has been sent to the new address."
           )
 
-        {:noreply, socket |> put_flash(:info, info)}
+        {:noreply, put_flash(socket, :info, info)}
 
       changeset ->
         {:noreply, assign(socket, :email_form, to_form(changeset, action: :insert))}

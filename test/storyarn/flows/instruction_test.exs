@@ -74,7 +74,8 @@ defmodule Storyarn.Flows.InstructionTest do
 
     test "clears value_sheet when value_type changes to literal" do
       assignments =
-        Instruction.add_assignment([])
+        []
+        |> Instruction.add_assignment()
         |> then(fn [a] ->
           Instruction.update_assignment([a], a["id"], "value_type", "variable_ref")
         end)
@@ -94,7 +95,8 @@ defmodule Storyarn.Flows.InstructionTest do
 
     test "clears value when value_type changes to variable_ref" do
       assignments =
-        Instruction.add_assignment([])
+        []
+        |> Instruction.add_assignment()
         |> then(fn [a] ->
           Instruction.update_assignment([a], a["id"], "value", "100")
         end)

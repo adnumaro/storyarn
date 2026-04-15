@@ -26,8 +26,7 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
           | {:choice, response :: map(), index :: non_neg_integer()}
           | {:choices_end, node :: map()}
           | {:condition_start, node :: map()}
-          | {:condition_branch, pin :: String.t(), label :: String.t(),
-             index :: non_neg_integer()}
+          | {:condition_branch, pin :: String.t(), label :: String.t(), index :: non_neg_integer()}
           | {:condition_end, node :: map()}
           | {:instruction, node :: map()}
           | {:slug_line, node :: map()}
@@ -125,13 +124,13 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
   defp traverse_node(%{type: "dialogue"} = node, state) do
     responses = Helpers.dialogue_responses(node.data)
 
-    if responses != [] do
-      traverse_dialogue_with_choices(node, responses, state)
-    else
+    if responses == [] do
       # Dialogue without choices — just text, then follow connections
       state = %{state | instructions: [{:dialogue, node} | state.instructions]}
       targets = outgoing(state, node.id)
       traverse_targets(targets, state)
+    else
+      traverse_dialogue_with_choices(node, responses, state)
     end
   end
 

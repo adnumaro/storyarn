@@ -1,12 +1,12 @@
 defmodule Storyarn.Versioning.ConflictDetectorTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Versioning.ConflictDetector
-
   import Storyarn.AccountsFixtures
-  import Storyarn.ProjectsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Versioning.ConflictDetector
 
   setup do
     user = user_fixture()
@@ -141,7 +141,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
 
       assert report.has_conflicts == true
       assert length(report.conflicts) == 2
-      types = Enum.map(report.conflicts, & &1.type) |> Enum.sort()
+      types = report.conflicts |> Enum.map(& &1.type) |> Enum.sort()
       assert types == [:flow, :sheet]
     end
 

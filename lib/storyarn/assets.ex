@@ -6,10 +6,7 @@ defmodule Storyarn.Assets do
   Supports both local storage (development) and Cloudflare R2 (production).
   """
 
-  require Logger
-
   import Ecto.Query, warn: false
-  alias Storyarn.Repo
 
   alias Storyarn.Accounts.User
   alias Storyarn.Assets.Asset
@@ -18,8 +15,12 @@ defmodule Storyarn.Assets do
   alias Storyarn.Assets.Storage
   alias Storyarn.Billing
   alias Storyarn.Projects.Project
+  alias Storyarn.Repo
   alias Storyarn.Shared.SearchHelpers
+  alias Storyarn.Sheets.Sheet
   alias Storyarn.Workspaces.Workspace
+
+  require Logger
 
   # =============================================================================
   # Type Definitions
@@ -89,7 +90,7 @@ defmodule Storyarn.Assets do
         query
 
       term ->
-        escaped = Storyarn.Shared.SearchHelpers.sanitize_like_query(term)
+        escaped = SearchHelpers.sanitize_like_query(term)
         where(query, [a], ilike(a.filename, ^"%#{escaped}%"))
     end
   end
@@ -214,11 +215,7 @@ defmodule Storyarn.Assets do
   """
   @spec total_storage_size(integer()) :: non_neg_integer()
   def total_storage_size(project_id) do
-    from(a in Asset,
-      where: a.project_id == ^project_id,
-      select: sum(a.size)
-    )
-    |> Repo.one() || 0
+    Repo.one(from(a in Asset, where: a.project_id == ^project_id, select: sum(a.size))) || 0
   end
 
   @doc """
@@ -260,8 +257,8 @@ defmodule Storyarn.Assets do
   """
   @spec get_asset_usages(integer(), integer()) :: %{
           flow_nodes: [map()],
-          sheet_avatars: [Storyarn.Sheets.Sheet.t()],
-          sheet_banners: [Storyarn.Sheets.Sheet.t()]
+          sheet_avatars: [Sheet.t()],
+          sheet_banners: [Sheet.t()]
         }
   def get_asset_usages(project_id, asset_id) do
     flow_nodes = Storyarn.Flows.list_nodes_using_asset(project_id, asset_id)
@@ -416,9 +413,7 @@ defmodule Storyarn.Assets do
         upload_and_link_variant(webp_data, original_asset, project, user)
 
       {:error, reason} ->
-        Logger.warning(
-          "[ImageOptimization] Failed to generate WebP for asset #{original_asset.id}: #{inspect(reason)}"
-        )
+        Logger.warning("[ImageOptimization] Failed to generate WebP for asset #{original_asset.id}: #{inspect(reason)}")
 
         {:ok, original_asset}
     end
@@ -437,9 +432,7 @@ defmodule Storyarn.Assets do
         link_variant_to_original(original_asset, variant)
 
       {:error, reason} ->
-        Logger.warning(
-          "[ImageOptimization] Failed to upload variant for asset #{original_asset.id}: #{inspect(reason)}"
-        )
+        Logger.warning("[ImageOptimization] Failed to upload variant for asset #{original_asset.id}: #{inspect(reason)}")
 
         {:ok, original_asset}
     end
@@ -457,9 +450,7 @@ defmodule Storyarn.Assets do
         {:ok, updated_original}
 
       {:error, reason} ->
-        Logger.warning(
-          "[ImageOptimization] Failed to link variant to asset #{original_asset.id}: #{inspect(reason)}"
-        )
+        Logger.warning("[ImageOptimization] Failed to link variant to asset #{original_asset.id}: #{inspect(reason)}")
 
         {:ok, original_asset}
     end
@@ -579,11 +570,7 @@ defmodule Storyarn.Assets do
   """
   @spec list_assets_for_export(integer()) :: [asset()]
   def list_assets_for_export(project_id) do
-    from(a in Asset,
-      where: a.project_id == ^project_id,
-      order_by: [asc: a.inserted_at, asc: a.id]
-    )
-    |> Repo.all()
+    Repo.all(from(a in Asset, where: a.project_id == ^project_id, order_by: [asc: a.inserted_at, asc: a.id]))
   end
 
   @doc """
@@ -591,8 +578,7 @@ defmodule Storyarn.Assets do
   """
   @spec count_assets(integer()) :: non_neg_integer()
   def count_assets(project_id) do
-    from(a in Asset, where: a.project_id == ^project_id)
-    |> Repo.aggregate(:count)
+    Repo.aggregate(from(a in Asset, where: a.project_id == ^project_id), :count)
   end
 
   # =============================================================================

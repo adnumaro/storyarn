@@ -3,8 +3,8 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
 
   import Phoenix.LiveViewTest
   import Storyarn.FlowsFixtures
-  import Storyarn.SheetsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Flows.VariableReferenceTracker
   alias Storyarn.Repo
@@ -32,7 +32,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "Player", shortcut: "player"})
 
       health_block =
@@ -71,7 +71,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "OpSheet", shortcut: "ops"})
 
       block =
@@ -414,7 +414,6 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
     end
   end
 
-
   # ===========================================================================
   # variable_block? filtering
   # ===========================================================================
@@ -423,7 +422,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -490,9 +489,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
 
       refute html =~ "Variable Usage"
     end
-
   end
-
 
   # ===========================================================================
   # label_for_block and icon_for_node_type helpers
@@ -502,7 +499,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "LabelSheet", shortcut: "lbl"})
       flow = flow_fixture(project, %{name: "Label Flow"})
       %{project: project, sheet: sheet, flow: flow}
@@ -547,7 +544,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "IconSheet", shortcut: "icon"})
 
       block =
@@ -622,6 +619,4 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
       assert html =~ "condition"
     end
   end
-
-
 end

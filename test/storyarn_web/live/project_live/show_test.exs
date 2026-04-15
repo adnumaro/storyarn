@@ -16,7 +16,8 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
 
     test "renders project dashboard for owner", %{conn: conn, user: user} do
       project =
-        project_fixture(user, %{name: "My Project"})
+        user
+        |> project_fixture(%{name: "My Project"})
         |> Repo.preload(:workspace)
 
       {:ok, view, _html} =
@@ -30,7 +31,7 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
 
     test "renders project dashboard for member", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner, %{name: "Shared Project"}) |> Repo.preload(:workspace)
+      project = owner |> project_fixture(%{name: "Shared Project"}) |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
 
       {:ok, view, _html} =
@@ -42,7 +43,7 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
 
     test "redirects for non-member", %{conn: conn} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
 
       {:error, {:redirect, %{to: path, flash: flash}}} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
@@ -52,7 +53,7 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
     end
 
     test "shows tool switcher enabled", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")

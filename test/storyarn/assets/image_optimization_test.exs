@@ -167,11 +167,11 @@ defmodule Storyarn.Assets.ImageOptimizationTest do
       binary = File.read!(@test_image_path)
       tmp_dir = System.tmp_dir!()
 
-      before_files = File.ls!(tmp_dir) |> Enum.filter(&String.starts_with?(&1, "storyarn_"))
+      before_files = tmp_dir |> File.ls!() |> Enum.filter(&String.starts_with?(&1, "storyarn_"))
 
       {:ok, _} = ImageProcessor.to_webp(binary)
 
-      after_files = File.ls!(tmp_dir) |> Enum.filter(&String.starts_with?(&1, "storyarn_"))
+      after_files = tmp_dir |> File.ls!() |> Enum.filter(&String.starts_with?(&1, "storyarn_"))
       assert length(after_files) == length(before_files)
     end
   end
@@ -205,11 +205,11 @@ defmodule Storyarn.Assets.ImageOptimizationTest do
 
     test "cleans up temp files on error" do
       tmp_dir = System.tmp_dir!()
-      before_files = File.ls!(tmp_dir) |> Enum.filter(&String.starts_with?(&1, "storyarn_"))
+      before_files = tmp_dir |> File.ls!() |> Enum.filter(&String.starts_with?(&1, "storyarn_"))
 
       {:error, _} = ImageProcessor.resize_to_webp("not an image", 100, 100)
 
-      after_files = File.ls!(tmp_dir) |> Enum.filter(&String.starts_with?(&1, "storyarn_"))
+      after_files = tmp_dir |> File.ls!() |> Enum.filter(&String.starts_with?(&1, "storyarn_"))
       assert length(after_files) == length(before_files)
     end
   end

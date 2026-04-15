@@ -3,9 +3,9 @@ defmodule StoryarnWeb.ProjectLive.Trash do
 
   use StoryarnWeb, :live_view
 
-  alias StoryarnWeb.Helpers.Authorize
   alias Storyarn.Projects
   alias Storyarn.Sheets
+  alias StoryarnWeb.Helpers.Authorize
 
   @impl true
   def render(assigns) do
@@ -41,11 +41,7 @@ defmodule StoryarnWeb.ProjectLive.Trash do
   end
 
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
     case Projects.get_project_by_slugs(
            socket.assigns.current_scope,
            workspace_slug,

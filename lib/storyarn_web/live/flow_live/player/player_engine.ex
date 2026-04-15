@@ -45,14 +45,7 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngine do
     {:finished, state, Enum.reverse(skipped)}
   end
 
-  defp do_step(
-         %State{status: :waiting_input} = state,
-         _nodes,
-         _connections,
-         _max,
-         _count,
-         skipped
-       ) do
+  defp do_step(%State{status: :waiting_input} = state, _nodes, _connections, _max, _count, skipped) do
     {:waiting_input, state, Enum.reverse(skipped)}
   end
 
@@ -62,7 +55,7 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngine do
     case Flows.evaluator_step(state, nodes, connections) do
       {:ok, new_state} ->
         # Node was processed, check if we should continue auto-advancing
-        node_type = if current_node, do: current_node.type, else: nil
+        node_type = if current_node, do: current_node.type
 
         if node_type in @non_interactive_types do
           new_skipped = [{state.current_node_id, node_type} | skipped]

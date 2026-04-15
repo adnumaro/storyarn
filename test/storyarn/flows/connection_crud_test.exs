@@ -1,11 +1,11 @@
 defmodule Storyarn.Flows.ConnectionCrudTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Flows
-
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias Storyarn.Flows
 
   # ===========================================================================
   # Setup helpers
@@ -19,11 +19,11 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
   end
 
   defp get_entry_node(flow) do
-    Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "entry"))
+    flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
   end
 
   defp get_exit_node(flow) do
-    Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "exit"))
+    flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "exit"))
   end
 
   # ===========================================================================

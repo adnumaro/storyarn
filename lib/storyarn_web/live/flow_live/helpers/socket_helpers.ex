@@ -10,9 +10,11 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   Import this module in any flow_live handler or helper that needs these.
   """
 
-  import Phoenix.Component, only: [assign: 3]
   use Gettext, backend: Storyarn.Gettext
 
+  import Phoenix.Component, only: [assign: 3]
+
+  alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Components.NodeTypeHelpers
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
@@ -23,7 +25,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   Refreshes `:flow`, `:flow_data`, `:flow_hubs`, `:flow_word_count`,
   `:flow_error_nodes`, and `:flow_info_nodes`.
   """
-  @spec reload_flow_data(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
+  @spec reload_flow_data(Socket.t()) :: Socket.t()
   def reload_flow_data(socket) do
     flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
 
@@ -40,8 +42,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   @doc """
   Computes flow-level stats (word count, error/info nodes) and assigns them to the socket.
   """
-  @spec assign_flow_stats(Phoenix.LiveView.Socket.t(), map(), map()) ::
-          Phoenix.LiveView.Socket.t()
+  @spec assign_flow_stats(Socket.t(), map(), map()) ::
+          Socket.t()
   def assign_flow_stats(socket, flow, flow_data) do
     word_count =
       flow.nodes

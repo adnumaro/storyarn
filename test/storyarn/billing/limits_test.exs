@@ -1,11 +1,13 @@
 defmodule Storyarn.Billing.LimitsTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Billing
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
+
+  alias Storyarn.Assets.Asset
+  alias Storyarn.Billing
+  alias Storyarn.Flows.FlowNode
 
   setup do
     user = user_fixture()
@@ -140,8 +142,8 @@ defmodule Storyarn.Billing.LimitsTest do
       # Insert enough nodes to reach the limit of 700
       # Current items: 1 flow + 2 nodes = 3. Need 697 more.
       for i <- 1..697 do
-        %Storyarn.Flows.FlowNode{flow_id: flow.id}
-        |> Storyarn.Flows.FlowNode.create_changeset(%{
+        %FlowNode{flow_id: flow.id}
+        |> FlowNode.create_changeset(%{
           type: "dialogue",
           position_x: i * 1.0,
           position_y: 0.0,
@@ -195,7 +197,7 @@ defmodule Storyarn.Billing.LimitsTest do
       project = project_fixture(user, workspace: workspace)
 
       # Insert an asset that uses 200MB of storage
-      %Storyarn.Assets.Asset{}
+      %Asset{}
       |> Ecto.Changeset.change(%{
         filename: "big_file.zip",
         content_type: "application/zip",
@@ -242,7 +244,7 @@ defmodule Storyarn.Billing.LimitsTest do
           }
         end
 
-      Storyarn.Repo.insert_all(Storyarn.Flows.FlowNode, entries)
+      Storyarn.Repo.insert_all(FlowNode, entries)
 
       %{project: project, flow: flow}
     end
@@ -257,7 +259,7 @@ defmodule Storyarn.Billing.LimitsTest do
       flow: flow
     } do
       # Get an existing node to link
-      [node | _] = Storyarn.Repo.all(Storyarn.Flows.FlowNode)
+      [node | _] = Storyarn.Repo.all(FlowNode)
 
       assert {:error, :limit_reached, %{resource: :items_per_project}} =
                Storyarn.Flows.create_linked_flow(project, flow, node)
@@ -300,8 +302,7 @@ defmodule Storyarn.Billing.LimitsTest do
           Storyarn.Versioning.create_version("sheet", sheet, project.id, user.id, title: "v#{i}")
       end
 
-      assert {:error, :limit_reached,
-              %{resource: :named_versions_per_project, used: 10, limit: 10}} =
+      assert {:error, :limit_reached, %{resource: :named_versions_per_project, used: 10, limit: 10}} =
                Billing.can_create_named_version?(project.id, workspace.id)
     end
 
@@ -344,8 +345,7 @@ defmodule Storyarn.Billing.LimitsTest do
         {:ok, _} = Storyarn.Versioning.create_project_snapshot(project.id, user.id)
       end
 
-      assert {:error, :limit_reached,
-              %{resource: :project_snapshots_per_project, used: 10, limit: 10}} =
+      assert {:error, :limit_reached, %{resource: :project_snapshots_per_project, used: 10, limit: 10}} =
                Billing.can_create_project_snapshot?(project.id, workspace.id)
     end
   end
@@ -356,7 +356,7 @@ defmodule Storyarn.Billing.LimitsTest do
       storage_limit = Billing.plan_limit(Billing.default_plan(), :storage_bytes_per_workspace)
 
       # Insert an asset that uses (limit - 1 byte) of storage
-      %Storyarn.Assets.Asset{}
+      %Asset{}
       |> Ecto.Changeset.change(%{
         filename: "big_file.zip",
         content_type: "application/zip",

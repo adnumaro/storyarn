@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { type CellValue, TableColumn, TableRow } from '@modules/sheets/types.ts'
-import { useLive } from '@composables/useLive.ts'
-import { getCellValue } from '@modules/sheets/components/blocks/table/tbodyCells/get-cell-value-helpers.ts'
+import { type CellValue, TableColumn, TableRow } from "@modules/sheets/types.ts";
+import { useLive } from "@composables/useLive.ts";
+import { getCellValue } from "@modules/sheets/components/blocks/table/tbodyCells/get-cell-value-helpers.ts";
 
 const {
   column,
@@ -32,12 +32,12 @@ function formatDate(val: CellValue): string {
 }
 
 function updateDate(row: TableRow, column: TableColumn, value: string): void {
-  live.pushEvent('update_table_cell', {
-    'row-id': row.id,
-    'column-slug': column.slug,
+  live.pushEvent("update_table_cell", {
+    "row-id": row.id,
+    "column-slug": column.slug,
     value,
-    type: 'date',
-  })
+    type: "date",
+  });
 }
 </script>
 
@@ -50,15 +50,10 @@ function updateDate(row: TableRow, column: TableColumn, value: string): void {
     @change="(event) => updateDate(row, column, (event.target as HTMLInputElement).value)"
   />
   <div v-else class="px-2 py-1">
-    <span
-      :class="!getCellValue(row, column) && 'text-foreground/40'"
-      class="text-sm"
-    >
+    <span :class="!getCellValue(row, column) && 'text-foreground/40'" class="text-sm">
       {{ formatDate(getCellValue(row, column)) }}
     </span>
   </div>
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>

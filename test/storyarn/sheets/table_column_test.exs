@@ -1,10 +1,10 @@
 defmodule Storyarn.Sheets.TableColumnTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Sheets.TableColumn
-
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Sheets.TableColumn
 
   setup do
     project = project_fixture()
@@ -29,25 +29,19 @@ defmodule Storyarn.Sheets.TableColumnTest do
 
   describe "create_changeset/2" do
     test "valid attrs produce valid changeset", %{block: block} do
-      changeset =
-        %TableColumn{block_id: block.id}
-        |> TableColumn.create_changeset(%{name: "Health", type: "number"})
+      changeset = TableColumn.create_changeset(%TableColumn{block_id: block.id}, %{name: "Health", type: "number"})
 
       assert changeset.valid?
     end
 
     test "generates slug from name", %{block: block} do
-      changeset =
-        %TableColumn{block_id: block.id}
-        |> TableColumn.create_changeset(%{name: "Hit Points", type: "number"})
+      changeset = TableColumn.create_changeset(%TableColumn{block_id: block.id}, %{name: "Hit Points", type: "number"})
 
       assert Ecto.Changeset.get_change(changeset, :slug) == "hit_points"
     end
 
     test "generates slug with unicode transliteration", %{block: block} do
-      changeset =
-        %TableColumn{block_id: block.id}
-        |> TableColumn.create_changeset(%{name: "Héro Santé", type: "text"})
+      changeset = TableColumn.create_changeset(%TableColumn{block_id: block.id}, %{name: "Héro Santé", type: "text"})
 
       slug = Ecto.Changeset.get_change(changeset, :slug)
       assert is_binary(slug)
@@ -55,17 +49,13 @@ defmodule Storyarn.Sheets.TableColumnTest do
     end
 
     test "requires name", %{block: block} do
-      changeset =
-        %TableColumn{block_id: block.id}
-        |> TableColumn.create_changeset(%{type: "number"})
+      changeset = TableColumn.create_changeset(%TableColumn{block_id: block.id}, %{type: "number"})
 
       assert "can't be blank" in errors_on(changeset).name
     end
 
     test "defaults type to number when not provided", %{block: block} do
-      changeset =
-        %TableColumn{block_id: block.id}
-        |> TableColumn.create_changeset(%{name: "Test"})
+      changeset = TableColumn.create_changeset(%TableColumn{block_id: block.id}, %{name: "Test"})
 
       assert changeset.valid?
       # The default type from schema is "number"
@@ -73,18 +63,14 @@ defmodule Storyarn.Sheets.TableColumnTest do
     end
 
     test "validates type inclusion", %{block: block} do
-      changeset =
-        %TableColumn{block_id: block.id}
-        |> TableColumn.create_changeset(%{name: "Test", type: "rich_text"})
+      changeset = TableColumn.create_changeset(%TableColumn{block_id: block.id}, %{name: "Test", type: "rich_text"})
 
       assert "is invalid" in errors_on(changeset).type
     end
 
     test "accepts all valid types", %{block: block} do
       for type <- TableColumn.types() do
-        changeset =
-          %TableColumn{block_id: block.id}
-          |> TableColumn.create_changeset(%{name: "Col #{type}", type: type})
+        changeset = TableColumn.create_changeset(%TableColumn{block_id: block.id}, %{name: "Col #{type}", type: type})
 
         assert changeset.valid?, "type #{type} should be valid"
       end
@@ -92,8 +78,7 @@ defmodule Storyarn.Sheets.TableColumnTest do
 
     test "accepts optional fields", %{block: block} do
       changeset =
-        %TableColumn{block_id: block.id}
-        |> TableColumn.create_changeset(%{
+        TableColumn.create_changeset(%TableColumn{block_id: block.id}, %{
           name: "Status",
           type: "select",
           is_constant: true,

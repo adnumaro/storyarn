@@ -15,12 +15,16 @@ defmodule Storyarn.Sheets.Sheet do
   - `deleted_at` - Soft delete support
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
+  alias Ecto.Association.NotLoaded
   alias Storyarn.Assets.Asset
   alias Storyarn.Projects.Project
-  alias Storyarn.Shared.{HierarchicalSchema, Validations}
-  alias Storyarn.Sheets.{Block, SheetAvatar}
+  alias Storyarn.Shared.HierarchicalSchema
+  alias Storyarn.Shared.Validations
+  alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Versioning.EntityVersion
 
   # Color format: hex color with 3, 6, or 8 characters (e.g., #fff, #3b82f6, #3b82f680)
@@ -35,16 +39,16 @@ defmodule Storyarn.Sheets.Sheet do
           position: integer() | nil,
           hidden_inherited_block_ids: [integer()],
           banner_asset_id: integer() | nil,
-          banner_asset: Asset.t() | Ecto.Association.NotLoaded.t() | nil,
+          banner_asset: Asset.t() | NotLoaded.t() | nil,
           current_version_id: integer() | nil,
-          current_version: EntityVersion.t() | Ecto.Association.NotLoaded.t() | nil,
+          current_version: EntityVersion.t() | NotLoaded.t() | nil,
           project_id: integer() | nil,
-          project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
+          project: Project.t() | NotLoaded.t() | nil,
           parent_id: integer() | nil,
-          parent: t() | Ecto.Association.NotLoaded.t() | nil,
-          children: [t()] | Ecto.Association.NotLoaded.t(),
-          blocks: [Block.t()] | Ecto.Association.NotLoaded.t(),
-          avatars: [SheetAvatar.t()] | Ecto.Association.NotLoaded.t(),
+          parent: t() | NotLoaded.t() | nil,
+          children: [t()] | NotLoaded.t(),
+          blocks: [Block.t()] | NotLoaded.t(),
+          avatars: [SheetAvatar.t()] | NotLoaded.t(),
           deleted_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
@@ -65,7 +69,7 @@ defmodule Storyarn.Sheets.Sheet do
     belongs_to :current_version, EntityVersion
     has_many :children, __MODULE__, foreign_key: :parent_id
     has_many :blocks, Block
-    has_many :avatars, Storyarn.Sheets.SheetAvatar
+    has_many :avatars, SheetAvatar
 
     timestamps(type: :utc_datetime)
   end
@@ -147,9 +151,7 @@ defmodule Storyarn.Sheets.Sheet do
 
   defp validate_shortcut(changeset) do
     changeset
-    |> Validations.validate_shortcut(
-      message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., mc.jaime)"
-    )
+    |> Validations.validate_shortcut(message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., mc.jaime)")
     |> unique_constraint(:shortcut,
       name: :sheets_project_shortcut_unique,
       message: "is already taken in this project"
@@ -162,9 +164,7 @@ defmodule Storyarn.Sheets.Sheet do
         changeset
 
       _color ->
-        validate_format(changeset, :color, @color_format,
-          message: "must be a valid hex color (e.g., #3b82f6)"
-        )
+        validate_format(changeset, :color, @color_format, message: "must be a valid hex color (e.g., #3b82f6)")
     end
   end
 end

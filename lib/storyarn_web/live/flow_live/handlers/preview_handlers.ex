@@ -8,6 +8,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
 
   import Phoenix.Component, only: [assign: 2]
 
+  alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
   alias Storyarn.Shared.HtmlSanitizer
   alias Storyarn.Sheets
@@ -18,8 +19,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
   # Public handlers
   # ============================================================================
 
-  @spec handle_start_preview(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_start_preview(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_start_preview(%{"id" => node_id}, socket) do
     case Flows.get_node(socket.assigns.flow.id, node_id) do
       nil ->
@@ -35,8 +36,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
     end
   end
 
-  @spec handle_select_response(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_select_response(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_select_response(%{"response_id" => response_id}, socket) do
     current_node = socket.assigns.preview_current_node
     connections = Flows.get_outgoing_connections(current_node.id)
@@ -57,8 +58,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
     end
   end
 
-  @spec handle_continue(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_continue(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_continue(_params, socket) do
     current_node = socket.assigns.preview_current_node
     connections = Flows.get_outgoing_connections(current_node.id)
@@ -79,8 +80,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
     end
   end
 
-  @spec handle_go_back(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_go_back(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_go_back(_params, socket) do
     case socket.assigns.preview_history do
       [prev_node_id | rest] ->
@@ -99,7 +100,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
     end
   end
 
-  @spec handle_close(Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_close(Socket.t()) :: {:noreply, Socket.t()}
   def handle_close(socket) do
     {:noreply, assign(socket, preview_show: false, preview_current_node: nil)}
   end
@@ -108,14 +109,12 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
   # Serialization (socket assigns → Vue props)
   # ============================================================================
 
-  @spec serialize_preview_state(Phoenix.LiveView.Socket.t()) :: map()
+  @spec serialize_preview_state(Socket.t()) :: map()
   def serialize_preview_state(socket) do
     assigns = socket.assigns
 
     # Guard: during disconnected static render, assigns may not be populated yet
-    unless is_map(assigns) and is_map_key(assigns, :preview_current_node) do
-      return_default_state()
-    else
+    if is_map(assigns) and is_map_key(assigns, :preview_current_node) do
       node = assigns.preview_current_node
 
       %{
@@ -125,6 +124,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
         hasNext: assigns[:preview_has_next] || false,
         hasHistory: (assigns[:preview_history] || []) != []
       }
+    else
+      return_default_state()
     end
   end
 
@@ -158,8 +159,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
     )
   end
 
-  defp skip_to_next_dialogue(socket, _node, _visited, depth)
-       when depth >= @max_traversal_depth do
+  defp skip_to_next_dialogue(socket, _node, _visited, depth) when depth >= @max_traversal_depth do
     assign_empty_node(socket)
   end
 
@@ -248,8 +248,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
   defp serialize_responses(nil), do: []
 
   defp serialize_responses(node) do
-    (node.data["responses"] || [])
-    |> Enum.map(fn response ->
+    Enum.map(node.data["responses"] || [], fn response ->
       %{
         id: response["id"],
         text: sanitize_and_interpolate(response["text"] || ""),
@@ -263,8 +262,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
   # Private — speaker resolution
   # ============================================================================
 
-  defp resolve_speaker(assigns, speaker_sheet_id)
-       when is_integer(speaker_sheet_id) or is_binary(speaker_sheet_id) do
+  defp resolve_speaker(assigns, speaker_sheet_id) when is_integer(speaker_sheet_id) or is_binary(speaker_sheet_id) do
     sheet_id = parse_sheet_id(speaker_sheet_id)
     if sheet_id, do: lookup_speaker_name(assigns, sheet_id)
   end

@@ -3,7 +3,8 @@ defmodule Storyarn.Flows.FlowStats do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.{Flow, FlowNode}
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization.LocalizableWords
   alias Storyarn.Projects.Dashboard
   alias Storyarn.Repo

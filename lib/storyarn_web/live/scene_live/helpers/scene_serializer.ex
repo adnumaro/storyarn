@@ -3,13 +3,13 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
   Scene data serialization helpers.
   """
 
-  import Phoenix.Component, only: [assign: 3]
   use StoryarnWeb, :verified_routes
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Scenes
-
+  import Phoenix.Component, only: [assign: 3]
   import StoryarnWeb.SceneLive.Helpers.PropsSerializer, only: [prepare_scenes_tree: 1]
+
+  alias Storyarn.Scenes
 
   def build_scene_data(map, can_edit) do
     %{
@@ -68,7 +68,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
   end
 
   def serialize_pin(pin) do
-    %{
+    apply_pin_defaults(%{
       id: pin.id,
       position_x: pin.position_x,
       position_y: pin.position_y,
@@ -95,8 +95,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
       patrol_mode: pin.patrol_mode,
       patrol_speed: pin.patrol_speed,
       patrol_pause_ms: pin.patrol_pause_ms
-    }
-    |> apply_pin_defaults()
+    })
   end
 
   @pin_defaults %{

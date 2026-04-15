@@ -147,8 +147,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Base do
         Helpers.format_var_ref(vs, v, @var_style)
       end
 
-      defp format_value(_ref, %{"value" => value}),
-        do: Helpers.format_literal(value, @literal_opts)
+      defp format_value(_ref, %{"value" => value}), do: Helpers.format_literal(value, @literal_opts)
 
       defp format_value(_ref, _), do: "0"
     end

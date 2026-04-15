@@ -1,16 +1,17 @@
 defmodule Storyarn.Flows.NodeCreate do
   @moduledoc false
+  import Ecto.Query, warn: false
+  alias Storyarn.Billing
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.NodeCrud
+  alias Storyarn.Projects.Project
+  alias Storyarn.Repo
+  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Shared.WordCount
 
   # Prevents infinite recursion in circular reference detection
   @max_reference_depth 20
-
-  import Ecto.Query, warn: false
-
-  alias Storyarn.Billing
-  alias Storyarn.Flows.{Flow, FlowNode, NodeCrud}
-  alias Storyarn.Projects.Project
-  alias Storyarn.Repo
-  alias Storyarn.Shared.{MapUtils, WordCount}
 
   def create_node(%Flow{} = flow, attrs) do
     project = Repo.get!(Project, flow.project_id)
@@ -75,8 +76,7 @@ defmodule Storyarn.Flows.NodeCreate do
 
   # Acquires a row-level lock on the flow to serialize concurrent node creation
   defp lock_flow!(flow_id) do
-    from(f in Flow, where: f.id == ^flow_id, lock: "FOR UPDATE")
-    |> Repo.one!()
+    Repo.one!(from(f in Flow, where: f.id == ^flow_id, lock: "FOR UPDATE"))
   end
 
   defp insert_node(%Flow{} = flow, attrs) do
@@ -89,21 +89,18 @@ defmodule Storyarn.Flows.NodeCreate do
   end
 
   defp has_entry_node?(flow_id) do
-    from(n in FlowNode,
-      where: n.flow_id == ^flow_id and n.type == "entry" and is_nil(n.deleted_at)
-    )
-    |> Repo.exists?()
+    Repo.exists?(from(n in FlowNode, where: n.flow_id == ^flow_id and n.type == "entry" and is_nil(n.deleted_at)))
   end
 
   defp generate_hub_id(flow_id) do
     max_suffix =
-      from(n in FlowNode,
-        where: n.flow_id == ^flow_id and n.type == "hub" and is_nil(n.deleted_at),
-        where: fragment("?->>'hub_id' ~ '^hub_[0-9]+$'", n.data),
-        select:
-          fragment("max(cast(substring(?->>'hub_id' from 'hub_([0-9]+)') as integer))", n.data)
+      Repo.one(
+        from(n in FlowNode,
+          where: n.flow_id == ^flow_id and n.type == "hub" and is_nil(n.deleted_at),
+          where: fragment("?->>'hub_id' ~ '^hub_[0-9]+$'", n.data),
+          select: fragment("max(cast(substring(?->>'hub_id' from 'hub_([0-9]+)') as integer))", n.data)
+        )
       )
-      |> Repo.one()
 
     "hub_#{(max_suffix || 0) + 1}"
   end
@@ -165,24 +162,26 @@ defmodule Storyarn.Flows.NodeCreate do
   defp get_referenced_flow_ids(flow_id) do
     # Subflow references (exclude soft-deleted nodes)
     subflow_refs =
-      from(n in FlowNode,
-        where: n.flow_id == ^flow_id and n.type == "subflow" and is_nil(n.deleted_at),
-        where: not is_nil(fragment("?->>'referenced_flow_id'", n.data)),
-        where: fragment("?->>'referenced_flow_id' ~ '^[0-9]+$'", n.data),
-        select: fragment("(?->>'referenced_flow_id')::integer", n.data)
+      Repo.all(
+        from(n in FlowNode,
+          where: n.flow_id == ^flow_id and n.type == "subflow" and is_nil(n.deleted_at),
+          where: not is_nil(fragment("?->>'referenced_flow_id'", n.data)),
+          where: fragment("?->>'referenced_flow_id' ~ '^[0-9]+$'", n.data),
+          select: fragment("(?->>'referenced_flow_id')::integer", n.data)
+        )
       )
-      |> Repo.all()
 
     # Exit flow references (exclude soft-deleted nodes)
     exit_refs =
-      from(n in FlowNode,
-        where: n.flow_id == ^flow_id and n.type == "exit" and is_nil(n.deleted_at),
-        where: fragment("?->>'exit_mode'", n.data) == "flow_reference",
-        where: not is_nil(fragment("?->>'referenced_flow_id'", n.data)),
-        where: fragment("?->>'referenced_flow_id' ~ '^[0-9]+$'", n.data),
-        select: fragment("(?->>'referenced_flow_id')::integer", n.data)
+      Repo.all(
+        from(n in FlowNode,
+          where: n.flow_id == ^flow_id and n.type == "exit" and is_nil(n.deleted_at),
+          where: fragment("?->>'exit_mode'", n.data) == "flow_reference",
+          where: not is_nil(fragment("?->>'referenced_flow_id'", n.data)),
+          where: fragment("?->>'referenced_flow_id' ~ '^[0-9]+$'", n.data),
+          select: fragment("(?->>'referenced_flow_id')::integer", n.data)
+        )
       )
-      |> Repo.all()
 
     (subflow_refs ++ exit_refs) |> Enum.reject(&is_nil/1) |> Enum.uniq()
   end

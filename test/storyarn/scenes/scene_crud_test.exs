@@ -1,12 +1,13 @@
 defmodule Storyarn.Scenes.SceneCrudTest do
   use Storyarn.DataCase, async: true
 
+  import Storyarn.AccountsFixtures
+  import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
+
   alias Storyarn.Scenes
   alias Storyarn.Scenes.SceneCrud
-
-  import Storyarn.AccountsFixtures
-  import Storyarn.ScenesFixtures
-  import Storyarn.ProjectsFixtures
+  alias Storyarn.Shared.TimeHelpers
 
   # Shared setup that creates a user and project for most tests
   defp create_project(_context \\ %{}) do
@@ -357,7 +358,7 @@ defmodule Storyarn.Scenes.SceneCrudTest do
 
       result = SceneCrud.get_scene_including_deleted(project.id, scene.id)
       assert result.id == scene.id
-      assert result.deleted_at != nil
+      assert result.deleted_at
     end
 
     test "returns non-deleted scene" do
@@ -614,7 +615,7 @@ defmodule Storyarn.Scenes.SceneCrudTest do
       scene = scene_fixture(project)
 
       {:ok, deleted} = SceneCrud.delete_scene(scene)
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
     end
 
     test "soft-deletes children recursively" do
@@ -639,8 +640,8 @@ defmodule Storyarn.Scenes.SceneCrudTest do
       {:ok, _} = SceneCrud.delete_scene(child1)
 
       assert SceneCrud.get_scene(project.id, child1.id) == nil
-      assert SceneCrud.get_scene(project.id, child2.id) != nil
-      assert SceneCrud.get_scene(project.id, parent.id) != nil
+      assert SceneCrud.get_scene(project.id, child2.id)
+      assert SceneCrud.get_scene(project.id, parent.id)
     end
   end
 
@@ -687,7 +688,7 @@ defmodule Storyarn.Scenes.SceneCrudTest do
       {:ok, _} = SceneCrud.restore_scene(deleted_parent)
 
       # Both parent and child should be restored
-      assert SceneCrud.get_scene(project.id, parent.id) != nil
+      assert SceneCrud.get_scene(project.id, parent.id)
       children = SceneCrud.list_scenes(project.id)
       assert length(children) == 2
     end
@@ -821,7 +822,7 @@ defmodule Storyarn.Scenes.SceneCrudTest do
 
       scenes = SceneCrud.list_scenes_for_export(project.id, filter_ids: [scene1.id, scene3.id])
       assert length(scenes) == 2
-      ids = Enum.map(scenes, & &1.id) |> MapSet.new()
+      ids = MapSet.new(scenes, & &1.id)
       assert MapSet.member?(ids, scene1.id)
       assert MapSet.member?(ids, scene3.id)
     end
@@ -1075,7 +1076,7 @@ defmodule Storyarn.Scenes.SceneCrudTest do
       pin1 = pin_fixture(scene, %{"label" => "A"})
       pin2 = pin_fixture(scene, %{"label" => "B"})
 
-      now = Storyarn.Shared.TimeHelpers.now()
+      now = TimeHelpers.now()
 
       attrs_list = [
         %{
@@ -1097,7 +1098,7 @@ defmodule Storyarn.Scenes.SceneCrudTest do
       %{project: project} = create_project()
       scene = scene_fixture(project)
 
-      now = Storyarn.Shared.TimeHelpers.now()
+      now = TimeHelpers.now()
 
       attrs_list = [
         %{

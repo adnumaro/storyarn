@@ -14,8 +14,10 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
 
   @behaviour Storyarn.Exports.Serializer
 
-  alias Storyarn.Exports.{ExportOptions, ExpressionTranspiler}
-  alias Storyarn.Exports.Serializers.{GraphTraversal, Helpers}
+  alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.ExpressionTranspiler
+  alias Storyarn.Exports.Serializers.GraphTraversal
+  alias Storyarn.Exports.Serializers.Helpers
 
   @impl true
   def content_type, do: "text/plain"
@@ -99,10 +101,10 @@ defmodule Storyarn.Exports.Serializers.GodotDialogic do
       end
 
     stage_line =
-      if stage_dirs != "" do
-        ["#{indent(depth)}# [Stage: #{stage_dirs}]"]
-      else
+      if stage_dirs == "" do
         []
+      else
+        ["#{indent(depth)}# [Stage: #{stage_dirs}]"]
       end
 
     [dialogue_line] ++ stage_line

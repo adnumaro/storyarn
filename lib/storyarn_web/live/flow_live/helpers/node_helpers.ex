@@ -3,21 +3,21 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   Node operation helpers for the flow editor.
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
   import StoryarnWeb.FlowLive.Components.NodeTypeHelpers, only: [default_node_data: 1]
+  import StoryarnWeb.FlowLive.Helpers.SocketHelpers
+  import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
+  import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
 
+  alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowNode
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
-
-  use Gettext, backend: Storyarn.Gettext
-
-  import StoryarnWeb.FlowLive.Helpers.SocketHelpers
-  import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
-  import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
 
   @doc """
   Single canonical path for all node data updates.
@@ -35,8 +35,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
     `{:noreply, socket}` — ready for direct return from a handle_event/handle_info.
   """
-  @spec persist_node_update(Phoenix.LiveView.Socket.t(), any(), (map() -> map())) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec persist_node_update(Socket.t(), any(), (map() -> map())) ::
+          {:noreply, Socket.t()}
   def persist_node_update(socket, node_id, update_fn) do
     # 1. ALWAYS read fresh from DB (never from socket.assigns.selected_node)
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
@@ -112,8 +112,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   Adds a new node to the flow.
   Returns {:noreply, socket} tuple.
   """
-  @spec add_node(Phoenix.LiveView.Socket.t(), String.t(), keyword()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec add_node(Socket.t(), String.t(), keyword()) ::
+          {:noreply, Socket.t()}
   def add_node(socket, type, opts \\ []) do
     {pos_x, pos_y} =
       case Keyword.get(opts, :position) do
@@ -166,8 +166,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   Updates node data from form submission.
   Returns {:noreply, socket} tuple.
   """
-  @spec update_node_data(Phoenix.LiveView.Socket.t(), map()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec update_node_data(Socket.t(), map()) ::
+          {:noreply, Socket.t()}
   def update_node_data(socket, node_params) do
     if is_nil(socket.assigns.selected_node),
       do: {:noreply, socket},
@@ -187,8 +187,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   Duplicates a node.
   Returns {:noreply, socket} tuple.
   """
-  @spec duplicate_node(Phoenix.LiveView.Socket.t(), any()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec duplicate_node(Socket.t(), any()) ::
+          {:noreply, Socket.t()}
   def duplicate_node(socket, node_id) do
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
 
@@ -240,8 +240,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   Updates a node's text content (from TipTap editor).
   Returns {:noreply, socket} tuple.
   """
-  @spec update_node_text(Phoenix.LiveView.Socket.t(), any(), String.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec update_node_text(Socket.t(), any(), String.t()) ::
+          {:noreply, Socket.t()}
   def update_node_text(socket, node_id, content) do
     persist_node_update(socket, node_id, fn data ->
       Map.put(data, "text", content)
@@ -252,8 +252,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   Deletes a node, checking for locks first.
   Returns {:noreply, socket} tuple.
   """
-  @spec delete_node(Phoenix.LiveView.Socket.t(), any()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec delete_node(Socket.t(), any()) ::
+          {:noreply, Socket.t()}
   def delete_node(socket, node_id) do
     if CollaborationHelpers.node_locked_by_other?(socket, node_id) do
       {:noreply,
@@ -275,8 +275,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   Updates a single field in a node's data map.
   Returns {:noreply, socket} tuple.
   """
-  @spec update_node_field(Phoenix.LiveView.Socket.t(), any(), String.t(), any()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec update_node_field(Socket.t(), any(), String.t(), any()) ::
+          {:noreply, Socket.t()}
   def update_node_field(socket, node_id, field, value) do
     persist_node_update(socket, node_id, fn data ->
       Map.put(data, field, value)
@@ -384,8 +384,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   Restores a soft-deleted node and its valid connections.
   Returns {:noreply, socket} tuple.
   """
-  @spec restore_node(Phoenix.LiveView.Socket.t(), any()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec restore_node(Socket.t(), any()) ::
+          {:noreply, Socket.t()}
   def restore_node(socket, node_id) do
     case Flows.restore_node(socket.assigns.flow.id, node_id) do
       {:ok, %FlowNode{} = node} ->
@@ -417,8 +417,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   Restores a node's data to a specific snapshot (for undo/redo).
   Pushes node_updated (NOT node_data_changed) to avoid feedback loops.
   """
-  @spec restore_node_data(Phoenix.LiveView.Socket.t(), any(), map()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec restore_node_data(Socket.t(), any(), map()) ::
+          {:noreply, Socket.t()}
   def restore_node_data(socket, node_id, data) do
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
 
@@ -474,11 +474,10 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
     # Use flow_data.connections (already serialized by reload_flow_data)
     # and filter to connections involving this node where both endpoints are active.
-    active_node_ids = socket.assigns.flow_data.nodes |> Enum.map(& &1.id) |> MapSet.new()
+    active_node_ids = MapSet.new(socket.assigns.flow_data.nodes, & &1.id)
 
     connections =
-      socket.assigns.flow_data.connections
-      |> Enum.filter(fn c ->
+      Enum.filter(socket.assigns.flow_data.connections, fn c ->
         (c.source_node_id == node.id or c.target_node_id == node.id) and
           MapSet.member?(active_node_ids, c.source_node_id) and
           MapSet.member?(active_node_ids, c.target_node_id)

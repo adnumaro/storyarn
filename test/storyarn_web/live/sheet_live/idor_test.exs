@@ -55,12 +55,12 @@ defmodule StoryarnWeb.SheetLive.IdorTest do
     setup %{user: attacker} do
       # Victim's project and sheet with avatar
       victim = user_fixture()
-      victim_project = project_fixture(victim) |> Repo.preload(:workspace)
+      victim_project = victim |> project_fixture() |> Repo.preload(:workspace)
       victim_sheet = sheet_fixture(victim_project, %{name: "Victim Sheet"})
       victim_avatar = create_avatar(victim_sheet, victim_project, victim)
 
       # Attacker's project (attacker is owner, has edit_content)
-      attacker_project = project_fixture(attacker) |> Repo.preload(:workspace)
+      attacker_project = attacker |> project_fixture() |> Repo.preload(:workspace)
       attacker_sheet = sheet_fixture(attacker_project, %{name: "Attacker Sheet"})
 
       %{
@@ -79,7 +79,7 @@ defmodule StoryarnWeb.SheetLive.IdorTest do
       render_hook(view, "remove_avatar", %{"id" => va.id})
 
       # Victim's avatar must still exist
-      assert Sheets.get_avatar(va.id) != nil
+      assert Sheets.get_avatar(va.id)
     end
   end
 
@@ -88,11 +88,11 @@ defmodule StoryarnWeb.SheetLive.IdorTest do
 
     setup %{user: attacker} do
       victim = user_fixture()
-      victim_project = project_fixture(victim) |> Repo.preload(:workspace)
+      victim_project = victim |> project_fixture() |> Repo.preload(:workspace)
       victim_sheet = sheet_fixture(victim_project, %{name: "Victim Sheet"})
       {_block, victim_gi} = create_gallery_block_with_image(victim_sheet, victim_project, victim)
 
-      attacker_project = project_fixture(attacker) |> Repo.preload(:workspace)
+      attacker_project = attacker |> project_fixture() |> Repo.preload(:workspace)
       attacker_sheet = sheet_fixture(attacker_project, %{name: "Attacker Sheet"})
 
       %{
@@ -110,7 +110,7 @@ defmodule StoryarnWeb.SheetLive.IdorTest do
 
       render_hook(view, "remove_gallery_image", %{"gallery_image_id" => vgi.id})
 
-      assert Sheets.get_gallery_image(vgi.id) != nil
+      assert Sheets.get_gallery_image(vgi.id)
     end
 
     test "cannot update gallery image from another project",
@@ -138,7 +138,7 @@ defmodule StoryarnWeb.SheetLive.IdorTest do
 
     setup %{user: viewer} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, viewer, "viewer")
       sheet = sheet_fixture(project, %{name: "Shared Sheet"})
       avatar = create_avatar(sheet, project, owner)
@@ -152,7 +152,7 @@ defmodule StoryarnWeb.SheetLive.IdorTest do
 
       render_hook(view, "remove_avatar", %{"id" => a.id})
 
-      assert Sheets.get_avatar(a.id) != nil
+      assert Sheets.get_avatar(a.id)
     end
   end
 
@@ -161,7 +161,7 @@ defmodule StoryarnWeb.SheetLive.IdorTest do
 
     setup %{user: viewer} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, viewer, "viewer")
       sheet = sheet_fixture(project, %{name: "Shared Sheet"})
       {_block, gallery_image} = create_gallery_block_with_image(sheet, project, owner)
@@ -175,7 +175,7 @@ defmodule StoryarnWeb.SheetLive.IdorTest do
 
       render_hook(view, "remove_gallery_image", %{"gallery_image_id" => gi.id})
 
-      assert Sheets.get_gallery_image(gi.id) != nil
+      assert Sheets.get_gallery_image(gi.id)
     end
 
     test "viewer cannot update gallery image",
@@ -202,7 +202,7 @@ defmodule StoryarnWeb.SheetLive.IdorTest do
     setup :register_and_log_in_user
 
     setup %{user: owner} do
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "My Sheet"})
       avatar = create_avatar(sheet, project, owner)
 
@@ -223,7 +223,7 @@ defmodule StoryarnWeb.SheetLive.IdorTest do
     setup :register_and_log_in_user
 
     setup %{user: owner} do
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project, %{name: "My Sheet"})
       {_block, gallery_image} = create_gallery_block_with_image(sheet, project, owner)
 

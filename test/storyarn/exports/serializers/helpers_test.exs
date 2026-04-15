@@ -200,7 +200,7 @@ defmodule Storyarn.Exports.Serializers.HelpersTest do
 
     test "wraps strings with special characters in quotes" do
       assert Helpers.escape_csv_field("a,b") == "\"a,b\""
-      assert Helpers.escape_csv_field("a\"b") == "\"a\"\"b\""
+      assert Helpers.escape_csv_field("a\"b") == ~s("a""b")
       assert Helpers.escape_csv_field("a\nb") == "\"a\nb\""
     end
   end

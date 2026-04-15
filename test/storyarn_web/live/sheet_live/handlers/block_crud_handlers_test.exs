@@ -13,7 +13,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlersTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.{Repo, Sheets}
+  alias Storyarn.Repo
+  alias Storyarn.Sheets
 
   # ===========================================================================
   # Setup
@@ -22,7 +23,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlersTest do
   setup :register_and_log_in_user
 
   setup %{user: user} do
-    project = project_fixture(user) |> Repo.preload(:workspace)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
     sheet = sheet_fixture(project, %{name: "Block CRUD Sheet"})
     ws = project.workspace
 
@@ -130,7 +131,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlersTest do
       assert render(view) =~ "Block CRUD Sheet"
       assert Sheets.get_block!(block.id).value["content"] == "original"
     end
-
   end
 
   # ===========================================================================
@@ -163,7 +163,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlersTest do
       # View is still alive and the existing block is untouched
       assert render(view) =~ "Block CRUD Sheet"
       assert length(Sheets.list_blocks(sheet.id)) == 1
-      assert Sheets.get_block!(block.id) != nil
+      assert Sheets.get_block!(block.id)
     end
 
     test "deletes one block without affecting others", %{conn: conn, url: url, sheet: sheet} do
@@ -198,5 +198,4 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockCrudHandlersTest do
       assert Sheets.list_blocks(sheet.id) == []
     end
   end
-
 end

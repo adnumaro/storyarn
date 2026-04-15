@@ -14,12 +14,13 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
   Preloads the flow association.
   """
   def list_ambient_flows(scene_id) do
-    from(af in SceneAmbientFlow,
-      where: af.scene_id == ^scene_id,
-      order_by: [asc: af.position, desc: af.priority, asc: af.id],
-      preload: [:flow]
+    Repo.all(
+      from(af in SceneAmbientFlow,
+        where: af.scene_id == ^scene_id,
+        order_by: [asc: af.position, desc: af.priority, asc: af.id],
+        preload: [:flow]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -70,10 +71,9 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
       ordered_ids
       |> Enum.with_index()
       |> Enum.each(fn {id, index} ->
-        from(af in SceneAmbientFlow,
-          where: af.id == ^id and af.scene_id == ^scene_id
+        Repo.update_all(from(af in SceneAmbientFlow, where: af.id == ^id and af.scene_id == ^scene_id),
+          set: [position: index]
         )
-        |> Repo.update_all(set: [position: index])
       end)
 
       list_ambient_flows(scene_id)
@@ -81,11 +81,7 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
   end
 
   defp next_position(scene_id) do
-    from(af in SceneAmbientFlow,
-      where: af.scene_id == ^scene_id,
-      select: coalesce(max(af.position), -1) + 1
-    )
-    |> Repo.one()
+    Repo.one(from(af in SceneAmbientFlow, where: af.scene_id == ^scene_id, select: coalesce(max(af.position), -1) + 1))
   end
 
   defp validate_same_project(scene_id, flow_id) when is_integer(flow_id) do

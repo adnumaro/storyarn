@@ -220,8 +220,7 @@ defmodule Storyarn.Assets.ImageProcessor do
     end
   end
 
-  def needs_optimization?(content_type, _metadata, purpose)
-      when purpose in [:scene_background, :gallery] do
+  def needs_optimization?(content_type, _metadata, purpose) when purpose in [:scene_background, :gallery] do
     if content_type in @webp_types, do: :skip, else: {:generate, %{crop: false}}
   end
 

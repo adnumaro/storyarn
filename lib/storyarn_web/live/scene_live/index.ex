@@ -4,9 +4,7 @@ defmodule StoryarnWeb.SceneLive.Index do
   """
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
-
-  import StoryarnWeb.Live.Shared.TreePanelHandlers
+  use StoryarnWeb.Live.Shared.DashboardHandlers
 
   import StoryarnWeb.Components.DashboardComponents,
     only: [
@@ -17,15 +15,15 @@ defmodule StoryarnWeb.SceneLive.Index do
       reload_dashboard: 6
     ]
 
-  use StoryarnWeb.Live.Shared.DashboardHandlers
+  import StoryarnWeb.Live.Shared.TreePanelHandlers
+  import StoryarnWeb.SceneLive.Helpers.PropsSerializer, only: [prepare_scenes_tree: 1]
 
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Projects
   alias Storyarn.Scenes
   alias Storyarn.Shared.MapUtils
-
-  import StoryarnWeb.SceneLive.Helpers.PropsSerializer, only: [prepare_scenes_tree: 1]
+  alias StoryarnWeb.Helpers.Authorize
 
   @impl true
   def render(assigns) do
@@ -82,11 +80,7 @@ defmodule StoryarnWeb.SceneLive.Index do
   # ===========================================================================
 
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
     case Projects.get_project_by_slugs(
            socket.assigns.current_scope,
            workspace_slug,
@@ -219,25 +213,21 @@ defmodule StoryarnWeb.SceneLive.Index do
   # ===========================================================================
 
   @impl true
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: handle_tree_panel_event(event, params, socket)
+  def handle_event("tree_panel_" <> _ = event, params, socket), do: handle_tree_panel_event(event, params, socket)
 
   def handle_event("sort_scenes", %{"column" => column}, socket) do
-    {:noreply,
-     handle_sort(socket, column, :all_scene_table_data, :scene_table_data, scene_sort_columns())}
+    {:noreply, handle_sort(socket, column, :all_scene_table_data, :scene_table_data, scene_sort_columns())}
   end
 
   def handle_event("page_scenes", %{"page" => page}, socket) do
     {:noreply, handle_page(socket, page, :all_scene_table_data, :scene_table_data)}
   end
 
-  def handle_event(event, %{"id" => id}, socket)
-      when event in ~w(set_pending_delete set_pending_delete_scene) do
+  def handle_event(event, %{"id" => id}, socket) when event in ~w(set_pending_delete set_pending_delete_scene) do
     {:noreply, assign(socket, :pending_delete_id, id)}
   end
 
-  def handle_event(event, _params, socket)
-      when event in ~w(confirm_delete confirm_delete_scene) do
+  def handle_event(event, _params, socket) when event in ~w(confirm_delete confirm_delete_scene) do
     if id = socket.assigns[:pending_delete_id] do
       handle_event("delete", %{"id" => id}, socket)
     else
@@ -245,8 +235,7 @@ defmodule StoryarnWeb.SceneLive.Index do
     end
   end
 
-  def handle_event(event, %{"id" => scene_id}, socket)
-      when event in ~w(delete delete_scene) do
+  def handle_event(event, %{"id" => scene_id}, socket) when event in ~w(delete delete_scene) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       case Scenes.get_scene(socket.assigns.project.id, scene_id) do
         nil ->
@@ -368,18 +357,13 @@ defmodule StoryarnWeb.SceneLive.Index do
       {severity, message} =
         case issue.issue_type do
           :empty_scene ->
-            {:info,
-             dgettext("scenes", "Scene \"%{name}\" has no zones or pins", name: issue.scene_name)}
+            {:info, dgettext("scenes", "Scene \"%{name}\" has no zones or pins", name: issue.scene_name)}
 
           :no_background ->
-            {:warning,
-             dgettext("scenes", "Scene \"%{name}\" has no background image",
-               name: issue.scene_name
-             )}
+            {:warning, dgettext("scenes", "Scene \"%{name}\" has no background image", name: issue.scene_name)}
 
           :missing_shortcut ->
-            {:warning,
-             dgettext("scenes", "Scene \"%{name}\" has no shortcut", name: issue.scene_name)}
+            {:warning, dgettext("scenes", "Scene \"%{name}\" has no shortcut", name: issue.scene_name)}
 
           _ ->
             {:info, gettext("Issue detected")}

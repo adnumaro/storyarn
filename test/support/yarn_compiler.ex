@@ -41,7 +41,7 @@ defmodule Storyarn.Test.YarnCompiler do
   `{:error, exit_code, output}` if compilation fails.
   """
   def validate(yarn_source) when is_binary(yarn_source) do
-    unless available?() do
+    if !available?() do
       raise "ysc not found in PATH. Install with: dotnet tool install --global YarnSpinner.Console"
     end
 
@@ -78,7 +78,7 @@ defmodule Storyarn.Test.YarnCompiler do
   (like <<jump>> to nodes in other files) are validated.
   """
   def validate_multi(files) when is_list(files) do
-    unless available?() do
+    if !available?() do
       raise "ysc not found in PATH. Install with: dotnet tool install --global YarnSpinner.Console"
     end
 

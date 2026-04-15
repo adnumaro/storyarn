@@ -80,5 +80,4 @@ defmodule StoryarnWeb.Components.CollaborationComponents do
   end
 
   defp get_email_name(_), do: "Someone"
-
 end

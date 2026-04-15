@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { CellValue, TableColumn, TableRow } from '@modules/sheets/types.ts'
-import { useLive } from '@composables/useLive.ts'
-import { nextTick, ref } from 'vue'
-import { getCellValue } from '@modules/sheets/components/blocks/table/tbodyCells/get-cell-value-helpers.ts'
+import { CellValue, TableColumn, TableRow } from "@modules/sheets/types.ts";
+import { useLive } from "@composables/useLive.ts";
+import { nextTick, ref } from "vue";
+import { getCellValue } from "@modules/sheets/components/blocks/table/tbodyCells/get-cell-value-helpers.ts";
 
 const {
   column,
@@ -26,7 +26,7 @@ interface NumberInputAttrs {
   step: number | string;
 }
 
- function inputAttrs(column: TableColumn): NumberInputAttrs | Record<string, never> {
+function inputAttrs(column: TableColumn): NumberInputAttrs | Record<string, never> {
   if (column.type !== "number") {
     return {};
   }
@@ -49,7 +49,6 @@ function startEditCell(row: TableRow, col: TableColumn): void {
   editingCellValue.value = String(row.cells?.[col.slug] ?? "");
   nextTick(() => cellInput.value?.focus());
 }
-
 
 function isCellEditing(row: TableRow, col: TableColumn): boolean {
   return editingCell.value?.rowId === row.id && editingCell.value?.colSlug === col.slug;
@@ -97,19 +96,13 @@ function saveCell(row: TableRow, col: TableColumn): void {
   <div v-else class="px-2 py-1">
     <span
       :class="
-        !getCellValue(row, column) &&
-        getCellValue(row, column) !== 0 &&
-        'text-muted-foreground/40'
+        !getCellValue(row, column) && getCellValue(row, column) !== 0 && 'text-muted-foreground/40'
       "
       class="text-sm"
     >
-      {{
-        displayValue(getCellValue(row, column), column.type === "number" ? "0" : "\u2014")
-      }}
+      {{ displayValue(getCellValue(row, column), column.type === "number" ? "0" : "\u2014") }}
     </span>
   </div>
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>

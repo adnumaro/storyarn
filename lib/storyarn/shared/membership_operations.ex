@@ -35,7 +35,8 @@ defmodule Storyarn.Shared.MembershipOperations do
   Creates a membership.
   """
   def create_membership(config, parent_id, user_id, role) do
-    struct(config.membership_schema)
+    config.membership_schema
+    |> struct()
     |> config.membership_schema.changeset(%{
       config.parent_key => parent_id,
       :user_id => user_id,

@@ -73,7 +73,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -261,7 +261,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -427,7 +427,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -564,7 +564,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -663,7 +663,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -802,7 +802,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -896,7 +896,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -964,7 +964,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
 
     test "viewer cannot add nodes", %{conn: conn, user: user} do
       owner = Storyarn.AccountsFixtures.user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       flow = flow_fixture(project, %{name: "Viewer Flow"})
 
@@ -987,7 +987,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
 
     test "viewer cannot delete nodes", %{conn: conn, user: user} do
       owner = Storyarn.AccountsFixtures.user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       flow = flow_fixture(project, %{name: "Viewer Flow"})
 
@@ -1010,7 +1010,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
 
     test "viewer cannot duplicate nodes", %{conn: conn, user: user} do
       owner = Storyarn.AccountsFixtures.user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       flow = flow_fixture(project, %{name: "Viewer Flow"})
 
@@ -1033,7 +1033,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
 
     test "viewer cannot restore nodes", %{conn: conn, user: user} do
       owner = Storyarn.AccountsFixtures.user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       flow = flow_fixture(project, %{name: "Viewer Flow"})
 
@@ -1058,7 +1058,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
 
     test "editor can add nodes", %{conn: conn, user: user} do
       owner = Storyarn.AccountsFixtures.user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
       flow = flow_fixture(project, %{name: "Editor Flow"})
 

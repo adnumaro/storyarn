@@ -57,8 +57,7 @@ defmodule Storyarn.Screenplays.Import.Fountain do
 
   defp build_title_elements(data) when data == %{}, do: []
 
-  defp build_title_elements(data),
-    do: [%{type: "title_page", content: "", data: data, position: 0}]
+  defp build_title_elements(data), do: [%{type: "title_page", content: "", data: data, position: 0}]
 
   # -- Title page extraction --------------------------------------------------
 
@@ -124,7 +123,8 @@ defmodule Storyarn.Screenplays.Import.Fountain do
   end
 
   defp split_paragraphs_with_indent(text) do
-    Regex.split(~r/\n\s*\n/, text)
+    ~r/\n\s*\n/
+    |> Regex.split(text)
     |> Enum.map(fn raw ->
       first_line = raw |> String.split("\n") |> hd()
       {leading_spaces(first_line), String.trim(raw)}
@@ -214,8 +214,7 @@ defmodule Storyarn.Screenplays.Import.Fountain do
 
   defp indented_dialogue_zone?(_indent, nil), do: false
 
-  defp indented_dialogue_zone?(indent, profile),
-    do: indent >= profile.dialogue_min and indent < profile.character_min
+  defp indented_dialogue_zone?(indent, profile), do: indent >= profile.dialogue_min and indent < profile.character_min
 
   defp classify_indented_dialogue(paragraph) do
     first_line = paragraph |> String.split("\n") |> hd() |> String.trim()
@@ -228,22 +227,17 @@ defmodule Storyarn.Screenplays.Import.Fountain do
   defp page_break?(p), do: p == "===" or String.starts_with?(p, "===")
   defp section?(p), do: String.starts_with?(p, "#")
 
-  defp note?(p),
-    do: String.starts_with?(p, "[[") and String.ends_with?(p, "]]")
+  defp note?(p), do: String.starts_with?(p, "[[") and String.ends_with?(p, "]]")
 
-  defp forced_scene_heading?(p),
-    do: String.starts_with?(p, ".") and not String.starts_with?(p, "..")
+  defp forced_scene_heading?(p), do: String.starts_with?(p, ".") and not String.starts_with?(p, "..")
 
   defp scene_heading?(p), do: Regex.match?(@scene_heading_pattern, p)
 
-  defp forced_transition?(p),
-    do: String.starts_with?(p, ">") and not String.ends_with?(p, "<")
+  defp forced_transition?(p), do: String.starts_with?(p, ">") and not String.ends_with?(p, "<")
 
-  defp transition?(p),
-    do: (Regex.match?(@transition_pattern, p) or String.trim(p) == "FADE IN:") and all_upper?(p)
+  defp transition?(p), do: (Regex.match?(@transition_pattern, p) or String.trim(p) == "FADE IN:") and all_upper?(p)
 
-  defp centered_text?(p),
-    do: String.starts_with?(p, ">") and String.ends_with?(p, "<")
+  defp centered_text?(p), do: String.starts_with?(p, ">") and String.ends_with?(p, "<")
 
   defp character_paragraph?(indent, paragraph, profile) do
     lines =
@@ -254,19 +248,18 @@ defmodule Storyarn.Screenplays.Import.Fountain do
 
     first = hd(lines)
 
-    if profile != nil do
-      # Indented document: indent is the primary signal
-      indent >= profile.character_min and character_line?(first)
-    else
+    if profile == nil do
       # Non-indented (plain Fountain): require dialogue in same paragraph
       length(lines) > 1 and character_line?(first)
+    else
+      # Indented document: indent is the primary signal
+      indent >= profile.character_min and character_line?(first)
     end
   end
 
   defp forced_action?(p), do: String.starts_with?(p, "!")
 
-  defp make_el(type, content),
-    do: %{type: type, content: convert_marks(content), data: %{}, position: 0}
+  defp make_el(type, content), do: %{type: type, content: convert_marks(content), data: %{}, position: 0}
 
   defp make_section(paragraph) do
     {level, text} = parse_section(paragraph)
@@ -284,7 +277,7 @@ defmodule Storyarn.Screenplays.Import.Fountain do
   end
 
   defp make_forced_transition(paragraph) do
-    text = String.trim_leading(paragraph, ">") |> String.trim()
+    text = paragraph |> String.trim_leading(">") |> String.trim()
     make_el("transition", text)
   end
 
@@ -318,8 +311,7 @@ defmodule Storyarn.Screenplays.Import.Fountain do
     end
   end
 
-  defp ends_with_punctuation?(text),
-    do: String.ends_with?(text, [":", ".", "!", ","])
+  defp ends_with_punctuation?(text), do: String.ends_with?(text, [":", ".", "!", ","])
 
   defp strip_dual_marker(line) do
     if String.ends_with?(line, "^"),
@@ -328,7 +320,7 @@ defmodule Storyarn.Screenplays.Import.Fountain do
   end
 
   defp parse_dialogue_elements(paragraph) do
-    lines = String.split(paragraph, "\n") |> Enum.map(&String.trim/1)
+    lines = paragraph |> String.split("\n") |> Enum.map(&String.trim/1)
     {char_name, dual?} = parse_character_name(hd(lines))
 
     char_data = if dual?, do: %{"dual" => true}, else: %{}
@@ -340,7 +332,7 @@ defmodule Storyarn.Screenplays.Import.Fountain do
       position: 0
     }
 
-    inline_lines = tl(lines) |> Enum.reject(&(&1 == ""))
+    inline_lines = lines |> tl() |> Enum.reject(&(&1 == ""))
 
     if inline_lines == [] do
       # Indented document: character alone in paragraph, dialogue is next paragraph

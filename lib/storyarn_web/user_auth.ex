@@ -4,8 +4,8 @@ defmodule StoryarnWeb.UserAuth do
   """
   use Gettext, backend: Storyarn.Gettext
 
-  import Plug.Conn
   import Phoenix.Controller
+  import Plug.Conn
 
   alias Storyarn.Accounts
   alias Storyarn.Accounts.Scope
@@ -92,8 +92,6 @@ defmodule StoryarnWeb.UserAuth do
 
       if token = conn.cookies[@remember_me_cookie] do
         {token, conn |> put_token_in_session(token) |> put_session(:user_remember_me, true)}
-      else
-        nil
       end
     end
   end
@@ -160,8 +158,7 @@ defmodule StoryarnWeb.UserAuth do
   defp maybe_write_remember_me_cookie(conn, token, %{"remember_me" => "true"}, _),
     do: write_remember_me_cookie(conn, token)
 
-  defp maybe_write_remember_me_cookie(conn, token, _params, true),
-    do: write_remember_me_cookie(conn, token)
+  defp maybe_write_remember_me_cookie(conn, token, _params, true), do: write_remember_me_cookie(conn, token)
 
   defp maybe_write_remember_me_cookie(conn, _token, _params, _), do: conn
 
@@ -248,9 +245,7 @@ defmodule StoryarnWeb.UserAuth do
     if Accounts.sudo_mode?(socket.assigns.current_scope.user, -120) do
       {:cont, socket}
     else
-      socket =
-        socket
-        |> Phoenix.LiveView.redirect(to: "/users/confirm-access")
+      socket = Phoenix.LiveView.redirect(socket, to: "/users/confirm-access")
 
       {:halt, socket}
     end
@@ -299,8 +294,7 @@ defmodule StoryarnWeb.UserAuth do
       managed_slugs =
         workspace_data
         |> Enum.reject(&is_nil(&1.role))
-        |> Enum.map(& &1.workspace.slug)
-        |> MapSet.new()
+        |> MapSet.new(& &1.workspace.slug)
 
       socket
       |> Phoenix.Component.assign(:workspaces, workspaces)

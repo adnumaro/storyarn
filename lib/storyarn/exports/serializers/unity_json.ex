@@ -8,7 +8,8 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
 
   @behaviour Storyarn.Exports.Serializer
 
-  alias Storyarn.Exports.{ExportOptions, ExpressionTranspiler}
+  alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Exports.ExpressionTranspiler
   alias Storyarn.Exports.Serializers.Helpers
 
   @impl true

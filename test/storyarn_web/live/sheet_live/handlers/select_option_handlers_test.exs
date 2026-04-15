@@ -23,7 +23,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.SelectOptionHandlersTest do
   end
 
   defp setup_base(%{user: user}) do
-    project = project_fixture(user) |> Repo.preload(:workspace)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
     sheet = sheet_fixture(project, %{name: "Options Test Sheet"})
 
     %{

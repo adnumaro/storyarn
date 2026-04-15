@@ -13,7 +13,7 @@ defmodule Storyarn.Flows.NavigationHistoryStore do
 
   use Agent
 
-  @ttl_ms :timer.minutes(10)
+  @ttl_ms to_timeout(minute: 10)
 
   def start_link(_opts) do
     Agent.start_link(fn -> %{} end, name: __MODULE__)

@@ -37,14 +37,14 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
   end
 
   defp setup_project_with_scene(%{user: user}) do
-    project = project_fixture(user) |> Repo.preload(:workspace)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
     scene = scene_fixture(project, %{name: "Test World"})
 
     %{project: project, scene: scene}
   end
 
   defp setup_scene_with_elements(%{user: user}) do
-    project = project_fixture(user) |> Repo.preload(:workspace)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
     scene = scene_fixture(project, %{name: "Interactive World"})
 
     zone =
@@ -69,13 +69,15 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
 
   # Gets the auto-created entry node from a flow
   defp get_entry_node(flow) do
-    Flows.list_nodes(flow.id)
+    flow.id
+    |> Flows.list_nodes()
     |> Enum.find(&(&1.type == "entry"))
   end
 
   # Gets the auto-created exit node from a flow
   defp get_exit_node(flow) do
-    Flows.list_nodes(flow.id)
+    flow.id
+    |> Flows.list_nodes()
     |> Enum.find(&(&1.type == "exit"))
   end
 
@@ -284,7 +286,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
 
     test "redirects to workspaces when project not accessible", %{conn: conn} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Forbidden"})
 
       {:error, {:redirect, %{to: path, flash: flash}}} =
@@ -310,7 +312,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     setup :register_and_log_in_user
 
     test "redirects to scene index when scene does not exist", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:error, {:redirect, %{to: path, flash: flash}}} =
         live(
@@ -323,7 +325,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     end
 
     test "redirects when scene is soft-deleted", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Deleted Scene"})
       {:ok, _} = Scenes.delete_scene(scene)
 
@@ -608,7 +610,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     setup :register_and_log_in_user
 
     test "instruction action with no assignments does not crash", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Instruction World"})
 
       {:ok, view, _html} = live(conn, explore_path(project, scene))
@@ -626,7 +628,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Assignment World"})
       {sheet, _block} = create_number_variable(project, "Hero", "Health", 100)
 
@@ -684,7 +686,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     setup :register_and_log_in_user
 
     test "zones/pins with no condition are visible", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Visible World"})
 
       _zone =
@@ -712,7 +714,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     end
 
     test "zones with empty condition map are visible", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Empty Condition World"})
 
       {:ok, _} =
@@ -736,7 +738,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     end
 
     test "zone with failing condition and hide effect gets hidden", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Conditional World"})
       {sheet, _block} = create_number_variable(project, "Hero", "Health", 100)
 
@@ -767,7 +769,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Disable World"})
       {sheet, _block} = create_number_variable(project, "Player", "Level", 1)
 
@@ -795,7 +797,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     end
 
     test "zone with passing condition is visible", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Pass World"})
       {sheet, _block} = create_number_variable(project, "Warrior", "Strength", 50)
 
@@ -834,7 +836,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Flow Overlay World"})
 
       {flow, _entry, _dialogue} =
@@ -856,7 +858,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     end
 
     test "Escape while in flow mode returns to map exploration", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Escape Flow World"})
 
       {flow, _entry, _dialogue} =
@@ -886,7 +888,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     setup :register_and_log_in_user
 
     test "go_back with no history does nothing", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Back World"})
 
       {flow, _entry, _dialogue} =
@@ -916,7 +918,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     setup :register_and_log_in_user
 
     test "flow_finish returns to map exploration", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Finish World"})
 
       {flow, _entry, _dialogue} =
@@ -947,7 +949,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     setup :register_and_log_in_user
 
     test "flow_continue advances through the flow", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Continue World"})
 
       flow = FlowsFixtures.flow_fixture(project, %{name: "Continue Flow"})
@@ -1008,7 +1010,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
 
     test "editor member can access exploration mode", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
       scene = scene_fixture(project, %{name: "Editor Scene"})
 
@@ -1019,7 +1021,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
 
     test "viewer member can access exploration mode", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project, %{name: "Viewer Scene"})
 
@@ -1040,7 +1042,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Mixed World"})
 
       # Zone with no condition (visible)
@@ -1079,7 +1081,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     setup :register_and_log_in_user
 
     test "pin with failing condition and hide effect", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Pin Condition World"})
       {sheet, _block} = create_number_variable(project, "Rogue", "Stealth", 5)
 
@@ -1108,7 +1110,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     end
 
     test "pin with passing condition is visible", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Pin Pass World"})
       {sheet, _block} = create_number_variable(project, "Mage", "Intelligence", 80)
 
@@ -1145,7 +1147,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     setup :register_and_log_in_user
 
     test "ArrowLeft/Backspace triggers go_back in flow mode", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Key World"})
 
       {flow, _entry, _dialogue} =
@@ -1168,7 +1170,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     end
 
     test "Enter triggers flow_continue in flow mode", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Enter World"})
 
       {flow, _entry, _dialogue} =
@@ -1188,7 +1190,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     end
 
     test "unmatched key in flow mode does nothing", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Noop Key World"})
 
       {flow, _entry, _dialogue} =
@@ -1210,7 +1212,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Response Key World"})
 
       flow = FlowsFixtures.flow_fixture(project, %{name: "Response Flow"})
@@ -1262,7 +1264,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     end
 
     test "out-of-range number key in flow mode does nothing", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Range Key World"})
 
       {flow, _entry, _dialogue} =
@@ -1281,7 +1283,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     end
 
     test "space key continues flow in flow mode", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Space Key World"})
 
       {flow, _entry, _dialogue} =
@@ -1300,7 +1302,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     end
 
     test "ArrowRight continues flow in flow mode", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Arrow Key World"})
 
       {flow, _entry, _dialogue} =
@@ -1326,7 +1328,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     setup :register_and_log_in_user
 
     test "choose_response with valid response ID advances flow", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Choice World"})
 
       flow = FlowsFixtures.flow_fixture(project, %{name: "Choice Flow"})
@@ -1380,7 +1382,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     end
 
     test "choose_response with invalid response ID shows error", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Bad Choice World"})
 
       {flow, _entry, _dialogue} =
@@ -1411,12 +1413,12 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "End Flow World"})
 
       flow = FlowsFixtures.flow_fixture(project, %{name: "Short Flow"})
       entry = get_entry_node(flow)
-      exit_node = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "exit"))
+      exit_node = flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "exit"))
 
       dialogue =
         FlowsFixtures.node_fixture(flow, %{
@@ -1442,12 +1444,12 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     end
 
     test "flow with only entry to exit finishes immediately", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Quick Flow World"})
 
       flow = FlowsFixtures.flow_fixture(project, %{name: "Quick Flow"})
       entry = get_entry_node(flow)
-      exit_node = Flows.list_nodes(flow.id) |> Enum.find(&(&1.type == "exit"))
+      exit_node = flow.id |> Flows.list_nodes() |> Enum.find(&(&1.type == "exit"))
 
       FlowsFixtures.connection_fixture(flow, entry, exit_node)
 
@@ -1473,7 +1475,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     setup :register_and_log_in_user
 
     test "flow_continue advances to the next dialogue node", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Multi Dialogue World"})
 
       {flow, _d1, _d2, _exit} =
@@ -1489,7 +1491,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
 
       vue = get_exploration_vue(view)
       assert vue.props["flow-state"]["active"] == true
-      assert vue.props["flow-state"]["slide"] != nil
+      assert vue.props["flow-state"]["slide"]
 
       # Continue — should still be in flow mode (advanced to next stop)
       render_click(view, "flow_continue")
@@ -1499,6 +1501,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       # Continue again — reaches outcome or exits flow mode back to exploration.
       render_click(view, "flow_continue")
       vue = get_exploration_vue(view)
+
       assert (vue.props["flow-state"]["slide"] || %{})["type"] == "outcome" or
                vue.props["flow-state"]["active"] == false
     end
@@ -1507,7 +1510,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Full Flow World"})
 
       {flow, _d1, _d2, _exit} =
@@ -1549,7 +1552,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Response World"})
 
       {flow, _dialogue, resp_a_id, _resp_b_id, _dialogue_after} =
@@ -1575,7 +1578,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     end
 
     test "choosing response B exits to outcome", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Response B World"})
 
       {flow, _dialogue, _resp_a_id, resp_b_id, _dialogue_after} =
@@ -1606,7 +1609,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "NumKey World"})
 
       {flow, _dialogue, _resp_a_id, _resp_b_id, _dialogue_after} =
@@ -1635,7 +1638,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "NumKey2 World"})
 
       {flow, _dialogue, _resp_a_id, _resp_b_id, _dialogue_after} =
@@ -1657,7 +1660,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "OutRange World"})
 
       {flow, _dialogue, _resp_a_id, _resp_b_id, _dialogue_after} =
@@ -1687,7 +1690,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     setup :register_and_log_in_user
 
     test "Enter key on outcome slide triggers flow_finish", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Outcome Key World"})
 
       flow = FlowsFixtures.flow_fixture(project, %{name: "Outcome Key Flow"})
@@ -1720,7 +1723,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     end
 
     test "Space key on outcome slide triggers flow_finish", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Space Outcome World"})
 
       flow = FlowsFixtures.flow_fixture(project, %{name: "Space Outcome Flow"})
@@ -1761,7 +1764,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     setup :register_and_log_in_user
 
     test "go_back after advancing restores previous state", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "GoBack World"})
 
       {flow, _d1, _d2, _exit} =
@@ -1785,7 +1788,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     end
 
     test "ArrowLeft triggers go_back after advancing", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Arrow GoBack World"})
 
       {flow, _d1, _d2, _exit} =
@@ -1816,7 +1819,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     setup :register_and_log_in_user
 
     test "exit node with scene target_type navigates to that scene", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Transition World"})
       target_scene = scene_fixture(project, %{name: "Destination Scene"})
 
@@ -1866,7 +1869,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
     end
 
     test "exit node with flow target_type starts another flow", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Flow Chain World"})
 
       # Create the target flow (entry -> dialogue -> exit)
@@ -1931,7 +1934,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Bad Instruction World"})
 
       {:ok, view, _html} = live(conn, explore_path(project, scene))
@@ -1967,7 +1970,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Subflow World"})
 
       # Create the target (sub) flow: entry -> dialogue -> exit
@@ -2019,7 +2022,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Return World"})
 
       # Create the target (sub) flow: entry -> dialogue -> exit(caller_return)

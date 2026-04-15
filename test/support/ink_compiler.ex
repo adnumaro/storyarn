@@ -44,7 +44,7 @@ defmodule Storyarn.Test.InkCompiler do
   `{:error, exit_code, output}` if compilation fails.
   """
   def validate(ink_source) when is_binary(ink_source) do
-    unless available?() do
+    if !available?() do
       raise "inklecate not found in PATH. See module docs for build instructions."
     end
 

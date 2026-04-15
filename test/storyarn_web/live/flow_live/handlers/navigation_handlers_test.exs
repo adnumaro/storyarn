@@ -17,7 +17,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Main Flow"})
       %{project: project, flow: flow}
     end
@@ -85,7 +85,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Current Flow"})
       %{project: project, flow: flow}
     end
@@ -127,7 +127,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Referenced Flow"})
       %{project: project, flow: flow}
     end
@@ -169,7 +169,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Active Flow"})
       %{project: project, flow: flow}
     end

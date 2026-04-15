@@ -1,4 +1,6 @@
 defmodule Mix.Tasks.Convention.Check do
+  @shortdoc "Check Storyarn convention compliance"
+
   @moduledoc """
   Checks Storyarn convention compliance across the project.
 
@@ -34,8 +36,6 @@ defmodule Mix.Tasks.Convention.Check do
   """
 
   use Mix.Task
-
-  @shortdoc "Check Storyarn convention compliance"
 
   @rules [
     :raw_without_sanitizer,
@@ -77,7 +77,7 @@ defmodule Mix.Tasks.Convention.Check do
 
     print_results(violations, opts)
 
-    unless violations == [] do
+    if violations != [] do
       Mix.raise("Convention check failed with #{length(violations)} violation(s)")
     end
   end
@@ -117,7 +117,8 @@ defmodule Mix.Tasks.Convention.Check do
     if Map.get(suppressed, line_num, false) == :all do
       []
     else
-      rules_for_line(line, line_num, file_path, is_web)
+      line
+      |> rules_for_line(line_num, file_path, is_web)
       |> Enum.reject(fn {rule, _, _, _} ->
         rule_suppressed?(suppressed, line_num, rule)
       end)
@@ -212,8 +213,7 @@ defmodule Mix.Tasks.Convention.Check do
          not String.contains?(line, "sanitize_html") and
          not String.contains?(line, "sanitize_and_interpolate") do
       [
-        {:raw_without_sanitizer, file, line_num,
-         "raw() without HtmlSanitizer.sanitize_html/1 — XSS risk"}
+        {:raw_without_sanitizer, file, line_num, "raw() without HtmlSanitizer.sanitize_html/1 — XSS risk"}
       ]
     else
       []
@@ -245,8 +245,7 @@ defmodule Mix.Tasks.Convention.Check do
   defp check_string_to_atom(line, line_num, file, _trimmed) do
     if String.match?(line, ~r/String\.to_atom\b/) do
       [
-        {:string_to_atom, file, line_num,
-         "String.to_atom/1 — prefer String.to_existing_atom/1 with allowlist guard"}
+        {:string_to_atom, file, line_num, "String.to_atom/1 — prefer String.to_existing_atom/1 with allowlist guard"}
       ]
     else
       []
@@ -259,8 +258,7 @@ defmodule Mix.Tasks.Convention.Check do
     if String.match?(line, ~r/\bfrom\s*[\(]?\s*\w+\s+in\b.*#\{/) or
          String.match?(line, ~r/Repo\.(query|query!)\s*[\(]?.*#\{/) do
       [
-        {:sql_interpolation, file, line_num,
-         "String interpolation in Ecto query — SQL injection risk. Use ^pinning."}
+        {:sql_interpolation, file, line_num, "String interpolation in Ecto query — SQL injection risk. Use ^pinning."}
       ]
     else
       []
@@ -271,8 +269,7 @@ defmodule Mix.Tasks.Convention.Check do
     if String.match?(line, ~r/put_flash\(.*,\s*"[A-Za-z]/) and
          not String.match?(line, ~r/gettext|dgettext|ngettext/) do
       [
-        {:put_flash_without_gettext, file, line_num,
-         "put_flash with hardcoded string — use gettext/dgettext"}
+        {:put_flash_without_gettext, file, line_num, "put_flash with hardcoded string — use gettext/dgettext"}
       ]
     else
       []
@@ -293,8 +290,7 @@ defmodule Mix.Tasks.Convention.Check do
     if String.match?(line, ~r/defp\s+(slugify|variablify|normalize_name)\b/) and
          not String.contains?(file, "name_normalizer") do
       [
-        {:inline_slugify, file, line_num,
-         "Use NameNormalizer.slugify/1 or variablify/1 instead of private function"}
+        {:inline_slugify, file, line_num, "Use NameNormalizer.slugify/1 or variablify/1 instead of private function"}
       ]
     else
       []
@@ -312,9 +308,7 @@ defmodule Mix.Tasks.Convention.Check do
 
     Mix.shell().info("")
 
-    Mix.shell().info(
-      "#{IO.ANSI.red()}Convention violations: #{length(violations)}#{IO.ANSI.reset()}"
-    )
+    Mix.shell().info("#{IO.ANSI.red()}Convention violations: #{length(violations)}#{IO.ANSI.reset()}")
 
     Mix.shell().info("")
 
@@ -340,27 +334,20 @@ defmodule Mix.Tasks.Convention.Check do
     Mix.shell().info("Suppress with: # storyarn:disable:rule_name")
   end
 
-  defp fix_suggestion(:raw_without_sanitizer),
-    do: "Wrap with HtmlSanitizer.sanitize_html/1 before passing to raw()"
+  defp fix_suggestion(:raw_without_sanitizer), do: "Wrap with HtmlSanitizer.sanitize_html/1 before passing to raw()"
 
-  defp fix_suggestion(:datetime_utc_now),
-    do: "alias Storyarn.Shared.TimeHelpers, then use TimeHelpers.now()"
+  defp fix_suggestion(:datetime_utc_now), do: "alias Storyarn.Shared.TimeHelpers, then use TimeHelpers.now()"
 
   defp fix_suggestion(:facade_bypass),
     do: "Use the context facade (e.g., Sheets.function() not Sheets.SheetCrud.function())"
 
-  defp fix_suggestion(:string_to_atom),
-    do: "Use String.to_existing_atom/1 with a `when field in ~w(...)` allowlist guard"
+  defp fix_suggestion(:string_to_atom), do: "Use String.to_existing_atom/1 with a `when field in ~w(...)` allowlist guard"
 
-  defp fix_suggestion(:sql_interpolation),
-    do: "Use ^variable pinning in Ecto queries instead of \#{interpolation}"
+  defp fix_suggestion(:sql_interpolation), do: "Use ^variable pinning in Ecto queries instead of \#{interpolation}"
 
-  defp fix_suggestion(:put_flash_without_gettext),
-    do: "Use gettext(\"msg\") or dgettext(\"domain\", \"msg\")"
+  defp fix_suggestion(:put_flash_without_gettext), do: ~s{Use gettext("msg") or dgettext("domain", "msg")}
 
-  defp fix_suggestion(:native_dialog),
-    do: "Use ConfirmDialog.vue component instead"
+  defp fix_suggestion(:native_dialog), do: "Use ConfirmDialog.vue component instead"
 
-  defp fix_suggestion(:inline_slugify),
-    do: "Use NameNormalizer.slugify/1, variablify/1, or shortcutify/1"
+  defp fix_suggestion(:inline_slugify), do: "Use NameNormalizer.slugify/1, variablify/1, or shortcutify/1"
 end

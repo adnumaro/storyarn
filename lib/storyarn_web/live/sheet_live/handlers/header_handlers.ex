@@ -3,14 +3,14 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
   Handle events for sheet header: name, shortcut, color, banner, avatars.
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [put_flash: 3]
 
-  use Gettext, backend: Storyarn.Gettext
-
-  alias StoryarnWeb.Helpers.Authorize
   alias Storyarn.Assets
   alias Storyarn.Sheets
+  alias StoryarnWeb.Helpers.Authorize
 
   def handle_save_name(%{"name" => name}, socket, helpers) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
@@ -95,8 +95,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
 
       case Sheets.remove_avatar(socket.assigns.sheet.id, id) do
         {:ok, _} ->
-          {:noreply,
-           socket |> helpers.reload_sheet.() |> helpers.broadcast.(:sheet_updated)}
+          {:noreply, socket |> helpers.reload_sheet.() |> helpers.broadcast.(:sheet_updated)}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not remove avatar."))}
@@ -112,8 +111,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
       if avatar && avatar.sheet_id == socket.assigns.sheet.id do
         Sheets.set_avatar_default(avatar)
 
-        {:noreply,
-         socket |> helpers.reload_sheet.() |> helpers.broadcast.(:sheet_updated)}
+        {:noreply, socket |> helpers.reload_sheet.() |> helpers.broadcast.(:sheet_updated)}
       else
         {:noreply, socket}
       end
@@ -193,5 +191,4 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
         {:noreply, socket}
     end
   end
-
 end

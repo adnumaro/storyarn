@@ -6,8 +6,8 @@ defmodule StoryarnWeb.Components.CoreComponentsTest do
 
   use StoryarnWeb.ConnCase, async: true
 
-  import Phoenix.LiveViewTest
   import Phoenix.Component, only: [sigil_H: 2]
+  import Phoenix.LiveViewTest
 
   alias Phoenix.LiveView.JS
   alias StoryarnWeb.Components.CoreComponents
@@ -514,8 +514,7 @@ defmodule StoryarnWeb.Components.CoreComponentsTest do
     test "translates error with interpolation" do
       result =
         CoreComponents.translate_error(
-          {"should be at least %{count} character(s)",
-           [count: 3, validation: :length, kind: :min]}
+          {"should be at least %{count} character(s)", [count: 3, validation: :length, kind: :min]}
         )
 
       assert is_binary(result)

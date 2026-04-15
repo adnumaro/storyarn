@@ -1,12 +1,13 @@
 defmodule Storyarn.Sheets.PropertyInheritanceTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Sheets
-  alias Storyarn.Sheets.{Block, PropertyInheritance}
-
   import Storyarn.AccountsFixtures
-  import Storyarn.SheetsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
+
+  alias Storyarn.Sheets
+  alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.PropertyInheritance
 
   defp setup_hierarchy(_context) do
     user = user_fixture()
@@ -341,6 +342,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
     end
 
     test "cleans up entity references", %{project: project, parent: parent, child: child} do
+      alias Storyarn.Sheets.ReferenceTracker
       # Create an inheritable reference block
       target_sheet = sheet_fixture(project, %{name: "Target"})
 
@@ -363,7 +365,6 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
         })
 
       # update_block_value tracks references for reference blocks automatically
-      alias Storyarn.Sheets.ReferenceTracker
       ReferenceTracker.update_block_references(updated_instance)
 
       backlinks_before = ReferenceTracker.get_backlinks("sheet", target_sheet.id)
@@ -403,11 +404,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       {:ok, _} = Sheets.move_sheet(child, new_parent.id)
 
       # Old inherited blocks should be detached (not deleted)
-      all_blocks =
-        from(b in Block,
-          where: b.sheet_id == ^child.id and b.inherited_from_block_id == ^block.id
-        )
-        |> Repo.all()
+      all_blocks = Repo.all(from(b in Block, where: b.sheet_id == ^child.id and b.inherited_from_block_id == ^block.id))
 
       # Should still exist in DB, not soft-deleted, but marked detached
       assert [_ | _] = all_blocks
@@ -449,7 +446,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
 
       # Detached block should still exist (not soft-deleted)
       detached = Sheets.get_block(instance.id)
-      assert detached != nil
+      assert detached
       assert detached.detached == true
     end
   end

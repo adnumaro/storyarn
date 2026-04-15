@@ -2,7 +2,10 @@ defmodule Storyarn.Workspaces.Invitations do
   @moduledoc false
 
   alias Storyarn.Shared.InvitationOperations
-  alias Storyarn.Workspaces.{Memberships, Workspace, WorkspaceInvitation, WorkspaceMembership}
+  alias Storyarn.Workspaces.Memberships
+  alias Storyarn.Workspaces.Workspace
+  alias Storyarn.Workspaces.WorkspaceInvitation
+  alias Storyarn.Workspaces.WorkspaceMembership
 
   @config %{
     invitation_schema: WorkspaceInvitation,
@@ -16,8 +19,7 @@ defmodule Storyarn.Workspaces.Invitations do
     preload_after_insert: [:workspace, :invited_by]
   }
 
-  def list_pending_invitations(workspace_id),
-    do: InvitationOperations.list_pending_invitations(@config, workspace_id)
+  def list_pending_invitations(workspace_id), do: InvitationOperations.list_pending_invitations(@config, workspace_id)
 
   def create_invitation(%Workspace{} = workspace, invited_by, email, role \\ "member"),
     do: InvitationOperations.create_invitation(@config, workspace, invited_by, email, role)
@@ -25,15 +27,12 @@ defmodule Storyarn.Workspaces.Invitations do
   def create_admin_invitation(%Workspace{} = workspace, email, role, opts \\ []),
     do: InvitationOperations.create_admin_invitation(@config, workspace, email, role, opts)
 
-  def get_invitation_by_token(token),
-    do: InvitationOperations.get_invitation_by_token(@config, token)
+  def get_invitation_by_token(token), do: InvitationOperations.get_invitation_by_token(@config, token)
 
   def accept_invitation(%WorkspaceInvitation{} = invitation, user),
     do: InvitationOperations.accept_invitation(@config, invitation, user)
 
-  def revoke_invitation(%WorkspaceInvitation{} = invitation),
-    do: InvitationOperations.revoke_invitation(invitation)
+  def revoke_invitation(%WorkspaceInvitation{} = invitation), do: InvitationOperations.revoke_invitation(invitation)
 
-  def get_pending_invitation(id),
-    do: InvitationOperations.get_pending_invitation(@config, id)
+  def get_pending_invitation(id), do: InvitationOperations.get_pending_invitation(@config, id)
 end

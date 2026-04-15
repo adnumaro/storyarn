@@ -143,21 +143,22 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
     node = socket.assigns.selected_node
     validated_mode = validate_exit_mode(mode)
 
-    NodeHelpers.persist_node_update(socket, node.id, fn data ->
+    socket
+    |> NodeHelpers.persist_node_update(node.id, fn data ->
       data = Map.put(data, "exit_mode", validated_mode)
 
       # Clear mode-specific fields when switching
       data =
-        if validated_mode != "flow_reference" do
-          Map.put(data, "referenced_flow_id", nil)
-        else
+        if validated_mode == "flow_reference" do
           data
+        else
+          Map.put(data, "referenced_flow_id", nil)
         end
 
-      if validated_mode != "terminal" do
-        data |> Map.put("target_type", nil) |> Map.put("target_id", nil)
-      else
+      if validated_mode == "terminal" do
         data
+      else
+        data |> Map.put("target_type", nil) |> Map.put("target_id", nil)
       end
     end)
     |> then(fn {:noreply, socket} ->
@@ -221,8 +222,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
          )}
 
       is_nil(Flows.get_flow_brief(project_id, flow_id)) ->
-        {:noreply,
-         Phoenix.LiveView.put_flash(socket, :error, dgettext("flows", "Flow not found."))}
+        {:noreply, Phoenix.LiveView.put_flash(socket, :error, dgettext("flows", "Flow not found."))}
 
       true ->
         NodeHelpers.persist_node_update(socket, node.id, fn data ->

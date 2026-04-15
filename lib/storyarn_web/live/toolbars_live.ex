@@ -10,6 +10,7 @@ defmodule StoryarnWeb.ToolbarsLive do
 
   use StoryarnWeb, :live_view
 
+  alias Storyarn.Collaboration.Presence
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
 
   @impl true
@@ -85,26 +86,26 @@ defmodule StoryarnWeb.ToolbarsLive do
   # their state lives in SidebarLive. Forward via PubSub on the shell topic.
   @impl true
   def handle_event("tree_panel_" <> _ = event, params, socket) do
-    if project_id = socket.assigns[:collab_scope] |> scope_id() do
-      Phoenix.PubSub.broadcast(
-        Storyarn.PubSub,
-        StoryarnWeb.SidebarLive.shell_topic(project_id),
-        {:toolbar_event, event, params}
-      )
-    end
-
+    forward_toolbar_event(socket.assigns[:collab_scope], event, params)
     {:noreply, socket}
   end
 
-  defp scope_id({:project, id}), do: id
-  defp scope_id(_), do: nil
+  defp forward_toolbar_event({:project, project_id}, event, params) do
+    Phoenix.PubSub.broadcast(
+      Storyarn.PubSub,
+      StoryarnWeb.SidebarLive.shell_topic(project_id),
+      {:toolbar_event, event, params}
+    )
+  end
+
+  defp forward_toolbar_event(_scope, _event, _params), do: :ok
 
   @impl true
-  def handle_info({Storyarn.Collaboration.Presence, {:join, presence}}, socket) do
+  def handle_info({Presence, {:join, presence}}, socket) do
     Collab.handle_presence_join(socket, presence)
   end
 
-  def handle_info({Storyarn.Collaboration.Presence, {:leave, presence}}, socket) do
+  def handle_info({Presence, {:leave, presence}}, socket) do
     Collab.handle_presence_leave(socket, presence)
   end
 

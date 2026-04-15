@@ -5,8 +5,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures, only: [flow_fixture: 1]
-  import Storyarn.ScenesFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Repo
@@ -78,7 +78,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "mounts the SceneCanvas Vue component", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "World Scene"})
 
       {:ok, view, _html} =
@@ -93,7 +93,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "data-scene contains valid JSON with scene fields", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Test Scene"})
 
       {:ok, view, _html} =
@@ -113,7 +113,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "includes background URL when background_asset_id is set",
          %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       asset = image_asset_fixture(project, user, %{url: "https://example.com/bg.png"})
 
       scene = scene_fixture(project, %{name: "BG Scene"})
@@ -130,7 +130,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "renders without error when no background asset", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "No BG Scene"})
 
       {:ok, view, _html} =
@@ -144,7 +144,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "SceneToolbar shows the scene name", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "My Scene"})
 
       {:ok, view, _html} =
@@ -158,7 +158,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "SceneToolbar exposes the scene shortcut", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Test Scene"})
 
       {:ok, view, _html} =
@@ -176,7 +176,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "updates scene name", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Original"})
 
       {:ok, view, _html} =
@@ -193,7 +193,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project, %{name: "Original"})
 
@@ -215,7 +215,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "redirects for non-member", %{conn: conn} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:error, {:redirect, %{to: path, flash: flash}}} =
@@ -230,7 +230,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "renders for viewer member", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project, %{name: "Viewable Scene"})
 
@@ -251,7 +251,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "renders dock for editor in edit mode", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -267,7 +267,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "does not render dock for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
 
@@ -282,7 +282,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "set_tool updates active tool", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -298,7 +298,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "renders SceneActions toolbar for editor", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -313,7 +313,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "toggle_edit_mode switches to view mode", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -336,7 +336,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "viewer cannot toggle to edit mode", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
 
@@ -355,7 +355,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "creates pin with valid coordinates", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -377,7 +377,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
 
@@ -398,7 +398,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "updates pin coordinates", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin = pin_fixture(scene, %{"position_x" => 10.0, "position_y" => 20.0})
 
@@ -424,7 +424,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "select_element assigns selected pin", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin = pin_fixture(scene)
 
@@ -445,7 +445,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "set_tool accepts zone-drawing tools", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -462,7 +462,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "set_tool freeform activates freeform", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -482,7 +482,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "creates zone with 3+ valid vertices", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -507,7 +507,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "uses default name when empty", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -531,7 +531,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "rejects zone with fewer than 3 vertices", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -554,7 +554,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "accepts zones with out-of-canvas coordinates", %{conn: conn, user: user} do
       # V2 removed the 0-100 clamp: elements may live outside the canvas.
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -579,7 +579,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
 
@@ -602,7 +602,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "creates zone with rectangle preset vertices (4 vertices)", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -633,7 +633,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "creates zone with triangle preset vertices (3 vertices)", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -658,7 +658,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "creates zone with circle preset vertices (16 vertices)", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -696,7 +696,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "includes pins in data-scene JSON", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       _pin =
@@ -718,7 +718,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "includes zones in data-scene JSON", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       _zone = zone_fixture(scene, %{"name" => "Test Zone"})
 
@@ -738,7 +738,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "includes connections in data-scene JSON", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin1 = pin_fixture(scene, %{"label" => "A", "position_x" => 10.0, "position_y" => 10.0})
       pin2 = pin_fixture(scene, %{"label" => "B", "position_x" => 90.0, "position_y" => 90.0})
@@ -759,7 +759,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "includes layers in data-scene JSON", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -786,7 +786,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "selecting a pin exposes pin data via ElementPropertiesPanel", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin = pin_fixture(scene, %{"label" => "Castle"})
 
@@ -807,7 +807,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       zone = zone_fixture(scene, %{"name" => "Dark Forest"})
 
@@ -825,7 +825,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "deselect clears the ElementPropertiesPanel selection", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin = pin_fixture(scene)
 
@@ -848,7 +848,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "updates pin label", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin = pin_fixture(scene, %{"label" => "Old Label"})
 
@@ -869,7 +869,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "updates pin color", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin = pin_fixture(scene)
 
@@ -890,7 +890,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "updates pin type", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin = pin_fixture(scene, %{"pin_type" => "location"})
 
@@ -912,7 +912,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
       pin = pin_fixture(scene, %{"label" => "Original"})
@@ -938,7 +938,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "updates zone name", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       zone = zone_fixture(scene, %{"name" => "Old Name"})
 
@@ -959,7 +959,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "updates zone fill_color", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       zone = zone_fixture(scene)
 
@@ -980,7 +980,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "updates zone opacity", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       zone = zone_fixture(scene)
 
@@ -1002,7 +1002,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
       zone = zone_fixture(scene, %{"name" => "Original"})
@@ -1028,7 +1028,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "delete_pin removes pin and clears selection", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin = pin_fixture(scene, %{"label" => "Doomed Pin"})
 
@@ -1053,7 +1053,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "delete_zone removes zone and clears selection", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       zone = zone_fixture(scene, %{"name" => "Doomed Zone"})
 
@@ -1086,7 +1086,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "set_tool connector is a valid tool", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -1101,7 +1101,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "set_tool connector activates connector", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -1120,7 +1120,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "creates connection between two valid pins", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin1 = pin_fixture(scene, %{"label" => "A", "position_x" => 10.0, "position_y" => 10.0})
       pin2 = pin_fixture(scene, %{"label" => "B", "position_x" => 90.0, "position_y" => 90.0})
@@ -1144,7 +1144,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "rejects connection from pin to itself", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin = pin_fixture(scene, %{"label" => "Self"})
 
@@ -1167,7 +1167,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
       pin1 = pin_fixture(scene, %{"label" => "A"})
@@ -1193,7 +1193,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "updates connection label", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin1 = pin_fixture(scene, %{"label" => "A"})
       pin2 = pin_fixture(scene, %{"label" => "B"})
@@ -1216,7 +1216,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "updates connection line_style", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin1 = pin_fixture(scene, %{"label" => "A"})
       pin2 = pin_fixture(scene, %{"label" => "B"})
@@ -1239,7 +1239,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "updates connection bidirectional flag", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin1 = pin_fixture(scene, %{"label" => "A"})
       pin2 = pin_fixture(scene, %{"label" => "B"})
@@ -1266,7 +1266,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "selecting a connection shows connection properties panel", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin1 = pin_fixture(scene, %{"label" => "A"})
       pin2 = pin_fixture(scene, %{"label" => "B"})
@@ -1289,7 +1289,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "delete_connection removes and clears selection", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin1 = pin_fixture(scene, %{"label" => "A"})
       pin2 = pin_fixture(scene, %{"label" => "B"})
@@ -1318,7 +1318,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "tree panel props expose the scene layers", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -1334,7 +1334,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "renders correct number of layers", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       Scenes.create_layer(scene.id, %{name: "Second Layer"})
 
@@ -1349,7 +1349,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "add layer button creates new layer", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -1371,7 +1371,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "updates active layer", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       {:ok, new_layer} = Scenes.create_layer(scene.id, %{name: "Layer 2"})
 
@@ -1388,7 +1388,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "new pin gets active layer_id", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       {:ok, new_layer} = Scenes.create_layer(scene.id, %{name: "Layer 2"})
 
@@ -1411,7 +1411,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "new zone gets active layer_id", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       {:ok, new_layer} = Scenes.create_layer(scene.id, %{name: "Layer 2"})
 
@@ -1448,7 +1448,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "updates zone vertices with valid data", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       zone = zone_fixture(scene, %{"name" => "Editable Zone"})
 
@@ -1475,7 +1475,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "rejects vertices with fewer than 3 points", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       zone = zone_fixture(scene)
 
@@ -1505,7 +1505,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "accepts vertex updates with out-of-canvas coordinates", %{conn: conn, user: user} do
       # V2 removed the 0-100 clamp: elements may live outside the canvas.
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       zone = zone_fixture(scene)
 
@@ -1535,7 +1535,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
       zone = zone_fixture(scene)
@@ -1563,7 +1563,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "accepts shifted vertices simulating zone drag", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       # Create zone with known vertices
@@ -1617,7 +1617,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "pin tooltip included in data-scene JSON", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       _pin = pin_fixture(scene, %{"label" => "Castle", "tooltip" => "A grand castle"})
 
@@ -1633,7 +1633,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "zone tooltip included in data-scene JSON", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       _zone = zone_fixture(scene, %{"name" => "Forest", "tooltip" => "A dark forest"})
 
@@ -1653,7 +1653,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "toggles layer visibility", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       [layer | _] = Scenes.list_layers(scene.id)
 
@@ -1677,7 +1677,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "hidden layer is reflected in tree panel layers prop", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       [layer | _] = Scenes.list_layers(scene.id)
 
@@ -1703,7 +1703,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "deletes layer when more than one exists", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       {:ok, extra_layer} = Scenes.create_layer(scene.id, %{name: "Extra Layer"})
 
@@ -1721,7 +1721,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "cannot delete the last layer", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       [only_layer | _] = Scenes.list_layers(scene.id)
 
@@ -1740,7 +1740,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
       {:ok, _extra} = Scenes.create_layer(scene.id, %{name: "Extra"})
@@ -1764,7 +1764,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
       pin = pin_fixture(scene, %{"position_x" => 10.0, "position_y" => 20.0})
@@ -1792,7 +1792,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
       pin1 = pin_fixture(scene, %{"label" => "A"})
@@ -1820,7 +1820,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "handles non-existent pin gracefully", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -1836,7 +1836,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "handles non-existent zone gracefully", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -1851,7 +1851,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "handles non-existent connection gracefully", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -1873,7 +1873,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Scene A"})
       other_scene = scene_fixture(project, %{name: "Scene B"})
       other_pin = pin_fixture(other_scene, %{"label" => "Other"})
@@ -1900,7 +1900,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       conn: conn,
       user: user
     } do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Scene A"})
       other_scene = scene_fixture(project, %{name: "Scene B"})
       other_pin = pin_fixture(other_scene, %{"label" => "Other"})
@@ -1921,7 +1921,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "navigates to another scene", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Source Scene"})
       target_scene = scene_fixture(project, %{name: "Target Scene"})
 
@@ -1940,7 +1940,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "ignores unsupported target types", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -1959,7 +1959,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "remove_background clears background_asset_id", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       asset = image_asset_fixture(project, user, %{url: "https://example.com/bg.png"})
       scene = scene_fixture(project)
       {:ok, scene} = Scenes.update_scene(scene, %{background_asset_id: asset.id})
@@ -1978,7 +1978,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "remove_background rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       asset = image_asset_fixture(project, owner, %{url: "https://example.com/bg.png"})
       scene = scene_fixture(project)
@@ -2001,7 +2001,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "creates new zone with shifted vertices and copy suffix", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       zone =
@@ -2042,7 +2042,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "original zone unchanged after duplication", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       zone =
@@ -2072,7 +2072,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
       zone = zone_fixture(scene, %{"name" => "Protected"})
@@ -2094,7 +2094,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "SceneCanvas exposes can-edit true for editor", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -2109,7 +2109,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "SceneCanvas exposes can-edit false for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
 
@@ -2124,7 +2124,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "pin serialization includes flow_id", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       flow = flow_fixture(project)
 
@@ -2144,7 +2144,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "zone serialization includes target_type and target_id", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       target_scene = scene_fixture(project, %{name: "Target"})
 
@@ -2170,7 +2170,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "creates pin linked to sheet", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       sheet = sheet_fixture(project)
 
@@ -2193,7 +2193,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "pin serialization includes avatar_url when sheet has avatar", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       avatar = image_asset_fixture(project, user, %{url: "https://example.com/avatar.png"})
       sheet = sheet_fixture(project)
       {:ok, _} = Storyarn.Sheets.add_avatar(sheet, avatar.id, %{is_default: true})
@@ -2219,7 +2219,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "pin serialization handles sheet without avatar", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       sheet = sheet_fixture(project)
       scene = scene_fixture(project)
 
@@ -2244,7 +2244,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
 
@@ -2265,7 +2265,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "creates annotation with valid coordinates", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -2286,7 +2286,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
 
@@ -2306,7 +2306,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "updates annotation text", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       annotation = annotation_fixture(scene, %{"text" => "Original"})
 
@@ -2331,7 +2331,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "removes annotation", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       annotation = annotation_fixture(scene)
 
@@ -2348,7 +2348,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
       annotation = annotation_fixture(scene)
@@ -2361,7 +2361,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       render_hook(view, "delete_annotation", %{"id" => to_string(annotation.id)})
 
-      assert Scenes.get_annotation(scene.id, annotation.id) != nil
+      assert Scenes.get_annotation(scene.id, annotation.id)
     end
   end
 
@@ -2369,7 +2369,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "annotation serialized in scene_data JSON", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       _annotation =
@@ -2402,7 +2402,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "updates waypoints", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin1 = pin_fixture(scene, %{"label" => "A"})
       pin2 = pin_fixture(scene, %{"label" => "B"})
@@ -2426,7 +2426,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "clear_connection_waypoints resets to empty", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin1 = pin_fixture(scene, %{"label" => "A"})
       pin2 = pin_fixture(scene, %{"label" => "B"})
@@ -2451,7 +2451,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
       pin1 = pin_fixture(scene, %{"label" => "A"})
@@ -2478,7 +2478,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "connection serialization includes waypoints", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin1 = pin_fixture(scene, %{"label" => "A"})
       pin2 = pin_fixture(scene, %{"label" => "B"})
@@ -2502,7 +2502,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "connection serialization defaults to empty waypoints", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin1 = pin_fixture(scene, %{"label" => "A"})
       pin2 = pin_fixture(scene, %{"label" => "B"})
@@ -2528,7 +2528,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "returns matching pins by label", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin1 = pin_fixture(scene, %{"label" => "Castle Gate"})
       pin2 = pin_fixture(scene, %{"label" => "Forest Camp"})
@@ -2549,7 +2549,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "returns matching zones by name", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       zone = zone_fixture(scene, %{"name" => "Dark Forest"})
 
@@ -2565,7 +2565,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "returns matching annotations by text", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       ann = annotation_fixture(scene, %{"text" => "Important meeting point"})
 
@@ -2581,7 +2581,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "returns matching connections by label", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin1 = pin_fixture(scene, %{"label" => "A"})
       pin2 = pin_fixture(scene, %{"label" => "B"})
@@ -2599,7 +2599,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "empty query clears results", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin = pin_fixture(scene, %{"label" => "Castle"})
 
@@ -2619,7 +2619,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "shows no results when nothing matches", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       _pin = pin_fixture(scene, %{"label" => "Castle"})
 
@@ -2641,7 +2641,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "filters results by type", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin = pin_fixture(scene, %{"label" => "Forest Pin"})
       zone = zone_fixture(scene, %{"name" => "Forest Zone"})
@@ -2668,7 +2668,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "resets search state", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin = pin_fixture(scene, %{"label" => "Castle"})
 
@@ -2695,7 +2695,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "selects the element", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin = pin_fixture(scene, %{"label" => "Target Pin"})
 
@@ -2716,7 +2716,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "handles non-existent element gracefully", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -2743,7 +2743,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "renders legend button when scene has elements", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       _pin = pin_fixture(scene, %{"label" => "Castle"})
 
@@ -2758,7 +2758,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "legend data is empty when scene has no elements", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -2775,7 +2775,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "toggle_legend flips the legend-open prop", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       _pin = pin_fixture(scene, %{"label" => "Castle", "pin_type" => "location"})
 
@@ -2800,7 +2800,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "shows pin type groupings", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       _pin1 = pin_fixture(scene, %{"label" => "Castle", "pin_type" => "location"})
       _pin2 = pin_fixture(scene, %{"label" => "Hero", "pin_type" => "character"})
@@ -2823,7 +2823,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "shows zone color groupings", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       _zone1 = zone_fixture(scene, %{"name" => "Forest", "fill_color" => "#00ff00"})
       _zone2 = zone_fixture(scene, %{"name" => "Lake", "fill_color" => "#0000ff"})
@@ -2841,7 +2841,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "shows connection style groupings", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin1 = pin_fixture(scene, %{"label" => "A"})
       pin2 = pin_fixture(scene, %{"label" => "B"})
@@ -2866,7 +2866,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "pin serialization includes icon_asset_url when set", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       asset = asset_fixture(project, user, %{url: "/uploads/castle-icon.png"})
       _pin = pin_fixture(scene, %{"label" => "Castle", "icon_asset_id" => asset.id})
@@ -2881,7 +2881,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "pin serialization handles nil icon_asset_id", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       _pin = pin_fixture(scene, %{"label" => "Plain Pin"})
 
@@ -2898,7 +2898,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "remove_pin_icon clears the icon_asset_id", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       asset = asset_fixture(project, user, %{url: "/uploads/castle-icon.png"})
       pin = pin_fixture(scene, %{"label" => "Castle", "icon_asset_id" => asset.id})
@@ -2921,7 +2921,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "toggle_pin_icon_upload does not crash", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin = pin_fixture(scene, %{"label" => "Castle"})
 
@@ -2948,7 +2948,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "update_layer_fog enables fog on a layer", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       [layer | _] = Scenes.list_layers(scene.id)
 
@@ -2975,7 +2975,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "update_layer_fog updates fog color and opacity", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       [layer | _] = Scenes.list_layers(scene.id)
 
@@ -3004,7 +3004,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "update_layer_fog rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       [layer | _] = Scenes.list_layers(scene.id)
 
@@ -3030,7 +3030,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "layer serialization includes fog fields", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -3051,7 +3051,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "renames layer", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       [layer | _] = Scenes.list_layers(scene.id)
 
@@ -3073,7 +3073,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "ignores empty name", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       [layer | _] = Scenes.list_layers(scene.id)
       original_name = layer.name
@@ -3094,7 +3094,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "ignores same name", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       [layer | _] = Scenes.list_layers(scene.id)
 
@@ -3116,7 +3116,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
       [layer | _] = Scenes.list_layers(scene.id)
@@ -3142,7 +3142,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "deletes layer via confirm flow", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       {:ok, extra_layer} = Scenes.create_layer(scene.id, %{name: "Extra Layer"})
 
@@ -3162,7 +3162,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "does nothing without pending layer", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -3185,7 +3185,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "update_scene_scale persists scale settings", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -3211,7 +3211,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "update_scene_scale rejected for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       membership_fixture(project, user, "viewer")
 
@@ -3231,7 +3231,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "scene data serialization includes scale fields", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{scale_unit: "leagues", scale_value: 100.0})
 
       {:ok, view, _html} =
@@ -3247,7 +3247,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "ruler tool can be activated via set_tool", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -3263,7 +3263,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "set_tool accepts ruler", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -3281,7 +3281,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "export_scene event works for editor", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -3302,7 +3302,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
     test "export_scene event works for viewer", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
 
@@ -3320,7 +3320,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "export_scene event pushes export to client", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} =
@@ -3343,7 +3343,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     setup :register_and_log_in_user
 
     test "move_pin on locked pin is a no-op", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin = pin_fixture(scene, %{"position_x" => 10.0, "position_y" => 20.0})
       {:ok, pin} = Scenes.update_pin(pin, %{"locked" => true})
@@ -3366,7 +3366,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "delete_pin on locked pin returns error flash", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin = pin_fixture(scene)
       {:ok, _pin} = Scenes.update_pin(pin, %{"locked" => true})
@@ -3380,11 +3380,11 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       html = render_hook(view, "delete_pin", %{"id" => to_string(pin.id)})
 
       assert html =~ "Cannot delete a locked element"
-      assert Scenes.get_pin(pin.id) != nil
+      assert Scenes.get_pin(pin.id)
     end
 
     test "update_pin with field locked toggles the lock", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       pin = pin_fixture(scene)
 
@@ -3405,7 +3405,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "delete_zone on locked zone returns error flash", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       zone = zone_fixture(scene)
       {:ok, _zone} = Scenes.update_zone(zone, %{"locked" => true})
@@ -3419,11 +3419,11 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       html = render_hook(view, "delete_zone", %{"id" => to_string(zone.id)})
 
       assert html =~ "Cannot delete a locked element"
-      assert Scenes.get_zone(zone.id) != nil
+      assert Scenes.get_zone(zone.id)
     end
 
     test "update_zone_vertices on locked zone is a no-op", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       zone = zone_fixture(scene)
       original_vertices = zone.vertices
@@ -3449,7 +3449,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "move_annotation on locked annotation is a no-op", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       annotation = annotation_fixture(scene, %{"position_x" => 10.0, "position_y" => 20.0})
       {:ok, _annotation} = Scenes.update_annotation(annotation, %{"locked" => true})
@@ -3472,7 +3472,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     end
 
     test "delete_annotation on locked annotation returns error flash", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       annotation = annotation_fixture(scene)
       {:ok, _annotation} = Scenes.update_annotation(annotation, %{"locked" => true})
@@ -3486,7 +3486,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       html = render_hook(view, "delete_annotation", %{"id" => to_string(annotation.id)})
 
       assert html =~ "Cannot delete a locked element"
-      assert Scenes.get_annotation(scene.id, annotation.id) != nil
+      assert Scenes.get_annotation(scene.id, annotation.id)
     end
   end
 end

@@ -1,12 +1,13 @@
 defmodule Storyarn.Sheets.TableInheritanceTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Sheets
-  alias Storyarn.Sheets.{PropertyInheritance, TableCrud}
-
   import Storyarn.AccountsFixtures
-  import Storyarn.SheetsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
+
+  alias Storyarn.Sheets
+  alias Storyarn.Sheets.PropertyInheritance
+  alias Storyarn.Sheets.TableCrud
 
   defp setup_hierarchy(_context) do
     user = user_fixture()

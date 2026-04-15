@@ -7,7 +7,8 @@ defmodule Storyarn.AccountsFixtures do
   import Ecto.Query
 
   alias Storyarn.Accounts
-  alias Storyarn.Accounts.{Scope, User}
+  alias Storyarn.Accounts.Scope
+  alias Storyarn.Accounts.User
   alias Storyarn.Repo
 
   def unique_user_email, do: "user#{System.unique_integer()}@example.com"
@@ -68,13 +69,13 @@ defmodule Storyarn.AccountsFixtures do
   def set_super_admin(user, value \\ true) do
     user
     |> Ecto.Changeset.change(%{is_super_admin: value})
-    |> Storyarn.Repo.update!()
+    |> Repo.update!()
   end
 
   def offset_user_token(token, amount_to_add, unit) do
     dt = DateTime.add(DateTime.utc_now(:second), amount_to_add, unit)
 
-    Storyarn.Repo.update_all(
+    Repo.update_all(
       from(ut in Accounts.UserToken, where: ut.token == ^token),
       set: [inserted_at: dt, authenticated_at: dt]
     )

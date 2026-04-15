@@ -1,10 +1,10 @@
 defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.NodeTest do
   use Storyarn.DataCase, async: true
 
-  alias StoryarnWeb.FlowLive.Nodes.Dialogue.Node, as: DialogueNode
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias StoryarnWeb.FlowLive.Nodes.Dialogue.Node, as: DialogueNode
 
   # =============================================================================
   # Metadata functions

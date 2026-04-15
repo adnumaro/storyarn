@@ -6,22 +6,22 @@ defmodule StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers do
   All public functions receive `(params, socket)` and return `{:noreply, socket}`.
   """
 
-  import Phoenix.LiveView, only: [put_flash: 3]
-
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Localization
-
+  import Phoenix.LiveView, only: [put_flash: 3]
   import StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers
 
-  @spec handle_add_target_language(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  alias Phoenix.LiveView.Socket
+  alias Storyarn.Localization
+
+  @spec handle_add_target_language(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_add_target_language(%{"locale_code" => code}, socket) do
     do_add_target_language(socket, code)
   end
 
-  @spec handle_change_source_language(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_change_source_language(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_change_source_language(%{"locale_code" => code}, socket) do
     case Localization.change_source_language(socket.assigns.project, code) do
       {:ok, _language} ->
@@ -42,8 +42,8 @@ defmodule StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers do
     end
   end
 
-  @spec handle_remove_language(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_remove_language(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_remove_language(%{"id" => id}, socket) do
     lang = Localization.get_language(socket.assigns.project.id, id)
 
@@ -54,17 +54,15 @@ defmodule StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers do
           {:noreply, put_flash(socket, :info, dgettext("localization", "Language removed."))}
 
         {:error, _} ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("localization", "Could not remove language."))}
+          {:noreply, put_flash(socket, :error, dgettext("localization", "Could not remove language."))}
       end
     else
-      {:noreply,
-       put_flash(socket, :error, dgettext("localization", "Cannot remove the source language."))}
+      {:noreply, put_flash(socket, :error, dgettext("localization", "Cannot remove the source language."))}
     end
   end
 
-  @spec handle_sync_texts(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_sync_texts(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_sync_texts(_params, socket) do
     case Localization.extract_all(socket.assigns.project.id) do
       {:ok, count} ->
@@ -89,8 +87,8 @@ defmodule StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers do
     end
   end
 
-  @spec handle_translate_batch(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_translate_batch(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_translate_batch(_params, socket) do
     locale = socket.assigns.selected_locale
 
@@ -133,8 +131,8 @@ defmodule StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers do
     end
   end
 
-  @spec handle_translate_single(map(), Phoenix.LiveView.Socket.t()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_translate_single(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
   def handle_translate_single(%{"id" => id}, socket) do
     case Integer.parse(id) do
       {text_id, ""} ->

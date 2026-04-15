@@ -48,11 +48,9 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Unity do
     "string.sub(#{ref}, -string.len(#{lit})) == #{lit}"
   end
 
-  defp emit_condition_op(ref, "before", val),
-    do: "#{ref} < #{Helpers.format_literal(val, @literal_opts)}"
+  defp emit_condition_op(ref, "before", val), do: "#{ref} < #{Helpers.format_literal(val, @literal_opts)}"
 
-  defp emit_condition_op(ref, "after", val),
-    do: "#{ref} > #{Helpers.format_literal(val, @literal_opts)}"
+  defp emit_condition_op(ref, "after", val), do: "#{ref} > #{Helpers.format_literal(val, @literal_opts)}"
 
   defp emit_condition_op(ref, op, value) do
     "#{ref} #{condition_op(op)} #{Helpers.format_literal(value, @literal_opts)}"

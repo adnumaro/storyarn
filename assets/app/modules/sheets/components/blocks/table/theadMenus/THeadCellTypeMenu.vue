@@ -10,7 +10,7 @@ import { TableColumn, type THeadMenuType } from "@modules/sheets/types.ts";
 import THeadBaseMenu from "@modules/sheets/components/blocks/table/theadMenus/THeadBaseMenu.vue";
 import THeadMenuItem from "@modules/sheets/components/blocks/table/theadMenus/THeadMenuItem.vue";
 
-defineProps<{
+const { column } = defineProps<{
   column: TableColumn;
 }>();
 

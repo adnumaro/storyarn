@@ -12,6 +12,8 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
   - `NodeEventHandlers` delegates on_select, on_double_click
   """
 
+  alias Phoenix.LiveView.Socket
+
   @node_suffixes %{
     "annotation" => "Annotation",
     "entry" => "Entry",
@@ -25,7 +27,7 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
     "slug_line" => "SlugLine"
   }
 
-  @types Map.keys(@node_suffixes) |> Enum.sort()
+  @types @node_suffixes |> Map.keys() |> Enum.sort()
 
   @doc "All known node types."
   @spec types() :: [String.t()]
@@ -99,7 +101,7 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
   end
 
   @doc "Performs extra work when a node is selected (e.g., hub loads referencing jumps)."
-  @spec on_select(String.t(), map(), Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
+  @spec on_select(String.t(), map(), Socket.t()) :: Socket.t()
   def on_select(type, node, socket) do
     case node_module(type) do
       nil -> socket

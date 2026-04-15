@@ -10,7 +10,7 @@ defmodule Storyarn.Scenes.SceneStatsTest do
 
   setup do
     user = user_fixture()
-    project = project_fixture(user) |> Repo.preload(:workspace)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
     %{project: project}
   end
 
@@ -88,9 +88,9 @@ defmodule Storyarn.Scenes.SceneStatsTest do
     end
 
     test "detects missing shortcuts", %{project: project} do
-      scene = scene_fixture(project, %{name: "No Shortcut"})
-
       import Ecto.Query
+
+      scene = scene_fixture(project, %{name: "No Shortcut"})
 
       Repo.update_all(
         from(s in Storyarn.Scenes.Scene, where: s.id == ^scene.id),

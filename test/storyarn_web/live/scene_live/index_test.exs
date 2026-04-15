@@ -3,8 +3,8 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
-  import Storyarn.ScenesFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
 
   alias Storyarn.Repo
 
@@ -27,7 +27,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     setup :register_and_log_in_user
 
     test "renders page for owner", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene_fixture(project, %{name: "World Map"})
 
       {:ok, view, _html} = live(conn, scenes_path(project))
@@ -43,7 +43,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
 
     test "renders page for editor member", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
       scene_fixture(project, %{name: "Shared Scene"})
 
@@ -59,7 +59,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
 
     test "redirects non-member", %{conn: conn} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
 
       {:error, {:redirect, %{to: path, flash: flash}}} = live(conn, scenes_path(project))
 
@@ -68,7 +68,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     end
 
     test "passes empty table-data when no scenes exist", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, scenes_path(project))
 
@@ -83,7 +83,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     setup :register_and_log_in_user
 
     test "creates a scene and redirects to it", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, scenes_path(project))
 
@@ -99,7 +99,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
 
     test "viewer cannot create a scene", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
 
       {:ok, view, _html} = live(conn, scenes_path(project))
@@ -114,7 +114,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     setup :register_and_log_in_user
 
     test "creates a child scene under a parent and redirects", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent_scene = scene_fixture(project, %{name: "Parent"})
 
       {:ok, view, _html} = live(conn, scenes_path(project))
@@ -135,7 +135,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     setup :register_and_log_in_user
 
     test "set_pending_delete + confirm_delete removes the scene", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Doomed Scene"})
 
       {:ok, view, _html} = live(conn, scenes_path(project))
@@ -151,7 +151,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     end
 
     test "confirm_delete without pending delete does nothing", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene_fixture(project, %{name: "Safe Scene"})
 
       {:ok, view, _html} = live(conn, scenes_path(project))
@@ -170,7 +170,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     setup :register_and_log_in_user
 
     test "directly deletes a scene by ID", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Direct Delete"})
 
       {:ok, view, _html} = live(conn, scenes_path(project))
@@ -182,7 +182,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     end
 
     test "delete with non-existent ID shows error", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, scenes_path(project))
 
@@ -193,7 +193,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
 
     test "viewer cannot delete a scene", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project, %{name: "Protected Scene"})
 
@@ -211,7 +211,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     setup :register_and_log_in_user
 
     test "moves a scene to a new parent", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene_a = scene_fixture(project, %{name: "Scene A"})
       scene_b = scene_fixture(project, %{name: "Scene B"})
 
@@ -229,7 +229,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     end
 
     test "moves a scene to root (nil parent)", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent = scene_fixture(project, %{name: "Parent"})
       child = scene_fixture(project, %{name: "Child", parent_id: parent.id})
 
@@ -246,7 +246,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     end
 
     test "move with non-existent scene shows error", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, scenes_path(project))
 
@@ -265,7 +265,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     setup :register_and_log_in_user
 
     test "passes dashboard stats to Vue when scenes exist", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Dashboard Scene"})
       zone_fixture(scene)
       pin_fixture(scene)
@@ -287,7 +287,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
     end
 
     test "sort_scenes event toggles table order", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene_a = scene_fixture(project, %{name: "Alpha Scene"})
       scene_b = scene_fixture(project, %{name: "Zeta Scene"})
       # Give Zeta more pins to test numeric sort

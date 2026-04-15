@@ -6,6 +6,7 @@ defmodule Storyarn.WorkspacesFixtures do
 
   alias Storyarn.AccountsFixtures
   alias Storyarn.Workspaces
+  alias Storyarn.Workspaces.WorkspaceMembership
 
   def unique_workspace_name, do: "Workspace #{System.unique_integer([:positive])}"
 
@@ -33,7 +34,7 @@ defmodule Storyarn.WorkspacesFixtures do
     if attrs == %{} or attrs == [] do
       workspace
     else
-      update_attrs = Map.drop(attrs, [:workspace_id])
+      update_attrs = Map.delete(attrs, :workspace_id)
 
       # Also update slug if name is provided (update_changeset doesn't cast slug)
       update_attrs =
@@ -55,8 +56,8 @@ defmodule Storyarn.WorkspacesFixtures do
   """
   def workspace_membership_fixture(workspace, user, role \\ "member") do
     {:ok, membership} =
-      %Storyarn.Workspaces.WorkspaceMembership{}
-      |> Storyarn.Workspaces.WorkspaceMembership.changeset(%{
+      %WorkspaceMembership{}
+      |> WorkspaceMembership.changeset(%{
         workspace_id: workspace.id,
         user_id: user.id,
         role: role

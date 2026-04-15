@@ -7,7 +7,8 @@ defmodule Storyarn.Flows.Evaluator.EngineHelpers do
   both Engine and the per-node-type evaluator modules.
   """
 
-  alias Storyarn.Flows.Evaluator.{Helpers, State}
+  alias Storyarn.Flows.Evaluator.Helpers
+  alias Storyarn.Flows.Evaluator.State
 
   @doc """
   Advance execution to the given target node, updating execution path and log.
@@ -102,7 +103,7 @@ defmodule Storyarn.Flows.Evaluator.EngineHelpers do
         }
       end)
 
-    %{state | history: Enum.reverse(entries) ++ state.history}
+    %{state | history: Enum.reverse(entries, state.history)}
   end
 
   @doc """

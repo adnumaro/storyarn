@@ -4,16 +4,15 @@ defmodule StoryarnWeb.ProjectLive.Show do
   """
 
   use StoryarnWeb, :live_view
+  use StoryarnWeb.Live.Shared.DashboardHandlers
 
   import StoryarnWeb.Live.Shared.TreePanelHandlers
-
-  use StoryarnWeb.Live.Shared.DashboardHandlers
-  alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Localization
   alias Storyarn.Projects
+  alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   @impl true
   def render(assigns) do
@@ -52,11 +51,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
   end
 
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
     case Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug) do
       {:ok, project, membership} ->
         can_manage = Projects.can?(membership.role, :manage_project)
@@ -95,32 +90,19 @@ defmodule StoryarnWeb.ProjectLive.Show do
   end
 
   @impl true
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: handle_tree_panel_event(event, params, socket)
+  def handle_event("tree_panel_" <> _ = event, params, socket), do: handle_tree_panel_event(event, params, socket)
 
   @impl true
   def handle_info({:project_restoration_started, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_started, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_started, payload}, socket)
 
   @impl true
   def handle_info({:project_restoration_completed, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_completed, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_completed, payload}, socket)
 
   @impl true
   def handle_info({:project_restoration_failed, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_failed, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_failed, payload}, socket)
 
   def handle_info(:load_dashboard_data, socket) do
     project = socket.assigns.project
@@ -217,8 +199,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
         count: s.line_count,
         href:
           if(s.sheet_id,
-            do: "/workspaces/#{workspace_slug}/projects/#{project_slug}/sheets/#{s.sheet_id}",
-            else: nil
+            do: "/workspaces/#{workspace_slug}/projects/#{project_slug}/sheets/#{s.sheet_id}"
           )
       }
     end)

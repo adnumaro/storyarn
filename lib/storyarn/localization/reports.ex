@@ -3,7 +3,8 @@ defmodule Storyarn.Localization.Reports do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Localization.{LocalizedText, ProjectLanguage}
+  alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Repo
 
   @doc """
@@ -12,11 +13,12 @@ defmodule Storyarn.Localization.Reports do
   """
   def progress_by_language(project_id) do
     languages =
-      from(l in ProjectLanguage,
-        where: l.project_id == ^project_id and l.is_source == false,
-        order_by: [asc: l.position, asc: l.name]
+      Repo.all(
+        from(l in ProjectLanguage,
+          where: l.project_id == ^project_id and l.is_source == false,
+          order_by: [asc: l.position, asc: l.name]
+        )
       )
-      |> Repo.all()
 
     # Single GROUP BY query for all languages at once (instead of 1 query per language)
     counts_by_locale =
@@ -49,20 +51,18 @@ defmodule Storyarn.Localization.Reports do
   Returns a list of `%{speaker_sheet_id: integer() | nil, word_count: integer(), line_count: integer()}`.
   """
   def word_counts_by_speaker(project_id, locale_code) do
-    from(t in LocalizedText,
-      where:
-        t.project_id == ^project_id and
-          t.locale_code == ^locale_code and
-          t.source_type == "flow_node",
-      group_by: t.speaker_sheet_id,
-      select: %{
-        speaker_sheet_id: t.speaker_sheet_id,
-        word_count: coalesce(sum(t.word_count), 0),
-        line_count: count(t.id)
-      },
-      order_by: [desc: sum(t.word_count)]
+    Repo.all(
+      from(t in LocalizedText,
+        where: t.project_id == ^project_id and t.locale_code == ^locale_code and t.source_type == "flow_node",
+        group_by: t.speaker_sheet_id,
+        select: %{
+          speaker_sheet_id: t.speaker_sheet_id,
+          word_count: coalesce(sum(t.word_count), 0),
+          line_count: count(t.id)
+        },
+        order_by: [desc: sum(t.word_count)]
+      )
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -79,7 +79,7 @@ defmodule Storyarn.Localization.Reports do
       select: {t.vo_status, count(t.id)}
     )
     |> Repo.all()
-    |> Enum.into(%{})
+    |> Map.new()
     |> then(fn counts ->
       %{
         none: Map.get(counts, "none", 0),
@@ -101,6 +101,6 @@ defmodule Storyarn.Localization.Reports do
       order_by: [desc: count(t.id)]
     )
     |> Repo.all()
-    |> Enum.into(%{})
+    |> Map.new()
   end
 end

@@ -5,10 +5,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   Also exports canvas push utilities and timer helpers used by DebugSessionHandlers.
   """
 
+  use StoryarnWeb, :verified_routes
+
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3, push_patch: 2]
-
-  use StoryarnWeb, :verified_routes
 
   alias Storyarn.Flows
 
@@ -227,17 +227,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     end
   end
 
-  defp schedule_or_stop_auto_play(socket, _state, true),
-    do: {:noreply, assign(socket, :debug_auto_playing, false)}
+  defp schedule_or_stop_auto_play(socket, _state, true), do: {:noreply, assign(socket, :debug_auto_playing, false)}
 
   defp schedule_or_stop_auto_play(socket, %{status: :finished}, _),
     do: {:noreply, assign(socket, :debug_auto_playing, false)}
 
-  defp schedule_or_stop_auto_play(socket, %{status: :waiting_input}, _),
-    do: {:noreply, socket}
+  defp schedule_or_stop_auto_play(socket, %{status: :waiting_input}, _), do: {:noreply, socket}
 
-  defp schedule_or_stop_auto_play(socket, _state, _),
-    do: {:noreply, schedule_auto_step(socket)}
+  defp schedule_or_stop_auto_play(socket, _state, _), do: {:noreply, schedule_auto_step(socket)}
 
   defp apply_step_result({:flow_jump, state, target_flow_id}, socket) do
     current_node_id = state.current_node_id
@@ -352,13 +349,15 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
 
   @doc "Builds a `%{node_id => node_map}` lookup from all nodes in a flow."
   def build_nodes_map(flow_id) do
-    Flows.list_nodes(flow_id)
+    flow_id
+    |> Flows.list_nodes()
     |> Map.new(fn node -> {node.id, %{id: node.id, type: node.type, data: node.data || %{}}} end)
   end
 
   @doc "Builds a list of connection maps for the debugger engine."
   def build_connections(flow_id) do
-    Flows.list_connections(flow_id)
+    flow_id
+    |> Flows.list_connections()
     |> Enum.map(fn conn ->
       %{
         source_node_id: conn.source_node_id,

@@ -11,8 +11,8 @@ defmodule StoryarnWeb.SidebarLive do
 
   alias Storyarn.Collaboration
   alias Storyarn.Projects
-  alias Storyarn.Sheets
   alias Storyarn.Shared.MapUtils
+  alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Helpers.PropsSerializer
 
   @impl true
@@ -95,6 +95,7 @@ defmodule StoryarnWeb.SidebarLive do
 
   def handle_event("tree_panel_pin", _params, socket) do
     pinned = !socket.assigns.tree_panel_pinned
+
     {:noreply,
      socket
      |> assign(:tree_panel_pinned, pinned)
@@ -264,6 +265,7 @@ defmodule StoryarnWeb.SidebarLive do
   end
 
   defp load_sheets_tree(nil), do: []
+
   defp load_sheets_tree(project_id) do
     project_id
     |> Sheets.list_sheets_tree()

@@ -7,7 +7,9 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
   Also handles response instructions (variable assignments triggered on selection).
   """
 
-  alias Storyarn.Flows.Evaluator.{ConditionEval, EngineHelpers, InstructionExec}
+  alias Storyarn.Flows.Evaluator.ConditionEval
+  alias Storyarn.Flows.Evaluator.EngineHelpers
+  alias Storyarn.Flows.Evaluator.InstructionExec
   alias Storyarn.Shared.FormulaRuntime
 
   @doc """

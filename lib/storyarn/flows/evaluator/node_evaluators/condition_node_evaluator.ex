@@ -7,7 +7,8 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluator do
   - Switch mode: evaluates cases in order and follows the first matching case (or default).
   """
 
-  alias Storyarn.Flows.Evaluator.{ConditionEval, EngineHelpers}
+  alias Storyarn.Flows.Evaluator.ConditionEval
+  alias Storyarn.Flows.Evaluator.EngineHelpers
 
   @doc """
   Evaluate a condition node and advance to the appropriate next node.

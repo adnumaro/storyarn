@@ -53,11 +53,7 @@ function toggleMultiSelectCell(key: string): void {
           class="flex items-center gap-1 w-full h-full px-2 text-sm text-left cursor-pointer bg-card/40 hover:bg-card/50"
         >
           <div v-if="selectedOptions.length" class="flex flex-wrap gap-1">
-            <Badge
-              v-for="opt in selectedOptions"
-              :key="opt.key"
-              variant="secondary"
-            >
+            <Badge v-for="opt in selectedOptions" :key="opt.key" variant="secondary">
               {{ optionLabel(opt) }}
             </Badge>
           </div>
@@ -77,10 +73,7 @@ function toggleMultiSelectCell(key: string): void {
             class="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
             @click="toggleMultiSelectCell(opt.key)"
           >
-            <Checkbox
-              :model-value="selectedKeys.includes(opt.key)"
-              class="pointer-events-none"
-            />
+            <Checkbox :model-value="selectedKeys.includes(opt.key)" class="pointer-events-none" />
             {{ opt.value }}
           </button>
         </div>
@@ -90,12 +83,7 @@ function toggleMultiSelectCell(key: string): void {
 
   <div v-else class="px-2 py-1">
     <div v-if="selectedOptions.length" class="flex flex-wrap gap-1">
-      <Badge
-        v-for="opt in selectedOptions"
-        :key="opt.key"
-        variant="secondary"
-        class="text-[10px]"
-      >
+      <Badge v-for="opt in selectedOptions" :key="opt.key" variant="secondary" class="text-[10px]">
         {{ opt.value }}
       </Badge>
     </div>

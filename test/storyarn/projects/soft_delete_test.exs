@@ -1,11 +1,11 @@
 defmodule Storyarn.Projects.SoftDeleteTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Projects
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
+
+  alias Storyarn.Projects
 
   describe "soft delete" do
     test "delete_project/2 sets deleted_at and deleted_by_id" do
@@ -13,7 +13,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
       project = project_fixture(user)
 
       assert {:ok, deleted} = Projects.delete_project(project, user.id)
-      assert deleted.deleted_at != nil
+      assert deleted.deleted_at
       assert deleted.deleted_by_id == user.id
     end
 
@@ -71,7 +71,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
       deleted = Projects.list_deleted_projects(workspace.id)
       assert length(deleted) == 1
       assert hd(deleted).id == project.id
-      assert hd(deleted).deleted_at != nil
+      assert hd(deleted).deleted_at
     end
 
     test "does not include non-deleted projects" do
@@ -114,7 +114,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
       {:ok, _} = Projects.delete_project(project, user.id)
 
       deleted = Projects.get_deleted_project(workspace.id, project.id)
-      assert deleted != nil
+      assert deleted
       assert deleted.id == project.id
     end
 

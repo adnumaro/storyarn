@@ -44,8 +44,6 @@ defmodule Storyarn.Scenes.ChangesetHelpers do
 
   @doc "Validates that a color field is a valid hex CSS color (#RGB, #RRGGBB, or #RRGGBBAA)."
   def validate_color(changeset, field) do
-    validate_format(changeset, field, @color_regex,
-      message: "must be a valid hex color (#RGB, #RRGGBB, or #RRGGBBAA)"
-    )
+    validate_format(changeset, field, @color_regex, message: "must be a valid hex color (#RGB, #RRGGBB, or #RRGGBBAA)")
   end
 end

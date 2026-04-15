@@ -11,10 +11,10 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     - `:notify_parent`       - fn(socket, status) -> any
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   import Phoenix.LiveView, only: [put_flash: 3]
   import StoryarnWeb.SheetLive.Helpers.FormulaHelpers, only: [parse_binding_value: 1]
-
-  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Shared.FormulaEngine
   alias Storyarn.Shared.MapUtils
@@ -30,7 +30,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     column_id = MapUtils.parse_int(params["column-id"])
 
     with {:ok, block_id} <- find_block_id_for_column(socket, column_id),
-         column <- Sheets.get_table_column!(block_id, column_id),
+         column = Sheets.get_table_column!(block_id, column_id),
          {:ok, width} <- sanitize_width(params["width"]) do
       new_config = Map.put(column.config || %{}, "width", width)
 
@@ -107,9 +107,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
       case Sheets.update_table_cell(row, column_slug, new_value) do
         {:ok, _} ->
-          helpers.push_undo.(
-            {:update_table_cell, row.block_id, row.id, column_slug, current, new_value}
-          )
+          helpers.push_undo.({:update_table_cell, row.block_id, row.id, column_slug, current, new_value})
 
           save_and_reload(socket, helpers)
 
@@ -134,9 +132,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
     case Sheets.create_table_column(block, %{name: default_name}) do
       {:ok, column} ->
-        helpers.push_undo.(
-          {:add_table_column, block_id, UndoRedoHandlers.table_column_to_snapshot(column)}
-        )
+        helpers.push_undo.({:add_table_column, block_id, UndoRedoHandlers.table_column_to_snapshot(column)})
 
         save_and_reload(socket, helpers)
 
@@ -156,9 +152,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
     case Sheets.create_table_row(block, %{name: default_name}) do
       {:ok, row} ->
-        helpers.push_undo.(
-          {:add_table_row, block_id, UndoRedoHandlers.table_row_to_snapshot(row)}
-        )
+        helpers.push_undo.({:add_table_row, block_id, UndoRedoHandlers.table_row_to_snapshot(row)})
 
         save_and_reload(socket, helpers)
 
@@ -218,9 +212,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
         case Sheets.update_table_column(column, %{is_constant: new_val}) do
           {:ok, _} ->
-            helpers.push_undo.(
-              {:toggle_column_flag, column.block_id, column.id, :is_constant, prev, new_val}
-            )
+            helpers.push_undo.({:toggle_column_flag, column.block_id, column.id, :is_constant, prev, new_val})
 
             save_and_reload(socket, helpers)
 
@@ -245,9 +237,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
         case Sheets.update_table_column(column, %{required: new_val}) do
           {:ok, _} ->
-            helpers.push_undo.(
-              {:toggle_column_flag, column.block_id, column.id, :required, prev, new_val}
-            )
+            helpers.push_undo.({:toggle_column_flag, column.block_id, column.id, :required, prev, new_val})
 
             save_and_reload(socket, helpers)
 
@@ -318,7 +308,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     row_ids = Enum.map(params["row_ids"] || [], &MapUtils.parse_int/1)
 
     with :ok <- verify_block_ownership(socket, block_id) do
-      prev_order = Sheets.list_table_rows(block_id) |> Enum.map(& &1.id)
+      prev_order = block_id |> Sheets.list_table_rows() |> Enum.map(& &1.id)
 
       case Sheets.reorder_table_rows(block_id, row_ids) do
         {:ok, _} ->
@@ -368,9 +358,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
       case Sheets.update_table_column(column, %{config: new_config}) do
         {:ok, _} ->
-          helpers.push_undo.(
-            {:update_table_column_config, column.block_id, column.id, prev_config, new_config}
-          )
+          helpers.push_undo.({:update_table_column_config, column.block_id, column.id, prev_config, new_config})
 
           save_and_reload(socket, helpers)
 
@@ -419,9 +407,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
       case Sheets.update_table_cell(row, column_slug, formula_value) do
         {:ok, _} ->
-          helpers.push_undo.(
-            {:update_table_cell, row.block_id, row.id, column_slug, prev_value, formula_value}
-          )
+          helpers.push_undo.({:update_table_cell, row.block_id, row.id, column_slug, prev_value, formula_value})
 
           save_and_reload(socket, helpers)
 
@@ -438,9 +424,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
     case Sheets.update_table_column(column, %{config: new_config}) do
       {:ok, _} ->
-        helpers.push_undo.(
-          {:update_table_column_config, column.block_id, column.id, prev_config, new_config}
-        )
+        helpers.push_undo.({:update_table_column_config, column.block_id, column.id, prev_config, new_config})
 
         if !new_multiple, do: reset_reference_multi_cells(column)
         save_and_reload(socket, helpers)
@@ -561,44 +545,31 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   end
 
   # Error messages — using dgettext macros so strings are extractable
-  defp err(socket, :cell_update),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not update cell."))
+  defp err(socket, :cell_update), do: put_flash(socket, :error, dgettext("sheets", "Could not update cell."))
 
-  defp err(socket, :column_add),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not add column."))
+  defp err(socket, :column_add), do: put_flash(socket, :error, dgettext("sheets", "Could not add column."))
 
-  defp err(socket, :column_update),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not update column."))
+  defp err(socket, :column_update), do: put_flash(socket, :error, dgettext("sheets", "Could not update column."))
 
-  defp err(socket, :column_rename),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not rename column."))
+  defp err(socket, :column_rename), do: put_flash(socket, :error, dgettext("sheets", "Could not rename column."))
 
-  defp err(socket, :column_type),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not change column type."))
+  defp err(socket, :column_type), do: put_flash(socket, :error, dgettext("sheets", "Could not change column type."))
 
-  defp err(socket, :column_delete),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not delete column."))
+  defp err(socket, :column_delete), do: put_flash(socket, :error, dgettext("sheets", "Could not delete column."))
 
-  defp err(socket, :column_last),
-    do: put_flash(socket, :error, dgettext("sheets", "Cannot delete the last column."))
+  defp err(socket, :column_last), do: put_flash(socket, :error, dgettext("sheets", "Cannot delete the last column."))
 
-  defp err(socket, :row_add),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not add row."))
+  defp err(socket, :row_add), do: put_flash(socket, :error, dgettext("sheets", "Could not add row."))
 
-  defp err(socket, :row_rename),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not rename row."))
+  defp err(socket, :row_rename), do: put_flash(socket, :error, dgettext("sheets", "Could not rename row."))
 
-  defp err(socket, :row_delete),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not delete row."))
+  defp err(socket, :row_delete), do: put_flash(socket, :error, dgettext("sheets", "Could not delete row."))
 
-  defp err(socket, :row_last),
-    do: put_flash(socket, :error, dgettext("sheets", "Cannot delete the last row."))
+  defp err(socket, :row_last), do: put_flash(socket, :error, dgettext("sheets", "Cannot delete the last row."))
 
-  defp err(socket, :row_reorder),
-    do: put_flash(socket, :error, dgettext("sheets", "Could not reorder rows."))
+  defp err(socket, :row_reorder), do: put_flash(socket, :error, dgettext("sheets", "Could not reorder rows."))
 
-  defp err(socket, :required_field),
-    do: put_flash(socket, :error, dgettext("sheets", "This field is required."))
+  defp err(socket, :required_field), do: put_flash(socket, :error, dgettext("sheets", "This field is required."))
 
   # Looks up a column from socket.assigns.table_data by block_id + slug
   defp find_column_by_slug(socket, block_id, slug) do
@@ -624,9 +595,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
     case Sheets.update_table_column(column, %{type: new_type}) do
       {:ok, _} ->
-        helpers.push_undo.(
-          {:change_column_type, column.block_id, column.id, prev_type, new_type, prev_cells}
-        )
+        helpers.push_undo.({:change_column_type, column.block_id, column.id, prev_type, new_type, prev_cells})
 
         save_and_reload(socket, helpers)
 
@@ -640,9 +609,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
     case Sheets.update_table_column(column, %{name: new_name}) do
       {:ok, _} ->
-        helpers.push_undo.(
-          {:rename_table_column, column.block_id, column.id, prev_name, new_name}
-        )
+        helpers.push_undo.({:rename_table_column, column.block_id, column.id, prev_name, new_name})
 
         save_and_reload(socket, helpers)
 
@@ -715,9 +682,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
         case Sheets.update_table_cell(row, column_slug, final_value) do
           {:ok, _} ->
-            helpers.push_undo.(
-              {:update_table_cell, row.block_id, row.id, column_slug, prev_value, final_value}
-            )
+            helpers.push_undo.({:update_table_cell, row.block_id, row.id, column_slug, prev_value, final_value})
 
             save_and_reload(socket, helpers)
 
@@ -757,16 +722,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
     end
   end
 
-  defp select_new_option_in_cell(
-         column,
-         row_id,
-         column_slug,
-         key,
-         prev_config,
-         new_config,
-         socket,
-         helpers
-       ) do
+  defp select_new_option_in_cell(column, row_id, column_slug, key, prev_config, new_config, socket, helpers) do
     row = Sheets.get_table_row!(row_id)
     prev_cell = row.cells[column_slug]
 

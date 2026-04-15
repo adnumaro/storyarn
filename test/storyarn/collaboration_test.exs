@@ -1,12 +1,13 @@
 defmodule Storyarn.CollaborationTest do
   use Storyarn.DataCase
 
-  alias Storyarn.Collaboration
-  alias Storyarn.Collaboration.{Colors, Locks}
-
-  # Locks alias used in facade tests below
   import Storyarn.AccountsFixtures
 
+  alias Storyarn.Collaboration
+  alias Storyarn.Collaboration.Colors
+  alias Storyarn.Collaboration.Locks
+
+  # Locks alias used in facade tests below
   describe "Colors" do
     test "for_user/1 returns consistent color for same user ID" do
       color1 = Colors.for_user(1)

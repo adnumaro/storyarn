@@ -1,12 +1,12 @@
 defmodule Storyarn.Versioning.ChangeDetectorTest do
   use Storyarn.DataCase, async: true
 
+  import Storyarn.AccountsFixtures
+  import Storyarn.FlowsFixtures
+  import Storyarn.ProjectsFixtures
+
   alias Storyarn.Versioning.ChangeDetector
   alias Storyarn.Versioning.ProjectSnapshot
-
-  import Storyarn.AccountsFixtures
-  import Storyarn.ProjectsFixtures
-  import Storyarn.FlowsFixtures
 
   describe "project_changed_since_last_snapshot?/1" do
     test "returns true when no snapshots exist" do
@@ -29,7 +29,7 @@ defmodule Storyarn.Versioning.ChangeDetectorTest do
       project = project_fixture()
 
       # Create snapshot with inserted_at in the past
-      past = DateTime.add(DateTime.utc_now(), -60, :second) |> DateTime.truncate(:second)
+      past = DateTime.utc_now() |> DateTime.add(-60, :second) |> DateTime.truncate(:second)
       insert_snapshot(project.id, inserted_at: past)
 
       # Now create an entity (updated_at will be after snapshot)
@@ -37,7 +37,6 @@ defmodule Storyarn.Versioning.ChangeDetectorTest do
 
       assert ChangeDetector.project_changed_since_last_snapshot?(project.id)
     end
-
   end
 
   describe "recent_manual_snapshot?/2" do

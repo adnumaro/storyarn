@@ -50,6 +50,7 @@ defmodule Storyarn.Flows.ConditionTest do
     test "wrong structure returns nil" do
       assert Condition.parse(Jason.encode!(%{"foo" => "bar"})) == nil
     end
+
     test "parses block-format condition from JSON" do
       block = make_block("b1", "all", [make_rule("mc", "hp", "equals", "50")])
       condition = make_block_condition("any", [block])
@@ -111,6 +112,7 @@ defmodule Storyarn.Flows.ConditionTest do
     test "non-map input defaults to empty block condition" do
       assert Condition.sanitize("bad") == %{"logic" => "all", "blocks" => []}
     end
+
     test "sanitizes block-format condition" do
       block =
         Map.put(make_block("b1", "all", [make_rule("mc", "hp", "equals", "50")]), "evil", "bad")
@@ -290,7 +292,6 @@ defmodule Storyarn.Flows.ConditionTest do
   # =============================================================================
 
   describe "edge cases" do
-
     test "malformed block types are rejected" do
       bad = %{"type" => "bad_type", "rules" => []}
       condition = %{"logic" => "all", "blocks" => [bad]}

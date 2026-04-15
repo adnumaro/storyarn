@@ -30,7 +30,7 @@ defmodule Storyarn.Accounts.Profiles do
   def sudo_mode?(user, minutes \\ -20)
 
   def sudo_mode?(%User{authenticated_at: ts}, minutes) when is_struct(ts, DateTime) do
-    DateTime.after?(ts, TimeHelpers.now() |> DateTime.add(minutes, :minute))
+    DateTime.after?(ts, DateTime.add(TimeHelpers.now(), minutes, :minute))
   end
 
   def sudo_mode?(_user, _minutes), do: false

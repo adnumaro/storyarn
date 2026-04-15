@@ -23,9 +23,7 @@ defmodule Storyarn.Flows.NodeDelete do
 
     case result do
       {:ok, _, _} ->
-        project_id =
-          from(f in Storyarn.Flows.Flow, where: f.id == ^node.flow_id, select: f.project_id)
-          |> Repo.one()
+        project_id = Repo.one(from(f in Storyarn.Flows.Flow, where: f.id == ^node.flow_id, select: f.project_id))
 
         if project_id,
           do: Storyarn.Collaboration.broadcast_dashboard_change(project_id, :flows)
@@ -55,14 +53,15 @@ defmodule Storyarn.Flows.NodeDelete do
   end
 
   defp last_exit_node?(node) do
-    from(n in FlowNode,
-      where: n.flow_id == ^node.flow_id and n.type == "exit" and is_nil(n.deleted_at)
-    )
-    |> Repo.aggregate(:count, :id) <= 1
+    Repo.aggregate(
+      from(n in FlowNode, where: n.flow_id == ^node.flow_id and n.type == "exit" and is_nil(n.deleted_at)),
+      :count,
+      :id
+    ) <= 1
   end
 
   defp do_delete_node(node) do
-    Repo.transaction(fn ->
+    fn ->
       orphaned_count = maybe_clear_orphaned_jumps(node)
 
       References.delete_flow_node_entity_references(node.id)
@@ -73,7 +72,8 @@ defmodule Storyarn.Flows.NodeDelete do
         {:ok, deleted_node} -> {deleted_node, %{orphaned_jumps: orphaned_count}}
         {:error, changeset} -> Repo.rollback(changeset)
       end
-    end)
+    end
+    |> Repo.transaction()
     |> unwrap_delete_result()
   end
 

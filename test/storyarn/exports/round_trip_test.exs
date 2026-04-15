@@ -1,8 +1,12 @@
 defmodule Storyarn.Exports.RoundTripTest do
-  use Storyarn.DataCase, async: true
+  @moduledoc """
+  Round-trip test: export → import → re-export → compare.
 
-  alias Storyarn.Exports
-  alias Storyarn.Imports
+  The P0 test for the export system. If data survives a round-trip,
+  the serializer and import parser are correct.
+  """
+
+  use Storyarn.DataCase, async: true
 
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
@@ -13,12 +17,8 @@ defmodule Storyarn.Exports.RoundTripTest do
   import Storyarn.ScreenplaysFixtures
   import Storyarn.SheetsFixtures
 
-  @moduledoc """
-  Round-trip test: export → import → re-export → compare.
-
-  The P0 test for the export system. If data survives a round-trip,
-  the serializer and import parser are correct.
-  """
+  alias Storyarn.Exports
+  alias Storyarn.Imports
 
   # =============================================================================
   # Setup
@@ -315,8 +315,7 @@ defmodule Storyarn.Exports.RoundTripTest do
     end)
 
     # Screenplays: compare by name, check element types and content
-    assert_entities_match(data1["screenplays"], data2["screenplays"], "screenplays", fn sp1,
-                                                                                        sp2 ->
+    assert_entities_match(data1["screenplays"], data2["screenplays"], "screenplays", fn sp1, sp2 ->
       assert sp1["name"] == sp2["name"]
       assert length(sp1["elements"]) == length(sp2["elements"])
 
@@ -343,6 +342,6 @@ defmodule Storyarn.Exports.RoundTripTest do
     sorted1 = Enum.sort_by(list1, & &1["name"])
     sorted2 = Enum.sort_by(list2, & &1["name"])
 
-    Enum.zip(sorted1, sorted2) |> Enum.each(fn {e1, e2} -> compare_fn.(e1, e2) end)
+    sorted1 |> Enum.zip(sorted2) |> Enum.each(fn {e1, e2} -> compare_fn.(e1, e2) end)
   end
 end

@@ -1,12 +1,12 @@
 defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Versioning.Builders.SceneBuilder
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
+
+  alias Storyarn.Versioning.Builders.SceneBuilder
 
   setup do
     user = user_fixture()
@@ -299,7 +299,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
 
       refs = SceneBuilder.scan_references(snapshot)
 
-      types_and_ids = Enum.map(refs, &{&1.type, &1.id}) |> Enum.sort()
+      types_and_ids = refs |> Enum.map(&{&1.type, &1.id}) |> Enum.sort()
 
       assert {:asset, 20} in types_and_ids
       assert {:asset, 100} in types_and_ids
@@ -350,7 +350,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilderTest do
 
       refs = SceneBuilder.scan_references(snapshot)
 
-      types_and_ids = Enum.map(refs, &{&1.type, &1.id}) |> Enum.sort()
+      types_and_ids = refs |> Enum.map(&{&1.type, &1.id}) |> Enum.sort()
 
       assert {:asset, 20} in types_and_ids
       assert {:flow, 30} in types_and_ids

@@ -1,11 +1,11 @@
 defmodule Storyarn.Sheets.TableCrudTest do
   use Storyarn.DataCase, async: true
 
-  alias Storyarn.Sheets
-
   import Storyarn.AccountsFixtures
-  import Storyarn.SheetsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
+
+  alias Storyarn.Sheets
 
   defp setup_table(_context) do
     user = user_fixture()
@@ -42,7 +42,7 @@ defmodule Storyarn.Sheets.TableCrudTest do
     end
 
     test "table block has variable_name generated from label", %{block: block} do
-      assert block.variable_name != nil
+      assert block.variable_name
       assert block.type == "table"
     end
 
@@ -98,7 +98,7 @@ defmodule Storyarn.Sheets.TableCrudTest do
 
     test "rejects invalid column type", %{block: block} do
       {:error, changeset} = Sheets.create_table_column(block, %{name: "Bad", type: "rich_text"})
-      assert errors_on(changeset)[:type] != nil
+      assert errors_on(changeset)[:type]
     end
   end
 

@@ -3,8 +3,8 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
-  import Storyarn.ProjectsFixtures
   import Storyarn.LocalizationFixtures
+  import Storyarn.ProjectsFixtures
 
   alias Storyarn.Repo
 
@@ -20,7 +20,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -98,7 +98,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
       conn = log_in_user(conn, user)
 
       other_user = user_fixture()
-      project = project_fixture(other_user) |> Repo.preload(:workspace)
+      project = other_user |> project_fixture() |> Repo.preload(:workspace)
       text = localized_text_fixture(project.id)
 
       assert {:error, {:redirect, %{to: "/workspaces", flash: %{"error" => error_msg}}}} =
@@ -115,7 +115,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
       conn = log_in_user(conn, viewer)
 
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, viewer, "viewer")
       text = localized_text_fixture(project.id)
 
@@ -135,7 +135,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -223,7 +223,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -243,7 +243,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -278,7 +278,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -318,7 +318,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
       conn = log_in_user(conn, viewer)
 
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, viewer, "viewer")
       text = localized_text_fixture(project.id, %{locale_code: "es"})
 
@@ -340,7 +340,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
       conn = log_in_user(conn, viewer)
 
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, viewer, "viewer")
       text = localized_text_fixture(project.id, %{locale_code: "es"})
 
@@ -356,7 +356,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -400,7 +400,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 

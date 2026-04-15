@@ -11,6 +11,7 @@ defmodule Storyarn.References.VariableReference do
   """
 
   use Ecto.Schema
+
   import Ecto.Changeset
 
   alias Storyarn.Flows.FlowNode

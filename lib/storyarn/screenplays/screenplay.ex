@@ -13,12 +13,15 @@ defmodule Storyarn.Screenplays.Screenplay do
 
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
+  alias Ecto.Association.NotLoaded
   alias Storyarn.Flows.Flow
   alias Storyarn.Projects.Project
   alias Storyarn.Screenplays.ScreenplayElement
-  alias Storyarn.Shared.{HierarchicalSchema, Validations}
+  alias Storyarn.Shared.HierarchicalSchema
+  alias Storyarn.Shared.Validations
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -28,13 +31,13 @@ defmodule Storyarn.Screenplays.Screenplay do
           position: integer() | nil,
           deleted_at: DateTime.t() | nil,
           project_id: integer() | nil,
-          project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
+          project: Project.t() | NotLoaded.t() | nil,
           parent_id: integer() | nil,
-          parent: t() | Ecto.Association.NotLoaded.t() | nil,
-          children: [t()] | Ecto.Association.NotLoaded.t(),
+          parent: t() | NotLoaded.t() | nil,
+          children: [t()] | NotLoaded.t(),
           linked_flow_id: integer() | nil,
-          linked_flow: Flow.t() | Ecto.Association.NotLoaded.t() | nil,
-          elements: [ScreenplayElement.t()] | Ecto.Association.NotLoaded.t(),
+          linked_flow: Flow.t() | NotLoaded.t() | nil,
+          elements: [ScreenplayElement.t()] | NotLoaded.t(),
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -115,9 +118,7 @@ defmodule Storyarn.Screenplays.Screenplay do
 
   defp validate_shortcut(changeset) do
     changeset
-    |> Validations.validate_shortcut(
-      message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., chapter-1)"
-    )
+    |> Validations.validate_shortcut(message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., chapter-1)")
     |> unique_constraint(:shortcut,
       name: :screenplays_project_shortcut_unique,
       message: "is already taken in this project"

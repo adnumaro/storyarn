@@ -1,10 +1,10 @@
 defmodule StoryarnWeb.FlowLive.Nodes.SlugLine.NodeTest do
   use Storyarn.DataCase, async: true
 
-  alias StoryarnWeb.FlowLive.Nodes.SlugLine.Node, as: SlugLineNode
-
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+
+  alias StoryarnWeb.FlowLive.Nodes.SlugLine.Node, as: SlugLineNode
 
   # =============================================================================
   # Metadata functions

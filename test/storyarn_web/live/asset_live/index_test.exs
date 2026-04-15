@@ -20,7 +20,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
     setup :register_and_log_in_user
 
     test "renders Assets Vue component for project owner", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, assets_path(project))
 
@@ -30,7 +30,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
     end
 
     test "passes empty assets list when no assets exist", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, assets_path(project))
 
@@ -40,7 +40,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
 
     test "redirects unauthorized user", %{conn: conn} do
       other_user = user_fixture()
-      project = project_fixture(other_user) |> Repo.preload(:workspace)
+      project = other_user |> project_fixture() |> Repo.preload(:workspace)
 
       assert {:error, {:redirect, %{to: "/workspaces", flash: %{"error" => error_msg}}}} =
                live(conn, assets_path(project))
@@ -53,7 +53,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -141,7 +141,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -213,7 +213,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -329,7 +329,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -374,7 +374,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       %{project: project}
     end
 
@@ -424,6 +424,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
 
       vue = get_assets_vue(view)
       usages = vue.props["asset-usages"]
+
       total_usages =
         length(usages["flowNodes"] || []) +
           length(usages["sheetAvatars"] || []) +

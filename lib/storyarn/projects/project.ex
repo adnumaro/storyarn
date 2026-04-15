@@ -6,10 +6,13 @@ defmodule Storyarn.Projects.Project do
   Projects belong to a workspace.
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
+  alias Ecto.Association.NotLoaded
   alias Storyarn.Accounts.User
-  alias Storyarn.Projects.{ProjectInvitation, ProjectMembership}
+  alias Storyarn.Projects.ProjectInvitation
+  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Workspaces.Workspace
 
   @type t :: %__MODULE__{
@@ -19,12 +22,12 @@ defmodule Storyarn.Projects.Project do
           description: String.t() | nil,
           settings: map() | nil,
           owner_id: integer() | nil,
-          owner: User.t() | Ecto.Association.NotLoaded.t() | nil,
+          owner: User.t() | NotLoaded.t() | nil,
           workspace_id: integer() | nil,
-          workspace: Workspace.t() | Ecto.Association.NotLoaded.t() | nil,
-          memberships: [ProjectMembership.t()] | Ecto.Association.NotLoaded.t(),
-          members: [User.t()] | Ecto.Association.NotLoaded.t(),
-          invitations: [ProjectInvitation.t()] | Ecto.Association.NotLoaded.t(),
+          workspace: Workspace.t() | NotLoaded.t() | nil,
+          memberships: [ProjectMembership.t()] | NotLoaded.t(),
+          members: [User.t()] | NotLoaded.t(),
+          invitations: [ProjectInvitation.t()] | NotLoaded.t(),
           auto_snapshots_enabled: boolean(),
           auto_version_flows: boolean(),
           auto_version_scenes: boolean(),
@@ -114,8 +117,7 @@ defmodule Storyarn.Projects.Project do
   Changeset for restoring a soft-deleted project.
   """
   def restore_changeset(project) do
-    project
-    |> change(%{deleted_at: nil, deleted_by_id: nil})
+    change(project, %{deleted_at: nil, deleted_by_id: nil})
   end
 
   @doc """
@@ -123,8 +125,7 @@ defmodule Storyarn.Projects.Project do
   Returns `%{primary: "#hex", accent: "#hex"}` or `nil` if not set.
   """
   def theme_colors(%__MODULE__{settings: %{"theme" => %{"primary" => p, "accent" => a}}})
-      when is_binary(p) and is_binary(a),
-      do: %{primary: p, accent: a}
+      when is_binary(p) and is_binary(a), do: %{primary: p, accent: a}
 
   def theme_colors(_), do: nil
 end

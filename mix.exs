@@ -115,6 +115,7 @@ defmodule Storyarn.MixProject do
       {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:mix_unused, "~> 0.4", only: :dev, runtime: false},
+      {:styler, "~> 1.0", only: [:dev, :test], runtime: false},
 
       # Testing utilities
       {:ex_machina, "~> 2.8", only: :test},

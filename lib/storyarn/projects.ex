@@ -11,17 +11,15 @@ defmodule Storyarn.Projects do
   - `Invitations` - Invitation management
   """
 
-  alias Storyarn.Accounts.{Scope, User}
-
-  alias Storyarn.Projects.{
-    Dashboard,
-    Invitations,
-    Memberships,
-    Project,
-    ProjectCrud,
-    ProjectInvitation,
-    ProjectMembership
-  }
+  alias Storyarn.Accounts.Scope
+  alias Storyarn.Accounts.User
+  alias Storyarn.Projects.Dashboard
+  alias Storyarn.Projects.Invitations
+  alias Storyarn.Projects.Memberships
+  alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectCrud
+  alias Storyarn.Projects.ProjectInvitation
+  alias Storyarn.Projects.ProjectMembership
 
   # =============================================================================
   # Type Definitions
@@ -282,8 +280,7 @@ defmodule Storyarn.Projects do
   """
   @spec accept_invitation(invitation(), user()) ::
           {:ok, membership()}
-          | {:error,
-             :email_mismatch | :already_member | :already_accepted | :expired | changeset()}
+          | {:error, :email_mismatch | :already_member | :already_accepted | :expired | changeset()}
   defdelegate accept_invitation(invitation, user), to: Invitations
 
   @doc """

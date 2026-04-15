@@ -7,11 +7,13 @@ defmodule Storyarn.Scenes.SceneZone do
   of `%{"x" => float, "y" => float}` percentage pairs (0-100).
   """
   use Ecto.Schema
-  import Ecto.Changeset
 
+  import Ecto.Changeset
   import Storyarn.Scenes.ChangesetHelpers
 
-  alias Storyarn.Scenes.{Scene, SceneLayer}
+  alias Ecto.Association.NotLoaded
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.SceneLayer
   alias Storyarn.Shared.Validations
 
   @valid_border_styles ~w(solid dashed dotted)
@@ -42,9 +44,9 @@ defmodule Storyarn.Scenes.SceneZone do
           condition_effect: String.t(),
           is_walkable: boolean(),
           scene_id: integer() | nil,
-          scene: Scene.t() | Ecto.Association.NotLoaded.t() | nil,
+          scene: Scene.t() | NotLoaded.t() | nil,
           layer_id: integer() | nil,
-          layer: SceneLayer.t() | Ecto.Association.NotLoaded.t() | nil,
+          layer: SceneLayer.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -170,23 +172,17 @@ defmodule Storyarn.Scenes.SceneZone do
     do_validate_action_data(changeset, action_type, action_data)
   end
 
-  defp do_validate_action_data(changeset, "instruction", %{"assignments" => list})
-       when is_list(list),
-       do: changeset
+  defp do_validate_action_data(changeset, "instruction", %{"assignments" => list}) when is_list(list), do: changeset
 
   defp do_validate_action_data(changeset, "instruction", _),
     do: add_error(changeset, :action_data, "must include \"assignments\" as a list")
 
-  defp do_validate_action_data(changeset, "display", %{"variable_ref" => ref})
-       when is_binary(ref),
-       do: changeset
+  defp do_validate_action_data(changeset, "display", %{"variable_ref" => ref}) when is_binary(ref), do: changeset
 
   defp do_validate_action_data(changeset, "display", _),
     do: add_error(changeset, :action_data, "must include \"variable_ref\"")
 
-  defp do_validate_action_data(changeset, "collection", %{"items" => list})
-       when is_list(list),
-       do: changeset
+  defp do_validate_action_data(changeset, "collection", %{"items" => list}) when is_list(list), do: changeset
 
   defp do_validate_action_data(changeset, "collection", _),
     do: add_error(changeset, :action_data, "must include \"items\" as a list")

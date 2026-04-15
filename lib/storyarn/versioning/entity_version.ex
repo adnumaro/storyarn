@@ -6,8 +6,10 @@ defmodule Storyarn.Versioning.EntityVersion do
   supporting sheets, flows, and scenes.
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
+  alias Ecto.Association.NotLoaded
   alias Storyarn.Accounts.User
   alias Storyarn.Projects.Project
 
@@ -25,8 +27,8 @@ defmodule Storyarn.Versioning.EntityVersion do
           snapshot_size_bytes: integer(),
           is_auto: boolean(),
           created_by_id: integer() | nil,
-          created_by: User.t() | Ecto.Association.NotLoaded.t() | nil,
-          project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
+          created_by: User.t() | NotLoaded.t() | nil,
+          project: Project.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil
         }
 

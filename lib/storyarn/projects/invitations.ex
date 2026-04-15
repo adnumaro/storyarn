@@ -1,7 +1,10 @@
 defmodule Storyarn.Projects.Invitations do
   @moduledoc false
 
-  alias Storyarn.Projects.{Memberships, Project, ProjectInvitation, ProjectMembership}
+  alias Storyarn.Projects.Memberships
+  alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectInvitation
+  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Shared.InvitationOperations
 
   @config %{
@@ -16,8 +19,7 @@ defmodule Storyarn.Projects.Invitations do
     preload_after_insert: [:project, :invited_by]
   }
 
-  def list_pending_invitations(project_id),
-    do: InvitationOperations.list_pending_invitations(@config, project_id)
+  def list_pending_invitations(project_id), do: InvitationOperations.list_pending_invitations(@config, project_id)
 
   def create_invitation(%Project{} = project, invited_by, email, role \\ "editor"),
     do: InvitationOperations.create_invitation(@config, project, invited_by, email, role)
@@ -25,12 +27,10 @@ defmodule Storyarn.Projects.Invitations do
   def create_admin_invitation(%Project{} = project, email, role, opts \\ []),
     do: InvitationOperations.create_admin_invitation(@config, project, email, role, opts)
 
-  def get_invitation_by_token(token),
-    do: InvitationOperations.get_invitation_by_token(@config, token)
+  def get_invitation_by_token(token), do: InvitationOperations.get_invitation_by_token(@config, token)
 
   def accept_invitation(%ProjectInvitation{} = invitation, user),
     do: InvitationOperations.accept_invitation(@config, invitation, user)
 
-  def revoke_invitation(%ProjectInvitation{} = invitation),
-    do: InvitationOperations.revoke_invitation(invitation)
+  def revoke_invitation(%ProjectInvitation{} = invitation), do: InvitationOperations.revoke_invitation(invitation)
 end

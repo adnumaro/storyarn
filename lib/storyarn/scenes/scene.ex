@@ -15,21 +15,20 @@ defmodule Storyarn.Scenes.Scene do
   the map contains (e.g., world → region → city → building).
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
+  alias Ecto.Association.NotLoaded
   alias Storyarn.Assets.Asset
   alias Storyarn.Projects.Project
-
-  alias Storyarn.Scenes.{
-    SceneAmbientFlow,
-    SceneAnnotation,
-    SceneConnection,
-    SceneLayer,
-    ScenePin,
-    SceneZone
-  }
-
-  alias Storyarn.Shared.{HierarchicalSchema, Validations}
+  alias Storyarn.Scenes.SceneAmbientFlow
+  alias Storyarn.Scenes.SceneAnnotation
+  alias Storyarn.Scenes.SceneConnection
+  alias Storyarn.Scenes.SceneLayer
+  alias Storyarn.Scenes.ScenePin
+  alias Storyarn.Scenes.SceneZone
+  alias Storyarn.Shared.HierarchicalSchema
+  alias Storyarn.Shared.Validations
   alias Storyarn.Versioning.EntityVersion
 
   @type t :: %__MODULE__{
@@ -46,19 +45,19 @@ defmodule Storyarn.Scenes.Scene do
           scale_value: float() | nil,
           position: integer() | nil,
           project_id: integer() | nil,
-          project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
+          project: Project.t() | NotLoaded.t() | nil,
           parent_id: integer() | nil,
-          parent: t() | Ecto.Association.NotLoaded.t() | nil,
-          children: [t()] | Ecto.Association.NotLoaded.t(),
+          parent: t() | NotLoaded.t() | nil,
+          children: [t()] | NotLoaded.t(),
           background_asset_id: integer() | nil,
-          background_asset: Asset.t() | Ecto.Association.NotLoaded.t() | nil,
-          layers: [SceneLayer.t()] | Ecto.Association.NotLoaded.t(),
-          zones: [SceneZone.t()] | Ecto.Association.NotLoaded.t(),
-          pins: [ScenePin.t()] | Ecto.Association.NotLoaded.t(),
-          connections: [SceneConnection.t()] | Ecto.Association.NotLoaded.t(),
-          annotations: [SceneAnnotation.t()] | Ecto.Association.NotLoaded.t(),
+          background_asset: Asset.t() | NotLoaded.t() | nil,
+          layers: [SceneLayer.t()] | NotLoaded.t(),
+          zones: [SceneZone.t()] | NotLoaded.t(),
+          pins: [ScenePin.t()] | NotLoaded.t(),
+          connections: [SceneConnection.t()] | NotLoaded.t(),
+          annotations: [SceneAnnotation.t()] | NotLoaded.t(),
           current_version_id: integer() | nil,
-          current_version: EntityVersion.t() | Ecto.Association.NotLoaded.t() | nil,
+          current_version: EntityVersion.t() | NotLoaded.t() | nil,
           exploration_display_mode: String.t(),
           deleted_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
@@ -171,9 +170,7 @@ defmodule Storyarn.Scenes.Scene do
 
   defp validate_shortcut(changeset) do
     changeset
-    |> Validations.validate_shortcut(
-      message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., world-map)"
-    )
+    |> Validations.validate_shortcut(message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., world-map)")
     |> unique_constraint(:shortcut,
       name: :scenes_project_shortcut_unique,
       message: "is already taken in this project"

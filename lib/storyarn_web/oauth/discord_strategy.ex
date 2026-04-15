@@ -19,7 +19,10 @@ defmodule StoryarnWeb.OAuth.DiscordStrategy do
 
   use Ueberauth.Strategy, uid_field: :id, default_scope: "identify"
 
-  alias Ueberauth.Auth.{Credentials, Extra, Info}
+  alias StoryarnWeb.OAuth.DiscordOAuth
+  alias Ueberauth.Auth.Credentials
+  alias Ueberauth.Auth.Extra
+  alias Ueberauth.Auth.Info
 
   def handle_request!(conn) do
     scopes = conn.params["scope"] || option(conn, :default_scope)
@@ -33,12 +36,12 @@ defmodule StoryarnWeb.OAuth.DiscordStrategy do
       |> with_state_param(conn)
       |> Keyword.put(:redirect_uri, callback_url(conn))
 
-    redirect!(conn, StoryarnWeb.OAuth.DiscordOAuth.authorize_url!(opts))
+    redirect!(conn, DiscordOAuth.authorize_url!(opts))
   end
 
   def handle_callback!(%Plug.Conn{params: %{"code" => code}} = conn) do
     opts = [redirect_uri: callback_url(conn)]
-    token = StoryarnWeb.OAuth.DiscordOAuth.get_token!([code: code], opts)
+    token = DiscordOAuth.get_token!([code: code], opts)
 
     if is_nil(token.access_token) do
       err = token.other_params["error"]
@@ -88,8 +91,7 @@ defmodule StoryarnWeb.OAuth.DiscordStrategy do
     raw =
       %{discord_token: :token, discord_user: :user}
       |> Enum.filter(fn {key, _} -> Map.has_key?(conn.private, key) end)
-      |> Enum.map(fn {key, mapped} -> {mapped, Map.fetch!(conn.private, key)} end)
-      |> Map.new()
+      |> Map.new(fn {key, mapped} -> {mapped, Map.fetch!(conn.private, key)} end)
 
     %Extra{raw_info: raw}
   end
@@ -108,7 +110,7 @@ defmodule StoryarnWeb.OAuth.DiscordStrategy do
   defp fetch_user(conn, token) do
     path = "https://discord.com/api/users/@me"
 
-    case StoryarnWeb.OAuth.DiscordOAuth.get(token, path) do
+    case DiscordOAuth.get(token, path) do
       {:ok, %OAuth2.Response{status_code: 401}} ->
         set_errors!(conn, [error("token", "unauthorized")])
 
@@ -132,8 +134,7 @@ defmodule StoryarnWeb.OAuth.DiscordStrategy do
   end
 
   defp split_scopes(token) do
-    (token.other_params["scope"] || "")
-    |> String.split(" ")
+    String.split(token.other_params["scope"] || "", " ")
   end
 
   defp option(conn, key) do

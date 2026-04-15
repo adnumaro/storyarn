@@ -14,7 +14,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Screenplays
-
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
 
   @required_top_keys ~w(storyarn_version export_version project)
@@ -70,8 +70,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
   defp validate_types(data) do
     bad =
-      @array_keys
-      |> Enum.filter(fn k -> (v = data[k]) != nil and not is_list(v) end)
+      Enum.filter(@array_keys, fn k -> (v = data[k]) != nil and not is_list(v) end)
 
     loc = data["localization"]
 
@@ -221,7 +220,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
             localization: loc_results
           }
         end,
-        timeout: :timer.minutes(5)
+        timeout: to_timeout(minute: 5)
       )
     end
   end
@@ -584,7 +583,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   defp clean_responses(data), do: data
 
   defp import_flow_connections(flow_id, connections, id_map) do
-    now = Storyarn.Shared.TimeHelpers.now()
+    now = TimeHelpers.now()
 
     # Build valid connection attrs, filtering out those with missing node references
     {valid_attrs, _} =
@@ -778,7 +777,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   end
 
   defp import_scene_connections(scene_id, connections, id_map) do
-    now = Storyarn.Shared.TimeHelpers.now()
+    now = TimeHelpers.now()
 
     # Build valid connection attrs, filtering out those with missing pin references
     valid_attrs =
@@ -814,7 +813,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   end
 
   defp import_annotations(scene_id, annotations, id_map) do
-    now = Storyarn.Shared.TimeHelpers.now()
+    now = TimeHelpers.now()
 
     # Build annotation attrs with remapped layer_id references
     valid_attrs =
@@ -886,9 +885,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
       "position" => sp_data["position"] || 0
     }
 
-    extra_changes =
-      %{}
-      |> maybe_put_extra(:linked_flow_id, remap_id(map, :flow, sp_data["linked_flow_id"]))
+    extra_changes = maybe_put_extra(%{}, :linked_flow_id, remap_id(map, :flow, sp_data["linked_flow_id"]))
 
     sp =
       facade_insert_or_rollback!(
@@ -904,9 +901,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
   defp link_screenplay_refs(sp_records, id_map) do
     for {sp, sp_data} <- sp_records do
-      changes =
-        %{}
-        |> maybe_remap_ref(:parent_id, id_map, :screenplay, sp_data["parent_id"])
+      changes = maybe_remap_ref(%{}, :parent_id, id_map, :screenplay, sp_data["parent_id"])
 
       if changes != %{} do
         Screenplays.link_screenplay_import_refs(sp, changes)
@@ -980,7 +975,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   end
 
   defp import_localized_texts(project_id, strings, id_map) do
-    now = Storyarn.Shared.TimeHelpers.now()
+    now = TimeHelpers.now()
 
     # Build all text attrs from the nested strings/translations structure
     valid_attrs =
@@ -1032,7 +1027,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
   end
 
   defp import_glossary(project_id, glossary_entries) do
-    now = Storyarn.Shared.TimeHelpers.now()
+    now = TimeHelpers.now()
 
     # Build all glossary attrs from the nested entries/translations structure
     valid_attrs =
@@ -1105,7 +1100,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         _ -> nil
       end
 
-    if type, do: Map.get(map, {type, target_id}), else: nil
+    if type, do: Map.get(map, {type, target_id})
   end
 
   defp resolve_shortcut(nil, _strategy, _project_id, _entity_type, _existing_shortcuts), do: nil
@@ -1125,7 +1120,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
         overwrite_existing(shortcut, project_id, entity_type)
 
       strategy == :rename ->
-        suffix = :crypto.strong_rand_bytes(4) |> Base.encode16(case: :lower)
+        suffix = 4 |> :crypto.strong_rand_bytes() |> Base.encode16(case: :lower)
         "#{shortcut}-#{suffix}"
 
       true ->
@@ -1158,8 +1153,7 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
   defp facade_insert_or_rollback!({:ok, record}, _context), do: record
 
-  defp facade_insert_or_rollback!({:error, changeset}, context),
-    do: Repo.rollback({:import_failed, context, changeset})
+  defp facade_insert_or_rollback!({:error, changeset}, context), do: Repo.rollback({:import_failed, context, changeset})
 
   defp regenerate_asset_key(filename) do
     uuid = Ecto.UUID.generate()
@@ -1201,14 +1195,11 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
     end
   end
 
-  defp link_import_parent(:sheet, entity, parent_id),
-    do: Sheets.link_sheet_import_parent(entity, parent_id)
+  defp link_import_parent(:sheet, entity, parent_id), do: Sheets.link_sheet_import_parent(entity, parent_id)
 
-  defp link_import_parent(:flow, entity, parent_id),
-    do: Flows.link_flow_import_parent(entity, parent_id)
+  defp link_import_parent(:flow, entity, parent_id), do: Flows.link_flow_import_parent(entity, parent_id)
 
-  defp link_import_parent(:scene, entity, parent_id),
-    do: Scenes.link_scene_import_parent(entity, parent_id)
+  defp link_import_parent(:scene, entity, parent_id), do: Scenes.link_scene_import_parent(entity, parent_id)
 
   # Scenes are imported before flows, so flow references in pins and zones
   # are nil at creation time. This pass links them after flows exist in the id_map.
@@ -1263,8 +1254,12 @@ defmodule Storyarn.Imports.Parsers.StoryarnJSON do
 
     result =
       case data["referenced_flow_id"] do
-        nil -> result
-        "" -> result
+        nil ->
+          result
+
+        "" ->
+          result
+
         old_id ->
           case remap_id(id_map, :flow, old_id) do
             nil -> result

@@ -16,7 +16,7 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
     setup :register_and_log_in_user
 
     test "renders page for owner", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow_fixture(project, %{name: "Chapter One"})
 
       {:ok, view, _html} =
@@ -35,7 +35,7 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
 
     test "renders page for editor member", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "editor")
       flow_fixture(project, %{name: "Shared Flow"})
 
@@ -54,7 +54,7 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
 
     test "redirects non-member", %{conn: conn} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
 
       {:error, {:redirect, %{to: path, flash: flash}}} =
         live(
@@ -67,7 +67,7 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
     end
 
     test "renders empty table when no flows exist", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} =
         live(
@@ -82,7 +82,7 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
     end
 
     test "passes stats to Vue when flows exist", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Main Story"})
 
       # Add a dialogue node to get word counts
@@ -104,7 +104,7 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
     end
 
     test "sort_flows event toggles table order", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow_fixture(project, %{name: "Alpha Flow"})
       flow_fixture(project, %{name: "Zeta Flow"})
 

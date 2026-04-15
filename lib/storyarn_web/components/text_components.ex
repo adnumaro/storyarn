@@ -3,9 +3,9 @@ defmodule StoryarnWeb.Components.TextComponents do
   Typography helpers for rendered text.
   """
 
-  alias Storyarn.Shared.HtmlSanitizer
-
   import Phoenix.HTML, only: [html_escape: 1, raw: 1, safe_to_string: 1]
+
+  alias Storyarn.Shared.HtmlSanitizer
 
   @doc """
   Prevents widow words by joining the final two words with a non-breaking space.
@@ -24,9 +24,7 @@ defmodule StoryarnWeb.Components.TextComponents do
       words ->
         {leading, [penultimate, last]} = Enum.split(words, length(words) - 2)
 
-        leading_html =
-          leading
-          |> Enum.map_join(" ", &escape_segment/1)
+        leading_html = Enum.map_join(leading, " ", &escape_segment/1)
 
         trailing_html = escape_segment(penultimate) <> "&nbsp;" <> escape_segment(last)
 

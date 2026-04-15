@@ -12,18 +12,16 @@ defmodule Storyarn.Workers.DailySnapshotWorker do
   use Oban.Worker, queue: :snapshots, max_attempts: 3
   use Gettext, backend: Storyarn.Gettext
 
-  require Logger
-
   alias Storyarn.Billing
   alias Storyarn.Projects
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ChangeDetector
 
+  require Logger
+
   @impl Oban.Worker
   def perform(%Oban.Job{}) do
-    Projects.list_projects_with_auto_snapshots()
-    |> Enum.each(&process_project/1)
-
+    Enum.each(Projects.list_projects_with_auto_snapshots(), &process_project/1)
     :ok
   end
 
@@ -44,7 +42,7 @@ defmodule Storyarn.Workers.DailySnapshotWorker do
   end
 
   defp create_daily_snapshot(project) do
-    today = Date.utc_today() |> Calendar.strftime("%Y-%m-%d")
+    today = Calendar.strftime(Date.utc_today(), "%Y-%m-%d")
 
     case Versioning.create_project_snapshot(project.id, nil,
            title: dgettext("projects", "Daily backup — %{date}", date: today),

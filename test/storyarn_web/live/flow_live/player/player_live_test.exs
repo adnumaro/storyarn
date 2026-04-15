@@ -12,7 +12,8 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.{Flows, Repo}
+  alias Storyarn.Flows
+  alias Storyarn.Repo
 
   # ===========================================================================
   # Helpers
@@ -125,7 +126,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
   setup :register_and_log_in_user
 
   setup %{user: user} do
-    project = project_fixture(user) |> Repo.preload(:workspace)
+    project = user |> project_fixture() |> Repo.preload(:workspace)
     %{project: project}
   end
 
@@ -160,7 +161,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
     test "redirects when project not accessible", %{conn: conn} do
       other_user = Storyarn.AccountsFixtures.user_fixture()
-      other_project = project_fixture(other_user) |> Repo.preload(:workspace)
+      other_project = other_user |> project_fixture() |> Repo.preload(:workspace)
       {flow, _entry, _dialogue} = create_basic_flow(other_project)
 
       {:error, {:redirect, %{to: path, flash: flash}}} =

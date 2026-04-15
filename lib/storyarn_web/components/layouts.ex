@@ -186,7 +186,10 @@ defmodule StoryarnWeb.Layouts do
 
   def public(assigns) do
     ~H"""
-    <div class={["min-h-screen flex flex-col w-full bg-background text-foreground", @theme == "dark" && "dark"]}>
+    <div class={[
+      "min-h-screen flex flex-col w-full bg-background text-foreground",
+      @theme == "dark" && "dark"
+    ]}>
       <header
         class={[
           "w-[min(calc(100%-48px),1280px)] h-16 flex items-center",
@@ -697,7 +700,10 @@ defmodule StoryarnWeb.Layouts do
         </aside>
 
         <%!-- Content & TOC wrapper --%>
-        <main id="docs-main" class="flex-1 overflow-y-auto xl:flex xl:items-start xl:justify-between px-4 sm:px-8 lg:px-12">
+        <main
+          id="docs-main"
+          class="flex-1 overflow-y-auto xl:flex xl:items-start xl:justify-between px-4 sm:px-8 lg:px-12"
+        >
           <%!-- Main content (Centered) --%>
           <div class="flex-1 w-full max-w-4xl mx-auto py-8 min-w-0">
             <%!-- Guide header --%>
@@ -779,9 +785,9 @@ defmodule StoryarnWeb.Layouts do
       <.flash_group flash={@flash} />
     </div>
     """
-end
+  end
 
-@doc """
+  @doc """
   Shows the flash group with standard titles and content.
 
   ## Examples

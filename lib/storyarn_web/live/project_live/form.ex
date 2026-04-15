@@ -72,9 +72,7 @@ defmodule StoryarnWeb.ProjectLive.Form do
         {:noreply, socket}
 
       {:error, :limit_reached, _details} ->
-        {:noreply,
-         socket
-         |> put_flash(:error, dgettext("workspaces", "Project limit reached for your plan"))}
+        {:noreply, put_flash(socket, :error, dgettext("workspaces", "Project limit reached for your plan"))}
 
       {:error, changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset))}

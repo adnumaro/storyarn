@@ -150,10 +150,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   end
 
   @doc "Updates response text."
-  def handle_update_response_text(
-        %{"response-id" => response_id, "node-id" => node_id, "value" => text},
-        socket
-      ) do
+  def handle_update_response_text(%{"response-id" => response_id, "node-id" => node_id, "value" => text}, socket) do
     update_response_field(socket, node_id, response_id, "text", text)
   end
 
@@ -298,7 +295,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
 
   defp generate_localization_id do
     suffix =
-      :erlang.unique_integer([:positive])
+      [:positive]
+      |> :erlang.unique_integer()
       |> Integer.to_string(16)
       |> String.downcase()
       |> String.slice(0, 6)

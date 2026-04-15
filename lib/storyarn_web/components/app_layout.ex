@@ -28,11 +28,9 @@ defmodule StoryarnWeb.Components.AppLayout do
   defp tool_path(ws, proj, "flows"), do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/flows"
   defp tool_path(ws, proj, "scenes"), do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/scenes"
 
-  defp tool_path(ws, proj, "assets"),
-  do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/assets"
+  defp tool_path(ws, proj, "assets"), do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/assets"
 
-  defp tool_path(ws, proj, "localization"),
-  do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/localization"
+  defp tool_path(ws, proj, "localization"), do: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/localization"
 
   @doc """
   Builds the URL map that Vue components need for navigation.
@@ -41,9 +39,9 @@ defmodule StoryarnWeb.Components.AppLayout do
   """
   def build_urls(workspace, project) do
     tool_urls =
-    Map.new(@tools, fn t ->
-      {Atom.to_string(t.key), tool_path(workspace, project, t.section)}
-    end)
+      Map.new(@tools, fn t ->
+        {Atom.to_string(t.key), tool_path(workspace, project, t.section)}
+      end)
 
     %{
       workspace: ~p"/workspaces/#{workspace.slug}",
@@ -69,15 +67,15 @@ defmodule StoryarnWeb.Components.AppLayout do
   attr :flash, :map, required: true
 
   attr :current_scope, :map,
-  default: nil,
-  doc: "the current scope"
+    default: nil,
+    doc: "the current scope"
 
   attr :project, :map, default: nil, doc: "the current project (nil for workspace-level pages)"
   attr :workspace, :map, default: nil, doc: "the workspace the project belongs to"
 
   attr :active_tool, :atom,
-  default: :sheets,
-  doc: "active tool (:sheets, :flows, :screenplays, :scenes, :assets, :localization)"
+    default: :sheets,
+    doc: "active tool (:sheets, :flows, :screenplays, :scenes, :assets, :localization)"
 
   attr :has_tree, :boolean, default: true, doc: "whether this page has a tree panel"
   attr :tree_panel_open, :boolean, default: false, doc: "whether the tree panel is open"
@@ -87,20 +85,20 @@ defmodule StoryarnWeb.Components.AppLayout do
   attr :online_users, :list, default: [], doc: "list of online user presence maps"
 
   attr :restoration_banner, :map,
-  default: nil,
-  doc: "when set, shows a restoration-in-progress banner"
+    default: nil,
+    doc: "when set, shows a restoration-in-progress banner"
 
   attr :on_dashboard, :boolean,
-  default: false,
-  doc: "whether the current page is the tool dashboard"
+    default: false,
+    doc: "whether the current page is the tool dashboard"
 
   attr :show_tool_switcher, :boolean,
-  default: true,
-  doc: "whether to show the tool switcher dropdown"
+    default: true,
+    doc: "whether to show the tool switcher dropdown"
 
   attr :canvas_mode, :boolean,
-  default: false,
-  doc: "when true, main area has no padding/scroll (canvas views)"
+    default: false,
+    doc: "when true, main area has no padding/scroll (canvas views)"
 
   attr :socket, :any, required: true, doc: "the LiveView socket (needed for LiveVue)"
 
@@ -114,56 +112,50 @@ defmodule StoryarnWeb.Components.AppLayout do
 
   def app(assigns) do
     current_user_id =
-    case assigns.current_scope do
-      %{user: %{id: id}} -> id
-      _ -> nil
-    end
+      case assigns.current_scope do
+        %{user: %{id: id}} -> id
+        _ -> nil
+      end
 
     is_super_admin =
-    case assigns.current_scope do
-      %{user: %{is_super_admin: true}} -> true
-      _ -> false
-    end
+      case assigns.current_scope do
+        %{user: %{is_super_admin: true}} -> true
+        _ -> false
+      end
 
     current_user =
-    case assigns.current_scope do
-      %{user: user} ->
-        %{
-          id: user.id,
-          email: user.email,
-          displayName: user.display_name,
-          isSuperAdmin: is_super_admin
-        }
+      case assigns.current_scope do
+        %{user: user} ->
+          %{
+            id: user.id,
+            email: user.email,
+            displayName: user.display_name,
+            isSuperAdmin: is_super_admin
+          }
 
-      _ ->
-        %{id: nil, email: "", displayName: "", isSuperAdmin: false}
-    end
+        _ ->
+          %{id: nil, email: "", displayName: "", isSuperAdmin: false}
+      end
 
     urls =
-    if assigns.workspace && assigns.project,
-do: build_urls(assigns.workspace, assigns.project),
-else: %{}
+      if assigns.workspace && assigns.project,
+        do: build_urls(assigns.workspace, assigns.project),
+        else: %{}
 
-# Dashboard URL for tree panel header
-dashboard_url =
-if assigns.workspace && assigns.project,
-do: tool_path(assigns.workspace, assigns.project, to_string(assigns.active_tool)),
-else: nil
+    # Dashboard URL for tree panel header
+    dashboard_url =
+      if assigns.workspace && assigns.project,
+        do: tool_path(assigns.workspace, assigns.project, to_string(assigns.active_tool))
 
-assigns =
-assigns
-|>
-assign(:current_user_id, current_user_id)
-|>
-assign(:is_super_admin, is_super_admin)
-|>
-assign(:current_user, current_user)
-|>
-assign(:urls, urls)
-|>
-assign(:dashboard_url, dashboard_url)
+    assigns =
+      assigns
+      |> assign(:current_user_id, current_user_id)
+      |> assign(:is_super_admin, is_super_admin)
+      |> assign(:current_user, current_user)
+      |> assign(:urls, urls)
+      |> assign(:dashboard_url, dashboard_url)
 
-~H"""
+    ~H"""
     <div id="layout-wrapper" class="h-screen w-screen overflow-hidden relative bg-background">
       <%!-- Restoration Banner --%>
       <div
@@ -289,5 +281,5 @@ assign(:dashboard_url, dashboard_url)
       </div>
     </div>
     """
-end
+  end
 end

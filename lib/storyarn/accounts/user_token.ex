@@ -3,9 +3,13 @@ defmodule Storyarn.Accounts.UserToken do
   Schema and functions for managing user authentication tokens.
   """
   use Ecto.Schema
+
   import Ecto.Query
+
+  alias Storyarn.Accounts.User
   alias Storyarn.Accounts.UserToken
-  alias Storyarn.Shared.{TimeHelpers, TokenGenerator}
+  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Shared.TokenGenerator
 
   @change_email_validity_in_days 7
   @session_validity_in_days 14
@@ -18,7 +22,7 @@ defmodule Storyarn.Accounts.UserToken do
           sent_to: String.t() | nil,
           authenticated_at: DateTime.t() | nil,
           user_id: integer() | nil,
-          user: Storyarn.Accounts.User.t() | Ecto.Association.NotLoaded.t() | nil,
+          user: User.t() | Ecto.Association.NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil
         }
 
@@ -27,7 +31,7 @@ defmodule Storyarn.Accounts.UserToken do
     field :context, :string
     field :sent_to, :string
     field :authenticated_at, :utc_datetime
-    belongs_to :user, Storyarn.Accounts.User
+    belongs_to :user, User
 
     timestamps(type: :utc_datetime, updated_at: false)
   end

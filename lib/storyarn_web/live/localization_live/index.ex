@@ -2,16 +2,16 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
 
   import StoryarnWeb.Live.Shared.TreePanelHandlers,
     only: [focus_layout_defaults: 0, handle_tree_panel_event: 3]
 
+  import StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers
+
   alias Storyarn.Localization
   alias Storyarn.Localization.Languages
   alias Storyarn.Projects
-
-  import StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers
+  alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers
 
   @page_size 50
@@ -39,9 +39,17 @@ defmodule StoryarnWeb.LocalizationLive.Index do
           v-component="modules/localization/LocalizationToolbar"
           v-socket={@socket}
           id="localization-toolbar"
-          report-url={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/report"}
-          export-csv-url={@selected_locale && ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/csv/#{@selected_locale}"}
-          export-xlsx-url={@selected_locale && ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/xlsx/#{@selected_locale}"}
+          report-url={
+            ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/report"
+          }
+          export-csv-url={
+            @selected_locale &&
+              ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/csv/#{@selected_locale}"
+          }
+          export-xlsx-url={
+            @selected_locale &&
+              ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/xlsx/#{@selected_locale}"
+          }
           has-provider={@has_provider}
         />
       </:top_bar_extra_right>
@@ -66,11 +74,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   end
 
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
     case Projects.get_project_by_slugs(
            socket.assigns.current_scope,
            workspace_slug,
@@ -125,8 +129,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   end
 
   @impl true
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: handle_tree_panel_event(event, params, socket)
+  def handle_event("tree_panel_" <> _ = event, params, socket), do: handle_tree_panel_event(event, params, socket)
 
   def handle_event("change_locale", %{"locale" => locale}, socket) do
     {:noreply,
@@ -166,11 +169,9 @@ defmodule StoryarnWeb.LocalizationLive.Index do
     end
   end
 
-  def handle_event("add_target_language", %{"locale_code" => ""}, socket),
-    do: {:noreply, socket}
+  def handle_event("add_target_language", %{"locale_code" => ""}, socket), do: {:noreply, socket}
 
-  def handle_event("change_source_language", %{"locale_code" => ""}, socket),
-    do: {:noreply, socket}
+  def handle_event("change_source_language", %{"locale_code" => ""}, socket), do: {:noreply, socket}
 
   def handle_event("change_source_language", params, socket) do
     with_auth(:edit_content, socket, fn ->
@@ -214,11 +215,13 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
   defp sidebar_props(assigns) do
     existing_codes =
-      MapSet.new(
-        [assigns.source_language && assigns.source_language.locale_code | Enum.map(assigns.target_languages, & &1.locale_code)]
-        |> List.flatten()
-        |> Enum.reject(&is_nil/1)
-      )
+      [
+        assigns.source_language && assigns.source_language.locale_code
+        | Enum.map(assigns.target_languages, & &1.locale_code)
+      ]
+      |> List.flatten()
+      |> Enum.reject(&is_nil/1)
+      |> MapSet.new()
 
     source_code = assigns.source_language && assigns.source_language.locale_code
 
@@ -228,10 +231,12 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       selectedLocale: assigns.selected_locale,
       canEdit: assigns.can_edit,
       sourceLanguageOptions:
-        Languages.options_for_select(exclude: [source_code] |> Enum.reject(&is_nil/1))
+        [exclude: Enum.reject([source_code], &is_nil/1)]
+        |> Languages.options_for_select()
         |> Enum.map(fn {label, value} -> %{label: label, value: value} end),
       addLanguageOptions:
-        Languages.options_for_select(exclude: MapSet.to_list(existing_codes))
+        [exclude: MapSet.to_list(existing_codes)]
+        |> Languages.options_for_select()
         |> Enum.map(fn {label, value} -> %{label: label, value: value} end)
     }
   end

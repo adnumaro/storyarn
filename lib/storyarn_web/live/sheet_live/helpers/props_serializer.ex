@@ -63,8 +63,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.PropsSerializer do
         (b.detached || false) && b.inherited_from_block_id &&
           MapSet.member?(reattachable_source_ids, b.inherited_from_block_id)
       end)
-      |> Enum.map(& &1.id)
-      |> MapSet.new()
+      |> MapSet.new(& &1.id)
 
     raw =
       blocks
@@ -150,7 +149,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.PropsSerializer do
       cond do
         b.type == "gallery" ->
           images =
-            Map.get(gallery_data, b.id, [])
+            gallery_data
+            |> Map.get(b.id, [])
             |> Enum.map(fn gi ->
               %{
                 id: gi.id,

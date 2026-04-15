@@ -11,30 +11,24 @@ defmodule Storyarn.Flows do
   - `ConnectionCrud` - CRUD operations for connections
   """
 
-  alias Storyarn.Flows.{
-    Condition,
-    ConnectionCrud,
-    DebugSessionStore,
-    Flow,
-    FlowConnection,
-    FlowCrud,
-    FlowNode,
-    FlowStats,
-    HubColors,
-    Instruction,
-    NavigationHistoryStore,
-    NodeCrud,
-    SceneResolver,
-    TreeOperations
-  }
-
-  alias Storyarn.Flows.Evaluator.{
-    ConditionEval,
-    Engine,
-    Helpers,
-    InstructionExec
-  }
-
+  alias Storyarn.Flows.Condition
+  alias Storyarn.Flows.ConnectionCrud
+  alias Storyarn.Flows.DebugSessionStore
+  alias Storyarn.Flows.Evaluator.ConditionEval
+  alias Storyarn.Flows.Evaluator.Engine
+  alias Storyarn.Flows.Evaluator.Helpers
+  alias Storyarn.Flows.Evaluator.InstructionExec
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowConnection
+  alias Storyarn.Flows.FlowCrud
+  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.FlowStats
+  alias Storyarn.Flows.HubColors
+  alias Storyarn.Flows.Instruction
+  alias Storyarn.Flows.NavigationHistoryStore
+  alias Storyarn.Flows.NodeCrud
+  alias Storyarn.Flows.SceneResolver
+  alias Storyarn.Flows.TreeOperations
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.References
@@ -43,6 +37,8 @@ defmodule Storyarn.Flows do
   # =============================================================================
   # Type Definitions
   # =============================================================================
+
+  alias Storyarn.Versioning
 
   @type flow :: Flow.t()
   @type flow_node :: FlowNode.t()
@@ -833,8 +829,10 @@ defmodule Storyarn.Flows do
 
   defp bfs(queue, adj, visited) do
     next =
-      Enum.flat_map(queue, fn id ->
-        Map.get(adj, id, [])
+      queue
+      |> Enum.flat_map(fn id ->
+        adj
+        |> Map.get(id, [])
         |> Enum.reject(&MapSet.member?(visited, &1))
       end)
       |> Enum.uniq()
@@ -953,8 +951,6 @@ defmodule Storyarn.Flows do
   # Versioning
   # =============================================================================
 
-  alias Storyarn.Versioning
-
   @doc """
   Creates a new version snapshot of the given flow.
   """
@@ -1022,7 +1018,7 @@ defmodule Storyarn.Flows do
   Sets the current version for a flow.
   """
   def set_current_version(%Flow{} = flow, version_or_nil) do
-    version_id = if version_or_nil, do: version_or_nil.id, else: nil
+    version_id = if version_or_nil, do: version_or_nil.id
 
     flow
     |> Flow.version_changeset(%{current_version_id: version_id})

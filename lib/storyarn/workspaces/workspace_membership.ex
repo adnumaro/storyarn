@@ -12,8 +12,10 @@ defmodule Storyarn.Workspaces.WorkspaceMembership do
   - viewer: Read-only access
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
+  alias Ecto.Association.NotLoaded
   alias Storyarn.Accounts.User
   alias Storyarn.Workspaces.Workspace
 
@@ -23,9 +25,9 @@ defmodule Storyarn.Workspaces.WorkspaceMembership do
           id: integer() | nil,
           role: String.t() | nil,
           workspace_id: integer() | nil,
-          workspace: Workspace.t() | Ecto.Association.NotLoaded.t() | nil,
+          workspace: Workspace.t() | NotLoaded.t() | nil,
           user_id: integer() | nil,
-          user: User.t() | Ecto.Association.NotLoaded.t() | nil,
+          user: User.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }

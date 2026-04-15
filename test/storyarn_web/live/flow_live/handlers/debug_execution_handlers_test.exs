@@ -5,6 +5,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Phoenix.LiveView.Socket
+  alias Storyarn.Flows.DebugSessionStore
   alias Storyarn.Flows.Evaluator.Engine
   alias Storyarn.Repo
   alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
@@ -48,7 +50,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
     assigns = Map.merge(defaults, overrides)
 
-    %Phoenix.LiveView.Socket{
+    %Socket{
       assigns: Map.merge(%{__changed__: %{}}, assigns)
     }
   end
@@ -477,7 +479,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
       # Engine returns {:error, state, :not_waiting_input} — handler assigns the error state
       # The state itself stays paused (the error pattern in choose_response doesn't change status)
-      assert result.assigns.debug_state != nil
+      assert result.assigns.debug_state
     end
   end
 
@@ -492,7 +494,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       {:noreply, result} = DebugExecutionHandlers.handle_debug_play(socket)
 
       assert result.assigns.debug_auto_playing == true
-      assert result.assigns.debug_auto_timer != nil
+      assert result.assigns.debug_auto_timer
       assert_receive :debug_auto_step, 600
     end
   end
@@ -800,7 +802,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       result = DebugExecutionHandlers.push_debug_canvas(socket, state)
 
       # Verify push_event was called (returns updated socket)
-      assert %Phoenix.LiveView.Socket{} = result
+      assert %Socket{} = result
     end
 
     test "sets error status string when finished with error console entry" do
@@ -829,7 +831,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
       # Should not raise — the error status should be detected
       result = DebugExecutionHandlers.push_debug_canvas(socket, state)
-      assert %Phoenix.LiveView.Socket{} = result
+      assert %Socket{} = result
     end
 
     test "sets normal status string when finished without errors" do
@@ -857,7 +859,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         })
 
       result = DebugExecutionHandlers.push_debug_canvas(socket, state)
-      assert %Phoenix.LiveView.Socket{} = result
+      assert %Socket{} = result
     end
 
     test "finds active connection from execution path" do
@@ -879,7 +881,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         })
 
       result = DebugExecutionHandlers.push_debug_canvas(socket, state)
-      assert %Phoenix.LiveView.Socket{} = result
+      assert %Socket{} = result
     end
 
     test "handles empty execution path" do
@@ -895,7 +897,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         })
 
       result = DebugExecutionHandlers.push_debug_canvas(socket, state)
-      assert %Phoenix.LiveView.Socket{} = result
+      assert %Socket{} = result
     end
 
     test "handles single-node execution path (no active connection)" do
@@ -912,7 +914,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         })
 
       result = DebugExecutionHandlers.push_debug_canvas(socket, state)
-      assert %Phoenix.LiveView.Socket{} = result
+      assert %Socket{} = result
     end
   end
 
@@ -944,8 +946,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       assert result_socket.redirected
 
       # Verify ETS has the stored session
-      stored = Storyarn.Flows.DebugSessionStore.take({1, 1})
-      assert stored != nil
+      stored = DebugSessionStore.take({1, 1})
+      assert stored
       assert stored.debug_state == state
       assert stored.debug_speed == 500
       assert stored.debug_var_filter == "health"
@@ -964,7 +966,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
       {:navigating, _result} = DebugExecutionHandlers.store_and_navigate(socket, 42)
 
-      stored = Storyarn.Flows.DebugSessionStore.take({1, 1})
+      stored = DebugSessionStore.take({1, 1})
       assert stored.debug_editing_var == nil
     end
   end
@@ -979,7 +981,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
       result = DebugExecutionHandlers.schedule_auto_step(socket)
 
-      assert result.assigns.debug_auto_timer != nil
+      assert result.assigns.debug_auto_timer
       assert_receive :debug_auto_step, 500
     end
 
@@ -1055,7 +1057,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -1104,7 +1106,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})
       %{project: project, flow: flow}
     end
@@ -1126,7 +1128,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
           c.source_node_id == hub1.id and c.target_node_id == hub2.id
         end)
 
-      assert matching_conn != nil
+      assert matching_conn
       assert matching_conn.source_pin == "default"
       assert matching_conn.target_pin == "input"
     end
@@ -1146,7 +1148,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Debug Test Flow"})
 
       # flow_fixture auto-creates entry + exit nodes; use them
@@ -1316,7 +1318,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Dialogue Flow"})
 
       # flow_fixture auto-creates entry + exit nodes; use the entry
@@ -1425,7 +1427,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
     setup :register_and_log_in_user
 
     setup %{user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Loop Flow"})
 
       # flow_fixture auto-creates entry + exit nodes; use the entry for our loop

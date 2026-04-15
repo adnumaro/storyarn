@@ -13,6 +13,8 @@ defmodule StoryarnWeb.OAuth.DiscordOAuth do
 
   use OAuth2.Strategy
 
+  alias OAuth2.Strategy.AuthCode
+
   @defaults [
     strategy: __MODULE__,
     site: "https://discord.com/api",
@@ -30,7 +32,8 @@ defmodule StoryarnWeb.OAuth.DiscordOAuth do
 
     json_library = Ueberauth.json_library()
 
-    OAuth2.Client.new(opts)
+    opts
+    |> OAuth2.Client.new()
     |> OAuth2.Client.put_serializer("application/json", json_library)
   end
 
@@ -41,7 +44,8 @@ defmodule StoryarnWeb.OAuth.DiscordOAuth do
   end
 
   def get(token, url, headers \\ [], opts \\ []) do
-    client(token: token)
+    [token: token]
+    |> client()
     |> put_param("client_secret", client().client_secret)
     |> OAuth2.Client.get(url, headers, opts)
   end
@@ -59,7 +63,7 @@ defmodule StoryarnWeb.OAuth.DiscordOAuth do
 
   @impl true
   def authorize_url(client, params) do
-    OAuth2.Strategy.AuthCode.authorize_url(client, params)
+    AuthCode.authorize_url(client, params)
   end
 
   @impl true
@@ -67,6 +71,6 @@ defmodule StoryarnWeb.OAuth.DiscordOAuth do
     client
     |> put_param("client_secret", client.client_secret)
     |> put_header("Accept", "application/json")
-    |> OAuth2.Strategy.AuthCode.get_token(params, headers)
+    |> AuthCode.get_token(params, headers)
   end
 end

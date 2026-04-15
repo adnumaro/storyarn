@@ -43,7 +43,8 @@ defmodule StoryarnWeb.LayoutsTest do
       inner_block: inner_block("<p>App content</p>")
     }
 
-    Map.merge(defaults, overrides)
+    defaults
+    |> Map.merge(overrides)
     |> Enum.to_list()
   end
 

@@ -4,6 +4,7 @@ defmodule StoryarnWeb.SheetLive.Index do
   """
 
   use StoryarnWeb, :live_view
+  use StoryarnWeb.Live.Shared.DashboardHandlers
 
   import StoryarnWeb.Components.DashboardComponents,
     only: [
@@ -13,8 +14,6 @@ defmodule StoryarnWeb.SheetLive.Index do
       handle_page: 4,
       reload_dashboard: 6
     ]
-
-  use StoryarnWeb.Live.Shared.DashboardHandlers
 
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
@@ -163,7 +162,7 @@ defmodule StoryarnWeb.SheetLive.Index do
 
     total_variable_count =
       DashboardCache.fetch(project_id, :sheet_total_vars, fn ->
-        Sheets.list_project_variables(project_id) |> length()
+        project_id |> Sheets.list_project_variables() |> length()
       end)
 
     table_data =
@@ -206,8 +205,7 @@ defmodule StoryarnWeb.SheetLive.Index do
   # tree_panel_* events are handled by SidebarLive — they never reach here.
 
   def handle_event("sort_sheets", %{"column" => column}, socket) do
-    {:noreply,
-     handle_sort(socket, column, :all_sheet_table_data, :sheet_table_data, sheet_sort_columns())}
+    {:noreply, handle_sort(socket, column, :all_sheet_table_data, :sheet_table_data, sheet_sort_columns())}
   end
 
   def handle_event("page_sheets", %{"page" => page}, socket) do
@@ -261,8 +259,7 @@ defmodule StoryarnWeb.SheetLive.Index do
              )}
 
           :missing_shortcut ->
-            {:warning,
-             dgettext("sheets", "Sheet \"%{name}\" has no shortcut", name: issue.sheet_name)}
+            {:warning, dgettext("sheets", "Sheet \"%{name}\" has no shortcut", name: issue.sheet_name)}
 
           _ ->
             {:info, gettext("Issue detected")}

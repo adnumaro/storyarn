@@ -2,18 +2,8 @@ defmodule StoryarnWeb.SceneLive.Show do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
-  alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   import StoryarnWeb.Live.Shared.TreePanelHandlers
-
-  alias Storyarn.Assets
-  alias Storyarn.Collaboration
-  alias Storyarn.Projects
-  alias Storyarn.Scenes
-  alias Storyarn.Shared.MapUtils
-  alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
-  alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
 
   import StoryarnWeb.SceneLive.Helpers.PropsSerializer,
     only: [
@@ -36,8 +26,18 @@ defmodule StoryarnWeb.SceneLive.Show do
   import StoryarnWeb.SceneLive.Helpers.SceneHelpers
   import StoryarnWeb.SceneLive.Helpers.SceneSerializer
 
+  alias Storyarn.Assets
+  alias Storyarn.Collaboration
+  alias Storyarn.Collaboration.Presence
+  alias Storyarn.Projects
+  alias Storyarn.Scenes
+  alias Storyarn.Shared.MapUtils
   alias Storyarn.Versioning
+  alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
+  alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.VersionHistoryHelpers
+  alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
+  alias StoryarnWeb.Live.Shared.RestorationHandlers
   alias StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers
   alias StoryarnWeb.SceneLive.Handlers.CollaborationHandlers
   alias StoryarnWeb.SceneLive.Handlers.ElementHandlers
@@ -302,7 +302,6 @@ defmodule StoryarnWeb.SceneLive.Show do
       <% else %>
         <div class="h-full"></div>
       <% end %>
-
     </Layouts.app>
     """
   end
@@ -349,14 +348,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   @impl true
-  def mount(
-        %{
-          "workspace_slug" => workspace_slug,
-          "project_slug" => project_slug
-        },
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
     case Projects.get_project_by_slugs(
            socket.assigns.current_scope,
            workspace_slug,
@@ -484,9 +476,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       nil ->
         socket
         |> put_flash(:error, dgettext("scenes", "Scene not found."))
-        |> push_navigate(
-          to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
-        )
+        |> push_navigate(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes")
 
       scene ->
         has_tree = socket.assigns.sidebar_loaded
@@ -563,7 +553,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     flows = socket.assigns.ambient_flows
 
     with idx when idx != nil <- Enum.find_index(flows, &(to_string(&1.id) == id)),
-         new_idx <- compute_reorder_index(idx, direction, length(flows)),
+         new_idx = compute_reorder_index(idx, direction, length(flows)),
          true <- idx != new_idx do
       ordered_ids =
         flows
@@ -617,11 +607,9 @@ defmodule StoryarnWeb.SceneLive.Show do
     }
   end
 
-  defp build_trigger_config("timed", params),
-    do: %{"interval_ms" => MapUtils.parse_int(params["interval_ms"]) || 30_000}
+  defp build_trigger_config("timed", params), do: %{"interval_ms" => MapUtils.parse_int(params["interval_ms"]) || 30_000}
 
-  defp build_trigger_config("on_event", params),
-    do: %{"variable_ref" => params["variable_ref"] || ""}
+  defp build_trigger_config("on_event", params), do: %{"variable_ref" => params["variable_ref"] || ""}
 
   defp build_trigger_config(_type, _params), do: %{}
 
@@ -704,11 +692,9 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   @impl true
   # Tree panel events (from AppLayout)
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: handle_tree_panel_event(event, params, socket)
+  def handle_event("tree_panel_" <> _ = event, params, socket), do: handle_tree_panel_event(event, params, socket)
 
-  def handle_event("switch_tree_tab", %{"tab" => tab}, socket)
-      when tab in ~w(scenes layers) do
+  def handle_event("switch_tree_tab", %{"tab" => tab}, socket) when tab in ~w(scenes layers) do
     {:noreply, assign(socket, :tree_panel_tab, tab)}
   end
 
@@ -764,8 +750,7 @@ defmodule StoryarnWeb.SceneLive.Show do
              |> put_flash(:info, dgettext("versioning", "Version created."))}
 
           {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
+            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
         end
       end
     end)
@@ -788,8 +773,7 @@ defmodule StoryarnWeb.SceneLive.Show do
              |> put_flash(:info, dgettext("versioning", "Version named successfully."))}
 
           {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("versioning", "Could not name version."))}
+            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not name version."))}
         end
       else
         _ -> {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
@@ -810,8 +794,7 @@ defmodule StoryarnWeb.SceneLive.Show do
              |> put_flash(:info, dgettext("versioning", "Version deleted."))}
 
           {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("versioning", "Could not delete version."))}
+            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not delete version."))}
         end
       else
         _ -> {:noreply, put_flash(socket, :error, dgettext("versioning", "Version not found."))}
@@ -897,9 +880,7 @@ defmodule StoryarnWeb.SceneLive.Show do
              Versioning.get_version("scene", socket.assigns.scene.id, number) do
         skip = params["skip_pre_snapshot"] == true
 
-        case Versioning.restore_version(version, "scene", socket.assigns.scene,
-               skip_pre_snapshot: skip
-             ) do
+        case Versioning.restore_version(version, "scene", socket.assigns.scene, skip_pre_snapshot: skip) do
           {:ok, _} ->
             {:noreply,
              socket
@@ -911,8 +892,7 @@ defmodule StoryarnWeb.SceneLive.Show do
              )}
 
           {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("versioning", "Could not restore version."))}
+            {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not restore version."))}
         end
       else
         _ -> {:noreply, socket}
@@ -921,15 +901,17 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("compare_version", %{"version_number" => vn}, socket) do
-    with {:ok, number} <- VersionHistoryHelpers.parse_version_number(vn) do
-      %{workspace: workspace, project: project, scene: scene} = socket.assigns
+    case VersionHistoryHelpers.parse_version_number(vn) do
+      {:ok, number} ->
+        %{workspace: workspace, project: project, scene: scene} = socket.assigns
 
-      compare_url =
-        ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}/compare/#{number}"
+        compare_url =
+          ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}/compare/#{number}"
 
-      {:noreply, push_navigate(socket, to: compare_url)}
-    else
-      _ -> {:noreply, socket}
+        {:noreply, push_navigate(socket, to: compare_url)}
+
+      _ ->
+        {:noreply, socket}
     end
   end
 
@@ -983,7 +965,8 @@ defmodule StoryarnWeb.SceneLive.Show do
       when type in ~w(pin zone connection annotation) do
     release_element_lock(socket)
 
-    CanvasEventHandlers.handle_select_element(params, socket)
+    params
+    |> CanvasEventHandlers.handle_select_element(socket)
     |> maybe_acquire_lock(id)
   end
 
@@ -1037,11 +1020,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("drag_pin", _params, socket), do: {:noreply, socket}
 
-  def handle_event(
-        "drag_annotation",
-        %{"id" => id, "position_x" => x, "position_y" => y},
-        socket
-      )
+  def handle_event("drag_annotation", %{"id" => id, "position_x" => x, "position_y" => y}, socket)
       when (is_binary(id) or is_integer(id)) and is_number(x) and is_number(y) do
     CollaborationHandlers.handle_drag_relay(socket, :annotation_dragging, %{
       id: id,
@@ -1111,21 +1090,17 @@ defmodule StoryarnWeb.SceneLive.Show do
         "value" => mode
       }
 
-      ElementHandlers.handle_update_pin(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_pin(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_pin", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_pin(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_pin(socket) |> broadcast_scene_change()
     end)
   end
 
-  def handle_event(
-        "upload_pin_icon",
-        %{"filename" => filename, "content_type" => ct, "data" => data},
-        socket
-      ) do
+  def handle_event("upload_pin_icon", %{"filename" => filename, "content_type" => ct, "data" => data}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       with %{__struct__: Scenes.ScenePin} = pin <- socket.assigns[:selected_element],
            [_header, base64] <- String.split(data, ",", parts: 2),
@@ -1140,13 +1115,14 @@ defmodule StoryarnWeb.SceneLive.Show do
            {:ok, updated} <- Scenes.update_pin(pin, %{"icon_asset_id" => asset.id}) do
         updated = Scenes.preload_pin_associations(updated)
 
-        {:noreply,
-         socket
-         |> assign(:selected_element, updated)
-         |> update_pin_in_list(updated)
-         |> push_event("pin_updated", serialize_pin(updated))
-         |> put_flash(:info, dgettext("scenes", "Pin icon updated."))}
-        |> broadcast_scene_change()
+        broadcast_scene_change(
+          {:noreply,
+           socket
+           |> assign(:selected_element, updated)
+           |> update_pin_in_list(updated)
+           |> push_event("pin_updated", serialize_pin(updated))
+           |> put_flash(:info, dgettext("scenes", "Pin icon updated."))}
+        )
       else
         _ ->
           {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not upload pin icon."))}
@@ -1156,26 +1132,28 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("update_zone", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_zone(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_zone(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_connection", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_connection(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_connection(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_connection_waypoints", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_connection_waypoints(params, socket)
+      params
+      |> ElementHandlers.handle_update_connection_waypoints(socket)
       |> broadcast_scene_change()
     end)
   end
 
   def handle_event("clear_connection_waypoints", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_clear_connection_waypoints(params, socket)
+      params
+      |> ElementHandlers.handle_clear_connection_waypoints(socket)
       |> broadcast_scene_change()
     end)
   end
@@ -1200,7 +1178,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("confirm_delete_element", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_confirm_delete_element(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_confirm_delete_element(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1210,7 +1188,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("create_pin", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_create_pin(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_create_pin(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1228,13 +1206,13 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("create_pin_from_sheet", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_create_pin_from_sheet(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_create_pin_from_sheet(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("move_pin", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_move_pin(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_move_pin(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1244,7 +1222,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("create_zone", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_create_zone(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_create_zone(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1254,7 +1232,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("create_layer", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_create_layer(params, socket) |> broadcast_scene_change()
+      params |> LayerHandlers.handle_create_layer(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1264,13 +1242,13 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("toggle_layer_visibility", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_toggle_layer_visibility(params, socket) |> broadcast_scene_change()
+      params |> LayerHandlers.handle_toggle_layer_visibility(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_layer_fog", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_update_layer_fog(params, socket) |> broadcast_scene_change()
+      params |> LayerHandlers.handle_update_layer_fog(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1280,7 +1258,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("rename_layer", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_rename_layer(params, socket) |> broadcast_scene_change()
+      params |> LayerHandlers.handle_rename_layer(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1292,13 +1270,13 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("confirm_delete_layer", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_confirm_delete_layer(params, socket) |> broadcast_scene_change()
+      params |> LayerHandlers.handle_confirm_delete_layer(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("delete_layer", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_delete_layer(params, socket) |> broadcast_scene_change()
+      params |> LayerHandlers.handle_delete_layer(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1312,19 +1290,20 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("remove_background", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_remove_background(params, socket) |> broadcast_scene_change()
+      params |> LayerHandlers.handle_remove_background(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_scene_scale", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_update_scene_scale(params, socket) |> broadcast_scene_change()
+      params |> LayerHandlers.handle_update_scene_scale(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_exploration_display_mode", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_update_exploration_display_mode(params, socket)
+      params
+      |> LayerHandlers.handle_update_exploration_display_mode(socket)
       |> broadcast_scene_change()
     end)
   end
@@ -1424,7 +1403,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("remove_pin_icon", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      LayerHandlers.handle_remove_pin_icon(params, socket) |> broadcast_scene_change()
+      params |> LayerHandlers.handle_remove_pin_icon(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1434,95 +1413,99 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("update_zone_vertices", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_zone_vertices(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_zone_vertices(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("duplicate_zone", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_duplicate_zone(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_duplicate_zone(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("delete_zone", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_delete_zone(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_delete_zone(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_zone_action_type", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_zone_action_type(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_zone_action_type(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_zone_assignments", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_zone_assignments(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_zone_assignments(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("select_zone_display_var:" <> zone_id, %{"id" => variable_ref}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       params = %{"zone-id" => zone_id, "field" => "variable_ref", "value" => variable_ref}
-      ElementHandlers.handle_update_zone_action_data(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_zone_action_data(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_zone_action_data", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_zone_action_data(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_zone_action_data(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_zone_condition", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_zone_condition(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_zone_condition(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_zone_condition_effect", %{"effect" => _} = params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_zone_condition_effect(params, socket)
+      params
+      |> ElementHandlers.handle_update_zone_condition_effect(socket)
       |> broadcast_scene_change()
     end)
   end
 
   def handle_event("add_collection_item", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_add_collection_item(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_add_collection_item(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("remove_collection_item", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_remove_collection_item(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_remove_collection_item(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_collection_item", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_collection_item(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_collection_item(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_collection_item_condition", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_collection_item_condition(params, socket)
+      params
+      |> ElementHandlers.handle_update_collection_item_condition(socket)
       |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_collection_item_instruction", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_collection_item_instruction(params, socket)
+      params
+      |> ElementHandlers.handle_update_collection_item_instruction(socket)
       |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_collection_settings", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_collection_settings(params, socket)
+      params
+      |> ElementHandlers.handle_update_collection_settings(socket)
       |> broadcast_scene_change()
     end)
   end
@@ -1539,20 +1522,21 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("update_pin_condition", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_pin_condition(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_pin_condition(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_pin_condition_effect", %{"effect" => _} = params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_pin_condition_effect(params, socket)
+      params
+      |> ElementHandlers.handle_update_pin_condition_effect(socket)
       |> broadcast_scene_change()
     end)
   end
 
   def handle_event("delete_pin", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_delete_pin(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_delete_pin(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1562,13 +1546,13 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("create_connection", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_create_connection(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_create_connection(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("delete_connection", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_delete_connection(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_delete_connection(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1578,25 +1562,25 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("create_annotation", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_create_annotation(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_create_annotation(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("update_annotation", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_update_annotation(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_update_annotation(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("move_annotation", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_move_annotation(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_move_annotation(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("delete_annotation", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_delete_annotation(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_delete_annotation(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1612,13 +1596,13 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("delete_selected", _params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_delete_selected(socket) |> broadcast_scene_change()
+      socket |> ElementHandlers.handle_delete_selected() |> broadcast_scene_change()
     end)
   end
 
   def handle_event("duplicate_selected", _params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_duplicate_selected(socket) |> broadcast_scene_change()
+      socket |> ElementHandlers.handle_duplicate_selected() |> broadcast_scene_change()
     end)
   end
 
@@ -1628,7 +1612,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("paste_element", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      ElementHandlers.handle_paste_element(params, socket) |> broadcast_scene_change()
+      params |> ElementHandlers.handle_paste_element(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1638,13 +1622,13 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("undo", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      UndoRedoHandlers.handle_undo(params, socket) |> broadcast_scene_change()
+      params |> UndoRedoHandlers.handle_undo(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("redo", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      UndoRedoHandlers.handle_redo(params, socket) |> broadcast_scene_change()
+      params |> UndoRedoHandlers.handle_redo(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1664,8 +1648,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       _flow ->
         {:noreply,
          push_navigate(socket,
-           to:
-             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}"
+           to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}"
          )}
     end
   end
@@ -1676,19 +1659,19 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("create_scene", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      TreeHandlers.handle_create_scene(params, socket) |> broadcast_scene_change()
+      params |> TreeHandlers.handle_create_scene(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("create_child_scene", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      TreeHandlers.handle_create_child_scene(params, socket) |> broadcast_scene_change()
+      params |> TreeHandlers.handle_create_child_scene(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("create_child_scene_from_zone", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      TreeHandlers.handle_create_child_scene_from_zone(params, socket) |> broadcast_scene_change()
+      params |> TreeHandlers.handle_create_child_scene_from_zone(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1699,20 +1682,20 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_event("confirm_delete_scene", _params, socket) do
     handle_confirm_delete(socket, fn socket, id ->
       Authorize.with_authorization(socket, :edit_content, fn _socket ->
-        TreeHandlers.handle_delete_scene(%{"id" => id}, socket) |> broadcast_scene_change()
+        %{"id" => id} |> TreeHandlers.handle_delete_scene(socket) |> broadcast_scene_change()
       end)
     end)
   end
 
   def handle_event("delete_scene", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      TreeHandlers.handle_delete_scene(params, socket) |> broadcast_scene_change()
+      params |> TreeHandlers.handle_delete_scene(socket) |> broadcast_scene_change()
     end)
   end
 
   def handle_event("move_to_parent", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      TreeHandlers.handle_move_to_parent(params, socket) |> broadcast_scene_change()
+      params |> TreeHandlers.handle_move_to_parent(socket) |> broadcast_scene_change()
     end)
   end
 
@@ -1783,15 +1766,13 @@ defmodule StoryarnWeb.SceneLive.Show do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       [zone_id, item_id] = String.split(rest, "-", parts: 2)
 
-      ElementHandlers.handle_update_collection_item(
-        %{
-          "zone-id" => zone_id,
-          "item-id" => item_id,
-          "field" => "sheet_id",
-          "value" => if(sheet_id, do: to_string(sheet_id), else: "")
-        },
-        socket
-      )
+      %{
+        "zone-id" => zone_id,
+        "item-id" => item_id,
+        "field" => "sheet_id",
+        "value" => if(sheet_id, do: to_string(sheet_id), else: "")
+      }
+      |> ElementHandlers.handle_update_collection_item(socket)
       |> broadcast_scene_change()
     end)
   end
@@ -1803,19 +1784,19 @@ defmodule StoryarnWeb.SceneLive.Show do
           {:ok, updated} ->
             updated = Scenes.preload_pin_associations(updated)
 
-            {:noreply,
-             socket
-             |> assign(:selected_element, updated)
-             |> update_pin_in_list(updated)
-             |> assign(:show_pin_icon_upload, false)
-             |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})
-             |> push_event("pin_updated", serialize_pin(updated))
-             |> put_flash(:info, dgettext("scenes", "Pin icon updated."))}
-            |> broadcast_scene_change()
+            broadcast_scene_change(
+              {:noreply,
+               socket
+               |> assign(:selected_element, updated)
+               |> update_pin_in_list(updated)
+               |> assign(:show_pin_icon_upload, false)
+               |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})
+               |> push_event("pin_updated", serialize_pin(updated))
+               |> put_flash(:info, dgettext("scenes", "Pin icon updated."))}
+            )
 
           {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, dgettext("scenes", "Could not update pin icon."))}
+            {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update pin icon."))}
         end
 
       _ ->
@@ -1840,37 +1821,25 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   @impl true
   def handle_info({:project_restoration_started, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_started, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_started, payload}, socket)
 
   @impl true
   def handle_info({:project_restoration_completed, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_completed, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_completed, payload}, socket)
 
   @impl true
   def handle_info({:project_restoration_failed, payload}, socket),
-    do:
-      RestorationHandlers.handle_restoration_event(
-        {:project_restoration_failed, payload},
-        socket
-      )
+    do: RestorationHandlers.handle_restoration_event({:project_restoration_failed, payload}, socket)
 
   # ---------------------------------------------------------------------------
   # Handle Info: Collaboration
   # ---------------------------------------------------------------------------
 
-  def handle_info({Storyarn.Collaboration.Presence, {:join, presence}}, socket) do
+  def handle_info({Presence, {:join, presence}}, socket) do
     Collab.handle_presence_join(socket, presence)
   end
 
-  def handle_info({Storyarn.Collaboration.Presence, {:leave, _} = event}, socket) do
+  def handle_info({Presence, {:leave, _} = event}, socket) do
     Collab.handle_presence_leave(socket, elem(event, 1))
   end
 
@@ -1990,8 +1959,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       Collab.broadcast_change(socket, scope, action, payload)
     end
 
-    {:noreply,
-     assign(socket, :_broadcast, nil)}
+    {:noreply, assign(socket, :_broadcast, nil)}
   end
 
   # ---------------------------------------------------------------------------
@@ -2033,8 +2001,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     end
   end
 
-  defp handle_background_result([{:ok, asset}], socket),
-    do: process_background_upload(socket, asset)
+  defp handle_background_result([{:ok, asset}], socket), do: process_background_upload(socket, asset)
 
   defp handle_background_result(_results, socket),
     do: {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not upload background."))}
@@ -2045,13 +2012,14 @@ defmodule StoryarnWeb.SceneLive.Show do
         updated = Scenes.preload_scene_background(updated)
         Collaboration.broadcast_change({:assets, socket.assigns.project.id}, :asset_created, %{})
 
-        {:noreply,
-         socket
-         |> assign(:scene, updated)
-         |> assign(:_broadcast, {:layer_updated, %{}})
-         |> push_event("background_changed", %{url: asset.url})
-         |> put_flash(:info, dgettext("scenes", "Background image updated."))}
-        |> broadcast_scene_change()
+        broadcast_scene_change(
+          {:noreply,
+           socket
+           |> assign(:scene, updated)
+           |> assign(:_broadcast, {:layer_updated, %{}})
+           |> push_event("background_changed", %{url: asset.url})
+           |> put_flash(:info, dgettext("scenes", "Background image updated."))}
+        )
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update background."))}

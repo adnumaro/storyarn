@@ -68,11 +68,9 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Yarn do
   defp emit_condition_op(ref, "ends_with", val),
     do: "string_ends_with(#{ref}, #{Helpers.format_literal(val, @literal_opts)})"
 
-  defp emit_condition_op(ref, "before", val),
-    do: "#{ref} < #{Helpers.format_literal(val, @literal_opts)}"
+  defp emit_condition_op(ref, "before", val), do: "#{ref} < #{Helpers.format_literal(val, @literal_opts)}"
 
-  defp emit_condition_op(ref, "after", val),
-    do: "#{ref} > #{Helpers.format_literal(val, @literal_opts)}"
+  defp emit_condition_op(ref, "after", val), do: "#{ref} > #{Helpers.format_literal(val, @literal_opts)}"
 
   defp emit_condition_op(ref, op, value) do
     "#{ref} #{condition_op(op)} #{Helpers.format_literal(value, @literal_opts)}"
@@ -126,8 +124,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Yarn do
   defp emit_assignment(ref, "set", a), do: "<<set #{ref} to #{format_value(ref, a)}>>"
   defp emit_assignment(ref, "add", a), do: "<<set #{ref} to #{ref} + #{format_value(ref, a)}>>"
 
-  defp emit_assignment(ref, "subtract", a),
-    do: "<<set #{ref} to #{ref} - #{format_value(ref, a)}>>"
+  defp emit_assignment(ref, "subtract", a), do: "<<set #{ref} to #{ref} - #{format_value(ref, a)}>>"
 
   defp emit_assignment(ref, "set_true", _), do: "<<set #{ref} to true>>"
   defp emit_assignment(ref, "set_false", _), do: "<<set #{ref} to false>>"

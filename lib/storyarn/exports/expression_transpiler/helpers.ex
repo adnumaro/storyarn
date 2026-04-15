@@ -155,8 +155,7 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Helpers do
   """
   @spec extract_condition_structure(map()) ::
           {:blocks, String.t(), [{String.t(), [map()]}]}
-  def extract_condition_structure(%{"logic" => logic, "blocks" => blocks})
-      when is_list(blocks) do
+  def extract_condition_structure(%{"logic" => logic, "blocks" => blocks}) when is_list(blocks) do
     groups =
       blocks
       |> Enum.map(&extract_block/1)
@@ -167,13 +166,11 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Helpers do
 
   def extract_condition_structure(_), do: {:blocks, "all", []}
 
-  defp extract_block(%{"type" => "block", "logic" => logic, "rules" => rules})
-       when is_list(rules) do
+  defp extract_block(%{"type" => "block", "logic" => logic, "rules" => rules}) when is_list(rules) do
     {logic, rules}
   end
 
-  defp extract_block(%{"type" => "group", "logic" => logic, "blocks" => inner})
-       when is_list(inner) do
+  defp extract_block(%{"type" => "group", "logic" => logic, "blocks" => inner}) when is_list(inner) do
     flat_rules =
       inner
       |> Enum.map(&extract_block/1)

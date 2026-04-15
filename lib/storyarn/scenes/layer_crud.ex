@@ -5,32 +5,27 @@ defmodule Storyarn.Scenes.LayerCrud do
 
   alias Storyarn.Localization
   alias Storyarn.Repo
-  alias Storyarn.Scenes.{PositionUtils, Scene, SceneAnnotation, SceneLayer, ScenePin, SceneZone}
+  alias Storyarn.Scenes.PositionUtils
+  alias Storyarn.Scenes.Scene
+  alias Storyarn.Scenes.SceneAnnotation
+  alias Storyarn.Scenes.SceneLayer
+  alias Storyarn.Scenes.ScenePin
+  alias Storyarn.Scenes.SceneZone
   alias Storyarn.Shared.TreeOperations
 
   @doc """
   Lists all layers for a map, ordered by position.
   """
   def list_layers(scene_id) do
-    from(l in SceneLayer,
-      where: l.scene_id == ^scene_id,
-      order_by: [asc: l.position]
-    )
-    |> Repo.all()
+    Repo.all(from(l in SceneLayer, where: l.scene_id == ^scene_id, order_by: [asc: l.position]))
   end
 
   def get_layer(scene_id, layer_id) do
-    from(l in SceneLayer,
-      where: l.scene_id == ^scene_id and l.id == ^layer_id
-    )
-    |> Repo.one()
+    Repo.one(from(l in SceneLayer, where: l.scene_id == ^scene_id and l.id == ^layer_id))
   end
 
   def get_layer!(scene_id, layer_id) do
-    from(l in SceneLayer,
-      where: l.scene_id == ^scene_id and l.id == ^layer_id
-    )
-    |> Repo.one!()
+    Repo.one!(from(l in SceneLayer, where: l.scene_id == ^scene_id and l.id == ^layer_id))
   end
 
   def create_layer(scene_id, attrs) do
@@ -42,7 +37,7 @@ defmodule Storyarn.Scenes.LayerCrud do
     |> SceneLayer.create_changeset(Map.put(attrs, "position", position))
     |> Repo.insert()
     |> tap(fn
-      {:ok, _layer} -> Repo.get(Scene, scene_id) |> Localization.extract_scene()
+      {:ok, _layer} -> Scene |> Repo.get(scene_id) |> Localization.extract_scene()
       _ -> :ok
     end)
   end
@@ -52,7 +47,7 @@ defmodule Storyarn.Scenes.LayerCrud do
     |> SceneLayer.update_changeset(attrs)
     |> Repo.update()
     |> tap(fn
-      {:ok, _updated_layer} -> Repo.get(Scene, layer.scene_id) |> Localization.extract_scene()
+      {:ok, _updated_layer} -> Scene |> Repo.get(layer.scene_id) |> Localization.extract_scene()
       _ -> :ok
     end)
   end
@@ -92,18 +87,13 @@ defmodule Storyarn.Scenes.LayerCrud do
   end
 
   defp do_delete_layer(layer) do
-    from(z in SceneZone, where: z.layer_id == ^layer.id)
-    |> Repo.update_all(set: [layer_id: nil])
-
-    from(p in ScenePin, where: p.layer_id == ^layer.id)
-    |> Repo.update_all(set: [layer_id: nil])
-
-    from(a in SceneAnnotation, where: a.layer_id == ^layer.id)
-    |> Repo.update_all(set: [layer_id: nil])
+    Repo.update_all(from(z in SceneZone, where: z.layer_id == ^layer.id), set: [layer_id: nil])
+    Repo.update_all(from(p in ScenePin, where: p.layer_id == ^layer.id), set: [layer_id: nil])
+    Repo.update_all(from(a in SceneAnnotation, where: a.layer_id == ^layer.id), set: [layer_id: nil])
 
     case Repo.delete(layer) do
       {:ok, deleted} ->
-        Repo.get(Scene, deleted.scene_id) |> Localization.extract_scene()
+        Scene |> Repo.get(deleted.scene_id) |> Localization.extract_scene()
         deleted
 
       {:error, changeset} ->

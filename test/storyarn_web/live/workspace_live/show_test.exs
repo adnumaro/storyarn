@@ -29,7 +29,8 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
       workspace = workspace_fixture(user, %{name: "Game Studio"})
 
       _project =
-        project_fixture(user, %{name: "Epic RPG", workspace: workspace})
+        user
+        |> project_fixture(%{name: "Epic RPG", workspace: workspace})
         |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
@@ -151,7 +152,8 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
       workspace = workspace_fixture(user, %{name: "Card Studio"})
 
       _project =
-        project_fixture(user, %{
+        user
+        |> project_fixture(%{
           name: "Described Project",
           description: "An epic adventure game",
           workspace: workspace
@@ -189,7 +191,8 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
       workspace = workspace_fixture(user, %{name: "Link Studio"})
 
       project =
-        project_fixture(user, %{name: "Linked Project", workspace: workspace})
+        user
+        |> project_fixture(%{name: "Linked Project", workspace: workspace})
         |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")

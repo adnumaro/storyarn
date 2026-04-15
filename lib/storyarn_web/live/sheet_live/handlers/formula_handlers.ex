@@ -10,9 +10,9 @@ defmodule StoryarnWeb.SheetLive.Handlers.FormulaHandlers do
   import Phoenix.Component, only: [assign: 3]
   import StoryarnWeb.SheetLive.Helpers.FormulaHelpers
 
-  alias StoryarnWeb.Helpers.Authorize
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
+  alias StoryarnWeb.Helpers.Authorize
 
   def handle_open(params, socket, _helpers) do
     row_id = MapUtils.parse_int(params["row-id"])

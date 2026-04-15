@@ -29,8 +29,10 @@ defmodule Storyarn.Assets.Asset do
       }
   """
   use Ecto.Schema
+
   import Ecto.Changeset
 
+  alias Ecto.Association.NotLoaded
   alias Storyarn.Accounts.User
   alias Storyarn.Projects.Project
 
@@ -50,9 +52,9 @@ defmodule Storyarn.Assets.Asset do
           metadata: map() | nil,
           blob_hash: String.t() | nil,
           project_id: integer() | nil,
-          project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
+          project: Project.t() | NotLoaded.t() | nil,
           uploaded_by_id: integer() | nil,
-          uploaded_by: User.t() | Ecto.Association.NotLoaded.t() | nil,
+          uploaded_by: User.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -113,9 +115,7 @@ defmodule Storyarn.Assets.Asset do
     asset
     |> cast(attrs, [:filename, :content_type, :size, :key, :url, :metadata, :blob_hash])
     |> validate_required([:filename, :content_type, :size, :key])
-    |> validate_inclusion(:content_type, @allowed_content_types,
-      message: "is not a supported file type"
-    )
+    |> validate_inclusion(:content_type, @allowed_content_types, message: "is not a supported file type")
     |> validate_number(:size, greater_than: 0, less_than_or_equal_to: 52_428_800)
     |> unique_constraint(:key, name: :assets_project_id_key_index)
   end
@@ -124,7 +124,6 @@ defmodule Storyarn.Assets.Asset do
   Changeset for updating asset metadata.
   """
   def update_changeset(asset, attrs) do
-    asset
-    |> cast(attrs, [:url, :metadata])
+    cast(asset, attrs, [:url, :metadata])
   end
 end

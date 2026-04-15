@@ -46,36 +46,31 @@ defmodule Storyarn.Shared.FormulaEngineTest do
     test "multiplication binds tighter than addition" do
       {:ok, ast} = FormulaEngine.parse("a + b * c")
 
-      assert {:binary_op, :add, {:symbol, "a"},
-              {:binary_op, :mul, {:symbol, "b"}, {:symbol, "c"}}} = ast
+      assert {:binary_op, :add, {:symbol, "a"}, {:binary_op, :mul, {:symbol, "b"}, {:symbol, "c"}}} = ast
     end
 
     test "division binds tighter than subtraction" do
       {:ok, ast} = FormulaEngine.parse("a - b / c")
 
-      assert {:binary_op, :sub, {:symbol, "a"},
-              {:binary_op, :div, {:symbol, "b"}, {:symbol, "c"}}} = ast
+      assert {:binary_op, :sub, {:symbol, "a"}, {:binary_op, :div, {:symbol, "b"}, {:symbol, "c"}}} = ast
     end
 
     test "parentheses override precedence" do
       {:ok, ast} = FormulaEngine.parse("(a + b) * c")
 
-      assert {:binary_op, :mul, {:binary_op, :add, {:symbol, "a"}, {:symbol, "b"}},
-              {:symbol, "c"}} = ast
+      assert {:binary_op, :mul, {:binary_op, :add, {:symbol, "a"}, {:symbol, "b"}}, {:symbol, "c"}} = ast
     end
 
     test "exponentiation binds tighter than multiplication" do
       {:ok, ast} = FormulaEngine.parse("a * b ^ c")
 
-      assert {:binary_op, :mul, {:symbol, "a"},
-              {:binary_op, :pow, {:symbol, "b"}, {:symbol, "c"}}} = ast
+      assert {:binary_op, :mul, {:symbol, "a"}, {:binary_op, :pow, {:symbol, "b"}, {:symbol, "c"}}} = ast
     end
 
     test "exponentiation is right-associative" do
       {:ok, ast} = FormulaEngine.parse("a ^ b ^ c")
 
-      assert {:binary_op, :pow, {:symbol, "a"},
-              {:binary_op, :pow, {:symbol, "b"}, {:symbol, "c"}}} = ast
+      assert {:binary_op, :pow, {:symbol, "a"}, {:binary_op, :pow, {:symbol, "b"}, {:symbol, "c"}}} = ast
     end
   end
 
@@ -141,8 +136,7 @@ defmodule Storyarn.Shared.FormulaEngineTest do
     test "PV formula: 10 + a * 2" do
       {:ok, ast} = FormulaEngine.parse("10 + a * 2")
 
-      assert {:binary_op, :add, {:number, 10.0},
-              {:binary_op, :mul, {:symbol, "a"}, {:number, 2.0}}} = ast
+      assert {:binary_op, :add, {:number, 10.0}, {:binary_op, :mul, {:symbol, "a"}, {:number, 2.0}}} = ast
     end
 
     test "evasion formula: 8 + a - 3" do

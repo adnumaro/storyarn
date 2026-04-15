@@ -2,12 +2,12 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   @moduledoc false
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
 
   alias Storyarn.Exports
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Imports
   alias Storyarn.Projects
+  alias StoryarnWeb.Helpers.Authorize
 
   @all_sections ~w(sheets flows scenes screenplays localization)a
 
@@ -126,11 +126,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   # ===========================================================================
 
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
-        _session,
-        socket
-      ) do
+  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
     case Projects.get_project_by_slugs(
            socket.assigns.current_scope,
            workspace_slug,
@@ -436,16 +432,13 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   # Helpers — Import
   # ===========================================================================
 
-  defp format_import_error(:no_file),
-    do: gettext("No file was uploaded. Please select a file and try again.")
+  defp format_import_error(:no_file), do: gettext("No file was uploaded. Please select a file and try again.")
 
-  defp format_import_error(:session_expired),
-    do: gettext("Import session expired. Please upload the file again.")
+  defp format_import_error(:session_expired), do: gettext("Import session expired. Please upload the file again.")
 
   defp format_import_error(:invalid_json), do: gettext("Invalid JSON file.")
 
-  defp format_import_error(:invalid_json_structure),
-    do: gettext("File is not a valid JSON object.")
+  defp format_import_error(:invalid_json_structure), do: gettext("File is not a valid JSON object.")
 
   defp format_import_error(:file_too_large), do: gettext("File exceeds the 50 MB size limit.")
 
@@ -455,14 +448,12 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   defp format_import_error({:invalid_field_types, fields}),
     do: gettext("Invalid field types: %{fields}", fields: Enum.join(fields, ", "))
 
-  defp format_import_error({:entity_limits_exceeded, _details}),
-    do: gettext("Import file exceeds entity count limits.")
+  defp format_import_error({:entity_limits_exceeded, _details}), do: gettext("Import file exceeds entity count limits.")
 
   defp format_import_error({:import_failed, context, _changeset}),
     do: gettext("Import failed at %{context}.", context: inspect(context))
 
-  defp format_import_error(other),
-    do: gettext("Import error: %{details}", details: inspect(other))
+  defp format_import_error(other), do: gettext("Import error: %{details}", details: inspect(other))
 
   @impl true
   def terminate(_reason, socket) do

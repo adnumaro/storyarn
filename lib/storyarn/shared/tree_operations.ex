@@ -59,7 +59,7 @@ defmodule Storyarn.Shared.TreeOperations do
 
     {scope_field, scope_value} = Keyword.fetch!(opts, :scope)
 
-    unless scope_field in @allowed_scope_fields do
+    if scope_field not in @allowed_scope_fields do
       raise ArgumentError,
             "scope_field must be one of #{inspect(@allowed_scope_fields)}, got: #{inspect(scope_field)}"
     end
@@ -118,8 +118,7 @@ defmodule Storyarn.Shared.TreeOperations do
   Updates only the position of an entity by ID (scoped to non-deleted).
   """
   def update_position_only(schema, id, position) do
-    from(s in schema, where: s.id == ^id and is_nil(s.deleted_at))
-    |> Repo.update_all(set: [position: position])
+    Repo.update_all(from(s in schema, where: s.id == ^id and is_nil(s.deleted_at)), set: [position: position])
   end
 
   @doc """
@@ -132,7 +131,8 @@ defmodule Storyarn.Shared.TreeOperations do
     table = schema.__schema__(:source)
 
     pairs =
-      list_fn.(project_id, parent_id)
+      project_id
+      |> list_fn.(parent_id)
       |> Enum.with_index()
       |> Enum.map(fn {entity, index} -> {entity.id, index} end)
 
@@ -183,7 +183,8 @@ defmodule Storyarn.Shared.TreeOperations do
     new_position = max(new_position, 0)
 
     Repo.transaction(fn ->
-      case schema.move_changeset(entity, %{parent_id: new_parent_id, position: new_position})
+      case entity
+           |> schema.move_changeset(%{parent_id: new_parent_id, position: new_position})
            |> Repo.update() do
         {:ok, updated} ->
           apply_move(schema, entity, updated, new_parent_id, new_position, list_fn)
@@ -253,8 +254,7 @@ defmodule Storyarn.Shared.TreeOperations do
   end
 
   defp do_build_subtree(grouped, parent_id) do
-    (Map.get(grouped, parent_id) || [])
-    |> Enum.map(fn item ->
+    Enum.map(Map.get(grouped, parent_id) || [], fn item ->
       Map.put(item, :children, do_build_subtree(grouped, item.id))
     end)
   end

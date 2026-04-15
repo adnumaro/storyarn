@@ -13,19 +13,18 @@ defmodule Storyarn.Screenplays do
   """
 
   alias Storyarn.Repo
+  alias Storyarn.Screenplays.CharacterExtension
+  alias Storyarn.Screenplays.ContentUtils
+  alias Storyarn.Screenplays.ElementCrud
+  alias Storyarn.Screenplays.Export.Fountain, as: FountainExport
+  alias Storyarn.Screenplays.FlowSync
+  alias Storyarn.Screenplays.Import.Fountain, as: FountainImport
+  alias Storyarn.Screenplays.LinkedPageCrud
+  alias Storyarn.Screenplays.ScreenplayCrud
+  alias Storyarn.Screenplays.ScreenplayQueries
+  alias Storyarn.Screenplays.TiptapSerialization
+  alias Storyarn.Screenplays.TreeOperations
   alias Storyarn.Sheets
-
-  alias Storyarn.Screenplays.{
-    CharacterExtension,
-    ContentUtils,
-    ElementCrud,
-    FlowSync,
-    LinkedPageCrud,
-    ScreenplayCrud,
-    ScreenplayQueries,
-    TiptapSerialization,
-    TreeOperations
-  }
 
   # =============================================================================
   # Screenplay Helpers
@@ -244,9 +243,6 @@ defmodule Storyarn.Screenplays do
   # =============================================================================
   # Export / Import
   # =============================================================================
-
-  alias Storyarn.Screenplays.Export.Fountain, as: FountainExport
-  alias Storyarn.Screenplays.Import.Fountain, as: FountainImport
 
   @doc "Exports elements to Fountain format string."
   defdelegate export_fountain(elements), to: FountainExport, as: :export

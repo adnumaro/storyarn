@@ -24,7 +24,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     setup :register_and_log_in_user
 
     test "creates a new scene and navigates to it", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Existing Scene"})
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
@@ -36,7 +36,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
 
     test "rejected for viewer role", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
 
@@ -54,7 +54,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     setup :register_and_log_in_user
 
     test "creates a child scene under given parent", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent_scene = scene_fixture(project, %{name: "Parent"})
 
       {:ok, view, _html} = live(conn, scene_url(project, parent_scene))
@@ -71,7 +71,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     setup :register_and_log_in_user
 
     test "sets pending_delete_id assign", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       other_scene = scene_fixture(project, %{name: "To Delete"})
 
@@ -91,7 +91,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     setup :register_and_log_in_user
 
     test "deletes the scene set in pending_delete_id", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Current"})
       to_delete = scene_fixture(project, %{name: "To Delete"})
 
@@ -109,7 +109,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     end
 
     test "does nothing when no pending_delete_id is set", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
@@ -126,7 +126,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     setup :register_and_log_in_user
 
     test "deletes a different scene and stays on current", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Current"})
       other = scene_fixture(project, %{name: "Other"})
 
@@ -144,7 +144,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     end
 
     test "deletes the currently viewed scene and redirects to index", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Current"})
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
@@ -156,7 +156,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     end
 
     test "handles non-existent scene id gracefully", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
@@ -168,7 +168,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
 
     test "rejected for viewer role", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
       target = scene_fixture(project, %{name: "Target"})
@@ -178,7 +178,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       render_click(view, "delete_scene", %{"id" => to_string(target.id)})
 
       # Scene should not be deleted
-      assert Scenes.get_scene(project.id, target.id) != nil
+      assert Scenes.get_scene(project.id, target.id)
     end
   end
 
@@ -188,7 +188,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     setup :register_and_log_in_user
 
     test "moves scene to new parent", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Current"})
       child = scene_fixture(project, %{name: "Child"})
       new_parent = scene_fixture(project, %{name: "New Parent"})
@@ -210,7 +210,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     end
 
     test "moves scene to root (nil parent)", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent = scene_fixture(project, %{name: "Parent"})
 
       child =
@@ -235,7 +235,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     end
 
     test "handles non-existent scene id gracefully", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
@@ -253,7 +253,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
 
     test "shows error when moving scene into its own descendant (cyclic)",
          %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       parent = scene_fixture(project, %{name: "Parent"})
       child = scene_fixture(project, %{name: "Child"})
 
@@ -280,7 +280,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     setup :register_and_log_in_user
 
     test "navigates to existing target scene", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Source"})
       target = scene_fixture(project, %{name: "Target"})
 
@@ -292,7 +292,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     end
 
     test "shows flash when target scene is deleted", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
@@ -304,7 +304,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     end
 
     test "clears stale zone reference when target scene is deleted", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       # Create a child scene and zone pointing to it
@@ -334,7 +334,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     end
 
     test "does nothing when no zone links to the deleted scene", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
@@ -347,7 +347,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     end
 
     test "ignores unsupported target types", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
@@ -357,7 +357,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     end
 
     test "handles missing params gracefully", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
@@ -373,7 +373,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     setup :register_and_log_in_user
 
     test "shows error for non-existent zone", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))
@@ -386,7 +386,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
 
     test "creates child scene without background when no image extraction possible",
          %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       # Scene without a background — extract_zone_image will fail with :no_background_image
       scene = scene_fixture(project)
 
@@ -410,12 +410,12 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       # Verify the child scene was created with the zone's name
       scenes = Scenes.list_scenes(project.id)
       child = Enum.find(scenes, &(&1.name == "Named Zone"))
-      assert child != nil
+      assert child
       assert child.parent_id == scene.id
     end
 
     test "links zone to newly created child scene", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
       zone =
@@ -436,17 +436,17 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       # The zone should now be linked to the child scene
       updated_zone = Scenes.get_zone(scene.id, zone.id)
       assert updated_zone.target_type == "scene"
-      assert updated_zone.target_id != nil
+      assert updated_zone.target_id
 
       # Verify child exists
       child = Scenes.get_scene(project.id, updated_zone.target_id)
-      assert child != nil
+      assert child
       assert child.name == "Zone A"
     end
 
     test "creates child scene with inherited scale when parent has scale_value",
          %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
       # Set scale_value on the parent scene
       {:ok, scene} = Scenes.update_scene(scene, %{scale_value: 1000.0, scale_unit: "meters"})
@@ -470,16 +470,16 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       # Verify the child inherits scale
       scenes = Scenes.list_scenes(project.id)
       child = Enum.find(scenes, &(&1.name == "Scaled Zone"))
-      assert child != nil
+      assert child
       assert child.scale_unit == "meters"
       # scale_value should be parent's * (bw_percent / 100)
       # vertices span 10..50 on X axis so bw_percent = 40
-      assert child.scale_value != nil
+      assert child.scale_value
     end
 
     test "creates child scene with full image extraction when background exists",
          %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
 
       # Copy test image to priv/static/uploads where ZoneImageExtractor can resolve it.
       src = Path.join(File.cwd!(), "test/fixtures/images/quadrant_map.png")
@@ -492,7 +492,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
 
       scene = scene_fixture(project)
       {:ok, scene} = Scenes.update_scene(scene, %{background_asset_id: asset.id})
-      scene = Storyarn.Repo.preload(scene, :background_asset, force: true)
+      scene = Repo.preload(scene, :background_asset, force: true)
 
       zone =
         zone_fixture(scene, %{
@@ -514,13 +514,13 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       # Verify the child scene was created
       scenes = Scenes.list_scenes(project.id)
       child = Enum.find(scenes, &(&1.name == "Extracted Zone"))
-      assert child != nil
+      assert child
       assert child.parent_id == scene.id
     end
 
     test "falls back to no-image child scene when extraction fails (scene has background but image broken)",
          %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       asset = image_asset_fixture(project, user, %{url: "https://example.com/broken.png"})
       scene = scene_fixture(project)
       {:ok, scene} = Scenes.update_scene(scene, %{background_asset_id: asset.id})
@@ -545,12 +545,12 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
       # Verify child was created
       scenes = Scenes.list_scenes(project.id)
       child = Enum.find(scenes, &(&1.name == "Broken Zone"))
-      assert child != nil
+      assert child
     end
 
     test "rejected for viewer role", %{conn: conn, user: user} do
       owner = user_fixture()
-      project = project_fixture(owner) |> Repo.preload(:workspace)
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
       scene = scene_fixture(project)
 
@@ -584,7 +584,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.TreeHandlersTest do
     setup :register_and_log_in_user
 
     test "sets pending and confirms deletion of current scene", %{conn: conn, user: user} do
-      project = project_fixture(user) |> Repo.preload(:workspace)
+      project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "To Delete"})
 
       {:ok, view, _html} = live(conn, scene_url(project, scene))

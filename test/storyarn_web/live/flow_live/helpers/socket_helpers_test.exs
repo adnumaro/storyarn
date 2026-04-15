@@ -1,11 +1,11 @@
 defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpersTest do
   use Storyarn.DataCase, async: true
 
-  alias StoryarnWeb.FlowLive.Helpers.SocketHelpers
-
   import Storyarn.AccountsFixtures
-  import Storyarn.ProjectsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.ProjectsFixtures
+
+  alias StoryarnWeb.FlowLive.Helpers.SocketHelpers
 
   # ── reload_flow_data/1 ────────────────────────────────────────────
 

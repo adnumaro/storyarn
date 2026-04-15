@@ -12,8 +12,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.SelectOptionHandlers do
   existing undo tag, so no changes to `UndoRedoHandlers` are required.
   """
 
-  alias StoryarnWeb.Helpers.Authorize
   alias Storyarn.Sheets
+  alias StoryarnWeb.Helpers.Authorize
 
   # ── Public event handlers ──────────────────────────────────────────────────
 
@@ -25,24 +25,14 @@ defmodule StoryarnWeb.SheetLive.Handlers.SelectOptionHandlers do
     end)
   end
 
-  def handle_remove(
-        %{"scope" => scope, "id" => id, "index" => index},
-        socket,
-        helpers
-      ) do
+  def handle_remove(%{"scope" => scope, "id" => id, "index" => index}, socket, helpers) do
     with_scope(scope, id, socket, helpers, fn ctx ->
       persist(ctx, List.delete_at(ctx.options, index), socket, helpers)
     end)
   end
 
   def handle_update(
-        %{
-          "scope" => scope,
-          "id" => id,
-          "index" => index,
-          "field" => field,
-          "value" => value
-        },
+        %{"scope" => scope, "id" => id, "index" => index, "field" => field, "value" => value},
         socket,
         helpers
       )
@@ -124,9 +114,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.SelectOptionHandlers do
       {:ok, _} ->
         {:noreply,
          socket
-         |> helpers.push_undo.(
-           {:update_table_column_config, column.block_id, column.id, prev, new_config}
-         )
+         |> helpers.push_undo.({:update_table_column_config, column.block_id, column.id, prev, new_config})
          |> helpers.reload_blocks.()
          |> helpers.broadcast.(:block_updated)}
 

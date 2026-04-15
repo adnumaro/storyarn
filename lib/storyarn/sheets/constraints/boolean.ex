@@ -25,8 +25,6 @@ defmodule Storyarn.Sheets.Constraints.Boolean do
     # two_state is the default — only emit constraints when mode differs
     if mode != nil and mode != "two_state" do
       %{"mode" => mode}
-    else
-      nil
     end
   end
 
