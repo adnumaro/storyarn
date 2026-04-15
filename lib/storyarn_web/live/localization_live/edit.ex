@@ -45,7 +45,9 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
         form={@form}
         has-provider={@has_provider}
         can-edit={@can_edit}
-        back-url={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/texts/#{@text.locale_code}"}
+        back-url={
+          ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/texts/#{@text.locale_code}"
+        }
       />
     </StoryarnWeb.Components.ProjectShell.project_shell>
     """
@@ -105,8 +107,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
   def handle_params(_params, _url, socket), do: {:noreply, socket}
 
   @impl true
-  def handle_info({:online_users, users}, socket),
-    do: {:noreply, assign(socket, :online_users, users)}
+  def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
 
   def handle_info(_msg, socket), do: {:noreply, socket}
 

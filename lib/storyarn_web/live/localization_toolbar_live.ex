@@ -114,9 +114,7 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
          put_flash(
            socket,
            :error,
-           dgettext("localization", "Translation failed: %{reason}",
-             reason: inspect(reason)
-           )
+           dgettext("localization", "Translation failed: %{reason}", reason: inspect(reason))
          )}
     end
   end
@@ -136,10 +134,7 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
   # ── URL helpers ───────────────────────────────────────────────────────────
   defp export_url(%{selected_locale: nil}, _format), do: nil
 
-  defp export_url(
-         %{workspace_slug: ws, project_slug: p, selected_locale: locale},
-         format
-       )
+  defp export_url(%{workspace_slug: ws, project_slug: p, selected_locale: locale}, format)
        when is_binary(ws) and is_binary(p) and is_binary(locale) do
     ~p"/workspaces/#{ws}/projects/#{p}/localization/export/#{format}/#{locale}"
   end

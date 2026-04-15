@@ -9,6 +9,7 @@ defmodule StoryarnWeb.Live.Shared.ProjectChromeHelpers do
     initial render; `PresenceLive` broadcasts updates on every join/leave.
   """
 
+  alias Phoenix.LiveView.Socket
   alias Storyarn.Collaboration
 
   @doc """
@@ -22,8 +23,8 @@ defmodule StoryarnWeb.Live.Shared.ProjectChromeHelpers do
   `{:toolbar_event, event, params}` tuple so the active sidebar LV picks
   it up.
   """
-  @spec forward_tree_panel(Phoenix.LiveView.Socket.t(), String.t(), map()) ::
-          {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec forward_tree_panel(Socket.t(), String.t(), map()) ::
+          {:noreply, Socket.t()}
   def forward_tree_panel(socket, event, params) do
     with %{} = project <- socket.assigns[:project] do
       Phoenix.PubSub.broadcast(

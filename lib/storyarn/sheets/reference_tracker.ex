@@ -170,7 +170,6 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
   defp query_block_backlinks(target_type, target_id, project_id) do
     alias Storyarn.Sheets.Block
-    alias Storyarn.Sheets.Sheet
 
     from(r in EntityReference,
       join: b in Block,

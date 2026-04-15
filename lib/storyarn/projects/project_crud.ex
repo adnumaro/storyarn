@@ -268,7 +268,9 @@ defmodule Storyarn.Projects.ProjectCrud do
       Repo.update_all(
         from(p in Project,
           where: p.id == ^project_id and p.restoration_in_progress == true and p.restoration_started_at < ^cutoff
-        ), set: [restoration_in_progress: false, restoration_started_by_id: nil, restoration_started_at: nil])
+        ),
+        set: [restoration_in_progress: false, restoration_started_by_id: nil, restoration_started_at: nil]
+      )
 
     if count == 1, do: {:ok, :cleared}, else: {:error, :not_stale}
   end

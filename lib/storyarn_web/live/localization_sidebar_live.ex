@@ -115,11 +115,9 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
   # the shell topic so this sidebar updates its highlight.
 
   # Empty locale codes — user selected the placeholder. No-op.
-  def handle_event("change_source_language", %{"locale_code" => ""}, socket),
-    do: {:noreply, socket}
+  def handle_event("change_source_language", %{"locale_code" => ""}, socket), do: {:noreply, socket}
 
-  def handle_event("add_target_language", %{"locale_code" => ""}, socket),
-    do: {:noreply, socket}
+  def handle_event("add_target_language", %{"locale_code" => ""}, socket), do: {:noreply, socket}
 
   def handle_event("change_source_language", %{"locale_code" => code}, socket) do
     with_edit(socket, fn socket ->
@@ -174,8 +172,7 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
            |> put_flash(:info, msg)}
 
         {:error, _changeset} ->
-          {:noreply,
-           put_flash(socket, :error, dgettext("localization", "Failed to add language."))}
+          {:noreply, put_flash(socket, :error, dgettext("localization", "Failed to add language."))}
       end
     end)
   end
@@ -205,8 +202,7 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
                |> put_flash(:info, dgettext("localization", "Language removed."))}
 
             {:error, _} ->
-              {:noreply,
-               put_flash(socket, :error, dgettext("localization", "Could not remove language."))}
+              {:noreply, put_flash(socket, :error, dgettext("localization", "Could not remove language."))}
           end
       end
     end)

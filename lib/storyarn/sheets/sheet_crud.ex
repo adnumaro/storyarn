@@ -131,7 +131,9 @@ defmodule Storyarn.Sheets.SheetCrud do
         repo.update_all(
           from(b in Block,
             where: b.sheet_id == ^sheet.id and not is_nil(b.deleted_at) and b.deleted_at >= ^since_threshold
-          ), set: [deleted_at: nil])
+          ),
+          set: [deleted_at: nil]
+        )
 
       {:ok, count}
     end)

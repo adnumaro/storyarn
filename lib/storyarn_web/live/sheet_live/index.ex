@@ -42,8 +42,7 @@ defmodule StoryarnWeb.SheetLive.Index do
           "sheet_id" => nil,
           "can_edit" => @can_edit,
           "active_tool" => "sheets",
-          "dashboard_url" =>
-            ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets",
+          "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets",
           "current_scope" => @current_scope
         }
       }

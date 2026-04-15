@@ -22,6 +22,7 @@ defmodule StoryarnWeb.ConnCase do
   using do
     quote do
       use StoryarnWeb, :verified_routes
+
       import Phoenix.ConnTest
       import Plug.Conn
       import Storyarn.Factory

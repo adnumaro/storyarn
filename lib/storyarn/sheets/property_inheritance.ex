@@ -267,7 +267,9 @@ defmodule Storyarn.Sheets.PropertyInheritance do
           where:
             b.inherited_from_block_id == ^parent_block.id and not is_nil(b.deleted_at) and
               b.deleted_at >= ^since_threshold
-        ), set: [deleted_at: nil])
+        ),
+        set: [deleted_at: nil]
+      )
 
     {:ok, count}
   end
@@ -385,7 +387,9 @@ defmodule Storyarn.Sheets.PropertyInheritance do
         where:
           b.sheet_id == ^sheet_id and not is_nil(b.inherited_from_block_id) and b.detached == false and
             is_nil(b.deleted_at) and b.inherited_from_block_id not in ^new_source_block_ids
-      ), set: [detached: true])
+      ),
+      set: [detached: true]
+    )
 
     # Re-inherit from new ancestor chain, but skip blocks that already
     # have a detached instance (user chose to keep them as own blocks)
@@ -521,7 +525,9 @@ defmodule Storyarn.Sheets.PropertyInheritance do
     Repo.update_all(
       from(b in Block,
         where: b.inherited_from_block_id == ^parent_block_id and b.detached == false and is_nil(b.deleted_at)
-      ), set: [variable_name: nil])
+      ),
+      set: [variable_name: nil]
+    )
   end
 
   defp sync_instance_variable_names(_parent_block_id, instances, variable_name) do

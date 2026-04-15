@@ -215,8 +215,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   # Ignore toolbar-forwarded panel events; they're the sidebar's concern.
   def handle_info({:toolbar_event, _name, _params}, socket), do: {:noreply, socket}
 
-  def handle_info({:online_users, users}, socket),
-    do: {:noreply, assign(socket, :online_users, users)}
+  def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
 
   def handle_info(_msg, socket), do: {:noreply, socket}
 
