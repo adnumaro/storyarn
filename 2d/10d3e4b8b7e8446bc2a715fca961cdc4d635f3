@@ -1,0 +1,45 @@
+lib/storyarn/sheets/sheet_crud.ex
+  b8630343f6f433e9 134-136
+lib/storyarn_web/live/localization_sidebar_live.ex
+  b8630343f6f433e9 118,120,175,205
+lib/storyarn_web/live/localization_toolbar_live.ex
+  b8630343f6f433e9 117,137
+lib/storyarn_web/live/shared/project_chrome_helpers.ex
+  b8630343f6f433e9 12,26-27
+lib/storyarn_web/live/sheet_live/index.ex
+  b8630343f6f433e9 45
+lib/storyarn/flows/node_create.ex
+  b8630343f6f433e9 4
+test/support/conn_case.ex
+  b8630343f6f433e9 25
+lib/storyarn_web/live/localization_live/index.ex
+  b8630343f6f433e9 218
+lib/storyarn_web/live/localization_live/report.ex
+  b8630343f6f433e9 120
+lib/storyarn/projects/project_crud.ex
+  b8630343f6f433e9 271-273
+lib/storyarn/sheets/property_inheritance.ex
+  b8630343f6f433e9 270-272,390-392,528-530
+lib/storyarn_web/live/localization_live/edit.ex
+  b8630343f6f433e9 48-50,110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "2d10d3e4b8b7e8446bc2a715fca961cdc4d635f3",
+  "prompts": {
+    "b8630343f6f433e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8e627c6-a926-4e61-b666-cd7947895de7",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 33,
+      "total_deletions": 32,
+      "accepted_lines": 33,
+      "overriden_lines": 0
+    }
+  }
+}
