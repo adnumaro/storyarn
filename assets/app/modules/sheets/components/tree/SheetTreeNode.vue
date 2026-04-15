@@ -70,6 +70,13 @@ watch(
   },
 );
 
+// Auto-expand when a descendant becomes selected (e.g., after creating a
+// child sheet with the parent collapsed). Overrides a prior manual collapse
+// so the user can see the newly opened/created sheet.
+watch(shouldAutoExpand, (should) => {
+  if (should) isOpen.value = true;
+});
+
 function onToggle(): void {
   userToggled.value = true;
   isOpen.value = !isOpen.value;
