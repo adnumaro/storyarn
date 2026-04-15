@@ -73,8 +73,6 @@ const showTop = computed(() => atVertical.value === "top");
 const showBottom = computed(() => atVertical.value === "bottom");
 const showLeft = computed(() => atSide.value === "left");
 const showRight = computed(() => atSide.value === "right");
-
-const handleOffsetClass = computed(() => (kind === "group" ? "-left-10" : "-left-5"));
 </script>
 
 <template>
@@ -105,12 +103,17 @@ const handleOffsetClass = computed(() => (kind === "group" ? "-left-10" : "-left
     />
 
     <div
-      v-if="canEdit"
-      class="block-drag-handle absolute top-5 cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground opacity-0 group-hover/dnd:opacity-100 transition-opacity"
-      :class="handleOffsetClass"
+      v-if="canEdit && kind === 'group'"
+      class="block-drag-handle absolute top-6 -left-5 cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground opacity-0 group-hover/dnd:opacity-100 transition-opacity"
     >
-      <Grip v-if="kind === 'group'" class="size-4" />
-      <GripVertical v-else class="size-4" />
+      <Grip class="size-4" />
+    </div>
+
+    <div
+      v-if="canEdit && kind !== 'group'"
+      class="block-drag-handle absolute top-5.5 right-5 z-10 cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground opacity-0 group-hover/dnd:opacity-100 transition-opacity"
+    >
+      <GripVertical class="size-4" />
     </div>
 
     <slot />

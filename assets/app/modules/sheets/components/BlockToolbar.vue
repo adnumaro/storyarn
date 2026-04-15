@@ -46,7 +46,7 @@ const emit = defineEmits<{
 <template>
   <div
     :class="[
-      'absolute -top-3.5 left-1/2 -translate-x-1/2 transition-opacity z-10',
+      'absolute -top-10 left-1/2 -translate-x-1/2 transition-opacity z-10',
       configOpen
         ? 'opacity-100 pointer-events-auto'
         : 'opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto',
