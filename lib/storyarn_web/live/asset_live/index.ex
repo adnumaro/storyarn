@@ -6,30 +6,31 @@ defmodule StoryarnWeb.AssetLive.Index do
   alias Storyarn.Assets
   alias Storyarn.Billing
   alias Storyarn.Collaboration
-  alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app
+    <StoryarnWeb.Components.ProjectShell.project_shell
       socket={@socket}
-      flash={@flash}
-      current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
+      current_scope={@current_scope}
+      current_user={@current_user}
+      urls={@urls}
       active_tool={:assets}
-      has_tree={false}
-      can_edit={@can_edit}
+      is_super_admin={@is_super_admin}
+      online_users={@online_users}
     >
-      <:top_bar_extra_right :if={@can_edit}>
+      <:top_bar_extras_right :if={@can_edit}>
         <.vue
           v-component="components/AssetUploadButton"
           v-socket={@socket}
           id="asset-upload-button"
           uploading={@uploading}
         />
-      </:top_bar_extra_right>
+      </:top_bar_extras_right>
       <.vue
         v-component="components/AssetIndex"
         v-socket={@socket}
@@ -45,7 +46,7 @@ defmodule StoryarnWeb.AssetLive.Index do
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
       />
-    </Layouts.app>
+    </StoryarnWeb.Components.ProjectShell.project_shell>
     """
   end
 
@@ -54,50 +55,37 @@ defmodule StoryarnWeb.AssetLive.Index do
   # ===========================================================================
 
   @impl true
-  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
-    case Projects.get_project_by_slugs(
-           socket.assigns.current_scope,
-           workspace_slug,
-           project_slug
-         ) do
-      {:ok, project, membership} ->
-        can_edit = Projects.can?(membership.role, :edit_content)
-        type_counts = Assets.count_assets_by_type(project.id)
+  def mount(_params, _session, socket) do
+    %{project: project} = socket.assigns
+    type_counts = Assets.count_assets_by_type(project.id)
 
-        if connected?(socket) do
-          Collaboration.subscribe_changes({:assets, project.id})
-        end
-
-        socket =
-          socket
-          |> assign(:project, project)
-          |> assign(:workspace, project.workspace)
-          |> assign(:membership, membership)
-          |> assign(:can_edit, can_edit)
-          |> assign(:filter, "all")
-          |> assign(:search, "")
-          |> assign(:type_counts, type_counts)
-          |> assign(:selected_asset, nil)
-          |> assign(:asset_usages, %{flow_nodes: [], sheet_avatars: [], sheet_banners: []})
-          |> assign(:uploading, false)
-          |> load_assets()
-
-        {:ok, socket}
-
-      {:error, _reason} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("assets", "You don't have access to this project."))
-         |> redirect(to: ~p"/workspaces")}
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Storyarn.PubSub, ProjectChromeHelpers.shell_topic(project.id))
+      Collaboration.subscribe_changes({:assets, project.id})
     end
+
+    socket =
+      socket
+      |> assign(:filter, "all")
+      |> assign(:search, "")
+      |> assign(:type_counts, type_counts)
+      |> assign(:selected_asset, nil)
+      |> assign(:asset_usages, %{flow_nodes: [], sheet_avatars: [], sheet_banners: []})
+      |> assign(:uploading, false)
+      |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
+      |> load_assets()
+
+    {:ok, socket}
   end
 
   @impl true
-  def handle_params(_params, _url, socket) do
-    {:noreply, socket}
-  end
+  def handle_params(_params, _url, socket), do: {:noreply, socket}
 
   @impl true
+  def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
+
+  def handle_info({:toolbar_event, _name, _params}, socket), do: {:noreply, socket}
+
   def handle_info({:remote_change, _action, _payload}, socket) do
     type_counts = Assets.count_assets_by_type(socket.assigns.project.id)
 
@@ -113,6 +101,9 @@ defmodule StoryarnWeb.AssetLive.Index do
   # ===========================================================================
 
   @impl true
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: ProjectChromeHelpers.forward_tree_panel(socket, event, params)
+
   def handle_event("filter_assets", %{"type" => type}, socket) when type in ["all", "image", "audio"] do
     {:noreply,
      socket
