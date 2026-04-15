@@ -148,7 +148,12 @@ function toggleTreePanel() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" :side-offset="8" class="w-48">
         <DropdownMenuItem v-for="tool in otherTools" :key="tool.key" as-child>
-          <a :href="urls.tools[tool.key]" class="flex items-center gap-2">
+          <a
+            :href="urls.tools[tool.key]"
+            data-phx-link="redirect"
+            data-phx-link-state="push"
+            class="flex items-center gap-2"
+          >
             <component :is="tool.icon" class="size-4" />
             {{ tool.label }}
           </a>
