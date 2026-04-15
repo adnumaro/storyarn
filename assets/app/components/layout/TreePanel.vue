@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component } from "vue";
 import { LayoutDashboard, Pin, X } from "lucide-vue-next";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useLive } from "@composables/useLive";
 import Sidebar from "./Sidebar.vue";
 import SheetTree from "@modules/sheets/components/tree/SheetTree.vue";
@@ -85,6 +85,25 @@ watch(
   },
 );
 
+// ── Expose open state to global CSS so the main content can shift ──
+// ProjectShell's <main> reads `body[data-tree-panel-open="1"]` in CSS to
+// apply the left padding when the panel is open (and remove it when closed).
+watch(
+  internalOpen,
+  (open) => {
+    if (open) {
+      document.body.dataset.treePanelOpen = "1";
+    } else {
+      delete document.body.dataset.treePanelOpen;
+    }
+  },
+  { immediate: true },
+);
+
+onUnmounted(() => {
+  delete document.body.dataset.treePanelOpen;
+});
+
 // ── Dashboard link label ──
 const toolLabels = {
   dashboard: "Dashboard",
@@ -116,6 +135,8 @@ function togglePin() {
       <div v-if="dashboardUrl" class="px-2 pt-2 pb-2">
         <a
           :href="dashboardUrl"
+          data-phx-link="patch"
+          data-phx-link-state="push"
           :class="[
             'flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
             onDashboard

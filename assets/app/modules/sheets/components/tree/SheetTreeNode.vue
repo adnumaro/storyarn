@@ -169,7 +169,12 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
           <span v-else class="shrink-0 size-5" />
 
           <!-- Sheet link -->
-          <a :href="sheetHref(node)" class="flex-1 flex items-center gap-1.5 py-1.5 min-w-0">
+          <a
+            :href="sheetHref(node)"
+            data-phx-link="patch"
+            data-phx-link-state="push"
+            class="flex-1 flex items-center gap-1.5 py-1.5 min-w-0"
+          >
             <img
               v-if="avatarUrl"
               :src="avatarUrl"

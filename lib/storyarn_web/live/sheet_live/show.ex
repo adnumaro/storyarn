@@ -19,7 +19,6 @@ defmodule StoryarnWeb.SheetLive.Show do
     ReferenceHandlers,
     SelectOptionHandlers,
     TableHandlers,
-    TreeHandlers,
     UndoRedoHandlers
   }
 
@@ -27,7 +26,6 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias StoryarnWeb.Live.Shared.RestorationHandlers
 
   import StoryarnWeb.Live.Shared.RestorationHandlers, only: [check_restoration_lock: 2]
-  import StoryarnWeb.Live.Shared.TreePanelHandlers
   import StoryarnWeb.SheetLive.Helpers.AudioDataHelpers
   import StoryarnWeb.SheetLive.Helpers.FormulaHelpers
   import StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers
@@ -36,7 +34,6 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   alias Storyarn.Collaboration
   alias Storyarn.Shared.MapUtils
-  alias Storyarn.Projects
   alias Storyarn.Sheets
 
   @impl true
@@ -50,28 +47,18 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   defp render_full(assigns) do
     ~H"""
-    <Layouts.app
-      flash={@flash}
+    <StoryarnWeb.Components.ProjectShell.project_shell
       socket={@socket}
-      current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
+      current_scope={@current_scope}
+      current_user={@current_user}
+      urls={@urls}
+      sheet_id={@sheet && to_string(@sheet.id)}
       active_tool={:sheets}
-      has_tree={true}
-      tree_panel_open={@tree_panel_open}
-      tree_panel_pinned={@tree_panel_pinned}
       can_edit={@can_edit}
-      restoration_banner={@restoration_banner}
-      online_users={@online_users}
-      tree_props={
-        %{
-          sheetsTree: @sheets_tree,
-          canEdit: @can_edit,
-          workspaceSlug: @workspace.slug,
-          projectSlug: @project.slug,
-          selectedSheetId: @sheet && @sheet.id
-        }
-      }
+      is_super_admin={@is_super_admin}
+      dashboard_url={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets"}
     >
       <.sheet_content
         sheet={@sheet}
@@ -95,7 +82,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         current_user_id={@current_scope.user.id}
         compact={false}
       />
-    </Layouts.app>
+    </StoryarnWeb.Components.ProjectShell.project_shell>
     """
   end
 
@@ -264,64 +251,48 @@ defmodule StoryarnWeb.SheetLive.Show do
   # ===========================================================================
 
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
-        _session,
-        socket
-      ) do
-    case Projects.get_project_by_slugs(
-           socket.assigns.current_scope,
-           workspace_slug,
-           project_slug
-         ) do
-      {:ok, project, membership} ->
-        can_edit = Projects.can?(membership.role, :edit_content)
+  def mount(_params, _session, socket) do
+    %{project: project, can_edit: can_edit} = socket.assigns
 
-        if connected?(socket) do
-          Collaboration.subscribe_restoration(project.id)
-          Collaboration.subscribe_changes({:project, project.id})
-        end
+    if connected?(socket) do
+      Collaboration.subscribe_restoration(project.id)
+      Collaboration.subscribe_changes({:project, project.id})
 
-        {can_edit, restoration_banner} =
-          check_restoration_lock(project.id, can_edit)
-
-        {:ok,
-         socket
-         |> assign(focus_layout_defaults())
-         |> assign(:project, project)
-         |> assign(:workspace, project.workspace)
-         |> assign(:membership, membership)
-         |> assign(:can_edit, can_edit)
-         |> assign(:restoration_banner, restoration_banner)
-         |> assign(:compact, false)
-         |> assign(:sheet, nil)
-         |> assign(:blocks, [])
-         |> assign(:inherited_groups, [])
-         |> assign(:gallery_data, %{})
-         |> assign(:table_data, %{})
-         |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(project.id)))
-         |> assign(:source_shortcut, nil)
-         |> assign(:current_tab, "content")
-         |> assign(:references_data, nil)
-         |> assign(:audio_data, nil)
-         |> assign(:history_data, nil)
-         |> assign(:online_users, [])
-         |> assign(:collab_scope, nil)
-         |> assign(:block_locks, %{})
-         |> assign(:pending_delete_id, nil)
-         |> assign(:formula_editing, nil)
-         |> assign(:formula_search_results, [])
-         |> assign(:formula_search_query, "")
-         |> assign(:formula_search_offset, 0)
-         |> assign(:formula_search_has_more, false)
-         |> UndoRedoStack.init()}
-
-      {:error, _reason} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("sheets", "You don't have access to this project."))
-         |> redirect(to: ~p"/workspaces")}
+      Phoenix.PubSub.subscribe(
+        Storyarn.PubSub,
+        StoryarnWeb.SidebarLive.shell_topic(project.id)
+      )
     end
+
+    {can_edit, restoration_banner} = check_restoration_lock(project.id, can_edit)
+
+    {:ok,
+     socket
+     |> assign(:online_users, [])
+     |> assign(:can_edit, can_edit)
+     |> assign(:restoration_banner, restoration_banner)
+     |> assign(:compact, false)
+     |> assign(:sheet, nil)
+     |> assign(:blocks, [])
+     |> assign(:inherited_groups, [])
+     |> assign(:gallery_data, %{})
+     |> assign(:table_data, %{})
+     |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(project.id)))
+     |> assign(:source_shortcut, nil)
+     |> assign(:current_tab, "content")
+     |> assign(:references_data, nil)
+     |> assign(:audio_data, nil)
+     |> assign(:history_data, nil)
+     |> assign(:online_users, [])
+     |> assign(:collab_scope, nil)
+     |> assign(:block_locks, %{})
+     |> assign(:pending_delete_id, nil)
+     |> assign(:formula_editing, nil)
+     |> assign(:formula_search_results, [])
+     |> assign(:formula_search_query, "")
+     |> assign(:formula_search_offset, 0)
+     |> assign(:formula_search_has_more, false)
+     |> UndoRedoStack.init()}
   end
 
   @impl true
@@ -336,12 +307,22 @@ defmodule StoryarnWeb.SheetLive.Show do
 
     socket = assign(socket, :compact, compact)
 
-    if sheet_id == current_sheet_id do
-      {:noreply, socket}
-    else
-      {:noreply, load_sheet(socket, sheet_id)}
-    end
+    socket =
+      if sheet_id == current_sheet_id do
+        socket
+      else
+        load_sheet(socket, sheet_id)
+      end
+
+    Phoenix.PubSub.broadcast(
+      Storyarn.PubSub,
+      StoryarnWeb.SidebarLive.shell_topic(socket.assigns.project.id),
+      {:active_sheet, sheet_id}
+    )
+
+    {:noreply, socket}
   end
+
 
   defp load_sheet(socket, sheet_id) do
     socket = teardown_sheet_collab(socket)
@@ -410,11 +391,11 @@ defmodule StoryarnWeb.SheetLive.Show do
   # Event Handlers: Header
   # ===========================================================================
 
-  @impl true
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: handle_tree_panel_event(event, params, socket)
+  # tree_panel_* events are handled by SidebarLive — they never reach here.
 
   # --- Tabs ---
+
+  @impl true
 
   def handle_event("switch_tab", %{"tab" => tab}, socket)
       when tab in ~w(content references audio history) do
@@ -734,22 +715,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_event("load_more_formula_bindings", params, socket),
     do: FormulaHandlers.handle_load_more(params, socket, formula_handler_helpers())
 
-  # --- Tree (create, delete, move) ---
-
-  def handle_event("create_sheet", params, socket),
-    do: TreeHandlers.handle_create(params, socket, tree_helpers())
-
-  def handle_event("create_child_sheet", params, socket),
-    do: TreeHandlers.handle_create_child(params, socket, tree_helpers())
-
-  def handle_event("set_pending_delete_sheet", params, socket),
-    do: TreeHandlers.handle_set_pending_delete(params, socket, tree_helpers())
-
-  def handle_event("confirm_delete_sheet", params, socket),
-    do: TreeHandlers.handle_confirm_delete(params, socket, tree_helpers())
-
-  def handle_event("move_to_parent", params, socket),
-    do: TreeHandlers.handle_move(params, socket, tree_helpers())
+  # Tree events (create, delete, move) handled by SidebarLive — not here.
 
   # --- Audio tab ---
 
@@ -828,6 +794,18 @@ defmodule StoryarnWeb.SheetLive.Show do
         socket
       )
 
+  # Shell-topic messages from SidebarLive:
+  def handle_info({:open_sheet, sheet_id}, socket) do
+    path =
+      ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{sheet_id}"
+
+    {:noreply, push_navigate(socket, to: path)}
+  end
+
+  def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
+  def handle_info({:tree_changed, :sheets}, socket), do: {:noreply, socket}
+  def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
+
   def handle_info({Storyarn.Collaboration.Presence, {:join, presence}}, socket) do
     Collab.handle_presence_join(socket, presence)
   end
@@ -883,12 +861,6 @@ defmodule StoryarnWeb.SheetLive.Show do
       Collab.broadcast_change(socket, scope, action, extra_payload)
     end
 
-    socket
-  end
-
-  defp broadcast_project_change(socket, action, extra_payload \\ %{}) do
-    project_scope = {:project, socket.assigns.project.id}
-    Collab.broadcast_change(socket, project_scope, action, extra_payload)
     socket
   end
 
@@ -987,13 +959,6 @@ defmodule StoryarnWeb.SheetLive.Show do
   # ===========================================================================
   # Private Helpers
   # ===========================================================================
-
-  defp tree_helpers do
-    %{
-      reload_blocks: &reload_blocks/1,
-      broadcast_project: &broadcast_project_change/2
-    }
-  end
 
   defp formula_handler_helpers do
     %{

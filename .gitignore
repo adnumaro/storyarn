@@ -83,3 +83,4 @@ scripts/.venv/
 scripts/.env
 
 test/tmp
+node_modules

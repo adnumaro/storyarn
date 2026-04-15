@@ -4,9 +4,6 @@ defmodule StoryarnWeb.SheetLive.Index do
   """
 
   use StoryarnWeb, :live_view
-  alias StoryarnWeb.Helpers.Authorize
-
-  import StoryarnWeb.Live.Shared.TreePanelHandlers
 
   import StoryarnWeb.Components.DashboardComponents,
     only: [
@@ -21,34 +18,23 @@ defmodule StoryarnWeb.SheetLive.Index do
 
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
-  alias Storyarn.Projects
-  alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app
-      flash={@flash}
+    <StoryarnWeb.Components.ProjectShell.project_shell
       socket={@socket}
-      current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
+      current_scope={@current_scope}
+      current_user={@current_user}
+      urls={@urls}
+      sheet_id={nil}
       active_tool={:sheets}
-      on_dashboard={true}
-      has_tree={true}
-      tree_panel_open={@tree_panel_open}
-      tree_panel_pinned={@tree_panel_pinned}
-      show_pin={false}
       can_edit={@can_edit}
-      tree_props={
-        %{
-          sheetsTree: @sheets_tree,
-          canEdit: @can_edit,
-          workspaceSlug: @workspace.slug,
-          projectSlug: @project.slug
-        }
-      }
+      is_super_admin={@is_super_admin}
+      dashboard_url={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets"}
     >
       <.vue
         v-component="modules/sheets/SheetDashboard"
@@ -70,7 +56,7 @@ defmodule StoryarnWeb.SheetLive.Index do
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
       />
-    </Layouts.app>
+    </StoryarnWeb.Components.ProjectShell.project_shell>
     """
   end
 
@@ -79,52 +65,36 @@ defmodule StoryarnWeb.SheetLive.Index do
   # ===========================================================================
 
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug},
-        _session,
-        socket
-      ) do
-    case Projects.get_project_by_slugs(
-           socket.assigns.current_scope,
-           workspace_slug,
-           project_slug
-         ) do
-      {:ok, project, membership} ->
-        sheets_tree = Sheets.list_sheets_tree(project.id)
-        sheets = Sheets.list_all_sheets(project.id)
-        can_edit = Projects.can?(membership.role, :edit_content)
+  def mount(_params, _session, socket) do
+    %{project: project} = socket.assigns
+    sheets_tree = Sheets.list_sheets_tree(project.id)
+    sheets = Sheets.list_all_sheets(project.id)
 
-        socket =
-          socket
-          |> assign(focus_layout_defaults())
-          |> assign(:tree_panel_open, true)
-          |> assign(:project, project)
-          |> assign(:workspace, project.workspace)
-          |> assign(:membership, membership)
-          |> assign(:can_edit, can_edit)
-          |> assign(:sheets_tree, prepare_tree(sheets_tree))
-          |> assign(:sheets, sheets)
-          |> assign(:dashboard_stats, nil)
-          |> assign(:all_sheet_table_data, [])
-          |> assign(:sheet_table_data, [])
-          |> assign(:sheet_issues, [])
-          |> assign(:sort_by, "name")
-          |> assign(:sort_dir, :asc)
-          |> assign(:page, 1)
-          |> assign(:total_pages, 1)
-          |> assign(:pending_delete_id, nil)
+    if connected?(socket) do
+      Collaboration.subscribe_dashboard(project.id)
 
-        if connected?(socket), do: Collaboration.subscribe_dashboard(project.id)
-        if connected?(socket) and sheets != [], do: send(self(), :load_dashboard_data)
+      Phoenix.PubSub.subscribe(
+        Storyarn.PubSub,
+        StoryarnWeb.SidebarLive.shell_topic(project.id)
+      )
 
-        {:ok, socket}
-
-      {:error, _reason} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("sheets", "You don't have access to this project."))
-         |> redirect(to: ~p"/workspaces")}
+      if sheets != [], do: send(self(), :load_dashboard_data)
     end
+
+    {:ok,
+     socket
+     |> assign(:online_users, [])
+     |> assign(:sheets_tree, prepare_tree(sheets_tree))
+     |> assign(:sheets, sheets)
+     |> assign(:dashboard_stats, nil)
+     |> assign(:all_sheet_table_data, [])
+     |> assign(:sheet_table_data, [])
+     |> assign(:sheet_issues, [])
+     |> assign(:sort_by, "name")
+     |> assign(:sort_dir, :asc)
+     |> assign(:page, 1)
+     |> assign(:total_pages, 1)
+     |> assign(:pending_delete_id, nil)}
   end
 
   @impl true
@@ -133,6 +103,18 @@ defmodule StoryarnWeb.SheetLive.Index do
   # ===========================================================================
   # Dashboard loading (async)
   # ===========================================================================
+
+  # Shell-topic messages from SidebarLive:
+  def handle_info({:open_sheet, sheet_id}, socket) do
+    path =
+      ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{sheet_id}"
+
+    {:noreply, push_navigate(socket, to: path)}
+  end
+
+  def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
+  def handle_info({:tree_changed, :sheets}, socket), do: {:noreply, reload_sheets(socket)}
+  def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
 
   def handle_info(:load_dashboard_data, socket) do
     %{project: project, workspace: workspace, sort_by: sort_by, sort_dir: sort_dir} =
@@ -223,8 +205,7 @@ defmodule StoryarnWeb.SheetLive.Index do
   # ===========================================================================
 
   @impl true
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: handle_tree_panel_event(event, params, socket)
+  # tree_panel_* events are handled by SidebarLive — they never reach here.
 
   def handle_event("sort_sheets", %{"column" => column}, socket) do
     {:noreply,
@@ -235,109 +216,10 @@ defmodule StoryarnWeb.SheetLive.Index do
     {:noreply, handle_page(socket, page, :all_sheet_table_data, :sheet_table_data)}
   end
 
-  def handle_event(event, %{"id" => id}, socket)
-      when event in ~w(set_pending_delete set_pending_delete_sheet) do
-    {:noreply, assign(socket, :pending_delete_id, id)}
-  end
-
-  def handle_event(event, _params, socket)
-      when event in ~w(confirm_delete confirm_delete_sheet) do
-    if id = socket.assigns[:pending_delete_id] do
-      handle_event("delete", %{"id" => id}, socket)
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_event(event, %{"id" => sheet_id}, socket)
-      when event in ~w(delete delete_sheet) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with %{} = sheet <- Sheets.get_sheet(socket.assigns.project.id, sheet_id),
-           {:ok, _} <- Sheets.delete_sheet(sheet) do
-        {:noreply,
-         socket
-         |> put_flash(:info, dgettext("sheets", "Sheet moved to trash."))
-         |> reload_sheets()}
-      else
-        nil ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Sheet not found."))}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not delete sheet."))}
-      end
-    end)
-  end
-
-  def handle_event("create_sheet", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      attrs = %{name: dgettext("sheets", "Untitled")}
-
-      case Sheets.create_sheet(socket.assigns.project, attrs) do
-        {:ok, new_sheet} ->
-          {:noreply,
-           push_navigate(socket,
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
-           )}
-
-        {:error, :limit_reached, _details} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
-      end
-    end)
-  end
-
-  def handle_event("create_child_sheet", %{"parent_id" => parent_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      attrs = %{name: dgettext("sheets", "New Sheet"), parent_id: parent_id}
-
-      case Sheets.create_sheet(socket.assigns.project, attrs) do
-        {:ok, new_sheet} ->
-          {:noreply,
-           push_navigate(socket,
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
-           )}
-
-        {:error, :limit_reached, _details} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
-      end
-    end)
-  end
-
-  def handle_event(
-        "move_to_parent",
-        %{"item_id" => sheet_id, "new_parent_id" => parent_id, "position" => position},
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      with %{} = sheet <- Sheets.get_sheet(socket.assigns.project.id, sheet_id),
-           parent_id = MapUtils.parse_int(parent_id),
-           position = MapUtils.parse_int(position) || 0,
-           {:ok, _sheet} <- Sheets.move_sheet_to_position(sheet, parent_id, position) do
-        {:noreply, reload_sheets(socket)}
-      else
-        nil ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Sheet not found."))}
-
-        {:error, :would_create_cycle} ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             dgettext("sheets", "Cannot move a sheet into its own children.")
-           )}
-
-        {:error, _reason} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not move sheet."))}
-      end
-    end)
-  end
+  # Tree mutation events (create_sheet, create_child_sheet, move_to_parent,
+  # set_pending_delete, confirm_delete, delete) now live in SidebarLive —
+  # they never reach this LV because the tree is rendered by SidebarLive
+  # which is a separate nested LV.
 
   # ===========================================================================
   # Private helpers

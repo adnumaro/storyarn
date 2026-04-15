@@ -183,14 +183,6 @@ defmodule StoryarnWeb.Router do
            ExportImportLive.Index,
            :index
 
-      # Sheets (character sheets, location sheets, etc.)
-      live "/workspaces/:workspace_slug/projects/:project_slug/sheets", SheetLive.Index, :index
-      live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id", SheetLive.Show, :show
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/edit",
-           SheetLive.Show,
-           :edit
-
       live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/compare/:version_number",
            CompareLive.Sheet,
            :compare
@@ -244,6 +236,34 @@ defmodule StoryarnWeb.Router do
            :compare
 
       # TODO: version snapshot viewer needs Vue migration
+    end
+
+    # Project-scoped live_session — loads project/workspace/membership once via
+    # ProjectScope on_mount. Routes inside share a live_session so sticky
+    # live_renders (toolbars + sidebar in ProjectShell) persist across navigation.
+    live_session :project_scope,
+      on_mount:
+        if(Application.compile_env(:storyarn, :sql_sandbox),
+          do: [Module.concat(["StoryarnWeb", "LiveSandbox"])],
+          else: []
+        ) ++
+          [
+            Sentry.LiveViewHook,
+            {@user_auth_hook, :require_authenticated},
+            {@user_auth_hook, :load_workspaces},
+            {StoryarnWeb.Live.Hooks.ProjectScope, :load_project}
+          ] do
+      live "/workspaces/:workspace_slug/projects/:project_slug/sheets",
+           SheetLive.Index,
+           :index
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id",
+           SheetLive.Show,
+           :show
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/edit",
+           SheetLive.Show,
+           :edit
     end
 
     post "/users/update-password", UserSessionController, :update_password
