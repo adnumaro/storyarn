@@ -1,0 +1,1080 @@
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TDateCell.vue
+  b5d0547deb69dd47 2-4,35-37,39-40,53,59
+test/storyarn_web/live/sheet_live/show_test.exs
+  b5d0547deb69dd47 7,16,31,47,65,90,115,141,171,205,230,257,280,295,303,321,344,367,384,402,423,443,461,483,500
+test/storyarn_web/live/flow_live/nodes/condition_node_test.exs
+  b5d0547deb69dd47 7
+lib/storyarn/flows/flow_node.ex
+  b5d0547deb69dd47 21,24-26,52-54,116
+lib/storyarn/versioning/builders/flow_builder.ex
+  b5d0547deb69dd47 13,16-18,20,55,149,153-167,181,190-195,206-207,227,336-347,357,363-373,490,560,644
+test/storyarn/scenes/pin_crud_test.exs
+  b5d0547deb69dd47 6-8
+test/storyarn/projects/dashboard_test.exs
+  b5d0547deb69dd47 15,103,136
+lib/storyarn/screenplays/screenplay.ex
+  b5d0547deb69dd47 16,19,23-24,34,36-37,39-40,121
+lib/storyarn_web/live/scene_live/show.ex
+  b5d0547deb69dd47 29-34,36-37,39-40,351,479,556,610,612,695,697,753,776,797,883,895,904-906,908-909,911-914,968-969,1023,1093,1099,1103,1118-1125,1135,1141,1147-1148,1155-1156,1181,1191,1209,1215,1225,1235,1245,1251,1261,1273,1279,1293,1299,1305-1306,1406,1416,1422,1428,1434,1440,1447,1453,1459,1465-1466,1473,1479,1485,1491-1492,1499-1500,1507-1508,1525,1531-1532,1539,1549,1555,1565,1571,1577,1583,1599,1605,1615,1625,1631,1651,1662,1668,1674,1685,1692,1698,1769-1775,1787-1796,1799,1824,1828,1832,1838,1842,1962,2004,2015-2022
+test/storyarn/assets/variant_generation_test.exs
+  b5d0547deb69dd47 7,41-42,133,136
+test/storyarn/scenes/zone_crud_test.exs
+  b5d0547deb69dd47 6-8
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TFormulaCell.vue
+  b5d0547deb69dd47 2-4,21,25,27,32,35,37,41,43,45,49-53,65,83,89
+test/storyarn/versioning/builders/sheet_builder_test.exs
+  b5d0547deb69dd47 9,103-105,183,216
+test/support/fixtures/accounts_fixtures.ex
+  b5d0547deb69dd47 10-11,72,78
+lib/storyarn/sheets/table_column.ex
+  b5d0547deb69dd47 12,57
+lib/storyarn_web/live/sheet_live/handlers/undo_redo_handlers.ex
+  b5d0547deb69dd47 380,390,416,427,520,532-533,698,706,716,742,753,846-847
+lib/storyarn/versioning/materialization_helpers.ex
+  b5d0547deb69dd47 126
+test/storyarn/flows/evaluator/engine_test.exs
+  b5d0547deb69dd47 322,777,787-790,1842-1843,1862-1863,1888,1932,1966,2030-2031
+test/storyarn/collaboration_test.exs
+  b5d0547deb69dd47 4-5,7-8
+lib/storyarn/flows/node_delete.ex
+  b5d0547deb69dd47 26,56-60,64,75-76
+lib/storyarn/scenes/exploration_session.ex
+  b5d0547deb69dd47 10
+lib/storyarn/screenplays/flow_layout.ex
+  b5d0547deb69dd47 32,69
+lib/storyarn/shared/tree_operations.ex
+  b5d0547deb69dd47 62,121,134-135,186-187,257
+test/storyarn/versioning/builders/scene_builder_test.exs
+  b5d0547deb69dd47 9,302,353
+test/storyarn_web/live/flow_live/handlers/editor_info_handlers_test.exs
+  b5d0547deb69dd47 113,275,417,451,499,537,583,614,652
+lib/storyarn/versioning/project_snapshot.ex
+  b5d0547deb69dd47 9,12,26,28
+lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex
+  b5d0547deb69dd47 11,83,125,150,183,186,189
+test/storyarn/localization_test.exs
+  b5d0547deb69dd47 8,588,758
+lib/storyarn/billing/limits.ex
+  b5d0547deb69dd47 10-15,19-20,83,182,186,209,221-227,232,236-242
+lib/storyarn/sheets/table_crud.ex
+  b5d0547deb69dd47 10-17,25,30,35,48,54,56-57,74,116,149,165-166,182,251,253,273,300-302,309,311-312,325,347-349,364,394-395,407,483,492,496,553,561-562,594-598,605-606,609,618,677-681
+lib/storyarn/shared/name_normalizer.ex
+  b5d0547deb69dd47 127-129,155
+lib/storyarn/exports/expression_transpiler/helpers.ex
+  b5d0547deb69dd47 158,169,173
+lib/storyarn/scenes/scene.ex
+  b5d0547deb69dd47 18,21,24-31,48,50-51,53-58,60,173
+lib/storyarn/emails/templates.ex
+  b5d0547deb69dd47 48,179
+lib/storyarn/collaboration/presence.ex
+  b5d0547deb69dd47 129
+test/storyarn/rate_limiter_test.exs
+  b5d0547deb69dd47 7-9,11-12,17,71,79,91,101
+test/storyarn_web/live/export_import_live/index_test.exs
+  b5d0547deb69dd47 26,110,120,130,215,253,265,272,284-285,294,303,311,321,346,357,368-369,377,389,403,414-415,426,437-438,446-447,458,487,502,510,520,544,604,625,643,691,711,734,763,779,796,815,838,903,939,992,1019,1041,1063,1100,1162,1227,1240,1252,1284,1337,1357,1399
+lib/storyarn/screenplays/character_extension.ex
+  b5d0547deb69dd47 62
+lib/storyarn/sheets/formula_binding_rewriter.ex
+  b5d0547deb69dd47 18,71
+lib/storyarn_web/live/compare_live/flow.ex
+  b5d0547deb69dd47 35
+lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex
+  b5d0547deb69dd47 9-12,17,66,80,138,184,227,251
+lib/storyarn/screenplays/screenplay_crud.ex
+  b5d0547deb69dd47 9-12,20-24,35-39,51-55,65-69,141-142,208-213,221,254,274
+lib/storyarn_web/live/settings_live/workspace_general.ex
+  b5d0547deb69dd47 9,158
+test/storyarn/workspaces_test.exs
+  b5d0547deb69dd47 7-8,47,304,312-315
+test/storyarn/scenes/scene_zone_test.exs
+  b5d0547deb69dd47 5
+test/storyarn/sheets_test.exs
+  b5d0547deb69dd47 9-12,837,867,921,926,950,969,974,993,1076,1112,1117,1202,1272
+test/storyarn/localization/text_extractor_test.exs
+  b5d0547deb69dd47 11-14,67,163,234,486,550,589,627,702,754,837,869,893
+test/storyarn_web/live/flow_live/player/player_live_test.exs
+  b5d0547deb69dd47 15-16,129,164
+lib/storyarn_web/oauth/discord_oauth.ex
+  b5d0547deb69dd47 16-17,35-36,47-48,66,74
+lib/storyarn/flows/evaluator/node_evaluators/instruction_evaluator.ex
+  b5d0547deb69dd47 9-10
+test/storyarn/versioning/auto_snapshot_test.exs
+  b5d0547deb69dd47 11,54
+lib/storyarn/localization/localizable_words.ex
+  b5d0547deb69dd47 6-10,12-17,19-23,48,51,56-57,88,104,133,421,471,490,567,590-596,601,605,611-617,682,761,765,819
+lib/storyarn/screenplays/screenplay_element.ex
+  b5d0547deb69dd47 41,44,73,75
+test/storyarn_web/layouts_test.exs
+  b5d0547deb69dd47 46-47
+lib/storyarn_web/live/flow_live/nodes/exit/node.ex
+  b5d0547deb69dd47 146-147,152,154-155,158,160-161,225
+.credo.exs
+  b5d0547deb69dd47 85
+test/storyarn_web/live/scene_live/handlers/tree_handlers_test.exs
+  b5d0547deb69dd47 27,39,57,74,94,112,129,147,159,171,181,191,213,238,256,283,295,307,337,350,360,376,389,413,418,439,443,449,473,477,482,495,517,523,548,553,587
+lib/storyarn/accounts/waitlist_entry.ex
+  b5d0547deb69dd47 2,4
+lib/storyarn/screenplays/element_grouping.ex
+  b5d0547deb69dd47 10-11,83,101,160,235
+lib/storyarn/docs/guide_builder.ex
+  b5d0547deb69dd47 51-52
+lib/storyarn/assets/image_processor.ex
+  b5d0547deb69dd47 223
+lib/storyarn/localization/language_crud.ex
+  b5d0547deb69dd47 10-11,18,22,26,30,34-38,74-75,96,106-107,121,203-204
+lib/storyarn/screenplays/element_crud.ex
+  b5d0547deb69dd47 7-8,14,34-35,68-70,130-131
+test/storyarn/sheets/table_inheritance_test.exs
+  b5d0547deb69dd47 6-10
+test/support/conn_case.ex
+  b5d0547deb69dd47 20-21,24-28,51,56,71,76
+lib/storyarn/localization/glossary_entry.ex
+  b5d0547deb69dd47 17,75
+lib/storyarn/accounts/user_token.ex
+  b5d0547deb69dd47 6,8-9,11-12,25,34
+lib/storyarn/rate_limiter.ex
+  b5d0547deb69dd47 32-33,96-97,109,112,130-131
+test/support/data_case.ex
+  b5d0547deb69dd47 19-20,28-29,42-43
+lib/storyarn/flows/navigation_history_store.ex
+  b5d0547deb69dd47 16
+lib/storyarn/exports/serializers/helpers.ex
+  b5d0547deb69dd47 58,62,66,68,70,72,247,296,298,300-302
+lib/storyarn/flows/flow.ex
+  b5d0547deb69dd47 18,21-23,26-27,39,41,43-46,48,160
+lib/storyarn/scenes/zone_crud.ex
+  b5d0547deb69dd47 10-13,48,55,60,73,99,149-150,159-163,181
+lib/storyarn_web/live/project_live/trash.ex
+  b5d0547deb69dd47 8,44
+test/storyarn_web/live/project_live/invitation_test.exs
+  b5d0547deb69dd47 96,103
+lib/storyarn_web/live/sheet_live/handlers/reference_handlers.ex
+  b5d0547deb69dd47 8-9,11,52
+lib/storyarn/scenes/changeset_helpers.ex
+  b5d0547deb69dd47 47
+lib/storyarn_web/live/flow_live/node_type_registry.ex
+  b5d0547deb69dd47 15-16,30,104
+lib/storyarn/flows/instruction.ex
+  b5d0547deb69dd47 88
+lib/storyarn_web/live/project_live/form.ex
+  b5d0547deb69dd47 75
+test/storyarn_web/oauth/discord_strategy_test.exs
+  b5d0547deb69dd47 5-7,180
+test/storyarn/exports/serializers/storyarn_json_test.exs
+  b5d0547deb69dd47 13-17
+lib/storyarn_web/live/workspace_live/show.ex
+  b5d0547deb69dd47 24-34,38-40,87-90,96-98,109-111,116,129-132,134-147
+lib/storyarn/projects/project_membership.ex
+  b5d0547deb69dd47 9,12,22,24
+lib/storyarn/versioning/version_crud.ex
+  b5d0547deb69dd47 11,15-17,19,181-188,209-214,223-224,238-244,248-254,265-269,293-295,314,372,382,403,443,453-457,475
+lib/storyarn/shared/membership_operations.ex
+  b5d0547deb69dd47 38-39
+lib/storyarn/flows/flow_stats.ex
+  b5d0547deb69dd47 6-7
+lib/storyarn_web/live/compare_live/scene.ex
+  b5d0547deb69dd47 35
+lib/storyarn/screenplays/linked_page_crud.ex
+  b5d0547deb69dd47 14-16,105-110,121,129-130,165-166
+lib/storyarn/localization/export_import.ex
+  b5d0547deb69dd47 87-101,154,186-188,193,244
+lib/storyarn/projects/project_invitation.ex
+  b5d0547deb69dd47 15,26,28
+lib/storyarn/screenplays/screenplay_queries.ex
+  b5d0547deb69dd47 7-8,14-18,26
+lib/storyarn_web/live/scene_live/helpers/scene_helpers.ex
+  b5d0547deb69dd47 9,64,183,186,191
+lib/storyarn/flows/evaluator/node_evaluators/condition_node_evaluator.ex
+  b5d0547deb69dd47 10-11
+lib/storyarn/sheets/gallery_crud.ex
+  b5d0547deb69dd47 8-10,18-19,32-38,44-52,68,74,97,115-116,118,134-135
+lib/storyarn/exports/serializers/unreal_csv.ex
+  b5d0547deb69dd47 19-20,316
+lib/storyarn/shared/import_helpers.ex
+  b5d0547deb69dd47 9,21-25,35-37
+test/e2e/workspaces/projects/sheets/sheets_test.exs
+  b5d0547deb69dd47 14,24-25,39,50,61,73,88,93,99,104,110,116,126,132,140,146,154,165
+lib/storyarn/sheets/sheet.ex
+  b5d0547deb69dd47 18,21,24-27,42,44,46,48-51,72,154,167
+test/storyarn_web/live/flow_live/nodes/hub_node_test.exs
+  b5d0547deb69dd47 7
+lib/storyarn/exports/expression_transpiler/articy.ex
+  b5d0547deb69dd47 23,25,27,29,31,33
+lib/storyarn_web/controllers/snapshot_download_controller.ex
+  b5d0547deb69dd47 17
+lib/storyarn_web.ex
+  b5d0547deb69dd47 28-30
+test/storyarn/shortcuts_test.exs
+  b5d0547deb69dd47 5,8-9
+test/storyarn_web/controllers/localization_export_controller_test.exs
+  b5d0547deb69dd47 6,13,192
+lib/storyarn/references.ex
+  b5d0547deb69dd47 6-9
+.formatter.exs
+  b5d0547deb69dd47 4
+lib/storyarn/accounts/user.ex
+  b5d0547deb69dd47 6,9,21,37
+lib/storyarn/scenes/scene_connection.ex
+  b5d0547deb69dd47 10,13-15,28,30,32,129
+lib/storyarn/screenplays/flow_traversal.ex
+  b5d0547deb69dd47 13-14,65
+lib/storyarn_web/live/sheet_live/handlers/gallery_handlers.ex
+  b5d0547deb69dd47 8-9,12
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TBooleanCell.vue
+  b5d0547deb69dd47 2-6,29,52
+lib/storyarn_web/helpers/version_history_helpers.ex
+  b5d0547deb69dd47 7-8
+lib/storyarn_web/live/flow_live/handlers/preview_handlers.ex
+  b5d0547deb69dd47 11,22-23,39-40,61-62,83-84,103,112,117,127-128,162,251,265
+lib/storyarn_web/components/app_layout.ex
+  b5d0547deb69dd47 31,33,42-44,70-71,77-78,88-89,92-93,96-97,100-101,115-118,121-124,127-134,136-138,141-158,284
+lib/storyarn_web/live/flow_live/show.ex
+  b5d0547deb69dd47 9,14,35,38,262,307,421,459,489,543,566,587,601,667,679,688-690,692-693,695-698,919,969,1329,1344,1395,1408,1410-1411,1449,1494,1498,1502,1524,1535,1537,1540,1546
+test/storyarn/flows/variable_reference_tracker_test.exs
+  b5d0547deb69dd47 7,10-12,100,210,295,820,862,1037,1074,1126,1170,1208,1288,1405,1451,1810,1844,1908,1951,1976,1990,2078,2103
+test/storyarn/workspaces/workspace_invitation_test.exs
+  b5d0547deb69dd47 7,107-108,165
+lib/storyarn/billing.ex
+  b5d0547deb69dd47 8-10
+lib/storyarn/exports/expression_transpiler/yarn.ex
+  b5d0547deb69dd47 71,73,127
+lib/storyarn/assets/asset.ex
+  b5d0547deb69dd47 32,35,55,57,118,127
+lib/storyarn/flows/evaluator/condition_eval.ex
+  b5d0547deb69dd47 47,83,118,134,203,207,211,217,221,225,245
+lib/storyarn/scenes/exploration_session_crud.ex
+  b5d0547deb69dd47 66
+lib/storyarn/exports/export_options.ex
+  b5d0547deb69dd47 9-10
+lib/storyarn_web/live/project_settings_live/snapshots.ex
+  b5d0547deb69dd47 12,72
+test/storyarn/billing/limits_test.exs
+  b5d0547deb69dd47 8-10,145-146,200,247,262,305,348,359
+test/storyarn/flows/node_update_test.exs
+  b5d0547deb69dd47 8
+lib/storyarn/workspaces/workspace_invitation.ex
+  b5d0547deb69dd47 15,26,28
+test/support/fixtures/workspaces_fixtures.ex
+  b5d0547deb69dd47 9,37,59-60
+test/storyarn_web/live/flow_live/helpers/connection_helpers_test.exs
+  b5d0547deb69dd47 7,32,51
+lib/storyarn/shared/formula_engine.ex
+  b5d0547deb69dd47 455,457,459,461,463,465,467,469,472
+test/storyarn/imports/parsers/storyarn_json_test.exs
+  b5d0547deb69dd47 9-12,201,223,254
+lib/storyarn/assets.ex
+  b5d0547deb69dd47 18,20,23,93,218,260-261,416,435,453,573,581
+lib/storyarn/accounts/profiles.ex
+  b5d0547deb69dd47 33
+lib/storyarn/accounts/user_notifier.ex
+  b5d0547deb69dd47 10
+lib/storyarn/sheets/sheet_stats.ex
+  b5d0547deb69dd47 9-12,134-144,180-184
+test/storyarn_web/components/sheet_components_test.exs
+  b5d0547deb69dd47 6,35,52,71,121,142,172,191-192,212,226,239,261,276
+lib/storyarn/scenes/zone_image_extractor.ex
+  b5d0547deb69dd47 18-19,86
+lib/storyarn_web/live/flow_live/helpers/variable_helpers.ex
+  b5d0547deb69dd47 20-21,72
+test/storyarn_web/live/sheet_live/index_test.exs
+  b5d0547deb69dd47 7,16,44,67,74,83,107,129,154,203
+lib/storyarn_web/live/sheet_live/show.ex
+  b5d0547deb69dd47 17,20-34,330,353-355,361-366,394,423,457,468,473,475,492,494,664,707,709,711,718,723,742,744,746,754,757,760,774,778,984,991-996
+test/e2e/workspaces/projects/projects_test.exs
+  b5d0547deb69dd47 23-24,63,102-103,115,128,138,151,161,173,210
+lib/storyarn/shared/invitation_notifier.ex
+  b5d0547deb69dd47 18
+lib/storyarn/versioning/project_recovery.ex
+  b5d0547deb69dd47 13,15-19,21-29,54,109,115,120,163,173,211,223,277,299,334-335,355
+lib/storyarn_web/live/scene_live/helpers/props_serializer.ex
+  b5d0547deb69dd47 237,437
+test/storyarn_web/live/flow_live/handlers/debug_handlers_test.exs
+  b5d0547deb69dd47 4,371,409,441,487
+test/storyarn/sheets/block_crud_test.exs
+  b5d0547deb69dd47 6,8-10,334,339,346,351,418,430,526,541,557-558,590,749,756,771,785,794,803,814,819,825,831,837,1002,1005,1013,1016,1024,1027,1038,1044,1144
+lib/storyarn/projects/project_crud.ex
+  b5d0547deb69dd47 8-10,12-13,22,34,52,152-159,167-171,179,215,218-219,234-235,265,268-271
+test/storyarn/flows/instruction_test.exs
+  b5d0547deb69dd47 77-78,98-99
+test/storyarn/sheets/avatar_crud_test.exs
+  b5d0547deb69dd47 9,239,246-247
+test/storyarn/sheets/property_inheritance_test.exs
+  b5d0547deb69dd47 6,8-10,345,407,449
+test/storyarn_web/user_auth_test.exs
+  b5d0547deb69dd47 4-5,7,104,138,242,276,303,307,382,387
+lib/storyarn/localization/providers/deepl.ex
+  b5d0547deb69dd47 212
+lib/storyarn/workspaces.ex
+  b5d0547deb69dd47 15-16,18-23,252
+test/storyarn/sheets/formula_resolver_test.exs
+  b5d0547deb69dd47 7-10,63,67,92,107,122,136
+test/storyarn/versioning/builders/flow_builder_test.exs
+  b5d0547deb69dd47 10,215
+lib/storyarn_web/live_sandbox.ex
+  b5d0547deb69dd47 13
+test/storyarn/exports/data_collector_test.exs
+  b5d0547deb69dd47 9-10
+test/storyarn_web/live/sheet_live/handlers/undo_redo_handlers_test.exs
+  b5d0547deb69dd47 23-24,34,460,471,476,594,680,900,910,914,918,1046
+test/storyarn/shared/formula_engine_test.exs
+  b5d0547deb69dd47 49,55,61,67,73,139
+docs/plans/project_shell_pivot.md
+  b5d0547deb69dd47 40-52,107,113,123,129,135,146,154,159,175
+lib/storyarn_web/components/workspace_layout.ex
+  b5d0547deb69dd47 20-26,28-30,33-40,49-52
+lib/storyarn/scenes/scene_stats.ex
+  b5d0547deb69dd47 8-11,48-52,82-92,97-101,106-110
+test/storyarn/flows/evaluator/instruction_evaluator_test.exs
+  b5d0547deb69dd47 151
+lib/storyarn/localization.ex
+  b5d0547deb69dd47 14-26
+lib/storyarn_web/live/shared/tree_panel_handlers.ex
+  b5d0547deb69dd47 32-33,314-315
+test/storyarn_web/live/flow_live/nodes/exit_node_test.exs
+  b5d0547deb69dd47 7-8,183,418
+test/storyarn_web/live/scene_live/handlers/layer_handlers_test.exs
+  b5d0547deb69dd47 8-9,15
+lib/storyarn/flows/condition.ex
+  b5d0547deb69dd47 101,119,138,173,189,295
+lib/storyarn/dashboards/cache.ex
+  b5d0547deb69dd47 13-14
+test/storyarn/projects_fixtures_test.exs
+  b5d0547deb69dd47 62
+test/storyarn/scenes/scene_stats_test.exs
+  b5d0547deb69dd47 13,93
+lib/storyarn_web/live/asset_live/index.ex
+  b5d0547deb69dd47 10,57,116,163
+test/storyarn/shared/invitation_notifier_test.exs
+  b5d0547deb69dd47 7-8,108-110
+lib/storyarn/accounts/user_identity.ex
+  b5d0547deb69dd47 9,13,44-45,109
+lib/storyarn_web/telemetry.ex
+  b5d0547deb69dd47 2,4,76
+lib/storyarn_web/components/text_components.ex
+  b5d0547deb69dd47 8,27
+lib/storyarn/accounts.ex
+  b5d0547deb69dd47 17-27,33-34
+lib/storyarn/assets/blob_store.ex
+  b5d0547deb69dd47 12-13,34
+lib/storyarn/scenes/layer_crud.ex
+  b5d0547deb69dd47 8-13,20,24,28,40,50,90-92,96
+lib/storyarn/screenplays/tiptap_serialization.ex
+  b5d0547deb69dd47 283
+lib/storyarn/shared/validations.ex
+  b5d0547deb69dd47 53,66
+lib/storyarn/billing/subscription.ex
+  b5d0547deb69dd47 7,10,32,49
+test/storyarn/exports/serializers/godot_dialogic_test.exs
+  b5d0547deb69dd47 9-12
+lib/storyarn/scenes/ambient_flow_crud.ex
+  b5d0547deb69dd47 17-22,74-75,84
+lib/storyarn/shared/hierarchical_schema.ex
+  b5d0547deb69dd47 19
+test/storyarn/exports/serializers/yarn_validation_test.exs
+  b5d0547deb69dd47 19-23
+test/storyarn/versioning/conflict_detector_test.exs
+  b5d0547deb69dd47 6,9,144
+lib/storyarn/flows/evaluator/node_evaluators/exit_evaluator.ex
+  b5d0547deb69dd47 60,71-75
+lib/storyarn_web/live/project_settings_live/general.ex
+  b5d0547deb69dd47 10,61,255
+lib/storyarn/flows/evaluator/engine_helpers.ex
+  b5d0547deb69dd47 10-11,106
+lib/storyarn_web/live/settings_live/workspace_members.ex
+  b5d0547deb69dd47 9,87-89,101-103,184,214
+lib/storyarn/screenplays/export/fountain.ex
+  b5d0547deb69dd47 51
+test/storyarn/exports/expression_transpiler/base_test.exs
+  b5d0547deb69dd47 17
+lib/storyarn/versioning/snapshot_diff.ex
+  b5d0547deb69dd47 11-12,46
+lib/storyarn_web/controllers/export_controller.ex
+  b5d0547deb69dd47 16,21
+lib/storyarn_web/helpers/authorize.ex
+  b5d0547deb69dd47 34,70,72-73,99-101,137
+lib/storyarn/scenes.ex
+  b5d0547deb69dd47 23-40,46,509-510,516,738
+lib/storyarn/exports/serializers/godot_dialogic.ex
+  b5d0547deb69dd47 17-20,104,106-107
+lib/storyarn/sheets/avatar_crud.ex
+  b5d0547deb69dd47 7-8,15,25,37,53-55,98,134
+test/storyarn/exports/serializers/helpers_test.exs
+  b5d0547deb69dd47 203
+lib/storyarn/shared/soft_delete.ex
+  b5d0547deb69dd47 19-20,41-42,48
+test/storyarn/exports/serializers/ink_test.exs
+  b5d0547deb69dd47 9-12
+lib/storyarn/localization/batch_translator.ex
+  b5d0547deb69dd47 4,6-7
+test/storyarn/workers/restore_project_worker_test.exs
+  b5d0547deb69dd47 5-7
+test/storyarn_web/live/sheet_live/idor_test.exs
+  b5d0547deb69dd47 58,63,82,91,95,113,141,155,164,178,205,226
+test/storyarn_web/live/scene_live/handlers/canvas_event_handlers_test.exs
+  b5d0547deb69dd47 12,21
+test/storyarn_web/live/project_live/trash_test.exs
+  b5d0547deb69dd47 7,20,35,50,63,76
+test/storyarn_web/live/sheet_live/variable_usage_test.exs
+  b5d0547deb69dd47 7,35,74,425,502,547
+lib/storyarn/flows/variable_reference_tracker.ex
+  b5d0547deb69dd47 26-29,55,90,125,143-163,248-249,260,262-263,387,391,604
+lib/storyarn/scenes/scene_layer.ex
+  b5d0547deb69dd47 12,15-18,30-32
+test/storyarn_web/live/flow_live/helpers/node_helpers_test.exs
+  b5d0547deb69dd47 76,264,430,567,666,805,899,967,990,1013,1036,1061
+test/storyarn_web/telemetry_test.exs
+  b5d0547deb69dd47 66,78,127,154,168
+test/storyarn/sheets/reference_tracker_test.exs
+  b5d0547deb69dd47 7-10,116,141
+test/storyarn/assets_test.exs
+  b5d0547deb69dd47 8-11,143,299-300,316-317,592,604,628,660,689,714,725,1050,1066,1084,1121,1127,1138,1165,1171,1182-1183
+lib/storyarn_web/live/landing_live/index.ex
+  b5d0547deb69dd47 2,48,118,121,124,182,190,198,201,204
+test/storyarn/shared/time_helpers_test.exs
+  b5d0547deb69dd47 27,29
+lib/storyarn/flows/variable_reference.ex
+  b5d0547deb69dd47 14
+lib/storyarn/release.ex
+  b5d0547deb69dd47 65,78
+lib/storyarn_web/live/scene_live/handlers/element_handlers.ex
+  b5d0547deb69dd47 9-10,16-17,19-20,178,217,299,377,383,389,457,501,568,644,734,824,906,1067,1126,1158,1184
+lib/storyarn/scenes/scene_annotation.ex
+  b5d0547deb69dd47 10,13-15,29,31
+test/storyarn/shared/name_normalizer_test.exs
+  b5d0547deb69dd47 10-11,169,184,203
+lib/storyarn_web/live/localization_live/index.ex
+  b5d0547deb69dd47 9,14,42-52,77,132,172,174,218-224,234-235,238-239
+lib/storyarn/scenes/pin_crud.ex
+  b5d0547deb69dd47 10-13,48-52,60-64,70,83,111,159,174-175,220,226
+test/e2e/workspaces/workspace_visibility_test.exs
+  b5d0547deb69dd47 24-25
+test/storyarn_web/plugs/locale_test.exs
+  b5d0547deb69dd47 16-17,27-28,39-40,50-51,61-62,72-73,84-85,96-97,108-109,120-121,131-132,142-143
+test/storyarn_web/controllers/snapshot_download_controller_test.exs
+  b5d0547deb69dd47 14,71
+lib/storyarn_web/controllers/upload_controller.ex
+  b5d0547deb69dd47 25
+test/storyarn_web/live/scene_live/index_test.exs
+  b5d0547deb69dd47 7,30,46,62,71,86,102,117,138,154,173,185,196,214,232,249,268,290
+lib/storyarn_web/live/sheet_live/helpers/formula_helpers.ex
+  b5d0547deb69dd47 7-8,10,248-249,284
+lib/storyarn/exports/expression_transpiler/unity.ex
+  b5d0547deb69dd47 51,53
+test/storyarn/sheets/table_crud_test.exs
+  b5d0547deb69dd47 6-8,45,101
+lib/storyarn/mailer.ex
+  b5d0547deb69dd47 2
+test/storyarn/shared/tree_operations_test.exs
+  b5d0547deb69dd47 8-9,105,149,203,226-228,246-248
+lib/storyarn_web/controllers/screenplay_export_controller.ex
+  b5d0547deb69dd47 10
+lib/storyarn/references/variable_tracker.ex
+  b5d0547deb69dd47 11,13,18,23
+lib/storyarn_web/live/flow_live/handlers/collaboration_event_handlers.ex
+  b5d0547deb69dd47 13,17,19-20,27-28,37-38,52-53,63-64,76-77,80
+test/storyarn/projects_test.exs
+  b5d0547deb69dd47 8-9,82,356
+lib/storyarn/exports/serializer.ex
+  b5d0547deb69dd47 14-15,22,33
+lib/storyarn/localization/project_language.ex
+  b5d0547deb69dd47 15
+lib/storyarn_web/live/flow_live/handlers/debug_execution_handlers.ex
+  b5d0547deb69dd47 8-9,230,235,237,352-353,359-360
+test/storyarn/exports/serializers/unity_json_test.exs
+  b5d0547deb69dd47 9-12
+test/storyarn/scenes/changeset_helpers_test.exs
+  b5d0547deb69dd47 5,10,21,32,38-39,47-48,57-58,67-68,72,78-79,93,98,103,108,113,118,123,128,133
+assets/app/components/toolbar/ToolbarBase.vue
+  b5d0547deb69dd47 1
+lib/storyarn_web/live/flow_live/nodes/condition/node.ex
+  b5d0547deb69dd47 12
+lib/storyarn/scenes/connection_crud.ex
+  b5d0547deb69dd47 8-10,16,23-24,32-33
+test/storyarn/localization/reports_test.exs
+  b5d0547deb69dd47 6-8
+test/storyarn/scenes/tree_operations_test.exs
+  b5d0547deb69dd47 6-8
+lib/storyarn_web/user_auth.ex
+  b5d0547deb69dd47 8,161,248,297
+lib/storyarn/accounts/oauth.ex
+  b5d0547deb69dd47 6-7
+test/storyarn/sheets/table_row_test.exs
+  b5d0547deb69dd47 6,8,28,38,44,50,53,57,60,64,73,80,87,94,255,261-262,336,342,350,356
+lib/storyarn/emails/layout.ex
+  b5d0547deb69dd47 31
+test/storyarn/scenes/connection_crud_test.exs
+  b5d0547deb69dd47 6-8
+lib/storyarn/versioning/project_snapshot_crud.ex
+  b5d0547deb69dd47 11,16-19,127-134,154,162,193,243,257,276-281,287,304,307-311,317
+test/storyarn/projects/restoration_lock_test.exs
+  b5d0547deb69dd47 7,20
+lib/storyarn/shared/time_helpers.ex
+  b5d0547deb69dd47 13
+test/storyarn/projects/soft_delete_test.exs
+  b5d0547deb69dd47 8,16,74,117
+test/storyarn_web/live/sheet_live/handlers_test.exs
+  b5d0547deb69dd47 55,91,99,152,185,218,273,328,368,408,452,480,517,555,593,642,692,754,794,815
+config/dev.exs
+  b5d0547deb69dd47 3-30,101-106
+lib/storyarn/sheets/constraints/number.ex
+  b5d0547deb69dd47 120
+lib/storyarn_web/live/hooks/project_scope.ex
+  b5d0547deb69dd47 24
+test/storyarn/accounts/profiles_test.exs
+  b5d0547deb69dd47 6,92,106,118
+test/storyarn/accounts_test.exs
+  b5d0547deb69dd47 5-8,27,32,265,282,296-297,332,415
+lib/storyarn/sheets/sheet_queries.ex
+  b5d0547deb69dd47 12-14,16-19,33-38,102,118-123,136-141,153-157,166-171,180-186,194,220-226,231-238,249-253,308-335,359-360,370-371,373-374,464-465,532,656-661,716-720,729-730,743-748,788,827,860,868,876-880,904-908,919-921,932-934,936-989,999-1001,1003-1028,1039-1040,1068-1069,1113-1124,1133-1152,1183-1191,1200-1206
+test/storyarn/exports/serializers/ink_validation_test.exs
+  b5d0547deb69dd47 18-22
+test/storyarn_web/helpers/undo_redo_stack_test.exs
+  b5d0547deb69dd47 4,10,17
+lib/storyarn_web/live/localization_live/edit.ex
+  b5d0547deb69dd47 10,56,140
+test/storyarn_web/live/sheet_live/handlers/select_option_handlers_test.exs
+  b5d0547deb69dd47 26
+test/storyarn/assets/storage_test.exs
+  b5d0547deb69dd47 5,33,47
+test/storyarn/scenes/zone_image_extractor_integration_test.exs
+  b5d0547deb69dd47 31-33,77
+lib/storyarn_web/live/sheet_live/handlers/block_handlers.ex
+  b5d0547deb69dd47 8-9,11,147,157-158,164-165,180-181,196,317-336
+test/storyarn/exports/serializer_registry_test.exs
+  b5d0547deb69dd47 5-11,15,19,23,27,31,35,39,53-59,110
+lib/storyarn_web/live/flow_live/player/slide.ex
+  b5d0547deb69dd47 40-41,74,77,120,238
+lib/storyarn_web/live/toolbars_live.ex
+  b5d0547deb69dd47 13,89,93-98,101,104,108
+test/storyarn/shared/soft_delete_test.exs
+  b5d0547deb69dd47 8-10,30-31,47-48,72,84,176,207-208,236
+lib/storyarn_web/live/compare_live/sheet.ex
+  b5d0547deb69dd47 36
+lib/storyarn_web/live/flow_live/helpers/collaboration_helpers.ex
+  b5d0547deb69dd47 8,10,15,17-18,28-29,36,38-39,46-47,59-60,115-116,140,162
+test/storyarn_web/components/core_components_test.exs
+  b5d0547deb69dd47 10,517
+test/fixtures/images/generate_snapshots.exs
+  b5d0547deb69dd47 15-16,82
+lib/storyarn/workers/snapshot_retention_worker.ex
+  b5d0547deb69dd47 15-16,22-23,26,31,66
+test/storyarn/sheets/sheet_queries_test.exs
+  b5d0547deb69dd47 10-12,1018,1023,1054,1378,1555-1556,1566
+lib/storyarn/versioning/conflict_detector.ex
+  b5d0547deb69dd47 12,14,16-17,22-24,29-31,136-140,193,195,197,199,201
+lib/storyarn/flows/node_create.ex
+  b5d0547deb69dd47 5-7,10-14,79,92,97-102,165-171,176-183
+lib/storyarn/exports/serializer_registry.ex
+  b5d0547deb69dd47 63
+test/e2e/workspaces/projects/flows/flows_test.exs
+  b5d0547deb69dd47 24-25,39,50,61,72,86,98,109,115,126,135,149
+test/support/yarn_compiler.ex
+  b5d0547deb69dd47 44,81
+lib/storyarn_web/live/flow_live/helpers/connection_helpers.ex
+  b5d0547deb69dd47 8-10,12,22-23,71-72
+config/runtime.exs
+  b5d0547deb69dd47 37-38,88-94,96-102,110-112,117,191-194,203-205
+lib/storyarn/exports/expression_transpiler/dialogic.ex
+  b5d0547deb69dd47 29,31,33,35,37,39
+lib/storyarn/flows/debug_session_store.ex
+  b5d0547deb69dd47 16
+lib/storyarn/shared/formula_runtime.ex
+  b5d0547deb69dd47 13-14,76
+lib/storyarn_web/live/sidebar_live.ex
+  b5d0547deb69dd47 15,98,268
+lib/storyarn_web/controllers/oauth_controller.ex
+  b5d0547deb69dd47 78
+lib/storyarn/exports.ex
+  b5d0547deb69dd47 15-18
+lib/storyarn_web/live/sheet_live/helpers/history_data_helpers.ex
+  b5d0547deb69dd47 4-5
+lib/storyarn/references/entity_tracker.ex
+  b5d0547deb69dd47 17,19,21,23,25,27
+test/storyarn_web/live/flow_live/collaboration_test.exs
+  b5d0547deb69dd47 25,46,67,88,112,128,150,177,216,244,278,316,351,381,416,448,478,506,534,561,589,620,646,675,708
+mix.exs
+  b5d0547deb69dd47 118
+test/storyarn/workers/snapshot_retention_worker_test.exs
+  b5d0547deb69dd47 5-8,30,55
+lib/storyarn/sheets/reference_tracker.ex
+  b5d0547deb69dd47 31,34-35,49,65,91,101,106-107,124-125,136-140,164-168,172-173,229-230,257,279,288,302,306,382-383,483,534-540
+lib/storyarn/accounts/registration.ex
+  b5d0547deb69dd47 82
+lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex
+  b5d0547deb69dd47 4-5,44-45,96
+test/storyarn/versioning/project_recovery_test.exs
+  b5d0547deb69dd47 11-13,36,107,262-264,266-268,284
+lib/storyarn/exports/serializers/ink.ex
+  b5d0547deb69dd47 17-20,43,47
+lib/storyarn_web/live/flow_live/player/player_engine.ex
+  b5d0547deb69dd47 48,58
+lib/storyarn/billing/subscription_crud.ex
+  b5d0547deb69dd47 6-7
+test/support/fixtures/projects_fixtures.ex
+  b5d0547deb69dd47 10,47-48
+lib/storyarn/exports/expression_transpiler/unreal.ex
+  b5d0547deb69dd47 24,26,28,30,32,34
+lib/storyarn/workspaces/memberships.ex
+  b5d0547deb69dd47 6-7,15,20-21,26,28,30
+lib/storyarn_web/oauth/discord_strategy.ex
+  b5d0547deb69dd47 22-25,39,44,94,113,137
+test/storyarn_web/live/flow_live/handlers/debug_execution_handlers_test.exs
+  b5d0547deb69dd47 8-9,53,482,497,805,834,862,884,900,917,949-950,969,984,1060,1109,1131,1151,1321,1430
+lib/storyarn_web/helpers/entity_search.ex
+  b5d0547deb69dd47 23,25,27,53-54,75-76
+lib/storyarn/localization/provider_config.ex
+  b5d0547deb69dd47 17
+lib/storyarn/localization/reports.ex
+  b5d0547deb69dd47 6-7,16-20,54-64,82,104
+test/storyarn/versioning/builders/project_snapshot_builder_test.exs
+  b5d0547deb69dd47 11,127
+test/storyarn/flows/node_crud_test.exs
+  b5d0547deb69dd47 8,22,26,833-834,981,993,1003,1013,1023,1033,1199,1545,1644-1645,1764-1765,1783
+lib/storyarn_web/live/flow_live/helpers/node_helpers.ex
+  b5d0547deb69dd47 6-7,11-13,15,38-39,115-116,169-170,190-191,243-244,255-256,278-279,387-388,420-421,477,480
+test/storyarn/exports/serializers/unreal_csv_test.exs
+  b5d0547deb69dd47 9-13,355,369
+lib/storyarn/workers/restore_project_worker.ex
+  b5d0547deb69dd47 17,20
+lib/storyarn/screenplays/import/fountain.ex
+  b5d0547deb69dd47 60,126-127,217,230,232,236,238,240,251,254-256,262,280,314,323,335
+lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex
+  b5d0547deb69dd47 11,14-15,17-18,23-24,45-46,57,60,64-65,90-91,134-135
+lib/storyarn/workers/daily_snapshot_worker.ex
+  b5d0547deb69dd47 20-21,24,45
+lib/storyarn_web/endpoint.ex
+  b5d0547deb69dd47 9-10
+lib/storyarn_web/live/flow_live/index.ex
+  b5d0547deb69dd47 5,16,24,81,231,234,241,245,253,271,398
+lib/storyarn_web/controllers/localization_export_controller.ex
+  b5d0547deb69dd47 27
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TMultiSelectCell.vue
+  b5d0547deb69dd47 56,76,86
+lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex
+  b5d0547deb69dd47 15,17,28,45-46
+test/storyarn/exports/serializers/yarn_test.exs
+  b5d0547deb69dd47 9-12
+lib/storyarn/screenplays/node_mapping.ex
+  b5d0547deb69dd47 97,265,282,295,301
+lib/storyarn_web/live/sheet_live/helpers/props_serializer.ex
+  b5d0547deb69dd47 66,152-153
+test/storyarn_web/live/flow_live/nodes/dialogue_node_test.exs
+  b5d0547deb69dd47 7
+lib/storyarn/projects/invitations.ex
+  b5d0547deb69dd47 4-7,22,30,35
+lib/storyarn/shared/shortcut_helpers.ex
+  b5d0547deb69dd47 10-11,104,108,112,114-115
+lib/storyarn/sheets/entity_reference.ex
+  b5d0547deb69dd47 23
+lib/storyarn/versioning/builders/project_snapshot_builder.ex
+  b5d0547deb69dd47 11-17,19-24,41-43,146,164,261-263
+lib/storyarn_web/live/scene_live/exploration_live.ex
+  b5d0547deb69dd47 26-28,109,121,144,370,477,485-487,529,642-643,663-664,682,717-718,841,1171-1172,1210,1527,1605,1707-1709
+test/storyarn/scenes_test.exs
+  b5d0547deb69dd47 8,11,175,207,681
+lib/storyarn/screenplays/reverse_node_mapping.ex
+  b5d0547deb69dd47 125,128,135-137,139,143-145,271
+test/storyarn_web/live/flow_live/handlers/debug_session_handlers_test.exs
+  b5d0547deb69dd47 432
+test/storyarn/versioning/project_snapshot_crud_test.exs
+  b5d0547deb69dd47 9-10
+test/storyarn/assets/image_optimization_test.exs
+  b5d0547deb69dd47 170,174,208,212
+test/storyarn_web/live/flow_live/helpers/variable_helpers_test.exs
+  b5d0547deb69dd47 9-10,375,522
+test/storyarn_web/live/workspace_live/show_test.exs
+  b5d0547deb69dd47 32-33,155-156,194-195
+test/support/fixtures/screenplays_fixtures.ex
+  b5d0547deb69dd47 9-10
+lib/storyarn/screenplays/flow_sync.ex
+  b5d0547deb69dd47 14-22,84-86,176,204,227,235,370,480,534-535,537
+test/storyarn/billing/subscription_crud_test.exs
+  b5d0547deb69dd47 7-10,22,27,58,63
+lib/storyarn_web/live/export_import_live/index.ex
+  b5d0547deb69dd47 10,129,435,437,441,451,456
+lib/storyarn/exports/serializers/unity_json.ex
+  b5d0547deb69dd47 11-12
+test/storyarn/flows/connection_crud_test.exs
+  b5d0547deb69dd47 8,22,26
+test/storyarn/localization/export_import_test.exs
+  b5d0547deb69dd47 8
+test/storyarn/scenes/position_utils_test.exs
+  b5d0547deb69dd47 6-7,12,20
+test/storyarn_web/live/localization_live/edit_test.exs
+  b5d0547deb69dd47 7,23,101,118,138,226,246,281,321,343,359,403
+lib/storyarn/collaboration.ex
+  b5d0547deb69dd47 29-32
+lib/storyarn/exports/serializers/storyarn_json.ex
+  b5d0547deb69dd47 97,203-204
+lib/storyarn/scenes/scene_crud.ex
+  b5d0547deb69dd47 17-26,35-39,48,59,146-147,172-178,183-190,209-213,222-226,235,243,250-254,402,442,453-458,462,492,500,525,539,550-569,581-599,611-666,678-732,849,861,954-955,965-966,984,1038
+lib/storyarn/scenes/annotation_crud.ex
+  b5d0547deb69dd47 8-10,13,17,21
+lib/storyarn/scenes/scene_ambient_flow.ex
+  b5d0547deb69dd47 13,16,28,30
+test/storyarn/scenes/scene_pin_test.exs
+  b5d0547deb69dd47 5
+assets/app/modules/sheets/components/OptionEditor.vue
+  b5d0547deb69dd47 2-6,13,16,18,21,25,28-29
+lib/storyarn/flows/connection_crud.ex
+  b5d0547deb69dd47 6-8,13-22,44,64,66,89,97-98,101,118,137,151-155,176,180
+lib/storyarn/workers/recover_project_worker.ex
+  b5d0547deb69dd47 15,19
+test/storyarn_web/controllers/export_controller_test.exs
+  b5d0547deb69dd47 14,125
+lib/storyarn_web/live/settings_live/profile.ex
+  b5d0547deb69dd47 129
+lib/storyarn_web/components/ui_components.ex
+  b5d0547deb69dd47 14-15
+.oxlintrc.json
+  b5d0547deb69dd47 31-35
+test/e2e/collaboration_test.exs
+  b5d0547deb69dd47 26-27,41,54
+test/storyarn/exports/serializers/articy_xml_test.exs
+  b5d0547deb69dd47 9-12
+config/test.exs
+  b5d0547deb69dd47 9-35,37-38,62-63,71-72
+lib/mix/tasks/convention_check.ex
+  b5d0547deb69dd47 2-3,80,120-121,216,248,261,272,293,311,337,339,344,346,348,350,352
+test/storyarn_web/live/localization_live/report_test.exs
+  b5d0547deb69dd47 7,23,35,46,56,66,77,90,103,118,128,139,154,165,194,213,231,248,265,282,312,322,332,346
+test/storyarn/localization/glossary_crud_test.exs
+  b5d0547deb69dd47 7,281
+test/storyarn_web/live/asset_live/index_test.exs
+  b5d0547deb69dd47 23,33,43,56,144,216,332,377,427
+lib/storyarn/flows/evaluator/node_evaluators/dialogue_evaluator.ex
+  b5d0547deb69dd47 10-12
+lib/storyarn/localization/text_crud.ex
+  b5d0547deb69dd47 58,62,69-74,82-86,101,104,152,177,185-188,214-216,280-284,295-296,305-310,405-406
+test/storyarn/sheets/sheet_stats_test.exs
+  b5d0547deb69dd47 11-12,16,78-80,186-187,207-208
+lib/storyarn/localization/localized_text.ex
+  b5d0547deb69dd47 18,21,34,45,49,55,57,153
+lib/storyarn/workspaces/workspace_crud.ex
+  b5d0547deb69dd47 6-7,9-10,12-13,25,32-33,40-46,57,59,75,93-94,105-106,217
+lib/storyarn_web/live/project_live/show.ex
+  b5d0547deb69dd47 7,15,54,93,97,101,105,202
+lib/storyarn_web/live/shared/restoration_handlers.ex
+  b5d0547deb69dd47 93
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TTextNumberCell.vue
+  b5d0547deb69dd47 2-5,29,99,103,108
+test/storyarn/exports/validator_test.exs
+  b5d0547deb69dd47 10-11,50,72,80,367,424,440,451
+test/storyarn/localization/batch_translator_test.exs
+  b5d0547deb69dd47 8-9,102-103
+test/storyarn_web/live/scene_live/handlers/undo_redo_handlers_test.exs
+  b5d0547deb69dd47 12,28,137-138,744,749-750,754
+lib/storyarn/sheets/table_row.ex
+  b5d0547deb69dd47 11,46,51
+lib/storyarn/flows/flow_connection.ex
+  b5d0547deb69dd47 9,12-14,22,24,26
+lib/storyarn/references/entity_reference.ex
+  b5d0547deb69dd47 19
+lib/storyarn_web/components/layouts.ex
+  b5d0547deb69dd47 189-192,703-706,788,790
+lib/storyarn/versioning/diff_helpers.ex
+  b5d0547deb69dd47 21,23-24,138
+test/storyarn/flows_test.exs
+  b5d0547deb69dd47 8,88,113,362,367,453-454,851,870,1012
+config/prod.exs
+  b5d0547deb69dd47 3-5,19-20,22
+lib/storyarn_web/live/flow_live/handlers/debug_session_handlers.ex
+  b5d0547deb69dd47 7-8,51-52,54-62,182,211-213
+lib/storyarn/exports/validator.ex
+  b5d0547deb69dd47 198,232,275,281,306,362,385,407,443,510-513,528-529
+test/storyarn_web/live/workspace_live/invitation_test.exs
+  b5d0547deb69dd47 93,100
+test/storyarn/projects/project_invitation_test.exs
+  b5d0547deb69dd47 130-131,159
+lib/storyarn_web/live/user_live/registration.ex
+  b5d0547deb69dd47 26
+lib/storyarn/flows/node_update.ex
+  b5d0547deb69dd47 6-8,12-13,44,78,100-101,108-109,129-131,160-161,169
+test/storyarn_web/live/sheet_live/handlers/block_crud_handlers_test.exs
+  b5d0547deb69dd47 16-17,26,166
+test/storyarn_web/live/flow_live/handlers/navigation_handlers_test.exs
+  b5d0547deb69dd47 20,88,130,172
+test/support/fixtures/localization_fixtures.ex
+  b5d0547deb69dd47 37,53
+lib/storyarn/flows/evaluator/engine.ex
+  b5d0547deb69dd47 27-32,97
+test_waitlist.exs
+  b5d0547deb69dd47 2
+lib/storyarn_web/live/sheet_live/handlers/select_option_handlers.ex
+  b5d0547deb69dd47 16,28,35,117
+test/storyarn/flows/evaluator/dialogue_evaluator_test.exs
+  b5d0547deb69dd47 266
+lib/storyarn/versioning/snapshot_viewer.ex
+  b5d0547deb69dd47 8-9,76,98,160
+lib/storyarn/accounts/passwords.ex
+  b5d0547deb69dd47 4-5
+test/storyarn/flows/flow_crud_test.exs
+  b5d0547deb69dd47 9,322,350,360,371,452,465,508,925-926,1040
+assets/app/modules/sheets/components/blocks/table/tbodyCells/get-cell-value-helpers.ts
+  b5d0547deb69dd47 1,5
+lib/storyarn/versioning/entity_version.ex
+  b5d0547deb69dd47 9,12,30-31
+lib/storyarn/workspaces/invitations.ex
+  b5d0547deb69dd47 5-8,22,30,35,37
+assets/app/modules/sheets/components/blocks/table/theadMenus/THeadCellTypeMenu.vue
+  b5d0547deb69dd47 13
+lib/storyarn/flows/evaluator/helpers.ex
+  b5d0547deb69dd47 10,19
+lib/storyarn/localization/glossary_crud.ex
+  b5d0547deb69dd47 26,30,38-43,104-105
+test/storyarn_web/live/sheet_live/handlers/table_handlers_test.exs
+  b5d0547deb69dd47 41,157,179,1056
+test/storyarn_web/live/project_live/show_test.exs
+  b5d0547deb69dd47 19-20,34,46,56
+test/storyarn/workspaces/invitations_test.exs
+  b5d0547deb69dd47 7-9,364
+lib/storyarn/workspaces/workspace.ex
+  b5d0547deb69dd47 9,12,29-32,85
+lib/storyarn_web/live/scene_live/index.ex
+  b5d0547deb69dd47 7,18-19,26,83,216,219,226,230,238,360,363,366
+test/storyarn/sheets/block_test.exs
+  b5d0547deb69dd47 384
+test/storyarn_web/live/localization_live/helpers/localization_helpers_extended_test.exs
+  b5d0547deb69dd47 6,8-9,44,58,86,131
+lib/storyarn/exports/serializers/yarn.ex
+  b5d0547deb69dd47 17-20,327,357,369
+lib/storyarn/screenplays/page_tree_builder.ex
+  b5d0547deb69dd47 10-11,125-127
+lib/storyarn/references/variable_reference.ex
+  b5d0547deb69dd47 14
+lib/storyarn_web/live/project_settings_live/members.ex
+  b5d0547deb69dd47 9,60
+lib/storyarn/accounts/users.ex
+  b5d0547deb69dd47 23
+assets/app/modules/sheets/components/blocks/table/TableGrid.vue
+  b5d0547deb69dd47 4,6
+test/support/ink_compiler.ex
+  b5d0547deb69dd47 47
+lib/storyarn/docs/guide.ex
+  b5d0547deb69dd47 28-29,67
+lib/storyarn/sheets.ex
+  b5d0547deb69dd47 14,17,19-31,317,324,334,336,343,587,628,661
+test/storyarn/exports/round_trip_test.exs
+  b5d0547deb69dd47 2-3,5-9,20-21,318,345
+lib/storyarn/sheets/block_crud.ex
+  b5d0547deb69dd47 11-18,20,27-32,55-62,127,346-348,591-593,611-613,656,658-659,669-673,725
+lib/storyarn/sheets/block_gallery_image.ex
+  b5d0547deb69dd47 10,39
+lib/storyarn/exports/expression_transpiler/base.ex
+  b5d0547deb69dd47 150
+lib/storyarn/projects/project.ex
+  b5d0547deb69dd47 9,12,14-15,25,27-30,120,128
+lib/storyarn_web/live/scene_live/handlers/layer_handlers.ex
+  b5d0547deb69dd47 9-10,12,15-16,121,214,240,257
+test/storyarn/flows/condition_test.exs
+  b5d0547deb69dd47 53,115
+test/storyarn/versioning/version_crud_test.exs
+  b5d0547deb69dd47 8-9,50,62,80-81,115
+lib/storyarn/versioning/builders/scene_builder.ex
+  b5d0547deb69dd47 14,18-23,55,131-132,238,242-262,268,290,300-314,321,328-329,441,515-524,543,563,588-597,685-697,703-705,805-806,827,876-878,923-936,955-969,995,1126,1254,1296,1298,1306,1312,1318,1331,1337,1343,1456
+test/storyarn_web/controllers/user_session_controller_test.exs
+  b5d0547deb69dd47 5
+lib/storyarn_web/live/flow_live/handlers/editor_info_handlers.ex
+  b5d0547deb69dd47 12-13,15,20-21,26-27,34-35,52-53,72-73,82-83
+test/storyarn/accounts/passwords_test.exs
+  b5d0547deb69dd47 6,25
+lib/storyarn/flows/flow_crud.ex
+  b5d0547deb69dd47 8-11,16-20,30-34,44-48,76-77,82,86-92,159-163,172,179-183,191,199,400-402,450,477,484-490,499,518-527,677
+lib/storyarn_web/live/sheet_live/index.ex
+  b5d0547deb69dd47 7,165,208,262
+lib/storyarn/projects/dashboard.ex
+  b5d0547deb69dd47 13-15,21-22,73-90,195-201,241-245,249-255,279-283,289-302,342-346
+lib/storyarn/scenes/scene_zone.ex
+  b5d0547deb69dd47 11,14-16,47,49,175,180,185
+lib/storyarn/versioning.ex
+  b5d0547deb69dd47 15-23
+lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex
+  b5d0547deb69dd47 6-7,13,98,114
+lib/storyarn/versioning/builders/asset_hash_resolver.ex
+  b5d0547deb69dd47 13-14,31
+lib/storyarn_web/live/scene_live/handlers/canvas_event_handlers.ex
+  b5d0547deb69dd47 12-13,18-19,21-22,39-40,54-55,60-61,82-83,106-107,111-113,125-126,136-137,156-157,175-176
+lib/storyarn/sheets/property_inheritance.ex
+  b5d0547deb69dd47 13-22,65,83,142,150-151,235-236,246-247,265-270,307,343,352-353,368,375-379,383-388,467-470,479-483,521-524,542,549,569-573,651,684,703,705,869,873
+lib/storyarn_web/live/scene_live/handlers/collaboration_handlers.ex
+  b5d0547deb69dd47 11,13,22-24,35-36,50-51,64-65,260,274-275
+lib/storyarn_web/live/sheet_live/handlers/audio_handlers.ex
+  b5d0547deb69dd47 8
+test/storyarn/scenes/scene_crud_test.exs
+  b5d0547deb69dd47 6-10,361,618,643-644,691,825,1079,1101
+test/storyarn_web/live/scene_live/undo_redo_test.exs
+  b5d0547deb69dd47 19,21-22,31,666,678
+test/storyarn_web/router_test.exs
+  b5d0547deb69dd47 163
+test/storyarn_web/helpers/authorize_test.exs
+  b5d0547deb69dd47 4,8,14,20,26,166,177-178,191,202-203,214-215
+lib/storyarn_web/live/project_settings_live/localization.ex
+  b5d0547deb69dd47 9,68
+lib/storyarn/screenplays.ex
+  b5d0547deb69dd47 16-26
+lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex
+  b5d0547deb69dd47 12,14,17,55,107
+lib/storyarn_web/live/sheet_live/handlers/formula_handlers.ex
+  b5d0547deb69dd47 15
+lib/storyarn/projects.ex
+  b5d0547deb69dd47 14-22,283
+lib/storyarn_web/live/docs_live/show.ex
+  b5d0547deb69dd47 2,16,134
+lib/storyarn_web/live/flow_live/nodes/dialogue/node.ex
+  b5d0547deb69dd47 153,298-299
+lib/storyarn_web/live/project_settings_live/version_control.ex
+  b5d0547deb69dd47 10,79,180
+test/storyarn/versioning/builders/asset_hash_resolver_test.exs
+  b5d0547deb69dd47 6-9,53,55
+test/storyarn_web/live/scene_live/handlers/collaboration_handlers_test.exs
+  b5d0547deb69dd47 11,21
+lib/storyarn_web/live/sheet_live/helpers/references_data_helpers.ex
+  b5d0547deb69dd47 71-72,188-189,191-192,194-195,202
+test/storyarn/versioning/change_detector_test.exs
+  b5d0547deb69dd47 6-9,32
+test/storyarn/flows/scene_resolver_test.exs
+  b5d0547deb69dd47 4,9,19,29,39
+lib/storyarn/sheets/sheet_avatar.ex
+  b5d0547deb69dd47 11
+assets/app/modules/sheets/components/blocks/table/TBody.vue
+  b5d0547deb69dd47 2-13,28,30,35-36,40,42,44,51,53,55-57,60,65,70-81,83-90,92-97,99-104,106-112,114-119,121-123,125-130,134
+lib/storyarn/shortcuts.ex
+  b5d0547deb69dd47 13-15
+test/storyarn_web/live/flow_live/nodes/slug_line_node_test.exs
+  b5d0547deb69dd47 7
+test/storyarn_web/live/flow_live/nodes/subflow_node_test.exs
+  b5d0547deb69dd47 7-8,87,202
+config/config.exs
+  b5d0547deb69dd47 10-12,14-18,20-40,42-67,74-100,104-120,127-129,133-134,136-138,142-146,148-149,152-153,156-157
+lib/storyarn/flows.ex
+  b5d0547deb69dd47 14-31,41,832-835,1021
+lib/storyarn_web/live/flow_live/player_live.ex
+  b5d0547deb69dd47 21-22,56,94,145,218,273,321-324,330-333,381-384,390-393,510
+test/storyarn/workers/daily_snapshot_worker_test.exs
+  b5d0547deb69dd47 5-7
+lib/storyarn/versioning/builders/sheet_builder.ex
+  b5d0547deb69dd47 13,17-21,23,108,121-135,164-165,196,202,372-387,399,440,610
+test/storyarn_web/live/flow_live/player/player_engine_test.exs
+  b5d0547deb69dd47 142,791
+lib/storyarn/imports/parsers/storyarn_json.ex
+  b5d0547deb69dd47 17,73,223,586,780,816,888,904,978,1030,1103,1123,1156,1198,1200,1202,1257-1262
+test/storyarn_web/live/scene_live/show_test.exs
+  b5d0547deb69dd47 9,81,96,116,133,147,161,179,196,218,233,254,270,285,301,316,339,358,380,401,427,448,465,485,510,534,557,582,605,636,661,699,721,741,762,789,810,828,851,872,893,915,941,962,983,1005,1031,1056,1089,1104,1123,1147,1170,1196,1219,1242,1269,1292,1321,1337,1352,1374,1391,1414,1451,1478,1508,1538,1566,1620,1636,1656,1680,1706,1724,1743,1767,1795,1823,1839,1854,1876,1903,1924,1943,1962,1981,2004,2045,2075,2097,2112,2127,2147,2173,2196,2222,2247,2268,2289,2309,2334,2351,2364,2372,2405,2429,2454,2481,2505,2531,2552,2568,2584,2602,2622,2644,2671,2698,2719,2746,2761,2778,2803,2826,2844,2869,2884,2901,2924,2951,2978,3007,3033,3054,3076,3097,3119,3145,3165,3188,3214,3234,3250,3266,3284,3305,3323,3346,3369,3383,3387,3408,3422,3426,3452,3475,3489
+lib/storyarn_web/live/scene_live/handlers/undo_redo_handlers.ex
+  b5d0547deb69dd47 12-13,18,20-23,86,88,136,138,426,440,469,570,705,720,750
+test/storyarn_web/live/flow_live/index_test.exs
+  b5d0547deb69dd47 19,38,57,70,85,107
+lib/storyarn/exports/serializers/articy_xml.ex
+  b5d0547deb69dd47 25-26,345-346
+lib/storyarn_web/live/scene_live/helpers/scene_serializer.ex
+  b5d0547deb69dd47 9,12-13,71,98
+lib/storyarn_web/live/project_live/components/settings_components.ex
+  b5d0547deb69dd47 24,134,164,166,168,179,205,270
+lib/storyarn/workspaces/workspace_membership.ex
+  b5d0547deb69dd47 15,18,28,30
+lib/storyarn/accounts/emails.ex
+  b5d0547deb69dd47 6-8
+test/storyarn_web/live/localization_live/index_test.exs
+  b5d0547deb69dd47 7,31,41,52,61,74,83,92,102,114,125,137,153,180,195,210,246,274,308,328,341,359,387,403,415,430,448,464,476,493,510,530,544,562,577,594
+lib/storyarn/references/variable_usage.ex
+  b5d0547deb69dd47 18
+test/support/fixtures/sheets_fixtures.ex
+  b5d0547deb69dd47 66
+lib/storyarn/exports/serializers/graph_traversal.ex
+  b5d0547deb69dd47 29,127,132-133
+test/storyarn/shared/validations_test.exs
+  b5d0547deb69dd47 8,10,19,24,28,57,62,67,72,77,82,87,92,97,102,107,112,117,135,141,149-150,159,172,178,185,192,199,206,213,220,226
+lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex
+  b5d0547deb69dd47 6-8,15,18-20,22-23,25-28,55,79,101,144,151,203,218
+lib/storyarn_web/live/localization_live/report.ex
+  b5d0547deb69dd47 39
+lib/storyarn/shared/color_utils.ex
+  b5d0547deb69dd47 49
+lib/storyarn/sheets/formula_resolver.ex
+  b5d0547deb69dd47 15-16,61
+lib/storyarn/shared/invitation_schema.ex
+  b5d0547deb69dd47 23,28-30,58,60
+test/storyarn/assets/blob_store_test.exs
+  b5d0547deb69dd47 7
+lib/storyarn/shared/html_sanitizer.ex
+  b5d0547deb69dd47 38,44
+test/storyarn_web/live/project_live/settings_test.exs
+  b5d0547deb69dd47 24,36,47,64,81,97,111,124
+test/storyarn_web/live/flow_live/helpers/socket_helpers_test.exs
+  b5d0547deb69dd47 6-8
+lib/storyarn/scenes/scene_pin.ex
+  b5d0547deb69dd47 11,14,17-19,50,52,54
+lib/storyarn/versioning/change_detector.ex
+  b5d0547deb69dd47 31-32,37,42-43
+test/storyarn/versioning/integration_test.exs
+  b5d0547deb69dd47 14-16
+test/storyarn_web/live/scene_live/exploration_live_test.exs
+  b5d0547deb69dd47 40,47,72-73,79-80,289,315,328,613,631,689,717,741,772,800,839,861,891,921,952,1013,1024,1045,1084,1113,1150,1173,1193,1215,1267,1286,1305,1331,1385,1416,1421,1447,1452,1478,1494,1504,1513,1555,1581,1612,1641,1663,1693,1726,1767,1791,1822,1872,1937,1973,2025
+lib/storyarn_web/components/core_components.ex
+  b5d0547deb69dd47 74-80,127-129,162-163,173-175,272-276,282-286
+test/support/fixtures/assets_fixtures.ex
+  b5d0547deb69dd47 9
+lib/storyarn/flows/node_crud.ex
+  b5d0547deb69dd47 12-16,27,35-39,48-52,60,88-93,102-106,115-121,134-144,167-178,205-213,225-236,335,337-338
+lib/storyarn_web/live/flow_live/handlers/navigation_handlers.ex
+  b5d0547deb69dd47 12,14,17-18
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  b5d0547deb69dd47 15-18,20,28-29,40-41,60-61,86-87,130-131,162-163,195,226-227,232-233,254-255,271-272,290-292,316,322-323,341-342,352-353,378-379,391-392,418-419,424-425,430-431,450-451,456-457,462-463
+test/storyarn/workers/recover_project_worker_test.exs
+  b5d0547deb69dd47 10-11
+lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex
+  b5d0547deb69dd47 14-15,33,110,135,155,215,240,311,361,410,427,548,550,552,554,556,558,560,562,564,566,568,570,572,598,612,685,725
+lib/storyarn/assets/storage/r2.ex
+  b5d0547deb69dd47 14-15,27,37,61
+lib/storyarn_web/plugs/locale.ex
+  b5d0547deb69dd47 56,60
+test/storyarn/sheets/table_column_test.exs
+  b5d0547deb69dd47 7-8,32,38,44,52,58,66,73,81
+test/storyarn_web/live/scene_live/handlers/element_handlers_test.exs
+  b5d0547deb69dd47 13,28
+lib/storyarn/sheets/block.ex
+  b5d0547deb69dd47 45,48-50,107-109,203,220,227,276,283,331
+assets/app/components/layout/DashboardContent.vue
+  b5d0547deb69dd47 5
+test/storyarn/shared/shortcut_helpers_test.exs
+  b5d0547deb69dd47 264,276
+lib/storyarn/shared/invitation_operations.ex
+  b5d0547deb69dd47 109,148-153,158-164,201,203
+lib/storyarn/sheets/sheet_crud.ex
+  b5d0547deb69dd47 12-14,16-17,98,131-134,152
+lib/storyarn/projects/memberships.ex
+  b5d0547deb69dd47 4-5,24,26,62,64,66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "0f56c35aaff1614235149260d27401aee0962b57",
+  "prompts": {
+    "082d411772561179": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb0f1880-45b8-4773-bd9d-ac0a40feea47",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 89,
+      "overriden_lines": 0
+    },
+    "b5d0547deb69dd47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d4274e7-2553-4708-ae62-7e1cb751c457",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 7268,
+      "total_deletions": 7212,
+      "accepted_lines": 7148,
+      "overriden_lines": 1
+    }
+  }
+}
