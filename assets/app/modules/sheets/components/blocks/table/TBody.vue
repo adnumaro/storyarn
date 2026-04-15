@@ -94,7 +94,6 @@ makeDroppable(
         :row="row"
         :column="column"
         :can-edit="canEdit"
-        :can-manage="canManage"
       />
 
       <TMultiSelectCell
@@ -102,7 +101,6 @@ makeDroppable(
         :row="row"
         :column="column"
         :can-edit="canEdit"
-        :can-manage="canManage"
       />
 
       <TFormulaCell
