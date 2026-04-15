@@ -801,13 +801,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers do
 
     sheet = Sheets.get_sheet_full!(project_id, sheet_id)
     blocks = load_blocks_with_references(sheet_id, project_id)
-    sheets_tree = Sheets.list_sheets_tree(project_id)
     ancestors = Sheets.get_sheet_with_ancestors(project_id, sheet_id) || [sheet]
 
     socket
     |> assign(:sheet, sheet)
     |> assign(:blocks, blocks)
-    |> assign(:sheets_tree, sheets_tree)
     |> assign(:ancestors, ancestors)
   end
 

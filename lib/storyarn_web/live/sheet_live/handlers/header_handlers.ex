@@ -18,8 +18,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
 
       case Sheets.update_sheet(sheet, %{name: name}) do
         {:ok, updated_sheet} ->
-          sheets_tree = helpers.prepare_tree.(socket.assigns.project.id)
-
           if name != sheet.name do
             Sheets.maybe_create_version(updated_sheet, socket.assigns.current_scope.user.id)
           end
@@ -27,7 +25,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
           {:noreply,
            socket
            |> assign(:sheet, Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id))
-           |> assign(:sheets_tree, sheets_tree)
            |> helpers.broadcast.(:sheet_updated)}
 
         {:error, _changeset} ->
@@ -99,7 +96,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
       case Sheets.remove_avatar(socket.assigns.sheet.id, id) do
         {:ok, _} ->
           {:noreply,
-           socket |> helpers.reload_sheet_and_tree.() |> helpers.broadcast.(:sheet_updated)}
+           socket |> helpers.reload_sheet.() |> helpers.broadcast.(:sheet_updated)}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not remove avatar."))}
@@ -116,7 +113,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
         Sheets.set_avatar_default(avatar)
 
         {:noreply,
-         socket |> helpers.reload_sheet_and_tree.() |> helpers.broadcast.(:sheet_updated)}
+         socket |> helpers.reload_sheet.() |> helpers.broadcast.(:sheet_updated)}
       else
         {:noreply, socket}
       end
@@ -177,7 +174,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
 
         {:noreply,
          socket
-         |> helpers.reload_sheet_and_tree.()
+         |> helpers.reload_sheet.()
          |> helpers.broadcast.(:sheet_updated)}
     end
   end

@@ -67,7 +67,6 @@ defmodule StoryarnWeb.SheetLive.Index do
   @impl true
   def mount(_params, _session, socket) do
     %{project: project} = socket.assigns
-    sheets_tree = Sheets.list_sheets_tree(project.id)
     sheets = Sheets.list_all_sheets(project.id)
 
     if connected?(socket) do
@@ -84,7 +83,6 @@ defmodule StoryarnWeb.SheetLive.Index do
     {:ok,
      socket
      |> assign(:online_users, [])
-     |> assign(:sheets_tree, prepare_tree(sheets_tree))
      |> assign(:sheets, sheets)
      |> assign(:dashboard_stats, nil)
      |> assign(:all_sheet_table_data, [])
@@ -234,34 +232,9 @@ defmodule StoryarnWeb.SheetLive.Index do
       :all_sheet_table_data,
       :sheet_table_data,
       :sheet_issues,
-      fn s ->
-        s
-        |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(project_id)))
-        |> assign(:sheets, Sheets.list_all_sheets(project_id))
-      end
+      fn s -> assign(s, :sheets, Sheets.list_all_sheets(project_id)) end
     )
   end
-
-  # Transforms the Ecto tree into plain maps with avatar_url for Vue serialization
-  defp prepare_tree(nodes) do
-    Enum.map(nodes, fn node ->
-      %{
-        id: node.id,
-        name: node.name,
-        avatar_url: extract_avatar_url(node),
-        children: prepare_tree(Map.get(node, :children, []))
-      }
-    end)
-  end
-
-  defp extract_avatar_url(%{avatars: avatars}) when is_list(avatars) do
-    case Enum.find(avatars, & &1.is_default) || List.first(avatars) do
-      %{asset: %{url: url}} when is_binary(url) -> url
-      _ -> nil
-    end
-  end
-
-  defp extract_avatar_url(_), do: nil
 
   defp sheet_sort_columns do
     %{

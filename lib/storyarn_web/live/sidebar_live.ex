@@ -9,6 +9,7 @@ defmodule StoryarnWeb.SidebarLive do
   use StoryarnWeb, :live_view
   use Gettext, backend: Storyarn.Gettext
 
+  alias Storyarn.Collaboration
   alias Storyarn.Projects
   alias Storyarn.Sheets
   alias Storyarn.Shared.MapUtils
@@ -45,6 +46,7 @@ defmodule StoryarnWeb.SidebarLive do
 
     if connected?(socket) do
       Phoenix.PubSub.subscribe(Storyarn.PubSub, shell_topic(project_id))
+      Collaboration.subscribe_changes({:project, project_id})
     end
 
     {:ok, socket, layout: false}
@@ -192,6 +194,15 @@ defmodule StoryarnWeb.SidebarLive do
   def handle_info({:tree_changed, :sheets}, socket) do
     {:noreply, assign(socket, :sheets_tree, load_sheets_tree(socket.assigns.project_id))}
   end
+
+  # Remote collaboration changes (from other clients) that affect the tree
+  # shape or sheet names. Reload local tree to stay in sync.
+  def handle_info({:remote_change, action, _payload}, socket)
+      when action in [:tree_changed, :sheet_updated, :sheet_restored] do
+    {:noreply, assign(socket, :sheets_tree, load_sheets_tree(socket.assigns.project_id))}
+  end
+
+  def handle_info({:remote_change, _action, _payload}, socket), do: {:noreply, socket}
 
   # Forwarded from ToolbarsLive (LeftToolbar.vue's pushEvent lands there).
   def handle_info({:toolbar_event, "tree_panel_toggle", _params}, socket) do

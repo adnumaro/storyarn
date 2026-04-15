@@ -277,7 +277,6 @@ defmodule StoryarnWeb.SheetLive.Show do
      |> assign(:inherited_groups, [])
      |> assign(:gallery_data, %{})
      |> assign(:table_data, %{})
-     |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(project.id)))
      |> assign(:source_shortcut, nil)
      |> assign(:current_tab, "content")
      |> assign(:references_data, nil)
@@ -920,19 +919,13 @@ defmodule StoryarnWeb.SheetLive.Show do
     {:noreply,
      socket
      |> assign(:sheet, sheet)
-     |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id)))
      |> push_event("sheet_updated_remote", %{name: sheet.name, shortcut: sheet.shortcut})
      |> show_collab_toast(:sheet_updated, payload)}
   end
 
-  defp handle_remote_change(:tree_changed, _payload, socket) do
-    {:noreply,
-     assign(
-       socket,
-       :sheets_tree,
-       prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id))
-     )}
-  end
+  # Tree shape changes are picked up by SidebarLive directly (it subscribes
+  # to project-level Collaboration changes). Nothing to do here.
+  defp handle_remote_change(:tree_changed, _payload, socket), do: {:noreply, socket}
 
   defp handle_remote_change(:sheet_restored, payload, socket) do
     sheet = Sheets.get_sheet_full!(socket.assigns.project.id, socket.assigns.sheet.id)
@@ -993,12 +986,8 @@ defmodule StoryarnWeb.SheetLive.Show do
   defp header_helpers do
     %{
       reload_sheet: &reload_sheet/1,
-      reload_sheet_and_tree: &reload_sheet_and_tree/1,
       broadcast: &broadcast_sheet_change/2,
-      parse_id: &MapUtils.parse_int/1,
-      prepare_tree: fn project_id ->
-        prepare_tree(Sheets.list_sheets_tree(project_id))
-      end
+      parse_id: &MapUtils.parse_int/1
     }
   end
 
@@ -1046,9 +1035,4 @@ defmodule StoryarnWeb.SheetLive.Show do
     |> assign(:table_data, table_data)
   end
 
-  defp reload_sheet_and_tree(socket) do
-    socket
-    |> reload_sheet()
-    |> assign(:sheets_tree, prepare_tree(Sheets.list_sheets_tree(socket.assigns.project.id)))
-  end
 end
