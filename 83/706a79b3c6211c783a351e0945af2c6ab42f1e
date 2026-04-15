@@ -1,0 +1,36 @@
+assets/app/modules/sheets/components/tree/SheetTreeNode.vue
+  b5d0547deb69dd47 73-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "83706a79b3c6211c783a351e0945af2c6ab42f1e",
+  "prompts": {
+    "082d411772561179": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb0f1880-45b8-4773-bd9d-ac0a40feea47",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 104,
+      "overriden_lines": 0
+    },
+    "b5d0547deb69dd47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d4274e7-2553-4708-ae62-7e1cb751c457",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 7,
+      "total_deletions": 0,
+      "accepted_lines": 7,
+      "overriden_lines": 0
+    }
+  }
+}
