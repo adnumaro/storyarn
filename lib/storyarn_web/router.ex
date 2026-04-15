@@ -187,19 +187,6 @@ defmodule StoryarnWeb.Router do
            CompareLive.Sheet,
            :compare
 
-      # Localization
-      live "/workspaces/:workspace_slug/projects/:project_slug/localization",
-           LocalizationLive.Index,
-           :index
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/localization/report",
-           LocalizationLive.Report,
-           :report
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/localization/:id",
-           LocalizationLive.Edit,
-           :edit
-
       # Assets
       live "/workspaces/:workspace_slug/projects/:project_slug/assets",
            AssetLive.Index,
@@ -263,6 +250,19 @@ defmodule StoryarnWeb.Router do
 
       live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/edit",
            SheetLive.Show,
+           :edit
+
+      # Localization
+      live "/workspaces/:workspace_slug/projects/:project_slug/localization",
+           LocalizationLive.Index,
+           :index
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/localization/report",
+           LocalizationLive.Report,
+           :report
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/localization/:id",
+           LocalizationLive.Edit,
            :edit
     end
 

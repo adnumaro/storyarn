@@ -18,6 +18,7 @@ defmodule StoryarnWeb.SheetLive.Index do
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Sheets
+  alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @impl true
   def render(assigns) do
@@ -29,11 +30,23 @@ defmodule StoryarnWeb.SheetLive.Index do
       current_scope={@current_scope}
       current_user={@current_user}
       urls={@urls}
-      sheet_id={nil}
       active_tool={:sheets}
-      can_edit={@can_edit}
       is_super_admin={@is_super_admin}
-      dashboard_url={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets"}
+      online_users={@online_users}
+      sidebar_module={StoryarnWeb.SheetsSidebarLive}
+      sidebar_session={
+        %{
+          "project_id" => @project.id,
+          "workspace_slug" => @workspace.slug,
+          "project_slug" => @project.slug,
+          "sheet_id" => nil,
+          "can_edit" => @can_edit,
+          "active_tool" => "sheets",
+          "dashboard_url" =>
+            ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets",
+          "current_scope" => @current_scope
+        }
+      }
     >
       <.vue
         v-component="modules/sheets/SheetDashboard"
@@ -73,7 +86,7 @@ defmodule StoryarnWeb.SheetLive.Index do
 
       Phoenix.PubSub.subscribe(
         Storyarn.PubSub,
-        StoryarnWeb.SidebarLive.shell_topic(project.id)
+        StoryarnWeb.SheetsSidebarLive.shell_topic(project.id)
       )
 
       if sheets != [], do: send(self(), :load_dashboard_data)
@@ -81,7 +94,7 @@ defmodule StoryarnWeb.SheetLive.Index do
 
     {:ok,
      socket
-     |> assign(:online_users, [])
+     |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
      |> assign(:sheets, sheets)
      |> assign(:dashboard_stats, nil)
      |> assign(:all_sheet_table_data, [])
@@ -101,7 +114,7 @@ defmodule StoryarnWeb.SheetLive.Index do
   # Dashboard loading (async)
   # ===========================================================================
 
-  # Shell-topic messages from SidebarLive:
+  # Shell-topic messages from SheetsSidebarLive:
   def handle_info({:open_sheet, sheet_id}, socket) do
     path =
       ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{sheet_id}"
@@ -112,6 +125,7 @@ defmodule StoryarnWeb.SheetLive.Index do
   def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
   def handle_info({:tree_changed, :sheets}, socket), do: {:noreply, reload_sheets(socket)}
   def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
+  def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
 
   def handle_info(:load_dashboard_data, socket) do
     %{project: project, workspace: workspace, sort_by: sort_by, sort_dir: sort_dir} =
@@ -201,8 +215,12 @@ defmodule StoryarnWeb.SheetLive.Index do
   # Events
   # ===========================================================================
 
+  # tree_panel_* events fire from LeftToolbar.vue (rendered by ProjectShell
+  # in this LV's DOM). Forward them on the shell topic so the sidebar LV
+  # picks them up.
   @impl true
-  # tree_panel_* events are handled by SidebarLive — they never reach here.
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: ProjectChromeHelpers.forward_tree_panel(socket, event, params)
 
   def handle_event("sort_sheets", %{"column" => column}, socket) do
     {:noreply, handle_sort(socket, column, :all_sheet_table_data, :sheet_table_data, sheet_sort_columns())}
@@ -213,8 +231,8 @@ defmodule StoryarnWeb.SheetLive.Index do
   end
 
   # Tree mutation events (create_sheet, create_child_sheet, move_to_parent,
-  # set_pending_delete, confirm_delete, delete) now live in SidebarLive —
-  # they never reach this LV because the tree is rendered by SidebarLive
+  # set_pending_delete, confirm_delete, delete) now live in SheetsSidebarLive —
+  # they never reach this LV because the tree is rendered by SheetsSidebarLive
   # which is a separate nested LV.
 
   # ===========================================================================

@@ -20,6 +20,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.UndoRedoStack
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
+  alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.Live.Shared.RestorationHandlers
   alias StoryarnWeb.SheetLive.Handlers.AudioHandlers
   alias StoryarnWeb.SheetLive.Handlers.BlockHandlers
@@ -51,11 +52,23 @@ defmodule StoryarnWeb.SheetLive.Show do
       current_scope={@current_scope}
       current_user={@current_user}
       urls={@urls}
-      sheet_id={@sheet && to_string(@sheet.id)}
       active_tool={:sheets}
-      can_edit={@can_edit}
       is_super_admin={@is_super_admin}
-      dashboard_url={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets"}
+      online_users={@online_users}
+      sidebar_module={StoryarnWeb.SheetsSidebarLive}
+      sidebar_session={
+        %{
+          "project_id" => @project.id,
+          "workspace_slug" => @workspace.slug,
+          "project_slug" => @project.slug,
+          "sheet_id" => @sheet && to_string(@sheet.id),
+          "can_edit" => @can_edit,
+          "active_tool" => "sheets",
+          "dashboard_url" =>
+            ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/sheets",
+          "current_scope" => @current_scope
+        }
+      }
     >
       <.sheet_content
         sheet={@sheet}
@@ -257,7 +270,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
       Phoenix.PubSub.subscribe(
         Storyarn.PubSub,
-        StoryarnWeb.SidebarLive.shell_topic(project.id)
+        StoryarnWeb.SheetsSidebarLive.shell_topic(project.id)
       )
     end
 
@@ -265,7 +278,6 @@ defmodule StoryarnWeb.SheetLive.Show do
 
     {:ok,
      socket
-     |> assign(:online_users, [])
      |> assign(:can_edit, can_edit)
      |> assign(:restoration_banner, restoration_banner)
      |> assign(:compact, false)
@@ -279,7 +291,7 @@ defmodule StoryarnWeb.SheetLive.Show do
      |> assign(:references_data, nil)
      |> assign(:audio_data, nil)
      |> assign(:history_data, nil)
-     |> assign(:online_users, [])
+     |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
      |> assign(:collab_scope, nil)
      |> assign(:block_locks, %{})
      |> assign(:pending_delete_id, nil)
@@ -312,7 +324,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
     Phoenix.PubSub.broadcast(
       Storyarn.PubSub,
-      StoryarnWeb.SidebarLive.shell_topic(socket.assigns.project.id),
+      StoryarnWeb.SheetsSidebarLive.shell_topic(socket.assigns.project.id),
       {:active_sheet, sheet_id}
     )
 
@@ -385,11 +397,14 @@ defmodule StoryarnWeb.SheetLive.Show do
   # Event Handlers: Header
   # ===========================================================================
 
-  # tree_panel_* events are handled by SidebarLive — they never reach here.
+  # tree_panel_* events fire from LeftToolbar.vue (rendered by ProjectShell
+  # in this LV's DOM). Forward them on the shell topic so the active
+  # sidebar LV picks them up.
+  @impl true
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: ProjectChromeHelpers.forward_tree_panel(socket, event, params)
 
   # --- Tabs ---
-
-  @impl true
 
   def handle_event("switch_tab", %{"tab" => tab}, socket) when tab in ~w(content references audio history) do
     if tab == "history" and socket.assigns.compact do
@@ -700,7 +715,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_event("load_more_formula_bindings", params, socket),
     do: FormulaHandlers.handle_load_more(params, socket, formula_handler_helpers())
 
-  # Tree events (create, delete, move) handled by SidebarLive — not here.
+  # Tree events (create, delete, move) handled by SheetsSidebarLive — not here.
 
   # --- Audio tab ---
 
@@ -759,7 +774,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_info({:project_restoration_failed, payload}, socket),
     do: RestorationHandlers.handle_restoration_event({:project_restoration_failed, payload}, socket)
 
-  # Shell-topic messages from SidebarLive:
+  # Shell-topic messages from SheetsSidebarLive:
   def handle_info({:open_sheet, sheet_id}, socket) do
     path =
       ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{sheet_id}"
@@ -770,6 +785,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
   def handle_info({:tree_changed, :sheets}, socket), do: {:noreply, socket}
   def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
+  def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
 
   def handle_info({Presence, {:join, presence}}, socket) do
     Collab.handle_presence_join(socket, presence)
@@ -889,7 +905,7 @@ defmodule StoryarnWeb.SheetLive.Show do
      |> show_collab_toast(:sheet_updated, payload)}
   end
 
-  # Tree shape changes are picked up by SidebarLive directly (it subscribes
+  # Tree shape changes are picked up by SheetsSidebarLive directly (it subscribes
   # to project-level Collaboration changes). Nothing to do here.
   defp handle_remote_change(:tree_changed, _payload, socket), do: {:noreply, socket}
 

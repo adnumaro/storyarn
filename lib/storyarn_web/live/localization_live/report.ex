@@ -4,20 +4,35 @@ defmodule StoryarnWeb.LocalizationLive.Report do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Localization
-  alias Storyarn.Projects
+  alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app
+    <StoryarnWeb.Components.ProjectShell.project_shell
       socket={@socket}
-      flash={@flash}
-      current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
+      current_scope={@current_scope}
+      current_user={@current_user}
+      urls={@urls}
       active_tool={:localization}
-      has_tree={false}
-      can_edit={@can_edit}
+      is_super_admin={@is_super_admin}
+      online_users={@online_users}
+      sidebar_module={StoryarnWeb.LocalizationSidebarLive}
+      sidebar_session={
+        %{
+          "project_id" => @project.id,
+          "workspace_slug" => @workspace.slug,
+          "project_slug" => @project.slug,
+          "selected_locale" => @selected_locale,
+          "can_edit" => @can_edit,
+          "active_tool" => "localization",
+          "dashboard_url" =>
+            ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization",
+          "current_scope" => @current_scope
+        }
+      }
     >
       <.vue
         v-component="modules/localization/components/LocalizationReport"
@@ -31,49 +46,47 @@ defmodule StoryarnWeb.LocalizationLive.Report do
         type-counts={@type_counts}
         back-url={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization"}
       />
-    </Layouts.app>
+    </StoryarnWeb.Components.ProjectShell.project_shell>
     """
   end
 
   @impl true
-  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
-    case Projects.get_project_by_slugs(
-           socket.assigns.current_scope,
-           workspace_slug,
-           project_slug
-         ) do
-      {:ok, project, membership} ->
-        can_edit = Projects.can?(membership.role, :edit_content)
-        target_languages = Localization.get_target_languages(project.id)
+  def mount(_params, _session, socket) do
+    %{project: project} = socket.assigns
+    target_languages = Localization.get_target_languages(project.id)
 
-        selected_locale =
-          case target_languages do
-            [first | _] -> first.locale_code
-            [] -> nil
-          end
+    selected_locale =
+      case target_languages do
+        [first | _] -> first.locale_code
+        [] -> nil
+      end
 
-        socket =
-          socket
-          |> assign(:project, project)
-          |> assign(:workspace, project.workspace)
-          |> assign(:membership, membership)
-          |> assign(:can_edit, can_edit)
-          |> assign(:target_languages, target_languages)
-          |> assign(:selected_locale, selected_locale)
-          |> load_report_data()
-
-        {:ok, socket}
-
-      {:error, :not_found} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("localization", "Project not found."))
-         |> redirect(to: ~p"/workspaces")}
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(
+        Storyarn.PubSub,
+        StoryarnWeb.LocalizationSidebarLive.shell_topic(project.id)
+      )
     end
+
+    socket =
+      socket
+      |> assign(:target_languages, target_languages)
+      |> assign(:selected_locale, selected_locale)
+      |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
+      |> load_report_data()
+
+    {:ok, socket}
   end
 
   @impl true
-  def handle_event("change_locale", %{"locale" => locale}, socket) do
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: ProjectChromeHelpers.forward_tree_panel(socket, event, params)
+
+  # change_locale is emitted by LocalizationSidebar.vue which now lives inside
+  # LocalizationSidebarLive; the sidebar broadcasts `{:active_locale, locale}`
+  # on the shell topic, which we pick up below.
+  @impl true
+  def handle_info({:active_locale, locale}, socket) do
     socket =
       socket
       |> assign(:selected_locale, locale)
@@ -81,6 +94,22 @@ defmodule StoryarnWeb.LocalizationLive.Report do
 
     {:noreply, socket}
   end
+
+  def handle_info({:languages_changed, _payload}, socket) do
+    project_id = socket.assigns.project.id
+
+    {:noreply,
+     socket
+     |> assign(:target_languages, Localization.get_target_languages(project_id))
+     |> load_report_data()}
+  end
+
+  def handle_info({:toolbar_event, _name, _params}, socket), do: {:noreply, socket}
+
+  def handle_info({:online_users, users}, socket),
+    do: {:noreply, assign(socket, :online_users, users)}
+
+  def handle_info(_msg, socket), do: {:noreply, socket}
 
   defp load_report_data(socket) do
     project_id = socket.assigns.project.id

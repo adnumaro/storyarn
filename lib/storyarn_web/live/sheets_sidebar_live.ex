@@ -1,9 +1,12 @@
-defmodule StoryarnWeb.SidebarLive do
+defmodule StoryarnWeb.SheetsSidebarLive do
   @moduledoc """
-  Project-level sidebar LiveView.
+  Sheets-specific left sidebar LiveView.
 
-  Rendered as a nested child of `ProjectShellLive`. Owns the project trees
-  (sheets for now) and will own their mutations in upcoming steps.
+  Rendered as a sticky nested child of `ProjectShell` on sheet routes.
+  Owns the sheets tree + tree mutations. Other tools get their own
+  sidebar LV (e.g. `LocalizationSidebarLive`). Tool-specific toolbar
+  extras render via the `:top_bar_extras_right` slot of `ProjectShell`
+  from each page LV.
   """
 
   use StoryarnWeb, :live_view

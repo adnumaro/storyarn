@@ -4,23 +4,38 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Localization
-  alias Storyarn.Projects
   alias Storyarn.Shared.HtmlSanitizer
   alias Storyarn.Shared.TimeHelpers
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app
+    <StoryarnWeb.Components.ProjectShell.project_shell
       socket={@socket}
-      flash={@flash}
-      current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
+      current_scope={@current_scope}
+      current_user={@current_user}
+      urls={@urls}
       active_tool={:localization}
-      has_tree={false}
-      can_edit={@can_edit}
+      is_super_admin={@is_super_admin}
+      online_users={@online_users}
+      sidebar_module={StoryarnWeb.LocalizationSidebarLive}
+      sidebar_session={
+        %{
+          "project_id" => @project.id,
+          "workspace_slug" => @workspace.slug,
+          "project_slug" => @project.slug,
+          "selected_locale" => @text.locale_code,
+          "can_edit" => @can_edit,
+          "active_tool" => "localization",
+          "dashboard_url" =>
+            ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization",
+          "current_scope" => @current_scope
+        }
+      }
     >
       <.vue
         v-component="modules/localization/components/LocalizationEdit"
@@ -32,7 +47,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
         can-edit={@can_edit}
         back-url={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization"}
       />
-    </Layouts.app>
+    </StoryarnWeb.Components.ProjectShell.project_shell>
     """
   end
 
@@ -53,42 +68,41 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
   end
 
   @impl true
-  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => text_id}, _session, socket) do
-    case Projects.get_project_by_slugs(
-           socket.assigns.current_scope,
-           workspace_slug,
-           project_slug
-         ) do
-      {:ok, project, membership} ->
-        can_edit = Projects.can?(membership.role, :edit_content)
-        {text_id_int, ""} = Integer.parse(text_id)
-        text = Localization.get_text!(project.id, text_id_int)
+  def mount(%{"id" => text_id}, _session, socket) do
+    %{project: project} = socket.assigns
+    {text_id_int, ""} = Integer.parse(text_id)
+    text = Localization.get_text!(project.id, text_id_int)
 
-        form = build_form(text)
+    form = build_form(text)
+    has_provider = Localization.has_active_provider?(project.id)
 
-        has_provider = Localization.has_active_provider?(project.id)
-
-        socket =
-          socket
-          |> assign(:project, project)
-          |> assign(:workspace, project.workspace)
-          |> assign(:membership, membership)
-          |> assign(:can_edit, can_edit)
-          |> assign(:text, text)
-          |> assign(:form, form)
-          |> assign(:has_provider, has_provider)
-
-        {:ok, socket}
-
-      {:error, :not_found} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("localization", "Project not found."))
-         |> redirect(to: ~p"/workspaces")}
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(
+        Storyarn.PubSub,
+        StoryarnWeb.LocalizationSidebarLive.shell_topic(project.id)
+      )
     end
+
+    socket =
+      socket
+      |> assign(:text, text)
+      |> assign(:form, form)
+      |> assign(:has_provider, has_provider)
+      |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
+
+    {:ok, socket}
   end
 
   @impl true
+  def handle_info({:online_users, users}, socket),
+    do: {:noreply, assign(socket, :online_users, users)}
+
+  def handle_info(_msg, socket), do: {:noreply, socket}
+
+  @impl true
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: ProjectChromeHelpers.forward_tree_panel(socket, event, params)
+
   def handle_event("save_translation", %{"localized_text" => params}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       now = TimeHelpers.now()

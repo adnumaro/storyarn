@@ -3,15 +3,11 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
   use StoryarnWeb, :live_view
 
-  import StoryarnWeb.Live.Shared.TreePanelHandlers,
-    only: [focus_layout_defaults: 0, handle_tree_panel_event: 3]
-
   import StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers
 
   alias Storyarn.Localization
-  alias Storyarn.Localization.Languages
-  alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.LocalizationLive.Handlers.LocalizationHandlers
 
   @page_size 50
@@ -19,40 +15,46 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app
-      flash={@flash}
-      current_scope={@current_scope}
+    <StoryarnWeb.Components.ProjectShell.project_shell
+      socket={@socket}
       project={@project}
       workspace={@workspace}
-      socket={@socket}
+      current_scope={@current_scope}
+      current_user={@current_user}
+      urls={@urls}
       active_tool={:localization}
-      on_dashboard={true}
-      has_tree={true}
-      tree_panel_open={@tree_panel_open}
-      tree_panel_pinned={@tree_panel_pinned}
-      show_pin={false}
-      can_edit={@can_edit}
-      tree_props={sidebar_props(assigns)}
+      is_super_admin={@is_super_admin}
+      online_users={@online_users}
+      sidebar_module={StoryarnWeb.LocalizationSidebarLive}
+      sidebar_session={
+        %{
+          "project_id" => @project.id,
+          "workspace_slug" => @workspace.slug,
+          "project_slug" => @project.slug,
+          "selected_locale" => @selected_locale,
+          "can_edit" => @can_edit,
+          "active_tool" => "localization",
+          "dashboard_url" =>
+            ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization",
+          "current_scope" => @current_scope
+        }
+      }
     >
-      <:top_bar_extra_right :if={@can_edit && @target_languages != []}>
-        <.vue
-          v-component="modules/localization/LocalizationToolbar"
-          v-socket={@socket}
-          id="localization-toolbar"
-          report-url={
-            ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/report"
+      <:top_bar_extras_right :if={@can_edit && @target_languages != []}>
+        {live_render(@socket, StoryarnWeb.LocalizationToolbarLive,
+          id: "localization-toolbar-#{@project.id}",
+          sticky: true,
+          session: %{
+            "project_id" => @project.id,
+            "workspace_slug" => @workspace.slug,
+            "project_slug" => @project.slug,
+            "selected_locale" => @selected_locale,
+            "has_provider" => @has_provider,
+            "can_edit" => @can_edit,
+            "current_scope" => @current_scope
           }
-          export-csv-url={
-            @selected_locale &&
-              ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/csv/#{@selected_locale}"
-          }
-          export-xlsx-url={
-            @selected_locale &&
-              ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/export/xlsx/#{@selected_locale}"
-          }
-          has-provider={@has_provider}
-        />
-      </:top_bar_extra_right>
+        )}
+      </:top_bar_extras_right>
 
       <.vue
         v-component="modules/localization/components/LocalizationIndex"
@@ -69,75 +71,63 @@ defmodule StoryarnWeb.LocalizationLive.Index do
         has-provider={@has_provider}
         has-target-languages={@target_languages != []}
       />
-    </Layouts.app>
+    </StoryarnWeb.Components.ProjectShell.project_shell>
     """
   end
 
   @impl true
-  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
-    case Projects.get_project_by_slugs(
-           socket.assigns.current_scope,
-           workspace_slug,
-           project_slug
-         ) do
-      {:ok, project, membership} ->
-        can_edit = Projects.can?(membership.role, :edit_content)
+  def mount(_params, _session, socket) do
+    %{project: project} = socket.assigns
 
-        # Auto-create source language from workspace if missing
-        {:ok, source_language} = Localization.ensure_source_language(project)
+    # Auto-create source language from workspace if missing
+    {:ok, source_language} = Localization.ensure_source_language(project)
 
-        languages = Localization.list_languages(project.id)
-        target_languages = Localization.get_target_languages(project.id)
+    languages = Localization.list_languages(project.id)
+    target_languages = Localization.get_target_languages(project.id)
 
-        # Default to first target language
-        selected_locale =
-          case target_languages do
-            [first | _] -> first.locale_code
-            [] -> nil
-          end
+    # Default to first target language
+    selected_locale =
+      case target_languages do
+        [first | _] -> first.locale_code
+        [] -> nil
+      end
 
-        has_provider = has_active_provider?(project.id)
+    has_provider = has_active_provider?(project.id)
 
-        socket =
-          socket
-          |> assign(focus_layout_defaults())
-          |> assign(:tree_panel_open, true)
-          |> assign(:project, project)
-          |> assign(:workspace, project.workspace)
-          |> assign(:membership, membership)
-          |> assign(:can_edit, can_edit)
-          |> assign(:source_language, source_language)
-          |> assign(:languages, languages)
-          |> assign(:target_languages, target_languages)
-          |> assign(:selected_locale, selected_locale)
-          |> assign(:has_provider, has_provider)
-          |> assign(:filter_status, nil)
-          |> assign(:filter_source_type, nil)
-          |> assign(:search, "")
-          |> assign(:page, 1)
-          |> assign(:page_size, @page_size)
-          |> load_texts()
-
-        {:ok, socket}
-
-      {:error, :not_found} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("localization", "Project not found."))
-         |> redirect(to: ~p"/workspaces")}
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(
+        Storyarn.PubSub,
+        StoryarnWeb.LocalizationSidebarLive.shell_topic(project.id)
+      )
     end
+
+    socket =
+      socket
+      |> assign(:source_language, source_language)
+      |> assign(:languages, languages)
+      |> assign(:target_languages, target_languages)
+      |> assign(:selected_locale, selected_locale)
+      |> assign(:has_provider, has_provider)
+      |> assign(:filter_status, nil)
+      |> assign(:filter_source_type, nil)
+      |> assign(:search, "")
+      |> assign(:page, 1)
+      |> assign(:page_size, @page_size)
+      |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
+      |> load_texts()
+
+    {:ok, socket}
   end
+
+  # Tree panel + localization mutations (change_locale, add/remove language,
+  # sync_texts) live in LocalizationSidebarLive. translate_batch lives in
+  # LocalizationToolbarLive. LeftToolbar.vue's tree_panel_* events fire
+  # here (rendered inside ProjectShell which runs in this LV's context) —
+  # forward them to the sidebar via shell topic.
 
   @impl true
-  def handle_event("tree_panel_" <> _ = event, params, socket), do: handle_tree_panel_event(event, params, socket)
-
-  def handle_event("change_locale", %{"locale" => locale}, socket) do
-    {:noreply,
-     socket
-     |> assign(:selected_locale, locale)
-     |> assign(:page, 1)
-     |> load_texts()}
-  end
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: ProjectChromeHelpers.forward_tree_panel(socket, event, params)
 
   def handle_event("change_filter", params, socket) do
     {:noreply,
@@ -169,40 +159,6 @@ defmodule StoryarnWeb.LocalizationLive.Index do
     end
   end
 
-  def handle_event("add_target_language", %{"locale_code" => ""}, socket), do: {:noreply, socket}
-
-  def handle_event("change_source_language", %{"locale_code" => ""}, socket), do: {:noreply, socket}
-
-  def handle_event("change_source_language", params, socket) do
-    with_auth(:edit_content, socket, fn ->
-      LocalizationHandlers.handle_change_source_language(params, socket)
-    end)
-  end
-
-  def handle_event("add_target_language", params, socket) do
-    with_auth(:edit_content, socket, fn ->
-      LocalizationHandlers.handle_add_target_language(params, socket)
-    end)
-  end
-
-  def handle_event("remove_language", params, socket) do
-    with_auth(:edit_content, socket, fn ->
-      LocalizationHandlers.handle_remove_language(params, socket)
-    end)
-  end
-
-  def handle_event("sync_texts", params, socket) do
-    with_auth(:edit_content, socket, fn ->
-      LocalizationHandlers.handle_sync_texts(params, socket)
-    end)
-  end
-
-  def handle_event("translate_batch", params, socket) do
-    with_auth(:edit_content, socket, fn ->
-      LocalizationHandlers.handle_translate_batch(params, socket)
-    end)
-  end
-
   def handle_event("translate_single", params, socket) do
     with_auth(:edit_content, socket, fn ->
       LocalizationHandlers.handle_translate_single(params, socket)
@@ -210,50 +166,45 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   end
 
   # ============================================================================
-  # Serializers
+  # Shell fan-in
   # ============================================================================
 
-  defp sidebar_props(assigns) do
-    existing_codes =
-      [
-        assigns.source_language && assigns.source_language.locale_code
-        | Enum.map(assigns.target_languages, & &1.locale_code)
-      ]
-      |> List.flatten()
-      |> Enum.reject(&is_nil/1)
-      |> MapSet.new()
+  # Sidebar broadcast when the user picks a different locale.
+  @impl true
+  def handle_info({:active_locale, locale}, socket) do
+    socket =
+      socket
+      |> assign(:selected_locale, locale)
+      |> assign(:page, 1)
+      |> load_texts()
 
-    source_code = assigns.source_language && assigns.source_language.locale_code
-
-    %{
-      sourceLanguage: serialize_language(assigns.source_language),
-      targetLanguages: Enum.map(assigns.target_languages, &serialize_language/1),
-      selectedLocale: assigns.selected_locale,
-      canEdit: assigns.can_edit,
-      sourceLanguageOptions:
-        [exclude: Enum.reject([source_code], &is_nil/1)]
-        |> Languages.options_for_select()
-        |> Enum.map(fn {label, value} -> %{label: label, value: value} end),
-      addLanguageOptions:
-        [exclude: MapSet.to_list(existing_codes)]
-        |> Languages.options_for_select()
-        |> Enum.map(fn {label, value} -> %{label: label, value: value} end)
-    }
+    {:noreply, socket}
   end
 
-  defp serialize_language(nil), do: nil
+  # Sidebar broadcast after a language mutation (add/remove/sync).
+  def handle_info({:languages_changed, _payload}, socket) do
+    project_id = socket.assigns.project.id
+    target_languages = Localization.get_target_languages(project_id)
+    has_provider = has_active_provider?(project_id)
 
-  defp serialize_language(lang) do
-    flag_code = Languages.flag_code(lang.locale_code)
-
-    %{
-      id: lang.id,
-      localeCode: lang.locale_code,
-      name: lang.name || Languages.name(lang.locale_code) || lang.locale_code,
-      flagUrl: flag_code && "/images/flags/1x1/#{flag_code}.svg",
-      shortLabel: Languages.short_label(lang.locale_code)
-    }
+    {:noreply,
+     socket
+     |> assign(:target_languages, target_languages)
+     |> assign(:has_provider, has_provider)
+     |> load_texts()}
   end
+
+  # Ignore toolbar-forwarded panel events; they're the sidebar's concern.
+  def handle_info({:toolbar_event, _name, _params}, socket), do: {:noreply, socket}
+
+  def handle_info({:online_users, users}, socket),
+    do: {:noreply, assign(socket, :online_users, users)}
+
+  def handle_info(_msg, socket), do: {:noreply, socket}
+
+  # ============================================================================
+  # Serializers
+  # ============================================================================
 
   defp serialize_texts(assigns) do
     ws_slug = assigns.workspace.slug
