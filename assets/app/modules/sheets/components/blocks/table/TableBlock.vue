@@ -70,6 +70,7 @@ function toggleCollapse(): void {
       :is-variable="!block.is_constant && !!block.variable_name"
       :variable-name="block.variable_name || ''"
       :show-scope="!inherited"
+      :show-config="false"
       :scope="block.scope || 'self'"
       :required="block.required"
       @toggle-constant="live.pushEvent('toggle_constant', { id: block.id })"
