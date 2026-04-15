@@ -113,11 +113,6 @@ const displayLabel = computed(() => {
   for (const opt of sameRowOptions) {
     if (opt.value === modelValue) return opt.label;
   }
-  for (const group of searchResults) {
-    for (const item of group.items) {
-      if (item.value === modelValue) return item.label;
-    }
-  }
   if (modelValue.startsWith("same_row:")) return modelValue.slice(9);
   return modelValue;
 });

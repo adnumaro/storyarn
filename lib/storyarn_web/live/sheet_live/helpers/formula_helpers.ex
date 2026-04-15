@@ -213,7 +213,11 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpers do
 
           Enum.filter(vars, fn v ->
             String.contains?(String.downcase(v.variable_name), q) or
-              String.contains?(String.downcase(v.sheet_shortcut), q)
+              String.contains?(String.downcase(v.sheet_shortcut), q) or
+              String.contains?(
+                String.downcase(v.sheet_shortcut <> "." <> v.variable_name),
+                q
+              )
           end)
         end
       end)
