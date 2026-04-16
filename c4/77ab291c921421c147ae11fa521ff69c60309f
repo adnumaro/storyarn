@@ -1,0 +1,25 @@
+lib/storyarn_web/live/scene_live/index.ex
+  b8630343f6f433e9 21,26,30-32,34-37,39-46,70,79-100,102-115,121-130,132-136,224-225,235-238,253
+lib/storyarn_web/router.ex
+  b8630343f6f433e9 172-173,262-264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "c477ab291c921421c147ae11fa521ff69c60309f",
+  "prompts": {
+    "b8630343f6f433e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8e627c6-a926-4e61-b666-cd7947895de7",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 85,
+      "total_deletions": 171,
+      "accepted_lines": 84,
+      "overriden_lines": 0
+    }
+  }
+}
