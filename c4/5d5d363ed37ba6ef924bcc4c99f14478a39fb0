@@ -1,0 +1,29 @@
+lib/storyarn_web/live/scene_live/show.ex
+  b8630343f6f433e9 84,259,261-270,407,639,1284-1287
+lib/storyarn_web/live/scene_sidebar_live.ex
+  b8630343f6f433e9 6-8,77
+assets/app/modules/scenes/components/LayerListPopover.vue
+  b8630343f6f433e9 1-60
+assets/app/modules/scenes/components/SceneTreePanel.vue
+  b8630343f6f433e9 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "c45d5d363ed37ba6ef924bcc4c99f14478a39fb0",
+  "prompts": {
+    "b8630343f6f433e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8e627c6-a926-4e61-b666-cd7947895de7",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 83,
+      "total_deletions": 147,
+      "accepted_lines": 83,
+      "overriden_lines": 0
+    }
+  }
+}
