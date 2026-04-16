@@ -29,6 +29,12 @@ defmodule StoryarnWeb.FlowSidebarLive do
         end
       end
 
+    # Dashboard mode (no flow_id at mount time): force the tree open,
+    # force-pinned, ignore client-side tree_panel_init pinned state, and
+    # hide the pin toggle. Matches pre-migration `Layouts.app` behavior
+    # from FlowLive.Index.
+    dashboard_mode = is_nil(session["flow_id"])
+
     socket =
       socket
       |> assign(:current_scope, current_scope)
@@ -40,8 +46,9 @@ defmodule StoryarnWeb.FlowSidebarLive do
       |> assign(:can_edit, session["can_edit"] || false)
       |> assign(:active_tool, session["active_tool"] || "flows")
       |> assign(:dashboard_url, session["dashboard_url"])
-      |> assign(:tree_panel_open, false)
-      |> assign(:tree_panel_pinned, false)
+      |> assign(:dashboard_mode, dashboard_mode)
+      |> assign(:tree_panel_open, dashboard_mode)
+      |> assign(:tree_panel_pinned, dashboard_mode)
       |> assign(:pending_delete_id, nil)
       |> assign(:flows_tree, load_flows_tree(project_id))
 
@@ -63,7 +70,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
         id="shell-tree-panel"
         tree-panel-open={@tree_panel_open}
         tree-panel-pinned={@tree_panel_pinned}
-        show-pin={true}
+        show-pin={not is_nil(@flow_id)}
         active-tool={@active_tool}
         dashboard-url={@dashboard_url}
         on-dashboard={is_nil(@flow_id)}
@@ -83,6 +90,11 @@ defmodule StoryarnWeb.FlowSidebarLive do
 
   # ── Panel state events from TreePanel.vue ─────────────────────────────────
   @impl true
+  def handle_event("tree_panel_init", _params, %{assigns: %{dashboard_mode: true}} = socket) do
+    # Dashboard mode ignores localStorage — tree stays force-open.
+    {:noreply, socket}
+  end
+
   def handle_event("tree_panel_init", %{"pinned" => pinned}, socket) do
     {:noreply,
      socket
@@ -90,8 +102,16 @@ defmodule StoryarnWeb.FlowSidebarLive do
      |> assign(:tree_panel_open, pinned)}
   end
 
+  def handle_event("tree_panel_toggle", _params, %{assigns: %{dashboard_mode: true}} = socket) do
+    {:noreply, socket}
+  end
+
   def handle_event("tree_panel_toggle", _params, socket) do
     {:noreply, assign(socket, :tree_panel_open, !socket.assigns.tree_panel_open)}
+  end
+
+  def handle_event("tree_panel_pin", _params, %{assigns: %{dashboard_mode: true}} = socket) do
+    {:noreply, socket}
   end
 
   def handle_event("tree_panel_pin", _params, socket) do
@@ -202,7 +222,29 @@ defmodule StoryarnWeb.FlowSidebarLive do
   # ── Shell → sidebar synchronization ───────────────────────────────────────
   @impl true
   def handle_info({:active_flow, flow_id}, socket) do
-    {:noreply, assign(socket, :flow_id, flow_id)}
+    # Entering / leaving dashboard mode: sync the forced-open state so a
+    # user navigating back to the dashboard always lands on the open tree.
+    dashboard_mode = is_nil(flow_id)
+    was_dashboard = socket.assigns[:dashboard_mode] || false
+
+    socket = assign(socket, :flow_id, flow_id)
+
+    socket =
+      cond do
+        dashboard_mode and not was_dashboard ->
+          socket
+          |> assign(:dashboard_mode, true)
+          |> assign(:tree_panel_open, true)
+          |> assign(:tree_panel_pinned, true)
+
+        not dashboard_mode and was_dashboard ->
+          assign(socket, :dashboard_mode, false)
+
+        true ->
+          socket
+      end
+
+    {:noreply, socket}
   end
 
   def handle_info({:tree_changed, :flows}, socket) do
@@ -217,6 +259,11 @@ defmodule StoryarnWeb.FlowSidebarLive do
   def handle_info({:remote_change, _action, _payload}, socket), do: {:noreply, socket}
 
   # Forwarded from the page LV (LeftToolbar.vue's pushEvent lands there).
+  # Dashboard mode ignores toolbar toggles too — tree stays open.
+  def handle_info({:toolbar_event, _name, _params}, %{assigns: %{dashboard_mode: true}} = socket) do
+    {:noreply, socket}
+  end
+
   def handle_info({:toolbar_event, "tree_panel_toggle", _params}, socket) do
     {:noreply, assign(socket, :tree_panel_open, !socket.assigns.tree_panel_open)}
   end

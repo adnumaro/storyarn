@@ -13,39 +13,36 @@ defmodule StoryarnWeb.FlowLive.Index do
       reload_dashboard: 6
     ]
 
-  import StoryarnWeb.Live.Shared.TreePanelHandlers
-
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Flows
-  alias Storyarn.Projects
-  alias Storyarn.Shared.MapUtils
-  alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app
-      flash={@flash}
+    <StoryarnWeb.Components.ProjectShell.project_shell
       socket={@socket}
-      current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
+      current_scope={@current_scope}
+      current_user={@current_user}
+      urls={@urls}
       active_tool={:flows}
-      on_dashboard={true}
-      has_tree={true}
-      tree_panel_open={@tree_panel_open}
-      tree_panel_pinned={@tree_panel_pinned}
-      show_pin={false}
-      can_edit={@can_edit}
-      tree_props={
+      is_super_admin={@is_super_admin}
+      online_users={@online_users}
+      sidebar_module={StoryarnWeb.FlowSidebarLive}
+      sidebar_session={
         %{
-          flowsTree: @flows_tree,
-          canEdit: @can_edit,
-          workspaceSlug: @workspace.slug,
-          projectSlug: @project.slug,
-          selectedFlowId: nil
+          "project_id" => @project.id,
+          "workspace_slug" => @workspace.slug,
+          "project_slug" => @project.slug,
+          "flow_id" => nil,
+          "can_edit" => @can_edit,
+          "active_tool" => "flows",
+          "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows",
+          "current_scope" => @current_scope
         }
       }
     >
@@ -69,7 +66,7 @@ defmodule StoryarnWeb.FlowLive.Index do
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
       />
-    </Layouts.app>
+    </StoryarnWeb.Components.ProjectShell.project_shell>
     """
   end
 
@@ -78,64 +75,71 @@ defmodule StoryarnWeb.FlowLive.Index do
   # ===========================================================================
 
   @impl true
-  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
-    case Projects.get_project_by_slugs(
-           socket.assigns.current_scope,
-           workspace_slug,
-           project_slug
-         ) do
-      {:ok, project, membership} ->
-        flows = Flows.list_flows(project.id)
-        flows_tree = Flows.list_flows_tree(project.id)
-        can_edit = Projects.can?(membership.role, :edit_content)
+  def mount(_params, _session, socket) do
+    %{project: project, current_scope: current_scope} = socket.assigns
+    flows = Flows.list_flows(project.id)
 
-        # Leaving the flow editor — clear navigation history for this user/project
-        user_id = socket.assigns.current_scope.user.id
-        Flows.nav_history_clear({user_id, project.id})
+    # Leaving the flow editor — clear navigation history for this user/project
+    Flows.nav_history_clear({current_scope.user.id, project.id})
 
-        socket =
-          socket
-          |> assign(focus_layout_defaults())
-          |> assign(:tree_panel_open, true)
-          |> assign(:project, project)
-          |> assign(:workspace, project.workspace)
-          |> assign(:membership, membership)
-          |> assign(:can_edit, can_edit)
-          |> assign(:flows, flows)
-          |> assign(:flows_tree, flows_tree)
-          |> assign(:dashboard_stats, nil)
-          |> assign(:all_flow_table_data, [])
-          |> assign(:flow_table_data, [])
-          |> assign(:flow_issues, [])
-          |> assign(:sort_by, "name")
-          |> assign(:sort_dir, :asc)
-          |> assign(:page, 1)
-          |> assign(:total_pages, 1)
-          |> assign(:pending_delete_id, nil)
+    if connected?(socket) do
+      Collaboration.subscribe_dashboard(project.id)
 
-        if connected?(socket), do: Collaboration.subscribe_dashboard(project.id)
-        if connected?(socket) and flows != [], do: send(self(), :load_dashboard_data)
+      Phoenix.PubSub.subscribe(
+        Storyarn.PubSub,
+        StoryarnWeb.FlowSidebarLive.shell_topic(project.id)
+      )
 
-        {:ok, socket}
+      # Index is the flows "dashboard" — clear any flow highlight the sticky
+      # sidebar may have carried over from a previous Show visit so the
+      # dashboard link looks active instead.
+      Phoenix.PubSub.broadcast(
+        Storyarn.PubSub,
+        StoryarnWeb.FlowSidebarLive.shell_topic(project.id),
+        {:active_flow, nil}
+      )
 
-      {:error, _reason} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("flows", "You don't have access to this project."))
-         |> redirect(to: ~p"/workspaces")}
+      if flows != [], do: send(self(), :load_dashboard_data)
     end
+
+    {:ok,
+     socket
+     |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
+     |> assign(:flows, flows)
+     |> assign(:dashboard_stats, nil)
+     |> assign(:all_flow_table_data, [])
+     |> assign(:flow_table_data, [])
+     |> assign(:flow_issues, [])
+     |> assign(:sort_by, "name")
+     |> assign(:sort_dir, :asc)
+     |> assign(:page, 1)
+     |> assign(:total_pages, 1)
+     |> assign(:pending_delete_id, nil)}
   end
 
   @impl true
-  def handle_params(_params, _url, socket) do
-    {:noreply, socket}
+  def handle_params(_params, _url, socket), do: {:noreply, socket}
+
+  # ===========================================================================
+  # Shell topic messages
+  # ===========================================================================
+
+  def handle_info({:open_flow, flow_id}, socket) do
+    path =
+      ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{flow_id}"
+
+    {:noreply, push_navigate(socket, to: path)}
   end
 
+  def handle_info({:active_flow, _flow_id}, socket), do: {:noreply, socket}
+  def handle_info({:tree_changed, :flows}, socket), do: {:noreply, reload_flows(socket)}
+  def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
+  def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
+
   # ===========================================================================
-  # Dashboard loading
+  # Dashboard loading (async)
   # ===========================================================================
 
-  @impl true
   def handle_info(:load_dashboard_data, socket) do
     %{project: project, workspace: workspace, sort_by: sort_by, sort_dir: sort_dir} =
       socket.assigns
@@ -146,12 +150,7 @@ defmodule StoryarnWeb.FlowLive.Index do
      end)}
   end
 
-  @impl true
-  def handle_info({StoryarnWeb.FlowLive.Form, {:saved, _flow}}, socket) do
-    {:noreply, socket}
-  end
-
-  @impl true
+  def handle_info({StoryarnWeb.FlowLive.Form, {:saved, _flow}}, socket), do: {:noreply, socket}
   def handle_info({:EXIT, _pid, :normal}, socket), do: {:noreply, socket}
 
   @impl true
@@ -166,9 +165,7 @@ defmodule StoryarnWeb.FlowLive.Index do
      |> assign(:flow_issues, data.formatted_issues)}
   end
 
-  def handle_async(:load_dashboard_data, {:exit, _reason}, socket) do
-    {:noreply, socket}
-  end
+  def handle_async(:load_dashboard_data, {:exit, _reason}, socket), do: {:noreply, socket}
 
   defp load_dashboard_data_async(project_id, workspace, project, sort_by, sort_dir) do
     flows = Flows.list_flows(project_id)
@@ -227,8 +224,8 @@ defmodule StoryarnWeb.FlowLive.Index do
   # ===========================================================================
 
   @impl true
-  # Tree panel events (from AppLayout)
-  def handle_event("tree_panel_" <> _ = event, params, socket), do: handle_tree_panel_event(event, params, socket)
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: ProjectChromeHelpers.forward_tree_panel(socket, event, params)
 
   def handle_event("sort_flows", %{"column" => column}, socket) do
     {:noreply, handle_sort(socket, column, :all_flow_table_data, :flow_table_data, flow_sort_columns())}
@@ -238,6 +235,8 @@ defmodule StoryarnWeb.FlowLive.Index do
     {:noreply, handle_page(socket, page, :all_flow_table_data, :flow_table_data)}
   end
 
+  # Dashboard table row actions (long form routes here; short form comes from
+  # FlowDashboard.vue which uses `set_pending_delete` / `confirm_delete` / `set_main`)
   def handle_event(event, %{"id" => id}, socket) when event in ~w(set_pending_delete set_pending_delete_flow) do
     {:noreply, assign(socket, :pending_delete_id, id)}
   end
@@ -254,6 +253,8 @@ defmodule StoryarnWeb.FlowLive.Index do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       with %{} = flow <- Flows.get_flow(socket.assigns.project.id, flow_id),
            {:ok, _} <- Flows.delete_flow(flow) do
+        broadcast_tree_changed(socket)
+
         {:noreply,
          socket
          |> put_flash(:info, dgettext("flows", "Flow moved to trash."))
@@ -272,6 +273,8 @@ defmodule StoryarnWeb.FlowLive.Index do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       with %{} = flow <- Flows.get_flow(socket.assigns.project.id, flow_id),
            {:ok, _} <- Flows.set_main_flow(flow) do
+        broadcast_tree_changed(socket)
+
         {:noreply,
          socket
          |> put_flash(:info, dgettext("flows", "Flow set as main."))
@@ -286,96 +289,28 @@ defmodule StoryarnWeb.FlowLive.Index do
     end)
   end
 
-  def handle_event("create_flow", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      case Flows.create_flow(socket.assigns.project, %{name: dgettext("flows", "Untitled")}) do
-        {:ok, new_flow} ->
-          {:noreply,
-           push_navigate(socket,
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
-           )}
-
-        {:error, :limit_reached, _details} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
-      end
-    end)
-  end
-
-  def handle_event("create_child_flow", %{"parent-id" => parent_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      attrs = %{name: dgettext("flows", "Untitled"), parent_id: parent_id}
-
-      case Flows.create_flow(socket.assigns.project, attrs) do
-        {:ok, new_flow} ->
-          {:noreply,
-           push_navigate(socket,
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/flows/#{new_flow.id}"
-           )}
-
-        {:error, :limit_reached, _details} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
-      end
-    end)
-  end
-
-  def handle_event(
-        "move_to_parent",
-        %{"item_id" => item_id, "new_parent_id" => new_parent_id, "position" => position},
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      flow = Flows.get_flow!(socket.assigns.project.id, item_id)
-      new_parent_id = MapUtils.parse_int(new_parent_id)
-      position = MapUtils.parse_int(position) || 0
-
-      case Flows.move_flow_to_position(flow, new_parent_id, position) do
-        {:ok, _} ->
-          {:noreply, reload_flows(socket)}
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not move flow."))}
-      end
-    end)
-  end
-
-  def handle_event("create_sheet", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      case Sheets.create_sheet(socket.assigns.project, %{name: dgettext("sheets", "Untitled")}) do
-        {:ok, new_sheet} ->
-          {:noreply,
-           push_navigate(socket,
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
-           )}
-
-        {:error, :limit_reached, _details} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not create sheet."))}
-      end
-    end)
-  end
+  # Tree mutations (create_flow, create_child_flow, move_to_parent) now live in
+  # FlowSidebarLive — they never reach this LV because the tree is rendered by
+  # FlowSidebarLive which is a separate nested LV.
 
   # ===========================================================================
   # Private helpers
   # ===========================================================================
 
+  defp broadcast_tree_changed(socket) do
+    Phoenix.PubSub.broadcast_from(
+      Storyarn.PubSub,
+      self(),
+      StoryarnWeb.FlowSidebarLive.shell_topic(socket.assigns.project.id),
+      {:tree_changed, :flows}
+    )
+  end
+
   defp reload_flows(socket) do
     project_id = socket.assigns.project.id
 
     reload_dashboard(socket, :flows, :all_flow_table_data, :flow_table_data, :flow_issues, fn s ->
-      s
-      |> assign(:flows, Flows.list_flows(project_id))
-      |> assign(:flows_tree, Flows.list_flows_tree(project_id))
+      assign(s, :flows, Flows.list_flows(project_id))
     end)
   end
 
