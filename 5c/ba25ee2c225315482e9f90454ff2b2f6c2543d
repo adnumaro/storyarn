@@ -1,0 +1,23 @@
+assets/app/components/LucideIcon.vue
+  b8630343f6f433e9 6,42,52,60,69,105,115,123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "5cba25ee2c225315482e9f90454ff2b2f6c2543d",
+  "prompts": {
+    "b8630343f6f433e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8e627c6-a926-4e61-b666-cd7947895de7",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 310,
+      "total_deletions": 354,
+      "accepted_lines": 310,
+      "overriden_lines": 0
+    }
+  }
+}
