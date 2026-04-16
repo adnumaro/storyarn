@@ -340,10 +340,9 @@ Time: 30 min. No commit.
 
 ## Open questions for the user
 
-1. **Layer mutations: in sidebar or in Show?**
-   - **Option A** (recommended): Layer mutations live in `SceneSidebarLive`. The sidebar reads `:scene_id` from PubSub, calls `Scenes.*` directly, broadcasts `{:remote_change, :layer_updated, _}` for Show to reload. Pro: tree-panel events stay co-located with the tree-panel LV; Show stays cleaner. Con: sidebar needs full project + can_edit + Authorize logic; layers DB writes happen in two LV processes (sidebar for layer mutations, Show for canvas-driven mutations).
-   - **Option B**: Layer mutations stay in Show. Sidebar forwards `create_layer`, `set_active_layer`, etc. as `{:layer_event, name, params}` PubSub messages; Show processes them. Pro: single source for scene-state mutations. Con: round-trip latency for what should be a tap; also the sidebar Vue would need to know which LV the events come from.
-   - **Default**: A. Confirm.
+1. **Layer mutations: in sidebar or in Show?** — RESOLVED 2026-04-16: **Option B**. Sidebar forwards layer events as `{:layer_event, name, params}` PubSub messages on the shell topic; Show handles them via existing `LayerHandlers` (zero changes to layer mutation code). Rationale: layers are deeply coupled to Show's undo stack, auto-snapshot scheduler, collab `_broadcast` flag, and canvas `push_event`s. Option A would require duplicating all of that in sidebar. Option B: `handlers/layer_handlers.ex` stays untouched.
+
+   **Future direction (out of scope, separate refactor)**: move Layers/Legend/SceneSettings into a **right-side dock** next to the canvas (à la Figma/Photoshop/Blender). Eliminate the Layers tab from the left sidebar entirely; eliminate the PubSub forwards. Dock panels live inside Show → `useLive()` pushes directly to Show. User approved direction 2026-04-16.
 
 2. **Tree-tab default** — RESOLVED 2026-04-16: tab defaults to `"scenes"` always (Index and Show). User manually switches to `"layers"` when needed; choice persists for the session. Future work may move the Layers UI elsewhere (out of scope here). User: "Vamos a dejar el tab de scenes por defecto entonces siempre, en todos los casos. Ya veremos que hacemos con layers. A lo mejor tiene sentido cambiarlo de lugar. Pero eso está fuera del scope actual."
 
