@@ -3,12 +3,9 @@ defmodule StoryarnWeb.SceneSidebarLive do
   Scenes-specific left sidebar LiveView.
 
   Rendered as a sticky nested child of `ProjectShell` on scene routes.
-  Owns the scenes tree + tree mutations. Layer events fired from
-  `SceneLayerList.vue` (when the user is on a Show page) are forwarded
-  via PubSub to `SceneLive.Show`, which keeps all layer logic
-  (undo/redo, auto-snapshot, canvas `push_event`s) co-located with the
-  scene state. When the Layers UI eventually moves to a right-side
-  dock, the forwards here will be deleted.
+  Owns the scenes tree + tree mutations. Layers UI lives in a
+  bottom-right floating popover rendered directly by `SceneLive.Show`
+  — the sidebar stays focused on navigation.
   """
 
   use StoryarnWeb, :live_view
@@ -19,18 +16,6 @@ defmodule StoryarnWeb.SceneSidebarLive do
   alias Storyarn.Scenes
   alias Storyarn.Shared.MapUtils
   alias StoryarnWeb.SceneLive.Helpers.PropsSerializer
-
-  @layer_events ~w(
-    set_active_layer
-    toggle_layer_visibility
-    create_layer
-    start_rename_layer
-    rename_layer
-    update_layer_fog
-    set_pending_delete_layer
-    confirm_delete_layer
-    delete_layer
-  )
 
   @impl true
   def mount(_params, session, socket) do
@@ -59,9 +44,6 @@ defmodule StoryarnWeb.SceneSidebarLive do
       |> assign(:tree_panel_open, false)
       |> assign(:tree_panel_pinned, false)
       |> assign(:pending_delete_id, nil)
-      |> assign(:layers, session["initial_layers"] || [])
-      |> assign(:active_layer_id, session["initial_active_layer_id"])
-      |> assign(:edit_mode, session["initial_edit_mode"] || false)
       |> assign(:scenes_tree, load_scenes_tree(project_id))
 
     if connected?(socket) do
@@ -92,12 +74,7 @@ defmodule StoryarnWeb.SceneSidebarLive do
             selectedSceneId: @scene_id,
             canEdit: @can_edit,
             workspaceSlug: @workspace_slug,
-            projectSlug: @project_slug,
-            layers: @layers,
-            activeLayerId: @active_layer_id,
-            editMode: @edit_mode,
-            hasScene: @scene_id != nil,
-            hasLayers: @scene_id != nil
+            projectSlug: @project_slug
           }
         }
       />
@@ -211,32 +188,10 @@ defmodule StoryarnWeb.SceneSidebarLive do
     end)
   end
 
-  # ── Layer events — forwarded to Show via PubSub ───────────────────────────
-  # All layer mutations live in `SceneLive.Show` to keep them co-located with
-  # the undo stack, auto-snapshot scheduler, collab `_broadcast` flag, and
-  # canvas `push_event`s. The sidebar just relays.
-  def handle_event(event, params, socket) when event in @layer_events do
-    Phoenix.PubSub.broadcast(
-      Storyarn.PubSub,
-      shell_topic(socket.assigns.project_id),
-      {:layer_event, event, params}
-    )
-
-    {:noreply, socket}
-  end
-
   # ── Shell → sidebar synchronization ───────────────────────────────────────
   @impl true
   def handle_info({:active_scene, scene_id}, socket) do
     {:noreply, assign(socket, :scene_id, scene_id)}
-  end
-
-  def handle_info({:scene_payload_changed, payload}, socket) do
-    {:noreply,
-     socket
-     |> assign(:layers, payload[:layers] || socket.assigns.layers)
-     |> assign(:active_layer_id, payload[:active_layer_id] || socket.assigns.active_layer_id)
-     |> assign(:edit_mode, Map.get(payload, :edit_mode, socket.assigns.edit_mode))}
   end
 
   def handle_info({:tree_changed, :scenes}, socket) do
@@ -270,9 +225,6 @@ defmodule StoryarnWeb.SceneSidebarLive do
      |> assign(:tree_panel_pinned, pinned)
      |> assign(:tree_panel_open, pinned)}
   end
-
-  # Ignore layer_event echoes (broadcast is non-self but keep a safe fallback).
-  def handle_info({:layer_event, _event, _params}, socket), do: {:noreply, socket}
 
   def handle_info({:toolbar_event, _name, _params}, socket), do: {:noreply, socket}
 

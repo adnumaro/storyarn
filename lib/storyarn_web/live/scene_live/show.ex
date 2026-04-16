@@ -81,10 +81,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           "can_edit" => @can_edit,
           "active_tool" => "scenes",
           "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/scenes",
-          "current_scope" => @current_scope,
-          "initial_layers" => prepare_layers_for_vue(@layers),
-          "initial_active_layer_id" => @active_layer_id,
-          "initial_edit_mode" => @edit_mode
+          "current_scope" => @current_scope
         }
       }
     >
@@ -259,8 +256,18 @@ defmodule StoryarnWeb.SceneLive.Show do
             scene-id={@scene.id}
           />
 
-          <%!-- Bottom-right: legend --%>
+          <%!-- Bottom-right: layers + legend --%>
           <div class="absolute bottom-3 right-3 z-20 flex items-end gap-2">
+            <.vue
+              v-component="modules/scenes/components/LayerListPopover"
+              v-socket={@socket}
+              id="scene-layers-popover"
+              layers={prepare_layers_for_vue(@layers)}
+              active-layer-id={@active_layer_id}
+              can-edit={@can_edit}
+              edit-mode={@edit_mode}
+              popover-open={@layers_popover_open}
+            />
             <.vue
               v-component="modules/scenes/components/Legend"
               v-socket={@socket}
@@ -397,6 +404,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       |> assign(:search_filter, "all")
       |> assign(:search_results, [])
       |> assign(:legend_open, false)
+      |> assign(:layers_popover_open, false)
       |> assign(:undo_stack, [])
       |> assign(:redo_stack, [])
       |> assign(:panel_sections, %{})
@@ -472,23 +480,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         |> setup_scene_collab(scene)
         |> assign_scene_state(scene, can_edit)
         |> maybe_load_sidebar(has_tree, project)
-        |> broadcast_scene_payload()
     end
-  end
-
-  defp broadcast_scene_payload(socket) do
-    Phoenix.PubSub.broadcast(
-      Storyarn.PubSub,
-      ProjectChromeHelpers.shell_topic(socket.assigns.project.id),
-      {:scene_payload_changed,
-       %{
-         layers: prepare_layers_for_vue(socket.assigns.layers),
-         active_layer_id: socket.assigns.active_layer_id,
-         edit_mode: socket.assigns.edit_mode
-       }}
-    )
-
-    socket
   end
 
   defp setup_scene_collab(socket, scene) do
@@ -644,6 +636,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     |> assign(:search_filter, "all")
     |> assign(:search_results, [])
     |> assign(:legend_open, false)
+    |> assign(:layers_popover_open, false)
     |> assign(:undo_stack, [])
     |> assign(:redo_stack, [])
     |> assign(:auto_snapshot_ref, nil)
@@ -1288,6 +1281,10 @@ defmodule StoryarnWeb.SceneLive.Show do
     LayerHandlers.handle_toggle_legend(params, socket)
   end
 
+  def handle_event("toggle_layers_popover", _params, socket) do
+    {:noreply, assign(socket, :layers_popover_open, !socket.assigns.layers_popover_open)}
+  end
+
   def handle_event("remove_background", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       params |> LayerHandlers.handle_remove_background(socket) |> broadcast_scene_change()
@@ -1836,13 +1833,6 @@ defmodule StoryarnWeb.SceneLive.Show do
   # Shell topic messages (ProjectShell + SceneSidebarLive)
   # ---------------------------------------------------------------------------
 
-  # Sidebar forwards layer events on the shell topic so all layer logic stays
-  # co-located with the scene state (undo stack, auto-snapshot, canvas
-  # push_events). Re-dispatch to the local handle_event/3 clauses.
-  def handle_info({:layer_event, event, params}, socket) do
-    handle_event(event, params, socket)
-  end
-
   # Broadcast from handle_params of this LV; the sidebar listens too. Noop for
   # Show since it owns the scene state already.
   def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
@@ -1852,9 +1842,6 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   # Tree mutations in the sidebar LV broadcast this; Show doesn't own the tree.
   def handle_info({:tree_changed, :scenes}, socket), do: {:noreply, socket}
-
-  # Scene-payload broadcast echoes from this LV itself — ignore.
-  def handle_info({:scene_payload_changed, _payload}, socket), do: {:noreply, socket}
 
   def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
 
