@@ -1,0 +1,29 @@
+lib/storyarn_web/live/scene_live/handlers/element_handlers.ex
+  b8630343f6f433e9 812,970,1048,1114
+lib/storyarn_web/live/scene_live/handlers/canvas_event_handlers.ex
+  b8630343f6f433e9 182
+lib/storyarn_web/live/scene_live/show.ex
+  b8630343f6f433e9 243,251,299,315,407,636,720,724,1050,1054-1055,1059,1063,1067
+lib/storyarn_web/live/scene_live/helpers/scene_helpers.ex
+  b8630343f6f433e9 142-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "ffab18edefd712f0a71e185dd6db6fb578ead24a",
+  "prompts": {
+    "b8630343f6f433e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8e627c6-a926-4e61-b666-cd7947895de7",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 36,
+      "total_deletions": 34,
+      "accepted_lines": 36,
+      "overriden_lines": 0
+    }
+  }
+}
