@@ -1,0 +1,25 @@
+assets/app/modules/scenes/SceneDashboard.vue
+  b8630343f6f433e9 229-234,314-315
+assets/app/modules/scenes/components/SceneTreeNode.vue
+  b8630343f6f433e9 177-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "09ee95c22715649925d4581365b3fb70a43867f8",
+  "prompts": {
+    "b8630343f6f433e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8e627c6-a926-4e61-b666-cd7947895de7",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 14,
+      "total_deletions": 2,
+      "accepted_lines": 14,
+      "overriden_lines": 0
+    }
+  }
+}
