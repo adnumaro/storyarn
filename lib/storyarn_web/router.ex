@@ -169,9 +169,8 @@ defmodule StoryarnWeb.Router do
            CompareLive.Flow,
            :compare
 
-      # Scenes (world builder)
-      live "/workspaces/:workspace_slug/projects/:project_slug/scenes", SceneLive.Index, :index
-      live "/workspaces/:workspace_slug/projects/:project_slug/scenes/new", SceneLive.Index, :new
+      # Scenes — Show migrates to :project_scope in step 4; immersive
+      # exploration stays here (no chrome).
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id", SceneLive.Show, :show
 
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/explore",
@@ -260,6 +259,9 @@ defmodule StoryarnWeb.Router do
       live "/workspaces/:workspace_slug/projects/:project_slug/settings/export-import",
            ExportImportLive.Index,
            :index
+
+      # Scenes dashboard (Show migrated in step 4)
+      live "/workspaces/:workspace_slug/projects/:project_slug/scenes", SceneLive.Index, :index
     end
 
     # Workspace-scoped live_session — loads workspace/membership once via

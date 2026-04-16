@@ -15,39 +15,35 @@ defmodule StoryarnWeb.SceneLive.Index do
       reload_dashboard: 6
     ]
 
-  import StoryarnWeb.Live.Shared.TreePanelHandlers
-  import StoryarnWeb.SceneLive.Helpers.PropsSerializer, only: [prepare_scenes_tree: 1]
-
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
-  alias Storyarn.Projects
   alias Storyarn.Scenes
-  alias Storyarn.Shared.MapUtils
-  alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app
-      flash={@flash}
+    <StoryarnWeb.Components.ProjectShell.project_shell
       socket={@socket}
-      current_scope={@current_scope}
       project={@project}
       workspace={@workspace}
+      current_scope={@current_scope}
+      current_user={@current_user}
+      urls={@urls}
       active_tool={:scenes}
-      on_dashboard={true}
-      has_tree={true}
-      tree_panel_open={@tree_panel_open}
-      tree_panel_pinned={@tree_panel_pinned}
-      show_pin={false}
-      can_edit={@can_edit}
-      tree_props={
+      is_super_admin={@is_super_admin}
+      online_users={@online_users}
+      sidebar_module={StoryarnWeb.SceneSidebarLive}
+      sidebar_session={
         %{
-          scenesTree: @scenes_tree,
-          canEdit: @can_edit,
-          workspaceSlug: @workspace.slug,
-          projectSlug: @project.slug,
-          hasLayers: false
+          "project_id" => @project.id,
+          "workspace_slug" => @workspace.slug,
+          "project_slug" => @project.slug,
+          "scene_id" => nil,
+          "can_edit" => @can_edit,
+          "active_tool" => "scenes",
+          "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/scenes",
+          "current_scope" => @current_scope
         }
       }
     >
@@ -71,7 +67,7 @@ defmodule StoryarnWeb.SceneLive.Index do
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
       />
-    </Layouts.app>
+    </StoryarnWeb.Components.ProjectShell.project_shell>
     """
   end
 
@@ -80,51 +76,63 @@ defmodule StoryarnWeb.SceneLive.Index do
   # ===========================================================================
 
   @impl true
-  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
-    case Projects.get_project_by_slugs(
-           socket.assigns.current_scope,
-           workspace_slug,
-           project_slug
-         ) do
-      {:ok, project, membership} ->
-        scenes = Scenes.list_scenes(project.id)
-        can_edit = Projects.can?(membership.role, :edit_content)
+  def mount(_params, _session, socket) do
+    %{project: project} = socket.assigns
+    scenes = Scenes.list_scenes(project.id)
 
-        socket =
-          socket
-          |> assign(focus_layout_defaults())
-          |> assign(:tree_panel_open, true)
-          |> assign(:project, project)
-          |> assign(:workspace, project.workspace)
-          |> assign(:membership, membership)
-          |> assign(:can_edit, can_edit)
-          |> assign(:scenes_tree, prepare_scenes_tree(Scenes.list_scenes_tree(project.id)))
-          |> assign(:scenes, scenes)
-          |> assign(:dashboard_stats, nil)
-          |> assign(:all_scene_table_data, [])
-          |> assign(:scene_table_data, [])
-          |> assign(:scene_issues, [])
-          |> assign(:sort_by, "name")
-          |> assign(:sort_dir, :asc)
-          |> assign(:page, 1)
-          |> assign(:total_pages, 1)
-          |> assign(:pending_delete_id, nil)
+    if connected?(socket) do
+      Collaboration.subscribe_dashboard(project.id)
 
-        if connected?(socket), do: Collaboration.subscribe_dashboard(project.id)
-        if connected?(socket) and scenes != [], do: send(self(), :load_dashboard_data)
+      Phoenix.PubSub.subscribe(
+        Storyarn.PubSub,
+        StoryarnWeb.SceneSidebarLive.shell_topic(project.id)
+      )
 
-        {:ok, socket}
+      # Index is the scenes "dashboard" — clear any scene highlight the
+      # sticky sidebar may have carried over from a previous Show visit so
+      # the dashboard link looks active instead.
+      Phoenix.PubSub.broadcast(
+        Storyarn.PubSub,
+        StoryarnWeb.SceneSidebarLive.shell_topic(project.id),
+        {:active_scene, nil}
+      )
 
-      {:error, _reason} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("scenes", "You don't have access to this project."))
-         |> redirect(to: ~p"/workspaces")}
+      if scenes != [], do: send(self(), :load_dashboard_data)
     end
+
+    {:ok,
+     socket
+     |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
+     |> assign(:scenes, scenes)
+     |> assign(:dashboard_stats, nil)
+     |> assign(:all_scene_table_data, [])
+     |> assign(:scene_table_data, [])
+     |> assign(:scene_issues, [])
+     |> assign(:sort_by, "name")
+     |> assign(:sort_dir, :asc)
+     |> assign(:page, 1)
+     |> assign(:total_pages, 1)
+     |> assign(:pending_delete_id, nil)}
   end
 
   @impl true
   def handle_params(_params, _url, socket), do: {:noreply, socket}
+
+  # ===========================================================================
+  # Shell topic messages
+  # ===========================================================================
+
+  def handle_info({:open_scene, scene_id}, socket) do
+    path =
+      ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{scene_id}"
+
+    {:noreply, push_navigate(socket, to: path)}
+  end
+
+  def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
+  def handle_info({:tree_changed, :scenes}, socket), do: {:noreply, reload_scenes(socket)}
+  def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
+  def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
 
   # ===========================================================================
   # Dashboard loading (async)
@@ -213,7 +221,8 @@ defmodule StoryarnWeb.SceneLive.Index do
   # ===========================================================================
 
   @impl true
-  def handle_event("tree_panel_" <> _ = event, params, socket), do: handle_tree_panel_event(event, params, socket)
+  def handle_event("tree_panel_" <> _ = event, params, socket),
+    do: ProjectChromeHelpers.forward_tree_panel(socket, event, params)
 
   def handle_event("sort_scenes", %{"column" => column}, socket) do
     {:noreply, handle_sort(socket, column, :all_scene_table_data, :scene_table_data, scene_sort_columns())}
@@ -223,103 +232,10 @@ defmodule StoryarnWeb.SceneLive.Index do
     {:noreply, handle_page(socket, page, :all_scene_table_data, :scene_table_data)}
   end
 
-  def handle_event(event, %{"id" => id}, socket) when event in ~w(set_pending_delete set_pending_delete_scene) do
-    {:noreply, assign(socket, :pending_delete_id, id)}
-  end
-
-  def handle_event(event, _params, socket) when event in ~w(confirm_delete confirm_delete_scene) do
-    if id = socket.assigns[:pending_delete_id] do
-      handle_event("delete", %{"id" => id}, socket)
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_event(event, %{"id" => scene_id}, socket) when event in ~w(delete delete_scene) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      case Scenes.get_scene(socket.assigns.project.id, scene_id) do
-        nil ->
-          {:noreply, put_flash(socket, :error, dgettext("scenes", "Scene not found."))}
-
-        scene ->
-          case Scenes.delete_scene(scene) do
-            {:ok, _} ->
-              {:noreply,
-               socket
-               |> put_flash(:info, dgettext("scenes", "Scene moved to trash."))
-               |> reload_scenes()}
-
-            {:error, _} ->
-              {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not delete scene."))}
-          end
-      end
-    end)
-  end
-
-  def handle_event("create_scene", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      case Scenes.create_scene(socket.assigns.project, %{name: dgettext("scenes", "Untitled")}) do
-        {:ok, new_scene} ->
-          {:noreply,
-           push_navigate(socket,
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{new_scene.id}"
-           )}
-
-        {:error, :limit_reached, _details} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not create scene."))}
-      end
-    end)
-  end
-
-  def handle_event("create_child_scene", %{"parent_id" => parent_id}, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      attrs = %{name: dgettext("scenes", "Untitled"), parent_id: parent_id}
-
-      case Scenes.create_scene(socket.assigns.project, attrs) do
-        {:ok, new_scene} ->
-          {:noreply,
-           push_navigate(socket,
-             to:
-               ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes/#{new_scene.id}"
-           )}
-
-        {:error, :limit_reached, _details} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not create scene."))}
-      end
-    end)
-  end
-
-  def handle_event(
-        "move_to_parent",
-        %{"item_id" => item_id, "new_parent_id" => new_parent_id, "position" => position},
-        socket
-      ) do
-    Authorize.with_authorization(socket, :edit_content, fn socket ->
-      case Scenes.get_scene(socket.assigns.project.id, item_id) do
-        nil ->
-          {:noreply, put_flash(socket, :error, dgettext("scenes", "Scene not found."))}
-
-        scene ->
-          new_parent_id = MapUtils.parse_int(new_parent_id)
-          position = MapUtils.parse_int(position) || 0
-
-          case Scenes.move_scene_to_position(scene, new_parent_id, position) do
-            {:ok, _} ->
-              {:noreply, reload_scenes(socket)}
-
-            {:error, _} ->
-              {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not move scene."))}
-          end
-      end
-    end)
-  end
+  # Tree mutation events (create_scene, create_child_scene, move_to_parent,
+  # set_pending_delete, confirm_delete, delete) now live in SceneSidebarLive —
+  # they never reach this LV because the tree is rendered by SceneSidebarLive
+  # which is a separate nested LV.
 
   # ===========================================================================
   # Private helpers
@@ -334,11 +250,7 @@ defmodule StoryarnWeb.SceneLive.Index do
       :all_scene_table_data,
       :scene_table_data,
       :scene_issues,
-      fn s ->
-        s
-        |> assign(:scenes, Scenes.list_scenes(project_id))
-        |> assign(:scenes_tree, prepare_scenes_tree(Scenes.list_scenes_tree(project_id)))
-      end
+      fn s -> assign(s, :scenes, Scenes.list_scenes(project_id)) end
     )
   end
 
