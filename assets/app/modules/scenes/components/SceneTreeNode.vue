@@ -174,7 +174,12 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
           <span v-else class="shrink-0 size-5" />
 
           <!-- Scene link -->
-          <a :href="sceneHref(node)" class="flex-1 flex items-center gap-1.5 py-1.5 min-w-0">
+          <a
+            :href="sceneHref(node)"
+            data-phx-link="patch"
+            data-phx-link-state="push"
+            class="flex-1 flex items-center gap-1.5 py-1.5 min-w-0"
+          >
             <MapIcon class="size-3.5 shrink-0 opacity-50" />
             <span class="truncate">{{ node.name }}</span>
           </a>

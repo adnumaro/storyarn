@@ -226,7 +226,12 @@ const pages = computed(() => {
           <TableBody>
             <TableRow v-for="row in tableData" :key="row.id">
               <TableCell>
-                <a :href="sceneHref(row)" class="font-medium hover:underline">
+                <a
+                  :href="sceneHref(row)"
+                  data-phx-link="patch"
+                  data-phx-link-state="push"
+                  class="font-medium hover:underline"
+                >
                   {{ row.name }}
                 </a>
               </TableCell>
@@ -306,6 +311,8 @@ const pages = computed(() => {
           v-for="(issue, i) in issues"
           :key="i"
           :href="issue.href"
+          data-phx-link="patch"
+          data-phx-link-state="push"
           class="flex items-start gap-2 px-3 py-2 text-sm hover:bg-muted/30 transition-colors"
         >
           <AlertTriangle
