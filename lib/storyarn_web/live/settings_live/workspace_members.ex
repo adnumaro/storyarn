@@ -9,38 +9,27 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   alias StoryarnWeb.Helpers.Authorize
 
   @impl true
-  def mount(%{"slug" => slug}, _session, socket) do
-    scope = socket.assigns.current_scope
+  def mount(_params, _session, socket) do
+    %{workspace: workspace, membership: membership} = socket.assigns
 
-    case Workspaces.get_workspace_by_slug(scope, slug) do
-      {:ok, workspace, membership} ->
-        if membership.role in ["owner", "admin"] do
-          members = Workspaces.list_workspace_members(workspace.id)
-          invite_changeset = invite_changeset(%{})
+    if membership.role in ["owner", "admin"] do
+      members = Workspaces.list_workspace_members(workspace.id)
+      invite_changeset = invite_changeset(%{})
 
-          {:ok,
-           socket
-           |> assign(:page_title, dgettext("workspaces", "Workspace Members"))
-           |> assign(:current_path, ~p"/users/settings/workspaces/#{slug}/members")
-           |> assign(:workspace, workspace)
-           |> assign(:membership, membership)
-           |> assign(:members, members)
-           |> assign(:invite_form, to_form(invite_changeset, as: "invite"))}
-        else
-          {:ok,
-           socket
-           |> put_flash(
-             :error,
-             dgettext("workspaces", "You don't have permission to manage this workspace.")
-           )
-           |> push_navigate(to: ~p"/users/settings")}
-        end
-
-      {:error, :not_found} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("workspaces", "Workspace not found."))
-         |> push_navigate(to: ~p"/users/settings")}
+      {:ok,
+       socket
+       |> assign(:page_title, dgettext("workspaces", "Workspace Members"))
+       |> assign(:current_path, ~p"/users/settings/workspaces/#{workspace.slug}/members")
+       |> assign(:members, members)
+       |> assign(:invite_form, to_form(invite_changeset, as: "invite"))}
+    else
+      {:ok,
+       socket
+       |> put_flash(
+         :error,
+         dgettext("workspaces", "You don't have permission to manage this workspace.")
+       )
+       |> push_navigate(to: ~p"/users/settings")}
     end
   end
 

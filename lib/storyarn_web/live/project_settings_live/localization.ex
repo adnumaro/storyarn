@@ -65,48 +65,34 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
   # ===========================================================================
 
   @impl true
-  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
-    case Projects.get_project_by_slugs(
-           socket.assigns.current_scope,
-           workspace_slug,
-           project_slug
-         ) do
-      {:ok, project, membership} ->
-        if Projects.can?(membership.role, :manage_project) do
-          provider_config = get_provider_config(project.id)
+  def mount(_params, _session, socket) do
+    %{project: project, membership: membership} = socket.assigns
 
-          socket =
-            socket
-            |> assign(:project, project)
-            |> assign(:workspace, project.workspace)
-            |> assign(:membership, membership)
-            |> assign(:current_workspace, project.workspace)
-            |> assign(
-              :provider_form,
-              to_form(provider_changeset(provider_config), as: "provider")
-            )
-            |> assign(
-              :has_api_key,
-              provider_config != nil && provider_config.api_key_encrypted != nil
-            )
-            |> assign(:provider_usage, nil)
+    if Projects.can?(membership.role, :manage_project) do
+      provider_config = get_provider_config(project.id)
 
-          {:ok, socket}
-        else
-          {:ok,
-           socket
-           |> put_flash(
-             :error,
-             dgettext("projects", "You don't have permission to manage this project.")
-           )
-           |> redirect(to: ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}")}
-        end
+      socket =
+        socket
+        |> assign(:current_workspace, project.workspace)
+        |> assign(
+          :provider_form,
+          to_form(provider_changeset(provider_config), as: "provider")
+        )
+        |> assign(
+          :has_api_key,
+          provider_config != nil && provider_config.api_key_encrypted != nil
+        )
+        |> assign(:provider_usage, nil)
 
-      {:error, :not_found} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("projects", "Project not found."))
-         |> redirect(to: ~p"/workspaces")}
+      {:ok, socket}
+    else
+      {:ok,
+       socket
+       |> put_flash(
+         :error,
+         dgettext("projects", "You don't have permission to manage this project.")
+       )
+       |> redirect(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")}
     end
   end
 

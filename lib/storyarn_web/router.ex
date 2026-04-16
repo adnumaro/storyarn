@@ -143,42 +143,10 @@ defmodule StoryarnWeb.Router do
       live "/users/settings/connections", SettingsLive.Connections, :edit
       live "/users/settings/confirm-email/:token", SettingsLive.Profile, :confirm_email
 
-      # Workspace Settings (in unified settings)
-      live "/users/settings/workspaces/:slug/general", SettingsLive.WorkspaceGeneral, :edit
-      live "/users/settings/workspaces/:slug/members", SettingsLive.WorkspaceMembers, :edit
-
-      live "/users/settings/workspaces/:slug/deleted-projects",
-           SettingsLive.WorkspaceDeletedProjects,
-           :index
-
       # Workspaces
       live "/workspaces", WorkspaceLive.Index, :index
       live "/workspaces/new", WorkspaceLive.New, :new
       live "/workspaces/:workspace_slug", WorkspaceLive.Show, :show
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/settings",
-           ProjectSettingsLive.General,
-           :edit
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/settings/localization",
-           ProjectSettingsLive.Localization,
-           :edit
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/settings/members",
-           ProjectSettingsLive.Members,
-           :edit
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/settings/snapshots",
-           ProjectSettingsLive.Snapshots,
-           :edit
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/settings/version-control",
-           ProjectSettingsLive.VersionControl,
-           :edit
-
-      live "/workspaces/:workspace_slug/projects/:project_slug/settings/export-import",
-           ExportImportLive.Index,
-           :index
 
       live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/compare/:version_number",
            CompareLive.Sheet,
@@ -264,6 +232,56 @@ defmodule StoryarnWeb.Router do
       # Assets
       live "/workspaces/:workspace_slug/projects/:project_slug/assets",
            AssetLive.Index,
+           :index
+
+      # Project Settings (uses Layouts.settings, not ProjectShell — keeps the
+      # full-page settings sidebar nav. Inside :project_scope only to share the
+      # ProjectScope on_mount hook for project/workspace/membership loading.)
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings",
+           ProjectSettingsLive.General,
+           :edit
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/localization",
+           ProjectSettingsLive.Localization,
+           :edit
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/members",
+           ProjectSettingsLive.Members,
+           :edit
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/snapshots",
+           ProjectSettingsLive.Snapshots,
+           :edit
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/version-control",
+           ProjectSettingsLive.VersionControl,
+           :edit
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/export-import",
+           ExportImportLive.Index,
+           :index
+    end
+
+    # Workspace-scoped live_session — loads workspace/membership once via
+    # WorkspaceScope on_mount. Used by the 3 workspace settings LVs that
+    # otherwise duplicated `Workspaces.get_workspace_by_slug` in mount.
+    live_session :workspace_scope,
+      on_mount:
+        if(Application.compile_env(:storyarn, :sql_sandbox),
+          do: [Module.concat(["StoryarnWeb", "LiveSandbox"])],
+          else: []
+        ) ++
+          [
+            Sentry.LiveViewHook,
+            {@user_auth_hook, :require_authenticated},
+            {@user_auth_hook, :load_workspaces},
+            {StoryarnWeb.Live.Hooks.WorkspaceScope, :load_workspace}
+          ] do
+      live "/users/settings/workspaces/:slug/general", SettingsLive.WorkspaceGeneral, :edit
+      live "/users/settings/workspaces/:slug/members", SettingsLive.WorkspaceMembers, :edit
+
+      live "/users/settings/workspaces/:slug/deleted-projects",
+           SettingsLive.WorkspaceDeletedProjects,
            :index
     end
 

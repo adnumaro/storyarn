@@ -58,43 +58,29 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   # ===========================================================================
 
   @impl true
-  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
-    case Projects.get_project_by_slugs(
-           socket.assigns.current_scope,
-           workspace_slug,
-           project_slug
-         ) do
-      {:ok, project, membership} ->
-        if Projects.can?(membership.role, :manage_project) do
-          {:ok, source_language} = Localization.ensure_source_language(project)
-          project_changeset = Projects.change_project(project)
+  def mount(_params, _session, socket) do
+    %{project: project, membership: membership} = socket.assigns
 
-          socket =
-            socket
-            |> assign(:project, project)
-            |> assign(:workspace, project.workspace)
-            |> assign(:membership, membership)
-            |> assign(:current_workspace, project.workspace)
-            |> assign(:source_language, source_language)
-            |> assign(:project_form, to_form(project_changeset))
-            |> assign_theme(project)
+    if Projects.can?(membership.role, :manage_project) do
+      {:ok, source_language} = Localization.ensure_source_language(project)
+      project_changeset = Projects.change_project(project)
 
-          {:ok, socket}
-        else
-          {:ok,
-           socket
-           |> put_flash(
-             :error,
-             dgettext("projects", "You don't have permission to manage this project.")
-           )
-           |> redirect(to: ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}")}
-        end
+      socket =
+        socket
+        |> assign(:current_workspace, project.workspace)
+        |> assign(:source_language, source_language)
+        |> assign(:project_form, to_form(project_changeset))
+        |> assign_theme(project)
 
-      {:error, :not_found} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("projects", "Project not found."))
-         |> redirect(to: ~p"/workspaces")}
+      {:ok, socket}
+    else
+      {:ok,
+       socket
+       |> put_flash(
+         :error,
+         dgettext("projects", "You don't have permission to manage this project.")
+       )
+       |> redirect(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")}
     end
   end
 

@@ -7,48 +7,39 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
   alias Storyarn.Billing
   alias Storyarn.Projects
   alias Storyarn.Versioning
-  alias Storyarn.Workspaces
   alias StoryarnWeb.Helpers.Authorize
 
   @impl true
-  def mount(%{"slug" => slug}, _session, socket) do
-    scope = socket.assigns.current_scope
+  def mount(_params, _session, socket) do
+    %{workspace: workspace, membership: membership} = socket.assigns
 
-    case Workspaces.get_workspace_by_slug(scope, slug) do
-      {:ok, workspace, membership} ->
-        if membership.role in ["owner", "admin"] do
-          deleted_projects = Projects.list_deleted_projects(workspace.id)
+    if membership.role in ["owner", "admin"] do
+      deleted_projects = Projects.list_deleted_projects(workspace.id)
 
-          Phoenix.PubSub.subscribe(
-            Storyarn.PubSub,
-            "workspace:#{workspace.id}:recovery"
-          )
+      Phoenix.PubSub.subscribe(
+        Storyarn.PubSub,
+        "workspace:#{workspace.id}:recovery"
+      )
 
-          {:ok,
-           socket
-           |> assign(:page_title, gettext("Deleted Projects"))
-           |> assign(:current_path, ~p"/users/settings/workspaces/#{slug}/deleted-projects")
-           |> assign(:workspace, workspace)
-           |> assign(:membership, membership)
-           |> assign(:deleted_projects, deleted_projects)
-           |> assign(:expanded_project_id, nil)
-           |> assign(:snapshots, [])
-           |> assign(:recovering, false)}
-        else
-          {:ok,
-           socket
-           |> put_flash(
-             :error,
-             dgettext("workspaces", "You don't have permission to manage this workspace.")
-           )
-           |> push_navigate(to: ~p"/users/settings")}
-        end
-
-      {:error, :not_found} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("workspaces", "Workspace not found."))
-         |> push_navigate(to: ~p"/users/settings")}
+      {:ok,
+       socket
+       |> assign(:page_title, gettext("Deleted Projects"))
+       |> assign(
+         :current_path,
+         ~p"/users/settings/workspaces/#{workspace.slug}/deleted-projects"
+       )
+       |> assign(:deleted_projects, deleted_projects)
+       |> assign(:expanded_project_id, nil)
+       |> assign(:snapshots, [])
+       |> assign(:recovering, false)}
+    else
+      {:ok,
+       socket
+       |> put_flash(
+         :error,
+         dgettext("workspaces", "You don't have permission to manage this workspace.")
+       )
+       |> push_navigate(to: ~p"/users/settings")}
     end
   end
 

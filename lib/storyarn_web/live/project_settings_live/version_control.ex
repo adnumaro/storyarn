@@ -76,42 +76,28 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
   # ===========================================================================
 
   @impl true
-  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
-    case Projects.get_project_by_slugs(
-           socket.assigns.current_scope,
-           workspace_slug,
-           project_slug
-         ) do
-      {:ok, project, membership} ->
-        if Projects.can?(membership.role, :manage_project) do
-          socket =
-            socket
-            |> assign(:project, project)
-            |> assign(:workspace, project.workspace)
-            |> assign(:membership, membership)
-            |> assign(:current_workspace, project.workspace)
-            |> assign(
-              :version_control_form,
-              to_form(version_control_changeset(project), as: "version_control")
-            )
-            |> assign(:version_usage, Billing.project_usage(project.id, project.workspace_id))
+  def mount(_params, _session, socket) do
+    %{project: project, membership: membership} = socket.assigns
 
-          {:ok, socket}
-        else
-          {:ok,
-           socket
-           |> put_flash(
-             :error,
-             dgettext("projects", "You don't have permission to manage this project.")
-           )
-           |> redirect(to: ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}")}
-        end
+    if Projects.can?(membership.role, :manage_project) do
+      socket =
+        socket
+        |> assign(:current_workspace, project.workspace)
+        |> assign(
+          :version_control_form,
+          to_form(version_control_changeset(project), as: "version_control")
+        )
+        |> assign(:version_usage, Billing.project_usage(project.id, project.workspace_id))
 
-      {:error, :not_found} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("projects", "Project not found."))
-         |> redirect(to: ~p"/workspaces")}
+      {:ok, socket}
+    else
+      {:ok,
+       socket
+       |> put_flash(
+         :error,
+         dgettext("projects", "You don't have permission to manage this project.")
+       )
+       |> redirect(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")}
     end
   end
 

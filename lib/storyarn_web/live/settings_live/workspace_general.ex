@@ -9,36 +9,25 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   alias StoryarnWeb.Helpers.Authorize
 
   @impl true
-  def mount(%{"slug" => slug}, _session, socket) do
-    scope = socket.assigns.current_scope
+  def mount(_params, _session, socket) do
+    %{workspace: workspace, membership: membership} = socket.assigns
 
-    case Workspaces.get_workspace_by_slug(scope, slug) do
-      {:ok, workspace, membership} ->
-        if membership.role in ["owner", "admin"] do
-          changeset = Workspaces.change_workspace(workspace)
+    if membership.role in ["owner", "admin"] do
+      changeset = Workspaces.change_workspace(workspace)
 
-          {:ok,
-           socket
-           |> assign(:page_title, dgettext("workspaces", "Workspace Settings"))
-           |> assign(:current_path, ~p"/users/settings/workspaces/#{slug}/general")
-           |> assign(:workspace, workspace)
-           |> assign(:membership, membership)
-           |> assign(:form, to_form(changeset))}
-        else
-          {:ok,
-           socket
-           |> put_flash(
-             :error,
-             dgettext("workspaces", "You don't have permission to manage this workspace.")
-           )
-           |> push_navigate(to: ~p"/users/settings")}
-        end
-
-      {:error, :not_found} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("workspaces", "Workspace not found."))
-         |> push_navigate(to: ~p"/users/settings")}
+      {:ok,
+       socket
+       |> assign(:page_title, dgettext("workspaces", "Workspace Settings"))
+       |> assign(:current_path, ~p"/users/settings/workspaces/#{workspace.slug}/general")
+       |> assign(:form, to_form(changeset))}
+    else
+      {:ok,
+       socket
+       |> put_flash(
+         :error,
+         dgettext("workspaces", "You don't have permission to manage this workspace.")
+       )
+       |> push_navigate(to: ~p"/users/settings")}
     end
   end
 

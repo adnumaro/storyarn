@@ -69,45 +69,31 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   # ===========================================================================
 
   @impl true
-  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
-    case Projects.get_project_by_slugs(
-           socket.assigns.current_scope,
-           workspace_slug,
-           project_slug
-         ) do
-      {:ok, project, membership} ->
-        if Projects.can?(membership.role, :manage_project) do
-          socket =
-            socket
-            |> assign(:project, project)
-            |> assign(:workspace, project.workspace)
-            |> assign(:membership, membership)
-            |> assign(:current_workspace, project.workspace)
-            |> assign(:snapshots, Versioning.list_project_snapshots(project.id))
-            |> assign(
-              :can_create_snapshot,
-              Billing.can_create_project_snapshot?(project.id, project.workspace_id) == :ok
-            )
-            |> assign(:snapshot_form, to_form(snapshot_changeset(%{}), as: "snapshot"))
-            |> assign(:restoration_in_progress, restoration_in_progress?(project.id))
-            |> maybe_subscribe_restoration(project.id)
+  def mount(_params, _session, socket) do
+    %{project: project, membership: membership} = socket.assigns
 
-          {:ok, socket}
-        else
-          {:ok,
-           socket
-           |> put_flash(
-             :error,
-             dgettext("projects", "You don't have permission to manage this project.")
-           )
-           |> redirect(to: ~p"/workspaces/#{workspace_slug}/projects/#{project_slug}")}
-        end
+    if Projects.can?(membership.role, :manage_project) do
+      socket =
+        socket
+        |> assign(:current_workspace, project.workspace)
+        |> assign(:snapshots, Versioning.list_project_snapshots(project.id))
+        |> assign(
+          :can_create_snapshot,
+          Billing.can_create_project_snapshot?(project.id, project.workspace_id) == :ok
+        )
+        |> assign(:snapshot_form, to_form(snapshot_changeset(%{}), as: "snapshot"))
+        |> assign(:restoration_in_progress, restoration_in_progress?(project.id))
+        |> maybe_subscribe_restoration(project.id)
 
-      {:error, :not_found} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("projects", "Project not found."))
-         |> redirect(to: ~p"/workspaces")}
+      {:ok, socket}
+    else
+      {:ok,
+       socket
+       |> put_flash(
+         :error,
+         dgettext("projects", "You don't have permission to manage this project.")
+       )
+       |> redirect(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")}
     end
   end
 

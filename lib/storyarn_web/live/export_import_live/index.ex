@@ -6,7 +6,6 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   alias Storyarn.Exports
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Imports
-  alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
 
   @all_sections ~w(sheets flows scenes screenplays localization)a
@@ -126,56 +125,39 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   # ===========================================================================
 
   @impl true
-  def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug}, _session, socket) do
-    case Projects.get_project_by_slugs(
-           socket.assigns.current_scope,
-           workspace_slug,
-           project_slug
-         ) do
-      {:ok, project, membership} ->
-        can_edit = Projects.can?(membership.role, :edit_content)
-        formats = Exports.list_formats_with_metadata()
-        default_format = List.first(formats)
+  def mount(_params, _session, socket) do
+    %{project: project, can_edit: can_edit} = socket.assigns
+    formats = Exports.list_formats_with_metadata()
+    default_format = List.first(formats)
 
-        socket =
-          socket
-          |> assign(:project, project)
-          |> assign(:workspace, project.workspace)
-          |> assign(:membership, membership)
-          |> assign(:can_edit, can_edit)
-          |> assign(:current_path, "")
-          # Export state
-          |> assign(:formats, formats)
-          |> assign(:selected_format, :storyarn)
-          |> assign(:selected_extension, default_format.extension)
-          |> assign(:supported_sections, default_format.sections)
-          |> assign(:sections, MapSet.new(@all_sections))
-          |> assign(:entity_counts, %{})
-          |> assign_async(:entity_counts_async, fn ->
-            opts = %ExportOptions{format: :storyarn}
-            {:ok, %{entity_counts_async: Exports.count_entities(project.id, opts)}}
-          end)
-          |> assign(:asset_mode, :references)
-          |> assign(:validate_before_export, true)
-          |> assign(:pretty_print, true)
-          |> assign(:validation_result, nil)
-          # Import state
-          |> assign(:import_step, :upload)
-          |> assign(:import_preview, nil)
-          |> assign(:import_result, nil)
-          |> assign(:import_error, nil)
-          |> assign(:conflict_strategy, :skip)
-          |> assign(:parsed_data_ref, nil)
-          |> maybe_allow_import_upload(can_edit)
+    socket =
+      socket
+      |> assign(:current_path, "")
+      # Export state
+      |> assign(:formats, formats)
+      |> assign(:selected_format, :storyarn)
+      |> assign(:selected_extension, default_format.extension)
+      |> assign(:supported_sections, default_format.sections)
+      |> assign(:sections, MapSet.new(@all_sections))
+      |> assign(:entity_counts, %{})
+      |> assign_async(:entity_counts_async, fn ->
+        opts = %ExportOptions{format: :storyarn}
+        {:ok, %{entity_counts_async: Exports.count_entities(project.id, opts)}}
+      end)
+      |> assign(:asset_mode, :references)
+      |> assign(:validate_before_export, true)
+      |> assign(:pretty_print, true)
+      |> assign(:validation_result, nil)
+      # Import state
+      |> assign(:import_step, :upload)
+      |> assign(:import_preview, nil)
+      |> assign(:import_result, nil)
+      |> assign(:import_error, nil)
+      |> assign(:conflict_strategy, :skip)
+      |> assign(:parsed_data_ref, nil)
+      |> maybe_allow_import_upload(can_edit)
 
-        {:ok, socket}
-
-      {:error, :not_found} ->
-        {:ok,
-         socket
-         |> put_flash(:error, gettext("Project not found."))
-         |> redirect(to: ~p"/workspaces")}
-    end
+    {:ok, socket}
   end
 
   @impl true
