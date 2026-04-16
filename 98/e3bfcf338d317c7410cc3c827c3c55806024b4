@@ -1,0 +1,25 @@
+docs/plans/scenes_migration.md
+  b8630343f6f433e9 343-345
+lib/storyarn_web/live/scene_sidebar_live.ex
+  b8630343f6f433e9 1-324
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "98e3bfcf338d317c7410cc3c827c3c55806024b4",
+  "prompts": {
+    "b8630343f6f433e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8e627c6-a926-4e61-b666-cd7947895de7",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 327,
+      "total_deletions": 4,
+      "accepted_lines": 327,
+      "overriden_lines": 0
+    }
+  }
+}
