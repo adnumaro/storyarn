@@ -79,6 +79,11 @@ defmodule StoryarnWeb.Components.ProjectShell do
     doc:
       "when non-nil, renders a fixed top banner announcing an in-progress project restoration. Shape: `%{user_email: binary}`."
 
+  attr :canvas_mode, :boolean,
+    default: false,
+    doc:
+      "when true, `<main>` has no top padding and no scroll (full-bleed canvas tools like scenes/flows). When false, default padded scrollable content."
+
   slot :top_bar_extras_left,
     doc: "page-provided content rendered next to LeftToolbar"
 
@@ -175,9 +180,15 @@ defmodule StoryarnWeb.Components.ProjectShell do
       <main
         id="main-content"
         class={[
-          "h-full overflow-y-auto pt-[76px] pb-4 px-4",
-          "transition-[padding-left] duration-200",
-          "md:[body[data-tree-panel-open='1']_&]:pl-[320px]"
+          "h-full",
+          if(@canvas_mode,
+            do: "overflow-hidden",
+            else: [
+              "overflow-y-auto pt-[76px] pb-4 px-4",
+              "transition-[padding-left] duration-200",
+              "md:[body[data-tree-panel-open='1']_&]:pl-[320px]"
+            ]
+          )
         ]}
       >
         {render_slot(@inner_block)}
