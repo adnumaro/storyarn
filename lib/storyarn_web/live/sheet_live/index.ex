@@ -88,6 +88,15 @@ defmodule StoryarnWeb.SheetLive.Index do
         StoryarnWeb.SheetsSidebarLive.shell_topic(project.id)
       )
 
+      # Index is the sheets "dashboard" — clear any sheet highlight the
+      # sticky sidebar may have carried over from a previous Show visit so
+      # the dashboard link looks active instead.
+      Phoenix.PubSub.broadcast(
+        Storyarn.PubSub,
+        StoryarnWeb.SheetsSidebarLive.shell_topic(project.id),
+        {:active_sheet, nil}
+      )
+
       if sheets != [], do: send(self(), :load_dashboard_data)
     end
 

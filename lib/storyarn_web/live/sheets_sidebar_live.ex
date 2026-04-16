@@ -68,7 +68,7 @@ defmodule StoryarnWeb.SheetsSidebarLive do
         show-pin={true}
         active-tool={@active_tool}
         dashboard-url={@dashboard_url}
-        on-dashboard={false}
+        on-dashboard={is_nil(@sheet_id)}
         tree-props={
           %{
             sheetsTree: @sheets_tree,
