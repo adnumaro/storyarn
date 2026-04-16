@@ -240,7 +240,7 @@ defmodule StoryarnWeb.SceneLive.Show do
             v-component="modules/scenes/components/VersionHistoryPanel"
             v-socket={@socket}
             id="scene-versions-panel"
-            open={@versions_panel_open}
+            open={@right_panel == :versions}
             versions={(@history_data && @history_data[:versions]) || []}
             named-versions={(@history_data && @history_data[:named_versions]) || []}
             auto-versions={(@history_data && @history_data[:auto_versions]) || []}
@@ -248,7 +248,7 @@ defmodule StoryarnWeb.SceneLive.Show do
             can-name-version={(@history_data && @history_data[:can_name_version]) || false}
             current-version-id={@history_data && @history_data[:current_version_id]}
             can-edit={@can_edit}
-            loading={@versions_panel_open && is_nil(@history_data)}
+            loading={@right_panel == :versions && is_nil(@history_data)}
           />
 
           <%!-- Bottom dock (edit mode only) --%>
@@ -296,7 +296,7 @@ defmodule StoryarnWeb.SceneLive.Show do
             selected-type={@selected_type}
             selected-element={serialize_selected_element(@selected_type, @selected_element)}
             can-edit={not Map.get(@selected_element || %{}, :locked, false)}
-            element-panel-open={@element_panel_open}
+            element-panel-open={@right_panel == :element}
             project-sheets={prepare_project_sheets_for_vue(@project_sheets)}
             project-flows={prepare_project_flows_for_vue(@project_flows)}
             project-scenes={prepare_project_scenes_for_vue(@project_scenes)}
@@ -312,7 +312,7 @@ defmodule StoryarnWeb.SceneLive.Show do
             can-edit={@can_edit}
             ambient-flows={prepare_ambient_flows_for_vue(@ambient_flows)}
             project-flows={prepare_project_flows_for_vue(@project_flows)}
-            scene-settings-open={@scene_settings_open && @can_edit && @edit_mode}
+            scene-settings-open={@right_panel == :settings && @can_edit && @edit_mode}
           />
         </div>
       <% else %>
@@ -404,8 +404,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       |> assign(:active_tool, :select)
       |> assign(:selected_element, nil)
       |> assign(:selected_type, nil)
-      |> assign(:element_panel_open, false)
-      |> assign(:scene_settings_open, false)
+      |> assign(:right_panel, nil)
       |> assign(:active_layer_id, nil)
       |> assign(:renaming_layer_id, nil)
       |> assign(:show_pin_icon_upload, false)
@@ -634,9 +633,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     |> assign(:active_tool, :select)
     |> assign(:selected_element, nil)
     |> assign(:selected_type, nil)
-    |> assign(:element_panel_open, false)
-    |> assign(:scene_settings_open, false)
-    |> assign(:versions_panel_open, false)
+    |> assign(:right_panel, nil)
     |> assign(:history_data, nil)
     |> assign(:active_layer_id, default_layer_id(scene.layers))
     |> assign(:renaming_layer_id, nil)
@@ -720,11 +717,11 @@ defmodule StoryarnWeb.SceneLive.Show do
         socket
       end
 
-    {:noreply, assign(socket, :versions_panel_open, true)}
+    {:noreply, assign(socket, :right_panel, :versions)}
   end
 
   def handle_event("close_versions_panel", _params, socket) do
-    {:noreply, assign(socket, :versions_panel_open, false)}
+    {:noreply, dismiss_right_panel(socket, :versions)}
   end
 
   # ---------------------------------------------------------------------------
@@ -1050,36 +1047,24 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("open_element_panel", _params, socket) do
-    {:noreply,
-     socket
-     |> assign(:element_panel_open, true)
-     |> assign(:scene_settings_open, false)}
+    {:noreply, assign(socket, :right_panel, :element)}
   end
 
   def handle_event("toggle_element_panel", _params, socket) do
-    if socket.assigns.element_panel_open do
-      {:noreply, assign(socket, :element_panel_open, false)}
-    else
-      {:noreply,
-       socket
-       |> assign(:element_panel_open, true)
-       |> assign(:scene_settings_open, false)}
-    end
+    target = if socket.assigns.right_panel == :element, do: nil, else: :element
+    {:noreply, assign(socket, :right_panel, target)}
   end
 
   def handle_event("close_element_panel", _params, socket) do
-    {:noreply, assign(socket, :element_panel_open, false)}
+    {:noreply, dismiss_right_panel(socket, :element)}
   end
 
   def handle_event("open_scene_settings", _params, socket) do
-    {:noreply,
-     socket
-     |> assign(:scene_settings_open, true)
-     |> assign(:element_panel_open, false)}
+    {:noreply, assign(socket, :right_panel, :settings)}
   end
 
   def handle_event("close_scene_settings", _params, socket) do
-    {:noreply, assign(socket, :scene_settings_open, false)}
+    {:noreply, dismiss_right_panel(socket, :settings)}
   end
 
   # ---------------------------------------------------------------------------

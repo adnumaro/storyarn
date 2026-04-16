@@ -139,6 +139,23 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
     end
   end
 
+  @doc """
+  Closes the right-side panel iff it's currently showing the given panel
+  (`:element`, `:settings`, or `:versions`). Noop when a different panel
+  is open.
+
+  Part of the single-state right-sidebar invariant: only one of Element /
+  Settings / Versions can be visible at a time. See Part B of the
+  scenes right-side UI refactor (2026-04-16).
+  """
+  def dismiss_right_panel(socket, expected) do
+    if socket.assigns[:right_panel] == expected do
+      assign(socket, :right_panel, nil)
+    else
+      socket
+    end
+  end
+
   # ---------------------------------------------------------------------------
   # Sheet helpers
   # ---------------------------------------------------------------------------
