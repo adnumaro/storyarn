@@ -7,7 +7,6 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
   use Gettext, backend: Storyarn.Gettext
 
   import Phoenix.Component, only: [assign: 3]
-  import StoryarnWeb.SceneLive.Helpers.PropsSerializer, only: [prepare_scenes_tree: 1]
 
   alias Storyarn.Scenes
 
@@ -49,9 +48,19 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
     |> reload_scenes_tree()
   end
 
+  @doc """
+  Notifies the sticky `SceneSidebarLive` that the scenes tree changed so it
+  reloads. Show no longer holds `:scenes_tree` — the sidebar is the sole
+  source of truth for tree state after the ProjectShell migration.
+  """
   def reload_scenes_tree(socket) do
-    tree = Scenes.list_scenes_tree_with_elements(socket.assigns.project.id)
-    assign(socket, :scenes_tree, prepare_scenes_tree(tree))
+    Phoenix.PubSub.broadcast(
+      Storyarn.PubSub,
+      StoryarnWeb.Live.Shared.ProjectChromeHelpers.shell_topic(socket.assigns.project.id),
+      {:tree_changed, :scenes}
+    )
+
+    socket
   end
 
   def serialize_layer(layer) do
