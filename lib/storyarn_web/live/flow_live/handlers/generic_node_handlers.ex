@@ -24,6 +24,19 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
+  alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
+
+  # Notify the sticky FlowSidebarLive that the flows tree may have changed
+  # (flow rename / shortcut change). Show itself no longer owns :flows_tree.
+  defp broadcast_flows_tree_changed(socket) do
+    Phoenix.PubSub.broadcast(
+      Storyarn.PubSub,
+      ProjectChromeHelpers.shell_topic(socket.assigns.project.id),
+      {:tree_changed, :flows}
+    )
+
+    socket
+  end
 
   @spec handle_add_node(map(), Socket.t()) ::
           {:noreply, Socket.t()}
@@ -50,6 +63,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          |> assign(:flow, updated_flow)
          |> mark_saved()
          |> schedule(:flow)
+         |> broadcast_flows_tree_changed()
          |> push_event("flow_meta_changed", %{field: "name", prev: prev_name, new: name})}
 
       {:error, _changeset} ->
@@ -71,6 +85,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          |> assign(:flow, updated_flow)
          |> mark_saved()
          |> schedule(:flow)
+         |> broadcast_flows_tree_changed()
          |> push_event("flow_meta_changed", %{
            field: "shortcut",
            prev: prev_shortcut,
@@ -94,6 +109,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          socket
          |> assign(:flow, updated_flow)
          |> mark_saved()
+         |> broadcast_flows_tree_changed()
          |> push_event("restore_page_content", %{
            name: updated_flow.name,
            shortcut: updated_flow.shortcut || ""
@@ -114,6 +130,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          socket
          |> assign(:flow, updated_flow)
          |> mark_saved()
+         |> broadcast_flows_tree_changed()
          |> push_event("restore_page_content", %{
            name: updated_flow.name,
            shortcut: updated_flow.shortcut || ""

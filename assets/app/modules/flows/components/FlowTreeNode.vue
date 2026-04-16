@@ -166,7 +166,12 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
           <span v-else class="shrink-0 size-5" />
 
           <!-- Flow link -->
-          <a :href="flowHref(node)" class="flex-1 flex items-center gap-1.5 py-1.5 min-w-0">
+          <a
+            :href="flowHref(node)"
+            data-phx-link="patch"
+            data-phx-link-state="push"
+            class="flex-1 flex items-center gap-1.5 py-1.5 min-w-0"
+          >
             <GitBranch class="size-3.5 shrink-0 opacity-50" />
             <span class="truncate">{{ node.name }}</span>
             <Star v-if="node.is_main" class="size-3 shrink-0 text-amber-500 fill-amber-500" />

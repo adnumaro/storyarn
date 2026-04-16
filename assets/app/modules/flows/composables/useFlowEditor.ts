@@ -540,11 +540,12 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
   ): Promise<void> {
     applyInitOpts(containerEl, opts);
 
+    initPlugins(containerEl);
+
     if (!hookProxy._readonly) {
       initHandlers();
     }
 
-    initPlugins(containerEl);
     syncFlowContext();
 
     (hookProxy as { _flowContext: FlowContext })._flowContext.onInlineEditSave =

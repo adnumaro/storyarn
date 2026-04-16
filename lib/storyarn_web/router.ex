@@ -157,10 +157,8 @@ defmodule StoryarnWeb.Router do
            ProjectLive.Trash,
            :index
 
-      # Flows — Show not yet migrated; PlayerLive + CompareLive stay here
-      # permanently (no chrome).
-      live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id", FlowLive.Show, :show
-
+      # Flows — immersive player and compare views stay outside :project_scope
+      # (no chrome). Index + Show live below inside :project_scope.
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/play",
            FlowLive.PlayerLive,
            :play
@@ -261,8 +259,9 @@ defmodule StoryarnWeb.Router do
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes", SceneLive.Index, :index
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id", SceneLive.Show, :show
 
-      # Flows (Index only — Show migrates in a follow-up commit)
+      # Flows
       live "/workspaces/:workspace_slug/projects/:project_slug/flows", FlowLive.Index, :index
+      live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id", FlowLive.Show, :show
     end
 
     # Workspace-scoped live_session — loads workspace/membership once via

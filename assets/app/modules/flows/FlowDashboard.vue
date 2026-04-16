@@ -259,6 +259,8 @@ const pages = computed(() => {
               <TableCell>
                 <a
                   :href="flowHref(row)"
+                  data-phx-link="patch"
+                  data-phx-link-state="push"
                   class="inline-flex items-center gap-2 font-medium hover:underline"
                 >
                   {{ row.name }}
