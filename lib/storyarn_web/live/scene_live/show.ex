@@ -125,24 +125,35 @@ defmodule StoryarnWeb.SceneLive.Show do
               @can_edit && @edit_mode && @uploads[:background] && @uploads.background.ref
             }
           >
-            <.vue
-              v-component="modules/scenes/components/SceneCanvas"
-              v-socket={@socket}
-              id={"scene-canvas-#{@scene.id}"}
-              class="w-full h-full"
-              scene-data={prepare_scene_for_vue(@scene)}
-              pins={prepare_pins_for_vue(@pins)}
-              zones={prepare_zones_for_vue(@zones)}
-              connections={prepare_connections_for_vue(@connections)}
-              annotations={prepare_annotations_for_vue(@annotations)}
-              layers={prepare_layers_for_vue(@layers)}
-              active-tool={to_string(@active_tool)}
-              edit-mode={@edit_mode}
-              can-edit={@can_edit}
-              collaboration={
-                %{userId: @current_scope.user.id, locks: serialize_entity_locks(@entity_locks)}
-              }
-            />
+            <%!--
+              Wrapper with dynamic id forces a full remount when the scene
+              changes. LiveVue's `updated()` hook reuses the same Vue app and
+              just syncs props, which leaves stateful composables
+              (background image cache, canvas camera, Konva Stage internals,
+              etc.) carrying over between scenes. Changing the wrapper's id
+              makes morphdom destroy and recreate the subtree → LiveVue
+              tears down the old Vue app and mounts a fresh one.
+            --%>
+            <div id={"scene-canvas-mount-#{@scene.id}"} class="w-full h-full">
+              <.vue
+                v-component="modules/scenes/components/SceneCanvas"
+                v-socket={@socket}
+                id={"scene-canvas-#{@scene.id}"}
+                class="w-full h-full"
+                scene-data={prepare_scene_for_vue(@scene)}
+                pins={prepare_pins_for_vue(@pins)}
+                zones={prepare_zones_for_vue(@zones)}
+                connections={prepare_connections_for_vue(@connections)}
+                annotations={prepare_annotations_for_vue(@annotations)}
+                layers={prepare_layers_for_vue(@layers)}
+                active-tool={to_string(@active_tool)}
+                edit-mode={@edit_mode}
+                can-edit={@can_edit}
+                collaboration={
+                  %{userId: @current_scope.user.id, locks: serialize_entity_locks(@entity_locks)}
+                }
+              />
+            </div>
 
             <%!-- Hidden file input for background upload --%>
             <form

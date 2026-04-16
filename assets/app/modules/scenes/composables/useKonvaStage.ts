@@ -119,17 +119,29 @@ export function useKonvaStage({
 
   // ---------- Background image ----------
 
+  // Monotonic counter so only the latest load updates `bgImage`. Without this,
+  // an in-flight load from scene A can resolve after the user navigates to
+  // scene B (which has no background) and paint A's image on B's canvas.
+  let loadCounter = 0;
+
   function loadImage(url: string | null | undefined): void {
+    const loadId = ++loadCounter;
+
     if (!url) {
       bgImage.value = null;
       return;
     }
+
     const img = new Image();
     img.onload = () => {
-      bgImage.value = img;
+      if (loadId === loadCounter) {
+        bgImage.value = img;
+      }
     };
     img.onerror = () => {
-      bgImage.value = null;
+      if (loadId === loadCounter) {
+        bgImage.value = null;
+      }
     };
     img.crossOrigin = "anonymous";
     img.src = url;
