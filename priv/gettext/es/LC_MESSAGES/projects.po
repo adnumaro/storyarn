@@ -285,7 +285,7 @@ msgstr "Ya hay una restauración en curso."
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:29
 #, elixir-autogen, elixir-format
 msgid "Configure automatic snapshots and auto-versioning"
-msgstr "Configurar instantáneas automáticas y auto-versionado"
+msgstr "Configurar snapshots automáticas y auto-versionado"
 
 #: lib/storyarn_web/live/project_settings_live/snapshots.ex:31
 #, elixir-autogen, elixir-format
@@ -300,7 +300,7 @@ msgstr "Copia diaria — %{date}"
 #: lib/storyarn_web/live/project_live/components/settings_components.ex:204
 #, elixir-autogen, elixir-format
 msgid "Failed to create snapshot. Please try again."
-msgstr "Error al crear la instantánea. Inténtalo de nuevo."
+msgstr "Error al crear la snapshot. Inténtalo de nuevo."
 
 #: lib/storyarn_web/live/project_live/components/settings_components.ex:276
 #, elixir-autogen, elixir-format, fuzzy
@@ -340,7 +340,7 @@ msgstr "Proyecto restaurado. %{restored} entidades restauradas, %{skipped} omiti
 #: lib/storyarn_web/live/project_live/components/settings_components.ex:195
 #, elixir-autogen, elixir-format
 msgid "Project snapshot created."
-msgstr "Instantánea del proyecto creada."
+msgstr "Snapshot del proyecto creada."
 
 #: lib/storyarn_web/live/project_live/components/settings_components.ex:238
 #, elixir-autogen, elixir-format
@@ -350,24 +350,24 @@ msgstr "Restauración iniciada. Se notificará a todos los editores cuando termi
 #: lib/storyarn_web/live/project_live/components/settings_components.ex:272
 #, elixir-autogen, elixir-format
 msgid "Snapshot deleted."
-msgstr "Instantánea eliminada."
+msgstr "Snapshot eliminada."
 
 #: lib/storyarn_web/live/project_live/components/settings_components.ex:210
 #, elixir-autogen, elixir-format
 msgid "Snapshot limit reached for your plan."
-msgstr "Límite de instantáneas alcanzado para tu plan."
+msgstr "Límite de snapshots alcanzado para tu plan."
 
 #: lib/storyarn_web/live/project_live/components/settings_components.ex:220
 #: lib/storyarn_web/live/project_live/components/settings_components.ex:260
 #, elixir-autogen, elixir-format
 msgid "Snapshot not found."
-msgstr "Instantánea no encontrada."
+msgstr "Snapshot no encontrada."
 
 #: lib/storyarn_web/live/project_live/components/settings_components.ex:350
 #: lib/storyarn_web/live/project_settings_live/snapshots.ex:29
 #, elixir-autogen, elixir-format
 msgid "Snapshots"
-msgstr "Instantáneas"
+msgstr "Snapshots"
 
 #: lib/storyarn_web/live/project_settings_live/snapshots.ex:160
 #, elixir-autogen, elixir-format

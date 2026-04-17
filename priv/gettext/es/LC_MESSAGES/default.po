@@ -605,7 +605,7 @@ msgstr[1] "hace %{count} minutos"
 #: lib/storyarn_web/live/compare_live/sheet.ex:85
 #, elixir-autogen, elixir-format
 msgid "Auto-snapshot"
-msgstr "Auto-instantánea"
+msgstr "Auto-snapshot"
 
 #: lib/storyarn/versioning/version_crud.ex:491
 #, elixir-autogen, elixir-format
@@ -661,7 +661,7 @@ msgstr "Tipos de campo no válidos: %{fields}"
 #: lib/storyarn_web/controllers/snapshot_download_controller.ex:45
 #, elixir-autogen, elixir-format
 msgid "Invalid snapshot ID"
-msgstr "ID de instantánea no válido"
+msgstr "ID de snapshot no válido"
 
 #: lib/storyarn/versioning/snapshot_diff.ex:61
 #, elixir-autogen, elixir-format
@@ -727,12 +727,12 @@ msgstr "Fichas como fuente de verdad"
 #: lib/storyarn_web/controllers/snapshot_download_controller.ex:65
 #, elixir-autogen, elixir-format
 msgid "Snapshot file not found"
-msgstr "Archivo de instantánea no encontrado"
+msgstr "Archivo de snapshot no encontrado"
 
 #: lib/storyarn_web/controllers/snapshot_download_controller.ex:42
 #, elixir-autogen, elixir-format
 msgid "Snapshot not found"
-msgstr "Instantánea no encontrada"
+msgstr "Snapshot no encontrada"
 
 #: lib/storyarn_web/controllers/page_controller.ex:18
 #: lib/storyarn_web/live/landing_live/index.ex:48
@@ -750,7 +750,7 @@ msgstr "Versión no encontrada"
 #: lib/storyarn_web/live/landing_live/index.ex:238
 #, elixir-autogen, elixir-format
 msgid "Version snapshots"
-msgstr "Instantáneas de versión"
+msgstr "Snapshots de versión"
 
 #: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:157
 #, elixir-autogen, elixir-format

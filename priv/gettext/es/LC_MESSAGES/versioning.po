@@ -43,7 +43,7 @@ msgstr "Resuelto automáticamente:"
 #: lib/storyarn/versioning/project_snapshot_crud.ex:252
 #, elixir-autogen, elixir-format
 msgid "Before restore to project snapshot v%{number}"
-msgstr "Antes de restaurar a instantánea del proyecto v%{number}"
+msgstr "Antes de restaurar a snapshot del proyecto v%{number}"
 
 #: lib/storyarn/versioning/version_crud.ex:377
 #: lib/storyarn_web/components/versions_section.ex:520
@@ -92,7 +92,7 @@ msgstr "No se pudo eliminar la versión."
 #: lib/storyarn_web/live/sheet_live/helpers/history_data_helpers.ex:131
 #, elixir-autogen, elixir-format
 msgid "Could not load version snapshot."
-msgstr "No se pudo cargar la instantánea de la versión."
+msgstr "No se pudo cargar la snapshot de la versión."
 
 #: lib/storyarn_web/components/versions_section.ex:424
 #: lib/storyarn_web/live/flow_live/show.ex:598
@@ -263,7 +263,7 @@ msgstr "Restaurar a versión %{number}"
 #: lib/storyarn/versioning/project_snapshot_crud.ex:269
 #, elixir-autogen, elixir-format
 msgid "Restored from project snapshot v%{number}"
-msgstr "Restaurado desde instantánea del proyecto v%{number}"
+msgstr "Restaurado desde snapshot del proyecto v%{number}"
 
 #: lib/storyarn/versioning/version_crud.ex:394
 #, elixir-autogen, elixir-format
