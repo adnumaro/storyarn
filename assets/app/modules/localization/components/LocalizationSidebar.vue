@@ -93,7 +93,7 @@ function syncTexts(): void {
     <!-- Source language -->
     <section v-if="sourceLanguage" class="space-y-2">
       <p class="px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-        Source language
+        {{ $t("localization.sidebar.source_language") }}
       </p>
       <div class="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 p-2">
         <img
@@ -119,16 +119,16 @@ function syncTexts(): void {
           class="w-full justify-between font-normal"
           @click="sourcePickerOpen = !sourcePickerOpen"
         >
-          <span class="text-muted-foreground">Change source language...</span>
+          <span class="text-muted-foreground">{{ $t("localization.sidebar.change_source") }}</span>
         </Button>
         <div
           v-if="sourcePickerOpen"
           class="absolute left-0 right-0 top-full z-50 mt-1 rounded-md border bg-popover shadow-md"
         >
           <Command>
-            <CommandInput placeholder="Search languages..." />
+            <CommandInput :placeholder="$t('localization.sidebar.search_languages')" />
             <CommandList>
-              <CommandEmpty>No matches</CommandEmpty>
+              <CommandEmpty>{{ $t("localization.sidebar.no_matches") }}</CommandEmpty>
               <CommandGroup>
                 <CommandItem
                   v-for="opt in sourceLanguageOptions"
@@ -149,7 +149,7 @@ function syncTexts(): void {
     <section class="space-y-2">
       <div class="flex items-center justify-between px-1">
         <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Target languages
+          {{ $t("localization.sidebar.target_languages") }}
         </p>
         <span v-if="targetLanguages.length > 0" class="text-xs text-muted-foreground">
           {{ targetLanguages.length }}
@@ -160,7 +160,7 @@ function syncTexts(): void {
         v-if="targetLanguages.length === 0"
         class="rounded-xl border border-dashed border-border bg-muted/40 p-3 text-sm text-muted-foreground"
       >
-        No target languages yet.
+        {{ $t("localization.sidebar.no_targets") }}
       </div>
 
       <div v-else class="space-y-1.5">
@@ -202,7 +202,7 @@ function syncTexts(): void {
             v-if="canEdit"
             type="button"
             class="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-destructive hover:bg-accent transition-colors"
-            title="Remove language"
+            :title="$t('localization.sidebar.remove_language')"
             @click="requestRemove(lang)"
           >
             <X class="size-3.5" />
@@ -219,16 +219,16 @@ function syncTexts(): void {
             class="w-full justify-between font-normal"
             @click="addPickerOpen = !addPickerOpen"
           >
-            <span class="text-muted-foreground">Add language</span>
+            <span class="text-muted-foreground">{{ $t("localization.sidebar.add_language") }}</span>
           </Button>
           <div
             v-if="addPickerOpen"
             class="absolute left-0 right-0 top-full z-50 mt-1 rounded-md border bg-popover shadow-md"
           >
             <Command>
-              <CommandInput placeholder="Search languages..." />
+              <CommandInput :placeholder="$t('localization.sidebar.search_languages')" />
               <CommandList>
-                <CommandEmpty>No matches</CommandEmpty>
+                <CommandEmpty>{{ $t("localization.sidebar.no_matches") }}</CommandEmpty>
                 <CommandGroup>
                   <CommandItem
                     v-for="opt in addLanguageOptions"
@@ -247,7 +247,7 @@ function syncTexts(): void {
           v-else
           class="rounded-xl border border-dashed border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
         >
-          All available languages are already added.
+          {{ $t("localization.sidebar.all_added") }}
         </div>
       </div>
 
@@ -258,20 +258,20 @@ function syncTexts(): void {
         size="sm"
         class="w-full justify-start gap-2"
         :disabled="syncing"
-        title="Re-extract all translatable content from flows, sheets, and blocks"
+        :title="$t('localization.sidebar.sync_title')"
         @click="syncTexts"
       >
         <RefreshCw class="size-4" :class="{ 'animate-spin': syncing }" />
-        {{ syncing ? "Syncing..." : "Sync" }}
+        {{ syncing ? $t("localization.sidebar.syncing") : $t("localization.sidebar.sync") }}
       </Button>
     </section>
 
     <!-- Remove language confirmation -->
     <ConfirmDialog
       v-model:open="deleteDialogOpen"
-      :title="`Remove language?`"
-      :description="`This will remove ${pendingDeleteLanguage?.name ?? ''} and all its translations from this project.`"
-      confirm-text="Remove"
+      :title="$t('localization.sidebar.remove_confirm_title')"
+      :description="$t('localization.sidebar.remove_confirm_description', { name: pendingDeleteLanguage?.name ?? '' })"
+      :confirm-text="$t('localization.sidebar.remove_confirm_button')"
       variant="destructive"
       :icon="Trash2"
       @confirm="confirmRemove"

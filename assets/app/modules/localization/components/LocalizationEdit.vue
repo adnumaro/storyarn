@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ArrowLeft, Sparkles } from "lucide-vue-next";
 import { ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Label } from "@components/ui/label";
@@ -13,6 +14,8 @@ import {
 } from "@components/ui/select";
 import { Textarea } from "@components/ui/textarea";
 import { useLive } from "@composables/useLive";
+
+const { t } = useI18n();
 
 interface LocalizedText {
   source_type: string;
@@ -60,11 +63,11 @@ const saving = ref(false);
 const translating = ref(false);
 
 const statusOptions = [
-  { label: "Pending", value: "pending" },
-  { label: "Draft", value: "draft" },
-  { label: "In Progress", value: "in_progress" },
-  { label: "Review", value: "review" },
-  { label: "Final", value: "final" },
+  { key: "pending", label: t("localization.edit.status_pending") },
+  { key: "draft", label: t("localization.edit.status_draft") },
+  { key: "in_progress", label: t("localization.edit.status_in_progress") },
+  { key: "review", label: t("localization.edit.status_review") },
+  { key: "final", label: t("localization.edit.status_final") },
 ];
 
 function saveTranslation() {
@@ -91,7 +94,6 @@ function translateWithDeepL() {
   });
 }
 
-// Update local state when server pushes new text data
 live.handleEvent("text_updated", (payload) => {
   if (payload.translated_text !== undefined)
     translatedText.value = payload.translated_text as string;
@@ -111,7 +113,7 @@ function formatDateTime(datetime: string | undefined) {
   <div class="max-w-4xl mx-auto">
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-2xl font-bold tracking-tight">Edit Translation</h1>
+        <h1 class="text-2xl font-bold tracking-tight">{{ $t("localization.edit.title") }}</h1>
         <p class="text-sm text-muted-foreground mt-1">
           <span class="font-mono">{{ text.source_type }}/{{ text.source_field }}</span>
         </p>
@@ -123,37 +125,37 @@ function formatDateTime(datetime: string | undefined) {
         class="inline-flex items-center justify-center h-9 px-4 text-sm rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
       >
         <ArrowLeft class="size-4 mr-1" />
-        Back
+        {{ $t("localization.edit.back") }}
       </a>
     </div>
 
     <div class="grid grid-cols-2 gap-6 mt-6">
       <!-- Source text -->
       <div>
-        <h4 class="font-medium text-sm mb-2 text-muted-foreground">Source</h4>
+        <h4 class="font-medium text-sm mb-2 text-muted-foreground">{{ $t("localization.edit.source") }}</h4>
         <div class="bg-muted rounded-lg p-4 min-h-32">
           <div class="prose prose-sm" v-html="text.source_text || ''"></div>
         </div>
-        <div class="text-xs text-muted-foreground mt-1">{{ text.word_count || 0 }} words</div>
+        <div class="text-xs text-muted-foreground mt-1">{{ $t("localization.edit.word_count", text.word_count || 0) }}</div>
       </div>
 
       <!-- Translation -->
       <div>
         <h4 class="font-medium text-sm mb-2 text-muted-foreground">
-          Translation ({{ text.locale_code }})
+          {{ $t("localization.edit.translation_label", { locale: text.locale_code }) }}
         </h4>
 
         <div class="space-y-3">
-          <Textarea v-model="translatedText" :rows="6" placeholder="Enter translation..." />
+          <Textarea v-model="translatedText" :rows="6" :placeholder="$t('localization.edit.translation_placeholder')" />
 
           <div class="space-y-1.5">
-            <Label>Status</Label>
+            <Label>{{ $t("localization.edit.status") }}</Label>
             <Select v-model="status">
               <SelectTrigger>
-                <SelectValue placeholder="Select status" />
+                <SelectValue :placeholder="$t('localization.edit.select_status')" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="opt in statusOptions" :key="opt.value" :value="opt.value">
+                <SelectItem v-for="opt in statusOptions" :key="opt.key" :value="opt.key">
                   {{ opt.label }}
                 </SelectItem>
               </SelectContent>
@@ -161,17 +163,17 @@ function formatDateTime(datetime: string | undefined) {
           </div>
 
           <div class="space-y-1.5">
-            <Label>Translator Notes</Label>
+            <Label>{{ $t("localization.edit.translator_notes") }}</Label>
             <Textarea
               v-model="translatorNotes"
               :rows="2"
-              placeholder="Add notes for reviewers..."
+              :placeholder="$t('localization.edit.notes_placeholder')"
             />
           </div>
 
           <div class="flex items-center gap-3">
             <Button @click="saveTranslation" :disabled="saving">
-              {{ saving ? "Saving..." : "Save" }}
+              {{ saving ? $t("localization.edit.saving") : $t("localization.edit.save") }}
             </Button>
             <Button
               v-if="hasProvider"
@@ -180,7 +182,7 @@ function formatDateTime(datetime: string | undefined) {
               :disabled="translating"
             >
               <Sparkles class="size-4 mr-1" />
-              {{ translating ? "Translating..." : "Translate with DeepL" }}
+              {{ translating ? $t("localization.edit.translating") : $t("localization.edit.translate_deepl") }}
             </Button>
           </div>
         </div>
@@ -189,9 +191,9 @@ function formatDateTime(datetime: string | undefined) {
 
     <!-- Metadata -->
     <div class="mt-6 text-sm text-muted-foreground flex items-center gap-2">
-      <Badge v-if="text.machine_translated" variant="outline"> Machine translated </Badge>
+      <Badge v-if="text.machine_translated" variant="outline">{{ $t("localization.edit.machine_translated") }}</Badge>
       <span v-if="text.last_translated_at">
-        Last translated: {{ formatDateTime(text.last_translated_at) }}
+        {{ $t("localization.edit.last_translated", { date: formatDateTime(text.last_translated_at) }) }}
       </span>
     </div>
   </div>

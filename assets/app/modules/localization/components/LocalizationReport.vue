@@ -9,6 +9,7 @@ import {
 } from "lucide-vue-next";
 import type { Component } from "vue";
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge";
 import { Progress } from "@components/ui/progress";
 import {
@@ -27,6 +28,8 @@ import {
   TableRow,
 } from "@components/ui/table";
 import { useLive } from "@composables/useLive";
+
+const { t } = useI18n();
 
 interface LanguageProgress {
   localeCode: string;
@@ -81,22 +84,10 @@ const typeCountEntries = computed(() => {
 });
 
 const voStats = computed(() => [
-  {
-    label: "None",
-    value: voProgress.none,
-    color: "text-muted-foreground",
-  },
-  { label: "Needed", value: voProgress.needed, color: "text-yellow-500" },
-  {
-    label: "Recorded",
-    value: voProgress.recorded,
-    color: "text-blue-400",
-  },
-  {
-    label: "Approved",
-    value: voProgress.approved,
-    color: "text-emerald-500",
-  },
+  { label: t("localization.report.vo_none"), value: voProgress.none, color: "text-muted-foreground" },
+  { label: t("localization.report.vo_needed"), value: voProgress.needed, color: "text-yellow-500" },
+  { label: t("localization.report.vo_recorded"), value: voProgress.recorded, color: "text-blue-400" },
+  { label: t("localization.report.vo_approved"), value: voProgress.approved, color: "text-emerald-500" },
 ]);
 
 function typeIcon(type: string) {
@@ -110,16 +101,13 @@ function typeIcon(type: string) {
   return icons[type] || Box;
 }
 
-function typeLabel(type: string) {
-  const labels: Record<string, string> = {
-    flow_node: "Nodes",
-    block: "Blocks",
-    sheet: "Sheets",
-    flow: "Flows",
-    screenplay: "Screenplays",
-  };
-  return labels[type] || type;
-}
+const typeKeys: Record<string, string> = {
+  flow_node: "localization.report.types.flow_node",
+  block: "localization.report.types.block",
+  sheet: "localization.report.types.sheet",
+  flow: "localization.report.types.flow",
+  screenplay: "localization.report.types.screenplay",
+};
 </script>
 
 <template>
@@ -127,17 +115,17 @@ function typeLabel(type: string) {
     <!-- Header -->
     <div class="flex items-start justify-between mb-6">
       <div>
-        <h1 class="text-lg font-semibold">Localization Report</h1>
-        <p class="text-sm text-muted-foreground">Translation progress and statistics</p>
+        <h1 class="text-lg font-semibold">{{ $t("localization.report.title") }}</h1>
+        <p class="text-sm text-muted-foreground">{{ $t("localization.report.subtitle") }}</p>
       </div>
     </div>
 
     <!-- Progress by Language -->
     <section class="mt-8">
-      <h3 class="text-base font-semibold mb-4">Progress by Language</h3>
+      <h3 class="text-base font-semibold mb-4">{{ $t("localization.report.progress_by_language") }}</h3>
 
       <p v-if="languageProgress.length === 0" class="text-sm text-muted-foreground">
-        No target languages configured.
+        {{ $t("localization.report.no_targets_configured") }}
       </p>
 
       <div class="space-y-3">
@@ -160,7 +148,7 @@ function typeLabel(type: string) {
     <!-- Word Counts by Speaker -->
     <section v-if="selectedLocale && speakerStats.length > 0" class="mt-8">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-base font-semibold">Word Counts by Speaker</h3>
+        <h3 class="text-base font-semibold">{{ $t("localization.report.word_counts_by_speaker") }}</h3>
         <Select
           :model-value="selectedLocale"
           @update:model-value="(v: string | string[]) => changeLocale(Array.isArray(v) ? v[0] : v)"
@@ -184,20 +172,16 @@ function typeLabel(type: string) {
         <Table>
           <TableHeader>
             <TableRow class="bg-muted/40 hover:bg-muted/40">
-              <TableHead class="font-medium text-xs text-muted-foreground">Speaker</TableHead>
-              <TableHead class="font-medium text-xs text-muted-foreground text-right"
-                >Lines</TableHead
-              >
-              <TableHead class="font-medium text-xs text-muted-foreground text-right"
-                >Words</TableHead
-              >
+              <TableHead class="font-medium text-xs text-muted-foreground">{{ $t("localization.report.speaker_header") }}</TableHead>
+              <TableHead class="font-medium text-xs text-muted-foreground text-right">{{ $t("localization.report.lines_header") }}</TableHead>
+              <TableHead class="font-medium text-xs text-muted-foreground text-right">{{ $t("localization.report.words_header") }}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             <TableRow v-for="stat in speakerStats" :key="stat.speakerSheetId || 'none'">
               <TableCell>
-                <span v-if="stat.speakerSheetId">Speaker #{{ stat.speakerSheetId }}</span>
-                <span v-else class="text-muted-foreground italic">No speaker</span>
+                <span v-if="stat.speakerSheetId">{{ $t("localization.report.speaker_id", { id: stat.speakerSheetId }) }}</span>
+                <span v-else class="text-muted-foreground italic">{{ $t("localization.report.no_speaker") }}</span>
               </TableCell>
               <TableCell class="text-right tabular-nums">{{ stat.lineCount }}</TableCell>
               <TableCell class="text-right tabular-nums">{{ stat.wordCount }}</TableCell>
@@ -209,7 +193,7 @@ function typeLabel(type: string) {
 
     <!-- VO Progress -->
     <section v-if="selectedLocale" class="mt-8">
-      <h3 class="text-base font-semibold mb-4">Voice-Over Progress</h3>
+      <h3 class="text-base font-semibold mb-4">{{ $t("localization.report.vo_progress") }}</h3>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div
           v-for="stat in voStats"
@@ -224,7 +208,7 @@ function typeLabel(type: string) {
 
     <!-- Content Type Breakdown -->
     <section v-if="selectedLocale && typeCountEntries.length > 0" class="mt-8">
-      <h3 class="text-base font-semibold mb-4">Content Breakdown</h3>
+      <h3 class="text-base font-semibold mb-4">{{ $t("localization.report.content_breakdown") }}</h3>
       <div class="flex gap-3 flex-wrap">
         <Badge
           v-for="[type, count] in typeCountEntries"
@@ -233,7 +217,7 @@ function typeLabel(type: string) {
           class="gap-1.5 text-sm px-3 py-1"
         >
           <component :is="typeIcon(type)" class="size-3.5" />
-          {{ typeLabel(type) }}: {{ count }}
+          {{ typeKeys[type] ? $t(typeKeys[type]) : type }}: {{ count }}
         </Badge>
       </div>
     </section>

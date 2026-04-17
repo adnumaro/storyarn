@@ -105,28 +105,28 @@ const statusVariant: Record<string, string> = {
 
 <template>
   <DashboardContent
-    title="Localization"
-    subtitle="Review source strings, filter translations, and track progress for every target language."
+    :title="$t('localization.index.title')"
+    :subtitle="$t('localization.index.subtitle')"
     :is-empty="!hasTargetLanguages"
     :empty-icon="Globe"
-    empty-message="Use the sidebar to add a target language and start translating."
+    :empty-message="$t('localization.index.empty_message')"
   >
     <!-- Progress card -->
     <div v-if="progress" class="rounded-2xl border border-border bg-muted/60 p-4">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div class="space-y-1">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Progress
+            {{ $t("localization.index.progress_label") }}
           </p>
-          <h2 class="text-lg font-semibold">Final translations</h2>
+          <h2 class="text-lg font-semibold">{{ $t("localization.index.final_translations") }}</h2>
           <p class="text-sm text-muted-foreground">
-            Measure the strings that are ready to ship in the active language.
+            {{ $t("localization.index.progress_description") }}
           </p>
         </div>
         <div class="min-w-0 lg:w-72 space-y-2">
           <Progress :model-value="progressPercent" class="w-full" />
           <div class="flex items-center justify-between text-sm text-muted-foreground">
-            <span>{{ progress.final }} / {{ progress.total }} final</span>
+            <span>{{ progress.final }} / {{ progress.total }} {{ $t("localization.index.final_suffix") }}</span>
             <span class="tabular-nums">{{ progressPercent }}%</span>
           </div>
         </div>
@@ -140,15 +140,15 @@ const statusVariant: Record<string, string> = {
         @update:model-value="(v: string | string[]) => changeFilter('status', String(v))"
       >
         <SelectTrigger class="w-45">
-          <SelectValue placeholder="All statuses" />
+          <SelectValue :placeholder="$t('localization.index.all_statuses')" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All statuses</SelectItem>
-          <SelectItem value="pending">Pending</SelectItem>
-          <SelectItem value="draft">Draft</SelectItem>
-          <SelectItem value="in_progress">In progress</SelectItem>
-          <SelectItem value="review">Review</SelectItem>
-          <SelectItem value="final">Final</SelectItem>
+          <SelectItem value="all">{{ $t("localization.index.all_statuses") }}</SelectItem>
+          <SelectItem value="pending">{{ $t("localization.index.status_pending") }}</SelectItem>
+          <SelectItem value="draft">{{ $t("localization.index.status_draft") }}</SelectItem>
+          <SelectItem value="in_progress">{{ $t("localization.index.status_in_progress") }}</SelectItem>
+          <SelectItem value="review">{{ $t("localization.index.status_review") }}</SelectItem>
+          <SelectItem value="final">{{ $t("localization.index.status_final") }}</SelectItem>
         </SelectContent>
       </Select>
 
@@ -157,15 +157,15 @@ const statusVariant: Record<string, string> = {
         @update:model-value="(v: string | string[]) => changeFilter('source_type', String(v))"
       >
         <SelectTrigger class="w-45">
-          <SelectValue placeholder="All types" />
+          <SelectValue :placeholder="$t('localization.index.all_types')" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All types</SelectItem>
-          <SelectItem value="flow_node">Flow node</SelectItem>
-          <SelectItem value="block">Block</SelectItem>
-          <SelectItem value="sheet">Sheet</SelectItem>
-          <SelectItem value="flow">Flow</SelectItem>
-          <SelectItem value="scene">Scene</SelectItem>
+          <SelectItem value="all">{{ $t("localization.index.all_types") }}</SelectItem>
+          <SelectItem value="flow_node">{{ $t("localization.index.type_flow_node") }}</SelectItem>
+          <SelectItem value="block">{{ $t("localization.index.type_block") }}</SelectItem>
+          <SelectItem value="sheet">{{ $t("localization.index.type_sheet") }}</SelectItem>
+          <SelectItem value="flow">{{ $t("localization.index.type_flow") }}</SelectItem>
+          <SelectItem value="scene">{{ $t("localization.index.type_scene") }}</SelectItem>
         </SelectContent>
       </Select>
 
@@ -173,7 +173,7 @@ const statusVariant: Record<string, string> = {
         <Search class="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           v-model="localSearch"
-          placeholder="Search in source or translation..."
+          :placeholder="$t('localization.index.search_placeholder')"
           class="pl-8"
           @input="onSearchInput"
         />
@@ -186,7 +186,7 @@ const statusVariant: Record<string, string> = {
       class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border p-12 text-center"
     >
       <Search class="size-10 text-muted-foreground/50 mb-3" />
-      <p class="text-sm text-muted-foreground">No translations found matching your filters.</p>
+      <p class="text-sm text-muted-foreground">{{ $t("localization.index.no_results") }}</p>
     </div>
 
     <!-- Translation table -->
@@ -194,11 +194,11 @@ const statusVariant: Record<string, string> = {
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b bg-muted/50">
-            <th class="w-12 px-3 py-2 text-left font-medium text-muted-foreground">Type</th>
-            <th class="px-3 py-2 text-left font-medium text-muted-foreground">Source Text</th>
-            <th class="px-3 py-2 text-left font-medium text-muted-foreground">Translation</th>
-            <th class="w-28 px-3 py-2 text-left font-medium text-muted-foreground">Status</th>
-            <th class="w-16 px-3 py-2 text-left font-medium text-muted-foreground">Words</th>
+            <th class="w-12 px-3 py-2 text-left font-medium text-muted-foreground">{{ $t("localization.index.th_type") }}</th>
+            <th class="px-3 py-2 text-left font-medium text-muted-foreground">{{ $t("localization.index.th_source") }}</th>
+            <th class="px-3 py-2 text-left font-medium text-muted-foreground">{{ $t("localization.index.th_translation") }}</th>
+            <th class="w-28 px-3 py-2 text-left font-medium text-muted-foreground">{{ $t("localization.index.th_status") }}</th>
+            <th class="w-16 px-3 py-2 text-left font-medium text-muted-foreground">{{ $t("localization.index.th_words") }}</th>
             <th v-if="canEdit" class="w-20 px-3 py-2" />
           </tr>
         </thead>
@@ -224,7 +224,7 @@ const statusVariant: Record<string, string> = {
               <div v-if="text.translatedText" class="truncate text-sm">
                 {{ text.translatedText }}
               </div>
-              <div v-else class="text-sm text-muted-foreground/50 italic">Not translated</div>
+              <div v-else class="text-sm text-muted-foreground/50 italic">{{ $t("localization.index.not_translated") }}</div>
               <span
                 v-if="text.machineTranslated"
                 class="text-[10px] px-1 rounded border text-muted-foreground"
@@ -259,7 +259,7 @@ const statusVariant: Record<string, string> = {
                   v-if="hasProvider && !text.translatedText"
                   type="button"
                   class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent transition-colors"
-                  title="Translate with DeepL"
+                  :title="$t('localization.index.translate_deepl_title')"
                   @click="translateSingle(text.id)"
                 >
                   <Sparkles class="size-3.5" />
@@ -283,7 +283,7 @@ const statusVariant: Record<string, string> = {
           <ChevronLeft class="size-4" />
         </Button>
         <span class="px-3 text-sm text-muted-foreground tabular-nums">
-          Page {{ pagination.page }} of {{ totalPages }}
+          {{ $t("localization.index.page_of", { page: pagination.page, total: totalPages }) }}
         </span>
         <Button
           variant="outline"

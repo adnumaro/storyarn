@@ -37,15 +37,15 @@ function translateBatch(): void {
       <DropdownMenuTrigger as-child>
         <Button variant="ghost" size="sm" class="gap-1.5">
           <Download class="size-4" />
-          <span class="hidden xl:inline">Export</span>
+          <span class="hidden xl:inline">{{ $t("localization.toolbar.export") }}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem v-if="exportXlsxUrl" as-child>
-          <a :href="exportXlsxUrl">Excel (.xlsx)</a>
+          <a :href="exportXlsxUrl">{{ $t("localization.toolbar.excel") }}</a>
         </DropdownMenuItem>
         <DropdownMenuItem v-if="exportCsvUrl" as-child>
-          <a :href="exportCsvUrl">CSV (.csv)</a>
+          <a :href="exportCsvUrl">{{ $t("localization.toolbar.csv") }}</a>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -59,7 +59,7 @@ function translateBatch(): void {
     >
       <Languages class="size-4" />
       <span class="hidden xl:inline">{{
-        translating ? "Translating..." : "Translate All Pending"
+        translating ? $t("localization.toolbar.translating") : $t("localization.toolbar.translate_all")
       }}</span>
     </Button>
   </div>
