@@ -116,7 +116,7 @@ function isActive(layer: LayerItem): boolean {
           v-if="canEdit && editMode"
           type="button"
           class="shrink-0 size-6 inline-flex items-center justify-center rounded hover:bg-accent"
-          title="Toggle visibility"
+          :title="$t('scenes.layers.toggle_visibility')"
           @click="toggleVisibility(layer.id)"
         >
           <component
@@ -145,7 +145,7 @@ function isActive(layer: LayerItem): boolean {
             'flex items-center gap-1 flex-1 min-w-0 px-2 py-1 rounded-md cursor-pointer text-sm',
             isActive(layer) ? 'bg-accent text-accent-foreground font-medium' : 'hover:bg-accent/50',
           ]"
-          title="Set as active layer"
+          :title="$t('scenes.layers.set_active')"
           @click="setActiveLayer(layer.id)"
         >
           <span :class="['text-xs truncate', !layer.visible && 'opacity-40 line-through']">
@@ -154,7 +154,7 @@ function isActive(layer: LayerItem): boolean {
           <CloudFog
             v-if="layer.fogEnabled"
             class="size-3 opacity-50 shrink-0"
-            title="Fog of War enabled"
+            :title="$t('scenes.layers.fog_enabled')"
           />
         </button>
 
@@ -164,7 +164,7 @@ function isActive(layer: LayerItem): boolean {
             <button
               type="button"
               class="shrink-0 size-5 inline-flex items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent hover:text-foreground"
-              title="Layer options"
+              :title="$t('scenes.layers.layer_options')"
             >
               <EllipsisVertical class="size-3" />
             </button>
@@ -172,11 +172,11 @@ function isActive(layer: LayerItem): boolean {
           <DropdownMenuContent align="end">
             <DropdownMenuItem class="text-xs gap-2" @select="startRename(layer)">
               <Pencil class="size-3.5" />
-              Rename
+              {{ $t("scenes.layers.rename") }}
             </DropdownMenuItem>
             <DropdownMenuItem class="text-xs gap-2" @select="toggleFog(layer)">
               <component :is="layer.fogEnabled ? Eye : CloudFog" class="size-3.5" />
-              {{ layer.fogEnabled ? "Disable Fog" : "Enable Fog" }}
+              {{ layer.fogEnabled ? $t("scenes.layers.disable_fog") : $t("scenes.layers.enable_fog") }}
             </DropdownMenuItem>
             <DropdownMenuItem
               class="text-xs gap-2 text-destructive"
@@ -184,7 +184,7 @@ function isActive(layer: LayerItem): boolean {
               @select="requestDelete(layer)"
             >
               <Trash2 class="size-3.5" />
-              Delete
+              {{ $t("scenes.layers.delete") }}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -200,7 +200,7 @@ function isActive(layer: LayerItem): boolean {
         @click="createLayer"
       >
         <Plus class="size-3.5" />
-        New Layer
+        {{ $t("scenes.layers.new_layer") }}
       </Button>
     </div>
 
@@ -208,14 +208,14 @@ function isActive(layer: LayerItem): boolean {
     <Dialog v-model:open="deleteDialogOpen">
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete layer?</DialogTitle>
+          <DialogTitle>{{ $t("scenes.layers.delete_title") }}</DialogTitle>
           <DialogDescription>
-            This layer will be deleted. All elements on this layer will be moved to no layer.
+            {{ $t("scenes.layers.delete_description") }}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" size="sm" @click="deleteDialogOpen = false">Cancel</Button>
-          <Button variant="destructive" size="sm" @click="confirmDelete">Delete</Button>
+          <Button variant="outline" size="sm" @click="deleteDialogOpen = false">{{ $t("scenes.layers.cancel") }}</Button>
+          <Button variant="destructive" size="sm" @click="confirmDelete">{{ $t("scenes.layers.delete") }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

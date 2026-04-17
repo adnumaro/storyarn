@@ -32,7 +32,7 @@ function selectLayer(id: number | string | null) {
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <button type="button" class="toolbar-btn" :disabled="disabled" title="Layer">
+      <button type="button" class="toolbar-btn" :disabled="disabled" :title="$t('scenes.layer_picker.layer')">
         <Layers class="size-3.5" />
       </button>
     </PopoverTrigger>
@@ -44,7 +44,7 @@ function selectLayer(id: number | string | null) {
           :class="layerId === null ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'"
           @click="selectLayer(null)"
         >
-          None
+          {{ $t("scenes.layer_picker.none") }}
         </button>
         <button
           v-for="layer in layers"

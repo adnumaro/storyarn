@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { MapPin, Star, User, Zap } from "lucide-vue-next";
 import type { Component } from "vue";
-import { ref } from "vue";
+import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+
+const { t } = useI18n();
 
 interface TypeOption {
   value: string;
@@ -10,12 +13,12 @@ interface TypeOption {
   icon: Component;
 }
 
-const TYPE_OPTIONS: TypeOption[] = [
-  { value: "location", label: "Location", icon: MapPin },
-  { value: "character", label: "Character", icon: User },
-  { value: "event", label: "Event", icon: Zap },
-  { value: "custom", label: "Custom", icon: Star },
-];
+const TYPE_OPTIONS = computed<TypeOption[]>(() => [
+  { value: "location", label: t("scenes.type_picker.location"), icon: MapPin },
+  { value: "character", label: t("scenes.type_picker.character"), icon: User },
+  { value: "event", label: t("scenes.type_picker.event"), icon: Zap },
+  { value: "custom", label: t("scenes.type_picker.custom"), icon: Star },
+]);
 
 const { type = "location", disabled = false } = defineProps<{
   type?: string;
@@ -27,18 +30,18 @@ const emit = defineEmits<{
 }>();
 const open = ref(false);
 
-function selectType(t: string) {
-  emit("update:type", t);
+function selectType(value: string) {
+  emit("update:type", value);
   open.value = false;
 }
 
-const currentIcon = (): Component => TYPE_OPTIONS.find((o) => o.value === type)?.icon || MapPin;
+const currentIcon = (): Component => TYPE_OPTIONS.value.find((o) => o.value === type)?.icon || MapPin;
 </script>
 
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <button type="button" class="toolbar-btn" :disabled="disabled" title="Pin type">
+      <button type="button" class="toolbar-btn" :disabled="disabled" :title="$t('scenes.type_picker.pin_type')">
         <component :is="currentIcon()" class="size-3.5" />
       </button>
     </PopoverTrigger>

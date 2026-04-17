@@ -40,7 +40,7 @@ function close(): void {
       <div class="flex items-center justify-between px-3 py-2.5">
         <div class="flex items-center gap-2 text-sm font-medium">
           <History class="size-4" />
-          Version History
+          {{ $t("scenes.version_history.title") }}
         </div>
         <button
           type="button"

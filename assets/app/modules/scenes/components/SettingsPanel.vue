@@ -62,11 +62,11 @@ function close(): void {
     <template #header>
       <div class="flex items-center gap-2 px-3 py-2.5">
         <Settings class="size-3.5 text-muted-foreground" />
-        <span class="font-medium text-sm flex-1">Scene Settings</span>
+        <span class="font-medium text-sm flex-1">{{ $t("scenes.settings_panel.title") }}</span>
         <button
           type="button"
           class="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          title="Close panel"
+          :title="$t('scenes.settings_panel.close')"
           @click="close"
         >
           <X class="size-3" />

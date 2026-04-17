@@ -9,8 +9,8 @@ import PinPatrolSection from "./pin/PinPatrolSection.vue";
 import PinPlayableSection from "./pin/PinPlayableSection.vue";
 
 const CONDITION_EFFECTS = [
-  { id: "hide", name: "Hide" },
-  { id: "disable", name: "Disable" },
+  { id: "hide", name: "scenes.pin_properties.effect_hide" },
+  { id: "disable", name: "scenes.pin_properties.effect_disable" },
 ];
 
 interface PinElement {
@@ -93,7 +93,7 @@ function toggle(field: string, currentValue: boolean | undefined) {
   <div class="space-y-3">
     <!-- Shortcut -->
     <div v-if="element.shortcut" class="space-y-1">
-      <label class="block text-xs font-medium text-foreground/70">Shortcut</label>
+      <label class="block text-xs font-medium text-foreground/70">{{ $t("scenes.pin_properties.shortcut") }}</label>
       <div class="text-xs font-mono text-muted-foreground bg-accent/50 rounded px-2 py-1">
         {{ element.shortcut }}
       </div>
@@ -101,7 +101,7 @@ function toggle(field: string, currentValue: boolean | undefined) {
 
     <!-- Tooltip -->
     <TextField
-      label="Tooltip"
+      :label="$t('scenes.pin_properties.tooltip')"
       :value="element.tooltip || ''"
       placeholder="Hover text..."
       :disabled="!canEdit"
@@ -111,7 +111,7 @@ function toggle(field: string, currentValue: boolean | undefined) {
     <!-- Sheet -->
     <div class="pt-3 border-t border-border">
       <EntityCombobox
-        label="Sheet"
+        :label="$t('scenes.pin_properties.sheet')"
         placeholder="Select sheet..."
         :options="projectSheets"
         :selected-id="element.sheetId"
@@ -128,7 +128,7 @@ function toggle(field: string, currentValue: boolean | undefined) {
         @click="uploadIcon"
       >
         <Image class="size-3.5" />
-        Change Icon
+        {{ $t("scenes.pin_properties.change_icon") }}
       </button>
     </div>
 
@@ -159,7 +159,7 @@ function toggle(field: string, currentValue: boolean | undefined) {
     <!-- Flow -->
     <div class="pt-3 border-t border-border">
       <EntityCombobox
-        label="Flow"
+        :label="$t('scenes.pin_properties.flow')"
         placeholder="Select flow..."
         :options="projectFlows"
         :selected-id="element.flowId"
@@ -171,7 +171,7 @@ function toggle(field: string, currentValue: boolean | undefined) {
     <!-- Hidden in exploration -->
     <div class="pt-3 border-t border-border">
       <ToggleField
-        label="Hidden in exploration"
+        :label="$t('scenes.pin_properties.hidden_exploration')"
         :icon="EyeOff"
         :checked="!!element.hidden"
         :disabled="!canEdit"
@@ -182,7 +182,7 @@ function toggle(field: string, currentValue: boolean | undefined) {
     <!-- Condition -->
     <div class="pt-3 border-t border-border space-y-2">
       <div class="flex items-center justify-between">
-        <label class="text-xs font-medium text-foreground/70">Condition</label>
+        <label class="text-xs font-medium text-foreground/70">{{ $t("scenes.pin_properties.condition") }}</label>
         <div class="flex gap-0.5">
           <button
             v-for="opt in CONDITION_EFFECTS"
@@ -202,7 +202,7 @@ function toggle(field: string, currentValue: boolean | undefined) {
               })
             "
           >
-            {{ opt.name }}
+            {{ $t(opt.name) }}
           </button>
         </div>
       </div>

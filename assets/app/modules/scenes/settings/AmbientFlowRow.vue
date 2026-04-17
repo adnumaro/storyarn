@@ -7,7 +7,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@components/ui/select";
+import { useI18n } from "vue-i18n";
 import { useLive } from "@composables/useLive";
+
+const { t } = useI18n();
 
 interface AmbientFlow {
   id: number | string;
@@ -26,10 +29,10 @@ const { flow, canEdit = false } = defineProps<{
 const live = useLive();
 
 const triggerTypes = [
-  { value: "on_enter", label: "On Enter" },
-  { value: "timed", label: "Timed" },
-  { value: "on_event", label: "On Event" },
-  { value: "one_shot", label: "One Shot" },
+  { value: "on_enter", label: t("scenes.ambient_row.on_enter") },
+  { value: "timed", label: t("scenes.ambient_row.timed") },
+  { value: "on_event", label: t("scenes.ambient_row.on_event") },
+  { value: "one_shot", label: t("scenes.ambient_row.one_shot") },
 ];
 
 function reorder(direction: string) {
@@ -93,7 +96,7 @@ function triggerLabel(type: string): string {
         <button
           type="button"
           class="size-6 inline-flex items-center justify-center rounded hover:bg-accent text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-          title="Move up"
+          :title="$t('scenes.ambient_row.move_up')"
           @click="reorder('up')"
         >
           <ChevronUp class="size-3" />
@@ -101,7 +104,7 @@ function triggerLabel(type: string): string {
         <button
           type="button"
           class="size-6 inline-flex items-center justify-center rounded hover:bg-accent text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-          title="Move down"
+          :title="$t('scenes.ambient_row.move_down')"
           @click="reorder('down')"
         >
           <ChevronDown class="size-3" />
@@ -109,7 +112,7 @@ function triggerLabel(type: string): string {
         <button
           type="button"
           class="size-6 inline-flex items-center justify-center rounded transition-colors"
-          :title="flow.enabled ? 'Disable' : 'Enable'"
+          :title="flow.enabled ? $t('scenes.ambient_row.disable') : $t('scenes.ambient_row.enable')"
           @click="toggle"
         >
           <Eye v-if="flow.enabled" class="size-3.5 text-green-500" />
@@ -145,7 +148,7 @@ function triggerLabel(type: string): string {
         :value="flow.triggerConfig?.interval_ms ?? 30000"
         min="1000"
         step="1000"
-        title="Interval (ms)"
+        :title="$t('scenes.ambient_row.interval')"
         class="w-16 h-7 px-1.5 text-xs rounded-md border border-input bg-background"
         @blur="onIntervalBlur"
       />
@@ -154,7 +157,7 @@ function triggerLabel(type: string): string {
           type="text"
           :value="flow.triggerConfig?.variable_ref ?? ''"
           placeholder="Select variable..."
-          title="Variable reference"
+          :title="$t('scenes.ambient_row.variable_ref')"
           class="w-full h-7 px-2 text-xs rounded-md border border-input bg-background"
           @blur="onVariableRefBlur"
         />
@@ -163,7 +166,7 @@ function triggerLabel(type: string): string {
         type="number"
         :value="flow.priority"
         min="0"
-        title="Priority (higher = first)"
+        :title="$t('scenes.ambient_row.priority')"
         placeholder="0"
         class="w-12 h-7 px-1.5 text-xs rounded-md border border-input bg-background"
         @blur="onPriorityBlur"

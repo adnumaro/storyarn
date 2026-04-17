@@ -2,7 +2,10 @@
 import { ArrowLeft, Link, Map as MapIcon, Workflow, X } from "lucide-vue-next";
 import type { Component } from "vue";
 import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+
+const { t } = useI18n();
 
 interface TargetTypeOption {
   value: string;
@@ -10,10 +13,10 @@ interface TargetTypeOption {
   icon: Component;
 }
 
-const TARGET_TYPES: TargetTypeOption[] = [
-  { value: "flow", label: "Flow", icon: Workflow },
-  { value: "scene", label: "Scene", icon: MapIcon },
-];
+const TARGET_TYPES = computed<TargetTypeOption[]>(() => [
+  { value: "flow", label: t("scenes.target_picker.flow"), icon: Workflow },
+  { value: "scene", label: t("scenes.target_picker.scene"), icon: MapIcon },
+]);
 
 interface EntityOption {
   id: number | string;
@@ -78,7 +81,7 @@ function removeLink() {
 
 <template>
   <div class="space-y-1">
-    <label class="block text-xs font-medium text-foreground/70">Link to</label>
+    <label class="block text-xs font-medium text-foreground/70">{{ $t("scenes.target_picker.link_to") }}</label>
     <Popover
       v-model:open="open"
       @update:open="
@@ -95,7 +98,7 @@ function removeLink() {
         >
           <Link class="size-3 text-muted-foreground shrink-0" />
           <span :class="currentTargetName ? '' : 'text-muted-foreground'">
-            {{ currentTargetName || "No link" }}
+            {{ currentTargetName || $t("scenes.target_picker.no_link") }}
           </span>
         </button>
       </PopoverTrigger>
@@ -119,7 +122,7 @@ function removeLink() {
             @click="removeLink"
           >
             <X class="size-3.5" />
-            Remove link
+            {{ $t("scenes.target_picker.remove_link") }}
           </button>
         </template>
 
@@ -131,7 +134,7 @@ function removeLink() {
             @click="openTypeStep"
           >
             <ArrowLeft class="size-3" />
-            Back
+            {{ $t("scenes.target_picker.back") }}
           </button>
           <div class="max-h-48 overflow-y-auto">
             <button
@@ -148,7 +151,7 @@ function removeLink() {
               v-if="entityList.length === 0"
               class="text-xs text-muted-foreground italic px-2 py-2"
             >
-              No items
+              {{ $t("scenes.target_picker.no_items") }}
             </p>
           </div>
         </template>

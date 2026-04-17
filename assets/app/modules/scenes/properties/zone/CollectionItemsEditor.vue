@@ -62,16 +62,16 @@ function addItem() {
 <template>
   <div class="space-y-3">
     <ToggleField
-      label="Collect all"
+      :label="$t('scenes.collection_editor.collect_all')"
       :checked="collectAllEnabled"
       :disabled="!canEdit"
       @toggle="updateSetting('collect_all_enabled', !collectAllEnabled ? 'true' : 'false')"
     />
 
     <TextField
-      label="Empty message"
+      :label="$t('scenes.collection_editor.empty_message')"
       :value="emptyMessage"
-      placeholder="Nothing to collect..."
+      :placeholder="$t('scenes.collection_editor.empty_placeholder')"
       :disabled="!canEdit"
       @update="(v) => updateSetting('empty_message', v)"
     />
@@ -96,7 +96,7 @@ function addItem() {
       @click="addItem"
     >
       <Plus class="size-3" />
-      Add item
+      {{ $t("scenes.collection_editor.add_item") }}
     </button>
   </div>
 </template>

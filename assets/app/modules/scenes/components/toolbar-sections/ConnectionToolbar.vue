@@ -51,7 +51,7 @@ function toggleElementPanel(): void {
     type="text"
     :value="element.label || ''"
     class="toolbar-input w-24"
-    placeholder="Label"
+    :placeholder="$t('scenes.connection_toolbar.label')"
     :disabled="!canEdit"
     @blur="onLabelBlur"
     @keydown.enter="($event.target as HTMLInputElement).blur()"
@@ -75,7 +75,7 @@ function toggleElementPanel(): void {
     type="button"
     class="toolbar-btn px-1.5"
     :class="{ '!bg-accent': element.showLabel }"
-    title="Show Label"
+    :title="$t('scenes.connection_toolbar.show_label')"
     :disabled="!canEdit"
     @click="toggleField('show_label', element.showLabel)"
   >
@@ -87,7 +87,7 @@ function toggleElementPanel(): void {
     type="button"
     class="toolbar-btn px-1.5"
     :class="{ '!bg-accent': element.bidirectional }"
-    title="Bidirectional"
+    :title="$t('scenes.connection_toolbar.bidirectional')"
     :disabled="!canEdit"
     @click="toggleField('bidirectional', element.bidirectional)"
   >
@@ -96,7 +96,7 @@ function toggleElementPanel(): void {
   <ToolbarSeparator />
 
   <!-- Settings cog -->
-  <button type="button" class="toolbar-btn" title="Properties" @click="toggleElementPanel">
+  <button type="button" class="toolbar-btn" :title="$t('scenes.connection_toolbar.properties')" @click="toggleElementPanel">
     <Settings class="size-3.5" />
   </button>
 </template>

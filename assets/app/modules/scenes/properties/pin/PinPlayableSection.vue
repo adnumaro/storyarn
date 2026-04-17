@@ -21,7 +21,7 @@ const emit = defineEmits<{
 <template>
   <div class="space-y-2">
     <ToggleField
-      label="Playable character"
+      :label="$t('scenes.pin_playable.playable')"
       :icon="User"
       :checked="isPlayable"
       :disabled="disabled"
@@ -29,7 +29,7 @@ const emit = defineEmits<{
     />
     <ToggleField
       v-if="isPlayable"
-      label="Party leader"
+      :label="$t('scenes.pin_playable.party_leader')"
       :icon="Crown"
       :checked="isLeader"
       :disabled="disabled"

@@ -116,7 +116,7 @@ function flowFinish() {
           @click="goBack"
         >
           <CornerDownLeft class="size-3" />
-          Back
+          {{ $t("scenes.exploration.back") }}
         </button>
 
         <button
@@ -124,7 +124,7 @@ function flowFinish() {
           class="flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
           @click="flowContinue"
         >
-          Continue
+          {{ $t("scenes.exploration.continue") }}
           <ChevronRight class="size-4" />
         </button>
         <button
@@ -133,7 +133,7 @@ function flowFinish() {
           @click="flowFinish"
         >
           <MapIcon class="size-3.5" />
-          Return to map
+          {{ $t("scenes.exploration.return_to_map") }}
         </button>
       </div>
     </div>

@@ -38,7 +38,7 @@ function toggleZones() {
     <div class="flex items-center gap-1">
       <Button variant="ghost" size="sm" @click="exit">
         <ArrowLeft class="size-4" />
-        Exit
+        {{ $t("scenes.exploration.exit") }}
       </Button>
     </div>
 
@@ -52,13 +52,13 @@ function toggleZones() {
 
     <!-- Right: Save + Show zones -->
     <div class="flex items-center gap-1">
-      <Button variant="ghost" size="icon-sm" title="Save progress" @click="save">
+      <Button variant="ghost" size="icon-sm" :title="$t('scenes.exploration.save_progress')" @click="save">
         <Save class="size-4" />
       </Button>
       <Button
         :variant="showZones ? 'secondary' : 'ghost'"
         size="icon-sm"
-        title="Show zones"
+        :title="$t('scenes.exploration.show_zones')"
         @click="toggleZones"
       >
         <Scan class="size-4" />

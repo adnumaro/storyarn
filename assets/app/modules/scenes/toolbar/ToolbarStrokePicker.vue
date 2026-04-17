@@ -42,7 +42,7 @@ function onCustomColor(e: Event) {
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <button type="button" class="toolbar-btn" :disabled="disabled" title="Line style">
+      <button type="button" class="toolbar-btn" :disabled="disabled" :title="$t('scenes.stroke_picker.line_style')">
         <span class="flex items-center gap-1">
           <svg width="16" height="16" viewBox="0 0 16 16" class="text-current">
             <line
@@ -67,7 +67,7 @@ function onCustomColor(e: Event) {
         <!-- Style + Width row -->
         <div class="flex items-end gap-4">
           <div>
-            <div class="text-xs font-medium text-muted-foreground mb-1.5">Style</div>
+            <div class="text-xs font-medium text-muted-foreground mb-1.5">{{ $t("scenes.stroke_picker.style") }}</div>
             <div class="flex gap-1">
               <button
                 v-for="style in STYLES"
@@ -93,7 +93,7 @@ function onCustomColor(e: Event) {
             </div>
           </div>
           <div>
-            <div class="text-xs font-medium text-muted-foreground mb-1.5">Width</div>
+            <div class="text-xs font-medium text-muted-foreground mb-1.5">{{ $t("scenes.stroke_picker.width") }}</div>
             <div class="flex items-center gap-1">
               <button
                 type="button"
@@ -118,7 +118,7 @@ function onCustomColor(e: Event) {
 
         <!-- Color swatches -->
         <div>
-          <div class="text-xs font-medium text-muted-foreground mb-1.5">Color</div>
+          <div class="text-xs font-medium text-muted-foreground mb-1.5">{{ $t("scenes.stroke_picker.color") }}</div>
           <div class="flex flex-col gap-1">
             <div v-for="(row, i) in COLOR_SWATCHES" :key="i" class="flex gap-1">
               <button

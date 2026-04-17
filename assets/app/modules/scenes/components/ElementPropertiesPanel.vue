@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { X } from "lucide-vue-next";
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import Sidebar from "@components/layout/Sidebar.vue";
 import type { Variable } from "@modules/shared/variables";
 import { useLive } from "@composables/useLive";
 import ConnectionProperties from "../properties/ConnectionProperties.vue";
 import PinProperties from "../properties/PinProperties.vue";
 import ZoneProperties from "../properties/ZoneProperties.vue";
+
+const { t } = useI18n();
 
 interface ProjectEntity {
   id: number | string;
@@ -19,12 +22,12 @@ interface SelectedElementData {
   [key: string]: unknown;
 }
 
-const TITLES: Record<string, string> = {
-  zone: "Zone Properties",
-  pin: "Pin Properties",
-  connection: "Connection Properties",
-  annotation: "Annotation Properties",
-};
+const TITLES = computed<Record<string, string>>(() => ({
+  zone: t("scenes.element_properties.zone"),
+  pin: t("scenes.element_properties.pin"),
+  connection: t("scenes.element_properties.connection"),
+  annotation: t("scenes.element_properties.annotation"),
+}));
 
 const {
   selectedType = null,
@@ -60,12 +63,12 @@ function close() {
     <template #header>
       <div class="flex items-center gap-2 px-3 py-2.5">
         <span class="font-medium text-sm flex-1">{{
-          (selectedType && TITLES[selectedType]) || "Properties"
+          (selectedType && TITLES[selectedType]) || $t("scenes.element_properties.fallback")
         }}</span>
         <button
           type="button"
           class="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          title="Close panel"
+          :title="$t('scenes.element_properties.close')"
           @click="close"
         >
           <X class="size-3" />

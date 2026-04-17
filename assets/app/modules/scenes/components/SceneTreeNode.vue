@@ -192,7 +192,7 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
             <button
               type="button"
               class="size-5 inline-flex items-center justify-center rounded hover:bg-accent text-muted-foreground hover:text-foreground"
-              title="Add child scene"
+              :title="$t('scenes.tree.add_child')"
               @click.stop.prevent="emit('createChild', node.id)"
             >
               <FilePlus class="size-3" />
@@ -200,7 +200,7 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
             <button
               type="button"
               class="size-5 inline-flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-              title="Move to Trash"
+              :title="$t('scenes.tree.move_to_trash')"
               @click.stop.prevent="emit('requestDelete', node)"
             >
               <Trash2 class="size-3" />
@@ -212,14 +212,14 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
       <ContextMenuContent v-if="canEdit">
         <ContextMenuItem class="gap-2 text-xs" @select="emit('createChild', node.id)">
           <FilePlus class="size-3.5" />
-          Add child scene
+          {{ $t("scenes.tree.add_child") }}
         </ContextMenuItem>
         <ContextMenuItem
           class="gap-2 text-xs text-destructive"
           @select="emit('requestDelete', node)"
         >
           <Trash2 class="size-3.5" />
-          Move to Trash
+          {{ $t("scenes.tree.move_to_trash") }}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

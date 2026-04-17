@@ -58,7 +58,7 @@ function selectSheet(sheetId: number | string): void {
       </PopoverTrigger>
       <PopoverContent side="top" :side-offset="12" class="w-52 p-3">
         <div class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
-          Place a Pin
+          {{ $t("scenes.pins_dropdown.title") }}
         </div>
         <div class="flex flex-col gap-0.5">
           <button
@@ -68,8 +68,8 @@ function selectSheet(sheetId: number | string): void {
           >
             <MapPin class="size-4 mt-0.5 shrink-0" />
             <div>
-              <div class="font-medium">Free Pin</div>
-              <div class="text-xs text-muted-foreground">Place anywhere on the map</div>
+              <div class="font-medium">{{ $t("scenes.pins_dropdown.free_pin") }}</div>
+              <div class="text-xs text-muted-foreground">{{ $t("scenes.pins_dropdown.free_pin_desc") }}</div>
             </div>
           </button>
           <button
@@ -79,8 +79,8 @@ function selectSheet(sheetId: number | string): void {
           >
             <MapPin class="size-4 mt-0.5 shrink-0" />
             <div>
-              <div class="font-medium">From Sheet</div>
-              <div class="text-xs text-muted-foreground">Link a character or item</div>
+              <div class="font-medium">{{ $t("scenes.pins_dropdown.from_sheet") }}</div>
+              <div class="text-xs text-muted-foreground">{{ $t("scenes.pins_dropdown.from_sheet_desc") }}</div>
             </div>
           </button>
         </div>
@@ -95,9 +95,9 @@ function selectSheet(sheetId: number | string): void {
       </PopoverTrigger>
       <PopoverContent side="top" :side-offset="12" class="w-56 p-0">
         <Command>
-          <CommandInput placeholder="Search sheets..." />
+          <CommandInput :placeholder="$t('scenes.pins_dropdown.search_sheets')" />
           <CommandList>
-            <CommandEmpty>No sheets found</CommandEmpty>
+            <CommandEmpty>{{ $t("scenes.pins_dropdown.no_sheets") }}</CommandEmpty>
             <CommandGroup>
               <CommandItem
                 v-for="sheet in projectSheets"
@@ -116,9 +116,9 @@ function selectSheet(sheetId: number | string): void {
       </PopoverContent>
     </Popover>
     <div v-if="!pinsOpen && !sheetPickerOpen" class="dock-tooltip">
-      <div class="text-sm font-semibold mb-0.5">Pin</div>
+      <div class="text-sm font-semibold mb-0.5">{{ $t("scenes.pins_dropdown.pin_tooltip") }}</div>
       <div class="text-xs text-muted-foreground leading-relaxed">
-        Place markers on the map, optionally linked to a sheet
+        {{ $t("scenes.pins_dropdown.pin_tooltip_desc") }}
       </div>
     </div>
   </div>

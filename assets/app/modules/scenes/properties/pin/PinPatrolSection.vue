@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { Route } from "lucide-vue-next";
+import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { NumberField, SelectField, SliderField } from "@components/form-fields";
 
-const PATROL_MODES = [
-  { id: "none", name: "None" },
-  { id: "loop", name: "Loop" },
-  { id: "ping_pong", name: "Ping-pong" },
-  { id: "one_way", name: "One-way" },
-];
+const { t } = useI18n();
+
+const PATROL_MODES = computed(() => [
+  { id: "none", name: t("scenes.pin_patrol.none") },
+  { id: "loop", name: t("scenes.pin_patrol.loop") },
+  { id: "ping_pong", name: t("scenes.pin_patrol.ping_pong") },
+  { id: "one_way", name: t("scenes.pin_patrol.one_way") },
+]);
 
 const {
   patrolMode = "none",
@@ -35,7 +39,7 @@ function formatSpeed(v: number): string {
 <template>
   <div class="space-y-2">
     <SelectField
-      label="Patrol"
+      :label="$t('scenes.pin_patrol.patrol')"
       :icon="Route"
       :options="PATROL_MODES"
       :value="patrolMode || 'none'"
@@ -46,7 +50,7 @@ function formatSpeed(v: number): string {
 
     <template v-if="patrolMode && patrolMode !== 'none'">
       <SliderField
-        label="Speed"
+        :label="$t('scenes.pin_patrol.speed')"
         :value="patrolSpeed || 1.0"
         :min="0.2"
         :max="3.0"
@@ -56,7 +60,7 @@ function formatSpeed(v: number): string {
         @update="(v) => emit('updateSpeed', v)"
       />
       <NumberField
-        label="Pause at waypoints (ms)"
+        :label="$t('scenes.pin_patrol.pause_waypoints')"
         :value="patrolPauseMs || 0"
         :min="0"
         :max="30000"

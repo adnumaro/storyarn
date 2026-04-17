@@ -63,11 +63,11 @@ function getPinIcon(iconName: string): Component {
     <button
       type="button"
       class="inline-flex items-center gap-1.5 h-8 px-3 text-sm bg-surface border border-border rounded-lg shadow-md hover:bg-accent transition-colors"
-      :title="legendOpen ? 'Hide legend' : 'Show legend'"
+      :title="legendOpen ? $t('scenes.legend.hide') : $t('scenes.legend.show')"
       @click="toggleLegend"
     >
       <List class="size-4" />
-      Legend
+      {{ $t("scenes.legend.legend") }}
     </button>
 
     <!-- Expanded: popover above button -->
@@ -81,7 +81,7 @@ function getPinIcon(iconName: string): Component {
           <div
             class="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-1"
           >
-            Pins
+            {{ $t("scenes.legend.pins") }}
           </div>
           <div
             v-for="(group, i) in legendData.pinGroups"
@@ -107,7 +107,7 @@ function getPinIcon(iconName: string): Component {
           <div
             class="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-1"
           >
-            Zones
+            {{ $t("scenes.legend.zones") }}
           </div>
           <div
             v-for="(group, i) in legendData.zoneGroups"
@@ -128,7 +128,7 @@ function getPinIcon(iconName: string): Component {
           <div
             class="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-1"
           >
-            Connections
+            {{ $t("scenes.legend.connections") }}
           </div>
           <div
             v-for="(group, i) in legendData.connectionGroups"

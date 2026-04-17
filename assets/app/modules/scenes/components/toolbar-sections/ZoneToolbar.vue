@@ -82,7 +82,7 @@ function toggleElementPanel(): void {
     type="text"
     :value="element.name || ''"
     class="toolbar-input w-20"
-    placeholder="Name"
+    :placeholder="$t('scenes.zone_toolbar.name')"
     :disabled="element.locked"
     @blur="(e) => updateField('name', (e.target as HTMLInputElement).value)"
     @keydown.enter="($event.target as HTMLInputElement).blur()"
@@ -97,7 +97,7 @@ function toggleElementPanel(): void {
   >
     <template #extra>
       <div class="pt-2 border-t border-border mt-2">
-        <label class="text-xs font-medium text-foreground/70">Opacity</label>
+        <label class="text-xs font-medium text-foreground/70">{{ $t("scenes.zone_toolbar.opacity") }}</label>
         <div class="flex items-center gap-2 mt-1">
           <input
             type="range"
@@ -142,7 +142,7 @@ function toggleElementPanel(): void {
   <ToolbarSeparator />
 
   <!-- Settings cog -->
-  <button type="button" class="toolbar-btn" title="Properties" @click="toggleElementPanel">
+  <button type="button" class="toolbar-btn" :title="$t('scenes.zone_toolbar.properties')" @click="toggleElementPanel">
     <Settings class="size-3.5" />
   </button>
 </template>

@@ -46,7 +46,7 @@ function close() {
       <DialogHeader class="flex-row items-center justify-between space-y-0">
         <DialogTitle class="flex items-center gap-2">
           <PackageOpen class="size-5 opacity-60" />
-          Collection
+          {{ $t("scenes.exploration.collection_title") }}
         </DialogTitle>
         <Button variant="ghost" size="icon-sm" @click="close">
           <X class="size-4" />
@@ -57,7 +57,7 @@ function close() {
       <div v-if="items.length === 0" class="flex flex-col items-center py-6 text-center">
         <PackageOpen class="size-8 opacity-30 mb-2" />
         <p class="text-sm text-muted-foreground">
-          {{ zone?.emptyMessage || "Nothing here..." }}
+          {{ zone?.emptyMessage || $t("scenes.exploration.collection_empty") }}
         </p>
       </div>
 
@@ -69,9 +69,9 @@ function close() {
           class="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2"
         >
           <span class="text-sm">
-            {{ item.label || item._sheet_name || "Item" }}
+            {{ item.label || item._sheet_name || $t("scenes.exploration.collection_item") }}
           </span>
-          <Button size="sm" @click="takeItem(item.id)"> Take </Button>
+          <Button size="sm" @click="takeItem(item.id)"> {{ $t("scenes.exploration.take") }} </Button>
         </div>
       </div>
 
@@ -79,7 +79,7 @@ function close() {
       <div v-if="items.length > 0 && zone?.collectAllEnabled" class="flex justify-end pt-2">
         <Button variant="outline" @click="takeAll">
           <PackageCheck class="size-4" />
-          Take All
+          {{ $t("scenes.exploration.take_all") }}
         </Button>
       </div>
     </DialogContent>

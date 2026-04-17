@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { BarChart3, Compass, Footprints, PackageOpen, Zap } from "lucide-vue-next";
 import type { Component } from "vue";
-import { ref } from "vue";
+import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+
+const { t } = useI18n();
 
 interface ActionTypeOption {
   value: string;
@@ -11,38 +14,38 @@ interface ActionTypeOption {
   desc: string;
 }
 
-const ACTION_TYPES: ActionTypeOption[] = [
+const ACTION_TYPES = computed<ActionTypeOption[]>(() => [
   {
     value: "none",
-    label: "Navigation",
+    label: t("scenes.action_type_picker.navigation"),
     icon: Compass,
-    desc: "Clicking navigates or opens a link",
+    desc: t("scenes.action_type_picker.navigation_desc"),
   },
   {
     value: "walkable",
-    label: "Walkable Area",
+    label: t("scenes.action_type_picker.walkable"),
     icon: Footprints,
-    desc: "Defines traversable ground",
+    desc: t("scenes.action_type_picker.walkable_desc"),
   },
   {
     value: "instruction",
-    label: "Action",
+    label: t("scenes.action_type_picker.action"),
     icon: Zap,
-    desc: "Sets variables when triggered",
+    desc: t("scenes.action_type_picker.action_desc"),
   },
   {
     value: "display",
-    label: "Display",
+    label: t("scenes.action_type_picker.display"),
     icon: BarChart3,
-    desc: "Shows a variable value on the map",
+    desc: t("scenes.action_type_picker.display_desc"),
   },
   {
     value: "collection",
-    label: "Collection",
+    label: t("scenes.action_type_picker.collection"),
     icon: PackageOpen,
-    desc: "Opens a collection modal with items",
+    desc: t("scenes.action_type_picker.collection_desc"),
   },
-];
+]);
 
 const { actionType = "none", disabled = false } = defineProps<{
   actionType?: string;
@@ -60,13 +63,13 @@ function select(value: string) {
 }
 
 const current = (): ActionTypeOption =>
-  ACTION_TYPES.find((t) => t.value === actionType) || ACTION_TYPES[0];
+  ACTION_TYPES.value.find((o) => o.value === actionType) || ACTION_TYPES.value[0];
 </script>
 
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <button type="button" class="toolbar-btn gap-1" :disabled="disabled" title="Action type">
+      <button type="button" class="toolbar-btn gap-1" :disabled="disabled" :title="$t('scenes.action_type_picker.tooltip')">
         <component :is="current().icon" class="size-3.5" />
       </button>
     </PopoverTrigger>

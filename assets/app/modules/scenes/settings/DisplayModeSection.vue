@@ -30,7 +30,7 @@ function onZoomBlur(e: FocusEvent) {
   <div class="pt-2 border-t border-border space-y-2">
     <label class="text-xs font-medium text-foreground inline-flex items-center gap-1">
       <Monitor class="size-3" />
-      Exploration Display
+      {{ $t("scenes.settings.exploration_display") }}
     </label>
     <div class="flex gap-1">
       <button
@@ -44,7 +44,7 @@ function onZoomBlur(e: FocusEvent) {
         @click="setMode('fit')"
       >
         <Maximize class="size-3" />
-        Fit
+        {{ $t("scenes.settings.fit") }}
       </button>
       <button
         type="button"
@@ -57,17 +57,17 @@ function onZoomBlur(e: FocusEvent) {
         @click="setMode('scaled')"
       >
         <Scan class="size-3" />
-        Scaled
+        {{ $t("scenes.settings.scaled") }}
       </button>
     </div>
     <p class="text-xs text-muted-foreground/60">
       <template v-if="displayMode === 'scaled'">
-        Renders at native pixel size with CRPG-style camera scrolling.
+        {{ $t("scenes.settings.scaled_desc") }}
       </template>
-      <template v-else> Scales to fit the viewport. </template>
+      <template v-else> {{ $t("scenes.settings.fit_desc") }} </template>
     </p>
     <div v-if="displayMode === 'scaled'" class="flex items-center gap-2 pt-1">
-      <label class="text-xs text-muted-foreground whitespace-nowrap">Zoom</label>
+      <label class="text-xs text-muted-foreground whitespace-nowrap">{{ $t("scenes.settings.zoom") }}</label>
       <input
         type="number"
         min="0.5"

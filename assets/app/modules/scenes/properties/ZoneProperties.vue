@@ -10,8 +10,8 @@ import CollectionItemsEditor from "./zone/CollectionItemsEditor.vue";
 import TargetPicker from "./zone/TargetPicker.vue";
 
 const CONDITION_EFFECTS = [
-  { id: "hide", name: "Hide" },
-  { id: "disable", name: "Disable" },
+  { id: "hide", name: "scenes.pin_properties.effect_hide" },
+  { id: "disable", name: "scenes.pin_properties.effect_disable" },
 ];
 
 interface ZoneActionData {
@@ -122,7 +122,7 @@ function selectDisplayVar(varRef: string | number | null) {
     <!-- Walkable (only if action_type is not "walkable") -->
     <ToggleField
       v-if="element.actionType !== 'walkable'"
-      label="Walkable area"
+      :label="$t('scenes.zone_properties.walkable')"
       :icon="Footprints"
       :checked="!!element.isWalkable"
       :disabled="!canEdit"
@@ -131,7 +131,7 @@ function selectDisplayVar(varRef: string | number | null) {
 
     <!-- Shortcut -->
     <div v-if="element.shortcut" class="space-y-1">
-      <label class="block text-xs font-medium text-foreground/70">Shortcut</label>
+      <label class="block text-xs font-medium text-foreground/70">{{ $t("scenes.zone_properties.shortcut") }}</label>
       <div class="text-xs font-mono text-muted-foreground bg-accent/50 rounded px-2 py-1">
         {{ element.shortcut }}
       </div>
@@ -140,7 +140,7 @@ function selectDisplayVar(varRef: string | number | null) {
     <!-- Hidden in exploration -->
     <div class="pt-3 border-t border-border">
       <ToggleField
-        label="Hidden in exploration"
+        :label="$t('scenes.zone_properties.hidden_exploration')"
         :icon="EyeOff"
         :checked="!!element.hidden"
         :disabled="!canEdit"
@@ -151,7 +151,7 @@ function selectDisplayVar(varRef: string | number | null) {
     <!-- Tooltip -->
     <div class="pt-3 border-t border-border">
       <TextField
-        label="Tooltip"
+        :label="$t('scenes.zone_properties.tooltip')"
         :value="element.tooltip || ''"
         placeholder="Hover text..."
         :disabled="!canEdit"
@@ -173,7 +173,7 @@ function selectDisplayVar(varRef: string | number | null) {
 
     <!-- Action-type-specific section -->
     <div v-if="element.actionType === 'instruction'" class="pt-3 border-t border-border space-y-1">
-      <label class="block text-xs font-medium text-foreground/70">Instruction</label>
+      <label class="block text-xs font-medium text-foreground/70">{{ $t("scenes.zone_properties.instruction") }}</label>
       <ExpressionEditor
         :assignments="element.actionData?.assignments || []"
         :variables="projectVariables"
@@ -185,7 +185,7 @@ function selectDisplayVar(varRef: string | number | null) {
 
     <div v-if="element.actionType === 'display'" class="pt-3 border-t border-border">
       <EntityCombobox
-        label="Display variable"
+        :label="$t('scenes.zone_properties.display_variable')"
         placeholder="Select variable..."
         :options="
           projectVariables.map((v) => ({
@@ -200,7 +200,7 @@ function selectDisplayVar(varRef: string | number | null) {
     </div>
 
     <div v-if="element.actionType === 'collection'" class="pt-3 border-t border-border space-y-1">
-      <label class="block text-xs font-medium text-foreground/70">Collection</label>
+      <label class="block text-xs font-medium text-foreground/70">{{ $t("scenes.zone_properties.collection") }}</label>
       <CollectionItemsEditor
         :zone-id="element.id"
         :action-data="element.actionData || {}"
@@ -213,7 +213,7 @@ function selectDisplayVar(varRef: string | number | null) {
     <!-- Condition -->
     <div class="pt-3 border-t border-border space-y-2">
       <div class="flex items-center justify-between">
-        <label class="text-xs font-medium text-foreground/70">Condition</label>
+        <label class="text-xs font-medium text-foreground/70">{{ $t("scenes.zone_properties.condition") }}</label>
         <div class="flex gap-0.5">
           <button
             v-for="opt in CONDITION_EFFECTS"
@@ -233,7 +233,7 @@ function selectDisplayVar(varRef: string | number | null) {
               })
             "
           >
-            {{ opt.name }}
+            {{ $t(opt.name) }}
           </button>
         </div>
       </div>

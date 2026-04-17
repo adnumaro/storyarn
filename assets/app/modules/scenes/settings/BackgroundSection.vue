@@ -21,7 +21,7 @@ function removeBackground() {
 
 <template>
   <div>
-    <label class="text-xs font-medium text-foreground"> Background Image </label>
+    <label class="text-xs font-medium text-foreground"> {{ $t("scenes.settings.background") }} </label>
     <div v-if="backgroundUrl" class="space-y-2 mt-1.5">
       <div class="rounded border border-border overflow-hidden">
         <img :src="backgroundUrl" alt="Scene background" class="w-full h-32 object-cover" />
@@ -33,7 +33,7 @@ function removeBackground() {
           @click="triggerUpload"
         >
           <RefreshCw class="size-3" />
-          Change
+          {{ $t("scenes.settings.bg_change") }}
         </button>
         <button
           type="button"
@@ -41,7 +41,7 @@ function removeBackground() {
           @click="removeBackground"
         >
           <Trash2 class="size-3" />
-          Remove
+          {{ $t("scenes.settings.bg_remove") }}
         </button>
       </div>
     </div>
@@ -52,7 +52,7 @@ function removeBackground() {
       @click="triggerUpload"
     >
       <ImagePlus class="size-4" />
-      Upload Background
+      {{ $t("scenes.settings.bg_upload") }}
     </button>
   </div>
 </template>

@@ -56,11 +56,11 @@ function selectFlow(flowId: number) {
   <div class="pt-2 border-t border-border space-y-2">
     <label class="text-xs font-medium text-foreground inline-flex items-center gap-1">
       <Wind class="size-3" />
-      Ambient Flows
+      {{ $t("scenes.settings.ambient_flows") }}
     </label>
 
     <div v-if="ambientFlows.length === 0" class="text-xs text-muted-foreground/60">
-      No ambient flows linked to this scene.
+      {{ $t("scenes.settings.no_ambient") }}
     </div>
 
     <AmbientFlowRow v-for="af in ambientFlows" :key="af.id" :flow="af" :can-edit="canEdit" />
@@ -74,14 +74,14 @@ function selectFlow(flowId: number) {
             class="inline-flex items-center gap-1 h-7 px-2 text-xs rounded-md hover:bg-accent transition-colors"
           >
             <Plus class="size-3 text-primary" />
-            <span class="text-primary">Add ambient flow...</span>
+            <span class="text-primary">{{ $t("scenes.settings.add_ambient") }}</span>
           </button>
         </PopoverTrigger>
         <PopoverContent class="w-56 p-0" align="start">
           <Command>
-            <CommandInput placeholder="Search flows..." class="h-8 text-xs" />
+            <CommandInput :placeholder="$t('scenes.settings.search_flows')" class="h-8 text-xs" />
             <CommandList class="max-h-48">
-              <CommandEmpty class="text-xs py-3">No flows found.</CommandEmpty>
+              <CommandEmpty class="text-xs py-3">{{ $t("scenes.settings.no_flows") }}</CommandEmpty>
               <CommandGroup>
                 <CommandItem
                   v-for="flow in availableFlows"

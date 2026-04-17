@@ -1,0 +1,299 @@
+{
+  "scenes": {
+    "dashboard": {
+      "title": "Escenas",
+      "subtitle": "Crea escenas para visualizar tu mundo",
+      "empty": "Aún no hay escenas. Crea tu primera escena para empezar.",
+      "all_scenes": "Todas las escenas",
+      "delete": "Eliminar",
+      "name": "Nombre",
+      "zones": "Zonas",
+      "pins": "Pines",
+      "connections": "Conexiones",
+      "backgrounds": "Fondos",
+      "modified": "Modificado"
+    },
+    "tree": {
+      "filter": "Filtrar escenas...",
+      "empty": "Aún no hay escenas",
+      "new_scene": "Nueva escena",
+      "delete_title": "¿Eliminar escena?",
+      "cancel": "Cancelar",
+      "delete": "Eliminar",
+      "add_child": "Añadir escena hija",
+      "move_to_trash": "Mover a la papelera"
+    },
+    "toolbar": {
+      "scene_name": "Nombre de la escena"
+    },
+    "actions": {
+      "scene_settings": "Ajustes de la escena",
+      "export": "Exportar",
+      "export_png": "Exportar como PNG",
+      "export_svg": "Exportar como SVG",
+      "switch_view": "Cambiar a modo vista",
+      "switch_edit": "Cambiar a modo edición"
+    },
+    "collab_toast": {
+      "pin_created": "añadió un pin",
+      "pin_updated": "actualizó un pin",
+      "pin_deleted": "eliminó un pin",
+      "zone_created": "añadió una zona",
+      "zone_updated": "actualizó una zona",
+      "zone_deleted": "eliminó una zona",
+      "connection_created": "añadió una conexión",
+      "connection_updated": "actualizó una conexión",
+      "connection_deleted": "eliminó una conexión",
+      "annotation_created": "añadió una anotación",
+      "annotation_updated": "actualizó una anotación",
+      "annotation_deleted": "eliminó una anotación",
+      "layer_created": "añadió una capa",
+      "layer_updated": "actualizó una capa",
+      "layer_deleted": "eliminó una capa",
+      "scene_updated": "actualizó la escena",
+      "scene_settings_changed": "cambió los ajustes de la escena"
+    },
+    "element_properties": {
+      "zone": "Propiedades de zona",
+      "pin": "Propiedades de pin",
+      "connection": "Propiedades de conexión",
+      "annotation": "Propiedades de anotación",
+      "fallback": "Propiedades",
+      "close": "Cerrar panel"
+    },
+    "layers": {
+      "hide_layers": "Ocultar capas",
+      "show_layers": "Mostrar capas",
+      "layers": "Capas",
+      "toggle_visibility": "Alternar visibilidad",
+      "set_active": "Establecer como capa activa",
+      "fog_enabled": "Niebla de guerra activada",
+      "layer_options": "Opciones de capa",
+      "rename": "Renombrar",
+      "enable_fog": "Activar niebla",
+      "disable_fog": "Desactivar niebla",
+      "delete": "Eliminar",
+      "new_layer": "Nueva capa",
+      "delete_title": "¿Eliminar capa?",
+      "delete_description": "Se eliminará esta capa. Todos los elementos de esta capa se moverán a ninguna capa.",
+      "cancel": "Cancelar"
+    },
+    "legend": {
+      "hide": "Ocultar leyenda",
+      "show": "Mostrar leyenda",
+      "legend": "Leyenda",
+      "pins": "Pines",
+      "zones": "Zonas",
+      "connections": "Conexiones"
+    },
+    "search": {
+      "placeholder": "Buscar elementos...",
+      "all": "Todos",
+      "pins": "Pines",
+      "zones": "Zonas",
+      "notes": "Notas",
+      "lines": "Líneas",
+      "no_results": "Sin resultados"
+    },
+    "settings_panel": {
+      "title": "Ajustes de la escena",
+      "close": "Cerrar panel"
+    },
+    "version_history": {
+      "title": "Historial de versiones"
+    },
+    "dock": {
+      "select": "Seleccionar",
+      "select_desc": "Selecciona elementos en el lienzo",
+      "pan": "Mover",
+      "pan_desc": "Desplázate por el mapa",
+      "annotation": "Anotación",
+      "annotation_desc": "Añade notas de texto directamente en el lienzo",
+      "connector": "Conector",
+      "connector_desc": "Dibuja conexiones entre dos pines. Haz clic en el pin origen y luego en el destino.",
+      "ruler": "Regla",
+      "ruler_desc": "Mide distancias entre dos puntos del mapa",
+      "version_history": "Historial de versiones",
+      "version_history_desc": "Ver y gestionar el historial de versiones",
+      "play": "Reproducir",
+      "play_desc": "Reproducir modo exploración",
+      "place_pin": "Haz clic en el lienzo para colocar"
+    },
+    "pins_dropdown": {
+      "title": "Colocar un pin",
+      "free_pin": "Pin libre",
+      "free_pin_desc": "Coloca en cualquier lugar del mapa",
+      "from_sheet": "Desde ficha",
+      "from_sheet_desc": "Vincula un personaje o elemento",
+      "search_sheets": "Buscar fichas...",
+      "no_sheets": "No se encontraron fichas",
+      "pin_tooltip": "Pin",
+      "pin_tooltip_desc": "Coloca marcadores en el mapa, opcionalmente vinculados a una ficha"
+    },
+    "zones_dropdown": {
+      "title": "Formas de zona",
+      "rectangle": "Rectángulo",
+      "triangle": "Triángulo",
+      "circle": "Círculo",
+      "freeform": "Forma libre",
+      "zones_tooltip": "Zonas",
+      "zones_tooltip_desc": "Dibuja formas para definir áreas en el mapa"
+    },
+    "connection_toolbar": {
+      "label": "Etiqueta",
+      "show_label": "Mostrar etiqueta",
+      "bidirectional": "Bidireccional",
+      "properties": "Propiedades"
+    },
+    "pin_toolbar": {
+      "label": "Etiqueta",
+      "opacity": "Opacidad",
+      "properties": "Propiedades"
+    },
+    "zone_toolbar": {
+      "name": "Nombre",
+      "opacity": "Opacidad",
+      "properties": "Propiedades"
+    },
+    "exploration": {
+      "exit": "Salir",
+      "save_progress": "Guardar progreso",
+      "show_zones": "Mostrar zonas",
+      "collection_title": "Colección",
+      "collection_empty": "Nada aquí...",
+      "collection_item": "Elemento",
+      "take": "Tomar",
+      "take_all": "Tomar todo",
+      "back": "Atrás",
+      "continue": "Continuar",
+      "return_to_map": "Volver al mapa",
+      "saved_progress_title": "Progreso guardado encontrado",
+      "saved_progress_desc": "Tienes una sesión de exploración guardada.",
+      "scene_label": "Escena:",
+      "last_played": "Última vez:",
+      "new_game": "Nueva partida"
+    },
+    "connection_properties": {
+      "no_waypoints": "Sin puntos de ruta",
+      "straighten": "Enderezar camino"
+    },
+    "pin_properties": {
+      "shortcut": "Atajo",
+      "tooltip": "Tooltip",
+      "sheet": "Ficha",
+      "change_icon": "Cambiar icono",
+      "flow": "Flujo",
+      "hidden_exploration": "Oculto en exploración",
+      "condition": "Condición",
+      "effect_hide": "Ocultar",
+      "effect_disable": "Desactivar"
+    },
+    "zone_properties": {
+      "walkable": "Área transitable",
+      "shortcut": "Atajo",
+      "hidden_exploration": "Oculto en exploración",
+      "tooltip": "Tooltip",
+      "link_to": "Vincular a",
+      "instruction": "Instrucción",
+      "display_variable": "Mostrar variable",
+      "collection": "Colección",
+      "condition": "Condición"
+    },
+    "pin_patrol": {
+      "patrol": "Patrulla",
+      "none": "Ninguno",
+      "loop": "Bucle",
+      "ping_pong": "Ping-pong",
+      "one_way": "Solo ida",
+      "speed": "Velocidad",
+      "pause_waypoints": "Pausa en puntos de ruta (ms)"
+    },
+    "pin_playable": {
+      "playable": "Personaje jugable",
+      "party_leader": "Líder del grupo"
+    },
+    "collection_editor": {
+      "collect_all": "Recoger todo",
+      "empty_message": "Mensaje vacío",
+      "empty_placeholder": "Nada que recoger...",
+      "add_item": "Añadir elemento"
+    },
+    "target_picker": {
+      "link_to": "Vincular a",
+      "no_link": "Sin vínculo",
+      "flow": "Flujo",
+      "scene": "Escena",
+      "back": "Atrás",
+      "remove_link": "Eliminar vínculo",
+      "no_items": "Sin elementos"
+    },
+    "settings": {
+      "ambient_flows": "Flujos ambientales",
+      "no_ambient": "No hay flujos ambientales vinculados a esta escena.",
+      "add_ambient": "Añadir flujo ambiental...",
+      "search_flows": "Buscar flujos...",
+      "no_flows": "No se encontraron flujos.",
+      "background": "Imagen de fondo",
+      "bg_change": "Cambiar",
+      "bg_remove": "Eliminar",
+      "bg_upload": "Subir fondo",
+      "dimensions": "Dimensiones",
+      "exploration_display": "Visualización de exploración",
+      "fit": "Ajustar",
+      "scaled": "Escalado",
+      "scaled_desc": "Renderiza a tamaño nativo de píxel con desplazamiento de cámara estilo CRPG.",
+      "fit_desc": "Escala para ajustarse al viewport.",
+      "zoom": "Zoom",
+      "scene_scale": "Escala de la escena",
+      "total_width": "Ancho total",
+      "unit": "Unidad"
+    },
+    "ambient_row": {
+      "on_enter": "Al entrar",
+      "timed": "Temporizado",
+      "on_event": "Al evento",
+      "one_shot": "Una vez",
+      "move_up": "Subir",
+      "move_down": "Bajar",
+      "disable": "Desactivar",
+      "enable": "Activar",
+      "interval": "Intervalo (ms)",
+      "variable_ref": "Referencia de variable",
+      "priority": "Prioridad (mayor = primero)"
+    },
+    "action_type_picker": {
+      "navigation": "Navegación",
+      "navigation_desc": "Al hacer clic navega o abre un enlace",
+      "walkable": "Área transitable",
+      "walkable_desc": "Define el suelo transitable",
+      "action": "Acción",
+      "action_desc": "Establece variables al activarse",
+      "display": "Mostrar",
+      "display_desc": "Muestra el valor de una variable en el mapa",
+      "collection": "Colección",
+      "collection_desc": "Abre un modal de colección con elementos",
+      "tooltip": "Tipo de acción"
+    },
+    "layer_picker": {
+      "layer": "Capa",
+      "none": "Ninguna"
+    },
+    "lock_toggle": {
+      "unlock": "Desbloquear",
+      "lock": "Bloquear"
+    },
+    "stroke_picker": {
+      "line_style": "Estilo de línea",
+      "style": "Estilo",
+      "width": "Ancho",
+      "color": "Color"
+    },
+    "type_picker": {
+      "pin_type": "Tipo de pin",
+      "location": "Ubicación",
+      "character": "Personaje",
+      "event": "Evento",
+      "custom": "Personalizado"
+    }
+  }
+}

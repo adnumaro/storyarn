@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import type { Component } from "vue";
 import { Cable, MapPin, Pentagon, Search, StickyNote, X } from "lucide-vue-next";
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useLive } from "@composables/useLive";
+
+const { t } = useI18n();
 
 interface SearchResult {
   id: number | string;
@@ -35,13 +38,13 @@ watch(
   },
 );
 
-const filters: FilterOption[] = [
-  { label: "All", value: "all" },
-  { label: "Pins", value: "pin" },
-  { label: "Zones", value: "zone" },
-  { label: "Notes", value: "annotation" },
-  { label: "Lines", value: "connection" },
-];
+const filters = computed<FilterOption[]>(() => [
+  { label: t("scenes.search.all"), value: "all" },
+  { label: t("scenes.search.pins"), value: "pin" },
+  { label: t("scenes.search.zones"), value: "zone" },
+  { label: t("scenes.search.notes"), value: "annotation" },
+  { label: t("scenes.search.lines"), value: "connection" },
+]);
 
 const resultIcons: Record<string, Component> = {
   pin: MapPin,
@@ -89,7 +92,7 @@ function getIcon(type: string): Component {
         <input
           v-model="localQuery"
           type="text"
-          placeholder="Search elements..."
+          :placeholder="$t('scenes.search.placeholder')"
           autocomplete="off"
           class="flex-1 bg-transparent text-sm border-none outline-none placeholder:text-muted-foreground/40 p-0 w-40 h-8"
           @input="onInput"
@@ -145,7 +148,7 @@ function getIcon(type: string): Component {
 
       <!-- No results -->
       <div v-else class="px-3 py-2 text-xs text-muted-foreground/60 border-t border-border">
-        No results found
+        {{ $t("scenes.search.no_results") }}
       </div>
     </div>
   </div>

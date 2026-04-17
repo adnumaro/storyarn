@@ -256,7 +256,7 @@ function handleDrop(e: any): void {
   <div class="space-y-2">
     <!-- Search -->
     <div class="px-1">
-      <Input v-model="searchQuery" type="search" placeholder="Filter scenes..." class="text-xs" />
+      <Input v-model="searchQuery" type="search" :placeholder="$t('scenes.tree.filter')" class="text-xs" />
     </div>
 
     <!-- Empty state -->
@@ -264,7 +264,7 @@ function handleDrop(e: any): void {
       v-if="filteredTree.length === 0"
       class="px-2 py-4 text-xs text-muted-foreground text-center"
     >
-      No scenes yet
+      {{ $t("scenes.tree.empty") }}
     </div>
 
     <!-- Tree -->
@@ -297,7 +297,7 @@ function handleDrop(e: any): void {
         @click="createScene"
       >
         <Plus class="size-3.5" />
-        New Scene
+        {{ $t("scenes.tree.new_scene") }}
       </Button>
     </div>
 
@@ -305,14 +305,14 @@ function handleDrop(e: any): void {
     <Dialog v-model:open="deleteDialogOpen">
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete scene?</DialogTitle>
+          <DialogTitle>{{ $t("scenes.tree.delete_title") }}</DialogTitle>
           <DialogDescription>
             Are you sure you want to delete "{{ pendingDeleteScene?.name }}"?
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" size="sm" @click="deleteDialogOpen = false">Cancel</Button>
-          <Button variant="destructive" size="sm" @click="confirmDelete">Delete</Button>
+          <Button variant="outline" size="sm" @click="deleteDialogOpen = false">{{ $t("scenes.tree.cancel") }}</Button>
+          <Button variant="destructive" size="sm" @click="confirmDelete">{{ $t("scenes.tree.delete") }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

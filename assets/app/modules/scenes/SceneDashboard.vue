@@ -31,9 +31,12 @@ import {
   TableHeader,
   TableRow,
 } from "@components/ui/table";
+import { useI18n } from "vue-i18n";
 import { useLive } from "@composables/useLive";
 import { formatRelativeTime } from "@utils/date-utils";
 import DashboardContent from "@components/layout/DashboardContent.vue";
+
+const { t } = useI18n();
 
 interface StatCard {
   icon: Component;
@@ -129,38 +132,38 @@ const statCards = computed<StatCard[]>(() => {
   return [
     {
       icon: MapIcon,
-      label: "Scenes",
+      label: t("scenes.dashboard.title"),
       value: stats.scene_count,
       color: "text-primary",
     },
     {
       icon: Pentagon,
-      label: "Zones",
+      label: t("scenes.dashboard.zones"),
       value: stats.zone_count,
       color: "text-blue-400",
     },
     {
       icon: MapPin,
-      label: "Pins",
+      label: t("scenes.dashboard.pins"),
       value: stats.pin_count,
       color: "text-violet-400",
     },
     {
       icon: Image,
-      label: "Backgrounds",
+      label: t("scenes.dashboard.backgrounds"),
       value: stats.background_count,
       color: "text-emerald-400",
     },
   ];
 });
 
-const columns: TableColumn[] = [
-  { key: "name", label: "Name", align: "left" },
-  { key: "zone_count", label: "Zones", align: "right" },
-  { key: "pin_count", label: "Pins", align: "right" },
-  { key: "connection_count", label: "Connections", align: "right" },
-  { key: "updated_at", label: "Modified", align: "right" },
-];
+const columns = computed<TableColumn[]>(() => [
+  { key: "name", label: t("scenes.dashboard.name"), align: "left" },
+  { key: "zone_count", label: t("scenes.dashboard.zones"), align: "right" },
+  { key: "pin_count", label: t("scenes.dashboard.pins"), align: "right" },
+  { key: "connection_count", label: t("scenes.dashboard.connections"), align: "right" },
+  { key: "updated_at", label: t("scenes.dashboard.modified"), align: "right" },
+]);
 
 const pages = computed(() => {
   const result = [];
@@ -173,12 +176,12 @@ const pages = computed(() => {
 
 <template>
   <DashboardContent
-    title="Scenes"
-    subtitle="Create scenes to visualize your world"
+    :title="$t('scenes.dashboard.title')"
+    :subtitle="$t('scenes.dashboard.subtitle')"
     :loading="!stats"
     :is-empty="pagination.total === 0 && !stats"
     :empty-icon="MapIcon"
-    empty-message="No scenes yet. Create your first scene to get started."
+    :empty-message="$t('scenes.dashboard.empty')"
   >
     <!-- Stats row -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -197,7 +200,7 @@ const pages = computed(() => {
 
     <!-- Table section -->
     <div class="space-y-2">
-      <h2 class="text-sm font-medium">All Scenes</h2>
+      <h2 class="text-sm font-medium">{{ $t("scenes.dashboard.all_scenes") }}</h2>
       <div class="rounded-lg border border-border bg-surface overflow-auto max-h-[60vh]">
         <Table>
           <TableHeader>
@@ -254,7 +257,7 @@ const pages = computed(() => {
                       @select="requestDelete(row.id)"
                     >
                       <Trash2 class="size-3.5" />
-                      Delete
+                      {{ $t("scenes.dashboard.delete") }}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

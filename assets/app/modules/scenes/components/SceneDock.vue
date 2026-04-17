@@ -68,16 +68,16 @@ const playUrl = `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${s
       <DockToolButton
         :icon="MousePointer2"
         :active="activeTool === 'select'"
-        tooltip-title="Select"
-        tooltip-description="Select elements on the canvas"
+        :tooltip-title="$t('scenes.dock.select')"
+        :tooltip-description="$t('scenes.dock.select_desc')"
         @click="setTool('select')"
       />
 
       <DockToolButton
         :icon="Hand"
         :active="activeTool === 'pan'"
-        tooltip-title="Pan"
-        tooltip-description="Pan and scroll around the map"
+        :tooltip-title="$t('scenes.dock.pan')"
+        :tooltip-description="$t('scenes.dock.pan_desc')"
         @click="setTool('pan')"
       />
 
@@ -98,8 +98,8 @@ const playUrl = `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${s
       <DockToolButton
         :icon="StickyNote"
         :active="activeTool === 'annotation'"
-        tooltip-title="Annotation"
-        tooltip-description="Add text notes directly on the canvas"
+        :tooltip-title="$t('scenes.dock.annotation')"
+        :tooltip-description="$t('scenes.dock.annotation_desc')"
         @click="setTool('annotation')"
       />
 
@@ -110,8 +110,8 @@ const playUrl = `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${s
       <DockToolButton
         :icon="Cable"
         :active="activeTool === 'connector'"
-        tooltip-title="Connector"
-        tooltip-description="Draw connections between two pins. Click the source pin, then the target."
+        :tooltip-title="$t('scenes.dock.connector')"
+        :tooltip-description="$t('scenes.dock.connector_desc')"
         @click="setTool('connector')"
       />
 
@@ -122,8 +122,8 @@ const playUrl = `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes/${s
       <DockToolButton
         :icon="Ruler"
         :active="activeTool === 'ruler'"
-        tooltip-title="Ruler"
-        tooltip-description="Measure distances between two points on the map"
+        :tooltip-title="$t('scenes.dock.ruler')"
+        :tooltip-description="$t('scenes.dock.ruler_desc')"
         @click="setTool('ruler')"
       />
 

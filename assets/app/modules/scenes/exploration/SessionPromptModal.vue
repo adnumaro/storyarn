@@ -38,27 +38,27 @@ function newSession() {
       <DialogHeader>
         <DialogTitle class="flex items-center gap-2">
           <Bookmark class="size-5 opacity-60" />
-          Saved Progress Found
+          {{ $t("scenes.exploration.saved_progress_title") }}
         </DialogTitle>
-        <DialogDescription> You have a saved exploration session. </DialogDescription>
+        <DialogDescription> {{ $t("scenes.exploration.saved_progress_desc") }} </DialogDescription>
       </DialogHeader>
 
       <div v-if="pendingSession" class="space-y-1 text-sm">
         <div v-if="pendingSession.sceneName">
-          <span class="opacity-50">Scene:</span>
+          <span class="opacity-50">{{ $t("scenes.exploration.scene_label") }}</span>
           <span class="font-medium ml-1">{{ pendingSession.sceneName }}</span>
         </div>
-        <div class="text-xs opacity-40">Last played: {{ pendingSession.updatedAt }}</div>
+        <div class="text-xs opacity-40">{{ $t("scenes.exploration.last_played") }} {{ pendingSession.updatedAt }}</div>
       </div>
 
       <DialogFooter class="flex-row gap-2 sm:justify-start">
         <Button @click="continueSession">
           <Play class="size-4" />
-          Continue
+          {{ $t("scenes.exploration.continue") }}
         </Button>
         <Button variant="outline" @click="newSession">
           <RotateCcw class="size-4" />
-          New Game
+          {{ $t("scenes.exploration.new_game") }}
         </Button>
       </DialogFooter>
     </DialogContent>

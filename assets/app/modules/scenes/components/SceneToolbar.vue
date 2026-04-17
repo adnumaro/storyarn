@@ -23,7 +23,7 @@ function saveName(name: string): void {
   <div class="flex items-center gap-1.5 surface-panel px-3 h-full">
     <EditableText
       :model-value="sceneName"
-      placeholder="Scene name"
+      :placeholder="$t('scenes.toolbar.scene_name')"
       tag="span"
       class="text-sm font-medium max-w-[200px] truncate"
       :disabled="!canEdit"

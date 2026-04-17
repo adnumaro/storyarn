@@ -18,8 +18,8 @@ const emit = defineEmits<{
   <!-- Version History -->
   <DockToolButton
     :icon="History"
-    tooltip-title="Version History"
-    tooltip-description="View and manage version history"
+    :tooltip-title="$t('scenes.dock.version_history')"
+    :tooltip-description="$t('scenes.dock.version_history_desc')"
     @click="emit('open-versions')"
   />
 
@@ -28,7 +28,7 @@ const emit = defineEmits<{
     :icon="Play"
     tag="a"
     :href="playUrl"
-    tooltip-title="Play"
-    tooltip-description="Play exploration mode"
+    :tooltip-title="$t('scenes.dock.play')"
+    :tooltip-description="$t('scenes.dock.play_desc')"
   />
 </template>

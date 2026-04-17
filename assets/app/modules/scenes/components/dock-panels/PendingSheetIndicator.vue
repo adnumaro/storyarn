@@ -21,7 +21,7 @@ const emit = defineEmits<{
   >
     <MapPin class="size-3.5" />
     <span>
-      Click on canvas to place <strong>{{ pendingSheet.name }}</strong>
+      {{ $t("scenes.dock.place_pin") }} <strong>{{ pendingSheet.name }}</strong>
     </span>
     <button type="button" class="dock-btn size-5! rounded-md!" @click="emit('cancel')">
       <X class="size-3" />

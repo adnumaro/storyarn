@@ -39,7 +39,7 @@ function openSettings(): void {
       variant="ghost"
       size="icon-sm"
       class="size-7"
-      title="Scene settings"
+      :title="$t('scenes.actions.scene_settings')"
       @click="openSettings"
     >
       <Settings class="size-3.5" />
@@ -48,16 +48,16 @@ function openSettings(): void {
     <!-- Export -->
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
-        <Button variant="ghost" size="icon-sm" class="size-7" title="Export">
+        <Button variant="ghost" size="icon-sm" class="size-7" :title="$t('scenes.actions.export')">
           <Download class="size-3.5" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem class="text-xs gap-2" @select="exportScene('png')">
-          Export as PNG
+          {{ $t("scenes.actions.export_png") }}
         </DropdownMenuItem>
         <DropdownMenuItem class="text-xs gap-2" @select="exportScene('svg')">
-          Export as SVG
+          {{ $t("scenes.actions.export_svg") }}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -68,7 +68,7 @@ function openSettings(): void {
       variant="ghost"
       size="icon-sm"
       class="size-7"
-      :title="editMode ? 'Switch to view mode' : 'Switch to edit mode'"
+      :title="editMode ? $t('scenes.actions.switch_view') : $t('scenes.actions.switch_edit')"
       @click="toggleEditMode"
     >
       <component :is="editMode ? Eye : Pencil" class="size-3.5" />

@@ -33,8 +33,8 @@ function straightenPath() {
       @click="straightenPath"
     >
       <Undo2 class="size-3.5" />
-      Straighten path
+      {{ $t("scenes.connection_properties.straighten") }}
     </button>
-    <p v-else class="text-sm text-muted-foreground italic">No waypoints</p>
+    <p v-else class="text-sm text-muted-foreground italic">{{ $t("scenes.connection_properties.no_waypoints") }}</p>
   </div>
 </template>

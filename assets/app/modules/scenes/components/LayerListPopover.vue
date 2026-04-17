@@ -36,11 +36,11 @@ function togglePopover(): void {
     <button
       type="button"
       class="inline-flex items-center gap-1.5 h-8 px-3 text-sm bg-surface border border-border rounded-lg shadow-md hover:bg-accent transition-colors"
-      :title="popoverOpen ? 'Hide layers' : 'Show layers'"
+      :title="popoverOpen ? $t('scenes.layers.hide_layers') : $t('scenes.layers.show_layers')"
       @click="togglePopover"
     >
       <Layers class="size-4" />
-      Layers
+      {{ $t("scenes.layers.layers") }}
     </button>
 
     <div
