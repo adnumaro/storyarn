@@ -1,0 +1,23 @@
+assets/app/modules/flows/nodes/DialogueNode.vue
+  3ea3c2327c2231e2 203,240,248,257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "e45c9c64642ebcd67fc4bde6c575c03bbb7ec233",
+  "prompts": {
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 86,
+      "accepted_lines": 2338,
+      "overriden_lines": 0
+    }
+  }
+}
