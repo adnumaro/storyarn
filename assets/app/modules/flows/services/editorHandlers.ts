@@ -112,6 +112,10 @@ export interface FlowContext {
   editingNodeId: string | null;
   onInlineEditSave: ((reteNodeId: string, field: string, value: unknown) => void) | null;
   nodeDataVersion: number;
+  selectedReteNodeId: string | null;
+  canEdit: boolean;
+  toolbarProps: Record<string, unknown>;
+  zoom: number;
 }
 
 export interface HookProxy {

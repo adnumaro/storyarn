@@ -299,12 +299,14 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     }
     const transform = _area.area.transform;
     const pos = view.position;
-    const node = _editor!.getNode(toolbarState.reteNodeId);
+    const nodeEl = view.element.querySelector("[data-testid='node']") as HTMLElement | null;
+    const w = nodeEl?.offsetWidth || _editor!.getNode(toolbarState.reteNodeId)?.width || 180;
+    const h = nodeEl?.offsetHeight || _editor!.getNode(toolbarState.reteNodeId)?.height || 40;
 
     toolbarState.x = pos.x * transform.k + transform.x;
     toolbarState.y = pos.y * transform.k + transform.y;
-    toolbarState.width = (node?.width || 180) * transform.k;
-    toolbarState.height = (node?.height || 40) * transform.k;
+    toolbarState.width = w * transform.k;
+    toolbarState.height = h * transform.k;
     toolbarState.visible = true;
   }
 
@@ -318,6 +320,7 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     toolbarState.nodeId = node.nodeId;
     toolbarState.nodeType = node.nodeType;
     toolbarState.nodeData = node.nodeData;
+    hookProxy._flowContext.selectedReteNodeId = reteNodeId;
     updateToolbarPosition();
   }
 
@@ -327,6 +330,7 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     toolbarState.nodeId = null;
     toolbarState.nodeType = null;
     toolbarState.nodeData = null;
+    hookProxy._flowContext.selectedReteNodeId = null;
   }
 
   // --- Inline edit ---
@@ -488,6 +492,7 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
         _lodController!.onZoom();
         const k = _area!.area.transform.k;
         containerEl.style.setProperty("--canvas-zoom", String(k));
+        hookProxy._flowContext.zoom = k;
       }
       return context;
     });
@@ -541,6 +546,7 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     applyInitOpts(containerEl, opts);
 
     initPlugins(containerEl);
+    hookProxy._flowContext.canEdit = !hookProxy._readonly;
 
     if (!hookProxy._readonly) {
       initHandlers();
@@ -991,6 +997,12 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
 
   onUnmounted(destroy);
 
+  function setToolbarProps(props: Record<string, unknown>): void {
+    if (hookProxy._flowContext) {
+      hookProxy._flowContext.toolbarProps = props;
+    }
+  }
+
   return {
     editor,
     area,
@@ -1001,6 +1013,7 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     addConnectionToEditor,
     rebuildHubsMap,
     syncNodeSize,
+    setToolbarProps,
     destroy,
   };
 }

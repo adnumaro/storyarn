@@ -15,6 +15,7 @@ import InstructionNode from "../nodes/InstructionNode.vue";
 import JumpNode from "../nodes/JumpNode.vue";
 import SlugLineNode from "../nodes/SlugLineNode.vue";
 import SubflowNode from "../nodes/SubflowNode.vue";
+import FlowNodeToolbar from "./FlowNodeToolbar.vue";
 import { FLOW_CONTEXT_KEY } from "../setup";
 
 interface FlowNodeData {
@@ -30,6 +31,9 @@ interface FlowContextValue {
   hubsMap: Record<string, HubMapEntry>;
   lod: string;
   nodeDataVersion: number;
+  selectedReteNodeId: string | null;
+  canEdit: boolean;
+  toolbarProps: Record<string, unknown>;
 }
 
 const NODE_COMPONENTS: Record<string, Component> = {
@@ -55,14 +59,15 @@ const ctx = inject<FlowContextValue>(FLOW_CONTEXT_KEY, {
   hubsMap: {},
   lod: "full",
   nodeDataVersion: 0,
+  selectedReteNodeId: null,
+  canEdit: false,
+  toolbarProps: {},
 });
 
 const nodeType = computed(() => data?.nodeType || "dialogue");
 const config = computed(() => NODE_CONFIGS[nodeType.value] || NODE_CONFIGS.dialogue);
 const nodeComponent = computed(() => NODE_COMPONENTS[nodeType.value] || DialogueNode);
 
-// nodeDataVersion from flowContext triggers recomputation when server updates
-// nodeData (which is markRaw'd and invisible to Vue reactivity)
 const nodeColor = computed(() => {
   const v = ctx.nodeDataVersion;
   return resolveNodeColor(
@@ -74,22 +79,40 @@ const nodeColor = computed(() => {
   );
 });
 
-// Reactive snapshot of nodeData — recomputes when nodeDataVersion bumps
 const reactiveNodeData = computed(() => {
   void ctx.nodeDataVersion;
   return data?.nodeData || {};
 });
+
+const showToolbar = computed(
+  () => ctx.canEdit && ctx.selectedReteNodeId === data?.id,
+);
+
+const nodeId = computed(() => {
+  const reteId = String(data?.id || "");
+  return reteId.startsWith("node-") ? reteId.slice(5) : reteId;
+});
 </script>
 
 <template>
-  <component
-    :is="nodeComponent"
-    :data="data"
-    :emit="emitFn"
-    :config="config"
-    :color="nodeColor"
-    :sheets-map="ctx.sheetsMap"
-    :hubs-map="ctx.hubsMap"
-    :node-data-override="reactiveNodeData"
-  />
+  <div class="relative" style="overflow: visible">
+    <FlowNodeToolbar
+      v-if="showToolbar"
+      :node-type="nodeType"
+      :node-data="reactiveNodeData"
+      :node-id="nodeId"
+      :zoom="ctx.zoom"
+      v-bind="ctx.toolbarProps"
+    />
+    <component
+      :is="nodeComponent"
+      :data="data"
+      :emit="emitFn"
+      :config="config"
+      :color="nodeColor"
+      :sheets-map="ctx.sheetsMap"
+      :hubs-map="ctx.hubsMap"
+      :node-data-override="reactiveNodeData"
+    />
+  </div>
 </template>

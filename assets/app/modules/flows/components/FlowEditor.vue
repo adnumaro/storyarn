@@ -4,7 +4,6 @@ import { useLive } from "@composables/useLive";
 import { useFlowEditor } from "../composables/useFlowEditor";
 import FlowContextMenu from "./FlowContextMenu.vue";
 import FlowCursors from "./FlowCursors.vue";
-import FlowFloatingToolbar from "./FlowFloatingToolbar.vue";
 import FlowMinimapToggle from "./FlowMinimapToggle.vue";
 
 const {
@@ -31,7 +30,7 @@ const containerRef = ref<HTMLElement | null>(null);
 const live = useLive();
 let initialized = false;
 
-const { init, toolbarState, editor, area } = useFlowEditor({
+const { init, toolbarState, editor, area, setToolbarProps } = useFlowEditor({
   pushEvent: live.pushEvent,
   handleEvent: live.handleEvent,
 });
@@ -49,6 +48,8 @@ async function initCanvas() {
     userId: Number(userId),
     userColor,
   });
+
+  setToolbarProps(safeParse(toolbarData));
 }
 
 watch(
@@ -61,6 +62,12 @@ watch(
 onMounted(() => {
   if (flowData) initCanvas();
 });
+
+watch(
+  () => toolbarData,
+  (val) => setToolbarProps(safeParse(val)),
+  { immediate: true },
+);
 function safeParse(json: string, fallback: Record<string, unknown> = {}): Record<string, unknown> {
   try {
     return JSON.parse(json);
@@ -79,13 +86,6 @@ function safeParse(json: string, fallback: Record<string, unknown> = {}): Record
   </div>
   <div v-show="!loading" class="w-full h-full relative">
     <div ref="containerRef" :id="canvasId" class="w-full h-full" />
-
-    <FlowFloatingToolbar
-      v-if="!readonly"
-      :toolbar-state="toolbarState"
-      :can-edit="!readonly"
-      v-bind="safeParse(toolbarData)"
-    />
 
     <FlowContextMenu
       :container-el="containerRef"

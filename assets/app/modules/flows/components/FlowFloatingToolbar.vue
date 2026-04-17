@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Component, CSSProperties } from "vue";
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
+import { useElementSize } from "@vueuse/core";
 import type { NodeData } from "../lib/node-configs";
 import {
   AnnotationToolbar,
@@ -81,6 +82,7 @@ const {
 }>();
 
 const toolbarRef = ref<HTMLElement | null>(null);
+const { width: toolbarWidth } = useElementSize(toolbarRef);
 
 const visible = computed(() => toolbarState.visible && canEdit);
 const nodeType = computed(() => toolbarState.nodeType);
@@ -91,8 +93,7 @@ const nodeId = computed(() => toolbarState.nodeId);
 const toolbarStyle = computed<CSSProperties>(() => {
   if (!visible.value) return { display: "none" };
   const s = toolbarState;
-  const el = toolbarRef.value;
-  const toolbarW = el?.offsetWidth || 200;
+  const toolbarW = toolbarWidth.value || 200;
   const left = s.x + s.width / 2 - toolbarW / 2;
   const top = s.y - 48;
   return {
@@ -101,8 +102,6 @@ const toolbarStyle = computed<CSSProperties>(() => {
     top: `${Math.round(top)}px`,
   };
 });
-
-watch([nodeType, visible], () => nextTick(() => {}));
 
 // Map node types to toolbar components
 const TOOLBAR_COMPONENTS: Record<string, Component> = {

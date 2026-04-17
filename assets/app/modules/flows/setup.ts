@@ -59,6 +59,10 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
     editingNodeId: null,
     onInlineEditSave: null,
     nodeDataVersion: 0,
+    selectedReteNodeId: null,
+    canEdit: !hook._readonly,
+    toolbarProps: {},
+    zoom: 1,
   });
   hook._flowContext = flowContext;
 
