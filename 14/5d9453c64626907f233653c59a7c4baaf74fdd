@@ -1,0 +1,101 @@
+assets/app/modules/sheets/SheetDashboard.vue
+  3ea3c2327c2231e2 37,67,100,106,112,118,124,131-137,150-151,155,174,226,241,277
+assets/app/modules/sheets/components/AddBlockMenu.vue
+  3ea3c2327c2231e2 16-17,39,48-57,59-62,79,85,90-91,100,116
+assets/app/locales/es/sheets.json
+  3ea3c2327c2231e2 1-255
+assets/app/modules/sheets/components/blocks/richText/RichTextEditor.vue
+  3ea3c2327c2231e2 121-122,127,152,158,164,189,195,201,203
+assets/app/modules/sheets/components/blocks/table/theadMenus/THeadCellTypeMenu.vue
+  3ea3c2327c2231e2 35
+assets/app/modules/sheets/components/BlockList.vue
+  3ea3c2327c2231e2 216,240,266,277
+assets/app/modules/sheets/components/tabs/AudioTab.vue
+  3ea3c2327c2231e2 128,130,178,204,217,225,231,233,259,266
+assets/app/modules/sheets/components/tabs/ReferencesTab.vue
+  3ea3c2327c2231e2 119,140,166,211,223,263,284,304,306,377,398,401
+assets/app/modules/sheets/components/blocks/ReferenceBlock.vue
+  3ea3c2327c2231e2 214,218,225,232-233,245,293
+assets/app/modules/sheets/components/blocks/table/TableBlock.vue
+  3ea3c2327c2231e2 37
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TSelectCell.vue
+  3ea3c2327c2231e2 51,57,65
+assets/app/modules/sheets/components/dnd/BlockDndRoot.vue
+  3ea3c2327c2231e2 295
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TMultiSelectCell.vue
+  3ea3c2327c2231e2 60,67
+assets/app/modules/sheets/components/BlockLabel.vue
+  3ea3c2327c2231e2 75-77
+assets/app/modules/sheets/components/blocks/table/THeadMenu.vue
+  3ea3c2327c2231e2 166,171,175,181,185,191,210,218
+assets/app/modules/sheets/components/blocks/BooleanBlock.vue
+  3ea3c2327c2231e2 4,23-24,47-48,106,111,114,127,130,144,147
+assets/app/locales/en/sheets.json
+  3ea3c2327c2231e2 1-255
+assets/app/modules/sheets/components/SheetMetadata.vue
+  3ea3c2327c2231e2 89,100,111,122
+assets/app/modules/sheets/components/blocks/TextBlock.vue
+  3ea3c2327c2231e2 82,86,117
+assets/app/modules/sheets/components/blocks/FormulaBindingSelect.vue
+  3ea3c2327c2231e2 142,148,155-156,160,189
+assets/app/modules/sheets/components/CollabToast.vue
+  3ea3c2327c2231e2 2-3,6-16
+assets/app/modules/sheets/components/blocks/table/TBody.vue
+  3ea3c2327c2231e2 128
+assets/app/modules/sheets/components/blocks/NumberBlock.vue
+  3ea3c2327c2231e2 90,94,109,129,149
+assets/app/modules/sheets/components/AvatarGallery.vue
+  3ea3c2327c2231e2 98,109,135-137,155,177,189,218-220,223,239-241,244,270,273,285
+assets/app/modules/sheets/components/SheetHeader.vue
+  3ea3c2327c2231e2 123,133
+assets/app/modules/sheets/components/blocks/galleryBlock/GalleryBlockContent.vue
+  3ea3c2327c2231e2 146,157,165,179,182,194,197,221
+assets/app/modules/sheets/components/blocks/SelectBlock.vue
+  3ea3c2327c2231e2 43,87,91,128,136,144
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TBooleanCell.vue
+  3ea3c2327c2231e2 40,46
+assets/app/modules/sheets/components/tabs/SheetTabs.vue
+  3ea3c2327c2231e2 4,20,22-27,29
+assets/app/modules/sheets/components/blocks/MultiSelectBlock.vue
+  3ea3c2327c2231e2 45,86,90,134,143
+assets/app/modules/sheets/components/blocks/richText/RichTextBlock.vue
+  3ea3c2327c2231e2 70,74,105
+assets/app/modules/sheets/components/blocks/table/theadMenus/THeadMainMenu.vue
+  3ea3c2327c2231e2 66,71,77,85,90,95,105
+assets/app/modules/sheets/components/OptionEditor.vue
+  3ea3c2327c2231e2 34,41,48,67
+assets/app/modules/sheets/components/tree/SheetTreeNode.vue
+  3ea3c2327c2231e2 203,211,223,230
+assets/app/modules/sheets/components/blocks/FormulaPanel.vue
+  3ea3c2327c2231e2 86,90,122,127,146,171,179
+assets/app/modules/sheets/components/blocks/table/theadMenus/THeadSelectOptionsMenu.vue
+  3ea3c2327c2231e2 22
+assets/app/modules/sheets/components/BlockToolbar.vue
+  3ea3c2327c2231e2 62,89-94,106
+assets/app/modules/sheets/components/blocks/table/TableRowActions.vue
+  3ea3c2327c2231e2 53
+assets/app/modules/sheets/components/SheetAvatarSection.vue
+  3ea3c2327c2231e2 95
+assets/app/modules/sheets/components/tree/SheetTree.vue
+  3ea3c2327c2231e2 272,279,312,320,322,326-327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "145d9453c64626907f233653c59a7c4baaf74fdd",
+  "prompts": {
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 744,
+      "total_deletions": 225,
+      "accepted_lines": 3088,
+      "overriden_lines": 0
+    }
+  }
+}
