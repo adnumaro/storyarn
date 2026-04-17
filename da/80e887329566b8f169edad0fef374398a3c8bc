@@ -1,0 +1,48 @@
+assets/app/modules/flows/components/FlowNode.vue
+  b5e1bb47b647b01a 18,34-36,62-64,86-94,98-117
+assets/app/modules/flows/services/editorHandlers.ts
+  b5e1bb47b647b01a 115-118
+assets/app/modules/flows/composables/useFlowEditor.ts
+  b5e1bb47b647b01a 302-304,308-309,323,333,495,549,1000-1005,1016
+assets/app/modules/flows/components/FlowNodeToolbar.vue
+  b5e1bb47b647b01a 1-85
+assets/app/modules/flows/setup.ts
+  b5e1bb47b647b01a 62-65
+assets/app/modules/flows/components/FlowFloatingToolbar.vue
+  b5e1bb47b647b01a 3-4,85,96
+assets/app/modules/flows/components/FlowEditor.vue
+  b5e1bb47b647b01a 33,51-52,65-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "da80e887329566b8f169edad0fef374398a3c8bc",
+  "prompts": {
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 797,
+      "overriden_lines": 0
+    },
+    "b5e1bb47b647b01a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da948ded-a770-4715-803c-ee52cc73c164",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 165,
+      "total_deletions": 37,
+      "accepted_lines": 6695,
+      "overriden_lines": 0
+    }
+  }
+}
