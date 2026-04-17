@@ -73,7 +73,7 @@ const isNewProjectModalOpen = ref(false);
 </script>
 
 <template>
-  <div class="surface-panel h-full p-4">
+  <div class="surface-panel h-full p-4 w-full flex flex-col">
     <!-- Workspace Banner -->
     <header class="relative">
       <div
@@ -161,74 +161,76 @@ const isNewProjectModalOpen = ref(false);
       </div>
     </header>
 
-    <!-- Empty states -->
-    <div
-      v-if="projects.length === 0 && !localSearch"
-      class="flex flex-col items-center justify-center py-12 text-center h-full"
-    >
-      <FolderOpen class="size-12 text-muted-foreground/40 mb-4" />
-      <h3 class="text-lg font-medium mb-1">{{ $t("workspace.dashboard.empty_projects.title") }}</h3>
-      <p class="text-sm text-muted-foreground">
-        {{ $t("workspace.dashboard.empty_projects.description") }}
-      </p>
-    </div>
-
-    <div
-      v-if="projects.length === 0 && localSearch"
-      class="flex flex-col items-center justify-center py-12 text-center h-full"
-    >
-      <Search class="size-12 text-muted-foreground/40 mb-4" />
-      <h3 class="text-lg font-medium mb-1">{{ $t("workspace.dashboard.empty_search.title") }}</h3>
-      <p class="text-sm text-muted-foreground">
-        {{ $t("workspace.dashboard.empty_search.description") }}
-      </p>
-    </div>
-
-    <!-- Projects Grid -->
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-4">
-      <a
-        v-for="projectData in projects"
-        :key="projectData.project.id"
-        :href="projectData.href"
-        data-phx-link="redirect"
-        data-phx-link-state="push"
-        class="group flex flex-col rounded-xl border bg-card text-card-foreground shadow-sm hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer overflow-hidden relative"
+    <div class="flex-1">
+      <!-- Empty states -->
+      <div
+        v-if="projects.length === 0 && !localSearch"
+        class="flex flex-col items-center justify-center py-12 text-center h-full"
       >
-        <div class="p-5 flex flex-col flex-1">
-          <div>
-            <h3 class="text-lg font-semibold truncate group-hover:text-primary transition-colors">
-              {{ projectData.project.name }}
-            </h3>
-            <div class="mt-2 text-sm text-muted-foreground line-clamp-2 min-h-10">
-              <template v-if="projectData.project.description">
-                {{ projectData.project.description }}
-              </template>
-              <template v-else>
-                <span class="italic opacity-50">{{
-                  $t("workspace.dashboard.no_description")
-                }}</span>
-              </template>
-            </div>
-          </div>
+        <FolderOpen class="size-12 text-muted-foreground/40 mb-4" />
+        <h3 class="text-lg font-medium mb-1">{{ $t("workspace.dashboard.empty_projects.title") }}</h3>
+        <p class="text-sm text-muted-foreground">
+          {{ $t("workspace.dashboard.empty_projects.description") }}
+        </p>
+      </div>
 
-          <div class="mt-auto pt-5">
-            <div class="flex items-center justify-between border-t border-border/50 pt-4">
-              <div
-                class="text-xs text-muted-foreground bg-secondary/50 px-2 py-1 rounded-md font-medium"
-              >
-                {{ projectData.project.inserted_at_formatted }}
+      <div
+        v-if="projects.length === 0 && localSearch"
+        class="flex flex-col items-center justify-center py-12 text-center h-full"
+      >
+        <Search class="size-12 text-muted-foreground/40 mb-4" />
+        <h3 class="text-lg font-medium mb-1">{{ $t("workspace.dashboard.empty_search.title") }}</h3>
+        <p class="text-sm text-muted-foreground">
+          {{ $t("workspace.dashboard.empty_search.description") }}
+        </p>
+      </div>
+
+      <!-- Projects Grid -->
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-4">
+        <a
+          v-for="projectData in projects"
+          :key="projectData.project.id"
+          :href="projectData.href"
+          data-phx-link="redirect"
+          data-phx-link-state="push"
+          class="group flex flex-col rounded-xl border bg-card text-card-foreground shadow-sm hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer overflow-hidden relative"
+        >
+          <div class="p-5 flex flex-col flex-1">
+            <div>
+              <h3 class="text-lg font-semibold truncate group-hover:text-primary transition-colors">
+                {{ projectData.project.name }}
+              </h3>
+              <div class="mt-2 text-sm text-muted-foreground line-clamp-2 min-h-10">
+                <template v-if="projectData.project.description">
+                  {{ projectData.project.description }}
+                </template>
+                <template v-else>
+                <span class="italic opacity-50">{{
+                    $t("workspace.dashboard.no_description")
+                  }}</span>
+                </template>
               </div>
-              <div class="text-xs font-medium text-muted-foreground/70">
-                {{
-                  $t("workspace.dashboard.updated_at", {
-                    time: formatRelativeTime(projectData.project.updated_at).toLowerCase(),
-                  })
-                }}
+            </div>
+
+            <div class="mt-auto pt-5">
+              <div class="flex items-center justify-between border-t border-border/50 pt-4">
+                <div
+                  class="text-xs text-muted-foreground bg-secondary/50 px-2 py-1 rounded-md font-medium"
+                >
+                  {{ projectData.project.inserted_at_formatted }}
+                </div>
+                <div class="text-xs font-medium text-muted-foreground/70">
+                  {{
+                    $t("workspace.dashboard.updated_at", {
+                      time: formatRelativeTime(projectData.project.updated_at).toLowerCase(),
+                    })
+                  }}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </a>
+        </a>
+      </div>
     </div>
   </div>
 

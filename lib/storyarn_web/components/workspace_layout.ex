@@ -88,7 +88,7 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
     <!-- Main fluid content -->
       <main
         id="main-content"
-        class="overflow-y-auto p-4 lg:px-8 lg:py-3 min-dvh-100"
+        class="overflow-y-auto p-4 lg:px-8 lg:py-3 min-dvh-100 w-full"
       >
         {render_slot(@inner_block)}
       </main>

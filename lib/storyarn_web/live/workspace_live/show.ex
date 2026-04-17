@@ -67,7 +67,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
             banner_url: @workspace.banner_url
           }
         }
-        class="container mx-auto h-full"
+        class="container mx-auto h-dvw h-full"
         membership={%{role: @membership.role}}
         projects={@projects}
         search-query={@search_query}
