@@ -1,0 +1,111 @@
+assets/app/modules/scenes/components/LayerListPopover.vue
+  3ea3c2327c2231e2 39,43
+assets/app/modules/scenes/components/dock-panels/DockActions.vue
+  3ea3c2327c2231e2 21-22,31-32
+assets/app/modules/scenes/components/CollabToast.vue
+  3ea3c2327c2231e2 2-3,6-26
+assets/app/modules/scenes/settings/AmbientFlowRow.vue
+  3ea3c2327c2231e2 10,13-14,32-35,99,107,115,151,160,169
+assets/app/modules/scenes/settings/DimensionsSection.vue
+  3ea3c2327c2231e2 10
+assets/app/modules/scenes/settings/ScaleSection.vue
+  3ea3c2327c2231e2 29,33,45
+assets/app/modules/scenes/toolbar/ToolbarActionTypePicker.vue
+  3ea3c2327c2231e2 4-5,8-9,17,20,22,26,28,32,34,38,40,44,46,48,66,72
+assets/app/modules/scenes/components/toolbar-sections/ConnectionToolbar.vue
+  3ea3c2327c2231e2 54,78,90,99
+assets/app/modules/scenes/properties/PinProperties.vue
+  3ea3c2327c2231e2 12-13,96,104,114,131,162,174,185,205
+assets/app/modules/scenes/settings/AmbientFlowsSection.vue
+  3ea3c2327c2231e2 59,63,77,82,84
+assets/app/modules/scenes/toolbar/ToolbarLayerPicker.vue
+  3ea3c2327c2231e2 35,47
+assets/app/modules/scenes/toolbar/ToolbarStrokePicker.vue
+  3ea3c2327c2231e2 45,70,96,121
+assets/app/modules/scenes/components/toolbar-sections/PinToolbar.vue
+  3ea3c2327c2231e2 69,91,132
+assets/app/modules/scenes/components/SearchPanel.vue
+  3ea3c2327c2231e2 4-5,8-9,41-47,95,151
+assets/app/modules/scenes/components/dock-panels/ZonesDropdown.vue
+  3ea3c2327c2231e2 4-5,8-9,26-31,33,35,38,58,75,77
+assets/app/modules/scenes/components/SceneDock.vue
+  3ea3c2327c2231e2 71-72,79-80,101-102,113-114,125-126
+assets/app/modules/scenes/components/dock-panels/PendingSheetIndicator.vue
+  3ea3c2327c2231e2 24
+assets/app/modules/scenes/components/SettingsPanel.vue
+  3ea3c2327c2231e2 65,69
+assets/app/locales/en/scenes.json
+  3ea3c2327c2231e2 1-299
+assets/app/modules/scenes/exploration/SessionPromptModal.vue
+  3ea3c2327c2231e2 41,43,48,51,57,61
+assets/app/modules/scenes/SceneDashboard.vue
+  3ea3c2327c2231e2 34,39-40,135,141,147,153,160-166,179-180,184,203,260
+assets/app/modules/scenes/components/SceneLayerList.vue
+  3ea3c2327c2231e2 119,148,157,167,175,179,187,203,211,213,217-218
+assets/app/modules/scenes/settings/DisplayModeSection.vue
+  3ea3c2327c2231e2 33,47,60,65,67,70
+assets/app/modules/scenes/properties/ConnectionProperties.vue
+  3ea3c2327c2231e2 36,38
+assets/app/modules/scenes/exploration/ExplorationToolbar.vue
+  3ea3c2327c2231e2 41,55,61
+assets/app/modules/scenes/components/ElementPropertiesPanel.vue
+  3ea3c2327c2231e2 4,12-13,25-30,66,71
+assets/app/modules/scenes/components/Legend.vue
+  3ea3c2327c2231e2 66,70,84,110,131
+assets/app/modules/scenes/components/dock-panels/PinsDropdown.vue
+  3ea3c2327c2231e2 61,71-72,82-83,98,100,119,121
+assets/app/modules/scenes/toolbar/ToolbarLockToggle.vue
+  3ea3c2327c2231e2 20
+assets/app/modules/scenes/toolbar/ToolbarTypePicker.vue
+  3ea3c2327c2231e2 4-5,8-9,16-21,33-34,38,44
+assets/app/modules/scenes/properties/pin/PinPatrolSection.vue
+  3ea3c2327c2231e2 3-4,7-14,42,53,63
+assets/app/modules/scenes/components/SceneToolbar.vue
+  3ea3c2327c2231e2 26
+assets/app/modules/scenes/components/SceneTree.vue
+  3ea3c2327c2231e2 259,267,300,308,314-315
+assets/app/modules/scenes/properties/ZoneProperties.vue
+  3ea3c2327c2231e2 13-14,125,134,143,154,176,188,203,216,236
+assets/app/modules/scenes/properties/pin/PinPlayableSection.vue
+  3ea3c2327c2231e2 24,32
+assets/app/locales/es/scenes.json
+  3ea3c2327c2231e2 1-299
+assets/app/modules/scenes/settings/BackgroundSection.vue
+  3ea3c2327c2231e2 24,36,44,55
+assets/app/modules/scenes/components/toolbar-sections/ZoneToolbar.vue
+  3ea3c2327c2231e2 85,100,145
+assets/app/modules/scenes/components/SceneActions.vue
+  3ea3c2327c2231e2 42,51,57,60,71
+assets/app/modules/scenes/components/VersionHistoryPanel.vue
+  3ea3c2327c2231e2 43
+assets/app/modules/scenes/exploration/CollectionModal.vue
+  3ea3c2327c2231e2 49,60,72,74,82
+assets/app/modules/scenes/components/SceneTreeNode.vue
+  3ea3c2327c2231e2 195,203,215,222
+assets/app/modules/scenes/exploration/FlowOverlay.vue
+  3ea3c2327c2231e2 119,127,136
+assets/app/modules/scenes/properties/zone/CollectionItemsEditor.vue
+  3ea3c2327c2231e2 65,72,74,99
+assets/app/modules/scenes/properties/zone/TargetPicker.vue
+  3ea3c2327c2231e2 5,8-9,16-19,84,101,125,137,154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "4fc03807d89360a01ce885e7d04a4e980053ae2b",
+  "prompts": {
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 910,
+      "total_deletions": 280,
+      "accepted_lines": 3230,
+      "overriden_lines": 0
+    }
+  }
+}
