@@ -1,12 +1,9 @@
 <script setup lang="ts">
-import { Shield } from "lucide-vue-next";
+import { ArrowRight, Shield } from 'lucide-vue-next'
 import { ref } from "vue";
-import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
-
-const { t } = useI18n();
 
 const {
   email,
@@ -32,9 +29,11 @@ const passwordValue = ref("");
         </div>
       </div>
       <div>
-        <h1 class="text-2xl font-bold tracking-tight">{{ t("auth.confirm_access.title") }}</h1>
+        <h1 class="text-2xl font-bold tracking-tight">
+          {{ $t("auth.confirm_access.title") }}
+        </h1>
         <p class="text-sm text-muted-foreground mt-2">
-          {{ t("auth.confirm_access.subtitle") }}
+          {{ $t("auth.confirm_access.subtitle") }}
         </p>
       </div>
     </div>
@@ -42,7 +41,7 @@ const passwordValue = ref("");
     <form :action="loginAction" method="post">
       <input type="hidden" name="_csrf_token" :value="csrfToken" />
       <div class="space-y-1.5 mb-4">
-        <Label for="confirm-email">{{ t("auth.email") }}</Label>
+        <Label for="confirm-email">{{ $t("auth.email") }}</Label>
         <Input
           id="confirm-email"
           :value="email"
@@ -54,7 +53,7 @@ const passwordValue = ref("");
         />
       </div>
       <div class="space-y-1.5 mb-4">
-        <Label for="confirm-password">{{ t("auth.password") }}</Label>
+        <Label for="confirm-password">{{ $t("auth.password") }}</Label>
         <Input
           id="confirm-password"
           v-model="passwordValue"
@@ -66,7 +65,7 @@ const passwordValue = ref("");
         />
       </div>
       <Button type="submit" class="w-full">
-        {{ t("auth.confirm_access.submit") }} <span aria-hidden="true" class="ml-1">&rarr;</span>
+        {{ $t("auth.confirm_access.submit") }} <ArrowRight class="ml-1" />
       </Button>
     </form>
 
@@ -77,7 +76,7 @@ const passwordValue = ref("");
         data-phx-link-state="push"
         class="text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
-        {{ t("auth.confirm_access.go_back") }}
+        {{ $t("auth.confirm_access.go_back") }}
       </a>
     </div>
   </div>
