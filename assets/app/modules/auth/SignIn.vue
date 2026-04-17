@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { Info } from "lucide-vue-next";
 import { onMounted, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
+
+const { t } = useI18n();
 
 const {
   email = "",
@@ -31,9 +34,9 @@ onMounted(() => {
 <template>
   <div class="mx-auto max-w-sm space-y-4">
     <div class="text-center space-y-2">
-      <h1 class="text-2xl font-bold tracking-tight">Log in</h1>
+      <h1 class="text-2xl font-bold tracking-tight">{{ t("auth.sign_in.title") }}</h1>
       <p class="text-sm text-muted-foreground">
-        Enter your email and password to access your account.
+        {{ t("auth.sign_in.subtitle") }}
       </p>
     </div>
 
@@ -43,10 +46,15 @@ onMounted(() => {
     >
       <Info class="size-5 shrink-0 text-blue-500 mt-0.5" />
       <div>
-        <p>You are running the local mail adapter.</p>
+        <p>{{ t("auth.sign_in.local_mail_notice") }}</p>
         <p>
-          To see sent emails, visit
-          <a href="/dev/mailbox" class="underline hover:text-foreground">the mailbox sheet</a>.
+          <i18n-t keypath="auth.sign_in.local_mail_link" tag="span">
+            <template #link>
+              <a href="/dev/mailbox" class="underline hover:text-foreground">{{
+                t("auth.sign_in.mailbox_link")
+              }}</a>
+            </template>
+          </i18n-t>
         </p>
       </div>
     </div>
@@ -55,7 +63,7 @@ onMounted(() => {
       <input type="hidden" name="_csrf_token" :value="csrfToken" />
       <div class="space-y-4 mb-6">
         <div class="space-y-1.5">
-          <Label for="login-email">Email</Label>
+          <Label for="login-email">{{ t("auth.email") }}</Label>
           <Input
             id="login-email"
             ref="emailInput"
@@ -68,7 +76,7 @@ onMounted(() => {
           />
         </div>
         <div class="space-y-1.5">
-          <Label for="login-password">Password</Label>
+          <Label for="login-password">{{ t("auth.password") }}</Label>
           <Input
             id="login-password"
             v-model="passwordValue"
@@ -80,7 +88,7 @@ onMounted(() => {
         </div>
       </div>
       <Button type="submit" class="w-full">
-        Log in <span aria-hidden="true" class="ml-1">&rarr;</span>
+        {{ t("auth.sign_in.submit") }} <span aria-hidden="true" class="ml-1">&rarr;</span>
       </Button>
     </form>
   </div>

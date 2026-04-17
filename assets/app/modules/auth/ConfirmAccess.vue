@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { Shield } from "lucide-vue-next";
 import { ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
+
+const { t } = useI18n();
 
 const {
   email,
@@ -29,9 +32,9 @@ const passwordValue = ref("");
         </div>
       </div>
       <div>
-        <h1 class="text-2xl font-bold tracking-tight">Confirm access</h1>
+        <h1 class="text-2xl font-bold tracking-tight">{{ t("auth.confirm_access.title") }}</h1>
         <p class="text-sm text-muted-foreground mt-2">
-          This is a protected area. Please enter your password to continue.
+          {{ t("auth.confirm_access.subtitle") }}
         </p>
       </div>
     </div>
@@ -39,7 +42,7 @@ const passwordValue = ref("");
     <form :action="loginAction" method="post">
       <input type="hidden" name="_csrf_token" :value="csrfToken" />
       <div class="space-y-1.5 mb-4">
-        <Label for="confirm-email">Email</Label>
+        <Label for="confirm-email">{{ t("auth.email") }}</Label>
         <Input
           id="confirm-email"
           :value="email"
@@ -51,7 +54,7 @@ const passwordValue = ref("");
         />
       </div>
       <div class="space-y-1.5 mb-4">
-        <Label for="confirm-password">Password</Label>
+        <Label for="confirm-password">{{ t("auth.password") }}</Label>
         <Input
           id="confirm-password"
           v-model="passwordValue"
@@ -63,7 +66,7 @@ const passwordValue = ref("");
         />
       </div>
       <Button type="submit" class="w-full">
-        Continue <span aria-hidden="true" class="ml-1">&rarr;</span>
+        {{ t("auth.confirm_access.submit") }} <span aria-hidden="true" class="ml-1">&rarr;</span>
       </Button>
     </form>
 
@@ -74,7 +77,7 @@ const passwordValue = ref("");
         data-phx-link-state="push"
         class="text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
-        Go back
+        {{ t("auth.confirm_access.go_back") }}
       </a>
     </div>
   </div>

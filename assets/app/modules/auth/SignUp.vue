@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { useLiveForm, type Form } from "live_vue";
 import { onMounted, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
 import { Eye, EyeOff } from "lucide-vue-next";
+
+const { t } = useI18n();
 
 interface SignUpFormValues {
   email: string;
@@ -41,19 +44,18 @@ onMounted(() => {
 <template>
   <div class="mx-auto max-w-sm space-y-4">
     <div class="text-center space-y-2">
-      <h1 class="text-2xl font-bold tracking-tight">Complete your account</h1>
+      <h1 class="text-2xl font-bold tracking-tight">{{ t("auth.sign_up.title") }}</h1>
       <p class="text-sm text-muted-foreground">
-        Welcome to the beta! Define your password to access your workspace.
+        {{ t("auth.sign_up.subtitle") }}
       </p>
     </div>
 
     <div class="space-y-4">
       <div class="space-y-1.5 hidden">
-        <!-- We still need to send the email with the form, but we can do it via a hidden input that always has the value -->
         <input type="hidden" name="user[email]" :value="userEmail" />
       </div>
       <div class="space-y-1.5">
-        <Label for="register-email">Email</Label>
+        <Label for="register-email">{{ t("auth.email") }}</Label>
         <Input
           id="register-email"
           ref="emailInput"
@@ -67,7 +69,7 @@ onMounted(() => {
       </div>
 
       <div class="space-y-1.5">
-        <Label for="register-password">Password</Label>
+        <Label for="register-password">{{ t("auth.password") }}</Label>
         <div class="relative">
           <input
             v-bind="password.inputAttrs.value"
@@ -95,7 +97,7 @@ onMounted(() => {
       </div>
 
       <div class="space-y-1.5">
-        <Label for="register-password-confirmation">Confirm Password</Label>
+        <Label for="register-password-confirmation">{{ t("auth.sign_up.confirm_password") }}</Label>
         <div class="relative">
           <input
             v-bind="passwordConfirmation.inputAttrs.value"
@@ -122,7 +124,7 @@ onMounted(() => {
         </p>
       </div>
 
-      <Button class="w-full" @click="form.submit()"> Create an account </Button>
+      <Button class="w-full" @click="form.submit()"> {{ t("auth.sign_up.submit") }} </Button>
     </div>
   </div>
 </template>
