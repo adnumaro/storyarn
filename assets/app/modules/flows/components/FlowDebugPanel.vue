@@ -134,7 +134,7 @@ function switchTab(tab: string | number): void {
       </Button>
 
       <!-- Step -->
-      <Button variant="ghost" size="icon-sm" class="size-7" title="Step (F10)" @click="step">
+      <Button variant="ghost" size="icon-sm" class="size-7" :title="$t('flows.debug.step_key')" @click="step">
         <SkipForward class="size-3.5" />
       </Button>
 
@@ -143,19 +143,19 @@ function switchTab(tab: string | number): void {
         variant="ghost"
         size="icon-sm"
         class="size-7"
-        title="Step Back (F9)"
+        :title="$t('flows.debug.step_back_key')"
         @click="stepBack"
       >
         <StepBack class="size-3.5" />
       </Button>
 
       <!-- Reset -->
-      <Button variant="ghost" size="icon-sm" class="size-7" title="Reset (F6)" @click="reset">
+      <Button variant="ghost" size="icon-sm" class="size-7" :title="$t('flows.debug.reset_key')" @click="reset">
         <RotateCcw class="size-3.5" />
       </Button>
 
       <!-- Stop -->
-      <Button variant="ghost" size="icon-sm" class="size-7" title="Stop" @click="stop">
+      <Button variant="ghost" size="icon-sm" class="size-7" :title="$t('flows.debug.stop')" @click="stop">
         <Square class="size-3.5" />
       </Button>
 

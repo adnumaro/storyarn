@@ -37,7 +37,7 @@ function navigateToJumps() {
   <input
     type="text"
     class="toolbar-input text-xs"
-    placeholder="Label"
+    :placeholder="$t('flows.hub_toolbar.label_placeholder')"
     :value="nodeData.label || ''"
     @blur="(e: FocusEvent) => updateField('label', (e.target as HTMLInputElement).value)"
     @keydown.enter="(e: KeyboardEvent) => (e.target as HTMLInputElement).blur()"
@@ -47,7 +47,7 @@ function navigateToJumps() {
   <input
     type="text"
     class="toolbar-input text-xs font-mono"
-    placeholder="hub_id"
+    :placeholder="$t('flows.hub_toolbar.hub_id_placeholder')"
     :value="nodeData.hub_id || ''"
     @blur="(e: FocusEvent) => updateField('hub_id', (e.target as HTMLInputElement).value)"
     @keydown.enter="(e: KeyboardEvent) => (e.target as HTMLInputElement).blur()"
@@ -58,7 +58,7 @@ function navigateToJumps() {
     v-if="referencingJumps.length > 0"
     type="button"
     class="toolbar-btn"
-    title="Locate jumps"
+    :title="$t('flows.hub_toolbar.locate_jumps')"
     @click="navigateToJumps"
   >
     <Crosshair class="size-3.5" />

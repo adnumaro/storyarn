@@ -76,8 +76,8 @@ function remove() {
     </div>
 
     <EntityCombobox
-      label="Sheet"
-      placeholder="Select sheet..."
+      :label="$t('scenes.collection_editor.sheet')"
+      :placeholder="$t('scenes.collection_editor.sheet_placeholder')"
       :options="projectSheets"
       :selected-id="item.sheet_id"
       :disabled="!canEdit"
@@ -85,15 +85,15 @@ function remove() {
     />
 
     <TextField
-      label="Label"
+      :label="$t('scenes.collection_editor.label')"
       :value="item.label || ''"
-      placeholder="Item label..."
+      :placeholder="$t('scenes.collection_editor.label_placeholder')"
       :disabled="!canEdit"
       @update="(v) => updateField('label', v)"
     />
 
     <div class="space-y-1">
-      <label class="text-xs font-medium text-foreground/70">Condition</label>
+      <label class="text-xs font-medium text-foreground/70">{{ $t("scenes.collection_editor.condition") }}</label>
       <ConditionBuilder
         :condition="item.condition"
         :variables="projectVariables"

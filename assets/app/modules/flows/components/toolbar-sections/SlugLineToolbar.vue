@@ -104,21 +104,21 @@ function selectAvatar(avatarId: number | null) {
     :options="intExtOptions"
     :selected-value="nodeData.int_ext"
     :selected-label="intExtLabel"
-    placeholder="Setting…"
+    :placeholder="$t('flows.slug_line_toolbar.setting_placeholder')"
     @select="(v: string | number) => selectSlugSetting(String(v))"
   />
   <ToolbarSearchableSelect
     :options="sheetOptions"
     :selected-value="nodeData.location_sheet_id"
     :selected-label="selectedLocationName"
-    placeholder="Location…"
+    :placeholder="$t('flows.slug_line_toolbar.location_placeholder')"
     @select="(v: string | number) => selectSlugLocation(String(v))"
   />
   <ToolbarSearchableSelect
     :options="timeOptions"
     :selected-value="nodeData.time_of_day"
     :selected-label="timeLabel"
-    placeholder="Time…"
+    :placeholder="$t('flows.slug_line_toolbar.time_placeholder')"
     @select="(v: string | number) => selectSlugTime(String(v))"
   />
   <ToolbarAvatarPicker

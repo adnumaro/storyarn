@@ -133,7 +133,7 @@ function triggerLabel(type: string): string {
       <div class="flex-1 min-w-0">
         <Select :model-value="flow.triggerType" @update:model-value="onTriggerTypeChange">
           <SelectTrigger class="h-7 text-xs">
-            <SelectValue placeholder="Trigger..." />
+            <SelectValue :placeholder="$t('scenes.ambient_row.trigger_placeholder')" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem v-for="t in triggerTypes" :key="t.value" :value="t.value" class="text-xs">
@@ -156,7 +156,7 @@ function triggerLabel(type: string): string {
         <input
           type="text"
           :value="flow.triggerConfig?.variable_ref ?? ''"
-          placeholder="Select variable..."
+          :placeholder="$t('scenes.ambient_row.variable_placeholder')"
           :title="$t('scenes.ambient_row.variable_ref')"
           class="w-full h-7 px-2 text-xs rounded-md border border-input bg-background"
           @blur="onVariableRefBlur"
@@ -167,7 +167,7 @@ function triggerLabel(type: string): string {
         :value="flow.priority"
         min="0"
         :title="$t('scenes.ambient_row.priority')"
-        placeholder="0"
+        :placeholder="$t('scenes.ambient_row.priority_placeholder')"
         class="w-12 h-7 px-1.5 text-xs rounded-md border border-input bg-background"
         @blur="onPriorityBlur"
       />

@@ -257,7 +257,7 @@ function updateResponseAssignments(
             </div>
             <Input
               :model-value="resp.text || ''"
-              placeholder="Response text..."
+              :placeholder="$t('flows.screenplay_editor.response_placeholder')"
               :disabled="!canEdit"
               @blur="
                 (e: FocusEvent) => updateResponseText(resp.id, (e.target as HTMLInputElement).value)

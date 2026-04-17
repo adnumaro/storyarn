@@ -48,14 +48,14 @@ function navigateToHub() {
     :options="hubOptions"
     :selected-value="nodeData.target_hub_id"
     :selected-label="selectedHubLabel"
-    placeholder="Target hub…"
+    :placeholder="$t('flows.jump_toolbar.target_placeholder')"
     @select="(v: string | number) => selectHub(String(v))"
   />
   <button
     v-if="nodeData.target_hub_id"
     type="button"
     class="toolbar-btn"
-    title="Locate target hub"
+    :title="$t('flows.jump_toolbar.locate_target')"
     @click="navigateToHub"
   >
     <Crosshair class="size-3.5" />

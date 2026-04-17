@@ -60,7 +60,7 @@ const { slide } = defineProps<{
 
   <!-- Empty -->
   <div v-else-if="slide.type === 'empty'" class="player-slide player-slide-empty">
-    <p class="text-muted-foreground">No content to display.</p>
+    <p class="text-muted-foreground">{{ $t("flows.player.no_content") }}</p>
   </div>
 
   <!-- Fallback -->

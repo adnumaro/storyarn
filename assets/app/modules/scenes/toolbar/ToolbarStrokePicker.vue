@@ -133,7 +133,7 @@ function onCustomColor(e: Event) {
               <label
                 v-if="i === COLOR_SWATCHES.length - 1"
                 class="size-5 rounded-full border border-dashed border-white/30 flex items-center justify-center cursor-pointer hover:scale-125 transition-transform"
-                title="Custom color"
+                :title="$t('scenes.stroke_picker.custom_color')"
               >
                 <span class="text-[9px]">+</span>
                 <input type="color" class="sr-only" :value="color" @input="onCustomColor" />

@@ -180,9 +180,12 @@
     "pin_properties": {
       "shortcut": "Shortcut",
       "tooltip": "Tooltip",
+      "tooltip_placeholder": "Hover text...",
       "sheet": "Sheet",
+      "sheet_placeholder": "Select sheet...",
       "change_icon": "Change Icon",
       "flow": "Flow",
+      "flow_placeholder": "Select flow...",
       "hidden_exploration": "Hidden in exploration",
       "condition": "Condition",
       "effect_hide": "Hide",
@@ -193,8 +196,10 @@
       "shortcut": "Shortcut",
       "hidden_exploration": "Hidden in exploration",
       "tooltip": "Tooltip",
+      "tooltip_placeholder": "Hover text...",
       "instruction": "Instruction",
       "display_variable": "Display variable",
+      "display_variable_placeholder": "Select variable...",
       "collection": "Collection",
       "condition": "Condition"
     },
@@ -205,7 +210,8 @@
       "ping_pong": "Ping-pong",
       "one_way": "One-way",
       "speed": "Speed",
-      "pause_waypoints": "Pause at waypoints (ms)"
+      "pause_waypoints": "Pause at waypoints (ms)",
+      "mode_placeholder": "Select mode..."
     },
     "pin_playable": {
       "playable": "Playable character",
@@ -215,7 +221,12 @@
       "collect_all": "Collect all",
       "empty_message": "Empty message",
       "empty_placeholder": "Nothing to collect...",
-      "add_item": "Add item"
+      "add_item": "Add item",
+      "sheet": "Sheet",
+      "sheet_placeholder": "Select sheet...",
+      "label": "Label",
+      "label_placeholder": "Item label...",
+      "condition": "Condition"
     },
     "target_picker": {
       "link_to": "Link to",
@@ -245,7 +256,9 @@
       "zoom": "Zoom",
       "scene_scale": "Scene Scale",
       "total_width": "Total width",
-      "unit": "Unit"
+      "unit": "Unit",
+      "width_placeholder": "500",
+      "unit_placeholder": "km"
     },
     "ambient_row": {
       "on_enter": "On Enter",
@@ -258,7 +271,10 @@
       "enable": "Enable",
       "interval": "Interval (ms)",
       "variable_ref": "Variable reference",
-      "priority": "Priority (higher = first)"
+      "priority": "Priority (higher = first)",
+      "trigger_placeholder": "Trigger...",
+      "variable_placeholder": "Select variable...",
+      "priority_placeholder": "0"
     },
     "action_type_picker": {
       "navigation": "Navigation",
@@ -285,7 +301,8 @@
       "line_style": "Line style",
       "style": "Style",
       "width": "Width",
-      "color": "Color"
+      "color": "Color",
+      "custom_color": "Custom color"
     },
     "type_picker": {
       "pin_type": "Pin type",

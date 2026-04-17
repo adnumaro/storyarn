@@ -43,7 +43,7 @@ function formatSpeed(v: number): string {
       :icon="Route"
       :options="PATROL_MODES"
       :value="patrolMode || 'none'"
-      placeholder="Select mode..."
+      :placeholder="$t('scenes.pin_patrol.mode_placeholder')"
       :disabled="disabled"
       @update="(v) => emit('updateMode', v)"
     />

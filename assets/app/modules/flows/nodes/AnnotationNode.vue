@@ -75,7 +75,7 @@ function onKeydown(e: KeyboardEvent) {
       ref="textareaRef"
       class="annotation-text annotation-edit-textarea"
       :value="text"
-      placeholder="…"
+      :placeholder="$t('flows.annotation.placeholder')"
       @blur="onBlur"
       @keydown="onKeydown"
       @pointerdown.stop

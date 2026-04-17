@@ -51,10 +51,10 @@ function select(value: string | number) {
       <Command>
         <CommandInput :placeholder="placeholder" />
         <CommandList>
-          <CommandEmpty>No results</CommandEmpty>
+          <CommandEmpty>{{ $t("flows.searchable_select.no_results") }}</CommandEmpty>
           <CommandGroup>
             <CommandItem value="__clear__" @select="select('')">
-              <span class="text-muted-foreground">None</span>
+              <span class="text-muted-foreground">{{ $t("flows.searchable_select.none") }}</span>
             </CommandItem>
             <CommandItem
               v-for="[label, value] in options"

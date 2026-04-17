@@ -76,7 +76,7 @@ const hasAvatarOverride = computed(() => {
   <input
     type="text"
     class="toolbar-input text-xs font-mono"
-    placeholder="tech_id"
+    :placeholder="$t('flows.dialogue_toolbar.tech_id_placeholder')"
     :value="nodeData.technical_id || ''"
     @blur="(e: FocusEvent) => updateField('technical_id', (e.target as HTMLInputElement).value)"
     @keydown.enter="(e: KeyboardEvent) => (e.target as HTMLInputElement).blur()"
@@ -91,10 +91,10 @@ const hasAvatarOverride = computed(() => {
     @select="selectAvatar"
   />
   <ToolbarSeparator />
-  <button type="button" class="toolbar-btn" title="Screenplay editor" @click="openScreenplay">
+  <button type="button" class="toolbar-btn" :title="$t('flows.node_types.dialogue_toolbar_screenplay')" @click="openScreenplay">
     <Settings class="size-3.5" />
   </button>
-  <button type="button" class="toolbar-btn" title="Preview" @click="startPreview">
+  <button type="button" class="toolbar-btn" :title="$t('flows.node_types.dialogue_toolbar_preview')" @click="startPreview">
     <PlayIcon class="size-3" />
   </button>
 </template>

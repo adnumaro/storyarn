@@ -24,7 +24,10 @@
       "new_flow": "Nuevo flujo",
       "delete_title": "¿Eliminar flujo?",
       "cancel": "Cancelar",
-      "delete": "Eliminar"
+      "delete": "Eliminar",
+      "add_child": "Añadir flujo hijo",
+      "move_to_trash": "Mover a la papelera",
+      "set_main": "Establecer como principal"
     },
     "header": {
       "nav_back": "Alt+Izquierda",
@@ -78,7 +81,9 @@
       "jump": "Salto",
       "exit": "Salida",
       "subflow": "Subflujo",
-      "slug_line": "Encabezado"
+      "slug_line": "Encabezado",
+      "dialogue_toolbar_screenplay": "Editor de guión",
+      "dialogue_toolbar_preview": "Vista previa"
     },
     "dock": {
       "narrative": "Narrativa",
@@ -117,7 +122,11 @@
       "empty_response": "(vacío)",
       "waiting": "Esperando ejecución...",
       "filter_variables": "Filtrar variables...",
-      "nil": "nil"
+      "nil": "nil",
+      "step_key": "Paso (F10)",
+      "step_back_key": "Retroceder (F9)",
+      "reset_key": "Reiniciar (F6)",
+      "stop": "Detener"
     },
     "minimap": {
       "toggle": "Alternar minimapa",
@@ -152,7 +161,8 @@
       "menu_text": "Texto de menú",
       "menu_text_placeholder": "Texto breve para menús...",
       "technical_id": "ID técnico",
-      "technical_id_placeholder": "autogenerado"
+      "technical_id_placeholder": "autogenerado",
+      "response_placeholder": "Texto de respuesta..."
     },
     "version_history": {
       "title": "Historial de versiones"
@@ -170,8 +180,46 @@
       "multi": "Multi",
       "edit_condition": "Editar condición"
     },
+    "hub_toolbar": {
+      "label_placeholder": "Etiqueta",
+      "hub_id_placeholder": "hub_id",
+      "locate_jumps": "Localizar saltos"
+    },
+    "jump_toolbar": {
+      "target_placeholder": "Hub destino\u2026",
+      "locate_target": "Localizar hub destino"
+    },
+    "slug_line_toolbar": {
+      "setting_placeholder": "Escenario\u2026",
+      "location_placeholder": "Ubicación\u2026",
+      "time_placeholder": "Hora\u2026"
+    },
+    "subflow_toolbar": {
+      "select_flow_placeholder": "Seleccionar flujo\u2026",
+      "open_flow": "Abrir flujo"
+    },
+    "instruction_toolbar": {
+      "edit_instructions": "Editar instrucciones"
+    },
+    "dialogue_toolbar": {
+      "tech_id_placeholder": "tech_id",
+      "has_audio": "Tiene audio"
+    },
+    "avatar_picker": {
+      "select_avatar": "Seleccionar avatar",
+      "use_default": "Usar predeterminado"
+    },
+    "searchable_select": {
+      "no_results": "Sin resultados",
+      "none": "Ninguno"
+    },
+    "annotation": {
+      "placeholder": "\u2026",
+      "delete": "Eliminar"
+    },
     "exit_toolbar": {
-      "label_placeholder": "Etiqueta…"
+      "label_placeholder": "Etiqueta…",
+      "open_flow": "Abrir flujo referenciado"
     },
     "nodes": {
       "dialogue": {
@@ -227,7 +275,9 @@
       "play_again": "Jugar de nuevo",
       "back_to_editor": "Volver al editor",
       "back": "Atrás",
-      "restart": "Reiniciar"
+      "restart": "Reiniciar",
+      "toggle_mode": "Cambiar modo",
+      "no_content": "No hay contenido que mostrar."
     }
   }
 }

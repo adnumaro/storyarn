@@ -24,7 +24,10 @@
       "new_flow": "New Flow",
       "delete_title": "Delete flow?",
       "cancel": "Cancel",
-      "delete": "Delete"
+      "delete": "Delete",
+      "add_child": "Add child flow",
+      "move_to_trash": "Move to Trash",
+      "set_main": "Set as main"
     },
     "header": {
       "nav_back": "Alt+Left",
@@ -78,7 +81,9 @@
       "jump": "Jump",
       "exit": "Exit",
       "subflow": "Subflow",
-      "slug_line": "Slug Line"
+      "slug_line": "Slug Line",
+      "dialogue_toolbar_screenplay": "Screenplay editor",
+      "dialogue_toolbar_preview": "Preview"
     },
     "dock": {
       "narrative": "Narrative",
@@ -117,7 +122,11 @@
       "empty_response": "(empty)",
       "waiting": "Waiting for execution...",
       "filter_variables": "Filter variables...",
-      "nil": "nil"
+      "nil": "nil",
+      "step_key": "Step (F10)",
+      "step_back_key": "Step Back (F9)",
+      "reset_key": "Reset (F6)",
+      "stop": "Stop"
     },
     "minimap": {
       "toggle": "Toggle minimap",
@@ -152,7 +161,8 @@
       "menu_text": "Menu text",
       "menu_text_placeholder": "Short text for menus...",
       "technical_id": "Technical ID",
-      "technical_id_placeholder": "auto-generated"
+      "technical_id_placeholder": "auto-generated",
+      "response_placeholder": "Response text..."
     },
     "version_history": {
       "title": "Version History"
@@ -170,8 +180,46 @@
       "multi": "Multi",
       "edit_condition": "Edit condition"
     },
+    "hub_toolbar": {
+      "label_placeholder": "Label",
+      "hub_id_placeholder": "hub_id",
+      "locate_jumps": "Locate jumps"
+    },
+    "jump_toolbar": {
+      "target_placeholder": "Target hub\u2026",
+      "locate_target": "Locate target hub"
+    },
+    "slug_line_toolbar": {
+      "setting_placeholder": "Setting\u2026",
+      "location_placeholder": "Location\u2026",
+      "time_placeholder": "Time\u2026"
+    },
+    "subflow_toolbar": {
+      "select_flow_placeholder": "Select flow\u2026",
+      "open_flow": "Open flow"
+    },
+    "instruction_toolbar": {
+      "edit_instructions": "Edit instructions"
+    },
+    "dialogue_toolbar": {
+      "tech_id_placeholder": "tech_id",
+      "has_audio": "Has audio"
+    },
+    "avatar_picker": {
+      "select_avatar": "Select avatar",
+      "use_default": "Use default"
+    },
+    "searchable_select": {
+      "no_results": "No results",
+      "none": "None"
+    },
+    "annotation": {
+      "placeholder": "\u2026",
+      "delete": "Delete"
+    },
     "exit_toolbar": {
-      "label_placeholder": "Label…"
+      "label_placeholder": "Label…",
+      "open_flow": "Open referenced flow"
     },
     "nodes": {
       "dialogue": {
@@ -227,7 +275,9 @@
       "play_again": "Play again",
       "back_to_editor": "Back to editor",
       "back": "Back",
-      "restart": "Restart"
+      "restart": "Restart",
+      "toggle_mode": "Toggle mode",
+      "no_content": "No content to display."
     }
   }
 }

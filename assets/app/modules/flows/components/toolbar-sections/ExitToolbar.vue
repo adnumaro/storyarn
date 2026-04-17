@@ -57,7 +57,7 @@ function navigateToExitFlow(flowId: number | string) {
     v-if="nodeData.referenced_flow_id"
     type="button"
     class="toolbar-btn"
-    title="Open referenced flow"
+    :title="$t('flows.exit_toolbar.open_flow')"
     @click="navigateToExitFlow(nodeData.referenced_flow_id!)"
   >
     <ExternalLink class="size-3.5" />

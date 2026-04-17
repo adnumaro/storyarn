@@ -36,7 +36,7 @@ function onBlur(field: string, e: FocusEvent) {
           min="0"
           step="any"
           :value="scaleValue ?? ''"
-          placeholder="500"
+          :placeholder="$t('scenes.settings.width_placeholder')"
           class="w-full h-7 px-2 text-xs rounded-md border border-input bg-background"
           @blur="onBlur('scale_value', $event)"
         />
@@ -46,7 +46,7 @@ function onBlur(field: string, e: FocusEvent) {
         <input
           type="text"
           :value="(scaleValue && scaleUnit) || ''"
-          placeholder="km"
+          :placeholder="$t('scenes.settings.unit_placeholder')"
           class="w-full h-7 px-2 text-xs rounded-md border border-input bg-background"
           @blur="onBlur('scale_unit', $event)"
         />

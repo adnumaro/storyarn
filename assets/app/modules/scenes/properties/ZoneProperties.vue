@@ -153,7 +153,7 @@ function selectDisplayVar(varRef: string | number | null) {
       <TextField
         :label="$t('scenes.zone_properties.tooltip')"
         :value="element.tooltip || ''"
-        placeholder="Hover text..."
+        :placeholder="$t('scenes.zone_properties.tooltip_placeholder')"
         :disabled="!canEdit"
         @update="(v) => update('tooltip', v)"
       />
@@ -186,7 +186,7 @@ function selectDisplayVar(varRef: string | number | null) {
     <div v-if="element.actionType === 'display'" class="pt-3 border-t border-border">
       <EntityCombobox
         :label="$t('scenes.zone_properties.display_variable')"
-        placeholder="Select variable..."
+        :placeholder="$t('scenes.zone_properties.display_variable_placeholder')"
         :options="
           projectVariables.map((v) => ({
             id: v.ref || `${v.sheet_shortcut}.${v.variable_name}`,

@@ -103,7 +103,7 @@ function toggle(field: string, currentValue: boolean | undefined) {
     <TextField
       :label="$t('scenes.pin_properties.tooltip')"
       :value="element.tooltip || ''"
-      placeholder="Hover text..."
+      :placeholder="$t('scenes.pin_properties.tooltip_placeholder')"
       :disabled="!canEdit"
       @update="(v) => update('tooltip', v)"
     />
@@ -112,7 +112,7 @@ function toggle(field: string, currentValue: boolean | undefined) {
     <div class="pt-3 border-t border-border">
       <EntityCombobox
         :label="$t('scenes.pin_properties.sheet')"
-        placeholder="Select sheet..."
+        :placeholder="$t('scenes.pin_properties.sheet_placeholder')"
         :options="projectSheets"
         :selected-id="element.sheetId"
         :disabled="!canEdit"
@@ -160,7 +160,7 @@ function toggle(field: string, currentValue: boolean | undefined) {
     <div class="pt-3 border-t border-border">
       <EntityCombobox
         :label="$t('scenes.pin_properties.flow')"
-        placeholder="Select flow..."
+        :placeholder="$t('scenes.pin_properties.flow_placeholder')"
         :options="projectFlows"
         :selected-id="element.flowId"
         :disabled="!canEdit"

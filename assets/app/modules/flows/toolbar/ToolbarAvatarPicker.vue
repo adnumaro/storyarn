@@ -43,13 +43,13 @@ function clearAvatar() {
         class="toolbar-btn text-xs"
         :class="{ 'text-primary': hasOverride }"
         :disabled="disabled"
-        title="Select avatar"
+        :title="$t('flows.avatar_picker.select_avatar')"
       >
         <Image class="size-3.5" />
       </button>
     </PopoverTrigger>
     <PopoverContent class="w-64 p-2" :side-offset="8" side="top">
-      <div class="text-xs font-medium text-muted-foreground mb-2">Select avatar</div>
+      <div class="text-xs font-medium text-muted-foreground mb-2">{{ $t("flows.avatar_picker.select_avatar") }}</div>
       <div class="grid grid-cols-3 gap-1.5">
         <button
           v-for="avatar in avatars"
@@ -68,7 +68,7 @@ function clearAvatar() {
         @click="clearAvatar"
       >
         <X class="size-3" />
-        Use default
+        {{ $t("flows.avatar_picker.use_default") }}
       </button>
     </PopoverContent>
   </Popover>

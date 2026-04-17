@@ -180,9 +180,12 @@
     "pin_properties": {
       "shortcut": "Atajo",
       "tooltip": "Tooltip",
+      "tooltip_placeholder": "Texto al pasar...",
       "sheet": "Ficha",
+      "sheet_placeholder": "Seleccionar ficha...",
       "change_icon": "Cambiar icono",
       "flow": "Flujo",
+      "flow_placeholder": "Seleccionar flujo...",
       "hidden_exploration": "Oculto en exploración",
       "condition": "Condición",
       "effect_hide": "Ocultar",
@@ -193,8 +196,10 @@
       "shortcut": "Atajo",
       "hidden_exploration": "Oculto en exploración",
       "tooltip": "Tooltip",
+      "tooltip_placeholder": "Texto al pasar...",
       "instruction": "Instrucción",
       "display_variable": "Mostrar variable",
+      "display_variable_placeholder": "Seleccionar variable...",
       "collection": "Colección",
       "condition": "Condición"
     },
@@ -205,7 +210,8 @@
       "ping_pong": "Ping-pong",
       "one_way": "Solo ida",
       "speed": "Velocidad",
-      "pause_waypoints": "Pausa en puntos de ruta (ms)"
+      "pause_waypoints": "Pausa en puntos de ruta (ms)",
+      "mode_placeholder": "Seleccionar modo..."
     },
     "pin_playable": {
       "playable": "Personaje jugable",
@@ -215,7 +221,12 @@
       "collect_all": "Recoger todo",
       "empty_message": "Mensaje vacío",
       "empty_placeholder": "Nada que recoger...",
-      "add_item": "Añadir elemento"
+      "add_item": "Añadir elemento",
+      "sheet": "Ficha",
+      "sheet_placeholder": "Seleccionar ficha...",
+      "label": "Etiqueta",
+      "label_placeholder": "Etiqueta del elemento...",
+      "condition": "Condición"
     },
     "target_picker": {
       "link_to": "Vincular a",
@@ -245,7 +256,9 @@
       "zoom": "Zoom",
       "scene_scale": "Escala de la escena",
       "total_width": "Ancho total",
-      "unit": "Unidad"
+      "unit": "Unidad",
+      "width_placeholder": "500",
+      "unit_placeholder": "km"
     },
     "ambient_row": {
       "on_enter": "Al entrar",
@@ -258,7 +271,10 @@
       "enable": "Activar",
       "interval": "Intervalo (ms)",
       "variable_ref": "Referencia de variable",
-      "priority": "Prioridad (mayor = primero)"
+      "priority": "Prioridad (mayor = primero)",
+      "trigger_placeholder": "Disparador...",
+      "variable_placeholder": "Seleccionar variable...",
+      "priority_placeholder": "0"
     },
     "action_type_picker": {
       "navigation": "Navegación",
@@ -285,7 +301,8 @@
       "line_style": "Estilo de línea",
       "style": "Estilo",
       "width": "Ancho",
-      "color": "Color"
+      "color": "Color",
+      "custom_color": "Color personalizado"
     },
     "type_picker": {
       "pin_type": "Tipo de pin",

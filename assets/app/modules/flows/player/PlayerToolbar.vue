@@ -46,7 +46,7 @@ const emit = defineEmits<{
       <Toggle
         :model-value="playerMode === 'analysis'"
         class="player-toolbar-btn-mode"
-        title="Toggle mode"
+        :title="$t('flows.player.toggle_mode')"
         @update:model-value="emit('toggle-mode')"
       >
         <component :is="playerMode === 'player' ? Eye : ScanEye" :size="16" />

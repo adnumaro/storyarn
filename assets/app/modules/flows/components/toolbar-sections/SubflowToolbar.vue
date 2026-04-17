@@ -49,14 +49,14 @@ function navigateToSubflow(flowId: number | string) {
     :options="flowOptions"
     :selected-value="nodeData.referenced_flow_id"
     :selected-label="selectedFlowName"
-    placeholder="Select flow…"
+    :placeholder="$t('flows.subflow_toolbar.select_flow_placeholder')"
     @select="selectSubflowRef"
   />
   <button
     v-if="nodeData.referenced_flow_id"
     type="button"
     class="toolbar-btn"
-    title="Open flow"
+    :title="$t('flows.subflow_toolbar.open_flow')"
     @click="navigateToSubflow(nodeData.referenced_flow_id!)"
   >
     <ExternalLink class="size-3.5" />
