@@ -1,0 +1,44 @@
+assets/app/modules/flows/setup.ts
+  b5e1bb47b647b01a 20,70
+assets/app/modules/flows/composables/useFlowEditor.ts
+  b5e1bb47b647b01a 280-285
+lib/storyarn_web/live/scene_live/index.ex
+  b5e1bb47b647b01a 135
+lib/storyarn_web/live/flow_live/index.ex
+  b5e1bb47b647b01a 137
+lib/storyarn_web/live/sheet_live/index.ex
+  b5e1bb47b647b01a 136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "bcf6a2b6d2d3bdd0195c0ada6041bdf79975b667",
+  "prompts": {
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 797,
+      "overriden_lines": 0
+    },
+    "b5e1bb47b647b01a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da948ded-a770-4715-803c-ee52cc73c164",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 11,
+      "total_deletions": 0,
+      "accepted_lines": 6548,
+      "overriden_lines": 0
+    }
+  }
+}
