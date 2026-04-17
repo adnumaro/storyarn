@@ -139,25 +139,25 @@ function onSearchInput(q: string): void {
         class="flex-1 min-w-0 h-9 px-3 py-1 rounded-md border border-input bg-card text-sm text-left truncate font-mono focus:outline-none focus:ring-2 focus:ring-ring"
       >
         <span v-if="displayLabel">{{ displayLabel }}</span>
-        <span v-else class="text-muted-foreground/60 italic">Select source...</span>
+        <span v-else class="text-muted-foreground/60 italic">{{ $t("sheets.formula_binding.select_source") }}</span>
       </button>
     </PopoverTrigger>
     <PopoverContent class="w-65 p-0 z-50" align="start" :side-offset="4">
       <Command :should-filter="false">
         <CommandInput
-          placeholder="Search variables..."
+          :placeholder="$t('sheets.formula_binding.search')"
           class="h-8 text-xs"
           :model-value="query"
           @update:model-value="onSearchInput"
         />
         <CommandList ref="listRef">
           <CommandEmpty class="py-3 text-xs text-center">
-            <span v-if="loading">Searching...</span>
-            <span v-else>No results.</span>
+            <span v-if="loading">{{ $t("sheets.formula_binding.searching") }}</span>
+            <span v-else>{{ $t("sheets.formula_binding.no_results") }}</span>
           </CommandEmpty>
 
           <!-- Same row columns (always shown) -->
-          <CommandGroup v-if="sameRowOptions.length > 0" heading="Same row">
+          <CommandGroup v-if="sameRowOptions.length > 0" :heading="$t('sheets.formula_binding.same_row')">
             <CommandItem
               v-for="item in sameRowOptions"
               :key="item.value"
@@ -186,7 +186,7 @@ function onSearchInput(q: string): void {
 
           <!-- Loading indicator -->
           <div v-if="pendingLoad" class="py-2 text-center text-xs text-muted-foreground">
-            Loading...
+            {{ $t("sheets.formula_binding.loading") }}
           </div>
         </CommandList>
       </Command>

@@ -143,7 +143,7 @@ function onDrop(e: DragEvent, dropIndex: number): void {
     </div>
 
     <!-- Empty state -->
-    <div v-else class="py-6 text-center text-sm text-muted-foreground">No images yet.</div>
+    <div v-else class="py-6 text-center text-sm text-muted-foreground">{{ $t("sheets.gallery_block.empty") }}</div>
 
     <!-- Upload button -->
     <div v-if="canEdit" class="mt-2">
@@ -154,7 +154,7 @@ function onDrop(e: DragEvent, dropIndex: number): void {
         @click="triggerUpload"
       >
         <Plus class="size-3.5" />
-        Add image
+        {{ $t("sheets.gallery_block.add") }}
       </Button>
     </div>
 
@@ -162,7 +162,7 @@ function onDrop(e: DragEvent, dropIndex: number): void {
     <Dialog v-model:open="detailOpen">
       <DialogContent v-if="detailImage" class="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{{ detailImage.label || "Image" }}</DialogTitle>
+          <DialogTitle>{{ detailImage.label || $t("sheets.gallery_block.image") }}</DialogTitle>
         </DialogHeader>
 
         <!-- Full image -->
@@ -176,10 +176,10 @@ function onDrop(e: DragEvent, dropIndex: number): void {
 
         <!-- Label -->
         <div class="space-y-1">
-          <label class="text-xs font-medium">Label</label>
+          <label class="text-xs font-medium">{{ $t("sheets.gallery_block.label") }}</label>
           <Input
             :model-value="detailImage.label || ''"
-            placeholder="Image label..."
+            :placeholder="$t('sheets.gallery_block.label_placeholder')"
             class="text-sm"
             :disabled="!canEdit"
             @blur="
@@ -191,10 +191,10 @@ function onDrop(e: DragEvent, dropIndex: number): void {
 
         <!-- Description -->
         <div class="space-y-1">
-          <label class="text-xs font-medium">Description</label>
+          <label class="text-xs font-medium">{{ $t("sheets.gallery_block.description") }}</label>
           <Textarea
             :model-value="detailImage.description || ''"
-            placeholder="Description..."
+            :placeholder="$t('sheets.gallery_block.description_placeholder')"
             :rows="2"
             class="text-sm resize-none"
             :disabled="!canEdit"
@@ -218,7 +218,7 @@ function onDrop(e: DragEvent, dropIndex: number): void {
             @click="removeImage(detailImage.id)"
           >
             <Trash2 class="size-3.5" />
-            Delete
+            {{ $t("sheets.gallery_block.delete") }}
           </Button>
         </div>
       </DialogContent>

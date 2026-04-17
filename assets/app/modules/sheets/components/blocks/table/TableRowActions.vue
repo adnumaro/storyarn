@@ -50,7 +50,7 @@ function deleteRow(): void {
           @click="deleteRow()"
         >
           <Trash2 class="size-3.5" />
-          <span>Delete</span>
+          <span>{{ $t("sheets.table.delete_row") }}</span>
         </button>
       </PopoverContent>
     </Popover>

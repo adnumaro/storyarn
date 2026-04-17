@@ -40,7 +40,7 @@ function saveLabel(val: string): void {
 
 const content = computed(() => block.value?.content);
 const options = computed(() => block.config?.options || []);
-const placeholder = computed(() => block.config?.placeholder || "Select...");
+const placeholder = computed(() => block.config?.placeholder || "");
 
 const displayValue = computed(() => {
   if (!content.value) return null;
@@ -84,11 +84,11 @@ function onChange(val: string | string[]): void {
     >
       <template #config>
         <div class="space-y-1">
-          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">Placeholder</label>
+          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">{{ $t("sheets.select_block.placeholder_label") }}</label>
           <Input
             :id="`placeholder-${useId()}`"
             :model-value="block.config?.placeholder || ''"
-            placeholder="Select..."
+            :placeholder="$t('sheets.select_block.placeholder')"
             size="xs"
             class="bg-background dark:bg-background"
             @blur="
@@ -125,7 +125,7 @@ function onChange(val: string | string[]): void {
         >
           <span>
             <span v-if="content">{{ options.find((opt) => opt.key === content)?.value }}</span>
-            <span v-else class="text-muted-foreground">{{ placeholder }}</span>
+            <span v-else class="text-muted-foreground">{{ placeholder || $t("sheets.select_block.placeholder") }}</span>
           </span>
           <ChevronDown class="h-4 w-4 opacity-50" />
         </button>
@@ -133,7 +133,7 @@ function onChange(val: string | string[]): void {
       <PopoverContent align="start" class="w-(--reka-popover-trigger-width) p-1">
         <div class="max-h-48 overflow-y-auto">
           <div v-if="options.length === 0" class="text-muted-foreground p-2">
-            No options available
+            {{ $t("sheets.select_block.no_options") }}
           </div>
           <button
             v-else
@@ -141,7 +141,7 @@ function onChange(val: string | string[]): void {
             class="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
             @click="onChange(' ')"
           >
-            <span class="text-muted-foreground">None</span>
+            <span class="text-muted-foreground">{{ $t("sheets.select_block.none") }}</span>
           </button>
           <button
             v-for="opt in options"

@@ -63,18 +63,18 @@ function deleteColumn(): void {
     </THeadMenuItem>
     <THeadMenuItem @click="toggleConstant()">
       <Lock class="size-3.5 opacity-60" />
-      <span class="flex-1 text-left">Constant</span>
+      <span class="flex-1 text-left">{{ $t("sheets.table.main_menu.constant") }}</span>
       <Check v-if="column.is_constant" class="size-3.5 opacity-60" />
     </THeadMenuItem>
     <THeadMenuItem @click="toggleRequired()">
       <Asterisk class="size-3.5 opacity-60" />
-      <span class="flex-1 text-left">Required</span>
+      <span class="flex-1 text-left">{{ $t("sheets.table.main_menu.required") }}</span>
       <Check v-if="column.required" class="size-3.5 opacity-60" />
     </THeadMenuItem>
     <Separator class="my-1" />
     <THeadMenuItem @click="menuTypeChanged('type')">
       <ArrowLeftRight class="size-3.5 opacity-60" />
-      <span class="flex-1 text-left">Change type</span>
+      <span class="flex-1 text-left">{{ $t("sheets.table.main_menu.change_type") }}</span>
       <ChevronRight class="size-3.5 opacity-40" />
     </THeadMenuItem>
     <THeadMenuItem
@@ -82,17 +82,17 @@ function deleteColumn(): void {
       @click="menuTypeChanged('options')"
     >
       <Settings class="size-3.5 opacity-60" />
-      <span class="flex-1 text-left">Options</span>
+      <span class="flex-1 text-left">{{ $t("sheets.table.main_menu.options") }}</span>
       <ChevronRight class="size-3.5 opacity-40" />
     </THeadMenuItem>
     <THeadMenuItem v-if="column.type === 'number'" @click="menuTypeChanged('number')">
       <SlidersHorizontal class="size-3.5 opacity-60" />
-      <span class="flex-1 text-left">Constraints</span>
+      <span class="flex-1 text-left">{{ $t("sheets.table.main_menu.constraints") }}</span>
       <ChevronRight class="size-3.5 opacity-40" />
     </THeadMenuItem>
     <THeadMenuItem v-if="column.type === 'reference'" @click="menuTypeChanged('reference')">
       <Settings class="size-3.5 opacity-60" />
-      <span class="flex-1 text-left">Settings</span>
+      <span class="flex-1 text-left">{{ $t("sheets.table.main_menu.settings") }}</span>
       <ChevronRight class="size-3.5 opacity-40" />
     </THeadMenuItem>
     <Separator class="my-1" />
@@ -102,7 +102,7 @@ function deleteColumn(): void {
       @click="deleteColumn()"
     >
       <Trash2 class="size-3.5" />
-      <span>Delete column</span>
+      <span>{{ $t("sheets.table.main_menu.delete_column") }}</span>
     </THeadMenuItem>
   </THeadBaseMenu>
 </template>

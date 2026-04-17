@@ -292,7 +292,7 @@ makeDroppable(
                   "
                   type="button"
                   class="size-6 rounded flex items-center justify-center text-blue-500 hover:bg-blue-500/10 transition-colors"
-                  title="Reattach to parent"
+                  :title="$t('sheets.dnd.reattach')"
                   @click.stop="reattachBlock((item as FullWidthLayoutItem).block.id)"
                 >
                   <Link2 class="size-3.5" />

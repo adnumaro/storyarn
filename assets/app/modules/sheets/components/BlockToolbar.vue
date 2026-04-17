@@ -59,7 +59,7 @@ const emit = defineEmits<{
         size="icon-sm"
         variant="ghost"
         :class="[isConstant && 'text-primary']"
-        :title="isConstant ? 'Make variable' : 'Make constant'"
+        :title="isConstant ? $t('sheets.block_toolbar.make_variable') : $t('sheets.block_toolbar.make_constant')"
         @click="emit('toggleConstant')"
       >
         <Lock v-if="isConstant" class="size-4" />
@@ -86,8 +86,12 @@ const emit = defineEmits<{
       <div v-if="showScope" class="flex items-center gap-1 pl-1 border-l border-border ml-0.5">
         <Tabs :model-value="scope" @update:model-value="(v) => emit('changeScope', v as string)">
           <TabsList class="h-7 p-0.5 bg-background">
-            <TabsTrigger value="self" class="text-[10px] px-1.5 py-0 h-6">Self</TabsTrigger>
-            <TabsTrigger value="children" class="text-[10px] px-1.5 py-0 h-6">Children</TabsTrigger>
+            <TabsTrigger value="self" class="text-[10px] px-1.5 py-0 h-6">
+              {{ $t("sheets.block_toolbar.self") }}
+            </TabsTrigger>
+            <TabsTrigger value="children" class="text-[10px] px-1.5 py-0 h-6">
+              {{ $t("sheets.block_toolbar.children") }}
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -99,7 +103,7 @@ const emit = defineEmits<{
             :id="`block-toolbar-${blockId}-${generateId()}`"
             size="icon-sm"
             variant="ghost"
-            title="Configure"
+            :title="$t('sheets.block_toolbar.configure')"
           >
             <Settings class="size-4" />
           </Button>

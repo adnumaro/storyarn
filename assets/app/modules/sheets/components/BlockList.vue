@@ -213,7 +213,7 @@ function resolveComponent(type: string): typeof TextBlock | null {
           class="flex items-center gap-2 mb-2 text-xs text-muted-foreground uppercase tracking-wider"
         >
           <ArrowUpRight class="size-3 text-blue-400" />
-          <span>Inherited from</span>
+          <span>{{ $t("sheets.block_list.inherited_from") }}</span>
           <a
             :href="`/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets/${group.sourceSheet.id}`"
             class="text-primary hover:underline font-medium normal-case"
@@ -237,7 +237,7 @@ function resolveComponent(type: string): typeof TextBlock | null {
                     v-if="canEdit && !isLockedByOther(block.id)"
                     type="button"
                     class="size-6 rounded flex items-center justify-center text-blue-500 hover:bg-blue-500/10 transition-colors"
-                    title="Detach from parent"
+                    :title="$t('sheets.block_list.detach')"
                     @click.stop="detachBlock(block.id)"
                   >
                     <Link2Off class="size-3.5" />
@@ -263,7 +263,7 @@ function resolveComponent(type: string): typeof TextBlock | null {
       <!-- ═══ OWN PROPERTIES SEPARATOR ═══ -->
       <div v-if="inheritedGroups.length > 0" class="flex items-center gap-3 py-2">
         <div class="h-px flex-1 bg-border" />
-        <span class="text-xs text-muted-foreground uppercase tracking-wider">Own properties</span>
+        <span class="text-xs text-muted-foreground uppercase tracking-wider">{{ $t("sheets.block_list.own_properties") }}</span>
         <div class="h-px flex-1 bg-border" />
       </div>
 
@@ -274,7 +274,7 @@ function resolveComponent(type: string): typeof TextBlock | null {
         v-if="blocks.length === 0 && inheritedGroups.length === 0 && !canEdit"
         class="py-8 text-center text-sm text-muted-foreground"
       >
-        No blocks yet.
+        {{ $t("sheets.block_list.empty") }}
       </div>
 
       <AddBlockMenu v-if="canEdit" @select="addBlock" />

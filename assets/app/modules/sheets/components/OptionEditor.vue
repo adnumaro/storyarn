@@ -31,21 +31,21 @@ function updateOption(index: number, field: "key" | "value", value: string): voi
 </script>
 
 <template>
-  <label class="text-xs font-medium mb-1 block">Options</label>
+  <label class="text-xs font-medium mb-1 block">{{ $t("sheets.option_editor.title") }}</label>
   <div class="space-y-1.5 mb-2">
     <div v-for="(opt, idx) in options" :key="idx" class="flex items-center gap-1">
       <Input
         :model-value="opt.key"
         class="bg-background dark:bg-background"
         size="xs"
-        placeholder="key"
+        :placeholder="$t('sheets.option_editor.key_placeholder')"
         @blur="(e: Event) => updateOption(idx, 'key', (e.target as HTMLInputElement).value)"
       />
       <Input
         :model-value="opt.value"
         size="xs"
         class="bg-background dark:bg-background"
-        placeholder="Label"
+        :placeholder="$t('sheets.option_editor.label_placeholder')"
         @blur="(e: Event) => updateOption(idx, 'value', (e.target as HTMLInputElement).value)"
       />
       <Button
@@ -64,6 +64,6 @@ function updateOption(index: number, field: "key" | "value", value: string): voi
     @click="addOption"
   >
     <Plus class="size-3" />
-    Add option
+    {{ $t("sheets.option_editor.add") }}
   </button>
 </template>

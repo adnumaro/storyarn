@@ -32,7 +32,7 @@ function columnTypeChanged(type: THeadMenuType): void {
   <THeadBaseMenu>
     <THeadMenuItem class="mb-1" @click="backToMain()">
       <ArrowLeft class="size-3.5" />
-      <span>Change type</span>
+      <span>{{ $t("sheets.table.main_menu.change_type") }}</span>
     </THeadMenuItem>
     <Separator class="mb-1" />
     <THeadMenuItem

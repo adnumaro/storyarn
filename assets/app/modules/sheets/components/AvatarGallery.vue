@@ -95,7 +95,7 @@ function onNotesBlur(id: number | string, value: string, original: string | unde
       <template v-if="view === 'grid'">
         <!-- Header -->
         <div class="flex items-center justify-between px-5 pt-4 pb-3">
-          <h3 class="font-bold text-lg">Avatar Gallery</h3>
+          <h3 class="font-bold text-lg">{{ $t("sheets.avatar_gallery.title") }}</h3>
           <Button variant="ghost" size="icon-sm" @click="emit('update:open', false)">
             <X class="size-4" />
           </Button>
@@ -106,7 +106,7 @@ function onNotesBlur(id: number | string, value: string, original: string | unde
           <!-- Empty state -->
           <div v-if="avatars.length === 0" class="text-center py-8 text-muted-foreground/40">
             <Image class="size-8 mx-auto mb-2 opacity-40" />
-            <p class="text-sm">No avatars yet. Upload one to get started.</p>
+            <p class="text-sm">{{ $t("sheets.avatar_gallery.empty") }}</p>
           </div>
 
           <!-- Thumbnail grid -->
@@ -132,7 +132,9 @@ function onNotesBlur(id: number | string, value: string, original: string | unde
 
               <!-- Default badge -->
               <div v-if="item.is_default" class="absolute top-1 left-1">
-                <Badge variant="default" class="text-[10px] px-1.5 py-0">default</Badge>
+                <Badge variant="default" class="text-[10px] px-1.5 py-0">
+                  {{ $t("sheets.avatar_gallery.default") }}
+                </Badge>
               </div>
 
               <!-- Delete X -->
@@ -150,7 +152,7 @@ function onNotesBlur(id: number | string, value: string, original: string | unde
                 v-if="canEdit"
                 type="text"
                 :value="item.name || ''"
-                placeholder="Name..."
+                :placeholder="$t('sheets.avatar_gallery.name_placeholder')"
                 class="w-full mt-1 text-center text-xs bg-transparent border-0 border-b border-border focus:border-primary rounded-none px-0 outline-none"
                 @blur="(e) => onNameBlur(item.id, (e.target as HTMLInputElement).value, item.name)"
               />
@@ -172,7 +174,7 @@ function onNotesBlur(id: number | string, value: string, original: string | unde
               @click="emit('upload')"
             >
               <Plus class="size-4" />
-              Add avatar
+              {{ $t("sheets.avatar_gallery.add") }}
             </Button>
           </div>
         </div>
@@ -184,7 +186,7 @@ function onNotesBlur(id: number | string, value: string, original: string | unde
         <div class="flex items-center justify-between px-5 pt-4 pb-3">
           <Button variant="ghost" size="sm" class="gap-1" @click="view = 'grid'">
             <ChevronLeft class="size-4" />
-            Avatar Gallery
+            {{ $t("sheets.avatar_gallery.title") }}
           </Button>
 
           <div v-if="avatars.length > 1" class="flex items-center gap-1">
@@ -213,10 +215,12 @@ function onNotesBlur(id: number | string, value: string, original: string | unde
 
           <!-- Name field -->
           <div class="mb-3 space-y-1">
-            <label class="text-xs font-medium">Name</label>
+            <label class="text-xs font-medium">
+              {{ $t("sheets.avatar_gallery.name_label") }}
+            </label>
             <Input
               :model-value="avatars[currentIndex].name || ''"
-              placeholder="e.g. happy, angry, combat..."
+              :placeholder="$t('sheets.avatar_gallery.name_example')"
               class="text-sm"
               :disabled="!canEdit"
               @blur="
@@ -232,10 +236,12 @@ function onNotesBlur(id: number | string, value: string, original: string | unde
 
           <!-- Notes field -->
           <div class="mb-3 space-y-1">
-            <label class="text-xs font-medium">Notes</label>
+            <label class="text-xs font-medium">
+              {{ $t("sheets.avatar_gallery.notes_label") }}
+            </label>
             <Textarea
               :model-value="avatars[currentIndex].notes || ''"
-              placeholder="Voice direction, art notes..."
+              :placeholder="$t('sheets.avatar_gallery.notes_placeholder')"
               :rows="3"
               class="text-sm resize-none"
               :disabled="!canEdit"
@@ -261,10 +267,10 @@ function onNotesBlur(id: number | string, value: string, original: string | unde
                 @click="emit('setDefault', avatars[currentIndex].id)"
               >
                 <Star class="size-3.5" />
-                Set as default
+                {{ $t("sheets.avatar_gallery.set_default") }}
               </Button>
               <Badge v-else-if="avatars[currentIndex].is_default" variant="default" class="text-xs">
-                Default
+                {{ $t("sheets.avatar_gallery.default_badge") }}
               </Badge>
             </div>
 
@@ -276,7 +282,7 @@ function onNotesBlur(id: number | string, value: string, original: string | unde
               @click="emit('remove', avatars[currentIndex].id)"
             >
               <Trash2 class="size-3.5" />
-              Delete
+              {{ $t("sheets.avatar_gallery.delete") }}
             </Button>
           </div>
         </div>

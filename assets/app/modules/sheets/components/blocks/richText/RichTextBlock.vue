@@ -67,11 +67,11 @@ const content = computed(() => (block.value?.content as string) || "");
     >
       <template #config>
         <div class="space-y-1">
-          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">Placeholder</label>
+          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">{{ $t("sheets.rich_text_block.placeholder_label") }}</label>
           <Input
             :id="`placeholder-${useId()}`"
             :value="block.config?.placeholder || ''"
-            placeholder="Write something..."
+            :placeholder="$t('sheets.rich_text_block.default_placeholder')"
             size="xs"
             class="bg-background dark:bg-background"
             @blur="
@@ -102,7 +102,7 @@ const content = computed(() => (block.value?.content as string) || "");
     <RichTextEditor
       :content="content"
       :editable="canEdit"
-      :placeholder="block.config?.placeholder || 'Write something...'"
+      :placeholder="block.config?.placeholder || $t('sheets.rich_text_block.default_placeholder')"
       @update="(html) => live.pushEvent('update_block_value', { id: block.id, value: html })"
     />
   </div>

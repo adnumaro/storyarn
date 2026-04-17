@@ -37,13 +37,13 @@ function toggleBoolean(row: TableRow, col: TableColumn): void {
       v-if="getCellValue(row, column) === true"
       class="text-[10px] bg-green-500/20 text-green-700 border-0"
     >
-      Yes
+      {{ $t("sheets.boolean_block.yes") }}
     </Badge>
     <Badge
       v-else-if="getCellValue(row, column) === false"
       class="text-[10px] bg-red-500/20 text-red-700 border-0"
     >
-      No
+      {{ $t("sheets.boolean_block.no") }}
     </Badge>
     <span v-else class="text-muted-foreground/40 text-sm">\u2014</span>
   </div>

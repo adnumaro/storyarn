@@ -42,7 +42,7 @@ function saveLabel(val: string): void {
 
 const content = computed<string[]>(() => (block.value?.content as string[]) || []);
 const options = computed<SelectOption[]>(() => block.config?.options || []);
-const placeholder = computed(() => block.config?.placeholder || "Select...");
+const placeholder = computed(() => block.config?.placeholder || "");
 
 const selectedOptions = computed(() =>
   (Array.isArray(content.value) ? content.value : [])
@@ -83,11 +83,11 @@ function toggle(key: string): void {
     >
       <template #config>
         <div class="space-y-1">
-          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">Placeholder</label>
+          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">{{ $t("sheets.multi_select_block.placeholder_label") }}</label>
           <Input
             :id="`placeholder-${useId()}-${generateId()}`"
             :model-value="block.config?.placeholder || ''"
-            placeholder="Select..."
+            :placeholder="$t('sheets.multi_select_block.placeholder')"
             size="xs"
             class="bg-background dark:bg-background"
             @blur="
@@ -131,7 +131,7 @@ function toggle(key: string): void {
               >{{ opt.value }}</Badge
             >
             <span v-if="selectedOptions.length === 0" class="text-muted-foreground">
-              {{ placeholder }}
+              {{ placeholder || $t("sheets.multi_select_block.placeholder") }}
             </span>
           </span>
           <ChevronDown class="h-4 w-4 opacity-50" />
@@ -140,7 +140,7 @@ function toggle(key: string): void {
       <PopoverContent align="start" class="w-(--reka-popover-trigger-width) p-1">
         <div class="max-h-48 overflow-y-auto">
           <div v-if="options.length === 0" class="text-muted-foreground p-2">
-            No options available
+            {{ $t("sheets.multi_select_block.no_options") }}
           </div>
           <button
             v-for="opt in options"

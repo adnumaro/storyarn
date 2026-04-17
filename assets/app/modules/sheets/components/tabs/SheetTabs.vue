@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Headphones, History, LayoutList, Link } from "lucide-vue-next";
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
 import { useLive } from "@composables/useLive";
 import type { TabDefinition } from "../../types";
@@ -16,15 +17,16 @@ const {
 }>();
 
 const live = useLive();
+const { t } = useI18n();
 
-const allTabs: TabDefinition[] = [
-  { value: "content", label: "Content", icon: LayoutList },
-  { value: "references", label: "References", icon: Link },
-  { value: "audio", label: "Audio", icon: Headphones },
-  { value: "history", label: "History", icon: History },
-];
+const allTabs = computed<TabDefinition[]>(() => [
+  { value: "content", label: t("sheets.tabs.content"), icon: LayoutList },
+  { value: "references", label: t("sheets.tabs.references"), icon: Link },
+  { value: "audio", label: t("sheets.tabs.audio"), icon: Headphones },
+  { value: "history", label: t("sheets.tabs.history"), icon: History },
+]);
 
-const tabs = computed(() => (compact ? allTabs.filter((t) => t.value !== "history") : allTabs));
+const tabs = computed(() => (compact ? allTabs.value.filter((t) => t.value !== "history") : allTabs.value));
 
 function onTabChange(value: string | number): void {
   if (value !== currentTab) {

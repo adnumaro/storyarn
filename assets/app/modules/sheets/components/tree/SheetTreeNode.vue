@@ -200,7 +200,7 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
             <button
               type="button"
               class="size-5 inline-flex items-center justify-center rounded hover:bg-accent text-muted-foreground hover:text-foreground"
-              title="Add child sheet"
+              :title="$t('sheets.tree.add_child')"
               @click.stop.prevent="emit('createChild', node.id)"
             >
               <FilePlus class="size-3" />
@@ -208,7 +208,7 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
             <button
               type="button"
               class="size-5 inline-flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-              title="Move to Trash"
+              :title="$t('sheets.tree.move_to_trash')"
               @click.stop.prevent="emit('requestDelete', node)"
             >
               <Trash2 class="size-3" />
@@ -220,14 +220,14 @@ watch([() => childrenOver.value, pointerZone], ([childOver, zone]) => {
       <ContextMenuContent v-if="canEdit" class="">
         <ContextMenuItem class="gap-2 text-xs" @select="emit('createChild', node.id)">
           <FilePlus class="size-3.5" />
-          Add child sheet
+          {{ $t("sheets.tree.add_child") }}
         </ContextMenuItem>
         <ContextMenuItem
           class="gap-2 text-xs text-destructive"
           @select="emit('requestDelete', node)"
         >
           <Trash2 class="size-3.5" />
-          Move to Trash
+          {{ $t("sheets.tree.move_to_trash") }}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

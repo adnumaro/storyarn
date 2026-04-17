@@ -83,11 +83,11 @@ function saveBinding(symbol: string, value: string): void {
     <template #header>
       <div class="flex items-center gap-2 px-3 py-2.5">
         <Sigma class="size-3.5 text-primary" />
-        <span class="font-medium text-sm flex-1">Formula Editor</span>
+        <span class="font-medium text-sm flex-1">{{ $t("sheets.formula_panel.title") }}</span>
         <button
           type="button"
           class="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          title="Close panel"
+          :title="$t('sheets.formula_panel.close')"
           @click="close"
         >
           <X class="size-3" />
@@ -119,12 +119,12 @@ function saveBinding(symbol: string, value: string): void {
 
       <!-- Expression Input -->
       <div>
-        <label class="text-xs font-medium text-muted-foreground mb-1 block">Expression</label>
+        <label class="text-xs font-medium text-muted-foreground mb-1 block">{{ $t("sheets.formula_panel.expression") }}</label>
         <input
           v-model="localExpression"
           type="text"
           class="w-full px-2 py-1.5 text-xs bg-background border border-border rounded-md outline-none focus:border-ring font-mono"
-          placeholder="e.g. (a + b) * 2"
+          :placeholder="$t('sheets.formula_panel.expression_placeholder')"
           spellcheck="false"
           autocomplete="off"
           @input="onExpressionInput"
@@ -143,7 +143,7 @@ function saveBinding(symbol: string, value: string): void {
       <!-- Symbol Bindings -->
       <div v-if="(formulaEditing.symbols?.length ?? 0) > 0">
         <label class="text-xs font-medium text-muted-foreground mb-2 block"
-          >Variable Bindings</label
+          >{{ $t("sheets.formula_panel.bindings") }}</label
         >
         <div class="space-y-2">
           <div
@@ -168,7 +168,7 @@ function saveBinding(symbol: string, value: string): void {
 
       <!-- Result -->
       <div v-if="resultHtml">
-        <label class="text-xs font-medium text-muted-foreground mb-1 block">Result</label>
+        <label class="text-xs font-medium text-muted-foreground mb-1 block">{{ $t("sheets.formula_panel.result") }}</label>
         <div class="bg-muted/50 rounded-lg p-3 overflow-x-auto">
           <!-- eslint-disable-next-line vue/no-v-html -->
           <div class="text-center" v-html="resultHtml" />
@@ -176,7 +176,7 @@ function saveBinding(symbol: string, value: string): void {
       </div>
 
       <div v-else-if="formulaEditing.result != null">
-        <label class="text-xs font-medium text-muted-foreground mb-1 block">Result</label>
+        <label class="text-xs font-medium text-muted-foreground mb-1 block">{{ $t("sheets.formula_panel.result") }}</label>
         <div class="bg-muted/50 rounded-lg p-3 text-center text-sm font-mono">
           {{ formulaEditing.result }}
         </div>

@@ -87,11 +87,11 @@ function onKeydown(e: KeyboardEvent): void {
     >
       <template #config>
         <div class="space-y-1">
-          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">Placeholder</label>
+          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">{{ $t("sheets.number_block.placeholder_label") }}</label>
           <Input
             :id="`placeholder-${useId()}`"
             :model-value="block.config?.placeholder || ''"
-            placeholder="Default value..."
+            :placeholder="$t('sheets.number_block.default_placeholder')"
             size="xs"
             class="bg-background dark:bg-background"
             @blur="
@@ -106,7 +106,7 @@ function onKeydown(e: KeyboardEvent): void {
         </div>
         <div class="grid grid-cols-3 gap-2">
           <div class="space-y-1">
-            <label :for="`min-${useId()}`" class="text-xs font-medium">Min</label>
+            <label :for="`min-${useId()}`" class="text-xs font-medium">{{ $t("sheets.number_block.min") }}</label>
             <Input
               :id="`min-${useId()}`"
               type="number"
@@ -126,7 +126,7 @@ function onKeydown(e: KeyboardEvent): void {
             />
           </div>
           <div class="space-y-1">
-            <label :for="`max-${useId()}`" class="text-xs font-medium">Max</label>
+            <label :for="`max-${useId()}`" class="text-xs font-medium">{{ $t("sheets.number_block.max") }}</label>
             <Input
               :id="`max-${useId()}`"
               type="number"
@@ -146,7 +146,7 @@ function onKeydown(e: KeyboardEvent): void {
             />
           </div>
           <div class="space-y-1">
-            <label :for="`step-${useId()}`" class="text-xs font-medium">Step</label>
+            <label :for="`step-${useId()}`" class="text-xs font-medium">{{ $t("sheets.number_block.step") }}</label>
             <Input
               :id="`step-${useId()}`"
               type="number"

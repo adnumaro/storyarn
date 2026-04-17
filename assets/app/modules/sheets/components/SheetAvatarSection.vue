@@ -92,7 +92,7 @@ const defaultAvatar = computed<SheetAvatar | null>(
         @click="$emit('open-gallery')"
       >
         <LayoutGrid class="size-3.5" />
-        Gallery
+        {{ $t("sheets.avatar_gallery.gallery") }}
       </button>
     </PopoverContent>
   </Popover>

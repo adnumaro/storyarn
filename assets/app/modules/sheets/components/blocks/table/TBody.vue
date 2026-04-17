@@ -125,7 +125,7 @@ makeDroppable(
     <!-- Empty state -->
     <tr v-if="localRows.length === 0">
       <td :colspan="columns.length + 1" class="text-center text-sm text-foreground py-6">
-        No rows yet.
+        {{ $t("sheets.table.no_rows") }}
       </td>
     </tr>
   </tbody>

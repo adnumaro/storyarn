@@ -125,9 +125,9 @@ function openPopover(nodeId: number | string): void {
     class="rounded-xl border border-border/60 bg-card p-8 text-center"
   >
     <VolumeX class="size-10 mx-auto text-muted-foreground/20 mb-3" />
-    <p class="text-sm font-medium text-muted-foreground mb-1">No voice lines</p>
+    <p class="text-sm font-medium text-muted-foreground mb-1">{{ $t("sheets.audio_tab.empty_title") }}</p>
     <p class="text-xs text-muted-foreground/60">
-      Dialogue nodes using this sheet as speaker will appear here.
+      {{ $t("sheets.audio_tab.empty_description") }}
     </p>
   </div>
 
@@ -175,7 +175,7 @@ function openPopover(nodeId: number | string): void {
                 data-phx-link="redirect"
                 data-phx-link-state="push"
                 class="shrink-0 p-1.5 rounded-md bg-primary/5 text-primary/50 hover:bg-primary/10 hover:text-primary transition-colors"
-                title="Open in flow editor"
+                :title="$t('sheets.audio_tab.open_flow')"
               >
                 <ArrowUpRight class="size-3.5" />
               </a>
@@ -201,7 +201,7 @@ function openPopover(nodeId: number | string): void {
                 @click="removeAudio(line.nodeId)"
               >
                 <X class="size-3" />
-                Remove
+                {{ $t("sheets.audio_tab.remove") }}
               </Button>
             </div>
 
@@ -214,7 +214,7 @@ function openPopover(nodeId: number | string): void {
                 <PopoverTrigger as-child>
                   <Button variant="outline" size="xs" class="gap-1 font-normal">
                     <Search class="size-3" />
-                    Select audio...
+                    {{ $t("sheets.audio_tab.select_audio") }}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent align="start" :side-offset="4" class="w-64 p-0">
@@ -222,15 +222,15 @@ function openPopover(nodeId: number | string): void {
                     <CommandInput
                       :model-value="searchQuery"
                       @update:model-value="(v: string | number) => (searchQuery = String(v))"
-                      placeholder="Search audio..."
+                      :placeholder="$t('sheets.audio_tab.search')"
                     />
                     <CommandList class="max-h-48">
                       <div v-if="filteredAssets.length === 0" class="py-4 px-3 text-center">
                         <VolumeX class="size-6 mx-auto text-muted-foreground/20 mb-1.5" />
                         <p v-if="audioAssets.length === 0" class="text-xs text-muted-foreground">
-                          No audio assets yet.
+                          {{ $t("sheets.audio_tab.no_assets") }}
                         </p>
-                        <p v-else class="text-xs text-muted-foreground">No matches</p>
+                        <p v-else class="text-xs text-muted-foreground">{{ $t("sheets.audio_tab.no_matches") }}</p>
                       </div>
                       <CommandItem
                         v-for="asset in filteredAssets"
@@ -256,14 +256,14 @@ function openPopover(nodeId: number | string): void {
               >
                 <Loader2 v-if="uploadingNodeId === line.nodeId" class="size-3 animate-spin" />
                 <Upload v-else class="size-3" />
-                {{ uploadingNodeId === line.nodeId ? "Uploading..." : "Upload" }}
+                {{ uploadingNodeId === line.nodeId ? $t("sheets.audio_tab.uploading") : $t("sheets.audio_tab.upload") }}
               </Button>
             </div>
 
             <!-- No audio + read only -->
             <div v-else class="flex items-center gap-2 text-xs text-muted-foreground/40 mt-1">
               <VolumeX class="size-3" />
-              <span>No audio</span>
+              <span>{{ $t("sheets.audio_tab.no_audio") }}</span>
             </div>
           </div>
         </div>

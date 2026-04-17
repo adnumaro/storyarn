@@ -34,11 +34,7 @@ const collapsed = computed(() => block.collapsed || false);
 const columns = computed(() => block.columns || []);
 const rows = computed(() => block.rows || []);
 
-const summary = computed(() => {
-  const c = columns.value.length;
-  const r = rows.value.length;
-  return `${r} row${r !== 1 ? "s" : ""}, ${c} column${c !== 1 ? "s" : ""}`;
-});
+// summary is no longer used (was only for collapsed label, currently unused in template)
 
 function saveLabel(val: string): void {
   live.pushEvent("update_block_config", {

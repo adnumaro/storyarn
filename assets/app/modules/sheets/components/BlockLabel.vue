@@ -69,10 +69,12 @@ function save(): void {
         @keydown.enter.prevent="save"
         @keydown.stop
       />
-      <span v-else class="font-medium" :class="canEdit && 'cursor-text'" @click="startEdit">{{
-        localLabel
-      }}</span>
-      <span v-if="required" class="text-[10px] text-destructive font-medium">required</span>
+      <span v-else class="font-medium" :class="canEdit && 'cursor-text'" @click="startEdit">
+        {{ localLabel }}
+      </span>
+      <span v-if="required" class="text-[10px] text-destructive font-medium">
+        {{ $t("sheets.block_label.required") }}
+      </span>
     </div>
     <slot />
   </div>

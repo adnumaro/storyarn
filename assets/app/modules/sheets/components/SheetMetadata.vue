@@ -86,7 +86,7 @@ function onShortcutKeydown(e: KeyboardEvent): void {
         ref="nameInput"
         v-model="localName"
         class="text-3xl font-bold w-full bg-transparent outline-none border-none px-0"
-        placeholder="Untitled"
+        :placeholder="$t('sheets.metadata.untitled')"
         @blur="saveName"
         @keydown="onNameKeydown"
       />
@@ -97,7 +97,7 @@ function onShortcutKeydown(e: KeyboardEvent): void {
       :class="canEdit && 'cursor-text hover:bg-accent/30 rounded px-1 -mx-1 transition-colors'"
       @click="startEditName"
     >
-      {{ sheet.name || "Untitled" }}
+      {{ sheet.name || $t("sheets.metadata.untitled") }}
     </h1>
 
     <!-- Shortcut -->
@@ -108,7 +108,7 @@ function onShortcutKeydown(e: KeyboardEvent): void {
           ref="shortcutInput"
           v-model="localShortcut"
           class="text-sm text-muted-foreground bg-transparent outline-none border-none px-0"
-          placeholder="add-shortcut"
+          :placeholder="$t('sheets.metadata.add_shortcut')"
           @blur="saveShortcut"
           @keydown="onShortcutKeydown"
         />
@@ -119,7 +119,7 @@ function onShortcutKeydown(e: KeyboardEvent): void {
         :class="canEdit && 'cursor-text hover:text-muted-foreground transition-colors'"
         @click="startEditShortcut"
       >
-        {{ sheet.shortcut || (canEdit ? "add-shortcut" : "") }}
+        {{ sheet.shortcut || (canEdit ? $t("sheets.metadata.add_shortcut") : "") }}
       </div>
     </div>
   </div>

@@ -1,0 +1,255 @@
+{
+  "sheets": {
+    "dashboard": {
+      "title": "Sheets",
+      "subtitle": "Create and organize your project's content",
+      "empty": "No sheets yet. Create your first sheet to get started.",
+      "all_sheets": "All Sheets",
+      "issues": "Issues",
+      "delete": "Delete",
+      "stats": {
+        "sheets": "Sheets",
+        "blocks": "Blocks",
+        "variables": "Variables",
+        "vars_in_use": "Vars in use",
+        "words": "Words"
+      },
+      "columns": {
+        "name": "Name",
+        "blocks": "Blocks",
+        "variables": "Variables",
+        "words": "Words",
+        "modified": "Modified"
+      },
+      "total_sheets": "{n} sheet | {n} sheets"
+    },
+    "tree": {
+      "filter": "Filter sheets...",
+      "empty": "No sheets yet",
+      "new_sheet": "New Sheet",
+      "delete_title": "Delete sheet?",
+      "delete_description": "Are you sure you want to delete \"{name}\"?",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "add_child": "Add child sheet",
+      "move_to_trash": "Move to Trash"
+    },
+    "header": {
+      "change_cover": "Change",
+      "add_cover": "Add cover",
+      "remove_cover": "Remove"
+    },
+    "metadata": {
+      "untitled": "Untitled",
+      "add_shortcut": "add-shortcut"
+    },
+    "tabs": {
+      "content": "Content",
+      "references": "References",
+      "audio": "Audio",
+      "history": "History"
+    },
+    "add_block": {
+      "button": "Add block",
+      "scope": "Scope",
+      "scope_self": "This sheet only",
+      "scope_children": "All children",
+      "basic": "Basic Blocks",
+      "structured": "Structured Data"
+    },
+    "block_types": {
+      "text": "Text",
+      "rich_text": "Rich Text",
+      "number": "Number",
+      "select": "Select",
+      "multi_select": "Multi Select",
+      "date": "Date",
+      "boolean": "Boolean",
+      "reference": "Reference",
+      "table": "Table",
+      "gallery": "Gallery",
+      "formula": "Formula"
+    },
+    "block_label": {
+      "required": "required"
+    },
+    "block_list": {
+      "inherited_from": "Inherited from",
+      "detach": "Detach from parent",
+      "own_properties": "Own properties",
+      "empty": "No blocks yet."
+    },
+    "block_toolbar": {
+      "make_variable": "Make variable",
+      "make_constant": "Make constant",
+      "self": "Self",
+      "children": "Children",
+      "configure": "Configure"
+    },
+    "collab_toast": {
+      "added_block": "added a block",
+      "edited_block": "edited a block",
+      "removed_block": "removed a block",
+      "reordered_blocks": "reordered blocks",
+      "changed_type": "changed a block type",
+      "updated_sheet": "updated the sheet",
+      "restored_version": "restored a version"
+    },
+    "avatar_gallery": {
+      "title": "Avatar Gallery",
+      "empty": "No avatars yet. Upload one to get started.",
+      "default": "default",
+      "name_placeholder": "Name...",
+      "add": "Add avatar",
+      "name_label": "Name",
+      "name_example": "e.g. happy, angry, combat...",
+      "notes_label": "Notes",
+      "notes_placeholder": "Voice direction, art notes...",
+      "set_default": "Set as default",
+      "default_badge": "Default",
+      "delete": "Delete",
+      "gallery": "Gallery"
+    },
+    "boolean_block": {
+      "yes": "Yes",
+      "no": "No",
+      "three_states": "Three states (true / false / neutral)",
+      "true_label": "True label",
+      "false_label": "False label",
+      "neutral_label": "Neutral label",
+      "neutral": "Neutral"
+    },
+    "formula_panel": {
+      "title": "Formula Editor",
+      "close": "Close panel",
+      "expression": "Expression",
+      "expression_placeholder": "e.g. (a + b) * 2",
+      "bindings": "Variable Bindings",
+      "result": "Result"
+    },
+    "number_block": {
+      "placeholder_label": "Placeholder",
+      "default_placeholder": "Default value...",
+      "min": "Min",
+      "max": "Max",
+      "step": "Step"
+    },
+    "select_block": {
+      "placeholder_label": "Placeholder",
+      "placeholder": "Select...",
+      "no_options": "No options available",
+      "none": "None"
+    },
+    "multi_select_block": {
+      "placeholder_label": "Placeholder",
+      "placeholder": "Select...",
+      "no_options": "No options available"
+    },
+    "text_block": {
+      "placeholder_label": "Placeholder",
+      "placeholder_placeholder": "Placeholder text...",
+      "default_placeholder": "Enter text..."
+    },
+    "rich_text_block": {
+      "placeholder_label": "Placeholder",
+      "default_placeholder": "Write something..."
+    },
+    "rich_text_editor": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "strikethrough": "Strikethrough",
+      "h1": "Heading 1",
+      "h2": "Heading 2",
+      "h3": "Heading 3",
+      "bullet_list": "Bullet list",
+      "ordered_list": "Ordered list",
+      "blockquote": "Blockquote",
+      "hr": "Horizontal rule"
+    },
+    "reference_block": {
+      "not_found": "Reference not found",
+      "select": "Select reference...",
+      "search": "Search sheets & flows...",
+      "searching": "Searching...",
+      "no_results": "No results.",
+      "clear": "Clear reference"
+    },
+    "formula_binding": {
+      "select_source": "Select source...",
+      "search": "Search variables...",
+      "searching": "Searching...",
+      "no_results": "No results.",
+      "same_row": "Same row",
+      "loading": "Loading..."
+    },
+    "option_editor": {
+      "title": "Options",
+      "key_placeholder": "key",
+      "label_placeholder": "Label",
+      "add": "Add option"
+    },
+    "gallery_block": {
+      "empty": "No images yet.",
+      "add": "Add image",
+      "image": "Image",
+      "label": "Label",
+      "label_placeholder": "Image label...",
+      "description": "Description",
+      "description_placeholder": "Description...",
+      "delete": "Delete"
+    },
+    "table": {
+      "no_rows": "No rows yet.",
+      "delete_row": "Delete",
+      "main_menu": {
+        "constant": "Constant",
+        "required": "Required",
+        "change_type": "Change type",
+        "options": "Options",
+        "constraints": "Constraints",
+        "settings": "Settings",
+        "delete_column": "Delete column"
+      },
+      "constraints": {
+        "title": "Constraints",
+        "min": "Min value",
+        "max": "Max value",
+        "step": "Step",
+        "no_limit": "No limit"
+      },
+      "settings": {
+        "title": "Settings",
+        "allow_multiple": "Allow multiple"
+      }
+    },
+    "audio_tab": {
+      "empty_title": "No voice lines",
+      "empty_description": "Dialogue nodes using this sheet as speaker will appear here.",
+      "remove": "Remove",
+      "select_audio": "Select audio...",
+      "search": "Search audio...",
+      "no_assets": "No audio assets yet.",
+      "no_matches": "No matches",
+      "uploading": "Uploading...",
+      "upload": "Upload",
+      "no_audio": "No audio",
+      "open_flow": "Open in flow editor"
+    },
+    "references_tab": {
+      "variable_usage": "Variable Usage",
+      "no_usage": "No variables on this sheet are used in any flow or scene yet.",
+      "modified_by": "Modified by",
+      "outdated": "Outdated",
+      "read_by": "Read by",
+      "backlinks": "Backlinks",
+      "no_backlinks_title": "No backlinks yet",
+      "no_backlinks_description": "Sheets and flows that reference this sheet will appear here.",
+      "scenes_title": "Appears on Scenes",
+      "no_scenes": "This sheet doesn't appear on any scenes yet.",
+      "no_scenes_description": "Create a pin or zone referencing this sheet to see it here."
+    },
+    "dnd": {
+      "reattach": "Reattach to parent"
+    }
+  }
+}

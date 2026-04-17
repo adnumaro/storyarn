@@ -34,6 +34,7 @@ import {
 } from "@components/ui/table/index.ts";
 import { useLive } from "@composables/useLive";
 import { formatRelativeTime } from "@utils/date-utils";
+import { useI18n } from "vue-i18n";
 import type {
   DashboardColumn,
   DashboardIssue,
@@ -63,6 +64,7 @@ const {
 }>();
 
 const live = useLive();
+const { t } = useI18n();
 
 function sheetHref(row: DashboardRow): string {
   return `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets/${row.id}`;
@@ -95,44 +97,44 @@ const statCards = computed<StatCard[]>(() => {
   return [
     {
       icon: FileText,
-      label: "Sheets",
+      label: t("sheets.dashboard.stats.sheets"),
       value: stats.sheet_count,
       color: "text-primary",
     },
     {
       icon: Layers,
-      label: "Blocks",
+      label: t("sheets.dashboard.stats.blocks"),
       value: stats.block_count,
       color: "text-blue-400",
     },
     {
       icon: Variable,
-      label: "Variables",
+      label: t("sheets.dashboard.stats.variables"),
       value: stats.variable_count,
       color: "text-violet-400",
     },
     {
       icon: Link,
-      label: "Vars in use",
+      label: t("sheets.dashboard.stats.vars_in_use"),
       value: stats.variables_in_use,
       color: "text-amber-400",
     },
     {
       icon: TextCursorInput,
-      label: "Words",
+      label: t("sheets.dashboard.stats.words"),
       value: stats.word_count,
       color: "text-emerald-400",
     },
   ];
 });
 
-const columns: DashboardColumn[] = [
-  { key: "name", label: "Name", align: "left" },
-  { key: "block_count", label: "Blocks", align: "right" },
-  { key: "variable_count", label: "Variables", align: "right" },
-  { key: "word_count", label: "Words", align: "right" },
-  { key: "updated_at", label: "Modified", align: "right" },
-];
+const columns = computed<DashboardColumn[]>(() => [
+  { key: "name", label: t("sheets.dashboard.columns.name"), align: "left" },
+  { key: "block_count", label: t("sheets.dashboard.columns.blocks"), align: "right" },
+  { key: "variable_count", label: t("sheets.dashboard.columns.variables"), align: "right" },
+  { key: "word_count", label: t("sheets.dashboard.columns.words"), align: "right" },
+  { key: "updated_at", label: t("sheets.dashboard.columns.modified"), align: "right" },
+]);
 
 const pages = computed<number[]>(() => {
   const result: number[] = [];
@@ -145,12 +147,12 @@ const pages = computed<number[]>(() => {
 
 <template>
   <DashboardContent
-    title="Sheets"
-    subtitle="Create and organize your project's content"
+    :title="$t('sheets.dashboard.title')"
+    :subtitle="$t('sheets.dashboard.subtitle')"
     :loading="!stats"
     :is-empty="pagination.total === 0 && !stats"
     :empty-icon="FileText"
-    empty-message="No sheets yet. Create your first sheet to get started."
+    :empty-message="$t('sheets.dashboard.empty')"
   >
     <!-- Stats row -->
     <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
@@ -169,7 +171,7 @@ const pages = computed<number[]>(() => {
 
     <!-- Table section -->
     <div class="space-y-2">
-      <h2 class="text-sm font-medium">All Sheets</h2>
+      <h2 class="text-sm font-medium">{{ $t("sheets.dashboard.all_sheets") }}</h2>
       <div class="rounded-lg border border-border bg-surface overflow-auto max-h-[60vh]">
         <Table>
           <TableHeader>
@@ -221,7 +223,7 @@ const pages = computed<number[]>(() => {
                       @select="requestDelete(row.id)"
                     >
                       <Trash2 class="size-3.5" />
-                      Delete
+                      {{ $t("sheets.dashboard.delete") }}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -236,7 +238,7 @@ const pages = computed<number[]>(() => {
         v-if="pagination.totalPages > 1"
         class="flex items-center justify-between text-xs text-muted-foreground pt-1"
       >
-        <span>{{ pagination.total }} sheets</span>
+        <span>{{ $t("sheets.dashboard.total_sheets", pagination.total) }}</span>
         <div class="flex items-center gap-1">
           <Button
             variant="ghost"
@@ -272,7 +274,7 @@ const pages = computed<number[]>(() => {
 
     <!-- Issues -->
     <div v-if="issues.length > 0" class="space-y-2">
-      <h2 class="text-sm font-medium">Issues</h2>
+      <h2 class="text-sm font-medium">{{ $t("sheets.dashboard.issues") }}</h2>
       <div class="rounded-lg border border-border divide-y divide-border">
         <a
           v-for="(issue, i) in issues"

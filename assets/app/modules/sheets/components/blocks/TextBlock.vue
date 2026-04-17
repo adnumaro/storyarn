@@ -79,11 +79,11 @@ function saveLabel(val: string): void {
     >
       <template #config>
         <div class="space-y-1">
-          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">Placeholder</label>
+          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">{{ $t("sheets.text_block.placeholder_label") }}</label>
           <Input
             :id="`placeholder-${useId()}`"
             :model-value="block.config?.placeholder || ''"
-            placeholder="Placeholder text..."
+            :placeholder="$t('sheets.text_block.placeholder_placeholder')"
             size="xs"
             class="bg-background dark:bg-background"
             @blur="
@@ -114,7 +114,7 @@ function saveLabel(val: string): void {
     <Input
       v-if="canEdit"
       v-model="localText"
-      :placeholder="block.config?.placeholder || 'Enter text...'"
+      :placeholder="block.config?.placeholder || $t('sheets.text_block.default_placeholder')"
       class="w-full"
       @blur="save"
       @keydown.enter="save"

@@ -120,7 +120,7 @@ function updateAvatarNotes(id: number | string, value: string): void {
             @click="triggerBannerUpload"
           >
             <Image class="size-4" />
-            {{ sheet.bannerUrl ? "Change" : "Add cover" }}
+            {{ sheet.bannerUrl ? $t("sheets.header.change_cover") : $t("sheets.header.add_cover") }}
           </Button>
           <Button
             v-if="sheet.bannerUrl"
@@ -130,7 +130,7 @@ function updateAvatarNotes(id: number | string, value: string): void {
             @click="removeBanner"
           >
             <Trash2 class="size-4" />
-            Remove
+            {{ $t("sheets.header.remove_cover") }}
           </Button>
         </div>
       </div>

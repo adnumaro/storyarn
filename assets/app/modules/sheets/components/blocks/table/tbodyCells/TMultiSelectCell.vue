@@ -57,14 +57,14 @@ function toggleMultiSelectCell(key: string): void {
               {{ optionLabel(opt) }}
             </Badge>
           </div>
-          <span v-else class="text-muted-foreground/40 truncate">Select...</span>
+          <span v-else class="text-muted-foreground/40 truncate">{{ $t("sheets.multi_select_block.placeholder") }}</span>
         </button>
       </PopoverTrigger>
 
       <PopoverContent align="start" class="w-52 p-1">
         <div class="max-h-48 overflow-y-auto">
           <div v-if="options.length === 0" class="text-muted-foreground text-sm p-2">
-            No options available
+            {{ $t("sheets.multi_select_block.no_options") }}
           </div>
           <button
             v-for="opt in options"

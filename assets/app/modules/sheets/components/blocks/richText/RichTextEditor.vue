@@ -118,13 +118,13 @@ function isActive(name: string, attrs?: { level?: number }): boolean {
     >
       <button
         v-for="btn in [
-          { action: toggleBold, icon: Bold, active: isActive('bold'), title: 'Bold' },
-          { action: toggleItalic, icon: Italic, active: isActive('italic'), title: 'Italic' },
+          { action: toggleBold, icon: Bold, active: isActive('bold'), title: $t('sheets.rich_text_editor.bold') },
+          { action: toggleItalic, icon: Italic, active: isActive('italic'), title: $t('sheets.rich_text_editor.italic') },
           {
             action: toggleStrike,
             icon: Strikethrough,
             active: isActive('strike'),
-            title: 'Strikethrough',
+            title: $t('sheets.rich_text_editor.strikethrough'),
           },
         ]"
         :key="btn.title"
@@ -149,19 +149,19 @@ function isActive(name: string, attrs?: { level?: number }): boolean {
             action: toggleH1,
             icon: Heading1,
             active: isActive('heading', { level: 1 }),
-            title: 'Heading 1',
+            title: $t('sheets.rich_text_editor.h1'),
           },
           {
             action: toggleH2,
             icon: Heading2,
             active: isActive('heading', { level: 2 }),
-            title: 'Heading 2',
+            title: $t('sheets.rich_text_editor.h2'),
           },
           {
             action: toggleH3,
             icon: Heading3,
             active: isActive('heading', { level: 3 }),
-            title: 'Heading 3',
+            title: $t('sheets.rich_text_editor.h3'),
           },
         ]"
         :key="btn.title"
@@ -186,21 +186,21 @@ function isActive(name: string, attrs?: { level?: number }): boolean {
             action: toggleBulletList,
             icon: List,
             active: isActive('bulletList'),
-            title: 'Bullet list',
+            title: $t('sheets.rich_text_editor.bullet_list'),
           },
           {
             action: toggleOrderedList,
             icon: ListOrdered,
             active: isActive('orderedList'),
-            title: 'Ordered list',
+            title: $t('sheets.rich_text_editor.ordered_list'),
           },
           {
             action: toggleBlockquote,
             icon: Quote,
             active: isActive('blockquote'),
-            title: 'Blockquote',
+            title: $t('sheets.rich_text_editor.blockquote'),
           },
-          { action: setHorizontalRule, icon: Minus, active: false, title: 'Horizontal rule' },
+          { action: setHorizontalRule, icon: Minus, active: false, title: $t('sheets.rich_text_editor.hr') },
         ]"
         :key="btn.title"
         type="button"

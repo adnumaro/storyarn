@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ToggleLeft } from "lucide-vue-next";
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Checkbox } from "@components/ui/checkbox/index.ts";
 import { Switch } from "@components/ui/switch/index.ts";
@@ -18,6 +19,8 @@ const {
   canEdit?: boolean;
   inherited?: boolean;
 }>();
+
+const { t } = useI18n();
 
 const { live, label, isSelected, onBlockClick } = useBlockActions({
   get block() {
@@ -41,8 +44,8 @@ const mode = computed(() => block.config?.mode || "two_state");
 
 const booleanLabel = computed(() => {
   const cfg = block.config || {};
-  if (content.value === true) return cfg.true_label || "Yes";
-  if (content.value === false) return cfg.false_label || "No";
+  if (content.value === true) return cfg.true_label || t("sheets.boolean_block.yes");
+  if (content.value === false) return cfg.false_label || t("sheets.boolean_block.no");
   return cfg.neutral_label || "\u2014";
 });
 
@@ -100,15 +103,15 @@ function cycle(): void {
                   })
               "
             />
-            Three states (true / false / neutral)
+            {{ $t("sheets.boolean_block.three_states") }}
           </label>
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div class="space-y-1">
-            <label class="text-xs font-medium">True label</label>
+            <label class="text-xs font-medium">{{ $t("sheets.boolean_block.true_label") }}</label>
             <input
               :value="block.config?.true_label || ''"
-              placeholder="Yes"
+              :placeholder="$t('sheets.boolean_block.yes')"
               class="h-7 w-full text-xs rounded-md border border-input bg-background px-2"
               @blur="
                 (e) =>
@@ -121,10 +124,10 @@ function cycle(): void {
             />
           </div>
           <div class="space-y-1">
-            <label class="text-xs font-medium">False label</label>
+            <label class="text-xs font-medium">{{ $t("sheets.boolean_block.false_label") }}</label>
             <input
               :value="block.config?.false_label || ''"
-              placeholder="No"
+              :placeholder="$t('sheets.boolean_block.no')"
               class="h-7 w-full text-xs rounded-md border border-input bg-background px-2"
               @blur="
                 (e) =>
@@ -138,10 +141,10 @@ function cycle(): void {
           </div>
         </div>
         <div v-if="mode === 'tri_state'" class="space-y-1">
-          <label class="text-xs font-medium">Neutral label</label>
+          <label class="text-xs font-medium">{{ $t("sheets.boolean_block.neutral_label") }}</label>
           <input
             :value="block.config?.neutral_label || ''"
-            placeholder="Neutral"
+            :placeholder="$t('sheets.boolean_block.neutral')"
             class="h-7 w-full text-xs rounded-md border border-input bg-background px-2"
             @blur="
               (e) =>

@@ -211,26 +211,26 @@ watch(searchResults, () => {
           <!-- Deleted reference -->
           <template v-else-if="isDeleted">
             <AlertCircle class="size-4 text-destructive shrink-0" />
-            <span class="flex-1 text-left text-destructive text-xs">Reference not found</span>
+            <span class="flex-1 text-left text-destructive text-xs">{{ $t("sheets.reference_block.not_found") }}</span>
           </template>
           <!-- Empty -->
           <template v-else>
-            <span class="text-muted-foreground">Select reference...</span>
+            <span class="text-muted-foreground">{{ $t("sheets.reference_block.select") }}</span>
           </template>
         </button>
       </PopoverTrigger>
       <PopoverContent class="w-(--reka-popover-trigger-width) p-0" align="start" :side-offset="4">
         <Command :should-filter="false">
           <CommandInput
-            placeholder="Search sheets & flows..."
+            :placeholder="$t('sheets.reference_block.search')"
             class="h-8 text-xs"
             :model-value="query"
             @update:model-value="onSearchInput"
           />
           <CommandList ref="listRef">
             <CommandEmpty class="py-3 text-xs text-center">
-              <span v-if="loading">Searching...</span>
-              <span v-else>No results.</span>
+              <span v-if="loading">{{ $t("sheets.reference_block.searching") }}</span>
+              <span v-else>{{ $t("sheets.reference_block.no_results") }}</span>
             </CommandEmpty>
 
             <CommandGroup>
@@ -242,7 +242,7 @@ watch(searchResults, () => {
                 @select="clearReference"
               >
                 <X class="size-3.5" />
-                Clear reference
+                {{ $t("sheets.reference_block.clear") }}
               </CommandItem>
 
               <!-- Results -->
@@ -290,7 +290,7 @@ watch(searchResults, () => {
       </div>
       <div v-else-if="isDeleted" class="flex items-center gap-1.5 text-xs text-destructive">
         <AlertCircle class="size-3.5" />
-        Reference not found
+        {{ $t("sheets.reference_block.not_found") }}
       </div>
       <span v-else class="text-sm text-muted-foreground">\u2014</span>
     </div>

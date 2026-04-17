@@ -19,7 +19,7 @@ const emits = defineEmits<{
   <THeadBaseMenu class="p-1">
     <THeadMenuItem class="mb-1" @click="emits('backToMain')">
       <ArrowLeft class="size-3.5" />
-      <span>Options</span>
+      <span>{{ $t("sheets.table.main_menu.options") }}</span>
     </THeadMenuItem>
     <Separator class="mb-1" />
 

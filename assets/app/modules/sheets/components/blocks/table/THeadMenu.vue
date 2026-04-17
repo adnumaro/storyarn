@@ -163,32 +163,32 @@ function toggleReferenceMultiple(): void {
           @click="menuType = 'main'"
         >
           <ArrowLeft class="size-3.5" />
-          <span>Constraints</span>
+          <span>{{ $t("sheets.table.constraints.title") }}</span>
         </button>
         <Separator class="mb-2" />
         <div class="space-y-2 px-2 pb-2">
           <div>
-            <label class="text-xs font-medium opacity-70"> Min value</label>
+            <label class="text-xs font-medium opacity-70"> {{ $t("sheets.table.constraints.min") }}</label>
             <input
               type="number"
               :value="column.config?.min"
-              placeholder="No limit"
+              :placeholder="$t('sheets.table.constraints.no_limit')"
               class="bg-transparent border border-border rounded px-2 py-1 text-xs w-full mt-0.5 outline-none focus:border-ring"
               @blur="updateNumberConstraint('min', $event)"
             />
           </div>
           <div>
-            <label class="text-xs font-medium opacity-70"> Max value</label>
+            <label class="text-xs font-medium opacity-70"> {{ $t("sheets.table.constraints.max") }}</label>
             <input
               type="number"
               :value="column.config?.max"
-              placeholder="No limit"
+              :placeholder="$t('sheets.table.constraints.no_limit')"
               class="bg-transparent border border-border rounded px-2 py-1 text-xs w-full mt-0.5 outline-none focus:border-ring"
               @blur="updateNumberConstraint('max', $event)"
             />
           </div>
           <div>
-            <label class="text-xs font-medium opacity-70"> Step</label>
+            <label class="text-xs font-medium opacity-70"> {{ $t("sheets.table.constraints.step") }}</label>
             <input
               type="number"
               :value="column.config?.step"
@@ -207,7 +207,7 @@ function toggleReferenceMultiple(): void {
           @click="menuType = 'main'"
         >
           <ArrowLeft class="size-3.5" />
-          <span>Settings</span>
+          <span>{{ $t("sheets.table.settings.title") }}</span>
         </button>
         <Separator class="mb-1" />
         <button
@@ -215,7 +215,7 @@ function toggleReferenceMultiple(): void {
           @click="toggleReferenceMultiple()"
         >
           <Layers class="size-3.5 opacity-60" />
-          <span class="flex-1 text-left">Allow multiple</span>
+          <span class="flex-1 text-left">{{ $t("sheets.table.settings.allow_multiple") }}</span>
           <Check v-if="column.config?.multiple" class="size-3.5 opacity-60" />
         </button>
       </div>

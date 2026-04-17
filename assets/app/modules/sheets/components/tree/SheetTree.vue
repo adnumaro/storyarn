@@ -269,14 +269,14 @@ function handleDrop(e: DndDropEvent): void {
 <template>
   <div class="space-y-2">
     <!-- Search -->
-    <Input v-model="searchQuery" type="search" placeholder="Filter sheets..." class="text-xs" />
+    <Input v-model="searchQuery" type="search" :placeholder="$t('sheets.tree.filter')" class="text-xs" />
 
     <!-- Empty state -->
     <div
       v-if="filteredTree.length === 0"
       class="px-2 py-4 text-xs text-muted-foreground text-center"
     >
-      No sheets yet
+      {{ $t("sheets.tree.empty") }}
     </div>
 
     <!-- Tree -->
@@ -309,7 +309,7 @@ function handleDrop(e: DndDropEvent): void {
         @click="createSheet"
       >
         <Plus class="size-3.5" />
-        New Sheet
+        {{ $t("sheets.tree.new_sheet") }}
       </Button>
     </div>
 
@@ -317,14 +317,14 @@ function handleDrop(e: DndDropEvent): void {
     <Dialog v-model:open="deleteDialogOpen">
       <DialogContent class="">
         <DialogHeader>
-          <DialogTitle>Delete sheet?</DialogTitle>
+          <DialogTitle>{{ $t("sheets.tree.delete_title") }}</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete "{{ pendingDeleteSheet?.name }}"?
+            {{ $t("sheets.tree.delete_description", { name: pendingDeleteSheet?.name }) }}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" size="sm" @click="deleteDialogOpen = false">Cancel</Button>
-          <Button variant="destructive" size="sm" @click="confirmDelete">Delete</Button>
+          <Button variant="outline" size="sm" @click="deleteDialogOpen = false">{{ $t("sheets.tree.cancel") }}</Button>
+          <Button variant="destructive" size="sm" @click="confirmDelete">{{ $t("sheets.tree.delete") }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

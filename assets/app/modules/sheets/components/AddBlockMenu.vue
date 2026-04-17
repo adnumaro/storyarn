@@ -13,7 +13,8 @@ import {
   Type,
 } from "lucide-vue-next";
 import type { FunctionalComponent } from "vue";
-import { ref } from "vue";
+import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button/index.ts";
 import {
   DropdownMenu,
@@ -35,6 +36,7 @@ const emit = defineEmits<{
   select: [payload: BlockSelection];
 }>();
 
+const { t } = useI18n();
 const scope = ref("self");
 
 interface BlockTypeEntry {
@@ -43,21 +45,21 @@ interface BlockTypeEntry {
   icon: FunctionalComponent;
 }
 
-const basicBlocks: BlockTypeEntry[] = [
-  { type: "text", label: "Text", icon: Type },
-  { type: "rich_text", label: "Rich Text", icon: AlignLeft },
-  { type: "number", label: "Number", icon: Hash },
-  { type: "select", label: "Select", icon: CircleDot },
-  { type: "multi_select", label: "Multi Select", icon: ListChecks },
-  { type: "date", label: "Date", icon: Calendar },
-  { type: "boolean", label: "Boolean", icon: ToggleLeft },
-  { type: "reference", label: "Reference", icon: Link },
-];
+const basicBlocks = computed<BlockTypeEntry[]>(() => [
+  { type: "text", label: t("sheets.block_types.text"), icon: Type },
+  { type: "rich_text", label: t("sheets.block_types.rich_text"), icon: AlignLeft },
+  { type: "number", label: t("sheets.block_types.number"), icon: Hash },
+  { type: "select", label: t("sheets.block_types.select"), icon: CircleDot },
+  { type: "multi_select", label: t("sheets.block_types.multi_select"), icon: ListChecks },
+  { type: "date", label: t("sheets.block_types.date"), icon: Calendar },
+  { type: "boolean", label: t("sheets.block_types.boolean"), icon: ToggleLeft },
+  { type: "reference", label: t("sheets.block_types.reference"), icon: Link },
+]);
 
-const structuredBlocks: BlockTypeEntry[] = [
-  { type: "table", label: "Table", icon: Table2 },
-  { type: "gallery", label: "Gallery", icon: Image },
-];
+const structuredBlocks = computed<BlockTypeEntry[]>(() => [
+  { type: "table", label: t("sheets.block_types.table"), icon: Table2 },
+  { type: "gallery", label: t("sheets.block_types.gallery"), icon: Image },
+]);
 
 function selectBlock(type: string): void {
   emit("select", { type, scope: scope.value });
@@ -74,19 +76,19 @@ function selectBlock(type: string): void {
         class="w-full justify-start gap-2 text-xs text-muted-foreground border border-dashed border-border"
       >
         <Plus class="size-3.5" />
-        Add block
+        {{ $t("sheets.add_block.button") }}
       </Button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="start" :side-offset="4" class="w-52">
       <!-- Scope selector -->
       <DropdownMenuLabel class="text-xs text-muted-foreground uppercase tracking-wider"
-        >Scope</DropdownMenuLabel
+        >{{ $t("sheets.add_block.scope") }}</DropdownMenuLabel
       >
       <div class="px-2 pb-1.5">
         <Tabs v-model="scope">
           <TabsList class="h-7 w-full">
-            <TabsTrigger value="self" class="text-xs flex-1">This sheet only</TabsTrigger>
-            <TabsTrigger value="children" class="text-xs flex-1">All children</TabsTrigger>
+            <TabsTrigger value="self" class="text-xs flex-1">{{ $t("sheets.add_block.scope_self") }}</TabsTrigger>
+            <TabsTrigger value="children" class="text-xs flex-1">{{ $t("sheets.add_block.scope_children") }}</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -95,7 +97,7 @@ function selectBlock(type: string): void {
 
       <!-- Basic Blocks -->
       <DropdownMenuLabel class="text-xs text-muted-foreground uppercase tracking-wider"
-        >Basic Blocks</DropdownMenuLabel
+        >{{ $t("sheets.add_block.basic") }}</DropdownMenuLabel
       >
       <DropdownMenuItem
         v-for="bt in basicBlocks"
@@ -111,7 +113,7 @@ function selectBlock(type: string): void {
 
       <!-- Structured Data -->
       <DropdownMenuLabel class="text-xs text-muted-foreground uppercase tracking-wider"
-        >Structured Data</DropdownMenuLabel
+        >{{ $t("sheets.add_block.structured") }}</DropdownMenuLabel
       >
       <DropdownMenuItem
         v-for="bt in structuredBlocks"
