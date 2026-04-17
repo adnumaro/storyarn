@@ -2,16 +2,6 @@
 import { History } from "lucide-vue-next";
 import { useRevealOnScroll } from "../composables/useRevealOnScroll";
 
-interface VersionTranslations {
-  version_title?: string;
-  version_desc?: string;
-  version_items: string[];
-}
-
-const { translations = { version_items: [] } } = defineProps<{
-  translations?: VersionTranslations;
-}>();
-
 const { elementRef: sectionRef, isRevealed } = useRevealOnScroll();
 </script>
 
@@ -43,19 +33,19 @@ const { elementRef: sectionRef, isRevealed } = useRevealOnScroll();
           <h2
             class="text-[clamp(2rem,3vw,3.4rem)] font-bold leading-[0.96] tracking-[-0.06em] text-foreground"
           >
-            {{ translations.version_title }}
+            {{ $t("landing.version.title") }}
           </h2>
           <p class="mt-4 max-w-160 leading-relaxed text-muted-foreground">
-            {{ translations.version_desc }}
+            {{ $t("landing.version.desc") }}
           </p>
           <ul class="mt-6 space-y-3">
             <li
-              v-for="(item, i) in translations.version_items"
+              v-for="(item, i) in $tm('landing.version.items')"
               :key="i"
               class="relative pl-4 leading-relaxed text-foreground/70"
             >
               <span class="absolute left-0 top-[0.7em] size-2 rounded-full bg-accent" />
-              {{ item }}
+              {{ $rt(item) }}
             </li>
           </ul>
         </div>

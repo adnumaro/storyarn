@@ -89,6 +89,46 @@
         }
       }
     },
+    "exploration": {
+      "title": "Walk through your world before it ships",
+      "desc": "Scene exploration mode lets you experience the world as a player — navigate layers, trigger events, and test spatial logic without leaving the editor.",
+      "items": [
+        "Move through scenes as if playing the game",
+        "Trigger zone events and transitions in real time",
+        "Validate spatial design before engine integration"
+      ]
+    },
+    "version": {
+      "title": "Every change, always recoverable",
+      "desc": "Automatic version snapshots mean you can always go back. Compare any two versions side by side.",
+      "items": [
+        "Automatic snapshots on every save",
+        "Side-by-side visual diff for any version",
+        "Restore any previous state in one click"
+      ]
+    },
+    "workflow": {
+      "title": "From first draft to engine-ready",
+      "subtitle": "Storyarn follows your natural workflow — define, write, test, export.",
+      "steps": {
+        "define": {
+          "title": "Define the world",
+          "desc": "Structure characters, locations, items, and factions in sheets with variables, formulas, and inheritance."
+        },
+        "write": {
+          "title": "Write and branch",
+          "desc": "Build dialogue flows with conditions, instructions, and branching — all connected to your project data."
+        },
+        "explore": {
+          "title": "Explore and debug",
+          "desc": "Play through flows, walk through scenes, and step-debug every variable and condition."
+        },
+        "export": {
+          "title": "Localize and export",
+          "desc": "Extract lines, translate, and export to Yarn Spinner, Ink, Godot Dialogic, Unity, or Unreal."
+        }
+      }
+    },
     "cta": {
       "title": "Start building your next narrative",
       "desc": "We are onboarding a small group of narrative designers and game studios. Join the waitlist — we'll contact you when your slot becomes available.",

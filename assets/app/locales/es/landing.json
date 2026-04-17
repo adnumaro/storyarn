@@ -89,6 +89,46 @@
         }
       }
     },
+    "exploration": {
+      "title": "Recorre tu mundo antes de publicarlo",
+      "desc": "El modo exploración de escenas te permite experimentar el mundo como un jugador — navega por capas, activa eventos y prueba la lógica espacial sin salir del editor.",
+      "items": [
+        "Muévete por las escenas como si jugaras",
+        "Activa eventos de zona y transiciones en tiempo real",
+        "Valida el diseño espacial antes de integrar con el motor"
+      ]
+    },
+    "version": {
+      "title": "Cada cambio, siempre recuperable",
+      "desc": "Los snapshots automáticos de versión te permiten volver atrás siempre. Compara cualquier par de versiones lado a lado.",
+      "items": [
+        "Snapshots automáticos en cada guardado",
+        "Diff visual lado a lado para cualquier versión",
+        "Restaura cualquier estado anterior en un clic"
+      ]
+    },
+    "workflow": {
+      "title": "Del primer borrador al motor",
+      "subtitle": "Storyarn sigue tu flujo de trabajo natural — define, escribe, prueba, exporta.",
+      "steps": {
+        "define": {
+          "title": "Define el mundo",
+          "desc": "Estructura personajes, ubicaciones, objetos y facciones en fichas con variables, fórmulas y herencia."
+        },
+        "write": {
+          "title": "Escribe y ramifica",
+          "desc": "Construye flujos de diálogo con condiciones, instrucciones y bifurcaciones — todo conectado a los datos de tu proyecto."
+        },
+        "explore": {
+          "title": "Explora y depura",
+          "desc": "Reproduce flujos, recorre escenas y depura paso a paso cada variable y condición."
+        },
+        "export": {
+          "title": "Localiza y exporta",
+          "desc": "Extrae líneas, traduce y exporta a Yarn Spinner, Ink, Godot Dialogic, Unity o Unreal."
+        }
+      }
+    },
     "cta": {
       "title": "Empieza a construir tu próxima narrativa",
       "desc": "Estamos incorporando a un pequeño grupo de diseñadores narrativos y estudios de juegos. Únete a la lista de espera — te contactaremos cuando tu plaza esté disponible.",

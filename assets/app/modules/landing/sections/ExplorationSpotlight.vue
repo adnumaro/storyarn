@@ -2,16 +2,6 @@
 import { Compass } from "lucide-vue-next";
 import { useRevealOnScroll } from "../composables/useRevealOnScroll";
 
-interface ExplorationTranslations {
-  exploration_title?: string;
-  exploration_desc?: string;
-  exploration_items: string[];
-}
-
-const { translations = { exploration_items: [] } } = defineProps<{
-  translations?: ExplorationTranslations;
-}>();
-
 const { elementRef: sectionRef, isRevealed } = useRevealOnScroll();
 </script>
 
@@ -37,19 +27,19 @@ const { elementRef: sectionRef, isRevealed } = useRevealOnScroll();
           <h2
             class="text-[clamp(2rem,3vw,3.4rem)] font-bold leading-[0.96] tracking-[-0.06em] text-foreground"
           >
-            {{ translations.exploration_title }}
+            {{ $t("landing.exploration.title") }}
           </h2>
           <p class="mt-4 max-w-160 leading-relaxed text-muted-foreground">
-            {{ translations.exploration_desc }}
+            {{ $t("landing.exploration.desc") }}
           </p>
           <ul class="mt-6 space-y-3">
             <li
-              v-for="(item, i) in translations.exploration_items"
+              v-for="(item, i) in $tm('landing.exploration.items')"
               :key="i"
               class="relative pl-4 leading-relaxed text-foreground/70"
             >
               <span class="absolute left-0 top-[0.7em] size-2 rounded-full bg-primary" />
-              {{ item }}
+              {{ $rt(item) }}
             </li>
           </ul>
         </div>
