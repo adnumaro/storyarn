@@ -1,0 +1,84 @@
+assets/app/modules/flows/components/toolbar-sections/InstructionToolbar.vue
+  b5e1bb47b647b01a 4,36-44
+assets/app/modules/flows/components/toolbar-sections/HubToolbar.vue
+  b5e1bb47b647b01a 4,58-66
+assets/app/components/layout/RightToolbar.vue
+  b5e1bb47b647b01a 11,79-93
+assets/app/modules/scenes/toolbar/ToolbarStrokePicker.vue
+  b5e1bb47b647b01a 5,46-51,69-70,146-153
+assets/app/modules/flows/components/toolbar-sections/AnnotationToolbar.vue
+  b5e1bb47b647b01a 8,41-49
+assets/app/modules/flows/player/PlayerToolbar.vue
+  b5e1bb47b647b01a 5,26-44,48-53,63,67-87
+assets/app/modules/flows/components/toolbar-sections/ConditionToolbar.vue
+  b5e1bb47b647b01a 4,48-56
+assets/app/components/toolbar/ToolbarSizePicker.vue
+  b5e1bb47b647b01a 4,33-41
+assets/app/modules/flows/components/toolbar-sections/JumpToolbar.vue
+  b5e1bb47b647b01a 5,55-63
+assets/app/modules/flows/toolbar/ToolbarAvatarPicker.vue
+  b5e1bb47b647b01a 5,42-51
+assets/app/components/toolbar/ToolbarColorPicker.vue
+  b5e1bb47b647b01a 4,30-35,41,55-62
+assets/app/modules/scenes/toolbar/ToolbarLayerPicker.vue
+  b5e1bb47b647b01a 5,36-44
+assets/app/modules/scenes/toolbar/ToolbarActionTypePicker.vue
+  b5e1bb47b647b01a 7,73-81
+assets/app/modules/flows/components/toolbar-sections/SubflowToolbar.vue
+  b5e1bb47b647b01a 5,56-64
+assets/app/modules/scenes/components/toolbar-sections/ZoneToolbar.vue
+  b5e1bb47b647b01a 3,148-156
+assets/app/modules/scenes/exploration/ExplorationToolbar.vue
+  b5e1bb47b647b01a 4,56-73
+assets/app/modules/flows/components/toolbar-sections/ExitToolbar.vue
+  b5e1bb47b647b01a 4,57-65
+assets/app/modules/sheets/components/BlockToolbar.vue
+  b5e1bb47b647b01a 12,58,60,66-75,109-119
+assets/app/modules/scenes/toolbar/ToolbarLockToggle.vue
+  b5e1bb47b647b01a 3,16-27
+assets/app/modules/scenes/components/toolbar-sections/PinToolbar.vue
+  b5e1bb47b647b01a 3,135-143
+assets/app/components/layout/LeftToolbar.vue
+  b5e1bb47b647b01a 24,84-101
+assets/app/modules/scenes/toolbar/ToolbarTypePicker.vue
+  b5e1bb47b647b01a 7,46-54
+assets/app/modules/scenes/components/toolbar-sections/ConnectionToolbar.vue
+  b5e1bb47b647b01a 3,75-85,88-98,102-110
+assets/app/components/toolbar/ToolbarTooltip.vue
+  b5e1bb47b647b01a 1-27
+assets/app/modules/flows/components/toolbar-sections/DialogueToolbar.vue
+  b5e1bb47b647b01a 5,95-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "0854c9ef1be4e4a2e3d4006d197b230754cf674f",
+  "prompts": {
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 797,
+      "overriden_lines": 0
+    },
+    "b5e1bb47b647b01a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da948ded-a770-4715-803c-ee52cc73c164",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 391,
+      "total_deletions": 318,
+      "accepted_lines": 6928,
+      "overriden_lines": 0
+    }
+  }
+}
