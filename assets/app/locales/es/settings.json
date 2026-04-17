@@ -108,18 +108,18 @@
       },
       "deleted_projects": {
         "title": "Proyectos eliminados",
-        "subtitle": "Recupera proyectos eliminados que tengan instantáneas disponibles",
+        "subtitle": "Recupera proyectos eliminados que tengan snapshots disponibles",
         "empty": {
           "title": "No hay proyectos eliminados",
-          "description": "Los proyectos eliminados con instantáneas disponibles aparecerán aquí."
+          "description": "Los proyectos eliminados con snapshots disponibles aparecerán aquí."
         },
-        "snapshot_count": "{n} instantánea | {n} instantáneas",
-        "no_snapshots": "No hay instantáneas disponibles para este proyecto.",
-        "snapshot_prefix": "Instantánea v",
+        "snapshot_count": "{n} snapshot | {n} snapshots",
+        "no_snapshots": "No hay snapshots disponibles para este proyecto.",
+        "snapshot_prefix": "Snapshot v",
         "recover": "Recuperar",
         "recover_modal": {
           "title": "¿Recuperar proyecto?",
-          "description": "Se creará un nuevo proyecto a partir de la instantánea v{number}. El proyecto recuperado aparecerá en tu espacio de trabajo.",
+          "description": "Se creará un nuevo proyecto a partir de la snapshot v{number}. El proyecto recuperado aparecerá en tu espacio de trabajo.",
           "cancel": "Cancelar"
         },
         "entities": {
