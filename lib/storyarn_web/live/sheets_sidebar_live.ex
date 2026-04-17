@@ -163,6 +163,8 @@ defmodule StoryarnWeb.SheetsSidebarLive do
         id ->
           with %{} = sheet <- Sheets.get_sheet(socket.assigns.project.id, id),
                {:ok, _} <- Sheets.delete_sheet(sheet) do
+            broadcast_entity_deleted(socket, id)
+
             {:noreply,
              socket
              |> assign(:pending_delete_id, nil)
@@ -265,6 +267,15 @@ defmodule StoryarnWeb.SheetsSidebarLive do
     )
 
     socket
+  end
+
+  defp broadcast_entity_deleted(socket, id) do
+    Phoenix.PubSub.broadcast_from(
+      Storyarn.PubSub,
+      self(),
+      shell_topic(socket.assigns.project_id),
+      {:entity_deleted, id}
+    )
   end
 
   defp on_tree_change_and_open(socket, new_sheet_id) do

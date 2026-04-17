@@ -1821,6 +1821,17 @@ defmodule StoryarnWeb.SceneLive.Show do
   # Tree mutations in the sidebar LV broadcast this; Show doesn't own the tree.
   def handle_info({:tree_changed, :scenes}, socket), do: {:noreply, socket}
 
+  def handle_info({:entity_deleted, id}, socket) do
+    if to_string(id) == to_string(socket.assigns.scene.id) do
+      {:noreply,
+       push_navigate(socket,
+         to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/scenes"
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
 
   def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}

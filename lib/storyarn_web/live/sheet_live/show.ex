@@ -785,6 +785,18 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
   def handle_info({:tree_changed, :sheets}, socket), do: {:noreply, socket}
+
+  def handle_info({:entity_deleted, id}, socket) do
+    if to_string(id) == to_string(socket.assigns.sheet.id) do
+      {:noreply,
+       push_navigate(socket,
+         to: ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets"
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
   def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
 

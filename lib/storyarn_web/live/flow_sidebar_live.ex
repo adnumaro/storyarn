@@ -182,6 +182,8 @@ defmodule StoryarnWeb.FlowSidebarLive do
         id ->
           with %{} = flow <- Flows.get_flow(socket.assigns.project.id, id),
                {:ok, _} <- Flows.delete_flow(flow) do
+            broadcast_entity_deleted(socket, id)
+
             {:noreply,
              socket
              |> assign(:pending_delete_id, nil)
@@ -309,6 +311,15 @@ defmodule StoryarnWeb.FlowSidebarLive do
     )
 
     socket
+  end
+
+  defp broadcast_entity_deleted(socket, id) do
+    Phoenix.PubSub.broadcast_from(
+      Storyarn.PubSub,
+      self(),
+      shell_topic(socket.assigns.project_id),
+      {:entity_deleted, id}
+    )
   end
 
   defp on_tree_change_and_open(socket, new_flow_id) do

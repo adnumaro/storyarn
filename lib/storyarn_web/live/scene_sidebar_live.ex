@@ -162,6 +162,8 @@ defmodule StoryarnWeb.SceneSidebarLive do
         id ->
           with %{} = scene <- Scenes.get_scene(socket.assigns.project.id, id),
                {:ok, _} <- Scenes.delete_scene(scene) do
+            broadcast_entity_deleted(socket, id)
+
             {:noreply,
              socket
              |> assign(:pending_delete_id, nil)
@@ -262,6 +264,15 @@ defmodule StoryarnWeb.SceneSidebarLive do
     )
 
     socket
+  end
+
+  defp broadcast_entity_deleted(socket, id) do
+    Phoenix.PubSub.broadcast_from(
+      Storyarn.PubSub,
+      self(),
+      shell_topic(socket.assigns.project_id),
+      {:entity_deleted, id}
+    )
   end
 
   defp on_tree_change_and_open(socket, new_scene_id) do
