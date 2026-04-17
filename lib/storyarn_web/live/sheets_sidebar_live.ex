@@ -32,6 +32,8 @@ defmodule StoryarnWeb.SheetsSidebarLive do
         end
       end
 
+    dashboard_mode = is_nil(session["sheet_id"])
+
     socket =
       socket
       |> assign(:current_scope, current_scope)
@@ -43,8 +45,9 @@ defmodule StoryarnWeb.SheetsSidebarLive do
       |> assign(:can_edit, session["can_edit"] || false)
       |> assign(:active_tool, session["active_tool"] || "sheets")
       |> assign(:dashboard_url, session["dashboard_url"])
-      |> assign(:tree_panel_open, false)
-      |> assign(:tree_panel_pinned, true)
+      |> assign(:dashboard_mode, dashboard_mode)
+      |> assign(:tree_panel_open, dashboard_mode)
+      |> assign(:tree_panel_pinned, dashboard_mode)
       |> assign(:pending_delete_id, nil)
       |> assign(:sheets_tree, load_sheets_tree(project_id))
 
@@ -66,7 +69,7 @@ defmodule StoryarnWeb.SheetsSidebarLive do
         id="shell-tree-panel"
         tree-panel-open={@tree_panel_open}
         tree-panel-pinned={@tree_panel_pinned}
-        show-pin={true}
+        show-pin={not is_nil(@sheet_id)}
         active-tool={@active_tool}
         dashboard-url={@dashboard_url}
         on-dashboard={is_nil(@sheet_id)}
@@ -86,11 +89,19 @@ defmodule StoryarnWeb.SheetsSidebarLive do
 
   # ── Panel state events from TreePanel.vue ─────────────────────────────────
   @impl true
+  def handle_event("tree_panel_init", _params, %{assigns: %{dashboard_mode: true}} = socket) do
+    {:noreply, socket}
+  end
+
   def handle_event("tree_panel_init", %{"pinned" => pinned}, socket) do
     {:noreply,
      socket
      |> assign(:tree_panel_pinned, pinned)
      |> assign(:tree_panel_open, pinned)}
+  end
+
+  def handle_event("tree_panel_toggle", _params, %{assigns: %{dashboard_mode: true}} = socket) do
+    {:noreply, socket}
   end
 
   def handle_event("tree_panel_toggle", _params, socket) do

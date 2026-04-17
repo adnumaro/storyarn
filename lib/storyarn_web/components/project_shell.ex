@@ -171,7 +171,7 @@ defmodule StoryarnWeb.Components.ProjectShell do
 
       <%= if @sidebar_module do %>
         {live_render(@socket, @sidebar_module,
-          id: "sidebar-#{@project.id}",
+          id: "sidebar-#{@active_tool}-#{@project.id}",
           sticky: true,
           session: @sidebar_session
         )}
