@@ -1,0 +1,63 @@
+assets/app/components/version-history/PromoteVersionDialog.vue
+  3ea3c2327c2231e2 48-49,53,58,64,70,74,78
+assets/app/locales/en/common.json
+  3ea3c2327c2231e2 1-125
+assets/app/components/version-history/VersionHistory.vue
+  3ea3c2327c2231e2 80-81,84,94,102,128,135,254,281,407
+assets/app/components/VariableCombobox.vue
+  3ea3c2327c2231e2 131,133
+assets/app/components/ColorPickerPopover.vue
+  3ea3c2327c2231e2 107,136
+assets/app/components/builders/condition/ConditionBlock.vue
+  3ea3c2327c2231e2 71,76,84,95,122,126
+assets/app/components/toolbar/ToolbarColorPicker.vue
+  3ea3c2327c2231e2 29,51
+assets/app/components/toolbar/ToolbarSizePicker.vue
+  3ea3c2327c2231e2 36
+assets/app/plugins/tiptap/VariableList.vue
+  3ea3c2327c2231e2 83
+assets/app/plugins/tiptap/MentionList.vue
+  3ea3c2327c2231e2 79
+assets/app/components/builders/instruction/AssignmentRow.vue
+  3ea3c2327c2231e2 200,289
+assets/app/components/ExpressionEditor.vue
+  3ea3c2327c2231e2 121,133,142,146
+assets/app/components/AssetIndex.vue
+  3ea3c2327c2231e2 15,71,80-82,152-154,209,222,275,300,304,308,312,321,325,356,372,382,400,405-406
+assets/app/components/AssetUploadButton.vue
+  3ea3c2327c2231e2 3,13,24,53
+assets/app/locales/es/common.json
+  3ea3c2327c2231e2 1-125
+assets/app/components/compare/CompareView.vue
+  3ea3c2327c2231e2 33,41,50,62,78,80
+assets/app/components/form-fields/EntityCombobox.vue
+  3ea3c2327c2231e2 84,86,89
+assets/app/components/version-history/UnsavedChangesDialog.vue
+  3ea3c2327c2231e2 35,38,42,52,62,70
+assets/app/components/version-history/RestorePreviewDialog.vue
+  3ea3c2327c2231e2 70,80,85,94,102-103,107,117,125,133
+assets/app/components/version-history/DeleteVersionDialog.vue
+  3ea3c2327c2231e2 31,33,36,44
+assets/app/components/version-history/CreateVersionDialog.vue
+  3ea3c2327c2231e2 41-42,46,51,57,63,67,71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "79d8c87413f7a9479fbd3c97147522945edd1827",
+  "prompts": {
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 353,
+      "total_deletions": 112,
+      "accepted_lines": 2687,
+      "overriden_lines": 0
+    }
+  }
+}
