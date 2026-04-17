@@ -78,8 +78,7 @@
       "jump": "Jump",
       "exit": "Exit",
       "subflow": "Subflow",
-      "slug_line": "Slug Line",
-      "annotation": "Annotation"
+      "slug_line": "Slug Line"
     },
     "dock": {
       "narrative": "Narrative",
