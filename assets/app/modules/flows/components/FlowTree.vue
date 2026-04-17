@@ -270,7 +270,12 @@ function handleDrop(e: unknown): void {
   <div class="space-y-2">
     <!-- Search -->
     <div class="px-1">
-      <Input v-model="searchQuery" type="search" :placeholder="$t('flows.tree.filter')" class="text-xs" />
+      <Input
+        v-model="searchQuery"
+        type="search"
+        :placeholder="$t('flows.tree.filter')"
+        class="text-xs"
+      />
     </div>
 
     <!-- Empty state -->
@@ -326,8 +331,12 @@ function handleDrop(e: unknown): void {
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" size="sm" @click="deleteDialogOpen = false">{{ $t("flows.tree.cancel") }}</Button>
-          <Button variant="destructive" size="sm" @click="confirmDelete">{{ $t("flows.tree.delete") }}</Button>
+          <Button variant="outline" size="sm" @click="deleteDialogOpen = false">{{
+            $t("flows.tree.cancel")
+          }}</Button>
+          <Button variant="destructive" size="sm" @click="confirmDelete">{{
+            $t("flows.tree.delete")
+          }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

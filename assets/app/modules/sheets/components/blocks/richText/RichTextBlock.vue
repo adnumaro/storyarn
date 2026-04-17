@@ -67,7 +67,9 @@ const content = computed(() => (block.value?.content as string) || "");
     >
       <template #config>
         <div class="space-y-1">
-          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">{{ $t("sheets.rich_text_block.placeholder_label") }}</label>
+          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">{{
+            $t("sheets.rich_text_block.placeholder_label")
+          }}</label>
           <Input
             :id="`placeholder-${useId()}`"
             :value="block.config?.placeholder || ''"

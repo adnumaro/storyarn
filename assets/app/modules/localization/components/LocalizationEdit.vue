@@ -132,11 +132,15 @@ function formatDateTime(datetime: string | undefined) {
     <div class="grid grid-cols-2 gap-6 mt-6">
       <!-- Source text -->
       <div>
-        <h4 class="font-medium text-sm mb-2 text-muted-foreground">{{ $t("localization.edit.source") }}</h4>
+        <h4 class="font-medium text-sm mb-2 text-muted-foreground">
+          {{ $t("localization.edit.source") }}
+        </h4>
         <div class="bg-muted rounded-lg p-4 min-h-32">
           <div class="prose prose-sm" v-html="text.source_text || ''"></div>
         </div>
-        <div class="text-xs text-muted-foreground mt-1">{{ $t("localization.edit.word_count", text.word_count || 0) }}</div>
+        <div class="text-xs text-muted-foreground mt-1">
+          {{ $t("localization.edit.word_count", text.word_count || 0) }}
+        </div>
       </div>
 
       <!-- Translation -->
@@ -146,7 +150,11 @@ function formatDateTime(datetime: string | undefined) {
         </h4>
 
         <div class="space-y-3">
-          <Textarea v-model="translatedText" :rows="6" :placeholder="$t('localization.edit.translation_placeholder')" />
+          <Textarea
+            v-model="translatedText"
+            :rows="6"
+            :placeholder="$t('localization.edit.translation_placeholder')"
+          />
 
           <div class="space-y-1.5">
             <Label>{{ $t("localization.edit.status") }}</Label>
@@ -182,7 +190,11 @@ function formatDateTime(datetime: string | undefined) {
               :disabled="translating"
             >
               <Sparkles class="size-4 mr-1" />
-              {{ translating ? $t("localization.edit.translating") : $t("localization.edit.translate_deepl") }}
+              {{
+                translating
+                  ? $t("localization.edit.translating")
+                  : $t("localization.edit.translate_deepl")
+              }}
             </Button>
           </div>
         </div>
@@ -191,9 +203,13 @@ function formatDateTime(datetime: string | undefined) {
 
     <!-- Metadata -->
     <div class="mt-6 text-sm text-muted-foreground flex items-center gap-2">
-      <Badge v-if="text.machine_translated" variant="outline">{{ $t("localization.edit.machine_translated") }}</Badge>
+      <Badge v-if="text.machine_translated" variant="outline">{{
+        $t("localization.edit.machine_translated")
+      }}</Badge>
       <span v-if="text.last_translated_at">
-        {{ $t("localization.edit.last_translated", { date: formatDateTime(text.last_translated_at) }) }}
+        {{
+          $t("localization.edit.last_translated", { date: formatDateTime(text.last_translated_at) })
+        }}
       </span>
     </div>
   </div>

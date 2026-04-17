@@ -77,8 +77,12 @@ function changeActionColor(action: string) {
     class="rounded-xl border border-border/60 bg-card p-8 text-center"
   >
     <Clock class="size-10 mx-auto text-muted-foreground/20 mb-3" />
-    <p class="text-sm font-medium text-muted-foreground mb-1">{{ $t("common.version_history.empty_title") }}</p>
-    <p class="text-xs text-muted-foreground/60 mb-4">{{ $t("common.version_history.empty_description") }}</p>
+    <p class="text-sm font-medium text-muted-foreground mb-1">
+      {{ $t("common.version_history.empty_title") }}
+    </p>
+    <p class="text-xs text-muted-foreground/60 mb-4">
+      {{ $t("common.version_history.empty_description") }}
+    </p>
     <Button v-if="canEdit && canNameVersion" size="sm" class="gap-1.5" @click="h.openCreateModal">
       <Plus class="size-3.5" />
       {{ $t("common.version_history.create_version") }}
@@ -125,7 +129,9 @@ function changeActionColor(action: string) {
           <div class="flex items-center justify-between gap-1">
             <div class="flex items-center gap-1.5 min-w-0">
               <span class="text-sm font-medium truncate">
-                {{ version.title || version.changeSummary || $t("common.version_history.no_summary") }}
+                {{
+                  version.title || version.changeSummary || $t("common.version_history.no_summary")
+                }}
               </span>
               <Badge
                 v-if="version.id === currentVersionId"

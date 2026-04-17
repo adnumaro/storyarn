@@ -176,7 +176,9 @@ function isActive(layer: LayerItem): boolean {
             </DropdownMenuItem>
             <DropdownMenuItem class="text-xs gap-2" @select="toggleFog(layer)">
               <component :is="layer.fogEnabled ? Eye : CloudFog" class="size-3.5" />
-              {{ layer.fogEnabled ? $t("scenes.layers.disable_fog") : $t("scenes.layers.enable_fog") }}
+              {{
+                layer.fogEnabled ? $t("scenes.layers.disable_fog") : $t("scenes.layers.enable_fog")
+              }}
             </DropdownMenuItem>
             <DropdownMenuItem
               class="text-xs gap-2 text-destructive"
@@ -214,8 +216,12 @@ function isActive(layer: LayerItem): boolean {
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" size="sm" @click="deleteDialogOpen = false">{{ $t("scenes.layers.cancel") }}</Button>
-          <Button variant="destructive" size="sm" @click="confirmDelete">{{ $t("scenes.layers.delete") }}</Button>
+          <Button variant="outline" size="sm" @click="deleteDialogOpen = false">{{
+            $t("scenes.layers.cancel")
+          }}</Button>
+          <Button variant="destructive" size="sm" @click="confirmDelete">{{
+            $t("scenes.layers.delete")
+          }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

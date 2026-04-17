@@ -30,7 +30,9 @@ function onBlur(field: string, e: FocusEvent) {
     </label>
     <div class="grid grid-cols-2 gap-2">
       <div>
-        <label class="text-xs text-muted-foreground/70">{{ $t("scenes.settings.total_width") }}</label>
+        <label class="text-xs text-muted-foreground/70">{{
+          $t("scenes.settings.total_width")
+        }}</label>
         <input
           type="number"
           min="0"

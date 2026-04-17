@@ -21,7 +21,9 @@ function removeBackground() {
 
 <template>
   <div>
-    <label class="text-xs font-medium text-foreground"> {{ $t("scenes.settings.background") }} </label>
+    <label class="text-xs font-medium text-foreground">
+      {{ $t("scenes.settings.background") }}
+    </label>
     <div v-if="backgroundUrl" class="space-y-2 mt-1.5">
       <div class="rounded border border-border overflow-hidden">
         <img :src="backgroundUrl" alt="Scene background" class="w-full h-32 object-cover" />

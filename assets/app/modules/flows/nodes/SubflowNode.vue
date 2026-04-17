@@ -30,7 +30,9 @@ const refFlowShortcut = computed(() => nodeData.value.referenced_flow_shortcut);
 const hasRef = computed(() => !!nodeData.value.referenced_flow_id);
 const hasError = computed(() => !hasRef.value || nodeData.value.stale_reference);
 const errorTitle = computed(() =>
-  nodeData.value.stale_reference ? t("flows.nodes.subflow.flow_deleted") : t("flows.nodes.subflow.no_flow_ref"),
+  nodeData.value.stale_reference
+    ? t("flows.nodes.subflow.flow_deleted")
+    : t("flows.nodes.subflow.no_flow_ref"),
 );
 
 // Sockets
@@ -75,7 +77,9 @@ function getExitInfo(key: string): ExitLabel | null {
       v-else-if="!hasRef"
       class="text-[11px] text-muted-foreground px-3 py-2 max-w-50 border-b border-border/10 wrap-break-word"
     >
-      <div class="line-clamp-4 leading-[1.4] opacity-50">{{ t("flows.nodes.subflow.no_flow") }}</div>
+      <div class="line-clamp-4 leading-[1.4] opacity-50">
+        {{ t("flows.nodes.subflow.no_flow") }}
+      </div>
     </div>
 
     <!-- Sockets with per-exit labels -->

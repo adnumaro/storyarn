@@ -118,8 +118,18 @@ function isActive(name: string, attrs?: { level?: number }): boolean {
     >
       <button
         v-for="btn in [
-          { action: toggleBold, icon: Bold, active: isActive('bold'), title: $t('sheets.rich_text_editor.bold') },
-          { action: toggleItalic, icon: Italic, active: isActive('italic'), title: $t('sheets.rich_text_editor.italic') },
+          {
+            action: toggleBold,
+            icon: Bold,
+            active: isActive('bold'),
+            title: $t('sheets.rich_text_editor.bold'),
+          },
+          {
+            action: toggleItalic,
+            icon: Italic,
+            active: isActive('italic'),
+            title: $t('sheets.rich_text_editor.italic'),
+          },
           {
             action: toggleStrike,
             icon: Strikethrough,
@@ -200,7 +210,12 @@ function isActive(name: string, attrs?: { level?: number }): boolean {
             active: isActive('blockquote'),
             title: $t('sheets.rich_text_editor.blockquote'),
           },
-          { action: setHorizontalRule, icon: Minus, active: false, title: $t('sheets.rich_text_editor.hr') },
+          {
+            action: setHorizontalRule,
+            icon: Minus,
+            active: false,
+            title: $t('sheets.rich_text_editor.hr'),
+          },
         ]"
         :key="btn.title"
         type="button"

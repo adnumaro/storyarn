@@ -168,7 +168,9 @@ function toggleReferenceMultiple(): void {
         <Separator class="mb-2" />
         <div class="space-y-2 px-2 pb-2">
           <div>
-            <label class="text-xs font-medium opacity-70"> {{ $t("sheets.table.constraints.min") }}</label>
+            <label class="text-xs font-medium opacity-70">
+              {{ $t("sheets.table.constraints.min") }}</label
+            >
             <input
               type="number"
               :value="column.config?.min"
@@ -178,7 +180,9 @@ function toggleReferenceMultiple(): void {
             />
           </div>
           <div>
-            <label class="text-xs font-medium opacity-70"> {{ $t("sheets.table.constraints.max") }}</label>
+            <label class="text-xs font-medium opacity-70">
+              {{ $t("sheets.table.constraints.max") }}</label
+            >
             <input
               type="number"
               :value="column.config?.max"
@@ -188,7 +192,9 @@ function toggleReferenceMultiple(): void {
             />
           </div>
           <div>
-            <label class="text-xs font-medium opacity-70"> {{ $t("sheets.table.constraints.step") }}</label>
+            <label class="text-xs font-medium opacity-70">
+              {{ $t("sheets.table.constraints.step") }}</label
+            >
             <input
               type="number"
               :value="column.config?.step"

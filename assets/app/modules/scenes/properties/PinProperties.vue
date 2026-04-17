@@ -93,7 +93,9 @@ function toggle(field: string, currentValue: boolean | undefined) {
   <div class="space-y-3">
     <!-- Shortcut -->
     <div v-if="element.shortcut" class="space-y-1">
-      <label class="block text-xs font-medium text-foreground/70">{{ $t("scenes.pin_properties.shortcut") }}</label>
+      <label class="block text-xs font-medium text-foreground/70">{{
+        $t("scenes.pin_properties.shortcut")
+      }}</label>
       <div class="text-xs font-mono text-muted-foreground bg-accent/50 rounded px-2 py-1">
         {{ element.shortcut }}
       </div>
@@ -182,7 +184,9 @@ function toggle(field: string, currentValue: boolean | undefined) {
     <!-- Condition -->
     <div class="pt-3 border-t border-border space-y-2">
       <div class="flex items-center justify-between">
-        <label class="text-xs font-medium text-foreground/70">{{ $t("scenes.pin_properties.condition") }}</label>
+        <label class="text-xs font-medium text-foreground/70">{{
+          $t("scenes.pin_properties.condition")
+        }}</label>
         <div class="flex gap-0.5">
           <button
             v-for="opt in CONDITION_EFFECTS"

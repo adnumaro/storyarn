@@ -322,7 +322,9 @@ function usageSheetHref(sheet: SheetUsage) {
             <Badge variant="secondary" class="text-[10px] px-1.5 py-0">{{ totalUsages }}</Badge>
           </h4>
 
-          <p v-if="totalUsages === 0" class="text-sm text-muted-foreground">{{ $t("common.assets.not_used") }}</p>
+          <p v-if="totalUsages === 0" class="text-sm text-muted-foreground">
+            {{ $t("common.assets.not_used") }}
+          </p>
 
           <ul v-if="totalUsages > 0" class="text-sm space-y-1">
             <li
@@ -402,8 +404,12 @@ function usageSheetHref(sheet: SheetUsage) {
             </div>
           </div>
           <div class="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" @click="cancelDelete">{{ $t("common.cancel") }}</Button>
-            <Button variant="destructive" size="sm" @click="confirmDelete">{{ $t("common.delete") }}</Button>
+            <Button variant="ghost" size="sm" @click="cancelDelete">{{
+              $t("common.cancel")
+            }}</Button>
+            <Button variant="destructive" size="sm" @click="confirmDelete">{{
+              $t("common.delete")
+            }}</Button>
           </div>
         </div>
       </div>

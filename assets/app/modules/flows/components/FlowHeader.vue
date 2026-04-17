@@ -168,9 +168,9 @@ function navigateToNode(nodeId: number | string): void {
                 sceneSelected.name
               }}</span>
               <span v-else>{{ $t("flows.header.no_scene") }}</span>
-              <span v-if="sceneSelected.inherited" class="text-muted-foreground text-[10px]"
-                >{{ $t("flows.header.inherited") }}</span
-              >
+              <span v-if="sceneSelected.inherited" class="text-muted-foreground text-[10px]">{{
+                $t("flows.header.inherited")
+              }}</span>
               <ChevronDown v-if="canEdit" class="size-3 opacity-50" />
             </button>
           </PopoverTrigger>

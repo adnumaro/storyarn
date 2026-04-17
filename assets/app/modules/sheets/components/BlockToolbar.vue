@@ -59,7 +59,11 @@ const emit = defineEmits<{
         size="icon-sm"
         variant="ghost"
         :class="[isConstant && 'text-primary']"
-        :title="isConstant ? $t('sheets.block_toolbar.make_variable') : $t('sheets.block_toolbar.make_constant')"
+        :title="
+          isConstant
+            ? $t('sheets.block_toolbar.make_variable')
+            : $t('sheets.block_toolbar.make_constant')
+        "
         @click="emit('toggleConstant')"
       >
         <Lock v-if="isConstant" class="size-4" />

@@ -52,7 +52,12 @@ function toggleZones() {
 
     <!-- Right: Save + Show zones -->
     <div class="flex items-center gap-1">
-      <Button variant="ghost" size="icon-sm" :title="$t('scenes.exploration.save_progress')" @click="save">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        :title="$t('scenes.exploration.save_progress')"
+        @click="save"
+      >
         <Save class="size-4" />
       </Button>
       <Button

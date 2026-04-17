@@ -77,7 +77,11 @@ const {
         >
           {{ $t("common.compare_view.current") }}
         </div>
-        <iframe :src="currentUrl" class="flex-1 w-full border-0" :title="$t('common.compare_view.current')" />
+        <iframe
+          :src="currentUrl"
+          class="flex-1 w-full border-0"
+          :title="$t('common.compare_view.current')"
+        />
       </div>
 
       <!-- Right: historical version -->

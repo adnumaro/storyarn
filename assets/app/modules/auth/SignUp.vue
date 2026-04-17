@@ -97,7 +97,9 @@ onMounted(() => {
       </div>
 
       <div class="space-y-1.5">
-        <Label for="register-password-confirmation">{{ $t("auth.sign_up.confirm_password") }}</Label>
+        <Label for="register-password-confirmation">{{
+          $t("auth.sign_up.confirm_password")
+        }}</Label>
         <div class="relative">
           <input
             v-bind="passwordConfirmation.inputAttrs.value"

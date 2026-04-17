@@ -38,7 +38,12 @@ const description = form.field("description");
 
     <div class="space-y-1.5">
       <Label for="flow-name">{{ $t("flows.form.name") }}</Label>
-      <Input v-bind="name.inputAttrs.value" id="flow-name" :placeholder="$t('flows.form.name_placeholder')" required />
+      <Input
+        v-bind="name.inputAttrs.value"
+        id="flow-name"
+        :placeholder="$t('flows.form.name_placeholder')"
+        required
+      />
       <p
         v-if="name.errorMessage.value"
         class="text-sm text-destructive flex items-center gap-1 mt-1"

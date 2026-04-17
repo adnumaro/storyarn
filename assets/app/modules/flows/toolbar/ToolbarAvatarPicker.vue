@@ -49,7 +49,9 @@ function clearAvatar() {
       </button>
     </PopoverTrigger>
     <PopoverContent class="w-64 p-2" :side-offset="8" side="top">
-      <div class="text-xs font-medium text-muted-foreground mb-2">{{ $t("flows.avatar_picker.select_avatar") }}</div>
+      <div class="text-xs font-medium text-muted-foreground mb-2">
+        {{ $t("flows.avatar_picker.select_avatar") }}
+      </div>
       <div class="grid grid-cols-3 gap-1.5">
         <button
           v-for="avatar in avatars"

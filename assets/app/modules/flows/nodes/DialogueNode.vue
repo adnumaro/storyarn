@@ -125,7 +125,8 @@ function getOutputBadges(key: string): OutputBadge[] {
   if (!resp) return [];
   const badges: OutputBadge[] = [];
   if (!resp.text) badges.push({ type: "error", title: t("flows.nodes.dialogue.empty_response") });
-  if (resp.has_type_warnings) badges.push({ type: "error", title: t("flows.nodes.dialogue.type_mismatch") });
+  if (resp.has_type_warnings)
+    badges.push({ type: "error", title: t("flows.nodes.dialogue.type_mismatch") });
   if (resp.condition)
     badges.push({
       type: "indicator",

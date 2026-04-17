@@ -116,7 +116,9 @@ function backlinkUrl(backlink: Backlink): string {
         >
           <Database class="size-3.5" />
         </div>
-        <span class="text-sm font-semibold flex-1 text-left">{{ $t("sheets.references_tab.variable_usage") }}</span>
+        <span class="text-sm font-semibold flex-1 text-left">{{
+          $t("sheets.references_tab.variable_usage")
+        }}</span>
         <Badge
           v-if="totalVariableRefs > 0"
           variant="secondary"
@@ -281,7 +283,9 @@ function backlinkUrl(backlink: Backlink): string {
         >
           <Link class="size-3.5" />
         </div>
-        <span class="text-sm font-semibold flex-1 text-left">{{ $t("sheets.references_tab.backlinks") }}</span>
+        <span class="text-sm font-semibold flex-1 text-left">{{
+          $t("sheets.references_tab.backlinks")
+        }}</span>
         <Badge
           v-if="backlinks.length > 0"
           variant="secondary"
@@ -301,7 +305,9 @@ function backlinkUrl(backlink: Backlink): string {
         <div class="px-4 pb-4">
           <div v-if="backlinks.length === 0" class="rounded-lg bg-muted/30 p-5 text-center">
             <Link class="size-8 mx-auto text-muted-foreground/20 mb-2" />
-            <p class="text-xs text-muted-foreground mb-0.5">{{ $t("sheets.references_tab.no_backlinks_title") }}</p>
+            <p class="text-xs text-muted-foreground mb-0.5">
+              {{ $t("sheets.references_tab.no_backlinks_title") }}
+            </p>
             <p class="text-[11px] text-muted-foreground/60">
               {{ $t("sheets.references_tab.no_backlinks_description") }}
             </p>
@@ -374,7 +380,9 @@ function backlinkUrl(backlink: Backlink): string {
         >
           <Map class="size-3.5" />
         </div>
-        <span class="text-sm font-semibold flex-1 text-left">{{ $t("sheets.references_tab.scenes_title") }}</span>
+        <span class="text-sm font-semibold flex-1 text-left">{{
+          $t("sheets.references_tab.scenes_title")
+        }}</span>
         <Badge
           v-if="sceneAppearances.length > 0"
           variant="secondary"

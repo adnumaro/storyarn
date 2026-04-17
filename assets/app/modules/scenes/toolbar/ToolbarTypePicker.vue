@@ -35,13 +35,19 @@ function selectType(value: string) {
   open.value = false;
 }
 
-const currentIcon = (): Component => TYPE_OPTIONS.value.find((o) => o.value === type)?.icon || MapPin;
+const currentIcon = (): Component =>
+  TYPE_OPTIONS.value.find((o) => o.value === type)?.icon || MapPin;
 </script>
 
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <button type="button" class="toolbar-btn" :disabled="disabled" :title="$t('scenes.type_picker.pin_type')">
+      <button
+        type="button"
+        class="toolbar-btn"
+        :disabled="disabled"
+        :title="$t('scenes.type_picker.pin_type')"
+      >
         <component :is="currentIcon()" class="size-3.5" />
       </button>
     </PopoverTrigger>

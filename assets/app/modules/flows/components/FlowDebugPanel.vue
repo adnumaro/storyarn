@@ -134,7 +134,13 @@ function switchTab(tab: string | number): void {
       </Button>
 
       <!-- Step -->
-      <Button variant="ghost" size="icon-sm" class="size-7" :title="$t('flows.debug.step_key')" @click="step">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        class="size-7"
+        :title="$t('flows.debug.step_key')"
+        @click="step"
+      >
         <SkipForward class="size-3.5" />
       </Button>
 
@@ -150,12 +156,24 @@ function switchTab(tab: string | number): void {
       </Button>
 
       <!-- Reset -->
-      <Button variant="ghost" size="icon-sm" class="size-7" :title="$t('flows.debug.reset_key')" @click="reset">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        class="size-7"
+        :title="$t('flows.debug.reset_key')"
+        @click="reset"
+      >
         <RotateCcw class="size-3.5" />
       </Button>
 
       <!-- Stop -->
-      <Button variant="ghost" size="icon-sm" class="size-7" :title="$t('flows.debug.stop')" @click="stop">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        class="size-7"
+        :title="$t('flows.debug.stop')"
+        @click="stop"
+      >
         <Square class="size-3.5" />
       </Button>
 
@@ -201,16 +219,24 @@ function switchTab(tab: string | number): void {
       @update:model-value="switchTab"
     >
       <TabsList class="px-3 pt-1">
-        <TabsTrigger value="console" class="text-xs">{{ $t("flows.debug.tab_console") }}</TabsTrigger>
-        <TabsTrigger value="variables" class="text-xs">{{ $t("flows.debug.tab_variables") }}</TabsTrigger>
-        <TabsTrigger value="history" class="text-xs">{{ $t("flows.debug.tab_history") }}</TabsTrigger>
+        <TabsTrigger value="console" class="text-xs">{{
+          $t("flows.debug.tab_console")
+        }}</TabsTrigger>
+        <TabsTrigger value="variables" class="text-xs">{{
+          $t("flows.debug.tab_variables")
+        }}</TabsTrigger>
+        <TabsTrigger value="history" class="text-xs">{{
+          $t("flows.debug.tab_history")
+        }}</TabsTrigger>
       </TabsList>
 
       <!-- Console -->
       <TabsContent value="console" class="overflow-y-auto px-3 pb-3 h-full">
         <!-- Pending choices -->
         <div v-if="pendingChoices.length > 0" class="space-y-1 mb-3">
-          <div class="text-xs text-muted-foreground font-medium">{{ $t("flows.debug.choose_response") }}</div>
+          <div class="text-xs text-muted-foreground font-medium">
+            {{ $t("flows.debug.choose_response") }}
+          </div>
           <button
             v-for="choice in pendingChoices"
             :key="choice.id"

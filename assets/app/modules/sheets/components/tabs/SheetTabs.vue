@@ -26,7 +26,9 @@ const allTabs = computed<TabDefinition[]>(() => [
   { value: "history", label: t("sheets.tabs.history"), icon: History },
 ]);
 
-const tabs = computed(() => (compact ? allTabs.value.filter((t) => t.value !== "history") : allTabs.value));
+const tabs = computed(() =>
+  compact ? allTabs.value.filter((t) => t.value !== "history") : allTabs.value,
+);
 
 function onTabChange(value: string | number): void {
   if (value !== currentTab) {

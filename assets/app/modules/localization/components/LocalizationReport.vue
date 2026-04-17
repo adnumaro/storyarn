@@ -1,12 +1,5 @@
 <script setup lang="ts">
-import {
-  Box,
-  Clapperboard,
-  FileText,
-  GitBranch,
-  MessageSquare,
-  Square,
-} from "lucide-vue-next";
+import { Box, Clapperboard, FileText, GitBranch, MessageSquare, Square } from "lucide-vue-next";
 import type { Component } from "vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
@@ -84,10 +77,22 @@ const typeCountEntries = computed(() => {
 });
 
 const voStats = computed(() => [
-  { label: t("localization.report.vo_none"), value: voProgress.none, color: "text-muted-foreground" },
+  {
+    label: t("localization.report.vo_none"),
+    value: voProgress.none,
+    color: "text-muted-foreground",
+  },
   { label: t("localization.report.vo_needed"), value: voProgress.needed, color: "text-yellow-500" },
-  { label: t("localization.report.vo_recorded"), value: voProgress.recorded, color: "text-blue-400" },
-  { label: t("localization.report.vo_approved"), value: voProgress.approved, color: "text-emerald-500" },
+  {
+    label: t("localization.report.vo_recorded"),
+    value: voProgress.recorded,
+    color: "text-blue-400",
+  },
+  {
+    label: t("localization.report.vo_approved"),
+    value: voProgress.approved,
+    color: "text-emerald-500",
+  },
 ]);
 
 function typeIcon(type: string) {
@@ -122,7 +127,9 @@ const typeKeys: Record<string, string> = {
 
     <!-- Progress by Language -->
     <section class="mt-8">
-      <h3 class="text-base font-semibold mb-4">{{ $t("localization.report.progress_by_language") }}</h3>
+      <h3 class="text-base font-semibold mb-4">
+        {{ $t("localization.report.progress_by_language") }}
+      </h3>
 
       <p v-if="languageProgress.length === 0" class="text-sm text-muted-foreground">
         {{ $t("localization.report.no_targets_configured") }}
@@ -148,7 +155,9 @@ const typeKeys: Record<string, string> = {
     <!-- Word Counts by Speaker -->
     <section v-if="selectedLocale && speakerStats.length > 0" class="mt-8">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-base font-semibold">{{ $t("localization.report.word_counts_by_speaker") }}</h3>
+        <h3 class="text-base font-semibold">
+          {{ $t("localization.report.word_counts_by_speaker") }}
+        </h3>
         <Select
           :model-value="selectedLocale"
           @update:model-value="(v: string | string[]) => changeLocale(Array.isArray(v) ? v[0] : v)"
@@ -172,16 +181,26 @@ const typeKeys: Record<string, string> = {
         <Table>
           <TableHeader>
             <TableRow class="bg-muted/40 hover:bg-muted/40">
-              <TableHead class="font-medium text-xs text-muted-foreground">{{ $t("localization.report.speaker_header") }}</TableHead>
-              <TableHead class="font-medium text-xs text-muted-foreground text-right">{{ $t("localization.report.lines_header") }}</TableHead>
-              <TableHead class="font-medium text-xs text-muted-foreground text-right">{{ $t("localization.report.words_header") }}</TableHead>
+              <TableHead class="font-medium text-xs text-muted-foreground">{{
+                $t("localization.report.speaker_header")
+              }}</TableHead>
+              <TableHead class="font-medium text-xs text-muted-foreground text-right">{{
+                $t("localization.report.lines_header")
+              }}</TableHead>
+              <TableHead class="font-medium text-xs text-muted-foreground text-right">{{
+                $t("localization.report.words_header")
+              }}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             <TableRow v-for="stat in speakerStats" :key="stat.speakerSheetId || 'none'">
               <TableCell>
-                <span v-if="stat.speakerSheetId">{{ $t("localization.report.speaker_id", { id: stat.speakerSheetId }) }}</span>
-                <span v-else class="text-muted-foreground italic">{{ $t("localization.report.no_speaker") }}</span>
+                <span v-if="stat.speakerSheetId">{{
+                  $t("localization.report.speaker_id", { id: stat.speakerSheetId })
+                }}</span>
+                <span v-else class="text-muted-foreground italic">{{
+                  $t("localization.report.no_speaker")
+                }}</span>
               </TableCell>
               <TableCell class="text-right tabular-nums">{{ stat.lineCount }}</TableCell>
               <TableCell class="text-right tabular-nums">{{ stat.wordCount }}</TableCell>
@@ -208,7 +227,9 @@ const typeKeys: Record<string, string> = {
 
     <!-- Content Type Breakdown -->
     <section v-if="selectedLocale && typeCountEntries.length > 0" class="mt-8">
-      <h3 class="text-base font-semibold mb-4">{{ $t("localization.report.content_breakdown") }}</h3>
+      <h3 class="text-base font-semibold mb-4">
+        {{ $t("localization.report.content_breakdown") }}
+      </h3>
       <div class="flex gap-3 flex-wrap">
         <Badge
           v-for="[type, count] in typeCountEntries"

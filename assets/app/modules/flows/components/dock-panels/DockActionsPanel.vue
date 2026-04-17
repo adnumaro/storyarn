@@ -36,7 +36,9 @@ const emit = defineEmits<{
     </a>
     <div class="dock-tooltip">
       <div class="text-sm font-semibold mb-0.5">{{ $t("flows.dock.play") }}</div>
-      <div class="text-xs text-muted-foreground leading-relaxed">{{ $t("flows.dock.play_desc") }}</div>
+      <div class="text-xs text-muted-foreground leading-relaxed">
+        {{ $t("flows.dock.play_desc") }}
+      </div>
     </div>
   </div>
 
@@ -52,7 +54,9 @@ const emit = defineEmits<{
     </button>
     <div class="dock-tooltip">
       <div class="text-sm font-semibold mb-0.5">{{ $t("flows.dock.debug") }}</div>
-      <div class="text-xs text-muted-foreground leading-relaxed">{{ $t("flows.dock.debug_desc") }}</div>
+      <div class="text-xs text-muted-foreground leading-relaxed">
+        {{ $t("flows.dock.debug_desc") }}
+      </div>
     </div>
   </div>
 </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, Shield } from 'lucide-vue-next'
+import { ArrowRight, Shield } from "lucide-vue-next";
 import { ref } from "vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";

@@ -125,8 +125,12 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="editor">{{ $t("project_settings.members.role_editor") }}</SelectItem>
-                <SelectItem value="viewer">{{ $t("project_settings.members.role_viewer") }}</SelectItem>
+                <SelectItem value="editor">{{
+                  $t("project_settings.members.role_editor")
+                }}</SelectItem>
+                <SelectItem value="viewer">{{
+                  $t("project_settings.members.role_viewer")
+                }}</SelectItem>
               </SelectContent>
             </Select>
           </div>

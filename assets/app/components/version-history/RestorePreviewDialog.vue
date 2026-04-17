@@ -77,7 +77,11 @@ function conflictLabel(type: string) {
             class="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20"
           >
             <AlertTriangle class="size-4 text-amber-500 shrink-0 mt-0.5" />
-            <span class="text-sm">{{ $t("common.restore_preview_dialog.shortcut_collision", { name: restoreData.report.resolvedShortcut }) }}</span>
+            <span class="text-sm">{{
+              $t("common.restore_preview_dialog.shortcut_collision", {
+                name: restoreData.report.resolvedShortcut,
+              })
+            }}</span>
           </div>
           <div v-if="restoreData.report.conflicts.length > 0" class="space-y-2">
             <p class="text-sm font-medium text-amber-600 flex items-center gap-1.5">
@@ -91,7 +95,14 @@ function conflictLabel(type: string) {
             >
               <div class="flex items-center gap-2 text-sm font-medium">
                 <component :is="conflictIcon(conflict.type)" class="size-4 text-amber-500" />
-                <span>{{ $t("common.restore_preview_dialog.missing_prefix", { type: conflictLabel(conflict.type) }) }} (ID: {{ conflict.id }})</span>
+                <span
+                  >{{
+                    $t("common.restore_preview_dialog.missing_prefix", {
+                      type: conflictLabel(conflict.type),
+                    })
+                  }}
+                  (ID: {{ conflict.id }})</span
+                >
               </div>
               <ul class="mt-1 ml-6 text-xs text-muted-foreground list-disc">
                 <li v-for="(ctx, j) in conflict.contexts" :key="j">{{ ctx }}</li>
@@ -99,12 +110,18 @@ function conflictLabel(type: string) {
             </div>
           </div>
           <p class="text-sm text-muted-foreground">
-            <template v-if="restoreData.skipPreSnapshot">{{ $t("common.restore_preview_dialog.missing_cleared") }}</template>
-            <template v-else>{{ $t("common.restore_preview_dialog.missing_cleared_backup") }}</template>
+            <template v-if="restoreData.skipPreSnapshot">{{
+              $t("common.restore_preview_dialog.missing_cleared")
+            }}</template>
+            <template v-else>{{
+              $t("common.restore_preview_dialog.missing_cleared_backup")
+            }}</template>
           </p>
         </div>
         <p v-else class="text-muted-foreground">
-          {{ $t("common.restore_preview_dialog.restore_info", { version: restoreData.versionNumber }) }}
+          {{
+            $t("common.restore_preview_dialog.restore_info", { version: restoreData.versionNumber })
+          }}
         </p>
         <div
           v-if="(restoreData.report.autoResolved?.length ?? 0) > 0"
@@ -122,7 +139,9 @@ function conflictLabel(type: string) {
         </div>
       </template>
       <DialogFooter>
-        <Button variant="ghost" @click="emit('update:open', false)">{{ $t("common.cancel") }}</Button>
+        <Button variant="ghost" @click="emit('update:open', false)">{{
+          $t("common.cancel")
+        }}</Button>
         <Button
           :class="restoreData?.report?.hasConflicts ? 'bg-amber-600 hover:bg-amber-700' : ''"
           :disabled="loadingAction === 'confirm-restore'"
@@ -130,7 +149,11 @@ function conflictLabel(type: string) {
         >
           <Loader2 v-if="loadingAction === 'confirm-restore'" class="size-4 animate-spin mr-1" />
           <RotateCcw v-else class="size-4 mr-1" />
-          {{ restoreData?.report?.hasConflicts ? $t("common.restore_preview_dialog.restore_anyway") : $t("common.restore_preview_dialog.restore") }}
+          {{
+            restoreData?.report?.hasConflicts
+              ? $t("common.restore_preview_dialog.restore_anyway")
+              : $t("common.restore_preview_dialog.restore")
+          }}
         </Button>
       </DialogFooter>
     </DialogContent>

@@ -82,8 +82,12 @@ function formatNumber(n: number | string) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="https://api-free.deepl.com">{{ $t("project_settings.localization.tier_free") }}</SelectItem>
-              <SelectItem value="https://api.deepl.com">{{ $t("project_settings.localization.tier_pro") }}</SelectItem>
+              <SelectItem value="https://api-free.deepl.com">{{
+                $t("project_settings.localization.tier_free")
+              }}</SelectItem>
+              <SelectItem value="https://api.deepl.com">{{
+                $t("project_settings.localization.tier_pro")
+              }}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -97,8 +101,10 @@ function formatNumber(n: number | string) {
       </form>
 
       <div v-if="providerUsage" class="mt-3 text-sm text-muted-foreground">
-        {{ $t("project_settings.localization.usage_prefix") }}{{ formatNumber(providerUsage.characterCount) }} /
-        {{ formatNumber(providerUsage.characterLimit) }}{{ $t("project_settings.localization.usage_characters") }}
+        {{ $t("project_settings.localization.usage_prefix")
+        }}{{ formatNumber(providerUsage.characterCount) }} /
+        {{ formatNumber(providerUsage.characterLimit)
+        }}{{ $t("project_settings.localization.usage_characters") }}
       </div>
     </div>
   </div>

@@ -48,7 +48,9 @@ function newSession() {
           <span class="opacity-50">{{ $t("scenes.exploration.scene_label") }}</span>
           <span class="font-medium ml-1">{{ pendingSession.sceneName }}</span>
         </div>
-        <div class="text-xs opacity-40">{{ $t("scenes.exploration.last_played") }} {{ pendingSession.updatedAt }}</div>
+        <div class="text-xs opacity-40">
+          {{ $t("scenes.exploration.last_played") }} {{ pendingSession.updatedAt }}
+        </div>
       </div>
 
       <DialogFooter class="flex-row gap-2 sm:justify-start">

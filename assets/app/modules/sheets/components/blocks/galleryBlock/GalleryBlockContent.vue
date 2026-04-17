@@ -143,7 +143,9 @@ function onDrop(e: DragEvent, dropIndex: number): void {
     </div>
 
     <!-- Empty state -->
-    <div v-else class="py-6 text-center text-sm text-muted-foreground">{{ $t("sheets.gallery_block.empty") }}</div>
+    <div v-else class="py-6 text-center text-sm text-muted-foreground">
+      {{ $t("sheets.gallery_block.empty") }}
+    </div>
 
     <!-- Upload button -->
     <div v-if="canEdit" class="mt-2">

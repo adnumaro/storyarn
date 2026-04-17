@@ -168,7 +168,9 @@ const isNewProjectModalOpen = ref(false);
         class="flex flex-col items-center justify-center py-12 text-center h-full"
       >
         <FolderOpen class="size-12 text-muted-foreground/40 mb-4" />
-        <h3 class="text-lg font-medium mb-1">{{ $t("workspace.dashboard.empty_projects.title") }}</h3>
+        <h3 class="text-lg font-medium mb-1">
+          {{ $t("workspace.dashboard.empty_projects.title") }}
+        </h3>
         <p class="text-sm text-muted-foreground">
           {{ $t("workspace.dashboard.empty_projects.description") }}
         </p>
@@ -205,7 +207,7 @@ const isNewProjectModalOpen = ref(false);
                   {{ projectData.project.description }}
                 </template>
                 <template v-else>
-                <span class="italic opacity-50">{{
+                  <span class="italic opacity-50">{{
                     $t("workspace.dashboard.no_description")
                   }}</span>
                 </template>

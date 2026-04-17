@@ -69,7 +69,9 @@ function selectSheet(sheetId: number | string): void {
             <MapPin class="size-4 mt-0.5 shrink-0" />
             <div>
               <div class="font-medium">{{ $t("scenes.pins_dropdown.free_pin") }}</div>
-              <div class="text-xs text-muted-foreground">{{ $t("scenes.pins_dropdown.free_pin_desc") }}</div>
+              <div class="text-xs text-muted-foreground">
+                {{ $t("scenes.pins_dropdown.free_pin_desc") }}
+              </div>
             </div>
           </button>
           <button
@@ -80,7 +82,9 @@ function selectSheet(sheetId: number | string): void {
             <MapPin class="size-4 mt-0.5 shrink-0" />
             <div>
               <div class="font-medium">{{ $t("scenes.pins_dropdown.from_sheet") }}</div>
-              <div class="text-xs text-muted-foreground">{{ $t("scenes.pins_dropdown.from_sheet_desc") }}</div>
+              <div class="text-xs text-muted-foreground">
+                {{ $t("scenes.pins_dropdown.from_sheet_desc") }}
+              </div>
             </div>
           </button>
         </div>

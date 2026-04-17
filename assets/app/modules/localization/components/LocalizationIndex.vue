@@ -126,7 +126,10 @@ const statusVariant: Record<string, string> = {
         <div class="min-w-0 lg:w-72 space-y-2">
           <Progress :model-value="progressPercent" class="w-full" />
           <div class="flex items-center justify-between text-sm text-muted-foreground">
-            <span>{{ progress.final }} / {{ progress.total }} {{ $t("localization.index.final_suffix") }}</span>
+            <span
+              >{{ progress.final }} / {{ progress.total }}
+              {{ $t("localization.index.final_suffix") }}</span
+            >
             <span class="tabular-nums">{{ progressPercent }}%</span>
           </div>
         </div>
@@ -146,7 +149,9 @@ const statusVariant: Record<string, string> = {
           <SelectItem value="all">{{ $t("localization.index.all_statuses") }}</SelectItem>
           <SelectItem value="pending">{{ $t("localization.index.status_pending") }}</SelectItem>
           <SelectItem value="draft">{{ $t("localization.index.status_draft") }}</SelectItem>
-          <SelectItem value="in_progress">{{ $t("localization.index.status_in_progress") }}</SelectItem>
+          <SelectItem value="in_progress">{{
+            $t("localization.index.status_in_progress")
+          }}</SelectItem>
           <SelectItem value="review">{{ $t("localization.index.status_review") }}</SelectItem>
           <SelectItem value="final">{{ $t("localization.index.status_final") }}</SelectItem>
         </SelectContent>
@@ -194,11 +199,21 @@ const statusVariant: Record<string, string> = {
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b bg-muted/50">
-            <th class="w-12 px-3 py-2 text-left font-medium text-muted-foreground">{{ $t("localization.index.th_type") }}</th>
-            <th class="px-3 py-2 text-left font-medium text-muted-foreground">{{ $t("localization.index.th_source") }}</th>
-            <th class="px-3 py-2 text-left font-medium text-muted-foreground">{{ $t("localization.index.th_translation") }}</th>
-            <th class="w-28 px-3 py-2 text-left font-medium text-muted-foreground">{{ $t("localization.index.th_status") }}</th>
-            <th class="w-16 px-3 py-2 text-left font-medium text-muted-foreground">{{ $t("localization.index.th_words") }}</th>
+            <th class="w-12 px-3 py-2 text-left font-medium text-muted-foreground">
+              {{ $t("localization.index.th_type") }}
+            </th>
+            <th class="px-3 py-2 text-left font-medium text-muted-foreground">
+              {{ $t("localization.index.th_source") }}
+            </th>
+            <th class="px-3 py-2 text-left font-medium text-muted-foreground">
+              {{ $t("localization.index.th_translation") }}
+            </th>
+            <th class="w-28 px-3 py-2 text-left font-medium text-muted-foreground">
+              {{ $t("localization.index.th_status") }}
+            </th>
+            <th class="w-16 px-3 py-2 text-left font-medium text-muted-foreground">
+              {{ $t("localization.index.th_words") }}
+            </th>
             <th v-if="canEdit" class="w-20 px-3 py-2" />
           </tr>
         </thead>
@@ -224,7 +239,9 @@ const statusVariant: Record<string, string> = {
               <div v-if="text.translatedText" class="truncate text-sm">
                 {{ text.translatedText }}
               </div>
-              <div v-else class="text-sm text-muted-foreground/50 italic">{{ $t("localization.index.not_translated") }}</div>
+              <div v-else class="text-sm text-muted-foreground/50 italic">
+                {{ $t("localization.index.not_translated") }}
+              </div>
               <span
                 v-if="text.machineTranslated"
                 class="text-[10px] px-1 rounded border text-muted-foreground"

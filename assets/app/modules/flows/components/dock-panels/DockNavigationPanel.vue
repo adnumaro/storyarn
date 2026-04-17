@@ -89,7 +89,9 @@ defineExpose({
     </Popover>
     <div v-if="!open" class="dock-tooltip">
       <div class="text-sm font-semibold mb-0.5">{{ $t("flows.dock.navigation") }}</div>
-      <div class="text-xs text-muted-foreground leading-relaxed">{{ $t("flows.dock.exit_desc") }}</div>
+      <div class="text-xs text-muted-foreground leading-relaxed">
+        {{ $t("flows.dock.exit_desc") }}
+      </div>
     </div>
   </div>
 </template>

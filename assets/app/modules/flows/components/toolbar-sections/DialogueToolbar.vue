@@ -91,10 +91,20 @@ const hasAvatarOverride = computed(() => {
     @select="selectAvatar"
   />
   <ToolbarSeparator />
-  <button type="button" class="toolbar-btn" :title="$t('flows.node_types.dialogue_toolbar_screenplay')" @click="openScreenplay">
+  <button
+    type="button"
+    class="toolbar-btn"
+    :title="$t('flows.node_types.dialogue_toolbar_screenplay')"
+    @click="openScreenplay"
+  >
     <Settings class="size-3.5" />
   </button>
-  <button type="button" class="toolbar-btn" :title="$t('flows.node_types.dialogue_toolbar_preview')" @click="startPreview">
+  <button
+    type="button"
+    class="toolbar-btn"
+    :title="$t('flows.node_types.dialogue_toolbar_preview')"
+    @click="startPreview"
+  >
     <PlayIcon class="size-3" />
   </button>
 </template>

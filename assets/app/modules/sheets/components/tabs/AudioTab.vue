@@ -125,7 +125,9 @@ function openPopover(nodeId: number | string): void {
     class="rounded-xl border border-border/60 bg-card p-8 text-center"
   >
     <VolumeX class="size-10 mx-auto text-muted-foreground/20 mb-3" />
-    <p class="text-sm font-medium text-muted-foreground mb-1">{{ $t("sheets.audio_tab.empty_title") }}</p>
+    <p class="text-sm font-medium text-muted-foreground mb-1">
+      {{ $t("sheets.audio_tab.empty_title") }}
+    </p>
     <p class="text-xs text-muted-foreground/60">
       {{ $t("sheets.audio_tab.empty_description") }}
     </p>
@@ -230,7 +232,9 @@ function openPopover(nodeId: number | string): void {
                         <p v-if="audioAssets.length === 0" class="text-xs text-muted-foreground">
                           {{ $t("sheets.audio_tab.no_assets") }}
                         </p>
-                        <p v-else class="text-xs text-muted-foreground">{{ $t("sheets.audio_tab.no_matches") }}</p>
+                        <p v-else class="text-xs text-muted-foreground">
+                          {{ $t("sheets.audio_tab.no_matches") }}
+                        </p>
                       </div>
                       <CommandItem
                         v-for="asset in filteredAssets"
@@ -256,7 +260,11 @@ function openPopover(nodeId: number | string): void {
               >
                 <Loader2 v-if="uploadingNodeId === line.nodeId" class="size-3 animate-spin" />
                 <Upload v-else class="size-3" />
-                {{ uploadingNodeId === line.nodeId ? $t("sheets.audio_tab.uploading") : $t("sheets.audio_tab.upload") }}
+                {{
+                  uploadingNodeId === line.nodeId
+                    ? $t("sheets.audio_tab.uploading")
+                    : $t("sheets.audio_tab.upload")
+                }}
               </Button>
             </div>
 

@@ -55,13 +55,17 @@ const emit = defineEmits<{
             id="promote-title"
             :model-value="title"
             @update:model-value="emit('update:title', String($event))"
-            :placeholder="promoteVersion?.changeSummary || $t('common.promote_version_dialog.title_placeholder')"
+            :placeholder="
+              promoteVersion?.changeSummary || $t('common.promote_version_dialog.title_placeholder')
+            "
             required
             autofocus
           />
         </div>
         <div class="space-y-2">
-          <Label for="promote-description">{{ $t("common.promote_version_dialog.description_label") }}</Label>
+          <Label for="promote-description">{{
+            $t("common.promote_version_dialog.description_label")
+          }}</Label>
           <Textarea
             id="promote-description"
             :model-value="description"
@@ -71,7 +75,9 @@ const emit = defineEmits<{
           />
         </div>
         <DialogFooter>
-          <DialogClose as-child><Button variant="ghost" type="button">{{ $t("common.cancel") }}</Button></DialogClose>
+          <DialogClose as-child
+            ><Button variant="ghost" type="button">{{ $t("common.cancel") }}</Button></DialogClose
+          >
           <Button type="submit" :disabled="!title.trim() || loadingAction === 'promote'">
             <Loader2 v-if="loadingAction === 'promote'" class="size-4 animate-spin mr-1" />
             <BookmarkPlus v-else class="size-4 mr-1" />

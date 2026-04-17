@@ -75,7 +75,9 @@ function closePreview(): void {
               <DialogTitle class="text-base">
                 {{ currentNode.speaker || $t("flows.preview.narrator") }}
               </DialogTitle>
-              <p class="text-xs text-muted-foreground">{{ $t("flows.preview.node") }} {{ currentNode.id }}</p>
+              <p class="text-xs text-muted-foreground">
+                {{ $t("flows.preview.node") }} {{ currentNode.id }}
+              </p>
             </div>
           </div>
         </DialogHeader>
@@ -88,7 +90,9 @@ function closePreview(): void {
 
         <!-- Response buttons -->
         <div v-if="responses.length > 0" class="space-y-2">
-          <p class="text-sm font-medium text-muted-foreground">{{ $t("flows.preview.responses") }}</p>
+          <p class="text-sm font-medium text-muted-foreground">
+            {{ $t("flows.preview.responses") }}
+          </p>
           <div class="flex flex-col gap-2">
             <Button
               v-for="response in responses"
@@ -135,7 +139,9 @@ function closePreview(): void {
             {{ $t("flows.preview.back") }}
           </Button>
           <div v-else />
-          <Button variant="ghost" size="sm" @click="closePreview"> {{ $t("flows.preview.close") }} </Button>
+          <Button variant="ghost" size="sm" @click="closePreview">
+            {{ $t("flows.preview.close") }}
+          </Button>
         </div>
       </template>
 

@@ -87,11 +87,36 @@ const live = useLive();
 const statCards = computed(() => {
   if (!stats) return [];
   return [
-    { icon: FileText, key: "sheets", value: stats.sheet_count, href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets` },
-    { icon: Variable, key: "variables", value: stats.variable_count, href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets` },
-    { icon: GitBranch, key: "flows", value: stats.flow_count, href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows` },
-    { icon: MessageSquare, key: "dialogue_lines", value: stats.dialogue_count, href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows` },
-    { icon: MapIcon, key: "scenes", value: stats.scene_count, href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes` },
+    {
+      icon: FileText,
+      key: "sheets",
+      value: stats.sheet_count,
+      href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets`,
+    },
+    {
+      icon: Variable,
+      key: "variables",
+      value: stats.variable_count,
+      href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets`,
+    },
+    {
+      icon: GitBranch,
+      key: "flows",
+      value: stats.flow_count,
+      href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows`,
+    },
+    {
+      icon: MessageSquare,
+      key: "dialogue_lines",
+      value: stats.dialogue_count,
+      href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows`,
+    },
+    {
+      icon: MapIcon,
+      key: "scenes",
+      value: stats.scene_count,
+      href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes`,
+    },
     { icon: Text, key: "words", value: stats.total_word_count, href: undefined },
   ];
 });
@@ -141,7 +166,9 @@ const activityTypeKeys: Record<string, string> = {
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <!-- Node Distribution -->
         <div class="rounded-lg border border-border bg-surface p-4 space-y-3">
-          <h2 class="text-sm font-medium">{{ $t("workspace.project_dashboard.node_distribution") }}</h2>
+          <h2 class="text-sm font-medium">
+            {{ $t("workspace.project_dashboard.node_distribution") }}
+          </h2>
           <div
             v-if="nodeDist.length === 0"
             class="text-sm text-muted-foreground/50 py-2 text-center"
@@ -219,7 +246,9 @@ const activityTypeKeys: Record<string, string> = {
         v-if="localization.length > 0"
         class="rounded-lg border border-border bg-surface p-4 space-y-3"
       >
-        <h2 class="text-sm font-medium">{{ $t("workspace.project_dashboard.localization_progress") }}</h2>
+        <h2 class="text-sm font-medium">
+          {{ $t("workspace.project_dashboard.localization_progress") }}
+        </h2>
         <div class="space-y-2">
           <a
             v-for="lang in localization"
@@ -260,7 +289,8 @@ const activityTypeKeys: Record<string, string> = {
             <span class="text-sm flex-1 min-w-0">
               <span class="font-medium truncate">{{ item.name }}</span>
               <span class="text-muted-foreground/50">
-                &middot; {{ activityTypeKeys[item.type] ? $t(activityTypeKeys[item.type]) : item.type }}
+                &middot;
+                {{ activityTypeKeys[item.type] ? $t(activityTypeKeys[item.type]) : item.type }}
               </span>
             </span>
             <span class="text-xs text-muted-foreground/40 shrink-0">

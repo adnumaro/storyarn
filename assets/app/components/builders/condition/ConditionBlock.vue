@@ -73,7 +73,9 @@ function addRule() {
           @input="(e: Event) => updateField('label', (e.target as HTMLInputElement).value)"
           @blur="(e: Event) => updateField('label', (e.target as HTMLInputElement).value)"
         />
-        <span v-else class="text-xs font-medium">{{ block.label || $t("common.condition_builder.label_placeholder") }}</span>
+        <span v-else class="text-xs font-medium">{{
+          block.label || $t("common.condition_builder.label_placeholder")
+        }}</span>
       </template>
       <span v-else />
 

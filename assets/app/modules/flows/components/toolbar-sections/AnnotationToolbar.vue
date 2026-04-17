@@ -37,7 +37,12 @@ function deleteNode() {
   <ToolbarColorPicker :color="nodeData.color || '#fbbf24'" @update:color="updateAnnotationColor" />
   <ToolbarSizePicker :size="nodeData.font_size || 'md'" @update:size="updateAnnotationFontSize" />
   <ToolbarSeparator />
-  <button type="button" class="toolbar-btn text-destructive" :title="$t('flows.annotation.delete')" @click="deleteNode">
+  <button
+    type="button"
+    class="toolbar-btn text-destructive"
+    :title="$t('flows.annotation.delete')"
+    @click="deleteNode"
+  >
     <Trash2 class="size-3.5" />
   </button>
 </template>

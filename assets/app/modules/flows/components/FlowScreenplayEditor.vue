@@ -84,7 +84,10 @@ const responses = computed<NodeResponse[]>(() => nodeData.value.responses || [])
 // TipTap editor for dialogue text
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 const editor = useEditor({
-  extensions: [StarterKit, Placeholder.configure({ placeholder: t("flows.screenplay_editor.dialogue_placeholder") })],
+  extensions: [
+    StarterKit,
+    Placeholder.configure({ placeholder: t("flows.screenplay_editor.dialogue_placeholder") }),
+  ],
   editable: canEdit,
   content: nodeData.value.text || "",
   onUpdate: ({ editor: ed }) => {
@@ -195,7 +198,9 @@ function updateResponseAssignments(
             <MessageSquare class="size-3.5" />
             {{ $t("flows.screenplay_editor.tab_text") }}
           </TabsTrigger>
-          <TabsTrigger value="responses" class="flex-1 gap-1 text-xs"> {{ $t("flows.screenplay_editor.tab_responses") }} </TabsTrigger>
+          <TabsTrigger value="responses" class="flex-1 gap-1 text-xs">
+            {{ $t("flows.screenplay_editor.tab_responses") }}
+          </TabsTrigger>
           <TabsTrigger value="settings" class="flex-1 gap-1 text-xs">
             <Settings class="size-3.5" />
             {{ $t("flows.screenplay_editor.tab_settings") }}
@@ -245,7 +250,9 @@ function updateResponseAssignments(
             class="border border-border rounded-lg p-3 space-y-2"
           >
             <div class="flex items-center justify-between">
-              <span class="text-xs font-medium text-muted-foreground">{{ $t("flows.screenplay_editor.response") }}</span>
+              <span class="text-xs font-medium text-muted-foreground">{{
+                $t("flows.screenplay_editor.response")
+              }}</span>
               <button
                 v-if="canEdit"
                 type="button"

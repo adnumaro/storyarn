@@ -93,7 +93,11 @@ function toggleTreePanel() {
           </button>
         </TooltipTrigger>
         <TooltipContent side="bottom" align="start">
-          {{ treePanelOpen ? $t("layout.left_toolbar.hide_panel") : $t("layout.left_toolbar.show_panel") }}
+          {{
+            treePanelOpen
+              ? $t("layout.left_toolbar.hide_panel")
+              : $t("layout.left_toolbar.show_panel")
+          }}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -142,7 +146,9 @@ function toggleTreePanel() {
       <DropdownMenuTrigger as-child>
         <button class="toolbar-btn gap-1.5">
           <component :is="activeToolDef.icon" class="size-4" />
-          <span class="hidden xl:inline text-sm font-medium">{{ $t(`layout.tools.${activeToolDef.key}`) }}</span>
+          <span class="hidden xl:inline text-sm font-medium">{{
+            $t(`layout.tools.${activeToolDef.key}`)
+          }}</span>
           <ChevronDown class="size-3 opacity-50" />
         </button>
       </DropdownMenuTrigger>

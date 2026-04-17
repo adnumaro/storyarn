@@ -84,7 +84,9 @@ function usagePct(used: number, limit: number | null) {
     <form @submit.prevent="saveVersionControl">
       <!-- Auto Daily Snapshots -->
       <section>
-        <h3 class="text-lg font-semibold mb-4">{{ $t("project_settings.version_control.auto_snapshots") }}</h3>
+        <h3 class="text-lg font-semibold mb-4">
+          {{ $t("project_settings.version_control.auto_snapshots") }}
+        </h3>
         <div class="rounded-lg border border-border bg-muted/30 p-4">
           <label class="flex items-center gap-3 cursor-pointer">
             <Switch
@@ -92,7 +94,9 @@ function usagePct(used: number, limit: number | null) {
               @update:checked="(v: boolean) => (autoSnapshots = v)"
             />
             <div>
-              <span class="font-medium">{{ $t("project_settings.version_control.enable_daily") }}</span>
+              <span class="font-medium">{{
+                $t("project_settings.version_control.enable_daily")
+              }}</span>
               <p class="text-sm text-muted-foreground">
                 {{ $t("project_settings.version_control.daily_description") }}
               </p>
@@ -105,7 +109,9 @@ function usagePct(used: number, limit: number | null) {
 
       <!-- Per-Entity Auto-Versioning -->
       <section>
-        <h3 class="text-lg font-semibold mb-4">{{ $t("project_settings.version_control.auto_versioning") }}</h3>
+        <h3 class="text-lg font-semibold mb-4">
+          {{ $t("project_settings.version_control.auto_versioning") }}
+        </h3>
         <p class="text-sm text-muted-foreground mb-4">
           {{ $t("project_settings.version_control.auto_versioning_description") }}
         </p>

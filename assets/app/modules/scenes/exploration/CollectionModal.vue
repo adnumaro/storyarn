@@ -71,7 +71,9 @@ function close() {
           <span class="text-sm">
             {{ item.label || item._sheet_name || $t("scenes.exploration.collection_item") }}
           </span>
-          <Button size="sm" @click="takeItem(item.id)"> {{ $t("scenes.exploration.take") }} </Button>
+          <Button size="sm" @click="takeItem(item.id)">
+            {{ $t("scenes.exploration.take") }}
+          </Button>
         </div>
       </div>
 

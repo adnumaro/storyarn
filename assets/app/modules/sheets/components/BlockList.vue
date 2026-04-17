@@ -263,7 +263,9 @@ function resolveComponent(type: string): typeof TextBlock | null {
       <!-- ═══ OWN PROPERTIES SEPARATOR ═══ -->
       <div v-if="inheritedGroups.length > 0" class="flex items-center gap-3 py-2">
         <div class="h-px flex-1 bg-border" />
-        <span class="text-xs text-muted-foreground uppercase tracking-wider">{{ $t("sheets.block_list.own_properties") }}</span>
+        <span class="text-xs text-muted-foreground uppercase tracking-wider">{{
+          $t("sheets.block_list.own_properties")
+        }}</span>
         <div class="h-px flex-1 bg-border" />
       </div>
 

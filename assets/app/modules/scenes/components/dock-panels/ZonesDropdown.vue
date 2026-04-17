@@ -72,7 +72,9 @@ function setTool(type: string): void {
       </PopoverContent>
     </Popover>
     <div v-if="!shapesOpen" class="dock-tooltip">
-      <div class="text-sm font-semibold mb-0.5">{{ $t("scenes.zones_dropdown.zones_tooltip") }}</div>
+      <div class="text-sm font-semibold mb-0.5">
+        {{ $t("scenes.zones_dropdown.zones_tooltip") }}
+      </div>
       <div class="text-xs text-muted-foreground leading-relaxed">
         {{ $t("scenes.zones_dropdown.zones_tooltip_desc") }}
       </div>

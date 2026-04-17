@@ -18,20 +18,20 @@ The sticky sidebar (`SceneSidebarLive`) is the trickiest piece: scenes has a **t
 
 ## Risk assessment
 
-| Risk | Severity | Mitigation |
-|------|----------|------------|
-| Canvas mode (full-bleed, no top padding) breaks if ProjectShell's `<main>` keeps `pt-[76px]` | High | Add a `canvas_mode` attr to `ProjectShell.project_shell`, mirror the `Layouts.app:235` cond. Land that in step 1 BEFORE wiring scenes. |
-| Layers tab needs per-scene state and `Show` owns scene state, but the sidebar is sticky and persists across navigation. PubSub bridge required. | High | Mirror `{:active_sheet, id}` pattern but expand: `{:scene_payload_changed, %{layers, active_layer_id, edit_mode}}`. |
-| Scene-scope presence (`{:scene, scene.id}`) writes `:online_users` for the scene; project-scope presence (`{:project, id}`) also writes `:online_users`. Race: whichever fires last wins. | Medium | Confirmed identical pattern in sheets and it ships. Verify in browser. Could split later. |
-| LiveVue race when nested LV mounts mid-Vue-mount (`reference_livevue_nested_lv_race.md`). Show.ex has many Vue components in the page LV (Canvas, Toolbar, SearchPanel, Actions, Dock, Legend, Settings, Properties, VersionHistory). | Medium | The pattern says: page LV may host Vue freely as long as nested children are inside `ProjectShell` with `phx-update="ignore"` for reactive props. Sidebar live_render is at top of page; PresenceLive is invisible. Should be safe but watch dev console. |
-| Tree handler events fire from `SceneTree.vue` and `SceneLayerList.vue`. After migration, **scene-tree mutations** must move to `SceneSidebarLive`, but **layer mutations** are open question 1. Event names overlap (`create_*`, `set_pending_delete_*`). | Medium | Tree events: `create_scene`, `create_child_scene`, `set_pending_delete_scene`, `confirm_delete_scene`, `move_to_parent`. Layer events: `create_layer`, `set_active_layer`, `toggle_layer_visibility`, `update_layer_fog`, `start_rename_layer`, `rename_layer`, `set_pending_delete_layer`, `confirm_delete_layer`, `delete_layer`. Two completely disjoint vocabularies — easy split. |
-| `move_to_parent` is shared between Show and the new sidebar (Show currently handles it for the scene tree). After migration only the sidebar handles it. | Low | Tree mutations move with the tree → sidebar. |
-| `create_child_scene_from_zone` is fired from inside the Canvas (zone context menu), not from the sidebar tree | Low | Stays in Show — it's not a sidebar event. |
-| `tree_panel_tab` (Layers/Scenes) currently lives in Show. After migration it belongs to the sidebar (sticky) so it persists across navigation. | Low | Move to sidebar with PubSub forwarding from Show for `hasLayers` / `hasScene`. |
-| Highlight / `push_event("focus_element", ...)` from URL `?highlight=` requires `handle_params` access. | Low | Stays in Show — `handle_params` is allowed at route level. |
-| `/scenes/new` route uses `SceneLive.Index :new`. Quick scan shows no `live_action`-driven branch in Index — the route may be a no-op dead-end or trigger something via params not yet inspected. | Medium | Investigate during step 0; either drop the route or carry it forward unchanged. |
-| Background drag-drop (`phx-drop-target`) crosses a Vue/canvas boundary | Low | Untouched by migration; leave in Show. |
-| Tests are pre-broken (PhoenixVite manifest mismatch from handoff) | Pre-existing | Will not block this migration; rely on browser verification + `mix compile --warnings-as-errors` + `mix format`. |
+| Risk                                                                                                                                                                                                                                                      | Severity     | Mitigation                                                                                                                                                                                                                                                                                                                                                                             |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Canvas mode (full-bleed, no top padding) breaks if ProjectShell's `<main>` keeps `pt-[76px]`                                                                                                                                                              | High         | Add a `canvas_mode` attr to `ProjectShell.project_shell`, mirror the `Layouts.app:235` cond. Land that in step 1 BEFORE wiring scenes.                                                                                                                                                                                                                                                 |
+| Layers tab needs per-scene state and `Show` owns scene state, but the sidebar is sticky and persists across navigation. PubSub bridge required.                                                                                                           | High         | Mirror `{:active_sheet, id}` pattern but expand: `{:scene_payload_changed, %{layers, active_layer_id, edit_mode}}`.                                                                                                                                                                                                                                                                    |
+| Scene-scope presence (`{:scene, scene.id}`) writes `:online_users` for the scene; project-scope presence (`{:project, id}`) also writes `:online_users`. Race: whichever fires last wins.                                                                 | Medium       | Confirmed identical pattern in sheets and it ships. Verify in browser. Could split later.                                                                                                                                                                                                                                                                                              |
+| LiveVue race when nested LV mounts mid-Vue-mount (`reference_livevue_nested_lv_race.md`). Show.ex has many Vue components in the page LV (Canvas, Toolbar, SearchPanel, Actions, Dock, Legend, Settings, Properties, VersionHistory).                     | Medium       | The pattern says: page LV may host Vue freely as long as nested children are inside `ProjectShell` with `phx-update="ignore"` for reactive props. Sidebar live_render is at top of page; PresenceLive is invisible. Should be safe but watch dev console.                                                                                                                              |
+| Tree handler events fire from `SceneTree.vue` and `SceneLayerList.vue`. After migration, **scene-tree mutations** must move to `SceneSidebarLive`, but **layer mutations** are open question 1. Event names overlap (`create_*`, `set_pending_delete_*`). | Medium       | Tree events: `create_scene`, `create_child_scene`, `set_pending_delete_scene`, `confirm_delete_scene`, `move_to_parent`. Layer events: `create_layer`, `set_active_layer`, `toggle_layer_visibility`, `update_layer_fog`, `start_rename_layer`, `rename_layer`, `set_pending_delete_layer`, `confirm_delete_layer`, `delete_layer`. Two completely disjoint vocabularies — easy split. |
+| `move_to_parent` is shared between Show and the new sidebar (Show currently handles it for the scene tree). After migration only the sidebar handles it.                                                                                                  | Low          | Tree mutations move with the tree → sidebar.                                                                                                                                                                                                                                                                                                                                           |
+| `create_child_scene_from_zone` is fired from inside the Canvas (zone context menu), not from the sidebar tree                                                                                                                                             | Low          | Stays in Show — it's not a sidebar event.                                                                                                                                                                                                                                                                                                                                              |
+| `tree_panel_tab` (Layers/Scenes) currently lives in Show. After migration it belongs to the sidebar (sticky) so it persists across navigation.                                                                                                            | Low          | Move to sidebar with PubSub forwarding from Show for `hasLayers` / `hasScene`.                                                                                                                                                                                                                                                                                                         |
+| Highlight / `push_event("focus_element", ...)` from URL `?highlight=` requires `handle_params` access.                                                                                                                                                    | Low          | Stays in Show — `handle_params` is allowed at route level.                                                                                                                                                                                                                                                                                                                             |
+| `/scenes/new` route uses `SceneLive.Index :new`. Quick scan shows no `live_action`-driven branch in Index — the route may be a no-op dead-end or trigger something via params not yet inspected.                                                          | Medium       | Investigate during step 0; either drop the route or carry it forward unchanged.                                                                                                                                                                                                                                                                                                        |
+| Background drag-drop (`phx-drop-target`) crosses a Vue/canvas boundary                                                                                                                                                                                    | Low          | Untouched by migration; leave in Show.                                                                                                                                                                                                                                                                                                                                                 |
+| Tests are pre-broken (PhoenixVite manifest mismatch from handoff)                                                                                                                                                                                         | Pre-existing | Will not block this migration; rely on browser verification + `mix compile --warnings-as-errors` + `mix format`.                                                                                                                                                                                                                                                                       |
 
 ## What's currently true (snapshot)
 
@@ -74,6 +74,7 @@ All five live in `live_session :require_authenticated_user`. The `:explore` and 
 ### `SceneLive.ExplorationLive` (`lib/storyarn_web/live/scene_live/exploration_live.ex`, 1812 lines)
 
 Confirmed properties:
+
 - Renders inside `<div id="exploration-root" class="w-full h-screen">` with `<.flash_group>` — does NOT render `<Layouts.app>` or `<ProjectShell>`.
 - `mount/3` returns `{:ok, socket, layout: false}` (line 186).
 - Zero `Collaboration.subscribe_*` calls. Zero `Phoenix.PubSub.subscribe`.
@@ -88,23 +89,23 @@ In `:require_authenticated_user`. Uses `Layouts.compare`. Same boundary as `Comp
 
 ### Key assigns currently held by `SceneLive.Show` (selection of relevance)
 
-| Assign | Owner after migration | Notes |
-|---|---|---|
-| `:project, :workspace, :membership, :can_edit` | ProjectScope hook (auto) | Drop manual load. |
-| `:current_user, :is_super_admin, :urls` | ProjectScope hook (auto) | Drop manual derivation. |
-| `:online_users` | Page LV (overwritten by scene-scope presence in load_scene) | Same gotcha as sheets. Keep. |
-| `:restoration_banner` | Page LV | Forward to ProjectShell `restoration_banner` attr. |
-| `:scene, :ancestors, :layers, :zones, :pins, :connections, :annotations, :ambient_flows, :scene_data` | Page LV | Stays. Used by Canvas + panels. |
-| `:scenes_tree` | Sidebar LV | Move. |
-| `:active_layer_id, :renaming_layer_id` | Sidebar LV (Layers tab) — but driven by Show's scene state | See "Open question 1". |
-| `:tree_panel_tab` ("scenes" / "layers") | Sidebar LV | Move. |
-| `:edit_mode, :active_tool` | Page LV | Stays — Canvas + Dock + SceneActions read these. Sidebar only needs `edit_mode` to gate layer mutations. |
-| `:search_query, :search_filter, :search_results` | Page LV | Stays inline in `:top_bar_extras_left` slot. |
-| `:selected_element, :selected_type, :element_panel_open, :scene_settings_open` | Page LV | Stays. |
-| `:versions_panel_open, :history_data` | Page LV | Stays. |
-| `:project_sheets, :project_flows, :project_scenes, :project_variables` | Page LV | Stays — consumed by ElementPropertiesPanel + Dock + SettingsPanel. |
-| `:tree_panel_open, :tree_panel_pinned` | Sidebar LV | Move (per sheets pattern). |
-| `:pending_delete_id` | Both? | Show currently uses it for `confirm_delete_scene` AND for layer/element deletes. Sidebar will need its own; Show keeps its own for non-tree deletes. |
+| Assign                                                                                                | Owner after migration                                       | Notes                                                                                                                                                |
+| ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `:project, :workspace, :membership, :can_edit`                                                        | ProjectScope hook (auto)                                    | Drop manual load.                                                                                                                                    |
+| `:current_user, :is_super_admin, :urls`                                                               | ProjectScope hook (auto)                                    | Drop manual derivation.                                                                                                                              |
+| `:online_users`                                                                                       | Page LV (overwritten by scene-scope presence in load_scene) | Same gotcha as sheets. Keep.                                                                                                                         |
+| `:restoration_banner`                                                                                 | Page LV                                                     | Forward to ProjectShell `restoration_banner` attr.                                                                                                   |
+| `:scene, :ancestors, :layers, :zones, :pins, :connections, :annotations, :ambient_flows, :scene_data` | Page LV                                                     | Stays. Used by Canvas + panels.                                                                                                                      |
+| `:scenes_tree`                                                                                        | Sidebar LV                                                  | Move.                                                                                                                                                |
+| `:active_layer_id, :renaming_layer_id`                                                                | Sidebar LV (Layers tab) — but driven by Show's scene state  | See "Open question 1".                                                                                                                               |
+| `:tree_panel_tab` ("scenes" / "layers")                                                               | Sidebar LV                                                  | Move.                                                                                                                                                |
+| `:edit_mode, :active_tool`                                                                            | Page LV                                                     | Stays — Canvas + Dock + SceneActions read these. Sidebar only needs `edit_mode` to gate layer mutations.                                             |
+| `:search_query, :search_filter, :search_results`                                                      | Page LV                                                     | Stays inline in `:top_bar_extras_left` slot.                                                                                                         |
+| `:selected_element, :selected_type, :element_panel_open, :scene_settings_open`                        | Page LV                                                     | Stays.                                                                                                                                               |
+| `:versions_panel_open, :history_data`                                                                 | Page LV                                                     | Stays.                                                                                                                                               |
+| `:project_sheets, :project_flows, :project_scenes, :project_variables`                                | Page LV                                                     | Stays — consumed by ElementPropertiesPanel + Dock + SettingsPanel.                                                                                   |
+| `:tree_panel_open, :tree_panel_pinned`                                                                | Sidebar LV                                                  | Move (per sheets pattern).                                                                                                                           |
+| `:pending_delete_id`                                                                                  | Both?                                                       | Show currently uses it for `confirm_delete_scene` AND for layer/element deletes. Sidebar will need its own; Show keeps its own for non-tree deletes. |
 
 ### What `SceneSidebarLive` will receive at sticky-mount (session map, frozen)
 
@@ -128,6 +129,7 @@ Per `reference_phoenix_nested_lv_constraints.md`, the sticky session is set ONCE
 ```
 
 PubSub channel after first mount:
+
 - `{:active_scene, id_or_nil}` from Show.handle_params / Index.mount.
 - `{:scene_payload_changed, %{layers, active_layer_id, edit_mode}}` from Show whenever any of the three change.
 - `{:tree_changed, :scenes}` from sidebar after a tree mutation, so Index can refresh its dashboard.
@@ -158,11 +160,13 @@ Time: 30 min. No commit.
 ### Step 1 — Add `canvas_mode` to `ProjectShell`
 
 **Files touched**:
+
 - `lib/storyarn_web/components/project_shell.ex` — add `canvas_mode` attr; switch `<main>` `class` to a cond mirroring `app_layout.ex:233-243`.
 
 **What it does**: Introduces a new optional attr `canvas_mode :boolean, default: false`. When true, `<main>` becomes `class="h-full overflow-hidden"` (no `pt-`, no `px-`, no `pb-`, no `pl-` from sidebar). When false, behavior is unchanged from today.
 
 **Verification**:
+
 - `mix compile --warnings-as-errors` — clean.
 - Browse `/sheets`, `/sheets/:id`, `/localization`, `/localization/texts/:locale`, `/workspaces/:ws/projects/:p`, `/workspaces/:ws/projects/:p/assets`. None of these use `canvas_mode`, so all should look identical to before.
 
@@ -173,6 +177,7 @@ Time: 30 min. No commit.
 ### Step 2 — Create `SceneSidebarLive`
 
 **Files touched (new)**:
+
 - `lib/storyarn_web/live/scene_sidebar_live.ex` (new, ~250 lines).
 
 **Files touched (existing)**: None. The sidebar is wired in only when Show/Index switch to ProjectShell (steps 4/5).
@@ -208,6 +213,7 @@ Time: 30 min. No commit.
 6. `defp shell_topic/1` (mirrors SheetsSidebarLive:278).
 
 **Verification**:
+
 - `mix compile --warnings-as-errors` — clean. Module is unused at this point.
 - `mix format` — clean.
 
@@ -218,6 +224,7 @@ Time: 30 min. No commit.
 ### Step 3 — Migrate `SceneLive.Index` to ProjectShell
 
 **Files touched**:
+
 - `lib/storyarn_web/router.ex` — move `scenes` (`:index`) and `scenes/new` (`:new`) routes from `:require_authenticated_user` into `:project_scope`.
 - `lib/storyarn_web/live/scene_live/index.ex`:
   - Drop `import StoryarnWeb.Live.Shared.TreePanelHandlers`.
@@ -231,6 +238,7 @@ Time: 30 min. No commit.
   - Replace `<Layouts.app>` render with `<ProjectShell.project_shell>` mirroring SheetLive.Index. Set `sidebar_module={StoryarnWeb.SceneSidebarLive}` and `sidebar_session=%{... scene_id: nil ...}`. Pass `online_users={@online_users}`. **Don't set `canvas_mode`**.
 
 **Verification**:
+
 - `mix compile --warnings-as-errors` — clean.
 - Browse `/scenes`:
   - Dashboard renders, table loads.
@@ -251,6 +259,7 @@ Time: 30 min. No commit.
 ### Step 4 — Migrate `SceneLive.Show` to ProjectShell
 
 **Files touched**:
+
 - `lib/storyarn_web/router.ex` — move `scenes/:id` (`:show`) route into `:project_scope`. Leave `:explore` and `:compare` in `:require_authenticated_user`.
 - `lib/storyarn_web/live/scene_live/show.ex`:
   - **Mount changes**:
@@ -266,9 +275,9 @@ Time: 30 min. No commit.
   - **load_scene changes**: after `assign_scene_state`, broadcast `{:scene_payload_changed, %{layers, active_layer_id, edit_mode}}`.
   - **handle_event tree mutations**: REMOVE `create_scene`, `create_child_scene`, `set_pending_delete_scene`, `confirm_delete_scene`, `delete_scene`, `move_to_parent`. KEEP `create_child_scene_from_zone`.
   - **handle_event layer mutations** (per open question 1): REMOVE all layer mutations.
-  - **handle_event `tree_panel_*`**: replace `handle_tree_panel_event` with `ProjectChromeHelpers.forward_tree_panel/3`.
+  - **handle*event `tree_panel*\*`**: replace `handle_tree_panel_event` with `ProjectChromeHelpers.forward_tree_panel/3`.
   - **handle_event `switch_tree_tab`**: REMOVE — sidebar owns the tab state.
-  - **handle_info changes**: add `{:active_scene, _}` (no-op for Show), `{:open_scene, id}` (push_navigate), `{:tree_changed, :scenes}` (no-op — sidebar handles), `{:active_layer_changed, id}` (assign `:active_layer_id`), `{:online_users, users}`, `{:toolbar_event, _, _}` (no-op).
+  - **handle_info changes**: add `{:active_scene, _}` (no-op for Show), `{:open_scene, id}` (push*navigate), `{:tree_changed, :scenes}` (no-op — sidebar handles), `{:active_layer_changed, id}` (assign `:active_layer_id`), `{:online_users, users}`, `{:toolbar_event, *, \_}` (no-op).
   - **Drop `import TreePanelHandlers`**.
   - **Render changes**:
     - Replace `<Layouts.app ...>` with `<ProjectShell.project_shell ...>`.
@@ -282,6 +291,7 @@ Time: 30 min. No commit.
   - **Render compact mode**: Untouched. `Layouts.compare` continues to work for `?layout=compact`.
 
 **Verification**:
+
 - `mix compile --warnings-as-errors` — clean.
 - `mix format` — clean.
 - Browse `/scenes/:id`:
@@ -315,6 +325,7 @@ Time: 30 min. No commit.
 **Files touched**: None.
 
 **Verification**:
+
 - `/scenes/:id/explore` → ExplorationLive renders, full screen, no chrome.
 - `/scenes/:id/compare/:n` → CompareLive.Scene renders side-by-side compact view, no chrome.
 
@@ -325,11 +336,13 @@ Time: 30 min. No commit.
 ### Step 6 — Cleanup pass
 
 **Files touched**:
+
 - `lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex` — Show no longer calls `handle_create_scene`, `handle_create_child_scene`, `handle_delete_scene`, `handle_move_to_parent`. Move tree CRUD into sidebar inline; keep `tree_handlers.ex` shrunk to `handle_create_child_scene_from_zone` and `handle_navigate_to_target`.
 - `lib/storyarn_web/live/scene_live/index.ex` — verify dead alias removal.
 - `lib/storyarn_web/live/scene_live/show.ex` — verify dead alias / import removal.
 
 **Verification**:
+
 - `mix compile --warnings-as-errors` — clean.
 - `mix format` — clean.
 - All step 4 browser tests still pass.
@@ -378,13 +391,13 @@ Time: 30 min. No commit.
 
 ## Estimated commit shape (likely 4-5 commits)
 
-| # | Commit | Files | Bisectable |
-|---|---|---|---|
-| 1 | `feat(shell): add canvas_mode attr to ProjectShell` | `project_shell.ex` | Yes — additive |
-| 2 | `feat(scenes): add SceneSidebarLive` | new file `scene_sidebar_live.ex` | Yes — unused |
-| 3 | `feat(scenes): migrate Index to ProjectShell` | `router.ex`, `index.ex` | Yes — Index works; Show still on Layouts.app |
-| 4 | `feat(scenes): migrate Show to ProjectShell with sticky sidebar` | `router.ex`, `show.ex`, possibly `tree_handlers.ex` cleanup | Yes |
-| 5 (optional) | `chore(scenes): drop dead aliases / shrink TreeHandlers` | `index.ex`, `show.ex`, `tree_handlers.ex` | Yes |
+| #            | Commit                                                           | Files                                                       | Bisectable                                   |
+| ------------ | ---------------------------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------- |
+| 1            | `feat(shell): add canvas_mode attr to ProjectShell`              | `project_shell.ex`                                          | Yes — additive                               |
+| 2            | `feat(scenes): add SceneSidebarLive`                             | new file `scene_sidebar_live.ex`                            | Yes — unused                                 |
+| 3            | `feat(scenes): migrate Index to ProjectShell`                    | `router.ex`, `index.ex`                                     | Yes — Index works; Show still on Layouts.app |
+| 4            | `feat(scenes): migrate Show to ProjectShell with sticky sidebar` | `router.ex`, `show.ex`, possibly `tree_handlers.ex` cleanup | Yes                                          |
+| 5 (optional) | `chore(scenes): drop dead aliases / shrink TreeHandlers`         | `index.ex`, `show.ex`, `tree_handlers.ex`                   | Yes                                          |
 
 Alternative shape: collapse 3+4 into a single commit if the intermediate "Index migrated, Show still on app layout" state is uncomfortable to ship. Recommended to keep them separate for bisect.
 
@@ -394,21 +407,21 @@ Alternative shape: collapse 3+4 into a single commit if the intermediate "Index 
 
 What `SceneSidebarLive` will receive (from `SceneTree.vue` and `SceneLayerList.vue`):
 
-| Event | Source line | Params | Today handled by |
-|---|---|---|---|
-| `create_scene` | SceneTree.vue:81 | `{}` | Show + Index |
-| `create_child_scene` | SceneTree.vue:85 | `{ parent_id }` | Show + Index |
-| `set_pending_delete_scene` | SceneTree.vue:95 | `{ id }` | Show + Index |
-| `confirm_delete_scene` | SceneTree.vue:98 | `{}` | Show + Index |
-| `move_to_parent` | SceneTree.vue:177 | `{ item_id, new_parent_id, position }` | Show + Index |
-| `set_active_layer` | SceneLayerList.vue:48 | `{ id }` | Show |
-| `toggle_layer_visibility` | SceneLayerList.vue:52 | `{ id }` | Show |
-| `create_layer` | SceneLayerList.vue:56 | `{}` | Show |
-| `rename_layer` | SceneLayerList.vue:71 | `{ id, name }` | Show |
-| `update_layer_fog` | SceneLayerList.vue:81 | `{ ... }` | Show |
-| `set_pending_delete_layer` | SceneLayerList.vue:95 | `{ id }` | Show |
-| `confirm_delete_layer` | SceneLayerList.vue:98 | `{}` | Show |
-| `tree_panel_init` / `_toggle` / `_pin` | TreePanel.vue:75 + LeftToolbar.vue | various | Page LV → forwarded to sidebar |
+| Event                                  | Source line                        | Params                                 | Today handled by               |
+| -------------------------------------- | ---------------------------------- | -------------------------------------- | ------------------------------ |
+| `create_scene`                         | SceneTree.vue:81                   | `{}`                                   | Show + Index                   |
+| `create_child_scene`                   | SceneTree.vue:85                   | `{ parent_id }`                        | Show + Index                   |
+| `set_pending_delete_scene`             | SceneTree.vue:95                   | `{ id }`                               | Show + Index                   |
+| `confirm_delete_scene`                 | SceneTree.vue:98                   | `{}`                                   | Show + Index                   |
+| `move_to_parent`                       | SceneTree.vue:177                  | `{ item_id, new_parent_id, position }` | Show + Index                   |
+| `set_active_layer`                     | SceneLayerList.vue:48              | `{ id }`                               | Show                           |
+| `toggle_layer_visibility`              | SceneLayerList.vue:52              | `{ id }`                               | Show                           |
+| `create_layer`                         | SceneLayerList.vue:56              | `{}`                                   | Show                           |
+| `rename_layer`                         | SceneLayerList.vue:71              | `{ id, name }`                         | Show                           |
+| `update_layer_fog`                     | SceneLayerList.vue:81              | `{ ... }`                              | Show                           |
+| `set_pending_delete_layer`             | SceneLayerList.vue:95              | `{ id }`                               | Show                           |
+| `confirm_delete_layer`                 | SceneLayerList.vue:98              | `{}`                                   | Show                           |
+| `tree_panel_init` / `_toggle` / `_pin` | TreePanel.vue:75 + LeftToolbar.vue | various                                | Page LV → forwarded to sidebar |
 
 What stays in `SceneLive.Show` (from canvas + panels):
 

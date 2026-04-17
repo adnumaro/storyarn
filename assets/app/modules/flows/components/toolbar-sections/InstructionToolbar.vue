@@ -32,7 +32,12 @@ function openBuilder() {
     {{ nodeData.assignments.length }} assignment{{ nodeData.assignments.length === 1 ? "" : "s" }}
   </Badge>
   <ToolbarSeparator />
-  <button type="button" class="toolbar-btn" :title="$t('flows.instruction_toolbar.edit_instructions')" @click="openBuilder">
+  <button
+    type="button"
+    class="toolbar-btn"
+    :title="$t('flows.instruction_toolbar.edit_instructions')"
+    @click="openBuilder"
+  >
     <Settings class="size-3.5" />
   </button>
 </template>

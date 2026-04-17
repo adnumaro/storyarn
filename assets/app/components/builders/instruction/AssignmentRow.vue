@@ -197,7 +197,11 @@ function toggleValueType() {
         <template v-if="item.type === 'verb'">
           <Popover v-if="!disabled" v-model:open="operatorDropdownOpen">
             <PopoverTrigger as-child>
-              <button type="button" class="operator-selector" :title="$t('common.assignment_row.change_operator')">
+              <button
+                type="button"
+                class="operator-selector"
+                :title="$t('common.assignment_row.change_operator')"
+              >
                 {{ OPERATOR_VERBS[assignment.operator] || item.value }}
               </button>
             </PopoverTrigger>

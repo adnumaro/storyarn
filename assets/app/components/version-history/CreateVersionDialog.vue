@@ -54,7 +54,9 @@ const emit = defineEmits<{
           />
         </div>
         <div class="space-y-2">
-          <Label for="version-description">{{ $t("common.create_version_dialog.description_label") }}</Label>
+          <Label for="version-description">{{
+            $t("common.create_version_dialog.description_label")
+          }}</Label>
           <Textarea
             id="version-description"
             :model-value="description"
@@ -64,7 +66,9 @@ const emit = defineEmits<{
           />
         </div>
         <DialogFooter>
-          <DialogClose as-child><Button variant="ghost" type="button">{{ $t("common.cancel") }}</Button></DialogClose>
+          <DialogClose as-child
+            ><Button variant="ghost" type="button">{{ $t("common.cancel") }}</Button></DialogClose
+          >
           <Button type="submit" :disabled="!title.trim() || loadingAction === 'create'">
             <Loader2 v-if="loadingAction === 'create'" class="size-4 animate-spin mr-1" />
             <Save v-else class="size-4 mr-1" />

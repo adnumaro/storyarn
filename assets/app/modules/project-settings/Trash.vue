@@ -96,8 +96,12 @@ function formatTimeAgo(datetime: string | null) {
         class="flex flex-col items-center justify-center py-16 text-center"
       >
         <Trash2 class="size-10 text-muted-foreground/40 mb-4" />
-        <h3 class="text-lg font-medium text-muted-foreground">{{ $t("project_settings.trash.empty_title") }}</h3>
-        <p class="text-sm text-muted-foreground/70 mt-1">{{ $t("project_settings.trash.empty_description") }}</p>
+        <h3 class="text-lg font-medium text-muted-foreground">
+          {{ $t("project_settings.trash.empty_title") }}
+        </h3>
+        <p class="text-sm text-muted-foreground/70 mt-1">
+          {{ $t("project_settings.trash.empty_description") }}
+        </p>
       </div>
 
       <!-- Trashed items list -->
@@ -116,7 +120,8 @@ function formatTimeAgo(datetime: string | null) {
             <div class="min-w-0">
               <p class="font-medium truncate">{{ sheet.name }}</p>
               <p class="text-sm text-muted-foreground">
-                {{ $t("project_settings.trash.deleted_prefix") }}{{ formatTimeAgo(sheet.deleted_at) }}
+                {{ $t("project_settings.trash.deleted_prefix")
+                }}{{ formatTimeAgo(sheet.deleted_at) }}
               </p>
             </div>
           </div>
@@ -153,8 +158,12 @@ function formatTimeAgo(datetime: string | null) {
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" @click="showDeleteConfirm = false">{{ $t("project_settings.trash.cancel") }}</Button>
-          <Button variant="destructive" @click="confirmDelete">{{ $t("project_settings.trash.delete") }}</Button>
+          <Button variant="outline" @click="showDeleteConfirm = false">{{
+            $t("project_settings.trash.cancel")
+          }}</Button>
+          <Button variant="destructive" @click="confirmDelete">{{
+            $t("project_settings.trash.delete")
+          }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -172,8 +181,12 @@ function formatTimeAgo(datetime: string | null) {
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" @click="showEmptyConfirm = false">{{ $t("project_settings.trash.cancel") }}</Button>
-          <Button variant="destructive" @click="emptyTrash">{{ $t("project_settings.trash.empty_trash") }}</Button>
+          <Button variant="outline" @click="showEmptyConfirm = false">{{
+            $t("project_settings.trash.cancel")
+          }}</Button>
+          <Button variant="destructive" @click="emptyTrash">{{
+            $t("project_settings.trash.empty_trash")
+          }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

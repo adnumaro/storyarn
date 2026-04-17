@@ -269,7 +269,12 @@ function handleDrop(e: DndDropEvent): void {
 <template>
   <div class="space-y-2">
     <!-- Search -->
-    <Input v-model="searchQuery" type="search" :placeholder="$t('sheets.tree.filter')" class="text-xs" />
+    <Input
+      v-model="searchQuery"
+      type="search"
+      :placeholder="$t('sheets.tree.filter')"
+      class="text-xs"
+    />
 
     <!-- Empty state -->
     <div
@@ -323,8 +328,12 @@ function handleDrop(e: DndDropEvent): void {
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" size="sm" @click="deleteDialogOpen = false">{{ $t("sheets.tree.cancel") }}</Button>
-          <Button variant="destructive" size="sm" @click="confirmDelete">{{ $t("sheets.tree.delete") }}</Button>
+          <Button variant="outline" size="sm" @click="deleteDialogOpen = false">{{
+            $t("sheets.tree.cancel")
+          }}</Button>
+          <Button variant="destructive" size="sm" @click="confirmDelete">{{
+            $t("sheets.tree.delete")
+          }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

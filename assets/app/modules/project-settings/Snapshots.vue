@@ -125,7 +125,9 @@ function downloadUrl(snapshotId: number) {
     >
       <Loader class="size-5 animate-spin text-yellow-600 shrink-0" />
       <span class="flex-1">{{ $t("project_settings.snapshots.restoration_in_progress") }}</span>
-      <Button variant="ghost" size="sm" @click="clearStaleLock"> {{ $t("project_settings.snapshots.clear_lock") }} </Button>
+      <Button variant="ghost" size="sm" @click="clearStaleLock">
+        {{ $t("project_settings.snapshots.clear_lock") }}
+      </Button>
     </div>
 
     <!-- Create Snapshot -->
@@ -133,7 +135,9 @@ function downloadUrl(snapshotId: number) {
       <div class="rounded-lg border border-border bg-muted/30 p-4">
         <form @submit.prevent="createSnapshot" class="space-y-4">
           <div class="space-y-1.5">
-            <Label for="snapshot-title">{{ $t("project_settings.snapshots.snapshot_title") }}</Label>
+            <Label for="snapshot-title">{{
+              $t("project_settings.snapshots.snapshot_title")
+            }}</Label>
             <Input
               id="snapshot-title"
               v-model="snapshotTitle"
@@ -161,12 +165,16 @@ function downloadUrl(snapshotId: number) {
 
     <!-- Snapshot List -->
     <section>
-      <h3 class="text-lg font-semibold mb-4">{{ $t("project_settings.snapshots.snapshots_heading") }}</h3>
+      <h3 class="text-lg font-semibold mb-4">
+        {{ $t("project_settings.snapshots.snapshots_heading") }}
+      </h3>
 
       <!-- Empty state -->
       <div v-if="snapshots.length === 0" class="text-center py-12">
         <Archive class="size-12 mx-auto mb-4 text-muted-foreground/30" />
-        <p class="font-medium text-muted-foreground/70">{{ $t("project_settings.snapshots.empty_title") }}</p>
+        <p class="font-medium text-muted-foreground/70">
+          {{ $t("project_settings.snapshots.empty_title") }}
+        </p>
         <p class="text-sm text-muted-foreground/50 mt-1">
           {{ $t("project_settings.snapshots.empty_description") }}
         </p>
@@ -239,14 +247,18 @@ function downloadUrl(snapshotId: number) {
               <DialogHeader>
                 <div class="flex items-center gap-2">
                   <RotateCcw class="size-5 text-yellow-500" />
-                  <DialogTitle>{{ $t("project_settings.snapshots.restore_confirm_title") }}</DialogTitle>
+                  <DialogTitle>{{
+                    $t("project_settings.snapshots.restore_confirm_title")
+                  }}</DialogTitle>
                 </div>
                 <DialogDescription>
                   {{ $t("project_settings.snapshots.restore_confirm_description") }}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <Button variant="outline" @click="showRestoreDialog = null">{{ $t("project_settings.snapshots.cancel") }}</Button>
+                <Button variant="outline" @click="showRestoreDialog = null">{{
+                  $t("project_settings.snapshots.cancel")
+                }}</Button>
                 <Button
                   class="bg-yellow-600 hover:bg-yellow-700 text-white"
                   @click="restoreSnapshot(snapshot.id)"
@@ -270,15 +282,21 @@ function downloadUrl(snapshotId: number) {
               <DialogHeader>
                 <div class="flex items-center gap-2">
                   <Trash2 class="size-5 text-destructive" />
-                  <DialogTitle>{{ $t("project_settings.snapshots.delete_confirm_title") }}</DialogTitle>
+                  <DialogTitle>{{
+                    $t("project_settings.snapshots.delete_confirm_title")
+                  }}</DialogTitle>
                 </div>
                 <DialogDescription>
                   {{ $t("project_settings.snapshots.delete_confirm_description") }}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <Button variant="outline" @click="showDeleteSnapshotDialog = null">{{ $t("project_settings.snapshots.cancel") }}</Button>
-                <Button variant="destructive" @click="deleteSnapshot(snapshot.id)">{{ $t("project_settings.snapshots.delete") }}</Button>
+                <Button variant="outline" @click="showDeleteSnapshotDialog = null">{{
+                  $t("project_settings.snapshots.cancel")
+                }}</Button>
+                <Button variant="destructive" @click="deleteSnapshot(snapshot.id)">{{
+                  $t("project_settings.snapshots.delete")
+                }}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

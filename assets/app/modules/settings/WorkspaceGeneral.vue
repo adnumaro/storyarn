@@ -179,7 +179,11 @@ function confirmDeleteWorkspace() {
           <Label>{{ $t("settings.workspace.general.fields.banner") }}</Label>
           <div v-if="localBannerUrl" class="space-y-2 mt-1.5">
             <div class="rounded border border-border overflow-hidden">
-              <img :src="localBannerUrl" :alt="$t('settings.workspace.general.fields.banner')" class="w-full h-32 object-cover" />
+              <img
+                :src="localBannerUrl"
+                :alt="$t('settings.workspace.general.fields.banner')"
+                class="w-full h-32 object-cover"
+              />
             </div>
             <div class="flex gap-2">
               <Button

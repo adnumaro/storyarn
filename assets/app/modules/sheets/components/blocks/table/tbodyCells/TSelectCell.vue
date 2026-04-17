@@ -48,7 +48,9 @@ function selectCell(key: string): void {
           class="flex items-center gap-1 w-full h-full px-2 text-sm text-left cursor-pointer bg-card/40 hover:bg-card/50"
         >
           <span v-if="selectedLabel" class="truncate">{{ selectedLabel }}</span>
-          <span v-else class="text-muted-foreground/40 truncate">{{ $t("sheets.select_block.placeholder") }}</span>
+          <span v-else class="text-muted-foreground/40 truncate">{{
+            $t("sheets.select_block.placeholder")
+          }}</span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" class="w-52 p-1">

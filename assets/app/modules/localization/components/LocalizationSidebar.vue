@@ -270,7 +270,11 @@ function syncTexts(): void {
     <ConfirmDialog
       v-model:open="deleteDialogOpen"
       :title="$t('localization.sidebar.remove_confirm_title')"
-      :description="$t('localization.sidebar.remove_confirm_description', { name: pendingDeleteLanguage?.name ?? '' })"
+      :description="
+        $t('localization.sidebar.remove_confirm_description', {
+          name: pendingDeleteLanguage?.name ?? '',
+        })
+      "
       :confirm-text="$t('localization.sidebar.remove_confirm_button')"
       variant="destructive"
       :icon="Trash2"

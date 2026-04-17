@@ -59,7 +59,9 @@ function translateBatch(): void {
     >
       <Languages class="size-4" />
       <span class="hidden xl:inline">{{
-        translating ? $t("localization.toolbar.translating") : $t("localization.toolbar.translate_all")
+        translating
+          ? $t("localization.toolbar.translating")
+          : $t("localization.toolbar.translate_all")
       }}</span>
     </Button>
   </div>

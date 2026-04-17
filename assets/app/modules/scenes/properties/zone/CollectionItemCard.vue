@@ -93,7 +93,9 @@ function remove() {
     />
 
     <div class="space-y-1">
-      <label class="text-xs font-medium text-foreground/70">{{ $t("scenes.collection_editor.condition") }}</label>
+      <label class="text-xs font-medium text-foreground/70">{{
+        $t("scenes.collection_editor.condition")
+      }}</label>
       <ConditionBuilder
         :condition="item.condition"
         :variables="projectVariables"

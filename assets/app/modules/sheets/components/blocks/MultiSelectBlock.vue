@@ -83,7 +83,9 @@ function toggle(key: string): void {
     >
       <template #config>
         <div class="space-y-1">
-          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">{{ $t("sheets.multi_select_block.placeholder_label") }}</label>
+          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">{{
+            $t("sheets.multi_select_block.placeholder_label")
+          }}</label>
           <Input
             :id="`placeholder-${useId()}-${generateId()}`"
             :model-value="block.config?.placeholder || ''"

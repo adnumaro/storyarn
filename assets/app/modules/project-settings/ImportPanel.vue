@@ -225,7 +225,9 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
             <Upload class="size-4" />
             {{ $t("project_settings.import.import_button") }}
           </Button>
-          <Button variant="ghost" size="sm" @click="resetImport"> {{ $t("project_settings.import.cancel") }} </Button>
+          <Button variant="ghost" size="sm" @click="resetImport">
+            {{ $t("project_settings.import.cancel") }}
+          </Button>
         </div>
       </div>
 
@@ -242,7 +244,9 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
           <TableHeader>
             <TableRow>
               <TableHead>{{ $t("project_settings.import.th_entity") }}</TableHead>
-              <TableHead class="text-right">{{ $t("project_settings.import.th_imported") }}</TableHead>
+              <TableHead class="text-right">{{
+                $t("project_settings.import.th_imported")
+              }}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -253,7 +257,9 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
           </TableBody>
         </Table>
 
-        <Button variant="ghost" size="sm" @click="resetImport"> {{ $t("project_settings.import.import_another") }} </Button>
+        <Button variant="ghost" size="sm" @click="resetImport">
+          {{ $t("project_settings.import.import_another") }}
+        </Button>
       </div>
 
       <!-- Step: Error -->
@@ -265,7 +271,9 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
           <span>{{ importState.error }}</span>
         </div>
 
-        <Button variant="ghost" size="sm" @click="resetImport"> {{ $t("project_settings.import.try_again") }} </Button>
+        <Button variant="ghost" size="sm" @click="resetImport">
+          {{ $t("project_settings.import.try_again") }}
+        </Button>
       </div>
     </template>
 

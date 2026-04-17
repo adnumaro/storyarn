@@ -414,9 +414,11 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   # Helpers — Import
   # ===========================================================================
 
-  defp format_import_error(:no_file), do: dgettext("projects", "No file was uploaded. Please select a file and try again.")
+  defp format_import_error(:no_file),
+    do: dgettext("projects", "No file was uploaded. Please select a file and try again.")
 
-  defp format_import_error(:session_expired), do: dgettext("projects", "Import session expired. Please upload the file again.")
+  defp format_import_error(:session_expired),
+    do: dgettext("projects", "Import session expired. Please upload the file again.")
 
   defp format_import_error(:invalid_json), do: dgettext("projects", "Invalid JSON file.")
 
@@ -430,7 +432,8 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   defp format_import_error({:invalid_field_types, fields}),
     do: dgettext("projects", "Invalid field types: %{fields}", fields: Enum.join(fields, ", "))
 
-  defp format_import_error({:entity_limits_exceeded, _details}), do: dgettext("projects", "Import file exceeds entity count limits.")
+  defp format_import_error({:entity_limits_exceeded, _details}),
+    do: dgettext("projects", "Import file exceeds entity count limits.")
 
   defp format_import_error({:import_failed, context, _changeset}),
     do: dgettext("projects", "Import failed at %{context}.", context: inspect(context))

@@ -48,7 +48,9 @@ const hasError = computed(() => {
   return !!nodeData.value.stale_reference;
 });
 const errorTitle = computed(() =>
-  nodeData.value.stale_reference ? t("flows.nodes.exit.flow_deleted") : t("flows.nodes.exit.no_flow"),
+  nodeData.value.stale_reference
+    ? t("flows.nodes.exit.flow_deleted")
+    : t("flows.nodes.exit.no_flow"),
 );
 
 // Tags text

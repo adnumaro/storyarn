@@ -81,14 +81,18 @@ function selectBlock(type: string): void {
     </DropdownMenuTrigger>
     <DropdownMenuContent align="start" :side-offset="4" class="w-52">
       <!-- Scope selector -->
-      <DropdownMenuLabel class="text-xs text-muted-foreground uppercase tracking-wider"
-        >{{ $t("sheets.add_block.scope") }}</DropdownMenuLabel
-      >
+      <DropdownMenuLabel class="text-xs text-muted-foreground uppercase tracking-wider">{{
+        $t("sheets.add_block.scope")
+      }}</DropdownMenuLabel>
       <div class="px-2 pb-1.5">
         <Tabs v-model="scope">
           <TabsList class="h-7 w-full">
-            <TabsTrigger value="self" class="text-xs flex-1">{{ $t("sheets.add_block.scope_self") }}</TabsTrigger>
-            <TabsTrigger value="children" class="text-xs flex-1">{{ $t("sheets.add_block.scope_children") }}</TabsTrigger>
+            <TabsTrigger value="self" class="text-xs flex-1">{{
+              $t("sheets.add_block.scope_self")
+            }}</TabsTrigger>
+            <TabsTrigger value="children" class="text-xs flex-1">{{
+              $t("sheets.add_block.scope_children")
+            }}</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -96,9 +100,9 @@ function selectBlock(type: string): void {
       <DropdownMenuSeparator />
 
       <!-- Basic Blocks -->
-      <DropdownMenuLabel class="text-xs text-muted-foreground uppercase tracking-wider"
-        >{{ $t("sheets.add_block.basic") }}</DropdownMenuLabel
-      >
+      <DropdownMenuLabel class="text-xs text-muted-foreground uppercase tracking-wider">{{
+        $t("sheets.add_block.basic")
+      }}</DropdownMenuLabel>
       <DropdownMenuItem
         v-for="bt in basicBlocks"
         :key="bt.type"
@@ -112,9 +116,9 @@ function selectBlock(type: string): void {
       <DropdownMenuSeparator />
 
       <!-- Structured Data -->
-      <DropdownMenuLabel class="text-xs text-muted-foreground uppercase tracking-wider"
-        >{{ $t("sheets.add_block.structured") }}</DropdownMenuLabel
-      >
+      <DropdownMenuLabel class="text-xs text-muted-foreground uppercase tracking-wider">{{
+        $t("sheets.add_block.structured")
+      }}</DropdownMenuLabel>
       <DropdownMenuItem
         v-for="bt in structuredBlocks"
         :key="bt.type"

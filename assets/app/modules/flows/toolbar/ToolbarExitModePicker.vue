@@ -45,7 +45,9 @@ const emit = defineEmits<{
 }>();
 const open = ref(false);
 
-const current = computed(() => EXIT_MODES.value.find((m) => m.value === mode) || EXIT_MODES.value[0]);
+const current = computed(
+  () => EXIT_MODES.value.find((m) => m.value === mode) || EXIT_MODES.value[0],
+);
 
 function selectMode(value: string) {
   emit("update:mode", value);

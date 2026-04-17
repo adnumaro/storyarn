@@ -182,7 +182,9 @@ function confirmDeleteProject() {
     <!-- Source Language -->
     <section class="space-y-4" v-if="sourceLanguage">
       <div>
-        <h3 class="text-lg font-semibold mb-1">{{ $t("project_settings.general.source_language") }}</h3>
+        <h3 class="text-lg font-semibold mb-1">
+          {{ $t("project_settings.general.source_language") }}
+        </h3>
         <p class="text-sm text-muted-foreground">
           {{ $t("project_settings.general.source_language_description") }}
         </p>
@@ -307,13 +309,17 @@ function confirmDeleteProject() {
 
     <!-- Danger Zone -->
     <section>
-      <h3 class="text-lg font-semibold mb-4 text-destructive">{{ $t("project_settings.general.danger_zone") }}</h3>
+      <h3 class="text-lg font-semibold mb-4 text-destructive">
+        {{ $t("project_settings.general.danger_zone") }}
+      </h3>
       <div class="border border-destructive/30 rounded-lg p-4">
         <p class="text-sm text-muted-foreground mb-4">
           {{ $t("project_settings.general.delete_description") }}
         </p>
         <div class="flex justify-end gap-3">
-          <Button variant="destructive" @click="showDeleteConfirm = true">{{ $t("project_settings.general.delete_button") }}</Button>
+          <Button variant="destructive" @click="showDeleteConfirm = true">{{
+            $t("project_settings.general.delete_button")
+          }}</Button>
         </div>
       </div>
     </section>
@@ -328,7 +334,9 @@ function confirmDeleteProject() {
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" @click="showRepairConfirm = false">{{ $t("project_settings.general.cancel") }}</Button>
+          <Button variant="outline" @click="showRepairConfirm = false">{{
+            $t("project_settings.general.cancel")
+          }}</Button>
           <Button @click="confirmRepair">{{ $t("project_settings.general.continue") }}</Button>
         </DialogFooter>
       </DialogContent>
@@ -342,11 +350,17 @@ function confirmDeleteProject() {
             <AlertTriangle class="size-5 text-destructive" />
             <DialogTitle>{{ $t("project_settings.general.delete_confirm_title") }}</DialogTitle>
           </div>
-          <DialogDescription>{{ $t("project_settings.general.delete_confirm_description") }}</DialogDescription>
+          <DialogDescription>{{
+            $t("project_settings.general.delete_confirm_description")
+          }}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" @click="showDeleteConfirm = false">{{ $t("project_settings.general.cancel") }}</Button>
-          <Button variant="destructive" @click="confirmDeleteProject">{{ $t("project_settings.general.delete") }}</Button>
+          <Button variant="outline" @click="showDeleteConfirm = false">{{
+            $t("project_settings.general.cancel")
+          }}</Button>
+          <Button variant="destructive" @click="confirmDeleteProject">{{
+            $t("project_settings.general.delete")
+          }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

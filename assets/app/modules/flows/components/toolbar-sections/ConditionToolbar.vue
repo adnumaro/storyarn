@@ -30,7 +30,11 @@ function openBuilder() {
   <component :is="GitBranch" class="size-4 opacity-60" />
   <ToolbarSeparator />
   <button type="button" class="toolbar-btn text-xs" @click="toggleSwitchMode">
-    {{ nodeData.switch_mode ? $t("flows.condition_toolbar.routes") : $t("flows.condition_toolbar.multi") }}
+    {{
+      nodeData.switch_mode
+        ? $t("flows.condition_toolbar.routes")
+        : $t("flows.condition_toolbar.multi")
+    }}
   </button>
   <Badge
     v-if="nodeData.condition?.rules?.length"
@@ -40,7 +44,12 @@ function openBuilder() {
     {{ nodeData.condition.rules.length }} rule{{ nodeData.condition.rules.length === 1 ? "" : "s" }}
   </Badge>
   <ToolbarSeparator />
-  <button type="button" class="toolbar-btn" :title="$t('flows.condition_toolbar.edit_condition')" @click="openBuilder">
+  <button
+    type="button"
+    class="toolbar-btn"
+    :title="$t('flows.condition_toolbar.edit_condition')"
+    @click="openBuilder"
+  >
     <Settings class="size-3.5" />
   </button>
 </template>

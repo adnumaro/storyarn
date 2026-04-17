@@ -67,7 +67,9 @@ function onZoomBlur(e: FocusEvent) {
       <template v-else> {{ $t("scenes.settings.fit_desc") }} </template>
     </p>
     <div v-if="displayMode === 'scaled'" class="flex items-center gap-2 pt-1">
-      <label class="text-xs text-muted-foreground whitespace-nowrap">{{ $t("scenes.settings.zoom") }}</label>
+      <label class="text-xs text-muted-foreground whitespace-nowrap">{{
+        $t("scenes.settings.zoom")
+      }}</label>
       <input
         type="number"
         min="0.5"

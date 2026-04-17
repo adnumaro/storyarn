@@ -51,13 +51,22 @@ const emit = defineEmits<{
       >
         <component :is="playerMode === 'player' ? Eye : ScanEye" :size="16" />
         <span class="hidden sm:inline">
-          {{ playerMode === "player" ? $t("flows.player.mode_player") : $t("flows.player.mode_analysis") }}
+          {{
+            playerMode === "player"
+              ? $t("flows.player.mode_player")
+              : $t("flows.player.mode_analysis")
+          }}
         </span>
       </Toggle>
     </div>
 
     <div class="player-toolbar-right">
-      <Button variant="ghost" size="icon-sm" :title="$t('flows.player.restart')" @click="emit('restart')">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        :title="$t('flows.player.restart')"
+        @click="emit('restart')"
+      >
         <RotateCcw :size="16" />
       </Button>
       <Button

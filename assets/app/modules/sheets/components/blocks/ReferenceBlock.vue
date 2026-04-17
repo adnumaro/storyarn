@@ -211,7 +211,9 @@ watch(searchResults, () => {
           <!-- Deleted reference -->
           <template v-else-if="isDeleted">
             <AlertCircle class="size-4 text-destructive shrink-0" />
-            <span class="flex-1 text-left text-destructive text-xs">{{ $t("sheets.reference_block.not_found") }}</span>
+            <span class="flex-1 text-left text-destructive text-xs">{{
+              $t("sheets.reference_block.not_found")
+            }}</span>
           </template>
           <!-- Empty -->
           <template v-else>

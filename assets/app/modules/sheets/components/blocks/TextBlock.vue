@@ -79,7 +79,9 @@ function saveLabel(val: string): void {
     >
       <template #config>
         <div class="space-y-1">
-          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">{{ $t("sheets.text_block.placeholder_label") }}</label>
+          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">{{
+            $t("sheets.text_block.placeholder_label")
+          }}</label>
           <Input
             :id="`placeholder-${useId()}`"
             :model-value="block.config?.placeholder || ''"

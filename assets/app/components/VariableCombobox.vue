@@ -130,7 +130,9 @@ function autoSize(el: HTMLInputElement | null) {
       <Command>
         <CommandInput :placeholder="$t('common.search')" class="h-8 text-xs" />
         <CommandList>
-          <CommandEmpty class="py-3 text-xs">{{ $t("common.variable_combobox.no_results") }}</CommandEmpty>
+          <CommandEmpty class="py-3 text-xs">{{
+            $t("common.variable_combobox.no_results")
+          }}</CommandEmpty>
 
           <template v-if="hasGroups">
             <CommandGroup v-for="group in groups" :key="group.heading" :heading="group.heading">

@@ -139,7 +139,9 @@ function onSearchInput(q: string): void {
         class="flex-1 min-w-0 h-9 px-3 py-1 rounded-md border border-input bg-card text-sm text-left truncate font-mono focus:outline-none focus:ring-2 focus:ring-ring"
       >
         <span v-if="displayLabel">{{ displayLabel }}</span>
-        <span v-else class="text-muted-foreground/60 italic">{{ $t("sheets.formula_binding.select_source") }}</span>
+        <span v-else class="text-muted-foreground/60 italic">{{
+          $t("sheets.formula_binding.select_source")
+        }}</span>
       </button>
     </PopoverTrigger>
     <PopoverContent class="w-65 p-0 z-50" align="start" :side-offset="4">
@@ -157,7 +159,10 @@ function onSearchInput(q: string): void {
           </CommandEmpty>
 
           <!-- Same row columns (always shown) -->
-          <CommandGroup v-if="sameRowOptions.length > 0" :heading="$t('sheets.formula_binding.same_row')">
+          <CommandGroup
+            v-if="sameRowOptions.length > 0"
+            :heading="$t('sheets.formula_binding.same_row')"
+          >
             <CommandItem
               v-for="item in sameRowOptions"
               :key="item.value"

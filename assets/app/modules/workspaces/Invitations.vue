@@ -11,7 +11,9 @@ const { homepageUrl = "/" } = defineProps<{
   <div class="max-w-lg mx-auto text-center py-12 space-y-6">
     <XCircle class="size-16 mx-auto text-destructive" />
     <div>
-      <h1 class="text-2xl font-bold tracking-tight">{{ $t("workspace.invitation.invalid_title") }}</h1>
+      <h1 class="text-2xl font-bold tracking-tight">
+        {{ $t("workspace.invitation.invalid_title") }}
+      </h1>
       <p class="text-sm text-muted-foreground mt-2">
         {{ $t("workspace.invitation.invalid_description") }}
       </p>

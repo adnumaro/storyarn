@@ -33,7 +33,9 @@ const emit = defineEmits<{
         <DialogDescription>{{ $t("common.delete_version_dialog.description") }}</DialogDescription>
       </DialogHeader>
       <DialogFooter>
-        <DialogClose as-child><Button variant="ghost" type="button">{{ $t("common.cancel") }}</Button></DialogClose>
+        <DialogClose as-child
+          ><Button variant="ghost" type="button">{{ $t("common.cancel") }}</Button></DialogClose
+        >
         <Button
           variant="destructive"
           :disabled="loadingAction === 'delete'"

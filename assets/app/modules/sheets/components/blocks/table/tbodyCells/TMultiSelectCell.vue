@@ -57,7 +57,9 @@ function toggleMultiSelectCell(key: string): void {
               {{ optionLabel(opt) }}
             </Badge>
           </div>
-          <span v-else class="text-muted-foreground/40 truncate">{{ $t("sheets.multi_select_block.placeholder") }}</span>
+          <span v-else class="text-muted-foreground/40 truncate">{{
+            $t("sheets.multi_select_block.placeholder")
+          }}</span>
         </button>
       </PopoverTrigger>
 

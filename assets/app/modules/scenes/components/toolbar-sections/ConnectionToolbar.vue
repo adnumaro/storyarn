@@ -96,7 +96,12 @@ function toggleElementPanel(): void {
   <ToolbarSeparator />
 
   <!-- Settings cog -->
-  <button type="button" class="toolbar-btn" :title="$t('scenes.connection_toolbar.properties')" @click="toggleElementPanel">
+  <button
+    type="button"
+    class="toolbar-btn"
+    :title="$t('scenes.connection_toolbar.properties')"
+    @click="toggleElementPanel"
+  >
     <Settings class="size-3.5" />
   </button>
 </template>

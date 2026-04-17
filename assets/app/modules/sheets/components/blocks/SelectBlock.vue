@@ -84,7 +84,9 @@ function onChange(val: string | string[]): void {
     >
       <template #config>
         <div class="space-y-1">
-          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">{{ $t("sheets.select_block.placeholder_label") }}</label>
+          <label :for="`placeholder-${useId()}`" class="text-xs font-medium">{{
+            $t("sheets.select_block.placeholder_label")
+          }}</label>
           <Input
             :id="`placeholder-${useId()}`"
             :model-value="block.config?.placeholder || ''"
@@ -125,7 +127,9 @@ function onChange(val: string | string[]): void {
         >
           <span>
             <span v-if="content">{{ options.find((opt) => opt.key === content)?.value }}</span>
-            <span v-else class="text-muted-foreground">{{ placeholder || $t("sheets.select_block.placeholder") }}</span>
+            <span v-else class="text-muted-foreground">{{
+              placeholder || $t("sheets.select_block.placeholder")
+            }}</span>
           </span>
           <ChevronDown class="h-4 w-4 opacity-50" />
         </button>

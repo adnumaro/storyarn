@@ -81,7 +81,9 @@ function removeLink() {
 
 <template>
   <div class="space-y-1">
-    <label class="block text-xs font-medium text-foreground/70">{{ $t("scenes.target_picker.link_to") }}</label>
+    <label class="block text-xs font-medium text-foreground/70">{{
+      $t("scenes.target_picker.link_to")
+    }}</label>
     <Popover
       v-model:open="open"
       @update:open="

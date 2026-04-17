@@ -119,7 +119,9 @@ function saveBinding(symbol: string, value: string): void {
 
       <!-- Expression Input -->
       <div>
-        <label class="text-xs font-medium text-muted-foreground mb-1 block">{{ $t("sheets.formula_panel.expression") }}</label>
+        <label class="text-xs font-medium text-muted-foreground mb-1 block">{{
+          $t("sheets.formula_panel.expression")
+        }}</label>
         <input
           v-model="localExpression"
           type="text"
@@ -142,9 +144,9 @@ function saveBinding(symbol: string, value: string): void {
 
       <!-- Symbol Bindings -->
       <div v-if="(formulaEditing.symbols?.length ?? 0) > 0">
-        <label class="text-xs font-medium text-muted-foreground mb-2 block"
-          >{{ $t("sheets.formula_panel.bindings") }}</label
-        >
+        <label class="text-xs font-medium text-muted-foreground mb-2 block">{{
+          $t("sheets.formula_panel.bindings")
+        }}</label>
         <div class="space-y-2">
           <div
             v-for="symbol in formulaEditing.symbols"
@@ -168,7 +170,9 @@ function saveBinding(symbol: string, value: string): void {
 
       <!-- Result -->
       <div v-if="resultHtml">
-        <label class="text-xs font-medium text-muted-foreground mb-1 block">{{ $t("sheets.formula_panel.result") }}</label>
+        <label class="text-xs font-medium text-muted-foreground mb-1 block">{{
+          $t("sheets.formula_panel.result")
+        }}</label>
         <div class="bg-muted/50 rounded-lg p-3 overflow-x-auto">
           <!-- eslint-disable-next-line vue/no-v-html -->
           <div class="text-center" v-html="resultHtml" />
@@ -176,7 +180,9 @@ function saveBinding(symbol: string, value: string): void {
       </div>
 
       <div v-else-if="formulaEditing.result != null">
-        <label class="text-xs font-medium text-muted-foreground mb-1 block">{{ $t("sheets.formula_panel.result") }}</label>
+        <label class="text-xs font-medium text-muted-foreground mb-1 block">{{
+          $t("sheets.formula_panel.result")
+        }}</label>
         <div class="bg-muted/50 rounded-lg p-3 text-center text-sm font-mono">
           {{ formulaEditing.result }}
         </div>

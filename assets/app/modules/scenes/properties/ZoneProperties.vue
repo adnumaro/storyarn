@@ -131,7 +131,9 @@ function selectDisplayVar(varRef: string | number | null) {
 
     <!-- Shortcut -->
     <div v-if="element.shortcut" class="space-y-1">
-      <label class="block text-xs font-medium text-foreground/70">{{ $t("scenes.zone_properties.shortcut") }}</label>
+      <label class="block text-xs font-medium text-foreground/70">{{
+        $t("scenes.zone_properties.shortcut")
+      }}</label>
       <div class="text-xs font-mono text-muted-foreground bg-accent/50 rounded px-2 py-1">
         {{ element.shortcut }}
       </div>
@@ -173,7 +175,9 @@ function selectDisplayVar(varRef: string | number | null) {
 
     <!-- Action-type-specific section -->
     <div v-if="element.actionType === 'instruction'" class="pt-3 border-t border-border space-y-1">
-      <label class="block text-xs font-medium text-foreground/70">{{ $t("scenes.zone_properties.instruction") }}</label>
+      <label class="block text-xs font-medium text-foreground/70">{{
+        $t("scenes.zone_properties.instruction")
+      }}</label>
       <ExpressionEditor
         :assignments="element.actionData?.assignments || []"
         :variables="projectVariables"
@@ -200,7 +204,9 @@ function selectDisplayVar(varRef: string | number | null) {
     </div>
 
     <div v-if="element.actionType === 'collection'" class="pt-3 border-t border-border space-y-1">
-      <label class="block text-xs font-medium text-foreground/70">{{ $t("scenes.zone_properties.collection") }}</label>
+      <label class="block text-xs font-medium text-foreground/70">{{
+        $t("scenes.zone_properties.collection")
+      }}</label>
       <CollectionItemsEditor
         :zone-id="element.id"
         :action-data="element.actionData || {}"
@@ -213,7 +219,9 @@ function selectDisplayVar(varRef: string | number | null) {
     <!-- Condition -->
     <div class="pt-3 border-t border-border space-y-2">
       <div class="flex items-center justify-between">
-        <label class="text-xs font-medium text-foreground/70">{{ $t("scenes.zone_properties.condition") }}</label>
+        <label class="text-xs font-medium text-foreground/70">{{
+          $t("scenes.zone_properties.condition")
+        }}</label>
         <div class="flex gap-0.5">
           <button
             v-for="opt in CONDITION_EFFECTS"

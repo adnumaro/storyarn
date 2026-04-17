@@ -18,11 +18,11 @@ Sheets already lives under ProjectShell. Current chrome:
 
 3 route-level LVs under `:require_authenticated_user`:
 
-| LV | Purpose | Layout | Tree? | Extra toolbar? |
-|---|---|---|---|---|
-| `LocalizationLive.Index` | `/localization` — grid of translatable texts | `Layouts.app` | Yes — languages panel | `top_bar_extra_right` → `LocalizationToolbar.vue` (report link + export CSV/XLSX + translate-all) |
-| `LocalizationLive.Edit` | `/localization/:id` — single text editor | `Layouts.app`, `has_tree={false}` | No | No |
-| `LocalizationLive.Report` | `/localization/report` — analytics | `Layouts.app`, `has_tree={false}` | No | No |
+| LV                        | Purpose                                      | Layout                            | Tree?                 | Extra toolbar?                                                                                    |
+| ------------------------- | -------------------------------------------- | --------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------- |
+| `LocalizationLive.Index`  | `/localization` — grid of translatable texts | `Layouts.app`                     | Yes — languages panel | `top_bar_extra_right` → `LocalizationToolbar.vue` (report link + export CSV/XLSX + translate-all) |
+| `LocalizationLive.Edit`   | `/localization/:id` — single text editor     | `Layouts.app`, `has_tree={false}` | No                    | No                                                                                                |
+| `LocalizationLive.Report` | `/localization/report` — analytics           | `Layouts.app`, `has_tree={false}` | No                    | No                                                                                                |
 
 Tree panel (for Index only): the left sidebar already renders **`LocalizationSidebar.vue`** from `TreePanel.vue`'s `treeComponents` map when `activeTool === "localization"`. Props today:
 
@@ -69,6 +69,7 @@ Two separate sticky LVs per tool (when needed):
 2. **Per-tool TOOLBAR LV**: top-right extras (e.g. `LocalizationToolbar`). Rendered via a **slot in `ProjectShell`** that each page LV fills with `live_render(SomeToolbarLive, sticky: true, ...)`.
 
 Why two LVs instead of one:
+
 - Clearer naming: `SheetsSidebarLive` is literally the sidebar; `LocalizationToolbarLive` is literally the toolbar.
 - Not every tool needs both (sheets has no extras → just a sidebar LV). The slot is optional.
 - Each LV owns a single well-scoped concern.
@@ -86,9 +87,11 @@ ProjectShell (function component)
 ```
 
 **Renames** (Step 1, already applied):
+
 - `StoryarnWeb.SidebarLive` → `StoryarnWeb.SheetsSidebarLive`.
 
 **New LVs for localization**:
+
 - `StoryarnWeb.LocalizationSidebarLive` — sticky, left sidebar. Renders `TreePanel.vue` with `activeTool="localization"` + `treeProps` built from language state. Handlers for language mutations (`change_locale`, `change_source_language`, `add_target_language`, `remove_language`, `sync_texts`). Broadcasts `{:active_locale, locale}` on shell_topic.
 - `StoryarnWeb.LocalizationToolbarLive` — sticky, top-right. Renders `LocalizationToolbar.vue`. Handlers for `translate_batch`. Receives report_url / export_csv_url / export_xlsx_url / has_provider via session.
 
@@ -250,21 +253,25 @@ Each page LV fills the slot when it has tool-specific toolbar content:
 Each step leaves the app compiling and navigable.
 
 ### Step 1 ✅ — Rename `SidebarLive` → `SheetsSidebarLive`
+
 - Mechanical rename. `shell_topic/1` stays callable on the renamed module.
 
 ### Step 2 — Generalize `ProjectShell`
+
 - Add attrs `sidebar_module` + `sidebar_session`; replace hardcoded `live_render(SheetsSidebarLive, ...)` with `live_render(@sidebar_module, ...)`.
 - Add slot `:top_bar_extras_right` inside a fixed-positioned wrapper.
 - Update `SheetLive.Show` and `SheetLive.Index` to pass `sidebar_module={SheetsSidebarLive}` + explicit `sidebar_session` map. No slot content.
 - Verify: `/sheets` and `/sheets/:id` still work end-to-end.
 
 ### Step 3 — Create `LocalizationSidebarLive` scaffold
+
 - File with mount that loads languages + subscribes to shell_topic + `Collaboration.subscribe_changes`.
 - Render: one fixed div with `TreePanel.vue` for localization. `phx-update="ignore"` + dynamic id keyed on language set.
 - Handlers: `tree_panel_*`. Stubs for localization events (will be filled in step 5).
 - Verify: compiles. Not wired to any route yet.
 
 ### Step 4 — Create `LocalizationToolbarLive` scaffold
+
 - File with mount that receives locale + provider flag.
 - Render: one fixed div with `LocalizationToolbar.vue`. `phx-update="ignore"` + id keyed on `selected_locale`.
 - Subscribes to shell_topic to react to `{:active_locale, locale}`.
@@ -272,6 +279,7 @@ Each step leaves the app compiling and navigable.
 - Verify: compiles.
 
 ### Step 5 — Move localization routes to `:project_scope` + wire page LVs
+
 - Router: move 3 routes into `:project_scope`.
 - `LocalizationLive.Index`:
   - Swap `<Layouts.app>` → `<ProjectShell.project_shell sidebar_module={LocalizationSidebarLive}>` with `:top_bar_extras_right` slot rendering `LocalizationToolbarLive`.
@@ -281,6 +289,7 @@ Each step leaves the app compiling and navigable.
 - Verify: 3 routes load with chrome (shared ToolbarsLive + per-tool SidebarLive + optional ToolbarLive).
 
 ### Step 6 — Move localization events to the chrome LVs
+
 - Move to `LocalizationSidebarLive`: `change_locale`, `change_source_language`, `add_target_language`, `remove_language`, `sync_texts`.
 - Move to `LocalizationToolbarLive`: `translate_batch`.
 - On successful mutation, sidebar broadcasts `{:active_locale, locale}` on shell_topic. Index/Report/ToolbarLive subscribe and react (Index reloads texts, Report re-runs analytics, ToolbarLive updates its export URLs).
@@ -288,6 +297,7 @@ Each step leaves the app compiling and navigable.
 - Verify: sidebar interactions work (change locale, add target, etc.); translate_batch works; Index grid refreshes on locale change.
 
 ### Step 7 — Cleanup & test
+
 - `mix compile`, `mix format`, smoke test all 3 routes + chrome interactions.
 - Migrate the 5 localization test files if their mount assumptions broke.
 - Remove dead code: `sidebar_props/1`, `serialize_language/1` from Index; any leftover `:top_bar_extra_right` invocations.
