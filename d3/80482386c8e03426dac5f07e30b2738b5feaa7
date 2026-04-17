@@ -1,0 +1,77 @@
+assets/app/locales/es/flows.json
+  3ea3c2327c2231e2 27-30,84-86,125-129,164-165,183-219,221-222,278-280
+assets/app/modules/flows/components/FlowDebugPanel.vue
+  3ea3c2327c2231e2 137,146,153,158
+assets/app/modules/scenes/properties/pin/PinPatrolSection.vue
+  3ea3c2327c2231e2 46
+assets/app/locales/en/scenes.json
+  3ea3c2327c2231e2 183,185,188,199,202,213-214,224-229,259-261,274-277,304-305
+assets/app/modules/flows/components/toolbar-sections/AnnotationToolbar.vue
+  3ea3c2327c2231e2 40
+assets/app/modules/flows/nodes/AnnotationNode.vue
+  3ea3c2327c2231e2 78
+assets/app/modules/flows/components/toolbar-sections/InstructionToolbar.vue
+  3ea3c2327c2231e2 35
+assets/app/modules/flows/components/FlowTreeNode.vue
+  3ea3c2327c2231e2 188,196,212,216,223
+assets/app/modules/flows/components/toolbar-sections/SlugLineToolbar.vue
+  3ea3c2327c2231e2 107,114,121
+assets/app/modules/scenes/properties/PinProperties.vue
+  3ea3c2327c2231e2 106,115,163
+assets/app/modules/scenes/properties/ZoneProperties.vue
+  3ea3c2327c2231e2 156,189
+assets/app/modules/flows/components/toolbar-sections/SubflowToolbar.vue
+  3ea3c2327c2231e2 52,59
+assets/app/modules/flows/nodes/DialogueAudioPreview.vue
+  3ea3c2327c2231e2 12
+assets/app/modules/scenes/settings/ScaleSection.vue
+  3ea3c2327c2231e2 39,49
+assets/app/modules/flows/toolbar/ToolbarAvatarPicker.vue
+  3ea3c2327c2231e2 46,52,71
+assets/app/modules/flows/components/toolbar-sections/HubToolbar.vue
+  3ea3c2327c2231e2 40,50,61
+assets/app/modules/flows/components/toolbar-sections/JumpToolbar.vue
+  3ea3c2327c2231e2 51,58
+assets/app/modules/flows/player/PlayerToolbar.vue
+  3ea3c2327c2231e2 49
+assets/app/modules/scenes/toolbar/ToolbarStrokePicker.vue
+  3ea3c2327c2231e2 136
+assets/app/modules/flows/toolbar/ToolbarSearchableSelect.vue
+  3ea3c2327c2231e2 54,57
+assets/app/locales/es/scenes.json
+  3ea3c2327c2231e2 183,185,188,199,202,213-214,224-229,259-261,274-277,304-305
+assets/app/modules/flows/components/toolbar-sections/ExitToolbar.vue
+  3ea3c2327c2231e2 60
+assets/app/modules/flows/player/PlayerSlide.vue
+  3ea3c2327c2231e2 63
+assets/app/locales/en/flows.json
+  3ea3c2327c2231e2 27-30,84-86,125-129,164-165,183-219,221-222,278-280
+assets/app/modules/flows/components/FlowScreenplayEditor.vue
+  3ea3c2327c2231e2 260
+assets/app/modules/flows/components/toolbar-sections/DialogueToolbar.vue
+  3ea3c2327c2231e2 79,94,97
+assets/app/modules/scenes/settings/AmbientFlowRow.vue
+  3ea3c2327c2231e2 136,159,170
+assets/app/modules/scenes/properties/zone/CollectionItemCard.vue
+  3ea3c2327c2231e2 79-80,88,90,96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "d380482386c8e03426dac5f07e30b2738b5feaa7",
+  "prompts": {
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 210,
+      "total_deletions": 76,
+      "accepted_lines": 2542,
+      "overriden_lines": 0
+    }
+  }
+}
