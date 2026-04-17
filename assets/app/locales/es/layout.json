@@ -1,0 +1,32 @@
+{
+  "layout": {
+    "tools": {
+      "dashboard": "Panel",
+      "sheets": "Fichas",
+      "flows": "Flujos",
+      "scenes": "Escenas",
+      "screenplays": "Guiones",
+      "assets": "Recursos",
+      "localization": "Localización"
+    },
+    "tree_panel": {
+      "dashboard_suffix": "panel",
+      "unpin": "Desfijar panel",
+      "pin_panel": "Fijar panel",
+      "pinned": "Fijado",
+      "pin": "Fijar",
+      "close": "Cerrar panel"
+    },
+    "left_toolbar": {
+      "hide_panel": "Ocultar panel",
+      "show_panel": "Mostrar panel",
+      "project_settings": "Ajustes del proyecto",
+      "trash": "Papelera"
+    },
+    "right_toolbar": {
+      "account_settings": "Ajustes de cuenta",
+      "all_workspaces": "Todos los espacios",
+      "log_out": "Cerrar sesión"
+    }
+  }
+}

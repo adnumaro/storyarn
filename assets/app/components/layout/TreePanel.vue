@@ -105,20 +105,7 @@ onUnmounted(() => {
 });
 
 // ── Dashboard link label ──
-const toolLabels = {
-  dashboard: "Dashboard",
-  sheets: "Sheets",
-  flows: "Flows",
-  scenes: "Scenes",
-  screenplays: "Screenplays",
-  assets: "Assets",
-  localization: "Localization",
-};
-
-const dashboardLabel = computed(() => {
-  const label = toolLabels[activeTool as keyof typeof toolLabels] || "";
-  return `${label} dashboard`;
-});
+// dashboardLabel moved to template: $t(`layout.tools.${activeTool}`) + $t("layout.tree_panel.dashboard_suffix")
 
 function togglePanel() {
   live.pushEvent("tree_panel_toggle", {});
@@ -145,7 +132,7 @@ function togglePin() {
           ]"
         >
           <LayoutDashboard class="size-4" />
-          {{ dashboardLabel }}
+          {{ $t(`layout.tools.${activeTool}`) }} {{ $t("layout.tree_panel.dashboard_suffix") }}
         </a>
       </div>
     </template>
@@ -160,16 +147,16 @@ function togglePin() {
           'inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors hover:bg-accent',
           treePanelPinned ? 'text-primary' : 'text-muted-foreground',
         ]"
-        :title="treePanelPinned ? 'Unpin panel' : 'Pin panel'"
+        :title="treePanelPinned ? $t('layout.tree_panel.unpin') : $t('layout.tree_panel.pin_panel')"
         @click="togglePin"
       >
         <Pin class="size-3" />
-        {{ treePanelPinned ? "Pinned" : "Pin" }}
+        {{ treePanelPinned ? $t("layout.tree_panel.pinned") : $t("layout.tree_panel.pin") }}
       </button>
       <button
         type="button"
         class="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-        title="Close panel"
+        :title="$t('layout.tree_panel.close')"
         @click="togglePanel"
       >
         <X class="size-3" />

@@ -114,19 +114,19 @@ function handleLogout(): void {
         <DropdownMenuItem as-child>
           <a :href="urls.accountSettings" class="flex items-center gap-2">
             <User class="size-4" />
-            Account settings
+            {{ $t("layout.right_toolbar.account_settings") }}
           </a>
         </DropdownMenuItem>
         <DropdownMenuItem as-child>
           <a :href="urls.workspaces" class="flex items-center gap-2">
             <LayoutDashboard class="size-4" />
-            All workspaces
+            {{ $t("layout.right_toolbar.all_workspaces") }}
           </a>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem class="flex items-center gap-2" @select="handleLogout">
           <LogOut class="size-4" />
-          Log out
+          {{ $t("layout.right_toolbar.log_out") }}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

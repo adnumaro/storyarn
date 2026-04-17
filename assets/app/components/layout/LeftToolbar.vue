@@ -53,20 +53,20 @@ const {
 
 const live = useLive();
 
-const tools = [
-  { key: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { key: "sheets", icon: FileText, label: "Sheets" },
-  { key: "flows", icon: GitBranch, label: "Flows" },
-  { key: "scenes", icon: Map, label: "Scenes" },
-  { key: "screenplays", icon: ScrollText, label: "Screenplays" },
-  { key: "assets", icon: Image, label: "Assets" },
-  { key: "localization", icon: Languages, label: "Localization" },
+const toolDefs = [
+  { key: "dashboard", icon: LayoutDashboard },
+  { key: "sheets", icon: FileText },
+  { key: "flows", icon: GitBranch },
+  { key: "scenes", icon: Map },
+  { key: "screenplays", icon: ScrollText },
+  { key: "assets", icon: Image },
+  { key: "localization", icon: Languages },
 ];
 
-const activeToolDef = computed(() => tools.find((t) => t.key === activeTool) || tools[0]);
+const activeToolDef = computed(() => toolDefs.find((t) => t.key === activeTool) || toolDefs[0]);
 
 const otherTools = computed(() => {
-  const filtered = tools.filter((t) => t.key !== activeTool);
+  const filtered = toolDefs.filter((t) => t.key !== activeTool);
   if (!isSuperAdmin) {
     return filtered.filter((t) => t.key !== "screenplays");
   }
@@ -93,7 +93,7 @@ function toggleTreePanel() {
           </button>
         </TooltipTrigger>
         <TooltipContent side="bottom" align="start">
-          {{ treePanelOpen ? "Hide panel" : "Show panel" }}
+          {{ treePanelOpen ? $t("layout.left_toolbar.hide_panel") : $t("layout.left_toolbar.show_panel") }}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -124,14 +124,14 @@ function toggleTreePanel() {
         <DropdownMenuItem as-child>
           <a :href="urls.projectSettings" class="flex items-center gap-2">
             <Settings class="size-4" />
-            Project settings
+            {{ $t("layout.left_toolbar.project_settings") }}
           </a>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem as-child>
           <a :href="urls.trash" class="flex items-center gap-2">
             <Trash2 class="size-4" />
-            Trash
+            {{ $t("layout.left_toolbar.trash") }}
           </a>
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -142,7 +142,7 @@ function toggleTreePanel() {
       <DropdownMenuTrigger as-child>
         <button class="toolbar-btn gap-1.5">
           <component :is="activeToolDef.icon" class="size-4" />
-          <span class="hidden xl:inline text-sm font-medium">{{ activeToolDef.label }}</span>
+          <span class="hidden xl:inline text-sm font-medium">{{ $t(`layout.tools.${activeToolDef.key}`) }}</span>
           <ChevronDown class="size-3 opacity-50" />
         </button>
       </DropdownMenuTrigger>
@@ -155,7 +155,7 @@ function toggleTreePanel() {
             class="flex items-center gap-2"
           >
             <component :is="tool.icon" class="size-4" />
-            {{ tool.label }}
+            {{ $t(`layout.tools.${tool.key}`) }}
           </a>
         </DropdownMenuItem>
       </DropdownMenuContent>

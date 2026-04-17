@@ -1,0 +1,32 @@
+{
+  "layout": {
+    "tools": {
+      "dashboard": "Dashboard",
+      "sheets": "Sheets",
+      "flows": "Flows",
+      "scenes": "Scenes",
+      "screenplays": "Screenplays",
+      "assets": "Assets",
+      "localization": "Localization"
+    },
+    "tree_panel": {
+      "dashboard_suffix": "dashboard",
+      "unpin": "Unpin panel",
+      "pin_panel": "Pin panel",
+      "pinned": "Pinned",
+      "pin": "Pin",
+      "close": "Close panel"
+    },
+    "left_toolbar": {
+      "hide_panel": "Hide panel",
+      "show_panel": "Show panel",
+      "project_settings": "Project settings",
+      "trash": "Trash"
+    },
+    "right_toolbar": {
+      "account_settings": "Account settings",
+      "all_workspaces": "All workspaces",
+      "log_out": "Log out"
+    }
+  }
+}
