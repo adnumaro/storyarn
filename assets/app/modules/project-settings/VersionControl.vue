@@ -84,7 +84,7 @@ function usagePct(used: number, limit: number | null) {
     <form @submit.prevent="saveVersionControl">
       <!-- Auto Daily Snapshots -->
       <section>
-        <h3 class="text-lg font-semibold mb-4">Automatic Snapshots</h3>
+        <h3 class="text-lg font-semibold mb-4">{{ $t("project_settings.version_control.auto_snapshots") }}</h3>
         <div class="rounded-lg border border-border bg-muted/30 p-4">
           <label class="flex items-center gap-3 cursor-pointer">
             <Switch
@@ -92,9 +92,9 @@ function usagePct(used: number, limit: number | null) {
               @update:checked="(v: boolean) => (autoSnapshots = v)"
             />
             <div>
-              <span class="font-medium">Enable daily automatic snapshots</span>
+              <span class="font-medium">{{ $t("project_settings.version_control.enable_daily") }}</span>
               <p class="text-sm text-muted-foreground">
-                Creates a daily backup at 3:00 AM UTC when changes are detected.
+                {{ $t("project_settings.version_control.daily_description") }}
               </p>
             </div>
           </label>
@@ -105,28 +105,28 @@ function usagePct(used: number, limit: number | null) {
 
       <!-- Per-Entity Auto-Versioning -->
       <section>
-        <h3 class="text-lg font-semibold mb-4">Auto-Versioning</h3>
+        <h3 class="text-lg font-semibold mb-4">{{ $t("project_settings.version_control.auto_versioning") }}</h3>
         <p class="text-sm text-muted-foreground mb-4">
-          Automatically create version snapshots when editing entities.
+          {{ $t("project_settings.version_control.auto_versioning_description") }}
         </p>
         <div class="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
           <label class="flex items-center gap-3 cursor-pointer">
             <Switch :checked="autoFlows" @update:checked="(v: boolean) => (autoFlows = v)" />
-            <span>Flows</span>
+            <span>{{ $t("project_settings.version_control.flows") }}</span>
           </label>
           <label class="flex items-center gap-3 cursor-pointer">
             <Switch :checked="autoScenes" @update:checked="(v: boolean) => (autoScenes = v)" />
-            <span>Scenes</span>
+            <span>{{ $t("project_settings.version_control.scenes") }}</span>
           </label>
           <label class="flex items-center gap-3 cursor-pointer">
             <Switch :checked="autoSheets" @update:checked="(v: boolean) => (autoSheets = v)" />
-            <span>Sheets</span>
+            <span>{{ $t("project_settings.version_control.sheets") }}</span>
           </label>
         </div>
       </section>
 
       <div class="flex justify-end gap-3 pt-4">
-        <Button type="submit">Save Changes</Button>
+        <Button type="submit">{{ $t("project_settings.version_control.save_changes") }}</Button>
       </div>
     </form>
 
@@ -134,11 +134,11 @@ function usagePct(used: number, limit: number | null) {
 
     <!-- Usage Breakdown -->
     <section v-if="versionUsage">
-      <h3 class="text-lg font-semibold mb-4">Usage</h3>
+      <h3 class="text-lg font-semibold mb-4">{{ $t("project_settings.version_control.usage") }}</h3>
       <div class="space-y-4">
         <div>
           <div class="flex justify-between text-sm mb-1">
-            <span>Project Snapshots</span>
+            <span>{{ $t("project_settings.version_control.project_snapshots") }}</span>
             <span class="text-muted-foreground">
               {{ versionUsage.projectSnapshots.used }} /
               {{ versionUsage.projectSnapshots.limit || "\u221E" }}
@@ -152,7 +152,7 @@ function usagePct(used: number, limit: number | null) {
         </div>
         <div>
           <div class="flex justify-between text-sm mb-1">
-            <span>Named Versions</span>
+            <span>{{ $t("project_settings.version_control.named_versions") }}</span>
             <span class="text-muted-foreground">
               {{ versionUsage.namedVersions.used }} /
               {{ versionUsage.namedVersions.limit || "\u221E" }}

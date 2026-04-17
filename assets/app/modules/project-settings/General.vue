@@ -159,11 +159,11 @@ function confirmDeleteProject() {
     <section>
       <form @submit.prevent="saveProject" class="space-y-4">
         <div class="space-y-1.5">
-          <Label for="project-name">Project Name</Label>
+          <Label for="project-name">{{ $t("project_settings.general.project_name") }}</Label>
           <Input id="project-name" v-model="projectNameLocal" required @blur="validateProject" />
         </div>
         <div class="space-y-1.5">
-          <Label for="project-description">Description</Label>
+          <Label for="project-description">{{ $t("project_settings.general.description") }}</Label>
           <Textarea
             id="project-description"
             v-model="projectDescLocal"
@@ -172,7 +172,7 @@ function confirmDeleteProject() {
           />
         </div>
         <div class="flex justify-end gap-3 pt-1">
-          <Button type="submit">Save Changes</Button>
+          <Button type="submit">{{ $t("project_settings.general.save_changes") }}</Button>
         </div>
       </form>
     </section>
@@ -182,9 +182,9 @@ function confirmDeleteProject() {
     <!-- Source Language -->
     <section class="space-y-4" v-if="sourceLanguage">
       <div>
-        <h3 class="text-lg font-semibold mb-1">Source language</h3>
+        <h3 class="text-lg font-semibold mb-1">{{ $t("project_settings.general.source_language") }}</h3>
         <p class="text-sm text-muted-foreground">
-          Defines the base locale used for source texts and translation workflows in this project.
+          {{ $t("project_settings.general.source_language_description") }}
         </p>
       </div>
 
@@ -204,7 +204,7 @@ function confirmDeleteProject() {
         </div>
 
         <p class="text-xs text-muted-foreground">
-          To change the source language, use the localization settings.
+          {{ $t("project_settings.general.source_language_hint") }}
         </p>
       </div>
     </section>
@@ -213,7 +213,7 @@ function confirmDeleteProject() {
 
     <!-- Appearance -->
     <section>
-      <h3 class="text-lg font-semibold mb-4">Appearance</h3>
+      <h3 class="text-lg font-semibold mb-4">{{ $t("project_settings.general.appearance") }}</h3>
       <div class="flex items-center gap-1 rounded-full border border-border bg-muted p-0.5 w-fit">
         <button
           :class="[
@@ -222,7 +222,7 @@ function confirmDeleteProject() {
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
           ]"
-          title="System"
+          :title="$t('project_settings.general.theme_system')"
           @click="setTheme('system')"
         >
           <Monitor class="size-4" :class="{ 'opacity-75': currentTheme !== 'system' }" />
@@ -234,7 +234,7 @@ function confirmDeleteProject() {
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
           ]"
-          title="Light"
+          :title="$t('project_settings.general.theme_light')"
           @click="setTheme('light')"
         >
           <Sun class="size-4" :class="{ 'opacity-75': currentTheme !== 'light' }" />
@@ -246,7 +246,7 @@ function confirmDeleteProject() {
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
           ]"
-          title="Dark"
+          :title="$t('project_settings.general.theme_dark')"
           @click="setTheme('dark')"
         >
           <Moon class="size-4" :class="{ 'opacity-75': currentTheme !== 'dark' }" />
@@ -258,18 +258,18 @@ function confirmDeleteProject() {
 
     <!-- Theme -->
     <section>
-      <h3 class="text-lg font-semibold mb-4">Project Theme</h3>
+      <h3 class="text-lg font-semibold mb-4">{{ $t("project_settings.general.project_theme") }}</h3>
       <div class="rounded-lg border border-border bg-muted/30 p-4">
         <div class="flex gap-8 items-start">
           <div>
-            <Label class="mb-2 block">Primary</Label>
+            <Label class="mb-2 block">{{ $t("project_settings.general.primary") }}</Label>
             <div class="flex items-center gap-3">
               <ColorPickerPopover :color="localPrimary" @update:color="onPrimaryChange" />
               <code class="text-xs text-muted-foreground">{{ localPrimary }}</code>
             </div>
           </div>
           <div>
-            <Label class="mb-2 block">Accent</Label>
+            <Label class="mb-2 block">{{ $t("project_settings.general.accent") }}</Label>
             <div class="flex items-center gap-3">
               <ColorPickerPopover :color="localAccent" @update:color="onAccentChange" />
               <code class="text-xs text-muted-foreground">{{ localAccent }}</code>
@@ -278,9 +278,9 @@ function confirmDeleteProject() {
         </div>
         <div class="flex justify-end gap-3 pt-4">
           <Button v-if="hasCustomTheme" variant="outline" @click="resetTheme">
-            Reset to Default
+            {{ $t("project_settings.general.reset_theme") }}
           </Button>
-          <Button @click="saveTheme">Apply Theme</Button>
+          <Button @click="saveTheme">{{ $t("project_settings.general.apply_theme") }}</Button>
         </div>
       </div>
     </section>
@@ -289,16 +289,15 @@ function confirmDeleteProject() {
 
     <!-- Maintenance -->
     <section>
-      <h3 class="text-lg font-semibold mb-4">Maintenance</h3>
+      <h3 class="text-lg font-semibold mb-4">{{ $t("project_settings.general.maintenance") }}</h3>
       <div class="rounded-lg border border-border bg-muted/30 p-4">
         <p class="text-sm text-muted-foreground mb-3">
-          If you renamed sheet shortcuts or variable names, flow nodes may reference old names. Use
-          this to repair them.
+          {{ $t("project_settings.general.repair_description") }}
         </p>
         <div class="flex justify-end gap-3">
           <Button @click="showRepairConfirm = true">
             <Wrench class="size-4 mr-1.5" />
-            Repair variable references
+            {{ $t("project_settings.general.repair_button") }}
           </Button>
         </div>
       </div>
@@ -308,13 +307,13 @@ function confirmDeleteProject() {
 
     <!-- Danger Zone -->
     <section>
-      <h3 class="text-lg font-semibold mb-4 text-destructive">Danger Zone</h3>
+      <h3 class="text-lg font-semibold mb-4 text-destructive">{{ $t("project_settings.general.danger_zone") }}</h3>
       <div class="border border-destructive/30 rounded-lg p-4">
         <p class="text-sm text-muted-foreground mb-4">
-          Once you delete a project, there is no going back. Please be certain.
+          {{ $t("project_settings.general.delete_description") }}
         </p>
         <div class="flex justify-end gap-3">
-          <Button variant="destructive" @click="showDeleteConfirm = true"> Delete Project </Button>
+          <Button variant="destructive" @click="showDeleteConfirm = true">{{ $t("project_settings.general.delete_button") }}</Button>
         </div>
       </div>
     </section>
@@ -323,14 +322,14 @@ function confirmDeleteProject() {
     <Dialog v-model:open="showRepairConfirm">
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Repair variable references?</DialogTitle>
+          <DialogTitle>{{ $t("project_settings.general.repair_confirm_title") }}</DialogTitle>
           <DialogDescription>
-            This will update node data across the entire project.
+            {{ $t("project_settings.general.repair_confirm_description") }}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" @click="showRepairConfirm = false">Cancel</Button>
-          <Button @click="confirmRepair">Continue</Button>
+          <Button variant="outline" @click="showRepairConfirm = false">{{ $t("project_settings.general.cancel") }}</Button>
+          <Button @click="confirmRepair">{{ $t("project_settings.general.continue") }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -341,13 +340,13 @@ function confirmDeleteProject() {
         <DialogHeader>
           <div class="flex items-center gap-2">
             <AlertTriangle class="size-5 text-destructive" />
-            <DialogTitle>Delete project?</DialogTitle>
+            <DialogTitle>{{ $t("project_settings.general.delete_confirm_title") }}</DialogTitle>
           </div>
-          <DialogDescription> This action cannot be undone. </DialogDescription>
+          <DialogDescription>{{ $t("project_settings.general.delete_confirm_description") }}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" @click="showDeleteConfirm = false">Cancel</Button>
-          <Button variant="destructive" @click="confirmDeleteProject">Delete</Button>
+          <Button variant="outline" @click="showDeleteConfirm = false">{{ $t("project_settings.general.cancel") }}</Button>
+          <Button variant="destructive" @click="confirmDeleteProject">{{ $t("project_settings.general.delete") }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -13,7 +13,10 @@ import {
   TableHeader,
   TableRow,
 } from "@components/ui/table/index.ts";
+import { useI18n } from "vue-i18n";
 import { useLive } from "@composables/useLive";
+
+const { t } = useI18n();
 
 interface ImportPreview {
   counts?: Record<string, number>;
@@ -62,11 +65,11 @@ const upload = uploadConfig
   : null;
 
 // --- Computed ---
-const strategyOptions = [
-  { value: "skip", label: "Skip — keep existing, ignore conflicts" },
-  { value: "overwrite", label: "Overwrite — replace existing entities" },
-  { value: "rename", label: "Rename — import with a new shortcut" },
-];
+const strategyOptions = computed(() => [
+  { value: "skip", label: t("project_settings.import.strategy_skip") },
+  { value: "overwrite", label: t("project_settings.import.strategy_overwrite") },
+  { value: "rename", label: t("project_settings.import.strategy_rename") },
+]);
 
 const hasUploadEntries = computed(() => {
   return (upload?.entries.value?.length ?? 0) > 0;
@@ -76,12 +79,12 @@ const previewCountRows = computed(() => {
   if (!importState.preview?.counts) return [];
   const counts = importState.preview.counts;
   const rows = [
-    { entity: "Sheets", count: counts.sheets || 0 },
-    { entity: "Flows", count: counts.flows || 0 },
-    { entity: "Nodes", count: counts.nodes || 0 },
-    { entity: "Scenes", count: counts.scenes || 0 },
-    { entity: "Screenplays", count: counts.screenplays || 0 },
-    { entity: "Assets", count: counts.assets || 0 },
+    { entity: t("project_settings.import.entities.sheets"), count: counts.sheets || 0 },
+    { entity: t("project_settings.import.entities.flows"), count: counts.flows || 0 },
+    { entity: t("project_settings.import.entities.nodes"), count: counts.nodes || 0 },
+    { entity: t("project_settings.import.entities.scenes"), count: counts.scenes || 0 },
+    { entity: t("project_settings.import.entities.screenplays"), count: counts.screenplays || 0 },
+    { entity: t("project_settings.import.entities.assets"), count: counts.assets || 0 },
   ];
   return rows.filter((r) => r.count > 0);
 });
@@ -90,12 +93,12 @@ const importResultRows = computed(() => {
   if (!importState.result) return [];
   const result = importState.result;
   const rows = [
-    { entity: "Assets", items: result.assets },
-    { entity: "Sheets", items: result.sheets },
-    { entity: "Flows", items: result.flows },
-    { entity: "Scenes", items: result.scenes },
-    { entity: "Screenplays", items: result.screenplays },
-    { entity: "Localization", items: result.localization },
+    { entity: t("project_settings.import.entities.assets"), items: result.assets },
+    { entity: t("project_settings.import.entities.sheets"), items: result.sheets },
+    { entity: t("project_settings.import.entities.flows"), items: result.flows },
+    { entity: t("project_settings.import.entities.scenes"), items: result.scenes },
+    { entity: t("project_settings.import.entities.screenplays"), items: result.screenplays },
+    { entity: t("project_settings.import.entities.localization"), items: result.localization },
   ];
   return rows.filter(
     (r) =>
@@ -138,15 +141,15 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
 
 <template>
   <section class="space-y-4">
-    <h2 class="text-lg font-semibold">Import</h2>
+    <h2 class="text-lg font-semibold">{{ $t("project_settings.import.title") }}</h2>
 
     <template v-if="canEdit">
       <!-- Step: Upload -->
       <div v-if="importState.step === 'upload'" class="space-y-3">
         <div class="space-y-2">
-          <Label>Select a .storyarn.json file</Label>
+          <Label>{{ $t("project_settings.import.select_file") }}</Label>
           <Button variant="outline" size="sm" @click="upload?.showFilePicker()">
-            Choose file...
+            {{ $t("project_settings.import.choose_file") }}
           </Button>
         </div>
 
@@ -160,20 +163,20 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
 
         <Button size="sm" :disabled="!hasUploadEntries" @click="handleUploadSubmit">
           <Eye class="size-4" />
-          Upload &amp; Preview
+          {{ $t("project_settings.import.upload_preview") }}
         </Button>
       </div>
 
       <!-- Step: Preview -->
       <div v-if="importState.step === 'preview'" class="space-y-4">
-        <h3 class="text-base font-medium">Import preview</h3>
+        <h3 class="text-base font-medium">{{ $t("project_settings.import.preview_title") }}</h3>
 
         <!-- Entity counts -->
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Entity</TableHead>
-              <TableHead class="text-right">Count</TableHead>
+              <TableHead>{{ $t("project_settings.import.th_entity") }}</TableHead>
+              <TableHead class="text-right">{{ $t("project_settings.import.th_count") }}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -187,7 +190,7 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
         <!-- Conflicts -->
         <div v-if="importState.preview?.has_conflicts" class="space-y-2">
           <h4 class="text-sm font-medium text-yellow-600 dark:text-yellow-500">
-            Shortcut conflicts detected
+            {{ $t("project_settings.import.conflicts_title") }}
           </h4>
           <div
             v-for="([type, shortcuts], ci) in Object.entries(importState.preview.conflicts ?? {})"
@@ -199,7 +202,7 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
           </div>
 
           <div class="space-y-2">
-            <Label>Conflict resolution strategy</Label>
+            <Label>{{ $t("project_settings.import.conflict_strategy") }}</Label>
             <RadioGroup
               :model-value="importState.conflictStrategy"
               class="flex flex-col gap-1"
@@ -220,9 +223,9 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
         <div class="flex items-center gap-2">
           <Button size="sm" @click="executeImport">
             <Upload class="size-4" />
-            Import
+            {{ $t("project_settings.import.import_button") }}
           </Button>
-          <Button variant="ghost" size="sm" @click="resetImport"> Cancel </Button>
+          <Button variant="ghost" size="sm" @click="resetImport"> {{ $t("project_settings.import.cancel") }} </Button>
         </div>
       </div>
 
@@ -232,14 +235,14 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
           class="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200"
         >
           <CheckCircle class="size-5 shrink-0" />
-          <span>Import completed successfully!</span>
+          <span>{{ $t("project_settings.import.success") }}</span>
         </div>
 
         <Table v-if="importResultRows.length">
           <TableHeader>
             <TableRow>
-              <TableHead>Entity</TableHead>
-              <TableHead class="text-right">Imported</TableHead>
+              <TableHead>{{ $t("project_settings.import.th_entity") }}</TableHead>
+              <TableHead class="text-right">{{ $t("project_settings.import.th_imported") }}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -250,7 +253,7 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
           </TableBody>
         </Table>
 
-        <Button variant="ghost" size="sm" @click="resetImport"> Import another </Button>
+        <Button variant="ghost" size="sm" @click="resetImport"> {{ $t("project_settings.import.import_another") }} </Button>
       </div>
 
       <!-- Step: Error -->
@@ -262,7 +265,7 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
           <span>{{ importState.error }}</span>
         </div>
 
-        <Button variant="ghost" size="sm" @click="resetImport"> Try again </Button>
+        <Button variant="ghost" size="sm" @click="resetImport"> {{ $t("project_settings.import.try_again") }} </Button>
       </div>
     </template>
 
@@ -271,7 +274,7 @@ function formatImportCount(items: unknown[] | Record<string, string | number> | 
         class="flex items-center gap-2 rounded-md border bg-muted p-3 text-sm text-muted-foreground"
       >
         <Lock class="size-4 shrink-0" />
-        <span>You need edit permissions to import data.</span>
+        <span>{{ $t("project_settings.import.no_permission") }}</span>
       </div>
     </template>
   </section>

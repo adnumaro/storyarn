@@ -6,7 +6,10 @@ import { Button } from "@components/ui/button/index.ts";
 import { Checkbox } from "@components/ui/checkbox/index.ts";
 import { Label } from "@components/ui/label/index.ts";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group/index.ts";
+import { useI18n } from "vue-i18n";
 import { useLive } from "@composables/useLive";
+
+const { t } = useI18n();
 
 interface FormatOption {
   format: string;
@@ -58,19 +61,19 @@ const {
 
 const live = useLive();
 
-const sectionLabels = [
-  { key: "sheets", label: "Sheets" },
-  { key: "flows", label: "Flows" },
-  { key: "scenes", label: "Scenes" },
-  { key: "screenplays", label: "Screenplays" },
-  { key: "localization", label: "Localization" },
-];
+const sectionLabels = computed(() => [
+  { key: "sheets", label: t("project_settings.export.sections.sheets") },
+  { key: "flows", label: t("project_settings.export.sections.flows") },
+  { key: "scenes", label: t("project_settings.export.sections.scenes") },
+  { key: "screenplays", label: t("project_settings.export.sections.screenplays") },
+  { key: "localization", label: t("project_settings.export.sections.localization") },
+]);
 
-const assetModeOptions = [
-  { value: "references", label: "References only (URLs in output)" },
-  { value: "embedded", label: "Embedded (Base64 — larger file)" },
-  { value: "bundled", label: "Bundled (ZIP with assets folder)" },
-];
+const assetModeOptions = computed(() => [
+  { value: "references", label: t("project_settings.export.asset_references") },
+  { value: "embedded", label: t("project_settings.export.asset_embedded") },
+  { value: "bundled", label: t("project_settings.export.asset_bundled") },
+]);
 
 const sectionsSet = computed(() => new Set(sectionConfig.selected));
 const supportedSet = computed(() => new Set(sectionConfig.supported));
@@ -97,9 +100,9 @@ function validateExport() {
 
 function validationStatusLabel(status: string) {
   const labels: Record<string, string> = {
-    passed: "Passed",
-    warnings: "Warnings",
-    errors: "Errors",
+    passed: t("project_settings.export.passed"),
+    warnings: t("project_settings.export.warnings"),
+    errors: t("project_settings.export.errors"),
   };
   return labels[status] || status;
 }
@@ -114,11 +117,11 @@ function validationBadgeVariant(status: string) {
 
 <template>
   <section class="space-y-5">
-    <h2 class="text-lg font-semibold">Export</h2>
+    <h2 class="text-lg font-semibold">{{ $t("project_settings.export.title") }}</h2>
 
     <!-- Format selector -->
     <div class="space-y-2">
-      <Label class="text-sm font-medium">Format</Label>
+      <Label class="text-sm font-medium">{{ $t("project_settings.export.format") }}</Label>
       <RadioGroup
         :model-value="formatConfig.selected"
         class="flex flex-col gap-1"
@@ -138,7 +141,7 @@ function validationBadgeVariant(status: string) {
 
     <!-- Content section checkboxes -->
     <div class="space-y-2">
-      <Label class="text-sm font-medium">Content</Label>
+      <Label class="text-sm font-medium">{{ $t("project_settings.export.content") }}</Label>
       <div class="flex flex-col gap-1">
         <label
           v-for="sec in sectionLabels"
@@ -162,7 +165,7 @@ function validationBadgeVariant(status: string) {
 
     <!-- Asset mode -->
     <div class="space-y-2">
-      <Label class="text-sm font-medium">Assets</Label>
+      <Label class="text-sm font-medium">{{ $t("project_settings.export.assets") }}</Label>
       <RadioGroup
         :model-value="options.assetMode"
         class="flex flex-col gap-1"
@@ -181,21 +184,21 @@ function validationBadgeVariant(status: string) {
 
     <!-- Options -->
     <div class="space-y-2">
-      <Label class="text-sm font-medium">Options</Label>
+      <Label class="text-sm font-medium">{{ $t("project_settings.export.options") }}</Label>
       <div class="flex flex-col gap-1">
         <label class="flex cursor-pointer items-center gap-3 py-1">
           <Checkbox
             :model-value="options.validateBeforeExport"
             @update:model-value="toggleOption('validate_before_export')"
           />
-          <span class="text-sm">Validate before export</span>
+          <span class="text-sm">{{ $t("project_settings.export.validate_before") }}</span>
         </label>
         <label class="flex cursor-pointer items-center gap-3 py-1">
           <Checkbox
             :model-value="options.prettyPrint"
             @update:model-value="toggleOption('pretty_print')"
           />
-          <span class="text-sm">Pretty print output</span>
+          <span class="text-sm">{{ $t("project_settings.export.pretty_print") }}</span>
         </label>
       </div>
     </div>
@@ -204,13 +207,13 @@ function validationBadgeVariant(status: string) {
     <div class="flex items-center gap-3 pt-2">
       <Button variant="outline" size="sm" @click="validateExport">
         <ShieldCheck class="size-4" />
-        Validate
+        {{ $t("project_settings.export.validate") }}
       </Button>
 
       <Button size="sm" as-child>
         <a :href="exportDownloadUrl">
           <Download class="size-4" />
-          Download .{{ formatConfig.extension }}
+          {{ $t("project_settings.export.download", { ext: formatConfig.extension }) }}
         </a>
       </Button>
     </div>
@@ -258,7 +261,7 @@ function validationBadgeVariant(status: string) {
         v-if="validation.status === 'passed' && !validation.info?.length"
         class="text-sm text-green-600 dark:text-green-400"
       >
-        No issues found. Project is ready for export.
+        {{ $t("project_settings.export.no_issues") }}
       </p>
     </div>
   </section>

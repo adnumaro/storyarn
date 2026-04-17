@@ -74,9 +74,9 @@ function formatTimeAgo(datetime: string | null) {
   <div class="max-w-3xl mx-auto">
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-2xl font-bold tracking-tight">Trash</h1>
+        <h1 class="text-2xl font-bold tracking-tight">{{ $t("project_settings.trash.title") }}</h1>
         <p class="text-sm text-muted-foreground mt-1">
-          Deleted sheets are kept for 30 days before being permanently removed.
+          {{ $t("project_settings.trash.description") }}
         </p>
       </div>
       <Button
@@ -85,7 +85,7 @@ function formatTimeAgo(datetime: string | null) {
         @click="showEmptyConfirm = true"
       >
         <Trash2 class="size-4 mr-2" />
-        Empty Trash
+        {{ $t("project_settings.trash.empty_trash") }}
       </Button>
     </div>
 
@@ -96,8 +96,8 @@ function formatTimeAgo(datetime: string | null) {
         class="flex flex-col items-center justify-center py-16 text-center"
       >
         <Trash2 class="size-10 text-muted-foreground/40 mb-4" />
-        <h3 class="text-lg font-medium text-muted-foreground">Trash is empty</h3>
-        <p class="text-sm text-muted-foreground/70 mt-1">Deleted sheets will appear here.</p>
+        <h3 class="text-lg font-medium text-muted-foreground">{{ $t("project_settings.trash.empty_title") }}</h3>
+        <p class="text-sm text-muted-foreground/70 mt-1">{{ $t("project_settings.trash.empty_description") }}</p>
       </div>
 
       <!-- Trashed items list -->
@@ -116,7 +116,7 @@ function formatTimeAgo(datetime: string | null) {
             <div class="min-w-0">
               <p class="font-medium truncate">{{ sheet.name }}</p>
               <p class="text-sm text-muted-foreground">
-                Deleted {{ formatTimeAgo(sheet.deleted_at) }}
+                {{ $t("project_settings.trash.deleted_prefix") }}{{ formatTimeAgo(sheet.deleted_at) }}
               </p>
             </div>
           </div>
@@ -124,7 +124,7 @@ function formatTimeAgo(datetime: string | null) {
           <div v-if="canManage" class="flex items-center gap-2 shrink-0">
             <Button variant="ghost" size="sm" @click="restoreSheet(sheet.id)">
               <Undo2 class="size-4 mr-1" />
-              Restore
+              {{ $t("project_settings.trash.restore") }}
             </Button>
             <Button
               variant="ghost"
@@ -133,7 +133,7 @@ function formatTimeAgo(datetime: string | null) {
               @click="openDeleteConfirm(sheet)"
             >
               <Trash2 class="size-4 mr-1" />
-              Delete
+              {{ $t("project_settings.trash.delete") }}
             </Button>
           </div>
         </div>
@@ -146,15 +146,15 @@ function formatTimeAgo(datetime: string | null) {
         <DialogHeader>
           <DialogTitle class="flex items-center gap-2">
             <AlertTriangle class="size-5 text-destructive" />
-            Delete permanently?
+            {{ $t("project_settings.trash.delete_confirm_title") }}
           </DialogTitle>
           <DialogDescription>
-            This sheet will be permanently deleted. This action cannot be undone.
+            {{ $t("project_settings.trash.delete_confirm_description") }}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" @click="showDeleteConfirm = false">Cancel</Button>
-          <Button variant="destructive" @click="confirmDelete">Delete</Button>
+          <Button variant="outline" @click="showDeleteConfirm = false">{{ $t("project_settings.trash.cancel") }}</Button>
+          <Button variant="destructive" @click="confirmDelete">{{ $t("project_settings.trash.delete") }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -165,15 +165,15 @@ function formatTimeAgo(datetime: string | null) {
         <DialogHeader>
           <DialogTitle class="flex items-center gap-2">
             <AlertTriangle class="size-5 text-destructive" />
-            Empty trash?
+            {{ $t("project_settings.trash.empty_confirm_title") }}
           </DialogTitle>
           <DialogDescription>
-            All items in trash will be permanently deleted. This action cannot be undone.
+            {{ $t("project_settings.trash.empty_confirm_description") }}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" @click="showEmptyConfirm = false">Cancel</Button>
-          <Button variant="destructive" @click="emptyTrash">Empty Trash</Button>
+          <Button variant="outline" @click="showEmptyConfirm = false">{{ $t("project_settings.trash.cancel") }}</Button>
+          <Button variant="destructive" @click="emptyTrash">{{ $t("project_settings.trash.empty_trash") }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

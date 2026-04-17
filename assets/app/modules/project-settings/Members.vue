@@ -102,37 +102,37 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
     </div>
 
     <div class="rounded-lg border border-border bg-muted/30 p-4">
-      <h4 class="font-medium mb-3">Request member invitation</h4>
+      <h4 class="font-medium mb-3">{{ $t("project_settings.members.request_title") }}</h4>
       <p class="text-sm text-muted-foreground mb-3">
-        Invitation requests are reviewed by an admin before being sent.
+        {{ $t("project_settings.members.request_description") }}
       </p>
       <form @submit.prevent="sendInvitation">
         <div class="flex gap-3 items-end">
           <div class="flex-1 space-y-1.5">
-            <Label for="invite-email">Email address</Label>
+            <Label for="invite-email">{{ $t("project_settings.members.email") }}</Label>
             <Input
               id="invite-email"
               type="email"
               v-model="inviteEmail"
-              placeholder="colleague@example.com"
+              :placeholder="$t('project_settings.members.email_placeholder')"
               required
             />
           </div>
           <div class="w-32 space-y-1.5">
-            <Label for="invite-role">Role</Label>
+            <Label for="invite-role">{{ $t("project_settings.members.role") }}</Label>
             <Select v-model="inviteRole">
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="editor">Editor</SelectItem>
-                <SelectItem value="viewer">Viewer</SelectItem>
+                <SelectItem value="editor">{{ $t("project_settings.members.role_editor") }}</SelectItem>
+                <SelectItem value="viewer">{{ $t("project_settings.members.role_viewer") }}</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
         <div class="flex justify-end gap-3 pt-4">
-          <Button type="submit">Request Invitation</Button>
+          <Button type="submit">{{ $t("project_settings.members.submit") }}</Button>
         </div>
       </form>
     </div>

@@ -62,11 +62,11 @@ function formatNumber(n: number | string) {
 <template>
   <div>
     <div class="rounded-lg border border-border bg-muted/30 p-4">
-      <h4 class="font-medium mb-3">Translation Provider (DeepL)</h4>
+      <h4 class="font-medium mb-3">{{ $t("project_settings.localization.provider_title") }}</h4>
 
       <form @submit.prevent="saveProviderConfig" class="space-y-4">
         <div class="space-y-1.5">
-          <Label for="api-key">API Key</Label>
+          <Label for="api-key">{{ $t("project_settings.localization.api_key") }}</Label>
           <Input
             id="api-key"
             type="password"
@@ -76,29 +76,29 @@ function formatNumber(n: number | string) {
         </div>
 
         <div class="space-y-1.5">
-          <Label for="api-tier">API Tier</Label>
+          <Label for="api-tier">{{ $t("project_settings.localization.api_tier") }}</Label>
           <Select v-model="providerEndpoint">
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="https://api-free.deepl.com">Free (api-free.deepl.com)</SelectItem>
-              <SelectItem value="https://api.deepl.com">Pro (api.deepl.com)</SelectItem>
+              <SelectItem value="https://api-free.deepl.com">{{ $t("project_settings.localization.tier_free") }}</SelectItem>
+              <SelectItem value="https://api.deepl.com">{{ $t("project_settings.localization.tier_pro") }}</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div class="flex justify-end gap-3 pt-1">
           <Button v-if="hasApiKey" type="button" variant="outline" @click="testProviderConnection">
-            Test Connection
+            {{ $t("project_settings.localization.test_connection") }}
           </Button>
-          <Button type="submit">Save</Button>
+          <Button type="submit">{{ $t("project_settings.localization.save") }}</Button>
         </div>
       </form>
 
       <div v-if="providerUsage" class="mt-3 text-sm text-muted-foreground">
-        Usage: {{ formatNumber(providerUsage.characterCount) }} /
-        {{ formatNumber(providerUsage.characterLimit) }} characters
+        {{ $t("project_settings.localization.usage_prefix") }}{{ formatNumber(providerUsage.characterCount) }} /
+        {{ formatNumber(providerUsage.characterLimit) }}{{ $t("project_settings.localization.usage_characters") }}
       </div>
     </div>
   </div>

@@ -124,8 +124,8 @@ function downloadUrl(snapshotId: number) {
       class="flex items-center gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm"
     >
       <Loader class="size-5 animate-spin text-yellow-600 shrink-0" />
-      <span class="flex-1">A restoration is in progress. Please wait for it to complete.</span>
-      <Button variant="ghost" size="sm" @click="clearStaleLock"> Clear stale lock </Button>
+      <span class="flex-1">{{ $t("project_settings.snapshots.restoration_in_progress") }}</span>
+      <Button variant="ghost" size="sm" @click="clearStaleLock"> {{ $t("project_settings.snapshots.clear_lock") }} </Button>
     </div>
 
     <!-- Create Snapshot -->
@@ -133,26 +133,26 @@ function downloadUrl(snapshotId: number) {
       <div class="rounded-lg border border-border bg-muted/30 p-4">
         <form @submit.prevent="createSnapshot" class="space-y-4">
           <div class="space-y-1.5">
-            <Label for="snapshot-title">Snapshot Title</Label>
+            <Label for="snapshot-title">{{ $t("project_settings.snapshots.snapshot_title") }}</Label>
             <Input
               id="snapshot-title"
               v-model="snapshotTitle"
-              placeholder="e.g., Before playtest v2"
+              :placeholder="$t('project_settings.snapshots.snapshot_placeholder')"
             />
           </div>
           <div class="space-y-1.5">
-            <Label for="snapshot-desc">Description</Label>
+            <Label for="snapshot-desc">{{ $t("project_settings.snapshots.description") }}</Label>
             <Textarea id="snapshot-desc" v-model="snapshotDescription" :rows="2" />
           </div>
           <div class="flex justify-end gap-3 pt-1">
             <Button type="submit" :disabled="!canCreateSnapshot || restorationInProgress">
               <Archive class="size-4 mr-1.5" />
-              Create Snapshot
+              {{ $t("project_settings.snapshots.create_snapshot") }}
             </Button>
           </div>
         </form>
         <p v-if="!canCreateSnapshot" class="text-sm text-destructive mt-2">
-          Snapshot limit reached for your plan.
+          {{ $t("project_settings.snapshots.limit_reached") }}
         </p>
       </div>
     </section>
@@ -161,14 +161,14 @@ function downloadUrl(snapshotId: number) {
 
     <!-- Snapshot List -->
     <section>
-      <h3 class="text-lg font-semibold mb-4">Snapshots</h3>
+      <h3 class="text-lg font-semibold mb-4">{{ $t("project_settings.snapshots.snapshots_heading") }}</h3>
 
       <!-- Empty state -->
       <div v-if="snapshots.length === 0" class="text-center py-12">
         <Archive class="size-12 mx-auto mb-4 text-muted-foreground/30" />
-        <p class="font-medium text-muted-foreground/70">No snapshots yet</p>
+        <p class="font-medium text-muted-foreground/70">{{ $t("project_settings.snapshots.empty_title") }}</p>
         <p class="text-sm text-muted-foreground/50 mt-1">
-          Create a snapshot to save a point-in-time backup of your entire project.
+          {{ $t("project_settings.snapshots.empty_description") }}
         </p>
       </div>
 
@@ -183,7 +183,7 @@ function downloadUrl(snapshotId: number) {
               <div class="flex items-center gap-2">
                 <Badge variant="secondary" class="text-xs"> v{{ snapshot.versionNumber }} </Badge>
                 <span class="font-medium truncate">
-                  {{ snapshot.title || "Untitled Snapshot" }}
+                  {{ snapshot.title || $t("project_settings.snapshots.untitled") }}
                 </span>
               </div>
               <p v-if="snapshot.description" class="text-sm text-muted-foreground mt-1">
@@ -203,7 +203,7 @@ function downloadUrl(snapshotId: number) {
             <div class="flex gap-2 shrink-0">
               <Button variant="outline" size="sm" as="a" :href="downloadUrl(snapshot.id)">
                 <Download class="size-3 mr-1" />
-                Download
+                {{ $t("project_settings.snapshots.download") }}
               </Button>
               <Button
                 variant="outline"
@@ -212,7 +212,7 @@ function downloadUrl(snapshotId: number) {
                 @click="showRestoreDialog = snapshot.id"
               >
                 <RotateCcw class="size-3 mr-1" />
-                Restore
+                {{ $t("project_settings.snapshots.restore") }}
               </Button>
               <Button
                 variant="outline"
@@ -239,20 +239,19 @@ function downloadUrl(snapshotId: number) {
               <DialogHeader>
                 <div class="flex items-center gap-2">
                   <RotateCcw class="size-5 text-yellow-500" />
-                  <DialogTitle>Restore project snapshot?</DialogTitle>
+                  <DialogTitle>{{ $t("project_settings.snapshots.restore_confirm_title") }}</DialogTitle>
                 </div>
                 <DialogDescription>
-                  This will overwrite all current project data with the state from this snapshot. A
-                  safety snapshot will be created before restoring.
+                  {{ $t("project_settings.snapshots.restore_confirm_description") }}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <Button variant="outline" @click="showRestoreDialog = null">Cancel</Button>
+                <Button variant="outline" @click="showRestoreDialog = null">{{ $t("project_settings.snapshots.cancel") }}</Button>
                 <Button
                   class="bg-yellow-600 hover:bg-yellow-700 text-white"
                   @click="restoreSnapshot(snapshot.id)"
                 >
-                  Restore
+                  {{ $t("project_settings.snapshots.restore") }}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -271,15 +270,15 @@ function downloadUrl(snapshotId: number) {
               <DialogHeader>
                 <div class="flex items-center gap-2">
                   <Trash2 class="size-5 text-destructive" />
-                  <DialogTitle>Delete snapshot?</DialogTitle>
+                  <DialogTitle>{{ $t("project_settings.snapshots.delete_confirm_title") }}</DialogTitle>
                 </div>
                 <DialogDescription>
-                  This will permanently delete this snapshot. This action cannot be undone.
+                  {{ $t("project_settings.snapshots.delete_confirm_description") }}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <Button variant="outline" @click="showDeleteSnapshotDialog = null">Cancel</Button>
-                <Button variant="destructive" @click="deleteSnapshot(snapshot.id)">Delete</Button>
+                <Button variant="outline" @click="showDeleteSnapshotDialog = null">{{ $t("project_settings.snapshots.cancel") }}</Button>
+                <Button variant="destructive" @click="deleteSnapshot(snapshot.id)">{{ $t("project_settings.snapshots.delete") }}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
