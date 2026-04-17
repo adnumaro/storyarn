@@ -1,0 +1,31 @@
+assets/app/locales/en/landing.json
+  3ea3c2327c2231e2 92-131
+assets/app/locales/es/landing.json
+  3ea3c2327c2231e2 92-131
+assets/app/modules/landing/sections/ExplorationSpotlight.vue
+  3ea3c2327c2231e2 30,33,37,42
+assets/app/modules/landing/sections/WorkflowGrid.vue
+  3ea3c2327c2231e2 2,13,16,23-24,30,33,35-37
+assets/app/modules/landing/sections/VersionSpotlight.vue
+  3ea3c2327c2231e2 36,39,43,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "8b181a256e263256a828852735de59e0e0148469",
+  "prompts": {
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 98,
+      "total_deletions": 196,
+      "accepted_lines": 2432,
+      "overriden_lines": 0
+    }
+  }
+}
