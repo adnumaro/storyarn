@@ -1,0 +1,29 @@
+assets/app/locales/es/settings.json
+  3ea3c2327c2231e2 71-74,116,126-128
+assets/app/modules/settings/WorkspaceGeneral.vue
+  3ea3c2327c2231e2 182,257,270,283
+assets/app/locales/en/settings.json
+  3ea3c2327c2231e2 71-74,116,126-128
+assets/app/modules/settings/WorkspaceDeletedProjects.vue
+  3ea3c2327c2231e2 15,18-19,74,78-79,131,180-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "e37e352118c7eac29da64bb95f88afa6039c36b1",
+  "prompts": {
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 41,
+      "total_deletions": 52,
+      "accepted_lines": 280,
+      "overriden_lines": 0
+    }
+  }
+}
