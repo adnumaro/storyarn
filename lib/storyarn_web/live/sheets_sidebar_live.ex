@@ -21,6 +21,7 @@ defmodule StoryarnWeb.SheetsSidebarLive do
   @impl true
   def mount(_params, session, socket) do
     current_scope = session["current_scope"]
+    if locale = session["locale"], do: Gettext.put_locale(Storyarn.Gettext, locale)
     project_id = session["project_id"]
 
     project =

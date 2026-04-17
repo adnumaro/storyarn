@@ -25,6 +25,8 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
 
   @impl true
   def mount(_params, session, socket) do
+    if locale = session["locale"], do: Gettext.put_locale(Storyarn.Gettext, locale)
+
     socket =
       socket
       |> assign(:current_scope, session["current_scope"])

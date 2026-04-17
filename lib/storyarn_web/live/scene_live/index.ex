@@ -43,7 +43,8 @@ defmodule StoryarnWeb.SceneLive.Index do
           "can_edit" => @can_edit,
           "active_tool" => "scenes",
           "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/scenes",
-          "current_scope" => @current_scope
+          "current_scope" => @current_scope,
+          "locale" => @locale
         }
       }
     >

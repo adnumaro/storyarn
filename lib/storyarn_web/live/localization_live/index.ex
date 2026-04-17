@@ -36,7 +36,8 @@ defmodule StoryarnWeb.LocalizationLive.Index do
           "active_tool" => "localization",
           "dashboard_url" =>
             ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization",
-          "current_scope" => @current_scope
+          "current_scope" => @current_scope,
+          "locale" => @locale
         }
       }
     >
@@ -51,7 +52,8 @@ defmodule StoryarnWeb.LocalizationLive.Index do
             "selected_locale" => @selected_locale,
             "has_provider" => @has_provider,
             "can_edit" => @can_edit,
-            "current_scope" => @current_scope
+            "current_scope" => @current_scope,
+            "locale" => @locale
           }
         )}
       </:top_bar_extras_right>

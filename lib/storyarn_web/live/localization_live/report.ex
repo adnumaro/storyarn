@@ -30,7 +30,8 @@ defmodule StoryarnWeb.LocalizationLive.Report do
           "active_tool" => "localization",
           "dashboard_url" =>
             ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization",
-          "current_scope" => @current_scope
+          "current_scope" => @current_scope,
+          "locale" => @locale
         }
       }
     >

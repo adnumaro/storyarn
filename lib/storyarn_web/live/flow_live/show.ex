@@ -75,7 +75,8 @@ defmodule StoryarnWeb.FlowLive.Show do
           "can_edit" => @can_edit,
           "active_tool" => "flows",
           "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows",
-          "current_scope" => @current_scope
+          "current_scope" => @current_scope,
+          "locale" => @locale
         }
       }
     >
