@@ -103,14 +103,9 @@ watch(
 onUnmounted(() => {
   delete document.body.dataset.treePanelOpen;
 });
-
-// ── Dashboard link label ──
-// dashboardLabel moved to template: $t(`layout.tools.${activeTool}`) + $t("layout.tree_panel.dashboard_suffix")
-
 function togglePanel() {
   live.pushEvent("tree_panel_toggle", {});
 }
-
 function togglePin() {
   live.pushEvent("tree_panel_pin", {});
 }
@@ -132,7 +127,7 @@ function togglePin() {
           ]"
         >
           <LayoutDashboard class="size-4" />
-          {{ $t(`layout.tools.${activeTool}`) }} {{ $t("layout.tree_panel.dashboard_suffix") }}
+          {{ $t("layout.tree_panel.dashboard_label", { tool: $t(`layout.tools.${activeTool}`) }) }}
         </a>
       </div>
     </template>

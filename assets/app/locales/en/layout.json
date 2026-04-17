@@ -10,7 +10,7 @@
       "localization": "Localization"
     },
     "tree_panel": {
-      "dashboard_suffix": "dashboard",
+      "dashboard_label": "{tool} dashboard",
       "unpin": "Unpin panel",
       "pin_panel": "Pin panel",
       "pinned": "Pinned",

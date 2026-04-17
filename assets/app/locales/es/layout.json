@@ -1,7 +1,7 @@
 {
   "layout": {
     "tools": {
-      "dashboard": "Panel",
+      "dashboard": "Dashboard",
       "sheets": "Fichas",
       "flows": "Flujos",
       "scenes": "Escenas",
@@ -10,7 +10,7 @@
       "localization": "Localización"
     },
     "tree_panel": {
-      "dashboard_suffix": "panel",
+      "dashboard_label": "Dashboard de {tool}",
       "unpin": "Desfijar panel",
       "pin_panel": "Fijar panel",
       "pinned": "Fijado",
