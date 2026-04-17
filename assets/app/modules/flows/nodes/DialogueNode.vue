@@ -42,14 +42,12 @@ const {
   config,
   color,
   sheetsMap = {},
-  labels = {},
 } = defineProps<{
   data: ReteNodeData;
   emit: ReteEmitFn;
   config: NodeConfig;
   color: string;
   sheetsMap?: Record<string, SheetMapEntry>;
-  labels?: Record<string, string>;
 }>();
 
 const { t } = useI18n();
@@ -58,7 +56,6 @@ const ctx = inject<FlowContextInjection>(FLOW_CONTEXT_KEY, {
   onInlineEditSave: null,
   sheetsMap: {},
   hubsMap: {},
-  labels: {},
   lod: "full",
   nodeDataVersion: 0,
 });
@@ -203,7 +200,7 @@ function onSpeakerSelect(id: number | string | null) {
           variant="ghost"
           :options="speakerOptions"
           :selected-id="nodeData.speaker_sheet_id || null"
-          :placeholder="labels.no_speaker || t('flows.nodes.dialogue.no_speaker')"
+          :placeholder="t('flows.nodes.dialogue.no_speaker')"
           @update:selected-id="onSpeakerSelect"
         />
       </div>
@@ -240,7 +237,7 @@ function onSpeakerSelect(id: number | string | null) {
     <div v-if="editing" class="px-3.5 pt-2.5 pb-3">
       <input
         class="inline-input"
-        :placeholder="labels.stage_directions || t('flows.nodes.dialogue.stage_placeholder')"
+        :placeholder="t('flows.nodes.dialogue.stage_placeholder')"
         :value="stageDirections"
         @blur="onStageDirectionsBlur"
         @keydown="onInputKeydown"
@@ -248,7 +245,7 @@ function onSpeakerSelect(id: number | string | null) {
       />
       <input
         class="inline-input inline-input-menu"
-        :placeholder="labels.menu_text || t('flows.nodes.dialogue.menu_placeholder')"
+        :placeholder="t('flows.nodes.dialogue.menu_placeholder')"
         :value="menuText"
         @blur="onMenuTextBlur"
         @keydown="onInputKeydown"
@@ -257,7 +254,7 @@ function onSpeakerSelect(id: number | string | null) {
       <textarea
         ref="dialogueRef"
         class="inline-textarea"
-        :placeholder="labels.dialogue_text || t('flows.nodes.dialogue.dialogue_placeholder')"
+        :placeholder="t('flows.nodes.dialogue.dialogue_placeholder')"
         :value="plainText"
         @blur="onDialogueBlur"
         @keydown="onTextareaKeydown"

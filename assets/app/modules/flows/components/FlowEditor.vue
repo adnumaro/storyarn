@@ -10,7 +10,6 @@ import FlowMinimapToggle from "./FlowMinimapToggle.vue";
 const {
   flowData = null,
   variableMap = null,
-  labels = "{}",
   loading = true,
   readonly = false,
   userId = 0,
@@ -20,7 +19,6 @@ const {
 } = defineProps<{
   flowData: string | null;
   variableMap: string | null;
-  labels: string;
   loading: boolean;
   readonly: boolean;
   userId: number | string;
@@ -44,11 +42,9 @@ async function initCanvas() {
 
   const parsedFlowData = JSON.parse(flowData);
   const parsedSheetsMap = variableMap ? JSON.parse(variableMap) : {};
-  const parsedLabels = JSON.parse(labels);
 
   await init(containerRef.value, parsedFlowData, {
     sheetsMap: parsedSheetsMap,
-    labels: parsedLabels,
     readonly,
     userId: Number(userId),
     userColor,

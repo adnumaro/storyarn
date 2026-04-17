@@ -22,7 +22,6 @@ const ctx = inject<FlowContextInjection>(FLOW_CONTEXT_KEY, {
   onInlineEditSave: null,
   sheetsMap: {},
   hubsMap: {},
-  labels: {},
   lod: "full",
   nodeDataVersion: 0,
 });

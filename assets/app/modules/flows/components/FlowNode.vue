@@ -28,7 +28,6 @@ interface FlowNodeData {
 interface FlowContextValue {
   sheetsMap: Record<string, SheetMapEntry>;
   hubsMap: Record<string, HubMapEntry>;
-  labels: Record<string, string>;
   lod: string;
   nodeDataVersion: number;
 }
@@ -54,7 +53,6 @@ const { data, emit: emitFn } = defineProps<{
 const ctx = inject<FlowContextValue>(FLOW_CONTEXT_KEY, {
   sheetsMap: {},
   hubsMap: {},
-  labels: {},
   lod: "full",
   nodeDataVersion: 0,
 });
@@ -92,7 +90,6 @@ const reactiveNodeData = computed(() => {
     :color="nodeColor"
     :sheets-map="ctx.sheetsMap"
     :hubs-map="ctx.hubsMap"
-    :labels="ctx.labels"
     :node-data-override="reactiveNodeData"
   />
 </template>

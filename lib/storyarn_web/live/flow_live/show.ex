@@ -141,7 +141,6 @@ defmodule StoryarnWeb.FlowLive.Show do
                     do: nil,
                     else: Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))
                 }
-                labels={Jason.encode!(flow_canvas_labels())}
                 loading={@loading}
                 readonly={!@can_edit}
                 user-id={@current_scope.user.id}
@@ -261,7 +260,6 @@ defmodule StoryarnWeb.FlowLive.Show do
           class="w-full h-full"
           flow-data={Jason.encode!(@flow_data)}
           variable-map={Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))}
-          labels={Jason.encode!(flow_canvas_labels())}
           loading={false}
           readonly={!@can_edit}
           user-id={@current_scope.user.id}
@@ -1560,44 +1558,6 @@ defmodule StoryarnWeb.FlowLive.Show do
       subflowExits: assigns.subflow_exits,
       referencingJumps: assigns.referencing_jumps,
       referencingFlows: assigns.referencing_flows
-    }
-  end
-
-  defp flow_canvas_labels do
-    %{
-      # Root menu
-      add_node: dgettext("flows", "Add node"),
-      add_note: dgettext("flows", "Add Note"),
-      play_preview: dgettext("flows", "Play preview"),
-      start_debugging: dgettext("flows", "Start debugging"),
-      auto_layout: dgettext("flows", "Auto-layout"),
-      # Node types
-      dialogue: dgettext("flows", "Dialogue"),
-      condition: dgettext("flows", "Condition"),
-      instruction: dgettext("flows", "Instruction"),
-      hub: dgettext("flows", "Hub"),
-      jump: dgettext("flows", "Jump"),
-      exit: dgettext("flows", "Exit"),
-      subflow: dgettext("flows", "Subflow"),
-      slug_line: dgettext("flows", "Slug Line"),
-      # Node actions
-      open_editor_panel: dgettext("flows", "Open editor panel"),
-      preview_from_here: dgettext("flows", "Preview from here"),
-      generate_technical_id: dgettext("flows", "Generate technical ID"),
-      toggle_switch_mode: dgettext("flows", "Toggle switch mode"),
-      locate_referencing_jumps: dgettext("flows", "Locate referencing jumps"),
-      locate_target_hub: dgettext("flows", "Locate target hub"),
-      open_referenced_flow: dgettext("flows", "Open referenced flow"),
-      create_linked_flow: dgettext("flows", "Create linked flow"),
-      view_referencing_flows: dgettext("flows", "View referencing flows"),
-      duplicate: dgettext("flows", "Duplicate"),
-      delete: dgettext("flows", "Delete"),
-      # Inline edit
-      search: dgettext("flows", "Search…"),
-      no_speaker: dgettext("flows", "Dialogue"),
-      stage_directions: dgettext("flows", "Stage directions…"),
-      menu_text: dgettext("flows", "Menu text…"),
-      dialogue_text: dgettext("flows", "Dialogue text…")
     }
   end
 

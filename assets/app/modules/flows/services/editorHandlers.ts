@@ -108,7 +108,6 @@ export interface HubMapEntry {
 export interface FlowContext {
   sheetsMap: Record<string, SheetMapEntry>;
   hubsMap: Record<string, HubMapEntry>;
-  labels: Record<string, string>;
   lod: string;
   editingNodeId: string | null;
   onInlineEditSave: ((reteNodeId: string, field: string, value: unknown) => void) | null;
@@ -127,7 +126,6 @@ export interface HookProxy {
   connectionDataMap: Map<string, { id: number; label: string | null; condition: unknown }>;
   sheetsMap: Record<string, SheetMapEntry>;
   hubsMap: Record<string, HubMapEntry>;
-  labels: Record<string, string>;
   currentLod: string;
   readonly: boolean;
   currentUserId: number;
@@ -145,7 +143,6 @@ export interface HookProxy {
   exitLoadingFromServer(): void;
   _sheetsMap: Record<string, SheetMapEntry>;
   _hubsMap: Record<string, HubMapEntry>;
-  _labels: Record<string, string>;
   _readonly: boolean;
   _currentUserId: number;
   _currentUserColor: string;

@@ -54,7 +54,6 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
   const flowContext: FlowContext = reactive({
     sheetsMap: hook.sheetsMap || {},
     hubsMap: hook.hubsMap || {},
-    labels: hook.labels || {},
     lod: "full",
     editingNodeId: null,
     onInlineEditSave: null,

@@ -384,7 +384,6 @@ defmodule StoryarnWeb.SceneLive.Show do
       |> assign(:can_edit, can_edit)
       |> assign(:compact, false)
       |> assign(:restoration_banner, restoration_banner)
-      |> assign(:canvas_i18n, canvas_i18n())
       |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
       |> assign(:collab_scope, nil)
       |> assign(:entity_locks, %{})
@@ -664,24 +663,6 @@ defmodule StoryarnWeb.SceneLive.Show do
         project_variables: VariableHelpers.list_all_variables(project.id)
       }
     end)
-  end
-
-  defp canvas_i18n do
-    %{
-      edit_properties: dgettext("scenes", "Edit Properties"),
-      connect_to: dgettext("scenes", "Connect To\u2026"),
-      edit_vertices: dgettext("scenes", "Edit Vertices"),
-      duplicate: dgettext("scenes", "Duplicate"),
-      bring_to_front: dgettext("scenes", "Bring to Front"),
-      send_to_back: dgettext("scenes", "Send to Back"),
-      lock: dgettext("scenes", "Lock"),
-      unlock: dgettext("scenes", "Unlock"),
-      delete: dgettext("scenes", "Delete"),
-      add_pin: dgettext("scenes", "Add Pin Here"),
-      add_annotation: dgettext("scenes", "Add Annotation Here"),
-      create_child_scene: dgettext("scenes", "Create child scene"),
-      name_zone_first: dgettext("scenes", "Name the zone first")
-    }
   end
 
   defp parse_highlight_id(id) do

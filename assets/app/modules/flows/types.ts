@@ -167,7 +167,6 @@ export interface FlowContextInjection {
   onInlineEditSave: ((reteNodeId: string, field: string, value: unknown) => void) | null;
   sheetsMap: Record<string, SheetMapEntry>;
   hubsMap: Record<string, HubMapEntry>;
-  labels: Record<string, string>;
   lod: string;
   nodeDataVersion: number;
 }

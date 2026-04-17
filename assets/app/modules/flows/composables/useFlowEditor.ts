@@ -63,7 +63,6 @@ interface ToolbarState {
 
 interface InitOpts {
   sheetsMap?: Record<string, SheetMapEntry>;
-  labels?: Record<string, string>;
   readonly?: boolean;
   userId?: number;
   userColor?: string;
@@ -204,9 +203,6 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     get hubsMap() {
       return hookProxy._hubsMap || {};
     },
-    get labels() {
-      return hookProxy._labels || {};
-    },
     get currentLod() {
       return _lodController?.currentLod || "full";
     },
@@ -269,7 +265,6 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     // Internal refs for handlers
     _sheetsMap: {},
     _hubsMap: {},
-    _labels: {},
     _readonly: false,
     _currentUserId: 0,
     _currentUserColor: "#3b82f6",
@@ -515,7 +510,6 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
   function applyInitOpts(containerEl: HTMLElement, opts: InitOpts): void {
     hookProxy._containerEl = containerEl;
     hookProxy._sheetsMap = opts.sheetsMap || {};
-    hookProxy._labels = opts.labels || {};
     hookProxy._readonly = opts.readonly || false;
     hookProxy._currentUserId = opts.userId || 0;
     hookProxy._currentUserColor = opts.userColor || "#3b82f6";
@@ -738,7 +732,6 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     }
     ctx.sheetsMap = hookProxy._sheetsMap || {};
     ctx.hubsMap = hookProxy._hubsMap || {};
-    ctx.labels = hookProxy._labels || {};
   }
 
   // --- Area pipe helpers ---
