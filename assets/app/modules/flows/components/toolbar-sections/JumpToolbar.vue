@@ -2,6 +2,7 @@
 import { Crosshair, LogOut } from "lucide-vue-next";
 import { computed } from "vue";
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "@composables/useLive";
 import { ToolbarSearchableSelect } from "../../toolbar";
 import type { HubMapEntry } from "../../types";
@@ -51,13 +52,13 @@ function navigateToHub() {
     :placeholder="$t('flows.jump_toolbar.target_placeholder')"
     @select="(v: string | number) => selectHub(String(v))"
   />
-  <button
-    v-if="nodeData.target_hub_id"
-    type="button"
-    class="toolbar-btn"
-    :title="$t('flows.jump_toolbar.locate_target')"
-    @click="navigateToHub"
-  >
-    <Crosshair class="size-3.5" />
-  </button>
+  <ToolbarTooltip v-if="nodeData.target_hub_id" :label="$t('flows.jump_toolbar.locate_target')">
+    <button
+      type="button"
+      class="toolbar-btn"
+      @click="navigateToHub"
+    >
+      <Crosshair class="size-3.5" />
+    </button>
+  </ToolbarTooltip>
 </template>

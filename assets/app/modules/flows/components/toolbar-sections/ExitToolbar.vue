@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ArrowRightToLine, ExternalLink } from "lucide-vue-next";
 import { ToolbarColorPicker, ToolbarSeparator } from "@components/toolbar/index.ts";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "@composables/useLive";
 import { ToolbarExitModePicker } from "../../toolbar";
 import type { NodeData } from "../../lib/node-configs";
@@ -53,13 +54,13 @@ function navigateToExitFlow(flowId: number | string) {
     :color="nodeData.outcome_color || '#22c55e'"
     @update:color="updateOutcomeColor"
   />
-  <button
-    v-if="nodeData.referenced_flow_id"
-    type="button"
-    class="toolbar-btn"
-    :title="$t('flows.exit_toolbar.open_flow')"
-    @click="navigateToExitFlow(nodeData.referenced_flow_id!)"
-  >
-    <ExternalLink class="size-3.5" />
-  </button>
+  <ToolbarTooltip v-if="nodeData.referenced_flow_id" :label="$t('flows.exit_toolbar.open_flow')">
+    <button
+      type="button"
+      class="toolbar-btn"
+      @click="navigateToExitFlow(nodeData.referenced_flow_id!)"
+    >
+      <ExternalLink class="size-3.5" />
+    </button>
+  </ToolbarTooltip>
 </template>

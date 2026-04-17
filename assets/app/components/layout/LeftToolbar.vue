@@ -21,7 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "@composables/useLive";
 
 interface LeftToolbarUrls {
@@ -81,26 +81,24 @@ function toggleTreePanel() {
 <template>
   <nav class="flex items-center gap-1 px-1 py-1 surface-panel">
     <!-- Tree panel toggle -->
-    <TooltipProvider v-if="hasTree" :delay-duration="300">
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <button
-            type="button"
-            :class="['toolbar-btn size-8', treePanelOpen && 'bg-accent']"
-            @click="toggleTreePanel"
-          >
-            <PanelLeft class="size-4" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" align="start">
-          {{
-            treePanelOpen
-              ? $t("layout.left_toolbar.hide_panel")
-              : $t("layout.left_toolbar.show_panel")
-          }}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <ToolbarTooltip
+      v-if="hasTree"
+      :label="
+        treePanelOpen
+          ? $t('layout.left_toolbar.hide_panel')
+          : $t('layout.left_toolbar.show_panel')
+      "
+      side="bottom"
+      align="start"
+    >
+      <button
+        type="button"
+        :class="['toolbar-btn size-8', treePanelOpen && 'bg-accent']"
+        @click="toggleTreePanel"
+      >
+        <PanelLeft class="size-4" />
+      </button>
+    </ToolbarTooltip>
 
     <div v-if="hasTree" class="w-px h-5 bg-border" />
 

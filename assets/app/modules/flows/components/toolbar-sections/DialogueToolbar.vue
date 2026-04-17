@@ -2,6 +2,7 @@
 import { MessageSquare, Play as PlayIcon, Settings, Volume2 } from "lucide-vue-next";
 import { computed } from "vue";
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "@composables/useLive";
 import { ToolbarAvatarPicker } from "../../toolbar";
 import type { SheetAvatarEntry } from "../../types";
@@ -91,20 +92,22 @@ const hasAvatarOverride = computed(() => {
     @select="selectAvatar"
   />
   <ToolbarSeparator />
-  <button
-    type="button"
-    class="toolbar-btn"
-    :title="$t('flows.node_types.dialogue_toolbar_screenplay')"
-    @click="openScreenplay"
-  >
-    <Settings class="size-3.5" />
-  </button>
-  <button
-    type="button"
-    class="toolbar-btn"
-    :title="$t('flows.node_types.dialogue_toolbar_preview')"
-    @click="startPreview"
-  >
-    <PlayIcon class="size-3" />
-  </button>
+  <ToolbarTooltip :label="$t('flows.node_types.dialogue_toolbar_screenplay')">
+    <button
+      type="button"
+      class="toolbar-btn"
+      @click="openScreenplay"
+    >
+      <Settings class="size-3.5" />
+    </button>
+  </ToolbarTooltip>
+  <ToolbarTooltip :label="$t('flows.node_types.dialogue_toolbar_preview')">
+    <button
+      type="button"
+      class="toolbar-btn"
+      @click="startPreview"
+    >
+      <PlayIcon class="size-3" />
+    </button>
+  </ToolbarTooltip>
 </template>

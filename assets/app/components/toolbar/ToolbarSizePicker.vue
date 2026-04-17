@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 
 const SIZE_OPTIONS = [
   { value: "sm", label: "S" },
@@ -29,14 +30,15 @@ const currentLabel = () => SIZE_OPTIONS.find((o) => o.value === size)?.label || 
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <button
-        type="button"
-        class="toolbar-btn text-xs font-semibold min-w-7"
-        :disabled="disabled"
-        :title="$t('common.toolbar_size.size')"
-      >
-        {{ currentLabel() }}
-      </button>
+      <ToolbarTooltip :label="$t('common.toolbar_size.size')">
+        <button
+          type="button"
+          class="toolbar-btn text-xs font-semibold min-w-7"
+          :disabled="disabled"
+        >
+          {{ currentLabel() }}
+        </button>
+      </ToolbarTooltip>
     </PopoverTrigger>
     <PopoverContent class="w-auto p-1" :side-offset="8" side="top">
       <div class="flex gap-0.5">

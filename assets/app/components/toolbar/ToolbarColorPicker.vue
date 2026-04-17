@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { COLOR_SWATCHES } from "./color-swatches";
 
 const { color = "#fbbf24", disabled = false } = defineProps<{
@@ -26,17 +27,18 @@ function onCustomColor(e: Event) {
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <button
-        type="button"
-        class="toolbar-btn"
-        :disabled="disabled"
-        :title="$t('common.color_picker.color')"
-      >
+      <ToolbarTooltip :label="$t('common.color_picker.color')">
+        <button
+          type="button"
+          class="toolbar-btn"
+          :disabled="disabled"
+        >
         <span
           class="size-4 rounded-full border border-white/20"
           :style="{ backgroundColor: color }"
         />
       </button>
+      </ToolbarTooltip>
     </PopoverTrigger>
     <PopoverContent class="w-auto p-2" :side-offset="8" side="top">
       <div class="flex flex-col gap-1">
@@ -50,14 +52,14 @@ function onCustomColor(e: Event) {
             :style="{ backgroundColor: c }"
             @click="selectColor(c)"
           />
-          <label
-            v-if="i === row.length - 1"
-            class="size-5 rounded-full border border-dashed border-white/30 flex items-center justify-center cursor-pointer hover:scale-125 transition-transform"
-            :title="$t('common.color_picker.custom_color')"
-          >
-            <span class="text-[9px]">+</span>
-            <input type="color" class="sr-only" :value="color" @input="onCustomColor" />
-          </label>
+          <ToolbarTooltip v-if="i === row.length - 1" :label="$t('common.color_picker.custom_color')">
+            <label
+              class="size-5 rounded-full border border-dashed border-white/30 flex items-center justify-center cursor-pointer hover:scale-125 transition-transform"
+            >
+              <span class="text-[9px]">+</span>
+              <input type="color" class="sr-only" :value="color" @input="onCustomColor" />
+            </label>
+          </ToolbarTooltip>
         </div>
       </div>
       <slot name="extra" />

@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import { COLOR_SWATCHES } from "@components/toolbar/color-swatches";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 
 const STYLES = ["solid", "dashed", "dotted"] as const;
 const DASH_MAP: Record<string, string> = { solid: "none", dashed: "6,3", dotted: "2,2" };
@@ -42,12 +43,12 @@ function onCustomColor(e: Event) {
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <button
-        type="button"
-        class="toolbar-btn"
-        :disabled="disabled"
-        :title="$t('scenes.stroke_picker.line_style')"
-      >
+      <ToolbarTooltip :label="$t('scenes.stroke_picker.line_style')">
+        <button
+          type="button"
+          class="toolbar-btn"
+          :disabled="disabled"
+        >
         <span class="flex items-center gap-1">
           <svg width="16" height="16" viewBox="0 0 16 16" class="text-current">
             <line
@@ -65,7 +66,8 @@ function onCustomColor(e: Event) {
             :style="{ background: color }"
           />
         </span>
-      </button>
+        </button>
+      </ToolbarTooltip>
     </PopoverTrigger>
     <PopoverContent class="w-auto p-2" :side-offset="8" side="top">
       <div class="space-y-3">
@@ -141,14 +143,14 @@ function onCustomColor(e: Event) {
                 :style="{ backgroundColor: c }"
                 @click="selectColor(c)"
               />
-              <label
-                v-if="i === COLOR_SWATCHES.length - 1"
-                class="size-5 rounded-full border border-dashed border-white/30 flex items-center justify-center cursor-pointer hover:scale-125 transition-transform"
-                :title="$t('scenes.stroke_picker.custom_color')"
-              >
-                <span class="text-[9px]">+</span>
-                <input type="color" class="sr-only" :value="color" @input="onCustomColor" />
-              </label>
+              <ToolbarTooltip v-if="i === COLOR_SWATCHES.length - 1" :label="$t('scenes.stroke_picker.custom_color')">
+                <label
+                  class="size-5 rounded-full border border-dashed border-white/30 flex items-center justify-center cursor-pointer hover:scale-125 transition-transform"
+                >
+                  <span class="text-[9px]">+</span>
+                  <input type="color" class="sr-only" :value="color" @input="onCustomColor" />
+                </label>
+              </ToolbarTooltip>
             </div>
           </div>
         </div>

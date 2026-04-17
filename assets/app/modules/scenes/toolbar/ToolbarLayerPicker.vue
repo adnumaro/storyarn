@@ -2,6 +2,7 @@
 import { Layers } from "lucide-vue-next";
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 
 interface Layer {
   id: number | string;
@@ -32,14 +33,15 @@ function selectLayer(id: number | string | null) {
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <button
-        type="button"
-        class="toolbar-btn"
-        :disabled="disabled"
-        :title="$t('scenes.layer_picker.layer')"
-      >
-        <Layers class="size-3.5" />
-      </button>
+      <ToolbarTooltip :label="$t('scenes.layer_picker.layer')">
+        <button
+          type="button"
+          class="toolbar-btn"
+          :disabled="disabled"
+        >
+          <Layers class="size-3.5" />
+        </button>
+      </ToolbarTooltip>
     </PopoverTrigger>
     <PopoverContent class="w-auto p-1" :side-offset="8" side="top">
       <div class="flex flex-col gap-0.5 min-w-30">

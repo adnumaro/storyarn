@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Crosshair, LogIn } from "lucide-vue-next";
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "@composables/useLive";
 import type { NodeData } from "../../lib/node-configs";
 import type { ReferencingJump } from "../../types";
@@ -54,13 +55,13 @@ function navigateToJumps() {
     @pointerdown.stop
     @keydown.stop
   />
-  <button
-    v-if="referencingJumps.length > 0"
-    type="button"
-    class="toolbar-btn"
-    :title="$t('flows.hub_toolbar.locate_jumps')"
-    @click="navigateToJumps"
-  >
-    <Crosshair class="size-3.5" />
-  </button>
+  <ToolbarTooltip v-if="referencingJumps.length > 0" :label="$t('flows.hub_toolbar.locate_jumps')">
+    <button
+      type="button"
+      class="toolbar-btn"
+      @click="navigateToJumps"
+    >
+      <Crosshair class="size-3.5" />
+    </button>
+  </ToolbarTooltip>
 </template>

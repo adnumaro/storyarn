@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import UserAvatar from "./UserAvatar.vue";
 
 interface CurrentUser {
@@ -76,23 +76,21 @@ function handleLogout(): void {
 <template>
   <nav class="flex items-center gap-1 px-1 py-1 surface-panel">
     <!-- Online users -->
-    <TooltipProvider v-if="otherUsers.length > 0" :delay-duration="300">
-      <div class="flex -space-x-1 mx-1.5">
-        <Tooltip v-for="user in otherUsers" :key="user.userId">
-          <TooltipTrigger as-child>
-            <UserAvatar
-              :email="user.email"
-              :display-name="user.displayName"
-              :color="user.color"
-              size="xs"
-            />
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            {{ user.displayName || user.email }}
-          </TooltipContent>
-        </Tooltip>
-      </div>
-    </TooltipProvider>
+    <div v-if="otherUsers.length > 0" class="flex -space-x-1 mx-1.5">
+      <ToolbarTooltip
+        v-for="user in otherUsers"
+        :key="user.userId"
+        :label="user.displayName || user.email"
+        side="bottom"
+      >
+        <UserAvatar
+          :email="user.email"
+          :display-name="user.displayName"
+          :color="user.color"
+          size="xs"
+        />
+      </ToolbarTooltip>
+    </div>
 
     <!-- User dropdown -->
     <DropdownMenu>

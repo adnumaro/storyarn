@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Settings, Zap } from "lucide-vue-next";
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Badge } from "@components/ui/badge/index.ts";
 import { useLive } from "@composables/useLive";
 import type { InstructionAssignment } from "../../types";
@@ -32,12 +33,13 @@ function openBuilder() {
     {{ nodeData.assignments.length }} assignment{{ nodeData.assignments.length === 1 ? "" : "s" }}
   </Badge>
   <ToolbarSeparator />
-  <button
-    type="button"
-    class="toolbar-btn"
-    :title="$t('flows.instruction_toolbar.edit_instructions')"
-    @click="openBuilder"
-  >
-    <Settings class="size-3.5" />
-  </button>
+  <ToolbarTooltip :label="$t('flows.instruction_toolbar.edit_instructions')">
+    <button
+      type="button"
+      class="toolbar-btn"
+      @click="openBuilder"
+    >
+      <Settings class="size-3.5" />
+    </button>
+  </ToolbarTooltip>
 </template>

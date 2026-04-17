@@ -4,6 +4,7 @@ import type { Component } from "vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 
 const { t } = useI18n();
 
@@ -69,14 +70,15 @@ const current = (): ActionTypeOption =>
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <button
-        type="button"
-        class="toolbar-btn gap-1"
-        :disabled="disabled"
-        :title="$t('scenes.action_type_picker.tooltip')"
-      >
-        <component :is="current().icon" class="size-3.5" />
-      </button>
+      <ToolbarTooltip :label="$t('scenes.action_type_picker.tooltip')">
+        <button
+          type="button"
+          class="toolbar-btn gap-1"
+          :disabled="disabled"
+        >
+          <component :is="current().icon" class="size-3.5" />
+        </button>
+      </ToolbarTooltip>
     </PopoverTrigger>
     <PopoverContent class="w-56 p-1" :side-offset="8" side="top">
       <button

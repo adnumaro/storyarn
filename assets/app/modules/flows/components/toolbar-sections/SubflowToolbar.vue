@@ -2,6 +2,7 @@
 import { Box, ExternalLink } from "lucide-vue-next";
 import { computed } from "vue";
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Badge } from "@components/ui/badge/index.ts";
 import { useLive } from "@composables/useLive";
 import { ToolbarSearchableSelect } from "../../toolbar";
@@ -52,15 +53,15 @@ function navigateToSubflow(flowId: number | string) {
     :placeholder="$t('flows.subflow_toolbar.select_flow_placeholder')"
     @select="selectSubflowRef"
   />
-  <button
-    v-if="nodeData.referenced_flow_id"
-    type="button"
-    class="toolbar-btn"
-    :title="$t('flows.subflow_toolbar.open_flow')"
-    @click="navigateToSubflow(nodeData.referenced_flow_id!)"
-  >
-    <ExternalLink class="size-3.5" />
-  </button>
+  <ToolbarTooltip v-if="nodeData.referenced_flow_id" :label="$t('flows.subflow_toolbar.open_flow')">
+    <button
+      type="button"
+      class="toolbar-btn"
+      @click="navigateToSubflow(nodeData.referenced_flow_id!)"
+    >
+      <ExternalLink class="size-3.5" />
+    </button>
+  </ToolbarTooltip>
   <Badge
     v-if="subflowExits.length > 0"
     variant="secondary"

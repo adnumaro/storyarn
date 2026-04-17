@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ArrowLeftRight, Settings, Tag } from "lucide-vue-next";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "@composables/useLive";
 import { ToolbarSeparator, ToolbarStrokePicker } from "../../toolbar";
 
@@ -71,37 +72,40 @@ function toggleElementPanel(): void {
   <ToolbarSeparator />
 
   <!-- Show Label toggle -->
-  <button
-    type="button"
-    class="toolbar-btn px-1.5"
-    :class="{ '!bg-accent': element.showLabel }"
-    :title="$t('scenes.connection_toolbar.show_label')"
-    :disabled="!canEdit"
-    @click="toggleField('show_label', element.showLabel)"
-  >
-    <Tag class="size-3" />
-  </button>
+  <ToolbarTooltip :label="$t('scenes.connection_toolbar.show_label')">
+    <button
+      type="button"
+      class="toolbar-btn px-1.5"
+      :class="{ '!bg-accent': element.showLabel }"
+      :disabled="!canEdit"
+      @click="toggleField('show_label', element.showLabel)"
+    >
+      <Tag class="size-3" />
+    </button>
+  </ToolbarTooltip>
 
   <!-- Bidirectional toggle -->
-  <button
-    type="button"
-    class="toolbar-btn px-1.5"
-    :class="{ '!bg-accent': element.bidirectional }"
-    :title="$t('scenes.connection_toolbar.bidirectional')"
-    :disabled="!canEdit"
-    @click="toggleField('bidirectional', element.bidirectional)"
-  >
-    <ArrowLeftRight class="size-3" />
-  </button>
+  <ToolbarTooltip :label="$t('scenes.connection_toolbar.bidirectional')">
+    <button
+      type="button"
+      class="toolbar-btn px-1.5"
+      :class="{ '!bg-accent': element.bidirectional }"
+      :disabled="!canEdit"
+      @click="toggleField('bidirectional', element.bidirectional)"
+    >
+      <ArrowLeftRight class="size-3" />
+    </button>
+  </ToolbarTooltip>
   <ToolbarSeparator />
 
   <!-- Settings cog -->
-  <button
-    type="button"
-    class="toolbar-btn"
-    :title="$t('scenes.connection_toolbar.properties')"
-    @click="toggleElementPanel"
-  >
-    <Settings class="size-3.5" />
-  </button>
+  <ToolbarTooltip :label="$t('scenes.connection_toolbar.properties')">
+    <button
+      type="button"
+      class="toolbar-btn"
+      @click="toggleElementPanel"
+    >
+      <Settings class="size-3.5" />
+    </button>
+  </ToolbarTooltip>
 </template>

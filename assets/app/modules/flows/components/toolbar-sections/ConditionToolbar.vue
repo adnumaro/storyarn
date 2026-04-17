@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { GitBranch, Settings } from "lucide-vue-next";
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Badge } from "@components/ui/badge/index.ts";
 import { useLive } from "@composables/useLive";
 import type { Condition } from "../../types";
@@ -44,12 +45,13 @@ function openBuilder() {
     {{ nodeData.condition.rules.length }} rule{{ nodeData.condition.rules.length === 1 ? "" : "s" }}
   </Badge>
   <ToolbarSeparator />
-  <button
-    type="button"
-    class="toolbar-btn"
-    :title="$t('flows.condition_toolbar.edit_condition')"
-    @click="openBuilder"
-  >
-    <Settings class="size-3.5" />
-  </button>
+  <ToolbarTooltip :label="$t('flows.condition_toolbar.edit_condition')">
+    <button
+      type="button"
+      class="toolbar-btn"
+      @click="openBuilder"
+    >
+      <Settings class="size-3.5" />
+    </button>
+  </ToolbarTooltip>
 </template>

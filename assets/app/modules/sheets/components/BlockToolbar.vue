@@ -9,6 +9,7 @@ import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
 import ToolbarBase from "@components/toolbar/ToolbarBase.vue";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Button } from "@components/ui/button";
 import { generateId } from "@modules/shared/variables.ts";
 
@@ -54,21 +55,24 @@ const emit = defineEmits<{
   >
     <ToolbarBase>
       <!-- Constant toggle -->
-      <Button
+      <ToolbarTooltip
         v-if="showConstant"
-        size="icon-sm"
-        variant="ghost"
-        :class="[isConstant && 'text-primary']"
-        :title="
+        :label="
           isConstant
             ? $t('sheets.block_toolbar.make_variable')
             : $t('sheets.block_toolbar.make_constant')
         "
-        @click="emit('toggleConstant')"
       >
-        <Lock v-if="isConstant" class="size-4" />
-        <Unlock v-else class="size-4" />
-      </Button>
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          :class="[isConstant && 'text-primary']"
+          @click="emit('toggleConstant')"
+        >
+          <Lock v-if="isConstant" class="size-4" />
+          <Unlock v-else class="size-4" />
+        </Button>
+      </ToolbarTooltip>
 
       <!-- Variable name -->
       <div v-if="isVariable" class="flex items-center gap-1 pl-1 border-l border-border ml-0.5">
@@ -102,16 +106,17 @@ const emit = defineEmits<{
 
       <!-- Config gear + slot for type-specific popover -->
       <Popover v-if="showConfig" @update:open="(v) => (configOpen = v)">
-        <PopoverTrigger as-child>
-          <Button
-            :id="`block-toolbar-${blockId}-${generateId()}`"
-            size="icon-sm"
-            variant="ghost"
-            :title="$t('sheets.block_toolbar.configure')"
-          >
-            <Settings class="size-4" />
-          </Button>
-        </PopoverTrigger>
+        <ToolbarTooltip :label="$t('sheets.block_toolbar.configure')">
+          <PopoverTrigger as-child>
+            <Button
+              :id="`block-toolbar-${blockId}-${generateId()}`"
+              size="icon-sm"
+              variant="ghost"
+            >
+              <Settings class="size-4" />
+            </Button>
+          </PopoverTrigger>
+        </ToolbarTooltip>
         <PopoverContent align="center" :side-offset="8" class="w-64 p-3 space-y-3">
           <slot name="config" />
         </PopoverContent>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Settings } from "lucide-vue-next";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "@composables/useLive";
 import {
   ToolbarColorPicker,
@@ -131,12 +132,13 @@ function toggleElementPanel(): void {
   <ToolbarSeparator />
 
   <!-- Settings cog -->
-  <button
-    type="button"
-    class="toolbar-btn"
-    :title="$t('scenes.pin_toolbar.properties')"
-    @click="toggleElementPanel"
-  >
-    <Settings class="size-3.5" />
-  </button>
+  <ToolbarTooltip :label="$t('scenes.pin_toolbar.properties')">
+    <button
+      type="button"
+      class="toolbar-btn"
+      @click="toggleElementPanel"
+    >
+      <Settings class="size-3.5" />
+    </button>
+  </ToolbarTooltip>
 </template>

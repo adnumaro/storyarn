@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ArrowLeft, Save, Scan } from "lucide-vue-next";
 import { Button } from "@components/ui/button";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "@composables/useLive";
 
 const {
@@ -52,22 +53,24 @@ function toggleZones() {
 
     <!-- Right: Save + Show zones -->
     <div class="flex items-center gap-1">
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        :title="$t('scenes.exploration.save_progress')"
-        @click="save"
-      >
-        <Save class="size-4" />
-      </Button>
-      <Button
-        :variant="showZones ? 'secondary' : 'ghost'"
-        size="icon-sm"
-        :title="$t('scenes.exploration.show_zones')"
-        @click="toggleZones"
-      >
-        <Scan class="size-4" />
-      </Button>
+      <ToolbarTooltip :label="$t('scenes.exploration.save_progress')">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          @click="save"
+        >
+          <Save class="size-4" />
+        </Button>
+      </ToolbarTooltip>
+      <ToolbarTooltip :label="$t('scenes.exploration.show_zones')">
+        <Button
+          :variant="showZones ? 'secondary' : 'ghost'"
+          size="icon-sm"
+          @click="toggleZones"
+        >
+          <Scan class="size-4" />
+        </Button>
+      </ToolbarTooltip>
     </div>
   </div>
 </template>

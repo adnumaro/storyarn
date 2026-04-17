@@ -5,6 +5,7 @@ import {
   ToolbarSeparator,
   ToolbarSizePicker,
 } from "@components/toolbar/index.ts";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "@composables/useLive";
 import type { NodeData } from "../../lib/node-configs";
 
@@ -37,12 +38,13 @@ function deleteNode() {
   <ToolbarColorPicker :color="nodeData.color || '#fbbf24'" @update:color="updateAnnotationColor" />
   <ToolbarSizePicker :size="nodeData.font_size || 'md'" @update:size="updateAnnotationFontSize" />
   <ToolbarSeparator />
-  <button
-    type="button"
-    class="toolbar-btn text-destructive"
-    :title="$t('flows.annotation.delete')"
-    @click="deleteNode"
-  >
-    <Trash2 class="size-3.5" />
-  </button>
+  <ToolbarTooltip :label="$t('flows.annotation.delete')">
+    <button
+      type="button"
+      class="toolbar-btn text-destructive"
+      @click="deleteNode"
+    >
+      <Trash2 class="size-3.5" />
+    </button>
+  </ToolbarTooltip>
 </template>
