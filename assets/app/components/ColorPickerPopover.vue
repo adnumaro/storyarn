@@ -104,7 +104,7 @@ onBeforeUnmount(() => {
         :disabled="props.disabled"
         class="size-7 rounded-full border-2 border-white/50 shadow-sm hover:scale-110 transition-transform"
         :style="{ backgroundColor: localColor }"
-        title="Change color"
+        :title="$t('common.color_picker.change_color')"
       />
       <div
         v-else
@@ -133,7 +133,7 @@ onBeforeUnmount(() => {
           v-if="hasEyeDropper"
           type="button"
           class="flex items-center justify-center size-7 rounded-md border border-border bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-          title="Pick color from screen"
+          :title="$t('common.color_picker.pick_from_screen')"
           @click="pickFromScreen"
         >
           <Pipette class="size-3.5" />

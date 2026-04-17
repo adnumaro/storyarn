@@ -76,6 +76,6 @@ defineExpose({ onKeyDown });
     </button>
   </div>
   <div v-else class="bg-popover border border-border rounded-lg shadow-lg p-1">
-    <div class="text-muted-foreground text-sm px-3 py-2">No results found</div>
+    <div class="text-muted-foreground text-sm px-3 py-2">{{ $t("common.mention_list.no_results") }}</div>
   </div>
 </template>

@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
@@ -67,6 +68,7 @@ const {
 }>();
 
 const live = useLive();
+const { t } = useI18n();
 const searchValue = ref(search);
 const showDeleteConfirm = ref(false);
 
@@ -75,9 +77,9 @@ const filterTabs = computed(() => {
   const imageCount = typeCounts.image || 0;
   const audioCount = typeCounts.audio || 0;
   return [
-    { key: "all", label: "All", count: total },
-    { key: "image", label: "Images", count: imageCount },
-    { key: "audio", label: "Audio", count: audioCount },
+    { key: "all", label: t("common.assets.filter_all"), count: total },
+    { key: "image", label: t("common.assets.filter_images"), count: imageCount },
+    { key: "audio", label: t("common.assets.filter_audio"), count: audioCount },
   ];
 });
 
@@ -147,9 +149,9 @@ function formatSize(bytes: number) {
 }
 
 function typeLabel(asset: Asset) {
-  if (isImage(asset)) return "Image";
-  if (isAudio(asset)) return "Audio";
-  return "File";
+  if (isImage(asset)) return t("common.assets.type_image");
+  if (isAudio(asset)) return t("common.assets.type_audio");
+  return t("common.assets.type_file");
 }
 
 function typeBadgeVariant(asset: Asset) {
@@ -204,7 +206,7 @@ function usageSheetHref(sheet: SheetUsage) {
         <Input
           type="text"
           :model-value="searchValue"
-          placeholder="Search files..."
+          :placeholder="$t('common.assets.search')"
           class="pl-8 w-48"
           @input="handleSearch"
         />
@@ -217,7 +219,7 @@ function usageSheetHref(sheet: SheetUsage) {
       class="flex flex-col items-center justify-center py-16 text-center"
     >
       <Image class="size-12 text-muted-foreground/30 mb-4" />
-      <p class="text-sm text-muted-foreground">No assets yet. Upload files to get started.</p>
+      <p class="text-sm text-muted-foreground">{{ $t("common.assets.empty") }}</p>
     </div>
 
     <!-- Asset grid + detail panel -->
@@ -270,7 +272,7 @@ function usageSheetHref(sheet: SheetUsage) {
         class="w-80 shrink-0 border border-border rounded-lg bg-surface p-4 space-y-4 self-start"
       >
         <div class="flex items-center justify-between">
-          <h3 class="font-semibold text-sm">Details</h3>
+          <h3 class="font-semibold text-sm">{{ $t("common.assets.details") }}</h3>
           <Button variant="ghost" size="icon-sm" class="size-7" @click="deselectAsset">
             <X class="size-4" />
           </Button>
@@ -295,19 +297,19 @@ function usageSheetHref(sheet: SheetUsage) {
 
         <dl class="text-sm space-y-2">
           <div>
-            <dt class="text-muted-foreground">Filename</dt>
+            <dt class="text-muted-foreground">{{ $t("common.assets.filename") }}</dt>
             <dd class="font-medium break-all">{{ selectedAsset.filename }}</dd>
           </div>
           <div>
-            <dt class="text-muted-foreground">Type</dt>
+            <dt class="text-muted-foreground">{{ $t("common.assets.type") }}</dt>
             <dd>{{ selectedAsset.contentType }}</dd>
           </div>
           <div>
-            <dt class="text-muted-foreground">Size</dt>
+            <dt class="text-muted-foreground">{{ $t("common.assets.size") }}</dt>
             <dd>{{ formatSize(selectedAsset.size) }}</dd>
           </div>
           <div>
-            <dt class="text-muted-foreground">Uploaded</dt>
+            <dt class="text-muted-foreground">{{ $t("common.assets.uploaded") }}</dt>
             <dd>{{ formatDate(selectedAsset.insertedAt) }}</dd>
           </div>
         </dl>
@@ -316,11 +318,11 @@ function usageSheetHref(sheet: SheetUsage) {
         <div class="border-t border-border pt-4">
           <h4 class="text-sm font-medium mb-2 flex items-center gap-2">
             <Link class="size-4" />
-            Usage
+            {{ $t("common.assets.usage") }}
             <Badge variant="secondary" class="text-[10px] px-1.5 py-0">{{ totalUsages }}</Badge>
           </h4>
 
-          <p v-if="totalUsages === 0" class="text-sm text-muted-foreground">Not used anywhere</p>
+          <p v-if="totalUsages === 0" class="text-sm text-muted-foreground">{{ $t("common.assets.not_used") }}</p>
 
           <ul v-if="totalUsages > 0" class="text-sm space-y-1">
             <li
@@ -351,7 +353,7 @@ function usageSheetHref(sheet: SheetUsage) {
                 class="text-primary hover:underline truncate"
               >
                 {{ sheet.name }}
-                <span class="text-muted-foreground">(avatar)</span>
+                <span class="text-muted-foreground">{{ $t("common.assets.avatar_context") }}</span>
               </a>
             </li>
             <li
@@ -367,7 +369,7 @@ function usageSheetHref(sheet: SheetUsage) {
                 class="text-primary hover:underline truncate"
               >
                 {{ sheet.name }}
-                <span class="text-muted-foreground">(banner)</span>
+                <span class="text-muted-foreground">{{ $t("common.assets.banner_context") }}</span>
               </a>
             </li>
           </ul>
@@ -377,7 +379,7 @@ function usageSheetHref(sheet: SheetUsage) {
         <div v-if="canEdit" class="border-t border-border pt-4">
           <Button variant="destructive" size="sm" class="w-full" @click="requestDelete">
             <Trash2 class="size-4" />
-            Delete asset
+            {{ $t("common.assets.delete_asset") }}
           </Button>
         </div>
       </div>
@@ -395,13 +397,13 @@ function usageSheetHref(sheet: SheetUsage) {
               <Trash2 class="size-5 text-destructive" />
             </div>
             <div>
-              <h3 class="font-semibold text-sm">Delete asset?</h3>
+              <h3 class="font-semibold text-sm">{{ $t("common.assets.delete_confirm_title") }}</h3>
               <p class="text-sm text-muted-foreground mt-1">{{ deleteConfirmMessage }}</p>
             </div>
           </div>
           <div class="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" @click="cancelDelete">Cancel</Button>
-            <Button variant="destructive" size="sm" @click="confirmDelete">Delete</Button>
+            <Button variant="ghost" size="sm" @click="cancelDelete">{{ $t("common.cancel") }}</Button>
+            <Button variant="destructive" size="sm" @click="confirmDelete">{{ $t("common.delete") }}</Button>
           </div>
         </div>
       </div>

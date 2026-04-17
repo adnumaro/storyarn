@@ -30,7 +30,7 @@ const {
           :href="backUrl"
           data-phx-link="redirect"
           data-phx-link-state="push"
-          aria-label="Back to editor"
+          :aria-label="$t('common.compare_view.back_to_editor')"
         >
           <Button variant="ghost" size="icon-sm">
             <ArrowLeft class="size-4" />
@@ -38,7 +38,7 @@ const {
         </a>
         <div class="flex items-center gap-1.5 text-sm text-muted-foreground">
           <Columns2 class="size-4" />
-          <span class="font-medium">Comparing versions</span>
+          <span class="font-medium">{{ $t("common.compare_view.comparing") }}</span>
         </div>
       </div>
       <div class="flex items-center gap-1">
@@ -47,7 +47,7 @@ const {
           :href="prevVersionUrl"
           data-phx-link="patch"
           data-phx-link-state="push"
-          aria-label="Previous version"
+          :aria-label="$t('common.compare_view.previous_version')"
         >
           <Button variant="ghost" size="xs">
             <ChevronLeft class="size-3.5" />
@@ -59,7 +59,7 @@ const {
           :href="nextVersionUrl"
           data-phx-link="patch"
           data-phx-link-state="push"
-          aria-label="Next version"
+          :aria-label="$t('common.compare_view.next_version')"
         >
           <Button variant="ghost" size="xs">
             <ChevronRight class="size-3.5" />
@@ -75,9 +75,9 @@ const {
         <div
           class="h-8 shrink-0 flex items-center justify-center bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground/50"
         >
-          Current
+          {{ $t("common.compare_view.current") }}
         </div>
-        <iframe :src="currentUrl" class="flex-1 w-full border-0" title="Current" />
+        <iframe :src="currentUrl" class="flex-1 w-full border-0" :title="$t('common.compare_view.current')" />
       </div>
 
       <!-- Right: historical version -->

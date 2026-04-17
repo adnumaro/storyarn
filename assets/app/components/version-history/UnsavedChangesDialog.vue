@@ -32,15 +32,14 @@ const emit = defineEmits<{
       <DialogHeader>
         <DialogTitle class="flex items-center gap-2">
           <AlertTriangle class="size-5 text-amber-500" />
-          Unsaved changes
+          {{ $t("common.unsaved_changes_dialog.title") }}
         </DialogTitle>
         <DialogDescription>
-          You have changes that aren't saved in any version. Restoring to v{{ versionNumber }} will
-          overwrite them.
+          {{ $t("common.unsaved_changes_dialog.description", { version: versionNumber }) }}
         </DialogDescription>
       </DialogHeader>
       <p class="text-sm text-muted-foreground">
-        What would you like to do with your current changes?
+        {{ $t("common.unsaved_changes_dialog.question") }}
       </p>
       <div class="flex flex-col gap-2">
         <Button
@@ -50,7 +49,7 @@ const emit = defineEmits<{
         >
           <Loader2 v-if="loadingAction === 'save-restore'" class="size-4 animate-spin" />
           <Save v-else class="size-4" />
-          Save current state, then restore
+          {{ $t("common.unsaved_changes_dialog.save_then_restore") }}
         </Button>
         <Button
           variant="outline"
@@ -60,7 +59,7 @@ const emit = defineEmits<{
         >
           <Loader2 v-if="loadingAction === 'discard-restore'" class="size-4 animate-spin" />
           <Trash2 v-else class="size-4" />
-          Discard changes and restore
+          {{ $t("common.unsaved_changes_dialog.discard_and_restore") }}
         </Button>
         <Button
           variant="ghost"
@@ -68,7 +67,7 @@ const emit = defineEmits<{
           @click="emit('update:open', false)"
         >
           <X class="size-4" />
-          Cancel
+          {{ $t("common.cancel") }}
         </Button>
       </div>
     </DialogContent>

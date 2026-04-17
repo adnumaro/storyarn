@@ -26,7 +26,7 @@ function onCustomColor(e: Event) {
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <button type="button" class="toolbar-btn" :disabled="disabled" :title="'Color'">
+      <button type="button" class="toolbar-btn" :disabled="disabled" :title="$t('common.color_picker.color')">
         <span
           class="size-4 rounded-full border border-white/20"
           :style="{ backgroundColor: color }"
@@ -48,7 +48,7 @@ function onCustomColor(e: Event) {
           <label
             v-if="i === row.length - 1"
             class="size-5 rounded-full border border-dashed border-white/30 flex items-center justify-center cursor-pointer hover:scale-125 transition-transform"
-            title="Custom color"
+            :title="$t('common.color_picker.custom_color')"
           >
             <span class="text-[9px]">+</span>
             <input type="color" class="sr-only" :value="color" @input="onCustomColor" />

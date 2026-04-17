@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Upload } from "lucide-vue-next";
+import { useI18n } from "vue-i18n";
 import { useLive } from "@composables/useLive";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
@@ -9,6 +10,7 @@ const { uploading = false } = defineProps<{
 }>();
 
 const live = useLive();
+const { t } = useI18n();
 
 function handleFileChange(event: Event): void {
   const input = event.target as HTMLInputElement;
@@ -19,7 +21,7 @@ function handleFileChange(event: Event): void {
 
   if (file.size > MAX_FILE_SIZE) {
     live.pushEvent("upload_validation_error", {
-      message: "File too large (max 20MB).",
+      message: t("common.assets.file_too_large"),
     });
     return;
   }
@@ -48,7 +50,7 @@ function handleFileChange(event: Event): void {
     >
       <Upload class="size-4" />
       <span class="hidden xl:inline">
-        {{ uploading ? "Uploading..." : "Upload" }}
+        {{ uploading ? $t("common.assets.uploading") : $t("common.assets.upload") }}
       </span>
       <input type="file" accept="image/*,audio/*" class="hidden" @change="handleFileChange" />
     </label>

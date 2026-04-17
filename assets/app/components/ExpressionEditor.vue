@@ -118,7 +118,7 @@ function parsedAssignmentsToAssignments(parsed: ParsedAssignment[]): Assignment[
         ]"
         @click="activeTab = 'builder'"
       >
-        Builder
+        {{ $t("common.expression_editor.builder") }}
       </button>
       <button
         type="button"
@@ -130,7 +130,7 @@ function parsedAssignmentsToAssignments(parsed: ParsedAssignment[]): Assignment[
         ]"
         @click="activeTab = 'code'"
       >
-        Code
+        {{ $t("common.expression_editor.code") }}
       </button>
 
       <!-- Format button (only on Code tab) -->
@@ -139,11 +139,11 @@ function parsedAssignmentsToAssignments(parsed: ParsedAssignment[]): Assignment[
         variant="ghost"
         size="xs"
         class="ml-auto"
-        title="Format code"
+        :title="$t('common.expression_editor.format_code')"
         @click="format()"
       >
         <AlignLeft :size="14" />
-        Format
+        {{ $t("common.expression_editor.format") }}
       </Button>
     </div>
 

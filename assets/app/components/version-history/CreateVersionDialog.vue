@@ -38,37 +38,37 @@ const emit = defineEmits<{
   <Dialog :open="open" @update:open="emit('update:open', $event)">
     <DialogContent class="sm:max-w-md">
       <DialogHeader>
-        <DialogTitle>Create Version</DialogTitle>
-        <DialogDescription>Save the current state as a named version.</DialogDescription>
+        <DialogTitle>{{ $t("common.create_version_dialog.title") }}</DialogTitle>
+        <DialogDescription>{{ $t("common.create_version_dialog.description") }}</DialogDescription>
       </DialogHeader>
       <form @submit.prevent="emit('submit')" class="space-y-4">
         <div class="space-y-2">
-          <Label for="version-title">Title</Label>
+          <Label for="version-title">{{ $t("common.create_version_dialog.title_label") }}</Label>
           <Input
             id="version-title"
             :model-value="title"
             @update:model-value="emit('update:title', String($event))"
-            placeholder="e.g., Before major refactor"
+            :placeholder="$t('common.create_version_dialog.title_placeholder')"
             required
             autofocus
           />
         </div>
         <div class="space-y-2">
-          <Label for="version-description">Description (optional)</Label>
+          <Label for="version-description">{{ $t("common.create_version_dialog.description_label") }}</Label>
           <Textarea
             id="version-description"
             :model-value="description"
             @update:model-value="emit('update:description', String($event))"
             :rows="3"
-            placeholder="Describe what this version captures..."
+            :placeholder="$t('common.create_version_dialog.description_placeholder')"
           />
         </div>
         <DialogFooter>
-          <DialogClose as-child><Button variant="ghost" type="button">Cancel</Button></DialogClose>
+          <DialogClose as-child><Button variant="ghost" type="button">{{ $t("common.cancel") }}</Button></DialogClose>
           <Button type="submit" :disabled="!title.trim() || loadingAction === 'create'">
             <Loader2 v-if="loadingAction === 'create'" class="size-4 animate-spin mr-1" />
             <Save v-else class="size-4 mr-1" />
-            Create Version
+            {{ $t("common.create_version_dialog.title") }}
           </Button>
         </DialogFooter>
       </form>

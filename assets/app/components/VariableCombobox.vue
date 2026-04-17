@@ -128,9 +128,9 @@ function autoSize(el: HTMLInputElement | null) {
     </PopoverTrigger>
     <PopoverContent class="w-[200px] p-0" align="start" :side-offset="4">
       <Command>
-        <CommandInput :placeholder="`Search...`" class="h-8 text-xs" />
+        <CommandInput :placeholder="$t('common.search')" class="h-8 text-xs" />
         <CommandList>
-          <CommandEmpty class="py-3 text-xs">No results.</CommandEmpty>
+          <CommandEmpty class="py-3 text-xs">{{ $t("common.variable_combobox.no_results") }}</CommandEmpty>
 
           <template v-if="hasGroups">
             <CommandGroup v-for="group in groups" :key="group.heading" :heading="group.heading">

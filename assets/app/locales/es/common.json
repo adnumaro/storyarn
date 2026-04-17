@@ -1,0 +1,125 @@
+{
+  "common": {
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "no_results": "Sin resultados",
+    "search": "Buscar...",
+    "none": "Ninguno",
+    "version_history": {
+      "empty_title": "Aún no hay versiones",
+      "empty_description": "Crea una versión para guardar el estado actual.",
+      "create_version": "Crear versión",
+      "named_versions": "Versiones con nombre",
+      "current": "Actual",
+      "auto_save": "auto-guardado | auto-guardados",
+      "no_summary": "Sin resumen",
+      "load_more": "Cargar más"
+    },
+    "create_version_dialog": {
+      "title": "Crear versión",
+      "description": "Guarda el estado actual como una versión con nombre.",
+      "title_label": "Título",
+      "title_placeholder": "p. ej., Antes de refactor grande",
+      "description_label": "Descripción (opcional)",
+      "description_placeholder": "Describe qué captura esta versión..."
+    },
+    "promote_version_dialog": {
+      "title": "Nombrar esta versión",
+      "description": "Dale un nombre a este auto-guardado para convertirlo en un hito.",
+      "title_label": "Título",
+      "title_placeholder": "p. ej., Antes de refactor grande",
+      "description_label": "Descripción (opcional)",
+      "description_placeholder": "Describe qué captura esta versión...",
+      "submit": "Nombrar versión"
+    },
+    "delete_version_dialog": {
+      "title": "¿Eliminar versión?",
+      "description": "¿Estás seguro de que quieres eliminar esta versión? Esta acción no se puede deshacer."
+    },
+    "unsaved_changes_dialog": {
+      "title": "Cambios sin guardar",
+      "description": "Tienes cambios que no están guardados en ninguna versión. Restaurar a v{version} reemplazará el estado actual.",
+      "question": "¿Qué quieres hacer con tus cambios actuales?",
+      "save_then_restore": "Guardar estado actual y restaurar",
+      "discard_and_restore": "Descartar cambios y restaurar"
+    },
+    "restore_preview_dialog": {
+      "title": "Restaurar a versión {version}",
+      "shortcut_collision": "Colisión de atajo — se renombrará a \"{name}\"",
+      "missing_entities": "Algunas entidades referenciadas ya no existen:",
+      "missing_prefix": "{type} faltante",
+      "missing_cleared": "Las referencias faltantes se limpiarán.",
+      "missing_cleared_backup": "Las referencias faltantes se limpiarán. Se guardará una copia de seguridad del estado actual.",
+      "restore_info": "Se restaurará a la versión {version}.",
+      "auto_resolved": "Auto-resuelto:",
+      "restore_anyway": "Restaurar de todos modos",
+      "restore": "Restaurar"
+    },
+    "compare_view": {
+      "back_to_editor": "Volver al editor",
+      "comparing": "Comparando versiones",
+      "previous_version": "Versión anterior",
+      "next_version": "Versión siguiente",
+      "current": "Actual"
+    },
+    "color_picker": {
+      "change_color": "Cambiar color",
+      "pick_from_screen": "Seleccionar color de la pantalla",
+      "color": "Color",
+      "custom_color": "Color personalizado"
+    },
+    "expression_editor": {
+      "builder": "Constructor",
+      "code": "Código",
+      "format": "Formatear",
+      "format_code": "Formatear código"
+    },
+    "condition_builder": {
+      "label_placeholder": "etiqueta",
+      "remove_block": "Eliminar bloque",
+      "of_the_rules": "de las reglas",
+      "add_rule": "Añadir regla",
+      "no_conditions": "Sin condiciones"
+    },
+    "assignment_row": {
+      "change_operator": "Cambiar operador",
+      "switch_mode": "Cambiar entre literal / referencia de variable"
+    },
+    "toolbar_size": {
+      "size": "Tamaño"
+    },
+    "mention_list": {
+      "no_results": "Sin resultados"
+    },
+    "variable_list": {
+      "no_results": "No se encontraron variables"
+    },
+    "variable_combobox": {
+      "no_results": "Sin resultados."
+    },
+    "assets": {
+      "filter_all": "Todos",
+      "filter_images": "Imágenes",
+      "filter_audio": "Audio",
+      "search": "Buscar archivos...",
+      "empty": "Aún no hay recursos. Sube archivos para empezar.",
+      "type_image": "Imagen",
+      "type_audio": "Audio",
+      "type_file": "Archivo",
+      "details": "Detalles",
+      "filename": "Nombre de archivo",
+      "type": "Tipo",
+      "size": "Tamaño",
+      "uploaded": "Subido",
+      "usage": "Uso",
+      "not_used": "No se usa en ningún sitio",
+      "avatar_context": "(avatar)",
+      "banner_context": "(banner)",
+      "delete_asset": "Eliminar recurso",
+      "delete_confirm_title": "¿Eliminar recurso?",
+      "file_too_large": "Archivo demasiado grande (máx. 20MB).",
+      "uploading": "Subiendo...",
+      "upload": "Subir"
+    }
+  }
+}

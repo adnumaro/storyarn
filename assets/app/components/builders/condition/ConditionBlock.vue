@@ -68,12 +68,12 @@ function addRule() {
           type="text"
           :value="block.label || ''"
           class="h-6 px-2 text-xs font-medium border border-border rounded bg-transparent w-full max-w-50 outline-none focus:border-ring"
-          placeholder="label"
+          :placeholder="$t('common.condition_builder.label_placeholder')"
           maxlength="100"
           @input="(e: Event) => updateField('label', (e.target as HTMLInputElement).value)"
           @blur="(e: Event) => updateField('label', (e.target as HTMLInputElement).value)"
         />
-        <span v-else class="text-xs font-medium">{{ block.label || "label" }}</span>
+        <span v-else class="text-xs font-medium">{{ block.label || $t("common.condition_builder.label_placeholder") }}</span>
       </template>
       <span v-else />
 
@@ -81,7 +81,7 @@ function addRule() {
         v-if="!disabled"
         type="button"
         class="inline-flex items-center justify-center size-5 rounded text-muted-foreground hover:text-foreground hover:bg-accent opacity-0 group-hover/block:opacity-100 transition-opacity"
-        title="Remove block"
+        :title="$t('common.condition_builder.remove_block')"
         @click="emit('remove')"
       >
         <X class="size-3" />
@@ -92,7 +92,7 @@ function addRule() {
     <LogicToggle
       v-if="block.rules.length >= 2 && !switchMode"
       :logic="block.logic"
-      of-label="of the rules"
+      :of-label="$t('common.condition_builder.of_the_rules')"
       :disabled="disabled"
       class="mb-1"
       @update:logic="(v) => updateField('logic', v)"
@@ -119,11 +119,11 @@ function addRule() {
       @click="addRule"
     >
       <Plus class="size-3" />
-      Add rule
+      {{ $t("common.condition_builder.add_rule") }}
     </button>
 
     <p v-if="block.rules.length === 0 && disabled" class="text-xs text-muted-foreground italic">
-      No conditions set
+      {{ $t("common.condition_builder.no_conditions") }}
     </p>
   </div>
 </template>

@@ -81,12 +81,12 @@ function select(id: number | string | null) {
       </PopoverTrigger>
       <PopoverContent class="p-0" :side-offset="4" align="start">
         <Command>
-          <CommandInput placeholder="Search..." />
+          <CommandInput :placeholder="$t('common.search')" />
           <CommandList>
-            <CommandEmpty>No results</CommandEmpty>
+            <CommandEmpty>{{ $t("common.no_results") }}</CommandEmpty>
             <CommandGroup>
               <CommandItem value="__none__" @select="select(null)">
-                <span class="text-muted-foreground">None</span>
+                <span class="text-muted-foreground">{{ $t("common.none") }}</span>
                 <Check v-if="!selectedId" class="size-3 ml-auto" />
               </CommandItem>
               <CommandItem

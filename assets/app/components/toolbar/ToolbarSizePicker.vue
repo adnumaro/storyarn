@@ -33,7 +33,7 @@ const currentLabel = () => SIZE_OPTIONS.find((o) => o.value === size)?.label || 
         type="button"
         class="toolbar-btn text-xs font-semibold min-w-7"
         :disabled="disabled"
-        title="Size"
+        :title="$t('common.toolbar_size.size')"
       >
         {{ currentLabel() }}
       </button>

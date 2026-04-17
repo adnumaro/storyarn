@@ -45,37 +45,37 @@ const emit = defineEmits<{
   <Dialog :open="open" @update:open="emit('update:open', $event)">
     <DialogContent class="sm:max-w-md">
       <DialogHeader>
-        <DialogTitle>Name This Version</DialogTitle>
-        <DialogDescription>Give this auto-save a name to make it a milestone.</DialogDescription>
+        <DialogTitle>{{ $t("common.promote_version_dialog.title") }}</DialogTitle>
+        <DialogDescription>{{ $t("common.promote_version_dialog.description") }}</DialogDescription>
       </DialogHeader>
       <form @submit.prevent="emit('submit')" class="space-y-4">
         <div class="space-y-2">
-          <Label for="promote-title">Title</Label>
+          <Label for="promote-title">{{ $t("common.promote_version_dialog.title_label") }}</Label>
           <Input
             id="promote-title"
             :model-value="title"
             @update:model-value="emit('update:title', String($event))"
-            :placeholder="promoteVersion?.changeSummary || 'e.g., Before major refactor'"
+            :placeholder="promoteVersion?.changeSummary || $t('common.promote_version_dialog.title_placeholder')"
             required
             autofocus
           />
         </div>
         <div class="space-y-2">
-          <Label for="promote-description">Description (optional)</Label>
+          <Label for="promote-description">{{ $t("common.promote_version_dialog.description_label") }}</Label>
           <Textarea
             id="promote-description"
             :model-value="description"
             @update:model-value="emit('update:description', String($event))"
             :rows="3"
-            placeholder="Describe what this version captures..."
+            :placeholder="$t('common.promote_version_dialog.description_placeholder')"
           />
         </div>
         <DialogFooter>
-          <DialogClose as-child><Button variant="ghost" type="button">Cancel</Button></DialogClose>
+          <DialogClose as-child><Button variant="ghost" type="button">{{ $t("common.cancel") }}</Button></DialogClose>
           <Button type="submit" :disabled="!title.trim() || loadingAction === 'promote'">
             <Loader2 v-if="loadingAction === 'promote'" class="size-4 animate-spin mr-1" />
             <BookmarkPlus v-else class="size-4 mr-1" />
-            Name Version
+            {{ $t("common.promote_version_dialog.submit") }}
           </Button>
         </DialogFooter>
       </form>

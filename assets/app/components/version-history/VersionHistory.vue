@@ -77,11 +77,11 @@ function changeActionColor(action: string) {
     class="rounded-xl border border-border/60 bg-card p-8 text-center"
   >
     <Clock class="size-10 mx-auto text-muted-foreground/20 mb-3" />
-    <p class="text-sm font-medium text-muted-foreground mb-1">No versions yet</p>
-    <p class="text-xs text-muted-foreground/60 mb-4">Create a version to save the current state.</p>
+    <p class="text-sm font-medium text-muted-foreground mb-1">{{ $t("common.version_history.empty_title") }}</p>
+    <p class="text-xs text-muted-foreground/60 mb-4">{{ $t("common.version_history.empty_description") }}</p>
     <Button v-if="canEdit && canNameVersion" size="sm" class="gap-1.5" @click="h.openCreateModal">
       <Plus class="size-3.5" />
-      Create Version
+      {{ $t("common.version_history.create_version") }}
     </Button>
   </div>
 
@@ -91,7 +91,7 @@ function changeActionColor(action: string) {
     <div v-if="canEdit && canNameVersion" class="flex justify-end">
       <Button size="sm" class="gap-1.5" @click="h.openCreateModal">
         <Plus class="size-3.5" />
-        Create Version
+        {{ $t("common.version_history.create_version") }}
       </Button>
     </div>
 
@@ -99,7 +99,7 @@ function changeActionColor(action: string) {
     <div v-if="namedVersions.length > 0" class="space-y-2">
       <h3 class="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
         <Bookmark class="size-3.5" />
-        Named Versions
+        {{ $t("common.version_history.named_versions") }}
       </h3>
       <div
         v-for="version in namedVersions"
@@ -125,14 +125,14 @@ function changeActionColor(action: string) {
           <div class="flex items-center justify-between gap-1">
             <div class="flex items-center gap-1.5 min-w-0">
               <span class="text-sm font-medium truncate">
-                {{ version.title || version.changeSummary || "No summary" }}
+                {{ version.title || version.changeSummary || $t("common.version_history.no_summary") }}
               </span>
               <Badge
                 v-if="version.id === currentVersionId"
                 variant="default"
                 class="text-[10px] px-1.5 py-0 rounded-full shrink-0"
               >
-                Current
+                {{ $t("common.version_history.current") }}
               </Badge>
               <Badge variant="outline" class="text-[10px] px-1.5 py-0 rounded-full shrink-0">
                 v{{ version.versionNumber }}
@@ -251,7 +251,7 @@ function changeActionColor(action: string) {
       >
         <ChevronDown v-if="h.showAutoVersions.value" class="size-3.5" />
         <ChevronRight v-else class="size-3.5" />
-        {{ autoVersions.length }} auto-save{{ autoVersions.length === 1 ? "" : "s" }}
+        {{ autoVersions.length }} {{ $t("common.version_history.auto_save", autoVersions.length) }}
       </button>
       <div v-if="h.showAutoVersions.value" class="space-y-1">
         <div
@@ -278,7 +278,7 @@ function changeActionColor(action: string) {
             <div class="flex items-center justify-between gap-1">
               <div class="flex items-center gap-1.5 min-w-0">
                 <span class="text-sm text-foreground truncate">
-                  {{ version.changeSummary || "No summary" }}
+                  {{ version.changeSummary || $t("common.version_history.no_summary") }}
                 </span>
                 <Badge
                   v-if="version.id === currentVersionId"
@@ -404,7 +404,7 @@ function changeActionColor(action: string) {
     >
       <Loader2 v-if="h.loadingAction.value === 'load-more'" class="size-3.5 animate-spin" />
       <ChevronDown v-else class="size-3.5" />
-      Load more
+      {{ $t("common.version_history.load_more") }}
     </Button>
   </div>
 
