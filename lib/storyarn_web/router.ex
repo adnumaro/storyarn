@@ -175,8 +175,6 @@ defmodule StoryarnWeb.Router do
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/compare/:version_number",
            CompareLive.Scene,
            :compare
-
-      # TODO: version snapshot viewer needs Vue migration
     end
 
     # Project-scoped live_session — loads project/workspace/membership once via
