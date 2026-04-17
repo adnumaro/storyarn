@@ -1,0 +1,31 @@
+assets/app/modules/workspaces/New.vue
+  3ea3c2327c2231e2 30,32,38,42,51,55,70,72
+assets/app/modules/workspaces/projects/ProjectDashboard.vue
+  3ea3c2327c2231e2 90-95,111-116,134,144,149,170,175,199,222,250,252,263
+assets/app/locales/es/workspace.json
+  3ea3c2327c2231e2 33-71
+assets/app/modules/workspaces/Invitations.vue
+  3ea3c2327c2231e2 14,16,20
+assets/app/locales/en/workspace.json
+  3ea3c2327c2231e2 33-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "f30718d9737a78fed602a5400f362e0342f64858",
+  "prompts": {
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 111,
+      "total_deletions": 66,
+      "accepted_lines": 361,
+      "overriden_lines": 0
+    }
+  }
+}
