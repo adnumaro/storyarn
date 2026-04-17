@@ -217,6 +217,10 @@
       "placeholder": "\u2026",
       "delete": "Delete"
     },
+    "entry_toolbar": {
+      "entry_point": "Entry point",
+      "refs": "{n} ref | {n} refs"
+    },
     "exit_toolbar": {
       "label_placeholder": "Label…",
       "open_flow": "Open referenced flow"

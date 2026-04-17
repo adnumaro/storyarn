@@ -217,6 +217,10 @@
       "placeholder": "\u2026",
       "delete": "Eliminar"
     },
+    "entry_toolbar": {
+      "entry_point": "Punto de entrada",
+      "refs": "{n} ref | {n} refs"
+    },
     "exit_toolbar": {
       "label_placeholder": "Etiqueta…",
       "open_flow": "Abrir flujo referenciado"
