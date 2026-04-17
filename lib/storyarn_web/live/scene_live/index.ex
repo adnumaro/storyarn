@@ -278,7 +278,7 @@ defmodule StoryarnWeb.SceneLive.Index do
             {:warning, dgettext("scenes", "Scene \"%{name}\" has no shortcut", name: issue.scene_name)}
 
           _ ->
-            {:info, gettext("Issue detected")}
+            {:info, dgettext("scenes", "Issue detected")}
         end
 
       %{

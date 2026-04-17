@@ -41,7 +41,7 @@ defmodule StoryarnWeb.DocsLive.Components.DocsSidebar do
 
       <div :if={@search_results} class="mb-4">
         <p class="text-xs text-muted-foreground mb-2 px-3">
-          {ngettext("%{count} result", "%{count} results", length(@search_results),
+          {dngettext("docs", "%{count} result", "%{count} results", length(@search_results),
             count: length(@search_results)
           )}
         </p>

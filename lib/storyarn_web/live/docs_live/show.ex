@@ -35,7 +35,7 @@ defmodule StoryarnWeb.DocsLive.Show do
   defp apply_action(socket, :index, _params) do
     case Docs.first_guide(socket.assigns.locale) do
       nil ->
-        assign(socket, page_title: gettext("Documentation"), guide: nil, prev: nil, next: nil)
+        assign(socket, page_title: dgettext("docs", "Documentation"), guide: nil, prev: nil, next: nil)
 
       guide ->
         push_navigate(socket, to: ~p"/docs/#{guide.category}/#{guide.slug}")
@@ -48,7 +48,7 @@ defmodule StoryarnWeb.DocsLive.Show do
     case Docs.get_guide(category, slug, locale) do
       nil ->
         socket
-        |> put_flash(:error, gettext("Guide not found"))
+        |> put_flash(:error, dgettext("docs", "Guide not found"))
         |> push_navigate(to: ~p"/docs")
 
       guide ->

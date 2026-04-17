@@ -6,6 +6,8 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   dialogue text, speaker info, responses, or outcome data.
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   alias Storyarn.Flows
   alias Storyarn.Shared.HtmlSanitizer
 
@@ -78,7 +80,7 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
 
     %{
       type: :outcome,
-      label: data["label"] || Flows.evaluator_strip_html(data["text"]) || "The End",
+      label: data["label"] || Flows.evaluator_strip_html(data["text"]) || dgettext("flows", "The End"),
       outcome_color: data["outcome_color"],
       outcome_tags: data["outcome_tags"] || [],
       step_count: state.step_count,

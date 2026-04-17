@@ -11,8 +11,8 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/controllers/screenplay_export_controller.ex:20
-#: lib/storyarn_web/controllers/screenplay_export_controller.ex:48
+#: lib/storyarn_web/controllers/screenplay_export_controller.ex:16
+#: lib/storyarn_web/controllers/screenplay_export_controller.ex:44
 #, elixir-autogen, elixir-format
 msgid "Not found"
 msgstr "No encontrado"

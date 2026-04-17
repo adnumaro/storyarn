@@ -288,7 +288,7 @@ defmodule StoryarnWeb.SheetLive.Index do
             {:warning, dgettext("sheets", "Sheet \"%{name}\" has no shortcut", name: issue.sheet_name)}
 
           _ ->
-            {:info, gettext("Issue detected")}
+            {:info, dgettext("sheets", "Issue detected")}
         end
 
       %{

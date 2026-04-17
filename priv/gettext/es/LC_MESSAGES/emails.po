@@ -11,252 +11,183 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn/emails/templates.ex:128
+#: lib/storyarn/emails/templates.ex:54
 #, elixir-autogen, elixir-format
 msgid "You've been invited to %{project}"
 msgstr "Has sido invitado a %{project}"
 
-#: lib/storyarn/emails/templates.ex:176
+#: lib/storyarn/emails/templates.ex:102
 #, elixir-autogen, elixir-format
 msgid "You've been invited to %{workspace}"
 msgstr "Has sido invitado a %{workspace}"
 
-#: lib/storyarn/emails/templates.ex:154
+#: lib/storyarn/emails/templates.ex:80
 #, elixir-autogen, elixir-format
 msgid "%{inviter} has invited you to join \"%{project}\" on Storyarn as %{role}."
 msgstr "%{inviter} te ha invitado a unirte a \"%{project}\" en Storyarn como %{role}."
 
-#: lib/storyarn/emails/templates.ex:202
+#: lib/storyarn/emails/templates.ex:128
 #, elixir-autogen, elixir-format
 msgid "%{inviter} has invited you to join the \"%{workspace}\" workspace on Storyarn as %{role}."
-msgstr "%{inviter} te ha invitado a unirte al workspace \"%{workspace}\" en Storyarn como %{role}."
+msgstr "%{inviter} te ha invitado a unirte al espacio de trabajo \"%{workspace}\" en Storyarn como %{role}."
 
-#: lib/storyarn/emails/templates.ex:165
+#: lib/storyarn/emails/templates.ex:91
 #, elixir-autogen, elixir-format
 msgid "%{inviter} invited you to %{project}"
 msgstr "%{inviter} te invitó a %{project}"
 
-#: lib/storyarn/emails/templates.ex:213
+#: lib/storyarn/emails/templates.ex:139
 #, elixir-autogen, elixir-format
 msgid "%{inviter} invited you to %{workspace}"
 msgstr "%{inviter} te invitó a %{workspace}"
 
-#: lib/storyarn/emails/templates.ex:135
+#: lib/storyarn/emails/templates.ex:61
 #, elixir-autogen, elixir-format
 msgid "<strong>%{inviter}</strong> has invited you to join <strong>%{project}</strong> on Storyarn as <strong>%{role}</strong>."
 msgstr "<strong>%{inviter}</strong> te ha invitado a unirte a <strong>%{project}</strong> en Storyarn como <strong>%{role}</strong>."
 
-#: lib/storyarn/emails/templates.ex:183
+#: lib/storyarn/emails/templates.ex:109
 #, elixir-autogen, elixir-format
 msgid "<strong>%{inviter}</strong> has invited you to join the <strong>%{workspace}</strong> workspace on Storyarn as <strong>%{role}</strong>."
-msgstr "<strong>%{inviter}</strong> te ha invitado a unirte al workspace <strong>%{workspace}</strong> en Storyarn como <strong>%{role}</strong>."
+msgstr "<strong>%{inviter}</strong> te ha invitado a unirte al espacio de trabajo <strong>%{workspace}</strong> en Storyarn como <strong>%{role}</strong>."
 
-#: lib/storyarn/emails/templates.ex:158
-#: lib/storyarn/emails/templates.ex:206
+#: lib/storyarn/emails/templates.ex:84
+#: lib/storyarn/emails/templates.ex:132
 #, elixir-autogen, elixir-format
 msgid "Accept by visiting:"
 msgstr "Acepta visitando:"
 
-#: lib/storyarn/emails/templates.ex:141
-#: lib/storyarn/emails/templates.ex:189
+#: lib/storyarn/emails/templates.ex:67
+#: lib/storyarn/emails/templates.ex:115
 #, elixir-autogen, elixir-format
 msgid "Accept invitation"
 msgstr "Aceptar invitación"
 
-#: lib/storyarn/emails/templates.ex:62
-#, elixir-autogen, elixir-format
-msgid "Click the button below to confirm your account and get started."
-msgstr "Haz clic en el botón de abajo para confirmar tu cuenta y empezar."
-
-#: lib/storyarn/emails/templates.ex:25
-#, elixir-autogen, elixir-format
-msgid "Click the button below to log in to your Storyarn account. This link will expire in 10 minutes."
-msgstr "Haz clic en el botón de abajo para iniciar sesión en tu cuenta de Storyarn. Este enlace caducará en 10 minutos."
-
-#: lib/storyarn/emails/templates.ex:101
+#: lib/storyarn/emails/templates.ex:28
 #, elixir-autogen, elixir-format
 msgid "Confirm email change"
 msgstr "Confirmar cambio de email"
 
-#: lib/storyarn/emails/templates.ex:65
-#, elixir-autogen, elixir-format
-msgid "Confirm my account"
-msgstr "Confirmar mi cuenta"
-
-#: lib/storyarn/emails/templates.ex:55
-#: lib/storyarn/emails/templates.ex:86
-#, elixir-autogen, elixir-format
-msgid "Confirm your Storyarn account"
-msgstr "Confirma tu cuenta de Storyarn"
-
-#: lib/storyarn/emails/templates.ex:78
-#, elixir-autogen, elixir-format
-msgid "Confirm your account by visiting this URL:"
-msgstr "Confirma tu cuenta visitando esta URL:"
-
-#: lib/storyarn/emails/templates.ex:121
+#: lib/storyarn/emails/templates.ex:48
 #, elixir-autogen, elixir-format
 msgid "Confirm your email change"
 msgstr "Confirma tu cambio de email"
 
-#: lib/storyarn/emails/templates.ex:236
+#: lib/storyarn/emails/templates.ex:162
 #, elixir-autogen, elixir-format
 msgid "Get started"
 msgstr "Empezar"
 
-#: lib/storyarn/emails/templates.ex:248
+#: lib/storyarn/emails/templates.ex:174
 #, elixir-autogen, elixir-format
 msgid "Get started:"
 msgstr "Empezar:"
 
-#: lib/storyarn/emails/templates.ex:230
-#: lib/storyarn/emails/templates.ex:246
+#: lib/storyarn/emails/templates.ex:156
+#: lib/storyarn/emails/templates.ex:172
 #, elixir-autogen, elixir-format
 msgid "Great news — your spot on the Storyarn waitlist has been activated. You now have full access to the platform."
 msgstr "Buenas noticias — tu puesto en la lista de espera de Storyarn ha sido activado. Ya tienes acceso completo a la plataforma."
 
 #: lib/storyarn/emails/templates.ex:22
 #: lib/storyarn/emails/templates.ex:39
-#: lib/storyarn/emails/templates.ex:95
-#: lib/storyarn/emails/templates.ex:112
 #, elixir-autogen, elixir-format
 msgid "Hi %{email},"
 msgstr "Hola %{email},"
 
-#: lib/storyarn/emails/templates.ex:132
-#: lib/storyarn/emails/templates.ex:152
-#: lib/storyarn/emails/templates.ex:180
-#: lib/storyarn/emails/templates.ex:200
+#: lib/storyarn/emails/templates.ex:58
+#: lib/storyarn/emails/templates.ex:78
+#: lib/storyarn/emails/templates.ex:106
+#: lib/storyarn/emails/templates.ex:126
 #, elixir-autogen, elixir-format
 msgid "Hi,"
 msgstr "Hola,"
 
-#: lib/storyarn/emails/templates.ex:68
-#: lib/storyarn/emails/templates.ex:82
-#, elixir-autogen, elixir-format
-msgid "If you didn't create an account, you can safely ignore this."
-msgstr "Si no creaste una cuenta, puedes ignorar este mensaje."
-
-#: lib/storyarn/emails/templates.ex:104
-#: lib/storyarn/emails/templates.ex:118
+#: lib/storyarn/emails/templates.ex:31
+#: lib/storyarn/emails/templates.ex:45
 #, elixir-autogen, elixir-format
 msgid "If you didn't request this change, please ignore this email."
 msgstr "Si no solicitaste este cambio, ignora este correo."
 
-#: lib/storyarn/emails/templates.ex:31
-#: lib/storyarn/emails/templates.ex:46
-#, elixir-autogen, elixir-format
-msgid "If you didn't request this email, you can safely ignore it."
-msgstr "Si no solicitaste este correo, puedes ignorarlo."
-
-#: lib/storyarn/emails/templates.ex:239
+#: lib/storyarn/emails/templates.ex:165
 #, elixir-autogen, elixir-format
 msgid "Just click the button above — you'll be able to log in with this email address (%{email})."
 msgstr "Haz clic en el botón de arriba — podrás iniciar sesión con este correo electrónico (%{email})."
 
-#: lib/storyarn/emails/templates.ex:18
-#: lib/storyarn/emails/templates.ex:28
-#, elixir-autogen, elixir-format
-msgid "Log in to Storyarn"
-msgstr "Iniciar sesión en Storyarn"
-
-#: lib/storyarn/emails/templates.ex:50
-#, elixir-autogen, elixir-format
-msgid "Log in to your Storyarn account"
-msgstr "Inicia sesión en tu cuenta de Storyarn"
-
-#: lib/storyarn/emails/templates.ex:41
-#, elixir-autogen, elixir-format
-msgid "Log in to your Storyarn account by visiting this URL:"
-msgstr "Inicia sesión en tu cuenta de Storyarn visitando esta URL:"
-
 #: lib/storyarn/emails/templates.ex:34
-#: lib/storyarn/emails/templates.ex:71
-#: lib/storyarn/emails/templates.ex:107
-#: lib/storyarn/emails/templates.ex:147
-#: lib/storyarn/emails/templates.ex:195
+#: lib/storyarn/emails/templates.ex:73
+#: lib/storyarn/emails/templates.ex:121
 #, elixir-autogen, elixir-format
 msgid "Or copy this link: %{url}"
 msgstr "O copia este enlace: %{url}"
 
-#: lib/storyarn/emails/templates.ex:233
+#: lib/storyarn/emails/templates.ex:159
 #, elixir-autogen, elixir-format
 msgid "Storyarn is a narrative design platform for game developers and interactive storytellers. Create character sheets, design dialogue flows, write screenplays, and build worlds."
 msgstr "Storyarn es una plataforma de diseño narrativo para desarrolladores de videojuegos y narradores interactivos. Crea fichas de personaje, diseña flujos de diálogo, escribe guiones y construye mundos."
 
-#: lib/storyarn/emails/templates.ex:160
-#: lib/storyarn/emails/templates.ex:208
+#: lib/storyarn/emails/templates.ex:86
+#: lib/storyarn/emails/templates.ex:134
 #, elixir-autogen, elixir-format
 msgid "This invitation expires in %{days} days."
 msgstr "Esta invitación caduca en %{days} días."
 
-#: lib/storyarn/emails/templates.ex:45
-#, elixir-autogen, elixir-format
-msgid "This link will expire in 10 minutes."
-msgstr "Este enlace caducará en 10 minutos."
-
-#: lib/storyarn/emails/templates.ex:91
+#: lib/storyarn/emails/templates.ex:18
 #, elixir-autogen, elixir-format
 msgid "Update your email address"
 msgstr "Actualiza tu dirección de email"
 
-#: lib/storyarn/emails/templates.ex:59
-#: lib/storyarn/emails/templates.ex:76
-#, elixir-autogen, elixir-format
-msgid "Welcome to Storyarn, %{email}!"
-msgstr "Bienvenido a Storyarn, %{email}!"
-
-#: lib/storyarn/emails/templates.ex:250
+#: lib/storyarn/emails/templates.ex:176
 #, elixir-autogen, elixir-format
 msgid "You can log in with this email address (%{email})."
 msgstr "Puedes iniciar sesión con este correo electrónico (%{email})."
 
-#: lib/storyarn/emails/templates.ex:98
+#: lib/storyarn/emails/templates.ex:25
 #, elixir-autogen, elixir-format
 msgid "You requested to change your email address. Click below to confirm the change."
 msgstr "Has solicitado cambiar tu dirección de email. Haz clic abajo para confirmar el cambio."
 
-#: lib/storyarn/emails/templates.ex:114
+#: lib/storyarn/emails/templates.ex:41
 #, elixir-autogen, elixir-format
 msgid "You requested to change your email address. Confirm by visiting:"
 msgstr "Has solicitado cambiar tu dirección de email. Confirma visitando:"
 
-#: lib/storyarn/emails/templates.ex:227
-#: lib/storyarn/emails/templates.ex:244
+#: lib/storyarn/emails/templates.ex:153
+#: lib/storyarn/emails/templates.ex:170
 #, elixir-autogen, elixir-format
 msgid "You're in!"
 msgstr "Ya estás dentro!"
 
-#: lib/storyarn/emails/templates.ex:223
+#: lib/storyarn/emails/templates.ex:149
 #, elixir-autogen, elixir-format
 msgid "You're in! Welcome to Storyarn"
 msgstr "Ya estás dentro! Bienvenido a Storyarn"
 
-#: lib/storyarn/emails/templates.ex:254
+#: lib/storyarn/emails/templates.ex:179
 #, elixir-autogen, elixir-format
 msgid "Your Storyarn access is ready"
 msgstr "Tu acceso a Storyarn está listo"
 
-#: lib/storyarn/emails/templates.ex:138
-#: lib/storyarn/emails/templates.ex:186
+#: lib/storyarn/emails/templates.ex:64
+#: lib/storyarn/emails/templates.ex:112
 #, elixir-autogen, elixir-format
 msgid "Click the button below to accept. You'll be redirected to the login page where you can sign in with this email address."
 msgstr "Haz clic en el botón de abajo para aceptar. Serás redirigido a la página de inicio de sesión donde podrás acceder con esta dirección de email."
 
-#: lib/storyarn/emails/templates.ex:156
-#: lib/storyarn/emails/templates.ex:204
+#: lib/storyarn/emails/templates.ex:82
+#: lib/storyarn/emails/templates.ex:130
 #, elixir-autogen, elixir-format
 msgid "Click the link below to accept. You'll be redirected to the login page where you can sign in with this email address."
 msgstr "Haz clic en el enlace de abajo para aceptar. Serás redirigido a la página de inicio de sesión donde podrás acceder con esta dirección de email."
 
-#: lib/storyarn/emails/templates.ex:161
-#: lib/storyarn/emails/templates.ex:209
+#: lib/storyarn/emails/templates.ex:87
+#: lib/storyarn/emails/templates.ex:135
 #, elixir-autogen, elixir-format
 msgid "If you don't want to join, simply ignore this email."
 msgstr "Si no quieres unirte, simplemente ignora este correo."
 
-#: lib/storyarn/emails/templates.ex:144
-#: lib/storyarn/emails/templates.ex:192
+#: lib/storyarn/emails/templates.ex:70
+#: lib/storyarn/emails/templates.ex:118
 #, elixir-autogen, elixir-format
 msgid "This invitation expires in %{days} days. If you don't want to join, simply ignore this email."
 msgstr "Esta invitación caduca en %{days} días. Si no quieres unirte, simplemente ignora este correo."

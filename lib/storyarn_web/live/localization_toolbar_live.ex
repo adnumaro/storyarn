@@ -67,7 +67,7 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
     if socket.assigns.can_edit do
       do_translate_batch(socket)
     else
-      {:noreply, put_flash(socket, :error, gettext("You don't have permission to edit."))}
+      {:noreply, put_flash(socket, :error, dgettext("localization", "You don't have permission to edit."))}
     end
   end
 

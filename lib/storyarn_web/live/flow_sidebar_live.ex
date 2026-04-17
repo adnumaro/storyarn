@@ -131,7 +131,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
           {:noreply, on_tree_change_and_open(socket, new_flow.id)}
 
         {:error, :limit_reached, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Item limit reached for your plan"))}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
@@ -148,7 +148,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
           {:noreply, on_tree_change_and_open(socket, new_flow.id)}
 
         {:error, :limit_reached, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Item limit reached for your plan"))}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create flow."))}
@@ -293,7 +293,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
     if socket.assigns.can_edit do
       fun.(socket)
     else
-      {:noreply, put_flash(socket, :error, gettext("You don't have permission to edit."))}
+      {:noreply, put_flash(socket, :error, dgettext("flows", "You don't have permission to edit."))}
     end
   end
 

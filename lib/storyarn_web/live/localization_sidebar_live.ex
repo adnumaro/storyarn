@@ -280,7 +280,7 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
     if socket.assigns.can_edit do
       fun.(socket)
     else
-      {:noreply, put_flash(socket, :error, gettext("You don't have permission to edit."))}
+      {:noreply, put_flash(socket, :error, dgettext("localization", "You don't have permission to edit."))}
     end
   end
 

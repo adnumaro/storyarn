@@ -4,6 +4,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
   Converts snake_case Ecto structs to camelCase plain maps.
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   alias Storyarn.Assets
 
   # ---- Scene ----
@@ -180,12 +182,11 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
 
   # ---- Legend groups (server-side aggregation) ----
 
-  @pin_type_labels %{
-    "location" => "Location",
-    "character" => "Character",
-    "event" => "Event",
-    "custom" => "Custom"
-  }
+  defp pin_type_label("location"), do: dgettext("scenes", "Location")
+  defp pin_type_label("character"), do: dgettext("scenes", "Character")
+  defp pin_type_label("event"), do: dgettext("scenes", "Event")
+  defp pin_type_label("custom"), do: dgettext("scenes", "Custom")
+  defp pin_type_label(other), do: other
 
   @pin_type_icons %{
     "location" => "map-pin",
@@ -194,11 +195,10 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
     "custom" => "star"
   }
 
-  @line_style_labels %{
-    "solid" => "Solid",
-    "dashed" => "Dashed",
-    "dotted" => "Dotted"
-  }
+  defp line_style_label("solid"), do: dgettext("scenes", "Solid")
+  defp line_style_label("dashed"), do: dgettext("scenes", "Dashed")
+  defp line_style_label("dotted"), do: dgettext("scenes", "Dotted")
+  defp line_style_label(other), do: other
 
   def prepare_legend_groups(pins, zones, connections) do
     pin_groups = group_pins(pins)
@@ -219,7 +219,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
     |> Enum.map(fn {{pin_type, color}, items} ->
       %{
         icon: Map.get(@pin_type_icons, pin_type, "map-pin"),
-        label: Map.get(@pin_type_labels, pin_type, pin_type),
+        label: pin_type_label(pin_type),
         color: color,
         count: length(items)
       }
@@ -253,7 +253,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
       %{
         lineStyle: line_style,
         color: color,
-        label: Map.get(@line_style_labels, line_style, line_style),
+        label: line_style_label(line_style),
         dashArray: line_dash(line_style),
         count: length(items)
       }

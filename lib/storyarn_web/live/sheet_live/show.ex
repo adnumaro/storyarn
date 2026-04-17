@@ -858,7 +858,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   defp show_collab_toast(socket, action, payload) do
     push_event(socket, "collab_toast", %{
       action: to_string(action),
-      userEmail: payload[:user_email] || "Unknown",
+      userEmail: payload[:user_email] || dgettext("sheets", "Unknown"),
       userColor: payload[:user_color] || "#666"
     })
   end

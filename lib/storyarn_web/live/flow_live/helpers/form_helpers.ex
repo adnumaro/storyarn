@@ -5,6 +5,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
   Form data extraction is delegated to `NodeTypeRegistry`.
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   import Phoenix.Component, only: [to_form: 2]
 
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
@@ -87,5 +89,5 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
     email |> String.split("@") |> List.first()
   end
 
-  def get_email_name(_), do: "Someone"
+  def get_email_name(_), do: dgettext("flows", "Someone")
 end

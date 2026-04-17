@@ -3,6 +3,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
   Collaboration helpers for the flow editor - handles presence, cursors, locks, and real-time changes.
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   import Phoenix.LiveView, only: [push_event: 3]
 
   alias Phoenix.LiveView.Socket
@@ -48,7 +50,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
   def show_collab_toast(socket, action, payload) do
     push_event(socket, "collab_toast", %{
       action: to_string(action),
-      userEmail: payload[:user_email] || "Unknown",
+      userEmail: payload[:user_email] || dgettext("flows", "Unknown"),
       userColor: payload[:user_color] || "#666"
     })
   end

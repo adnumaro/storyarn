@@ -11,8 +11,19 @@
 msgid ""
 msgstr ""
 
-#: lib/storyarn_web/controllers/screenplay_export_controller.ex:16
-#: lib/storyarn_web/controllers/screenplay_export_controller.ex:44
+#: lib/storyarn_web/live/docs_live/components/docs_sidebar.ex:44
 #, elixir-autogen, elixir-format
-msgid "Not found"
+msgid "%{count} result"
+msgid_plural "%{count} results"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/storyarn_web/live/docs_live/show.ex:38
+#, elixir-autogen, elixir-format
+msgid "Documentation"
+msgstr ""
+
+#: lib/storyarn_web/live/docs_live/show.ex:51
+#, elixir-autogen, elixir-format
+msgid "Guide not found"
 msgstr ""

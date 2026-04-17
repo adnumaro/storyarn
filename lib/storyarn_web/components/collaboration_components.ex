@@ -79,5 +79,5 @@ defmodule StoryarnWeb.Components.CollaborationComponents do
     email |> String.split("@") |> List.first()
   end
 
-  defp get_email_name(_), do: "Someone"
+  defp get_email_name(_), do: gettext("Someone")
 end

@@ -493,7 +493,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
       :outcome ->
         Map.merge(base, %{
-          label: slide[:label] || "The End",
+          label: slide[:label] || dgettext("flows", "The End"),
           outcome_color: slide[:outcome_color],
           outcome_tags: slide[:outcome_tags] || [],
           step_count: slide[:step_count] || 0,

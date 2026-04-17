@@ -173,24 +173,21 @@ defmodule StoryarnWeb.ProjectLive.Show do
 
   defp format_node_distribution(_), do: []
 
-  @node_type_labels %{
-    "dialogue" => "Dialogue",
-    "condition" => "Condition",
-    "instruction" => "Instruction",
-    "hub" => "Hub",
-    "jump" => "Jump",
-    "slug_line" => "Slug Line",
-    "subflow" => "Subflow",
-    "entry" => "Entry",
-    "exit" => "Exit"
-  }
-
-  defp node_type_label(type), do: Map.get(@node_type_labels, type, type)
+  defp node_type_label("dialogue"), do: dgettext("flows", "Dialogue")
+  defp node_type_label("condition"), do: dgettext("flows", "Condition")
+  defp node_type_label("instruction"), do: dgettext("flows", "Instruction")
+  defp node_type_label("hub"), do: dgettext("flows", "Hub")
+  defp node_type_label("jump"), do: dgettext("flows", "Jump")
+  defp node_type_label("slug_line"), do: dgettext("flows", "Slug Line")
+  defp node_type_label("subflow"), do: dgettext("flows", "Subflow")
+  defp node_type_label("entry"), do: dgettext("flows", "Entry")
+  defp node_type_label("exit"), do: dgettext("flows", "Exit")
+  defp node_type_label(type), do: type
 
   defp format_speakers(speakers, workspace_slug, project_slug) when is_list(speakers) do
     Enum.map(speakers, fn s ->
       %{
-        name: s.sheet_name || "Unknown Speaker",
+        name: s.sheet_name || dgettext("sheets", "Unknown Speaker"),
         count: s.line_count,
         href:
           if(s.sheet_id,

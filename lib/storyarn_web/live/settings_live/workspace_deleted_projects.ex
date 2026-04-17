@@ -23,7 +23,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
 
       {:ok,
        socket
-       |> assign(:page_title, gettext("Deleted Projects"))
+       |> assign(:page_title, dgettext("workspaces", "Deleted Projects"))
        |> assign(
          :current_path,
          ~p"/users/settings/workspaces/#{workspace.slug}/deleted-projects"
@@ -71,10 +71,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
       %{
         id: project.id,
         name: project.name,
-        deleted_time_ago: gettext("Deleted %{time_ago}", time_ago: format_time_ago(project.deleted_at)),
+        deleted_time_ago: dgettext("workspaces", "Deleted %{time_ago}", time_ago: format_time_ago(project.deleted_at)),
         deleted_by_text:
           if(project.deleted_by,
-            do: gettext("by %{email}", email: project.deleted_by.email)
+            do: dgettext("workspaces", "by %{email}", email: project.deleted_by.email)
           ),
         snapshot_count: project.snapshot_count
       }
@@ -131,14 +131,14 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
           {:noreply,
            socket
            |> assign(:recovering, true)
-           |> put_flash(:info, gettext("Recovery started. This may take a moment..."))}
+           |> put_flash(:info, dgettext("workspaces", "Recovery started. This may take a moment..."))}
 
         {:error, :limit_reached, _details} ->
           {:noreply,
            put_flash(
              socket,
              :error,
-             gettext("Workspace project limit reached. Upgrade your plan to recover this project.")
+             dgettext("workspaces", "Workspace project limit reached. Upgrade your plan to recover this project.")
            )}
       end
     end)
@@ -152,7 +152,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
      socket
      |> assign(:recovering, false)
      |> assign(:deleted_projects, deleted_projects)
-     |> put_flash(:info, gettext("Project recovered as '%{name}'", name: name))}
+     |> put_flash(:info, dgettext("workspaces", "Project recovered as '%{name}'", name: name))}
   end
 
   @impl true
@@ -160,7 +160,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
     {:noreply,
      socket
      |> assign(:recovering, false)
-     |> put_flash(:error, gettext("Recovery failed: %{reason}", reason: reason))}
+     |> put_flash(:error, dgettext("workspaces", "Recovery failed: %{reason}", reason: reason))}
   end
 
   defp format_time_ago(datetime) do
@@ -168,16 +168,16 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
 
     cond do
       diff < 60 ->
-        gettext("just now")
+        dgettext("workspaces", "just now")
 
       diff < 3600 ->
-        ngettext("%{count} minute ago", "%{count} minutes ago", div(diff, 60), count: div(diff, 60))
+        dngettext("workspaces", "%{count} minute ago", "%{count} minutes ago", div(diff, 60), count: div(diff, 60))
 
       diff < 86_400 ->
-        ngettext("%{count} hour ago", "%{count} hours ago", div(diff, 3600), count: div(diff, 3600))
+        dngettext("workspaces", "%{count} hour ago", "%{count} hours ago", div(diff, 3600), count: div(diff, 3600))
 
       true ->
-        ngettext("%{count} day ago", "%{count} days ago", div(diff, 86_400), count: div(diff, 86_400))
+        dngettext("workspaces", "%{count} day ago", "%{count} days ago", div(diff, 86_400), count: div(diff, 86_400))
     end
   end
 end
