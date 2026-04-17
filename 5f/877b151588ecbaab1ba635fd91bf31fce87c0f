@@ -1,0 +1,62 @@
+lib/storyarn_web/live/scene_live/index.ex
+  b5e1bb47b647b01a 46-47
+lib/storyarn_web/live/flow_live/index.ex
+  b5e1bb47b647b01a 45-46
+lib/storyarn_web/live/localization_live/edit.ex
+  b5e1bb47b647b01a 36-37
+lib/storyarn_web/live/localization_live/report.ex
+  b5e1bb47b647b01a 33-34
+lib/storyarn_web/live/flow_sidebar_live.ex
+  b5e1bb47b647b01a 22
+lib/storyarn_web/live/localization_sidebar_live.ex
+  b5e1bb47b647b01a 28
+lib/storyarn_web/live/sheet_live/index.ex
+  b5e1bb47b647b01a 46-47
+lib/storyarn_web/live/scene_sidebar_live.ex
+  b5e1bb47b647b01a 23
+lib/storyarn_web/live/sheet_live/show.ex
+  b5e1bb47b647b01a 69-70
+lib/storyarn_web/live/localization_toolbar_live.ex
+  b5e1bb47b647b01a 28-29
+lib/storyarn_web/live/sheets_sidebar_live.ex
+  b5e1bb47b647b01a 24
+lib/storyarn_web/live/localization_live/index.ex
+  b5e1bb47b647b01a 39-40,55-56
+lib/storyarn_web/live/flow_live/show.ex
+  b5e1bb47b647b01a 78-79
+lib/storyarn_web/live/scene_live/show.ex
+  b5e1bb47b647b01a 84-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "5f877b151588ecbaab1ba635fd91bf31fce87c0f",
+  "prompts": {
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 797,
+      "overriden_lines": 0
+    },
+    "b5e1bb47b647b01a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da948ded-a770-4715-803c-ee52cc73c164",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 38,
+      "total_deletions": 22,
+      "accepted_lines": 6564,
+      "overriden_lines": 0
+    }
+  }
+}
