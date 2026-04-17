@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ArrowRight, ArrowRightToLine, CornerDownLeft } from "lucide-vue-next";
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
@@ -31,6 +32,7 @@ const {
   nodeDataOverride?: ExitNodeData | null;
 }>();
 
+const { t } = useI18n();
 const nodeData = computed<ExitNodeData>(
   () => nodeDataOverride || (data.nodeData as ExitNodeData) || {},
 );
@@ -46,7 +48,7 @@ const hasError = computed(() => {
   return !!nodeData.value.stale_reference;
 });
 const errorTitle = computed(() =>
-  nodeData.value.stale_reference ? "Referenced flow was deleted" : "No flow referenced",
+  nodeData.value.stale_reference ? t("flows.nodes.exit.flow_deleted") : t("flows.nodes.exit.no_flow"),
 );
 
 // Tags text

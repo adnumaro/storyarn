@@ -73,9 +73,9 @@ function closePreview(): void {
             </div>
             <div>
               <DialogTitle class="text-base">
-                {{ currentNode.speaker || "Narrator" }}
+                {{ currentNode.speaker || $t("flows.preview.narrator") }}
               </DialogTitle>
-              <p class="text-xs text-muted-foreground">Node {{ currentNode.id }}</p>
+              <p class="text-xs text-muted-foreground">{{ $t("flows.preview.node") }} {{ currentNode.id }}</p>
             </div>
           </div>
         </DialogHeader>
@@ -88,7 +88,7 @@ function closePreview(): void {
 
         <!-- Response buttons -->
         <div v-if="responses.length > 0" class="space-y-2">
-          <p class="text-sm font-medium text-muted-foreground">Responses:</p>
+          <p class="text-sm font-medium text-muted-foreground">{{ $t("flows.preview.responses") }}</p>
           <div class="flex flex-col gap-2">
             <Button
               v-for="response in responses"
@@ -113,7 +113,7 @@ function closePreview(): void {
         <!-- Continue button -->
         <div v-if="responses.length === 0 && hasNext" class="pt-2">
           <Button class="w-full gap-1" @click="continueFlow">
-            Continue
+            {{ $t("flows.preview.continue") }}
             <ArrowRight class="size-4" />
           </Button>
         </div>
@@ -124,7 +124,7 @@ function closePreview(): void {
             class="flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 text-blue-700 dark:text-blue-300 text-sm"
           >
             <Info class="size-5 shrink-0" />
-            <span>End of dialogue branch</span>
+            <span>{{ $t("flows.preview.end_branch") }}</span>
           </div>
         </div>
 
@@ -132,16 +132,16 @@ function closePreview(): void {
         <div class="flex justify-between pt-4 border-t border-border">
           <Button v-if="hasHistory" variant="ghost" size="sm" class="gap-1" @click="goBack">
             <ArrowLeft class="size-4" />
-            Back
+            {{ $t("flows.preview.back") }}
           </Button>
           <div v-else />
-          <Button variant="ghost" size="sm" @click="closePreview"> Close </Button>
+          <Button variant="ghost" size="sm" @click="closePreview"> {{ $t("flows.preview.close") }} </Button>
         </div>
       </template>
 
       <!-- Empty state -->
       <div v-else class="text-center py-8">
-        <p class="text-muted-foreground">No node selected for preview.</p>
+        <p class="text-muted-foreground">{{ $t("flows.preview.no_node") }}</p>
       </div>
     </DialogContent>
   </Dialog>

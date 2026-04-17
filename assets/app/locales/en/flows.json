@@ -1,0 +1,234 @@
+{
+  "flows": {
+    "dashboard": {
+      "title": "Flows",
+      "subtitle": "Create visual narrative flows and dialogue trees",
+      "empty": "No flows yet. Create your first flow to get started.",
+      "all_flows": "All Flows",
+      "issues": "Issues",
+      "main": "Main",
+      "set_main": "Set as main",
+      "delete": "Delete",
+      "columns": {
+        "name": "Name",
+        "nodes": "Nodes",
+        "dialogue": "Dialogue",
+        "conditions": "Conditions",
+        "words": "Words",
+        "modified": "Modified"
+      }
+    },
+    "tree": {
+      "filter": "Filter flows...",
+      "empty": "No flows yet",
+      "new_flow": "New Flow",
+      "delete_title": "Delete flow?",
+      "cancel": "Cancel",
+      "delete": "Delete"
+    },
+    "header": {
+      "nav_back": "Alt+Left",
+      "nav_forward": "Alt+Right",
+      "untitled": "Untitled",
+      "add_shortcut": "add-shortcut",
+      "main": "Main",
+      "scene_backdrop": "Scene backdrop",
+      "no_scene": "No scene",
+      "inherited": "(inherited)",
+      "no_scene_inherit": "No scene (inherit)",
+      "looks_great": "This flow looks great!",
+      "saving": "Saving",
+      "saved": "Saved"
+    },
+    "form": {
+      "title": "New Flow",
+      "submit": "Create Flow",
+      "name": "Name",
+      "name_placeholder": "Main Story",
+      "description": "Description",
+      "description_placeholder": "Describe the purpose of this flow...",
+      "cancel": "Cancel"
+    },
+    "collab_toast": {
+      "node_created": "added a node",
+      "node_updated": "updated a node",
+      "node_deleted": "removed a node",
+      "node_restored": "restored a node",
+      "node_moved": "moved a node",
+      "connection_created": "added a connection",
+      "connection_deleted": "removed a connection",
+      "flow_updated": "updated the flow",
+      "node_locked": "locked a node",
+      "node_unlocked": "unlocked a node",
+      "flow_merged": "merged changes"
+    },
+    "context_menu": {
+      "duplicate": "Duplicate",
+      "copy_id": "Copy ID",
+      "delete": "Delete",
+      "add_node": "Add node",
+      "add_note": "Add note",
+      "auto_layout": "Auto layout"
+    },
+    "node_types": {
+      "dialogue": "Dialogue",
+      "condition": "Condition",
+      "instruction": "Instruction",
+      "hub": "Hub",
+      "jump": "Jump",
+      "exit": "Exit",
+      "subflow": "Subflow",
+      "slug_line": "Slug Line",
+      "annotation": "Annotation"
+    },
+    "dock": {
+      "narrative": "Narrative",
+      "logic": "Logic",
+      "navigation": "Navigation",
+      "version_history": "Version History",
+      "version_history_desc": "View and manage version history",
+      "play": "Play",
+      "play_desc": "Run this flow in story player",
+      "debug": "Debug",
+      "debug_desc": "Step through flow execution",
+      "add_note": "Add note",
+      "dialogue_desc": "Character speech and player responses",
+      "slug_line_desc": "Scene heading or location marker",
+      "condition_desc": "Branch based on variable conditions",
+      "instruction_desc": "Set or modify variable values",
+      "exit_desc": "End point of a flow",
+      "hub_desc": "Named junction for jump targets",
+      "jump_desc": "Jump to a hub in any flow",
+      "subflow_desc": "Embed another flow as a node"
+    },
+    "builder": {
+      "condition_title": "Condition Builder",
+      "instruction_title": "Instruction Builder",
+      "fallback_title": "Builder",
+      "condition_help": "Add rules to define when to route to True/False.",
+      "condition_switch_help": "Add conditions. Each one creates a separate output.",
+      "instruction_help": "Add assignments to set variable values when this node executes."
+    },
+    "debug": {
+      "step_limit": "Step limit reached. Reset to continue.",
+      "tab_console": "Console",
+      "tab_variables": "Variables",
+      "tab_history": "History",
+      "choose_response": "Choose a response:",
+      "empty_response": "(empty)",
+      "waiting": "Waiting for execution...",
+      "filter_variables": "Filter variables...",
+      "nil": "nil"
+    },
+    "minimap": {
+      "toggle": "Toggle minimap",
+      "fit_view": "Fit to view"
+    },
+    "preview": {
+      "narrator": "Narrator",
+      "node": "Node",
+      "responses": "Responses:",
+      "continue": "Continue",
+      "end_branch": "End of dialogue branch",
+      "back": "Back",
+      "close": "Close",
+      "no_node": "No node selected for preview."
+    },
+    "screenplay_editor": {
+      "title": "Screenplay Editor",
+      "tab_text": "Text",
+      "tab_responses": "Responses",
+      "tab_settings": "Settings",
+      "speaker": "Speaker",
+      "no_speaker": "No speaker",
+      "stage_directions": "Stage directions",
+      "stage_directions_placeholder": "e.g., looks away nervously",
+      "dialogue": "Dialogue",
+      "dialogue_placeholder": "Write dialogue...",
+      "response": "Response",
+      "remove": "Remove",
+      "condition": "Condition",
+      "instructions": "Instructions",
+      "add_response": "+ Add Response",
+      "menu_text": "Menu text",
+      "menu_text_placeholder": "Short text for menus...",
+      "technical_id": "Technical ID",
+      "technical_id_placeholder": "auto-generated"
+    },
+    "version_history": {
+      "title": "Version History"
+    },
+    "exit_modes": {
+      "terminal": "Terminal",
+      "terminal_desc": "End of flow — no continuation",
+      "flow_reference": "Flow Reference",
+      "flow_reference_desc": "Continue to another flow",
+      "caller_return": "Caller Return",
+      "caller_return_desc": "Return to the calling flow"
+    },
+    "condition_toolbar": {
+      "routes": "Routes",
+      "multi": "Multi",
+      "edit_condition": "Edit condition"
+    },
+    "exit_toolbar": {
+      "label_placeholder": "Label…"
+    },
+    "nodes": {
+      "dialogue": {
+        "no_speaker": "No speaker",
+        "stage_placeholder": "Stage directions…",
+        "menu_placeholder": "Menu text…",
+        "dialogue_placeholder": "Dialogue text…",
+        "empty_response": "Empty response text",
+        "type_mismatch": "Type mismatch",
+        "has_condition": "Has condition",
+        "has_instructions": "Has instructions"
+      },
+      "condition": {
+        "incomplete_rule": "Incomplete rule",
+        "true": "True",
+        "false": "False",
+        "block_incomplete": "Block has incomplete rules"
+      },
+      "exit": {
+        "no_flow": "No flow referenced",
+        "flow_deleted": "Referenced flow was deleted"
+      },
+      "instruction": {
+        "set_true": "Set {var} to true",
+        "set_false": "Set {var} to false",
+        "toggle": "Toggle {var}",
+        "clear": "Clear {var}",
+        "add": "Add {value} to {var}",
+        "subtract": "Subtract {value} from {var}",
+        "stale_references": "Stale references",
+        "type_mismatch": "Type mismatch in assignments"
+      },
+      "jump": {
+        "no_target": "No target hub"
+      },
+      "slug_line": {
+        "no_location": "No location set"
+      },
+      "subflow": {
+        "no_flow": "No flow selected",
+        "no_flow_ref": "No flow referenced",
+        "flow_deleted": "Referenced flow was deleted",
+        "output": "Output"
+      }
+    },
+    "player": {
+      "continue": "Continue",
+      "mode_player": "Player",
+      "mode_analysis": "Analysis",
+      "steps": "Steps:",
+      "choices": "Choices:",
+      "variables_changed": "Variables changed:",
+      "play_again": "Play again",
+      "back_to_editor": "Back to editor",
+      "back": "Back",
+      "restart": "Restart"
+    }
+  }
+}

@@ -1,0 +1,234 @@
+{
+  "flows": {
+    "dashboard": {
+      "title": "Flujos",
+      "subtitle": "Crea flujos narrativos visuales y árboles de diálogo",
+      "empty": "Aún no hay flujos. Crea tu primer flujo para empezar.",
+      "all_flows": "Todos los flujos",
+      "issues": "Problemas",
+      "main": "Principal",
+      "set_main": "Establecer como principal",
+      "delete": "Eliminar",
+      "columns": {
+        "name": "Nombre",
+        "nodes": "Nodos",
+        "dialogue": "Diálogos",
+        "conditions": "Condiciones",
+        "words": "Palabras",
+        "modified": "Modificado"
+      }
+    },
+    "tree": {
+      "filter": "Filtrar flujos...",
+      "empty": "Aún no hay flujos",
+      "new_flow": "Nuevo flujo",
+      "delete_title": "¿Eliminar flujo?",
+      "cancel": "Cancelar",
+      "delete": "Eliminar"
+    },
+    "header": {
+      "nav_back": "Alt+Izquierda",
+      "nav_forward": "Alt+Derecha",
+      "untitled": "Sin título",
+      "add_shortcut": "añadir-atajo",
+      "main": "Principal",
+      "scene_backdrop": "Escena de fondo",
+      "no_scene": "Sin escena",
+      "inherited": "(heredada)",
+      "no_scene_inherit": "Sin escena (heredar)",
+      "looks_great": "Este flujo se ve bien",
+      "saving": "Guardando",
+      "saved": "Guardado"
+    },
+    "form": {
+      "title": "Nuevo flujo",
+      "submit": "Crear flujo",
+      "name": "Nombre",
+      "name_placeholder": "Historia principal",
+      "description": "Descripción",
+      "description_placeholder": "Describe el propósito de este flujo...",
+      "cancel": "Cancelar"
+    },
+    "collab_toast": {
+      "node_created": "añadió un nodo",
+      "node_updated": "actualizó un nodo",
+      "node_deleted": "eliminó un nodo",
+      "node_restored": "restauró un nodo",
+      "node_moved": "movió un nodo",
+      "connection_created": "añadió una conexión",
+      "connection_deleted": "eliminó una conexión",
+      "flow_updated": "actualizó el flujo",
+      "node_locked": "bloqueó un nodo",
+      "node_unlocked": "desbloqueó un nodo",
+      "flow_merged": "fusionó cambios"
+    },
+    "context_menu": {
+      "duplicate": "Duplicar",
+      "copy_id": "Copiar ID",
+      "delete": "Eliminar",
+      "add_node": "Añadir nodo",
+      "add_note": "Añadir nota",
+      "auto_layout": "Auto layout"
+    },
+    "node_types": {
+      "dialogue": "Diálogo",
+      "condition": "Condición",
+      "instruction": "Instrucción",
+      "hub": "Hub",
+      "jump": "Salto",
+      "exit": "Salida",
+      "subflow": "Subflujo",
+      "slug_line": "Encabezado",
+      "annotation": "Anotación"
+    },
+    "dock": {
+      "narrative": "Narrativa",
+      "logic": "Lógica",
+      "navigation": "Navegación",
+      "version_history": "Historial de versiones",
+      "version_history_desc": "Ver y gestionar el historial de versiones",
+      "play": "Reproducir",
+      "play_desc": "Ejecutar este flujo en el reproductor",
+      "debug": "Depurar",
+      "debug_desc": "Recorrer la ejecución paso a paso",
+      "add_note": "Añadir nota",
+      "dialogue_desc": "Diálogos de personajes y respuestas del jugador",
+      "slug_line_desc": "Encabezado de escena o marcador de ubicación",
+      "condition_desc": "Bifurcar según condiciones de variables",
+      "instruction_desc": "Establecer o modificar valores de variables",
+      "exit_desc": "Punto final de un flujo",
+      "hub_desc": "Punto de encuentro para saltos",
+      "jump_desc": "Saltar a un hub en cualquier flujo",
+      "subflow_desc": "Insertar otro flujo como nodo"
+    },
+    "builder": {
+      "condition_title": "Constructor de condiciones",
+      "instruction_title": "Constructor de instrucciones",
+      "fallback_title": "Constructor",
+      "condition_help": "Añade reglas para definir cuándo enrutar a Verdadero/Falso.",
+      "condition_switch_help": "Añade condiciones. Cada una crea una salida separada.",
+      "instruction_help": "Añade asignaciones para establecer valores de variables cuando se ejecute este nodo."
+    },
+    "debug": {
+      "step_limit": "Límite de pasos alcanzado. Reinicia para continuar.",
+      "tab_console": "Consola",
+      "tab_variables": "Variables",
+      "tab_history": "Historial",
+      "choose_response": "Elige una respuesta:",
+      "empty_response": "(vacío)",
+      "waiting": "Esperando ejecución...",
+      "filter_variables": "Filtrar variables...",
+      "nil": "nil"
+    },
+    "minimap": {
+      "toggle": "Alternar minimapa",
+      "fit_view": "Ajustar a la vista"
+    },
+    "preview": {
+      "narrator": "Narrador",
+      "node": "Nodo",
+      "responses": "Respuestas:",
+      "continue": "Continuar",
+      "end_branch": "Fin de la rama de diálogo",
+      "back": "Atrás",
+      "close": "Cerrar",
+      "no_node": "No hay nodo seleccionado para previsualizar."
+    },
+    "screenplay_editor": {
+      "title": "Editor de guión",
+      "tab_text": "Texto",
+      "tab_responses": "Respuestas",
+      "tab_settings": "Ajustes",
+      "speaker": "Personaje",
+      "no_speaker": "Sin personaje",
+      "stage_directions": "Acotaciones",
+      "stage_directions_placeholder": "p. ej., mira hacia otro lado nerviosamente",
+      "dialogue": "Diálogo",
+      "dialogue_placeholder": "Escribe diálogo...",
+      "response": "Respuesta",
+      "remove": "Eliminar",
+      "condition": "Condición",
+      "instructions": "Instrucciones",
+      "add_response": "+ Añadir respuesta",
+      "menu_text": "Texto de menú",
+      "menu_text_placeholder": "Texto breve para menús...",
+      "technical_id": "ID técnico",
+      "technical_id_placeholder": "autogenerado"
+    },
+    "version_history": {
+      "title": "Historial de versiones"
+    },
+    "exit_modes": {
+      "terminal": "Terminal",
+      "terminal_desc": "Fin del flujo — sin continuación",
+      "flow_reference": "Referencia a flujo",
+      "flow_reference_desc": "Continuar a otro flujo",
+      "caller_return": "Retorno al llamante",
+      "caller_return_desc": "Volver al flujo que lo llamó"
+    },
+    "condition_toolbar": {
+      "routes": "Rutas",
+      "multi": "Multi",
+      "edit_condition": "Editar condición"
+    },
+    "exit_toolbar": {
+      "label_placeholder": "Etiqueta…"
+    },
+    "nodes": {
+      "dialogue": {
+        "no_speaker": "Sin personaje",
+        "stage_placeholder": "Acotaciones…",
+        "menu_placeholder": "Texto de menú…",
+        "dialogue_placeholder": "Texto de diálogo…",
+        "empty_response": "Respuesta vacía",
+        "type_mismatch": "Tipo incompatible",
+        "has_condition": "Tiene condición",
+        "has_instructions": "Tiene instrucciones"
+      },
+      "condition": {
+        "incomplete_rule": "Regla incompleta",
+        "true": "Verdadero",
+        "false": "Falso",
+        "block_incomplete": "El bloque tiene reglas incompletas"
+      },
+      "exit": {
+        "no_flow": "Sin flujo referenciado",
+        "flow_deleted": "El flujo referenciado fue eliminado"
+      },
+      "instruction": {
+        "set_true": "Establecer {var} a verdadero",
+        "set_false": "Establecer {var} a falso",
+        "toggle": "Alternar {var}",
+        "clear": "Limpiar {var}",
+        "add": "Sumar {value} a {var}",
+        "subtract": "Restar {value} de {var}",
+        "stale_references": "Referencias obsoletas",
+        "type_mismatch": "Tipo incompatible en asignaciones"
+      },
+      "jump": {
+        "no_target": "Sin hub destino"
+      },
+      "slug_line": {
+        "no_location": "Sin ubicación"
+      },
+      "subflow": {
+        "no_flow": "Sin flujo seleccionado",
+        "no_flow_ref": "Sin flujo referenciado",
+        "flow_deleted": "El flujo referenciado fue eliminado",
+        "output": "Salida"
+      }
+    },
+    "player": {
+      "continue": "Continuar",
+      "mode_player": "Reproductor",
+      "mode_analysis": "Análisis",
+      "steps": "Pasos:",
+      "choices": "Elecciones:",
+      "variables_changed": "Variables modificadas:",
+      "play_again": "Jugar de nuevo",
+      "back_to_editor": "Volver al editor",
+      "back": "Atrás",
+      "restart": "Reiniciar"
+    }
+  }
+}

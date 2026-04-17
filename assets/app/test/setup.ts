@@ -1,7 +1,30 @@
 import { reactive } from "vue";
 import { vi } from "vitest";
 import { createApp, defineComponent, type App } from "vue";
+import { config } from "@vue/test-utils";
+import { createI18n } from "vue-i18n";
 import type { LiveInterface } from "@composables/useLive";
+
+// Load all English locale files for component tests
+const localeModules: Record<string, { default?: Record<string, unknown> }> = import.meta.glob(
+  "../locales/en/*.json",
+  { eager: true },
+);
+
+const enMessages: Record<string, unknown> = {};
+for (const path in localeModules) {
+  const content = localeModules[path].default || localeModules[path];
+  Object.assign(enMessages, content);
+}
+
+const i18n = createI18n({
+  legacy: false,
+  locale: "en",
+  fallbackLocale: "en",
+  missing: (_locale, key) => key,
+  messages: { en: enMessages },
+});
+config.global.plugins.push(i18n);
 
 /**
  * Create a mock LiveInterface with vi.fn() spies on all methods.

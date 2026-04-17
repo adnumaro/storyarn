@@ -2,6 +2,7 @@
 import { ArrowRight, Box, CornerDownLeft, Square } from "lucide-vue-next";
 import { Ref } from "rete-vue-plugin";
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import type { NodeConfig } from "../lib/node-configs";
@@ -22,13 +23,14 @@ const { data, emit, config, color } = defineProps<{
   color: string;
 }>();
 
+const { t } = useI18n();
 const nodeData = computed<SubflowNodeData>(() => (data.nodeData as SubflowNodeData) || {});
 const refFlowName = computed(() => nodeData.value.referenced_flow_name);
 const refFlowShortcut = computed(() => nodeData.value.referenced_flow_shortcut);
 const hasRef = computed(() => !!nodeData.value.referenced_flow_id);
 const hasError = computed(() => !hasRef.value || nodeData.value.stale_reference);
 const errorTitle = computed(() =>
-  nodeData.value.stale_reference ? "Referenced flow was deleted" : "No flow referenced",
+  nodeData.value.stale_reference ? t("flows.nodes.subflow.flow_deleted") : t("flows.nodes.subflow.no_flow_ref"),
 );
 
 // Sockets
@@ -73,7 +75,7 @@ function getExitInfo(key: string): ExitLabel | null {
       v-else-if="!hasRef"
       class="text-[11px] text-muted-foreground px-3 py-2 max-w-50 border-b border-border/10 wrap-break-word"
     >
-      <div class="line-clamp-4 leading-[1.4] opacity-50">No flow selected</div>
+      <div class="line-clamp-4 leading-[1.4] opacity-50">{{ t("flows.nodes.subflow.no_flow") }}</div>
     </div>
 
     <!-- Sockets with per-exit labels -->
@@ -106,7 +108,7 @@ function getExitInfo(key: string): ExitLabel | null {
             <Square v-else class="size-2.5 shrink-0" />
             {{ getExitInfo(key)!.label || "Exit" }}
           </template>
-          <template v-else> Output </template>
+          <template v-else> {{ t("flows.nodes.subflow.output") }} </template>
         </span>
         <Ref
           class="output-socket"

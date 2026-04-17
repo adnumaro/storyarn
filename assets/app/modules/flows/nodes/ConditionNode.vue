@@ -2,6 +2,7 @@
 import { GitBranch, TriangleAlert } from "lucide-vue-next";
 import { Ref } from "rete-vue-plugin";
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import type { NodeConfig } from "../lib/node-configs";
@@ -26,6 +27,7 @@ const { data, emit, config, color } = defineProps<{
   color: string;
 }>();
 
+const { t } = useI18n();
 const nodeData = computed<ConditionNodeData>(() => (data.nodeData as ConditionNodeData) || {});
 const hasStaleRefs = computed(() => nodeData.value.has_stale_refs);
 
@@ -54,7 +56,7 @@ function getOperatorSymbol(operator: string): string {
 }
 
 function formatRule(rule: ConditionRule): string {
-  if (!rule.sheet || !rule.variable) return "Incomplete rule";
+  if (!rule.sheet || !rule.variable) return t("flows.nodes.condition.incomplete_rule");
   const sym = getOperatorSymbol(rule.operator || "");
   const val = rule.value !== null && rule.value !== undefined ? rule.value : "";
   if (["is_empty", "is_true", "is_false", "is_nil"].includes(rule.operator || "")) {
@@ -143,14 +145,14 @@ function findRuleLabel(rules: ConditionRule[], key: string): string {
   return rule?.label || formatRuleShort(rule) || key;
 }
 
-const BOOLEAN_OUTPUT_LABELS: Record<string, string> = {
-  true: "True",
-  false: "False",
-};
+const BOOLEAN_OUTPUT_LABELS = computed<Record<string, string>>(() => ({
+  true: t("flows.nodes.condition.true"),
+  false: t("flows.nodes.condition.false"),
+}));
 
 function getOutputLabel(key: string): string {
   const d = nodeData.value;
-  if (!d.switch_mode) return BOOLEAN_OUTPUT_LABELS[key] ?? key;
+  if (!d.switch_mode) return BOOLEAN_OUTPUT_LABELS.value[key] ?? key;
   if (key === "default") return "Default";
   if (d.condition?.blocks?.length) return findBlockLabel(d.condition.blocks, key);
   if (d.condition?.rules?.length) return findRuleLabel(d.condition.rules, key);
@@ -162,7 +164,7 @@ function getBlockBadges(blocks: ConditionBlock[], key: string): OutputBadge[] {
   if (!block) return [];
   const rules = block.rules || [];
   if (rules.length === 0 || rules.some((r) => !isRuleComplete(r))) {
-    return [{ type: "error", title: "Block has incomplete rules" }];
+    return [{ type: "error", title: t("flows.nodes.condition.block_incomplete") }];
   }
   return [];
 }
@@ -170,7 +172,7 @@ function getBlockBadges(blocks: ConditionBlock[], key: string): OutputBadge[] {
 function getRuleBadges(rules: ConditionRule[], key: string): OutputBadge[] {
   const rule = rules.find((r) => r.id === key);
   if (rule && !isRuleComplete(rule)) {
-    return [{ type: "error", title: "Incomplete rule" }];
+    return [{ type: "error", title: t("flows.nodes.condition.incomplete_rule") }];
   }
   return [];
 }

@@ -17,6 +17,7 @@ import {
 } from "lucide-vue-next";
 import type { Component } from "vue";
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Button } from "@components/ui/button/index.ts";
 import {
@@ -101,6 +102,7 @@ const {
   projectSlug: string;
 }>();
 
+const { t } = useI18n();
 const live = useLive();
 
 function flowHref(row: FlowTableRow): string {
@@ -138,59 +140,59 @@ const statCards = computed<StatCard[]>(() => {
   return [
     {
       icon: GitBranch,
-      label: "Flows",
+      label: t("flows.dashboard.title"),
       value: stats.flow_count,
       color: "text-primary",
     },
     {
       icon: Box,
-      label: "Nodes",
+      label: t("flows.dashboard.columns.nodes"),
       value: stats.node_count,
       color: "text-blue-400",
     },
     {
       icon: MessageSquare,
-      label: "Dialogue",
+      label: t("flows.dashboard.columns.dialogue"),
       value: stats.dialogue_count,
       color: "text-violet-400",
     },
     {
       icon: TextCursorInput,
-      label: "Words",
+      label: t("flows.dashboard.columns.words"),
       value: stats.word_count,
       color: "text-emerald-400",
     },
   ];
 });
 
-const columns: TableColumn[] = [
-  { key: "name", label: "Name", align: "left" },
-  { key: "node_count", label: "Nodes", align: "right" },
+const columns = computed<TableColumn[]>(() => [
+  { key: "name", label: t("flows.dashboard.columns.name"), align: "left" },
+  { key: "node_count", label: t("flows.dashboard.columns.nodes"), align: "right" },
   {
     key: "dialogue_count",
-    label: "Dialogue",
+    label: t("flows.dashboard.columns.dialogue"),
     align: "right",
     hiddenClass: "hidden sm:table-cell",
   },
   {
     key: "condition_count",
-    label: "Conditions",
+    label: t("flows.dashboard.columns.conditions"),
     align: "right",
     hiddenClass: "hidden sm:table-cell",
   },
   {
     key: "word_count",
-    label: "Words",
+    label: t("flows.dashboard.columns.words"),
     align: "right",
     hiddenClass: "hidden md:table-cell",
   },
   {
     key: "updated_at",
-    label: "Modified",
+    label: t("flows.dashboard.columns.modified"),
     align: "right",
     hiddenClass: "hidden md:table-cell",
   },
-];
+]);
 
 const pages = computed(() => {
   const result = [];
@@ -203,11 +205,11 @@ const pages = computed(() => {
 
 <template>
   <DashboardContent
-    title="Flows"
-    subtitle="Create visual narrative flows and dialogue trees"
+    :title="$t('flows.dashboard.title')"
+    :subtitle="$t('flows.dashboard.subtitle')"
     :loading="!stats"
     :is-empty="pagination.total === 0 && !stats"
-    empty-message="No flows yet. Create your first flow to get started."
+    :empty-message="$t('flows.dashboard.empty')"
     :empty-icon="GitBranch"
   >
     <!-- Stats row -->
@@ -227,7 +229,7 @@ const pages = computed(() => {
 
     <!-- Table section -->
     <div class="space-y-2">
-      <h2 class="text-sm font-medium">All Flows</h2>
+      <h2 class="text-sm font-medium">{{ $t("flows.dashboard.all_flows") }}</h2>
       <div class="rounded-lg border border-border bg-surface overflow-auto max-h-[60vh]">
         <Table>
           <TableHeader>
@@ -265,7 +267,7 @@ const pages = computed(() => {
                 >
                   {{ row.name }}
                   <Badge v-if="row.is_main" variant="default" class="text-[10px] px-1.5 py-0">
-                    Main
+                    {{ $t("flows.dashboard.main") }}
                   </Badge>
                 </a>
               </TableCell>
@@ -296,14 +298,14 @@ const pages = computed(() => {
                       @select="setMain(row.id)"
                     >
                       <Star class="size-3.5" />
-                      Set as main
+                      {{ $t("flows.dashboard.set_main") }}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       class="text-destructive gap-2 text-xs"
                       @select="requestDelete(row.id)"
                     >
                       <Trash2 class="size-3.5" />
-                      Delete
+                      {{ $t("flows.dashboard.delete") }}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -354,7 +356,7 @@ const pages = computed(() => {
 
     <!-- Issues -->
     <div v-if="issues.length > 0" class="space-y-2">
-      <h2 class="text-sm font-medium">Issues</h2>
+      <h2 class="text-sm font-medium">{{ $t("flows.dashboard.issues") }}</h2>
       <div class="rounded-lg border border-border divide-y divide-border">
         <a
           v-for="(issue, i) in issues"

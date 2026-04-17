@@ -26,7 +26,7 @@ const emit = defineEmits<{
         variant="ghost"
         size="icon-sm"
         :disabled="!canGoBack"
-        title="Back"
+        :title="$t('flows.player.back')"
         @click="emit('go-back')"
       >
         <ArrowLeft :size="16" />
@@ -34,10 +34,10 @@ const emit = defineEmits<{
       <Button
         v-if="showContinue && !isFinished"
         size="sm"
-        title="Continue"
+        :title="$t('flows.player.continue')"
         @click="emit('continue')"
       >
-        Continue
+        {{ $t("flows.player.continue") }}
         <ArrowRight :size="16" />
       </Button>
     </div>
@@ -51,13 +51,13 @@ const emit = defineEmits<{
       >
         <component :is="playerMode === 'player' ? Eye : ScanEye" :size="16" />
         <span class="hidden sm:inline">
-          {{ playerMode === "player" ? "Player" : "Analysis" }}
+          {{ playerMode === "player" ? $t("flows.player.mode_player") : $t("flows.player.mode_analysis") }}
         </span>
       </Toggle>
     </div>
 
     <div class="player-toolbar-right">
-      <Button variant="ghost" size="icon-sm" title="Restart" @click="emit('restart')">
+      <Button variant="ghost" size="icon-sm" :title="$t('flows.player.restart')" @click="emit('restart')">
         <RotateCcw :size="16" />
       </Button>
       <Button
@@ -65,7 +65,7 @@ const emit = defineEmits<{
         size="icon-sm"
         as="a"
         :href="editorUrl"
-        title="Back to editor"
+        :title="$t('flows.player.back_to_editor')"
         data-phx-link="redirect"
         data-phx-link-state="push"
       >

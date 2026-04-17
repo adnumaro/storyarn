@@ -109,7 +109,7 @@ function navigateToNode(nodeId: number | string): void {
         v-if="navHistory.back"
         type="button"
         class="toolbar-btn gap-1 text-muted-foreground max-w-35"
-        title="Alt+Left"
+        :title="$t('flows.header.nav_back')"
         @click="live.pushEvent('nav_back', {})"
       >
         <ArrowLeft class="size-3.5 shrink-0" />
@@ -119,7 +119,7 @@ function navigateToNode(nodeId: number | string): void {
         v-if="navHistory.forward"
         type="button"
         class="toolbar-btn gap-1 text-muted-foreground max-w-35"
-        title="Alt+Right"
+        :title="$t('flows.header.nav_forward')"
         @click="live.pushEvent('nav_forward', {})"
       >
         <span class="truncate text-xs">{{ navHistory.forward.flow_name }}</span>
@@ -131,7 +131,7 @@ function navigateToNode(nodeId: number | string): void {
     <div class="flex items-center gap-1.5 surface-panel px-3 h-full">
       <EditableText
         :model-value="flowName"
-        placeholder="Untitled"
+        :placeholder="$t('flows.header.untitled')"
         tag="span"
         class="text-sm font-medium max-w-50 truncate"
         :disabled="!canEdit"
@@ -140,14 +140,14 @@ function navigateToNode(nodeId: number | string): void {
       <EditableText
         v-if="flowShortcut || canEdit"
         :model-value="flowShortcut"
-        placeholder="add-shortcut"
+        :placeholder="$t('flows.header.add_shortcut')"
         tag="span"
         class="text-xs text-muted-foreground max-w-30 truncate"
         :disabled="!canEdit"
         @save="saveShortcut"
       />
       <Badge v-if="isMain" variant="default" class="text-[10px] px-1.5 py-0 rounded-full shrink-0">
-        Main
+        {{ $t("flows.header.main") }}
       </Badge>
     </div>
 
@@ -161,15 +161,15 @@ function navigateToNode(nodeId: number | string): void {
               type="button"
               class="toolbar-btn gap-1.5"
               :class="sceneSelected.name ? 'text-foreground' : 'text-muted-foreground'"
-              title="Scene backdrop"
+              :title="$t('flows.header.scene_backdrop')"
             >
               <MapIcon class="size-3.5" />
               <span v-if="sceneSelected.name" class="truncate max-w-30">{{
                 sceneSelected.name
               }}</span>
-              <span v-else>No scene</span>
+              <span v-else>{{ $t("flows.header.no_scene") }}</span>
               <span v-if="sceneSelected.inherited" class="text-muted-foreground text-[10px]"
-                >(inherited)</span
+                >{{ $t("flows.header.inherited") }}</span
               >
               <ChevronDown v-if="canEdit" class="size-3 opacity-50" />
             </button>
@@ -182,7 +182,7 @@ function navigateToNode(nodeId: number | string): void {
               @click="selectScene(null)"
             >
               <X class="size-3 opacity-60" />
-              <span class="text-muted-foreground">No scene (inherit)</span>
+              <span class="text-muted-foreground">{{ $t("flows.header.no_scene_inherit") }}</span>
             </button>
             <button
               v-for="scene in projectScenes"
@@ -265,7 +265,7 @@ function navigateToNode(nodeId: number | string): void {
           </PopoverContent>
         </Popover>
       </template>
-      <div v-else class="toolbar-btn text-green-500/60" title="This flow looks great!">
+      <div v-else class="toolbar-btn text-green-500/60" :title="$t('flows.header.looks_great')">
         <CircleCheck class="size-3.5" />
       </div>
     </div>
@@ -279,14 +279,14 @@ function navigateToNode(nodeId: number | string): void {
         <div
           class="size-3 border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin"
         />
-        <span>Saving</span>
+        <span>{{ $t("flows.header.saving") }}</span>
       </div>
       <div
         v-else-if="saveStatus === 'saved'"
         class="flex items-center gap-1 text-xs text-green-500/70"
       >
         <Check class="size-3" />
-        <span>Saved</span>
+        <span>{{ $t("flows.header.saved") }}</span>
       </div>
     </div>
   </div>

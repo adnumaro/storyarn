@@ -12,8 +12,8 @@ interface FlowFormValues {
 
 const {
   form: formProp,
-  title = "New Flow",
-  submitLabel = "Create Flow",
+  title = "",
+  submitLabel = "",
   cancelUrl = null,
 } = defineProps<{
   form: Form<FlowFormValues>;
@@ -34,11 +34,11 @@ const description = form.field("description");
 
 <template>
   <div class="space-y-4">
-    <h2 class="text-lg font-semibold">{{ title }}</h2>
+    <h2 class="text-lg font-semibold">{{ title || $t("flows.form.title") }}</h2>
 
     <div class="space-y-1.5">
-      <Label for="flow-name">Name</Label>
-      <Input v-bind="name.inputAttrs.value" id="flow-name" placeholder="Main Story" required />
+      <Label for="flow-name">{{ $t("flows.form.name") }}</Label>
+      <Input v-bind="name.inputAttrs.value" id="flow-name" :placeholder="$t('flows.form.name_placeholder')" required />
       <p
         v-if="name.errorMessage.value"
         class="text-sm text-destructive flex items-center gap-1 mt-1"
@@ -48,11 +48,11 @@ const description = form.field("description");
     </div>
 
     <div class="space-y-1.5">
-      <Label for="flow-description">Description</Label>
+      <Label for="flow-description">{{ $t("flows.form.description") }}</Label>
       <Textarea
         v-bind="description.inputAttrs.value"
         id="flow-description"
-        placeholder="Describe the purpose of this flow..."
+        :placeholder="$t('flows.form.description_placeholder')"
         :rows="3"
       />
       <p
@@ -71,10 +71,10 @@ const description = form.field("description");
         data-phx-link-state="push"
         class="inline-flex items-center justify-center h-9 px-4 text-sm rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
       >
-        Cancel
+        {{ $t("flows.form.cancel") }}
       </a>
       <Button @click="form.submit()" :disabled="!form.isValid.value">
-        {{ submitLabel }}
+        {{ submitLabel || $t("flows.form.submit") }}
       </Button>
     </div>
   </div>

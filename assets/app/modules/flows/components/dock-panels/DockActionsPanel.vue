@@ -22,9 +22,9 @@ const emit = defineEmits<{
       <History class="size-5" />
     </button>
     <div class="dock-tooltip">
-      <div class="text-sm font-semibold mb-0.5">Version History</div>
+      <div class="text-sm font-semibold mb-0.5">{{ $t("flows.dock.version_history") }}</div>
       <div class="text-xs text-muted-foreground leading-relaxed">
-        View and manage version history
+        {{ $t("flows.dock.version_history_desc") }}
       </div>
     </div>
   </div>
@@ -35,8 +35,8 @@ const emit = defineEmits<{
       <Play class="size-5" />
     </a>
     <div class="dock-tooltip">
-      <div class="text-sm font-semibold mb-0.5">Play</div>
-      <div class="text-xs text-muted-foreground leading-relaxed">Run this flow in story player</div>
+      <div class="text-sm font-semibold mb-0.5">{{ $t("flows.dock.play") }}</div>
+      <div class="text-xs text-muted-foreground leading-relaxed">{{ $t("flows.dock.play_desc") }}</div>
     </div>
   </div>
 
@@ -51,8 +51,8 @@ const emit = defineEmits<{
       <Bug class="size-5" />
     </button>
     <div class="dock-tooltip">
-      <div class="text-sm font-semibold mb-0.5">Debug</div>
-      <div class="text-xs text-muted-foreground leading-relaxed">Step through flow execution</div>
+      <div class="text-sm font-semibold mb-0.5">{{ $t("flows.dock.debug") }}</div>
+      <div class="text-xs text-muted-foreground leading-relaxed">{{ $t("flows.dock.debug_desc") }}</div>
     </div>
   </div>
 </template>

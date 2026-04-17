@@ -270,7 +270,7 @@ function handleDrop(e: unknown): void {
   <div class="space-y-2">
     <!-- Search -->
     <div class="px-1">
-      <Input v-model="searchQuery" type="search" placeholder="Filter flows..." class="text-xs" />
+      <Input v-model="searchQuery" type="search" :placeholder="$t('flows.tree.filter')" class="text-xs" />
     </div>
 
     <!-- Empty state -->
@@ -278,7 +278,7 @@ function handleDrop(e: unknown): void {
       v-if="filteredTree.length === 0"
       class="px-2 py-4 text-xs text-muted-foreground text-center"
     >
-      No flows yet
+      {{ $t("flows.tree.empty") }}
     </div>
 
     <!-- Tree -->
@@ -312,7 +312,7 @@ function handleDrop(e: unknown): void {
         @click="createFlow"
       >
         <Plus class="size-3.5" />
-        New Flow
+        {{ $t("flows.tree.new_flow") }}
       </Button>
     </div>
 
@@ -320,14 +320,14 @@ function handleDrop(e: unknown): void {
     <Dialog v-model:open="deleteDialogOpen">
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete flow?</DialogTitle>
+          <DialogTitle>{{ $t("flows.tree.delete_title") }}</DialogTitle>
           <DialogDescription>
             Are you sure you want to delete "{{ pendingDeleteFlow?.name }}"?
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" size="sm" @click="deleteDialogOpen = false">Cancel</Button>
-          <Button variant="destructive" size="sm" @click="confirmDelete">Delete</Button>
+          <Button variant="outline" size="sm" @click="deleteDialogOpen = false">{{ $t("flows.tree.cancel") }}</Button>
+          <Button variant="destructive" size="sm" @click="confirmDelete">{{ $t("flows.tree.delete") }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

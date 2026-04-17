@@ -191,7 +191,7 @@ function switchTab(tab: string | number): void {
       v-if="controls.stepLimitReached"
       class="px-3 py-1.5 bg-amber-500/10 text-amber-600 text-xs flex items-center gap-2"
     >
-      Step limit reached. Reset to continue.
+      {{ $t("flows.debug.step_limit") }}
     </div>
 
     <!-- Tab content -->
@@ -201,16 +201,16 @@ function switchTab(tab: string | number): void {
       @update:model-value="switchTab"
     >
       <TabsList class="px-3 pt-1">
-        <TabsTrigger value="console" class="text-xs">Console</TabsTrigger>
-        <TabsTrigger value="variables" class="text-xs">Variables</TabsTrigger>
-        <TabsTrigger value="history" class="text-xs">History</TabsTrigger>
+        <TabsTrigger value="console" class="text-xs">{{ $t("flows.debug.tab_console") }}</TabsTrigger>
+        <TabsTrigger value="variables" class="text-xs">{{ $t("flows.debug.tab_variables") }}</TabsTrigger>
+        <TabsTrigger value="history" class="text-xs">{{ $t("flows.debug.tab_history") }}</TabsTrigger>
       </TabsList>
 
       <!-- Console -->
       <TabsContent value="console" class="overflow-y-auto px-3 pb-3 h-full">
         <!-- Pending choices -->
         <div v-if="pendingChoices.length > 0" class="space-y-1 mb-3">
-          <div class="text-xs text-muted-foreground font-medium">Choose a response:</div>
+          <div class="text-xs text-muted-foreground font-medium">{{ $t("flows.debug.choose_response") }}</div>
           <button
             v-for="choice in pendingChoices"
             :key="choice.id"
@@ -218,11 +218,11 @@ function switchTab(tab: string | number): void {
             class="w-full text-left text-sm px-3 py-2 rounded-md border border-border hover:bg-accent transition-colors"
             @click="selectChoice(choice.id)"
           >
-            {{ choice.text || "(empty)" }}
+            {{ choice.text || $t("flows.debug.empty_response") }}
           </button>
         </div>
         <div v-else class="text-xs text-muted-foreground py-4 text-center">
-          Waiting for execution...
+          {{ $t("flows.debug.waiting") }}
         </div>
       </TabsContent>
 
@@ -231,7 +231,7 @@ function switchTab(tab: string | number): void {
         <Input
           v-model="varFilter"
           type="search"
-          placeholder="Filter variables..."
+          :placeholder="$t('flows.debug.filter_variables')"
           class="text-xs mb-2"
         />
         <div class="space-y-0.5">
@@ -243,7 +243,7 @@ function switchTab(tab: string | number): void {
           >
             <span class="font-mono truncate">{{ key }}</span>
             <span class="text-muted-foreground ml-2 truncate max-w-37.5">{{
-              val.value ?? "nil"
+              val.value ?? $t("flows.debug.nil")
             }}</span>
           </div>
         </div>

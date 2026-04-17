@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { TriangleAlert, Zap } from "lucide-vue-next";
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import NodeSockets from "../components/NodeSockets.vue";
@@ -20,16 +21,17 @@ const { data, emit, config, color } = defineProps<{
   color: string;
 }>();
 
+const { t } = useI18n();
 const nodeData = computed<InstructionNodeData>(() => (data.nodeData as InstructionNodeData) || {});
 
 // --- Formatting (matching V1 instruction.js exactly) ---
 
 function getBooleanOpString(op: string, ref: string): string | null {
   const map: Record<string, string> = {
-    set_true: `Set ${ref} to true`,
-    set_false: `Set ${ref} to false`,
-    toggle: `Toggle ${ref}`,
-    clear: `Clear ${ref}`,
+    set_true: t("flows.nodes.instruction.set_true", { var: ref }),
+    set_false: t("flows.nodes.instruction.set_false", { var: ref }),
+    toggle: t("flows.nodes.instruction.toggle", { var: ref }),
+    clear: t("flows.nodes.instruction.clear", { var: ref }),
   };
   return map[op] || null;
 }
@@ -43,10 +45,10 @@ function getValueDisplay(assignment: InstructionAssignment): string {
 
 function getValueOpString(op: string, ref: string, val: string): string {
   const map: Record<string, string> = {
-    add: `Add ${val} to ${ref}`,
-    subtract: `Subtract ${val} from ${ref}`,
+    add: t("flows.nodes.instruction.add", { value: val, var: ref }),
+    subtract: t("flows.nodes.instruction.subtract", { value: val, var: ref }),
   };
-  return map[op] || `Set ${ref} to ${val}`;
+  return map[op] || `${ref} = ${val}`;
 }
 
 function formatAssignment(assignment: InstructionAssignment): string | null {
@@ -78,7 +80,7 @@ const hasStaleRefs = computed(() => nodeData.value.has_stale_refs);
       <div
         v-if="hasWarnings"
         class="ml-auto inline-flex items-center justify-center size-3.5 text-[10px] font-bold rounded-full bg-destructive text-destructive-foreground"
-        title="Type mismatch in assignments"
+        :title="t('flows.nodes.instruction.type_mismatch')"
       >
         !
       </div>
@@ -92,7 +94,7 @@ const hasStaleRefs = computed(() => nodeData.value.has_stale_refs);
         <span v-if="hasStaleRefs" class="inline-flex items-center gap-0.5 text-destructive mr-1">
           <TriangleAlert class="size-3" />
         </span>
-        {{ summary || "Stale references" }}
+        {{ summary || t("flows.nodes.instruction.stale_references") }}
       </div>
     </div>
 

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { GitBranch, Zap } from "lucide-vue-next";
 import type { Component } from "vue";
-import { ref } from "vue";
+import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 
 interface DockNodeEntry {
@@ -15,22 +16,23 @@ const emit = defineEmits<{
   "add-node": [type: string];
 }>();
 
+const { t } = useI18n();
 const open = ref(false);
 
-const logicNodes: DockNodeEntry[] = [
+const logicNodes = computed<DockNodeEntry[]>(() => [
   {
     type: "condition",
     icon: GitBranch,
-    title: "Condition",
-    description: "Branch based on variable conditions",
+    title: t("flows.node_types.condition"),
+    description: t("flows.dock.condition_desc"),
   },
   {
     type: "instruction",
     icon: Zap,
-    title: "Instruction",
-    description: "Set or modify variable values",
+    title: t("flows.node_types.instruction"),
+    description: t("flows.dock.instruction_desc"),
   },
-];
+]);
 
 function addNode(type: string): void {
   emit("add-node", type);
@@ -54,7 +56,7 @@ defineExpose({
       </PopoverTrigger>
       <PopoverContent side="top" :side-offset="12" class="w-56 p-3">
         <div class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
-          Logic
+          {{ $t("flows.dock.logic") }}
         </div>
         <div class="flex flex-col gap-0.5">
           <button
@@ -74,8 +76,8 @@ defineExpose({
       </PopoverContent>
     </Popover>
     <div v-if="!open" class="dock-tooltip">
-      <div class="text-sm font-semibold mb-0.5">Logic</div>
-      <div class="text-xs text-muted-foreground leading-relaxed">Conditions and instructions</div>
+      <div class="text-sm font-semibold mb-0.5">{{ $t("flows.dock.logic") }}</div>
+      <div class="text-xs text-muted-foreground leading-relaxed">{{ $t("flows.dock.condition_desc") }}</div>
     </div>
   </div>
 </template>

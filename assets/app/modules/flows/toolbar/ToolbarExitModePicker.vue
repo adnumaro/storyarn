@@ -2,6 +2,7 @@
 import { ArrowRight, ArrowRightToLine, ChevronDown, Undo2 } from "lucide-vue-next";
 import type { Component } from "vue";
 import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 
 interface ExitMode {
@@ -11,26 +12,28 @@ interface ExitMode {
   description: string;
 }
 
-const EXIT_MODES: ExitMode[] = [
+const { t } = useI18n();
+
+const EXIT_MODES = computed<ExitMode[]>(() => [
   {
     value: "terminal",
     icon: ArrowRightToLine,
-    label: "Terminal",
-    description: "End of flow — no continuation",
+    label: t("flows.exit_modes.terminal"),
+    description: t("flows.exit_modes.terminal_desc"),
   },
   {
     value: "flow_reference",
     icon: ArrowRight,
-    label: "Flow Reference",
-    description: "Continue to another flow",
+    label: t("flows.exit_modes.flow_reference"),
+    description: t("flows.exit_modes.flow_reference_desc"),
   },
   {
     value: "caller_return",
     icon: Undo2,
-    label: "Caller Return",
-    description: "Return to the calling flow",
+    label: t("flows.exit_modes.caller_return"),
+    description: t("flows.exit_modes.caller_return_desc"),
   },
-];
+]);
 
 const { mode = "terminal", disabled = false } = defineProps<{
   mode?: string;
@@ -42,7 +45,7 @@ const emit = defineEmits<{
 }>();
 const open = ref(false);
 
-const current = computed(() => EXIT_MODES.find((m) => m.value === mode) || EXIT_MODES[0]);
+const current = computed(() => EXIT_MODES.value.find((m) => m.value === mode) || EXIT_MODES.value[0]);
 
 function selectMode(value: string) {
   emit("update:mode", value);

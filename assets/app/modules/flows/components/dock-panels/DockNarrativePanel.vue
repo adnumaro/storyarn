@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Clapperboard, MessageSquare } from "lucide-vue-next";
 import type { Component } from "vue";
-import { ref } from "vue";
+import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 
 interface DockNodeEntry {
@@ -15,22 +16,23 @@ const emit = defineEmits<{
   "add-node": [type: string];
 }>();
 
+const { t } = useI18n();
 const open = ref(false);
 
-const narrativeNodes: DockNodeEntry[] = [
+const narrativeNodes = computed<DockNodeEntry[]>(() => [
   {
     type: "dialogue",
     icon: MessageSquare,
-    title: "Dialogue",
-    description: "Character speech and player responses",
+    title: t("flows.node_types.dialogue"),
+    description: t("flows.dock.dialogue_desc"),
   },
   {
     type: "slug_line",
     icon: Clapperboard,
-    title: "Slug Line",
-    description: "Scene heading or location marker",
+    title: t("flows.node_types.slug_line"),
+    description: t("flows.dock.slug_line_desc"),
   },
-];
+]);
 
 function addNode(type: string): void {
   emit("add-node", type);
@@ -54,7 +56,7 @@ defineExpose({
       </PopoverTrigger>
       <PopoverContent side="top" :side-offset="12" class="w-56 p-3">
         <div class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
-          Narrative
+          {{ $t("flows.dock.narrative") }}
         </div>
         <div class="flex flex-col gap-0.5">
           <button
@@ -74,8 +76,8 @@ defineExpose({
       </PopoverContent>
     </Popover>
     <div v-if="!open" class="dock-tooltip">
-      <div class="text-sm font-semibold mb-0.5">Narrative</div>
-      <div class="text-xs text-muted-foreground leading-relaxed">Story and dialogue nodes</div>
+      <div class="text-sm font-semibold mb-0.5">{{ $t("flows.dock.narrative") }}</div>
+      <div class="text-xs text-muted-foreground leading-relaxed">{{ $t("flows.dock.dialogue_desc") }}</div>
     </div>
   </div>
 </template>

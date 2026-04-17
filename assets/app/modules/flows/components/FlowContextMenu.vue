@@ -19,6 +19,7 @@ import {
 } from "lucide-vue-next";
 import type { Component } from "vue";
 import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { useLive } from "@composables/useLive";
 
 interface NodeTypeEntry {
@@ -39,22 +40,23 @@ const {
   selectedNodeType: string | null;
 }>();
 
+const { t } = useI18n();
 const live = useLive();
 const visible = ref(false);
 const x = ref(0);
 const y = ref(0);
 const submenu = ref<string | null>(null);
 
-const NODE_TYPES: NodeTypeEntry[] = [
-  { type: "dialogue", icon: MessageSquare, label: "Dialogue" },
-  { type: "condition", icon: GitBranch, label: "Condition" },
-  { type: "instruction", icon: Zap, label: "Instruction" },
-  { type: "hub", icon: LogIn, label: "Hub" },
-  { type: "jump", icon: LogOut, label: "Jump" },
-  { type: "exit", icon: ArrowRightToLine, label: "Exit" },
-  { type: "subflow", icon: Box, label: "Subflow" },
-  { type: "slug_line", icon: Clapperboard, label: "Slug Line" },
-];
+const NODE_TYPES = computed<NodeTypeEntry[]>(() => [
+  { type: "dialogue", icon: MessageSquare, label: t("flows.node_types.dialogue") },
+  { type: "condition", icon: GitBranch, label: t("flows.node_types.condition") },
+  { type: "instruction", icon: Zap, label: t("flows.node_types.instruction") },
+  { type: "hub", icon: LogIn, label: t("flows.node_types.hub") },
+  { type: "jump", icon: LogOut, label: t("flows.node_types.jump") },
+  { type: "exit", icon: ArrowRightToLine, label: t("flows.node_types.exit") },
+  { type: "subflow", icon: Box, label: t("flows.node_types.subflow") },
+  { type: "slug_line", icon: Clapperboard, label: t("flows.node_types.slug_line") },
+]);
 
 const isNodeMenu = computed(() => selectedNodeId != null && visible.value);
 
@@ -141,16 +143,16 @@ onUnmounted(() => {
       <template v-if="isNodeMenu">
         <button class="cm-item" @click="duplicateNode">
           <Copy class="size-3.5 opacity-60" />
-          <span>Duplicate</span>
+          <span>{{ $t("flows.context_menu.duplicate") }}</span>
         </button>
         <button class="cm-item" @click="copyNodeId">
           <Hash class="size-3.5 opacity-60" />
-          <span>Copy ID</span>
+          <span>{{ $t("flows.context_menu.copy_id") }}</span>
         </button>
         <div class="h-px bg-border my-1" />
         <button class="cm-item text-destructive" @click="deleteNode">
           <Trash2 class="size-3.5" />
-          <span>Delete</span>
+          <span>{{ $t("flows.context_menu.delete") }}</span>
         </button>
       </template>
 
@@ -161,7 +163,7 @@ onUnmounted(() => {
           <button class="cm-item justify-between">
             <span class="flex items-center gap-2">
               <Plus class="size-3.5 opacity-60" />
-              <span>Add node</span>
+              <span>{{ $t("flows.context_menu.add_node") }}</span>
             </span>
             <span class="text-xs opacity-40">▸</span>
           </button>
@@ -183,14 +185,14 @@ onUnmounted(() => {
 
         <button class="cm-item" @click="addAnnotation">
           <StickyNote class="size-3.5 opacity-60" />
-          <span>Add note</span>
+          <span>{{ $t("flows.context_menu.add_note") }}</span>
         </button>
 
         <div class="h-px bg-border my-1" />
 
         <button class="cm-item" @click="autoLayout">
           <LayoutGrid class="size-3.5 opacity-60" />
-          <span>Auto layout</span>
+          <span>{{ $t("flows.context_menu.auto_layout") }}</span>
         </button>
       </template>
     </div>

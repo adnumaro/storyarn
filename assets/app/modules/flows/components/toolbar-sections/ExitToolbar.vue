@@ -41,7 +41,7 @@ function navigateToExitFlow(flowId: number | string) {
   <input
     type="text"
     class="toolbar-input text-xs"
-    placeholder="Label…"
+    :placeholder="$t('flows.exit_toolbar.label_placeholder')"
     :value="nodeData.label || ''"
     @blur="(e: FocusEvent) => updateField('label', (e.target as HTMLInputElement).value)"
     @keydown.enter="(e: KeyboardEvent) => (e.target as HTMLInputElement).blur()"

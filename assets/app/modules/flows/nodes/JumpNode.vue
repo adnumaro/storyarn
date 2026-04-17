@@ -40,7 +40,7 @@ const hasError = computed(() => !nodeData.value.target_hub_id);
       <div
         v-if="hasError"
         class="ml-auto inline-flex items-center justify-center size-3.5 text-[10px] font-bold rounded-full bg-destructive text-destructive-foreground"
-        title="No target hub"
+        :title="$t('flows.nodes.jump.no_target')"
       >
         !
       </div>

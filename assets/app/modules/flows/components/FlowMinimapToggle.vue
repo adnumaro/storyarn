@@ -38,7 +38,7 @@ function fitToView() {
       type="button"
       class="toolbar-btn surface-panel !rounded-lg size-8"
       :class="{ 'opacity-50': !minimapVisible }"
-      title="Toggle minimap"
+      :title="$t('flows.minimap.toggle')"
       @click="toggleMinimap"
     >
       <LayoutGrid class="size-4" />
@@ -46,7 +46,7 @@ function fitToView() {
     <button
       type="button"
       class="toolbar-btn surface-panel !rounded-lg size-8"
-      title="Fit to view"
+      :title="$t('flows.minimap.fit_view')"
       @click="fitToView"
     >
       <Maximize2 class="size-4" />

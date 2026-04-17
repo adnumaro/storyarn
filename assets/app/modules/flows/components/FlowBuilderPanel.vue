@@ -2,6 +2,7 @@
 import { GitBranch, X, Zap } from "lucide-vue-next";
 import type { Component } from "vue";
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import ConditionBuilder from "@components/builders/ConditionBuilder.vue";
 import InstructionBuilder from "@components/builders/InstructionBuilder.vue";
 import type { Assignment, ConditionData } from "@components/builders/types";
@@ -28,6 +29,7 @@ const {
   canEdit?: boolean;
 }>();
 
+const { t } = useI18n();
 const live = useLive();
 
 const parsedVariables = computed<Variable[]>(() => {
@@ -40,9 +42,9 @@ const parsedVariables = computed<Variable[]>(() => {
 });
 
 const title = computed(() => {
-  if (nodeType === "condition") return "Condition Builder";
-  if (nodeType === "instruction") return "Instruction Builder";
-  return "Builder";
+  if (nodeType === "condition") return t("flows.builder.condition_title");
+  if (nodeType === "instruction") return t("flows.builder.instruction_title");
+  return t("flows.builder.fallback_title");
 });
 
 const icon = computed<Component | null>(() => {
@@ -102,10 +104,10 @@ function onAssignmentsUpdate(updatedAssignments: Assignment[]): void {
         @update:condition="onConditionUpdate"
       />
       <p v-if="!hasContent && !switchMode" class="text-xs text-muted-foreground mt-2">
-        Add rules to define when to route to True/False.
+        {{ $t("flows.builder.condition_help") }}
       </p>
       <p v-if="!hasContent && switchMode" class="text-xs text-muted-foreground mt-2">
-        Add conditions. Each one creates a separate output.
+        {{ $t("flows.builder.condition_switch_help") }}
       </p>
     </template>
 
@@ -118,7 +120,7 @@ function onAssignmentsUpdate(updatedAssignments: Assignment[]): void {
         @update:assignments="onAssignmentsUpdate"
       />
       <p v-if="!hasContent && canEdit" class="text-xs text-muted-foreground mt-2">
-        Add assignments to set variable values when this node executes.
+        {{ $t("flows.builder.instruction_help") }}
       </p>
     </template>
   </Sidebar>

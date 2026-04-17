@@ -12,9 +12,9 @@ defineEmits<{
       <StickyNote class="size-5" />
     </button>
     <div class="dock-tooltip">
-      <div class="text-sm font-semibold mb-0.5">Note</div>
+      <div class="text-sm font-semibold mb-0.5">{{ $t("flows.dock.add_note") }}</div>
       <div class="text-xs text-muted-foreground leading-relaxed">
-        Add a sticky note to the canvas
+        {{ $t("flows.dock.add_note") }}
       </div>
     </div>
   </div>

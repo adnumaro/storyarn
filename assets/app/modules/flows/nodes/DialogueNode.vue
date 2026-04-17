@@ -2,6 +2,7 @@
 import { MessageSquare } from "lucide-vue-next";
 import { Ref } from "rete-vue-plugin";
 import { computed, inject, nextTick, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import EntityCombobox from "@components/form-fields/EntityCombobox.vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
@@ -51,6 +52,7 @@ const {
   labels?: Record<string, string>;
 }>();
 
+const { t } = useI18n();
 const ctx = inject<FlowContextInjection>(FLOW_CONTEXT_KEY, {
   editingNodeId: null,
   onInlineEditSave: null,
@@ -125,19 +127,19 @@ function getOutputBadges(key: string): OutputBadge[] {
   const resp = responses.value.find((r) => r.id === key);
   if (!resp) return [];
   const badges: OutputBadge[] = [];
-  if (!resp.text) badges.push({ type: "error", title: "Empty response text" });
-  if (resp.has_type_warnings) badges.push({ type: "error", title: "Type mismatch" });
+  if (!resp.text) badges.push({ type: "error", title: t("flows.nodes.dialogue.empty_response") });
+  if (resp.has_type_warnings) badges.push({ type: "error", title: t("flows.nodes.dialogue.type_mismatch") });
   if (resp.condition)
     badges.push({
       type: "indicator",
       color: "#eab308",
-      title: "Has condition",
+      title: t("flows.nodes.dialogue.has_condition"),
     });
   if ((resp.instruction_assignments || []).length > 0)
     badges.push({
       type: "indicator",
       color: "#ec4899",
-      title: "Has instructions",
+      title: t("flows.nodes.dialogue.has_instructions"),
     });
   return badges;
 }
@@ -201,7 +203,7 @@ function onSpeakerSelect(id: number | string | null) {
           variant="ghost"
           :options="speakerOptions"
           :selected-id="nodeData.speaker_sheet_id || null"
-          :placeholder="labels.no_speaker || config.label"
+          :placeholder="labels.no_speaker || t('flows.nodes.dialogue.no_speaker')"
           @update:selected-id="onSpeakerSelect"
         />
       </div>
@@ -238,7 +240,7 @@ function onSpeakerSelect(id: number | string | null) {
     <div v-if="editing" class="px-3.5 pt-2.5 pb-3">
       <input
         class="inline-input"
-        :placeholder="labels.stage_directions || 'Stage directions…'"
+        :placeholder="labels.stage_directions || t('flows.nodes.dialogue.stage_placeholder')"
         :value="stageDirections"
         @blur="onStageDirectionsBlur"
         @keydown="onInputKeydown"
@@ -246,7 +248,7 @@ function onSpeakerSelect(id: number | string | null) {
       />
       <input
         class="inline-input inline-input-menu"
-        :placeholder="labels.menu_text || 'Menu text…'"
+        :placeholder="labels.menu_text || t('flows.nodes.dialogue.menu_placeholder')"
         :value="menuText"
         @blur="onMenuTextBlur"
         @keydown="onInputKeydown"
@@ -255,7 +257,7 @@ function onSpeakerSelect(id: number | string | null) {
       <textarea
         ref="dialogueRef"
         class="inline-textarea"
-        :placeholder="labels.dialogue_text || 'Dialogue text…'"
+        :placeholder="labels.dialogue_text || t('flows.nodes.dialogue.dialogue_placeholder')"
         :value="plainText"
         @blur="onDialogueBlur"
         @keydown="onTextareaKeydown"

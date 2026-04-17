@@ -43,22 +43,22 @@ const emit = defineEmits<{
     <div class="player-outcome-stats">
       <div class="player-outcome-stat">
         <Footprints :size="16" />
-        <span>Steps: {{ slide.step_count }}</span>
+        <span>{{ $t("flows.player.steps") }} {{ slide.step_count }}</span>
       </div>
       <div class="player-outcome-stat">
         <MousePointerClick :size="16" />
-        <span>Choices: {{ slide.choices_made }}</span>
+        <span>{{ $t("flows.player.choices") }} {{ slide.choices_made }}</span>
       </div>
       <div class="player-outcome-stat">
         <Variable :size="16" />
-        <span>Variables changed: {{ slide.variables_changed }}</span>
+        <span>{{ $t("flows.player.variables_changed") }} {{ slide.variables_changed }}</span>
       </div>
     </div>
 
     <div class="player-outcome-actions">
       <Button size="sm" @click="emit('restart')">
         <RotateCcw :size="16" />
-        Play again
+        {{ $t("flows.player.play_again") }}
       </Button>
       <Button
         variant="ghost"
@@ -69,7 +69,7 @@ const emit = defineEmits<{
         data-phx-link-state="push"
       >
         <ArrowLeft :size="16" />
-        Back to editor
+        {{ $t("flows.player.back_to_editor") }}
       </Button>
     </div>
   </div>

@@ -21,6 +21,7 @@ import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
 import type { Variable } from "@modules/shared/variables";
+import { useI18n } from "vue-i18n";
 import { useLive } from "@composables/useLive";
 
 interface NodeResponse {
@@ -63,6 +64,7 @@ const {
   projectVariables?: Variable[] | string;
 }>();
 
+const { t } = useI18n();
 const live = useLive();
 const activeTab = ref("text");
 
@@ -82,7 +84,7 @@ const responses = computed<NodeResponse[]>(() => nodeData.value.responses || [])
 // TipTap editor for dialogue text
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 const editor = useEditor({
-  extensions: [StarterKit, Placeholder.configure({ placeholder: "Write dialogue..." })],
+  extensions: [StarterKit, Placeholder.configure({ placeholder: t("flows.screenplay_editor.dialogue_placeholder") })],
   editable: canEdit,
   content: nodeData.value.text || "",
   onUpdate: ({ editor: ed }) => {
@@ -174,7 +176,7 @@ function updateResponseAssignments(
       <div class="flex items-center justify-between px-3 py-2.5">
         <div class="flex items-center gap-2 text-sm font-medium">
           <BookOpen class="size-4" />
-          Screenplay Editor
+          {{ $t("flows.screenplay_editor.title") }}
         </div>
         <button
           type="button"
@@ -191,12 +193,12 @@ function updateResponseAssignments(
         <TabsList class="w-full">
           <TabsTrigger value="text" class="flex-1 gap-1 text-xs">
             <MessageSquare class="size-3.5" />
-            Text
+            {{ $t("flows.screenplay_editor.tab_text") }}
           </TabsTrigger>
-          <TabsTrigger value="responses" class="flex-1 gap-1 text-xs"> Responses </TabsTrigger>
+          <TabsTrigger value="responses" class="flex-1 gap-1 text-xs"> {{ $t("flows.screenplay_editor.tab_responses") }} </TabsTrigger>
           <TabsTrigger value="settings" class="flex-1 gap-1 text-xs">
             <Settings class="size-3.5" />
-            Settings
+            {{ $t("flows.screenplay_editor.tab_settings") }}
           </TabsTrigger>
         </TabsList>
 
@@ -204,20 +206,20 @@ function updateResponseAssignments(
         <TabsContent value="text" class="space-y-3 mt-3">
           <!-- Speaker -->
           <EntityCombobox
-            label="Speaker"
+            :label="$t('flows.screenplay_editor.speaker')"
             :options="speakerOptions"
             :selected-id="speakerId"
-            placeholder="No speaker"
+            :placeholder="$t('flows.screenplay_editor.no_speaker')"
             :disabled="!canEdit"
             @update:selected-id="updateSpeaker"
           />
 
           <!-- Stage directions -->
           <div>
-            <Label class="text-xs">Stage directions</Label>
+            <Label class="text-xs">{{ $t("flows.screenplay_editor.stage_directions") }}</Label>
             <Input
               :model-value="nodeData.stage_directions || ''"
-              placeholder="e.g., looks away nervously"
+              :placeholder="$t('flows.screenplay_editor.stage_directions_placeholder')"
               class="mt-1 text-sm italic"
               :disabled="!canEdit"
               @blur="updateStageDirections"
@@ -226,7 +228,7 @@ function updateResponseAssignments(
 
           <!-- Dialogue text (TipTap) -->
           <div>
-            <Label class="text-xs">Dialogue</Label>
+            <Label class="text-xs">{{ $t("flows.screenplay_editor.dialogue") }}</Label>
             <div
               class="mt-1 rounded-md border border-input bg-background p-3 min-h-[120px] prose prose-sm dark:prose-invert max-w-none"
             >
@@ -243,14 +245,14 @@ function updateResponseAssignments(
             class="border border-border rounded-lg p-3 space-y-2"
           >
             <div class="flex items-center justify-between">
-              <span class="text-xs font-medium text-muted-foreground">Response</span>
+              <span class="text-xs font-medium text-muted-foreground">{{ $t("flows.screenplay_editor.response") }}</span>
               <button
                 v-if="canEdit"
                 type="button"
                 class="text-xs text-destructive hover:text-destructive/80"
                 @click="removeResponse(resp.id)"
               >
-                Remove
+                {{ $t("flows.screenplay_editor.remove") }}
               </button>
             </div>
             <Input
@@ -265,7 +267,7 @@ function updateResponseAssignments(
             <!-- Condition (collapsible) -->
             <details v-if="canEdit" class="text-xs">
               <summary class="cursor-pointer text-muted-foreground hover:text-foreground">
-                Condition
+                {{ $t("flows.screenplay_editor.condition") }}
               </summary>
               <div class="mt-2">
                 <ConditionBuilder
@@ -280,7 +282,7 @@ function updateResponseAssignments(
             <!-- Instructions (collapsible) -->
             <details v-if="canEdit" class="text-xs">
               <summary class="cursor-pointer text-muted-foreground hover:text-foreground">
-                Instructions
+                {{ $t("flows.screenplay_editor.instructions") }}
               </summary>
               <div class="mt-2">
                 <InstructionBuilder
@@ -294,27 +296,27 @@ function updateResponseAssignments(
           </div>
 
           <Button v-if="canEdit" variant="outline" size="sm" class="w-full" @click="addResponse">
-            + Add Response
+            {{ $t("flows.screenplay_editor.add_response") }}
           </Button>
         </TabsContent>
 
         <!-- Settings Tab -->
         <TabsContent value="settings" class="space-y-3 mt-3">
           <div>
-            <Label class="text-xs">Menu text</Label>
+            <Label class="text-xs">{{ $t("flows.screenplay_editor.menu_text") }}</Label>
             <Input
               :model-value="nodeData.menu_text || ''"
-              placeholder="Short text for menus..."
+              :placeholder="$t('flows.screenplay_editor.menu_text_placeholder')"
               class="mt-1"
               :disabled="!canEdit"
               @blur="updateMenuText"
             />
           </div>
           <div>
-            <Label class="text-xs">Technical ID</Label>
+            <Label class="text-xs">{{ $t("flows.screenplay_editor.technical_id") }}</Label>
             <Input
               :model-value="nodeData.technical_id || ''"
-              placeholder="auto-generated"
+              :placeholder="$t('flows.screenplay_editor.technical_id_placeholder')"
               class="mt-1 font-mono text-xs"
               :disabled="!canEdit"
               @blur="updateTechnicalId"
