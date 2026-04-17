@@ -132,6 +132,7 @@ defmodule StoryarnWeb.SceneLive.Index do
 
   def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
   def handle_info({:tree_changed, :scenes}, socket), do: {:noreply, reload_scenes(socket)}
+  def handle_info({:entity_deleted, _id}, socket), do: {:noreply, socket}
   def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
   def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
 

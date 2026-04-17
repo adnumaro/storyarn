@@ -277,6 +277,12 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     debugHandler: null,
     keyboardHandler: null,
     lodController: null,
+    addNodeToEditor,
+    addConnectionToEditor,
+    rebuildHubsMap,
+    syncNodeSize,
+    syncAllNodeSizes,
+    loadFlow: loadInitialFlowData,
   } as HookProxy;
 
   // --- Toolbar positioning ---

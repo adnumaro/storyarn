@@ -134,6 +134,7 @@ defmodule StoryarnWeb.FlowLive.Index do
 
   def handle_info({:active_flow, _flow_id}, socket), do: {:noreply, socket}
   def handle_info({:tree_changed, :flows}, socket), do: {:noreply, reload_flows(socket)}
+  def handle_info({:entity_deleted, _id}, socket), do: {:noreply, socket}
   def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
   def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
 

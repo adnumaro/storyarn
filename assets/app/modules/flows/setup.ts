@@ -17,6 +17,7 @@ import { MinimapPlugin } from "rete-minimap-plugin";
 import { VuePlugin, Presets as VuePresets } from "rete-vue-plugin";
 import { createApp, reactive } from "vue";
 
+import { i18n } from "@app/i18n";
 import FlowConnection from "./components/FlowConnection.vue";
 import FlowNode from "./components/FlowNode.vue";
 import FlowSocket from "./components/FlowSocket.vue";
@@ -66,6 +67,7 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
       // Guard: context can be null for some internal plugin renders
       if (!context) return createApp({ render: () => null });
       const app = createApp(context);
+      app.use(i18n);
       app.provide(FLOW_CONTEXT_KEY, flowContext);
       return app;
     },
