@@ -1,0 +1,27 @@
+assets/app/locales/en/layout.json
+  3ea3c2327c2231e2 13
+assets/app/components/layout/TreePanel.vue
+  3ea3c2327c2231e2 130
+assets/app/locales/es/layout.json
+  3ea3c2327c2231e2 4,13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "f8d8dc7fb2fc9453e02988953202e7b8758d6531",
+  "prompts": {
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 4,
+      "accepted_lines": 254,
+      "overriden_lines": 0
+    }
+  }
+}
