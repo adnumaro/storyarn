@@ -12,7 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@components/ui/dialog/index.ts";
+import { useI18n } from "vue-i18n";
 import { useLive } from "@composables/useLive";
+
+const { t } = useI18n();
 
 interface DeletedProject {
   id: number;
@@ -68,18 +71,12 @@ function confirmRecover() {
   recoverDialogOpen.value = false;
 }
 
-// Remove useI18n
-
-const ENTITY_TYPES = [
-  { key: "sheets", singular: "sheet", plural: "sheets" },
-  { key: "flows", singular: "flow", plural: "flows" },
-  { key: "scenes", singular: "scene", plural: "scenes" },
-] as const;
+const ENTITY_KEYS = ["sheets", "flows", "scenes"] as const;
 
 function formatEntityCounts(counts: Record<string, number> | undefined) {
   if (!counts) return "";
-  return ENTITY_TYPES.filter(({ key }) => counts[key] > 0)
-    .map(({ key, singular, plural }) => `${counts[key]} ${counts[key] === 1 ? singular : plural}`)
+  return ENTITY_KEYS.filter((key) => counts[key] > 0)
+    .map((key) => t(`settings.workspace.deleted_projects.entities.${key}`, counts[key]))
     .join(", ");
 }
 </script>
@@ -131,12 +128,7 @@ function formatEntityCounts(counts: Record<string, number> | undefined) {
         </div>
         <div class="flex items-center gap-3">
           <Badge variant="secondary">
-            {{ project.snapshot_count }}
-            {{
-              project.snapshot_count === 1
-                ? $t("settings.workspace.deleted_projects.snapshot")
-                : $t("settings.workspace.deleted_projects.snapshots")
-            }}
+            {{ $t("settings.workspace.deleted_projects.snapshot_count", project.snapshot_count) }}
           </Badge>
           <ChevronUp v-if="expandedProjectId === project.id" class="size-4 text-muted-foreground" />
           <ChevronDown v-else class="size-4 text-muted-foreground" />
@@ -185,18 +177,17 @@ function formatEntityCounts(counts: Record<string, number> | undefined) {
           }}</DialogTitle>
           <DialogDescription>
             {{
-              $t("settings.workspace.deleted_projects.recover_modal.description").replace(
-                "{number}",
-                String(recoverSnapshot?.version_number ?? ""),
-              )
+              $t("settings.workspace.deleted_projects.recover_modal.description", {
+                number: recoverSnapshot?.version_number ?? "",
+              })
             }}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <DialogClose as-child>
-            <Button variant="outline">{{
-              $t("settings.workspace.deleted_projects.recover_modal.cancel")
-            }}</Button>
+            <Button variant="outline">
+              {{ $t("settings.workspace.deleted_projects.recover_modal.cancel") }}
+            </Button>
           </DialogClose>
           <Button @click="confirmRecover">
             {{ $t("settings.workspace.deleted_projects.recover") }}

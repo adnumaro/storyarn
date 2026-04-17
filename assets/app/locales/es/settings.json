@@ -68,7 +68,10 @@
         "save_changes": "Guardar cambios"
       },
       "appearance": {
-        "title": "Apariencia"
+        "title": "Apariencia",
+        "system": "Sistema",
+        "light": "Claro",
+        "dark": "Oscuro"
       },
       "danger_zone": {
         "title": "Zona de peligro",
@@ -110,8 +113,7 @@
           "title": "No hay proyectos eliminados",
           "description": "Los proyectos eliminados con instantáneas disponibles aparecerán aquí."
         },
-        "snapshot": "instantánea",
-        "snapshots": "instantáneas",
+        "snapshot_count": "{n} instantánea | {n} instantáneas",
         "no_snapshots": "No hay instantáneas disponibles para este proyecto.",
         "snapshot_prefix": "Instantánea v",
         "recover": "Recuperar",
@@ -121,12 +123,9 @@
           "cancel": "Cancelar"
         },
         "entities": {
-          "sheet": "ficha",
-          "sheets": "fichas",
-          "flow": "flujo",
-          "flows": "flujos",
-          "scene": "escena",
-          "scenes": "escenas"
+          "sheets": "{n} ficha | {n} fichas",
+          "flows": "{n} flujo | {n} flujos",
+          "scenes": "{n} escena | {n} escenas"
         }
       }
     }

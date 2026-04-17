@@ -179,7 +179,7 @@ function confirmDeleteWorkspace() {
           <Label>{{ $t("settings.workspace.general.fields.banner") }}</Label>
           <div v-if="localBannerUrl" class="space-y-2 mt-1.5">
             <div class="rounded border border-border overflow-hidden">
-              <img :src="localBannerUrl" alt="Workspace banner" class="w-full h-32 object-cover" />
+              <img :src="localBannerUrl" :alt="$t('settings.workspace.general.fields.banner')" class="w-full h-32 object-cover" />
             </div>
             <div class="flex gap-2">
               <Button
@@ -254,7 +254,7 @@ function confirmDeleteWorkspace() {
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
           ]"
-          title="System"
+          :title="$t('settings.workspace.appearance.system')"
           @click="setTheme('system')"
           type="button"
         >
@@ -267,7 +267,7 @@ function confirmDeleteWorkspace() {
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
           ]"
-          title="Light"
+          :title="$t('settings.workspace.appearance.light')"
           @click="setTheme('light')"
           type="button"
         >
@@ -280,7 +280,7 @@ function confirmDeleteWorkspace() {
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
           ]"
-          title="Dark"
+          :title="$t('settings.workspace.appearance.dark')"
           @click="setTheme('dark')"
           type="button"
         >

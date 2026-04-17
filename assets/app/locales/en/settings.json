@@ -68,7 +68,10 @@
         "save_changes": "Save Changes"
       },
       "appearance": {
-        "title": "Appearance"
+        "title": "Appearance",
+        "system": "System",
+        "light": "Light",
+        "dark": "Dark"
       },
       "danger_zone": {
         "title": "Danger Zone",
@@ -110,8 +113,7 @@
           "title": "No deleted projects",
           "description": "Deleted projects with available snapshots will appear here."
         },
-        "snapshot": "snapshot",
-        "snapshots": "snapshots",
+        "snapshot_count": "{n} snapshot | {n} snapshots",
         "no_snapshots": "No snapshots available for this project.",
         "snapshot_prefix": "Snapshot v",
         "recover": "Recover",
@@ -121,12 +123,9 @@
           "cancel": "Cancel"
         },
         "entities": {
-          "sheet": "sheet",
-          "sheets": "sheets",
-          "flow": "flow",
-          "flows": "flows",
-          "scene": "scene",
-          "scenes": "scenes"
+          "sheets": "{n} sheet | {n} sheets",
+          "flows": "{n} flow | {n} flows",
+          "scenes": "{n} scene | {n} scenes"
         }
       }
     }
