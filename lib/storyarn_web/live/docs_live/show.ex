@@ -116,16 +116,9 @@ defmodule StoryarnWeb.DocsLive.Show do
         v-socket={@socket}
         id="docs-show-vue"
         guide-body={if @guide, do: HtmlSanitizer.sanitize_html(@guide.body)}
-        translations={docs_translations()}
       />
     </Layouts.docs>
     """
-  end
-
-  defp docs_translations do
-    %{
-      noDocsAvailable: gettext("No documentation available yet.")
-    }
   end
 
   # Use current Gettext locale if docs exist for it, otherwise fall back to English.

@@ -97,6 +97,9 @@
     "variable_combobox": {
       "no_results": "Sin resultados."
     },
+    "docs": {
+      "no_docs": "Aún no hay documentación disponible."
+    },
     "assets": {
       "filter_all": "Todos",
       "filter_images": "Imágenes",

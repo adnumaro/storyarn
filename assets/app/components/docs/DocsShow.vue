@@ -1,13 +1,8 @@
 <script setup lang="ts">
 import { BookOpen } from "lucide-vue-next";
 
-interface DocsTranslations {
-  noDocsAvailable: string;
-}
-
-const { guideBody = null, translations } = defineProps<{
+const { guideBody = null } = defineProps<{
   guideBody?: string | null;
-  translations: DocsTranslations;
 }>();
 </script>
 
@@ -20,6 +15,6 @@ const { guideBody = null, translations } = defineProps<{
 
   <div v-else class="text-center py-20">
     <BookOpen class="size-12 text-muted-foreground/30 mx-auto mb-4" />
-    <p class="text-muted-foreground/50">{{ translations.noDocsAvailable }}</p>
+    <p class="text-muted-foreground/50">{{ $t("common.docs.no_docs") }}</p>
   </div>
 </template>
