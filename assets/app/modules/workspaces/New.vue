@@ -27,19 +27,19 @@ const description = form.field("description");
 <template>
   <div class="max-w-lg mx-auto py-8 space-y-6">
     <div>
-      <h1 class="text-2xl font-bold tracking-tight">Create a new workspace</h1>
+      <h1 class="text-2xl font-bold tracking-tight">{{ $t("workspace.new_workspace.title") }}</h1>
       <p class="text-sm text-muted-foreground mt-1">
-        Workspaces help you organize projects for different teams or purposes.
+        {{ $t("workspace.new_workspace.subtitle") }}
       </p>
     </div>
 
     <div class="space-y-4">
       <div class="space-y-1.5">
-        <Label for="workspace-name">Workspace name</Label>
+        <Label for="workspace-name">{{ $t("workspace.new_workspace.name") }}</Label>
         <Input
           v-bind="name.inputAttrs.value"
           id="workspace-name"
-          placeholder="My Workspace"
+          :placeholder="$t('workspace.new_workspace.name_placeholder')"
           required
         />
         <p v-if="name.errorMessage.value" class="text-sm text-destructive mt-1">
@@ -48,11 +48,11 @@ const description = form.field("description");
       </div>
 
       <div class="space-y-1.5">
-        <Label for="workspace-description">Description</Label>
+        <Label for="workspace-description">{{ $t("workspace.new_workspace.description") }}</Label>
         <Textarea
           v-bind="description.inputAttrs.value"
           id="workspace-description"
-          placeholder="What is this workspace for?"
+          :placeholder="$t('workspace.new_workspace.description_placeholder')"
           :rows="3"
         />
         <p v-if="description.errorMessage.value" class="text-sm text-destructive mt-1">
@@ -67,9 +67,9 @@ const description = form.field("description");
           data-phx-link-state="push"
           class="inline-flex items-center justify-center h-9 px-4 text-sm rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         >
-          Cancel
+          {{ $t("workspace.new_workspace.cancel") }}
         </a>
-        <Button @click="form.submit()"> Create Workspace </Button>
+        <Button @click="form.submit()">{{ $t("workspace.new_workspace.submit") }}</Button>
       </div>
     </div>
   </div>

@@ -30,6 +30,45 @@
         }
       }
     },
+    "new_workspace": {
+      "title": "Crear un nuevo espacio de trabajo",
+      "subtitle": "Los espacios de trabajo te ayudan a organizar proyectos para diferentes equipos o propósitos.",
+      "name": "Nombre del espacio",
+      "name_placeholder": "Mi espacio de trabajo",
+      "description": "Descripción",
+      "description_placeholder": "¿Para qué es este espacio de trabajo?",
+      "cancel": "Cancelar",
+      "submit": "Crear espacio de trabajo"
+    },
+    "invitation": {
+      "invalid_title": "Invitación no válida",
+      "invalid_description": "Este enlace de invitación no es válido o ha caducado.",
+      "go_home": "Ir al inicio"
+    },
+    "project_dashboard": {
+      "stats": {
+        "sheets": "Fichas",
+        "variables": "Variables",
+        "flows": "Flujos",
+        "dialogue_lines": "Líneas de diálogo",
+        "scenes": "Escenas",
+        "words": "Palabras"
+      },
+      "activity_types": {
+        "sheet": "Ficha",
+        "flow": "Flujo",
+        "scene": "Escena",
+        "screenplay": "Guion"
+      },
+      "node_distribution": "Distribución de nodos",
+      "no_nodes": "Aún no hay nodos",
+      "top_speakers": "Personajes principales",
+      "no_speakers": "Aún no hay diálogos con personajes",
+      "issues": "Problemas y advertencias",
+      "localization_progress": "Progreso de localización",
+      "recent_activity": "Actividad reciente",
+      "no_activity": "Aún no hay actividad"
+    },
     "sidebar": {
       "my_workspaces": "Mis espacios de trabajo",
       "account_settings": "Ajustes de cuenta",

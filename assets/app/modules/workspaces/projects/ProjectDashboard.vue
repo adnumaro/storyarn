@@ -87,42 +87,12 @@ const live = useLive();
 const statCards = computed(() => {
   if (!stats) return [];
   return [
-    {
-      icon: FileText,
-      label: "Sheets",
-      value: stats.sheet_count,
-      href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets`,
-    },
-    {
-      icon: Variable,
-      label: "Variables",
-      value: stats.variable_count,
-      href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets`,
-    },
-    {
-      icon: GitBranch,
-      label: "Flows",
-      value: stats.flow_count,
-      href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows`,
-    },
-    {
-      icon: MessageSquare,
-      label: "Dialogue Lines",
-      value: stats.dialogue_count,
-      href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows`,
-    },
-    {
-      icon: MapIcon,
-      label: "Scenes",
-      value: stats.scene_count,
-      href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes`,
-    },
-    {
-      icon: Text,
-      label: "Words",
-      value: stats.total_word_count,
-      href: undefined,
-    },
+    { icon: FileText, key: "sheets", value: stats.sheet_count, href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets` },
+    { icon: Variable, key: "variables", value: stats.variable_count, href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets` },
+    { icon: GitBranch, key: "flows", value: stats.flow_count, href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows` },
+    { icon: MessageSquare, key: "dialogue_lines", value: stats.dialogue_count, href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows` },
+    { icon: MapIcon, key: "scenes", value: stats.scene_count, href: `/workspaces/${workspaceSlug}/projects/${projectSlug}/scenes` },
+    { icon: Text, key: "words", value: stats.total_word_count, href: undefined },
   ];
 });
 
@@ -138,15 +108,12 @@ function activityIcon(type: string) {
   return activityIcons[type] || Clock;
 }
 
-function activityTypeLabel(type: string) {
-  const labels: Record<string, string> = {
-    sheet: "Sheet",
-    flow: "Flow",
-    scene: "Scene",
-    screenplay: "Screenplay",
-  };
-  return labels[type] || type;
-}
+const activityTypeKeys: Record<string, string> = {
+  sheet: "workspace.project_dashboard.activity_types.sheet",
+  flow: "workspace.project_dashboard.activity_types.flow",
+  scene: "workspace.project_dashboard.activity_types.scene",
+  screenplay: "workspace.project_dashboard.activity_types.screenplay",
+};
 </script>
 
 <template>
@@ -164,7 +131,7 @@ function activityTypeLabel(type: string) {
         >
           <div class="flex items-center gap-2 text-xs text-muted-foreground">
             <component :is="stat.icon" class="size-4" />
-            {{ stat.label }}
+            {{ $t(`workspace.project_dashboard.stats.${stat.key}`) }}
           </div>
           <p class="text-2xl font-bold tabular-nums">{{ stat.value }}</p>
         </a>
@@ -174,12 +141,12 @@ function activityTypeLabel(type: string) {
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <!-- Node Distribution -->
         <div class="rounded-lg border border-border bg-surface p-4 space-y-3">
-          <h2 class="text-sm font-medium">Node Distribution</h2>
+          <h2 class="text-sm font-medium">{{ $t("workspace.project_dashboard.node_distribution") }}</h2>
           <div
             v-if="nodeDist.length === 0"
             class="text-sm text-muted-foreground/50 py-2 text-center"
           >
-            No flow nodes yet
+            {{ $t("workspace.project_dashboard.no_nodes") }}
           </div>
           <div v-else class="space-y-1.5">
             <div
@@ -200,12 +167,12 @@ function activityTypeLabel(type: string) {
 
         <!-- Top Speakers -->
         <div class="rounded-lg border border-border bg-surface p-4 space-y-3">
-          <h2 class="text-sm font-medium">Top Speakers</h2>
+          <h2 class="text-sm font-medium">{{ $t("workspace.project_dashboard.top_speakers") }}</h2>
           <div
             v-if="speakers.length === 0"
             class="text-sm text-muted-foreground/50 py-2 text-center"
           >
-            No dialogue with speakers yet
+            {{ $t("workspace.project_dashboard.no_speakers") }}
           </div>
           <div v-else class="space-y-1.5">
             <div
@@ -229,7 +196,7 @@ function activityTypeLabel(type: string) {
 
       <!-- Section 3: Issues & Warnings -->
       <div v-if="issues.length > 0" class="space-y-2">
-        <h2 class="text-sm font-medium">Issues & Warnings</h2>
+        <h2 class="text-sm font-medium">{{ $t("workspace.project_dashboard.issues") }}</h2>
         <div class="rounded-lg border border-border divide-y divide-border">
           <a
             v-for="(issue, i) in issues"
@@ -252,7 +219,7 @@ function activityTypeLabel(type: string) {
         v-if="localization.length > 0"
         class="rounded-lg border border-border bg-surface p-4 space-y-3"
       >
-        <h2 class="text-sm font-medium">Localization Progress</h2>
+        <h2 class="text-sm font-medium">{{ $t("workspace.project_dashboard.localization_progress") }}</h2>
         <div class="space-y-2">
           <a
             v-for="lang in localization"
@@ -280,9 +247,9 @@ function activityTypeLabel(type: string) {
 
       <!-- Section 5: Recent Activity -->
       <div class="rounded-lg border border-border bg-surface p-4 space-y-3">
-        <h2 class="text-sm font-medium">Recent Activity</h2>
+        <h2 class="text-sm font-medium">{{ $t("workspace.project_dashboard.recent_activity") }}</h2>
         <div v-if="activity.length === 0" class="text-sm text-muted-foreground/50 py-2 text-center">
-          No activity yet
+          {{ $t("workspace.project_dashboard.no_activity") }}
         </div>
         <div v-else class="space-y-0.5">
           <div v-for="(item, i) in activity" :key="i" class="flex items-center gap-3 py-1.5">
@@ -293,7 +260,7 @@ function activityTypeLabel(type: string) {
             <span class="text-sm flex-1 min-w-0">
               <span class="font-medium truncate">{{ item.name }}</span>
               <span class="text-muted-foreground/50">
-                &middot; {{ activityTypeLabel(item.type) }}
+                &middot; {{ activityTypeKeys[item.type] ? $t(activityTypeKeys[item.type]) : item.type }}
               </span>
             </span>
             <span class="text-xs text-muted-foreground/40 shrink-0">
