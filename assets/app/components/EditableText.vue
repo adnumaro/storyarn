@@ -82,6 +82,6 @@ function onKeydown(e: KeyboardEvent) {
     ]"
     @dblclick="startEdit"
   >
-    {{ modelValue || placeholder }}
+    {{ localValue || placeholder }}
   </component>
 </template>

@@ -97,7 +97,7 @@ function onShortcutKeydown(e: KeyboardEvent): void {
       :class="canEdit && 'cursor-text hover:bg-accent/30 rounded px-1 -mx-1 transition-colors'"
       @click="startEditName"
     >
-      {{ sheet.name || $t("sheets.metadata.untitled") }}
+      {{ localName || $t("sheets.metadata.untitled") }}
     </h1>
 
     <!-- Shortcut -->
@@ -119,7 +119,7 @@ function onShortcutKeydown(e: KeyboardEvent): void {
         :class="canEdit && 'cursor-text hover:text-muted-foreground transition-colors'"
         @click="startEditShortcut"
       >
-        {{ sheet.shortcut || (canEdit ? $t("sheets.metadata.add_shortcut") : "") }}
+        {{ localShortcut || (canEdit ? $t("sheets.metadata.add_shortcut") : "") }}
       </div>
     </div>
   </div>

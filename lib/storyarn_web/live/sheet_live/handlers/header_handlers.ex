@@ -22,10 +22,20 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
             Sheets.maybe_create_version(updated_sheet, socket.assigns.current_scope.user.id)
           end
 
-          {:noreply,
-           socket
-           |> assign(:sheet, Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id))
-           |> helpers.broadcast.(:sheet_updated)}
+          socket =
+            socket
+            |> assign(:sheet, Sheets.get_sheet_full!(socket.assigns.project.id, sheet.id))
+            |> helpers.broadcast.(:sheet_updated)
+
+          if name != sheet.name do
+            Phoenix.PubSub.broadcast(
+              Storyarn.PubSub,
+              StoryarnWeb.SheetsSidebarLive.shell_topic(socket.assigns.project.id),
+              {:tree_changed, :sheets}
+            )
+          end
+
+          {:noreply, socket}
 
         {:error, _changeset} ->
           {:noreply, socket}
