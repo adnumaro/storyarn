@@ -1,0 +1,35 @@
+assets/app/modules/localization/components/LocalizationIndex.vue
+  3ea3c2327c2231e2 108-109,112,119,121,123,129,143,146-151,160,163-168,176,189,197-201,227,262,286
+assets/app/modules/localization/components/LocalizationEdit.vue
+  3ea3c2327c2231e2 4,18-19,66-70,116,128,135,139,145,149,152,155,158,166,170,176,185,194,196
+assets/app/locales/es/localization.json
+  3ea3c2327c2231e2 1-107
+assets/app/modules/localization/components/LocalizationSidebar.vue
+  3ea3c2327c2231e2 96,122,129,131,152,163,205,222,229,231,250,261,265,272-274
+assets/app/modules/localization/components/LocalizationReport.vue
+  3ea3c2327c2231e2 12,32-33,87-90,104-110,118-119,125,128,151,175-177,183-184,196,211,220
+assets/app/modules/localization/components/LocalizationToolbar.vue
+  3ea3c2327c2231e2 40,45,48,62
+assets/app/locales/en/localization.json
+  3ea3c2327c2231e2 1-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "bc0da19c79da22053d5a7e4b010c2cebf9d37de4",
+  "prompts": {
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 514,
+      "total_deletions": 115,
+      "accepted_lines": 764,
+      "overriden_lines": 0
+    }
+  }
+}
