@@ -44,28 +44,24 @@ function onCustomColor(e: Event) {
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
       <ToolbarTooltip :label="$t('scenes.stroke_picker.line_style')">
-        <button
-          type="button"
-          class="toolbar-btn"
-          :disabled="disabled"
-        >
-        <span class="flex items-center gap-1">
-          <svg width="16" height="16" viewBox="0 0 16 16" class="text-current">
-            <line
-              x1="2"
-              y1="8"
-              x2="14"
-              y2="8"
-              stroke="currentColor"
-              stroke-width="2"
-              :stroke-dasharray="DASH_MAP[lineStyle] || 'none'"
+        <button type="button" class="toolbar-btn" :disabled="disabled">
+          <span class="flex items-center gap-1">
+            <svg width="16" height="16" viewBox="0 0 16 16" class="text-current">
+              <line
+                x1="2"
+                y1="8"
+                x2="14"
+                y2="8"
+                stroke="currentColor"
+                stroke-width="2"
+                :stroke-dasharray="DASH_MAP[lineStyle] || 'none'"
+              />
+            </svg>
+            <span
+              class="inline-block w-2.5 h-2.5 rounded-full shrink-0 border border-white/10"
+              :style="{ background: color }"
             />
-          </svg>
-          <span
-            class="inline-block w-2.5 h-2.5 rounded-full shrink-0 border border-white/10"
-            :style="{ background: color }"
-          />
-        </span>
+          </span>
         </button>
       </ToolbarTooltip>
     </PopoverTrigger>
@@ -143,7 +139,10 @@ function onCustomColor(e: Event) {
                 :style="{ backgroundColor: c }"
                 @click="selectColor(c)"
               />
-              <ToolbarTooltip v-if="i === COLOR_SWATCHES.length - 1" :label="$t('scenes.stroke_picker.custom_color')">
+              <ToolbarTooltip
+                v-if="i === COLOR_SWATCHES.length - 1"
+                :label="$t('scenes.stroke_picker.custom_color')"
+              >
                 <label
                   class="size-5 rounded-full border border-dashed border-white/30 flex items-center justify-center cursor-pointer hover:scale-125 transition-transform"
                 >

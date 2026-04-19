@@ -212,10 +212,10 @@ function getOutputBadges(key: string): OutputBadge[] {
       <div
         v-for="[key, input] in inputs"
         :key="'i-' + key"
-        class="flex items-center py-1 text-[11px] text-muted-foreground justify-start"
+        class="relative flex items-center py-1 text-[11px] text-muted-foreground justify-start"
       >
         <Ref
-          class="input-socket"
+          class="input-socket absolute -left-1.5"
           :data="{ type: 'socket', side: 'input', key, nodeId: data.id, payload: input.socket }"
           :emit="emit"
           data-testid="input-socket"
@@ -224,7 +224,7 @@ function getOutputBadges(key: string): OutputBadge[] {
       <div
         v-for="[key, output] in outputs"
         :key="'o-' + key"
-        class="flex items-center py-1 text-[11px] text-muted-foreground justify-end"
+        class="relative flex items-center py-1 text-[11px] text-muted-foreground justify-end"
       >
         <template v-for="badge in getOutputBadges(key)" :key="badge.title">
           <div
@@ -239,7 +239,7 @@ function getOutputBadges(key: string): OutputBadge[] {
           {{ getOutputLabel(key) }}
         </span>
         <Ref
-          class="output-socket"
+          class="output-socket absolute -right-1.5"
           :data="{ type: 'socket', side: 'output', key, nodeId: data.id, payload: output.socket }"
           :emit="emit"
           data-testid="output-socket"

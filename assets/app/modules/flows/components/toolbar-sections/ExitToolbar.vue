@@ -6,6 +6,8 @@ import { useLive } from "@composables/useLive";
 import { ToolbarExitModePicker } from "../../toolbar";
 import type { NodeData } from "../../lib/node-configs";
 
+defineOptions({ inheritAttrs: false });
+
 interface ExitToolbarData extends NodeData {
   label?: string;
   exit_mode?: string;

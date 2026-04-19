@@ -84,9 +84,7 @@ function toggleTreePanel() {
     <ToolbarTooltip
       v-if="hasTree"
       :label="
-        treePanelOpen
-          ? $t('layout.left_toolbar.hide_panel')
-          : $t('layout.left_toolbar.show_panel')
+        treePanelOpen ? $t('layout.left_toolbar.hide_panel') : $t('layout.left_toolbar.show_panel')
       "
       side="bottom"
       align="start"

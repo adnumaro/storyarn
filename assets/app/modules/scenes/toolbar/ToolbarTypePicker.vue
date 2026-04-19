@@ -44,11 +44,7 @@ const currentIcon = (): Component =>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
       <ToolbarTooltip :label="$t('scenes.type_picker.pin_type')">
-        <button
-          type="button"
-          class="toolbar-btn"
-          :disabled="disabled"
-        >
+        <button type="button" class="toolbar-btn" :disabled="disabled">
           <component :is="currentIcon()" class="size-3.5" />
         </button>
       </ToolbarTooltip>

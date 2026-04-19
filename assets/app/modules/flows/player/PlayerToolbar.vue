@@ -24,20 +24,12 @@ const emit = defineEmits<{
   <div class="player-toolbar">
     <div class="player-toolbar-left">
       <ToolbarTooltip :label="$t('flows.player.back')">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          :disabled="!canGoBack"
-          @click="emit('go-back')"
-        >
+        <Button variant="ghost" size="icon-sm" :disabled="!canGoBack" @click="emit('go-back')">
           <ArrowLeft :size="16" />
         </Button>
       </ToolbarTooltip>
       <ToolbarTooltip v-if="showContinue && !isFinished" :label="$t('flows.player.continue')">
-        <Button
-          size="sm"
-          @click="emit('continue')"
-        >
+        <Button size="sm" @click="emit('continue')">
           {{ $t("flows.player.continue") }}
           <ArrowRight :size="16" />
         </Button>
@@ -51,25 +43,21 @@ const emit = defineEmits<{
           class="player-toolbar-btn-mode"
           @update:model-value="emit('toggle-mode')"
         >
-        <component :is="playerMode === 'player' ? Eye : ScanEye" :size="16" />
-        <span class="hidden sm:inline">
-          {{
-            playerMode === "player"
-              ? $t("flows.player.mode_player")
-              : $t("flows.player.mode_analysis")
-          }}
-        </span>
-      </Toggle>
+          <component :is="playerMode === 'player' ? Eye : ScanEye" :size="16" />
+          <span class="hidden sm:inline">
+            {{
+              playerMode === "player"
+                ? $t("flows.player.mode_player")
+                : $t("flows.player.mode_analysis")
+            }}
+          </span>
+        </Toggle>
       </ToolbarTooltip>
     </div>
 
     <div class="player-toolbar-right">
       <ToolbarTooltip :label="$t('flows.player.restart')">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          @click="emit('restart')"
-        >
+        <Button variant="ghost" size="icon-sm" @click="emit('restart')">
           <RotateCcw :size="16" />
         </Button>
       </ToolbarTooltip>

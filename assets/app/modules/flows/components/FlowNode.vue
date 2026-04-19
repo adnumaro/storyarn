@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component } from "vue";
 import { computed, inject } from "vue";
-import type { FlowNodeType, NodeConfig, NodeData } from "../lib/node-configs";
+import type { FlowNodeType, NodeData } from "../lib/node-configs";
 import { NODE_CONFIGS } from "../lib/node-configs";
 import { resolveNodeColor } from "../lib/render-helpers";
 import type { SheetMapEntry, HubMapEntry } from "../types";
@@ -15,8 +15,8 @@ import InstructionNode from "../nodes/InstructionNode.vue";
 import JumpNode from "../nodes/JumpNode.vue";
 import SlugLineNode from "../nodes/SlugLineNode.vue";
 import SubflowNode from "../nodes/SubflowNode.vue";
-import FlowNodeToolbar from "./FlowNodeToolbar.vue";
 import { FLOW_CONTEXT_KEY } from "../setup";
+import FlowNodeToolbar from "@modules/flows/components/FlowNodeToolbar.vue";
 
 interface FlowNodeData {
   id: string | number;
@@ -34,6 +34,7 @@ interface FlowContextValue {
   selectedReteNodeId: string | null;
   canEdit: boolean;
   toolbarProps: Record<string, unknown>;
+  zoom?: number;
 }
 
 const NODE_COMPONENTS: Record<string, Component> = {
@@ -69,7 +70,6 @@ const config = computed(() => NODE_CONFIGS[nodeType.value] || NODE_CONFIGS.dialo
 const nodeComponent = computed(() => NODE_COMPONENTS[nodeType.value] || DialogueNode);
 
 const nodeColor = computed(() => {
-  const v = ctx.nodeDataVersion;
   return resolveNodeColor(
     nodeType.value,
     data?.nodeData,
@@ -84,9 +84,7 @@ const reactiveNodeData = computed(() => {
   return data?.nodeData || {};
 });
 
-const showToolbar = computed(
-  () => ctx.canEdit && ctx.selectedReteNodeId === data?.id,
-);
+const showToolbar = computed(() => ctx.canEdit && ctx.selectedReteNodeId === data?.id);
 
 const nodeId = computed(() => {
   const reteId = String(data?.id || "");

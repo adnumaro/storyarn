@@ -100,11 +100,7 @@ function toggleElementPanel(): void {
 
   <!-- Settings cog -->
   <ToolbarTooltip :label="$t('scenes.connection_toolbar.properties')">
-    <button
-      type="button"
-      class="toolbar-btn"
-      @click="toggleElementPanel"
-    >
+    <button type="button" class="toolbar-btn" @click="toggleElementPanel">
       <Settings class="size-3.5" />
     </button>
   </ToolbarTooltip>

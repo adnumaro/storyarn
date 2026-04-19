@@ -88,10 +88,10 @@ function getExitInfo(key: string): ExitLabel | null {
       <div
         v-for="[key, input] in inputs"
         :key="'i-' + key"
-        class="flex items-center py-1 text-[11px] text-muted-foreground justify-start"
+        class="relative flex items-center py-1 text-[11px] text-muted-foreground justify-start"
       >
         <Ref
-          class="input-socket"
+          class="input-socket absolute -left-1.5"
           :data="{ type: 'socket', side: 'input', key, nodeId: data.id, payload: input.socket }"
           :emit="emit"
           data-testid="input-socket"
@@ -101,7 +101,7 @@ function getExitInfo(key: string): ExitLabel | null {
       <div
         v-for="[key, output] in outputs"
         :key="'o-' + key"
-        class="flex items-center py-1 text-[11px] text-muted-foreground justify-end"
+        class="relative flex items-center py-1 text-[11px] text-muted-foreground justify-end"
       >
         <span class="px-2 max-w-55 wrap-break-word text-right inline-flex items-center gap-1">
           <template v-if="getExitInfo(key)">
@@ -115,7 +115,7 @@ function getExitInfo(key: string): ExitLabel | null {
           <template v-else> {{ t("flows.nodes.subflow.output") }} </template>
         </span>
         <Ref
-          class="output-socket"
+          class="output-socket absolute -right-1.5"
           :data="{ type: 'socket', side: 'output', key, nodeId: data.id, payload: output.socket }"
           :emit="emit"
           data-testid="output-socket"

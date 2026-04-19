@@ -6,6 +6,8 @@ import { useLive } from "@composables/useLive";
 import type { NodeData } from "../../lib/node-configs";
 import type { ReferencingJump } from "../../types";
 
+defineOptions({ inheritAttrs: false });
+
 interface HubToolbarData extends NodeData {
   label?: string;
   hub_id?: string;
@@ -56,11 +58,7 @@ function navigateToJumps() {
     @keydown.stop
   />
   <ToolbarTooltip v-if="referencingJumps.length > 0" :label="$t('flows.hub_toolbar.locate_jumps')">
-    <button
-      type="button"
-      class="toolbar-btn"
-      @click="navigateToJumps"
-    >
+    <button type="button" class="toolbar-btn" @click="navigateToJumps">
       <Crosshair class="size-3.5" />
     </button>
   </ToolbarTooltip>

@@ -7,6 +7,8 @@ import { useLive } from "@composables/useLive";
 import type { Condition } from "../../types";
 import type { NodeData } from "../../lib/node-configs";
 
+defineOptions({ inheritAttrs: false });
+
 interface ConditionToolbarData extends NodeData {
   switch_mode?: boolean;
   condition?: Condition;
@@ -46,11 +48,7 @@ function openBuilder() {
   </Badge>
   <ToolbarSeparator />
   <ToolbarTooltip :label="$t('flows.condition_toolbar.edit_condition')">
-    <button
-      type="button"
-      class="toolbar-btn"
-      @click="openBuilder"
-    >
+    <button type="button" class="toolbar-btn" @click="openBuilder">
       <Settings class="size-3.5" />
     </button>
   </ToolbarTooltip>

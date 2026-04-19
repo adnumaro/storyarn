@@ -9,6 +9,8 @@ import { ToolbarSearchableSelect } from "../../toolbar";
 import type { ProjectFlow, SubflowExit } from "../../types";
 import type { NodeData } from "../../lib/node-configs";
 
+defineOptions({ inheritAttrs: false });
+
 interface SubflowToolbarData extends NodeData {
   referenced_flow_id?: number | string | null;
 }

@@ -7,6 +7,8 @@ import { ToolbarAvatarPicker, ToolbarSearchableSelect } from "../../toolbar";
 import type { SheetAvatarEntry } from "../../types";
 import type { NodeData } from "../../lib/node-configs";
 
+defineOptions({ inheritAttrs: false });
+
 interface SlugLineToolbarData extends NodeData {
   speaker_sheet_id?: number | string | null;
   location_sheet_id?: number | string | null;

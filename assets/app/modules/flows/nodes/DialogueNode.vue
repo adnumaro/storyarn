@@ -284,7 +284,7 @@ function onSpeakerSelect(id: number | string | null) {
     </div>
 
     <!-- Sockets with response labels and badges -->
-    <div class="py-1.5 border-t border-border/10">
+    <div class="relative py-1.5 border-t border-border/10">
       <!-- Inputs -->
       <div
         v-for="[key, input] in inputs"
@@ -292,7 +292,7 @@ function onSpeakerSelect(id: number | string | null) {
         class="flex items-center py-1 text-[11px] text-muted-foreground justify-start"
       >
         <Ref
-          class="input-socket"
+          class="input-socket absolute -left-1.5"
           :data="{ type: 'socket', side: 'input', key, nodeId: data.id, payload: input.socket }"
           :emit="emit"
           data-testid="input-socket"
@@ -302,7 +302,7 @@ function onSpeakerSelect(id: number | string | null) {
       <div
         v-for="[key, output] in outputs"
         :key="'o-' + key"
-        class="flex items-center py-1 text-[11px] text-muted-foreground justify-end"
+        class="relative flex items-center py-1 text-[11px] text-muted-foreground justify-end"
       >
         <!-- Response badges -->
         <template v-for="badge in getOutputBadges(key)" :key="badge.title">
@@ -325,7 +325,7 @@ function onSpeakerSelect(id: number | string | null) {
           {{ formatOutputLabel(key) }}
         </span>
         <Ref
-          class="output-socket"
+          class="output-socket absolute -right-1.5"
           :data="{ type: 'socket', side: 'output', key, nodeId: data.id, payload: output.socket }"
           :emit="emit"
           data-testid="output-socket"

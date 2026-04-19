@@ -8,6 +8,8 @@ import { ToolbarSearchableSelect } from "../../toolbar";
 import type { HubMapEntry } from "../../types";
 import type { NodeData } from "../../lib/node-configs";
 
+defineOptions({ inheritAttrs: false });
+
 interface JumpToolbarData extends NodeData {
   target_hub_id?: string;
 }
@@ -53,11 +55,7 @@ function navigateToHub() {
     @select="(v: string | number) => selectHub(String(v))"
   />
   <ToolbarTooltip v-if="nodeData.target_hub_id" :label="$t('flows.jump_toolbar.locate_target')">
-    <button
-      type="button"
-      class="toolbar-btn"
-      @click="navigateToHub"
-    >
+    <button type="button" class="toolbar-btn" @click="navigateToHub">
       <Crosshair class="size-3.5" />
     </button>
   </ToolbarTooltip>

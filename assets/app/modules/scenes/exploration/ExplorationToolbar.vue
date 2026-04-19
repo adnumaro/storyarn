@@ -54,20 +54,12 @@ function toggleZones() {
     <!-- Right: Save + Show zones -->
     <div class="flex items-center gap-1">
       <ToolbarTooltip :label="$t('scenes.exploration.save_progress')">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          @click="save"
-        >
+        <Button variant="ghost" size="icon-sm" @click="save">
           <Save class="size-4" />
         </Button>
       </ToolbarTooltip>
       <ToolbarTooltip :label="$t('scenes.exploration.show_zones')">
-        <Button
-          :variant="showZones ? 'secondary' : 'ghost'"
-          size="icon-sm"
-          @click="toggleZones"
-        >
+        <Button :variant="showZones ? 'secondary' : 'ghost'" size="icon-sm" @click="toggleZones">
           <Scan class="size-4" />
         </Button>
       </ToolbarTooltip>

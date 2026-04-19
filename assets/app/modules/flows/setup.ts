@@ -72,6 +72,11 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
       if (!context) return createApp({ render: () => null });
       const app = createApp(context);
       app.use(i18n);
+      app.config.globalProperties.$live = {
+        pushEvent: hook.pushEvent,
+        handleEvent: hook.handleEvent,
+        upload: () => {},
+      };
       app.provide(FLOW_CONTEXT_KEY, flowContext);
       return app;
     },

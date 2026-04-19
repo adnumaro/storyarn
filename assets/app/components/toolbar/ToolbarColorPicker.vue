@@ -27,18 +27,12 @@ function onCustomColor(e: Event) {
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <ToolbarTooltip :label="$t('common.color_picker.color')">
-        <button
-          type="button"
-          class="toolbar-btn"
-          :disabled="disabled"
-        >
+      <button type="button" class="toolbar-btn" :disabled="disabled">
         <span
           class="size-4 rounded-full border border-white/20"
           :style="{ backgroundColor: color }"
         />
       </button>
-      </ToolbarTooltip>
     </PopoverTrigger>
     <PopoverContent class="w-auto p-2" :side-offset="8" side="top">
       <div class="flex flex-col gap-1">
@@ -52,7 +46,10 @@ function onCustomColor(e: Event) {
             :style="{ backgroundColor: c }"
             @click="selectColor(c)"
           />
-          <ToolbarTooltip v-if="i === row.length - 1" :label="$t('common.color_picker.custom_color')">
+          <ToolbarTooltip
+            v-if="i === row.length - 1"
+            :label="$t('common.color_picker.custom_color')"
+          >
             <label
               class="size-5 rounded-full border border-dashed border-white/30 flex items-center justify-center cursor-pointer hover:scale-125 transition-transform"
             >

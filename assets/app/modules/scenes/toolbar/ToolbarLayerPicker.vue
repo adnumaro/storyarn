@@ -34,11 +34,7 @@ function selectLayer(id: number | string | null) {
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
       <ToolbarTooltip :label="$t('scenes.layer_picker.layer')">
-        <button
-          type="button"
-          class="toolbar-btn"
-          :disabled="disabled"
-        >
+        <button type="button" class="toolbar-btn" :disabled="disabled">
           <Layers class="size-3.5" />
         </button>
       </ToolbarTooltip>

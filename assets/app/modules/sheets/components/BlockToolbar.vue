@@ -108,11 +108,7 @@ const emit = defineEmits<{
       <Popover v-if="showConfig" @update:open="(v) => (configOpen = v)">
         <ToolbarTooltip :label="$t('sheets.block_toolbar.configure')">
           <PopoverTrigger as-child>
-            <Button
-              :id="`block-toolbar-${blockId}-${generateId()}`"
-              size="icon-sm"
-              variant="ghost"
-            >
+            <Button :id="`block-toolbar-${blockId}-${generateId()}`" size="icon-sm" variant="ghost">
               <Settings class="size-4" />
             </Button>
           </PopoverTrigger>

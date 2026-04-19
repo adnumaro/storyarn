@@ -4,6 +4,8 @@ import { ToolbarSeparator } from "@components/toolbar/index.ts";
 import { Badge } from "@components/ui/badge/index.ts";
 import type { ReferencingFlow } from "../../types";
 
+defineOptions({ inheritAttrs: false });
+
 const { referencingFlows = [] } = defineProps<{
   referencingFlows?: ReferencingFlow[];
 }>();

@@ -9,6 +9,8 @@ import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "@composables/useLive";
 import type { NodeData } from "../../lib/node-configs";
 
+defineOptions({ inheritAttrs: false });
+
 interface AnnotationNodeData extends NodeData {
   color?: string;
   font_size?: "sm" | "md" | "lg";
@@ -39,11 +41,7 @@ function deleteNode() {
   <ToolbarSizePicker :size="nodeData.font_size || 'md'" @update:size="updateAnnotationFontSize" />
   <ToolbarSeparator />
   <ToolbarTooltip :label="$t('flows.annotation.delete')">
-    <button
-      type="button"
-      class="toolbar-btn text-destructive"
-      @click="deleteNode"
-    >
+    <button type="button" class="toolbar-btn text-destructive" @click="deleteNode">
       <Trash2 class="size-3.5" />
     </button>
   </ToolbarTooltip>

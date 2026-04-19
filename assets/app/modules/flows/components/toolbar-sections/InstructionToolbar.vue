@@ -7,6 +7,8 @@ import { useLive } from "@composables/useLive";
 import type { InstructionAssignment } from "../../types";
 import type { NodeData } from "../../lib/node-configs";
 
+defineOptions({ inheritAttrs: false });
+
 interface InstructionToolbarData extends NodeData {
   assignments?: InstructionAssignment[];
 }
@@ -34,11 +36,7 @@ function openBuilder() {
   </Badge>
   <ToolbarSeparator />
   <ToolbarTooltip :label="$t('flows.instruction_toolbar.edit_instructions')">
-    <button
-      type="button"
-      class="toolbar-btn"
-      @click="openBuilder"
-    >
+    <button type="button" class="toolbar-btn" @click="openBuilder">
       <Settings class="size-3.5" />
     </button>
   </ToolbarTooltip>

@@ -8,6 +8,8 @@ import { ToolbarAvatarPicker } from "../../toolbar";
 import type { SheetAvatarEntry } from "../../types";
 import type { NodeData } from "../../lib/node-configs";
 
+defineOptions({ inheritAttrs: false });
+
 interface DialogueToolbarData extends NodeData {
   speaker_sheet_id?: number | string | null;
   location_sheet_id?: number | string | null;
@@ -93,20 +95,12 @@ const hasAvatarOverride = computed(() => {
   />
   <ToolbarSeparator />
   <ToolbarTooltip :label="$t('flows.node_types.dialogue_toolbar_screenplay')">
-    <button
-      type="button"
-      class="toolbar-btn"
-      @click="openScreenplay"
-    >
+    <button type="button" class="toolbar-btn" @click="openScreenplay">
       <Settings class="size-3.5" />
     </button>
   </ToolbarTooltip>
   <ToolbarTooltip :label="$t('flows.node_types.dialogue_toolbar_preview')">
-    <button
-      type="button"
-      class="toolbar-btn"
-      @click="startPreview"
-    >
+    <button type="button" class="toolbar-btn" @click="startPreview">
       <PlayIcon class="size-3" />
     </button>
   </ToolbarTooltip>

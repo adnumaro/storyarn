@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { Component, CSSProperties } from "vue";
 import { computed } from "vue";
+
+defineOptions({ inheritAttrs: false });
 import type { NodeData } from "../lib/node-configs";
 import {
   AnnotationToolbar,
@@ -54,14 +56,15 @@ const TOOLBAR_COMPONENTS: Record<string, Component> = {
   slug_line: SlugLineToolbar,
 };
 
-const activeComponent = computed<Component | null>(() =>
-  TOOLBAR_COMPONENTS[nodeType] ?? null,
-);
+const activeComponent = computed<Component | null>(() => TOOLBAR_COMPONENTS[nodeType] ?? null);
 </script>
 
 <template>
   <div
     class="absolute bottom-full left-1/2 z-30 flex items-center gap-1.5 surface-panel px-2 py-1.5 text-sm pointer-events-auto whitespace-nowrap"
+    @pointerdown.stop
+    @mousedown.stop
+    @click.stop
     :style="{
       transform: `translateX(-50%) scale(${inverseScale})`,
       transformOrigin: 'bottom center',
