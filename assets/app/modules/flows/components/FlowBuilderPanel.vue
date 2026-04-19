@@ -3,9 +3,8 @@ import { GitBranch, X, Zap } from "lucide-vue-next";
 import type { Component } from "vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import ConditionBuilder from "@components/builders/ConditionBuilder.vue";
-import InstructionBuilder from "@components/builders/InstructionBuilder.vue";
 import type { Assignment, ConditionData } from "@components/builders/types";
+import ExpressionEditor from "@components/ExpressionEditor.vue";
 import Sidebar from "@components/layout/Sidebar.vue";
 import type { Variable } from "@modules/shared/variables";
 import { useLive } from "@composables/useLive";
@@ -94,34 +93,40 @@ function onAssignmentsUpdate(updatedAssignments: Assignment[]): void {
       </div>
     </template>
 
-    <!-- Condition Builder -->
-    <template v-if="nodeType === 'condition'">
-      <ConditionBuilder
+    <div
+      v-if="nodeType === 'condition' || nodeType === 'instruction'"
+      class="flex flex-col h-full"
+    >
+      <ExpressionEditor
+        :mode="nodeType"
         :condition="condition"
-        :variables="parsedVariables"
-        :disabled="!canEdit"
-        :switch-mode="switchMode"
-        @update:condition="onConditionUpdate"
-      />
-      <p v-if="!hasContent && !switchMode" class="text-xs text-muted-foreground mt-2">
-        {{ $t("flows.builder.condition_help") }}
-      </p>
-      <p v-if="!hasContent && switchMode" class="text-xs text-muted-foreground mt-2">
-        {{ $t("flows.builder.condition_switch_help") }}
-      </p>
-    </template>
-
-    <!-- Instruction Builder -->
-    <template v-else-if="nodeType === 'instruction'">
-      <InstructionBuilder
         :assignments="assignments"
         :variables="parsedVariables"
         :disabled="!canEdit"
+        :switch-mode="switchMode"
+        fill-height
+        class="flex-1 min-h-0"
+        @update:condition="onConditionUpdate"
         @update:assignments="onAssignmentsUpdate"
       />
-      <p v-if="!hasContent && canEdit" class="text-xs text-muted-foreground mt-2">
+      <p
+        v-if="nodeType === 'condition' && !hasContent && !switchMode"
+        class="shrink-0 text-xs text-muted-foreground mt-2"
+      >
+        {{ $t("flows.builder.condition_help") }}
+      </p>
+      <p
+        v-if="nodeType === 'condition' && !hasContent && switchMode"
+        class="shrink-0 text-xs text-muted-foreground mt-2"
+      >
+        {{ $t("flows.builder.condition_switch_help") }}
+      </p>
+      <p
+        v-if="nodeType === 'instruction' && !hasContent && canEdit"
+        class="shrink-0 text-xs text-muted-foreground mt-2"
+      >
         {{ $t("flows.builder.instruction_help") }}
       </p>
-    </template>
+    </div>
   </Sidebar>
 </template>

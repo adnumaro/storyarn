@@ -27,6 +27,7 @@ const {
   variables = [],
   disabled = false,
   switchMode = false,
+  fillHeight = false,
 } = defineProps<{
   mode: "condition" | "instruction";
   condition?: ConditionData | null;
@@ -34,6 +35,7 @@ const {
   variables?: Variable[];
   disabled?: boolean;
   switchMode?: boolean;
+  fillHeight?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -105,9 +107,9 @@ function parsedAssignmentsToAssignments(parsed: ParsedAssignment[]): Assignment[
 </script>
 
 <template>
-  <div class="expression-editor">
+  <div :class="['expression-editor', fillHeight && 'flex flex-col min-h-0']">
     <!-- Tabs -->
-    <div class="flex items-center gap-1 mb-3">
+    <div :class="['flex items-center gap-1 mb-3', fillHeight && 'shrink-0']">
       <button
         type="button"
         :class="[
@@ -170,7 +172,10 @@ function parsedAssignmentsToAssignments(parsed: ParsedAssignment[]): Assignment[
     <div
       v-show="activeTab === 'code'"
       ref="codeEditorRef"
-      class="min-h-[120px] rounded-lg border border-border overflow-hidden"
+      :class="[
+        'rounded-lg border border-border overflow-hidden',
+        fillHeight ? 'flex-1 min-h-0 [&_.cm-editor]:h-full' : 'min-h-[120px]',
+      ]"
     />
   </div>
 </template>
