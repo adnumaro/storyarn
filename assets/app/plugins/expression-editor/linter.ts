@@ -10,6 +10,7 @@
 import { linter, type Diagnostic } from "@codemirror/lint";
 import type { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
+import { i18n } from "@app/i18n";
 import {
   operatorsForType as instructionOpsForType,
   OPERATOR_VERBS,
@@ -97,7 +98,12 @@ function checkVariableRef(
   if (!sheet || !variable || from === undefined || to === undefined) return;
   const fullRef = `${sheet}.${variable}`;
   if (!variableSet.has(fullRef)) {
-    diagnostics.push({ from, to, severity: "warning", message: `Unknown variable: ${fullRef}` });
+    diagnostics.push({
+      from,
+      to,
+      severity: "warning",
+      message: i18n.global.t("common.expression_editor.unknown_variable", { ref: fullRef }),
+    });
   }
 }
 
@@ -122,7 +128,11 @@ function checkOperatorType(
       from,
       to,
       severity: "warning",
-      message: `"${opLabel}" is not valid for ${blockType} (valid: ${validLabels})`,
+      message: i18n.global.t("common.expression_editor.operator_invalid_for_type", {
+        operator: opLabel,
+        type: blockType,
+        valid: validLabels,
+      }),
     });
   }
 }

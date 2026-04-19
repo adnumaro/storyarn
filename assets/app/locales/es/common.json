@@ -72,7 +72,10 @@
       "builder": "Constructor",
       "code": "Código",
       "format": "Formatear",
-      "format_code": "Formatear código"
+      "format_code": "Formatear código",
+      "syntax_error": "Error de sintaxis",
+      "unknown_variable": "Variable desconocida: {ref}",
+      "operator_invalid_for_type": "\"{operator}\" no es válido para {type} (válidos: {valid})"
     },
     "condition_builder": {
       "label_placeholder": "etiqueta",

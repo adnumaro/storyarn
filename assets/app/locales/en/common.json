@@ -72,7 +72,10 @@
       "builder": "Builder",
       "code": "Code",
       "format": "Format",
-      "format_code": "Format code"
+      "format_code": "Format code",
+      "syntax_error": "Syntax error",
+      "unknown_variable": "Unknown variable: {ref}",
+      "operator_invalid_for_type": "\"{operator}\" is not valid for {type} (valid: {valid})"
     },
     "condition_builder": {
       "label_placeholder": "label",

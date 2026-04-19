@@ -10,6 +10,7 @@
  */
 
 import type { SyntaxNode, Tree } from "@lezer/common";
+import { i18n } from "@app/i18n";
 import { parser as generatedParser } from "./parser-generated.js";
 import type { Variable } from "@modules/shared/variables";
 
@@ -201,7 +202,7 @@ function collectErrors(tree: Tree): ParseError[] {
         errors.push({
           from: node.from,
           to: Math.max(node.to, node.from + 1),
-          message: "Syntax error",
+          message: i18n.global.t("common.expression_editor.syntax_error"),
         });
       }
     },
@@ -239,7 +240,7 @@ export function parseAssignments(
             allErrors.push({
               from: lineOffset + node.from,
               to: lineOffset + Math.max(node.to, node.from + 1),
-              message: "Syntax error",
+              message: i18n.global.t("common.expression_editor.syntax_error"),
             });
           }
         },
