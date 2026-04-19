@@ -113,7 +113,7 @@ export interface FlowEditorReturn {
   rebuildHubsMap(): Promise<void>;
   syncNodeSize(nodeId: string): Promise<void>;
   destroy(): void;
-  setToolbarProps(props: Record<string, unknown>): void
+  setToolbarProps(props: Record<string, unknown>): void;
 }
 
 export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowEditorReturn {
@@ -142,131 +142,131 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
   let _arrange: AutoArrangePlugin<FlowSchemes> | null = null;
   let _minimap: MinimapPlugin<FlowSchemes> | null = null;
 
-  const _nodeMap = new Map<string | number, FlowNode>()
+  const _nodeMap = new Map<string | number, FlowNode>();
   const _connectionDataMap = new Map<
     string,
     { id: number; label: string | null; condition: unknown }
-  >()
-  let _loadingFromServerCount = 0
-  let _deferSocketCalc = false
-  let _deferredSockets: unknown[] = []
-  let _socketRenderedEvents: unknown[] = []
-  let _isRecalculatingSockets = false
-  let _nodeMoveQueue: Promise<void> | null = Promise.resolve()
-  let _nodeUpdateQueue: Promise<void> | null = Promise.resolve()
+  >();
+  let _loadingFromServerCount = 0;
+  let _deferSocketCalc = false;
+  let _deferredSockets: unknown[] = [];
+  let _socketRenderedEvents: unknown[] = [];
+  let _isRecalculatingSockets = false;
+  let _nodeMoveQueue: Promise<void> | null = Promise.resolve();
+  let _nodeUpdateQueue: Promise<void> | null = Promise.resolve();
 
-  let _editorHandlers: EditorHandlers | null = null
-  let _navigationHandler: NavigationHandler | null = null
-  let _debugHandler: DebugHandler | null = null
-  let _keyboardHandler: KeyboardHandler | null = null
-  let _lodController: LodController | null = null
+  let _editorHandlers: EditorHandlers | null = null;
+  let _navigationHandler: NavigationHandler | null = null;
+  let _debugHandler: DebugHandler | null = null;
+  let _keyboardHandler: KeyboardHandler | null = null;
+  let _lodController: LodController | null = null;
 
-  let _selectedNodeId: string | number | null = null
-  let _lastNodeClickTime = 0
-  let _lastClickedNodeId: string | number | null = null
-  let _destroyed = false
-  let _canvasClickController: AbortController | null = null
+  let _selectedNodeId: string | number | null = null;
+  let _lastNodeClickTime = 0;
+  let _lastClickedNodeId: string | number | null = null;
+  let _destroyed = false;
+  let _canvasClickController: AbortController | null = null;
 
   // Expose as a "hook-like" object for handler modules that expect `hook.pushEvent`, etc.
   const hookProxy: HookProxy = {
     get pushEvent() {
-      return pushEvent
+      return pushEvent;
     },
     get handleEvent() {
-      return handleEvent
+      return handleEvent;
     },
     get editor() {
-      return _editor!
+      return _editor!;
     },
     get area() {
-      return _area!
+      return _area!;
     },
     get connection() {
-      return _connection
+      return _connection;
     },
     get history() {
-      return _history
+      return _history;
     },
     get arrange() {
-      return _arrange
+      return _arrange;
     },
     get nodeMap() {
-      return _nodeMap
+      return _nodeMap;
     },
     get connectionDataMap() {
-      return _connectionDataMap
+      return _connectionDataMap;
     },
     get sheetsMap() {
-      return hookProxy._sheetsMap || {}
+      return hookProxy._sheetsMap || {};
     },
     get hubsMap() {
-      return hookProxy._hubsMap || {}
+      return hookProxy._hubsMap || {};
     },
     get currentLod() {
-      return _lodController?.currentLod || 'full'
+      return _lodController?.currentLod || "full";
     },
     get readonly() {
-      return hookProxy._readonly || false
+      return hookProxy._readonly || false;
     },
     get currentUserId() {
-      return hookProxy._currentUserId || 0
+      return hookProxy._currentUserId || 0;
     },
     get currentUserColor() {
-      return hookProxy._currentUserColor || '#3b82f6'
+      return hookProxy._currentUserColor || "#3b82f6";
     },
     get selectedNodeId() {
-      return _selectedNodeId
+      return _selectedNodeId;
     },
     set selectedNodeId(v: string | number | null) {
-      _selectedNodeId = v
+      _selectedNodeId = v;
     },
     get lastNodeClickTime() {
-      return _lastNodeClickTime
+      return _lastNodeClickTime;
     },
     set lastNodeClickTime(v: number) {
-      _lastNodeClickTime = v
+      _lastNodeClickTime = v;
     },
     get lastClickedNodeId() {
-      return _lastClickedNodeId
+      return _lastClickedNodeId;
     },
     set lastClickedNodeId(v: string | number | null) {
-      _lastClickedNodeId = v
+      _lastClickedNodeId = v;
     },
     get isLoadingFromServer() {
-      return _loadingFromServerCount > 0
+      return _loadingFromServerCount > 0;
     },
     get _deferSocketCalc() {
-      return _deferSocketCalc
+      return _deferSocketCalc;
     },
     get _deferredSockets() {
-      return _deferredSockets
+      return _deferredSockets;
     },
     get _socketRenderedEvents() {
-      return _socketRenderedEvents
+      return _socketRenderedEvents;
     },
     set _socketRenderedEvents(v: unknown[]) {
-      _socketRenderedEvents = v
+      _socketRenderedEvents = v;
     },
     get _isRecalculatingSockets() {
-      return _isRecalculatingSockets
+      return _isRecalculatingSockets;
     },
     // el proxy -- handlers use hook.el for DOM queries
     get el() {
-      return hookProxy._containerEl
+      return hookProxy._containerEl;
     },
     // Expose enterLoadingFromServer/exitLoadingFromServer
     enterLoadingFromServer() {
-      _loadingFromServerCount++
+      _loadingFromServerCount++;
     },
     exitLoadingFromServer() {
-      _loadingFromServerCount = Math.max(0, _loadingFromServerCount - 1)
+      _loadingFromServerCount = Math.max(0, _loadingFromServerCount - 1);
     },
     // Internal refs for handlers
     _sheetsMap: {},
     _hubsMap: {},
     _readonly: false,
     _currentUserId: 0,
-    _currentUserColor: '#3b82f6',
+    _currentUserColor: "#3b82f6",
     _containerEl: null,
     _inlineEditingNodeId: null,
     _speakerPopover: null,
@@ -282,133 +282,133 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     syncNodeSize,
     syncAllNodeSizes,
     loadFlow: loadInitialFlowData,
-  } as HookProxy
+  } as HookProxy;
 
   // --- Toolbar positioning ---
 
   function selectNodeForToolbar(reteNodeId: string): void {
-    const node = _editor!.getNode(reteNodeId)
+    const node = _editor!.getNode(reteNodeId);
     if (!node) {
-      clearToolbar()
-      return
+      clearToolbar();
+      return;
     }
-    toolbarState.reteNodeId = reteNodeId
-    toolbarState.nodeId = node.nodeId
-    toolbarState.nodeType = node.nodeType
-    toolbarState.nodeData = node.nodeData
-    toolbarState.visible = true
-    hookProxy._flowContext.selectedReteNodeId = reteNodeId
+    toolbarState.reteNodeId = reteNodeId;
+    toolbarState.nodeId = node.nodeId;
+    toolbarState.nodeType = node.nodeType;
+    toolbarState.nodeData = node.nodeData;
+    toolbarState.visible = true;
+    hookProxy._flowContext.selectedReteNodeId = reteNodeId;
   }
 
   function clearToolbar(): void {
-    toolbarState.visible = false
-    toolbarState.reteNodeId = null
-    toolbarState.nodeId = null
-    toolbarState.nodeType = null
-    toolbarState.nodeData = null
-    hookProxy._flowContext.selectedReteNodeId = null
+    toolbarState.visible = false;
+    toolbarState.reteNodeId = null;
+    toolbarState.nodeId = null;
+    toolbarState.nodeType = null;
+    toolbarState.nodeData = null;
+    hookProxy._flowContext.selectedReteNodeId = null;
   }
 
   // --- Inline edit ---
 
   function enterInlineEdit(reteNodeId: string): void {
-    exitInlineEdit()
-    const node = _editor!.getNode(reteNodeId)
+    exitInlineEdit();
+    const node = _editor!.getNode(reteNodeId);
     if (!node) {
-      return
+      return;
     }
-    const type = node.nodeType
-    if (type !== 'dialogue' && type !== 'annotation') {
-      return
+    const type = node.nodeType;
+    if (type !== "dialogue" && type !== "annotation") {
+      return;
     }
 
-    const ctx = (hookProxy as { _flowContext: FlowContext })._flowContext
+    const ctx = (hookProxy as { _flowContext: FlowContext })._flowContext;
     if (!ctx) {
-      return
+      return;
     }
-    ctx.editingNodeId = reteNodeId
+    ctx.editingNodeId = reteNodeId;
   }
 
   function exitInlineEdit(): void {
-    const ctx = (hookProxy as { _flowContext: FlowContext })._flowContext
+    const ctx = (hookProxy as { _flowContext: FlowContext })._flowContext;
     if (!ctx || !ctx.editingNodeId) {
-      return
+      return;
     }
 
     // Blur active input/textarea inside the node so blur handlers fire and save
-    const nodeView = _area?.nodeViews.get(ctx.editingNodeId)
+    const nodeView = _area?.nodeViews.get(ctx.editingNodeId);
     if (nodeView) {
       const focused = nodeView.element.querySelector(
-        'textarea:focus, input:focus',
-      ) as HTMLElement | null
+        "textarea:focus, input:focus",
+      ) as HTMLElement | null;
       if (focused) {
-        focused.blur()
+        focused.blur();
       }
     }
 
-    ctx.editingNodeId = null
+    ctx.editingNodeId = null;
   }
 
   function handleInlineEditSave(reteNodeId: string, field: string, value: unknown): void {
-    const node = _editor!.getNode(reteNodeId)
+    const node = _editor!.getNode(reteNodeId);
     if (!node) {
-      return
+      return;
     }
 
-    if (field === 'text' && node.nodeType === 'annotation') {
-      node.nodeData = { ...node.nodeData, text: value as string }
-      pushEvent('update_node_field', { field: 'text', value: value as string })
-    } else if (field === 'text') {
+    if (field === "text" && node.nodeType === "annotation") {
+      node.nodeData = { ...node.nodeData, text: value as string };
+      pushEvent("update_node_field", { field: "text", value: value as string });
+    } else if (field === "text") {
       // Dialogue: wrap plain text in <p> tags for rich text storage
       const escaped = (value as string)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
       const content = escaped
         ? escaped
-          .split('\n')
-          .map((line: string) => `<p>${ line || '<br>' }</p>`)
-          .join('')
-        : ''
-      node.nodeData = { ...node.nodeData, text: content }
-      pushEvent('update_node_text', { id: node.nodeId, content })
-    } else if (field === 'speaker_sheet_id') {
-      const newSpeakerId = value || null
-      node.nodeData = { ...node.nodeData, speaker_sheet_id: newSpeakerId }
-      node._updateTs = Date.now()
-      _area!.update('node', node.id)
-      pushEvent('update_node_field', {
-        field: 'speaker_sheet_id',
+            .split("\n")
+            .map((line: string) => `<p>${line || "<br>"}</p>`)
+            .join("")
+        : "";
+      node.nodeData = { ...node.nodeData, text: content };
+      pushEvent("update_node_text", { id: node.nodeId, content });
+    } else if (field === "speaker_sheet_id") {
+      const newSpeakerId = value || null;
+      node.nodeData = { ...node.nodeData, speaker_sheet_id: newSpeakerId };
+      node._updateTs = Date.now();
+      _area!.update("node", node.id);
+      pushEvent("update_node_field", {
+        field: "speaker_sheet_id",
         value: newSpeakerId as string,
-      })
+      });
     } else {
-      node.nodeData = { ...node.nodeData, [field]: value }
-      pushEvent('update_node_field', { field, value: value as string })
+      node.nodeData = { ...node.nodeData, [field]: value };
+      pushEvent("update_node_field", { field, value: value as string });
     }
   }
 
   // --- Init helpers ---
 
   function initHandlers(): void {
-    _editorHandlers = editorHandlers(hookProxy)
-    _navigationHandler = navigation(_area!, _nodeMap, pushEvent)
-    _debugHandler = debug(hookProxy.area, hookProxy.editor, _nodeMap, undefined)
+    _editorHandlers = editorHandlers(hookProxy);
+    _navigationHandler = navigation(_area!, _nodeMap, pushEvent);
+    _debugHandler = debug(hookProxy.area, hookProxy.editor, _nodeMap, undefined);
 
-    hookProxy.editorHandlers = _editorHandlers
-    hookProxy.navigationHandler = _navigationHandler
-    hookProxy.debugHandler = _debugHandler
+    hookProxy.editorHandlers = _editorHandlers;
+    hookProxy.navigationHandler = _navigationHandler;
+    hookProxy.debugHandler = _debugHandler;
 
-    _editorHandlers.init()
+    _editorHandlers.init();
   }
 
   function initPlugins(containerEl: HTMLElement): void {
-    const plugins = createPlugins(containerEl, hookProxy)
-    _editor = plugins.editor
-    _area = plugins.area
-    _connection = plugins.connection
-    _history = plugins.history
-    _arrange = plugins.arrange
-    _minimap = plugins.minimap
+    const plugins = createPlugins(containerEl, hookProxy);
+    _editor = plugins.editor;
+    _area = plugins.area;
+    _connection = plugins.connection;
+    _history = plugins.history;
+    _arrange = plugins.arrange;
+    _minimap = plugins.minimap;
 
     editor.value = _editor;
     area.value = _area;
