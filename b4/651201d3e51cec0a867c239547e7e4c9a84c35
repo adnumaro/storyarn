@@ -1,0 +1,49 @@
+assets/app/modules/flows/composables/useFlowEditor.ts
+  06e8f7f0c4194725 116,145,149-168,173,176,179,182,185,188,191,194,197,200,203,206,209,212,215,218,221,224,227,230,233,236,239,242,245,248,251,255,259,262,269,285,290,292-293,295-300,304-309,315-316,318,320-322,325,327,329,333,335,339,342-343,345,349,353,355,358-361,364-366,369-381,383,385-386,393-395,397-399,401,405-411
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "b4651201d3e51cec0a867c239547e7e4c9a84c35",
+  "prompts": {
+    "06e8f7f0c4194725": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e347729-76ca-4ac2-b7af-d62f7110ed14",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 126,
+      "total_deletions": 126,
+      "accepted_lines": 285,
+      "overriden_lines": 0
+    },
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 797,
+      "overriden_lines": 0
+    },
+    "b5e1bb47b647b01a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da948ded-a770-4715-803c-ee52cc73c164",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 8351,
+      "overriden_lines": 0
+    }
+  }
+}
