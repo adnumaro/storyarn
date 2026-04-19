@@ -232,6 +232,7 @@
         "menu_placeholder": "Texto de menú…",
         "dialogue_placeholder": "Texto de diálogo…",
         "empty_response": "Respuesta vacía",
+        "empty_hint": "Doble clic para editar",
         "type_mismatch": "Tipo incompatible",
         "has_condition": "Tiene condición",
         "has_instructions": "Tiene instrucciones"

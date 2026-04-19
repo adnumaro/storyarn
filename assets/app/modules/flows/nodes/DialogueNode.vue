@@ -283,6 +283,14 @@ function onSpeakerSelect(id: number | string | null) {
       </div>
     </div>
 
+    <!-- EMPTY STATE HINT -->
+    <div
+      v-else-if="!hasContent"
+      class="px-3.5 pt-2.5 pb-3 text-xs italic text-muted-foreground/50"
+    >
+      {{ t("flows.nodes.dialogue.empty_hint") }}
+    </div>
+
     <!-- Sockets with response labels and badges -->
     <div class="relative py-1.5 border-t border-border/10">
       <!-- Inputs -->
@@ -297,6 +305,7 @@ function onSpeakerSelect(id: number | string | null) {
           :emit="emit"
           data-testid="input-socket"
         />
+        <span v-if="responses.length === 0" class="ml-2">{{ key }}</span>
       </div>
       <!-- Outputs (responses) -->
       <div
@@ -320,10 +329,15 @@ function onSpeakerSelect(id: number | string | null) {
             :title="badge.title"
           />
         </template>
-        <!-- Response label -->
-        <span class="px-2 max-w-55 wrap-break-word text-right" :title="formatOutputLabel(key)">
+        <!-- Response label (or socket key when there are no responses) -->
+        <span
+          v-if="responses.length > 0"
+          class="px-2 max-w-55 wrap-break-word text-right"
+          :title="formatOutputLabel(key)"
+        >
           {{ formatOutputLabel(key) }}
         </span>
+        <span v-else class="mr-2">{{ key }}</span>
         <Ref
           class="output-socket absolute -right-1.5"
           :data="{ type: 'socket', side: 'output', key, nodeId: data.id, payload: output.socket }"
