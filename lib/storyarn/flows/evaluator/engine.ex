@@ -24,6 +24,8 @@ defmodule Storyarn.Flows.Evaluator.Engine do
       [%{source_node_id: 1, source_pin: "default", target_node_id: 2, target_pin: "input"}, ...]
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   alias Storyarn.Flows.Evaluator.EngineHelpers
   alias Storyarn.Flows.Evaluator.NodeEvaluators.ConditionNodeEvaluator
   alias Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator
@@ -60,7 +62,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
           level: :info,
           node_id: nil,
           node_label: "",
-          message: "Debug session started",
+          message: dgettext("flows", "Debug session started"),
           rule_details: nil
         }
       ],

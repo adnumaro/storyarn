@@ -31,8 +31,8 @@ msgstr ""
 msgid "Could not create block."
 msgstr ""
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:119
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:136
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:131
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:148
 #, elixir-autogen, elixir-format
 msgid "Could not create sheet."
 msgstr ""
@@ -42,22 +42,22 @@ msgstr ""
 msgid "Could not delete block."
 msgstr ""
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:161
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:175
 #, elixir-autogen, elixir-format
 msgid "Could not delete sheet."
 msgstr ""
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:184
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:198
 #, elixir-autogen, elixir-format
 msgid "Could not move sheet."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:101
+#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:111
 #, elixir-autogen, elixir-format
 msgid "Could not remove avatar."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:87
+#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:97
 #, elixir-autogen, elixir-format
 msgid "Could not remove banner."
 msgstr ""
@@ -67,7 +67,7 @@ msgstr ""
 msgid "Could not reorder blocks."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:58
+#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:68
 #, elixir-autogen, elixir-format
 msgid "Could not save shortcut."
 msgstr ""
@@ -87,7 +87,7 @@ msgstr ""
 msgid "Invalid file data."
 msgstr ""
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:126
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:138
 #, elixir-autogen, elixir-format
 msgid "New Sheet"
 msgstr ""
@@ -102,12 +102,12 @@ msgstr ""
 msgid "Renamed sheet"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/show.ex:341
+#: lib/storyarn_web/live/sheet_live/show.ex:342
 #, elixir-autogen, elixir-format
 msgid "Sheet not found."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:57
+#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:67
 #, elixir-autogen, elixir-format
 msgid "Shortcut %{error}"
 msgstr ""
@@ -118,7 +118,7 @@ msgid "Unsupported file type."
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:291
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:111
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:123
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr ""
@@ -208,22 +208,22 @@ msgstr ""
 msgid "Could not duplicate block."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/index.ex:278
+#: lib/storyarn_web/live/sheet_live/index.ex:280
 #, elixir-autogen, elixir-format
 msgid "Sheet \"%{name}\" has no blocks"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/index.ex:288
+#: lib/storyarn_web/live/sheet_live/index.ex:290
 #, elixir-autogen, elixir-format
 msgid "Sheet \"%{name}\" has no shortcut"
 msgstr ""
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:157
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:171
 #, elixir-autogen, elixir-format
 msgid "Sheet moved to trash."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/index.ex:282
+#: lib/storyarn_web/live/sheet_live/index.ex:284
 #, elixir-autogen, elixir-format
 msgid "Variable \"%{sheet}.%{variable}\" is never used"
 msgstr ""
@@ -294,7 +294,7 @@ msgid "Could not reattach block."
 msgstr ""
 
 #: lib/storyarn_web/live/sheet_live/handlers/gallery_handlers.ex:21
-#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:165
+#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:175
 #, elixir-autogen, elixir-format
 msgid "Asset not found."
 msgstr ""
@@ -304,12 +304,12 @@ msgstr ""
 msgid "Invalid layout."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/index.ex:291
+#: lib/storyarn_web/live/sheet_live/index.ex:293
 #, elixir-autogen, elixir-format
 msgid "Issue detected"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/show.ex:861
+#: lib/storyarn_web/live/sheet_live/show.ex:874
 #, elixir-autogen, elixir-format
 msgid "Unknown"
 msgstr ""
@@ -318,3 +318,10 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Unknown Speaker"
 msgstr ""
+
+#: lib/storyarn/projects/dashboard.ex:368
+#, elixir-autogen, elixir-format
+msgid "%{count} sheet has no blocks defined"
+msgid_plural "%{count} sheets have no blocks defined"
+msgstr[0] ""
+msgstr[1] ""

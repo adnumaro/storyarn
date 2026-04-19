@@ -32,8 +32,8 @@ msgstr ""
 msgid "Condition"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_sidebar_live.ex:137
-#: lib/storyarn_web/live/flow_sidebar_live.ex:154
+#: lib/storyarn_web/live/flow_sidebar_live.ex:138
+#: lib/storyarn_web/live/flow_sidebar_live.ex:155
 #, elixir-autogen, elixir-format
 msgid "Could not create flow."
 msgstr ""
@@ -43,18 +43,18 @@ msgstr ""
 msgid "Could not create sheet."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:267
-#: lib/storyarn_web/live/flow_sidebar_live.ex:191
+#: lib/storyarn_web/live/flow_live/index.ex:269
+#: lib/storyarn_web/live/flow_sidebar_live.ex:194
 #, elixir-autogen, elixir-format
 msgid "Could not delete flow."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1407
+#: lib/storyarn_web/live/flow_live/show.ex:1408
 #, elixir-autogen, elixir-format
 msgid "Could not load flow data."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_sidebar_live.ex:214
+#: lib/storyarn_web/live/flow_sidebar_live.ex:217
 #, elixir-autogen, elixir-format
 msgid "Could not move flow."
 msgstr ""
@@ -69,8 +69,8 @@ msgstr ""
 msgid "Could not save shortcut."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:287
-#: lib/storyarn_web/live/flow_sidebar_live.ex:166
+#: lib/storyarn_web/live/flow_live/index.ex:289
+#: lib/storyarn_web/live/flow_sidebar_live.ex:167
 #, elixir-autogen, elixir-format
 msgid "Could not set main flow."
 msgstr ""
@@ -98,23 +98,23 @@ msgstr ""
 msgid "Exit"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:260
-#: lib/storyarn_web/live/flow_sidebar_live.ex:187
+#: lib/storyarn_web/live/flow_live/index.ex:262
+#: lib/storyarn_web/live/flow_sidebar_live.ex:190
 #, elixir-autogen, elixir-format
 msgid "Flow moved to trash."
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/handlers/navigation_handlers.ex:24
-#: lib/storyarn_web/live/flow_live/index.ex:264
-#: lib/storyarn_web/live/flow_live/index.ex:284
+#: lib/storyarn_web/live/flow_live/index.ex:266
+#: lib/storyarn_web/live/flow_live/index.ex:286
 #: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:225
 #: lib/storyarn_web/live/flow_live/player_live.ex:74
-#: lib/storyarn_web/live/flow_live/show.ex:440
+#: lib/storyarn_web/live/flow_live/show.ex:441
 #, elixir-autogen, elixir-format
 msgid "Flow not found."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:280
+#: lib/storyarn_web/live/flow_live/index.ex:282
 #, elixir-autogen, elixir-format
 msgid "Flow set as main."
 msgstr ""
@@ -174,8 +174,8 @@ msgstr ""
 msgid "This would create a circular reference."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_sidebar_live.ex:129
-#: lib/storyarn_web/live/flow_sidebar_live.ex:144
+#: lib/storyarn_web/live/flow_sidebar_live.ex:130
+#: lib/storyarn_web/live/flow_sidebar_live.ex:145
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr ""
@@ -210,7 +210,7 @@ msgstr ""
 msgid "Could not restore flow name."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1603
+#: lib/storyarn_web/live/flow_live/show.ex:1616
 #, elixir-autogen, elixir-format
 msgid "Could not create linked flow."
 msgstr ""
@@ -220,7 +220,7 @@ msgstr ""
 msgid "Could not update node positions."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1143
+#: lib/storyarn_web/live/flow_live/show.ex:1144
 #, elixir-autogen, elixir-format
 msgid "Could not update scene map."
 msgstr ""
@@ -281,12 +281,14 @@ msgstr ""
 msgid "End point of a flow"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:337
+#: lib/storyarn/projects/dashboard.ex:328
+#: lib/storyarn_web/live/flow_live/index.ex:339
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has %{count} disconnected node(s)"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:333
+#: lib/storyarn/projects/dashboard.ex:314
+#: lib/storyarn_web/live/flow_live/index.ex:335
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has no entry node"
 msgstr ""
@@ -391,13 +393,13 @@ msgstr ""
 msgid "Renamed flow"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1082
+#: lib/storyarn_web/live/flow_live/show.ex:1083
 #, elixir-autogen, elixir-format
 msgid "Node not found."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_sidebar_live.ex:134
-#: lib/storyarn_web/live/flow_sidebar_live.ex:151
+#: lib/storyarn_web/live/flow_sidebar_live.ex:135
+#: lib/storyarn_web/live/flow_sidebar_live.ex:152
 #, elixir-autogen, elixir-format
 msgid "Item limit reached for your plan"
 msgstr ""
@@ -418,7 +420,12 @@ msgstr ""
 msgid "Unknown"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_sidebar_live.ex:296
+#: lib/storyarn_web/live/flow_sidebar_live.ex:299
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to edit."
+msgstr ""
+
+#: lib/storyarn/flows/evaluator/engine.ex:65
+#, elixir-autogen, elixir-format
+msgid "Debug session started"
 msgstr ""

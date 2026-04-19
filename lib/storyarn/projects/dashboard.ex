@@ -8,6 +8,7 @@ defmodule Storyarn.Projects.Dashboard do
   """
 
   import Ecto.Query
+  use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Flows
   alias Storyarn.Flows.Flow
@@ -309,7 +310,8 @@ defmodule Storyarn.Projects.Dashboard do
     |> Enum.map(fn flow ->
       %{
         severity: :error,
-        message: "Flow \"#{flow.flow_name}\" has no entry node",
+        message:
+          dgettext("flows", "Flow \"%{name}\" has no entry node", name: flow.flow_name),
         href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{flow.flow_id}",
         count: 1
       }
@@ -322,7 +324,13 @@ defmodule Storyarn.Projects.Dashboard do
     |> Enum.map(fn row ->
       %{
         severity: :warning,
-        message: "Flow \"#{row.flow_name}\" has #{row.count} disconnected node(s)",
+        message:
+          dgettext(
+            "flows",
+            "Flow \"%{name}\" has %{count} disconnected node(s)",
+            name: row.flow_name,
+            count: row.count
+          ),
         href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{row.flow_id}",
         count: row.count
       }
@@ -356,7 +364,14 @@ defmodule Storyarn.Projects.Dashboard do
         [
           %{
             severity: :info,
-            message: "#{count} sheet(s) have no blocks defined",
+            message:
+              dngettext(
+                "sheets",
+                "%{count} sheet has no blocks defined",
+                "%{count} sheets have no blocks defined",
+                count,
+                count: count
+              ),
             href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/sheets",
             count: count
           }
@@ -381,8 +396,15 @@ defmodule Storyarn.Projects.Dashboard do
         %{
           severity: :warning,
           message:
-            "#{lang.name}: #{pending} text(s) pending translation " <>
-              "(#{round(lang.percentage)}% done)",
+            dngettext(
+              "localization",
+              "%{language}: %{count} text pending translation (%{percent}% done)",
+              "%{language}: %{count} texts pending translation (%{percent}% done)",
+              pending,
+              language: lang.name,
+              count: pending,
+              percent: round(lang.percentage)
+            ),
           href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/localization",
           count: pending
         }

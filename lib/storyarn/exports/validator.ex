@@ -6,6 +6,8 @@ defmodule Storyarn.Exports.Validator do
   and other issues that would cause problems in exported files.
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Flows
   alias Storyarn.Localization
@@ -174,7 +176,7 @@ defmodule Storyarn.Exports.Validator do
       %{
         level: :error,
         rule: :missing_entry,
-        message: "Flow \"#{flow.name}\" has no Entry node",
+        message: dgettext("projects", "Flow \"%{name}\" has no Entry node", name: flow.name),
         flow_id: flow.id,
         flow_name: flow.name
       }
@@ -195,7 +197,14 @@ defmodule Storyarn.Exports.Validator do
         %{
           level: :warning,
           rule: :orphan_nodes,
-          message: "#{node.type} node (id: #{node.id}) in flow \"#{flow.name}\" has no connections",
+          message:
+            dgettext(
+              "projects",
+              "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has no connections",
+              type: node.type,
+              node_id: node.id,
+              flow_name: flow.name
+            ),
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id,
@@ -229,7 +238,14 @@ defmodule Storyarn.Exports.Validator do
         %{
           level: :warning,
           rule: :unreachable_nodes,
-          message: "#{node.type} node (id: #{node.id}) in flow \"#{flow.name}\" is not reachable from Entry",
+          message:
+            dgettext(
+              "projects",
+              "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" is not reachable from Entry",
+              type: node.type,
+              node_id: node.id,
+              flow_name: flow.name
+            ),
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id,
@@ -254,7 +270,13 @@ defmodule Storyarn.Exports.Validator do
         %{
           level: :warning,
           rule: :empty_dialogue,
-          message: "Dialogue node (id: #{node.id}) in flow \"#{flow.name}\" has no text",
+          message:
+            dgettext(
+              "projects",
+              "Dialogue node (id: %{node_id}) in flow \"%{flow_name}\" has no text",
+              node_id: node.id,
+              flow_name: flow.name
+            ),
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id
@@ -278,7 +300,13 @@ defmodule Storyarn.Exports.Validator do
         %{
           level: :warning,
           rule: :missing_speakers,
-          message: "Dialogue node (id: #{node.id}) in flow \"#{flow.name}\" has no speaker assigned",
+          message:
+            dgettext(
+              "projects",
+              "Dialogue node (id: %{node_id}) in flow \"%{flow_name}\" has no speaker assigned",
+              node_id: node.id,
+              flow_name: flow.name
+            ),
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id
@@ -318,7 +346,12 @@ defmodule Storyarn.Exports.Validator do
       %{
         level: :warning,
         rule: :circular_subflows,
-        message: "Flow \"#{flow_name}\" is part of a circular subflow reference chain",
+        message:
+          dgettext(
+            "projects",
+            "Flow \"%{name}\" is part of a circular subflow reference chain",
+            name: flow_name
+          ),
         flow_id: flow_id,
         flow_name: flow_name
       }
@@ -359,7 +392,14 @@ defmodule Storyarn.Exports.Validator do
         %{
           level: :error,
           rule: :broken_references,
-          message: "Jump node (id: #{node.id}) in flow \"#{flow.name}\" references non-existent hub \"#{target}\"",
+          message:
+            dgettext(
+              "projects",
+              "Jump node (id: %{node_id}) in flow \"%{flow_name}\" references non-existent hub \"%{target}\"",
+              node_id: node.id,
+              flow_name: flow.name,
+              target: target
+            ),
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id,
@@ -382,7 +422,13 @@ defmodule Storyarn.Exports.Validator do
         %{
           level: :error,
           rule: :broken_references,
-          message: "Subflow node (id: #{node.id}) in flow \"#{flow.name}\" references non-existent flow",
+          message:
+            dgettext(
+              "projects",
+              "Subflow node (id: %{node_id}) in flow \"%{flow_name}\" references non-existent flow",
+              node_id: node.id,
+              flow_name: flow.name
+            ),
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id,
@@ -404,7 +450,13 @@ defmodule Storyarn.Exports.Validator do
         %{
           level: :error,
           rule: :broken_references,
-          message: "Slug line node (id: #{node.id}) in flow \"#{flow.name}\" references non-existent scene",
+          message:
+            dgettext(
+              "projects",
+              "Slug line node (id: %{node_id}) in flow \"%{flow_name}\" references non-existent scene",
+              node_id: node.id,
+              flow_name: flow.name
+            ),
           flow_id: flow.id,
           flow_name: flow.name,
           node_id: node.id,
@@ -440,7 +492,14 @@ defmodule Storyarn.Exports.Validator do
       %{
         level: :warning,
         rule: :missing_translations,
-        message: "#{pending} of #{total_sources} strings are untranslated for locale \"#{locale}\"",
+        message:
+          dgettext(
+            "projects",
+            "%{pending} of %{total} strings are untranslated for locale \"%{locale}\"",
+            pending: pending,
+            total: total_sources,
+            locale: locale
+          ),
         locale: locale,
         pending_count: pending,
         total_count: total_sources
@@ -472,7 +531,12 @@ defmodule Storyarn.Exports.Validator do
       %{
         level: :info,
         rule: :orphan_sheets,
-        message: "Sheet \"#{sheet.name}\" has no references from flows or scenes",
+        message:
+          dgettext(
+            "projects",
+            "Sheet \"%{name}\" has no references from flows or scenes",
+            name: sheet.name
+          ),
         sheet_id: sheet.id,
         sheet_name: sheet.name
       }

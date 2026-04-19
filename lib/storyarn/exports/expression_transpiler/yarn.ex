@@ -6,6 +6,8 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Yarn do
   Logic: `and` / `or`
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   use Storyarn.Exports.ExpressionTranspiler.Base,
     var_style: :dollar_underscore,
     logic_opts: [and_keyword: " and ", or_keyword: " or "],
@@ -105,7 +107,11 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Yarn do
       |> Enum.map(fn %{"sheet" => s, "variable" => v} ->
         %{
           type: :semantic_loss,
-          message: "set_if_unset emits unconditional set in Yarn (no null type)",
+          message:
+            dgettext(
+              "projects",
+              "set_if_unset emits unconditional set in Yarn (no null type)"
+            ),
           operator: "set_if_unset",
           engine: "Yarn",
           variable: "#{s}.#{v}"

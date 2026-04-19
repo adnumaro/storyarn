@@ -16,8 +16,8 @@ msgstr ""
 msgid "Actions"
 msgstr ""
 
-#: lib/storyarn_web/components/app_layout.ex:264
-#: lib/storyarn_web/components/app_layout.ex:278
+#: lib/storyarn_web/components/app_layout.ex:266
+#: lib/storyarn_web/components/app_layout.ex:280
 #: lib/storyarn_web/components/layouts.ex:820
 #: lib/storyarn_web/components/layouts.ex:834
 #: lib/storyarn_web/components/workspace_layout.ex:110
@@ -26,14 +26,14 @@ msgstr ""
 msgid "Attempting to reconnect"
 msgstr ""
 
-#: lib/storyarn_web/components/app_layout.ex:271
+#: lib/storyarn_web/components/app_layout.ex:273
 #: lib/storyarn_web/components/layouts.ex:828
 #: lib/storyarn_web/components/workspace_layout.ex:117
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr ""
 
-#: lib/storyarn_web/components/app_layout.ex:257
+#: lib/storyarn_web/components/app_layout.ex:259
 #: lib/storyarn_web/components/layouts.ex:814
 #: lib/storyarn_web/components/workspace_layout.ex:103
 #, elixir-autogen, elixir-format
@@ -296,7 +296,7 @@ msgstr ""
 msgid "Info"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/index.ex:343
+#: lib/storyarn_web/live/flow_live/index.ex:345
 #, elixir-autogen, elixir-format
 msgid "Issue detected"
 msgstr ""
@@ -305,9 +305,9 @@ msgstr ""
 #: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:300
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:152
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:226
-#: lib/storyarn_web/live/flow_live/show.ex:1600
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:116
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:133
+#: lib/storyarn_web/live/flow_live/show.ex:1613
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:128
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:145
 #, elixir-autogen, elixir-format
 msgid "Item limit reached for your plan"
 msgstr ""
@@ -439,7 +439,7 @@ msgstr ""
 msgid "Someone"
 msgstr ""
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:241
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:255
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to edit."
 msgstr ""

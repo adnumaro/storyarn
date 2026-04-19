@@ -31,8 +31,8 @@ msgstr "Atajo cambiado"
 msgid "Could not create block."
 msgstr "No se pudo crear el bloque."
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:119
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:136
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:131
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:148
 #, elixir-autogen, elixir-format
 msgid "Could not create sheet."
 msgstr "No se pudo crear la ficha."
@@ -42,22 +42,22 @@ msgstr "No se pudo crear la ficha."
 msgid "Could not delete block."
 msgstr "No se pudo eliminar el bloque."
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:161
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:175
 #, elixir-autogen, elixir-format
 msgid "Could not delete sheet."
 msgstr "No se pudo eliminar la ficha."
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:184
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:198
 #, elixir-autogen, elixir-format
 msgid "Could not move sheet."
 msgstr "No se pudo mover la ficha."
 
-#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:101
+#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:111
 #, elixir-autogen, elixir-format
 msgid "Could not remove avatar."
 msgstr "No se pudo eliminar el avatar."
 
-#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:87
+#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:97
 #, elixir-autogen, elixir-format
 msgid "Could not remove banner."
 msgstr "No se pudo eliminar el banner."
@@ -67,7 +67,7 @@ msgstr "No se pudo eliminar el banner."
 msgid "Could not reorder blocks."
 msgstr "No se pudieron reordenar los bloques."
 
-#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:58
+#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:68
 #, elixir-autogen, elixir-format
 msgid "Could not save shortcut."
 msgstr "No se pudo guardar el atajo."
@@ -87,7 +87,7 @@ msgstr "No se pudo subir el banner."
 msgid "Invalid file data."
 msgstr "Datos de archivo inválidos."
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:126
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:138
 #, elixir-autogen, elixir-format
 msgid "New Sheet"
 msgstr "Nueva Ficha"
@@ -102,12 +102,12 @@ msgstr "Destino de referencia no encontrado."
 msgid "Renamed sheet"
 msgstr "Ficha renombrada"
 
-#: lib/storyarn_web/live/sheet_live/show.ex:341
+#: lib/storyarn_web/live/sheet_live/show.ex:342
 #, elixir-autogen, elixir-format
 msgid "Sheet not found."
 msgstr "Ficha no encontrada."
 
-#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:57
+#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:67
 #, elixir-autogen, elixir-format
 msgid "Shortcut %{error}"
 msgstr "Atajo %{error}"
@@ -118,7 +118,7 @@ msgid "Unsupported file type."
 msgstr "Tipo de archivo no compatible."
 
 #: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:291
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:111
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:123
 #, elixir-autogen, elixir-format
 msgid "Untitled"
 msgstr "Sin título"
@@ -208,22 +208,22 @@ msgstr "Este campo es obligatorio."
 msgid "Could not duplicate block."
 msgstr "No se pudo duplicar el bloque."
 
-#: lib/storyarn_web/live/sheet_live/index.ex:278
+#: lib/storyarn_web/live/sheet_live/index.ex:280
 #, elixir-autogen, elixir-format
 msgid "Sheet \"%{name}\" has no blocks"
 msgstr "La ficha \"%{name}\" no tiene bloques"
 
-#: lib/storyarn_web/live/sheet_live/index.ex:288
+#: lib/storyarn_web/live/sheet_live/index.ex:290
 #, elixir-autogen, elixir-format
 msgid "Sheet \"%{name}\" has no shortcut"
 msgstr "La ficha \"%{name}\" no tiene shortcut"
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:157
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:171
 #, elixir-autogen, elixir-format
 msgid "Sheet moved to trash."
 msgstr "Ficha movida a la papelera."
 
-#: lib/storyarn_web/live/sheet_live/index.ex:282
+#: lib/storyarn_web/live/sheet_live/index.ex:284
 #, elixir-autogen, elixir-format
 msgid "Variable \"%{sheet}.%{variable}\" is never used"
 msgstr "La variable \"%{sheet}.%{variable}\" no se usa en ningún lugar"
@@ -294,7 +294,7 @@ msgid "Could not reattach block."
 msgstr "No se pudo reconectar el bloque."
 
 #: lib/storyarn_web/live/sheet_live/handlers/gallery_handlers.ex:21
-#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:165
+#: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:175
 #, elixir-autogen, elixir-format
 msgid "Asset not found."
 msgstr "Recurso no encontrado."
@@ -304,12 +304,12 @@ msgstr "Recurso no encontrado."
 msgid "Invalid layout."
 msgstr "Diseño no válido."
 
-#: lib/storyarn_web/live/sheet_live/index.ex:291
+#: lib/storyarn_web/live/sheet_live/index.ex:293
 #, elixir-autogen, elixir-format
 msgid "Issue detected"
 msgstr "Problema detectado"
 
-#: lib/storyarn_web/live/sheet_live/show.ex:861
+#: lib/storyarn_web/live/sheet_live/show.ex:874
 #, elixir-autogen, elixir-format
 msgid "Unknown"
 msgstr "Desconocido"
@@ -318,3 +318,10 @@ msgstr "Desconocido"
 #, elixir-autogen, elixir-format
 msgid "Unknown Speaker"
 msgstr "Hablante desconocido"
+
+#: lib/storyarn/projects/dashboard.ex:368
+#, elixir-autogen, elixir-format
+msgid "%{count} sheet has no blocks defined"
+msgid_plural "%{count} sheets have no blocks defined"
+msgstr[0] "%{count} ficha sin bloques definidos"
+msgstr[1] "%{count} fichas sin bloques definidos"

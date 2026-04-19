@@ -6,6 +6,8 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Helpers do
   logic joining, and condition decoding from all storage formats.
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   # ---------------------------------------------------------------------------
   # Variable reference formatting
   # ---------------------------------------------------------------------------
@@ -190,7 +192,13 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Helpers do
   def unsupported_op_warning(operator, engine, var_ref) do
     %{
       type: :unsupported_operator,
-      message: "Operator '#{operator}' is not supported by #{engine}",
+      message:
+        dgettext(
+          "projects",
+          "Operator '%{operator}' is not supported by %{engine}",
+          operator: operator,
+          engine: engine
+        ),
       details: %{operator: operator, engine: engine, variable: var_ref}
     }
   end
@@ -209,7 +217,14 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Helpers do
 
     %{
       type: :custom_function_required,
-      message: "Operator '#{operator}' requires custom function '#{func_name}' in #{engine}",
+      message:
+        dgettext(
+          "projects",
+          "Operator '%{operator}' requires custom function '%{func_name}' in %{engine}",
+          operator: operator,
+          func_name: func_name,
+          engine: engine
+        ),
       operator: operator,
       function: func_name,
       engine: engine,

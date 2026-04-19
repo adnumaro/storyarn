@@ -301,7 +301,7 @@ msgstr ""
 msgid "Lock is not stale yet. Please wait or let the restore finish."
 msgstr ""
 
-#: lib/storyarn_web/components/app_layout.ex:168
+#: lib/storyarn_web/components/app_layout.ex:170
 #: lib/storyarn_web/components/project_shell.ex:107
 #, elixir-autogen, elixir-format
 msgid "Project is being restored by %{user}. Editing is temporarily disabled."
@@ -375,52 +375,52 @@ msgstr ""
 msgid "Source language updated."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:425
+#: lib/storyarn_web/live/export_import_live/index.ex:427
 #, elixir-autogen, elixir-format
 msgid "File exceeds the 50 MB size limit."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:423
+#: lib/storyarn_web/live/export_import_live/index.ex:425
 #, elixir-autogen, elixir-format
 msgid "File is not a valid JSON object."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:438
+#: lib/storyarn_web/live/export_import_live/index.ex:441
 #, elixir-autogen, elixir-format
 msgid "Import error: %{details}"
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:436
+#: lib/storyarn_web/live/export_import_live/index.ex:439
 #, elixir-autogen, elixir-format
 msgid "Import failed at %{context}."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:433
+#: lib/storyarn_web/live/export_import_live/index.ex:436
 #, elixir-autogen, elixir-format
 msgid "Import file exceeds entity count limits."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:419
+#: lib/storyarn_web/live/export_import_live/index.ex:421
 #, elixir-autogen, elixir-format
 msgid "Import session expired. Please upload the file again."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:421
+#: lib/storyarn_web/live/export_import_live/index.ex:423
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Invalid JSON file."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:431
+#: lib/storyarn_web/live/export_import_live/index.ex:433
 #, elixir-autogen, elixir-format
 msgid "Invalid field types: %{fields}"
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:428
+#: lib/storyarn_web/live/export_import_live/index.ex:430
 #, elixir-autogen, elixir-format
 msgid "Missing required keys: %{keys}"
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:417
+#: lib/storyarn_web/live/export_import_live/index.ex:418
 #, elixir-autogen, elixir-format
 msgid "No file was uploaded. Please select a file and try again."
 msgstr ""
@@ -438,4 +438,79 @@ msgstr ""
 #: lib/storyarn_web/live/export_import_live/index.ex:25
 #, elixir-autogen, elixir-format
 msgid "Export your project data or import from a file."
+msgstr ""
+
+#: lib/storyarn/exports/validator.ex:496
+#, elixir-autogen, elixir-format
+msgid "%{pending} of %{total} strings are untranslated for locale \"%{locale}\""
+msgstr ""
+
+#: lib/storyarn/exports/validator.ex:201
+#, elixir-autogen, elixir-format
+msgid "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" has no connections"
+msgstr ""
+
+#: lib/storyarn/exports/validator.ex:242
+#, elixir-autogen, elixir-format
+msgid "%{type} node (id: %{node_id}) in flow \"%{flow_name}\" is not reachable from Entry"
+msgstr ""
+
+#: lib/storyarn/exports/validator.ex:304
+#, elixir-autogen, elixir-format
+msgid "Dialogue node (id: %{node_id}) in flow \"%{flow_name}\" has no speaker assigned"
+msgstr ""
+
+#: lib/storyarn/exports/validator.ex:274
+#, elixir-autogen, elixir-format
+msgid "Dialogue node (id: %{node_id}) in flow \"%{flow_name}\" has no text"
+msgstr ""
+
+#: lib/storyarn/exports/validator.ex:179
+#, elixir-autogen, elixir-format
+msgid "Flow \"%{name}\" has no Entry node"
+msgstr ""
+
+#: lib/storyarn/exports/validator.ex:350
+#, elixir-autogen, elixir-format
+msgid "Flow \"%{name}\" is part of a circular subflow reference chain"
+msgstr ""
+
+#: lib/storyarn/exports/validator.ex:396
+#, elixir-autogen, elixir-format
+msgid "Jump node (id: %{node_id}) in flow \"%{flow_name}\" references non-existent hub \"%{target}\""
+msgstr ""
+
+#: lib/storyarn/exports/expression_transpiler/helpers.ex:196
+#, elixir-autogen, elixir-format
+msgid "Operator '%{operator}' is not supported by %{engine}"
+msgstr ""
+
+#: lib/storyarn/exports/expression_transpiler/helpers.ex:221
+#, elixir-autogen, elixir-format
+msgid "Operator '%{operator}' requires custom function '%{func_name}' in %{engine}"
+msgstr ""
+
+#: lib/storyarn/exports/validator.ex:535
+#, elixir-autogen, elixir-format
+msgid "Sheet \"%{name}\" has no references from flows or scenes"
+msgstr ""
+
+#: lib/storyarn/exports/validator.ex:454
+#, elixir-autogen, elixir-format
+msgid "Slug line node (id: %{node_id}) in flow \"%{flow_name}\" references non-existent scene"
+msgstr ""
+
+#: lib/storyarn/exports/validator.ex:426
+#, elixir-autogen, elixir-format
+msgid "Subflow node (id: %{node_id}) in flow \"%{flow_name}\" references non-existent flow"
+msgstr ""
+
+#: lib/storyarn/exports/expression_transpiler/dialogic.ex:77
+#, elixir-autogen, elixir-format
+msgid "set_if_unset emits unconditional set in Dialogic (no conditional set syntax)"
+msgstr ""
+
+#: lib/storyarn/exports/expression_transpiler/yarn.ex:111
+#, elixir-autogen, elixir-format
+msgid "set_if_unset emits unconditional set in Yarn (no null type)"
 msgstr ""

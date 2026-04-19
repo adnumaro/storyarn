@@ -7,6 +7,8 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Dialogic do
   Instructions: `set {var} = value` prefix syntax
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   use Storyarn.Exports.ExpressionTranspiler.Base,
     var_style: :dialogic_curly,
     logic_opts: [and_keyword: " and ", or_keyword: " or "],
@@ -71,7 +73,11 @@ defmodule Storyarn.Exports.ExpressionTranspiler.Dialogic do
       |> Enum.map(fn %{"sheet" => s, "variable" => v} ->
         %{
           type: :semantic_loss,
-          message: "set_if_unset emits unconditional set in Dialogic (no conditional set syntax)",
+          message:
+            dgettext(
+              "projects",
+              "set_if_unset emits unconditional set in Dialogic (no conditional set syntax)"
+            ),
           operator: "set_if_unset",
           engine: "Dialogic",
           variable: "#{s}.#{v}"
