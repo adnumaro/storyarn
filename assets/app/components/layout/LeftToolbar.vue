@@ -34,7 +34,7 @@ interface LeftToolbarUrls {
 const {
   activeTool,
   hasTree = true,
-  treePanelOpen = false,
+  mainSidebarOpen = false,
   projectName,
   workspaceName,
   showToolSwitcher = true,
@@ -43,7 +43,7 @@ const {
 } = defineProps<{
   activeTool: string;
   hasTree?: boolean;
-  treePanelOpen?: boolean;
+  mainSidebarOpen?: boolean;
   projectName: string;
   workspaceName: string;
   showToolSwitcher?: boolean;
@@ -73,26 +73,28 @@ const otherTools = computed(() => {
   return filtered;
 });
 
-function toggleTreePanel() {
-  live.pushEvent("tree_panel_toggle", {});
+function toggleMainSidebar() {
+  live.pushEvent("main_sidebar_toggle", {});
 }
 </script>
 
 <template>
   <nav class="flex items-center gap-1 px-1 py-1 surface-panel">
-    <!-- Tree panel toggle -->
+    <!-- Main sidebar toggle -->
     <ToolbarTooltip
       v-if="hasTree"
       :label="
-        treePanelOpen ? $t('layout.left_toolbar.hide_panel') : $t('layout.left_toolbar.show_panel')
+        mainSidebarOpen
+          ? $t('layout.left_toolbar.hide_panel')
+          : $t('layout.left_toolbar.show_panel')
       "
       side="bottom"
       align="start"
     >
       <button
         type="button"
-        :class="['toolbar-btn size-8', treePanelOpen && 'bg-accent']"
-        @click="toggleTreePanel"
+        :class="['toolbar-btn size-8', mainSidebarOpen && 'bg-accent']"
+        @click="toggleMainSidebar"
       >
         <PanelLeft class="size-4" />
       </button>

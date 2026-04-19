@@ -226,8 +226,8 @@ defmodule StoryarnWeb.FlowLive.Index do
   # ===========================================================================
 
   @impl true
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: ProjectChromeHelpers.forward_tree_panel(socket, event, params)
+  def handle_event("main_sidebar_" <> _ = event, params, socket),
+    do: ProjectChromeHelpers.forward_main_sidebar(socket, event, params)
 
   def handle_event("sort_flows", %{"column" => column}, socket) do
     {:noreply, handle_sort(socket, column, :all_flow_table_data, :flow_table_data, flow_sort_columns())}

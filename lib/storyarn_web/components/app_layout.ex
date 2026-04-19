@@ -77,10 +77,10 @@ defmodule StoryarnWeb.Components.AppLayout do
     default: :sheets,
     doc: "active tool (:sheets, :flows, :screenplays, :scenes, :assets, :localization)"
 
-  attr :has_tree, :boolean, default: true, doc: "whether this page has a tree panel"
-  attr :tree_panel_open, :boolean, default: false, doc: "whether the tree panel is open"
-  attr :tree_panel_pinned, :boolean, default: false, doc: "whether the tree panel is pinned"
-  attr :show_pin, :boolean, default: true, doc: "whether to show pin/close in tree panel footer"
+  attr :has_tree, :boolean, default: true, doc: "whether this page has a main sidebar"
+  attr :main_sidebar_open, :boolean, default: false, doc: "whether the main sidebar is open"
+  attr :main_sidebar_pinned, :boolean, default: false, doc: "whether the main sidebar is pinned"
+  attr :show_pin, :boolean, default: true, doc: "whether to show pin/close in main sidebar footer"
   attr :can_edit, :boolean, default: false, doc: "whether the user can edit content"
   attr :online_users, :list, default: [], doc: "list of online user presence maps"
 
@@ -102,9 +102,11 @@ defmodule StoryarnWeb.Components.AppLayout do
 
   attr :socket, :any, required: true, doc: "the LiveView socket (needed for LiveVue)"
 
-  attr :tree_props, :map, default: %{}, doc: "props passed to the tree component inside TreePanel"
+  attr :sidebar_props, :map,
+    default: %{},
+    doc: "props passed to the tool-specific component inside MainSidebar"
 
-  slot :tree_content, doc: "tree panel content (tree component)"
+  slot :tree_content, doc: "main sidebar content (tree component)"
   slot :top_bar_extra, doc: "extra content rendered next to the left toolbar (same row)"
   slot :top_bar_extra_right, doc: "extra content rendered next to the right toolbar (same row)"
   slot :content_header, doc: "optional header above main content"
@@ -142,7 +144,7 @@ defmodule StoryarnWeb.Components.AppLayout do
         do: build_urls(assigns.workspace, assigns.project),
         else: %{}
 
-    # Dashboard URL for tree panel header
+    # Dashboard URL for main sidebar header
     dashboard_url =
       if assigns.workspace && assigns.project,
         do: tool_path(assigns.workspace, assigns.project, to_string(assigns.active_tool))
@@ -182,7 +184,7 @@ defmodule StoryarnWeb.Components.AppLayout do
           id="left-toolbar"
           active-tool={to_string(@active_tool)}
           has-tree={@has_tree}
-          tree-panel-open={@tree_panel_open}
+          main-sidebar-open={@main_sidebar_open}
           project-name={@project && @project.name}
           workspace-name={@workspace && @workspace.name}
           show-tool-switcher={@show_tool_switcher}
@@ -205,26 +207,26 @@ defmodule StoryarnWeb.Components.AppLayout do
         />
       </div>
 
-      <%!-- Mobile overlay (closes tree panel on tap) --%>
+      <%!-- Mobile overlay (closes main sidebar on tap) --%>
       <div
-        :if={@has_tree && @tree_content != [] && @tree_panel_open}
+        :if={@has_tree && @tree_content != [] && @main_sidebar_open}
         class="fixed inset-0 bg-black/30 z-30 md:hidden cursor-pointer"
-        phx-click="tree_panel_toggle"
+        phx-click="main_sidebar_toggle"
       />
 
-      <%!-- Tree panel --%>
+      <%!-- Main sidebar --%>
       <.vue
         :if={@has_tree}
-        v-component="layout/TreePanel"
+        v-component="layout/MainSidebar"
         v-socket={@socket}
-        id="tree-panel"
-        tree-panel-open={@tree_panel_open}
-        tree-panel-pinned={@tree_panel_pinned}
+        id="main-sidebar"
+        main-sidebar-open={@main_sidebar_open}
+        main-sidebar-pinned={@main_sidebar_pinned}
         show-pin={@show_pin}
         active-tool={to_string(@active_tool)}
         dashboard-url={@dashboard_url}
         on-dashboard={@on_dashboard}
-        tree-props={@tree_props}
+        sidebar-props={@sidebar_props}
       />
 
       <%!-- Main content area --%>
@@ -236,7 +238,7 @@ defmodule StoryarnWeb.Components.AppLayout do
             do: "overflow-hidden",
             else: [
               "overflow-y-auto pt-[76px] pb-4 px-4 transition-[padding-left] duration-200",
-              @has_tree && @tree_panel_open && "md:pl-[320px]"
+              @has_tree && @main_sidebar_open && "md:pl-[320px]"
             ]
           )
         ]}

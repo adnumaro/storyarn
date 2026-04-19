@@ -44,7 +44,7 @@ defmodule StoryarnWeb.Layouts do
 
   ## Examples
 
-      <Layouts.compare flash={@flash} panel_title="Layers" panel_open={@tree_panel_open}>
+      <Layouts.compare flash={@flash} panel_title="Layers" panel_open={@main_sidebar_open}>
         <:panel>
           Layer controls here
         </:panel>
@@ -65,7 +65,7 @@ defmodule StoryarnWeb.Layouts do
       <button
         :if={@panel != [] && !@panel_open}
         type="button"
-        phx-click="tree_panel_toggle"
+        phx-click="main_sidebar_toggle"
         class="fixed top-3 left-3 z-[1020] surface-panel p-1"
         title={gettext("Show panel")}
       >
@@ -97,7 +97,7 @@ defmodule StoryarnWeb.Layouts do
           </span>
           <button
             type="button"
-            phx-click="tree_panel_toggle"
+            phx-click="main_sidebar_toggle"
             class="inline-flex items-center justify-center size-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
             title={gettext("Close panel")}
           >

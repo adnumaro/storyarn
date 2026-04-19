@@ -31,7 +31,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
       end
 
     # Dashboard mode (no flow_id at mount time): force the tree open,
-    # force-pinned, ignore client-side tree_panel_init pinned state, and
+    # force-pinned, ignore client-side main_sidebar_init pinned state, and
     # hide the pin toggle. Matches pre-migration `Layouts.app` behavior
     # from FlowLive.Index.
     dashboard_mode = is_nil(session["flow_id"])
@@ -48,8 +48,8 @@ defmodule StoryarnWeb.FlowSidebarLive do
       |> assign(:active_tool, session["active_tool"] || "flows")
       |> assign(:dashboard_url, session["dashboard_url"])
       |> assign(:dashboard_mode, dashboard_mode)
-      |> assign(:tree_panel_open, dashboard_mode)
-      |> assign(:tree_panel_pinned, dashboard_mode)
+      |> assign(:main_sidebar_open, dashboard_mode)
+      |> assign(:main_sidebar_pinned, dashboard_mode)
       |> assign(:pending_delete_id, nil)
       |> assign(:flows_tree, load_flows_tree(project_id))
 
@@ -66,16 +66,16 @@ defmodule StoryarnWeb.FlowSidebarLive do
     ~H"""
     <div>
       <.vue
-        v-component="layout/TreePanel"
+        v-component="layout/MainSidebar"
         v-socket={@socket}
-        id="shell-tree-panel"
-        tree-panel-open={@tree_panel_open}
-        tree-panel-pinned={@tree_panel_pinned}
+        id="shell-main-sidebar"
+        main-sidebar-open={@main_sidebar_open}
+        main-sidebar-pinned={@main_sidebar_pinned}
         show-pin={not is_nil(@flow_id)}
         active-tool={@active_tool}
         dashboard-url={@dashboard_url}
         on-dashboard={is_nil(@flow_id)}
-        tree-props={
+        sidebar-props={
           %{
             flowsTree: @flows_tree,
             selectedFlowId: @flow_id,
@@ -89,39 +89,39 @@ defmodule StoryarnWeb.FlowSidebarLive do
     """
   end
 
-  # ── Panel state events from TreePanel.vue ─────────────────────────────────
+  # ── Panel state events from MainSidebar.vue ─────────────────────────────────
   @impl true
-  def handle_event("tree_panel_init", _params, %{assigns: %{dashboard_mode: true}} = socket) do
+  def handle_event("main_sidebar_init", _params, %{assigns: %{dashboard_mode: true}} = socket) do
     # Dashboard mode ignores localStorage — tree stays force-open.
     {:noreply, socket}
   end
 
-  def handle_event("tree_panel_init", %{"pinned" => pinned}, socket) do
+  def handle_event("main_sidebar_init", %{"pinned" => pinned}, socket) do
     {:noreply,
      socket
-     |> assign(:tree_panel_pinned, pinned)
-     |> assign(:tree_panel_open, pinned)}
+     |> assign(:main_sidebar_pinned, pinned)
+     |> assign(:main_sidebar_open, pinned)}
   end
 
-  def handle_event("tree_panel_toggle", _params, %{assigns: %{dashboard_mode: true}} = socket) do
+  def handle_event("main_sidebar_toggle", _params, %{assigns: %{dashboard_mode: true}} = socket) do
     {:noreply, socket}
   end
 
-  def handle_event("tree_panel_toggle", _params, socket) do
-    {:noreply, assign(socket, :tree_panel_open, !socket.assigns.tree_panel_open)}
+  def handle_event("main_sidebar_toggle", _params, socket) do
+    {:noreply, assign(socket, :main_sidebar_open, !socket.assigns.main_sidebar_open)}
   end
 
-  def handle_event("tree_panel_pin", _params, %{assigns: %{dashboard_mode: true}} = socket) do
+  def handle_event("main_sidebar_pin", _params, %{assigns: %{dashboard_mode: true}} = socket) do
     {:noreply, socket}
   end
 
-  def handle_event("tree_panel_pin", _params, socket) do
-    pinned = !socket.assigns.tree_panel_pinned
+  def handle_event("main_sidebar_pin", _params, socket) do
+    pinned = !socket.assigns.main_sidebar_pinned
 
     {:noreply,
      socket
-     |> assign(:tree_panel_pinned, pinned)
-     |> assign(:tree_panel_open, pinned)}
+     |> assign(:main_sidebar_pinned, pinned)
+     |> assign(:main_sidebar_open, pinned)}
   end
 
   # ── Tree mutations ────────────────────────────────────────────────────────
@@ -237,8 +237,8 @@ defmodule StoryarnWeb.FlowSidebarLive do
         dashboard_mode and not was_dashboard ->
           socket
           |> assign(:dashboard_mode, true)
-          |> assign(:tree_panel_open, true)
-          |> assign(:tree_panel_pinned, true)
+          |> assign(:main_sidebar_open, true)
+          |> assign(:main_sidebar_pinned, true)
 
         not dashboard_mode and was_dashboard ->
           assign(socket, :dashboard_mode, false)
@@ -267,24 +267,24 @@ defmodule StoryarnWeb.FlowSidebarLive do
     {:noreply, socket}
   end
 
-  def handle_info({:toolbar_event, "tree_panel_toggle", _params}, socket) do
-    {:noreply, assign(socket, :tree_panel_open, !socket.assigns.tree_panel_open)}
+  def handle_info({:toolbar_event, "main_sidebar_toggle", _params}, socket) do
+    {:noreply, assign(socket, :main_sidebar_open, !socket.assigns.main_sidebar_open)}
   end
 
-  def handle_info({:toolbar_event, "tree_panel_pin", _params}, socket) do
-    pinned = !socket.assigns.tree_panel_pinned
+  def handle_info({:toolbar_event, "main_sidebar_pin", _params}, socket) do
+    pinned = !socket.assigns.main_sidebar_pinned
 
     {:noreply,
      socket
-     |> assign(:tree_panel_pinned, pinned)
-     |> assign(:tree_panel_open, pinned)}
+     |> assign(:main_sidebar_pinned, pinned)
+     |> assign(:main_sidebar_open, pinned)}
   end
 
-  def handle_info({:toolbar_event, "tree_panel_init", %{"pinned" => pinned}}, socket) do
+  def handle_info({:toolbar_event, "main_sidebar_init", %{"pinned" => pinned}}, socket) do
     {:noreply,
      socket
-     |> assign(:tree_panel_pinned, pinned)
-     |> assign(:tree_panel_open, pinned)}
+     |> assign(:main_sidebar_pinned, pinned)
+     |> assign(:main_sidebar_open, pinned)}
   end
 
   def handle_info({:toolbar_event, _name, _params}, socket), do: {:noreply, socket}

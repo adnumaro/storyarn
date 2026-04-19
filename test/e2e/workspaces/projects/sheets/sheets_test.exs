@@ -64,7 +64,7 @@ defmodule StoryarnWeb.E2E.SheetsTest do
       |> authenticate(user)
       |> visit("/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
       # Tree panel starts open on sheets index
-      |> assert_has("#tree-panel[data-open='true']")
+      |> assert_has("#main-sidebar[data-open='true']")
       |> assert_has("button", text: "New Sheet")
     end
 

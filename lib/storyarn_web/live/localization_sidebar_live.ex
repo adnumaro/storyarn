@@ -10,7 +10,7 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
   `:top_bar_extras_right` slot of `ProjectShell`) for the `translate_batch`
   button on the Index page.
 
-  Step 3 scaffold: loads languages + handles `tree_panel_*`. Actual
+  Step 3 scaffold: loads languages + handles `main_sidebar_*`. Actual
   localization mutations land in step 6.
   """
 
@@ -53,8 +53,8 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
       |> assign(:can_edit, session["can_edit"] || false)
       |> assign(:active_tool, session["active_tool"] || "localization")
       |> assign(:dashboard_url, session["dashboard_url"])
-      |> assign(:tree_panel_open, false)
-      |> assign(:tree_panel_pinned, true)
+      |> assign(:main_sidebar_open, false)
+      |> assign(:main_sidebar_pinned, true)
       |> assign(:source_language, source_language)
       |> assign(:target_languages, target_languages)
 
@@ -71,41 +71,41 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
     ~H"""
     <div>
       <.vue
-        v-component="layout/TreePanel"
+        v-component="layout/MainSidebar"
         v-socket={@socket}
         id="localization-sidebar"
-        tree-panel-open={@tree_panel_open}
-        tree-panel-pinned={@tree_panel_pinned}
+        main-sidebar-open={@main_sidebar_open}
+        main-sidebar-pinned={@main_sidebar_pinned}
         show-pin={false}
         active-tool={@active_tool}
         dashboard-url={@dashboard_url}
         on-dashboard={is_nil(@selected_locale)}
-        tree-props={build_tree_props(assigns)}
+        sidebar-props={build_sidebar_props(assigns)}
       />
     </div>
     """
   end
 
-  # ── Panel state events from TreePanel.vue ─────────────────────────────────
+  # ── Panel state events from MainSidebar.vue ─────────────────────────────────
   @impl true
-  def handle_event("tree_panel_init", %{"pinned" => pinned}, socket) do
+  def handle_event("main_sidebar_init", %{"pinned" => pinned}, socket) do
     {:noreply,
      socket
-     |> assign(:tree_panel_pinned, pinned)
-     |> assign(:tree_panel_open, pinned)}
+     |> assign(:main_sidebar_pinned, pinned)
+     |> assign(:main_sidebar_open, pinned)}
   end
 
-  def handle_event("tree_panel_toggle", _params, socket) do
-    {:noreply, assign(socket, :tree_panel_open, !socket.assigns.tree_panel_open)}
+  def handle_event("main_sidebar_toggle", _params, socket) do
+    {:noreply, assign(socket, :main_sidebar_open, !socket.assigns.main_sidebar_open)}
   end
 
-  def handle_event("tree_panel_pin", _params, socket) do
-    pinned = !socket.assigns.tree_panel_pinned
+  def handle_event("main_sidebar_pin", _params, socket) do
+    pinned = !socket.assigns.main_sidebar_pinned
 
     {:noreply,
      socket
-     |> assign(:tree_panel_pinned, pinned)
-     |> assign(:tree_panel_open, pinned)}
+     |> assign(:main_sidebar_pinned, pinned)
+     |> assign(:main_sidebar_open, pinned)}
   end
 
   # ── Localization mutations ────────────────────────────────────────────────
@@ -252,24 +252,24 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
   def handle_info({:remote_change, _action, _payload}, socket), do: {:noreply, socket}
 
   # Forwarded from ToolbarsLive (LeftToolbar.vue's pushEvent lands there).
-  def handle_info({:toolbar_event, "tree_panel_toggle", _params}, socket) do
-    {:noreply, assign(socket, :tree_panel_open, !socket.assigns.tree_panel_open)}
+  def handle_info({:toolbar_event, "main_sidebar_toggle", _params}, socket) do
+    {:noreply, assign(socket, :main_sidebar_open, !socket.assigns.main_sidebar_open)}
   end
 
-  def handle_info({:toolbar_event, "tree_panel_pin", _params}, socket) do
-    pinned = !socket.assigns.tree_panel_pinned
+  def handle_info({:toolbar_event, "main_sidebar_pin", _params}, socket) do
+    pinned = !socket.assigns.main_sidebar_pinned
 
     {:noreply,
      socket
-     |> assign(:tree_panel_pinned, pinned)
-     |> assign(:tree_panel_open, pinned)}
+     |> assign(:main_sidebar_pinned, pinned)
+     |> assign(:main_sidebar_open, pinned)}
   end
 
-  def handle_info({:toolbar_event, "tree_panel_init", %{"pinned" => pinned}}, socket) do
+  def handle_info({:toolbar_event, "main_sidebar_init", %{"pinned" => pinned}}, socket) do
     {:noreply,
      socket
-     |> assign(:tree_panel_pinned, pinned)
-     |> assign(:tree_panel_open, pinned)}
+     |> assign(:main_sidebar_pinned, pinned)
+     |> assign(:main_sidebar_open, pinned)}
   end
 
   def handle_info({:toolbar_event, _name, _params}, socket), do: {:noreply, socket}
@@ -322,7 +322,7 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
     {source, targets}
   end
 
-  defp build_tree_props(assigns) do
+  defp build_sidebar_props(assigns) do
     existing_codes =
       [
         assigns.source_language && assigns.source_language.locale_code

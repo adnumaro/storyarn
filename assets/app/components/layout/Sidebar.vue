@@ -2,8 +2,8 @@
 /**
  * Shared sidebar panel — floating surface panel with JS-driven animation.
  *
- * Used by TreePanel (left) and FormulaPanel (right).
- * Mirrors the v1 hook animation: slide + fade, 280ms in / 180ms out.
+ * Used by MainSidebar (left) and FormulaPanel (right).
+ * Slide + fade, 280ms in / 180ms out.
  *
  * Desktop (≥ md): fixed w-64, positioned left-3 or right-3, JS animation.
  * Mobile (< md): full-width overlay (left-3 right-3), above toolbars,
@@ -59,7 +59,7 @@ onClickOutside(
   },
 );
 
-// ── Animation constants (matching v1 TreePanel hook) ──
+// ── Animation constants ──
 const OPEN_DURATION = 280;
 const CLOSE_DURATION = 180;
 const EASING = "ease-out";

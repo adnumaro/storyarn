@@ -18,10 +18,10 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
   end
 
   defp get_sidebar_props(view) do
-    # Sidebar props are passed via tree-props to the TreePanel, which passes them to the component.
-    # We read them from the layout's tree-props attribute via the TreePanel vue.
-    tree_panel = LiveVue.Test.get_vue(view, name: "layout/TreePanel")
-    tree_panel.props["tree-props"]
+    # Sidebar props are passed via tree-props to the MainSidebar, which passes them to the component.
+    # We read them from the layout's tree-props attribute via the MainSidebar vue.
+    main_sidebar = LiveVue.Test.get_vue(view, name: "layout/MainSidebar")
+    main_sidebar.props["sidebar-props"]
   end
 
   describe "Localization index page" do

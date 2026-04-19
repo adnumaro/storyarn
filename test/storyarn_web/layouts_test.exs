@@ -34,8 +34,8 @@ defmodule StoryarnWeb.LayoutsTest do
       workspace: %{slug: "test-workspace", name: "Test Workspace"},
       active_tool: :sheets,
       has_tree: false,
-      tree_panel_open: false,
-      tree_panel_pinned: false,
+      main_sidebar_open: false,
+      main_sidebar_pinned: false,
       can_edit: false,
       online_users: [],
       canvas_mode: false,
@@ -228,7 +228,7 @@ defmodule StoryarnWeb.LayoutsTest do
           &Layouts.app/1,
           base_app_assigns(%{
             has_tree: true,
-            tree_panel_open: true,
+            main_sidebar_open: true,
             canvas_mode: false
           })
         )
@@ -242,7 +242,7 @@ defmodule StoryarnWeb.LayoutsTest do
           &Layouts.app/1,
           base_app_assigns(%{
             has_tree: true,
-            tree_panel_open: false,
+            main_sidebar_open: false,
             canvas_mode: false
           })
         )
@@ -256,7 +256,7 @@ defmodule StoryarnWeb.LayoutsTest do
           &Layouts.app/1,
           base_app_assigns(%{
             has_tree: true,
-            tree_panel_open: true,
+            main_sidebar_open: true,
             canvas_mode: true
           })
         )

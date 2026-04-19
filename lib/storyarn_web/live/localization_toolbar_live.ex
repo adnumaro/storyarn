@@ -127,7 +127,7 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
     {:noreply, assign(socket, :selected_locale, locale)}
   end
 
-  # Ignore toolbar/tree events we don't care about (tree_panel_* go to the
+  # Ignore toolbar/tree events we don't care about (main_sidebar_* go to the
   # sidebar; other tools' events should never reach us).
   def handle_info({:toolbar_event, _name, _params}, socket), do: {:noreply, socket}
   def handle_info({:languages_changed, _payload}, socket), do: {:noreply, socket}

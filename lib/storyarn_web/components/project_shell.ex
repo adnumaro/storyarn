@@ -132,7 +132,7 @@ defmodule StoryarnWeb.Components.ProjectShell do
             id="shell-left-toolbar"
             active-tool={to_string(@active_tool)}
             has-tree={@sidebar_module != nil}
-            tree-panel-open={true}
+            main-sidebar-open={true}
             project-name={@project.name}
             workspace-name={@workspace.name}
             show-tool-switcher={true}
@@ -186,7 +186,7 @@ defmodule StoryarnWeb.Components.ProjectShell do
             else: [
               "overflow-y-auto pt-[76px] pb-4 px-4",
               "transition-[padding-left] duration-200",
-              "md:[body[data-tree-panel-open='1']_&]:pl-[320px]"
+              "md:[body[data-main-sidebar-open='1']_&]:pl-[320px]"
             ]
           )
         ]}

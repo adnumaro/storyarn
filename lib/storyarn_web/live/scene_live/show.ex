@@ -678,8 +678,8 @@ defmodule StoryarnWeb.SceneLive.Show do
   @impl true
   # Tree panel events (from LeftToolbar) — forwarded to SceneSidebarLive
   # via the shell topic so the sticky sidebar owns the panel state.
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: ProjectChromeHelpers.forward_tree_panel(socket, event, params)
+  def handle_event("main_sidebar_" <> _ = event, params, socket),
+    do: ProjectChromeHelpers.forward_main_sidebar(socket, event, params)
 
   def handle_event("open_versions_panel", _params, %{assigns: %{compact: true}} = socket) do
     {:noreply, socket}

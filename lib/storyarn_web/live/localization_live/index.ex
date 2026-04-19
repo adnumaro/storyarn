@@ -141,13 +141,13 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
   # Tree panel + localization mutations (change_locale, add/remove language,
   # sync_texts) live in LocalizationSidebarLive. translate_batch lives in
-  # LocalizationToolbarLive. LeftToolbar.vue's tree_panel_* events fire
+  # LocalizationToolbarLive. LeftToolbar.vue's main_sidebar_* events fire
   # here (rendered inside ProjectShell which runs in this LV's context) —
   # forward them to the sidebar via shell topic.
 
   @impl true
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: ProjectChromeHelpers.forward_tree_panel(socket, event, params)
+  def handle_event("main_sidebar_" <> _ = event, params, socket),
+    do: ProjectChromeHelpers.forward_main_sidebar(socket, event, params)
 
   def handle_event("change_filter", params, socket) do
     {:noreply,

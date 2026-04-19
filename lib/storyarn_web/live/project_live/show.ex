@@ -80,8 +80,8 @@ defmodule StoryarnWeb.ProjectLive.Show do
   def handle_params(_params, _url, socket), do: {:noreply, socket}
 
   @impl true
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: ProjectChromeHelpers.forward_tree_panel(socket, event, params)
+  def handle_event("main_sidebar_" <> _ = event, params, socket),
+    do: ProjectChromeHelpers.forward_main_sidebar(socket, event, params)
 
   @impl true
   def handle_info({:project_restoration_started, payload}, socket),

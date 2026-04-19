@@ -9,7 +9,7 @@ import FlowTree from "@modules/flows/components/FlowTree.vue";
 import SceneTreePanel from "@modules/scenes/components/SceneTreePanel.vue";
 import LocalizationSidebar from "@modules/localization/components/LocalizationSidebar.vue";
 
-const treeComponents: Record<string, Component> = {
+const sidebarComponents: Record<string, Component> = {
   sheets: SheetTree,
   flows: FlowTree,
   scenes: SceneTreePanel,
@@ -17,32 +17,31 @@ const treeComponents: Record<string, Component> = {
 };
 
 const {
-  treePanelOpen = false,
-  treePanelPinned = true,
+  mainSidebarOpen = false,
+  mainSidebarPinned = true,
   showPin = true,
   activeTool = "sheets",
   dashboardUrl = null,
   onDashboard = false,
-  treeData = null,
-  treeProps = {},
+  sidebarData = null,
+  sidebarProps = {},
 } = defineProps<{
-  treePanelOpen?: boolean;
-  treePanelPinned?: boolean;
+  mainSidebarOpen?: boolean;
+  mainSidebarPinned?: boolean;
   showPin?: boolean;
   activeTool?: string;
   dashboardUrl?: string | null;
   onDashboard?: boolean;
-  treeData?: unknown[] | Record<string, string | number | boolean | null> | null;
-  treeProps?: Record<string, string | number | boolean | unknown[] | null | undefined>;
+  sidebarData?: unknown[] | Record<string, string | number | boolean | null> | null;
+  sidebarProps?: Record<string, string | number | boolean | unknown[] | null | undefined>;
 }>();
 
-const activeTreeComponent = computed(() => treeComponents[activeTool] || null);
+const activeSidebarContent = computed(() => sidebarComponents[activeTool] || null);
 
 const live = useLive();
 const internalOpen = ref(false);
 
-// ── localStorage persistence (same keys as v1 TreePanel hook) ──
-const KEY_PREFIX = "storyarn:tree_panel:pinned:";
+const KEY_PREFIX = "storyarn:main_sidebar:pinned:";
 const DEFAULTS = {
   dashboard: true,
   sheets: true,
@@ -61,23 +60,19 @@ function readPinned(tool: string) {
   return DEFAULTS[tool as keyof typeof DEFAULTS] ?? true;
 }
 
-// ── Lifecycle ──
 onMounted(() => {
-  localStorage.removeItem("storyarn:tree_panel:pinned");
-
   const tool = activeTool;
   const pinned = readPinned(tool);
 
-  if (pinned || treePanelOpen) {
+  if (pinned || mainSidebarOpen) {
     internalOpen.value = true;
   }
 
-  live.pushEvent("tree_panel_init", { pinned });
+  live.pushEvent("main_sidebar_init", { pinned });
 });
 
-// ── Watch for server-driven open/close changes ──
 watch(
-  () => [treePanelOpen, treePanelPinned],
+  () => [mainSidebarOpen, mainSidebarPinned],
   ([nowOpen, pinned]) => {
     const tool = activeTool;
     localStorage.setItem(storageKey(tool), String(pinned));
@@ -85,29 +80,28 @@ watch(
   },
 );
 
-// ── Expose open state to global CSS so the main content can shift ──
-// ProjectShell's <main> reads `body[data-tree-panel-open="1"]` in CSS to
+// ProjectShell's <main> reads `body[data-main-sidebar-open="1"]` in CSS to
 // apply the left padding when the panel is open (and remove it when closed).
 watch(
   internalOpen,
   (open) => {
     if (open) {
-      document.body.dataset.treePanelOpen = "1";
+      document.body.dataset.mainSidebarOpen = "1";
     } else {
-      delete document.body.dataset.treePanelOpen;
+      delete document.body.dataset.mainSidebarOpen;
     }
   },
   { immediate: true },
 );
 
 onUnmounted(() => {
-  delete document.body.dataset.treePanelOpen;
+  delete document.body.dataset.mainSidebarOpen;
 });
 function togglePanel() {
-  live.pushEvent("tree_panel_toggle", {});
+  live.pushEvent("main_sidebar_toggle", {});
 }
 function togglePin() {
-  live.pushEvent("tree_panel_pin", {});
+  live.pushEvent("main_sidebar_pin", {});
 }
 </script>
 
@@ -127,12 +121,14 @@ function togglePin() {
           ]"
         >
           <LayoutDashboard class="size-4" />
-          {{ $t("layout.tree_panel.dashboard_label", { tool: $t(`layout.tools.${activeTool}`) }) }}
+          {{
+            $t("layout.main_sidebar.dashboard_label", { tool: $t(`layout.tools.${activeTool}`) })
+          }}
         </a>
       </div>
     </template>
 
-    <component v-if="activeTreeComponent" :is="activeTreeComponent" v-bind="treeProps" />
+    <component v-if="activeSidebarContent" :is="activeSidebarContent" v-bind="sidebarProps" />
     <slot v-else />
 
     <template v-if="showPin" #footer>
@@ -140,18 +136,20 @@ function togglePin() {
         type="button"
         :class="[
           'inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors hover:bg-accent',
-          treePanelPinned ? 'text-primary' : 'text-muted-foreground',
+          mainSidebarPinned ? 'text-primary' : 'text-muted-foreground',
         ]"
-        :title="treePanelPinned ? $t('layout.tree_panel.unpin') : $t('layout.tree_panel.pin_panel')"
+        :title="
+          mainSidebarPinned ? $t('layout.main_sidebar.unpin') : $t('layout.main_sidebar.pin_panel')
+        "
         @click="togglePin"
       >
         <Pin class="size-3" />
-        {{ treePanelPinned ? $t("layout.tree_panel.pinned") : $t("layout.tree_panel.pin") }}
+        {{ mainSidebarPinned ? $t("layout.main_sidebar.pinned") : $t("layout.main_sidebar.pin") }}
       </button>
       <button
         type="button"
         class="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-        :title="$t('layout.tree_panel.close')"
+        :title="$t('layout.main_sidebar.close')"
         @click="togglePanel"
       >
         <X class="size-3" />

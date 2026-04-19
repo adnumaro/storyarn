@@ -42,8 +42,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     LiveVue.Test.get_vue(view, name: "modules/scenes/components/SearchPanel")
   end
 
-  defp get_tree_panel_props(view) do
-    LiveVue.Test.get_vue(view, name: "layout/TreePanel").props["tree-props"]
+  defp get_main_sidebar_props(view) do
+    LiveVue.Test.get_vue(view, name: "layout/MainSidebar").props["sidebar-props"]
   end
 
   defp get_legend_vue(view) do
@@ -1327,10 +1327,10 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      tree_props = get_tree_panel_props(view)
+      sidebar_props = get_main_sidebar_props(view)
       # Default layer is auto-created with the scene
-      assert length(tree_props["layers"]) >= 1
-      assert tree_props["hasScene"] == true
+      assert length(sidebar_props["layers"]) >= 1
+      assert sidebar_props["hasScene"] == true
     end
 
     test "renders correct number of layers", %{conn: conn, user: user} do
@@ -1383,8 +1383,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       render_click(view, "set_active_layer", %{"id" => to_string(new_layer.id)})
 
-      tree_props = get_tree_panel_props(view)
-      assert tree_props["activeLayerId"] == new_layer.id
+      sidebar_props = get_main_sidebar_props(view)
+      assert sidebar_props["activeLayerId"] == new_layer.id
     end
 
     test "new pin gets active layer_id", %{conn: conn, user: user} do
@@ -1689,8 +1689,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       render_click(view, "toggle_layer_visibility", %{"id" => to_string(layer.id)})
 
-      tree_props = get_tree_panel_props(view)
-      hidden = Enum.find(tree_props["layers"], &(&1["id"] == layer.id))
+      sidebar_props = get_main_sidebar_props(view)
+      hidden = Enum.find(sidebar_props["layers"], &(&1["id"] == layer.id))
       assert hidden["visible"] == false
     end
   end
@@ -2969,8 +2969,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert updated.fog_enabled == true
 
       # And reflected in the tree panel layers prop
-      tree_props = get_tree_panel_props(view)
-      updated_layer = Enum.find(tree_props["layers"], &(&1["id"] == layer.id))
+      sidebar_props = get_main_sidebar_props(view)
+      updated_layer = Enum.find(sidebar_props["layers"], &(&1["id"] == layer.id))
       assert updated_layer["fogEnabled"] == true
     end
 

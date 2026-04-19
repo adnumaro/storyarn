@@ -432,10 +432,10 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       await_async(view)
 
       # Toggle the tree panel (starts open by default)
-      render_click(view, "tree_panel_toggle", %{})
+      render_click(view, "main_sidebar_toggle", %{})
 
       # Toggle back open
-      html = render_click(view, "tree_panel_toggle", %{})
+      html = render_click(view, "main_sidebar_toggle", %{})
       assert html =~ "Test Sheet"
     end
 
@@ -452,8 +452,8 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       await_async(view)
 
       # Pin/unpin the tree panel
-      render_click(view, "tree_panel_pin", %{})
-      html = render_click(view, "tree_panel_pin", %{})
+      render_click(view, "main_sidebar_pin", %{})
+      html = render_click(view, "main_sidebar_pin", %{})
       assert html =~ "Test Sheet"
     end
 
@@ -470,7 +470,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       await_async(view)
 
       # Simulate the JS hook sending initial pinned state
-      render_click(view, "tree_panel_init", %{"pinned" => true})
+      render_click(view, "main_sidebar_init", %{"pinned" => true})
       html = render(view)
       assert html =~ "Test Sheet"
     end

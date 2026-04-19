@@ -398,12 +398,12 @@ defmodule StoryarnWeb.SheetLive.Show do
   # Event Handlers: Header
   # ===========================================================================
 
-  # tree_panel_* events fire from LeftToolbar.vue (rendered by ProjectShell
+  # main_sidebar_* events fire from LeftToolbar.vue (rendered by ProjectShell
   # in this LV's DOM). Forward them on the shell topic so the active
   # sidebar LV picks them up.
   @impl true
-  def handle_event("tree_panel_" <> _ = event, params, socket),
-    do: ProjectChromeHelpers.forward_tree_panel(socket, event, params)
+  def handle_event("main_sidebar_" <> _ = event, params, socket),
+    do: ProjectChromeHelpers.forward_main_sidebar(socket, event, params)
 
   # --- Tabs ---
 

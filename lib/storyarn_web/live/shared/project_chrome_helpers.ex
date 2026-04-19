@@ -2,7 +2,7 @@ defmodule StoryarnWeb.Live.Shared.ProjectChromeHelpers do
   @moduledoc """
   Helpers shared by every page LV that renders the `ProjectShell` chrome.
 
-  - `forward_tree_panel/3` — forwards `tree_panel_*` events from
+  - `forward_main_sidebar/3` — forwards `main_sidebar_*` events from
     `LeftToolbar.vue` (rendered inline by `ProjectShell`, so events land
     in the page LV) to the per-tool sidebar LV via the shell PubSub topic.
   - `initial_online_users/1` — snapshot of current presence for the
@@ -19,13 +19,13 @@ defmodule StoryarnWeb.Live.Shared.ProjectChromeHelpers do
   def shell_topic(project_id), do: "project:#{project_id}:shell"
 
   @doc """
-  Forward a `tree_panel_*` event onto the shell topic as a
+  Forward a `main_sidebar_*` event onto the shell topic as a
   `{:toolbar_event, event, params}` tuple so the active sidebar LV picks
   it up.
   """
-  @spec forward_tree_panel(Socket.t(), String.t(), map()) ::
+  @spec forward_main_sidebar(Socket.t(), String.t(), map()) ::
           {:noreply, Socket.t()}
-  def forward_tree_panel(socket, event, params) do
+  def forward_main_sidebar(socket, event, params) do
     with %{} = project <- socket.assigns[:project] do
       Phoenix.PubSub.broadcast(
         Storyarn.PubSub,

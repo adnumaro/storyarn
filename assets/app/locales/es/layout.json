@@ -9,7 +9,7 @@
       "assets": "Recursos",
       "localization": "Localización"
     },
-    "tree_panel": {
+    "main_sidebar": {
       "dashboard_label": "Dashboard de {tool}",
       "unpin": "Desfijar panel",
       "pin_panel": "Fijar panel",

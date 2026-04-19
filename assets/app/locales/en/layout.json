@@ -9,7 +9,7 @@
       "assets": "Assets",
       "localization": "Localization"
     },
-    "tree_panel": {
+    "main_sidebar": {
       "dashboard_label": "{tool} dashboard",
       "unpin": "Unpin panel",
       "pin_panel": "Pin panel",

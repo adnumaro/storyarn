@@ -45,8 +45,8 @@ defmodule StoryarnWeb.SceneSidebarLive do
       |> assign(:active_tool, session["active_tool"] || "scenes")
       |> assign(:dashboard_url, session["dashboard_url"])
       |> assign(:dashboard_mode, dashboard_mode)
-      |> assign(:tree_panel_open, dashboard_mode)
-      |> assign(:tree_panel_pinned, dashboard_mode)
+      |> assign(:main_sidebar_open, dashboard_mode)
+      |> assign(:main_sidebar_pinned, dashboard_mode)
       |> assign(:pending_delete_id, nil)
       |> assign(:scenes_tree, load_scenes_tree(project_id))
 
@@ -63,16 +63,16 @@ defmodule StoryarnWeb.SceneSidebarLive do
     ~H"""
     <div>
       <.vue
-        v-component="layout/TreePanel"
+        v-component="layout/MainSidebar"
         v-socket={@socket}
-        id="shell-tree-panel"
-        tree-panel-open={@tree_panel_open}
-        tree-panel-pinned={@tree_panel_pinned}
+        id="shell-main-sidebar"
+        main-sidebar-open={@main_sidebar_open}
+        main-sidebar-pinned={@main_sidebar_pinned}
         show-pin={not is_nil(@scene_id)}
         active-tool={@active_tool}
         dashboard-url={@dashboard_url}
         on-dashboard={is_nil(@scene_id)}
-        tree-props={
+        sidebar-props={
           %{
             scenesTree: @scenes_tree,
             selectedSceneId: @scene_id,
@@ -86,34 +86,34 @@ defmodule StoryarnWeb.SceneSidebarLive do
     """
   end
 
-  # ── Panel state events from TreePanel.vue ─────────────────────────────────
+  # ── Panel state events from MainSidebar.vue ─────────────────────────────────
   @impl true
-  def handle_event("tree_panel_init", _params, %{assigns: %{dashboard_mode: true}} = socket) do
+  def handle_event("main_sidebar_init", _params, %{assigns: %{dashboard_mode: true}} = socket) do
     {:noreply, socket}
   end
 
-  def handle_event("tree_panel_init", %{"pinned" => pinned}, socket) do
+  def handle_event("main_sidebar_init", %{"pinned" => pinned}, socket) do
     {:noreply,
      socket
-     |> assign(:tree_panel_pinned, pinned)
-     |> assign(:tree_panel_open, pinned)}
+     |> assign(:main_sidebar_pinned, pinned)
+     |> assign(:main_sidebar_open, pinned)}
   end
 
-  def handle_event("tree_panel_toggle", _params, %{assigns: %{dashboard_mode: true}} = socket) do
+  def handle_event("main_sidebar_toggle", _params, %{assigns: %{dashboard_mode: true}} = socket) do
     {:noreply, socket}
   end
 
-  def handle_event("tree_panel_toggle", _params, socket) do
-    {:noreply, assign(socket, :tree_panel_open, !socket.assigns.tree_panel_open)}
+  def handle_event("main_sidebar_toggle", _params, socket) do
+    {:noreply, assign(socket, :main_sidebar_open, !socket.assigns.main_sidebar_open)}
   end
 
-  def handle_event("tree_panel_pin", _params, socket) do
-    pinned = !socket.assigns.tree_panel_pinned
+  def handle_event("main_sidebar_pin", _params, socket) do
+    pinned = !socket.assigns.main_sidebar_pinned
 
     {:noreply,
      socket
-     |> assign(:tree_panel_pinned, pinned)
-     |> assign(:tree_panel_open, pinned)}
+     |> assign(:main_sidebar_pinned, pinned)
+     |> assign(:main_sidebar_open, pinned)}
   end
 
   # ── Tree mutations ────────────────────────────────────────────────────────
@@ -220,24 +220,24 @@ defmodule StoryarnWeb.SceneSidebarLive do
   def handle_info({:remote_change, _action, _payload}, socket), do: {:noreply, socket}
 
   # Forwarded from the page LV (LeftToolbar.vue's pushEvent lands there).
-  def handle_info({:toolbar_event, "tree_panel_toggle", _params}, socket) do
-    {:noreply, assign(socket, :tree_panel_open, !socket.assigns.tree_panel_open)}
+  def handle_info({:toolbar_event, "main_sidebar_toggle", _params}, socket) do
+    {:noreply, assign(socket, :main_sidebar_open, !socket.assigns.main_sidebar_open)}
   end
 
-  def handle_info({:toolbar_event, "tree_panel_pin", _params}, socket) do
-    pinned = !socket.assigns.tree_panel_pinned
+  def handle_info({:toolbar_event, "main_sidebar_pin", _params}, socket) do
+    pinned = !socket.assigns.main_sidebar_pinned
 
     {:noreply,
      socket
-     |> assign(:tree_panel_pinned, pinned)
-     |> assign(:tree_panel_open, pinned)}
+     |> assign(:main_sidebar_pinned, pinned)
+     |> assign(:main_sidebar_open, pinned)}
   end
 
-  def handle_info({:toolbar_event, "tree_panel_init", %{"pinned" => pinned}}, socket) do
+  def handle_info({:toolbar_event, "main_sidebar_init", %{"pinned" => pinned}}, socket) do
     {:noreply,
      socket
-     |> assign(:tree_panel_pinned, pinned)
-     |> assign(:tree_panel_open, pinned)}
+     |> assign(:main_sidebar_pinned, pinned)
+     |> assign(:main_sidebar_open, pinned)}
   end
 
   def handle_info({:toolbar_event, _name, _params}, socket), do: {:noreply, socket}

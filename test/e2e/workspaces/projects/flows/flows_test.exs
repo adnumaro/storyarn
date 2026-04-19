@@ -116,7 +116,7 @@ defmodule StoryarnWeb.E2E.FlowsTest do
       |> assert_has("h1", text: "Root Flow")
       |> assert_has("button[data-tip='Show panel']")
       |> click("button[data-tip='Show panel']")
-      |> assert_has("#tree-panel[data-open='true']")
+      |> assert_has("#main-sidebar[data-open='true']")
       |> assert_has(
         "#flows-tree-container a[href='/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{branch_flow.id}']"
       )
