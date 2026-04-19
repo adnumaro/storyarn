@@ -1,0 +1,109 @@
+lib/storyarn_web/live/localization_live/edit.ex
+  06e8f7f0c4194725 116-117
+lib/storyarn_web/live/asset_live/index.ex
+  06e8f7f0c4194725 104-105
+lib/storyarn_web/components/app_layout.ex
+  06e8f7f0c4194725 80-83,105-107,109,147,187,210,212,214,217,220,222-224,229,241
+lib/storyarn_web/live/scene_sidebar_live.ex
+  06e8f7f0c4194725 48-49,66,68-70,75,89,91,95,98-99,102,106-107,110-111,115-116,223-224,227-228,232-233,236,239-240
+lib/storyarn_web/live/localization_live/index.ex
+  06e8f7f0c4194725 144,149-150
+lib/storyarn_web/live/sheet_live/show.ex
+  06e8f7f0c4194725 401,405-406
+test/storyarn_web/layouts_test.exs
+  06e8f7f0c4194725 37-38,231,245,259
+lib/storyarn_web/live/scene_live/index.ex
+  06e8f7f0c4194725 226-227
+lib/storyarn_web/live/localization_sidebar_live.ex
+  06e8f7f0c4194725 13,56-57,74,77-78,83,89,91,94-95,98-99,102-103,107-108,255-256,259-260,264-265,268,271-272,325
+assets/app/locales/en/layout.json
+  06e8f7f0c4194725 12
+assets/app/components/layout/MainSidebar.vue
+  06e8f7f0c4194725 12,20-21,26-27,29-30,35-36,39,44,67,71,75,83,89,91,98,101,104,124-126,131,139,141-143,147,152
+lib/storyarn_web/live/scene_live/show.ex
+  06e8f7f0c4194725 681-682
+lib/storyarn_web/components/layouts.ex
+  06e8f7f0c4194725 47,68,100
+lib/storyarn_web/live/localization_live/report.ex
+  06e8f7f0c4194725 94-95
+lib/storyarn_web/live/sheet_live/index.ex
+  06e8f7f0c4194725 228,232-233
+test/storyarn_web/live/scene_live/show_test.exs
+  06e8f7f0c4194725 45-46,1330,1332-1333,1386-1387,1692-1693,2972-2973
+test/storyarn_web/live/localization_live/index_test.exs
+  06e8f7f0c4194725 21-24
+lib/storyarn_web/live/project_live/show.ex
+  06e8f7f0c4194725 83-84
+test/e2e/workspaces/projects/flows/flows_test.exs
+  06e8f7f0c4194725 119
+lib/storyarn_web/live/flow_sidebar_live.ex
+  06e8f7f0c4194725 34,51-52,69,71-73,78,92,94,99,102-103,106,110-111,114,118-119,123-124,240-241,270-271,274-275,279-280,283,286-287
+test/e2e/workspaces/projects/sheets/sheets_test.exs
+  06e8f7f0c4194725 67
+assets/app/components/layout/LeftToolbar.vue
+  06e8f7f0c4194725 37,46,76-77,83,87-89,96-97
+assets/app/components/layout/Sidebar.vue
+  06e8f7f0c4194725 5-6,62
+assets/app/locales/es/layout.json
+  06e8f7f0c4194725 12
+lib/storyarn_web/live/localization_toolbar_live.ex
+  06e8f7f0c4194725 130
+test/storyarn_web/live/sheet_live/show_test.exs
+  06e8f7f0c4194725 435,438,455-456,473
+lib/storyarn_web/live/shared/project_chrome_helpers.ex
+  06e8f7f0c4194725 5,22,26,28
+lib/storyarn_web/live/sheets_sidebar_live.ex
+  06e8f7f0c4194725 49-50,67,69-71,76,90,92,96,99-100,103,107-108,111-112,116-117,226-227,230-231,235-236,239,242-243
+lib/storyarn_web/live/flow_live/show.ex
+  06e8f7f0c4194725 509-510
+lib/storyarn_web/live/flow_live/index.ex
+  06e8f7f0c4194725 229-230
+lib/storyarn_web/components/project_shell.ex
+  06e8f7f0c4194725 135,189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "d1a63f6dd4b56c5f457c73c0f9efd4a284411595",
+  "prompts": {
+    "06e8f7f0c4194725": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e347729-76ca-4ac2-b7af-d62f7110ed14",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 435,
+      "total_deletions": 274,
+      "accepted_lines": 401,
+      "overriden_lines": 0
+    },
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 797,
+      "overriden_lines": 0
+    },
+    "b5e1bb47b647b01a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da948ded-a770-4715-803c-ee52cc73c164",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 836,
+      "total_deletions": 0,
+      "accepted_lines": 8351,
+      "overriden_lines": 0
+    }
+  }
+}
