@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, ArrowRightToLine, ChevronDown, Undo2 } from "lucide-vue-next";
+import { ArrowRight, ArrowRightToLine, ChevronDown, CornerDownLeft } from "lucide-vue-next";
 import type { Component } from "vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -29,7 +29,7 @@ const EXIT_MODES = computed<ExitMode[]>(() => [
   },
   {
     value: "caller_return",
-    icon: Undo2,
+    icon: CornerDownLeft,
     label: t("flows.exit_modes.caller_return"),
     description: t("flows.exit_modes.caller_return_desc"),
   },

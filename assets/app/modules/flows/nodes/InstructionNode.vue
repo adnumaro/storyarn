@@ -14,15 +14,18 @@ interface InstructionNodeData {
   has_type_warnings?: boolean;
 }
 
-const { data, emit, config, color } = defineProps<{
+const { data, emit, config, color, nodeDataOverride = null } = defineProps<{
   data: ReteNodeData;
   emit: ReteEmitFn;
   config: NodeConfig;
   color: string;
+  nodeDataOverride?: InstructionNodeData | null;
 }>();
 
 const { t } = useI18n();
-const nodeData = computed<InstructionNodeData>(() => (data.nodeData as InstructionNodeData) || {});
+const nodeData = computed<InstructionNodeData>(
+  () => nodeDataOverride || (data.nodeData as InstructionNodeData) || {},
+);
 
 // --- Formatting (matching V1 instruction.js exactly) ---
 

@@ -16,15 +16,18 @@ interface SubflowNodeData {
   exit_labels?: ExitLabel[];
 }
 
-const { data, emit, config, color } = defineProps<{
+const { data, emit, config, color, nodeDataOverride = null } = defineProps<{
   data: ReteNodeData;
   emit: ReteEmitFn;
   config: NodeConfig;
   color: string;
+  nodeDataOverride?: SubflowNodeData | null;
 }>();
 
 const { t } = useI18n();
-const nodeData = computed<SubflowNodeData>(() => (data.nodeData as SubflowNodeData) || {});
+const nodeData = computed<SubflowNodeData>(
+  () => nodeDataOverride || (data.nodeData as SubflowNodeData) || {},
+);
 const refFlowName = computed(() => nodeData.value.referenced_flow_name);
 const refFlowShortcut = computed(() => nodeData.value.referenced_flow_shortcut);
 const hasRef = computed(() => !!nodeData.value.referenced_flow_id);

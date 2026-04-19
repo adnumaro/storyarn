@@ -11,16 +11,18 @@ interface EntryNodeData {
   referencing_flows?: ReferencingFlow[];
 }
 
-const { data, emit, config, color } = defineProps<{
+const { data, emit, config, color, nodeDataOverride = null } = defineProps<{
   data: ReteNodeData;
   emit: ReteEmitFn;
   config: NodeConfig;
   color: string;
+  nodeDataOverride?: EntryNodeData | null;
 }>();
 
-const refs = computed<ReferencingFlow[]>(
-  () => (data.nodeData as EntryNodeData)?.referencing_flows || [],
+const nodeData = computed<EntryNodeData>(
+  () => nodeDataOverride || (data.nodeData as EntryNodeData) || {},
 );
+const refs = computed<ReferencingFlow[]>(() => nodeData.value.referencing_flows || []);
 </script>
 
 <template>

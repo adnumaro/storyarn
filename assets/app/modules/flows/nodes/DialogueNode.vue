@@ -42,12 +42,14 @@ const {
   config,
   color,
   sheetsMap = {},
+  nodeDataOverride = null,
 } = defineProps<{
   data: ReteNodeData;
   emit: ReteEmitFn;
   config: NodeConfig;
   color: string;
   sheetsMap?: Record<string, SheetMapEntry>;
+  nodeDataOverride?: DialogueNodeData | null;
 }>();
 
 const { t } = useI18n();
@@ -61,7 +63,9 @@ const ctx = inject<FlowContextInjection>(FLOW_CONTEXT_KEY, {
 });
 const dialogueRef = ref<HTMLTextAreaElement | null>(null);
 
-const nodeData = computed<DialogueNodeData>(() => (data.nodeData as DialogueNodeData) || {});
+const nodeData = computed<DialogueNodeData>(
+  () => nodeDataOverride || (data.nodeData as DialogueNodeData) || {},
+);
 const editing = computed(() => ctx.editingNodeId === data.id);
 
 const speaker = computed(() => {

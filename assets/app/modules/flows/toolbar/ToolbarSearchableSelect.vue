@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown } from "lucide-vue-next";
+import { Check, ChevronDown } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import {
   Command,
@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/
 
 const {
   options = [],
+  selectedValue = null,
   selectedLabel = null,
   placeholder = "Select...",
   disabled = false,
@@ -30,6 +31,14 @@ const emit = defineEmits<{
 const open = ref(false);
 
 const displayLabel = computed(() => selectedLabel || null);
+
+const hasSelection = computed(
+  () => selectedValue !== null && selectedValue !== undefined && selectedValue !== "",
+);
+
+function isSelected(value: string | number): boolean {
+  return hasSelection.value && String(value) === String(selectedValue);
+}
 
 function select(value: string | number) {
   emit("select", value);
@@ -55,6 +64,7 @@ function select(value: string | number) {
           <CommandGroup>
             <CommandItem value="__clear__" @select="select('')">
               <span class="text-muted-foreground">{{ $t("flows.searchable_select.none") }}</span>
+              <Check v-if="!hasSelection" class="size-3 ml-auto" />
             </CommandItem>
             <CommandItem
               v-for="[label, value] in options"
@@ -63,6 +73,7 @@ function select(value: string | number) {
               @select="select(value)"
             >
               <span class="truncate">{{ label }}</span>
+              <Check v-if="isSelected(value)" class="size-3 ml-auto" />
             </CommandItem>
           </CommandGroup>
         </CommandList>

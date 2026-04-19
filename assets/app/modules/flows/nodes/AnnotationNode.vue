@@ -10,11 +10,12 @@ interface AnnotationNodeData {
   font_size?: "sm" | "md" | "lg";
 }
 
-const { data, emit, config, color } = defineProps<{
+const { data, emit, config, color, nodeDataOverride = null } = defineProps<{
   data: ReteNodeData;
   emit: ReteEmitFn;
   config: NodeConfig;
   color: string;
+  nodeDataOverride?: AnnotationNodeData | null;
 }>();
 
 const ctx = inject<FlowContextInjection>(FLOW_CONTEXT_KEY, {
@@ -27,7 +28,9 @@ const ctx = inject<FlowContextInjection>(FLOW_CONTEXT_KEY, {
 });
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 
-const nodeData = computed<AnnotationNodeData>(() => (data.nodeData as AnnotationNodeData) || {});
+const nodeData = computed<AnnotationNodeData>(
+  () => nodeDataOverride || (data.nodeData as AnnotationNodeData) || {},
+);
 const text = computed(() => nodeData.value.text || "");
 const annColor = computed(() => nodeData.value.color || "#fbbf24");
 const selected = computed(() => data.selected || false);

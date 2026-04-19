@@ -20,15 +20,18 @@ interface OutputBadge {
   color?: string;
 }
 
-const { data, emit, config, color } = defineProps<{
+const { data, emit, config, color, nodeDataOverride = null } = defineProps<{
   data: ReteNodeData;
   emit: ReteEmitFn;
   config: NodeConfig;
   color: string;
+  nodeDataOverride?: ConditionNodeData | null;
 }>();
 
 const { t } = useI18n();
-const nodeData = computed<ConditionNodeData>(() => (data.nodeData as ConditionNodeData) || {});
+const nodeData = computed<ConditionNodeData>(
+  () => nodeDataOverride || (data.nodeData as ConditionNodeData) || {},
+);
 const hasStaleRefs = computed(() => nodeData.value.has_stale_refs);
 
 // --- Condition formatting (matching V1 condition.js exactly) ---

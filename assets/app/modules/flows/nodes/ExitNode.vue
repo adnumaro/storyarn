@@ -82,7 +82,8 @@ const tagsText = computed(() => {
         <span class="inline-flex items-center gap-1">
           {{ label }}
           <CornerDownLeft v-if="exitMode === 'caller_return'" class="size-3" />
-          <ArrowRightToLine v-else-if="exitMode !== 'flow_reference'" class="size-3" />
+          <ArrowRight v-else-if="exitMode === 'flow_reference'" class="size-3" />
+          <ArrowRightToLine v-else class="size-3" />
         </span>
       </div>
     </div>

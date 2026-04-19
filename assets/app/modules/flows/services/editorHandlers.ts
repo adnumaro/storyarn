@@ -445,10 +445,13 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
         return;
       }
 
-      // Skip while inline editing
+      // While inline editing we skip rebuildNode (would destroy input focus),
+      // but we still bump nodeDataVersion so view mode renders the fresh value
+      // when the user exits edit mode.
       const ctx = hook._flowContext;
       if (ctx?.editingNodeId === existingNode.id) {
         existingNode.nodeData = { ...nodeData };
+        ctx.nodeDataVersion = (ctx.nodeDataVersion || 0) + 1;
         return;
       }
 

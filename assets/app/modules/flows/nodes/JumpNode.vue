@@ -17,15 +17,19 @@ const {
   config,
   color,
   hubsMap = {},
+  nodeDataOverride = null,
 } = defineProps<{
   data: ReteNodeData;
   emit: ReteEmitFn;
   config: NodeConfig;
   color: string;
   hubsMap?: Record<string, HubMapEntry>;
+  nodeDataOverride?: JumpNodeData | null;
 }>();
 
-const nodeData = computed<JumpNodeData>(() => (data.nodeData as JumpNodeData) || {});
+const nodeData = computed<JumpNodeData>(
+  () => nodeDataOverride || (data.nodeData as JumpNodeData) || {},
+);
 const targetHub = computed(() => {
   const id = nodeData.value.target_hub_id;
   return id ? hubsMap[id] : null;

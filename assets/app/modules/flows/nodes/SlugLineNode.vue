@@ -22,15 +22,19 @@ const {
   config,
   color,
   sheetsMap = {},
+  nodeDataOverride = null,
 } = defineProps<{
   data: ReteNodeData;
   emit: ReteEmitFn;
   config: NodeConfig;
   color: string;
   sheetsMap?: Record<string, SheetMapEntry>;
+  nodeDataOverride?: SlugLineNodeData | null;
 }>();
 
-const nodeData = computed<SlugLineNodeData>(() => (data.nodeData as SlugLineNodeData) || {});
+const nodeData = computed<SlugLineNodeData>(
+  () => nodeDataOverride || (data.nodeData as SlugLineNodeData) || {},
+);
 
 const locSheet = computed(() => {
   const sheetId = nodeData.value.location_sheet_id;
