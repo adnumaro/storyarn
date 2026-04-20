@@ -164,7 +164,10 @@
       "history_source_instruction": "instr",
       "history_source_user": "user",
       "user_override_label": "(user override)",
-      "no_history": "No variable changes yet"
+      "no_history": "No variable changes yet",
+      "no_path": "No steps yet",
+      "set_breakpoint": "Set breakpoint",
+      "remove_breakpoint": "Remove breakpoint"
     },
     "minimap": {
       "toggle": "Toggle minimap",

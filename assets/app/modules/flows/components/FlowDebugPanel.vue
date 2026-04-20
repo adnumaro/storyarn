@@ -7,22 +7,34 @@
  */
 
 import {
+  ArrowDownRight,
+  ArrowRightToLine,
+  ArrowUpLeft,
+  Box,
   Bug,
   ChevronDown,
   ChevronRight,
+  Circle,
   CircleX,
+  Clapperboard,
   Diff,
   FastForward,
   Gauge,
+  GitBranch,
   Info,
   Layers,
+  LogIn,
+  LogOut,
+  MessageSquare,
   Pause,
   Play,
   RotateCcw,
   Search,
   Square,
+  StickyNote,
   TriangleAlert,
   Undo2,
+  Zap,
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { Badge } from "@components/ui/badge/index.ts";
@@ -101,6 +113,11 @@ interface HistoryEntry {
   source: HistorySource;
 }
 
+interface ExecutionLogEntry {
+  node_id: number;
+  depth: number;
+}
+
 interface DebugState {
   status: DebugStatus;
   current_node_id: string | number | null;
@@ -110,10 +127,29 @@ interface DebugState {
   variables: Record<string, DebugVariable>;
   console: ConsoleEntry[];
   history: HistoryEntry[];
-  execution_path: (string | number)[];
+  execution_path: number[];
+  execution_log: ExecutionLogEntry[];
   pending_choices: DebugChoice[] | null;
   call_stack: DebugCallStackFrame[];
+  breakpoints: number[];
 }
+
+type PathEntry =
+  | {
+      separator: true;
+      direction: "enter" | "return";
+      depth: number;
+    }
+  | {
+      separator: false;
+      step: number;
+      node_id: number;
+      type: string;
+      label: string | null;
+      outcome: string | null;
+      is_current: boolean;
+      depth: number;
+    };
 
 interface DebugNodeInfo {
   label?: string;
@@ -173,7 +209,6 @@ const pushVarFilterDebounced = useDebounceFn((value: string) => {
 }, 150);
 
 const variables = computed(() => state?.variables || {});
-const executionPath = computed(() => state?.execution_path || []);
 const pendingChoices = computed(() => state?.pending_choices || []);
 const consoleEntries = computed<ConsoleEntry[]>(() =>
   state?.console ? [...state.console].reverse() : [],
@@ -181,6 +216,84 @@ const consoleEntries = computed<ConsoleEntry[]>(() =>
 const historyEntries = computed<HistoryEntry[]>(() =>
   state?.history ? [...state.history].reverse() : [],
 );
+
+const breakpointSet = computed<Set<number>>(() => new Set(state?.breakpoints ?? []));
+
+const pathEntries = computed<PathEntry[]>(() => {
+  if (!state) return [];
+
+  const log: ExecutionLogEntry[] =
+    state.execution_log && state.execution_log.length > 0
+      ? [...state.execution_log].reverse()
+      : [...state.execution_path].reverse().map((id) => ({ node_id: Number(id), depth: 0 }));
+
+  const nodeConsole = state.console
+    .filter((e) => e.node_id != null)
+    .slice()
+    .reverse() as (ConsoleEntry & { node_id: number })[];
+
+  const result: PathEntry[] = [];
+  const logLength = log.length;
+  let prevDepth = 0;
+  const remaining = [...nodeConsole];
+
+  log.forEach((logEntry, i) => {
+    const step = i + 1;
+    const depth = logEntry.depth;
+
+    if (depth > prevDepth) {
+      result.push({ separator: true, direction: "enter", depth });
+    } else if (depth < prevDepth) {
+      result.push({ separator: true, direction: "return", depth });
+    }
+
+    const node = nodes[String(logEntry.node_id)];
+    let outcome: string | null = null;
+    const matchIdx = remaining.findIndex((e) => e.node_id === logEntry.node_id);
+    if (matchIdx !== -1) {
+      outcome = remaining[matchIdx].message;
+      remaining.splice(matchIdx, 1);
+    }
+
+    const rawText = node?.data?.text as string | undefined;
+    const label = stripHtml(rawText, 30);
+
+    result.push({
+      separator: false,
+      step,
+      node_id: logEntry.node_id,
+      type: node?.type ?? "unknown",
+      label,
+      outcome,
+      is_current: step === logLength,
+      depth,
+    });
+    prevDepth = depth;
+  });
+
+  return result;
+});
+
+const NODE_TYPE_ICON: Record<string, typeof Circle> = {
+  entry: Play,
+  exit: ArrowRightToLine,
+  dialogue: MessageSquare,
+  condition: GitBranch,
+  instruction: Zap,
+  hub: LogIn,
+  jump: LogOut,
+  subflow: Box,
+  slug_line: Clapperboard,
+  annotation: StickyNote,
+};
+
+function pathIcon(type: string) {
+  return NODE_TYPE_ICON[type] ?? Circle;
+}
+
+function toggleBreakpoint(nodeId: number) {
+  live.pushEvent("debug_toggle_breakpoint", { node_id: nodeId });
+}
 const callStack = computed<DebugCallStackFrame[]>(() =>
   state?.call_stack ? [...state.call_stack].reverse() : [],
 );
@@ -902,11 +1015,76 @@ function continuePastLimit() {
         </div>
       </TabsContent>
 
-      <!-- Path (Phase 6) -->
-      <TabsContent value="path" class="flex-1 min-h-0 overflow-y-auto px-3 pb-3">
-        <div class="text-xs text-muted-foreground py-4 text-center">
-          <!-- Full path tree renders in Phase 6 -->
+      <!-- Path -->
+      <TabsContent value="path" class="flex-1 min-h-0 overflow-y-auto text-xs">
+        <div
+          v-if="pathEntries.length === 0"
+          class="flex items-center justify-center h-24 text-muted-foreground/50"
+        >
+          {{ $t("flows.debug.no_path") }}
         </div>
+        <template v-for="(entry, i) in pathEntries" :key="i">
+          <!-- Sub-flow separator -->
+          <div
+            v-if="entry.separator"
+            class="flex items-center gap-2 px-3 py-0.5 text-sky-500/60 select-none"
+          >
+            <div class="flex-1 border-t border-sky-500/20" />
+            <component
+              :is="entry.direction === 'enter' ? ArrowDownRight : ArrowUpLeft"
+              class="size-3"
+            />
+            <span class="text-[10px]">
+              {{
+                entry.direction === "enter"
+                  ? $t("flows.debug.entering_subflow")
+                  : $t("flows.debug.returned_to_parent")
+              }}
+            </span>
+            <div class="flex-1 border-t border-sky-500/20" />
+          </div>
+
+          <!-- Path entry -->
+          <div
+            v-else
+            class="flex items-center gap-2 py-1 pr-3"
+            :class="entry.is_current ? 'text-primary font-bold bg-primary/5' : 'hover:bg-muted/40'"
+            :style="{ paddingLeft: `${12 + entry.depth * 16}px` }"
+          >
+            <button
+              type="button"
+              class="shrink-0 flex items-center justify-center w-3 h-3 group"
+              :title="
+                breakpointSet.has(entry.node_id)
+                  ? $t('flows.debug.remove_breakpoint')
+                  : $t('flows.debug.set_breakpoint')
+              "
+              @click="toggleBreakpoint(entry.node_id)"
+            >
+              <span
+                class="block rounded-full"
+                :class="
+                  breakpointSet.has(entry.node_id)
+                    ? 'w-2.5 h-2.5 bg-destructive'
+                    : 'w-2 h-2 border border-border group-hover:border-destructive/50'
+                "
+              />
+            </button>
+            <span
+              class="text-muted-foreground/50 w-5 text-right tabular-nums shrink-0 select-none"
+            >
+              {{ entry.step }}
+            </span>
+            <component :is="pathIcon(entry.type)" class="size-3 shrink-0 opacity-60" />
+            <span v-if="entry.label" class="truncate max-w-32">
+              {{ entry.label }}
+            </span>
+            <span class="text-muted-foreground/50 shrink-0">→</span>
+            <span class="truncate flex-1 text-muted-foreground/70 font-normal">
+              {{ entry.outcome || "" }}
+            </span>
+          </div>
+        </template>
       </TabsContent>
     </Tabs>
   </div>
