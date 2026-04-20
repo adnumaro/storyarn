@@ -130,7 +130,9 @@
     },
     "minimap": {
       "toggle": "Alternar minimapa",
-      "fit_view": "Ajustar a la vista"
+      "fit_view": "Ajustar a la vista",
+      "zoom_in": "Acercar",
+      "zoom_out": "Alejar"
     },
     "preview": {
       "narrator": "Narrador",

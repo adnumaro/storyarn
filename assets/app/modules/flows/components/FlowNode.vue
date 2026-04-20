@@ -99,7 +99,6 @@ const nodeId = computed(() => {
       :node-type="nodeType"
       :node-data="reactiveNodeData"
       :node-id="nodeId"
-      :zoom="ctx.zoom"
       v-bind="ctx.toolbarProps"
     />
     <component

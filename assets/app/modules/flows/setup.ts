@@ -207,5 +207,12 @@ reteStyles.textContent = `
       radial-gradient(circle at center, color-mix(in oklch, var(--color-foreground, #fafafa) 8%, transparent) 1.5px, transparent 1.5px);
     background-size: 24px 24px;
   }
+
+  /* Lift minimap above the bottom-right toolbar buttons (button row:
+     bottom-3 + size-8 = 44px from bottom; leave a small gap). */
+  .minimap {
+    bottom: 56px !important;
+    right: 14px !important;
+  }
 `;
 document.head.appendChild(reteStyles);

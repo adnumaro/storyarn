@@ -130,7 +130,9 @@
     },
     "minimap": {
       "toggle": "Toggle minimap",
-      "fit_view": "Fit to view"
+      "fit_view": "Fit to view",
+      "zoom_in": "Zoom in",
+      "zoom_out": "Zoom out"
     },
     "preview": {
       "narrator": "Narrator",
