@@ -47,13 +47,26 @@ export function useLive(): LiveInterface {
   return {
     /**
      * Push an event to the LiveView server.
+     *
+     * `$live.pushEvent` is fire-and-forget (no promise, no retry). It throws
+     * when the socket is gone (typical case: cleanup pushEvent from
+     * `onUnmounted` during navigation, where LiveView tore down before the
+     * Vue tree). The caller cannot recover; we catch and warn so an
+     * unhandled promise rejection doesn't break subsequent teardown steps.
      */
     pushEvent: (
       event: string,
       payload: Record<string, unknown> = {},
       callback?: (reply: Record<string, unknown>) => void,
     ) => {
-      $live.pushEvent(event, payload, callback);
+      try {
+        $live.pushEvent(event, payload, callback);
+      } catch (err) {
+        console.warn(
+          `[useLive] pushEvent("${event}") dropped:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
     },
 
     /**
