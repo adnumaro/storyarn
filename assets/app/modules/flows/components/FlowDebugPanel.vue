@@ -39,6 +39,7 @@ import {
 import { computed, ref } from "vue";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Button } from "@components/ui/button/index.ts";
+import { Checkbox } from "@components/ui/checkbox/index.ts";
 import {
   Command,
   CommandEmpty,
@@ -65,15 +66,30 @@ interface DebugChoice {
   valid: boolean;
 }
 
+interface VariableOption {
+  key: string;
+  value: string;
+}
+
+interface VariableConstraints {
+  mode?: "two_state" | "tri_state";
+  max_options?: number | null;
+  [key: string]: unknown;
+}
+
+type VariableValue = string | number | boolean | string[] | null;
+
 interface DebugVariable {
-  value: string | number | boolean | null;
-  initial_value: string | number | boolean | null;
-  previous_value: string | number | boolean | null;
+  value: VariableValue;
+  initial_value: VariableValue;
+  previous_value: VariableValue;
   source: VariableSource;
   block_type: string;
   variable_name: string;
   sheet_shortcut: string;
   changed: boolean;
+  options: VariableOption[] | null;
+  constraints: VariableConstraints | null;
 }
 
 interface DebugCallStackFrame {
@@ -323,6 +339,49 @@ function sourceColor(source: VariableSource): string {
   return varSourceColor[source] ?? "text-muted-foreground";
 }
 
+function displayValue(var_: DebugVariable): string {
+  if (var_.block_type === "select" && typeof var_.value === "string" && var_.options) {
+    return var_.options.find((o) => o.key === var_.value)?.value ?? var_.value;
+  }
+  if (var_.block_type === "multi_select" && Array.isArray(var_.value)) {
+    const options = var_.options;
+    const labels = options
+      ? var_.value.map((k) => options.find((o) => o.key === k)?.value ?? k)
+      : var_.value;
+    return labels.length === 0 ? "" : labels.join(", ");
+  }
+  return formatDebugValue(var_.value);
+}
+
+function isReadOnlyVariable(var_: DebugVariable): boolean {
+  return var_.block_type === "formula";
+}
+
+function isTriStateBoolean(var_: DebugVariable): boolean {
+  return var_.block_type === "boolean" && var_.constraints?.mode === "tri_state";
+}
+
+function selectedMultiKeys(var_: DebugVariable): string[] {
+  return Array.isArray(var_.value) ? (var_.value as string[]) : [];
+}
+
+function cycleTriState(var_: DebugVariable, key: string) {
+  const cur = var_.value;
+  let next: "true" | "false" | "nil";
+  if (cur === true) next = "false";
+  else if (cur === false) next = "nil";
+  else next = "true";
+  submitEdit(key, next);
+}
+
+function toggleMultiOption(var_: DebugVariable, key: string, optionKey: string) {
+  const current = selectedMultiKeys(var_);
+  const next = current.includes(optionKey)
+    ? current.filter((k) => k !== optionKey)
+    : [...current, optionKey];
+  live.pushEvent("debug_set_variable", { key, value: next });
+}
+
 function historySourceLabelKey(source: HistorySource): string | null {
   if (source === "instruction") return "flows.debug.history_source_instruction";
   if (source === "user_override") return "flows.debug.history_source_user";
@@ -345,7 +404,8 @@ function toggleChangedOnly() {
   live.pushEvent("debug_var_toggle_changed", {});
 }
 
-function startEdit(key: string) {
+function startEdit(var_: DebugVariable, key: string) {
+  if (isReadOnlyVariable(var_)) return;
   editingVar.value = key;
 }
 
@@ -871,9 +931,34 @@ function continuePastLimit() {
                 class="text-left tabular-nums py-1 px-2 overflow-hidden"
                 :class="var_.changed ? sourceColor(var_.source) : 'text-muted-foreground/70'"
               >
-                <!-- Inline edit: boolean -->
+                <!-- Inline edit: boolean tri-state (cycle button like sheets) -->
+                <button
+                  v-if="var_.block_type === 'boolean' && isTriStateBoolean(var_)"
+                  type="button"
+                  class="inline-flex items-center gap-2 px-2 py-0.5 rounded border border-border text-xs hover:bg-accent transition-colors w-full"
+                  @click="cycleTriState(var_, key)"
+                >
+                  <span
+                    class="size-2 rounded-full shrink-0"
+                    :class="{
+                      'bg-green-500': var_.value === true,
+                      'bg-red-500': var_.value === false,
+                      'bg-muted-foreground/30': var_.value == null,
+                    }"
+                  />
+                  <span class="truncate">
+                    {{
+                      var_.value === true
+                        ? $t("flows.debug.bool_true")
+                        : var_.value === false
+                          ? $t("flows.debug.bool_false")
+                          : $t("flows.debug.bool_nil")
+                    }}
+                  </span>
+                </button>
+                <!-- Inline edit: boolean 2-state -->
                 <div
-                  v-if="editingVar === key && var_.block_type === 'boolean'"
+                  v-else-if="editingVar === key && var_.block_type === 'boolean'"
                   class="flex w-full border border-border rounded overflow-hidden"
                 >
                   <button
@@ -913,7 +998,89 @@ function continuePastLimit() {
                   @keydown.enter="onEditEnter(key, $event)"
                   @keydown.escape="cancelEdit"
                 />
-                <!-- Inline edit: text -->
+                <!-- Inline edit: date -->
+                <input
+                  v-else-if="editingVar === key && var_.block_type === 'date'"
+                  type="date"
+                  :value="var_.value ?? ''"
+                  autofocus
+                  class="w-full h-5 px-1 text-xs bg-background border border-primary rounded text-sky-500 focus:outline-none"
+                  @blur="onEditBlur(key, $event)"
+                  @keydown.enter="onEditEnter(key, $event)"
+                  @keydown.escape="cancelEdit"
+                />
+                <!-- Inline edit: select (Popover + Command) -->
+                <Popover
+                  v-else-if="editingVar === key && var_.block_type === 'select'"
+                  :open="true"
+                  @update:open="(open) => !open && cancelEdit()"
+                >
+                  <PopoverTrigger as-child>
+                    <button
+                      type="button"
+                      class="w-full text-left text-xs px-1 min-h-5 border border-primary rounded bg-background"
+                    >
+                      {{ displayValue(var_) || $t("flows.debug.select_option") }}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent class="w-56 p-0" align="start">
+                    <Command>
+                      <CommandInput :placeholder="$t('flows.debug.search_options')" />
+                      <CommandList>
+                        <CommandEmpty>{{ $t("flows.debug.no_options") }}</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            v-for="opt in var_.options || []"
+                            :key="opt.key"
+                            :value="opt.value"
+                            :class="opt.key === var_.value ? 'font-semibold' : ''"
+                            @select="submitEdit(key, opt.key)"
+                          >
+                            {{ opt.value }}
+                          </CommandItem>
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <!-- Inline edit: multi_select (Popover + Command with checkboxes) -->
+                <Popover
+                  v-else-if="editingVar === key && var_.block_type === 'multi_select'"
+                  :open="true"
+                  @update:open="(open) => !open && cancelEdit()"
+                >
+                  <PopoverTrigger as-child>
+                    <button
+                      type="button"
+                      class="w-full text-left text-xs px-1 min-h-5 border border-primary rounded bg-background truncate"
+                    >
+                      {{ displayValue(var_) || $t("flows.debug.select_options") }}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent class="w-56 p-0" align="start">
+                    <Command>
+                      <CommandInput :placeholder="$t('flows.debug.search_options')" />
+                      <CommandList>
+                        <CommandEmpty>{{ $t("flows.debug.no_options") }}</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            v-for="opt in var_.options || []"
+                            :key="opt.key"
+                            :value="opt.value"
+                            @select="toggleMultiOption(var_, key, opt.key)"
+                          >
+                            <Checkbox
+                              :model-value="selectedMultiKeys(var_).includes(opt.key)"
+                              class="mr-2 pointer-events-none"
+                            />
+                            {{ opt.value }}
+                          </CommandItem>
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <!-- Inline edit: text (fallback) -->
                 <input
                   v-else-if="editingVar === key"
                   type="text"
@@ -927,13 +1094,20 @@ function continuePastLimit() {
                 <!-- Display -->
                 <div
                   v-else
-                  class="cursor-pointer hover:bg-muted rounded px-1 -mx-1 truncate block w-full min-h-5"
-                  :title="$t('flows.debug.click_to_edit')"
-                  @click="startEdit(key)"
+                  class="rounded px-1 -mx-1 truncate block w-full min-h-5"
+                  :class="
+                    isReadOnlyVariable(var_)
+                      ? 'cursor-default text-muted-foreground/70'
+                      : 'cursor-pointer hover:bg-muted'
+                  "
+                  :title="
+                    isReadOnlyVariable(var_) ? undefined : $t('flows.debug.click_to_edit')
+                  "
+                  @click="startEdit(var_, key)"
                 >
                   <span v-if="var_.changed" :class="sourceColor(var_.source)">◆ </span>
                   <span :class="var_.changed ? 'font-semibold' : ''">
-                    {{ formatDebugValue(var_.value) }}
+                    {{ displayValue(var_) }}
                   </span>
                 </div>
               </td>

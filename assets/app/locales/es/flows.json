@@ -167,7 +167,14 @@
       "no_history": "Aún no hay cambios de variables",
       "no_path": "Aún no hay pasos",
       "set_breakpoint": "Poner breakpoint",
-      "remove_breakpoint": "Quitar breakpoint"
+      "remove_breakpoint": "Quitar breakpoint",
+      "select_option": "Selecciona una opción",
+      "select_options": "Selecciona opciones",
+      "search_options": "Buscar opciones...",
+      "no_options": "Sin opciones",
+      "bool_true": "Sí",
+      "bool_false": "No",
+      "bool_nil": "Sin valor"
     },
     "minimap": {
       "toggle": "Alternar minimapa",
