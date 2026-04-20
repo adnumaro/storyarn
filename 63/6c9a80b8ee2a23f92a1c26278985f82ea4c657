@@ -1,0 +1,76 @@
+lib/storyarn_web/live/project_live/show.ex
+  ef89dbf9b28de738 102-108
+lib/storyarn_web/live/flow_live/index.ex
+  ef89dbf9b28de738 136-138
+lib/storyarn_web/live/sheet_live/show.ex
+  ef89dbf9b28de738 787-789
+lib/storyarn_web/live/asset_live/index.ex
+  ef89dbf9b28de738 89-94
+lib/storyarn_web/live/flow_live/show.ex
+  ef89dbf9b28de738 1420-1422
+lib/storyarn_web/live/scene_live/show.ex
+  ef89dbf9b28de738 1815-1817,1819-1821
+lib/storyarn_web/live/scene_live/index.ex
+  ef89dbf9b28de738 134-136
+lib/storyarn_web/live/sheet_live/index.ex
+  ef89dbf9b28de738 135-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "636c9a80b8ee2a23f92a1c26278985f82ea4c657",
+  "prompts": {
+    "06e8f7f0c4194725": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e347729-76ca-4ac2-b7af-d62f7110ed14",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 696,
+      "overriden_lines": 0
+    },
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 797,
+      "overriden_lines": 0
+    },
+    "b5e1bb47b647b01a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da948ded-a770-4715-803c-ee52cc73c164",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 8072,
+      "overriden_lines": 0
+    },
+    "ef89dbf9b28de738": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45587282-275e-4e38-aee1-d626b574231e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 36,
+      "total_deletions": 3,
+      "accepted_lines": 1306,
+      "overriden_lines": 0
+    }
+  }
+}
