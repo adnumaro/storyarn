@@ -1,0 +1,66 @@
+assets/app/modules/flows/components/FlowDebugPanel.vue
+  ef89dbf9b28de738 10-13,17,19,23,26-28,34,37,116-120,130-131,134,137-153,219-296,1018-1024,1026-1087
+assets/app/locales/en/flows.json
+  ef89dbf9b28de738 167-170
+assets/app/locales/es/flows.json
+  ef89dbf9b28de738 167-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "ad78a35620ce4cb92455873757e616ae1003a1ba",
+  "prompts": {
+    "06e8f7f0c4194725": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e347729-76ca-4ac2-b7af-d62f7110ed14",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 696,
+      "overriden_lines": 0
+    },
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 797,
+      "overriden_lines": 0
+    },
+    "b5e1bb47b647b01a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da948ded-a770-4715-803c-ee52cc73c164",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 8070,
+      "overriden_lines": 0
+    },
+    "ef89dbf9b28de738": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45587282-275e-4e38-aee1-d626b574231e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 192,
+      "total_deletions": 8,
+      "accepted_lines": 192,
+      "overriden_lines": 0
+    }
+  }
+}
