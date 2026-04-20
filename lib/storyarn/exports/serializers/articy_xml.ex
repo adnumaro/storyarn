@@ -293,18 +293,6 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
     ]
   end
 
-  defp build_articy_node(%{type: "slug_line"} = node, _speaker_map) do
-    data = node.data || %{}
-    guid = generate_guid("node:#{node.id}")
-    location = data["location"] || data["slug_line"] || ""
-
-    [
-      ~s(          <LocationSettings Id="#{guid}" TechnicalName="scene_#{node.id}">),
-      ~s(            <Location>#{escape_xml(location)}</Location>),
-      ~s(          </LocationSettings>)
-    ]
-  end
-
   defp build_articy_node(%{type: "subflow"} = node, _speaker_map) do
     data = node.data || %{}
     guid = generate_guid("node:#{node.id}")

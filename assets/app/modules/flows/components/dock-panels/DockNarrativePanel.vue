@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Clapperboard, MessageSquare } from "lucide-vue-next";
+import { MessageSquare } from "lucide-vue-next";
 import type { Component } from "vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -25,12 +25,6 @@ const narrativeNodes = computed<DockNodeEntry[]>(() => [
     icon: MessageSquare,
     title: t("flows.node_types.dialogue"),
     description: t("flows.dock.dialogue_desc"),
-  },
-  {
-    type: "slug_line",
-    icon: Clapperboard,
-    title: t("flows.node_types.slug_line"),
-    description: t("flows.dock.slug_line_desc"),
   },
 ]);
 

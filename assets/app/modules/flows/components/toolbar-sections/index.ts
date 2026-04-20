@@ -6,5 +6,4 @@ export { default as ExitToolbar } from "./ExitToolbar.vue";
 export { default as HubToolbar } from "./HubToolbar.vue";
 export { default as InstructionToolbar } from "./InstructionToolbar.vue";
 export { default as JumpToolbar } from "./JumpToolbar.vue";
-export { default as SlugLineToolbar } from "./SlugLineToolbar.vue";
 export { default as SubflowToolbar } from "./SubflowToolbar.vue";

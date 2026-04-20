@@ -34,10 +34,6 @@ const NODE_COLOR_RESOLVERS: Record<string, ColorResolver> = {
     if (!d.speaker_sheet_id) return null;
     return sheetsMap?.[String(d.speaker_sheet_id)]?.color ?? null;
   },
-  slug_line: (d, sheetsMap) => {
-    if (!d.location_sheet_id) return null;
-    return sheetsMap?.[String(d.location_sheet_id)]?.color ?? null;
-  },
   hub: (d) => (d.color_hex as string) || null,
   exit: (d) => (d.color_hex as string) || (d.outcome_color as string) || null,
   jump: (d, _sheetsMap, hubsMap) => {

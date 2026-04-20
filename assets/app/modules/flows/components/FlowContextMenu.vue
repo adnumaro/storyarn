@@ -2,7 +2,6 @@
 import {
   ArrowRightToLine,
   Box,
-  Clapperboard,
   Copy,
   GitBranch,
   Hash,
@@ -55,7 +54,6 @@ const NODE_TYPES = computed<NodeTypeEntry[]>(() => [
   { type: "jump", icon: LogOut, label: t("flows.node_types.jump") },
   { type: "exit", icon: ArrowRightToLine, label: t("flows.node_types.exit") },
   { type: "subflow", icon: Box, label: t("flows.node_types.subflow") },
-  { type: "slug_line", icon: Clapperboard, label: t("flows.node_types.slug_line") },
 ]);
 
 const isNodeMenu = computed(() => selectedNodeId != null && visible.value);

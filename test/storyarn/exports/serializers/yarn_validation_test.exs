@@ -294,25 +294,6 @@ defmodule Storyarn.Exports.Serializers.YarnValidationTest do
              "ysc rejected jump/hub:\n#{inspect(YarnCompiler.validate(source))}"
     end
 
-    test "scene command compiles", %{project: project} do
-      flow = flow_fixture(project, %{name: "Scene"})
-      flow = reload_flow(flow)
-      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
-
-      scene =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"location" => "Tavern"}
-        })
-
-      connection_fixture(flow, entry, scene)
-
-      source = yarn_source(export_files(project))
-
-      assert YarnCompiler.valid?(source),
-             "ysc rejected scene:\n#{inspect(YarnCompiler.validate(source))}"
-    end
-
     test "conditional choice compiles", %{project: project} do
       sheet = sheet_fixture(project, %{name: "Hero"})
 

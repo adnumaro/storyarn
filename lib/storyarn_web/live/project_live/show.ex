@@ -185,7 +185,6 @@ defmodule StoryarnWeb.ProjectLive.Show do
   defp node_type_label("instruction"), do: dgettext("flows", "Instruction")
   defp node_type_label("hub"), do: dgettext("flows", "Hub")
   defp node_type_label("jump"), do: dgettext("flows", "Jump")
-  defp node_type_label("slug_line"), do: dgettext("flows", "Slug Line")
   defp node_type_label("subflow"), do: dgettext("flows", "Subflow")
   defp node_type_label("entry"), do: dgettext("flows", "Entry")
   defp node_type_label("exit"), do: dgettext("flows", "Exit")

@@ -500,14 +500,6 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   @doc """
-  Lists active scene IDs referenced by slug_line nodes in a project.
-  Delegates to the Scenes context to avoid cross-context schema queries.
-  """
-  def list_valid_scene_ids_in_project(project_id) do
-    Scenes.list_active_scene_ids(project_id)
-  end
-
-  @doc """
   Lists flow nodes using a specific asset (audio_asset_id in data).
   Used by the Assets context for usage tracking.
   Returns a list of maps with node and flow info.

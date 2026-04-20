@@ -904,9 +904,6 @@ defmodule Storyarn.Flows do
   @doc "Lists all non-deleted nodes for the given flow IDs."
   defdelegate list_nodes_for_flow_ids(flow_ids), to: FlowCrud
 
-  @doc "Lists active scene IDs in a project (for validator cross-reference checks)."
-  defdelegate list_valid_scene_ids_in_project(project_id), to: FlowCrud
-
   @doc "Lists flow nodes using a specific asset (audio_asset_id in data)."
   defdelegate list_nodes_using_asset(project_id, asset_id), to: FlowCrud
 

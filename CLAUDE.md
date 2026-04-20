@@ -105,7 +105,7 @@ Block types: `number`, `select`, `multi_select`, `boolean`, `text`, `rich_text`,
 
 ## Flow Editor
 
-Node types: `entry`, `exit`, `dialogue`, `condition`, `instruction`, `hub`, `jump`, `slug_line`, `subflow`, `annotation`
+Node types: `entry`, `exit`, `dialogue`, `condition`, `instruction`, `hub`, `jump`, `subflow`, `annotation`
 
 Per-type architecture: each `lib/storyarn_web/live/flow_live/nodes/{type}/node.ex` contains all metadata and handlers.
 

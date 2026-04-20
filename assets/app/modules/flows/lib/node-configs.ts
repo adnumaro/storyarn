@@ -14,7 +14,6 @@ export type FlowNodeType =
   | "hub"
   | "jump"
   | "subflow"
-  | "slug_line"
   | "annotation";
 
 export interface NodeConfig {
@@ -83,12 +82,6 @@ export const NODE_CONFIGS: Record<FlowNodeType, NodeConfig> = {
     inputs: ["input"],
     outputs: ["output"],
     dynamicOutputs: true,
-  },
-  slug_line: {
-    label: "Slug Line",
-    color: "#78716c",
-    inputs: ["input"],
-    outputs: ["output"],
   },
   annotation: {
     label: "Note",

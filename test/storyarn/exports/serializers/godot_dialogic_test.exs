@@ -524,22 +524,6 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
       assert source =~ "jump side_quest_rescue/"
     end
 
-    test "slug_line node renders location comment", %{project: project} do
-      flow = flow_fixture(project, %{name: "Slug Line Flow"})
-      flow = reload_flow(flow)
-      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
-
-      slug_line =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"location" => "Tavern Interior"}
-        })
-
-      connection_fixture(flow, entry, slug_line)
-
-      source = dtl_source(export_dialogic(project))
-      assert source =~ "# location: Tavern Interior"
-    end
   end
 
   # =============================================================================
@@ -801,31 +785,6 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
       assert source =~ "Welcome!"
       assert has_line_matching?(source, ~r/^set \{.+\.visited\} = true$/)
       assert has_line?(source, "[end_timeline]")
-    end
-
-    test "entry -> slug_line -> dialogue chain", %{project: project} do
-      flow = flow_fixture(project, %{name: "Slug Line Chain"})
-      flow = reload_flow(flow)
-      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
-
-      slug_line =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"location" => "Dark Forest"}
-        })
-
-      dialogue =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"text" => "The forest is dark.", "speaker_sheet_id" => nil, "responses" => []}
-        })
-
-      connection_fixture(flow, entry, slug_line)
-      connection_fixture(flow, slug_line, dialogue)
-
-      source = dtl_source(export_dialogic(project))
-      assert source =~ "# location: Dark Forest"
-      assert source =~ "The forest is dark."
     end
 
     test "dialogue with choices having conditions and instructions", %{project: project} do
@@ -1144,25 +1103,6 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
 
   describe "additional coverage" do
     setup [:create_project]
-
-    test "slug_line node with slug_line field fallback renders location comment", %{
-      project: project
-    } do
-      flow = flow_fixture(project, %{name: "Slug Line Field Flow"})
-      flow = reload_flow(flow)
-      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
-
-      slug_line =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"slug_line" => "INT. TAVERN"}
-        })
-
-      connection_fixture(flow, entry, slug_line)
-
-      source = dtl_source(export_dialogic(project))
-      assert has_line?(source, "# location: INT. TAVERN")
-    end
 
     test "subflow with nil shortcut uses node id fallback", %{project: project} do
       flow = flow_fixture(project, %{name: "Nil Subflow Flow"})

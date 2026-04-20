@@ -508,7 +508,6 @@ mix test --cover            # Tests with coverage (threshold: 85%)
 | `condition`   | `%{condition: %{logic, rules: [%{id, sheet, variable, operator, value, label}]}, switch_mode}`                                                            | `properties_panels.ex`, `storyarn_node.js`, `condition_builder.ex`               |
 | `instruction` | `%{assignments: [%{...}], description}`                                                                                                                   | `properties_panels.ex`, `storyarn_node.js`, `instruction_builder.ex`             |
 | `jump`        | `%{target_hub_id}`                                                                                                                                        | `properties_panels.ex`, `storyarn_node.js`                                       |
-| `slug_line`   | `%{location_sheet_id, int_ext, sub_location, time_of_day, description, technical_id}`                                                                     | `properties_panels.ex`, `storyarn_node.js`                                       |
 | `subflow`     | `%{referenced_flow_id}`                                                                                                                                   | `properties_panels.ex`, `storyarn_node.js`                                       |
 
 ### File Size Limits

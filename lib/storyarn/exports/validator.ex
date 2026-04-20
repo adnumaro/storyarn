@@ -362,17 +362,14 @@ defmodule Storyarn.Exports.Validator do
   # Check: broken_references (error)
   # =============================================================================
 
-  defp check_broken_references(project_id, flows) do
+  defp check_broken_references(_project_id, flows) do
     # Check jump nodes referencing non-existent hubs
     jump_findings = check_broken_jump_refs(flows)
 
     # Check subflow nodes referencing deleted/non-existent flows
     subflow_findings = check_broken_subflow_refs(flows)
 
-    # Check slug_line nodes referencing non-existent scenes
-    slug_line_findings = check_broken_slug_line_refs(project_id, flows)
-
-    jump_findings ++ subflow_findings ++ slug_line_findings
+    jump_findings ++ subflow_findings
   end
 
   defp check_broken_jump_refs(flows) do
@@ -433,34 +430,6 @@ defmodule Storyarn.Exports.Validator do
           flow_name: flow.name,
           node_id: node.id,
           ref_type: :flow
-        }
-      end)
-    end)
-  end
-
-  defp check_broken_slug_line_refs(project_id, flows) do
-    valid_scene_ids = Flows.list_valid_scene_ids_in_project(project_id)
-
-    Enum.flat_map(flows, fn flow ->
-      flow.nodes
-      |> Enum.filter(fn node ->
-        node.type == "slug_line" and has_broken_ref?(node, "scene_id", valid_scene_ids)
-      end)
-      |> Enum.map(fn node ->
-        %{
-          level: :error,
-          rule: :broken_references,
-          message:
-            dgettext(
-              "projects",
-              "Slug line node (id: %{node_id}) in flow \"%{flow_name}\" references non-existent scene",
-              node_id: node.id,
-              flow_name: flow.name
-            ),
-          flow_id: flow.id,
-          flow_name: flow.name,
-          node_id: node.id,
-          ref_type: :scene
         }
       end)
     end)

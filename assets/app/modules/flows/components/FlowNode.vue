@@ -13,7 +13,6 @@ import ExitNode from "../nodes/ExitNode.vue";
 import HubNode from "../nodes/HubNode.vue";
 import InstructionNode from "../nodes/InstructionNode.vue";
 import JumpNode from "../nodes/JumpNode.vue";
-import SlugLineNode from "../nodes/SlugLineNode.vue";
 import SubflowNode from "../nodes/SubflowNode.vue";
 import { FLOW_CONTEXT_KEY } from "../setup";
 import FlowNodeToolbar from "@modules/flows/components/FlowNodeToolbar.vue";
@@ -46,7 +45,6 @@ const NODE_COMPONENTS: Record<string, Component> = {
   hub: HubNode,
   jump: JumpNode,
   subflow: SubflowNode,
-  slug_line: SlugLineNode,
   annotation: AnnotationNode,
 };
 

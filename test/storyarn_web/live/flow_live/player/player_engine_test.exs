@@ -258,35 +258,6 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
     end
   end
 
-  describe "step_until_interactive/4 with entry -> slug_line -> exit" do
-    setup do
-      nodes =
-        nodes_map([
-          make_node(1, "entry"),
-          make_node(2, "slug_line", %{"text" => "A dark forest"}),
-          make_node(3, "exit")
-        ])
-
-      connections = [
-        make_connection(1, 2),
-        make_connection(2, 3)
-      ]
-
-      state = init_state(1)
-
-      %{nodes: nodes, connections: connections, state: state}
-    end
-
-    test "auto-advances through entry and slug_line to exit", ctx do
-      {status, _state, skipped} =
-        PlayerEngine.step_until_interactive(ctx.state, ctx.nodes, ctx.connections)
-
-      assert status == :finished
-      assert {1, "entry"} in skipped
-      assert {2, "slug_line"} in skipped
-    end
-  end
-
   describe "step_until_interactive/4 with jump node" do
     setup do
       hub_data = %{"hub_id" => "main_hub"}
@@ -552,7 +523,7 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
         nodes_map([
           make_node(1, "entry"),
           make_node(2, "hub"),
-          make_node(3, "slug_line", %{}),
+          make_node(3, "instruction", %{}),
           make_node(4, "exit")
         ])
 
@@ -579,7 +550,7 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
       {_status, _state, skipped} =
         PlayerEngine.step_until_interactive(ctx.state, ctx.nodes, ctx.connections)
 
-      assert skipped == [{1, "entry"}, {2, "hub"}, {3, "slug_line"}]
+      assert skipped == [{1, "entry"}, {2, "hub"}, {3, "instruction"}]
     end
   end
 
@@ -1020,7 +991,7 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
   end
 
   describe "step_until_interactive/4 with all non-interactive types in sequence" do
-    test "traverses entry, hub, slug_line, condition, instruction, jump to hub, then exit" do
+    test "traverses entry, hub, condition, instruction, jump to hub, then exit" do
       condition_data = %{
         "condition" => %{"logic" => "all", "rules" => []}
       }
@@ -1032,22 +1003,20 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
         nodes_map([
           make_node(1, "entry"),
           make_node(2, "hub"),
-          make_node(3, "slug_line", %{}),
-          make_node(4, "condition", condition_data),
-          make_node(5, "instruction", instruction_data),
-          make_node(6, "jump", %{"target_hub_id" => "target_hub"}),
-          make_node(7, "hub", hub2_data),
-          make_node(8, "exit")
+          make_node(3, "condition", condition_data),
+          make_node(4, "instruction", instruction_data),
+          make_node(5, "jump", %{"target_hub_id" => "target_hub"}),
+          make_node(6, "hub", hub2_data),
+          make_node(7, "exit")
         ])
 
       connections = [
         make_connection(1, 2),
         make_connection(2, 3),
-        make_connection(3, 4),
-        make_connection(4, 5, "true"),
-        make_connection(5, 6),
-        # jump goes to hub 7 via hub_id lookup
-        make_connection(7, 8)
+        make_connection(3, 4, "true"),
+        make_connection(4, 5),
+        # jump goes to hub 6 via hub_id lookup
+        make_connection(6, 7)
       ]
 
       state = init_state(1)
@@ -1060,7 +1029,6 @@ defmodule StoryarnWeb.FlowLive.Player.PlayerEngineTest do
       skipped_types = Enum.map(skipped, fn {_id, type} -> type end)
       assert "entry" in skipped_types
       assert "hub" in skipped_types
-      assert "slug_line" in skipped_types
       assert "condition" in skipped_types
       assert "instruction" in skipped_types
       assert "jump" in skipped_types

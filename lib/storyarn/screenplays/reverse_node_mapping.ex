@@ -37,7 +37,6 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
   # ---------------------------------------------------------------------------
 
   defp map_node(%FlowNode{type: "entry"} = node), do: map_entry(node)
-  defp map_node(%FlowNode{type: "slug_line"} = node), do: map_scene(node)
   defp map_node(%FlowNode{type: "dialogue"} = node), do: map_dialogue(node)
   defp map_node(%FlowNode{type: "condition"} = node), do: map_condition(node)
   defp map_node(%FlowNode{type: "instruction"} = node), do: map_instruction(node)
@@ -53,36 +52,6 @@ defmodule Storyarn.Screenplays.ReverseNodeMapping do
 
   defp map_entry(%FlowNode{id: id}) do
     [%{type: "scene_heading", content: "INT. - DAY", data: nil, source_node_id: id}]
-  end
-
-  # ---------------------------------------------------------------------------
-  # Scene → scene_heading (reconstructed from data)
-  # ---------------------------------------------------------------------------
-
-  defp map_scene(%FlowNode{id: id, data: data}) do
-    [
-      %{
-        type: "scene_heading",
-        content: reconstruct_scene_heading(data || %{}),
-        data: nil,
-        source_node_id: id
-      }
-    ]
-  end
-
-  defp reconstruct_scene_heading(data) do
-    prefix =
-      case data["int_ext"] do
-        "ext" -> "EXT."
-        _ -> "INT."
-      end
-
-    desc = data["description"] || ""
-    time = data["time_of_day"]
-
-    if time && time != "",
-      do: "#{prefix} #{desc} - #{time}",
-      else: "#{prefix} #{desc}"
   end
 
   # ---------------------------------------------------------------------------

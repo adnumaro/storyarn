@@ -15,7 +15,6 @@ defmodule Storyarn.Flows.FlowNode do
   - `condition` - A branching point based on game state or variables
   - `instruction` - An action to execute (set variable, trigger event, etc.)
   - `jump` - A reference to another flow or node
-  - `slug_line` - A slug line establishing location and time context
   """
   use Ecto.Schema
 
@@ -26,7 +25,7 @@ defmodule Storyarn.Flows.FlowNode do
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Shared.TimeHelpers
 
-  @node_types ~w(annotation dialogue hub condition instruction jump entry exit subflow slug_line)
+  @node_types ~w(annotation dialogue hub condition instruction jump entry exit subflow)
   @valid_sources ~w(manual screenplay_sync)
 
   @type node_type ::
@@ -39,7 +38,6 @@ defmodule Storyarn.Flows.FlowNode do
           | :entry
           | :exit
           | :subflow
-          | :slug_line
   @type t :: %__MODULE__{
           id: integer() | nil,
           type: String.t() | nil,

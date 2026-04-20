@@ -470,45 +470,6 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
   end
 
   # ===========================================================================
-  # show_continue? with slug_line node
-  # ===========================================================================
-
-  describe "slug_line node in player" do
-    test "renders slug_line slide with continue button", %{conn: conn, project: project} do
-      flow = flow_fixture(project, %{name: "Slug Line Node Flow"})
-      {entry, auto_exit} = get_auto_nodes(flow)
-
-      slug_line_node =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{
-            "setting" => "INT",
-            "location_name" => "Castle",
-            "sub_location" => "Throne Room",
-            "time_of_day" => "night",
-            "description" => "<p>A dark throne room</p>"
-          },
-          position_x: 200.0,
-          position_y: 0.0
-        })
-
-      _conn1 = connection_fixture(flow, entry, slug_line_node)
-      _conn2 = connection_fixture(flow, slug_line_node, auto_exit)
-
-      {:ok, view, _html} = live(conn, player_url(project, flow))
-
-      vue = get_player_vue(view)
-      assert vue.component == "modules/flows/player/FlowPlayer"
-
-      # Continue from slug_line node should advance to exit
-      render_click(view, "continue")
-
-      vue = get_player_vue(view)
-      assert vue.props["slide"]["type"] in ["slug_line", "outcome"]
-    end
-  end
-
-  # ===========================================================================
   # Cross-flow (subflow) navigation
   # ===========================================================================
 

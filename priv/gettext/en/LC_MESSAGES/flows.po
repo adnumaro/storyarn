@@ -245,12 +245,6 @@ msgstr ""
 msgid "Note"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/nodes/slug_line/node.ex:20
-#: lib/storyarn_web/live/project_live/show.ex:181
-#, elixir-autogen, elixir-format
-msgid "Slug Line"
-msgstr ""
-
 #: lib/storyarn_web/live/flow_live/nodes/condition/node.ex:17
 #, elixir-autogen, elixir-format
 msgid "Branch based on variable conditions"
@@ -301,11 +295,6 @@ msgstr ""
 #: lib/storyarn_web/live/flow_live/nodes/hub/node.ex:18
 #, elixir-autogen, elixir-format
 msgid "Named junction for jump targets"
-msgstr ""
-
-#: lib/storyarn_web/live/flow_live/nodes/slug_line/node.ex:21
-#, elixir-autogen, elixir-format
-msgid "Scene heading or location marker"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/nodes/instruction/node.ex:16

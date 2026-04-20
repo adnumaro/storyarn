@@ -140,27 +140,6 @@ defmodule Storyarn.Flows.Evaluator.EngineTest do
   end
 
   # =============================================================================
-  # Scene pass-through
-  # =============================================================================
-
-  describe "slug_line node" do
-    test "passes through to next node" do
-      nodes = %{
-        1 => node(1, "entry"),
-        2 => node(2, "slug_line"),
-        3 => node(3, "exit")
-      }
-
-      conns = [conn(1, "default", 2), conn(2, "default", 3)]
-      state = Engine.init(%{}, 1)
-
-      {:ok, state} = Engine.step(state, nodes, conns)
-      {:ok, state} = Engine.step(state, nodes, conns)
-      assert state.current_node_id == 3
-    end
-  end
-
-  # =============================================================================
   # Jump node → target hub (same flow)
   # =============================================================================
 

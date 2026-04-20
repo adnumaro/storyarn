@@ -219,22 +219,6 @@ defmodule Storyarn.Exports.Serializers.GraphTraversalTest do
       assert :subflow in types
     end
 
-    test "slug_line node is linearized" do
-      flow =
-        make_flow(
-          [
-            make_node(1, "entry"),
-            make_node(2, "slug_line", %{"location" => "Office"}),
-            make_node(3, "exit")
-          ],
-          [make_conn(1, 2), make_conn(2, 3)]
-        )
-
-      {instructions, _} = GraphTraversal.linearize(flow)
-      types = instruction_types(instructions)
-      assert :slug_line in types
-    end
-
     test "cycle detection on non-hub node emits nothing" do
       # When a non-hub node is revisited, the traversal just stops (no divert emitted).
       # Create a loop: entry → dialogue → dialogue (back to self via connection).

@@ -237,12 +237,6 @@ defmodule Storyarn.Exports.Serializers.Ink do
     end
   end
 
-  defp render_instruction({:slug_line, node}, _ctx, depth) do
-    data = node.data || %{}
-    location = data["location"] || data["slug_line"] || ""
-    ["#{indent(depth)}# location:#{location}"]
-  end
-
   defp render_instruction({:subflow, node}, _ctx, depth) do
     data = node.data || %{}
     target = Helpers.shortcut_to_identifier(data["flow_shortcut"] || "subflow_#{node.id}")

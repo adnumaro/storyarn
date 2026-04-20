@@ -90,20 +90,6 @@ function flowFinish() {
         </div>
       </template>
 
-      <!-- Slug line -->
-      <template v-else-if="slideType === 'slug_line' && slide">
-        <div class="font-mono text-xs font-bold text-muted-foreground uppercase tracking-widest">
-          {{ slide.setting }}. {{ slide.locationName }}
-          <span v-if="slide.subLocation"> — {{ slide.subLocation }}</span>
-          <span v-if="slide.timeOfDay"> — {{ slide.timeOfDay.toUpperCase() }}</span>
-        </div>
-        <div
-          v-if="slide.description"
-          class="mt-1.5 text-sm text-foreground/70"
-          v-html="slide.description"
-        />
-      </template>
-
       <!-- Outcome -->
       <template v-else-if="slideType === 'outcome' && slide">
         <div v-if="slide.text" class="text-sm text-foreground" v-html="slide.text" />

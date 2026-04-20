@@ -13,7 +13,6 @@ import {
   HubToolbar,
   InstructionToolbar,
   JumpToolbar,
-  SlugLineToolbar,
   SubflowToolbar,
 } from "./toolbar-sections";
 
@@ -53,7 +52,6 @@ const TOOLBAR_COMPONENTS: Record<string, Component> = {
   jump: JumpToolbar,
   exit: ExitToolbar,
   subflow: SubflowToolbar,
-  slug_line: SlugLineToolbar,
 };
 
 const activeComponent = computed<Component | null>(() => TOOLBAR_COMPONENTS[nodeType] ?? null);

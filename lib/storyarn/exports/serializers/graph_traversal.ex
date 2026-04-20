@@ -29,7 +29,6 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
           | {:condition_branch, pin :: String.t(), label :: String.t(), index :: non_neg_integer()}
           | {:condition_end, node :: map()}
           | {:instruction, node :: map()}
-          | {:slug_line, node :: map()}
           | {:subflow, node :: map()}
           | {:jump, node :: map(), target_label :: String.t()}
           | {:divert, target_label :: String.t()}
@@ -182,12 +181,6 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
 
   defp traverse_node(%{type: "subflow"} = node, state) do
     state = %{state | instructions: [{:subflow, node} | state.instructions]}
-    targets = outgoing(state, node.id)
-    traverse_targets(targets, state)
-  end
-
-  defp traverse_node(%{type: "slug_line"} = node, state) do
-    state = %{state | instructions: [{:slug_line, node} | state.instructions]}
     targets = outgoing(state, node.id)
     traverse_targets(targets, state)
   end

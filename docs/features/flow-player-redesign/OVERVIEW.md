@@ -42,7 +42,7 @@ Adobe Premiere uses "Sequence" as the native term for multi-track timeline compo
 9. **Multi-sequence per flow** from v1. Branches from a Choice can go to different Sequences — shown as "🚪 Sequence: X [Open →]" markers at the edge of the source Sequence's timeline.
 10. **Only static images + audio in v1.** Video on nodes is deferred future feature.
 11. **Transitions in v1**: `cut` (default), `fade_black`, `fade_white`, `crossfade`. Duration configurable, default 500ms image / 1s audio.
-12. **Drop `location_sheet_id` from slug_line** — dead indirection, replaced by `sequence_directive`.
+12. **Delete `slug_line` node type entirely** (2026-04-20 decision, supersedes the earlier "drop `location_sheet_id`" plan). Its role (establishing location / time context) is fully covered by the Sequence entity + its tracks. User: *"slug_line ya no tiene valor. Probablemente hay que eliminarlo."*
 13. **Drop `flow.scene_id` routing through FlowPlayer.** That field stays for ExplorationPlayer context only (pointing at a `Storyarn.Scenes.Scene`, not a Sequence).
 14. ~~**Flatten Vue tree**: inline `PlayerSlide.vue` / `PlayerChoices.vue` / `PlayerOutcome.vue` as v-if branches inside `FlowPlayer.vue`.~~ **REJECTED 2026-04-20.** Flattening produced a ~260-line god component with 3 unrelated responsibilities (slide rendering / choices / outcome) — worse than the split. Keep `PlayerSlide.vue`, `PlayerChoices.vue`, `PlayerOutcome.vue` as separate files. Only `PlayerToolbar.vue` remains untouched as originally planned.
 
@@ -63,7 +63,7 @@ Per `feedback_time_estimates_claude_cadence.md`: do NOT inflate. Realistic numbe
 | Step                                                                                                                           | Time            |
 | ------------------------------------------------------------------------------------------------------------------------------ | --------------- |
 | **P-2** — single-column layout polish (flatten rejected, see point 14)                                                         | 0.5-1 h         |
-| **P-3** — new `Storyarn.Flows.Sequence` entity + `sequence_directive` on node data + drop `location_sheet_id`                  | 2-3 h           |
+| **P-3** — delete `slug_line` entirely + new `Storyarn.Flows.Sequence` entity + `sequence_directive` on executable nodes + "Create sequence from here" right-click with bottom-docked stub panel | 4-5 h           |
 | **Premiere v1** — Sequence editor with 5 fixed tracks, drag/resize clips, transitions, Web Audio mix, CSS fades, canvas badges | 4-6 h           |
 | **P-4** — blinking arrow, force-assign vars in debug panel, jump-to-source                                                     | 2-3 h           |
 | **Total**                                                                                                                      | **~1-1.5 days** |
@@ -83,10 +83,10 @@ Per `feedback_time_estimates_claude_cadence.md`: do NOT inflate. Realistic numbe
 
 - `lib/storyarn/flows/sequence.ex` — **new** schema, fields: `name`, `flow_id`, `start_node_id`, `tracks` (map), timestamps
 - Migration to create `flow_sequences` table
-- `lib/storyarn_web/live/flow_live/nodes/dialogue/node.ex` — add optional `sequence_directive` to node data defaults
-- `lib/storyarn_web/live/flow_live/nodes/slug_line/node.ex` — add `sequence_directive`, drop `location_sheet_id`
+- `lib/storyarn_web/live/flow_live/nodes/{entry,dialogue,condition,instruction,hub,jump,subflow,exit}/node.ex` — add optional `sequence_directive` to node data defaults for all executable node types (not annotation).
+- `lib/storyarn_web/live/flow_live/nodes/slug_line/` — **deleted** (the whole directory).
 - `lib/storyarn_web/live/flow_live/player_live.ex` — resolve active Sequence via path walk
-- `lib/storyarn_web/live/flow_live/player/slide.ex` — sequence directive resolution (no more `location_sheet_id`)
+- `lib/storyarn_web/live/flow_live/player/slide.ex` — sequence directive resolution (slug_line build clause gone)
 
 **Not touched:**
 
@@ -175,9 +175,8 @@ Verified in `lib/storyarn_web/live/flow_live/player/slide.ex`:
 
 - **`dialogue`** → `:dialogue` slide (speaker + text).
 - **`exit`** → `:outcome` card (end screen with stats, restart).
-- **`slug_line`** → `:slug_line` card (scene heading).
 
-All other node types (`condition`, `instruction`, `hub`, `jump`, `subflow`, `entry`, `annotation`) are pass-through — the engine steps past them and the viewer never sees them.
+All other node types (`condition`, `instruction`, `hub`, `jump`, `subflow`, `entry`, `annotation`) are pass-through — the engine steps past them and the viewer never sees them. (`slug_line` was deleted entirely in 2026-04-20 — see HANDOFF point 12.)
 
 ## Sequence model (the core design decision)
 
@@ -270,7 +269,7 @@ When a branch from the current Sequence exits to a different Sequence, it appear
 Per user agreement (2026-04-20): go for the full path, not the minimal one. Realistic estimate is ~1.5-2 days, not weeks.
 
 - **P-2** (~0.5-1 h): single-column layout polish. Subcomponents (`PlayerSlide`/`PlayerChoices`/`PlayerOutcome`) stay separate — flatten was tried and rejected.
-- **P-3** (~2-3 h): new `Storyarn.Flows.Sequence` entity + `sequence_directive` on node data + multi-track schema (2 video + 3 audio tracks fixed). UI to create Sequence from node (minimum: menu item, handler, redirect to stub editor). Drop `location_sheet_id` from slug_line.
+- **P-3** (~4-5 h): delete `slug_line` node type entirely. New `Storyarn.Flows.Sequence` entity + `sequence_directive` on all executable node types (entry, dialogue, condition, instruction, hub, jump, subflow, exit — not annotation) + multi-track schema (2 video + 3 audio tracks fixed). UI to create Sequence from node (menu item + handler + bottom-docked stub panel, NOT a redirect to a new page).
 - **Premiere v1** (~4-6 h): multi-track Sequence editor (drag clips, resize, transitions). Player processes parallel cues. Basic transitions (cut, fade_black, fade_white, crossfade).
 - **P-4** (~2-3 h): polish — blinking arrow for single-exit, force-assign vars in debug panel, jump-to-source, canvas badges 🎬 + colored regions.
 
@@ -283,7 +282,7 @@ Per user agreement (2026-04-20): go for the full path, not the minimal one. Real
 
 ## Data model cleanup included in redesign
 
-- **Drop `location_sheet_id` from `slug_line`.** Dead indirection. Replaced by `sequence_directive` pointing to a Sequence entity.
+- **Delete `slug_line` node type entirely.** Its role (establishing location / time context) is fully covered by the Sequence entity + its tracks. Data migration removes any existing slug_line nodes; flow_connections cascade via `ON DELETE CASCADE`.
 - **Stop routing `flow.scene_id` through the FlowPlayer.** `scene_id` stays as the ExplorationPlayer's context field unambiguously. FlowPlayer uses the new Sequence entity, which lives inside a flow.
 - ~~**Flatten the Vue component tree.** Inline `PlayerSlide.vue`, `PlayerChoices.vue`, `PlayerOutcome.vue` as v-if branches inside `FlowPlayer.vue`.~~ **REJECTED 2026-04-20** — inlining produced a ~260-line god component. Keep the split. `PlayerToolbar.vue` also stays as-is.
 
@@ -310,7 +309,7 @@ Per user agreement (2026-04-20): go for the full path, not the minimal one. Real
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------------- |
 | **P-1**         | Import `player.css` in `app.css`.                                                                                                                                   | 5 min   | ✅ `2a732b88` |
 | **P-2**         | Single-column layout polish on `FlowPlayer.vue`. Subcomponents stay separate (flatten rejected — see point 14 in HANDOFF).                                          | 0.5-1 h | pending       |
-| **P-3**         | New `Storyarn.Flows.Sequence` entity + `sequence_directive` on node data (dialogue + slug_line). Drop `location_sheet_id`. Minimum UI to create Sequence from node. | 2-3 h   | pending       |
+| **P-3**         | Delete `slug_line` entirely. New `Storyarn.Flows.Sequence` entity + `sequence_directive` on all executable node types (entry, dialogue, condition, instruction, hub, jump, subflow, exit). Minimum UI: right-click "Create sequence from here" + bottom-docked stub panel (same pattern as FlowDebugPanel). | 4-5 h   | pending       |
 | **Premiere v1** | Sequence editor: 5 fixed tracks, drag/resize clips, transitions, Web Audio mix, CSS fades. Player runtime processes parallel cues.                                  | 4-6 h   | pending       |
 | **P-4**         | Blinking-arrow for single-exit, force-assign vars in debug panel, jump-to-source, canvas 🎬 badges + colored regions.                                               | 2-3 h   | pending       |
 

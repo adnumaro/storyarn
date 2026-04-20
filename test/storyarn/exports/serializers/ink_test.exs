@@ -507,60 +507,6 @@ defmodule Storyarn.Exports.Serializers.InkTest do
   end
 
   # =============================================================================
-  # Slug line node rendering
-  # =============================================================================
-
-  describe "slug_line nodes" do
-    setup [:create_project]
-
-    test "slug_line node renders location comment", %{project: project} do
-      flow = flow_fixture(project, %{name: "Slug Line Flow"})
-      flow = reload_flow(flow)
-      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
-
-      slug_line =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"location" => "Tavern Interior"}
-        })
-
-      connection_fixture(flow, entry, slug_line)
-
-      source = ink_source(export_ink(project))
-      assert source =~ "# location:Tavern Interior"
-    end
-
-    test "slug_line node falls back to slug_line field", %{project: project} do
-      flow = flow_fixture(project, %{name: "Slug Line Field Flow"})
-      flow = reload_flow(flow)
-      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
-
-      slug_line =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"slug_line" => "INT. CASTLE - NIGHT"}
-        })
-
-      connection_fixture(flow, entry, slug_line)
-
-      source = ink_source(export_ink(project))
-      assert source =~ "# location:INT. CASTLE - NIGHT"
-    end
-
-    test "slug_line node with empty data renders empty location", %{project: project} do
-      flow = flow_fixture(project, %{name: "Empty Slug Line Flow"})
-      flow = reload_flow(flow)
-      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
-
-      slug_line = node_fixture(flow, %{type: "slug_line", data: %{}})
-      connection_fixture(flow, entry, slug_line)
-
-      source = ink_source(export_ink(project))
-      assert source =~ "# location:"
-    end
-  end
-
-  # =============================================================================
   # Subflow node rendering
   # =============================================================================
 
@@ -1147,35 +1093,6 @@ defmodule Storyarn.Exports.Serializers.InkTest do
 
       source = ink_source(export_ink(project))
       assert source =~ "Welcome!"
-      assert source =~ "-> END"
-    end
-
-    test "entry -> slug_line -> dialogue -> exit chain", %{project: project} do
-      flow = flow_fixture(project, %{name: "Slug Line Chain Flow"})
-      flow = reload_flow(flow)
-      entry = Enum.find(flow.nodes, &(&1.type == "entry"))
-
-      slug_line =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"location" => "Dark Forest"}
-        })
-
-      dialogue =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"text" => "The forest is dark.", "speaker_sheet_id" => nil, "responses" => []}
-        })
-
-      exit_node = node_fixture(flow, %{type: "exit", data: %{}})
-
-      connection_fixture(flow, entry, slug_line)
-      connection_fixture(flow, slug_line, dialogue)
-      connection_fixture(flow, dialogue, exit_node)
-
-      source = ink_source(export_ink(project))
-      assert source =~ "# location:Dark Forest"
-      assert source =~ "The forest is dark."
       assert source =~ "-> END"
     end
 

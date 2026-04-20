@@ -240,21 +240,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
       assert node.data["referenced_flow_id"] == nil
     end
 
-    test "creates a slug_line node",
-         %{conn: conn, project: project, flow: flow} do
-      {:ok, view, _html} =
-        live(
-          conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
-        )
-
-      render_click(view, "add_node", %{"type" => "slug_line"})
-
-      updated_flow = Flows.get_flow!(project.id, flow.id)
-      slug_line_nodes = Enum.filter(updated_flow.nodes, &(&1.type == "slug_line"))
-
-      assert length(slug_line_nodes) == 1
-    end
   end
 
   describe "delete_node via LiveView" do

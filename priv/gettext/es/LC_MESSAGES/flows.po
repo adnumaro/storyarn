@@ -245,12 +245,6 @@ msgstr "No alcanzable desde ningún nodo de entrada"
 msgid "Note"
 msgstr "Nota"
 
-#: lib/storyarn_web/live/flow_live/nodes/slug_line/node.ex:20
-#: lib/storyarn_web/live/project_live/show.ex:181
-#, elixir-autogen, elixir-format
-msgid "Slug Line"
-msgstr "Encabezado de escena"
-
 #: lib/storyarn_web/live/flow_live/nodes/condition/node.ex:17
 #, elixir-autogen, elixir-format
 msgid "Branch based on variable conditions"
@@ -302,11 +296,6 @@ msgstr "Saltar a un hub en cualquier flujo"
 #, elixir-autogen, elixir-format
 msgid "Named junction for jump targets"
 msgstr "Punto de unión con nombre para destinos de salto"
-
-#: lib/storyarn_web/live/flow_live/nodes/slug_line/node.ex:21
-#, elixir-autogen, elixir-format
-msgid "Scene heading or location marker"
-msgstr "Encabezado de escena o marcador de ubicación"
 
 #: lib/storyarn_web/live/flow_live/nodes/instruction/node.ex:16
 #, elixir-autogen, elixir-format

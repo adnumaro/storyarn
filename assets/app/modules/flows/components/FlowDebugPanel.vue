@@ -16,7 +16,6 @@ import {
   ChevronRight,
   Circle,
   CircleX,
-  Clapperboard,
   Diff,
   FastForward,
   Gauge,
@@ -300,7 +299,6 @@ const NODE_TYPE_ICON: Record<string, typeof Circle> = {
   hub: LogIn,
   jump: LogOut,
   subflow: Box,
-  slug_line: Clapperboard,
   annotation: StickyNote,
 };
 

@@ -27,7 +27,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Nodes.Dialogue
   alias StoryarnWeb.FlowLive.Nodes.Exit, as: ExitNode
   alias StoryarnWeb.FlowLive.Nodes.Instruction
-  alias StoryarnWeb.FlowLive.Nodes.SlugLine
   alias StoryarnWeb.FlowLive.Nodes.Subflow
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
   alias StoryarnWeb.Helpers.Authorize
@@ -915,9 +914,6 @@ defmodule StoryarnWeb.FlowLive.Show do
 
         node && node.type == "exit" ->
           ExitNode.Node.handle_generate_technical_id(socket)
-
-        node && node.type == "slug_line" ->
-          SlugLine.Node.handle_generate_technical_id(socket)
 
         true ->
           {:noreply, socket}

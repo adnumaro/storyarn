@@ -90,27 +90,6 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
     }
   end
 
-  def build(%{type: "slug_line"} = node, state, sheets_map, _project_id) do
-    data = node.data || %{}
-    location = build_speaker(resolve_sheet_info(data["location_sheet_id"], sheets_map))
-
-    description =
-      interpolate_variables(
-        HtmlSanitizer.sanitize_html(data["description"] || ""),
-        state.variables
-      )
-
-    %{
-      type: :slug_line,
-      setting: data["setting"] || "INT",
-      location_name: location.name || data["location_name"] || "",
-      sub_location: data["sub_location"] || "",
-      time_of_day: data["time_of_day"] || "",
-      description: description,
-      node_id: node.id
-    }
-  end
-
   def build(_node, _state, _sheets_map, _project_id) do
     %{type: :empty}
   end

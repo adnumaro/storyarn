@@ -23,8 +23,7 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
     "condition" => "Condition",
     "instruction" => "Instruction",
     "jump" => "Jump",
-    "subflow" => "Subflow",
-    "slug_line" => "SlugLine"
+    "subflow" => "Subflow"
   }
 
   @types @node_suffixes |> Map.keys() |> Enum.sort()

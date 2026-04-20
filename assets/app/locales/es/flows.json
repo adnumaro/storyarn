@@ -81,7 +81,6 @@
       "jump": "Salto",
       "exit": "Salida",
       "subflow": "Subflujo",
-      "slug_line": "Encabezado",
       "dialogue_toolbar_screenplay": "Editor de guión",
       "dialogue_toolbar_preview": "Vista previa"
     },
@@ -97,7 +96,6 @@
       "debug_desc": "Recorrer la ejecución paso a paso",
       "add_note": "Añadir nota",
       "dialogue_desc": "Diálogos de personajes y respuestas del jugador",
-      "slug_line_desc": "Encabezado de escena o marcador de ubicación",
       "condition_desc": "Bifurcar según condiciones de variables",
       "instruction_desc": "Establecer o modificar valores de variables",
       "exit_desc": "Punto final de un flujo",
@@ -239,11 +237,6 @@
       "target_placeholder": "Hub destino\u2026",
       "locate_target": "Localizar hub destino"
     },
-    "slug_line_toolbar": {
-      "setting_placeholder": "Escenario\u2026",
-      "location_placeholder": "Ubicación\u2026",
-      "time_placeholder": "Hora\u2026"
-    },
     "subflow_toolbar": {
       "select_flow_placeholder": "Seleccionar flujo\u2026",
       "open_flow": "Abrir flujo"
@@ -309,9 +302,6 @@
       },
       "jump": {
         "no_target": "Sin hub destino"
-      },
-      "slug_line": {
-        "no_location": "Sin ubicación"
       },
       "subflow": {
         "no_flow": "Sin flujo seleccionado",

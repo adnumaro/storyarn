@@ -459,7 +459,6 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
   defp show_continue?(%{type: :dialogue, responses: []}), do: true
   defp show_continue?(%{type: :dialogue}), do: false
-  defp show_continue?(%{type: :slug_line}), do: true
   defp show_continue?(_), do: false
 
   # ===========================================================================
@@ -480,15 +479,6 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
           speaker_color: slide[:speaker_color],
           text: slide[:text] || "",
           stage_directions: slide[:stage_directions] || ""
-        })
-
-      :slug_line ->
-        Map.merge(base, %{
-          setting: slide[:setting] || "INT",
-          location_name: slide[:location_name] || "",
-          sub_location: slide[:sub_location] || "",
-          time_of_day: slide[:time_of_day] || "",
-          description: slide[:description] || ""
         })
 
       :outcome ->

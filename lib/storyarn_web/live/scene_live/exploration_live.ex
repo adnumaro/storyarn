@@ -846,7 +846,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     node = Map.get(nodes_map, state.current_node_id)
     slide = Slide.build(node, state, sheets_map, project_id)
 
-    if slide.type in [:dialogue, :outcome, :slug_line] do
+    if slide.type in [:dialogue, :outcome] do
       {:content, state, slide}
     else
       # Empty slide — advance past it
@@ -856,7 +856,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
           final_node = Map.get(nodes_map, new_state.current_node_id)
           final_slide = Slide.build(final_node, new_state, sheets_map, project_id)
 
-          if final_slide.type in [:dialogue, :outcome, :slug_line] do
+          if final_slide.type in [:dialogue, :outcome] do
             {:content, new_state, final_slide}
           else
             {:finished, new_state}

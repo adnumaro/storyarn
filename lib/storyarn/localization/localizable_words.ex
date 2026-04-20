@@ -54,7 +54,7 @@ defmodule Storyarn.Localization.LocalizableWords do
 
     node_metadata_counts =
       project_id
-      |> project_flow_nodes(["slug_line", "condition", "exit"])
+      |> project_flow_nodes(["condition", "exit"])
       |> Enum.group_by(& &1.flow_id)
       |> Map.new(fn {flow_id, nodes} ->
         {flow_id, nodes |> Enum.map(&count_flow_node_non_denormalized_fields/1) |> Enum.sum()}
@@ -325,13 +325,6 @@ defmodule Storyarn.Localization.LocalizableWords do
       optional_field("stage_directions", data["stage_directions"]) ++
       optional_field("menu_text", data["menu_text"]) ++
       indexed_text_fields("response", list_value(data["responses"]), &response_field/2)
-  end
-
-  defp flow_node_source_fields(%FlowNode{type: "slug_line", data: data}) do
-    optional_field("location", data["location"]) ++
-      optional_field("description", data["description"]) ++
-      optional_field("sub_location", data["sub_location"]) ++
-      optional_field("time_of_day", data["time_of_day"])
   end
 
   defp flow_node_source_fields(%FlowNode{type: "condition", data: data}) do

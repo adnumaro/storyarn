@@ -315,50 +315,6 @@ defmodule Storyarn.Localization.TextExtractorTest do
   end
 
   # =============================================================================
-  # Flow Node Extraction — Slug Line
-  # =============================================================================
-
-  describe "flow node extraction — slug_line" do
-    test "extracts slug_line node description", %{project: project} do
-      flow = flow_fixture(project)
-
-      node =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"description" => "A dark forest clearing"}
-        })
-
-      {:ok, _updated, _} =
-        Flows.update_node_data(node, %{"description" => "A dark forest clearing"})
-
-      texts = Localization.get_texts_for_source("flow_node", node.id)
-      assert length(texts) == 1
-      assert hd(texts).source_field == "description"
-      assert hd(texts).source_text == "A dark forest clearing"
-    end
-
-    test "slug_line node with blank description produces no texts", %{project: project} do
-      flow = flow_fixture(project)
-      node = node_fixture(flow, %{type: "slug_line", data: %{"description" => ""}})
-
-      {:ok, _updated, _} = Flows.update_node_data(node, %{"description" => ""})
-
-      texts = Localization.get_texts_for_source("flow_node", node.id)
-      assert texts == []
-    end
-
-    test "slug_line node without description field produces no texts", %{project: project} do
-      flow = flow_fixture(project)
-      node = node_fixture(flow, %{type: "slug_line", data: %{}})
-
-      {:ok, _updated, _} = Flows.update_node_data(node, %{})
-
-      texts = Localization.get_texts_for_source("flow_node", node.id)
-      assert texts == []
-    end
-  end
-
-  # =============================================================================
   # Flow Node Extraction — Exit
   # =============================================================================
 

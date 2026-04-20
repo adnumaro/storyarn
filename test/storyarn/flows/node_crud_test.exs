@@ -457,27 +457,6 @@ defmodule Storyarn.Flows.NodeCrudTest do
     end
   end
 
-  describe "create_node/2 — slug_line" do
-    test "creates slug_line node with location data" do
-      %{flow: flow} = create_project_and_flow()
-
-      {:ok, slug_line_node} =
-        Flows.create_node(flow, %{
-          type: "slug_line",
-          position_x: 150.0,
-          position_y: 100.0,
-          data: %{
-            "location" => "INT. TAVERN - NIGHT",
-            "slug_line" => "The heroes gather"
-          }
-        })
-
-      assert slug_line_node.type == "slug_line"
-      assert slug_line_node.data["location"] == "INT. TAVERN - NIGHT"
-      assert slug_line_node.data["slug_line"] == "The heroes gather"
-    end
-  end
-
   describe "create_node/2 — subflow" do
     test "creates subflow node without reference" do
       %{flow: flow} = create_project_and_flow()
@@ -883,24 +862,6 @@ defmodule Storyarn.Flows.NodeCrudTest do
       assert result == {:error, :hub_id_not_unique}
     end
 
-    test "updates slug_line node data" do
-      %{flow: flow} = create_project_and_flow()
-
-      {:ok, slug_line} =
-        Flows.create_node(flow, %{
-          type: "slug_line",
-          data: %{"location" => "INT. OFFICE - DAY"}
-        })
-
-      {:ok, updated, _meta} =
-        Flows.update_node_data(slug_line, %{
-          "location" => "EXT. PARK - NIGHT",
-          "slug_line" => "A quiet evening"
-        })
-
-      assert updated.data["location"] == "EXT. PARK - NIGHT"
-      assert updated.data["slug_line"] == "A quiet evening"
-    end
   end
 
   describe "batch_update_positions/2" do
@@ -998,16 +959,6 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
       {:ok, node} =
         Flows.create_node(flow, %{type: "condition", data: %{"expression" => ""}})
-
-      {:ok, deleted, _meta} = Flows.delete_node(node)
-      assert deleted.deleted_at
-    end
-
-    test "soft-deletes a slug_line node" do
-      %{flow: flow} = create_project_and_flow()
-
-      {:ok, node} =
-        Flows.create_node(flow, %{type: "slug_line", data: %{"location" => "INT. OFFICE"}})
 
       {:ok, deleted, _meta} = Flows.delete_node(node)
       assert deleted.deleted_at
@@ -1733,17 +1684,6 @@ defmodule Storyarn.Flows.NodeCrudTest do
       assert fetched.type == "jump"
     end
 
-    test "slug_line" do
-      %{flow: flow} = create_project_and_flow()
-
-      {:ok, node} =
-        Flows.create_node(flow, %{type: "slug_line", data: %{"location" => "EXT. BEACH"}})
-
-      fetched = Flows.get_node!(flow.id, node.id)
-      assert fetched.type == "slug_line"
-      assert fetched.data["location"] == "EXT. BEACH"
-    end
-
     test "subflow" do
       %{flow: flow} = create_project_and_flow()
 
@@ -1805,8 +1745,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
       assert "entry" in types
       assert "exit" in types
       assert "subflow" in types
-      assert "slug_line" in types
-      assert length(types) == 10
+      assert length(types) == 9
     end
 
     test "create_changeset rejects invalid type" do

@@ -2,7 +2,7 @@
 import { Avatar, AvatarImage, AvatarFallback } from "@components/ui/avatar";
 
 export interface SlideData {
-  type: "dialogue" | "slug_line" | "empty" | "outcome";
+  type: "dialogue" | "empty" | "outcome";
   // dialogue fields
   speaker_name?: string | null;
   speaker_initials?: string;
@@ -10,12 +10,6 @@ export interface SlideData {
   speaker_color?: string | null;
   text?: string;
   stage_directions?: string;
-  // slug_line fields
-  setting?: string;
-  location_name?: string;
-  sub_location?: string;
-  time_of_day?: string;
-  description?: string;
 }
 
 const { slide } = defineProps<{
@@ -45,17 +39,6 @@ const { slide } = defineProps<{
     <div v-if="slide.stage_directions" class="player-stage-directions">
       {{ slide.stage_directions }}
     </div>
-  </div>
-
-  <!-- Slug line -->
-  <div v-else-if="slide.type === 'slug_line'" class="player-slide player-slide-slug-line">
-    <div class="player-scene-slug">
-      {{ slide.setting }}. {{ slide.location_name }}
-      <span v-if="slide.sub_location"> &mdash; {{ slide.sub_location }}</span>
-      <span v-if="slide.time_of_day"> &mdash; {{ slide.time_of_day.toUpperCase() }}</span>
-    </div>
-    <!-- eslint-disable-next-line vue/no-v-html -->
-    <div v-if="slide.description" class="player-scene-description" v-html="slide.description" />
   </div>
 
   <!-- Empty -->

@@ -249,22 +249,6 @@ defmodule Storyarn.Exports.ValidatorTest do
       assert length(broken) == 1
     end
 
-    test "reports error for slug_line node targeting non-existent scene", %{project: project} do
-      flow = flow_fixture(project, %{name: "Broken Scene Flow"})
-
-      _slug_line_node =
-        node_fixture(flow, %{
-          type: "slug_line",
-          data: %{"scene_id" => -999}
-        })
-
-      result = Validator.validate_project(project.id)
-
-      broken =
-        Enum.filter(result.errors, &(&1.rule == :broken_references && &1[:ref_type] == :scene))
-
-      assert length(broken) == 1
-    end
   end
 
   # =============================================================================
