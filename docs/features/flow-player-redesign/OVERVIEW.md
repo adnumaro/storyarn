@@ -1,127 +1,334 @@
 # Flow Player Redesign — Vision & Audit
 
-**Status:** vision doc, 2026-04-20. Captures the audit findings, competitive verification, design principle, and phased rollout for rethinking the Flow Player. Not committed to a timeline.
+**Status:** vision doc, 2026-04-20. Captures the audit findings, competitive verification, corrected design principle, and phased rollout. Not committed to a timeline.
+
+---
+
+## 📖 Terminology (read first — prevents conflation)
+
+Two distinct entities that must not be confused:
+
+|                   | **Scene** (exploration tool, existing)                            | **Sequence** (flow tool, new)                         |
+| ----------------- | ----------------------------------------------------------------- | ----------------------------------------------------- |
+| Module            | `Storyarn.Scenes.Scene`                                           | `Storyarn.Flows.Sequence` (new)                       |
+| What it is        | 2D walkable canvas with zones/pins                                | Grouping of flow nodes with shared atmosphere         |
+| Fields            | width, height, zones, pins, connections, layers, background_asset | tracks (multi-track timeline), flow_id, start_node_id |
+| Consumed by       | ExplorationPlayer                                                 | FlowPlayer                                            |
+| User-facing label | "Scenes" (existing Scenes tool)                                   | "Sequences" (new, inside Flow editor)                 |
+
+Adobe Premiere uses "Sequence" as the native term for multi-track timeline compositions — that's why this label fits the flow player feature.
+
+**Earlier drafts (before 2026-04-20) proposed unifying them into a single `Storyarn.Scenes.Scene` entity. That was wrong and got explicitly rejected** — the two entities have different shapes and different consumers. Keep them separate.
+
+---
+
+## ⚠️ HANDOFF FOR NEXT SESSION (read first)
+
+### Where we are (state as of handoff)
+
+- ✅ P-1 shipped — `player.css` imported in `app.css` (commit `2a732b88`). Visual layer unblocked.
+- ⏳ **Next: P-2 → P-3 → Premiere v1 → P-4.** Core design decisions are locked. Small judgment calls may surface mid-implementation — ask and re-align, don't barrel through.
+
+### All design decisions locked (do NOT re-debate these)
+
+1. **FlowPlayer ≠ ExplorationPlayer** — they're different products. Don't propose unifying them.
+2. **Target audience = videogame teams first.** Articy/Yarn/Ink/Pixel Crushers are the competitors. Arcweave is a simplicity touchstone for the preview surface, NOT for the editor. Don't propose novelist-style simplifications.
+3. **Sequence is a first-class entity inside a flow** (`Storyarn.Flows.Sequence`, new). NOT unified with `Storyarn.Scenes.Scene` — see the Terminology section above. The only shared concept is "coherent atmosphere"; the data shapes are different.
+4. **Multi-track timeline inside a Sequence** — 5 fixed tracks: `video_bg`, `video_overlay`, `audio_music`, `audio_ambient`, `audio_sfx`. No effects track in v1. No dynamic track management in v1. Rows are fixed; **clips within them are 100% editable** (drag, resize, delete, re-parent across rows).
+5. **Timeline x-axis = node sequence** within the Sequence (not absolute seconds). Clips span `start_node_id → end_node_id`.
+6. **Path-agnostic clips**: a clip on nodes 1-5 plays on ALL branches within that range. The Sequence's music is the Sequence's state, not the path's.
+7. **Sequence membership via `sequence_directive` pointer on node data.** Node with directive = Sequence entry point. Nodes without directive inherit from upstream-most node with one along the actual execution path. Branching resolves at runtime, no static group-membership conflicts.
+8. **Right-click "Create sequence from here"** = create Sequence entity, add directive to node, open Sequence editor. Canvas colors all downstream inheriting nodes as a visual region (badges 🎬 + colored border).
+9. **Multi-sequence per flow** from v1. Branches from a Choice can go to different Sequences — shown as "🚪 Sequence: X [Open →]" markers at the edge of the source Sequence's timeline.
+10. **Only static images + audio in v1.** Video on nodes is deferred future feature.
+11. **Transitions in v1**: `cut` (default), `fade_black`, `fade_white`, `crossfade`. Duration configurable, default 500ms image / 1s audio.
+12. **Drop `location_sheet_id` from slug_line** — dead indirection, replaced by `sequence_directive`.
+13. **Drop `flow.scene_id` routing through FlowPlayer.** That field stays for ExplorationPlayer context only (pointing at a `Storyarn.Scenes.Scene`, not a Sequence).
+14. ~~**Flatten Vue tree**: inline `PlayerSlide.vue` / `PlayerChoices.vue` / `PlayerOutcome.vue` as v-if branches inside `FlowPlayer.vue`.~~ **REJECTED 2026-04-20.** Flattening produced a ~260-line god component with 3 unrelated responsibilities (slide rendering / choices / outcome) — worse than the split. Keep `PlayerSlide.vue`, `PlayerChoices.vue`, `PlayerOutcome.vue` as separate files. Only `PlayerToolbar.vue` remains untouched as originally planned.
+
+### Deferred — do NOT build unless explicitly requested
+
+- **Project Templates** (`docs/features/project-templates/OVERVIEW.md`) — future-expansion lever when broadening beyond videogames.
+- **Flags / Events system** (`docs/features/events-flags-system/OVERVIEW.md`) — can wait until there's a demonstrated need beyond variables + conditions.
+- **Tables Tier 2** (`docs/features/tables-rule-engine/OVERVIEW.md`) — dynamic lookup, if/else, dice functions; big differentiator but not blocker.
+- **Effects track** (flash, shake, zoom) — add in v2 when/if demand shows.
+- **Dynamic tracks** (add/remove tracks) — v2.
+- **Keyframes within clip** (volume ramp, opacity curves) — v2.
+- **Screenplay feature** — gated to super-admin only for now; don't touch.
+
+### Time estimates (Claude-cadence, calibrated)
+
+Per `feedback_time_estimates_claude_cadence.md`: do NOT inflate. Realistic numbers:
+
+| Step                                                                                                                           | Time            |
+| ------------------------------------------------------------------------------------------------------------------------------ | --------------- |
+| **P-2** — single-column layout polish (flatten rejected, see point 14)                                                         | 0.5-1 h         |
+| **P-3** — new `Storyarn.Flows.Sequence` entity + `sequence_directive` on node data + drop `location_sheet_id`                  | 2-3 h           |
+| **Premiere v1** — Sequence editor with 5 fixed tracks, drag/resize clips, transitions, Web Audio mix, CSS fades, canvas badges | 4-6 h           |
+| **P-4** — blinking arrow, force-assign vars in debug panel, jump-to-source                                                     | 2-3 h           |
+| **Total**                                                                                                                      | **~1-1.5 days** |
+
+### Files likely touched (quick orient)
+
+**Frontend:**
+
+- `assets/app/modules/flows/player/FlowPlayer.vue` (single-column layout polish — children stay as-is)
+- `assets/app/modules/flows/player/Player{Slide,Choices,Outcome}.vue` (keep separate, flatten rejected)
+- `assets/app/modules/flows/player/PlayerToolbar.vue` (keep as-is)
+- New: `assets/app/modules/flows/sequences/SequenceTimelineEditor.vue` and track/clip subcomponents
+- Probably extract: `composables/useWebAudioMix.ts` for audio track mixing
+- `FlowDebugPanel.vue` for P-4 polish additions
+
+**Backend:**
+
+- `lib/storyarn/flows/sequence.ex` — **new** schema, fields: `name`, `flow_id`, `start_node_id`, `tracks` (map), timestamps
+- Migration to create `flow_sequences` table
+- `lib/storyarn_web/live/flow_live/nodes/dialogue/node.ex` — add optional `sequence_directive` to node data defaults
+- `lib/storyarn_web/live/flow_live/nodes/slug_line/node.ex` — add `sequence_directive`, drop `location_sheet_id`
+- `lib/storyarn_web/live/flow_live/player_live.ex` — resolve active Sequence via path walk
+- `lib/storyarn_web/live/flow_live/player/slide.ex` — sequence directive resolution (no more `location_sheet_id`)
+
+**Not touched:**
+
+- `lib/storyarn/scenes/scene.ex` — exploration Scene is unchanged by this feature.
+
+### How a fresh session should start
+
+1. Read the Terminology callout + this handoff section.
+2. Read the rest of this doc for full context.
+3. Read the 4 related memory files: `project_flow_player_redesign_vision.md`, `project_target_audience_videogames_first.md`, `feedback_time_estimates_claude_cadence.md`, `feedback_creative_wide_competitive_scan.md`.
+4. Start P-2. Surface any judgment-call uncertainty before coding — don't assume the doc has every answer.
+
+---
 
 ## Why we're rethinking it
 
-The Flow Player is visually broken (symptom: CSS orphaned; root cause: design drifted from a clear model). The user's framing quote:
+The Flow Player was visually broken (CSS orphaned — now fixed in commit `2a732b88`) and the underlying design had drifted from a clear model. User framing (translated from Spanish):
 
-> **"Arcweaver brilla aquí porque es un sistema bastante simple. Nosotros tenemos un sistema complejo. Pero hay que tratar de brillar igual por simplicidad."**
+> **"Arcweave shines here because it's a simple system. Ours is complex. But we have to try to shine just as much through simplicity."**
 
-Goal: keep Storyarn's richer model (scenes, slug_line, tables, screenplays) while the authoring/preview surface feels as clean as Arcweave's Play Mode.
+## Critical distinction: FlowPlayer ≠ ExplorationPlayer
 
-## Immediate bug (independent of redesign)
+Earlier drafts of this doc proposed unifying the two players. That was wrong and the user corrected it explicitly (translated from Spanish):
 
-`assets/css/player.css` exists with complete styles for `.player-layout`, `.player-toolbar`, `.player-choices`, etc. **It is never imported.**
-- Not in `assets/css/app.css` (Tailwind + tw-animate-css + katex only).
-- Not in `vite.config.mjs` inputs.
+> **"The FlowPlayer is about quick flow review (Arcweave, Articy:draft, the whole competition). This is what everyone else has. For testing decision trees or flows."**
+>
+> **"The ExplorationPlayer is something completely different. It's for prototyping videogames, interactive maps — Articy:draft's `scene` concept, essentially. Nobody else has this because it's like a mini 2D game engine."**
 
-Fix: add `@import "player.css";` to `assets/css/app.css`. One line. Unblocks the visual layer regardless of what else we change.
+|                    | **FlowPlayer**            | **ExplorationPlayer** |
+| ------------------ | ------------------------- | --------------------- |
+| What it prototypes | A story: film, book, play | An interactive game   |
+| Player character?  | No — static advancement   | Yes — walks around    |
+| Triggers scenes?   | Never                     | Yes, by location/zone |
+| Ambient flows      | Irrelevant                | Core mechanic         |
+| Composition unit   | **Sequence** (new)        | **Scene** (existing)  |
+| Competitors        | All have this             | **No one** has this   |
+| Storyarn role      | Parity with market        | Unique moat           |
 
-## What's actually structural (not cosmetic)
+> **"You should be able to prototype a film, a book, or a stage play here. No players, no game prototyping — but yes to story prototyping."**
 
-Three real architectural issues live in the player surface. All are rooted in the code (file paths cited).
+**Consequence:** `flow.scene_id`, `ambient_flows`, and exploration machinery stay on the ExplorationPlayer side. The FlowPlayer never uses them. The FlowPlayer uses its own `Sequence` entity, which is separate from the exploration `Scene`.
 
-### 1. Scene ↔ Flow dual ownership
+## Target audience (fundamental context)
 
-`Flow` has a direct `scene_id` FK (`lib/storyarn/flows/flow.ex:65`). `Flows.resolve_scene_id/1` walks flow → caller → parent (`lib/storyarn/flows/flows.ex:198-199`). In parallel, **`SceneAmbientFlow` links flows to scene zones** and `ExplorationLive` loads scenes to find their flows independently. Two mental models for the same pairing: "Is the flow attached to the scene, or is the scene providing context to the flow?"
+Target = **videogame design teams**. Not novelists. Not screenwriters. User's framing (translated from Spanish):
 
-### 2. `slug_line` has a data model that the player ignores
+> **"This platform is initially aimed at videogames, and that's how we'll market it. Later I want to expand the target as much as possible — videogames alone is too niche."**
 
-`lib/storyarn_web/live/flow_live/nodes/slug_line/node.ex` carries `location_sheet_id`. The player treats it as flavor text ("INT. CAFÉ — MORNING") and auto-advances (`PlayerLive.show_continue?/1`, `Slide.build/1`). **The backdrop never changes when a slug_line is hit.** The `location_sheet_id` data is collected but unused at runtime. Three possible semantics:
-- (a) Flavor only → remove `location_sheet_id`, simplify.
-- (b) **Location context setter → sync backdrop from location_sheet → scene** (*recommended*).
-- (c) Exploration trigger → navigate to scene. Likely confusing; blurs with scenes.
+This changes the reference set. Direct competitors = **Articy:draft X, Yarn Spinner, Ink, Pixel Crushers Dialogue System**. Arcweave is a simplicity touchstone but not a feature benchmark — it targets interactive fiction authors, not game teams. Target users expect richer chrome: timeline editors, multi-track audio, keyboard shortcuts, Unity-familiar patterns.
 
-### 3. FlowPlayer and ExplorationPlayer are parallel code paths
+Consequence: progressive disclosure / Project Templates is **demoted to "future expansion lever"** — not a blocker for shipping complexity. Target users want advanced features visible.
 
-Both reuse `PlayerEngine.step_until_interactive` and `Slide.build` (good). But `PlayerLive` and `ExplorationLive` each own their own state, events (`continue`, `choose_response` duplicated), and render paths. Bug fixes in one don't necessarily propagate. Vue side is over-split: FlowPlayer + PlayerSlide + PlayerChoices + PlayerOutcome + PlayerToolbar for what is conceptually **one screen**.
+## Design principle for FlowPlayer
 
-## Competitive verification (April 2026)
+> **"My idea is the Arcweave one. In Arcweave you can even put videos on nodes (I don't want that yet, but it could be a future feature)."**
 
-Validated via live web search (not training data) on arcweave.com, articy.com, inkle/ink, docs.yarnspinner.dev, motoslave.net/sugarcube, docs.dialogic.pro, naninovel.com. Full citations in the session memory `project_flow_player_redesign_vision.md`.
+The preview surface stays minimalist (single reading column) — players see a clean story. The **editor** surface is where richer authoring tools live (multi-track timeline, asset pickers, transitions).
+
+Separation: **preview = Arcweave-clean for readers; editor = game-dev-pro for authors.** Matches Unity (Scene view clean, Timeline window dense).
+
+### Target layout
+
+```
+┌──────────────────────────────────────┐
+│ [←]  flow name           [🐛] [⚙]  │  editor-only chrome (role-gated)
+├──────────────────────────────────────┤
+│                                      │
+│        ╔════════════════╗            │
+│        ║     image      ║            │  ← Sequence's video_bg track clip
+│        ╚════════════════╝            │     (optional, centered, rounded)
+│                                      │
+│   Current beat text                  │  ← dialogue text / slug heading
+│                                      │
+│   [ choice 1 ]                       │
+│   [ choice 2 ]                       │  ← choices (Arcweave style)
+│                                      │
+│   or: ↓  (blinking arrow)            │  ← single-exit auto-advance
+└──────────────────────────────────────┘
+```
+
+If no Sequence is active (or the active Sequence has no `video_bg` clip at this node), the image block is simply omitted. Minimal flow → minimal player.
+
+## Node types visible in the player
+
+Verified in `lib/storyarn_web/live/flow_live/player/slide.ex`:
+
+- **`dialogue`** → `:dialogue` slide (speaker + text).
+- **`exit`** → `:outcome` card (end screen with stats, restart).
+- **`slug_line`** → `:slug_line` card (scene heading).
+
+All other node types (`condition`, `instruction`, `hub`, `jump`, `subflow`, `entry`, `annotation`) are pass-through — the engine steps past them and the viewer never sees them.
+
+## Sequence model (the core design decision)
+
+After several iterations, the model that survived:
+
+**Sequence is a first-class entity inside a flow.** It has a multi-track timeline for media and effects composition. A node can carry an optional `sequence_directive: sequence_id` — when execution reaches that node, the Sequence's composition becomes active and stays active until a different Sequence directive is hit downstream.
+
+### Multi-track timeline inside a Sequence
+
+Inspired by Adobe Premiere (user showed a screenshot to align vocabulary — and "Sequence" is literally Premiere's native term for a timeline composition). Key insight I was missing early: it's not "one image + one audio" per node. It's **parallel layered tracks**:
+
+- Video BG (base image)
+- Video Overlay (fog, light effects, UI overlays)
+- Audio Music (score / theme)
+- Audio Ambient (wind, hall tone, rain)
+- Audio SFX (door open, impact)
+- Effects (fade_in, shake, flash — one-shot, attached to a node) — **v2 only, not in MVP**
+
+Each clip on each track covers a range of nodes (not seconds). Clips on different tracks overlap — that's the layering.
+
+### Timeline "time" = node sequence
+
+The x-axis is the flow's node path within the Sequence, not absolute seconds. A clip that spans `start_node_id = 3, end_node_id = 7` plays continuously while the player visits any node between 3 and 7 in the execution path.
+
+### Branching is solved by "path-agnostic clips"
+
+Clips apply to **all paths** within the Sequence. The music in "Castle Throne" Sequence sounds the same whether the player goes down branch A or branch B — it's the Sequence's state, not the path's state. If a clip is on a node that only appears in branch B, that clip only activates when the player takes B.
+
+### Sequence membership via directive inheritance
+
+Each node has an optional `sequence_directive` that points to a Sequence. Nodes without a directive inherit from the upstream-most node with one on the actual execution path. This:
+
+- Handles branching without multi-parent conflicts (runtime resolves by path, not by static membership)
+- Requires no "group" entity that breaks when edges change
+- Lets the canvas show colored regions per Sequence (computed from directive placement)
+
+### Schema
+
+```elixir
+# Sequence entity (new — lives in lib/storyarn/flows/sequence.ex)
+schema "flow_sequences" do
+  field :name, :string
+  field :tracks, :map  # nested: {video_bg: [clips], audio_music: [clips], ...}
+  belongs_to :flow, Storyarn.Flows.Flow
+  belongs_to :start_node, Storyarn.Flows.FlowNode  # the node the author right-clicked to create this
+  timestamps(type: :utc_datetime)
+end
+
+# Clip shape (stored inside the tracks map — no separate table)
+%{
+  asset_id: id | nil,
+  start_node_id: id,
+  end_node_id: id | nil,  # nil = until Sequence end
+  volume: 1.0,            # opacity for video
+  transition_in: "cut" | "fade_black" | "fade_white" | "crossfade",
+  effect_params: %{}
+}
+
+# Node data (JSONB) gains an optional pointer
+"sequence_directive" => sequence_id | nil
+```
+
+### Author UX
+
+1. Right-click a node in the flow canvas → **"Create sequence from here"**.
+2. Sequence entity is created; node gains a `sequence_directive` pointing to it.
+3. Sequence editor opens — multi-track timeline editor (Premiere-style, game-dev-dense feel).
+4. Author adds clips, effects, transitions.
+5. Back in the canvas, all forward-reachable nodes inheriting this directive are colored as a region. Clear visual groupings without `group` as an entity.
+
+### Sidebar scene selector (inside a Sequence editor)
+
+Inside a Sequence editor, a sidebar lists all Sequences of the flow so the author can hop between them without leaving the editor:
+
+```
+┌─ Sequences in "Main Flow" ─┐
+│ ● Castle Throne Room       │ ← you are here
+│ ○ Outside Courtyard        │
+│ ○ Dungeon Cell             │
+│ + New sequence             │
+└────────────────────────────┘
+```
+
+### Cross-Sequence branches — "doors"
+
+When a branch from the current Sequence exits to a different Sequence, it appears as a marker at the edge of the timeline next to the branching node: **"🚪 Sequence: X [Open →]"**. Click → navigates to that Sequence's editor.
+
+## MVP scope
+
+Per user agreement (2026-04-20): go for the full path, not the minimal one. Realistic estimate is ~1.5-2 days, not weeks.
+
+- **P-2** (~0.5-1 h): single-column layout polish. Subcomponents (`PlayerSlide`/`PlayerChoices`/`PlayerOutcome`) stay separate — flatten was tried and rejected.
+- **P-3** (~2-3 h): new `Storyarn.Flows.Sequence` entity + `sequence_directive` on node data + multi-track schema (2 video + 3 audio tracks fixed). UI to create Sequence from node (minimum: menu item, handler, redirect to stub editor). Drop `location_sheet_id` from slug_line.
+- **Premiere v1** (~4-6 h): multi-track Sequence editor (drag clips, resize, transitions). Player processes parallel cues. Basic transitions (cut, fade_black, fade_white, crossfade).
+- **P-4** (~2-3 h): polish — blinking arrow for single-exit, force-assign vars in debug panel, jump-to-source, canvas badges 🎬 + colored regions.
+
+**Out of v1:**
+
+- Effects track (flash, shake, zoom) — v2 if demand
+- Dynamic track management — v2
+- Keyframes within clips (e.g. volume fading across a clip) — v2
+- Video on clips — future (user flagged)
+
+## Data model cleanup included in redesign
+
+- **Drop `location_sheet_id` from `slug_line`.** Dead indirection. Replaced by `sequence_directive` pointing to a Sequence entity.
+- **Stop routing `flow.scene_id` through the FlowPlayer.** `scene_id` stays as the ExplorationPlayer's context field unambiguously. FlowPlayer uses the new Sequence entity, which lives inside a flow.
+- ~~**Flatten the Vue component tree.** Inline `PlayerSlide.vue`, `PlayerChoices.vue`, `PlayerOutcome.vue` as v-if branches inside `FlowPlayer.vue`.~~ **REJECTED 2026-04-20** — inlining produced a ~260-line god component. Keep the split. `PlayerToolbar.vue` also stays as-is.
+
+## Competitive verification (April 2026, live web search)
 
 ### Arcweave's three wins (the simplicity benchmark)
 
-1. **Role-gated chrome, not mode-gated.** Viewers see only cover / text / buttons. Editors see the same plus a bug icon top-right that opens an additive debug panel. No "switch to Debug view" modal.
-2. **Single centered column.** No sidebars, no mini-map, no node IDs. Attention budget spent on the story, not the tool.
-3. **Blinking-arrow fallback for single-exit nodes.** When there's one way forward, render a pulsing arrow; the whole screen is clickable. Removes visual weight from ~70% of nodes in a typical linear-with-branches flow.
+1. **Role-gated chrome, not mode-gated.** Viewers see only cover/text/buttons. Editors see the same + a bug icon top-right that opens an additive debug panel. No "switch to Debug view" modal.
+2. **Single centered column.** No sidebars, no mini-map, no node IDs. Attention budget on the story.
+3. **Blinking-arrow fallback for single-exit nodes.** When there's one way forward, render a pulsing arrow; whole screen clickable. Removes visual weight from ~70% of nodes in a typical linear-with-branches flow.
 
-### Anti-patterns to avoid (observed in the competition)
+### Anti-patterns to avoid
 
-- **"Play" vs "Test" two-button modes** (Twine) → users pick the wrong one and "variables don't work".
-- **Debug UI in the reading column** (SugarCube default debug bar; Articy red-highlighted failed conditions on the slide itself) → writers-in-review get distracted; editors stop noticing.
-- **Modal variable inspectors** (SugarCube `<<checkvars>>`) → blocks flow, can't stay open while playing.
-- **No jump-to-source from the player** (Yarn preview, Dialogic play) → when a branch is wrong, author needs a click back to the node.
-- **State loss on recompile** (most engine-embedded previews) → Inky's fast-forward-to-last-node solves this; copy it.
+- **"Play" vs "Test" two-button modes** (Twine) → users pick wrong, "variables don't work".
+- **Debug UI in the reading column** (SugarCube default debug bar; Articy red-highlighted failed conditions on the slide) → distracts viewers, editors stop noticing.
+- **Modal variable inspectors** (SugarCube `<<checkvars>>`) → blocks flow; can't stay open while playing.
+- **No jump-to-source from the player** (Yarn preview, Dialogic play) → authors need one click back to the node.
+- **State loss on recompile** (most engine-embedded previews) → Inky's fast-forward solves it; copy it.
 - **"PowerPoint slide" feel** (Articy Presentation View) → authors subconsciously slow down; reading should feel like a game, not a deck.
 
-## Design principle (one rule)
+## Phased rollout
 
-**The reading column never changes shape between dialogue and exploration. The stage swaps content; the chrome stays identical.**
-
-This is how we unify dialogue-only flows and scene/exploration flows without falling into Articy's multi-panel console.
-
-## Target layout
-
-```
-┌────────────────────────────────────────┐
-│ [←] flow name              [🐛] [⚙]  │  editor-only chrome (role-gated)
-├────────────────────────────────────────┤
-│                                        │
-│         [   STAGE   ]                  │  polymorphic by node type:
-│                                        │  • dialogue → speaker + line + portrait
-│                                        │  • slug_line → location/time card
-│                                        │  • scene context → Konva canvas inline
-│                                        │    (pins clickable, zones = regions)
-│                                        │  • outcome → end card
-│                                        │  • condition/instruction → invisible
-│                                        │    to viewer; ghost card for editor
-│                                        │
-├────────────────────────────────────────┤
-│   [ option 1 ]                         │  unified action row:
-│   [ option 2 ]                         │  • dialogue responses
-│   [ option 3 ]                         │  • pin labels
-│                                        │  • hub exits
-│   or: ↓ (blinking arrow)               │  single-exit → Arcweave-style arrow
-└────────────────────────────────────────┘
-```
-
-**Debug panel**: slides in from the right, editor-only, closed by default.
-- Variables tab: `initial / previous / current` columns + force-assign (reuse the debug panel's variables tab — already shipped).
-- Trace tab: visited-node list, click to rewind, `↗` icon for jump-to-source.
-
-**No "Play" vs "Test"**: one Play button; debug is a toggle on the player, not a separate mode.
-
-## Proposed phases
-
-| Phase | Scope | Size |
-|---|---|---|
-| **P-1** | Import `player.css` in `app.css`. Unblocks visual regardless of redesign. | 5 min |
-| **P-2** | Rewrite `FlowPlayer.vue` to single-column layout. Flatten Vue tree: inline `PlayerSlide` / `PlayerChoices` / `PlayerOutcome` as v-if branches. Keep `PlayerToolbar.vue` (reused in exploration). | 2-3 h |
-| **P-3** | Decide slug_line semantics (recommend: location context setter). Sync backdrop from `location_sheet_id` → scene. Document the decision in CLAUDE.md conventions. | 4 h |
-| **P-4** | Blinking-arrow for single-exit nodes. Force-assign in debug panel. Jump-to-source from trace. | 1 day |
-| **P-5** | Unify scene↔flow resolver (pick canonical ownership). Unify FlowPlayer + ExplorationPlayer Vue into one component with pluggable stage. | 2 days |
-
-## Pending decisions the user must confirm before P-3+
-
-1. **slug_line semantics**: flavor-only / backdrop-setter (recommended) / exploration-trigger.
-2. **scene↔flow canonical ownership**: `flow.scene_id` primary with `ambient_flows` as exploration-only overlay (recommended), or flip.
-3. **Debug panel reuse**: share the Variables tab implementation already built for the flow debug panel, or build a player-specific leaner version.
+| Phase           | Scope                                                                                                                                                               | Size    | Status        |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------------- |
+| **P-1**         | Import `player.css` in `app.css`.                                                                                                                                   | 5 min   | ✅ `2a732b88` |
+| **P-2**         | Single-column layout polish on `FlowPlayer.vue`. Subcomponents stay separate (flatten rejected — see point 14 in HANDOFF).                                          | 0.5-1 h | pending       |
+| **P-3**         | New `Storyarn.Flows.Sequence` entity + `sequence_directive` on node data (dialogue + slug_line). Drop `location_sheet_id`. Minimum UI to create Sequence from node. | 2-3 h   | pending       |
+| **Premiere v1** | Sequence editor: 5 fixed tracks, drag/resize clips, transitions, Web Audio mix, CSS fades. Player runtime processes parallel cues.                                  | 4-6 h   | pending       |
+| **P-4**         | Blinking-arrow for single-exit, force-assign vars in debug panel, jump-to-source, canvas 🎬 badges + colored regions.                                               | 2-3 h   | pending       |
 
 ## Non-goals
 
 - Don't turn the player into a three-panel IDE (Articy trap).
 - Don't split "Play" and "Test" into different buttons (Twine anti-pattern).
 - Don't dock debug UI inside the reading column.
-- Don't forget state on recompile — if we can't implement Inky-style fast-forward cheaply, at least persist the debug session per-user the way the flow debug panel already does.
+- Don't unify FlowPlayer and ExplorationPlayer. They solve different problems.
+- Don't unify `Storyarn.Scenes.Scene` (exploration) with `Storyarn.Flows.Sequence` (flow composition). Different shapes, different consumers.
+- Don't use `flow.scene_id` or exploration Scenes as a backdrop for FlowPlayer. Sequences are the mechanism.
 
 ## Primary competitive sources (verified 2026-04-20)
 
 - Arcweave: docs.arcweave.com/project-tools/play-mode/overview, /using-play-mode; blog.arcweave.com/write-your-interactive-story-with-arcweave.
 - Articy: articy.com/help/adx/Presentation_Journeys.html, /Presentation_Simulation.html.
-- Ink/Inky: github.com/inkle/inky README; github.com/inkle/ink-unity-integration InkPlayerWindow.md.
+- Ink/Inky: github.com/inkle/inky; github.com/inkle/ink-unity-integration/blob/master/Documentation/InkPlayerWindow.md.
 - Yarn Spinner: yarnspinner.dev/features.
-- Twine/SugarCube: catn.decontextualize.com/twine, motoslave.net/sugarcube/2/docs.
+- Twine/SugarCube: catn.decontextualize.com/twine; motoslave.net/sugarcube/2/docs.
 - Dialogic 2: docs.dialogic.pro/getting-started.
 - Naninovel: naninovel.com/guide/editor.
