@@ -340,6 +340,19 @@ function sourceColor(source: VariableSource): string {
   return varSourceColor[source] ?? "text-muted-foreground";
 }
 
+/**
+ * Variable keys shaped as `sheet.table.row.col` (4 parts) are table cells;
+ * `sheet.var_name` (2 parts) are block variables. We detect by dot count so
+ * the backend doesn't have to ship extra metadata for this MVP.
+ */
+function isTableCell(key: string): boolean {
+  return key.split(".").length === 4;
+}
+
+function typeLabel(key: string, blockType: string): string {
+  return isTableCell(key) ? `table(${blockType})` : blockType;
+}
+
 function displayValue(var_: DebugVariable): string {
   if (var_.block_type === "select" && typeof var_.value === "string" && var_.options) {
     return var_.options.find((o) => o.key === var_.value)?.value ?? var_.value;
@@ -914,7 +927,7 @@ function continuePastLimit() {
               </td>
               <td class="overflow-hidden py-1 px-2">
                 <Badge variant="secondary" class="text-[10px] font-sans px-1.5 py-0">
-                  {{ var_.block_type }}
+                  {{ typeLabel(key, var_.block_type) }}
                 </Badge>
               </td>
               <td
