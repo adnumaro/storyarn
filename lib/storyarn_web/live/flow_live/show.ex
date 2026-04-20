@@ -15,6 +15,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
   alias StoryarnWeb.FlowLive.Handlers.NavigationHandlers
   alias StoryarnWeb.FlowLive.Handlers.PreviewHandlers
+  alias StoryarnWeb.FlowLive.Handlers.SequenceHandlers
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
   alias StoryarnWeb.FlowLive.Helpers.DebugSerializer
@@ -325,6 +326,8 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:debug_step_limit_reached, false)
       |> assign(:versions_panel_open, false)
       |> assign(:history_data, nil)
+      |> assign(:sequence_panel_open, false)
+      |> assign(:active_sequence, nil)
       |> assign(:all_sheets, [])
       |> assign(:gallery_by_sheet, %{})
       |> assign(:flow_hubs, [])
@@ -760,6 +763,22 @@ defmodule StoryarnWeb.FlowLive.Show do
         socket
       )
     end)
+  end
+
+  def handle_event("create_sequence_from_node", params, socket) do
+    SequenceHandlers.handle_create_sequence_from_node(params, socket)
+  end
+
+  def handle_event("open_sequence_panel", params, socket) do
+    SequenceHandlers.handle_open_sequence_panel(params, socket)
+  end
+
+  def handle_event("close_sequence_panel", params, socket) do
+    SequenceHandlers.handle_close_sequence_panel(params, socket)
+  end
+
+  def handle_event("update_sequence_name", params, socket) do
+    SequenceHandlers.handle_update_sequence_name(params, socket)
   end
 
   def handle_event("save_name", params, socket) do
@@ -1365,6 +1384,8 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:preview_history, [])
       |> assign(:versions_panel_open, false)
       |> assign(:history_data, nil)
+      |> assign(:sequence_panel_open, false)
+      |> assign(:active_sequence, nil)
       |> assign(:collab_scope, {:flow, flow.id})
       |> assign(:online_users, online_users)
       |> assign(:node_locks, node_locks)

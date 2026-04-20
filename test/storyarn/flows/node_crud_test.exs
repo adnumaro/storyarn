@@ -861,7 +861,6 @@ defmodule Storyarn.Flows.NodeCrudTest do
       result = Flows.update_node_data(hub2, %{"hub_id" => "taken"})
       assert result == {:error, :hub_id_not_unique}
     end
-
   end
 
   describe "batch_update_positions/2" do

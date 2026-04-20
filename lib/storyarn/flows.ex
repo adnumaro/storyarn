@@ -1044,6 +1044,9 @@ defmodule Storyarn.Flows do
   @doc "Creates a sequence for a flow + start node."
   defdelegate create_sequence(flow_id, start_node_id, attrs), to: SequenceCrud
 
+  @doc "Creates a sequence anchored at `node` and sets that node's sequence_directive, atomically."
+  defdelegate create_sequence_from_node(node, attrs), to: SequenceCrud
+
   @doc "Updates a sequence's name and/or tracks."
   defdelegate update_sequence(sequence, attrs), to: SequenceCrud
 

@@ -7,14 +7,14 @@
 
 Many schemas store references to other entities inside a JSONB `data` field rather than as explicit database columns with foreign keys. Examples:
 
-| Source field | Target entity | Location |
-|---|---|---|
-| `flow_nodes.data["speaker_sheet_id"]` | `sheets.id` | dialogue nodes |
-| `flow_nodes.data["audio_asset_id"]` | `assets.id` | dialogue nodes |
-| `flow_nodes.data["avatar_id"]` | `sheet_avatars.id` | dialogue + other nodes |
-| `flow_nodes.data["referenced_flow_id"]` | `flows.id` | subflow + exit nodes |
-| `flow_nodes.data["target_hub_id"]` | `flow_nodes.id` (hub) | jump nodes |
-| `flow_nodes.data["sequence_directive"]` | `flow_sequences.id` | executable nodes (post-P-3) |
+| Source field                            | Target entity         | Location                    |
+| --------------------------------------- | --------------------- | --------------------------- |
+| `flow_nodes.data["speaker_sheet_id"]`   | `sheets.id`           | dialogue nodes              |
+| `flow_nodes.data["audio_asset_id"]`     | `assets.id`           | dialogue nodes              |
+| `flow_nodes.data["avatar_id"]`          | `sheet_avatars.id`    | dialogue + other nodes      |
+| `flow_nodes.data["referenced_flow_id"]` | `flows.id`            | subflow + exit nodes        |
+| `flow_nodes.data["target_hub_id"]`      | `flow_nodes.id` (hub) | jump nodes                  |
+| `flow_nodes.data["sequence_directive"]` | `flow_sequences.id`   | executable nodes (post-P-3) |
 
 This shape is **legitimate for this domain** — node data has widely different shapes per node type (dialogue has `responses[]`, condition has `cases[]`, jump has `target_hub_id`), and normalizing every variant into its own table would produce 15+ small tables for marginal semantic gain. This is how comparable narrative-design tools (Articy, Yarn Spinner, Ink) structure their data too.
 
@@ -23,6 +23,7 @@ This shape is **legitimate for this domain** — node data has widely different 
 When the **target** entity is deleted, the pointer is **silently orphaned**. Postgres FK cascade does not apply because there is no FK (JSONB fields cannot carry FK constraints).
 
 Current state:
+
 - ✅ Permissive persistence (no validation at save time — consistent with the domain's flexibility)
 - ✅ `Storyarn.Exports.Validator` surfaces broken refs at export time (`check_broken_jump_refs`, `check_broken_subflow_refs`, etc.)
 - ❌ **No lifecycle hook at target deletion**. When a Sheet, Asset, Flow, Hub, or (new) Sequence is deleted, nothing cleans up the JSONB pointers that referenced it. Orphans accumulate silently until the next export surfaces them.
@@ -73,15 +74,15 @@ Not a blocker for pre-release, but each new cross-ref added without a lifecycle 
 
 Inventory to complete once someone has bandwidth. Each row should confirm: is a lifecycle hook wired? If not, note severity.
 
-| Target | Source cross-refs | Current hook | Action |
-|---|---|---|---|
-| `sheets` | `speaker_sheet_id`, `avatar_id` (via `sheet_avatars`) | ❌ | retrofit |
-| `assets` | `audio_asset_id` | ❌ | retrofit |
-| `sheet_avatars` | `avatar_id` | ❌ | retrofit |
-| `flows` | `referenced_flow_id` (subflow/exit) | ❌ | retrofit |
-| `flow_nodes` (hubs) | `target_hub_id` (jumps) | ❌ (validator only) | low priority |
-| `flow_sequences` | `sequence_directive` | ✅ (P-3, see `SequenceCrud.delete_sequence/1`) | done |
+| Target              | Source cross-refs                                     | Current hook                                   | Action       |
+| ------------------- | ----------------------------------------------------- | ---------------------------------------------- | ------------ |
+| `sheets`            | `speaker_sheet_id`, `avatar_id` (via `sheet_avatars`) | ❌                                             | retrofit     |
+| `assets`            | `audio_asset_id`                                      | ❌                                             | retrofit     |
+| `sheet_avatars`     | `avatar_id`                                           | ❌                                             | retrofit     |
+| `flows`             | `referenced_flow_id` (subflow/exit)                   | ❌                                             | retrofit     |
+| `flow_nodes` (hubs) | `target_hub_id` (jumps)                               | ❌ (validator only)                            | low priority |
+| `flow_sequences`    | `sequence_directive`                                  | ✅ (P-3, see `SequenceCrud.delete_sequence/1`) | done         |
 
 ## Why this is recorded here
 
-The user asked, while designing Sequence delete semantics: *"Crees que la app debería de ser así? lo que estamos haciendo es un anti patrón?"* — honest answer: the **shape** (JSONB cross-refs) is legitimate; the **handling** is incomplete. Recording it here prevents the issue from getting lost in a commit message and gives future retrofits a checklist.
+The user asked, while designing Sequence delete semantics: _"Crees que la app debería de ser así? lo que estamos haciendo es un anti patrón?"_ — honest answer: the **shape** (JSONB cross-refs) is legitimate; the **handling** is incomplete. Recording it here prevents the issue from getting lost in a commit message and gives future retrofits a checklist.

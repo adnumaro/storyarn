@@ -248,7 +248,6 @@ defmodule Storyarn.Exports.ValidatorTest do
 
       assert length(broken) == 1
     end
-
   end
 
   # =============================================================================

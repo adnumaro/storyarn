@@ -523,7 +523,6 @@ defmodule Storyarn.Exports.Serializers.GodotDialogicTest do
       source = dtl_source(export_dialogic(project))
       assert source =~ "jump side_quest_rescue/"
     end
-
   end
 
   # =============================================================================

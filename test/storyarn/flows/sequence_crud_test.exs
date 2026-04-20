@@ -6,6 +6,7 @@ defmodule Storyarn.Flows.SequenceCrudTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Flows
+  alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.Sequence
 
   defp setup_flow_with_node(_ctx \\ %{}) do
@@ -34,7 +35,7 @@ defmodule Storyarn.Flows.SequenceCrudTest do
 
       {:ok, seq} = Flows.create_sequence(flow.id, entry.id, %{"name" => "s"})
 
-      assert Map.keys(seq.tracks) |> Enum.sort() == Enum.sort(Sequence.track_keys())
+      assert seq.tracks |> Map.keys() |> Enum.sort() == Enum.sort(Sequence.track_keys())
       assert Enum.all?(seq.tracks, fn {_k, v} -> v == [] end)
     end
 
@@ -69,7 +70,7 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       {:ok, a} = Flows.create_sequence(flow.id, entry.id, %{"name" => "A"})
       {:ok, b} = Flows.create_sequence(flow.id, entry.id, %{"name" => "B"})
 
-      ids = Flows.list_sequences(flow.id) |> Enum.map(& &1.id) |> Enum.sort()
+      ids = flow.id |> Flows.list_sequences() |> Enum.map(& &1.id) |> Enum.sort()
       assert ids == Enum.sort([a.id, b.id])
     end
 
@@ -149,9 +150,51 @@ defmodule Storyarn.Flows.SequenceCrudTest do
   describe "Sequence.empty_tracks/0" do
     test "returns all 5 fixed keys with empty lists" do
       tracks = Sequence.empty_tracks()
-      assert Map.keys(tracks) |> Enum.sort() ==
+
+      assert tracks |> Map.keys() |> Enum.sort() ==
                ~w(audio_ambient audio_music audio_sfx video_bg video_overlay)
+
       assert Enum.all?(tracks, fn {_, v} -> v == [] end)
+    end
+  end
+
+  describe "create_sequence_from_node/2 atomic" do
+    test "creates sequence AND sets node's sequence_directive in one transaction" do
+      %{flow: flow, entry_node: entry} = setup_flow_with_node()
+
+      assert {:ok, %Sequence{} = seq} =
+               Flows.create_sequence_from_node(entry, %{"name" => "Castle Intro"})
+
+      assert seq.name == "Castle Intro"
+      assert seq.flow_id == flow.id
+      assert seq.start_node_id == entry.id
+
+      refetched = Storyarn.Repo.get!(FlowNode, entry.id)
+      assert refetched.data["sequence_directive"] == seq.id
+    end
+
+    test "overwrites an existing sequence_directive on the node" do
+      %{flow: flow, entry_node: entry} = setup_flow_with_node()
+      {:ok, first} = Flows.create_sequence_from_node(entry, %{"name" => "A"})
+
+      {:ok, second} = Flows.create_sequence_from_node(entry, %{"name" => "B"})
+
+      refetched = Storyarn.Repo.get!(FlowNode, entry.id)
+      assert refetched.data["sequence_directive"] == second.id
+      refute first.id == second.id
+      # Both sequences exist (first is not deleted, just orphaned from this node)
+      assert Flows.get_sequence(flow.id, first.id).id == first.id
+      assert Flows.get_sequence(flow.id, second.id).id == second.id
+    end
+
+    test "rolls back if sequence creation fails (missing name)" do
+      %{entry_node: entry} = setup_flow_with_node()
+
+      assert {:error, cs} = Flows.create_sequence_from_node(entry, %{})
+      assert %{name: ["can't be blank"]} = errors_on(cs)
+
+      refetched = Storyarn.Repo.get!(FlowNode, entry.id)
+      refute refetched.data["sequence_directive"]
     end
   end
 
@@ -163,7 +206,7 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       # Point the entry node's sequence_directive at the sequence
       {:ok, entry_with_directive} =
         entry
-        |> Storyarn.Flows.FlowNode.data_changeset(%{
+        |> FlowNode.data_changeset(%{
           data: Map.put(entry.data, "sequence_directive", seq.id)
         })
         |> Storyarn.Repo.update()
@@ -173,7 +216,7 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       {:ok, _deleted} = Flows.delete_sequence(seq)
 
       # After delete, the pointer should be nil (key preserved)
-      refetched = Storyarn.Repo.get!(Storyarn.Flows.FlowNode, entry.id)
+      refetched = Storyarn.Repo.get!(FlowNode, entry.id)
       assert Map.has_key?(refetched.data, "sequence_directive")
       assert refetched.data["sequence_directive"] == nil
     end
@@ -186,7 +229,7 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       # Entry points at seq_b
       {:ok, _} =
         entry
-        |> Storyarn.Flows.FlowNode.data_changeset(%{
+        |> FlowNode.data_changeset(%{
           data: Map.put(entry.data, "sequence_directive", seq_b.id)
         })
         |> Storyarn.Repo.update()
@@ -195,7 +238,7 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       {:ok, _} = Flows.delete_sequence(seq_a)
 
       # Entry's pointer to seq_b is untouched
-      refetched = Storyarn.Repo.get!(Storyarn.Flows.FlowNode, entry.id)
+      refetched = Storyarn.Repo.get!(FlowNode, entry.id)
       assert refetched.data["sequence_directive"] == seq_b.id
     end
 
@@ -208,7 +251,7 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       # An entry node in flow_b somehow has an orphan pointer to seq_a (e.g. import bug)
       {:ok, _} =
         entry_b
-        |> Storyarn.Flows.FlowNode.data_changeset(%{
+        |> FlowNode.data_changeset(%{
           data: Map.put(entry_b.data, "sequence_directive", seq_a.id)
         })
         |> Storyarn.Repo.update()
@@ -217,7 +260,7 @@ defmodule Storyarn.Flows.SequenceCrudTest do
 
       # Sweep scopes to flow_id — the cross-flow orphan is left alone
       # (it's the export validator's job to flag such orphans).
-      refetched = Storyarn.Repo.get!(Storyarn.Flows.FlowNode, entry_b.id)
+      refetched = Storyarn.Repo.get!(FlowNode, entry_b.id)
       assert refetched.data["sequence_directive"] == seq_a.id
     end
   end

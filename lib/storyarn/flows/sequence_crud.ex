@@ -20,11 +20,7 @@ defmodule Storyarn.Flows.SequenceCrud do
   """
   @spec list_sequences(integer()) :: [Sequence.t()]
   def list_sequences(flow_id) do
-    from(s in Sequence,
-      where: s.flow_id == ^flow_id and is_nil(s.deleted_at),
-      order_by: [asc: s.inserted_at]
-    )
-    |> Repo.all()
+    Repo.all(from(s in Sequence, where: s.flow_id == ^flow_id and is_nil(s.deleted_at), order_by: [asc: s.inserted_at]))
   end
 
   @doc """
@@ -32,11 +28,9 @@ defmodule Storyarn.Flows.SequenceCrud do
   """
   @spec list_deleted(integer()) :: [Sequence.t()]
   def list_deleted(flow_id) do
-    from(s in Sequence,
-      where: s.flow_id == ^flow_id and not is_nil(s.deleted_at),
-      order_by: [desc: s.deleted_at]
+    Repo.all(
+      from(s in Sequence, where: s.flow_id == ^flow_id and not is_nil(s.deleted_at), order_by: [desc: s.deleted_at])
     )
-    |> Repo.all()
   end
 
   @doc """
@@ -44,10 +38,7 @@ defmodule Storyarn.Flows.SequenceCrud do
   """
   @spec get_sequence(integer(), integer()) :: Sequence.t() | nil
   def get_sequence(flow_id, id) do
-    from(s in Sequence,
-      where: s.id == ^id and s.flow_id == ^flow_id and is_nil(s.deleted_at)
-    )
-    |> Repo.one()
+    Repo.one(from(s in Sequence, where: s.id == ^id and s.flow_id == ^flow_id and is_nil(s.deleted_at)))
   end
 
   @doc """
@@ -76,6 +67,40 @@ defmodule Storyarn.Flows.SequenceCrud do
     %Sequence{}
     |> Sequence.create_changeset(attrs)
     |> Repo.insert()
+  end
+
+  @doc """
+  Creates a sequence anchored at the given node AND sets that node's
+  `sequence_directive` to point at the new sequence, atomically.
+
+  This is the entry-point the UI uses for "Create sequence from here".
+  If the node already had a `sequence_directive`, it is overwritten.
+
+  `attrs` should include at minimum `:name` (or `"name"`).
+  """
+  @spec create_sequence_from_node(FlowNode.t(), map()) ::
+          {:ok, Sequence.t()} | {:error, Ecto.Changeset.t()}
+  def create_sequence_from_node(%FlowNode{} = node, attrs) do
+    Repo.transaction(fn ->
+      case create_sequence(node.flow_id, node.id, attrs) do
+        {:ok, sequence} ->
+          case set_node_sequence_directive(node, sequence.id) do
+            {:ok, _updated_node} -> sequence
+            {:error, changeset} -> Repo.rollback(changeset)
+          end
+
+        {:error, changeset} ->
+          Repo.rollback(changeset)
+      end
+    end)
+  end
+
+  defp set_node_sequence_directive(%FlowNode{} = node, sequence_id) do
+    new_data = Map.put(node.data || %{}, "sequence_directive", sequence_id)
+
+    node
+    |> FlowNode.data_changeset(%{data: new_data})
+    |> Repo.update()
   end
 
   @doc """

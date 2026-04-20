@@ -239,7 +239,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
       node = hd(subflow_nodes)
       assert node.data["referenced_flow_id"] == nil
     end
-
   end
 
   describe "delete_node via LiveView" do
