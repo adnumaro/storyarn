@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronRight,
   CircleX,
+  Diff,
   FastForward,
   Gauge,
   Info,
@@ -18,6 +19,7 @@ import {
   Pause,
   Play,
   RotateCcw,
+  Search,
   Square,
   TriangleAlert,
   Undo2,
@@ -33,10 +35,11 @@ import {
   CommandItem,
   CommandList,
 } from "@components/ui/command/index.ts";
-import { Input } from "@components/ui/input/index.ts";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { Slider } from "@components/ui/slider/index.ts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
+import { useDebounceFn } from "@vueuse/core";
+import { useColumnResize } from "@composables/useColumnResize";
 import { useLive } from "@composables/useLive";
 import { useVerticalResize } from "@composables/useVerticalResize";
 import { formatDebugTs, formatDebugValue, stripHtml } from "../lib/debug-format";
@@ -141,8 +144,19 @@ const { height, onPointerDown } = useVerticalResize({
   min: 120,
   max: 600,
 });
+const { widths: colWidths, startResize: startColResize } = useColumnResize([
+  { id: "variable", default: 220, min: 80 },
+  { id: "type", default: 88, min: 60 },
+  { id: "initial", default: 140, min: 60 },
+  { id: "previous", default: 140, min: 60 },
+  { id: "current", default: 180, min: 80 },
+]);
 const varFilter = ref(controls.varFilter);
 const startSelectOpen = ref(false);
+
+const pushVarFilterDebounced = useDebounceFn((value: string) => {
+  live.pushEvent("debug_var_filter", { filter: value });
+}, 150);
 
 const variables = computed(() => state?.variables || {});
 const executionPath = computed(() => state?.execution_path || []);
@@ -164,8 +178,30 @@ const filteredVariables = computed(() => {
   if (controls.varChangedOnly) {
     filtered = filtered.filter(([, v]) => v.changed);
   }
-  return filtered;
+  return filtered.sort(([a], [b]) => a.localeCompare(b));
 });
+
+const totalVariables = computed(() => Object.keys(variables.value).length);
+
+const varSourceColor: Record<VariableSource, string> = {
+  instruction: "text-amber-500",
+  user_override: "text-sky-500",
+  initial: "text-muted-foreground",
+};
+
+function sourceColor(source: VariableSource): string {
+  return varSourceColor[source] ?? "text-muted-foreground";
+}
+
+function onVarFilterInput(event: Event) {
+  const target = event.target as HTMLInputElement;
+  varFilter.value = target.value;
+  pushVarFilterDebounced(target.value);
+}
+
+function toggleChangedOnly() {
+  live.pushEvent("debug_var_toggle_changed", {});
+}
 
 function formatSpeed(ms: number): string {
   return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`;
@@ -570,25 +606,126 @@ function continuePastLimit() {
       </TabsContent>
 
       <!-- Variables -->
-      <TabsContent value="variables" class="flex-1 min-h-0 overflow-y-auto px-3 pb-3">
-        <Input
-          v-model="varFilter"
-          type="search"
-          :placeholder="$t('flows.debug.filter_variables')"
-          class="text-xs mb-2"
-        />
-        <div class="space-y-0.5">
-          <div
-            v-for="[key, val] in filteredVariables"
-            :key="key"
-            class="flex items-center justify-between text-xs py-1 px-2 rounded"
-            :class="val.changed ? 'bg-amber-500/10' : ''"
-          >
-            <span class="font-mono truncate">{{ key }}</span>
-            <span class="text-muted-foreground ml-2 truncate max-w-37.5">
-              {{ val.value ?? $t("flows.debug.nil") }}
-            </span>
+      <TabsContent value="variables" class="flex-1 min-h-0 overflow-y-auto text-xs">
+        <!-- Filter bar -->
+        <div
+          class="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/30 shrink-0 sticky top-0 z-10"
+        >
+          <div class="relative flex-1 max-w-48">
+            <Search
+              class="size-3 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 pointer-events-none"
+            />
+            <input
+              :value="varFilter"
+              type="text"
+              :placeholder="$t('flows.debug.filter_variables')"
+              class="w-full h-7 pl-7 pr-2 text-xs rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+              @input="onVarFilterInput"
+            />
           </div>
+          <Button
+            size="sm"
+            :variant="controls.varChangedOnly ? 'default' : 'ghost'"
+            class="h-7 gap-1"
+            :title="$t('flows.debug.var_changed_hint')"
+            @click="toggleChangedOnly"
+          >
+            <Diff class="size-3" />
+            {{ $t("flows.debug.var_changed_toggle") }}
+          </Button>
+          <span class="text-xs text-muted-foreground tabular-nums ml-auto">
+            {{
+              $t("flows.debug.var_count", {
+                shown: filteredVariables.length,
+                total: totalVariables,
+              })
+            }}
+          </span>
+        </div>
+
+        <!-- Variables table -->
+        <table
+          v-if="filteredVariables.length > 0"
+          class="w-full table-fixed border-collapse"
+        >
+          <colgroup>
+            <col :style="{ width: `${colWidths.variable}px` }" />
+            <col :style="{ width: `${colWidths.type}px` }" />
+            <col :style="{ width: `${colWidths.initial}px` }" />
+            <col :style="{ width: `${colWidths.previous}px` }" />
+            <col :style="{ width: `${colWidths.current}px` }" />
+          </colgroup>
+          <thead class="sticky top-[34px] bg-background z-10 text-muted-foreground/70">
+            <tr class="border-b border-border">
+              <th
+                v-for="col in ['variable', 'type', 'initial', 'previous', 'current']"
+                :key="col"
+                class="font-medium text-left relative pr-3 py-1 px-2 overflow-hidden"
+                :class="col === 'variable' ? 'text-left' : ''"
+              >
+                {{ $t(`flows.debug.col_${col}`) }}
+                <span
+                  v-if="col !== 'current'"
+                  class="absolute right-0 top-0 w-3 h-full cursor-col-resize group"
+                  @pointerdown="startColResize(col, $event)"
+                >
+                  <span
+                    class="absolute inset-y-0 right-0 w-px bg-border group-hover:w-[3px] group-hover:bg-primary/50 transition-all"
+                  />
+                </span>
+              </th>
+            </tr>
+          </thead>
+          <tbody class="font-mono">
+            <tr
+              v-for="[key, var_] in filteredVariables"
+              :key="key"
+              class="hover:bg-muted/40 border-b border-border/40"
+            >
+              <td class="truncate overflow-hidden py-1 px-2" :title="key">
+                <span class="text-muted-foreground/60">{{ var_.sheet_shortcut }}.</span
+                >{{ var_.variable_name }}
+              </td>
+              <td class="overflow-hidden py-1 px-2">
+                <Badge variant="secondary" class="text-[10px] font-sans px-1.5 py-0">
+                  {{ var_.block_type }}
+                </Badge>
+              </td>
+              <td
+                class="text-left text-muted-foreground/70 tabular-nums truncate overflow-hidden py-1 px-2"
+              >
+                {{ formatDebugValue(var_.initial_value) }}
+              </td>
+              <td
+                class="text-left text-muted-foreground/70 tabular-nums truncate overflow-hidden py-1 px-2"
+              >
+                {{ formatDebugValue(var_.previous_value) }}
+              </td>
+              <td
+                class="text-left tabular-nums py-1 px-2 truncate overflow-hidden"
+                :class="var_.changed ? sourceColor(var_.source) : 'text-muted-foreground/70'"
+              >
+                <span v-if="var_.changed" :class="sourceColor(var_.source)">◆ </span>
+                <span :class="var_.changed ? 'font-semibold' : ''">
+                  {{ formatDebugValue(var_.value) }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Empty states -->
+        <div
+          v-if="filteredVariables.length === 0 && totalVariables === 0"
+          class="flex items-center justify-center h-24 text-muted-foreground/50"
+        >
+          {{ $t("flows.debug.no_variables") }}
+        </div>
+        <div
+          v-else-if="filteredVariables.length === 0"
+          class="flex items-center justify-center h-24 text-muted-foreground/50"
+        >
+          {{ $t("flows.debug.no_matching_vars") }}
         </div>
       </TabsContent>
 

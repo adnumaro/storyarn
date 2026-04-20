@@ -145,7 +145,18 @@
       "current_flow": "Actual",
       "flow_label": "Flujo",
       "entering_subflow": "Entrando en sub-flujo",
-      "returned_to_parent": "Vuelta al flujo padre"
+      "returned_to_parent": "Vuelta al flujo padre",
+      "var_changed_toggle": "Cambiadas",
+      "var_changed_hint": "Mostrar solo variables cambiadas",
+      "var_count": "{shown} de {total}",
+      "col_variable": "Variable",
+      "col_type": "Tipo",
+      "col_initial": "Inicial",
+      "col_previous": "Anterior",
+      "col_current": "Actual",
+      "no_variables": "No hay variables en este proyecto",
+      "no_matching_vars": "Sin variables que coincidan",
+      "click_to_edit": "Clic para editar"
     },
     "minimap": {
       "toggle": "Alternar minimapa",

@@ -145,7 +145,18 @@
       "current_flow": "Current",
       "flow_label": "Flow",
       "entering_subflow": "Entering sub-flow",
-      "returned_to_parent": "Returned to parent"
+      "returned_to_parent": "Returned to parent",
+      "var_changed_toggle": "Changed",
+      "var_changed_hint": "Show only changed variables",
+      "var_count": "{shown} of {total}",
+      "col_variable": "Variable",
+      "col_type": "Type",
+      "col_initial": "Initial",
+      "col_previous": "Previous",
+      "col_current": "Current",
+      "no_variables": "No variables in this project",
+      "no_matching_vars": "No matching variables",
+      "click_to_edit": "Click to edit"
     },
     "minimap": {
       "toggle": "Toggle minimap",
