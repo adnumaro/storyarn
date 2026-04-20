@@ -1417,6 +1417,9 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   # Shell topic messages (forwarded by FlowSidebarLive / PresenceLive).
   def handle_info({:active_flow, _flow_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
   def handle_info({:open_flow, _flow_id}, socket), do: {:noreply, socket}
   def handle_info({:tree_changed, :flows}, socket), do: {:noreply, socket}
 

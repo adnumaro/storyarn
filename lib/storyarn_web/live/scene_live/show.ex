@@ -1812,8 +1812,13 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   # Broadcast from handle_params of this LV; the sidebar listens too. Noop for
-  # Show since it owns the scene state already.
+  # Show since it owns the scene state already. Sibling active_* messages
+  # travel on the same shell topic when multiple tools share a project — swallow
+  # them so they don't crash the LV with FunctionClauseError.
   def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_flow, _flow_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
 
   # Sidebar → page; Index picks it up on tree-create navigation. Ignored in Show.
   def handle_info({:open_scene, _id}, socket), do: {:noreply, socket}

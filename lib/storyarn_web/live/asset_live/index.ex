@@ -86,6 +86,12 @@ defmodule StoryarnWeb.AssetLive.Index do
 
   def handle_info({:toolbar_event, _name, _params}, socket), do: {:noreply, socket}
 
+  # Shell-topic sibling actives — broadcast by other tools sharing the topic.
+  def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_flow, _flow_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
+
   def handle_info({:remote_change, _action, _payload}, socket) do
     type_counts = Assets.count_assets_by_type(socket.assigns.project.id)
 

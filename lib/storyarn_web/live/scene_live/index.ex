@@ -131,6 +131,9 @@ defmodule StoryarnWeb.SceneLive.Index do
   end
 
   def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_flow, _flow_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
   def handle_info({:tree_changed, :scenes}, socket), do: {:noreply, reload_scenes(socket)}
   def handle_info({:entity_deleted, _id}, socket), do: {:noreply, socket}
   def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}

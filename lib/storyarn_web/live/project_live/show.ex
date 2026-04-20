@@ -99,6 +99,13 @@ defmodule StoryarnWeb.ProjectLive.Show do
 
   def handle_info({:toolbar_event, _name, _params}, socket), do: {:noreply, socket}
 
+  # Shell-topic sibling actives — LVs from other tools broadcast on the shared
+  # project shell topic. Project dashboard ignores them all.
+  def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_flow, _flow_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
+
   def handle_info(:load_dashboard_data, socket) do
     project = socket.assigns.project
     project_id = project.id

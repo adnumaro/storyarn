@@ -784,6 +784,9 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_flow, _flow_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
+  def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
   def handle_info({:tree_changed, :sheets}, socket), do: {:noreply, socket}
 
   def handle_info({:entity_deleted, id}, socket) do
