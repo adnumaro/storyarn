@@ -33,6 +33,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.VariableHelpers do
           sheet_shortcut: var.sheet_shortcut,
           variable_name: var.variable_name,
           constraints: var[:constraints],
+          options: var[:options],
           source_type: var[:source_type] || "sheet",
           source_id: var[:source_id]
         }

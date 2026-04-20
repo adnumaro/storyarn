@@ -201,7 +201,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
   # Private — data conversion
   # ===========================================================================
 
-  defp parse_variable_value(raw, "number") do
+  defp parse_variable_value(raw, "number") when is_binary(raw) do
     case Float.parse(raw) do
       {n, _} ->
         {n, nil}
@@ -216,7 +216,29 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugSessionHandlers do
     end
   end
 
+  defp parse_variable_value(raw, "number") when is_number(raw), do: {raw, nil}
+
   defp parse_variable_value("true", "boolean"), do: {true, nil}
+  defp parse_variable_value("false", "boolean"), do: {false, nil}
+  defp parse_variable_value("nil", "boolean"), do: {nil, nil}
+  defp parse_variable_value(nil, "boolean"), do: {nil, nil}
+  defp parse_variable_value(true, "boolean"), do: {true, nil}
+  defp parse_variable_value(false, "boolean"), do: {false, nil}
   defp parse_variable_value(_, "boolean"), do: {false, nil}
+
+  defp parse_variable_value(list, "multi_select") when is_list(list), do: {list, nil}
+
+  defp parse_variable_value("", "multi_select"), do: {[], nil}
+
+  defp parse_variable_value(raw, "multi_select") when is_binary(raw) do
+    parts =
+      raw
+      |> String.split(",")
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
+
+    {parts, nil}
+  end
+
   defp parse_variable_value(raw, _), do: {raw, nil}
 end
