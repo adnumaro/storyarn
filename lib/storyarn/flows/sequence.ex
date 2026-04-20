@@ -3,10 +3,14 @@ defmodule Storyarn.Flows.Sequence do
   Schema for flow sequences.
 
   A Sequence is a grouping of flow nodes with a shared atmosphere expressed as
-  a multi-track timeline (video backgrounds, overlays, music, ambient, SFX).
-  Nodes become members of a Sequence via a `sequence_directive` pointer in
-  their data — the directive marks the Sequence entry point; downstream nodes
-  inherit it at runtime by walking back along the actual execution path.
+  a multi-track timeline of 3 tracks: `background` (image asset), `music`
+  (audio asset), and `ambient` (audio asset). Nodes become members of a
+  Sequence via a `sequence_directive` pointer in their data — the directive
+  marks the Sequence entry point; downstream nodes inherit it at runtime by
+  walking back along the actual execution path.
+
+  v1 deliberately omits video, effects, overlays, and SFX tracks. Those can
+  be layered in later iterations once the minimum ships and gets use.
 
   Not to be confused with `Storyarn.Scenes.Scene`, which is the walkable 2D
   canvas entity used by the ExplorationPlayer. Different shapes, different
@@ -21,7 +25,7 @@ defmodule Storyarn.Flows.Sequence do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Shared.TimeHelpers
 
-  @track_keys ~w(video_bg video_overlay audio_music audio_ambient audio_sfx)
+  @track_keys ~w(background music ambient)
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -48,13 +52,13 @@ defmodule Storyarn.Flows.Sequence do
   end
 
   @doc """
-  Returns the 5 fixed track keys.
+  Returns the 3 fixed track keys: `background`, `music`, `ambient`.
   """
   @spec track_keys() :: [String.t()]
   def track_keys, do: @track_keys
 
   @doc """
-  Returns an empty tracks map with all 5 fixed keys initialized to empty lists.
+  Returns an empty tracks map with all 3 fixed keys initialized to empty lists.
   Use this when creating a new Sequence.
   """
   @spec empty_tracks() :: map()

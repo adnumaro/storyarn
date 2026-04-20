@@ -34,7 +34,7 @@ Adobe Premiere uses "Sequence" as the native term for multi-track timeline compo
 1. **FlowPlayer ≠ ExplorationPlayer** — they're different products. Don't propose unifying them.
 2. **Target audience = videogame teams first.** Articy/Yarn/Ink/Pixel Crushers are the competitors. Arcweave is a simplicity touchstone for the preview surface, NOT for the editor. Don't propose novelist-style simplifications.
 3. **Sequence is a first-class entity inside a flow** (`Storyarn.Flows.Sequence`, new). NOT unified with `Storyarn.Scenes.Scene` — see the Terminology section above. The only shared concept is "coherent atmosphere"; the data shapes are different.
-4. **Multi-track timeline inside a Sequence** — 5 fixed tracks: `video_bg`, `video_overlay`, `audio_music`, `audio_ambient`, `audio_sfx`. No effects track in v1. No dynamic track management in v1. Rows are fixed; **clips within them are 100% editable** (drag, resize, delete, re-parent across rows).
+4. **Multi-track timeline inside a Sequence** — 3 fixed tracks: `background` (image asset), `music` (audio asset), `ambient` (audio asset). No video, no overlays, no SFX, no effects track in v1. No dynamic track management in v1. Rows are fixed; **clips within them are 100% editable** (drag, resize, delete, re-parent across rows). The 3 tracks map to the user's original ask: "una imagen que actuase de background (...) ambient + bg de fondo" plus a split between music and ambient audio.
 5. **Timeline x-axis = node sequence** within the Sequence (not absolute seconds). Clips span `start_node_id → end_node_id`.
 6. **Path-agnostic clips**: a clip on nodes 1-5 plays on ALL branches within that range. The Sequence's music is the Sequence's state, not the path's.
 7. **Sequence membership via `sequence_directive` pointer on node data.** Node with directive = Sequence entry point. Nodes without directive inherit from upstream-most node with one along the actual execution path. Branching resolves at runtime, no static group-membership conflicts.
@@ -64,7 +64,7 @@ Per `feedback_time_estimates_claude_cadence.md`: do NOT inflate. Realistic numbe
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
 | **P-2** — single-column layout polish (flatten rejected, see point 14)                                                                                                                          | 0.5-1 h         |
 | **P-3** — delete `slug_line` entirely + new `Storyarn.Flows.Sequence` entity + `sequence_directive` on executable nodes + "Create sequence from here" right-click with bottom-docked stub panel | 4-5 h           |
-| **Premiere v1** — Sequence editor with 5 fixed tracks, drag/resize clips, transitions, Web Audio mix, CSS fades, canvas badges                                                                  | 4-6 h           |
+| **Premiere v1** — Sequence editor with 3 fixed tracks, drag/resize clips, transitions, Web Audio mix, CSS fades, canvas badges                                                                  | 4-6 h           |
 | **P-4** — blinking arrow, force-assign vars in debug panel, jump-to-source                                                                                                                      | 2-3 h           |
 | **Total**                                                                                                                                                                                       | **~1-1.5 days** |
 
@@ -155,7 +155,7 @@ Separation: **preview = Arcweave-clean for readers; editor = game-dev-pro for au
 ├──────────────────────────────────────┤
 │                                      │
 │        ╔════════════════╗            │
-│        ║     image      ║            │  ← Sequence's video_bg track clip
+│        ║     image      ║            │  ← Sequence's `background` track clip
 │        ╚════════════════╝            │     (optional, centered, rounded)
 │                                      │
 │   Current beat text                  │  ← dialogue text / slug heading
@@ -167,7 +167,7 @@ Separation: **preview = Arcweave-clean for readers; editor = game-dev-pro for au
 └──────────────────────────────────────┘
 ```
 
-If no Sequence is active (or the active Sequence has no `video_bg` clip at this node), the image block is simply omitted. Minimal flow → minimal player.
+If no Sequence is active (or the active Sequence has no `background` clip at this node), the image block is simply omitted. Minimal flow → minimal player.
 
 ## Node types visible in the player
 
@@ -186,14 +186,18 @@ After several iterations, the model that survived:
 
 ### Multi-track timeline inside a Sequence
 
-Inspired by Adobe Premiere (user showed a screenshot to align vocabulary — and "Sequence" is literally Premiere's native term for a timeline composition). Key insight I was missing early: it's not "one image + one audio" per node. It's **parallel layered tracks**:
+Inspired by Adobe Premiere (user showed a screenshot to align vocabulary — and "Sequence" is literally Premiere's native term for a timeline composition). Key insight: it's not "one image + one audio" per node. It's **parallel layered tracks**. v1 deliberately ships just 3 to cover the stated requirement ("imagen de fondo + ambient"):
 
-- Video BG (base image)
-- Video Overlay (fog, light effects, UI overlays)
-- Audio Music (score / theme)
-- Audio Ambient (wind, hall tone, rain)
-- Audio SFX (door open, impact)
-- Effects (fade_in, shake, flash — one-shot, attached to a node) — **v2 only, not in MVP**
+- `background` (image asset — the static scene the player sees)
+- `music` (audio asset — score / theme, typically changes between Sequences)
+- `ambient` (audio asset — wind, hall tone, rain; persists longer)
+
+**Deferred to v2 or later** (only when demand shows):
+
+- Video overlay (fog, light effects, UI overlays)
+- SFX (one-shot sounds: door open, impact)
+- Effects (fade_in, shake, flash — one-shot, attached to a node)
+- Video on clips (static images only in v1)
 
 Each clip on each track covers a range of nodes (not seconds). Clips on different tracks overlap — that's the layering.
 
@@ -219,7 +223,7 @@ Each node has an optional `sequence_directive` that points to a Sequence. Nodes 
 # Sequence entity (new — lives in lib/storyarn/flows/sequence.ex)
 schema "flow_sequences" do
   field :name, :string
-  field :tracks, :map  # nested: {video_bg: [clips], audio_music: [clips], ...}
+  field :tracks, :map  # nested: %{"background" => [clips], "music" => [clips], "ambient" => [clips]}
   belongs_to :flow, Storyarn.Flows.Flow
   belongs_to :start_node, Storyarn.Flows.FlowNode  # the node the author right-clicked to create this
   timestamps(type: :utc_datetime)
@@ -310,7 +314,7 @@ Per user agreement (2026-04-20): go for the full path, not the minimal one. Real
 | **P-1**         | Import `player.css` in `app.css`.                                                                                                                                                                                                                                                                           | 5 min   | ✅ `2a732b88` |
 | **P-2**         | Single-column layout polish on `FlowPlayer.vue`. Subcomponents stay separate (flatten rejected — see point 14 in HANDOFF).                                                                                                                                                                                  | 0.5-1 h | pending       |
 | **P-3**         | Delete `slug_line` entirely. New `Storyarn.Flows.Sequence` entity + `sequence_directive` on all executable node types (entry, dialogue, condition, instruction, hub, jump, subflow, exit). Minimum UI: right-click "Create sequence from here" + bottom-docked stub panel (same pattern as FlowDebugPanel). | 4-5 h   | pending       |
-| **Premiere v1** | Sequence editor: 5 fixed tracks, drag/resize clips, transitions, Web Audio mix, CSS fades. Player runtime processes parallel cues.                                                                                                                                                                          | 4-6 h   | pending       |
+| **Premiere v1** | Sequence editor: 3 fixed tracks (`background`, `music`, `ambient`), drag/resize clips, transitions, Web Audio mix, CSS fades. Player runtime processes parallel cues.                                                                                                                                        | 4-6 h   | pending       |
 | **P-4**         | Blinking-arrow for single-exit, force-assign vars in debug panel, jump-to-source, canvas 🎬 badges + colored regions.                                                                                                                                                                                       | 2-3 h   | pending       |
 
 ## Non-goals

@@ -30,7 +30,7 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       assert is_nil(seq.deleted_at)
     end
 
-    test "defaults tracks to the 5 empty fixed track keys" do
+    test "defaults tracks to the 3 empty fixed track keys" do
       %{flow: flow, entry_node: entry} = setup_flow_with_node()
 
       {:ok, seq} = Flows.create_sequence(flow.id, entry.id, %{"name" => "s"})
@@ -42,7 +42,7 @@ defmodule Storyarn.Flows.SequenceCrudTest do
     test "accepts explicit tracks map" do
       %{flow: flow, entry_node: entry} = setup_flow_with_node()
 
-      custom = %{"video_bg" => [%{"asset_id" => 1}]}
+      custom = %{"background" => [%{"asset_id" => 1}]}
 
       {:ok, seq} =
         Flows.create_sequence(flow.id, entry.id, %{"name" => "s", "tracks" => custom})
@@ -98,7 +98,7 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       %{flow: flow, entry_node: entry} = setup_flow_with_node()
       {:ok, seq} = Flows.create_sequence(flow.id, entry.id, %{"name" => "old"})
 
-      new_tracks = %{"audio_music" => [%{"asset_id" => 5}]}
+      new_tracks = %{"music" => [%{"asset_id" => 5}]}
       assert {:ok, updated} = Flows.update_sequence(seq, %{"name" => "new", "tracks" => new_tracks})
 
       assert updated.name == "new"
@@ -148,11 +148,10 @@ defmodule Storyarn.Flows.SequenceCrudTest do
   end
 
   describe "Sequence.empty_tracks/0" do
-    test "returns all 5 fixed keys with empty lists" do
+    test "returns all 3 fixed keys with empty lists" do
       tracks = Sequence.empty_tracks()
 
-      assert tracks |> Map.keys() |> Enum.sort() ==
-               ~w(audio_ambient audio_music audio_sfx video_bg video_overlay)
+      assert tracks |> Map.keys() |> Enum.sort() == ~w(ambient background music)
 
       assert Enum.all?(tracks, fn {_, v} -> v == [] end)
     end
