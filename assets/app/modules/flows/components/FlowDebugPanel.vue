@@ -10,8 +10,10 @@ import {
   Bug,
   ChevronDown,
   ChevronRight,
+  CircleX,
   FastForward,
   Gauge,
+  Info,
   Layers,
   Pause,
   Play,
@@ -37,6 +39,7 @@ import { Slider } from "@components/ui/slider/index.ts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
 import { useLive } from "@composables/useLive";
 import { useVerticalResize } from "@composables/useVerticalResize";
+import { formatDebugTs, formatDebugValue, stripHtml } from "../lib/debug-format";
 
 type DebugStatus = "paused" | "waiting_input" | "finished" | string;
 type VariableSource = "initial" | "user_override" | "instruction" | string;
@@ -64,6 +67,25 @@ interface DebugCallStackFrame {
   return_node_id: number;
 }
 
+type ConsoleLevel = "info" | "warning" | "error" | string;
+
+interface ConsoleRuleDetail {
+  variable_ref: string;
+  operator: string;
+  expected_value: unknown;
+  actual_value: unknown;
+  passed: boolean;
+}
+
+interface ConsoleEntry {
+  ts: number;
+  level: ConsoleLevel;
+  node_id: number | null;
+  node_label: string;
+  message: string;
+  rule_details: ConsoleRuleDetail[] | null;
+}
+
 interface DebugState {
   status: DebugStatus;
   current_node_id: string | number | null;
@@ -71,6 +93,7 @@ interface DebugState {
   step_count: number;
   max_steps: number;
   variables: Record<string, DebugVariable>;
+  console: ConsoleEntry[];
   execution_path: (string | number)[];
   pending_choices: DebugChoice[] | null;
   call_stack: DebugCallStackFrame[];
@@ -124,6 +147,9 @@ const startSelectOpen = ref(false);
 const variables = computed(() => state?.variables || {});
 const executionPath = computed(() => state?.execution_path || []);
 const pendingChoices = computed(() => state?.pending_choices || []);
+const consoleEntries = computed<ConsoleEntry[]>(() =>
+  state?.console ? [...state.console].reverse() : [],
+);
 const callStack = computed<DebugCallStackFrame[]>(() =>
   state?.call_stack ? [...state.call_stack].reverse() : [],
 );
@@ -145,19 +171,38 @@ function formatSpeed(ms: number): string {
   return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`;
 }
 
-function stripHtml(text: string | undefined | null, limit: number): string | null {
-  if (!text || typeof text !== "string") return null;
-  const stripped = text.replace(/<[^>]*>/g, "").trim();
-  if (stripped === "") return null;
-  return stripped.length > limit ? `${stripped.slice(0, limit)}…` : stripped;
-}
-
 function startNodeLabel(node: DebugNodeInfo | undefined, id: string | number): string {
   if (!node) return String(id);
   const typeLabel = node.type.charAt(0).toUpperCase() + node.type.slice(1);
-  const text = node.data?.text as string | undefined;
-  const name = stripHtml(text, 20);
+  const name = stripHtml(node.data?.text, 20);
   return name ? `${typeLabel}: ${name}` : `${typeLabel} #${id}`;
+}
+
+function cleanResponseText(text: unknown): string | null {
+  return stripHtml(text, 40);
+}
+
+const LEVEL_ICON: Record<ConsoleLevel, typeof Info> = {
+  info: Info,
+  warning: TriangleAlert,
+  error: CircleX,
+};
+
+function levelIcon(level: ConsoleLevel) {
+  return LEVEL_ICON[level] ?? Info;
+}
+
+function levelColor(level: ConsoleLevel): string {
+  if (level === "warning") return "text-amber-500";
+  if (level === "error") return "text-destructive";
+  if (level === "info") return "text-sky-500";
+  return "text-muted-foreground";
+}
+
+function levelBg(level: ConsoleLevel): string {
+  if (level === "warning") return "bg-amber-500/5";
+  if (level === "error") return "bg-destructive/5";
+  return "";
 }
 
 interface StartNodeOption {
@@ -446,24 +491,81 @@ function continuePastLimit() {
       </TabsList>
 
       <!-- Console -->
-      <TabsContent value="console" class="flex-1 min-h-0 overflow-y-auto px-3 pb-3">
-        <div v-if="pendingChoices.length > 0" class="space-y-1 mb-3">
-          <div class="text-xs text-muted-foreground font-medium">
-            {{ $t("flows.debug.choose_response") }}
-          </div>
-          <button
-            v-for="choice in pendingChoices"
-            :key="choice.id"
-            type="button"
-            class="w-full text-left text-sm px-3 py-2 rounded-md border border-border hover:bg-accent transition-colors disabled:opacity-40 disabled:line-through"
-            :disabled="!choice.valid"
-            @click="selectChoice(choice.id)"
+      <TabsContent value="console" class="flex-1 min-h-0 overflow-y-auto">
+        <div class="font-mono text-xs">
+          <div
+            v-for="(entry, i) in consoleEntries"
+            :key="i"
+            class="flex items-start gap-2 px-3 py-0.5 hover:bg-muted/60"
+            :class="levelBg(entry.level)"
           >
-            {{ choice.text || $t("flows.debug.empty_response") }}
-          </button>
-        </div>
-        <div v-else class="text-xs text-muted-foreground py-4 text-center">
-          {{ $t("flows.debug.waiting") }}
+            <span
+              class="text-muted-foreground/50 shrink-0 w-14 text-right tabular-nums select-none"
+            >
+              {{ formatDebugTs(entry.ts) }}
+            </span>
+            <span class="shrink-0 mt-0.5" :class="levelColor(entry.level)">
+              <component :is="levelIcon(entry.level)" class="size-3" />
+            </span>
+            <span
+              v-if="entry.node_label"
+              class="shrink-0 max-w-28 truncate text-primary/70"
+              :title="entry.node_label"
+            >
+              {{ entry.node_label }}
+            </span>
+            <span class="flex-1 break-all">
+              {{ entry.message }}
+              <div v-if="entry.rule_details && entry.rule_details.length > 0" class="mt-0.5">
+                <div
+                  v-for="(rule, ri) in entry.rule_details"
+                  :key="ri"
+                  class="text-[10px] text-muted-foreground/60"
+                >
+                  {{ rule.variable_ref }} {{ rule.operator }}
+                  {{ formatDebugValue(rule.expected_value) }}
+                  → {{ rule.passed ? "pass" : "fail" }} (actual:
+                  {{ formatDebugValue(rule.actual_value) }})
+                </div>
+              </div>
+            </span>
+          </div>
+
+          <!-- Response choices (dialogue) -->
+          <div
+            v-if="pendingChoices.length > 0"
+            class="px-3 py-2 border-t border-border bg-muted/30"
+          >
+            <p class="text-xs text-muted-foreground mb-1.5">
+              {{ $t("flows.debug.choose_response") }}
+            </p>
+            <div class="flex flex-wrap gap-1.5">
+              <button
+                v-for="choice in pendingChoices"
+                :key="choice.id"
+                type="button"
+                class="text-xs px-2 py-1 rounded border transition-colors"
+                :class="
+                  choice.valid
+                    ? 'border-primary text-primary hover:bg-primary/10'
+                    : 'border-border text-muted-foreground opacity-40 line-through cursor-not-allowed'
+                "
+                :disabled="!choice.valid"
+                :title="!choice.valid ? $t('flows.debug.condition_not_met') : undefined"
+                @click="selectChoice(choice.id)"
+              >
+                {{ cleanResponseText(choice.text) ?? $t("flows.debug.empty_response") }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Empty state -->
+          <div
+            v-if="consoleEntries.length === 0 && pendingChoices.length === 0"
+            class="text-xs text-muted-foreground py-4 text-center"
+          >
+            {{ $t("flows.debug.waiting") }}
+          </div>
         </div>
       </TabsContent>
 

@@ -122,6 +122,7 @@
       "tab_path": "Ruta",
       "choose_response": "Elige una respuesta:",
       "empty_response": "(vacío)",
+      "condition_not_met": "Condición no cumplida",
       "waiting": "Esperando ejecución...",
       "filter_variables": "Filtrar variables...",
       "nil": "nil",

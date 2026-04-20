@@ -122,6 +122,7 @@
       "tab_path": "Path",
       "choose_response": "Choose a response:",
       "empty_response": "(empty)",
+      "condition_not_met": "Condition not met",
       "waiting": "Waiting for execution...",
       "filter_variables": "Filter variables...",
       "nil": "nil",
