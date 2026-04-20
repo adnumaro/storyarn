@@ -183,6 +183,15 @@ defmodule StoryarnWeb.FlowLive.Show do
             />
           </div>
 
+          <%!-- Sequence Timeline Panel (Vue, bottom-docked stub for P-3) --%>
+          <.vue
+            v-component="modules/flows/components/SequenceTimelinePanel"
+            v-socket={@socket}
+            id="flow-sequence-panel"
+            open={@sequence_panel_open && @active_sequence != nil}
+            sequence={serialize_sequence_for_vue(@active_sequence)}
+          />
+
           <%!-- Debug Panel (Vue) --%>
           <.vue
             v-component="modules/flows/components/FlowDebugPanel"
@@ -1653,5 +1662,15 @@ defmodule StoryarnWeb.FlowLive.Show do
     socket
     |> assign(:scene_name, scene_name)
     |> assign(:scene_inherited, is_inherited)
+  end
+
+  defp serialize_sequence_for_vue(nil), do: nil
+
+  defp serialize_sequence_for_vue(%Storyarn.Flows.Sequence{} = sequence) do
+    %{
+      id: sequence.id,
+      name: sequence.name,
+      tracks: sequence.tracks
+    }
   end
 end

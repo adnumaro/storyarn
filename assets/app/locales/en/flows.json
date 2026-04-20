@@ -71,7 +71,19 @@
       "delete": "Delete",
       "add_node": "Add node",
       "add_note": "Add note",
-      "auto_layout": "Auto layout"
+      "auto_layout": "Auto layout",
+      "create_sequence": "Create sequence from here"
+    },
+    "sequences": {
+      "panel_title": "Sequence",
+      "close": "Close panel",
+      "name_placeholder": "Sequence name",
+      "placeholder_clips": "No clips yet — timeline editor ships in Premiere v1.",
+      "tracks": {
+        "background": "Background",
+        "music": "Music",
+        "ambient": "Ambient"
+      }
     },
     "node_types": {
       "dialogue": "Dialogue",

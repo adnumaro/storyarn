@@ -2,6 +2,7 @@
 import {
   ArrowRightToLine,
   Box,
+  Clapperboard,
   Copy,
   GitBranch,
   Hash,
@@ -95,6 +96,13 @@ function deleteNode() {
   close();
 }
 
+function createSequenceFromNode() {
+  if (selectedNodeId) {
+    live.pushEvent("create_sequence_from_node", { node_id: selectedNodeId });
+  }
+  close();
+}
+
 function copyNodeId() {
   if (selectedNodeId) {
     navigator.clipboard.writeText(String(selectedNodeId));
@@ -146,6 +154,11 @@ onUnmounted(() => {
         <button class="cm-item" @click="copyNodeId">
           <Hash class="size-3.5 opacity-60" />
           <span>{{ $t("flows.context_menu.copy_id") }}</span>
+        </button>
+        <div class="h-px bg-border my-1" />
+        <button class="cm-item" @click="createSequenceFromNode">
+          <Clapperboard class="size-3.5 opacity-60" />
+          <span>{{ $t("flows.context_menu.create_sequence") }}</span>
         </button>
         <div class="h-px bg-border my-1" />
         <button class="cm-item text-destructive" @click="deleteNode">

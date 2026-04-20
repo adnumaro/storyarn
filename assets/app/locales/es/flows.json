@@ -71,7 +71,19 @@
       "delete": "Eliminar",
       "add_node": "Añadir nodo",
       "add_note": "Añadir nota",
-      "auto_layout": "Auto layout"
+      "auto_layout": "Auto layout",
+      "create_sequence": "Crear sequence desde aquí"
+    },
+    "sequences": {
+      "panel_title": "Sequence",
+      "close": "Cerrar panel",
+      "name_placeholder": "Nombre de la sequence",
+      "placeholder_clips": "Aún no hay clips — el editor llega en Premiere v1.",
+      "tracks": {
+        "background": "Fondo",
+        "music": "Música",
+        "ambient": "Ambiente"
+      }
     },
     "node_types": {
       "dialogue": "Diálogo",
