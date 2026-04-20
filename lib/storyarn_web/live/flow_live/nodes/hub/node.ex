@@ -17,13 +17,21 @@ defmodule StoryarnWeb.FlowLive.Nodes.Hub.Node do
   def label, do: dgettext("flows", "Hub")
   def description, do: dgettext("flows", "Named junction for jump targets")
 
-  def default_data, do: %{"hub_id" => "", "label" => "", "color" => "#be185d"}
+  def default_data do
+    %{
+      "hub_id" => "",
+      "label" => "",
+      "color" => "#be185d",
+      "sequence_directive" => nil
+    }
+  end
 
   def extract_form_data(data) do
     %{
       "hub_id" => data["hub_id"] || "",
       "label" => data["label"] || "",
-      "color" => data["color"] || "#be185d"
+      "color" => data["color"] || "#be185d",
+      "sequence_directive" => data["sequence_directive"]
     }
   end
 

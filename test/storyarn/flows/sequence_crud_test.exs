@@ -154,4 +154,71 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       assert Enum.all?(tracks, fn {_, v} -> v == [] end)
     end
   end
+
+  describe "delete_sequence/1 sweeps node sequence_directive pointers" do
+    test "nullifies sequence_directive on nodes of the same flow" do
+      %{flow: flow, entry_node: entry} = setup_flow_with_node()
+      {:ok, seq} = Flows.create_sequence(flow.id, entry.id, %{"name" => "S"})
+
+      # Point the entry node's sequence_directive at the sequence
+      {:ok, entry_with_directive} =
+        entry
+        |> Storyarn.Flows.FlowNode.data_changeset(%{
+          data: Map.put(entry.data, "sequence_directive", seq.id)
+        })
+        |> Storyarn.Repo.update()
+
+      assert entry_with_directive.data["sequence_directive"] == seq.id
+
+      {:ok, _deleted} = Flows.delete_sequence(seq)
+
+      # After delete, the pointer should be nil (key preserved)
+      refetched = Storyarn.Repo.get!(Storyarn.Flows.FlowNode, entry.id)
+      assert Map.has_key?(refetched.data, "sequence_directive")
+      assert refetched.data["sequence_directive"] == nil
+    end
+
+    test "does not touch pointers to OTHER sequences" do
+      %{flow: flow, entry_node: entry} = setup_flow_with_node()
+      {:ok, seq_a} = Flows.create_sequence(flow.id, entry.id, %{"name" => "A"})
+      {:ok, seq_b} = Flows.create_sequence(flow.id, entry.id, %{"name" => "B"})
+
+      # Entry points at seq_b
+      {:ok, _} =
+        entry
+        |> Storyarn.Flows.FlowNode.data_changeset(%{
+          data: Map.put(entry.data, "sequence_directive", seq_b.id)
+        })
+        |> Storyarn.Repo.update()
+
+      # Delete seq_a
+      {:ok, _} = Flows.delete_sequence(seq_a)
+
+      # Entry's pointer to seq_b is untouched
+      refetched = Storyarn.Repo.get!(Storyarn.Flows.FlowNode, entry.id)
+      assert refetched.data["sequence_directive"] == seq_b.id
+    end
+
+    test "does not touch pointers in OTHER flows" do
+      %{flow: flow_a, entry_node: entry_a} = setup_flow_with_node()
+      %{entry_node: entry_b} = setup_flow_with_node()
+
+      {:ok, seq_a} = Flows.create_sequence(flow_a.id, entry_a.id, %{"name" => "SA"})
+
+      # An entry node in flow_b somehow has an orphan pointer to seq_a (e.g. import bug)
+      {:ok, _} =
+        entry_b
+        |> Storyarn.Flows.FlowNode.data_changeset(%{
+          data: Map.put(entry_b.data, "sequence_directive", seq_a.id)
+        })
+        |> Storyarn.Repo.update()
+
+      {:ok, _} = Flows.delete_sequence(seq_a)
+
+      # Sweep scopes to flow_id — the cross-flow orphan is left alone
+      # (it's the export validator's job to flag such orphans).
+      refetched = Storyarn.Repo.get!(Storyarn.Flows.FlowNode, entry_b.id)
+      assert refetched.data["sequence_directive"] == seq_a.id
+    end
+  end
 end

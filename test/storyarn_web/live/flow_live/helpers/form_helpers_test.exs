@@ -55,11 +55,11 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpersTest do
       assert form.params["condition"]["logic"] == "all"
     end
 
-    test "form has empty data for entry node" do
+    test "form has sequence_directive slot for entry node" do
       node = %{type: "entry", data: %{}}
       form = FormHelpers.node_data_to_form(node)
 
-      assert form.params == %{}
+      assert form.params == %{"sequence_directive" => nil}
     end
 
     test "form handles nil data values with defaults" do

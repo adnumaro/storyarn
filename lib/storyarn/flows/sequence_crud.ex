@@ -11,6 +11,7 @@ defmodule Storyarn.Flows.SequenceCrud do
 
   import Ecto.Query
 
+  alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.Sequence
   alias Storyarn.Repo
 
@@ -89,13 +90,49 @@ defmodule Storyarn.Flows.SequenceCrud do
   end
 
   @doc """
-  Soft-deletes a sequence.
+  Soft-deletes a sequence and sweeps any `sequence_directive` pointers on nodes
+  of the same flow that reference this sequence.
+
+  The sweep is what keeps JSONB cross-refs consistent without a true FK —
+  see `docs/audit/jsonb-cross-refs-lifecycle-hooks.md` for the rationale.
+
+  Runs in a transaction so the sweep either lands with the soft-delete or
+  neither does.
   """
   @spec delete_sequence(Sequence.t()) :: {:ok, Sequence.t()} | {:error, Ecto.Changeset.t()}
   def delete_sequence(%Sequence{} = sequence) do
-    sequence
-    |> Sequence.soft_delete_changeset()
-    |> Repo.update()
+    Repo.transaction(fn ->
+      case sequence |> Sequence.soft_delete_changeset() |> Repo.update() do
+        {:ok, deleted} ->
+          clear_sequence_directive_pointers(deleted.flow_id, deleted.id)
+          deleted
+
+        {:error, changeset} ->
+          Repo.rollback(changeset)
+      end
+    end)
+  end
+
+  # Nullifies `data["sequence_directive"]` on active nodes of `flow_id` that
+  # currently point to `sequence_id`. The key is preserved (set to nil) for
+  # consistency with the default_data shape in node type modules.
+  defp clear_sequence_directive_pointers(flow_id, sequence_id) do
+    seq_id_str = to_string(sequence_id)
+
+    from(n in FlowNode,
+      where:
+        n.flow_id == ^flow_id and
+          is_nil(n.deleted_at) and
+          fragment("?->>'sequence_directive' = ?", n.data, ^seq_id_str)
+    )
+    |> Repo.all()
+    |> Enum.each(fn node ->
+      new_data = Map.put(node.data || %{}, "sequence_directive", nil)
+
+      node
+      |> FlowNode.data_changeset(%{data: new_data})
+      |> Repo.update!()
+    end)
   end
 
   @doc """

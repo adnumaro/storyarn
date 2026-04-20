@@ -34,9 +34,9 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.NodeTest do
   # =============================================================================
 
   describe "default_data/0" do
-    test "returns map with referenced_flow_id nil" do
+    test "returns map with referenced_flow_id and sequence_directive nil" do
       data = SubflowNode.default_data()
-      assert data == %{"referenced_flow_id" => nil}
+      assert data == %{"referenced_flow_id" => nil, "sequence_directive" => nil}
     end
   end
 
@@ -49,18 +49,18 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.NodeTest do
       data = %{"referenced_flow_id" => 42, "extra" => "ignored"}
       result = SubflowNode.extract_form_data(data)
 
-      assert result == %{"referenced_flow_id" => 42}
+      assert result == %{"referenced_flow_id" => 42, "sequence_directive" => nil}
       refute Map.has_key?(result, "extra")
     end
 
     test "handles nil referenced_flow_id" do
       result = SubflowNode.extract_form_data(%{"referenced_flow_id" => nil})
-      assert result == %{"referenced_flow_id" => nil}
+      assert result == %{"referenced_flow_id" => nil, "sequence_directive" => nil}
     end
 
     test "handles missing key" do
       result = SubflowNode.extract_form_data(%{})
-      assert result == %{"referenced_flow_id" => nil}
+      assert result == %{"referenced_flow_id" => nil, "sequence_directive" => nil}
     end
   end
 

@@ -29,7 +29,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
       "exit_mode" => "terminal",
       "referenced_flow_id" => nil,
       "target_type" => nil,
-      "target_id" => nil
+      "target_id" => nil,
+      "sequence_directive" => nil
     }
   end
 
@@ -42,7 +43,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
       "exit_mode" => validate_exit_mode(data["exit_mode"]),
       "referenced_flow_id" => parse_referenced_flow_id(data["referenced_flow_id"]),
       "target_type" => validate_target_type(data["target_type"]),
-      "target_id" => parse_target_id(data["target_id"])
+      "target_id" => parse_target_id(data["target_id"]),
+      "sequence_directive" => data["sequence_directive"]
     }
   end
 

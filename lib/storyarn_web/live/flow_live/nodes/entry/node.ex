@@ -13,9 +13,11 @@ defmodule StoryarnWeb.FlowLive.Nodes.Entry.Node do
   def type, do: "entry"
   def icon_name, do: "play"
   def label, do: dgettext("flows", "Entry")
-  def default_data, do: %{}
+  def default_data, do: %{"sequence_directive" => nil}
 
-  def extract_form_data(_data), do: %{}
+  def extract_form_data(data) do
+    %{"sequence_directive" => data["sequence_directive"]}
+  end
 
   def on_select(_node, socket) do
     flow_id = socket.assigns.flow.id
