@@ -114,10 +114,12 @@
       "instruction_help": "Add assignments to set variable values when this node executes."
     },
     "debug": {
-      "step_limit": "Step limit reached. Reset to continue.",
+      "step_limit": "Step limit ({count}) reached — possible infinite loop.",
+      "step_limit_continue": "Continue (+1000 steps)",
       "tab_console": "Console",
       "tab_variables": "Variables",
       "tab_history": "History",
+      "tab_path": "Path",
       "choose_response": "Choose a response:",
       "empty_response": "(empty)",
       "waiting": "Waiting for execution...",
@@ -126,7 +128,23 @@
       "step_key": "Step (F10)",
       "step_back_key": "Step Back (F9)",
       "reset_key": "Reset (F6)",
-      "stop": "Stop"
+      "stop": "Stop",
+      "auto_play": "Auto-play",
+      "pause": "Pause",
+      "speed_per_step": "{ms}ms per step",
+      "status_paused": "Paused",
+      "status_waiting": "Waiting",
+      "status_finished": "Finished",
+      "step_count": "Step {count}",
+      "start_label": "Start:",
+      "select_start_node": "Select node...",
+      "change_start_node": "Change start node (resets session)",
+      "search_nodes": "Search nodes...",
+      "no_matches": "No matches",
+      "current_flow": "Current",
+      "flow_label": "Flow",
+      "entering_subflow": "Entering sub-flow",
+      "returned_to_parent": "Returned to parent"
     },
     "minimap": {
       "toggle": "Toggle minimap",

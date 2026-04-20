@@ -17,6 +17,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Handlers.PreviewHandlers
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
+  alias StoryarnWeb.FlowLive.Helpers.DebugSerializer
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.NavigationHistory
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
@@ -188,7 +189,7 @@ defmodule StoryarnWeb.FlowLive.Show do
             v-socket={@socket}
             id="flow-debug-panel"
             open={@debug_panel_open && @debug_state != nil}
-            state={@debug_state}
+            state={DebugSerializer.serialize(@debug_state)}
             nodes={@debug_nodes}
             controls={
               %{

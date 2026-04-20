@@ -114,10 +114,12 @@
       "instruction_help": "Añade asignaciones para establecer valores de variables cuando se ejecute este nodo."
     },
     "debug": {
-      "step_limit": "Límite de pasos alcanzado. Reinicia para continuar.",
+      "step_limit": "Límite de pasos ({count}) alcanzado — posible bucle infinito.",
+      "step_limit_continue": "Continuar (+1000 pasos)",
       "tab_console": "Consola",
       "tab_variables": "Variables",
       "tab_history": "Historial",
+      "tab_path": "Ruta",
       "choose_response": "Elige una respuesta:",
       "empty_response": "(vacío)",
       "waiting": "Esperando ejecución...",
@@ -126,7 +128,23 @@
       "step_key": "Paso (F10)",
       "step_back_key": "Retroceder (F9)",
       "reset_key": "Reiniciar (F6)",
-      "stop": "Detener"
+      "stop": "Detener",
+      "auto_play": "Reproducción automática",
+      "pause": "Pausar",
+      "speed_per_step": "{ms}ms por paso",
+      "status_paused": "Pausado",
+      "status_waiting": "Esperando",
+      "status_finished": "Finalizado",
+      "step_count": "Paso {count}",
+      "start_label": "Inicio:",
+      "select_start_node": "Selecciona nodo...",
+      "change_start_node": "Cambiar nodo inicial (reinicia la sesión)",
+      "search_nodes": "Buscar nodos...",
+      "no_matches": "Sin coincidencias",
+      "current_flow": "Actual",
+      "flow_label": "Flujo",
+      "entering_subflow": "Entrando en sub-flujo",
+      "returned_to_parent": "Vuelta al flujo padre"
     },
     "minimap": {
       "toggle": "Alternar minimapa",

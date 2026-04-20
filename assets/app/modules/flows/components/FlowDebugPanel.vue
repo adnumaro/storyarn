@@ -1,38 +1,85 @@
 <script setup lang="ts">
 /**
  * Flow debug panel — bottom-docked panel for step-through execution.
- * Tabs: Console, Variables, History.
+ * Phase 1: frame, resize, breadcrumb, start-node select, step-limit continue.
+ * Tabs Console / Variables / History / Path are minimally rendered pending
+ * Phases 2–6.
  */
 
-import { Bug, Pause, Play, RotateCcw, SkipForward, Square, StepBack } from "lucide-vue-next";
+import {
+  Bug,
+  ChevronDown,
+  ChevronRight,
+  FastForward,
+  Gauge,
+  Layers,
+  Pause,
+  Play,
+  RotateCcw,
+  Square,
+  TriangleAlert,
+  Undo2,
+} from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Button } from "@components/ui/button/index.ts";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@components/ui/command/index.ts";
 import { Input } from "@components/ui/input/index.ts";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { Slider } from "@components/ui/slider/index.ts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
 import { useLive } from "@composables/useLive";
+import { useVerticalResize } from "@composables/useVerticalResize";
+
+type DebugStatus = "paused" | "waiting_input" | "finished" | string;
+type VariableSource = "initial" | "user_override" | "instruction" | string;
 
 interface DebugChoice {
   id: string | number;
   text: string;
+  valid: boolean;
 }
 
 interface DebugVariable {
   value: string | number | boolean | null;
+  initial_value: string | number | boolean | null;
+  previous_value: string | number | boolean | null;
+  source: VariableSource;
+  block_type: string;
+  variable_name: string;
+  sheet_shortcut: string;
   changed: boolean;
 }
 
+interface DebugCallStackFrame {
+  flow_id: number;
+  flow_name?: string;
+  return_node_id: number;
+}
+
 interface DebugState {
-  status: string;
+  status: DebugStatus;
   current_node_id: string | number | null;
+  start_node_id: number | null;
+  step_count: number;
+  max_steps: number;
   variables: Record<string, DebugVariable>;
   execution_path: (string | number)[];
-  pending_choices: DebugChoice[];
+  pending_choices: DebugChoice[] | null;
+  call_stack: DebugCallStackFrame[];
 }
 
 interface DebugNodeInfo {
-  label: string;
+  label?: string;
+  type: string;
+  data?: Record<string, unknown>;
 }
 
 interface DebugControls {
@@ -66,14 +113,21 @@ const {
 }>();
 
 const live = useLive();
-const height = ref(280);
+const { height, onPointerDown } = useVerticalResize({
+  initial: 280,
+  min: 120,
+  max: 600,
+});
 const varFilter = ref(controls.varFilter);
+const startSelectOpen = ref(false);
 
-const status = computed(() => state?.status || "idle");
-const stepCount = computed(() => state?.execution_path?.length || 0);
 const variables = computed(() => state?.variables || {});
 const executionPath = computed(() => state?.execution_path || []);
 const pendingChoices = computed(() => state?.pending_choices || []);
+const callStack = computed<DebugCallStackFrame[]>(() =>
+  state?.call_stack ? [...state.call_stack].reverse() : [],
+);
+const hasCallStack = computed(() => callStack.value.length > 0);
 
 const filteredVariables = computed(() => {
   let filtered = Object.entries(variables.value);
@@ -91,6 +145,67 @@ function formatSpeed(ms: number): string {
   return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`;
 }
 
+function stripHtml(text: string | undefined | null, limit: number): string | null {
+  if (!text || typeof text !== "string") return null;
+  const stripped = text.replace(/<[^>]*>/g, "").trim();
+  if (stripped === "") return null;
+  return stripped.length > limit ? `${stripped.slice(0, limit)}…` : stripped;
+}
+
+function startNodeLabel(node: DebugNodeInfo | undefined, id: string | number): string {
+  if (!node) return String(id);
+  const typeLabel = node.type.charAt(0).toUpperCase() + node.type.slice(1);
+  const text = node.data?.text as string | undefined;
+  const name = stripHtml(text, 20);
+  return name ? `${typeLabel}: ${name}` : `${typeLabel} #${id}`;
+}
+
+interface StartNodeOption {
+  id: string | number;
+  label: string;
+  searchText: string;
+  isEntry: boolean;
+}
+
+const startNodeOptions = computed<StartNodeOption[]>(() => {
+  const entries = Object.entries(nodes).map(([id, node]) => {
+    const numId: string | number = /^-?\d+$/.test(id) ? Number(id) : id;
+    const label = startNodeLabel(node, numId);
+    return {
+      id: numId,
+      label,
+      searchText: label.toLowerCase(),
+      isEntry: node.type === "entry",
+    };
+  });
+  entries.sort((a, b) => {
+    if (a.isEntry !== b.isEntry) return a.isEntry ? -1 : 1;
+    return a.label.localeCompare(b.label);
+  });
+  return entries;
+});
+
+const currentStartNodeLabel = computed(() => {
+  const current = startNodeOptions.value.find((o) => o.id === state?.start_node_id);
+  return current?.label ?? null;
+});
+
+function statusBadgeVariant(status: DebugStatus): "secondary" | "default" | "outline" {
+  if (status === "finished") return "outline";
+  if (status === "waiting_input") return "default";
+  return "secondary";
+}
+
+const STATUS_KEYS: Record<string, string> = {
+  paused: "flows.debug.status_paused",
+  waiting_input: "flows.debug.status_waiting",
+  finished: "flows.debug.status_finished",
+};
+
+function statusKey(status: DebugStatus): string | null {
+  return STATUS_KEYS[status] ?? null;
+}
+
 function step() {
   live.pushEvent("debug_step", {});
 }
@@ -106,32 +221,73 @@ function stop() {
 function togglePlay() {
   live.pushEvent(controls.autoPlaying ? "debug_pause" : "debug_play", {});
 }
-function setSpeed(val: number[]): void {
+function setSpeed(val: number[] | undefined): void {
+  if (!val || val.length === 0) return;
   live.pushEvent("debug_set_speed", { speed: val[0] });
 }
 function selectChoice(choiceId: string | number): void {
-  live.pushEvent("debug_select_choice", { choice_id: choiceId });
+  live.pushEvent("debug_choose_response", { id: choiceId });
 }
 function switchTab(tab: string | number): void {
-  live.pushEvent("debug_switch_tab", { tab });
+  live.pushEvent("debug_tab_change", { tab });
+}
+function changeStartNode(nodeId: string | number) {
+  live.pushEvent("debug_change_start_node", { node_id: nodeId });
+  startSelectOpen.value = false;
+}
+function continuePastLimit() {
+  live.pushEvent("debug_continue_past_limit", {});
 }
 </script>
 
 <template>
   <div
     v-if="open && state"
-    class="border-t border-border bg-background shrink-0"
+    class="border-t border-border bg-background shrink-0 flex flex-col"
     :style="{ height: `${height}px` }"
   >
+    <!-- Resize handle -->
+    <div
+      class="h-1 cursor-row-resize bg-transparent hover:bg-primary/30 transition-colors shrink-0"
+      @pointerdown="onPointerDown"
+    />
+
+    <!-- Breadcrumb (sub-flow indicator) -->
+    <div
+      v-if="hasCallStack"
+      class="flex items-center gap-1.5 px-3 py-1 bg-sky-500/10 border-b border-sky-500/20 text-xs text-sky-600 shrink-0"
+    >
+      <Layers class="size-3 shrink-0" />
+      <span
+        v-for="(frame, i) in callStack"
+        :key="`${frame.flow_id}-${i}`"
+        class="flex items-center gap-1"
+      >
+        <span class="opacity-60">{{ frame.flow_name || $t("flows.debug.flow_label") }}</span>
+        <ChevronRight class="size-2.5 opacity-40" />
+      </span>
+      <span class="font-medium">
+        {{ controls.flowName || $t("flows.debug.current_flow") }}
+      </span>
+    </div>
+
     <!-- Controls bar -->
-    <div class="flex items-center gap-2 px-3 py-1.5 border-b border-border">
+    <div class="flex items-center gap-2 px-3 py-1.5 border-b border-border shrink-0">
       <Bug class="size-4 text-muted-foreground" />
 
       <!-- Play/Pause -->
-      <Button variant="ghost" size="icon-sm" class="size-7" @click="togglePlay">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        class="size-7"
+        :title="controls.autoPlaying ? $t('flows.debug.pause') : $t('flows.debug.auto_play')"
+        @click="togglePlay"
+      >
         <Pause v-if="controls.autoPlaying" class="size-3.5" />
-        <Play v-else class="size-3.5" />
+        <FastForward v-else class="size-3.5" />
       </Button>
+
+      <div class="w-px h-5 bg-border mx-0.5" />
 
       <!-- Step -->
       <Button
@@ -141,7 +297,7 @@ function switchTab(tab: string | number): void {
         :title="$t('flows.debug.step_key')"
         @click="step"
       >
-        <SkipForward class="size-3.5" />
+        <Play class="size-3.5" />
       </Button>
 
       <!-- Step Back -->
@@ -152,7 +308,7 @@ function switchTab(tab: string | number): void {
         :title="$t('flows.debug.step_back_key')"
         @click="stepBack"
       >
-        <StepBack class="size-3.5" />
+        <Undo2 class="size-3.5" />
       </Button>
 
       <!-- Reset -->
@@ -166,40 +322,90 @@ function switchTab(tab: string | number): void {
         <RotateCcw class="size-3.5" />
       </Button>
 
+      <div class="w-px h-5 bg-border mx-0.5" />
+
       <!-- Stop -->
       <Button
         variant="ghost"
         size="icon-sm"
-        class="size-7"
+        class="size-7 text-destructive"
         :title="$t('flows.debug.stop')"
         @click="stop"
       >
         <Square class="size-3.5" />
       </Button>
 
-      <div class="w-px h-5 bg-border mx-1" />
+      <!-- Status + step count + start select -->
+      <div class="flex items-center gap-2 ml-1">
+        <Badge :variant="statusBadgeVariant(state.status)" class="text-[10px]">
+          {{ statusKey(state.status) ? $t(statusKey(state.status)!) : "" }}
+        </Badge>
+        <span class="text-xs text-muted-foreground tabular-nums">
+          {{ $t("flows.debug.step_count", { count: state.step_count }) }}
+        </span>
 
-      <!-- Status + step count -->
-      <Badge variant="secondary" class="text-[10px]">
-        {{ status }}
-      </Badge>
-      <span class="text-xs text-muted-foreground">Step {{ stepCount }}</span>
-
-      <div class="w-px h-5 bg-border mx-1" />
+        <!-- Start node select -->
+        <div class="flex items-center gap-1">
+          <span class="text-xs text-muted-foreground/60">
+            {{ $t("flows.debug.start_label") }}
+          </span>
+          <Popover v-model:open="startSelectOpen">
+            <PopoverTrigger as-child>
+              <Button
+                variant="ghost"
+                size="sm"
+                class="h-6 px-1.5 font-normal text-xs gap-1"
+                :disabled="controls.autoPlaying"
+                :title="$t('flows.debug.change_start_node')"
+              >
+                <span class="truncate max-w-32">
+                  {{ currentStartNodeLabel ?? $t("flows.debug.select_start_node") }}
+                </span>
+                <ChevronDown class="size-3 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent class="w-64 p-0" align="start">
+              <Command>
+                <CommandInput :placeholder="$t('flows.debug.search_nodes')" />
+                <CommandList>
+                  <CommandEmpty>{{ $t("flows.debug.no_matches") }}</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      v-for="option in startNodeOptions"
+                      :key="option.id"
+                      :value="option.searchText"
+                      :class="option.id === state.start_node_id ? 'font-semibold' : ''"
+                      @select="changeStartNode(option.id)"
+                    >
+                      {{ option.label }}
+                    </CommandItem>
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
 
       <!-- Speed slider -->
-      <span class="text-xs text-muted-foreground">{{ formatSpeed(controls.speed) }}</span>
-      <Slider
-        :model-value="[controls.speed]"
-        :min="200"
-        :max="3000"
-        :step="100"
-        class="w-24"
-        @update:model-value="setSpeed"
-      />
+      <div class="flex items-center gap-1.5 ml-auto">
+        <Gauge class="size-3 text-muted-foreground/60" />
+        <Slider
+          :model-value="[controls.speed]"
+          :min="200"
+          :max="3000"
+          :step="100"
+          class="w-24"
+          :title="$t('flows.debug.speed_per_step', { ms: controls.speed })"
+          @update:model-value="setSpeed"
+        />
+        <span class="text-xs text-muted-foreground tabular-nums w-10">
+          {{ formatSpeed(controls.speed) }}
+        </span>
+      </div>
 
       <!-- Flow name -->
-      <span class="ml-auto text-xs text-muted-foreground truncate max-w-37.5">
+      <span class="text-xs text-muted-foreground truncate max-w-40">
         {{ controls.flowName }}
       </span>
     </div>
@@ -207,32 +413,40 @@ function switchTab(tab: string | number): void {
     <!-- Step limit warning -->
     <div
       v-if="controls.stepLimitReached"
-      class="px-3 py-1.5 bg-amber-500/10 text-amber-600 text-xs flex items-center gap-2"
+      class="flex items-center gap-3 px-3 py-2 bg-amber-500/10 border-b border-amber-500/20 text-xs shrink-0"
     >
-      {{ $t("flows.debug.step_limit") }}
+      <TriangleAlert class="size-4 text-amber-600 shrink-0" />
+      <span class="text-amber-700">
+        {{ $t("flows.debug.step_limit", { count: state.max_steps }) }}
+      </span>
+      <Button size="sm" variant="outline" class="h-6 ml-auto" @click="continuePastLimit">
+        {{ $t("flows.debug.step_limit_continue") }}
+      </Button>
     </div>
 
     <!-- Tab content -->
     <Tabs
       :model-value="controls.activeTab"
-      class="h-[calc(100%-44px)]"
+      class="flex-1 min-h-0 flex flex-col"
       @update:model-value="switchTab"
     >
-      <TabsList class="px-3 pt-1">
-        <TabsTrigger value="console" class="text-xs">{{
-          $t("flows.debug.tab_console")
-        }}</TabsTrigger>
-        <TabsTrigger value="variables" class="text-xs">{{
-          $t("flows.debug.tab_variables")
-        }}</TabsTrigger>
-        <TabsTrigger value="history" class="text-xs">{{
-          $t("flows.debug.tab_history")
-        }}</TabsTrigger>
+      <TabsList class="px-3 pt-1 self-start">
+        <TabsTrigger value="console" class="text-xs">
+          {{ $t("flows.debug.tab_console") }}
+        </TabsTrigger>
+        <TabsTrigger value="variables" class="text-xs">
+          {{ $t("flows.debug.tab_variables") }}
+        </TabsTrigger>
+        <TabsTrigger value="history" class="text-xs">
+          {{ $t("flows.debug.tab_history") }}
+        </TabsTrigger>
+        <TabsTrigger value="path" class="text-xs">
+          {{ $t("flows.debug.tab_path") }}
+        </TabsTrigger>
       </TabsList>
 
       <!-- Console -->
-      <TabsContent value="console" class="overflow-y-auto px-3 pb-3 h-full">
-        <!-- Pending choices -->
+      <TabsContent value="console" class="flex-1 min-h-0 overflow-y-auto px-3 pb-3">
         <div v-if="pendingChoices.length > 0" class="space-y-1 mb-3">
           <div class="text-xs text-muted-foreground font-medium">
             {{ $t("flows.debug.choose_response") }}
@@ -241,7 +455,8 @@ function switchTab(tab: string | number): void {
             v-for="choice in pendingChoices"
             :key="choice.id"
             type="button"
-            class="w-full text-left text-sm px-3 py-2 rounded-md border border-border hover:bg-accent transition-colors"
+            class="w-full text-left text-sm px-3 py-2 rounded-md border border-border hover:bg-accent transition-colors disabled:opacity-40 disabled:line-through"
+            :disabled="!choice.valid"
             @click="selectChoice(choice.id)"
           >
             {{ choice.text || $t("flows.debug.empty_response") }}
@@ -253,7 +468,7 @@ function switchTab(tab: string | number): void {
       </TabsContent>
 
       <!-- Variables -->
-      <TabsContent value="variables" class="overflow-y-auto px-3 pb-3 h-full">
+      <TabsContent value="variables" class="flex-1 min-h-0 overflow-y-auto px-3 pb-3">
         <Input
           v-model="varFilter"
           type="search"
@@ -268,15 +483,15 @@ function switchTab(tab: string | number): void {
             :class="val.changed ? 'bg-amber-500/10' : ''"
           >
             <span class="font-mono truncate">{{ key }}</span>
-            <span class="text-muted-foreground ml-2 truncate max-w-37.5">{{
-              val.value ?? $t("flows.debug.nil")
-            }}</span>
+            <span class="text-muted-foreground ml-2 truncate max-w-37.5">
+              {{ val.value ?? $t("flows.debug.nil") }}
+            </span>
           </div>
         </div>
       </TabsContent>
 
       <!-- History -->
-      <TabsContent value="history" class="overflow-y-auto px-3 pb-3 h-full">
+      <TabsContent value="history" class="flex-1 min-h-0 overflow-y-auto px-3 pb-3">
         <div
           v-for="(nodeId, i) in executionPath"
           :key="i"
@@ -284,6 +499,13 @@ function switchTab(tab: string | number): void {
         >
           <span class="text-muted-foreground w-6 text-right">{{ i + 1 }}</span>
           <span class="font-mono">{{ nodes[nodeId]?.label || nodeId }}</span>
+        </div>
+      </TabsContent>
+
+      <!-- Path (Phase 6) -->
+      <TabsContent value="path" class="flex-1 min-h-0 overflow-y-auto px-3 pb-3">
+        <div class="text-xs text-muted-foreground py-4 text-center">
+          <!-- Full path tree renders in Phase 6 -->
         </div>
       </TabsContent>
     </Tabs>
