@@ -156,7 +156,15 @@
       "col_current": "Current",
       "no_variables": "No variables in this project",
       "no_matching_vars": "No matching variables",
-      "click_to_edit": "Click to edit"
+      "click_to_edit": "Click to edit",
+      "col_time": "Time",
+      "col_node": "Node",
+      "col_change": "Change",
+      "col_source": "Source",
+      "history_source_instruction": "instr",
+      "history_source_user": "user",
+      "user_override_label": "(user override)",
+      "no_history": "No variable changes yet"
     },
     "minimap": {
       "toggle": "Toggle minimap",

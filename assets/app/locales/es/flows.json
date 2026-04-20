@@ -156,7 +156,15 @@
       "col_current": "Actual",
       "no_variables": "No hay variables en este proyecto",
       "no_matching_vars": "Sin variables que coincidan",
-      "click_to_edit": "Clic para editar"
+      "click_to_edit": "Clic para editar",
+      "col_time": "Tiempo",
+      "col_node": "Nodo",
+      "col_change": "Cambio",
+      "col_source": "Origen",
+      "history_source_instruction": "instr",
+      "history_source_user": "usuario",
+      "user_override_label": "(cambio manual)",
+      "no_history": "Aún no hay cambios de variables"
     },
     "minimap": {
       "toggle": "Alternar minimapa",

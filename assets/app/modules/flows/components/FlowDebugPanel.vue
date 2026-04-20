@@ -89,6 +89,18 @@ interface ConsoleEntry {
   rule_details: ConsoleRuleDetail[] | null;
 }
 
+type HistorySource = "instruction" | "user_override" | string;
+
+interface HistoryEntry {
+  ts: number;
+  node_id: number | null;
+  node_label: string;
+  variable_ref: string;
+  old_value: unknown;
+  new_value: unknown;
+  source: HistorySource;
+}
+
 interface DebugState {
   status: DebugStatus;
   current_node_id: string | number | null;
@@ -97,6 +109,7 @@ interface DebugState {
   max_steps: number;
   variables: Record<string, DebugVariable>;
   console: ConsoleEntry[];
+  history: HistoryEntry[];
   execution_path: (string | number)[];
   pending_choices: DebugChoice[] | null;
   call_stack: DebugCallStackFrame[];
@@ -165,6 +178,9 @@ const pendingChoices = computed(() => state?.pending_choices || []);
 const consoleEntries = computed<ConsoleEntry[]>(() =>
   state?.console ? [...state.console].reverse() : [],
 );
+const historyEntries = computed<HistoryEntry[]>(() =>
+  state?.history ? [...state.history].reverse() : [],
+);
 const callStack = computed<DebugCallStackFrame[]>(() =>
   state?.call_stack ? [...state.call_stack].reverse() : [],
 );
@@ -192,6 +208,18 @@ const varSourceColor: Record<VariableSource, string> = {
 
 function sourceColor(source: VariableSource): string {
   return varSourceColor[source] ?? "text-muted-foreground";
+}
+
+function historySourceLabelKey(source: HistorySource): string | null {
+  if (source === "instruction") return "flows.debug.history_source_instruction";
+  if (source === "user_override") return "flows.debug.history_source_user";
+  return null;
+}
+
+function historySourceBadgeClass(source: HistorySource): string {
+  if (source === "instruction") return "bg-amber-500/15 text-amber-600 border-amber-500/30";
+  if (source === "user_override") return "bg-sky-500/15 text-sky-600 border-sky-500/30";
+  return "bg-muted text-muted-foreground border-border";
 }
 
 function onVarFilterInput(event: Event) {
@@ -816,14 +844,61 @@ function continuePastLimit() {
       </TabsContent>
 
       <!-- History -->
-      <TabsContent value="history" class="flex-1 min-h-0 overflow-y-auto px-3 pb-3">
+      <TabsContent value="history" class="flex-1 min-h-0 overflow-y-auto text-xs">
+        <table v-if="historyEntries.length > 0" class="w-full border-collapse">
+          <thead
+            class="sticky top-0 bg-background text-muted-foreground/70 border-b border-border"
+          >
+            <tr>
+              <th class="font-medium text-left py-1 px-3 w-16">
+                {{ $t("flows.debug.col_time") }}
+              </th>
+              <th class="font-medium text-left py-1 px-2">
+                {{ $t("flows.debug.col_node") }}
+              </th>
+              <th class="font-medium text-left py-1 px-2">
+                {{ $t("flows.debug.col_change") }}
+              </th>
+              <th class="font-medium text-left py-1 px-2 w-20">
+                {{ $t("flows.debug.col_source") }}
+              </th>
+            </tr>
+          </thead>
+          <tbody class="font-mono">
+            <tr
+              v-for="(entry, i) in historyEntries"
+              :key="i"
+              class="hover:bg-muted/40 border-b border-border/40"
+            >
+              <td class="text-muted-foreground/60 tabular-nums py-1 px-3">
+                {{ formatDebugTs(entry.ts) }}
+              </td>
+              <td class="truncate max-w-32 py-1 px-2" :title="entry.node_label">
+                {{ entry.node_label || $t("flows.debug.user_override_label") }}
+              </td>
+              <td class="truncate max-w-64 py-1 px-2">
+                <span class="text-muted-foreground/70">{{ entry.variable_ref }}:</span>
+                <span class="ml-1">{{ formatDebugValue(entry.old_value) }}</span>
+                <span class="mx-1 text-muted-foreground/50">→</span>
+                <span class="font-semibold">{{ formatDebugValue(entry.new_value) }}</span>
+              </td>
+              <td class="py-1 px-2">
+                <span
+                  v-if="historySourceLabelKey(entry.source)"
+                  class="inline-block text-[10px] px-1.5 py-0.5 rounded border font-sans"
+                  :class="historySourceBadgeClass(entry.source)"
+                >
+                  {{ $t(historySourceLabelKey(entry.source)!) }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
         <div
-          v-for="(nodeId, i) in executionPath"
-          :key="i"
-          class="flex items-center gap-2 text-xs py-1"
+          v-else
+          class="flex items-center justify-center h-24 text-muted-foreground/50"
         >
-          <span class="text-muted-foreground w-6 text-right">{{ i + 1 }}</span>
-          <span class="font-mono">{{ nodes[nodeId]?.label || nodeId }}</span>
+          {{ $t("flows.debug.no_history") }}
         </div>
       </TabsContent>
 
