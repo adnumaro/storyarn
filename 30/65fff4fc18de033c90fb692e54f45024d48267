@@ -1,0 +1,83 @@
+assets/app/modules/flows/components/FlowRendererContextMenu.vue
+  68c546c0db49bf18 1-103
+assets/app/modules/flows/setup.ts
+  68c546c0db49bf18 15,26-27,119-123,145-152
+assets/app/modules/flows/lib/context_menu_items.ts
+  68c546c0db49bf18 1-142
+docs/audit/flow-context-menu-broken-after-vue-migration.md
+  68c546c0db49bf18 1-81
+assets/app/modules/flows/lib/context_menu_preset.ts
+  68c546c0db49bf18 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "3065fff4fc18de033c90fb692e54f45024d48267",
+  "prompts": {
+    "06e8f7f0c4194725": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e347729-76ca-4ac2-b7af-d62f7110ed14",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 696,
+      "overriden_lines": 0
+    },
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 797,
+      "overriden_lines": 0
+    },
+    "68c546c0db49bf18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d80ea32-fe58-46be-9f90-e968962f214e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 523,
+      "total_deletions": 39,
+      "accepted_lines": 1563,
+      "overriden_lines": 0
+    },
+    "b5e1bb47b647b01a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da948ded-a770-4715-803c-ee52cc73c164",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 8060,
+      "overriden_lines": 0
+    },
+    "ef89dbf9b28de738": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45587282-275e-4e38-aee1-d626b574231e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1210,
+      "overriden_lines": 0
+    }
+  }
+}
