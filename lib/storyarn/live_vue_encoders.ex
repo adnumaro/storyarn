@@ -30,6 +30,7 @@ defmodule Storyarn.LiveVueEncoders do
   Protocol.derive(LiveVue.Encoder, Storyarn.Flows.Flow)
   Protocol.derive(LiveVue.Encoder, Storyarn.Flows.FlowConnection)
   Protocol.derive(LiveVue.Encoder, Storyarn.Flows.FlowNode)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Flows.Sequence)
   Protocol.derive(LiveVue.Encoder, Storyarn.Flows.VariableReference)
 
   # Localization
