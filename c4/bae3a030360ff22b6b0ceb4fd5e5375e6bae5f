@@ -1,0 +1,107 @@
+lib/storyarn_web/live/flow_live/player/player_engine.ex
+  68c546c0db49bf18 4,16
+test/storyarn_web/live/flow_live/player/player_engine_test.exs
+  68c546c0db49bf18 526,553,994,1006-1010,1016-1019
+assets/app/modules/flows/player/PlayerSlide.vue
+  68c546c0db49bf18 5
+assets/app/modules/flows/components/dock-panels/DockNarrativePanel.vue
+  68c546c0db49bf18 2
+lib/storyarn_web/live/flow_live/node_type_registry.ex
+  68c546c0db49bf18 26
+CLAUDE.md
+  68c546c0db49bf18 108
+docs/features/flow-player-redesign/OVERVIEW.md
+  68c546c0db49bf18 45,66,86-87,89,179,272,285,312
+lib/storyarn/localization/localizable_words.ex
+  68c546c0db49bf18 57
+test/storyarn/exports/serializers/articy_xml_test.exs
+  68c546c0db49bf18 543,546
+lib/storyarn/shared/word_count.ex
+  68c546c0db49bf18 14
+test/storyarn_web/live/flow_live/node_type_registry_test.exs
+  68c546c0db49bf18 32,137,177,209
+lib/storyarn/exports/validator.ex
+  68c546c0db49bf18 365,372
+lib/storyarn_web/live/scene_live/exploration_live.ex
+  68c546c0db49bf18 849,859
+test/storyarn/flows/node_crud_test.exs
+  68c546c0db49bf18 1748
+lib/storyarn/screenplays/node_mapping.ex
+  68c546c0db49bf18 16,122
+lib/storyarn/flows/flow_node.ex
+  68c546c0db49bf18 28
+priv/repo/migrations/20260420120000_delete_slug_line_nodes.exs
+  68c546c0db49bf18 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "c4bae3a030360ff22b6b0ceb4fd5e5375e6bae5f",
+  "prompts": {
+    "06e8f7f0c4194725": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e347729-76ca-4ac2-b7af-d62f7110ed14",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 696,
+      "overriden_lines": 0
+    },
+    "3ea3c2327c2231e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e2e1fc3-308f-47c3-86d6-ca790e5fbfbe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 797,
+      "overriden_lines": 0
+    },
+    "68c546c0db49bf18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d80ea32-fe58-46be-9f90-e968962f214e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 56,
+      "total_deletions": 1656,
+      "accepted_lines": 1118,
+      "overriden_lines": 10
+    },
+    "b5e1bb47b647b01a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da948ded-a770-4715-803c-ee52cc73c164",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 8060,
+      "overriden_lines": 0
+    },
+    "ef89dbf9b28de738": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45587282-275e-4e38-aee1-d626b574231e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1210,
+      "overriden_lines": 0
+    }
+  }
+}
