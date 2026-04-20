@@ -105,14 +105,22 @@ const emit = defineEmits<{
       </div>
 
       <!-- Config gear + slot for type-specific popover -->
+      <!-- Note: PopoverTrigger's `as-child` can't be wrapped by another
+           `as-child` primitive (TooltipTrigger) — the inner one swallows the
+           outer's event handlers and the popover never opens. Same fix as
+           commit 6d45da5f on ToolbarColorPicker: drop the ToolbarTooltip and
+           rely on the native `title` attribute for this specific trigger. -->
       <Popover v-if="showConfig" @update:open="(v) => (configOpen = v)">
-        <ToolbarTooltip :label="$t('sheets.block_toolbar.configure')">
-          <PopoverTrigger as-child>
-            <Button :id="`block-toolbar-${blockId}-${generateId()}`" size="icon-sm" variant="ghost">
-              <Settings class="size-4" />
-            </Button>
-          </PopoverTrigger>
-        </ToolbarTooltip>
+        <PopoverTrigger as-child>
+          <Button
+            :id="`block-toolbar-${blockId}-${generateId()}`"
+            size="icon-sm"
+            variant="ghost"
+            :title="$t('sheets.block_toolbar.configure')"
+          >
+            <Settings class="size-4" />
+          </Button>
+        </PopoverTrigger>
         <PopoverContent align="center" :side-offset="8" class="w-64 p-3 space-y-3">
           <slot name="config" />
         </PopoverContent>
