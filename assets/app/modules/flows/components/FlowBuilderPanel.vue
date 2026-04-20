@@ -93,10 +93,7 @@ function onAssignmentsUpdate(updatedAssignments: Assignment[]): void {
       </div>
     </template>
 
-    <div
-      v-if="nodeType === 'condition' || nodeType === 'instruction'"
-      class="flex flex-col h-full"
-    >
+    <div v-if="nodeType === 'condition' || nodeType === 'instruction'" class="flex flex-col h-full">
       <ExpressionEditor
         :mode="nodeType"
         :condition="condition"

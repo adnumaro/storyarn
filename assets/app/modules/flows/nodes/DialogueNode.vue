@@ -288,10 +288,7 @@ function onSpeakerSelect(id: number | string | null) {
     </div>
 
     <!-- EMPTY STATE HINT -->
-    <div
-      v-else-if="!hasContent"
-      class="px-3.5 pt-2.5 pb-3 text-xs italic text-muted-foreground/50"
-    >
+    <div v-else-if="!hasContent" class="px-3.5 pt-2.5 pb-3 text-xs italic text-muted-foreground/50">
       {{ t("flows.nodes.dialogue.empty_hint") }}
     </div>
 

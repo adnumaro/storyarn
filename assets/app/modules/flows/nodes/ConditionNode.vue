@@ -20,7 +20,13 @@ interface OutputBadge {
   color?: string;
 }
 
-const { data, emit, config, color, nodeDataOverride = null } = defineProps<{
+const {
+  data,
+  emit,
+  config,
+  color,
+  nodeDataOverride = null,
+} = defineProps<{
   data: ReteNodeData;
   emit: ReteEmitFn;
   config: NodeConfig;

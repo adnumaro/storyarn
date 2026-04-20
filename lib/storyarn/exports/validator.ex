@@ -395,7 +395,7 @@ defmodule Storyarn.Exports.Validator do
           message:
             dgettext(
               "projects",
-              "Jump node (id: %{node_id}) in flow \"%{flow_name}\" references non-existent hub \"%{target}\"",
+              ~s|Jump node (id: %{node_id}) in flow "%{flow_name}" references non-existent hub "%{target}"|,
               node_id: node.id,
               flow_name: flow.name,
               target: target

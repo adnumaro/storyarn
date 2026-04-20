@@ -10,7 +10,13 @@ interface AnnotationNodeData {
   font_size?: "sm" | "md" | "lg";
 }
 
-const { data, emit, config, color, nodeDataOverride = null } = defineProps<{
+const {
+  data,
+  emit,
+  config,
+  color,
+  nodeDataOverride = null,
+} = defineProps<{
   data: ReteNodeData;
   emit: ReteEmitFn;
   config: NodeConfig;

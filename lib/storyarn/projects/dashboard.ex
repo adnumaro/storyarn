@@ -7,8 +7,9 @@ defmodule Storyarn.Projects.Dashboard do
   and only implements new queries when needed.
   """
 
-  import Ecto.Query
   use Gettext, backend: Storyarn.Gettext
+
+  import Ecto.Query
 
   alias Storyarn.Flows
   alias Storyarn.Flows.Flow
@@ -310,8 +311,7 @@ defmodule Storyarn.Projects.Dashboard do
     |> Enum.map(fn flow ->
       %{
         severity: :error,
-        message:
-          dgettext("flows", "Flow \"%{name}\" has no entry node", name: flow.flow_name),
+        message: dgettext("flows", "Flow \"%{name}\" has no entry node", name: flow.flow_name),
         href: "/workspaces/#{workspace_slug}/projects/#{project_slug}/flows/#{flow.flow_id}",
         count: 1
       }

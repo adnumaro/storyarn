@@ -883,10 +883,7 @@ function continuePastLimit() {
         </div>
 
         <!-- Variables table -->
-        <table
-          v-if="filteredVariables.length > 0"
-          class="w-full table-fixed border-collapse"
-        >
+        <table v-if="filteredVariables.length > 0" class="w-full table-fixed border-collapse">
           <colgroup>
             <col :style="{ width: `${colWidths.variable}px` }" />
             <col :style="{ width: `${colWidths.type}px` }" />
@@ -1068,9 +1065,7 @@ function continuePastLimit() {
                       ? 'cursor-default text-muted-foreground/70'
                       : 'cursor-pointer hover:bg-muted'
                   "
-                  :title="
-                    isReadOnlyVariable(var_) ? undefined : $t('flows.debug.click_to_edit')
-                  "
+                  :title="isReadOnlyVariable(var_) ? undefined : $t('flows.debug.click_to_edit')"
                   @click="startEdit(var_, key)"
                 >
                   <span v-if="var_.changed" :class="sourceColor(var_.source)">◆ </span>
@@ -1101,9 +1096,7 @@ function continuePastLimit() {
       <!-- History -->
       <TabsContent value="history" class="flex-1 min-h-0 overflow-y-auto text-xs">
         <table v-if="historyEntries.length > 0" class="w-full border-collapse">
-          <thead
-            class="sticky top-0 bg-background text-muted-foreground/70 border-b border-border"
-          >
+          <thead class="sticky top-0 bg-background text-muted-foreground/70 border-b border-border">
             <tr>
               <th class="font-medium text-left py-1 px-3 w-16">
                 {{ $t("flows.debug.col_time") }}
@@ -1149,10 +1142,7 @@ function continuePastLimit() {
             </tr>
           </tbody>
         </table>
-        <div
-          v-else
-          class="flex items-center justify-center h-24 text-muted-foreground/50"
-        >
+        <div v-else class="flex items-center justify-center h-24 text-muted-foreground/50">
           {{ $t("flows.debug.no_history") }}
         </div>
       </TabsContent>
@@ -1212,9 +1202,7 @@ function continuePastLimit() {
                 "
               />
             </button>
-            <span
-              class="text-muted-foreground/50 w-5 text-right tabular-nums shrink-0 select-none"
-            >
+            <span class="text-muted-foreground/50 w-5 text-right tabular-nums shrink-0 select-none">
               {{ entry.step }}
             </span>
             <component :is="pathIcon(entry.type)" class="size-3 shrink-0 opacity-60" />

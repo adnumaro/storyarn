@@ -25,29 +25,29 @@ The current implementation already has the hard part: tables are first-class, ev
 
 ### Tier 1 — Quick wins (days each, unblock the most common complaints)
 
-| # | Feature | Why | Where it lives |
-|---|---|---|---|
-| 1 | **`if(cond, a, b)` in formula engine** | Conditional modifiers (`if equipped('sword') then dmg + 2 else dmg`). Today this has to live in flow instruction nodes, forcing authors out of the table. | `lib/storyarn/shared/formula_engine.ex` — add ternary-like function, needs boolean operand support. |
-| 2 | **Booleans and strings as formula operands** | `is_alive && hp > 0`, `name ++ " the Brave"`. Today formulas coerce everything to number (missing operand = 0). | `FormulaEngine` tokenizer + evaluator + `FormulaResolver.resolve_bindings` (stop `parse_to_number` for non-numeric). |
-| 3 | **Dice functions: `d(sides)`, `dice(count, sides)`** | D&D credibility. Random but deterministic per debug step (seed via `state.step_count`?). | `FormulaEngine` `@known_functions`. |
-| 4 | **Column constraints editor UI** | Schema supports min/max/step on number columns; authors can't edit them today. | `assets/app/modules/sheets/components/blocks/table/table-config.ts` + per-column config sidebar. |
+| #   | Feature                                              | Why                                                                                                                                                       | Where it lives                                                                                                       |
+| --- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 1   | **`if(cond, a, b)` in formula engine**               | Conditional modifiers (`if equipped('sword') then dmg + 2 else dmg`). Today this has to live in flow instruction nodes, forcing authors out of the table. | `lib/storyarn/shared/formula_engine.ex` — add ternary-like function, needs boolean operand support.                  |
+| 2   | **Booleans and strings as formula operands**         | `is_alive && hp > 0`, `name ++ " the Brave"`. Today formulas coerce everything to number (missing operand = 0).                                           | `FormulaEngine` tokenizer + evaluator + `FormulaResolver.resolve_bindings` (stop `parse_to_number` for non-numeric). |
+| 3   | **Dice functions: `d(sides)`, `dice(count, sides)`** | D&D credibility. Random but deterministic per debug step (seed via `state.step_count`?).                                                                  | `FormulaEngine` `@known_functions`.                                                                                  |
+| 4   | **Column constraints editor UI**                     | Schema supports min/max/step on number columns; authors can't edit them today.                                                                            | `assets/app/modules/sheets/components/blocks/table/table-config.ts` + per-column config sidebar.                     |
 
 ### Tier 2 — Strategic differentiator (weeks)
 
-| # | Feature | Why | Where |
-|---|---|---|---|
-| 5 | **Dynamic lookup: `lookup(table, key, column)`** | The real gap. Level-up curves (`hp_max = base + lookup(level_table, current_level, "hp_bonus")`), stat-by-class tables, XP thresholds. Row is selected at evaluation time from a variable, not hardcoded. | New built-in in `FormulaEngine`; needs to call back into evaluator state to resolve by key. |
-| 6 | **Typed cross-table references with integrity** | `character.equipped_weapon` points to a row in `weapons` table; `damage = strength + equipped_weapon.damage_bonus` works via dot notation. | New column subtype extending `reference`; resolver extension; FormulaEngine needs dot access. |
-| 7 | **Per-row metadata: tags, `visible_if`, `available_if`** | Skill prerequisites (`level >= 3`), class-locked items, conditional rows. | New `TableRow` fields (`tags: [string]`, `visible_if: string`); runtime filter in variable extraction. |
-| 8 | **Aggregations: `sum`, `count`, `avg`, `filter` over a column** | `total_weight = sum(inventory.items, "weight")`. Enables derived stats from collection. | `FormulaEngine` functions; requires "row collection" as a formula value type. |
+| #   | Feature                                                         | Why                                                                                                                                                                                                       | Where                                                                                                  |
+| --- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 5   | **Dynamic lookup: `lookup(table, key, column)`**                | The real gap. Level-up curves (`hp_max = base + lookup(level_table, current_level, "hp_bonus")`), stat-by-class tables, XP thresholds. Row is selected at evaluation time from a variable, not hardcoded. | New built-in in `FormulaEngine`; needs to call back into evaluator state to resolve by key.            |
+| 6   | **Typed cross-table references with integrity**                 | `character.equipped_weapon` points to a row in `weapons` table; `damage = strength + equipped_weapon.damage_bonus` works via dot notation.                                                                | New column subtype extending `reference`; resolver extension; FormulaEngine needs dot access.          |
+| 7   | **Per-row metadata: tags, `visible_if`, `available_if`**        | Skill prerequisites (`level >= 3`), class-locked items, conditional rows.                                                                                                                                 | New `TableRow` fields (`tags: [string]`, `visible_if: string`); runtime filter in variable extraction. |
+| 8   | **Aggregations: `sum`, `count`, `avg`, `filter` over a column** | `total_weight = sum(inventory.items, "weight")`. Enables derived stats from collection.                                                                                                                   | `FormulaEngine` functions; requires "row collection" as a formula value type.                          |
 
 ### Tier 3 — Articy-level polish (when Tier 1/2 are in real use)
 
-| # | Feature | Why | Where |
-|---|---|---|---|
-| 9 | **Feature mixins (reusable column groups)** | Articy's killer pattern. Define "CombatStats" once (hp/mp/str/dex) and attach to Character/Enemy/NPC. Avoids copy-paste of stat definitions across templates. | New `ColumnGroup` schema + UI to attach groups to tables. |
-| 10 | **Table presets / templates** | Starter templates for D&D 5e ability scores, XP table by level, common equipment schemas. Ships with product to shortcut authoring. | New `TablePreset` domain + gallery UI. |
-| 11 | **Runtime SDK for Unity / Godot** | Designers ship the same typed data model to the engine. Codegen typed classes from table schemas. | Separate repo / plugin. |
+| #   | Feature                                     | Why                                                                                                                                                           | Where                                                     |
+| --- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 9   | **Feature mixins (reusable column groups)** | Articy's killer pattern. Define "CombatStats" once (hp/mp/str/dex) and attach to Character/Enemy/NPC. Avoids copy-paste of stat definitions across templates. | New `ColumnGroup` schema + UI to attach groups to tables. |
+| 10  | **Table presets / templates**               | Starter templates for D&D 5e ability scores, XP table by level, common equipment schemas. Ships with product to shortcut authoring.                           | New `TablePreset` domain + gallery UI.                    |
+| 11  | **Runtime SDK for Unity / Godot**           | Designers ship the same typed data model to the engine. Codegen typed classes from table schemas.                                                             | Separate repo / plugin.                                   |
 
 ### Tier 4 — Maybe never (document the edges)
 
