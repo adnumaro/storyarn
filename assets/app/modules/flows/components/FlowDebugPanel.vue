@@ -927,7 +927,7 @@ function continuePastLimit() {
                 <!-- Display -->
                 <div
                   v-else
-                  class="cursor-pointer hover:bg-muted rounded px-1 -mx-1 truncate"
+                  class="cursor-pointer hover:bg-muted rounded px-1 -mx-1 truncate block w-full min-h-5"
                   :title="$t('flows.debug.click_to_edit')"
                   @click="startEdit(key)"
                 >
