@@ -2,9 +2,9 @@
 import { ToggleLeft } from "lucide-vue-next";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import BooleanToggle from "@components/BooleanToggle.vue";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Checkbox } from "@components/ui/checkbox/index.ts";
-import { Switch } from "@components/ui/switch/index.ts";
 import { useBlockActions } from "../../composables/useBlockActions";
 import type { Block } from "../../types";
 import BlockLabel from "../BlockLabel.vue";
@@ -42,24 +42,18 @@ function saveLabel(val: string): void {
 const content = computed(() => block.value?.content);
 const mode = computed(() => block.config?.mode || "two_state");
 
+const trueLabel = computed(() => block.config?.true_label || t("sheets.boolean_block.yes"));
+const falseLabel = computed(() => block.config?.false_label || t("sheets.boolean_block.no"));
+const neutralLabel = computed(() => block.config?.neutral_label || "\u2014");
+
 const booleanLabel = computed(() => {
-  const cfg = block.config || {};
-  if (content.value === true) return cfg.true_label || t("sheets.boolean_block.yes");
-  if (content.value === false) return cfg.false_label || t("sheets.boolean_block.no");
-  return cfg.neutral_label || "\u2014";
+  if (content.value === true) return trueLabel.value;
+  if (content.value === false) return falseLabel.value;
+  return neutralLabel.value;
 });
 
-const booleanChecked = computed({
-  get: () => content.value === true,
-  set: (val: boolean) => live.pushEvent("update_block_value", { id: block.id, value: val }),
-});
-
-function cycle(): void {
-  let next: boolean | null;
-  if (content.value === true) next = false;
-  else if (content.value === false) next = null;
-  else next = true;
-  live.pushEvent("update_block_value", { id: block.id, value: next });
+function onToggle(value: boolean | null): void {
+  live.pushEvent("update_block_value", { id: block.id, value });
 }
 </script>
 
@@ -171,30 +165,16 @@ function cycle(): void {
       <slot name="menu" />
     </BlockLabel>
 
-    <!-- Two-state -->
-    <div v-if="canEdit && mode === 'two_state'" class="flex items-center gap-3">
-      <Switch v-model="booleanChecked" />
-      <span class="text-sm text-muted-foreground">{{ booleanLabel }}</span>
-    </div>
-
-    <!-- Tri-state -->
-    <div v-else-if="canEdit && mode === 'tri_state'" class="flex items-center gap-3">
-      <button
-        type="button"
-        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border text-sm hover:bg-accent transition-colors"
-        @click="cycle"
-      >
-        <span
-          class="size-2.5 rounded-full"
-          :class="{
-            'bg-green-500': content === true,
-            'bg-red-500': content === false,
-            'bg-muted-foreground/30': content == null,
-          }"
-        />
-        {{ booleanLabel }}
-      </button>
-    </div>
+    <!-- Editable (two-state switch or tri-state cycle button) -->
+    <BooleanToggle
+      v-if="canEdit"
+      :value="content"
+      :mode="mode"
+      :true-label="trueLabel"
+      :false-label="falseLabel"
+      :neutral-label="neutralLabel"
+      @update:value="onToggle"
+    />
 
     <!-- Read-only -->
     <Badge

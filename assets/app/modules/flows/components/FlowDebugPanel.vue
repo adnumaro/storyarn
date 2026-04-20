@@ -50,9 +50,9 @@ import {
 } from "@components/ui/command/index.ts";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { Slider } from "@components/ui/slider/index.ts";
-import { Switch } from "@components/ui/switch/index.ts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
 import { useDebounceFn } from "@vueuse/core";
+import BooleanToggle from "@components/BooleanToggle.vue";
 import { useColumnResize } from "@composables/useColumnResize";
 import { useLive } from "@composables/useLive";
 import { useVerticalResize } from "@composables/useVerticalResize";
@@ -366,13 +366,12 @@ function selectedMultiKeys(var_: DebugVariable): string[] {
   return Array.isArray(var_.value) ? (var_.value as string[]) : [];
 }
 
-function cycleTriState(var_: DebugVariable, key: string) {
-  const cur = var_.value;
-  let next: "true" | "false" | "nil";
-  if (cur === true) next = "false";
-  else if (cur === false) next = "nil";
-  else next = "true";
-  submitEdit(key, next);
+function onBooleanChange(key: string, value: boolean | null) {
+  let serialized: "true" | "false" | "nil";
+  if (value === null) serialized = "nil";
+  else if (value) serialized = "true";
+  else serialized = "false";
+  live.pushEvent("debug_set_variable", { key, value: serialized });
 }
 
 function toggleMultiOption(var_: DebugVariable, key: string, optionKey: string) {
@@ -932,49 +931,16 @@ function continuePastLimit() {
                 class="text-left tabular-nums py-1 px-2 overflow-hidden"
                 :class="var_.changed ? sourceColor(var_.source) : 'text-muted-foreground/70'"
               >
-                <!-- Inline edit: boolean tri-state (cycle button like sheets) -->
-                <button
-                  v-if="var_.block_type === 'boolean' && isTriStateBoolean(var_)"
-                  type="button"
-                  class="inline-flex items-center gap-2 px-2 py-0.5 rounded border border-border text-xs hover:bg-accent transition-colors w-full"
-                  @click="cycleTriState(var_, key)"
-                >
-                  <span
-                    class="size-2 rounded-full shrink-0"
-                    :class="{
-                      'bg-green-500': var_.value === true,
-                      'bg-red-500': var_.value === false,
-                      'bg-muted-foreground/30': var_.value == null,
-                    }"
-                  />
-                  <span class="truncate">
-                    {{
-                      var_.value === true
-                        ? $t("flows.debug.bool_true")
-                        : var_.value === false
-                          ? $t("flows.debug.bool_false")
-                          : $t("flows.debug.bool_nil")
-                    }}
-                  </span>
-                </button>
-                <!-- Inline edit: boolean 2-state — always-visible Switch,
-                     matches sheets BooleanBlock two_state pattern. -->
-                <div
-                  v-else-if="var_.block_type === 'boolean'"
-                  class="flex items-center gap-2"
-                >
-                  <Switch
-                    :model-value="var_.value === true"
-                    @update:model-value="(v) => submitEdit(key, v ? 'true' : 'false')"
-                  />
-                  <span class="text-muted-foreground">
-                    {{
-                      var_.value === true
-                        ? $t("flows.debug.bool_true")
-                        : $t("flows.debug.bool_false")
-                    }}
-                  </span>
-                </div>
+                <!-- Inline edit: boolean (shared BooleanToggle from components/) -->
+                <BooleanToggle
+                  v-if="var_.block_type === 'boolean'"
+                  :value="var_.value as boolean | null"
+                  :mode="isTriStateBoolean(var_) ? 'tri_state' : 'two_state'"
+                  :true-label="$t('flows.debug.bool_true')"
+                  :false-label="$t('flows.debug.bool_false')"
+                  :neutral-label="$t('flows.debug.bool_nil')"
+                  @update:value="(v) => onBooleanChange(key, v)"
+                />
                 <!-- Inline edit: number -->
                 <input
                   v-else-if="editingVar === key && var_.block_type === 'number'"
