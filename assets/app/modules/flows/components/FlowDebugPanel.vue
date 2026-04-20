@@ -50,6 +50,7 @@ import {
 } from "@components/ui/command/index.ts";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { Slider } from "@components/ui/slider/index.ts";
+import { Switch } from "@components/ui/switch/index.ts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
 import { useDebounceFn } from "@vueuse/core";
 import { useColumnResize } from "@composables/useColumnResize";
@@ -835,7 +836,7 @@ function continuePastLimit() {
       <TabsContent value="variables" class="flex-1 min-h-0 overflow-y-auto text-xs">
         <!-- Filter bar -->
         <div
-          class="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/30 shrink-0 sticky top-0 z-10"
+          class="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-background shrink-0 sticky top-0 z-10"
         >
           <div class="relative flex-1 max-w-48">
             <Search
@@ -956,35 +957,23 @@ function continuePastLimit() {
                     }}
                   </span>
                 </button>
-                <!-- Inline edit: boolean 2-state -->
+                <!-- Inline edit: boolean 2-state — always-visible Switch,
+                     matches sheets BooleanBlock two_state pattern. -->
                 <div
-                  v-else-if="editingVar === key && var_.block_type === 'boolean'"
-                  class="flex w-full border border-border rounded overflow-hidden"
+                  v-else-if="var_.block_type === 'boolean'"
+                  class="flex items-center gap-2"
                 >
-                  <button
-                    type="button"
-                    class="flex-1 text-xs py-0.5"
-                    :class="
+                  <Switch
+                    :model-value="var_.value === true"
+                    @update:model-value="(v) => submitEdit(key, v ? 'true' : 'false')"
+                  />
+                  <span class="text-muted-foreground">
+                    {{
                       var_.value === true
-                        ? 'bg-sky-500 text-white'
-                        : 'bg-transparent hover:bg-muted'
-                    "
-                    @click="submitEdit(key, 'true')"
-                  >
-                    true
-                  </button>
-                  <button
-                    type="button"
-                    class="flex-1 text-xs py-0.5 border-l border-border"
-                    :class="
-                      var_.value !== true
-                        ? 'bg-sky-500 text-white'
-                        : 'bg-transparent hover:bg-muted'
-                    "
-                    @click="submitEdit(key, 'false')"
-                  >
-                    false
-                  </button>
+                        ? $t("flows.debug.bool_true")
+                        : $t("flows.debug.bool_false")
+                    }}
+                  </span>
                 </div>
                 <!-- Inline edit: number -->
                 <input
