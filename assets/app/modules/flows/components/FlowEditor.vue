@@ -2,7 +2,6 @@
 import { onMounted, ref, watch } from "vue";
 import { useLive } from "@composables/useLive";
 import { useFlowEditor } from "../composables/useFlowEditor";
-import FlowContextMenu from "./FlowContextMenu.vue";
 import FlowCursors from "./FlowCursors.vue";
 import FlowMinimapToggle from "./FlowMinimapToggle.vue";
 
@@ -86,13 +85,6 @@ function safeParse(json: string, fallback: Record<string, unknown> = {}): Record
   </div>
   <div v-show="!loading" class="w-full h-full relative">
     <div ref="containerRef" :id="canvasId" class="w-full h-full" />
-
-    <FlowContextMenu
-      :container-el="containerRef"
-      :can-edit="!readonly"
-      :selected-node-id="toolbarState.nodeId"
-      :selected-node-type="toolbarState.nodeType"
-    />
 
     <FlowCursors
       v-if="!readonly && area"

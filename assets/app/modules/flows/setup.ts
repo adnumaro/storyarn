@@ -12,6 +12,7 @@ import {
   Presets as ConnectionPresets,
   type SocketData,
 } from "rete-connection-plugin";
+import { ContextMenuPlugin } from "rete-context-menu-plugin";
 import { HistoryPlugin } from "rete-history-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
 import { VuePlugin, Presets as VuePresets } from "rete-vue-plugin";
@@ -22,6 +23,8 @@ import FlowConnection from "./components/FlowConnection.vue";
 import FlowNode from "./components/FlowNode.vue";
 import FlowSocket from "./components/FlowSocket.vue";
 
+import { createContextMenuItems } from "./lib/context_menu_items";
+import { flowContextMenuPreset } from "./lib/context_menu_preset";
 import type { FlowSchemes, FlowAreaExtra } from "./lib/rete-schemes";
 import type { FlowContext, HookProxy } from "./services/editorHandlers";
 import { historyPreset } from "./services/historyPreset";
@@ -113,6 +116,11 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
   // Minimap render preset
   render.addPreset(VuePresets.minimap.setup({ size: 200 }));
 
+  // Custom context menu preset (shadcn-styled; routes rete-context-menu-plugin
+  // signals to FlowRendererContextMenu.vue). The plugin itself is attached to
+  // `area` below (readonly flows skip it per v1 behaviour).
+  render.addPreset(flowContextMenuPreset());
+
   // Register plugins
   editor.use(area);
 
@@ -133,6 +141,14 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
 
   area.use(connection);
   area.use(render);
+
+  // Rete context menu plugin (skipped in readonly flows).
+  if (!hook.readonly) {
+    const contextMenu = new ContextMenuPlugin<FlowSchemes>({
+      items: createContextMenuItems(hook),
+    });
+    area.use(contextMenu);
+  }
 
   // Magnetic connection (same as V1)
   magneticConnection(connection, {
