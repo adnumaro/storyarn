@@ -28,6 +28,8 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.NavigationHistoryStore
   alias Storyarn.Flows.NodeCrud
   alias Storyarn.Flows.SceneResolver
+  alias Storyarn.Flows.Sequence
+  alias Storyarn.Flows.SequenceCrud
   alias Storyarn.Flows.TreeOperations
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
@@ -43,6 +45,7 @@ defmodule Storyarn.Flows do
   @type flow :: Flow.t()
   @type flow_node :: FlowNode.t()
   @type connection :: FlowConnection.t()
+  @type sequence :: Sequence.t()
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
 
@@ -1021,4 +1024,32 @@ defmodule Storyarn.Flows do
     |> Flow.version_changeset(%{current_version_id: version_id})
     |> Repo.update()
   end
+
+  # =============================================================================
+  # Sequences - Multi-track composition entity (P-3 of flow-player-redesign)
+  # =============================================================================
+
+  @doc "Lists active sequences for a flow, ordered by insertion time."
+  defdelegate list_sequences(flow_id), to: SequenceCrud
+
+  @doc "Lists soft-deleted sequences for a flow."
+  defdelegate list_deleted_sequences(flow_id), to: SequenceCrud, as: :list_deleted
+
+  @doc "Fetches an active sequence by id scoped to a flow. Returns nil if absent or deleted."
+  defdelegate get_sequence(flow_id, id), to: SequenceCrud
+
+  @doc "Fetches a sequence by id scoped to a flow. Raises if absent."
+  defdelegate get_sequence!(flow_id, id), to: SequenceCrud
+
+  @doc "Creates a sequence for a flow + start node."
+  defdelegate create_sequence(flow_id, start_node_id, attrs), to: SequenceCrud
+
+  @doc "Updates a sequence's name and/or tracks."
+  defdelegate update_sequence(sequence, attrs), to: SequenceCrud
+
+  @doc "Soft-deletes a sequence."
+  defdelegate delete_sequence(sequence), to: SequenceCrud
+
+  @doc "Restores a soft-deleted sequence."
+  defdelegate restore_sequence(sequence), to: SequenceCrud
 end
