@@ -153,6 +153,7 @@ const { widths: colWidths, startResize: startColResize } = useColumnResize([
 ]);
 const varFilter = ref(controls.varFilter);
 const startSelectOpen = ref(false);
+const editingVar = ref<string | null>(null);
 
 const pushVarFilterDebounced = useDebounceFn((value: string) => {
   live.pushEvent("debug_var_filter", { filter: value });
@@ -201,6 +202,30 @@ function onVarFilterInput(event: Event) {
 
 function toggleChangedOnly() {
   live.pushEvent("debug_var_toggle_changed", {});
+}
+
+function startEdit(key: string) {
+  editingVar.value = key;
+}
+
+function cancelEdit() {
+  editingVar.value = null;
+}
+
+function submitEdit(key: string, value: string | number | boolean) {
+  live.pushEvent("debug_set_variable", { key, value: String(value) });
+  editingVar.value = null;
+}
+
+function onEditBlur(key: string, event: FocusEvent) {
+  const input = event.target as HTMLInputElement;
+  submitEdit(key, input.value);
+}
+
+function onEditEnter(key: string, event: KeyboardEvent) {
+  event.preventDefault();
+  const input = event.target as HTMLInputElement;
+  submitEdit(key, input.value);
 }
 
 function formatSpeed(ms: number): string {
@@ -702,13 +727,74 @@ function continuePastLimit() {
                 {{ formatDebugValue(var_.previous_value) }}
               </td>
               <td
-                class="text-left tabular-nums py-1 px-2 truncate overflow-hidden"
+                class="text-left tabular-nums py-1 px-2 overflow-hidden"
                 :class="var_.changed ? sourceColor(var_.source) : 'text-muted-foreground/70'"
               >
-                <span v-if="var_.changed" :class="sourceColor(var_.source)">◆ </span>
-                <span :class="var_.changed ? 'font-semibold' : ''">
-                  {{ formatDebugValue(var_.value) }}
-                </span>
+                <!-- Inline edit: boolean -->
+                <div
+                  v-if="editingVar === key && var_.block_type === 'boolean'"
+                  class="flex w-full border border-border rounded overflow-hidden"
+                >
+                  <button
+                    type="button"
+                    class="flex-1 text-xs py-0.5"
+                    :class="
+                      var_.value === true
+                        ? 'bg-sky-500 text-white'
+                        : 'bg-transparent hover:bg-muted'
+                    "
+                    @click="submitEdit(key, 'true')"
+                  >
+                    true
+                  </button>
+                  <button
+                    type="button"
+                    class="flex-1 text-xs py-0.5 border-l border-border"
+                    :class="
+                      var_.value !== true
+                        ? 'bg-sky-500 text-white'
+                        : 'bg-transparent hover:bg-muted'
+                    "
+                    @click="submitEdit(key, 'false')"
+                  >
+                    false
+                  </button>
+                </div>
+                <!-- Inline edit: number -->
+                <input
+                  v-else-if="editingVar === key && var_.block_type === 'number'"
+                  type="number"
+                  step="any"
+                  :value="var_.value"
+                  autofocus
+                  class="w-full h-5 px-1 text-xs bg-background border border-primary rounded tabular-nums text-sky-500 focus:outline-none"
+                  @blur="onEditBlur(key, $event)"
+                  @keydown.enter="onEditEnter(key, $event)"
+                  @keydown.escape="cancelEdit"
+                />
+                <!-- Inline edit: text -->
+                <input
+                  v-else-if="editingVar === key"
+                  type="text"
+                  :value="var_.value"
+                  autofocus
+                  class="w-full h-5 px-1 text-xs bg-background border border-primary rounded text-sky-500 focus:outline-none"
+                  @blur="onEditBlur(key, $event)"
+                  @keydown.enter="onEditEnter(key, $event)"
+                  @keydown.escape="cancelEdit"
+                />
+                <!-- Display -->
+                <div
+                  v-else
+                  class="cursor-pointer hover:bg-muted rounded px-1 -mx-1 truncate"
+                  :title="$t('flows.debug.click_to_edit')"
+                  @click="startEdit(key)"
+                >
+                  <span v-if="var_.changed" :class="sourceColor(var_.source)">◆ </span>
+                  <span :class="var_.changed ? 'font-semibold' : ''">
+                    {{ formatDebugValue(var_.value) }}
+                  </span>
+                </div>
               </td>
             </tr>
           </tbody>
