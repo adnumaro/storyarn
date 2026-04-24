@@ -1,0 +1,51 @@
+lib/storyarn_web/live/flow_live/handlers/collaboration_event_handlers.ex
+  1ebe222d01f3cfa3 83-89
+assets/app/modules/flows/lib/flow-scopes-preset.ts
+  1ebe222d01f3cfa3 1-349
+lib/storyarn/flows.ex
+  1ebe222d01f3cfa3 292-298
+assets/app/modules/flows/composables/useFlowEditor.ts
+  1ebe222d01f3cfa3 15,148,199-201,421,625-639,810-826,828,966-976
+lib/storyarn/flows/node_update.ex
+  1ebe222d01f3cfa3 28-42
+lib/storyarn/flows/flow_node.ex
+  1ebe222d01f3cfa3 133-145
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  1ebe222d01f3cfa3 435-466
+assets/app/modules/flows/setup.ts
+  1ebe222d01f3cfa3 18,30-34,160-214,217-219
+assets/app/modules/flows/components/Sequence.vue
+  1ebe222d01f3cfa3 31,50-56,62-65,82-85,94-101
+assets/app/modules/flows/lib/flow-reparent-state.ts
+  1ebe222d01f3cfa3 1-119
+lib/storyarn/flows/node_crud.ex
+  1ebe222d01f3cfa3 418
+lib/storyarn_web/live/flow_live/show.ex
+  1ebe222d01f3cfa3 891-896
+test/storyarn/flows/node_crud_test.exs
+  1ebe222d01f3cfa3 708-780
+lib/storyarn_web/live/flow_live/helpers/collaboration_helpers.ex
+  1ebe222d01f3cfa3 90-96
+assets/app/modules/flows/services/editorHandlers.ts
+  1ebe222d01f3cfa3 11,134,185-189,195,362-390
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "cef598c280cdd215dadf4e50ec77b828a3148955",
+  "prompts": {
+    "1ebe222d01f3cfa3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da411924-b924-44e1-b377-d19e84db2dd9",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 980,
+      "total_deletions": 176,
+      "accepted_lines": 1469,
+      "overriden_lines": 0
+    }
+  }
+}
