@@ -18,16 +18,14 @@ defmodule StoryarnWeb.FlowLive.Nodes.Instruction.Node do
   def default_data do
     %{
       "assignments" => [],
-      "description" => "",
-      "sequence_directive" => nil
+      "description" => ""
     }
   end
 
   def extract_form_data(data) do
     %{
       "assignments" => data["assignments"] || [],
-      "description" => data["description"] || "",
-      "sequence_directive" => data["sequence_directive"]
+      "description" => data["description"] || ""
     }
   end
 

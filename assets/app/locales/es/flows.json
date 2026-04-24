@@ -72,13 +72,9 @@
       "add_node": "Añadir nodo",
       "add_note": "Añadir nota",
       "auto_layout": "Auto layout",
-      "create_sequence": "Crear sequence desde aquí"
+      "create_sequence_from_selection": "Crear sequence con selección"
     },
     "sequences": {
-      "panel_title": "Sequence",
-      "close": "Cerrar panel",
-      "name_placeholder": "Nombre de la sequence",
-      "placeholder_clips": "Aún no hay clips — el editor llega en Premiere v1.",
       "tracks": {
         "background": "Fondo",
         "music": "Música",
@@ -97,6 +93,10 @@
       "dialogue_toolbar_preview": "Vista previa"
     },
     "dock": {
+      "select": "Seleccionar",
+      "select_desc": "Dibuja un rectángulo para seleccionar nodos. Ctrl+click para añadir uno a uno.",
+      "pan": "Mover",
+      "pan_desc": "Arrastra el lienzo para desplazarte.",
       "narrative": "Narrativa",
       "logic": "Lógica",
       "navigation": "Navegación",

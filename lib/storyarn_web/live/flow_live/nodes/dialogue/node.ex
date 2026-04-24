@@ -37,8 +37,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
       "technical_id" => "",
       "localization_id" => generate_localization_id(),
       "avatar_id" => nil,
-      "responses" => [],
-      "sequence_directive" => nil
+      "responses" => []
     }
   end
 
@@ -51,8 +50,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
     "technical_id" => "",
     "localization_id" => "",
     "avatar_id" => nil,
-    "responses" => [],
-    "sequence_directive" => nil
+    "responses" => []
   }
 
   def extract_form_data(data) do

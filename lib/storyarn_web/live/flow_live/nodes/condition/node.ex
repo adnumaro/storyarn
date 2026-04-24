@@ -19,16 +19,14 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
   def default_data do
     %{
       "condition" => %{"logic" => "all", "rules" => []},
-      "switch_mode" => false,
-      "sequence_directive" => nil
+      "switch_mode" => false
     }
   end
 
   def extract_form_data(data) do
     %{
       "condition" => data["condition"] || %{"logic" => "all", "rules" => []},
-      "switch_mode" => data["switch_mode"] || false,
-      "sequence_directive" => data["sequence_directive"]
+      "switch_mode" => data["switch_mode"] || false
     }
   end
 

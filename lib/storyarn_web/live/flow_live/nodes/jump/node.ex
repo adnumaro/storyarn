@@ -12,12 +12,11 @@ defmodule StoryarnWeb.FlowLive.Nodes.Jump.Node do
   def label, do: dgettext("flows", "Jump")
   def description, do: dgettext("flows", "Jump to a hub in any flow")
 
-  def default_data, do: %{"target_hub_id" => "", "sequence_directive" => nil}
+  def default_data, do: %{"target_hub_id" => ""}
 
   def extract_form_data(data) do
     %{
-      "target_hub_id" => data["target_hub_id"] || "",
-      "sequence_directive" => data["sequence_directive"]
+      "target_hub_id" => data["target_hub_id"] || ""
     }
   end
 

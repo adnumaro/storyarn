@@ -1744,7 +1744,8 @@ defmodule Storyarn.Flows.NodeCrudTest do
       assert "entry" in types
       assert "exit" in types
       assert "subflow" in types
-      assert length(types) == 9
+      assert "sequence" in types
+      assert length(types) == 10
     end
 
     test "create_changeset rejects invalid type" do

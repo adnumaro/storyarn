@@ -15,7 +15,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
   alias StoryarnWeb.FlowLive.Handlers.NavigationHandlers
   alias StoryarnWeb.FlowLive.Handlers.PreviewHandlers
-  alias StoryarnWeb.FlowLive.Handlers.SequenceHandlers
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
   alias StoryarnWeb.FlowLive.Helpers.DebugSerializer
@@ -183,15 +182,6 @@ defmodule StoryarnWeb.FlowLive.Show do
             />
           </div>
 
-          <%!-- Sequence Timeline Panel (Vue, bottom-docked stub for P-3) --%>
-          <.vue
-            v-component="modules/flows/components/SequenceTimelinePanel"
-            v-socket={@socket}
-            id="flow-sequence-panel"
-            open={@sequence_panel_open && @active_sequence != nil}
-            sequence={serialize_sequence_for_vue(@active_sequence)}
-          />
-
           <%!-- Debug Panel (Vue) --%>
           <.vue
             v-component="modules/flows/components/FlowDebugPanel"
@@ -335,8 +325,6 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:debug_step_limit_reached, false)
       |> assign(:versions_panel_open, false)
       |> assign(:history_data, nil)
-      |> assign(:sequence_panel_open, false)
-      |> assign(:active_sequence, nil)
       |> assign(:all_sheets, [])
       |> assign(:gallery_by_sheet, %{})
       |> assign(:flow_hubs, [])
@@ -755,6 +743,47 @@ defmodule StoryarnWeb.FlowLive.Show do
     {:noreply, socket}
   end
 
+  def handle_event("wrap_selection_in_sequence", %{"node_ids" => node_ids}, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn socket ->
+      ids =
+        node_ids
+        |> List.wrap()
+        |> Enum.map(fn id ->
+          case parse_node_id(id) do
+            {:ok, int_id} -> int_id
+            :error -> nil
+          end
+        end)
+        |> Enum.reject(&is_nil/1)
+
+      case Flows.wrap_selection_in_sequence(socket.assigns.flow, ids, %{}) do
+        {:ok, _sequence} ->
+          flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
+          flow_data = Flows.serialize_for_canvas(flow, project_variables: socket.assigns.project_variables)
+
+          {:noreply,
+           socket
+           |> assign(:flow_data, flow_data)
+           |> push_event("flow_updated", flow_data)
+           |> put_flash(:info, dgettext("flows", "Sequence created"))}
+
+        {:error, :empty_selection} ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Select at least one node first"))}
+
+        {:error, :mixed_parents} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             dgettext("flows", "Nodes must belong to the same container")
+           )}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create sequence"))}
+      end
+    end)
+  end
+
   def handle_event("add_node", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_add_node(params, socket)
@@ -772,22 +801,6 @@ defmodule StoryarnWeb.FlowLive.Show do
         socket
       )
     end)
-  end
-
-  def handle_event("create_sequence_from_node", params, socket) do
-    SequenceHandlers.handle_create_sequence_from_node(params, socket)
-  end
-
-  def handle_event("open_sequence_panel", params, socket) do
-    SequenceHandlers.handle_open_sequence_panel(params, socket)
-  end
-
-  def handle_event("close_sequence_panel", params, socket) do
-    SequenceHandlers.handle_close_sequence_panel(params, socket)
-  end
-
-  def handle_event("update_sequence_name", params, socket) do
-    SequenceHandlers.handle_update_sequence_name(params, socket)
   end
 
   def handle_event("save_name", params, socket) do
@@ -1393,8 +1406,6 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:preview_history, [])
       |> assign(:versions_panel_open, false)
       |> assign(:history_data, nil)
-      |> assign(:sequence_panel_open, false)
-      |> assign(:active_sequence, nil)
       |> assign(:collab_scope, {:flow, flow.id})
       |> assign(:online_users, online_users)
       |> assign(:node_locks, node_locks)
@@ -1662,15 +1673,5 @@ defmodule StoryarnWeb.FlowLive.Show do
     socket
     |> assign(:scene_name, scene_name)
     |> assign(:scene_inherited, is_inherited)
-  end
-
-  defp serialize_sequence_for_vue(nil), do: nil
-
-  defp serialize_sequence_for_vue(%Storyarn.Flows.Sequence{} = sequence) do
-    %{
-      id: sequence.id,
-      name: sequence.name,
-      tracks: sequence.tracks
-    }
   end
 end

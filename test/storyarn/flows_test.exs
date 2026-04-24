@@ -966,6 +966,48 @@ defmodule Storyarn.FlowsTest do
       first_connection = Enum.at(serialized.connections, 0)
       assert first_connection.source_node_id == node1.id
       assert first_connection.target_node_id == node2.id
+
+      # parent_id field present (nil by default)
+      assert Map.has_key?(first_node, :parent_id)
+      assert first_node.parent_id == nil
+
+      # No separate sequences array: sequences are inline in nodes[] with type='sequence'
+      refute Map.has_key?(serialized, :sequences)
+    end
+
+    test "serialize_for_canvas includes sequences inline in nodes[] with parent_id" do
+      user = user_fixture()
+      project = project_fixture(user)
+      flow = flow_fixture(project, %{name: "Test"})
+      {:ok, outer} = Flows.create_sequence(flow.id, %{"name" => "Outer"})
+
+      {:ok, inner} =
+        Flows.create_sequence(flow.id, %{"name" => "Inner", "parent_id" => outer.id})
+
+      node =
+        flow
+        |> node_fixture(%{type: "dialogue", position_x: 50.0, position_y: 60.0})
+        |> Ecto.Changeset.change(%{parent_id: outer.id})
+        |> Storyarn.Repo.update!()
+
+      flow = Flows.get_flow!(project.id, flow.id)
+      serialized = Flows.serialize_for_canvas(flow)
+
+      # Sequences live alongside other flow_nodes in the single nodes array.
+      sequences = Enum.filter(serialized.nodes, &(&1.type == "sequence"))
+      assert length(sequences) == 2
+
+      outer_payload = Enum.find(sequences, &(&1.id == outer.id))
+      inner_payload = Enum.find(sequences, &(&1.id == inner.id))
+
+      assert outer_payload.parent_id == nil
+      assert outer_payload.data["name"] == "Outer"
+      assert outer_payload.data["width"] == 300.0
+      assert outer_payload.data["height"] == 200.0
+      assert inner_payload.parent_id == outer.id
+
+      node_payload = Enum.find(serialized.nodes, &(&1.id == node.id))
+      assert node_payload.parent_id == outer.id
     end
   end
 

@@ -72,13 +72,9 @@
       "add_node": "Add node",
       "add_note": "Add note",
       "auto_layout": "Auto layout",
-      "create_sequence": "Create sequence from here"
+      "create_sequence_from_selection": "Create sequence from selection"
     },
     "sequences": {
-      "panel_title": "Sequence",
-      "close": "Close panel",
-      "name_placeholder": "Sequence name",
-      "placeholder_clips": "No clips yet — timeline editor ships in Premiere v1.",
       "tracks": {
         "background": "Background",
         "music": "Music",
@@ -97,6 +93,10 @@
       "dialogue_toolbar_preview": "Preview"
     },
     "dock": {
+      "select": "Select",
+      "select_desc": "Draw a rectangle to select nodes. Ctrl+click to add one at a time.",
+      "pan": "Pan",
+      "pan_desc": "Drag the canvas to move around.",
       "narrative": "Narrative",
       "logic": "Logic",
       "navigation": "Navigation",

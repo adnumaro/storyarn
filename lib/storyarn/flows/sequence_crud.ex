@@ -1,172 +1,269 @@
 defmodule Storyarn.Flows.SequenceCrud do
   @moduledoc """
-  CRUD for `Storyarn.Flows.Sequence`.
+  CRUD for sequence-type flow_nodes.
 
-  Sequences scope to a flow (via `flow_id`) and track a `start_node_id` — the
-  node the author right-clicked to create the Sequence. Downstream nodes inherit
-  the Sequence at runtime via the `sequence_directive` pointer on their data.
+  Sequences are `flow_nodes` rows with `type='sequence'`. They group
+  other flow_nodes on the canvas via `FlowNode.parent_id` (self-FK,
+  `nilify_all`). Sequence-specific fields (name, canvas dimensions) live
+  in `flow_node_sequence_configs` 1:1 with the flow_node.
 
-  Soft delete supported via `deleted_at`.
+  Soft-delete is supported via `deleted_at` on the flow_node row. A DB
+  trigger nilifies `parent_id` on children when a sequence is
+  soft-deleted — children orphan rather than cascade.
   """
 
   import Ecto.Query
 
+  alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.Sequence
+  alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Repo
 
+  @type sequence :: FlowNode.t()
+
   @doc """
-  Lists active (non-deleted) sequences for a flow, ordered by insertion time.
+  Lists active (non-deleted) sequences for a flow, ordered by insertion
+  time, with `sequence_config` preloaded.
   """
-  @spec list_sequences(integer()) :: [Sequence.t()]
+  @spec list_sequences(integer()) :: [sequence()]
   def list_sequences(flow_id) do
-    Repo.all(from(s in Sequence, where: s.flow_id == ^flow_id and is_nil(s.deleted_at), order_by: [asc: s.inserted_at]))
+    Repo.all(
+      from(n in FlowNode,
+        where: n.flow_id == ^flow_id and n.type == "sequence" and is_nil(n.deleted_at),
+        order_by: [asc: n.inserted_at],
+        preload: [:sequence_config]
+      )
+    )
   end
 
   @doc """
   Lists soft-deleted sequences for a flow (for trash/restore UIs).
   """
-  @spec list_deleted(integer()) :: [Sequence.t()]
+  @spec list_deleted(integer()) :: [sequence()]
   def list_deleted(flow_id) do
     Repo.all(
-      from(s in Sequence, where: s.flow_id == ^flow_id and not is_nil(s.deleted_at), order_by: [desc: s.deleted_at])
+      from(n in FlowNode,
+        where: n.flow_id == ^flow_id and n.type == "sequence" and not is_nil(n.deleted_at),
+        order_by: [desc: n.deleted_at],
+        preload: [:sequence_config]
+      )
     )
   end
 
   @doc """
-  Fetches an active sequence by id scoped to a flow. Returns nil if absent or deleted.
+  Fetches an active sequence by id scoped to a flow. Returns nil if
+  absent, soft-deleted, or not a sequence.
   """
-  @spec get_sequence(integer(), integer()) :: Sequence.t() | nil
+  @spec get_sequence(integer(), integer()) :: sequence() | nil
   def get_sequence(flow_id, id) do
-    Repo.one(from(s in Sequence, where: s.id == ^id and s.flow_id == ^flow_id and is_nil(s.deleted_at)))
+    Repo.one(
+      from(n in FlowNode,
+        where: n.id == ^id and n.flow_id == ^flow_id and n.type == "sequence" and is_nil(n.deleted_at),
+        preload: [:sequence_config]
+      )
+    )
   end
 
   @doc """
   Fetches a sequence by id scoped to a flow. Raises if absent.
   """
-  @spec get_sequence!(integer(), integer()) :: Sequence.t()
+  @spec get_sequence!(integer(), integer()) :: sequence()
   def get_sequence!(flow_id, id) do
-    Repo.get_by!(Sequence, id: id, flow_id: flow_id)
-  end
-
-  @doc """
-  Creates a sequence for a given flow + start node.
-
-  `attrs` should include at minimum `:name`. `:tracks` defaults to an empty map
-  of the 5 fixed track keys if not provided.
-  """
-  @spec create_sequence(integer(), integer(), map()) ::
-          {:ok, Sequence.t()} | {:error, Ecto.Changeset.t()}
-  def create_sequence(flow_id, start_node_id, attrs) do
-    attrs =
-      attrs
-      |> Map.put_new("flow_id", flow_id)
-      |> Map.put_new("start_node_id", start_node_id)
-      |> Map.put_new("tracks", Sequence.empty_tracks())
-
-    %Sequence{}
-    |> Sequence.create_changeset(attrs)
-    |> Repo.insert()
-  end
-
-  @doc """
-  Creates a sequence anchored at the given node AND sets that node's
-  `sequence_directive` to point at the new sequence, atomically.
-
-  This is the entry-point the UI uses for "Create sequence from here".
-  If the node already had a `sequence_directive`, it is overwritten.
-
-  `attrs` should include at minimum `:name` (or `"name"`).
-  """
-  @spec create_sequence_from_node(FlowNode.t(), map()) ::
-          {:ok, Sequence.t()} | {:error, Ecto.Changeset.t()}
-  def create_sequence_from_node(%FlowNode{} = node, attrs) do
-    Repo.transaction(fn ->
-      case create_sequence(node.flow_id, node.id, attrs) do
-        {:ok, sequence} ->
-          case set_node_sequence_directive(node, sequence.id) do
-            {:ok, _updated_node} -> sequence
-            {:error, changeset} -> Repo.rollback(changeset)
-          end
-
-        {:error, changeset} ->
-          Repo.rollback(changeset)
-      end
-    end)
-  end
-
-  defp set_node_sequence_directive(%FlowNode{} = node, sequence_id) do
-    new_data = Map.put(node.data || %{}, "sequence_directive", sequence_id)
-
-    node
-    |> FlowNode.data_changeset(%{data: new_data})
-    |> Repo.update()
-  end
-
-  @doc """
-  Updates a sequence's name and/or tracks. `flow_id` and `start_node_id` are immutable.
-  """
-  @spec update_sequence(Sequence.t(), map()) ::
-          {:ok, Sequence.t()} | {:error, Ecto.Changeset.t()}
-  def update_sequence(%Sequence{} = sequence, attrs) do
-    sequence
-    |> Sequence.update_changeset(attrs)
-    |> Repo.update()
-  end
-
-  @doc """
-  Soft-deletes a sequence and sweeps any `sequence_directive` pointers on nodes
-  of the same flow that reference this sequence.
-
-  The sweep is what keeps JSONB cross-refs consistent without a true FK —
-  see `docs/audit/jsonb-cross-refs-lifecycle-hooks.md` for the rationale.
-
-  Runs in a transaction so the sweep either lands with the soft-delete or
-  neither does.
-  """
-  @spec delete_sequence(Sequence.t()) :: {:ok, Sequence.t()} | {:error, Ecto.Changeset.t()}
-  def delete_sequence(%Sequence{} = sequence) do
-    Repo.transaction(fn ->
-      case sequence |> Sequence.soft_delete_changeset() |> Repo.update() do
-        {:ok, deleted} ->
-          clear_sequence_directive_pointers(deleted.flow_id, deleted.id)
-          deleted
-
-        {:error, changeset} ->
-          Repo.rollback(changeset)
-      end
-    end)
-  end
-
-  # Nullifies `data["sequence_directive"]` on active nodes of `flow_id` that
-  # currently point to `sequence_id`. The key is preserved (set to nil) for
-  # consistency with the default_data shape in node type modules.
-  defp clear_sequence_directive_pointers(flow_id, sequence_id) do
-    seq_id_str = to_string(sequence_id)
-
-    from(n in FlowNode,
-      where:
-        n.flow_id == ^flow_id and
-          is_nil(n.deleted_at) and
-          fragment("?->>'sequence_directive' = ?", n.data, ^seq_id_str)
+    Repo.one!(
+      from(n in FlowNode,
+        where: n.id == ^id and n.flow_id == ^flow_id and n.type == "sequence",
+        preload: [:sequence_config]
+      )
     )
-    |> Repo.all()
-    |> Enum.each(fn node ->
-      new_data = Map.put(node.data || %{}, "sequence_directive", nil)
+  end
 
-      node
-      |> FlowNode.data_changeset(%{data: new_data})
-      |> Repo.update!()
+  @doc """
+  Creates a sequence (flow_node + sequence_config) atomically.
+
+  `attrs` may include: `:name` (required), `:position_x`, `:position_y`,
+  `:width`, `:height`, `:parent_id`.
+  """
+  @spec create_sequence(integer(), map()) ::
+          {:ok, sequence()} | {:error, Ecto.Changeset.t()}
+  def create_sequence(flow_id, attrs) do
+    attrs = normalize_keys(attrs)
+
+    node_attrs = %{
+      "type" => "sequence",
+      "position_x" => Map.get(attrs, "position_x", 0.0),
+      "position_y" => Map.get(attrs, "position_y", 0.0),
+      "parent_id" => Map.get(attrs, "parent_id")
+    }
+
+    config_attrs = %{
+      "name" => Map.get(attrs, "name"),
+      "width" => Map.get(attrs, "width", 300.0),
+      "height" => Map.get(attrs, "height", 200.0)
+    }
+
+    Repo.transaction(fn ->
+      with {:ok, node} <-
+             %FlowNode{flow_id: flow_id}
+             |> FlowNode.create_changeset(node_attrs)
+             |> Repo.insert(),
+           {:ok, config} <-
+             %SequenceConfig{}
+             |> SequenceConfig.create_changeset(Map.put(config_attrs, "flow_node_id", node.id))
+             |> Repo.insert() do
+        %{node | sequence_config: config}
+      else
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
     end)
   end
 
   @doc """
-  Restores a soft-deleted sequence.
+  Updates a sequence's name/width/height (on sequence_config) and/or
+  position/parent_id (on flow_node). Accepts a sequence struct
+  (preloaded or not — config is loaded on demand if needed). `flow_id`
+  and `type` are immutable.
   """
-  @spec restore_sequence(Sequence.t()) :: {:ok, Sequence.t()} | {:error, Ecto.Changeset.t()}
-  def restore_sequence(%Sequence{} = sequence) do
-    sequence
-    |> Sequence.restore_changeset()
+  @spec update_sequence(sequence(), map()) ::
+          {:ok, sequence()} | {:error, Ecto.Changeset.t()}
+  def update_sequence(%FlowNode{type: "sequence"} = node, attrs) do
+    attrs = normalize_keys(attrs)
+    node_attrs = Map.take(attrs, ["position_x", "position_y", "parent_id"])
+    config_attrs = Map.take(attrs, ["name", "width", "height"])
+
+    Repo.transaction(fn ->
+      updated_node =
+        if map_size(node_attrs) > 0 do
+          case node |> FlowNode.update_changeset(node_attrs) |> Repo.update() do
+            {:ok, n} -> n
+            {:error, cs} -> Repo.rollback(cs)
+          end
+        else
+          node
+        end
+
+      updated_config =
+        if map_size(config_attrs) > 0 do
+          config = ensure_config_loaded(node)
+
+          case config |> SequenceConfig.update_changeset(config_attrs) |> Repo.update() do
+            {:ok, c} -> c
+            {:error, cs} -> Repo.rollback(cs)
+          end
+        else
+          ensure_config_loaded(node)
+        end
+
+      %{updated_node | sequence_config: updated_config}
+    end)
+  end
+
+  @doc """
+  Soft-deletes a sequence (its flow_node row). A DB trigger nilifies
+  `parent_id` on all children when `deleted_at` transitions to non-null.
+  """
+  @spec delete_sequence(sequence()) :: {:ok, sequence()} | {:error, Ecto.Changeset.t()}
+  def delete_sequence(%FlowNode{type: "sequence"} = node) do
+    node
+    |> FlowNode.soft_delete_changeset()
     |> Repo.update()
+  end
+
+  @doc """
+  Restores a soft-deleted sequence by clearing `deleted_at`. Children
+  previously nilified are NOT re-attached — the user must re-parent
+  them manually.
+  """
+  @spec restore_sequence(sequence()) :: {:ok, sequence()} | {:error, Ecto.Changeset.t()}
+  def restore_sequence(%FlowNode{type: "sequence"} = node) do
+    node
+    |> FlowNode.restore_changeset()
+    |> Repo.update()
+  end
+
+  @doc """
+  Atomically wraps a selection of flow_nodes into a new sequence.
+
+  Validations (fail-fast, no side effects on error):
+    * `node_ids` non-empty (1 or more).
+    * Every node exists, is active, and belongs to `flow`.
+    * All nodes share the same `parent_id` — otherwise `{:error,
+      :mixed_parents}`. The new sequence inherits that common parent.
+
+  `attrs` may include `:name`, `:position_x`, `:position_y`, `:width`,
+  `:height`. Missing name defaults to `"Sequence"`.
+
+  Returns `{:ok, sequence}` (a FlowNode with sequence_config set), or
+  `{:error, reason}` where reason is one of: `:empty_selection`,
+  `:nodes_not_found`, `:mixed_parents`, or an `Ecto.Changeset`.
+  """
+  @spec wrap_selection_in_sequence(Flow.t(), [integer()], map()) ::
+          {:ok, sequence()} | {:error, atom() | Ecto.Changeset.t()}
+  def wrap_selection_in_sequence(flow, node_ids, attrs \\ %{})
+
+  def wrap_selection_in_sequence(%Flow{}, [], _attrs), do: {:error, :empty_selection}
+
+  def wrap_selection_in_sequence(%Flow{id: flow_id}, node_ids, attrs) when is_list(node_ids) do
+    Repo.transaction(fn ->
+      with {:ok, nodes} <- load_active_nodes(flow_id, node_ids),
+           {:ok, parent_id} <- common_parent_id(nodes),
+           attrs = build_wrap_attrs(attrs, parent_id),
+           {:ok, sequence} <- create_sequence(flow_id, attrs),
+           :ok <- assign_nodes_to_sequence(nodes, sequence.id) do
+        sequence
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  # =========================================================================
+  # Internals
+  # =========================================================================
+
+  defp normalize_keys(attrs) when is_map(attrs) do
+    Map.new(attrs, fn
+      {k, v} when is_atom(k) -> {Atom.to_string(k), v}
+      {k, v} -> {k, v}
+    end)
+  end
+
+  defp ensure_config_loaded(%FlowNode{sequence_config: %SequenceConfig{} = c}), do: c
+
+  defp ensure_config_loaded(%FlowNode{id: id}), do: Repo.get_by!(SequenceConfig, flow_node_id: id)
+
+  defp load_active_nodes(flow_id, node_ids) do
+    nodes =
+      Repo.all(
+        from(n in FlowNode,
+          where: n.id in ^node_ids and n.flow_id == ^flow_id and is_nil(n.deleted_at)
+        )
+      )
+
+    if length(nodes) == length(Enum.uniq(node_ids)) do
+      {:ok, nodes}
+    else
+      {:error, :nodes_not_found}
+    end
+  end
+
+  defp common_parent_id(nodes) do
+    case nodes |> Enum.map(& &1.parent_id) |> Enum.uniq() do
+      [parent_id] -> {:ok, parent_id}
+      _ -> {:error, :mixed_parents}
+    end
+  end
+
+  defp build_wrap_attrs(attrs, parent_id) do
+    attrs
+    |> normalize_keys()
+    |> Map.put_new("name", "Sequence")
+    |> Map.put("parent_id", parent_id)
+  end
+
+  defp assign_nodes_to_sequence(nodes, sequence_id) do
+    ids = Enum.map(nodes, & &1.id)
+
+    Repo.update_all(from(n in FlowNode, where: n.id in ^ids), set: [parent_id: sequence_id])
+    :ok
   end
 end

@@ -18,6 +18,7 @@ defmodule Storyarn.Flows.FlowCrud do
   alias Storyarn.Shared.SearchHelpers
   alias Storyarn.Shared.ShortcutHelpers
   alias Storyarn.Shared.SoftDelete
+  alias Storyarn.Shared.Trashable
   alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Sheets
   alias Storyarn.Shortcuts
@@ -293,6 +294,11 @@ defmodule Storyarn.Flows.FlowCrud do
   @doc """
   Soft-deletes a flow by setting deleted_at.
   Also soft-deletes all children recursively.
+
+  Inbound refs (`flow_nodes.data["referenced_flow_id"]` from subflow + exit
+  nodes) are swept to the entity trash refs table via `Trashable.soft_delete/1`.
+  Note: cascade-soft-deleted children do NOT get their own inbound refs swept
+  — that requires recursion through Trashable, tracked as follow-up.
   """
   def delete_flow(%Flow{} = flow) do
     result =
@@ -300,8 +306,8 @@ defmodule Storyarn.Flows.FlowCrud do
         # Clean up localization texts
         Localization.delete_flow_texts(flow.id)
 
-        # Soft delete the flow itself
-        case flow |> Flow.delete_changeset() |> Repo.update() do
+        # Soft delete the flow + sweep referenced_flow_id refs atomically
+        case Trashable.soft_delete(flow) do
           {:ok, deleted_flow} ->
             # Also soft-delete all children recursively
             SoftDelete.soft_delete_children(Flow, flow.project_id, flow.id,
@@ -337,13 +343,10 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   @doc """
-  Restores a soft-deleted flow.
+  Restores a soft-deleted flow. Trash refs (`referenced_flow_id` pointers
+  from subflow + exit nodes) are re-applied conservatively via `Trashable`.
   """
-  def restore_flow(%Flow{} = flow) do
-    flow
-    |> Flow.restore_changeset()
-    |> Repo.update()
-  end
+  def restore_flow(%Flow{} = flow), do: Trashable.restore(flow)
 
   @doc """
   Lists all soft-deleted flows for a project (trash).

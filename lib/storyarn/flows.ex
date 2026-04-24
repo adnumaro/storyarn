@@ -14,6 +14,7 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.Condition
   alias Storyarn.Flows.ConnectionCrud
   alias Storyarn.Flows.DebugSessionStore
+  alias Storyarn.Flows.EntityTrashRefs
   alias Storyarn.Flows.Evaluator.ConditionEval
   alias Storyarn.Flows.Evaluator.Engine
   alias Storyarn.Flows.Evaluator.Helpers
@@ -28,7 +29,6 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.NavigationHistoryStore
   alias Storyarn.Flows.NodeCrud
   alias Storyarn.Flows.SceneResolver
-  alias Storyarn.Flows.Sequence
   alias Storyarn.Flows.SequenceCrud
   alias Storyarn.Flows.TreeOperations
   alias Storyarn.Projects
@@ -45,7 +45,7 @@ defmodule Storyarn.Flows do
   @type flow :: Flow.t()
   @type flow_node :: FlowNode.t()
   @type connection :: FlowConnection.t()
-  @type sequence :: Sequence.t()
+  @type sequence :: FlowNode.t()
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
 
@@ -668,26 +668,23 @@ defmodule Storyarn.Flows do
 
     cache = %{subflow: subflow_cache}
 
+    # Sequences now live in flow.nodes with type='sequence'. Preload their
+    # 1:1 config to expose name/width/height alongside the base fields.
+    nodes = Repo.preload(flow.nodes, :sequence_config)
+
     %{
       id: flow.id,
       name: flow.name,
       nodes:
-        Enum.map(flow.nodes, fn node ->
-          data =
-            node.type
-            |> resolve_node_colors(node.data, cache)
-            |> maybe_add_stale_flag(node.id, stale_node_ids)
-            |> maybe_add_type_warning_flag(node.type, project_variables)
-            |> maybe_add_referencing_flows(node.type, referencing_flows)
-            |> maybe_add_unreachable_flag(node.id, node.type, unreachable_ids)
-            |> maybe_add_dead_end_flag(node.id, node.type, dead_end_ids)
-
-          %{
-            id: node.id,
-            type: node.type,
-            position: %{x: node.position_x, y: node.position_y},
-            data: data
-          }
+        Enum.map(nodes, fn node ->
+          serialize_node(node, %{
+            cache: cache,
+            stale_node_ids: stale_node_ids,
+            project_variables: project_variables,
+            referencing_flows: referencing_flows,
+            unreachable_ids: unreachable_ids,
+            dead_end_ids: dead_end_ids
+          })
         end),
       connections:
         Enum.map(flow.connections, fn conn ->
@@ -700,6 +697,43 @@ defmodule Storyarn.Flows do
             label: conn.label
           }
         end)
+    }
+  end
+
+  defp serialize_node(%FlowNode{type: "sequence"} = node, _ctx) do
+    config = node.sequence_config
+
+    data = %{
+      "name" => config && config.name,
+      "width" => config && config.width,
+      "height" => config && config.height
+    }
+
+    %{
+      id: node.id,
+      type: "sequence",
+      position: %{x: node.position_x, y: node.position_y},
+      data: data,
+      parent_id: node.parent_id
+    }
+  end
+
+  defp serialize_node(%FlowNode{} = node, ctx) do
+    data =
+      node.type
+      |> resolve_node_colors(node.data, ctx.cache)
+      |> maybe_add_stale_flag(node.id, ctx.stale_node_ids)
+      |> maybe_add_type_warning_flag(node.type, ctx.project_variables)
+      |> maybe_add_referencing_flows(node.type, ctx.referencing_flows)
+      |> maybe_add_unreachable_flag(node.id, node.type, ctx.unreachable_ids)
+      |> maybe_add_dead_end_flag(node.id, node.type, ctx.dead_end_ids)
+
+    %{
+      id: node.id,
+      type: node.type,
+      position: %{x: node.position_x, y: node.position_y},
+      data: data,
+      parent_id: node.parent_id
     }
   end
 
@@ -1041,13 +1075,10 @@ defmodule Storyarn.Flows do
   @doc "Fetches a sequence by id scoped to a flow. Raises if absent."
   defdelegate get_sequence!(flow_id, id), to: SequenceCrud
 
-  @doc "Creates a sequence for a flow + start node."
-  defdelegate create_sequence(flow_id, start_node_id, attrs), to: SequenceCrud
+  @doc "Creates a sequence for a flow."
+  defdelegate create_sequence(flow_id, attrs), to: SequenceCrud
 
-  @doc "Creates a sequence anchored at `node` and sets that node's sequence_directive, atomically."
-  defdelegate create_sequence_from_node(node, attrs), to: SequenceCrud
-
-  @doc "Updates a sequence's name and/or tracks."
+  @doc "Updates a sequence (name, tracks, canvas geometry, or parent)."
   defdelegate update_sequence(sequence, attrs), to: SequenceCrud
 
   @doc "Soft-deletes a sequence."
@@ -1055,4 +1086,43 @@ defmodule Storyarn.Flows do
 
   @doc "Restores a soft-deleted sequence."
   defdelegate restore_sequence(sequence), to: SequenceCrud
+
+  @doc """
+  Atomically wraps a node selection into a new Sequence (same-parent required;
+  rejects mixed parents). See `SequenceCrud.wrap_selection_in_sequence/3`.
+  """
+  defdelegate wrap_selection_in_sequence(flow, node_ids, attrs \\ %{}), to: SequenceCrud
+
+  # =============================================================================
+  # Entity trash refs — sweep + restore for cross-entity references
+  # =============================================================================
+  # See `project_entity_trash_refs_pattern.md` in user memory.
+  # Cross-domain callers (Sheets, Assets, ...) should use these functions
+  # to maintain referential integrity on their own soft-delete / restore paths.
+
+  @doc "Sweep all rows of `source_schema` where a column equals `target_id`."
+  defdelegate sweep_trash_refs_column(
+                source_schema,
+                source_type,
+                source_column,
+                target_type,
+                target_id
+              ),
+              to: EntityTrashRefs,
+              as: :sweep_column
+
+  @doc "Sweep all rows of `source_schema` where a JSONB field equals `target_id`."
+  defdelegate sweep_trash_refs_jsonb(
+                source_schema,
+                source_type,
+                jsonb_column,
+                jsonb_key,
+                target_type,
+                target_id
+              ),
+              to: EntityTrashRefs,
+              as: :sweep_jsonb_field
+
+  @doc "Restore all trash refs pointing at `{target_type, target_id}` (conservative)."
+  defdelegate restore_trash_refs(target_type, target_id), to: EntityTrashRefs, as: :restore
 end

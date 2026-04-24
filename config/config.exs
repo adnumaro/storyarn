@@ -57,7 +57,8 @@ config :storyarn, Oban,
     {Oban.Plugins.Cron,
      crontab: [
        {"0 3 * * *", Storyarn.Workers.DailySnapshotWorker},
-       {"0 4 * * *", Storyarn.Workers.SnapshotRetentionWorker}
+       {"0 4 * * *", Storyarn.Workers.SnapshotRetentionWorker},
+       {"0 * * * *", Storyarn.Workers.TrashRetentionWorker}
      ]}
   ]
 

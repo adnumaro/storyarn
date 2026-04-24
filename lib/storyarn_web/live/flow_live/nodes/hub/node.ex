@@ -21,8 +21,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Hub.Node do
     %{
       "hub_id" => "",
       "label" => "",
-      "color" => "#be185d",
-      "sequence_directive" => nil
+      "color" => "#be185d"
     }
   end
 
@@ -30,8 +29,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Hub.Node do
     %{
       "hub_id" => data["hub_id"] || "",
       "label" => data["label"] || "",
-      "color" => data["color"] || "#be185d",
-      "sequence_directive" => data["sequence_directive"]
+      "color" => data["color"] || "#be185d"
     }
   end
 

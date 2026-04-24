@@ -20,12 +20,11 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
   def label, do: dgettext("flows", "Subflow")
   def description, do: dgettext("flows", "Embed another flow as a node")
 
-  def default_data, do: %{"referenced_flow_id" => nil, "sequence_directive" => nil}
+  def default_data, do: %{"referenced_flow_id" => nil}
 
   def extract_form_data(data) do
     %{
-      "referenced_flow_id" => data["referenced_flow_id"],
-      "sequence_directive" => data["sequence_directive"]
+      "referenced_flow_id" => data["referenced_flow_id"]
     }
   end
 

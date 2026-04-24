@@ -14,7 +14,8 @@ export type FlowNodeType =
   | "hub"
   | "jump"
   | "subflow"
-  | "annotation";
+  | "annotation"
+  | "sequence";
 
 export interface NodeConfig {
   label: string;
@@ -86,6 +87,12 @@ export const NODE_CONFIGS: Record<FlowNodeType, NodeConfig> = {
   annotation: {
     label: "Note",
     color: "#fbbf24",
+    inputs: [],
+    outputs: [],
+  },
+  sequence: {
+    label: "Sequence",
+    color: "#a78bfa",
     inputs: [],
     outputs: [],
   },

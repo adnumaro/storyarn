@@ -7,14 +7,15 @@
 
 Many schemas store references to other entities inside a JSONB `data` field rather than as explicit database columns with foreign keys. Examples:
 
-| Source field                            | Target entity         | Location                    |
-| --------------------------------------- | --------------------- | --------------------------- |
-| `flow_nodes.data["speaker_sheet_id"]`   | `sheets.id`           | dialogue nodes              |
-| `flow_nodes.data["audio_asset_id"]`     | `assets.id`           | dialogue nodes              |
-| `flow_nodes.data["avatar_id"]`          | `sheet_avatars.id`    | dialogue + other nodes      |
-| `flow_nodes.data["referenced_flow_id"]` | `flows.id`            | subflow + exit nodes        |
-| `flow_nodes.data["target_hub_id"]`      | `flow_nodes.id` (hub) | jump nodes                  |
-| `flow_nodes.data["sequence_directive"]` | `flow_sequences.id`   | executable nodes (post-P-3) |
+| Source field                            | Target entity         | Location               |
+| --------------------------------------- | --------------------- | ---------------------- |
+| `flow_nodes.data["speaker_sheet_id"]`   | `sheets.id`           | dialogue nodes         |
+| `flow_nodes.data["audio_asset_id"]`     | `assets.id`           | dialogue nodes         |
+| `flow_nodes.data["avatar_id"]`          | `sheet_avatars.id`    | dialogue + other nodes |
+| `flow_nodes.data["referenced_flow_id"]` | `flows.id`            | subflow + exit nodes   |
+| `flow_nodes.data["target_hub_id"]`      | `flow_nodes.id` (hub) | jump nodes             |
+
+Previously, sequence membership was expressed as `flow_nodes.data["sequence_directive"]` → `flow_sequences.id`. That was promoted to a proper FK column (`flow_nodes.parent_sequence_id`, `ON DELETE SET NULL`) in the rete-scopes refactor — no more cross-ref, no sweep hook needed.
 
 This shape is **legitimate for this domain** — node data has widely different shapes per node type (dialogue has `responses[]`, condition has `cases[]`, jump has `target_hub_id`), and normalizing every variant into its own table would produce 15+ small tables for marginal semantic gain. This is how comparable narrative-design tools (Articy, Yarn Spinner, Ink) structure their data too.
 
@@ -45,43 +46,25 @@ Both options keep the data clean without re-architecting the JSONB shape.
 
 `Storyarn.Shared.SoftDelete.soft_delete_children/3-4` already accepts a `pre_delete:` callback hook; use that convention for any entity that soft-deletes.
 
-### Example (Sequence — to be shipped alongside this doc)
-
-```elixir
-# In Storyarn.Flows.SequenceCrud
-def delete_sequence(%Sequence{} = sequence) do
-  Repo.transaction(fn ->
-    # 1. Soft-delete the sequence
-    {:ok, deleted} = sequence |> Sequence.soft_delete_changeset() |> Repo.update()
-
-    # 2. Sweep: nullify sequence_directive in nodes of the same flow
-    clear_sequence_directive_pointers(deleted.flow_id, deleted.id)
-
-    deleted
-  end)
-end
-```
-
 ## Remediation priority
 
 Not a blocker for pre-release, but each new cross-ref added without a lifecycle hook is new debt. Prioritize:
 
-1. **On any new JSONB cross-ref, add the hook upfront.** Start with `sequence_directive` (Sequence delete → clear pointers) as part of P-3.
-2. **Retrofit high-impact ones next.** Asset and Sheet deletions are the most likely to strand orphans at scale.
+1. **On any new cross-ref, prefer a proper FK column over JSONB.** The Sequence → Node relationship was promoted from `sequence_directive` (JSONB) to `flow_nodes.parent_sequence_id` (FK, `ON DELETE SET NULL`) precisely to sidestep this class of bug.
+2. **Retrofit high-impact JSONB cross-refs next.** Asset and Sheet deletions are the most likely to strand orphans at scale.
 3. **Low-impact ones can wait.** `target_hub_id` (jump → hub) is already surfaced by validator and hubs are rarely deleted.
 
 ## Entity-level audit
 
 Inventory to complete once someone has bandwidth. Each row should confirm: is a lifecycle hook wired? If not, note severity.
 
-| Target              | Source cross-refs                                     | Current hook                                   | Action       |
-| ------------------- | ----------------------------------------------------- | ---------------------------------------------- | ------------ |
-| `sheets`            | `speaker_sheet_id`, `avatar_id` (via `sheet_avatars`) | ❌                                             | retrofit     |
-| `assets`            | `audio_asset_id`                                      | ❌                                             | retrofit     |
-| `sheet_avatars`     | `avatar_id`                                           | ❌                                             | retrofit     |
-| `flows`             | `referenced_flow_id` (subflow/exit)                   | ❌                                             | retrofit     |
-| `flow_nodes` (hubs) | `target_hub_id` (jumps)                               | ❌ (validator only)                            | low priority |
-| `flow_sequences`    | `sequence_directive`                                  | ✅ (P-3, see `SequenceCrud.delete_sequence/1`) | done         |
+| Target              | Source cross-refs                                     | Current hook        | Action       |
+| ------------------- | ----------------------------------------------------- | ------------------- | ------------ |
+| `sheets`            | `speaker_sheet_id`, `avatar_id` (via `sheet_avatars`) | ❌                  | retrofit     |
+| `assets`            | `audio_asset_id`                                      | ❌                  | retrofit     |
+| `sheet_avatars`     | `avatar_id`                                           | ❌                  | retrofit     |
+| `flows`             | `referenced_flow_id` (subflow/exit)                   | ❌                  | retrofit     |
+| `flow_nodes` (hubs) | `target_hub_id` (jumps)                               | ❌ (validator only) | low priority |
 
 ## Why this is recorded here
 

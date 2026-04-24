@@ -31,6 +31,7 @@ interface FlowContextValue {
   lod: string;
   nodeDataVersion: number;
   selectedReteNodeId: string | null;
+  selectedReteIds: Set<string | number>;
   canEdit: boolean;
   toolbarProps: Record<string, unknown>;
   zoom?: number;
@@ -59,6 +60,7 @@ const ctx = inject<FlowContextValue>(FLOW_CONTEXT_KEY, {
   lod: "full",
   nodeDataVersion: 0,
   selectedReteNodeId: null,
+  selectedReteIds: new Set<string | number>(),
   canEdit: false,
   toolbarProps: {},
 });
@@ -82,7 +84,15 @@ const reactiveNodeData = computed(() => {
   return data?.nodeData || {};
 });
 
-const showToolbar = computed(() => ctx.canEdit && ctx.selectedReteNodeId === data?.id);
+const isSelected = computed(() => ctx.selectedReteIds.has(data?.id));
+
+// Toolbar only for a single-node selection. Multi-select or empty selection
+// hide it — per-node inline editing doesn't make sense in bulk. Derived from
+// the reactive `selectedReteIds` set so it stays in sync across click + marquee
+// (unlike the legacy `selectedReteNodeId` which only tracks single click-selects).
+const showToolbar = computed(
+  () => ctx.canEdit && ctx.selectedReteIds.size === 1 && isSelected.value,
+);
 
 const nodeId = computed(() => {
   const reteId = String(data?.id || "");
@@ -91,7 +101,11 @@ const nodeId = computed(() => {
 </script>
 
 <template>
-  <div class="relative" style="overflow: visible">
+  <div
+    class="relative rounded-lg transition-shadow"
+    :class="{ 'ring-2 ring-primary ring-offset-2 ring-offset-background': isSelected }"
+    style="overflow: visible"
+  >
     <FlowNodeToolbar
       v-if="showToolbar"
       :node-type="nodeType"
