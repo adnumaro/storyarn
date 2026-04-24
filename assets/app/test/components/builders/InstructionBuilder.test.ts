@@ -23,7 +23,12 @@ function mountBuilder(assignments: Assignment[] = [], extra: Record<string, unkn
 }
 
 function lastEmitted(wrapper: ReturnType<typeof mount>): Assignment[] {
-  const events = wrapper.emitted("update:assignments") as Assignment[][];
+  // `wrapper.emitted(name)` returns `unknown[][]` — one outer array per emit
+  // call, each inner array being that call's arg list. `update:assignments`
+  // passes a single `Assignment[]`, so the correct cast is
+  // `[Assignment[]][]` (array of one-arg tuples), not `Assignment[][]`
+  // (which collapses the "call × args" shape into one dimension).
+  const events = wrapper.emitted("update:assignments") as [Assignment[]][];
   return events[events.length - 1][0];
 }
 

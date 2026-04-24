@@ -12,6 +12,7 @@
 import { ClassicPreset, type GetSchemes } from "rete";
 import type { VueArea2D } from "rete-vue-plugin";
 import type { MinimapExtra } from "rete-minimap-plugin";
+import type { ContextMenuExtra } from "rete-context-menu-plugin";
 import type { FlowNode } from "./flow-node";
 
 /** All rete nodes are FlowNode instances (sequences included via `nodeType`). */
@@ -25,5 +26,12 @@ export type FlowConnection = ClassicPreset.Connection<FlowNode, FlowNode> & {
 /** Scheme type that parameterizes all Rete plugins */
 export type FlowSchemes = GetSchemes<FlowGraphNode, FlowConnection>;
 
-/** Extra area signals (Vue rendering + minimap) */
-export type FlowAreaExtra = VueArea2D<FlowSchemes> | MinimapExtra;
+/**
+ * Extra area signals. Must include every render-target the Vue plugin
+ * observes: Vue nodes/sockets/connections, minimap, and the context-menu
+ * `contextmenu` signal emitted by rete-context-menu-plugin. Missing the
+ * last one makes `render.addPreset(flowContextMenuPreset())` fail
+ * type-check with `Cannot apply preset. Provided signals are not
+ * compatible`.
+ */
+export type FlowAreaExtra = VueArea2D<FlowSchemes> | MinimapExtra | ContextMenuExtra;

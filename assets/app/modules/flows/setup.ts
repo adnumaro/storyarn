@@ -203,10 +203,15 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
 export interface SelectionHandles {
   /** Shared selector instance — used for programmatic add/remove/unselectAll. */
   selector: ReturnType<typeof AreaExtensions.selector>;
-  /** Selects a node by id, optionally accumulating into the current selection. */
-  select: (nodeId: string | number, accumulate: boolean) => Promise<void>;
-  /** Unselects a node by id. */
-  unselect: (nodeId: string | number) => Promise<void>;
+  /**
+   * Selects a node by id, optionally accumulating into the current selection.
+   * Matches the return signature of `AreaExtensions.selectableNodes` — rete
+   * narrows `nodeId` to `string` because the node view map is keyed on the
+   * stringified id.
+   */
+  select: (nodeId: string, accumulate: boolean) => Promise<void>;
+  /** Unselects a node by id. See `select` for the id-type rationale. */
+  unselect: (nodeId: string) => Promise<void>;
 }
 
 /**
