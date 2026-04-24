@@ -1,0 +1,27 @@
+assets/app/modules/flows/lib/rete-schemes.ts
+  1ebe222d01f3cfa3 15,29-37
+assets/app/modules/flows/setup.ts
+  1ebe222d01f3cfa3 206-214
+assets/app/test/components/builders/InstructionBuilder.test.ts
+  1ebe222d01f3cfa3 26-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "02e7be7916c54e9fa324666419a21d91bb4fc498",
+  "prompts": {
+    "1ebe222d01f3cfa3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da411924-b924-44e1-b377-d19e84db2dd9",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 62,
+      "total_deletions": 7,
+      "accepted_lines": 684,
+      "overriden_lines": 0
+    }
+  }
+}
