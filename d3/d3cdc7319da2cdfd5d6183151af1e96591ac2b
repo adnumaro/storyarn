@@ -1,0 +1,76 @@
+assets/app/modules/flows/components/Sequence.vue
+  1ebe222d01f3cfa3 11-23
+  b1b288ee549ee37f 1-2,4,25-26,28,31,36,38-40,45,49-51,57,59-70,78-96
+  1979e480b131fab7 3,5-10,24,27,29-30,32-35,37,41-44,46-48,52-56,58,71-77
+assets/app/modules/flows/services/flowMarquee.ts
+  1ebe222d01f3cfa3 18,29,43,152-163,171-179
+  b1b288ee549ee37f 1-6,10-17,19-28,30-42,44-126,139-142,146,148-151,164-170,180-211
+  1979e480b131fab7 7-9,127-138,143-145,147
+assets/app/modules/flows/services/editorHandlers.ts
+  b1b288ee549ee37f 117-119
+  1ebe222d01f3cfa3 362-372,422-436
+  1979e480b131fab7 42
+assets/app/modules/flows/composables/useFlowEditor.ts
+  1ebe222d01f3cfa3 551
+  1979e480b131fab7 77,105,451-455,469-472,475,477,479-480,484,489,601-602
+  b1b288ee549ee37f 45,147,473-474,476,478,481-483,485-488,537-542,545-550,552-554,603-604,1010-1011
+test/storyarn/flows/sequence_crud_test.exs
+  1ebe222d01f3cfa3 9,185,197-198,202,204-224,236-238,414,434
+  1979e480b131fab7 11-12,22,25,31,34,41-42,59-61,63,85,87,89-91,105-111,120,132-134,136-139,141-142,155-156,161,165,168,184,186-196,199-201,203,225-235,239-240,244,248,250,253,260,262,265-272,274,279,286-287,291,302-303,313-314,319-320,325-326,329-331,333-334,336-340,342-343,345-347,365-366,371-372,399,405-406,408-413,415-427,429-433,435-453
+  b1b288ee549ee37f 14,18,21,23,26,29,35,37,39-40,45-46,49-58,64-71,75-76,81,84,86,88,97-99,115-116,125-126,143-154,157-158,162-163,174-175,245-246,254-258,263,278,280-281,283-284,289,294-297,299,301,306-308,310-312,315-318,322-324,350-351,353-358,360,362-364,367-370,375-376,378-380,382-387,389-398,400-404,407
+assets/app/modules/flows/setup.ts
+  1979e480b131fab7 105-106,154
+  b1b288ee549ee37f 26,47,69,104,152-153,155,157-158,200-209,214-221,227-240,259-299,313-314
+  1ebe222d01f3cfa3 18,156,241-258
+priv/repo/migrations/20260422120000_unify_sequences_into_flow_nodes.exs
+  1979e480b131fab7 1-128,130-238,246,248-249,251-257,263-264,266-270,273-332
+  1ebe222d01f3cfa3 129,239-245,247,250,258-262,265,271-272
+lib/storyarn_web/live/flow_live/helpers/node_helpers.ex
+  1ebe222d01f3cfa3 516,519-545
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "d3d3cdc7319da2cdfd5d6183151af1e96591ac2b",
+  "prompts": {
+    "1979e480b131fab7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d40baccd-9a82-4bfd-a0ac-921346d30a54",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 4467,
+      "total_deletions": 766,
+      "accepted_lines": 3552,
+      "overriden_lines": 3
+    },
+    "1ebe222d01f3cfa3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da411924-b924-44e1-b377-d19e84db2dd9",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 602,
+      "total_deletions": 93,
+      "accepted_lines": 589,
+      "overriden_lines": 0
+    },
+    "b1b288ee549ee37f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e7477f41-9288-44bc-b72e-96c3685ec2e0",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 2820,
+      "total_deletions": 669,
+      "accepted_lines": 1859,
+      "overriden_lines": 0
+    }
+  }
+}
