@@ -15,6 +15,7 @@ import {
 import { ContextMenuPlugin } from "rete-context-menu-plugin";
 import { HistoryPlugin } from "rete-history-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
+import { ScopesPlugin, Presets as ScopesPresets } from "rete-scopes-plugin";
 import { VuePlugin, Presets as VuePresets } from "rete-vue-plugin";
 import { createApp, reactive } from "vue";
 
@@ -22,6 +23,7 @@ import { i18n } from "@app/i18n";
 import FlowConnection from "./components/FlowConnection.vue";
 import FlowNode from "./components/FlowNode.vue";
 import FlowSocket from "./components/FlowSocket.vue";
+import Sequence from "./components/Sequence.vue";
 
 import { createContextMenuItems } from "./lib/context_menu_items";
 import { flowContextMenuPreset } from "./lib/context_menu_preset";
@@ -42,6 +44,7 @@ interface PluginSet {
   arrange: AutoArrangePlugin<FlowSchemes>;
   minimap: MinimapPlugin<FlowSchemes>;
   render: VuePlugin<FlowSchemes, FlowAreaExtra>;
+  scopes: ScopesPlugin<FlowSchemes>;
 }
 
 /**
@@ -63,6 +66,7 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
     onInlineEditSave: null,
     nodeDataVersion: 0,
     selectedReteNodeId: null,
+    selectedReteIds: new Set<string | number>(),
     canEdit: !hook._readonly,
     toolbarProps: {},
     zoom: 1,
@@ -97,6 +101,9 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
       customize: {
         node(context) {
           if (!context.payload) return null;
+          // Sequences (rete-scopes parent nodes) render as bounding boxes.
+          // They share the FlowNode class but are discriminated by nodeType.
+          if (context.payload.nodeType === "sequence") return Sequence;
           return FlowNode;
         },
         socket(context) {
@@ -142,6 +149,13 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
   area.use(connection);
   area.use(render);
 
+  // Scopes plugin — Sequences render as parent bounding boxes that contain
+  // their member nodes. Nodes declare their parent via the `parent` field
+  // (set from `node.parent_id` at load time).
+  const scopes = new ScopesPlugin<FlowSchemes>();
+  scopes.addPreset(ScopesPresets.classic.setup());
+  area.use(scopes);
+
   // Rete context menu plugin (skipped in readonly flows).
   if (!hook.readonly) {
     const contextMenu = new ContextMenuPlugin<FlowSchemes>({
@@ -183,18 +197,106 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
     history.addPreset(historyPreset(hook));
   }
 
-  return { editor, area, connection, history, arrange, minimap, render };
+  return { editor, area, connection, history, arrange, minimap, render, scopes };
+}
+
+export interface SelectionHandles {
+  /** Shared selector instance — used for programmatic add/remove/unselectAll. */
+  selector: ReturnType<typeof AreaExtensions.selector>;
+  /** Selects a node by id, optionally accumulating into the current selection. */
+  select: (nodeId: string | number, accumulate: boolean) => Promise<void>;
+  /** Unselects a node by id. */
+  unselect: (nodeId: string | number) => Promise<void>;
 }
 
 /**
  * Enables zoom, pan, and selectable nodes, then fits view to content.
+ * Returns the selector + select/unselect functions so marquee selection
+ * (drag-rectangle) can feed into the same selector the click handler uses.
+ *
+ * Also monkey-patches the selector so every add/remove/unselectAll/pick
+ * syncs `flowContext.selectedReteIds` — the reactive set FlowNode.vue
+ * reads to render the selection ring. Patching the selector catches ALL
+ * selection changes (click-pick via rete internals, marquee via our
+ * composable, keyboard via future hooks) with a single hook point.
  */
 export async function finalizeSetup(
   area: AreaPlugin<FlowSchemes, FlowAreaExtra>,
   editor: NodeEditor<FlowSchemes>,
   hasNodes: boolean,
-): Promise<void> {
-  AreaExtensions.selectableNodes(area, AreaExtensions.selector(), {
+  flowContext?: FlowContext,
+): Promise<SelectionHandles> {
+  const selector = AreaExtensions.selector();
+
+  if (flowContext) {
+    const sync = () => {
+      flowContext.selectedReteIds = new Set(
+        Array.from(selector.entities.values()).map((e) => e.id),
+      );
+    };
+    const origAdd = selector.add.bind(selector);
+    const origRemove = selector.remove.bind(selector);
+    const origUnselectAll = selector.unselectAll.bind(selector);
+    const origPick = selector.pick.bind(selector);
+    selector.add = async (
+      entity: Parameters<typeof origAdd>[0],
+      accumulate: Parameters<typeof origAdd>[1],
+    ) => {
+      // Preserve multi-selection on re-pick. Rete's core.add calls
+      // `unselectAll()` whenever `accumulate` is false, which is the default
+      // when Ctrl isn't held. That wipes the marquee/Shift-built selection
+      // the moment the user pointer-downs one of the selected nodes to
+      // drag it, because `nodepicked` → `add(id, accumulate=false)`. Match
+      // the UX of Figma/Illustrator: if the picked entity is ALREADY in the
+      // selector, treat the pick as accumulating so the rest of the group
+      // isn't cleared. Also covers the "multi-select sequence + children
+      // then drag" flow (pre-resize-reactivity fix this looked like "the
+      // children visually leave the sequence"; really they were just being
+      // deselected while drag kept working).
+      const key = `${entity.label}_${entity.id}`;
+      const alreadySelected = selector.entities.has(key);
+      const r = await origAdd(entity, accumulate || alreadySelected);
+      sync();
+      return r;
+    };
+    selector.remove = async (...args: Parameters<typeof origRemove>) => {
+      const r = await origRemove(...args);
+      sync();
+      return r;
+    };
+    selector.unselectAll = async () => {
+      const r = await origUnselectAll();
+      sync();
+      return r;
+    };
+    selector.pick = (...args: Parameters<typeof origPick>) => {
+      const r = origPick(...args);
+      sync();
+      return r;
+    };
+  }
+
+  // Preserve selection on right-click context menu. Rete's selectableNodes
+  // pipe treats every non-drag pointerup as "click on empty area" and calls
+  // `unselectAll()`, which clears the marquee selection when the user
+  // right-clicks a node to open the context menu. Filter pointerup events
+  // whose matching pointerdown was button=2 (right). Pipe added BEFORE
+  // selectableNodes so it runs first in the chain.
+  let rightClickSession = false;
+  area.addPipe((context) => {
+    if (!context || typeof context !== "object" || !("type" in context)) return context;
+    const ctx = context as { type: string; data?: { event?: PointerEvent } };
+    if (ctx.type === "pointerdown") {
+      rightClickSession = ctx.data?.event?.button === 2;
+    } else if (ctx.type === "pointerup" && rightClickSession) {
+      rightClickSession = false;
+      // Skip: prevents selectableNodes' unselectAll from running.
+      return undefined;
+    }
+    return context;
+  });
+
+  const { select, unselect } = AreaExtensions.selectableNodes(area, selector, {
     accumulating: AreaExtensions.accumulateOnCtrl(),
   });
 
@@ -208,6 +310,8 @@ export async function finalizeSetup(
       });
     }, 100);
   }
+
+  return { selector, select, unselect };
 }
 
 // Inject global rete styles (V2: uses Tailwind v4 CSS variables)

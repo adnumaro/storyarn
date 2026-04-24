@@ -513,16 +513,36 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          |> push_event("flow_updated", flow_data)
          |> CollaborationHelpers.broadcast_change(:flow_refresh, %{node_id: node_id})}
 
-      {:ok, _, _meta} ->
+      {:ok, deleted_node, _meta} ->
         socket = reload_flow_data(socket)
 
-        {:noreply,
-         socket
-         |> schedule(:flow)
-         |> assign(:selected_node, nil)
-         |> assign(:node_form, nil)
-         |> push_event("node_removed", %{id: node_id, self: true})
-         |> CollaborationHelpers.broadcast_change(:node_deleted, %{node_id: node_id})}
+        # Sequence deletes reparent children to grandparent via the
+        # `fn_flow_nodes_soft_delete_reparent_children` trigger. A single
+        # `node_removed` event only tells the client to drop the sequence —
+        # it leaves the children visually orphaned because the client
+        # doesn't know their new parent. Broadcasting `flow_updated` forces
+        # a full re-hydrate so the surviving children render under the
+        # correct (grand)parent. For non-sequence nodes there's no cascade,
+        # so the cheap `node_removed` path stays.
+        if deleted_node.type == "sequence" do
+          flow_data = socket.assigns.flow_data
+
+          {:noreply,
+           socket
+           |> schedule(:flow)
+           |> assign(:selected_node, nil)
+           |> assign(:node_form, nil)
+           |> push_event("flow_updated", flow_data)
+           |> CollaborationHelpers.broadcast_change(:flow_refresh, %{node_id: node_id})}
+        else
+          {:noreply,
+           socket
+           |> schedule(:flow)
+           |> assign(:selected_node, nil)
+           |> assign(:node_form, nil)
+           |> push_event("node_removed", %{id: node_id, self: true})
+           |> CollaborationHelpers.broadcast_change(:node_deleted, %{node_id: node_id})}
+        end
 
       {:error, :cannot_delete_entry_node} ->
         {:noreply,

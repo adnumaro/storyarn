@@ -39,6 +39,7 @@ export interface NodeServerPayload {
   type: string;
   data: NodeData;
   position?: { x: number; y: number };
+  parent_id?: number | null;
   self?: boolean;
 }
 
@@ -113,6 +114,9 @@ export interface FlowContext {
   onInlineEditSave: ((reteNodeId: string, field: string, value: unknown) => void) | null;
   nodeDataVersion: number;
   selectedReteNodeId: string | null;
+  /** Rete ids of all currently-selected nodes (click + marquee). Reactive so
+   *  FlowNode.vue can render a selection ring when `data.id ∈ this set`. */
+  selectedReteIds: Set<string | number>;
   canEdit: boolean;
   toolbarProps: Record<string, unknown>;
   zoom: number;
@@ -355,6 +359,17 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
           await hook.editor.removeConnection(conn.id);
         } catch {}
       }
+      // Clear every `.parent` pointer before wiping. `rete-scopes-plugin`'s
+      // `useValidator` throws `cannot remove parent node with a children` on
+      // `editor.removeNode(parent)` while any child still references it,
+      // which the outer try/catch swallows — the sequence stays as a zombie
+      // and the next `loadFlow` crashes on `editor.addNode` with the same id
+      // (`node has already been added`), leaving a single 40x60 empty
+      // sequence on screen until page reload. By nuking parent relationships
+      // first we let every removeNode succeed in any iteration order.
+      for (const node of hook.editor.getNodes()) {
+        node.parent = undefined;
+      }
       for (const node of hook.editor.getNodes()) {
         try {
           await hook.editor.removeNode(node.id);
@@ -404,6 +419,21 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
       hook.enterLoadingFromServer();
       try {
         await removeRelatedConnections(hook, node.id);
+        // Sequences: `rete-scopes-plugin`'s `useValidator` blocks
+        // `removeNode(parent)` while any child still carries `.parent`.
+        // The server-side `flow_node_parent_nullify` trigger has already
+        // nilified child `parent_id` rows (see
+        // `priv/repo/migrations/20260422120000_unify_sequences_into_flow_nodes.exs`),
+        // so mirroring that on the client before removal is both correct
+        // and keeps the editor consistent if the accompanying `node_updated`
+        // broadcasts arrive after us.
+        if (node.nodeType === "sequence") {
+          for (const child of hook.editor.getNodes()) {
+            if (child.parent === node.id) {
+              child.parent = undefined;
+            }
+          }
+        }
         await hook.editor.removeNode(node.id);
       } finally {
         hook.exitLoadingFromServer();

@@ -42,6 +42,7 @@ import { navigation, type NavigationHandler } from "../services/navigation";
 
 import { createPlugins, finalizeSetup } from "../setup";
 import type { DebugHandler } from "../services/debug";
+import { createFlowMarquee } from "../services/flowMarquee";
 
 interface FlowEditorOpts {
   pushEvent: (event: string, payload: Record<string, unknown>) => void;
@@ -73,6 +74,7 @@ interface FlowData {
     id: string | number;
     data: NodeData;
     position?: { x: number; y: number };
+    parent_id?: number | null;
   }[];
   connections?: {
     id: number;
@@ -100,6 +102,7 @@ interface NodeServerData {
   id: string | number;
   data: NodeData;
   position?: { x: number; y: number };
+  parent_id?: number | null;
 }
 
 export interface FlowEditorReturn {
@@ -141,6 +144,7 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
   let _history: HistoryPlugin<FlowSchemes> | null = null;
   let _arrange: AutoArrangePlugin<FlowSchemes> | null = null;
   let _minimap: MinimapPlugin<FlowSchemes> | null = null;
+  let _marqueeTeardown: (() => void) | null = null;
 
   const _nodeMap = new Map<string | number, FlowNode>();
   const _connectionDataMap = new Map<
@@ -444,7 +448,11 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     _deferSocketCalc = true;
     _loadingFromServerCount++;
 
-    for (const nodeData of flowData.nodes) {
+    // rete-scopes-plugin requires parents to exist before their children
+    // reference them via `parent`. Sort nodes so ancestors load first.
+    const sorted = sortNodesByParentDepth(flowData.nodes);
+
+    for (const nodeData of sorted) {
       await addNodeToEditor(nodeData);
     }
 
@@ -456,6 +464,29 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     }
 
     _loadingFromServerCount = Math.max(0, _loadingFromServerCount - 1);
+  }
+
+  function sortNodesByParentDepth(
+    nodes: NonNullable<FlowData["nodes"]>,
+  ): NonNullable<FlowData["nodes"]> {
+    const byId = new Map(nodes.map((n) => [Number(n.id), n]));
+    const depth = new Map<number, number>();
+
+    function nodeDepth(id: number, seen = new Set<number>()): number {
+      if (depth.has(id)) return depth.get(id)!;
+      if (seen.has(id)) return 0; // cycle safety — shouldn't happen with FK
+      seen.add(id);
+      const n = byId.get(id);
+      if (!n || n.parent_id == null) {
+        depth.set(id, 0);
+        return 0;
+      }
+      const d = 1 + nodeDepth(n.parent_id, seen);
+      depth.set(id, d);
+      return d;
+    }
+
+    return [...nodes].sort((a, b) => nodeDepth(Number(a.id)) - nodeDepth(Number(b.id)));
   }
 
   function setupLOD(containerEl: HTMLElement): void {
@@ -503,8 +534,24 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
 
   async function finalizeInit(flowData: FlowData): Promise<void> {
     await syncAllNodeSizes();
-    await finalizeSetup(_area!, _editor!, (flowData.nodes?.length ?? 0) > 0);
+    const selection = await finalizeSetup(
+      _area!,
+      _editor!,
+      (flowData.nodes?.length ?? 0) > 0,
+      hookProxy._flowContext,
+    );
     await recalculateAllSockets();
+
+    // Marquee selection (drag-rectangle). Only active while the dock's tool
+    // is in "select" mode — the composable watches `activeFlowTool` internally.
+    if (!hookProxy._readonly && hookProxy._containerEl) {
+      _marqueeTeardown = createFlowMarquee({
+        containerEl: hookProxy._containerEl,
+        area: _area!,
+        editor: _editor!,
+        selection,
+      });
+    }
 
     if ((flowData.nodes?.length ?? 0) > 0) {
       await rebuildHubsMap();
@@ -550,6 +597,10 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
   async function addNodeToEditor(nodeData: NodeServerData): Promise<FlowNode> {
     const node = new FlowNode(nodeData.type, nodeData.id, nodeData.data);
     node.id = `node-${nodeData.id}`;
+
+    if (nodeData.parent_id != null) {
+      node.parent = `node-${nodeData.parent_id}`;
+    }
 
     await _editor!.addNode(node);
 
@@ -956,6 +1007,8 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     _editorHandlers?.destroy();
     _navigationHandler?.destroy();
     _debugHandler?.destroy();
+    _marqueeTeardown?.();
+    _marqueeTeardown = null;
     _nodeMoveQueue = null;
     _nodeUpdateQueue = null;
     if (_area) {
