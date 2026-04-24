@@ -432,6 +432,38 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     end
   end
 
+  @spec handle_node_reparented(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_node_reparented(%{"id" => node_id, "parent_id" => parent_id}, socket) do
+    with {:ok, parsed_parent} <- parse_optional_int(parent_id),
+         node when not is_nil(node) <- Flows.get_node(socket.assigns.flow.id, node_id),
+         {:ok, _updated} <- Flows.update_node_parent(node, parsed_parent) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> CollaborationHelpers.broadcast_change(:node_reparented, %{
+         node_id: node_id,
+         parent_id: parsed_parent
+       })}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  # Accepts nil, integer, or a string that parses cleanly to an integer.
+  # Anything else returns :error so the handler can no-op.
+  defp parse_optional_int(nil), do: {:ok, nil}
+  defp parse_optional_int(i) when is_integer(i), do: {:ok, i}
+
+  defp parse_optional_int(s) when is_binary(s) do
+    case Integer.parse(s) do
+      {i, ""} -> {:ok, i}
+      _ -> :error
+    end
+  end
+
+  defp parse_optional_int(_), do: :error
+
   @spec handle_update_node_data(map(), Socket.t()) ::
           {:noreply, Socket.t()}
   def handle_update_node_data(%{"node" => node_params}, socket) do

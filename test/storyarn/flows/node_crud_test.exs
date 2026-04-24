@@ -705,6 +705,79 @@ defmodule Storyarn.Flows.NodeCrudTest do
     end
   end
 
+  describe "update_node_parent/2" do
+    test "assigns a node to an existing sequence" do
+      %{flow: flow} = create_project_and_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "Act I"})
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "a"}})
+      assert is_nil(node.parent_id)
+
+      {:ok, updated} = Flows.update_node_parent(node, seq.id)
+
+      assert updated.parent_id == seq.id
+    end
+
+    test "reparents a node to a different sequence" do
+      %{flow: flow} = create_project_and_flow()
+      {:ok, seq_a} = Flows.create_sequence(flow.id, %{"name" => "A"})
+      {:ok, seq_b} = Flows.create_sequence(flow.id, %{"name" => "B"})
+
+      node =
+        flow
+        |> node_fixture(%{type: "dialogue", data: %{"text" => "a"}})
+        |> Ecto.Changeset.change(%{parent_id: seq_a.id})
+        |> Repo.update!()
+
+      {:ok, updated} = Flows.update_node_parent(node, seq_b.id)
+
+      assert updated.parent_id == seq_b.id
+    end
+
+    test "detaches to root with nil parent_id" do
+      %{flow: flow} = create_project_and_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "Act I"})
+
+      node =
+        flow
+        |> node_fixture(%{type: "dialogue", data: %{"text" => "a"}})
+        |> Ecto.Changeset.change(%{parent_id: seq.id})
+        |> Repo.update!()
+
+      {:ok, updated} = Flows.update_node_parent(node, nil)
+
+      assert is_nil(updated.parent_id)
+    end
+
+    test "rejects parent_id referencing a non-sequence node (DB trigger)" do
+      %{flow: flow} = create_project_and_flow()
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "a"}})
+      target = node_fixture(flow, %{type: "dialogue", data: %{"text" => "b"}})
+
+      assert_raise Postgrex.Error, ~r/only sequence nodes can be parents/, fn ->
+        Flows.update_node_parent(node, target.id)
+      end
+    end
+
+    test "does not mutate other fields" do
+      %{flow: flow} = create_project_and_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "Act I"})
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Original"},
+          position_x: 42.0,
+          position_y: 99.0
+        })
+
+      {:ok, updated} = Flows.update_node_parent(node, seq.id)
+
+      assert updated.data["text"] == "Original"
+      assert updated.position_x == 42.0
+      assert updated.position_y == 99.0
+    end
+  end
+
   describe "update_node_data/2" do
     test "updates dialogue node data" do
       %{flow: flow} = create_project_and_flow()

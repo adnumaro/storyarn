@@ -289,6 +289,14 @@ defmodule Storyarn.Flows do
   defdelegate update_node_position(node, attrs), to: NodeCrud
 
   @doc """
+  Reparents a node. Accepts an integer id of an existing sequence-typed
+  flow_node as `parent_id`, or `nil` for root-level.
+  """
+  @spec update_node_parent(flow_node(), integer() | nil) ::
+          {:ok, flow_node()} | {:error, changeset()}
+  defdelegate update_node_parent(node, parent_id), to: NodeCrud
+
+  @doc """
   Batch-updates positions for multiple nodes in a single transaction.
   Used by auto-layout.
   """

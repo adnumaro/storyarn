@@ -130,6 +130,20 @@ defmodule Storyarn.Flows.FlowNode do
   end
 
   @doc """
+  Changeset scoped to only reparenting. Accepts `parent_id` (may be nil
+  for root-level). Used by canvas drag-reparent + context-menu "Remove
+  from sequence" operations — intentionally narrow so the handler can't
+  accidentally mutate position/data/type through the same code path.
+  The `trg_flow_nodes_validate_parent_is_sequence` DB trigger enforces
+  that the target references a sequence-typed row.
+  """
+  def reparent_changeset(node, attrs) do
+    node
+    |> cast(attrs, [:parent_id])
+    |> foreign_key_constraint(:parent_id)
+  end
+
+  @doc """
   Changeset for updating only the data of a node.
   Used for editing node properties.
   """

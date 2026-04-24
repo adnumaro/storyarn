@@ -28,6 +28,7 @@ import { computed, inject } from "vue";
 
 import type { FlowNode } from "../lib/flow-node";
 import { FLOW_CONTEXT_KEY } from "../setup";
+import { reparentGestureActive } from "../lib/flow-reparent-state";
 
 interface FlowContextValue {
   selectedReteIds: Set<string | number>;
@@ -46,12 +47,22 @@ const ctx = inject<FlowContextValue>(FLOW_CONTEXT_KEY, {
 const label = computed(() => (data.nodeData?.name as string) || "");
 
 const isSelected = computed(() => ctx.selectedReteIds.has(data?.id));
+
+// Drop-target highlight: lit up whenever a reparent gesture is in-flight
+// (Cmd/Ctrl held AND a drag is active) AND this sequence is NOT itself in
+// the moving selection — you can't drop into yourself.
+const isDropTarget = computed(
+  () => reparentGestureActive.value && !ctx.selectedReteIds.has(data?.id),
+);
 </script>
 
 <template>
   <div
     class="flow-sequence"
-    :class="{ 'flow-sequence--selected': isSelected }"
+    :class="{
+      'flow-sequence--selected': isSelected,
+      'flow-sequence--drop-target': isDropTarget,
+    }"
     data-testid="flow-sequence"
   >
     <header class="flow-sequence-header">
@@ -68,13 +79,26 @@ const isSelected = computed(() => ctx.selectedReteIds.has(data?.id));
   box-sizing: border-box;
   pointer-events: all;
   position: relative;
-  transition: box-shadow 150ms ease;
+  transition:
+    box-shadow 150ms ease,
+    background-color 120ms ease,
+    border-color 120ms ease;
 }
 
 .flow-sequence--selected {
   box-shadow:
     0 0 0 2px hsl(var(--background)),
     0 0 0 4px hsl(var(--primary));
+}
+
+/* Reparent drop target — brighter background + solid border signals
+   "drop here to re-assign parent". Works alongside .flow-sequence--selected
+   (both can coexist; selected outline remains, drop-target recolors the
+   fill). */
+.flow-sequence--drop-target {
+  background: hsl(var(--primary) / 0.18);
+  border-style: solid;
+  border-color: hsl(var(--primary));
 }
 
 .flow-sequence-header {

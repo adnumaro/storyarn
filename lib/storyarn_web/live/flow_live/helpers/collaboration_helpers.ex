@@ -87,6 +87,13 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
     })
   end
 
+  def push_remote_change_event(socket, :node_reparented, payload) do
+    push_event(socket, "node_reparented", %{
+      node_id: payload.node_id,
+      parent_id: payload.parent_id
+    })
+  end
+
   def push_remote_change_event(socket, :connection_added, payload) do
     push_event(socket, "connection_added", payload.connection_data)
   end

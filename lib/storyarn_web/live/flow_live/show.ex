@@ -888,6 +888,12 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
+  def handle_event("node_reparented", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_node_reparented(params, socket)
+    end)
+  end
+
   def handle_event("search_available_flows", params, socket) do
     GenericNodeHandlers.handle_search_available_flows(params, socket)
   end

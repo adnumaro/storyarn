@@ -25,6 +25,22 @@ defmodule Storyarn.Flows.NodeUpdate do
   end
 
   @doc """
+  Reparents a node to another sequence (or to the flow root). `parent_id`
+  is an integer id of an existing sequence-typed flow_node or `nil` for
+  root-level. The `trg_flow_nodes_validate_parent_is_sequence` DB trigger
+  enforces that the target is a sequence; anything else bubbles up as a
+  `Postgrex.Error`.
+
+  Scoped to `parent_id` only — no other fields can sneak in because the
+  `reparent_changeset` ignores everything else.
+  """
+  def update_node_parent(%FlowNode{} = node, parent_id) do
+    node
+    |> FlowNode.reparent_changeset(%{parent_id: parent_id})
+    |> Repo.update()
+  end
+
+  @doc """
   Batch-updates positions for multiple nodes in a single transaction.
   Accepts a flow_id and a list of maps with :id, :position_x, :position_y.
   Returns {:ok, count} with the number of updated nodes.

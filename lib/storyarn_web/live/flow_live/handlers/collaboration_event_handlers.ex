@@ -80,6 +80,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
     {:noreply, CollaborationHelpers.push_remote_change_event(socket, :node_moved, payload)}
   end
 
+  # Reparent-only change — push directly to JS; the client mutates
+  # `node.parent` on the rete editor + emits `scopes.update` so the
+  # affected sequences resize. No need to reload `flow_data`.
+  def handle_remote_change(:node_reparented, payload, socket) do
+    {:noreply, CollaborationHelpers.push_remote_change_event(socket, :node_reparented, payload)}
+  end
+
   def handle_remote_change(action, payload, socket) do
     # No echo guard needed — broadcast_from already prevents self-delivery
     flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)

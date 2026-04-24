@@ -8,6 +8,7 @@
 import { ClassicPreset, type NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { HistoryPlugin } from "rete-history-plugin";
+import type { ScopesPlugin } from "rete-scopes-plugin";
 import type { FlowNode } from "../lib/flow-node";
 import { FlowNode as FlowNodeClass } from "../lib/flow-node";
 import type { NodeData } from "../lib/node-configs";
@@ -130,6 +131,7 @@ export interface HookProxy {
   connection: unknown;
   history: HistoryPlugin<FlowSchemes> | null;
   arrange: unknown;
+  scopes: ScopesPlugin<FlowSchemes>;
   nodeMap: Map<string | number, FlowNode>;
   connectionDataMap: Map<string, { id: number; label: string | null; condition: unknown }>;
   sheetsMap: Record<string, SheetMapEntry>;
@@ -180,11 +182,17 @@ interface Position {
   y: number;
 }
 
+export interface NodeReparentedPayload {
+  node_id: string | number;
+  parent_id: string | number | null;
+}
+
 export interface EditorHandlers {
   init(): void;
   throttleNodeMoved(nodeId: string | number, position: Position): void;
   flushNodeMoved(nodeId: string | number): void;
   handleNodeMoved(data: NodeMovedPayload): Promise<void>;
+  handleNodeReparented(data: NodeReparentedPayload): Promise<void>;
   handleFlowUpdated(data: FlowUpdatedPayload): Promise<void>;
   handleNodeAdded(data: NodeServerPayload): Promise<void>;
   handleNodeRemoved(data: NodeRemovedPayload): Promise<void>;
@@ -346,6 +354,35 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
       hook.enterLoadingFromServer();
       try {
         await hook.area.translate(node.id, { x, y });
+      } finally {
+        hook.exitLoadingFromServer();
+      }
+    },
+
+    // Remote reparent (another collaborator dragged+dropped a node or used
+    // the context-menu "Remove from sequence…"). Mirror the change on the
+    // local rete editor and trigger bbox recomputation for both the former
+    // and new parent sequences. `scopes.update(parentId)` emits
+    // `scopeupdated`, which ScopesPlugin turns into `resizeParent`.
+    async handleNodeReparented(data) {
+      const { node_id, parent_id } = data;
+      const node = hook.nodeMap.get(node_id);
+      if (!node) {
+        return;
+      }
+
+      const previousParent = node.parent;
+      const newParent = parent_id == null ? undefined : `node-${parent_id}`;
+
+      hook.enterLoadingFromServer();
+      try {
+        node.parent = newParent;
+        if (previousParent) {
+          await hook.scopes.update(previousParent);
+        }
+        if (newParent) {
+          await hook.scopes.update(newParent);
+        }
       } finally {
         hook.exitLoadingFromServer();
       }

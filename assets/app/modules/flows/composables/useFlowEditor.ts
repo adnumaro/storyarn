@@ -12,6 +12,7 @@ import type { HistoryPlugin } from "rete-history-plugin";
 import type { ConnectionPlugin } from "rete-connection-plugin";
 import type { AutoArrangePlugin } from "rete-auto-arrange-plugin";
 import type { MinimapPlugin } from "rete-minimap-plugin";
+import type { ScopesPlugin } from "rete-scopes-plugin";
 import { onUnmounted, reactive, ref, shallowRef, type Ref, type ShallowRef } from "vue";
 
 import { FlowNode } from "../lib/flow-node";
@@ -144,6 +145,7 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
   let _history: HistoryPlugin<FlowSchemes> | null = null;
   let _arrange: AutoArrangePlugin<FlowSchemes> | null = null;
   let _minimap: MinimapPlugin<FlowSchemes> | null = null;
+  let _scopes: ScopesPlugin<FlowSchemes> | null = null;
   let _marqueeTeardown: (() => void) | null = null;
 
   const _nodeMap = new Map<string | number, FlowNode>();
@@ -193,6 +195,9 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     },
     get arrange() {
       return _arrange;
+    },
+    get scopes() {
+      return _scopes!;
     },
     get nodeMap() {
       return _nodeMap;
@@ -413,6 +418,7 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     _history = plugins.history;
     _arrange = plugins.arrange;
     _minimap = plugins.minimap;
+    _scopes = plugins.scopes;
 
     editor.value = _editor;
     area.value = _area;
@@ -616,6 +622,21 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
       await _area!.translate(node.id, { x, y });
     }
 
+    // Sequences render via `Sequence.vue`, which deliberately does NOT bind
+    // `:style="{ width, height }"` (see the comment in that file). Width
+    // and height live as inline DOM styles written by
+    // `rete-area-plugin`'s `area.resize`. The plugin calls `area.resize`
+    // only from `resizeParent` — triggered by a child's `nodetranslated`
+    // / `noderemoved` / `scopeupdated`. For an empty sequence on initial
+    // load (or for one that just lost its last child via reparent), there
+    // is no child to trigger it, so the Sequence div collapses to the
+    // header's intrinsic size. Kickstart the resize here with the
+    // FlowNode's own width/height (seeded from `data.width/height` in the
+    // constructor) so the bbox shows up correctly before any interaction.
+    if (node.nodeType === "sequence") {
+      await _area!.resize(node.id, node.width, node.height);
+    }
+
     _nodeMap.set(nodeData.id, node);
     return node;
   }
@@ -786,8 +807,25 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
   }
 
   function handleNodeDragged(context: unknown): void {
+    // Rete's `nodedragged` fires ONCE per drag gesture, for the node the
+    // user actually grabbed. But `selectableNodes`'s `nodetranslated` pipe
+    // translates every *selected* node by the same delta while dragging,
+    // so `throttleNodeMoved` leaves pending positions in
+    // `_pendingPositions` for each of them. If we only flush the dragged
+    // node, the other selected ones' positions are broadcast as
+    // `node_dragging` (preview only, no DB write) and never committed.
+    // Flush everything that has a pending position, not just the grabbed
+    // one.
+    const pending = hookProxy._pendingPositions ?? {};
+    const nodeIds = Object.keys(pending);
+    for (const nodeId of nodeIds) {
+      // Keys are string-numeric; convert back to the raw type flushNodeMoved expects.
+      const numeric = Number(nodeId);
+      _editorHandlers!.flushNodeMoved(Number.isFinite(numeric) ? numeric : nodeId);
+    }
+    // Fallback for the grabbed node, in case it had no pending (edge case).
     const node = _editor!.getNode((context as { data: { id: string } }).data.id);
-    if (node?.nodeId) {
+    if (node?.nodeId && !nodeIds.includes(String(node.nodeId))) {
       _editorHandlers!.flushNodeMoved(node.nodeId);
     }
   }
@@ -923,6 +961,17 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
           return _editorHandlers!.handleNodeMoved(data);
         })
         .catch(() => {});
+    });
+
+    handleEvent("node_reparented", (raw) => {
+      if (_destroyed) {
+        return;
+      }
+      const payload = raw as unknown as {
+        node_id: string | number;
+        parent_id: string | number | null;
+      };
+      _editorHandlers!.handleNodeReparented(payload);
     });
 
     handleEvent("node_added", (data) => {

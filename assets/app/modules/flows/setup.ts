@@ -15,7 +15,7 @@ import {
 import { ContextMenuPlugin } from "rete-context-menu-plugin";
 import { HistoryPlugin } from "rete-history-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
-import { ScopesPlugin, Presets as ScopesPresets } from "rete-scopes-plugin";
+import { ScopesPlugin } from "rete-scopes-plugin";
 import { VuePlugin, Presets as VuePresets } from "rete-vue-plugin";
 import { createApp, reactive } from "vue";
 
@@ -27,6 +27,11 @@ import Sequence from "./components/Sequence.vue";
 
 import { createContextMenuItems } from "./lib/context_menu_items";
 import { flowContextMenuPreset } from "./lib/context_menu_preset";
+import { flowScopesPreset } from "./lib/flow-scopes-preset";
+import {
+  installReparentModifierListeners,
+  reparentGestureActive,
+} from "./lib/flow-reparent-state";
 import type { FlowSchemes, FlowAreaExtra } from "./lib/rete-schemes";
 import type { FlowContext, HookProxy } from "./services/editorHandlers";
 import { historyPreset } from "./services/historyPreset";
@@ -152,9 +157,66 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
   // Scopes plugin — Sequences render as parent bounding boxes that contain
   // their member nodes. Nodes declare their parent via the `parent` field
   // (set from `node.parent_id` at load time).
-  const scopes = new ScopesPlugin<FlowSchemes>();
-  scopes.addPreset(ScopesPresets.classic.setup());
+  //
+  // We use `flowScopesPreset` instead of `ScopesPresets.classic.setup()` so
+  // drag-reparenting only fires when Cmd/Ctrl is held (see
+  // `flow-scopes-preset.ts` + `flow-reparent-state.ts`). Without the
+  // modifier, rete-scopes still auto-resizes the sequence during translate
+  // (`resizeParent` on `nodetranslated` is attached by the plugin itself,
+  // not the preset), so the user gets "drag outside = sequence grows".
+  //
+  // `exclude` gates that auto-resize to reparent gestures. When the user
+  // holds Cmd/Ctrl while dragging, we want the sequence bbox to stay put
+  // so they can actually cross its border. Otherwise the sequence chases
+  // the node out, the pointer stays "inside" at drop time, and
+  // `reassignParent` sees the same sequence as overlay → no reparent
+  // happens. Without the modifier, `exclude` returns false and the
+  // grow-to-fit behaviour kicks in normally.
+  //
+  // `size` clamps the empty-children branch of `resizeParent`. When a
+  // sequence has no children it would otherwise shrink to just the
+  // padding (~40x60) which looks like a lost icon. We clamp to the
+  // server's default sequence_config dimensions so an orphaned sequence
+  // has the same footprint as a freshly-created one — discoverable,
+  // obvious drop-target for the next node.
+  const EMPTY_SEQUENCE_MIN_WIDTH = 300;
+  const EMPTY_SEQUENCE_MIN_HEIGHT = 200;
+  const scopes = new ScopesPlugin<FlowSchemes>({
+    exclude: () => reparentGestureActive.value,
+    size: (_id, size) => ({
+      width: Math.max(size.width, EMPTY_SEQUENCE_MIN_WIDTH),
+      height: Math.max(size.height, EMPTY_SEQUENCE_MIN_HEIGHT),
+    }),
+  });
+  scopes.addPreset(
+    flowScopesPreset<FlowSchemes>({
+      onReparented: (nodeId, newParentId) => {
+        const rawNodeId = nodeId.replace(/^node-/, "");
+        const rawParentId = newParentId ? newParentId.replace(/^node-/, "") : null;
+        hook.pushEvent("node_reparented", {
+          id: rawNodeId,
+          parent_id: rawParentId,
+        });
+      },
+      onParentMoved: (nodeId, x, y) => {
+        // Sequence auto-repositioned to fit its remaining children after a
+        // reparent. The translate call already fired `nodetranslated` which
+        // goes through `throttleNodeMoved` → `node_dragging` (broadcast
+        // only). Push `node_moved` here so the shift survives a reload.
+        const rawNodeId = nodeId.replace(/^node-/, "");
+        hook.pushEvent("node_moved", {
+          id: rawNodeId,
+          position_x: x,
+          position_y: y,
+        });
+      },
+    }),
+  );
   area.use(scopes);
+
+  // Modifier listeners for the reparent gesture. Idempotent — no-op if
+  // already installed (e.g. on hot reload).
+  installReparentModifierListeners();
 
   // Rete context menu plugin (skipped in readonly flows).
   if (!hook.readonly) {

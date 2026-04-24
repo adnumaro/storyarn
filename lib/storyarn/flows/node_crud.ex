@@ -415,6 +415,7 @@ defmodule Storyarn.Flows.NodeCrud do
 
   defdelegate update_node(node, attrs), to: NodeUpdate
   defdelegate update_node_position(node, attrs), to: NodeUpdate
+  defdelegate update_node_parent(node, parent_id), to: NodeUpdate
   defdelegate batch_update_positions(flow_id, positions), to: NodeUpdate
   defdelegate update_node_data(node, data), to: NodeUpdate
   defdelegate change_node(node, attrs \\ %{}), to: NodeUpdate
