@@ -1,0 +1,39 @@
+assets/app/modules/flows/components/Sequence.vue
+  1ebe222d01f3cfa3 24,27,29,36-42,53-55,58-64,74-139,154-181,231-269
+assets/app/locales/es/flows.json
+  1ebe222d01f3cfa3 78
+assets/app/modules/flows/composables/useFlowEditor.ts
+  1ebe222d01f3cfa3 977-984
+lib/storyarn_web/live/flow_live/show.ex
+  1ebe222d01f3cfa3 897-902
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  1ebe222d01f3cfa3 453-475
+lib/storyarn_web/live/flow_live/helpers/collaboration_helpers.ex
+  1ebe222d01f3cfa3 97-103
+assets/app/locales/en/flows.json
+  1ebe222d01f3cfa3 78
+assets/app/modules/flows/services/editorHandlers.ts
+  1ebe222d01f3cfa3 190-194,201,368-384
+lib/storyarn_web/live/flow_live/handlers/collaboration_event_handlers.ex
+  1ebe222d01f3cfa3 90-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "8a6fe4f5620d502e15d6526fd80891f51373490a",
+  "prompts": {
+    "1ebe222d01f3cfa3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da411924-b924-44e1-b377-d19e84db2dd9",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 229,
+      "total_deletions": 3,
+      "accepted_lines": 888,
+      "overriden_lines": 0
+    }
+  }
+}
