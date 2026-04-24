@@ -1,0 +1,147 @@
+config/config.exs
+  1ebe222d01f3cfa3 60-61
+docs/features/flow-relational-refactor/EXECUTION.md
+  1979e480b131fab7 1-35,37-64,68,70,72,74,76,78,80,82,84,86,88,90,92,94
+  1ebe222d01f3cfa3 36
+lib/storyarn/flows/flow_node.ex
+  1ebe222d01f3cfa3 5-7,18-28,37,40,53,64-67,84-86,103,107-108,116,119
+lib/storyarn_web/live/flow_live/nodes/jump/node.ex
+  1ebe222d01f3cfa3 15,19
+lib/storyarn/live_vue_encoders.ex
+  1ebe222d01f3cfa3 33
+docs/features/flow-relational-refactor/REFACTOR.md
+  1ebe222d01f3cfa3 292
+  1979e480b131fab7 1-291,293-305
+test/storyarn_web/live/flow_live/helpers/form_helpers_test.exs
+  1ebe222d01f3cfa3 58,62
+priv/repo/migrations/20260421163604_add_parent_sequence_to_flow_nodes.exs
+  b1b288ee549ee37f 1-11
+lib/storyarn_web/live/flow_live/show.ex
+  b1b288ee549ee37f 785-786
+  1ebe222d01f3cfa3 746-784
+assets/app/modules/flows/lib/flow-tool-state.ts
+  b1b288ee549ee37f 1-18
+assets/app/modules/flows/lib/rete-schemes.ts
+  1ebe222d01f3cfa3 6-9,17-19,26
+test/storyarn/flows_test.exs
+  1ebe222d01f3cfa3 969-1010
+lib/storyarn/workers/trash_retention_worker.ex
+  1979e480b131fab7 7,13-17
+  b1b288ee549ee37f 1,3-6,8-12,18-20,23,25,27-28,30-41,44-52,55-59,61-62,64-67,70-71,74-77,79-80
+lib/storyarn/shared/trashable.ex
+  b1b288ee549ee37f 1-34,36,38,44-69,71-175
+  1979e480b131fab7 35,37,39-43,70
+test/storyarn/flows/node_crud_test.exs
+  1ebe222d01f3cfa3 1747-1748
+lib/storyarn/flows/sequence_config.ex
+  1979e480b131fab7 1,3-4,6-9,11-13,15-17,27-28,30-31,36-38,40-42,48,50-53,55,59-60,62-64
+docs/features/flow-relational-refactor/phase-1-sequence-unification.md
+  1979e480b131fab7 1-182
+assets/app/modules/flows/lib/node-configs.ts
+  1ebe222d01f3cfa3 17-18,93-95
+  1979e480b131fab7 96-98
+test/storyarn_web/live/flow_live/nodes/subflow_node_test.exs
+  1ebe222d01f3cfa3 37,39,52,58,63
+lib/storyarn_web/live/flow_live/nodes/dialogue/node.ex
+  1ebe222d01f3cfa3 40,53
+lib/storyarn/flows/entity_trash_ref.ex
+  b1b288ee549ee37f 1-9,13-15,17-21,27-33,35-121
+  1979e480b131fab7 10-12,16,22-26,34
+assets/app/locales/en/flows.json
+  1ebe222d01f3cfa3 75,96-99
+lib/storyarn_web/live/flow_live/nodes/entry/node.ex
+  1ebe222d01f3cfa3 16,18
+assets/app/locales/es/flows.json
+  1ebe222d01f3cfa3 75,96-99
+priv/repo/migrations/20260420120100_create_flow_sequences.exs
+  1ebe222d01f3cfa3 9-14,16,22
+lib/storyarn_web/live/flow_live/nodes/instruction/node.ex
+  1ebe222d01f3cfa3 21,28
+docs/audit/jsonb-cross-refs-lifecycle-hooks.md
+  1ebe222d01f3cfa3 10-18,53-54,61-67
+lib/storyarn_web/live/flow_live/nodes/subflow/node.ex
+  1ebe222d01f3cfa3 23,27
+assets/app/modules/flows/lib/flow-node.ts
+  1ebe222d01f3cfa3 16-19,30-38
+test/storyarn/flows/entity_trash_refs_test.exs
+  b1b288ee549ee37f 1-84,88,94,96-97,101-102,107,109-110,115-217,220-222
+  1979e480b131fab7 85-87,89-93,95,98-100,103-106,108,111-114,218-219
+lib/storyarn/flows.ex
+  1ebe222d01f3cfa3 17,48,671-674,679-687,703-739,1078-1079,1081,1089-1127
+package.json
+  1ebe222d01f3cfa3 62
+lib/storyarn/billing/plan.ex
+  1ebe222d01f3cfa3 19-24,53-66
+lib/storyarn_web/live/flow_live/nodes/exit/node.ex
+  1ebe222d01f3cfa3 32,45
+lib/storyarn/flows/flow_crud.ex
+  1ebe222d01f3cfa3 21,297-301,309-310,346-347,349
+lib/storyarn_web/live/flow_live/nodes/hub/node.ex
+  1ebe222d01f3cfa3 24,32
+lib/storyarn/flows/entity_trash_refs.ex
+  1979e480b131fab7 5-9,11,13-17,51,62
+  b1b288ee549ee37f 1-4,10,12,18-50,52-61,63-277
+assets/app/modules/flows/components/FlowDock.vue
+  b1b288ee549ee37f 2,5,57-60,69-106
+lib/storyarn/flows/sequence_crud.ex
+  1ebe222d01f3cfa3 3,5-8,10-12,17,19,22-23,25-26,28,30-36,42,45-49,54-55,57,59-64,70,72-77,81,83-84,86-89,91-102,104-118,120-124,126-132,134-138,140-142,144-156,160-165,167,172-174,176-179,184-190,192-193,195-197,199-201,203,205,207-214,219-221,223-226,230-267
+  b1b288ee549ee37f 202,206
+priv/repo/migrations/20260421182119_create_flows_entity_trash_refs.exs
+  b1b288ee549ee37f 1-45
+test/storyarn/shared/trashable_test.exs
+  b1b288ee549ee37f 1-107
+assets/app/modules/flows/lib/context_menu_items.ts
+  b1b288ee549ee37f 239
+  1ebe222d01f3cfa3 10-20,27,46,52-57,65,67-91,93-103,105-117,119-131,136,151,154,156,169,175-193,203-238
+  1979e480b131fab7 92,194
+lib/storyarn_web/live/flow_live/nodes/condition/node.ex
+  1ebe222d01f3cfa3 22,29
+assets/app/modules/flows/components/FlowNode.vue
+  b1b288ee549ee37f 34,63,87-95,104-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "5a5ab88c2326857154745e3dcfff21418bbbc8e6",
+  "prompts": {
+    "1979e480b131fab7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d40baccd-9a82-4bfd-a0ac-921346d30a54",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 731,
+      "overriden_lines": 0
+    },
+    "1ebe222d01f3cfa3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da411924-b924-44e1-b377-d19e84db2dd9",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 2161,
+      "total_deletions": 1722,
+      "accepted_lines": 1551,
+      "overriden_lines": 0
+    },
+    "b1b288ee549ee37f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e7477f41-9288-44bc-b72e-96c3685ec2e0",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1080,
+      "overriden_lines": 0
+    }
+  }
+}
