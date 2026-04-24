@@ -894,6 +894,12 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
+  def handle_event("update_sequence_name", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_update_sequence_name(params, socket)
+    end)
+  end
+
   def handle_event("search_available_flows", params, socket) do
     GenericNodeHandlers.handle_search_available_flows(params, socket)
   end

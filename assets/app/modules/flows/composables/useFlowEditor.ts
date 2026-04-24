@@ -974,6 +974,14 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
       _editorHandlers!.handleNodeReparented(payload);
     });
 
+    handleEvent("sequence_renamed", (raw) => {
+      if (_destroyed) {
+        return;
+      }
+      const payload = raw as unknown as { node_id: string | number; name: string };
+      _editorHandlers!.handleSequenceRenamed(payload);
+    });
+
     handleEvent("node_added", (data) => {
       if (_destroyed) {
         return;

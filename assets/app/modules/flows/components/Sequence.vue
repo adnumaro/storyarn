@@ -21,17 +21,25 @@
  * `project_flow_sequences_bugs_2026_04_24.md` addendum for the debug
  * trail.
  *
- * Config panel, tracks display, and backdrop preview ship in later phases.
+ * Config panel (image + audio tracks) ships in a later slice.
  */
 
-import { computed, inject } from "vue";
+import { computed, inject, nextTick, ref, useTemplateRef, watch } from "vue";
 
+import { useLive } from "@composables/useLive";
 import type { FlowNode } from "../lib/flow-node";
 import { FLOW_CONTEXT_KEY } from "../setup";
 import { reparentGestureActive } from "../lib/flow-reparent-state";
 
 interface FlowContextValue {
   selectedReteIds: Set<string | number>;
+  canEdit: boolean;
+  zoom: number;
+  /** Bumped on remote node/sequence updates and on local optimistic
+   * writes. `FlowNode` is a plain class, so mutating `nodeData.name` on
+   * the instance isn't Vue-reactive; reading this counter in a computed
+   * creates the dependency that forces re-render. */
+  nodeDataVersion: number;
 }
 
 const { data } = defineProps<{
@@ -42,9 +50,18 @@ const { data } = defineProps<{
 
 const ctx = inject<FlowContextValue>(FLOW_CONTEXT_KEY, {
   selectedReteIds: new Set<string | number>(),
+  canEdit: false,
+  zoom: 1,
+  nodeDataVersion: 0,
 });
 
-const label = computed(() => (data.nodeData?.name as string) || "");
+const live = useLive();
+
+const label = computed(() => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  ctx.nodeDataVersion; // reactivity dep — see FlowContextValue comment.
+  return (data.nodeData?.name as string) || "";
+});
 
 const isSelected = computed(() => ctx.selectedReteIds.has(data?.id));
 
@@ -54,6 +71,72 @@ const isSelected = computed(() => ctx.selectedReteIds.has(data?.id));
 const isDropTarget = computed(
   () => reparentGestureActive.value && !ctx.selectedReteIds.has(data?.id),
 );
+
+// Toolbar visible only for a single-sequence selection and only when the
+// user can edit. Multi-select hides it (bulk rename doesn't make sense).
+const showToolbar = computed(
+  () => ctx.canEdit && ctx.selectedReteIds.size === 1 && isSelected.value,
+);
+
+// Raw DB id (rete ids are prefixed `node-`, we need the bare integer for
+// server events).
+const sequenceDbId = computed(() => {
+  const reteId = String(data?.id || "");
+  return reteId.startsWith("node-") ? reteId.slice(5) : reteId;
+});
+
+// Inverse scale compensates the canvas zoom so the toolbar stays at a
+// constant screen size. Same pattern as `FlowNodeToolbar.vue`.
+const inverseScale = computed(() => 1 / (ctx.zoom || 1));
+
+// Local editing buffer. Seeded from `label` whenever the toolbar opens or
+// the canonical value changes (remote rename via collab broadcast).
+const draftName = ref(label.value);
+const inputRef = useTemplateRef<HTMLInputElement>("nameInput");
+
+watch(label, (next) => {
+  // Don't clobber what the user is actively typing. If the input is
+  // focused, leave the buffer alone — blur or Enter will commit, and a
+  // fresh remote value will overwrite on next focus.
+  if (document.activeElement !== inputRef.value) {
+    draftName.value = next;
+  }
+});
+
+watch(showToolbar, async (next) => {
+  if (next) {
+    draftName.value = label.value;
+    await nextTick();
+    // Don't autofocus — selecting a sequence shouldn't steal focus from
+    // wherever the user was typing. They click the input to edit.
+  }
+});
+
+function commitName() {
+  const trimmed = draftName.value.trim();
+  if (!trimmed || trimmed === label.value) {
+    // Revert empty / unchanged — nothing to push.
+    draftName.value = label.value;
+    return;
+  }
+  // Optimistic local update — the server broadcast skips self
+  // (`broadcast_from`), so without this the local header label would
+  // stay stale until the next reload. Bump `nodeDataVersion` so the
+  // computed `label` picks up the change (FlowNode instance fields
+  // aren't Vue-reactive on their own).
+  data.nodeData = { ...data.nodeData, name: trimmed };
+  ctx.nodeDataVersion = (ctx.nodeDataVersion || 0) + 1;
+
+  live.pushEvent("update_sequence_name", {
+    id: sequenceDbId.value,
+    name: trimmed,
+  });
+}
+
+function cancelEdit(event: KeyboardEvent) {
+  draftName.value = label.value;
+  (event.target as HTMLInputElement | null)?.blur();
+}
 </script>
 
 <template>
@@ -68,6 +151,34 @@ const isDropTarget = computed(
     <header class="flow-sequence-header">
       <span class="flow-sequence-label">{{ label }}</span>
     </header>
+
+    <!-- Floating toolbar. `.stop` on pointer/mouse events prevents the
+         canvas drag/marquee from triggering while the user interacts
+         with the input. -->
+    <div
+      v-if="showToolbar"
+      class="flow-sequence-toolbar"
+      :style="{
+        transform: `translateX(-50%) scale(${inverseScale})`,
+        transformOrigin: 'bottom center',
+        marginBottom: `${8 * inverseScale}px`,
+      }"
+      @pointerdown.stop
+      @mousedown.stop
+      @click.stop
+    >
+      <input
+        ref="nameInput"
+        v-model="draftName"
+        type="text"
+        class="flow-sequence-name-input"
+        :placeholder="$t('flows.sequences.name_placeholder')"
+        data-testid="flow-sequence-name-input"
+        @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
+        @keydown.escape.prevent="cancelEdit"
+        @blur="commitName"
+      />
+    </div>
   </div>
 </template>
 
@@ -116,5 +227,44 @@ const isDropTarget = computed(
 
 .flow-sequence-label {
   user-select: none;
+}
+
+/* Floating toolbar above the sequence bbox. Mirrors FlowNodeToolbar's
+   positioning (`absolute bottom-full left-1/2`, inverse-scaled for zoom
+   compensation). Only contains the name input for now. */
+.flow-sequence-toolbar {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.375rem;
+  box-shadow: 0 2px 8px hsl(0 0% 0% / 0.25);
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+.flow-sequence-name-input {
+  all: unset;
+  min-width: 12rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  color: hsl(var(--foreground));
+  background: transparent;
+  border-radius: 0.25rem;
+  transition: background-color 120ms ease;
+}
+
+.flow-sequence-name-input:focus {
+  background: hsl(var(--muted) / 0.4);
+}
+
+.flow-sequence-name-input::placeholder {
+  color: hsl(var(--muted-foreground));
 }
 </style>

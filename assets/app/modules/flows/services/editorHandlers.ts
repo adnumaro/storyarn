@@ -187,12 +187,18 @@ export interface NodeReparentedPayload {
   parent_id: string | number | null;
 }
 
+export interface SequenceRenamedPayload {
+  node_id: string | number;
+  name: string;
+}
+
 export interface EditorHandlers {
   init(): void;
   throttleNodeMoved(nodeId: string | number, position: Position): void;
   flushNodeMoved(nodeId: string | number): void;
   handleNodeMoved(data: NodeMovedPayload): Promise<void>;
   handleNodeReparented(data: NodeReparentedPayload): Promise<void>;
+  handleSequenceRenamed(data: SequenceRenamedPayload): void;
   handleFlowUpdated(data: FlowUpdatedPayload): Promise<void>;
   handleNodeAdded(data: NodeServerPayload): Promise<void>;
   handleNodeRemoved(data: NodeRemovedPayload): Promise<void>;
@@ -356,6 +362,23 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
         await hook.area.translate(node.id, { x, y });
       } finally {
         hook.exitLoadingFromServer();
+      }
+    },
+
+    // Remote sequence rename — mutate the in-memory node's nodeData.name
+    // and bump `nodeDataVersion` so any component reading the Vue-reactive
+    // mirror re-renders. `Sequence.vue` binds the header label to
+    // `data.nodeData?.name` via a computed, so updating the field on the
+    // class instance + bumping the version is enough.
+    handleSequenceRenamed(data) {
+      const node = hook.nodeMap.get(data.node_id);
+      if (!node) {
+        return;
+      }
+      node.nodeData = { ...node.nodeData, name: data.name };
+      const ctx = hook._flowContext;
+      if (ctx) {
+        ctx.nodeDataVersion = (ctx.nodeDataVersion || 0) + 1;
       }
     },
 

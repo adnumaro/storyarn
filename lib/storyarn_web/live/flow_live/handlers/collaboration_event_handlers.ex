@@ -87,6 +87,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
     {:noreply, CollaborationHelpers.push_remote_change_event(socket, :node_reparented, payload)}
   end
 
+  # Sequence rename — push directly to JS; the client updates
+  # `node.nodeData.name` on the rete node so the header label refreshes.
+  # No need to reload `flow_data`.
+  def handle_remote_change(:sequence_renamed, payload, socket) do
+    {:noreply, CollaborationHelpers.push_remote_change_event(socket, :sequence_renamed, payload)}
+  end
+
   def handle_remote_change(action, payload, socket) do
     # No echo guard needed — broadcast_from already prevents self-delivery
     flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)

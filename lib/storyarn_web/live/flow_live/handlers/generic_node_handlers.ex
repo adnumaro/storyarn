@@ -450,6 +450,29 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     end
   end
 
+  @spec handle_update_sequence_name(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_update_sequence_name(%{"id" => node_id, "name" => name}, socket)
+      when is_binary(name) do
+    trimmed = String.trim(name)
+
+    with true <- trimmed != "",
+         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, node_id),
+         {:ok, updated} <- Flows.update_sequence(seq, %{"name" => trimmed}) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> CollaborationHelpers.broadcast_change(:sequence_renamed, %{
+         node_id: node_id,
+         name: updated.sequence_config.name
+       })}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_update_sequence_name(_params, socket), do: {:noreply, socket}
+
   # Accepts nil, integer, or a string that parses cleanly to an integer.
   # Anything else returns :error so the handler can no-op.
   defp parse_optional_int(nil), do: {:ok, nil}

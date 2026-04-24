@@ -75,6 +75,7 @@
       "create_sequence_from_selection": "Create sequence from selection"
     },
     "sequences": {
+      "name_placeholder": "Sequence name",
       "tracks": {
         "background": "Background",
         "music": "Music",
