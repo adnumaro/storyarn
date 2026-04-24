@@ -1101,6 +1101,18 @@ defmodule Storyarn.Flows do
   """
   defdelegate wrap_selection_in_sequence(flow, node_ids, attrs \\ %{}), to: SequenceCrud
 
+  @doc "Lists the audio tracks assigned to a sequence (one per kind, 0-3 rows)."
+  defdelegate list_sequence_tracks(sequence_id), to: SequenceCrud
+
+  @doc "Fetches the single track for `(sequence_id, kind)`, or nil."
+  defdelegate get_sequence_track(sequence_id, kind), to: SequenceCrud
+
+  @doc "Upserts a track slot. `kind` ∈ {background, music, ambient}."
+  defdelegate upsert_sequence_track(sequence_id, kind, attrs), to: SequenceCrud
+
+  @doc "Clears the track for `(sequence_id, kind)`. No-op if already empty."
+  defdelegate clear_sequence_track(sequence_id, kind), to: SequenceCrud
+
   # =============================================================================
   # Entity trash refs — sweep + restore for cross-entity references
   # =============================================================================

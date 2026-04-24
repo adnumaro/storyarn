@@ -9,13 +9,14 @@ defmodule Storyarn.Flows.SequenceCrudTest do
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.SequenceConfig
+  alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Repo
 
   defp setup_flow(_ctx \\ %{}) do
     user = user_fixture()
     project = project_fixture(user)
     flow = flow_fixture(project)
-    %{flow: flow}
+    %{flow: flow, project: project, user: user}
   end
 
   describe "create_sequence/2" do
@@ -166,6 +167,156 @@ defmodule Storyarn.Flows.SequenceCrudTest do
 
       assert updated.flow_id == flow.id
       assert updated.type == "sequence"
+    end
+
+    test "updates background media fields (asset/position/fit) on config" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
+      asset = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+
+      {:ok, updated} =
+        Flows.update_sequence(seq, %{
+          "name" => "s",
+          "background_asset_id" => asset.id,
+          "background_position" => "top-right",
+          "background_fit" => "contain"
+        })
+
+      assert updated.sequence_config.background_asset_id == asset.id
+      assert updated.sequence_config.background_position == "top-right"
+      assert updated.sequence_config.background_fit == "contain"
+    end
+
+    test "rejects background_position outside the 9-value whitelist" do
+      %{flow: flow} = setup_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
+
+      assert {:error, changeset} =
+               Flows.update_sequence(seq, %{
+                 "name" => "s",
+                 "background_position" => "diagonal-upward"
+               })
+
+      assert %{background_position: ["is invalid"]} = errors_on(changeset)
+    end
+
+    test "rejects background_fit outside the cover/contain/fill whitelist" do
+      %{flow: flow} = setup_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
+
+      assert {:error, changeset} =
+               Flows.update_sequence(seq, %{"name" => "s", "background_fit" => "stretch"})
+
+      assert %{background_fit: ["is invalid"]} = errors_on(changeset)
+    end
+  end
+
+  describe "sequence tracks (audio)" do
+    test "upsert creates a track row for (sequence, kind) when none exists" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
+      asset = Storyarn.AssetsFixtures.audio_asset_fixture(project, user)
+
+      assert {:ok, %SequenceTrack{} = track} =
+               Flows.upsert_sequence_track(seq.id, "music", %{
+                 "asset_id" => asset.id,
+                 "volume" => Decimal.new("0.8")
+               })
+
+      assert track.flow_node_id == seq.id
+      assert track.kind == "music"
+      assert track.asset_id == asset.id
+      assert Decimal.equal?(track.volume, Decimal.new("0.8"))
+    end
+
+    test "upsert updates the existing row for the same (sequence, kind)" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
+      asset = Storyarn.AssetsFixtures.audio_asset_fixture(project, user)
+
+      {:ok, original} =
+        Flows.upsert_sequence_track(seq.id, "music", %{
+          "asset_id" => asset.id,
+          "volume" => Decimal.new("1.0")
+        })
+
+      {:ok, updated} =
+        Flows.upsert_sequence_track(seq.id, "music", %{"volume" => Decimal.new("0.25")})
+
+      # Same row, not duplicated.
+      assert updated.id == original.id
+      assert Decimal.equal?(updated.volume, Decimal.new("0.25"))
+      assert updated.asset_id == asset.id
+    end
+
+    test "clear deletes the row for (sequence, kind)" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
+      asset = Storyarn.AssetsFixtures.audio_asset_fixture(project, user)
+
+      {:ok, _} = Flows.upsert_sequence_track(seq.id, "ambient", %{"asset_id" => asset.id})
+      assert Flows.get_sequence_track(seq.id, "ambient") != nil
+
+      assert {:ok, :cleared} = Flows.clear_sequence_track(seq.id, "ambient")
+      assert Flows.get_sequence_track(seq.id, "ambient") == nil
+    end
+
+    test "clear is a no-op when no row exists" do
+      %{flow: flow} = setup_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
+
+      assert {:ok, :cleared} = Flows.clear_sequence_track(seq.id, "music")
+    end
+
+    test "rejects invalid kind on both upsert and clear" do
+      %{flow: flow} = setup_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
+
+      assert {:error, :invalid_kind} =
+               Flows.upsert_sequence_track(seq.id, "narration", %{})
+
+      assert {:error, :invalid_kind} = Flows.clear_sequence_track(seq.id, "narration")
+    end
+
+    test "DB trigger rejects tracks pointing to non-sequence flow_nodes" do
+      %{flow: flow} = setup_flow()
+      dialogue = node_fixture(flow, %{type: "dialogue", data: %{"text" => "x"}})
+
+      assert_raise Postgrex.Error, ~r/must reference a sequence node/, fn ->
+        Flows.upsert_sequence_track(dialogue.id, "music", %{})
+      end
+    end
+
+    test "UNIQUE (flow_node_id, kind) enforced — independent kinds coexist" do
+      %{flow: flow} = setup_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
+
+      {:ok, _} = Flows.upsert_sequence_track(seq.id, "background", %{})
+      {:ok, _} = Flows.upsert_sequence_track(seq.id, "music", %{})
+      {:ok, _} = Flows.upsert_sequence_track(seq.id, "ambient", %{})
+
+      tracks = Flows.list_sequence_tracks(seq.id)
+      assert Enum.map(tracks, & &1.kind) |> Enum.sort() ==
+               ["ambient", "background", "music"]
+    end
+
+    test "rejects volume outside [0, 1]" do
+      %{flow: flow} = setup_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
+
+      assert {:error, cs} =
+               Flows.upsert_sequence_track(seq.id, "music", %{
+                 "volume" => Decimal.new("1.5")
+               })
+
+      assert %{volume: ["must be <= 1"]} = errors_on(cs)
+
+      assert {:error, cs2} =
+               Flows.upsert_sequence_track(seq.id, "music", %{
+                 "volume" => Decimal.new("-0.1")
+               })
+
+      assert %{volume: ["must be >= 0"]} = errors_on(cs2)
     end
   end
 

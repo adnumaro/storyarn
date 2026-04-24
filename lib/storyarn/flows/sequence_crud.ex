@@ -17,6 +17,7 @@ defmodule Storyarn.Flows.SequenceCrud do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.SequenceConfig
+  alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Repo
 
   @type sequence :: FlowNode.t()
@@ -128,7 +129,16 @@ defmodule Storyarn.Flows.SequenceCrud do
   def update_sequence(%FlowNode{type: "sequence"} = node, attrs) do
     attrs = normalize_keys(attrs)
     node_attrs = Map.take(attrs, ["position_x", "position_y", "parent_id"])
-    config_attrs = Map.take(attrs, ["name", "width", "height"])
+
+    config_attrs =
+      Map.take(attrs, [
+        "name",
+        "width",
+        "height",
+        "background_asset_id",
+        "background_position",
+        "background_fit"
+      ])
 
     Repo.transaction(fn ->
       updated_node =
@@ -265,5 +275,91 @@ defmodule Storyarn.Flows.SequenceCrud do
 
     Repo.update_all(from(n in FlowNode, where: n.id in ^ids), set: [parent_id: sequence_id])
     :ok
+  end
+
+  # =========================================================================
+  # Sequence tracks (audio)
+  # =========================================================================
+
+  @doc """
+  Lists all tracks for a sequence, ordered by `kind` then `position`.
+  Returns `[]` for sequences with no tracks.
+  """
+  @spec list_sequence_tracks(integer()) :: [SequenceTrack.t()]
+  def list_sequence_tracks(sequence_id) when is_integer(sequence_id) do
+    Repo.all(
+      from(t in SequenceTrack,
+        where: t.flow_node_id == ^sequence_id,
+        order_by: [asc: t.kind, asc: t.position]
+      )
+    )
+  end
+
+  @doc """
+  Fetches a sequence's track for a given kind, or `nil`.
+  """
+  @spec get_sequence_track(integer(), String.t()) :: SequenceTrack.t() | nil
+  def get_sequence_track(sequence_id, kind) when is_binary(kind) do
+    Repo.one(
+      from(t in SequenceTrack,
+        where: t.flow_node_id == ^sequence_id and t.kind == ^kind
+      )
+    )
+  end
+
+  @doc """
+  Upserts the track row for `(sequence_id, kind)`. If no row exists it's
+  created; if one exists it's updated with `attrs`. `kind` must be one of
+  `SequenceTrack.kinds/0`. Silently rejects kinds outside the whitelist.
+
+  Rejects calls targeting a non-sequence flow_node via the DB trigger
+  (`fn_validate_sequence_track_owner`).
+  """
+  @spec upsert_sequence_track(integer(), String.t(), map()) ::
+          {:ok, SequenceTrack.t()} | {:error, atom() | Ecto.Changeset.t()}
+  def upsert_sequence_track(sequence_id, kind, attrs)
+      when is_integer(sequence_id) and is_binary(kind) do
+    if kind in SequenceTrack.kinds() do
+      case get_sequence_track(sequence_id, kind) do
+        nil ->
+          attrs =
+            attrs
+            |> normalize_keys()
+            |> Map.put("flow_node_id", sequence_id)
+            |> Map.put("kind", kind)
+
+          %SequenceTrack{}
+          |> SequenceTrack.create_changeset(attrs)
+          |> Repo.insert()
+
+        %SequenceTrack{} = track ->
+          track
+          |> SequenceTrack.update_changeset(normalize_keys(attrs))
+          |> Repo.update()
+      end
+    else
+      {:error, :invalid_kind}
+    end
+  end
+
+  @doc """
+  Deletes the track row for `(sequence_id, kind)`. Returns `{:ok, :cleared}`
+  whether or not a row existed — clearing an empty slot is a no-op.
+  """
+  @spec clear_sequence_track(integer(), String.t()) ::
+          {:ok, :cleared} | {:error, atom()}
+  def clear_sequence_track(sequence_id, kind)
+      when is_integer(sequence_id) and is_binary(kind) do
+    if kind in SequenceTrack.kinds() do
+      Repo.delete_all(
+        from(t in SequenceTrack,
+          where: t.flow_node_id == ^sequence_id and t.kind == ^kind
+        )
+      )
+
+      {:ok, :cleared}
+    else
+      {:error, :invalid_kind}
+    end
   end
 end
