@@ -13,6 +13,7 @@ import {
   HubToolbar,
   InstructionToolbar,
   JumpToolbar,
+  SequenceToolbar,
   SubflowToolbar,
 } from "./toolbar-sections";
 
@@ -51,6 +52,7 @@ const TOOLBAR_COMPONENTS: Record<string, Component> = {
   dialogue: DialogueToolbar,
   jump: JumpToolbar,
   exit: ExitToolbar,
+  sequence: SequenceToolbar,
   subflow: SubflowToolbar,
 };
 

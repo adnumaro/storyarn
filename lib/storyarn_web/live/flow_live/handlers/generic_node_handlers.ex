@@ -457,15 +457,25 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     trimmed = String.trim(name)
 
     with true <- trimmed != "",
-         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, node_id),
+         {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
          {:ok, updated} <- Flows.update_sequence(seq, %{"name" => trimmed}) do
+      # Keep `node_id` as the integer the client's `nodeMap` uses as key —
+      # pushing a stringified id (the shape we receive from pushEvent) would
+      # miss the lookup on `handleSequenceRenamed` and leave the local
+      # label stale.
+      payload = %{node_id: parsed_id, name: updated.sequence_config.name}
+
+      # Push to self so the local editor's `handleSequenceRenamed` bumps
+      # `nodeDataVersion` and the header label re-renders immediately.
+      # `broadcast_change` below uses `broadcast_from` which skips self, so
+      # without this the local label stayed stale until reload.
       {:noreply,
        socket
        |> mark_saved()
-       |> CollaborationHelpers.broadcast_change(:sequence_renamed, %{
-         node_id: node_id,
-         name: updated.sequence_config.name
-       })}
+       |> CollaborationHelpers.push_remote_change_event(:sequence_renamed, payload)
+       |> CollaborationHelpers.broadcast_change(:sequence_renamed, payload)}
     else
       _ -> {:noreply, socket}
     end
