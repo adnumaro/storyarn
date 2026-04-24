@@ -1,0 +1,31 @@
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  1ebe222d01f3cfa3 460-462,464-473,477-478
+assets/app/modules/flows/components/FlowNodeToolbar.vue
+  1ebe222d01f3cfa3 16,55
+assets/app/modules/flows/components/toolbar-sections/SequenceToolbar.vue
+  1ebe222d01f3cfa3 1-50
+assets/app/modules/flows/components/Sequence.vue
+  1ebe222d01f3cfa3 24-26,30,32,40,53,57-63,66-67,77-78,83,98-104
+assets/app/modules/flows/components/toolbar-sections/index.ts
+  1ebe222d01f3cfa3 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "5af6c80e509b9cf55ec3117194153bb1872672a4",
+  "prompts": {
+    "1ebe222d01f3cfa3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da411924-b924-44e1-b377-d19e84db2dd9",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 95,
+      "total_deletions": 145,
+      "accepted_lines": 753,
+      "overriden_lines": 0
+    }
+  }
+}
