@@ -1,0 +1,33 @@
+priv/repo/migrations/20260424221053_add_sequence_media_config.exs
+  1ebe222d01f3cfa3 1-178
+test/storyarn/flows/sequence_crud_test.exs
+  1ebe222d01f3cfa3 12,19,171-320
+lib/storyarn/flows/sequence_config.ex
+  1ebe222d01f3cfa3 3-4,8-20,26-28,35,38-45,52-55,68-71,75-82,84-86,90-98,101-102,104,113-120,123-125
+lib/storyarn/flows/sequence_crud.ex
+  1ebe222d01f3cfa3 20,132-141,279-364
+lib/storyarn/flows/sequence_track.ex
+  1ebe222d01f3cfa3 1-131
+lib/storyarn/flows.ex
+  1ebe222d01f3cfa3 1104-1115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "e19706485827fcc092e692b88d6e2e4f69d82770",
+  "prompts": {
+    "1ebe222d01f3cfa3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da411924-b924-44e1-b377-d19e84db2dd9",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 639,
+      "total_deletions": 12,
+      "accepted_lines": 1298,
+      "overriden_lines": 0
+    }
+  }
+}
