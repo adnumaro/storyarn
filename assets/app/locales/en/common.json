@@ -103,21 +103,32 @@
     "docs": {
       "no_docs": "No documentation available yet."
     },
-    "asset_picker": {
-      "search_image": "Search images...",
-      "search_audio": "Search audio...",
-      "empty_image": "No images yet",
-      "empty_audio": "No audio yet"
-    },
-    "audio_asset": {
-      "pick": "Pick audio",
-      "search": "Search audio...",
-      "clear": "Clear track",
-      "play": "Play preview",
-      "pause": "Pause preview",
-      "upload": "Upload audio"
-    },
     "assets": {
+      "picker": {
+        "search_image": "Search images...",
+        "search_audio": "Search audio...",
+        "empty_image": "No images yet",
+        "empty_audio": "No audio yet"
+      },
+      "audio": {
+        "pick": "Pick audio",
+        "search": "Search audio...",
+        "clear": "Clear track",
+        "play": "Play preview",
+        "pause": "Pause preview",
+        "upload": "Upload audio"
+      },
+      "image": {
+        "pick": "Pick image",
+        "search": "Search images...",
+        "clear": "Clear image",
+        "upload": "Upload image",
+        "position_label": "Position",
+        "fit_label": "Fit",
+        "fit_cover": "Cover",
+        "fit_contain": "Contain",
+        "fit_fill": "Fill"
+      },
       "filter_all": "All",
       "filter_images": "Images",
       "filter_audio": "Audio",

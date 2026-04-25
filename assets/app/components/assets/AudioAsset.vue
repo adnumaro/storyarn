@@ -3,7 +3,7 @@ import type { Component } from "vue";
 import { computed, onUnmounted, ref, watch } from "vue";
 import { Loader2, Music, Pause, Play, Upload, Volume2, VolumeX, X } from "lucide-vue-next";
 
-import AssetPicker from "@components/AssetPicker.vue";
+import AssetPicker from "@components/assets/AssetPicker.vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Slider } from "@components/ui/slider/index.ts";
 import { useUpload } from "@composables/useUpload";
@@ -148,7 +148,7 @@ onUnmounted(teardownAudio);
           v-if="audioEl"
           variant="ghost"
           size="icon-xs"
-          :title="isPlaying ? $t('common.audio_asset.pause') : $t('common.audio_asset.play')"
+          :title="isPlaying ? $t('common.assets.audio.pause') : $t('common.assets.audio.play')"
           @click="togglePlay"
         >
           <Pause v-if="isPlaying" class="size-3" />
@@ -158,7 +158,7 @@ onUnmounted(teardownAudio);
           v-if="canEdit"
           variant="ghost"
           size="icon-xs"
-          :title="$t('common.audio_asset.upload')"
+          :title="$t('common.assets.audio.upload')"
           :disabled="isUploading"
           @click="triggerUpload"
         >
@@ -170,7 +170,7 @@ onUnmounted(teardownAudio);
           v-if="hasTrack && canEdit"
           variant="ghost"
           size="icon-xs"
-          :title="clearTitle || $t('common.audio_asset.clear')"
+          :title="clearTitle || $t('common.assets.audio.clear')"
           @click="emit('clear')"
         >
           <X class="size-3" />
@@ -181,7 +181,7 @@ onUnmounted(teardownAudio);
     <AssetPicker
       kind="audio"
       :assets="audioAssets"
-      :search-placeholder="searchPlaceholder || $t('common.audio_asset.search')"
+      :search-placeholder="searchPlaceholder || $t('common.assets.audio.search')"
       @select="(asset) => emit('select', asset)"
     >
       <template #trigger>
@@ -191,7 +191,7 @@ onUnmounted(teardownAudio);
           :disabled="!canEdit"
         >
           <span class="truncate">
-            {{ currentAsset?.filename || pickPlaceholder || $t("common.audio_asset.pick") }}
+            {{ currentAsset?.filename || pickPlaceholder || $t("common.assets.audio.pick") }}
           </span>
           <VolumeX
             v-if="!hasTrack"

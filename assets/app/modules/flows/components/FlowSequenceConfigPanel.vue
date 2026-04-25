@@ -22,10 +22,10 @@
 import { Image as ImageIcon, Layers, Music, Volume2, X } from "lucide-vue-next";
 import { computed } from "vue";
 
-import AssetPicker from "@components/AssetPicker.vue";
 import AudioAsset from "@components/assets/AudioAsset.vue";
+import ImageAsset from "@components/assets/ImageAsset.vue";
+import ImagePosition from "@components/assets/ImagePosition.vue";
 import Sidebar from "@components/layout/Sidebar.vue";
-import { Button } from "@components/ui/button/index.ts";
 import { useLive } from "@composables/useLive";
 
 interface AssetEntry {
@@ -66,34 +66,13 @@ const live = useLive();
 
 const TRACK_KINDS = ["background", "music", "ambient"] as const;
 
-const BACKGROUND_POSITIONS = [
-  "top-left",
-  "top-center",
-  "top-right",
-  "center-left",
-  "center",
-  "center-right",
-  "bottom-left",
-  "bottom-center",
-  "bottom-right",
-] as const;
-
-const BACKGROUND_FITS = ["cover", "contain", "fill"] as const;
-
 const sequenceId = computed(() => data?.sequence_id ?? null);
 
 const backgroundAssetId = computed(() => data?.config?.background_asset_id ?? null);
 const backgroundPosition = computed(() => data?.config?.background_position ?? "center");
-const backgroundFit = computed(() => data?.config?.background_fit ?? "cover");
-
-const backgroundAsset = computed<AssetEntry | null>(() => {
-  if (!data?.config?.background_asset_id) return null;
-  return (
-    data.image_assets.find(
-      (a) => String(a.id) === String(data.config!.background_asset_id),
-    ) ?? null
-  );
-});
+const backgroundFit = computed<"cover" | "contain" | "fill">(
+  () => (data?.config?.background_fit as "cover" | "contain" | "fill" | undefined) ?? "cover",
+);
 
 function close() {
   // Closing the panel keeps the sequence selected (toolbar stays visible).
@@ -197,94 +176,27 @@ function trackIcon(kind: string) {
           {{ $t("flows.sequences.config_panel.background_title") }}
         </header>
 
-        <!-- Asset picker -->
-        <div class="flex items-center gap-2">
-          <AssetPicker
-            kind="image"
-            :assets="data?.image_assets || []"
-            :search-placeholder="$t('flows.sequences.config_panel.search_image')"
-            @select="pickBackgroundImage"
-          >
-            <template #trigger>
-              <Button
-                variant="outline"
-                class="flex-1 justify-between text-sm h-auto py-2"
-                :disabled="!canEdit"
-              >
-                <span class="truncate">
-                  {{ backgroundAsset?.filename || $t("flows.sequences.config_panel.pick_image") }}
-                </span>
-                <ImageIcon class="size-3.5 shrink-0 opacity-60" />
-              </Button>
-            </template>
-          </AssetPicker>
-          <button
-            v-if="backgroundAssetId && canEdit"
-            type="button"
-            class="toolbar-btn"
-            :title="$t('flows.sequences.config_panel.clear_image')"
-            @click="clearBackgroundImage"
-          >
-            <X class="size-3.5" />
-          </button>
-        </div>
-
-        <!-- Preview with applied position + fit -->
-        <div
-          v-if="backgroundAsset?.url"
-          class="aspect-video rounded border border-border bg-muted/40 overflow-hidden"
-          :style="{
-            backgroundImage: `url(${backgroundAsset.url})`,
-            backgroundPosition: backgroundPosition.replace('-', ' '),
-            backgroundSize: backgroundFit === 'fill' ? '100% 100%' : backgroundFit,
-            backgroundRepeat: 'no-repeat',
-          }"
+        <ImageAsset
+          :asset-id="backgroundAssetId"
+          :image-assets="data?.image_assets || []"
+          :can-edit="canEdit"
+          :pick-placeholder="$t('flows.sequences.config_panel.pick_image')"
+          :search-placeholder="$t('flows.sequences.config_panel.search_image')"
+          :clear-title="$t('flows.sequences.config_panel.clear_image')"
+          :preview-position="backgroundPosition"
+          :preview-fit="backgroundFit"
+          @select="pickBackgroundImage"
+          @clear="clearBackgroundImage"
         />
 
-        <!-- Position 3x3 grid -->
-        <div v-if="backgroundAssetId" class="flex flex-col gap-1.5">
-          <label class="text-xs text-muted-foreground">
-            {{ $t("flows.sequences.config_panel.position_label") }}
-          </label>
-          <div class="grid grid-cols-3 gap-1 w-24">
-            <button
-              v-for="pos in BACKGROUND_POSITIONS"
-              :key="pos"
-              type="button"
-              class="aspect-square rounded border transition-colors"
-              :class="{
-                'border-primary bg-primary/20': backgroundPosition === pos,
-                'border-border hover:bg-muted': backgroundPosition !== pos,
-              }"
-              :title="pos"
-              :disabled="!canEdit"
-              @click="setBackgroundPosition(pos)"
-            />
-          </div>
-        </div>
-
-        <!-- Fit selector -->
-        <div v-if="backgroundAssetId" class="flex flex-col gap-1.5">
-          <label class="text-xs text-muted-foreground">
-            {{ $t("flows.sequences.config_panel.fit_label") }}
-          </label>
-          <div class="flex gap-1">
-            <button
-              v-for="fit in BACKGROUND_FITS"
-              :key="fit"
-              type="button"
-              class="flex-1 text-xs py-1.5 rounded border transition-colors"
-              :class="{
-                'border-primary bg-primary/20 text-foreground': backgroundFit === fit,
-                'border-border text-muted-foreground hover:bg-muted': backgroundFit !== fit,
-              }"
-              :disabled="!canEdit"
-              @click="setBackgroundFit(fit)"
-            >
-              {{ $t(`flows.sequences.config_panel.fit_${fit}`) }}
-            </button>
-          </div>
-        </div>
+        <ImagePosition
+          v-if="backgroundAssetId"
+          :position="backgroundPosition"
+          :fit="backgroundFit"
+          :can-edit="canEdit"
+          @position-change="setBackgroundPosition"
+          @fit-change="setBackgroundFit"
+        />
       </section>
 
       <!-- Audio tracks section -->

@@ -20,7 +20,7 @@ const props = defineProps<{
   defaultValue?: string | string[];
   class?: HTMLAttributes["class"];
   variant?: "default" | "outline";
-  size?: "default" | "sm" | "lg";
+  size?: "default" | "xs" | "sm" | "lg";
   spacing?: number;
 }>();
 

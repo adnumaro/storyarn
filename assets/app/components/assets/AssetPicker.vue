@@ -8,12 +8,12 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@components/ui/command/index.ts";
+} from "@components/ui/command";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@components/ui/popover/index.ts";
+} from "@components/ui/popover";
 
 interface AssetItem {
   id: number | string;
@@ -60,8 +60,8 @@ function pick(asset: AssetItem) {
           :placeholder="
             searchPlaceholder ||
             (kind === 'image'
-              ? $t('common.asset_picker.search_image')
-              : $t('common.asset_picker.search_audio'))
+              ? $t('common.assets.picker.search_image')
+              : $t('common.assets.picker.search_audio'))
           "
         />
         <CommandList class="max-h-64">
@@ -72,8 +72,8 @@ function pick(asset: AssetItem) {
             {{
               emptyText ||
               (kind === "image"
-                ? $t("common.asset_picker.empty_image")
-                : $t("common.asset_picker.empty_audio"))
+                ? $t("common.assets.picker.empty_image")
+                : $t("common.assets.picker.empty_audio"))
             }}
           </div>
           <CommandEmpty>{{ $t("common.no_results") }}</CommandEmpty>

@@ -8,7 +8,7 @@ import { cn } from "@utils/utils";
 
 interface ToggleGroupContext {
   variant?: "default" | "outline";
-  size?: "default" | "sm" | "lg";
+  size?: "default" | "xs" | "sm" | "lg";
   spacing?: number;
 }
 
