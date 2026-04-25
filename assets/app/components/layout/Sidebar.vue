@@ -159,19 +159,19 @@ watch(
     ]"
   >
     <!-- Header -->
-    <div v-if="$slots.header" class="border-b border-border shrink-0">
+    <div v-if="$slots.header" class="border-b border-border shrink-0 px-2.5">
       <slot name="header" />
     </div>
 
     <!-- Scrollable content -->
-    <div :class="['flex-1 overflow-y-auto py-2', side === 'right' ? 'px-5' : 'px-2']">
+    <div :class="['flex-1 overflow-y-auto py-2', side === 'right' ? 'px-2.5' : 'px-2.5']">
       <slot />
     </div>
 
     <!-- Footer (desktop only) -->
     <div
       v-if="$slots.footer"
-      class="hidden md:flex items-center justify-end gap-1 px-2 py-1.5 border-t border-border"
+      class="hidden md:flex items-center justify-end gap-1 px-2.5 py-1.5 border-t border-border"
     >
       <slot name="footer" />
     </div>

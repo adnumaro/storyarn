@@ -61,7 +61,7 @@ function close() {
 <template>
   <Sidebar side="right" :open="isOpen" @close="close">
     <template #header>
-      <div class="flex items-center gap-2 px-3 py-2.5">
+      <div class="flex items-center gap-2 py-2.5">
         <span class="font-medium text-sm flex-1">{{
           (selectedType && TITLES[selectedType]) || $t("scenes.element_properties.fallback")
         }}</span>

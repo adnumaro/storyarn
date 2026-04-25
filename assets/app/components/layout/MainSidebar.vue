@@ -108,7 +108,7 @@ function togglePin() {
 <template>
   <Sidebar side="left" :open="internalOpen">
     <template #header>
-      <div v-if="dashboardUrl" class="px-2 pt-2 pb-2">
+      <div v-if="dashboardUrl" class="pt-2 pb-2">
         <a
           :href="dashboardUrl"
           data-phx-link="patch"

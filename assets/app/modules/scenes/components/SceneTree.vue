@@ -255,19 +255,17 @@ function handleDrop(e: any): void {
 <template>
   <div class="space-y-2">
     <!-- Search -->
-    <div class="px-1">
-      <Input
-        v-model="searchQuery"
-        type="search"
-        :placeholder="$t('scenes.tree.filter')"
-        class="text-xs"
-      />
-    </div>
+    <Input
+      v-model="searchQuery"
+      type="search"
+      :placeholder="$t('scenes.tree.filter')"
+      class="text-xs"
+    />
 
     <!-- Empty state -->
     <div
       v-if="filteredTree.length === 0"
-      class="px-2 py-4 text-xs text-muted-foreground text-center"
+      class="py-4 text-xs text-muted-foreground text-center"
     >
       {{ $t("scenes.tree.empty") }}
     </div>
@@ -294,7 +292,7 @@ function handleDrop(e: any): void {
     </DnDProvider>
 
     <!-- New Scene button -->
-    <div v-if="canEdit" class="pt-2 px-1">
+    <div v-if="canEdit" class="pt-2">
       <Button
         variant="ghost"
         size="sm"

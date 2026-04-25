@@ -279,7 +279,7 @@ function handleDrop(e: DndDropEvent): void {
     <!-- Empty state -->
     <div
       v-if="filteredTree.length === 0"
-      class="px-2 py-4 text-xs text-muted-foreground text-center"
+      class="py-4 text-xs text-muted-foreground text-center"
     >
       {{ $t("sheets.tree.empty") }}
     </div>
@@ -306,7 +306,7 @@ function handleDrop(e: DndDropEvent): void {
     </DnDProvider>
 
     <!-- New Sheet button -->
-    <div v-if="canEdit" class="pt-2 px-1">
+    <div v-if="canEdit" class="pt-2">
       <Button
         variant="ghost"
         size="sm"

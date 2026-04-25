@@ -176,7 +176,7 @@ function updateResponseAssignments(
 <template>
   <Sidebar side="right" :open="open" @close="close">
     <template #header>
-      <div class="flex items-center justify-between px-3 py-2.5">
+      <div class="flex items-center justify-between py-2.5">
         <div class="flex items-center gap-2 text-sm font-medium">
           <BookOpen class="size-4" />
           {{ $t("flows.screenplay_editor.title") }}

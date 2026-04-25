@@ -153,7 +153,7 @@ function trackIcon(kind: string) {
 <template>
   <Sidebar side="right" :open="open" @close="close">
     <template #header>
-      <div class="flex items-center justify-between px-3 py-2.5">
+      <div class="flex items-center justify-between py-2.5">
         <div class="flex items-center gap-2 text-sm font-medium">
           <Layers class="size-4" />
           {{ $t("flows.sequences.config_panel.title") }}
@@ -168,7 +168,7 @@ function trackIcon(kind: string) {
       </div>
     </template>
 
-    <div class="flex flex-col gap-6 p-4">
+    <div class="flex flex-col gap-6">
       <!-- Background image section -->
       <section class="flex flex-col gap-3">
         <header class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
