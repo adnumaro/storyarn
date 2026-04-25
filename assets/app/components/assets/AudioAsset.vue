@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { Component } from "vue";
 import { computed, onUnmounted, ref, watch } from "vue";
-import { Music, Pause, Play, Volume2, VolumeX, X } from 'lucide-vue-next'
+import { Loader2, Music, Pause, Play, Upload, Volume2, VolumeX, X } from "lucide-vue-next";
 
 import AssetPicker from "@components/AssetPicker.vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Slider } from "@components/ui/slider/index.ts";
+import { useUpload } from "@composables/useUpload";
 
 interface AssetItem {
   id: number | string;
@@ -109,6 +110,31 @@ function togglePlay() {
   isPlaying.value = true;
 }
 
+// Upload — multipart via useUpload composable. After success the new asset
+// is emitted via `select` so the parent's existing track-attach flow runs.
+const { uploadFile } = useUpload();
+const isUploading = ref(false);
+
+function triggerUpload() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "audio/*";
+  input.onchange = async (e) => {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    isUploading.value = true;
+    try {
+      const result = await uploadFile(file, "audio");
+      if (result) {
+        emit("select", { id: result.id, url: result.url, filename: file.name });
+      }
+    } finally {
+      isUploading.value = false;
+    }
+  };
+  input.click();
+}
+
 onUnmounted(teardownAudio);
 </script>
 
@@ -117,26 +143,39 @@ onUnmounted(teardownAudio);
     <div class="flex items-center gap-2">
       <component :is="icon" class="size-3.5 opacity-70 shrink-0" />
       <span class="text-xs font-medium flex-1">{{ label }}</span>
-      <Button
-        v-if="audioEl"
-        variant="ghost"
-        size="icon-sm"
-        :title="isPlaying ? $t('common.audio_asset.pause') : $t('common.audio_asset.play')"
-        @click="togglePlay"
-      >
-        <Pause v-if="isPlaying" class="size-3" />
-        <Play v-else class="size-3" />
-      </Button>
-      <slot name="header-actions" />
-      <Button
-        v-if="hasTrack && canEdit"
-        variant="ghost"
-        size="icon-sm"
-        :title="clearTitle || $t('common.audio_asset.clear')"
-        @click="emit('clear')"
-      >
-        <X class="size-3" />
-      </Button>
+      <div class="flex items-center">
+        <Button
+          v-if="audioEl"
+          variant="ghost"
+          size="icon-xs"
+          :title="isPlaying ? $t('common.audio_asset.pause') : $t('common.audio_asset.play')"
+          @click="togglePlay"
+        >
+          <Pause v-if="isPlaying" class="size-3" />
+          <Play v-else class="size-3" />
+        </Button>
+        <Button
+          v-if="canEdit"
+          variant="ghost"
+          size="icon-xs"
+          :title="$t('common.audio_asset.upload')"
+          :disabled="isUploading"
+          @click="triggerUpload"
+        >
+          <Loader2 v-if="isUploading" class="size-3 animate-spin" />
+          <Upload v-else class="size-3" />
+        </Button>
+        <slot name="header-actions" />
+        <Button
+          v-if="hasTrack && canEdit"
+          variant="ghost"
+          size="icon-xs"
+          :title="clearTitle || $t('common.audio_asset.clear')"
+          @click="emit('clear')"
+        >
+          <X class="size-3" />
+        </Button>
+      </div>
     </div>
 
     <AssetPicker

@@ -114,7 +114,8 @@
       "search": "Search audio...",
       "clear": "Clear track",
       "play": "Play preview",
-      "pause": "Pause preview"
+      "pause": "Pause preview",
+      "upload": "Upload audio"
     },
     "assets": {
       "filter_all": "All",

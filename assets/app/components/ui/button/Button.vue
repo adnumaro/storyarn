@@ -7,7 +7,7 @@ import { buttonVariants } from ".";
 const props = withDefaults(
   defineProps<{
     variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
-    size?: "default" | "xs" | "sm" | "lg" | "icon" | "icon-sm" | "icon-lg";
+    size?: "default" | "xs" | "sm" | "lg" | "icon" | "icon-xs" | "icon-sm" | "icon-lg";
     class?: HTMLAttributes["class"];
     asChild?: boolean;
     as?: AsTag | Component;

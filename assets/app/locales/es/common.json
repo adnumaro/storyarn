@@ -114,7 +114,8 @@
       "search": "Buscar audio...",
       "clear": "Eliminar pista",
       "play": "Reproducir preview",
-      "pause": "Pausar preview"
+      "pause": "Pausar preview",
+      "upload": "Subir audio"
     },
     "assets": {
       "filter_all": "Todos",
