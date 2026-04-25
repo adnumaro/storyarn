@@ -1,0 +1,40 @@
+.claude/hooks/scripts/pre-write-pattern-check.sh
+  1ebe222d01f3cfa3 1-91
+.claude/hooks/scripts/post-write-duplicate-audit.sh
+  1ebe222d01f3cfa3 1-68
+.claude/settings.json
+  1ebe222d01f3cfa3 1-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "35f497096b97b84cffbf49bac423f863421d4210",
+  "prompts": {
+    "0687a09a93122927": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f4e2f4e-eccc-44a3-801e-5b0042dea1af",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 895,
+      "total_deletions": 431,
+      "accepted_lines": 625,
+      "overriden_lines": 0
+    },
+    "1ebe222d01f3cfa3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da411924-b924-44e1-b377-d19e84db2dd9",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 934,
+      "total_deletions": 37,
+      "accepted_lines": 1402,
+      "overriden_lines": 0
+    }
+  }
+}
