@@ -1,0 +1,55 @@
+assets/app/modules/flows/components/FlowSequenceConfigPanel.vue
+  0687a09a93122927 22-23,25-26,28,135,137,158,165-166,202-211,218-220,297,300-312
+  1ebe222d01f3cfa3 1-21,24,27,29-134,136,138-157,159-164,167-201,212-217,221-296,298-299,313-316
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  1ebe222d01f3cfa3 21,23,178-250,359-360,561-670
+assets/app/locales/en/flows.json
+  1ebe222d01f3cfa3 79,84-99
+assets/app/locales/en/common.json
+  0687a09a93122927 106-118
+assets/app/locales/es/flows.json
+  1ebe222d01f3cfa3 79,84-99
+assets/app/modules/flows/components/toolbar-sections/SequenceToolbar.vue
+  1ebe222d01f3cfa3 2,5,35-38,55-60
+assets/app/components/AssetPicker.vue
+  0687a09a93122927 1-106
+assets/app/components/assets/AudioAsset.vue
+  0687a09a93122927 1-182
+assets/app/locales/es/common.json
+  0687a09a93122927 106-118
+lib/storyarn_web/live/flow_live/show.ex
+  1ebe222d01f3cfa3 242-251,326,870-882,927-944,1442
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "d387fdbbbcb26912db47becf9346c31780e4f760",
+  "prompts": {
+    "0687a09a93122927": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f4e2f4e-eccc-44a3-801e-5b0042dea1af",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 876,
+      "overriden_lines": 0
+    },
+    "1ebe222d01f3cfa3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da411924-b924-44e1-b377-d19e84db2dd9",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1214,
+      "overriden_lines": 0
+    }
+  }
+}
