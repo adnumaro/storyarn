@@ -181,6 +181,7 @@ onUnmounted(teardownAudio);
     <AssetPicker
       kind="audio"
       :assets="audioAssets"
+      :selected-id="assetId"
       :search-placeholder="searchPlaceholder || $t('common.assets.audio.search')"
       @select="(asset) => emit('select', asset)"
     >

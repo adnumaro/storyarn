@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Music } from "lucide-vue-next";
-import { ref } from "vue";
+import { Check, Music } from "lucide-vue-next";
+import { computed, ref } from "vue";
 import {
   Command,
   CommandEmpty,
@@ -24,6 +24,7 @@ interface AssetItem {
 const {
   assets = [],
   kind,
+  selectedId = null,
   searchPlaceholder,
   emptyText,
   popoverWidth = "w-72",
@@ -31,6 +32,7 @@ const {
 } = defineProps<{
   assets?: AssetItem[];
   kind: "image" | "audio";
+  selectedId?: number | string | null;
   searchPlaceholder?: string;
   emptyText?: string;
   popoverWidth?: string;
@@ -42,6 +44,12 @@ const emit = defineEmits<{
 }>();
 
 const open = ref(false);
+
+const selectedKey = computed(() => (selectedId == null ? null : String(selectedId)));
+
+function isSelected(asset: AssetItem): boolean {
+  return selectedKey.value !== null && String(asset.id) === selectedKey.value;
+}
 
 function pick(asset: AssetItem) {
   emit("select", asset);
@@ -82,9 +90,10 @@ function pick(asset: AssetItem) {
               v-for="asset in assets"
               :key="asset.id"
               :value="asset.filename"
+              class="hover:bg-accent hover:text-accent-foreground transition-colors"
               @select="pick(asset)"
             >
-              <div class="flex items-center gap-2 min-w-0">
+              <div class="flex items-center gap-2 min-w-0 flex-1">
                 <img
                   v-if="kind === 'image' && asset.url"
                   :src="asset.url"
@@ -97,6 +106,10 @@ function pick(asset: AssetItem) {
                 />
                 <span class="truncate text-xs">{{ asset.filename }}</span>
               </div>
+              <Check
+                v-if="isSelected(asset)"
+                class="size-3.5 shrink-0 text-primary"
+              />
             </CommandItem>
           </CommandGroup>
         </CommandList>

@@ -119,6 +119,7 @@ function triggerUpload() {
     <AssetPicker
       kind="image"
       :assets="imageAssets"
+      :selected-id="assetId"
       :search-placeholder="searchPlaceholder || $t('common.assets.image.search')"
       @select="(asset) => emit('select', asset)"
     >
