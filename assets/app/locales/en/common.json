@@ -103,6 +103,19 @@
     "docs": {
       "no_docs": "No documentation available yet."
     },
+    "asset_picker": {
+      "search_image": "Search images...",
+      "search_audio": "Search audio...",
+      "empty_image": "No images yet",
+      "empty_audio": "No audio yet"
+    },
+    "audio_asset": {
+      "pick": "Pick audio",
+      "search": "Search audio...",
+      "clear": "Clear track",
+      "play": "Play preview",
+      "pause": "Pause preview"
+    },
     "assets": {
       "filter_all": "All",
       "filter_images": "Images",

@@ -76,10 +76,27 @@
     },
     "sequences": {
       "name_placeholder": "Sequence name",
+      "toolbar_open_config": "Open sequence config",
       "tracks": {
         "background": "Background",
         "music": "Music",
         "ambient": "Ambient"
+      },
+      "config_panel": {
+        "title": "Sequence",
+        "background_title": "Background image",
+        "pick_image": "Pick an image",
+        "search_image": "Search images…",
+        "clear_image": "Remove image",
+        "position_label": "Position",
+        "fit_label": "Fit",
+        "fit_cover": "Cover",
+        "fit_contain": "Contain",
+        "fit_fill": "Fill",
+        "audio_title": "Audio tracks",
+        "pick_audio": "Pick an audio",
+        "search_audio": "Search audio…",
+        "clear_track": "Clear track"
       }
     },
     "node_types": {

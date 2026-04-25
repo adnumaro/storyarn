@@ -18,7 +18,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
 
   alias Phoenix.LiveView.Socket
+  alias Storyarn.Assets
   alias Storyarn.Flows
+  alias Storyarn.Repo
   alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
@@ -173,7 +175,79 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
      |> assign(:available_flows, [])
      |> assign(:subflow_exits, [])
      |> assign(:referencing_jumps, [])
-     |> assign(:referencing_flows, [])}
+     |> assign(:referencing_flows, [])
+     |> assign(:sequence_panel_data, nil)}
+  end
+
+  @doc """
+  Opens the sequence config sidebar for the currently-selected sequence.
+  Mirrors `open_builder` / `open_screenplay`: reads `selected_node`, loads
+  the panel payload (config + tracks + asset lists), flips
+  `editing_mode` to `:sequence_config`. The panel itself is gated on
+  that mode in `show.ex`.
+  """
+  @spec handle_open_sequence_config(Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_open_sequence_config(socket) do
+    case socket.assigns.selected_node do
+      %{type: "sequence"} = node ->
+        {:noreply,
+         socket
+         |> assign(:editing_mode, :sequence_config)
+         |> assign(:sequence_panel_data, build_sequence_panel_data(socket, node))}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  defp build_sequence_panel_data(_socket, %{type: type}) when type != "sequence", do: nil
+
+  defp build_sequence_panel_data(socket, %{type: "sequence", id: seq_id}) do
+    project_id = socket.assigns.project.id
+    config = Repo.get_by(Storyarn.Flows.SequenceConfig, flow_node_id: seq_id)
+    tracks = Flows.list_sequence_tracks(seq_id)
+
+    %{
+      sequence_id: seq_id,
+      config: serialize_sequence_config(config),
+      tracks: Enum.map(tracks, &serialize_sequence_track/1),
+      image_assets: serialize_assets(Assets.list_assets(project_id, images_only: true)),
+      audio_assets: serialize_assets(Assets.list_assets(project_id, content_type: "audio/"))
+    }
+  end
+
+  defp serialize_sequence_config(nil), do: nil
+
+  defp serialize_sequence_config(%Storyarn.Flows.SequenceConfig{} = cfg) do
+    %{
+      name: cfg.name,
+      background_asset_id: cfg.background_asset_id,
+      background_position: cfg.background_position,
+      background_fit: cfg.background_fit
+    }
+  end
+
+  defp serialize_sequence_track(%Storyarn.Flows.SequenceTrack{} = track) do
+    %{
+      kind: track.kind,
+      asset_id: track.asset_id,
+      volume: decimal_to_float(track.volume)
+    }
+  end
+
+  defp decimal_to_float(nil), do: nil
+  defp decimal_to_float(%Decimal{} = d), do: Decimal.to_float(d)
+
+  defp serialize_assets(assets) do
+    Enum.map(assets, fn a ->
+      %{
+        id: a.id,
+        filename: a.filename,
+        url: a.url,
+        content_type: a.content_type
+      }
+    end)
   end
 
   @spec handle_node_double_clicked(map(), Socket.t()) ::
@@ -282,7 +356,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
      socket
      |> assign(:selected_node, nil)
      |> assign(:node_form, nil)
-     |> assign(:editing_mode, nil)}
+     |> assign(:editing_mode, nil)
+     |> assign(:sequence_panel_data, nil)}
   end
 
   @spec handle_create_sheet(Socket.t()) ::
@@ -482,6 +557,116 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   end
 
   def handle_update_sequence_name(_params, socket), do: {:noreply, socket}
+
+  @doc """
+  Updates one or more background media fields on a sequence's config.
+  Accepts any subset of `background_asset_id`, `background_position`,
+  `background_fit`. Validates ownership (the target must be a sequence)
+  and re-serializes the panel data so the Vue component re-renders with
+  the fresh values.
+  """
+  @spec handle_update_sequence_config(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_update_sequence_config(%{"id" => node_id} = params, socket) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         attrs <- extract_sequence_config_attrs(params),
+         {:ok, updated} <- Flows.update_sequence(seq, attrs) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, updated))}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  defp extract_sequence_config_attrs(params) do
+    base = %{"name" => params["name"] || (params["config"] && params["config"]["name"])}
+
+    Enum.reduce(
+      ["background_asset_id", "background_position", "background_fit"],
+      base,
+      fn field, acc ->
+        if Map.has_key?(params, field) do
+          Map.put(acc, field, params[field])
+        else
+          acc
+        end
+      end
+    )
+    |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+    |> Enum.into(%{})
+    |> ensure_name_fallback(params["id"])
+  end
+
+  # `update_sequence`'s config changeset requires :name (existing row satisfies
+  # validate_required). When the client sends a partial update without name,
+  # attrs may or may not include it. If nothing sent, pull from the current
+  # config — changeset cast will no-op if same.
+  defp ensure_name_fallback(%{"name" => _} = attrs, _), do: attrs
+
+  defp ensure_name_fallback(attrs, _id), do: attrs
+
+  @doc """
+  Upserts an audio track for the selected sequence. `kind` must be one
+  of `background | music | ambient`. `asset_id` nullable. `volume` a
+  decimal in [0, 1].
+  """
+  @spec handle_upsert_sequence_track(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_upsert_sequence_track(%{"id" => node_id, "kind" => kind} = params, socket) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         attrs <- track_attrs_from_params(params),
+         {:ok, _track} <- Flows.upsert_sequence_track(parsed_id, kind, attrs) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  defp track_attrs_from_params(params) do
+    attrs = %{}
+
+    attrs =
+      if Map.has_key?(params, "asset_id"),
+        do: Map.put(attrs, "asset_id", params["asset_id"]),
+        else: attrs
+
+    attrs =
+      case params["volume"] do
+        nil -> attrs
+        "" -> attrs
+        v when is_number(v) -> Map.put(attrs, "volume", Decimal.from_float(v / 1))
+        v when is_binary(v) -> Map.put(attrs, "volume", Decimal.new(v))
+        _ -> attrs
+      end
+
+    attrs
+  end
+
+  @doc "Clears the track slot for `(sequence_id, kind)`."
+  @spec handle_clear_sequence_track(map(), Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_clear_sequence_track(%{"id" => node_id, "kind" => kind}, socket) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         {:ok, :cleared} <- Flows.clear_sequence_track(parsed_id, kind) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
 
   # Accepts nil, integer, or a string that parses cleanly to an integer.
   # Anything else returns :error so the handler can no-op.

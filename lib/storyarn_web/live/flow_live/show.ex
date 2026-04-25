@@ -239,6 +239,16 @@ defmodule StoryarnWeb.FlowLive.Show do
         project-variables={Jason.encode!(@project_variables)}
       />
 
+      <%!-- Sequence Config sidebar (Vue) --%>
+      <.vue
+        v-component="modules/flows/components/FlowSequenceConfigPanel"
+        v-socket={@socket}
+        id="flow-sequence-config-panel"
+        open={@editing_mode == :sequence_config && @selected_node != nil && @selected_node.type == "sequence"}
+        data={@sequence_panel_data}
+        can-edit={@can_edit}
+      />
+
       <%!-- Dialogue Preview (Vue) --%>
       <.vue
         v-component="modules/flows/components/FlowPreview"
@@ -313,6 +323,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:selected_node, nil)
       |> assign(:node_form, nil)
       |> assign(:editing_mode, nil)
+      |> assign(:sequence_panel_data, nil)
       |> assign(:debug_panel_open, false)
       |> assign(:debug_state, nil)
       |> assign(:debug_active_tab, "console")
@@ -856,6 +867,19 @@ defmodule StoryarnWeb.FlowLive.Show do
     {:noreply, assign(socket, :editing_mode, :toolbar)}
   end
 
+  def handle_event("open_sequence_config", _params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_open_sequence_config(socket)
+    end)
+  end
+
+  def handle_event("close_sequence_config", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:editing_mode, :toolbar)
+     |> assign(:sequence_panel_data, nil)}
+  end
+
   def handle_event("close_editor", _params, socket) do
     GenericNodeHandlers.handle_close_editor(socket)
   end
@@ -897,6 +921,24 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("update_sequence_name", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_update_sequence_name(params, socket)
+    end)
+  end
+
+  def handle_event("update_sequence_config", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_update_sequence_config(params, socket)
+    end)
+  end
+
+  def handle_event("upsert_sequence_track", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_upsert_sequence_track(params, socket)
+    end)
+  end
+
+  def handle_event("clear_sequence_track", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_clear_sequence_track(params, socket)
     end)
   end
 
@@ -1397,6 +1439,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:project_variables, data.project_variables)
       |> assign(:selected_node, nil)
       |> assign(:node_form, nil)
+      |> assign(:sequence_panel_data, nil)
       |> assign(:node_select_loading, false)
       |> assign(:referencing_jumps, [])
       |> assign(:available_flows, [])

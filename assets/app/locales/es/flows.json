@@ -76,10 +76,27 @@
     },
     "sequences": {
       "name_placeholder": "Nombre de la secuencia",
+      "toolbar_open_config": "Abrir configuración de la secuencia",
       "tracks": {
         "background": "Fondo",
         "music": "Música",
         "ambient": "Ambiente"
+      },
+      "config_panel": {
+        "title": "Secuencia",
+        "background_title": "Imagen de fondo",
+        "pick_image": "Elige una imagen",
+        "search_image": "Buscar imágenes…",
+        "clear_image": "Quitar imagen",
+        "position_label": "Posición",
+        "fit_label": "Ajuste",
+        "fit_cover": "Cubrir",
+        "fit_contain": "Contener",
+        "fit_fill": "Rellenar",
+        "audio_title": "Pistas de audio",
+        "pick_audio": "Elige un audio",
+        "search_audio": "Buscar audios…",
+        "clear_track": "Limpiar pista"
       }
     },
     "node_types": {

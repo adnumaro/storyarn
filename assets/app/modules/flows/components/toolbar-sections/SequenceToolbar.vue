@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Layers } from "lucide-vue-next";
+import { Layers, Settings } from "lucide-vue-next";
 
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "@composables/useLive";
 import type { NodeData } from "../../lib/node-configs";
 
@@ -31,6 +32,10 @@ function commitName(event: FocusEvent | KeyboardEvent) {
   }
   live.pushEvent("update_sequence_name", { id: nodeId, name: trimmed });
 }
+
+function openConfig() {
+  live.pushEvent("open_sequence_config", { id: nodeId });
+}
 </script>
 
 <template>
@@ -47,4 +52,10 @@ function commitName(event: FocusEvent | KeyboardEvent) {
     @pointerdown.stop
     @keydown.stop
   />
+  <ToolbarSeparator />
+  <ToolbarTooltip :label="$t('flows.sequences.toolbar_open_config')">
+    <button type="button" class="toolbar-btn" @click="openConfig">
+      <Settings class="size-3.5" />
+    </button>
+  </ToolbarTooltip>
 </template>
