@@ -5,15 +5,32 @@ import { config } from "@vue/test-utils";
 import { createI18n } from "vue-i18n";
 import type { LiveInterface } from "@composables/useLive";
 
+// Nested JSON locale shape — string leaves, object branches. Matches what
+// our `assets/app/locales/en/*.json` files actually contain. We don't use
+// vue-i18n's `LocaleMessageDictionary` because its generic is keyed on a
+// schema we don't enforce in tests; we just want a type vue-i18n's
+// `createI18n` accepts (it does, via `Record<string, any>` in messages).
+type JsonLocale = { [key: string]: string | JsonLocale };
+
+// jsdom doesn't implement scrollIntoView; reka-ui's Listbox/Command primitives
+// call it on highlighted elements and surface unhandled rejections that
+// otherwise stay quiet but show up in vitest output.
+if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = function () {
+    /* no-op for jsdom */
+  };
+}
+
 // Load all English locale files for component tests
-const localeModules: Record<string, { default?: Record<string, unknown> }> = import.meta.glob(
+type LocaleModule = { default?: JsonLocale };
+const localeModules: Record<string, LocaleModule> = import.meta.glob(
   "../locales/en/*.json",
   { eager: true },
 );
 
-const enMessages: Record<string, unknown> = {};
+const enMessages: JsonLocale = {};
 for (const path in localeModules) {
-  const content = localeModules[path].default || localeModules[path];
+  const content = localeModules[path].default ?? (localeModules[path] as JsonLocale);
   Object.assign(enMessages, content);
 }
 

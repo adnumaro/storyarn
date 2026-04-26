@@ -13,6 +13,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
   alias Phoenix.LiveView.Socket
   alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: SharedCollab
 
@@ -94,6 +95,23 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
     {:noreply, CollaborationHelpers.push_remote_change_event(socket, :sequence_renamed, payload)}
   end
 
+  # Sequence config / track changes — only matter to viewers who currently
+  # have the sequence config panel open on the same sequence. Refresh the
+  # panel data assign so Vue re-renders with the new background image,
+  # position, fit, or track state. Skip the canvas reload — these fields
+  # don't affect node graph topology.
+  def handle_remote_change(:sequence_config_updated, payload, socket) do
+    refresh_sequence_panel_if_open(socket, payload.sequence_id)
+  end
+
+  def handle_remote_change(:sequence_track_upserted, payload, socket) do
+    refresh_sequence_panel_if_open(socket, payload.sequence_id)
+  end
+
+  def handle_remote_change(:sequence_track_cleared, payload, socket) do
+    refresh_sequence_panel_if_open(socket, payload.sequence_id)
+  end
+
   def handle_remote_change(action, payload, socket) do
     # No echo guard needed — broadcast_from already prevents self-delivery
     flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
@@ -107,5 +125,27 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
       |> CollaborationHelpers.show_collab_toast(action, payload)
 
     {:noreply, socket}
+  end
+
+  # Rebuilds the sequence panel payload only when the receiving LV has the
+  # config panel open on `sequence_id`. Other receivers no-op.
+  defp refresh_sequence_panel_if_open(socket, sequence_id) do
+    if socket.assigns[:editing_mode] == :sequence_config and
+         match?(%{id: ^sequence_id, type: "sequence"}, socket.assigns[:selected_node]) do
+      case Flows.get_node(socket.assigns.flow.id, sequence_id) do
+        %{type: "sequence"} = seq ->
+          {:noreply,
+           assign(
+             socket,
+             :sequence_panel_data,
+             GenericNodeHandlers.build_sequence_panel_data(socket, seq)
+           )}
+
+        _ ->
+          {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
+    end
   end
 end

@@ -201,9 +201,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     end
   end
 
-  defp build_sequence_panel_data(_socket, %{type: type}) when type != "sequence", do: nil
+  @doc """
+  Builds the sequence config panel payload (config + tracks + assets).
+  Public so collaboration handlers can refresh remote panels in-place.
+  """
+  @spec build_sequence_panel_data(Socket.t(), map()) :: map() | nil
+  def build_sequence_panel_data(_socket, %{type: type}) when type != "sequence", do: nil
 
-  defp build_sequence_panel_data(socket, %{type: "sequence", id: seq_id}) do
+  def build_sequence_panel_data(socket, %{type: "sequence", id: seq_id}) do
     project_id = socket.assigns.project.id
     config = Repo.get_by(Storyarn.Flows.SequenceConfig, flow_node_id: seq_id)
     tracks = Flows.list_sequence_tracks(seq_id)
@@ -576,7 +581,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       {:noreply,
        socket
        |> mark_saved()
-       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, updated))}
+       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, updated))
+       |> CollaborationHelpers.broadcast_change(:sequence_config_updated, %{
+         sequence_id: parsed_id
+       })}
     else
       _ -> {:noreply, socket}
     end
@@ -625,7 +633,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       {:noreply,
        socket
        |> mark_saved()
-       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))}
+       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))
+       |> CollaborationHelpers.broadcast_change(:sequence_track_upserted, %{
+         sequence_id: parsed_id,
+         kind: kind
+       })}
     else
       _ -> {:noreply, socket}
     end
@@ -662,7 +674,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       {:noreply,
        socket
        |> mark_saved()
-       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))}
+       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))
+       |> CollaborationHelpers.broadcast_change(:sequence_track_cleared, %{
+         sequence_id: parsed_id,
+         kind: kind
+       })}
     else
       _ -> {:noreply, socket}
     end
