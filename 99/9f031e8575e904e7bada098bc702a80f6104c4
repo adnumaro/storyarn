@@ -1,0 +1,27 @@
+docs/features/dialogue-v2-port/EXECUTION.md
+  eec4ca8d3188acea 1-235
+docs/features/dialogue-v2-port/phase-1-wire-format.md
+  eec4ca8d3188acea 1-170
+docs/features/dialogue-v2-port/REFACTOR.md
+  eec4ca8d3188acea 1-477
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "999f031e8575e904e7bada098bc702a80f6104c4",
+  "prompts": {
+    "eec4ca8d3188acea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59efd64a-8530-42a4-aa5a-63ef476125ed",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 882,
+      "total_deletions": 0,
+      "accepted_lines": 882,
+      "overriden_lines": 0
+    }
+  }
+}
