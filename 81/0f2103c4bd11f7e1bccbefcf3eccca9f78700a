@@ -1,0 +1,35 @@
+assets/app/test/setup.ts
+  eec4ca8d3188acea 8-23,25-26,31,33
+assets/app/test/components/assets/ImageAsset.test.ts
+  eec4ca8d3188acea 1-73
+assets/app/test/components/assets/AudioAsset.test.ts
+  eec4ca8d3188acea 1-81
+lib/storyarn_web/live/flow_live/handlers/collaboration_event_handlers.ex
+  eec4ca8d3188acea 16,98-114,129-150
+assets/app/test/components/assets/ImagePosition.test.ts
+  eec4ca8d3188acea 1-91
+assets/app/test/components/assets/AssetPicker.test.ts
+  eec4ca8d3188acea 1-65
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  eec4ca8d3188acea 204-209,211,584-587,636-640,677-681
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "810f2103c4bd11f7e1bccbefcf3eccca9f78700a",
+  "prompts": {
+    "eec4ca8d3188acea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59efd64a-8530-42a4-aa5a-63ef476125ed",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 437,
+      "total_deletions": 54,
+      "accepted_lines": 392,
+      "overriden_lines": 0
+    }
+  }
+}
