@@ -10,7 +10,10 @@ import type { NodeData } from "../../lib/node-configs";
 
 defineOptions({ inheritAttrs: false });
 
-interface DialogueToolbarData extends NodeData {
+/** Raw shape from the canvas wire (snake_case `node.data`). The internal
+ * adapter below normalizes to camelCase locals so the rest of the
+ * component reads `dialogue.audioAssetId` etc. */
+interface RawDialogueToolbarData extends NodeData {
   speaker_sheet_id?: number | string | null;
   location_sheet_id?: number | string | null;
   technical_id?: string;
@@ -29,12 +32,23 @@ const {
   nodeId,
   sheetAvatars = [],
 } = defineProps<{
-  nodeData: DialogueToolbarData;
+  nodeData: RawDialogueToolbarData;
   nodeId: string | number;
   sheetAvatars?: SheetAvatarEntry[];
 }>();
 
 const live = useLive();
+
+/** CamelCase projection of the raw rete data. Wire keys that go BACK to
+ * the server stay snake_case (V1 contract: `update_node_field` /
+ * `update_node_data`) — only the internal accessors are camelCased. */
+const dialogue = computed(() => ({
+  speakerSheetId: nodeData.speaker_sheet_id ?? null,
+  locationSheetId: nodeData.location_sheet_id ?? null,
+  technicalId: nodeData.technical_id ?? "",
+  audioAssetId: nodeData.audio_asset_id ?? null,
+  avatarId: nodeData.avatar_id ?? null,
+}));
 
 function updateField(field: string, value: unknown) {
   live.pushEvent("update_node_data", { node: { [field]: value } });
@@ -57,7 +71,7 @@ function selectAvatar(avatarId: number | null) {
 }
 
 const speakerAvatars = computed<AvatarOption[]>(() => {
-  const sheetId = nodeData.speaker_sheet_id || nodeData.location_sheet_id;
+  const sheetId = dialogue.value.speakerSheetId || dialogue.value.locationSheetId;
   if (!sheetId) return [];
   const sheet = sheetAvatars.find((s) => String(s.id) === String(sheetId));
   if (!sheet?.avatars) return [];
@@ -68,7 +82,7 @@ const speakerAvatars = computed<AvatarOption[]>(() => {
 });
 
 const hasAvatarOverride = computed(() => {
-  const aid = nodeData.avatar_id;
+  const aid = dialogue.value.avatarId;
   return aid != null && aid !== "" && aid !== 0;
 });
 </script>
@@ -80,13 +94,13 @@ const hasAvatarOverride = computed(() => {
     type="text"
     class="toolbar-input text-xs font-mono"
     :placeholder="$t('flows.dialogue_toolbar.tech_id_placeholder')"
-    :value="nodeData.technical_id || ''"
+    :value="dialogue.technicalId"
     @blur="(e: FocusEvent) => updateField('technical_id', (e.target as HTMLInputElement).value)"
     @keydown.enter="(e: KeyboardEvent) => (e.target as HTMLInputElement).blur()"
     @pointerdown.stop
     @keydown.stop
   />
-  <Volume2 v-if="nodeData.audio_asset_id" class="size-3.5 text-blue-500" />
+  <Volume2 v-if="dialogue.audioAssetId" class="size-3.5 text-blue-500" />
   <ToolbarAvatarPicker
     v-if="speakerAvatars.length > 0"
     :avatars="speakerAvatars"

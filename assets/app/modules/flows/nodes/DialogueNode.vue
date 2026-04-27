@@ -10,24 +10,44 @@ import { previewText, stripHtml } from "../lib/render-helpers";
 import { FLOW_CONTEXT_KEY } from "../setup";
 import type { NodeConfig } from "../lib/node-configs";
 import type {
-  DialogueResponse,
   FlowContextInjection,
   ReteEmitFn,
   ReteNodeData,
-  SheetAvatar,
   SheetMapEntry,
 } from "../types";
 import DialogueAudioPreview from "./DialogueAudioPreview.vue";
 
-interface DialogueNodeData {
+/** Raw rete state shape (snake_case from server canvas serializer). The
+ * canvas wire stays snake_case for now — F3 of the relational refactor
+ * (docs/features/flow-relational-refactor) will reshape `serialize_for_canvas`.
+ * Internally the component works in camelCase via the `dialogue` adapter
+ * computed below. */
+interface RawDialogueData {
   speaker_sheet_id?: number | string | null;
   avatar_id?: number | string | null;
   audio_asset_id?: number | string | null;
   stage_directions?: string;
   menu_text?: string;
   text?: string;
-  responses?: DialogueResponse[];
+  responses?: RawDialogueResponse[];
   location_sheet_id?: number | string | null;
+}
+
+interface RawDialogueResponse {
+  id: string | number;
+  text?: string;
+  condition?: unknown;
+  instruction_assignments?: unknown[];
+  has_type_warnings?: boolean;
+}
+
+/** CamelCase internal projection. Aligns with `feedback_camelcase_props`. */
+interface LocalDialogueResponse {
+  id: string | number;
+  text: string;
+  condition: unknown;
+  instructionAssignments: unknown[];
+  hasTypeWarnings: boolean;
 }
 
 interface OutputBadge {
@@ -49,7 +69,11 @@ const {
   config: NodeConfig;
   color: string;
   sheetsMap?: Record<string, SheetMapEntry>;
-  nodeDataOverride?: DialogueNodeData | null;
+  // The override (when set, e.g. by the editor's optimistic-update layer)
+  // is still snake_case because it mirrors the rete `node.data` shape.
+  // The adapter below normalizes it before the rest of the component
+  // touches anything.
+  nodeDataOverride?: RawDialogueData | null;
 }>();
 
 const { t } = useI18n();
@@ -63,22 +87,44 @@ const ctx = inject<FlowContextInjection>(FLOW_CONTEXT_KEY, {
 });
 const dialogueRef = ref<HTMLTextAreaElement | null>(null);
 
-const nodeData = computed<DialogueNodeData>(
-  () => nodeDataOverride || (data.nodeData as DialogueNodeData) || {},
-);
 const editing = computed(() => ctx.editingNodeId === data.id);
 
+/** Adapter: maps the raw rete `node.data` (snake_case canvas wire) into a
+ * camelCase projection. Every accessor below reads from this — keeps the
+ * component aligned with the camelCase prop convention without having to
+ * refactor `Flows.serialize_for_canvas` (shared across 9 node types). */
+const dialogue = computed(() => {
+  const raw = nodeDataOverride || (data.nodeData as RawDialogueData) || {};
+  const rawResponses = Array.isArray(raw.responses) ? raw.responses : [];
+
+  return {
+    speakerSheetId: raw.speaker_sheet_id ?? null,
+    avatarId: raw.avatar_id ?? null,
+    audioAssetId: raw.audio_asset_id ?? null,
+    stageDirections: raw.stage_directions ?? "",
+    menuText: raw.menu_text ?? "",
+    text: raw.text ?? "",
+    responses: rawResponses.map<LocalDialogueResponse>((r) => ({
+      id: r.id,
+      text: r.text ?? "",
+      condition: r.condition,
+      instructionAssignments: r.instruction_assignments ?? [],
+      hasTypeWarnings: !!r.has_type_warnings,
+    })),
+  };
+});
+
 const speaker = computed(() => {
-  const sheetId = nodeData.value.speaker_sheet_id;
+  const sheetId = dialogue.value.speakerSheetId;
   if (!sheetId) return null;
   return sheetsMap[String(sheetId)] || null;
 });
 
 const speakerName = computed(() => speaker.value?.name || config.label);
 
-// Avatar resolution: specific avatar_id override > default avatar_url > no avatar
+// Avatar resolution: specific override (from `avatarId`) > sheet default avatar > none.
 const overrideAvatarUrl = computed(() => {
-  const avatarId = nodeData.value.avatar_id;
+  const avatarId = dialogue.value.avatarId;
   if (!avatarId) return null;
   const avatars = speaker.value?.avatars || [];
   const found = avatars.find((a) => a.id === avatarId);
@@ -87,10 +133,10 @@ const overrideAvatarUrl = computed(() => {
 
 const defaultAvatarUrl = computed(() => speaker.value?.avatar_url || null);
 
-const stageDirections = computed(() => nodeData.value.stage_directions || "");
-const menuText = computed(() => nodeData.value.menu_text || "");
-const preview = computed(() => previewText(nodeData.value.text));
-const plainText = computed(() => stripHtml(nodeData.value.text));
+const stageDirections = computed(() => dialogue.value.stageDirections);
+const menuText = computed(() => dialogue.value.menuText);
+const preview = computed(() => previewText(dialogue.value.text));
+const plainText = computed(() => stripHtml(dialogue.value.text));
 const hasTextContent = computed(() => stageDirections.value || menuText.value || preview.value);
 
 // Visual strip: override avatar, default avatar, colored bg, or nothing
@@ -104,7 +150,7 @@ const hasContent = computed(
 // Sockets
 const inputs = computed(() => Object.entries(data?.inputs || {}));
 const outputs = computed(() => Object.entries(data?.outputs || {}));
-const responses = computed<DialogueResponse[]>(() => nodeData.value.responses || []);
+const responses = computed<LocalDialogueResponse[]>(() => dialogue.value.responses);
 
 // Speaker list for inline edit dropdown
 const speakerOptions = computed(() => {
@@ -129,7 +175,7 @@ function getOutputBadges(key: string): OutputBadge[] {
   if (!resp) return [];
   const badges: OutputBadge[] = [];
   if (!resp.text) badges.push({ type: "error", title: t("flows.nodes.dialogue.empty_response") });
-  if (resp.has_type_warnings)
+  if (resp.hasTypeWarnings)
     badges.push({ type: "error", title: t("flows.nodes.dialogue.type_mismatch") });
   if (resp.condition)
     badges.push({
@@ -137,7 +183,7 @@ function getOutputBadges(key: string): OutputBadge[] {
       color: "#eab308",
       title: t("flows.nodes.dialogue.has_condition"),
     });
-  if ((resp.instruction_assignments || []).length > 0)
+  if (resp.instructionAssignments.length > 0)
     badges.push({
       type: "indicator",
       color: "#ec4899",
@@ -204,7 +250,7 @@ function onSpeakerSelect(id: number | string | null) {
           class="flex-1 min-w-0"
           variant="ghost"
           :options="speakerOptions"
-          :selected-id="nodeData.speaker_sheet_id || null"
+          :selected-id="dialogue.speakerSheetId"
           :placeholder="t('flows.nodes.dialogue.no_speaker')"
           @update:selected-id="onSpeakerSelect"
         />
@@ -213,7 +259,7 @@ function onSpeakerSelect(id: number | string | null) {
 
     <!-- VIEW MODE HEADER -->
     <NodeHeader v-else :color="color" :icon="MessageSquare" :label="speakerName">
-      <DialogueAudioPreview :audio-asset-id="nodeData.audio_asset_id" />
+      <DialogueAudioPreview :audio-asset-id="dialogue.audioAssetId" />
     </NodeHeader>
 
     <!-- Visual strip: avatar (shared between modes) -->
