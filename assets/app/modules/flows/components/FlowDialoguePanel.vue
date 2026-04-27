@@ -11,8 +11,9 @@
  * shared with `FlowDialogueFullscreenEditor.vue`.
  */
 
-import { BookOpen, FileText, MessageSquare, Volume2, X } from "lucide-vue-next";
+import { BookOpen, FileText, Maximize2, MessageSquare, Volume2, X } from "lucide-vue-next";
 import { computed } from "vue";
+import { Button } from "@components/ui/button/index.ts";
 import Sidebar from "@components/layout/Sidebar.vue";
 import FlowDialogueEditorBody, {
   type AudioAssetItem,
@@ -64,6 +65,10 @@ const wordCount = computed<number>(() => {
 function close() {
   live.pushEvent("close_editor", {});
 }
+
+function maximize() {
+  live.pushEvent("open_dialogue_fullscreen", {});
+}
 </script>
 
 <template>
@@ -74,13 +79,27 @@ function close() {
           <BookOpen class="size-4" />
           {{ $t("flows.dialogue_panel.title") }}
         </div>
-        <button
-          type="button"
-          class="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-          @click="close"
-        >
-          <X class="size-4" />
-        </button>
+        <div class="flex items-center gap-1">
+          <!-- Maximize is desktop-only: on mobile (< md) the sidebar is
+               already edge-to-edge (assets/css/app.css:140-150), so a
+               separate fullscreen modal would be redundant. -->
+          <Button
+            variant="ghost"
+            size="icon"
+            class="size-7 hidden md:inline-flex"
+            :title="$t('flows.dialogue_panel.maximize')"
+            @click="maximize"
+          >
+            <Maximize2 class="size-4" />
+          </Button>
+          <button
+            type="button"
+            class="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            @click="close"
+          >
+            <X class="size-4" />
+          </button>
+        </div>
       </div>
     </template>
 

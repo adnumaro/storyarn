@@ -238,6 +238,18 @@ defmodule StoryarnWeb.FlowLive.Show do
         can-edit={@can_edit}
       />
 
+      <%!-- Dialogue fullscreen modal (Vue) — wraps the same body as the
+           sidebar inside a shadcn Dialog (max-w-3xl). Toggled via
+           open_dialogue_fullscreen / minimize_dialogue_fullscreen. --%>
+      <.vue
+        v-component="modules/flows/components/FlowDialogueFullscreenEditor"
+        v-socket={@socket}
+        id="flow-dialogue-fullscreen"
+        open={@editing_mode == :dialogue_fullscreen && @selected_node != nil}
+        data={@dialogue_panel_data}
+        can-edit={@can_edit}
+      />
+
       <%!-- Sequence Config sidebar (Vue) --%>
       <.vue
         v-component="modules/flows/components/FlowSequenceConfigPanel"
@@ -842,6 +854,18 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_event("open_dialogue_panel", params, socket) do
     Dialogue.Node.handle_open_dialogue_panel(params, socket)
+  end
+
+  def handle_event("open_dialogue_fullscreen", _params, socket) do
+    if socket.assigns[:selected_node] do
+      {:noreply, assign(socket, :editing_mode, :dialogue_fullscreen)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("minimize_dialogue_fullscreen", _params, socket) do
+    {:noreply, assign(socket, :editing_mode, :dialogue_panel)}
   end
 
   def handle_event("open_sidebar", _params, socket) do

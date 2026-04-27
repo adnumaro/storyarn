@@ -251,6 +251,8 @@
       "clear_audio": "Quitar audio",
       "audio_attached": "Audio adjunto",
       "word_count": "{count} palabra | {count} palabras",
+      "maximize": "Abrir en pantalla completa",
+      "minimize": "Volver al panel lateral",
       "response_placeholder": "Texto de respuesta..."
     },
     "version_history": {

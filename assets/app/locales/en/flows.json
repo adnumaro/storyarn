@@ -251,7 +251,9 @@
       "clear_audio": "Remove audio",
       "audio_attached": "Audio attached",
       "word_count": "{count} word | {count} words",
-      "response_placeholder": "Response text..."
+      "response_placeholder": "Response text...",
+      "maximize": "Open in fullscreen",
+      "minimize": "Back to side panel"
     },
     "version_history": {
       "title": "Version History"
