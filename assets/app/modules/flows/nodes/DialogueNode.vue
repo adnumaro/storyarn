@@ -306,7 +306,7 @@ function onSpeakerSelect(id: number | string | null) {
     </template>
 
     <!-- EDIT MODE BODY -->
-    <div v-if="editing" class="px-3.5 pt-2.5 pb-3">
+    <div v-if="editing" class="dialogue-screenplay px-3.5 pt-2.5 pb-3">
       <input
         class="inline-input"
         :placeholder="t('flows.nodes.dialogue.stage_placeholder')"
@@ -333,30 +333,31 @@ function onSpeakerSelect(id: number | string | null) {
 
     <!-- VIEW MODE BODY: 3-row stack — value when present, muted placeholder
          otherwise. Mirrors edit-mode field structure so users can see what's
-         editable. -->
-    <div v-else class="px-3.5 pt-2.5 pb-3">
+         editable. Stage directions render wrapped in `()` per screenplay
+         §4.5 (parenthetical). -->
+    <div v-else class="dialogue-screenplay px-3.5 pt-2.5 pb-3">
       <div
         v-if="stageDirections"
-        class="italic text-muted-foreground/55 text-xs mb-1 wrap-break-word"
+        class="sp-parenthetical italic text-muted-foreground/55 text-xs mb-1 wrap-break-word"
       >
-        {{ stageDirections }}
+        ({{ stageDirections }})
       </div>
-      <div v-else class="italic text-muted-foreground/30 text-xs mb-1">
-        {{ t("flows.nodes.dialogue.stage_placeholder") }}
+      <div v-else class="sp-parenthetical italic text-muted-foreground/30 text-xs mb-1">
+        ({{ t("flows.nodes.dialogue.stage_placeholder") }})
       </div>
-      <div v-if="menuText" class="text-xs text-primary/70 font-medium mb-1 wrap-break-word">
+      <div v-if="menuText" class="sp-menu-text text-xs text-primary/70 font-medium mb-1 wrap-break-word">
         ≡ {{ menuText }}
       </div>
-      <div v-else class="text-xs text-primary/30 font-medium mb-1">
+      <div v-else class="sp-menu-text text-xs text-primary/30 font-medium mb-1">
         ≡ {{ t("flows.nodes.dialogue.menu_placeholder") }}
       </div>
       <div
         v-if="preview"
-        class="text-sm text-foreground/85 leading-relaxed wrap-break-word whitespace-pre-wrap"
+        class="sp-dialogue text-sm text-foreground/85 leading-relaxed wrap-break-word whitespace-pre-wrap"
       >
         {{ preview }}
       </div>
-      <div v-else class="text-sm text-muted-foreground/30 leading-relaxed">
+      <div v-else class="sp-dialogue text-sm text-muted-foreground/30 leading-relaxed">
         {{ t("flows.nodes.dialogue.dialogue_placeholder") }}
       </div>
     </div>
@@ -420,17 +421,48 @@ function onSpeakerSelect(id: number | string | null) {
 </template>
 
 <style scoped>
+/* Screenplay typography: Courier Prime everywhere on the dialogue node body
+ * (view + edit) and the header (speaker cue). screenplay.css is loaded
+ * globally; the .sp-* classes in the template inherit its italic/opacity
+ * but we override the absolute-pixel page indents (96-211px) — the canvas
+ * node is 280-350px wide, far smaller than an 816px screenplay page. */
+.dialogue :deep(.header) {
+  font-family: "Courier Prime", "Courier New", Courier, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* EntityCombobox's <button> resets text-transform: none in edit mode —
+ * force inherit so the speaker name stays uppercase. */
+.dialogue :deep(.header *) {
+  text-transform: inherit;
+}
+
+.dialogue-screenplay {
+  font-family: "Courier Prime", "Courier New", Courier, monospace;
+}
+
+/* Neutralise screenplay.css page-layout indents inside the canvas node. */
+.dialogue-screenplay :deep(.sp-parenthetical),
+.dialogue-screenplay .sp-parenthetical,
+.dialogue-screenplay :deep(.sp-dialogue),
+.dialogue-screenplay .sp-dialogue {
+  margin-left: 0;
+  max-width: none;
+  opacity: 1;
+}
+
 .inline-input {
   width: 100%;
   background: transparent;
   border: 0;
   border-bottom: 1px solid var(--color-border, #27272a);
+  font-family: "Courier Prime", "Courier New", Courier, monospace;
   font-style: italic;
   font-size: 12px;
   padding: 2px 0;
   margin-bottom: 4px;
   outline: none;
-  font-family: inherit;
   color: var(--color-muted-foreground, #a1a1aa);
 }
 
@@ -445,11 +477,11 @@ function onSpeakerSelect(id: number | string | null) {
   width: 100%;
   background: transparent;
   border: 0;
+  font-family: "Courier Prime", "Courier New", Courier, monospace;
   font-size: 14px;
   padding: 0;
   outline: none;
   line-height: 1.625;
-  font-family: inherit;
   color: var(--color-foreground, #fafafa);
   opacity: 0.85;
   white-space: pre-wrap;
