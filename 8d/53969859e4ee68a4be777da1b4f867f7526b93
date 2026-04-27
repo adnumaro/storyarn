@@ -1,0 +1,27 @@
+assets/app/modules/flows/components/toolbar-sections/DialogueToolbar.vue
+  eec4ca8d3188acea 13-16,35,42-52,74,85,97,103
+assets/app/test/modules/flows/components/toolbar-sections/DialogueToolbar.test.ts
+  eec4ca8d3188acea 1-120
+assets/app/modules/flows/nodes/DialogueNode.vue
+  eec4ca8d3188acea 20-25,32,36-52,72-76,92-116,118,125,127,136-139,153,178,186,253,262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "8d53969859e4ee68a4be777da1b4f867f7526b93",
+  "prompts": {
+    "eec4ca8d3188acea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59efd64a-8530-42a4-aa5a-63ef476125ed",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 209,
+      "total_deletions": 29,
+      "accepted_lines": 534,
+      "overriden_lines": 0
+    }
+  }
+}
