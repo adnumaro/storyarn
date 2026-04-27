@@ -1,0 +1,23 @@
+assets/app/modules/flows/nodes/DialogueAudioPreview.vue
+  eec4ca8d3188acea 2,13,15-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "c29b1a7aab11c3aa404424867d779659a8274499",
+  "prompts": {
+    "eec4ca8d3188acea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59efd64a-8530-42a4-aa5a-63ef476125ed",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 5,
+      "accepted_lines": 333,
+      "overriden_lines": 0
+    }
+  }
+}
