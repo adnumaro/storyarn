@@ -1,7 +1,10 @@
 <script setup lang="ts">
 /**
- * Screenplay editor for dialogue nodes.
- * Replaces the V1 LiveComponent with a Vue sidebar.
+ * Side panel for editing a dialogue flow_node.
+ *
+ * Vue port of V1's `lib/storyarn_web/live/flow_live/components/screenplay_editor.ex`
+ * LiveComponent (V1 also misnamed it — this panel has nothing to do with the
+ * Storyarn.Screenplays domain; it edits a `type="dialogue"` flow_node).
  *
  * Three tabs: Text, Responses, Settings.
  */
@@ -11,9 +14,8 @@ import StarterKit from "@tiptap/starter-kit";
 import { EditorContent, useEditor } from "@tiptap/vue-3";
 import { BookOpen, MessageSquare, Settings, X } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
-import ConditionBuilder from "@components/builders/ConditionBuilder.vue";
 import EntityCombobox from "@components/form-fields/EntityCombobox.vue";
-import InstructionBuilder from "@components/builders/InstructionBuilder.vue";
+import ExpressionEditor from "@components/ExpressionEditor.vue";
 import type { Assignment, ConditionData } from "@components/builders/types";
 import Sidebar from "@components/layout/Sidebar.vue";
 import { Button } from "@components/ui/button/index.ts";
@@ -27,7 +29,10 @@ import { useLive } from "@composables/useLive";
 interface NodeResponse {
   id: string | number;
   text: string;
-  condition?: ConditionData;
+  // The backend persists condition as a string (V1 contract: handler stores
+  // `value` verbatim, evaluator does `is_binary` guard). The ConditionBuilder
+  // takes a ConditionData object — we parse on read, stringify on push.
+  condition?: string | ConditionData | null;
   instruction_assignments?: Assignment[];
 }
 
@@ -40,7 +45,7 @@ interface DialogueNodeData {
   responses?: NodeResponse[];
 }
 
-interface ScreenplayNode {
+interface DialogueNodeShape {
   id: number | string;
   data: DialogueNodeData;
 }
@@ -58,7 +63,7 @@ const {
   projectVariables = [],
 } = defineProps<{
   open?: boolean;
-  node?: ScreenplayNode | null;
+  node?: DialogueNodeShape | null;
   canEdit?: boolean;
   allSheets?: SheetOption[];
   projectVariables?: Variable[] | string;
@@ -86,7 +91,7 @@ let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 const editor = useEditor({
   extensions: [
     StarterKit,
-    Placeholder.configure({ placeholder: t("flows.screenplay_editor.dialogue_placeholder") }),
+    Placeholder.configure({ placeholder: t("flows.dialogue_panel.dialogue_placeholder") }),
   ],
   editable: canEdit,
   content: nodeData.value.text || "",
@@ -143,22 +148,45 @@ function updateTechnicalId(e: Event): void {
   });
 }
 
-function addResponse() {
-  live.pushEvent("add_response", {});
+// Wire keys match the V1 backend handler pattern-match exactly:
+// `Dialogue.Node.handle_*_response` expect "response-id" / "node-id" /
+// "value" / "assignments". Hyphenated keys are required (LiveView matches
+// on string keys with hyphens). Don't switch to underscore.
+
+function addResponse(): void {
+  if (!node) return;
+  live.pushEvent("add_response", { "node-id": node.id });
 }
 
 function removeResponse(responseId: string | number): void {
-  live.pushEvent("remove_response", { response_id: responseId });
+  if (!node) return;
+  live.pushEvent("remove_response", {
+    "response-id": responseId,
+    "node-id": node.id,
+  });
 }
 
 function updateResponseText(responseId: string | number, text: string): void {
-  live.pushEvent("update_response_text", { response_id: responseId, text });
+  if (!node) return;
+  live.pushEvent("update_response_text", {
+    "response-id": responseId,
+    "node-id": node.id,
+    value: text,
+  });
 }
 
-function updateResponseCondition(responseId: string | number, condition: ConditionData): void {
+function updateResponseCondition(
+  responseId: string | number,
+  condition: ConditionData | null | undefined,
+): void {
+  if (!node) return;
+  // Backend stores condition as a string (or "" → nil). Stringify the
+  // builder's structured payload before pushing; clear with "".
+  const value = condition == null ? "" : JSON.stringify(condition);
   live.pushEvent("update_response_condition", {
-    response_id: responseId,
-    condition,
+    "response-id": responseId,
+    "node-id": node.id,
+    value,
   });
 }
 
@@ -166,10 +194,29 @@ function updateResponseAssignments(
   responseId: string | number,
   updatedAssignments: Assignment[],
 ): void {
-  live.pushEvent("update_response_assignments", {
-    response_id: responseId,
+  if (!node) return;
+  live.pushEvent("update_response_instruction_builder", {
+    "response-id": responseId,
+    "node-id": node.id,
     assignments: updatedAssignments,
   });
+}
+
+// Parse a condition string back into the object the builder consumes.
+// Tolerates: undefined, null, "", a stringified object, or an already-parsed
+// object (defensive — old data may still be in object form).
+function parseConditionForBuilder(
+  raw: string | ConditionData | null | undefined,
+): ConditionData | undefined {
+  if (raw == null || raw === "") return undefined;
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw) as ConditionData;
+    } catch {
+      return undefined;
+    }
+  }
+  return raw as ConditionData;
 }
 </script>
 
@@ -179,7 +226,7 @@ function updateResponseAssignments(
       <div class="flex items-center justify-between py-2.5">
         <div class="flex items-center gap-2 text-sm font-medium">
           <BookOpen class="size-4" />
-          {{ $t("flows.screenplay_editor.title") }}
+          {{ $t("flows.dialogue_panel.title") }}
         </div>
         <button
           type="button"
@@ -196,14 +243,14 @@ function updateResponseAssignments(
         <TabsList class="w-full">
           <TabsTrigger value="text" class="flex-1 gap-1 text-xs">
             <MessageSquare class="size-3.5" />
-            {{ $t("flows.screenplay_editor.tab_text") }}
+            {{ $t("flows.dialogue_panel.tab_text") }}
           </TabsTrigger>
           <TabsTrigger value="responses" class="flex-1 gap-1 text-xs">
-            {{ $t("flows.screenplay_editor.tab_responses") }}
+            {{ $t("flows.dialogue_panel.tab_responses") }}
           </TabsTrigger>
           <TabsTrigger value="settings" class="flex-1 gap-1 text-xs">
             <Settings class="size-3.5" />
-            {{ $t("flows.screenplay_editor.tab_settings") }}
+            {{ $t("flows.dialogue_panel.tab_settings") }}
           </TabsTrigger>
         </TabsList>
 
@@ -211,20 +258,20 @@ function updateResponseAssignments(
         <TabsContent value="text" class="space-y-3 mt-3">
           <!-- Speaker -->
           <EntityCombobox
-            :label="$t('flows.screenplay_editor.speaker')"
+            :label="$t('flows.dialogue_panel.speaker')"
             :options="speakerOptions"
             :selected-id="speakerId"
-            :placeholder="$t('flows.screenplay_editor.no_speaker')"
+            :placeholder="$t('flows.dialogue_panel.no_speaker')"
             :disabled="!canEdit"
             @update:selected-id="updateSpeaker"
           />
 
           <!-- Stage directions -->
           <div>
-            <Label class="text-xs">{{ $t("flows.screenplay_editor.stage_directions") }}</Label>
+            <Label class="text-xs">{{ $t("flows.dialogue_panel.stage_directions") }}</Label>
             <Input
               :model-value="nodeData.stage_directions || ''"
-              :placeholder="$t('flows.screenplay_editor.stage_directions_placeholder')"
+              :placeholder="$t('flows.dialogue_panel.stage_directions_placeholder')"
               class="mt-1 text-sm italic"
               :disabled="!canEdit"
               @blur="updateStageDirections"
@@ -233,7 +280,7 @@ function updateResponseAssignments(
 
           <!-- Dialogue text (TipTap) -->
           <div>
-            <Label class="text-xs">{{ $t("flows.screenplay_editor.dialogue") }}</Label>
+            <Label class="text-xs">{{ $t("flows.dialogue_panel.dialogue") }}</Label>
             <div
               class="mt-1 rounded-md border border-input bg-background p-3 min-h-[120px] prose prose-sm dark:prose-invert max-w-none"
             >
@@ -251,7 +298,7 @@ function updateResponseAssignments(
           >
             <div class="flex items-center justify-between">
               <span class="text-xs font-medium text-muted-foreground">{{
-                $t("flows.screenplay_editor.response")
+                $t("flows.dialogue_panel.response")
               }}</span>
               <button
                 v-if="canEdit"
@@ -259,26 +306,27 @@ function updateResponseAssignments(
                 class="text-xs text-destructive hover:text-destructive/80"
                 @click="removeResponse(resp.id)"
               >
-                {{ $t("flows.screenplay_editor.remove") }}
+                {{ $t("flows.dialogue_panel.remove") }}
               </button>
             </div>
             <Input
               :model-value="resp.text || ''"
-              :placeholder="$t('flows.screenplay_editor.response_placeholder')"
+              :placeholder="$t('flows.dialogue_panel.response_placeholder')"
               :disabled="!canEdit"
               @blur="
                 (e: FocusEvent) => updateResponseText(resp.id, (e.target as HTMLInputElement).value)
               "
             />
 
-            <!-- Condition (collapsible) -->
+            <!-- Condition (collapsible) — Builder | Code tabs -->
             <details v-if="canEdit" class="text-xs">
               <summary class="cursor-pointer text-muted-foreground hover:text-foreground">
-                {{ $t("flows.screenplay_editor.condition") }}
+                {{ $t("flows.dialogue_panel.condition") }}
               </summary>
               <div class="mt-2">
-                <ConditionBuilder
-                  :condition="resp.condition"
+                <ExpressionEditor
+                  mode="condition"
+                  :condition="parseConditionForBuilder(resp.condition)"
                   :variables="parsedVariables"
                   :disabled="!canEdit"
                   @update:condition="(c) => updateResponseCondition(resp.id, c)"
@@ -286,13 +334,14 @@ function updateResponseAssignments(
               </div>
             </details>
 
-            <!-- Instructions (collapsible) -->
+            <!-- Instructions (collapsible) — Builder | Code tabs -->
             <details v-if="canEdit" class="text-xs">
               <summary class="cursor-pointer text-muted-foreground hover:text-foreground">
-                {{ $t("flows.screenplay_editor.instructions") }}
+                {{ $t("flows.dialogue_panel.instructions") }}
               </summary>
               <div class="mt-2">
-                <InstructionBuilder
+                <ExpressionEditor
+                  mode="instruction"
                   :assignments="resp.instruction_assignments || []"
                   :variables="parsedVariables"
                   :disabled="!canEdit"
@@ -303,27 +352,27 @@ function updateResponseAssignments(
           </div>
 
           <Button v-if="canEdit" variant="outline" size="sm" class="w-full" @click="addResponse">
-            {{ $t("flows.screenplay_editor.add_response") }}
+            {{ $t("flows.dialogue_panel.add_response") }}
           </Button>
         </TabsContent>
 
         <!-- Settings Tab -->
         <TabsContent value="settings" class="space-y-3 mt-3">
           <div>
-            <Label class="text-xs">{{ $t("flows.screenplay_editor.menu_text") }}</Label>
+            <Label class="text-xs">{{ $t("flows.dialogue_panel.menu_text") }}</Label>
             <Input
               :model-value="nodeData.menu_text || ''"
-              :placeholder="$t('flows.screenplay_editor.menu_text_placeholder')"
+              :placeholder="$t('flows.dialogue_panel.menu_text_placeholder')"
               class="mt-1"
               :disabled="!canEdit"
               @blur="updateMenuText"
             />
           </div>
           <div>
-            <Label class="text-xs">{{ $t("flows.screenplay_editor.technical_id") }}</Label>
+            <Label class="text-xs">{{ $t("flows.dialogue_panel.technical_id") }}</Label>
             <Input
               :model-value="nodeData.technical_id || ''"
-              :placeholder="$t('flows.screenplay_editor.technical_id_placeholder')"
+              :placeholder="$t('flows.dialogue_panel.technical_id_placeholder')"
               class="mt-1 font-mono text-xs"
               :disabled="!canEdit"
               @blur="updateTechnicalId"
