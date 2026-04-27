@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MessageSquare } from "lucide-vue-next";
+import { MessageSquare, Volume2 } from "lucide-vue-next";
 import { Ref } from "rete-vue-plugin";
 import { computed, inject, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -15,7 +15,6 @@ import type {
   ReteNodeData,
   SheetMapEntry,
 } from "../types";
-import DialogueAudioPreview from "./DialogueAudioPreview.vue";
 
 /** Raw rete state shape (snake_case from server canvas serializer). The
  * canvas wire stays snake_case for now — F3 of the relational refactor
@@ -259,7 +258,11 @@ function onSpeakerSelect(id: number | string | null) {
 
     <!-- VIEW MODE HEADER -->
     <NodeHeader v-else :color="color" :icon="MessageSquare" :label="speakerName">
-      <DialogueAudioPreview :audio-asset-id="dialogue.audioAssetId" />
+      <Volume2
+        v-if="dialogue.audioAssetId"
+        class="ml-auto size-3.5 opacity-80"
+        :aria-label="t('flows.dialogue_toolbar.has_audio')"
+      />
     </NodeHeader>
 
     <!-- Visual strip: avatar (shared between modes) -->
