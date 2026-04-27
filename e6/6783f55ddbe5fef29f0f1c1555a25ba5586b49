@@ -1,0 +1,61 @@
+assets/app/locales/es/common.json
+  eec4ca8d3188acea 85-88,104-105
+assets/app/test/modules/flows/components/FlowDialoguePanel.test.ts
+  eec4ca8d3188acea 11-63
+assets/app/locales/en/flows.json
+  eec4ca8d3188acea 223-224
+lib/storyarn_web/live/flow_live/node_type_registry.ex
+  eec4ca8d3188acea 94-95
+test/storyarn_web/live/flow_live/nodes/dialogue_node_test.exs
+  eec4ca8d3188acea 335,338,341-343,348,355,359,364,366
+assets/app/locales/es/flows.json
+  eec4ca8d3188acea 223-224
+test/storyarn_web/live/flow_live/node_type_registry_test.exs
+  eec4ca8d3188acea 183
+assets/app/components/builders/ConditionBuilder.vue
+  eec4ca8d3188acea 240
+assets/app/test/components/builders/condition/ConditionRule.test.ts
+  eec4ca8d3188acea 1-138
+assets/app/test/components/builders/instruction/AssignmentRow.test.ts
+  eec4ca8d3188acea 1-148
+assets/app/locales/en/common.json
+  eec4ca8d3188acea 85-88,104-105
+assets/app/components/VariableCombobox.vue
+  eec4ca8d3188acea 10,39,54-58,66-84,103-110,137,154,165-173
+assets/app/components/builders/instruction/AssignmentRow.vue
+  eec4ca8d3188acea 8,149-167,170-171,174,177-178,181,184-187,261,267,272,278,283,290,295,300,305,310
+lib/storyarn_web/live/flow_live/nodes/dialogue/node.ex
+  eec4ca8d3188acea 65-66,199,205,223
+lib/storyarn_web/live/flow_live/show.ex
+  eec4ca8d3188acea 230,232,234-235,843-844
+assets/app/components/builders/condition/ConditionRule.vue
+  eec4ca8d3188acea 9,85-90,93-94,99,107-111,117,120-124,136,141,146,150,160,165,170
+assets/app/components/builders/condition/ConditionGroup.vue
+  eec4ca8d3188acea 106
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  eec4ca8d3188acea 184,314,335
+assets/app/modules/flows/components/toolbar-sections/DialogueToolbar.vue
+  eec4ca8d3188acea 47-48,98
+assets/app/modules/flows/services/keyboard.ts
+  eec4ca8d3188acea 100,106,161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "e66783f55ddbe5fef29f0f1c1555a25ba5586b49",
+  "prompts": {
+    "eec4ca8d3188acea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59efd64a-8530-42a4-aa5a-63ef476125ed",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 1600,
+      "total_deletions": 173,
+      "accepted_lines": 1199,
+      "overriden_lines": 23
+    }
+  }
+}
