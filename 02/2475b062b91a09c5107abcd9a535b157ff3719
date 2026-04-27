@@ -1,0 +1,33 @@
+assets/app/modules/flows/components/FlowDialoguePanel.vue
+  eec4ca8d3188acea 40,46-51,54-56,58-59,62-79,84,88,96-101,105,107,109,111,115,120-121,134,138-139,141,148,150,206,242-243,247,250,255,258,267,273,282,285,326,358,370,415,430-431,449,467,481,504,511
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  eec4ca8d3188acea 258-309
+lib/storyarn_web/live/flow_live/nodes/dialogue/node.ex
+  eec4ca8d3188acea 220-233
+assets/app/test/modules/flows/components/FlowDialoguePanel.test.ts
+  eec4ca8d3188acea 14-40,42-43,46,50,60,63-64,163-172,178-187,201,215-216,240-241,249,252-254,258,262,265-271
+lib/storyarn_web/live/flow_live/helpers/node_helpers.ex
+  eec4ca8d3188acea 62,369-388
+lib/storyarn_web/live/flow_live/show.ex
+  eec4ca8d3188acea 230-231,237,339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "022475b062b91a09c5107abcd9a535b157ff3719",
+  "prompts": {
+    "eec4ca8d3188acea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59efd64a-8530-42a4-aa5a-63ef476125ed",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 288,
+      "total_deletions": 257,
+      "accepted_lines": 564,
+      "overriden_lines": 35
+    }
+  }
+}
