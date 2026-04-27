@@ -236,6 +236,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         node={@selected_node && %{id: @selected_node.id, data: @selected_node.data}}
         can-edit={@can_edit}
         all-sheets={Enum.map(@all_sheets, &%{id: &1.id, name: &1.name})}
+        audio-assets={@dialogue_audio_assets}
         project-variables={Jason.encode!(@project_variables)}
       />
 
@@ -337,6 +338,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:versions_panel_open, false)
       |> assign(:history_data, nil)
       |> assign(:all_sheets, [])
+      |> assign(:dialogue_audio_assets, [])
       |> assign(:gallery_by_sheet, %{})
       |> assign(:flow_hubs, [])
       |> assign(:available_flows, [])

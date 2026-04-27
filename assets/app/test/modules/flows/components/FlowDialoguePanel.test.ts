@@ -55,6 +55,11 @@ function mountIt(overrides: Partial<{ node: NodeFixture; canEdit: boolean }> = {
         // visible at once so we can probe ConditionBuilder / InstructionBuilder
         // / "Add response" without juggling tab activation + nextTick.
         TabsContent: { template: "<div><slot /></div>" },
+        // AudioAsset uses reka-ui Popover/Command which reach for
+        // ResizeObserver (not defined in jsdom). The dialogue tests only
+        // care about wire-format (which AudioAsset events trigger via
+        // emits), so a passthrough stub keeps the surface alive.
+        AudioAsset: { name: "AudioAsset", template: "<div data-stub='audio-asset' />" },
       },
     },
   });
@@ -205,5 +210,95 @@ describe("FlowDialoguePanel — response wire-format (V1 contract)", () => {
     const modes = expressionEditors.map((c) => c.props("mode"));
     expect(modes).toContain("condition");
     expect(modes).toContain("instruction");
+  });
+
+  // -- Phase 2: Settings tab parity (audio picker / generate-id /
+  // localization copy / footer word count + audio attached label) --
+
+  it("generate_technical_id button pushes the bare event (no params)", async () => {
+    const w = mountIt();
+    const btn = w
+      .findAll("button")
+      .find((b) => /generate technical id|generar id técnico/i.test(b.attributes("title") || ""));
+    expect(btn).toBeDefined();
+    await btn!.trigger("click");
+    expect(mockLive.pushEvent).toHaveBeenCalledWith("generate_technical_id", {});
+  });
+
+  it("audio select / clear push update_node_field with audio_asset_id", async () => {
+    const audioAssets = [{ id: 7, filename: "scream.mp3", url: "/x.mp3" }];
+    const node: NodeFixture = {
+      id: 36,
+      data: { audio_asset_id: 7, responses: [] },
+    };
+    const w = mountIt({ node });
+    // Override audioAssets via props update
+    await w.setProps({ audioAssets });
+
+    const audioComponent = w.findComponent({ name: "AudioAsset" });
+    expect(audioComponent.exists()).toBe(true);
+    audioComponent.vm.$emit("select", audioAssets[0]);
+    expect(mockLive.pushEvent).toHaveBeenCalledWith("update_node_field", {
+      field: "audio_asset_id",
+      value: 7,
+    });
+
+    audioComponent.vm.$emit("clear");
+    expect(mockLive.pushEvent).toHaveBeenCalledWith("update_node_field", {
+      field: "audio_asset_id",
+      value: null,
+    });
+  });
+
+  it("localization id copy button only renders when value is non-empty", () => {
+    // No localization_id → no copy button
+    const empty = mountIt();
+    const noCopy = empty
+      .findAll("button")
+      .find((b) => /copy to clipboard|copiar al portapapeles/i.test(b.attributes("title") || ""));
+    expect(noCopy).toBeUndefined();
+
+    // With localization_id → copy button shows
+    const node: NodeFixture = {
+      id: 36,
+      data: {
+        localization_id: "dialogue.abc123",
+        responses: [],
+      },
+    };
+    const withId = mountIt({ node });
+    const copyBtn = withId
+      .findAll("button")
+      .find((b) => /copy to clipboard|copiar al portapapeles/i.test(b.attributes("title") || ""));
+    expect(copyBtn).toBeDefined();
+  });
+
+  it("footer renders pluralised word count (1 word vs N words)", () => {
+    // 0 / 1 / 2+ word case via the dialogue text + responses combined
+    const oneWord: NodeFixture = {
+      id: 36,
+      data: { text: "<p>Hi</p>", responses: [] },
+    };
+    const w1 = mountIt({ node: oneWord });
+    expect(w1.text()).toContain("1 word");
+
+    const manyWords: NodeFixture = {
+      id: 36,
+      data: { text: "<p>The quick brown fox jumps</p>", responses: [] },
+    };
+    const w5 = mountIt({ node: manyWords });
+    expect(w5.text()).toContain("5 words");
+  });
+
+  it("footer shows 'Audio attached' label only when audio_asset_id is set", () => {
+    const noAudio = mountIt();
+    expect(noAudio.text()).not.toContain("Audio attached");
+
+    const node: NodeFixture = {
+      id: 36,
+      data: { audio_asset_id: 7, responses: [] },
+    };
+    const withAudio = mountIt({ node });
+    expect(withAudio.text()).toContain("Audio attached");
   });
 });

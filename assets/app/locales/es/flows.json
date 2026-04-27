@@ -240,6 +240,17 @@
       "menu_text_placeholder": "Texto breve para menús...",
       "technical_id": "ID técnico",
       "technical_id_placeholder": "autogenerado",
+      "generate_technical_id": "Generar ID técnico",
+      "localization_id": "ID de localización",
+      "localization_id_placeholder": "Clave de localización autogenerada",
+      "copy_localization_id": "Copiar al portapapeles",
+      "copied": "Copiado",
+      "audio": "Audio",
+      "pick_audio": "Selecciona un audio",
+      "search_audio": "Buscar audio...",
+      "clear_audio": "Quitar audio",
+      "audio_attached": "Audio adjunto",
+      "word_count": "{count} palabra | {count} palabras",
       "response_placeholder": "Texto de respuesta..."
     },
     "version_history": {

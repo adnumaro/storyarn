@@ -12,8 +12,19 @@
 import Placeholder from "@tiptap/extension-placeholder";
 import StarterKit from "@tiptap/starter-kit";
 import { EditorContent, useEditor } from "@tiptap/vue-3";
-import { BookOpen, MessageSquare, Settings, X } from "lucide-vue-next";
+import {
+  BookOpen,
+  Check,
+  Copy,
+  FileText,
+  MessageSquare,
+  RefreshCw,
+  Settings,
+  Volume2,
+  X,
+} from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
+import AudioAsset from "@components/assets/AudioAsset.vue";
 import EntityCombobox from "@components/form-fields/EntityCombobox.vue";
 import ExpressionEditor from "@components/ExpressionEditor.vue";
 import type { Assignment, ConditionData } from "@components/builders/types";
@@ -25,6 +36,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs/in
 import type { Variable } from "@modules/shared/variables";
 import { useI18n } from "vue-i18n";
 import { useLive } from "@composables/useLive";
+
+interface AudioAssetItem {
+  id: number | string;
+  filename: string;
+  url?: string | null;
+}
 
 interface NodeResponse {
   id: string | number;
@@ -42,6 +59,8 @@ interface DialogueNodeData {
   stage_directions?: string;
   menu_text?: string;
   technical_id?: string;
+  localization_id?: string;
+  audio_asset_id?: number | string | null;
   responses?: NodeResponse[];
 }
 
@@ -60,12 +79,14 @@ const {
   node = null,
   canEdit = false,
   allSheets = [],
+  audioAssets = [],
   projectVariables = [],
 } = defineProps<{
   open?: boolean;
   node?: DialogueNodeShape | null;
   canEdit?: boolean;
   allSheets?: SheetOption[];
+  audioAssets?: AudioAssetItem[];
   projectVariables?: Variable[] | string;
 }>();
 
@@ -85,6 +106,28 @@ const nodeData = computed<DialogueNodeData>(() => node?.data || {});
 const speakerId = computed<number | string | null>(() => nodeData.value.speaker_sheet_id || null);
 const speakerOptions = computed(() => allSheets.map((s) => ({ id: s.id, name: s.name })));
 const responses = computed<NodeResponse[]>(() => nodeData.value.responses || []);
+const speakerName = computed<string>(() => {
+  const id = speakerId.value;
+  if (id == null) return "";
+  return allSheets.find((s) => String(s.id) === String(id))?.name ?? "";
+});
+const audioAssetId = computed<number | string | null>(() => nodeData.value.audio_asset_id ?? null);
+const hasAudio = computed<boolean>(() => audioAssetId.value != null);
+
+/** Word count over plain text + stage_directions + menu_text + response texts.
+ * Strips HTML for the rich-text body. Mirrors V1's `WordCount.for_node_data`. */
+const wordCount = computed<number>(() => {
+  const parts: string[] = [];
+  const html = nodeData.value.text || "";
+  if (html) {
+    const stripped = html.replace(/<[^>]+>/g, " ");
+    parts.push(stripped);
+  }
+  if (nodeData.value.stage_directions) parts.push(nodeData.value.stage_directions);
+  if (nodeData.value.menu_text) parts.push(nodeData.value.menu_text);
+  for (const r of responses.value) if (r.text) parts.push(r.text);
+  return parts.join(" ").trim().split(/\s+/).filter(Boolean).length;
+});
 
 // TipTap editor for dialogue text
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
@@ -145,6 +188,52 @@ function updateTechnicalId(e: Event): void {
   live.pushEvent("update_node_field", {
     field: "technical_id",
     value: (e.target as HTMLInputElement).value,
+  });
+}
+
+function updateLocalizationId(e: Event): void {
+  live.pushEvent("update_node_field", {
+    field: "localization_id",
+    value: (e.target as HTMLInputElement).value,
+  });
+}
+
+function generateTechnicalId(): void {
+  // V1 wire: empty params, server resolves from selected_node.
+  live.pushEvent("generate_technical_id", {});
+}
+
+// "Copied" feedback timer — resets to false 1.5s after copy.
+const localizationJustCopied = ref(false);
+let copiedResetTimer: ReturnType<typeof setTimeout> | undefined;
+async function copyLocalizationId(): Promise<void> {
+  const value = nodeData.value.localization_id;
+  if (!value) return;
+  try {
+    await navigator.clipboard.writeText(value);
+    localizationJustCopied.value = true;
+    if (copiedResetTimer) clearTimeout(copiedResetTimer);
+    copiedResetTimer = setTimeout(() => {
+      localizationJustCopied.value = false;
+    }, 1500);
+  } catch {
+    // Clipboard API unavailable (insecure origin / older browser); silent.
+  }
+}
+
+// D2 from REFACTOR.md §10: drop the V1 :audio_picker PubSub, route through
+// update_node_field. Mirrors how FlowSequenceConfigPanel writes background_asset_id.
+function selectAudio(asset: AudioAssetItem): void {
+  live.pushEvent("update_node_field", {
+    field: "audio_asset_id",
+    value: asset.id,
+  });
+}
+
+function clearAudio(): void {
+  live.pushEvent("update_node_field", {
+    field: "audio_asset_id",
+    value: null,
   });
 }
 
@@ -368,18 +457,101 @@ function parseConditionForBuilder(
               @blur="updateMenuText"
             />
           </div>
+
+          <!-- Audio asset (V1 had AudioPicker LiveComponent here; D2 routes
+               via update_node_field, mirroring sequence config). Reuses the
+               shared AudioAsset component. -->
+          <div>
+            <Label class="text-xs">{{ $t("flows.dialogue_panel.audio") }}</Label>
+            <AudioAsset
+              class="mt-1"
+              :label="$t('flows.dialogue_panel.audio')"
+              :icon="Volume2"
+              :asset-id="audioAssetId"
+              :audio-assets="audioAssets"
+              :can-edit="canEdit"
+              :pick-placeholder="$t('flows.dialogue_panel.pick_audio')"
+              :search-placeholder="$t('flows.dialogue_panel.search_audio')"
+              :clear-title="$t('flows.dialogue_panel.clear_audio')"
+              @select="selectAudio"
+              @clear="clearAudio"
+            />
+          </div>
+
           <div>
             <Label class="text-xs">{{ $t("flows.dialogue_panel.technical_id") }}</Label>
-            <Input
-              :model-value="nodeData.technical_id || ''"
-              :placeholder="$t('flows.dialogue_panel.technical_id_placeholder')"
-              class="mt-1 font-mono text-xs"
-              :disabled="!canEdit"
-              @blur="updateTechnicalId"
-            />
+            <div class="flex items-center gap-1 mt-1">
+              <Input
+                :model-value="nodeData.technical_id || ''"
+                :placeholder="$t('flows.dialogue_panel.technical_id_placeholder')"
+                class="font-mono text-xs flex-1"
+                :disabled="!canEdit"
+                @blur="updateTechnicalId"
+              />
+              <Button
+                v-if="canEdit"
+                variant="ghost"
+                size="icon"
+                class="size-8 shrink-0"
+                :title="$t('flows.dialogue_panel.generate_technical_id')"
+                @click="generateTechnicalId"
+              >
+                <RefreshCw class="size-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          <div>
+            <Label class="text-xs">{{ $t("flows.dialogue_panel.localization_id") }}</Label>
+            <div class="flex items-center gap-1 mt-1">
+              <Input
+                :model-value="nodeData.localization_id || ''"
+                :placeholder="$t('flows.dialogue_panel.localization_id_placeholder')"
+                class="font-mono text-xs flex-1"
+                :disabled="!canEdit"
+                @blur="updateLocalizationId"
+              />
+              <Button
+                v-if="nodeData.localization_id"
+                variant="ghost"
+                size="icon"
+                class="size-8 shrink-0"
+                :title="
+                  localizationJustCopied
+                    ? $t('flows.dialogue_panel.copied')
+                    : $t('flows.dialogue_panel.copy_localization_id')
+                "
+                @click="copyLocalizationId"
+              >
+                <Check v-if="localizationJustCopied" class="size-3.5 text-emerald-500" />
+                <Copy v-else class="size-3.5" />
+              </Button>
+            </div>
           </div>
         </TabsContent>
       </Tabs>
     </div>
+
+    <!-- Footer (V1 parity: speaker · word count · audio attached). Lives
+         outside the Tabs so it's visible on every tab. The Sidebar primitive
+         already owns padding + border-top + `flex justify-end` on the slot
+         wrapper — we add `flex-1 justify-start` to override the default
+         right alignment for status content. -->
+    <template #footer>
+      <div class="flex-1 flex items-center gap-3 text-xs text-muted-foreground">
+        <span v-if="speakerName" class="flex items-center gap-1 truncate">
+          <MessageSquare class="size-3 shrink-0" />
+          <span class="truncate">{{ speakerName }}</span>
+        </span>
+        <span class="flex items-center gap-1">
+          <FileText class="size-3" />
+          {{ $t("flows.dialogue_panel.word_count", { count: wordCount }, wordCount) }}
+        </span>
+        <span v-if="hasAudio" class="flex items-center gap-1">
+          <Volume2 class="size-3" />
+          {{ $t("flows.dialogue_panel.audio_attached") }}
+        </span>
+      </div>
+    </template>
   </Sidebar>
 </template>
