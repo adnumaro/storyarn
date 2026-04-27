@@ -38,6 +38,11 @@ export function keyboard(hook: HookProxy, lockHandler: LocksHandler | null): Key
       ctx.editingNodeId = reteNodeId;
     }
     hook._inlineEditingNodeId = reteNodeId;
+    // The edit-mode body is taller than the view-mode body (extra inputs +
+    // inline editor). Rete's wrapper height is fixed at mount; without an
+    // explicit re-measure the inner node overflows the wrapper. syncNodeSize
+    // reads the rendered .node element and calls area.resize.
+    void hook.syncNodeSize(reteNodeId);
   }
 
   function exitInlineEdit(): void {
@@ -45,10 +50,11 @@ export function keyboard(hook: HookProxy, lockHandler: LocksHandler | null): Key
     if (!ctx?.editingNodeId) {
       return;
     }
-    const nodeView = hook.area?.nodeViews.get(ctx.editingNodeId);
+    const editingId = ctx.editingNodeId;
+    const nodeView = hook.area?.nodeViews.get(editingId);
     if (nodeView) {
       const focused = nodeView.element.querySelector(
-        "textarea:focus, input:focus",
+        'textarea:focus, input:focus, [contenteditable="true"]:focus',
       ) as HTMLElement | null;
       if (focused) {
         focused.blur();
@@ -56,6 +62,9 @@ export function keyboard(hook: HookProxy, lockHandler: LocksHandler | null): Key
     }
     ctx.editingNodeId = null;
     hook._inlineEditingNodeId = null;
+    // Mirror the resize on exit so the wrapper shrinks back to the
+    // (smaller) view-mode height.
+    void hook.syncNodeSize(editingId);
   }
 
   function handleNavigation(e: KeyboardEvent): boolean {

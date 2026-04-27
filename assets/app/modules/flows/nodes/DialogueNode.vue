@@ -1,12 +1,14 @@
 <script setup lang="ts">
+import { EditorContent } from "@tiptap/vue-3";
 import { MessageSquare, Volume2 } from "lucide-vue-next";
 import { Ref } from "rete-vue-plugin";
-import { computed, inject, nextTick, ref, watch } from "vue";
+import { computed, inject, nextTick, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import EntityCombobox from "@components/form-fields/EntityCombobox.vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
-import { previewText, stripHtml } from "../lib/render-helpers";
+import { useScreenplayEditor } from "../composables/useScreenplayEditor";
+import { previewText } from "../lib/render-helpers";
 import { FLOW_CONTEXT_KEY } from "../setup";
 import type { NodeConfig } from "../lib/node-configs";
 import type {
@@ -84,7 +86,6 @@ const ctx = inject<FlowContextInjection>(FLOW_CONTEXT_KEY, {
   lod: "full",
   nodeDataVersion: 0,
 });
-const dialogueRef = ref<HTMLTextAreaElement | null>(null);
 
 const editing = computed(() => ctx.editingNodeId === data.id);
 
@@ -135,15 +136,10 @@ const defaultAvatarUrl = computed(() => speaker.value?.avatar_url || null);
 const stageDirections = computed(() => dialogue.value.stageDirections);
 const menuText = computed(() => dialogue.value.menuText);
 const preview = computed(() => previewText(dialogue.value.text));
-const plainText = computed(() => stripHtml(dialogue.value.text));
-const hasTextContent = computed(() => stageDirections.value || menuText.value || preview.value);
 
 // Visual strip: override avatar, default avatar, colored bg, or nothing
 const hasVisual = computed(
   () => overrideAvatarUrl.value || defaultAvatarUrl.value || speaker.value,
-);
-const hasContent = computed(
-  () => hasTextContent.value || hasVisual.value || responses.value.length > 0,
 );
 
 // Sockets
@@ -157,12 +153,50 @@ const speakerOptions = computed(() => {
   return Object.values(map);
 });
 
-// Autofocus dialogue textarea when entering edit mode
+let saveDebounce: ReturnType<typeof setTimeout> | undefined;
+const inlineEditor = useScreenplayEditor({
+  content: dialogue.value.text,
+  placeholder: t("flows.nodes.dialogue.dialogue_placeholder"),
+  editable: editing.value,
+  onUpdate: (ed) => {
+    clearTimeout(saveDebounce);
+    saveDebounce = setTimeout(() => {
+      const html = ed.isEmpty ? "" : ed.getHTML();
+      if (html !== dialogue.value.text) save("text", html);
+    }, 500);
+  },
+  onBlur: (ed) => {
+    clearTimeout(saveDebounce);
+    const html = ed.isEmpty ? "" : ed.getHTML();
+    if (html !== dialogue.value.text) save("text", html);
+  },
+});
+
+// Toggle editable + autofocus on edit-mode enter; blur (and cancel pending
+// save) on exit so the node returns to view-mode without a trailing push.
 watch(editing, (val) => {
+  const ed = inlineEditor.value;
+  if (!ed) return;
+  ed.setEditable(val);
   if (val) {
-    nextTick(() => dialogueRef.value?.focus());
+    nextTick(() => ed.commands.focus("end"));
+  } else {
+    clearTimeout(saveDebounce);
   }
 });
+
+// Sync editor content when the server pushes a new value (collab refresh /
+// undo / external write). emitUpdate:false to avoid the onUpdate save loop.
+watch(
+  () => dialogue.value.text,
+  (newText) => {
+    const ed = inlineEditor.value;
+    if (!ed) return;
+    if ((newText || "") !== ed.getHTML()) {
+      ed.commands.setContent(newText || "", { emitUpdate: false });
+    }
+  },
+);
 
 function formatOutputLabel(key: string): string {
   const resp = responses.value.find((r) => r.id === key);
@@ -205,25 +239,9 @@ function onMenuTextBlur(e: FocusEvent) {
   if (val !== menuText.value) save("menu_text", val);
 }
 
-function onDialogueBlur(e: FocusEvent) {
-  const val = (e.target as HTMLTextAreaElement).value.trim();
-  if (val !== plainText.value) save("text", val);
-}
-
 function onInputKeydown(e: KeyboardEvent) {
   e.stopPropagation();
   if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-}
-
-function onTextareaKeydown(e: KeyboardEvent) {
-  e.stopPropagation();
-  if (e.key === "Escape") (e.target as HTMLTextAreaElement).blur();
-}
-
-function autoResize(e: Event) {
-  const target = e.target as HTMLTextAreaElement;
-  target.style.height = "auto";
-  target.style.height = `${target.scrollHeight}px`;
 }
 
 function onSpeakerSelect(id: number | string | null) {
@@ -235,7 +253,7 @@ function onSpeakerSelect(id: number | string | null) {
   <NodeShell
     :color="color"
     :selected="data.selected"
-    :extra-class="hasContent || editing ? 'dialogue min-w-[280px] max-w-[350px]' : 'dialogue'"
+    extra-class="dialogue min-w-[280px] max-w-[350px]"
   >
     <!-- EDIT MODE HEADER: speaker combobox -->
     <template v-if="editing">
@@ -305,28 +323,32 @@ function onSpeakerSelect(id: number | string | null) {
         @keydown="onInputKeydown"
         @pointerdown.stop
       />
-      <textarea
-        ref="dialogueRef"
-        class="inline-textarea"
-        :placeholder="t('flows.nodes.dialogue.dialogue_placeholder')"
-        :value="plainText"
-        @blur="onDialogueBlur"
-        @keydown="onTextareaKeydown"
-        @input="autoResize"
+      <EditorContent
+        :editor="inlineEditor"
+        class="inline-editor"
+        @keydown.stop
         @pointerdown.stop
       />
     </div>
 
-    <!-- VIEW MODE BODY -->
-    <div v-else-if="hasTextContent" class="px-3.5 pt-2.5 pb-3">
+    <!-- VIEW MODE BODY: 3-row stack — value when present, muted placeholder
+         otherwise. Mirrors edit-mode field structure so users can see what's
+         editable. -->
+    <div v-else class="px-3.5 pt-2.5 pb-3">
       <div
         v-if="stageDirections"
         class="italic text-muted-foreground/55 text-xs mb-1 wrap-break-word"
       >
         {{ stageDirections }}
       </div>
+      <div v-else class="italic text-muted-foreground/30 text-xs mb-1">
+        {{ t("flows.nodes.dialogue.stage_placeholder") }}
+      </div>
       <div v-if="menuText" class="text-xs text-primary/70 font-medium mb-1 wrap-break-word">
         ≡ {{ menuText }}
+      </div>
+      <div v-else class="text-xs text-primary/30 font-medium mb-1">
+        ≡ {{ t("flows.nodes.dialogue.menu_placeholder") }}
       </div>
       <div
         v-if="preview"
@@ -334,11 +356,9 @@ function onSpeakerSelect(id: number | string | null) {
       >
         {{ preview }}
       </div>
-    </div>
-
-    <!-- EMPTY STATE HINT -->
-    <div v-else-if="!hasContent" class="px-3.5 pt-2.5 pb-3 text-xs italic text-muted-foreground/50">
-      {{ t("flows.nodes.dialogue.empty_hint") }}
+      <div v-else class="text-sm text-muted-foreground/30 leading-relaxed">
+        {{ t("flows.nodes.dialogue.dialogue_placeholder") }}
+      </div>
     </div>
 
     <!-- Sockets with response labels and badges -->
@@ -421,18 +441,30 @@ function onSpeakerSelect(id: number | string | null) {
   opacity: 0.7;
 }
 
-.inline-textarea {
+.inline-editor :deep(.tiptap) {
   width: 100%;
   background: transparent;
   border: 0;
   font-size: 14px;
   padding: 0;
-  resize: none;
   outline: none;
   line-height: 1.625;
-  overflow: hidden;
   font-family: inherit;
   color: var(--color-foreground, #fafafa);
   opacity: 0.85;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.inline-editor :deep(.tiptap p) {
+  margin: 0;
+}
+
+.inline-editor :deep(.tiptap p.is-editor-empty:first-child::before) {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--color-muted-foreground, #a1a1aa);
+  pointer-events: none;
+  height: 0;
 }
 </style>

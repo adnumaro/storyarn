@@ -316,7 +316,6 @@
         "menu_placeholder": "Menu text…",
         "dialogue_placeholder": "Dialogue text…",
         "empty_response": "Empty response text",
-        "empty_hint": "Double-click to edit",
         "type_mismatch": "Type mismatch",
         "has_condition": "Has condition",
         "has_instructions": "Has instructions"

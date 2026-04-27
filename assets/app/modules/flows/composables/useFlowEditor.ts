@@ -336,6 +336,9 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
       return;
     }
     ctx.editingNodeId = reteNodeId;
+    // Edit-mode body is taller than view-mode (inputs + inline editor).
+    // Re-measure so rete's wrapper height matches the rendered node.
+    void syncNodeSize(reteNodeId);
   }
 
   function exitInlineEdit(): void {
@@ -344,11 +347,14 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
       return;
     }
 
-    // Blur active input/textarea inside the node so blur handlers fire and save
-    const nodeView = _area?.nodeViews.get(ctx.editingNodeId);
+    const editingId = ctx.editingNodeId;
+    // Blur active input/textarea/contenteditable inside the node so blur
+    // handlers fire and save. Contenteditable covers the TipTap inline editor
+    // — its onBlur handler is what commits the dialogue text on Esc.
+    const nodeView = _area?.nodeViews.get(editingId);
     if (nodeView) {
       const focused = nodeView.element.querySelector(
-        "textarea:focus, input:focus",
+        'textarea:focus, input:focus, [contenteditable="true"]:focus',
       ) as HTMLElement | null;
       if (focused) {
         focused.blur();
@@ -356,6 +362,7 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     }
 
     ctx.editingNodeId = null;
+    void syncNodeSize(editingId);
   }
 
   function handleInlineEditSave(reteNodeId: string, field: string, value: unknown): void {
@@ -368,17 +375,10 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
       node.nodeData = { ...node.nodeData, text: value as string };
       pushEvent("update_node_field", { field: "text", value: value as string });
     } else if (field === "text") {
-      // Dialogue: wrap plain text in <p> tags for rich text storage
-      const escaped = (value as string)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-      const content = escaped
-        ? escaped
-            .split("\n")
-            .map((line: string) => `<p>${line || "<br>"}</p>`)
-            .join("")
-        : "";
+      // Dialogue inline editor (TipTap, screenplay-format) emits HTML
+      // directly. Persist through `update_node_text` — same wire as the
+      // sidebar editor in FlowDialoguePanel.
+      const content = value as string;
       node.nodeData = { ...node.nodeData, text: content };
       pushEvent("update_node_text", { id: node.nodeId, content });
     } else if (field === "speaker_sheet_id") {
