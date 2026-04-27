@@ -5,7 +5,7 @@
  */
 
 import { ArrowLeftRight, X } from "lucide-vue-next";
-import { computed, ref } from "vue";
+import { computed, nextTick, ref } from "vue";
 import {
   ALL_OPERATORS,
   expandTemplateForVariableRef,
@@ -146,16 +146,45 @@ function applyVariableChange(updated: Assignment, value: string | null): void {
   updated.value_sheet = null;
 }
 
+// Auto-advance focus chain (mirrors V1 assignment_row.js). Slot comboboxes
+// live inside `<template v-for>` + each slot is a v-if/v-else-if chain that
+// swaps which combobox mounts depending on `value_type` / `isFreeTextValue`.
+// Native `useTemplateRef` collapses these into arrays-of-one and reactively
+// re-binds in subtle ways. Function refs by slot-key give us a stable
+// {key → instance} map that's straightforward to read in update().
+type ComboboxApi = { focus: () => void };
+const slotRefs: Record<string, ComboboxApi | null> = {
+  variable: null,
+  value_sheet: null,
+  value: null,
+};
+
+function bindSlotRef(key: keyof typeof slotRefs) {
+  return (el: unknown) => {
+    slotRefs[key] = (el as ComboboxApi | null) ?? null;
+  };
+}
+
 function update(field: string, value: string | null) {
   const updated = { ...assignment, [field]: value };
+  let nextFocus: ComboboxApi | null = null;
+
   if (field === "sheet") {
     applySheetChange(updated);
+    nextFocus = slotRefs.variable;
   } else if (field === "variable") {
     applyVariableChange(updated, value);
+    nextFocus =
+      updated.value_type === "variable_ref" ? slotRefs.value_sheet : slotRefs.value;
   } else if (field === "value_sheet") {
     updated.value = null;
+    nextFocus = slotRefs.value;
   }
   emit("update:assignment", updated);
+  if (nextFocus) {
+    const target = nextFocus;
+    nextTick(() => target.focus());
+  }
 }
 
 function changeOperator(op: InstructionOperator) {
@@ -229,46 +258,56 @@ function toggleValueType() {
           :options="sheetOptions"
           :placeholder="item.placeholder"
           :disabled="disabled"
+          :empty-text="$t('common.condition_builder.empty_sheets')"
           @update:model-value="(v) => update('sheet', v)"
         />
 
         <VariableCombobox
           v-else-if="item.type === 'slot' && item.key === 'variable'"
+          :ref="bindSlotRef('variable')"
           :model-value="assignment.variable || ''"
           :groups="variableGroups"
           :placeholder="item.placeholder"
           :disabled="disabled || !assignment.sheet"
+          :empty-text="$t('common.condition_builder.empty_variables')"
           @update:model-value="(v) => update('variable', v)"
         />
 
         <VariableCombobox
           v-else-if="item.type === 'slot' && item.key === 'value_sheet'"
+          :ref="bindSlotRef('value_sheet')"
           :model-value="assignment.value_sheet || ''"
           :options="valueSheetOptions"
           :placeholder="item.placeholder"
           :disabled="disabled || !assignment.variable"
+          :empty-text="$t('common.condition_builder.empty_sheets')"
           @update:model-value="(v) => update('value_sheet', v)"
         />
 
         <template v-else-if="item.type === 'slot' && item.key === 'value'">
           <VariableCombobox
             v-if="assignment.value_type === 'variable_ref'"
+            :ref="bindSlotRef('value')"
             :model-value="assignment.value || ''"
             :options="valueOptions"
             :placeholder="item.placeholder"
             :disabled="disabled || !assignment.value_sheet"
+            :empty-text="$t('common.condition_builder.empty_variables')"
             @update:model-value="(v) => update('value', v)"
           />
           <VariableCombobox
             v-else-if="!isFreeTextValue"
+            :ref="bindSlotRef('value')"
             :model-value="assignment.value || ''"
             :options="valueOptions"
             :placeholder="item.placeholder"
             :disabled="disabled || !assignment.variable"
+            :empty-text="$t('common.condition_builder.empty_values')"
             @update:model-value="(v) => update('value', v)"
           />
           <VariableCombobox
             v-else
+            :ref="bindSlotRef('value')"
             :model-value="assignment.value || ''"
             :placeholder="item.placeholder"
             :disabled="

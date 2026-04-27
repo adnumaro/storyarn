@@ -180,7 +180,7 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistryTest do
         node = %{type: unquote(type), data: data}
         result = NodeTypeRegistry.on_double_click(unquote(type), node)
 
-        assert result in [:toolbar, :editor, :builder] or match?({:navigate, _}, result),
+        assert result in [:toolbar, :dialogue_panel, :builder] or match?({:navigate, _}, result),
                "Unexpected result for #{unquote(type)}: #{inspect(result)}"
       end
     end

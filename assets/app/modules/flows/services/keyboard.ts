@@ -97,13 +97,13 @@ export function keyboard(hook: HookProxy, lockHandler: LocksHandler | null): Key
     return false;
   }
 
-  function handleScreenplayShortcut(e: KeyboardEvent): boolean {
+  function handleDialoguePanelShortcut(e: KeyboardEvent): boolean {
     if (!e.shiftKey || !e.altKey || e.key !== "F" || !hook.selectedNodeId) return false;
     const reteNode = hook.nodeMap?.get(hook.selectedNodeId);
     if (reteNode?.nodeType === "dialogue") {
       e.preventDefault();
       exitInlineEdit();
-      hook.pushEvent("open_screenplay", { id: hook.selectedNodeId });
+      hook.pushEvent("open_dialogue_panel", { id: hook.selectedNodeId });
       return true;
     }
     return false;
@@ -158,7 +158,7 @@ export function keyboard(hook: HookProxy, lockHandler: LocksHandler | null): Key
   function handleKeyboard(e: KeyboardEvent): void {
     if (handleNavigation(e)) return;
     if (handleUndoRedo(e)) return;
-    if (handleScreenplayShortcut(e)) return;
+    if (handleDialoguePanelShortcut(e)) return;
     if (isEditable(e.target as Element)) return;
     if (handleEscape(e)) return;
     if (hook._flowContext?.editingNodeId) return;

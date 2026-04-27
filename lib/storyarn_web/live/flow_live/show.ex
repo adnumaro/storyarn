@@ -227,12 +227,12 @@ defmodule StoryarnWeb.FlowLive.Show do
         can-edit={@can_edit}
       />
 
-      <%!-- Screenplay Editor sidebar (Vue) --%>
+      <%!-- Dialogue node editor sidebar (Vue) --%>
       <.vue
-        v-component="modules/flows/components/FlowScreenplayEditor"
+        v-component="modules/flows/components/FlowDialoguePanel"
         v-socket={@socket}
-        id="flow-screenplay-editor"
-        open={@editing_mode in [:screenplay, :editor] && @selected_node != nil}
+        id="flow-dialogue-panel"
+        open={@editing_mode == :dialogue_panel && @selected_node != nil}
         node={@selected_node && %{id: @selected_node.id, data: @selected_node.data}}
         can-edit={@can_edit}
         all-sheets={Enum.map(@all_sheets, &%{id: &1.id, name: &1.name})}
@@ -840,8 +840,8 @@ defmodule StoryarnWeb.FlowLive.Show do
     GenericNodeHandlers.handle_node_double_clicked(params, socket)
   end
 
-  def handle_event("open_screenplay", params, socket) do
-    Dialogue.Node.handle_open_screenplay(params, socket)
+  def handle_event("open_dialogue_panel", params, socket) do
+    Dialogue.Node.handle_open_dialogue_panel(params, socket)
   end
 
   def handle_event("open_sidebar", _params, socket) do

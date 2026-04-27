@@ -237,7 +237,7 @@ function groupSelectedBlocks() {
       <template v-else>
         <button
           type="button"
-          class="inline-flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground border border-dashed border-border rounded hover:bg-accent/50 transition-colors"
+          class="inline-flex flex-1 items-center justify-center gap-1 px-2 py-1 text-xs text-muted-foreground border border-dashed border-border rounded hover:bg-accent/50 transition-colors"
           @click="addBlock"
         >
           <Plus class="size-3" /> Add block

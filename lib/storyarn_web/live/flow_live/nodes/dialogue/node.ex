@@ -62,8 +62,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
 
   def on_select(_node, socket), do: socket
 
-  @doc "Dialogue nodes open fullscreen editor on double-click."
-  def on_double_click(_node), do: :editor
+  @doc "Dialogue nodes open the dialogue panel on double-click."
+  def on_double_click(_node), do: :dialogue_panel
 
   def duplicate_data_cleanup(data) do
     data
@@ -196,13 +196,13 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   end
 
   @doc """
-  Opens editor sidebar for a dialogue node.
+  Opens the dialogue panel for a dialogue node.
 
   Uses `selected_node` if it's already the correct node. Falls back to looking
   up the node by `params["id"]` — needed when `close_editor` was called between
   the last selection and this event (race condition via context menu / shortcut).
   """
-  def handle_open_screenplay(params, socket) do
+  def handle_open_dialogue_panel(params, socket) do
     node =
       cond do
         socket.assigns.selected_node &&
@@ -220,7 +220,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
       {:noreply,
        socket
        |> assign(:selected_node, node)
-       |> assign(:editing_mode, :editor)
+       |> assign(:editing_mode, :dialogue_panel)
        |> push_event("center_on_node", %{id: node.id})}
     else
       {:noreply, socket}

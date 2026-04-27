@@ -181,7 +181,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   @doc """
   Opens the sequence config sidebar for the currently-selected sequence.
-  Mirrors `open_builder` / `open_screenplay`: reads `selected_node`, loads
+  Mirrors `open_builder` / `open_dialogue_panel`: reads `selected_node`, loads
   the panel payload (config + tracks + asset lists), flips
   `editing_mode` to `:sequence_config`. The panel itself is gated on
   that mode in `show.ex`.
@@ -311,7 +311,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
     socket =
       case mode do
-        :editor -> push_event(socket, "center_on_node", %{id: node_id, sidebar_width: 600})
+        :dialogue_panel -> push_event(socket, "center_on_node", %{id: node_id, sidebar_width: 600})
         :builder -> push_event(socket, "center_on_node", %{id: node_id, sidebar_width: 480})
         _ -> socket
       end
@@ -332,7 +332,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     # Clearing selected_node here desynchronises server state from the client's
     # hook.selectedNodeId, which causes the context menu "Open editor panel" to
     # skip sending node_selected (thinking the node is still selected) and then
-    # open_screenplay finds selected_node nil → silent failure.
+    # open_dialogue_panel finds selected_node nil → silent failure.
     # The node stays visually selected (toolbar visible); deselect_node clears it.
     socket =
       if socket.assigns.selected_node && socket.assigns.can_edit do

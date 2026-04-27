@@ -103,7 +103,7 @@ function updateLogic(newLogic: "all" | "any") {
     <button
       v-if="!disabled"
       type="button"
-      class="inline-flex items-center gap-1 mt-1 px-2 py-1 text-xs text-muted-foreground border border-dashed border-border rounded hover:bg-accent/50 transition-colors"
+      class="inline-flex items-center justify-center gap-1 w-full mt-1 px-2 py-1 text-xs text-muted-foreground border border-dashed border-border rounded hover:bg-accent/50 transition-colors"
       @click="addBlock"
     >
       <Plus class="size-3" />

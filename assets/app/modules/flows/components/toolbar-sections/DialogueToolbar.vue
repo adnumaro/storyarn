@@ -44,8 +44,8 @@ function updateNodeField(field: string, value: unknown) {
   live.pushEvent("update_node_field", { field, value });
 }
 
-function openScreenplay() {
-  live.pushEvent("open_screenplay", { id: nodeId });
+function openDialoguePanel() {
+  live.pushEvent("open_dialogue_panel", { id: nodeId });
 }
 
 function startPreview() {
@@ -95,7 +95,7 @@ const hasAvatarOverride = computed(() => {
   />
   <ToolbarSeparator />
   <ToolbarTooltip :label="$t('flows.node_types.dialogue_toolbar_screenplay')">
-    <button type="button" class="toolbar-btn" @click="openScreenplay">
+    <button type="button" class="toolbar-btn" @click="openDialoguePanel">
       <Settings class="size-3.5" />
     </button>
   </ToolbarTooltip>

@@ -7,7 +7,7 @@
  * Matches the existing CSS: .sentence-slot, .sentence-slot.filled, .sentence-slot:focus
  */
 
-import { computed, nextTick, ref } from "vue";
+import { computed, nextTick, ref, useTemplateRef } from "vue";
 import {
   Command,
   CommandEmpty,
@@ -36,6 +36,7 @@ const {
   disabled = false,
   freeText = false,
   inputType = "text",
+  emptyText = "",
 } = defineProps<{
   /** Currently selected value */
   modelValue?: string;
@@ -50,6 +51,11 @@ const {
   freeText?: boolean;
   /** Input type for free-text mode */
   inputType?: string;
+  /** Caller-supplied message shown when both `options` and `groups` are
+   * empty before any search. Use this to give a context-specific reason
+   * (e.g. "Sheets have no variables yet"). When unset we fall back to
+   * the generic `common.variable_combobox.no_options` key. */
+  emptyText?: string;
 }>();
 
 const emit = defineEmits<{
@@ -57,6 +63,25 @@ const emit = defineEmits<{
 }>();
 
 const open = ref(false);
+const triggerRef = useTemplateRef<HTMLButtonElement>("triggerEl");
+const freeTextRef = useTemplateRef<HTMLInputElement>("freeTextEl");
+
+/** Imperative focus API used by parent rows to auto-advance through a chain
+ * of comboboxes (V1 condition_rule_row / assignment_row pattern). For
+ * combobox mode: focus the trigger button AND open the popover so the user
+ * lands on the search input. For free-text mode: focus the input. */
+function focus(): void {
+  if (freeText) {
+    freeTextRef.value?.focus();
+    return;
+  }
+  open.value = true;
+  // The trigger button stays in the tab order; focus it so keyboard users
+  // can dismiss with Esc / re-trigger with Space cleanly.
+  nextTick(() => triggerRef.value?.focus());
+}
+
+defineExpose({ focus });
 
 /** Display label for the current selection */
 const displayLabel = computed(() => {
@@ -74,6 +99,14 @@ const displayLabel = computed(() => {
 });
 
 const hasGroups = computed(() => groups.length > 0);
+
+/** True when there's nothing to show before any search filtering happens.
+ * `CommandEmpty` only fires when filtering yields 0 — when the source list
+ * is empty to start with, the popover renders blank. We surface a static
+ * "no options" message instead. */
+const hasNoSource = computed(
+  () => !hasGroups.value && options.length === 0 && !freeText,
+);
 
 function onSelect(value: string) {
   emit("update:modelValue", value);
@@ -101,6 +134,7 @@ function autoSize(el: HTMLInputElement | null) {
   <!-- Free-text mode: just an input -->
   <input
     v-if="freeText"
+    ref="freeTextEl"
     :type="inputType"
     :value="modelValue || ''"
     :placeholder="placeholder"
@@ -117,6 +151,7 @@ function autoSize(el: HTMLInputElement | null) {
   <Popover v-else v-model:open="open">
     <PopoverTrigger as-child>
       <button
+        ref="triggerEl"
         type="button"
         :disabled="disabled"
         :class="['sentence-slot', { filled: !!modelValue }]"
@@ -127,7 +162,15 @@ function autoSize(el: HTMLInputElement | null) {
       </button>
     </PopoverTrigger>
     <PopoverContent class="w-[200px] p-0" align="start" :side-offset="4">
-      <Command>
+      <!-- Static empty-state when there's nothing to filter against. -->
+      <div
+        v-if="hasNoSource"
+        class="py-3 px-3 text-xs text-muted-foreground italic text-center"
+      >
+        {{ emptyText || $t("common.variable_combobox.no_options") }}
+      </div>
+
+      <Command v-else>
         <CommandInput :placeholder="$t('common.search')" class="h-8 text-xs" />
         <CommandList>
           <CommandEmpty class="py-3 text-xs">{{

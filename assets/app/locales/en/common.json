@@ -82,7 +82,10 @@
       "remove_block": "Remove block",
       "of_the_rules": "of the rules",
       "add_rule": "Add rule",
-      "no_conditions": "No conditions set"
+      "no_conditions": "No conditions set",
+      "empty_sheets": "No sheets with variables. Add a variable block to a sheet first.",
+      "empty_variables": "This sheet has no variables yet.",
+      "empty_values": "No values available for this variable."
     },
     "assignment_row": {
       "change_operator": "Change operator",
@@ -98,7 +101,8 @@
       "no_results": "No variables found"
     },
     "variable_combobox": {
-      "no_results": "No results."
+      "no_results": "No results.",
+      "no_options": "No options available."
     },
     "docs": {
       "no_docs": "No documentation available yet."

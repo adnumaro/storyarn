@@ -91,7 +91,8 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
   end
 
   @doc "Returns the editing mode for double-click on a node type."
-  @spec on_double_click(String.t(), map()) :: :toolbar | :editor | :builder | {:navigate, any()}
+  @spec on_double_click(String.t(), map()) ::
+          :toolbar | :dialogue_panel | :builder | {:navigate, any()}
   def on_double_click(type, node) do
     case node_module(type) do
       nil -> :toolbar

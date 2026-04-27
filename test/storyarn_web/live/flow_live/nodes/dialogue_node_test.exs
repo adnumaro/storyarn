@@ -332,38 +332,38 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.NodeTest do
   end
 
   # =============================================================================
-  # handle_open_screenplay/1
+  # handle_open_dialogue_panel/2
   # =============================================================================
 
-  describe "handle_open_screenplay/2" do
+  describe "handle_open_dialogue_panel/2" do
     setup :setup_dialogue_socket
 
-    test "sets editing_mode to :editor when dialogue node selected", %{socket: socket} do
-      {:noreply, result} = DialogueNode.handle_open_screenplay(%{}, socket)
-      assert result.assigns.editing_mode == :editor
+    test "sets editing_mode to :dialogue_panel when dialogue node selected", %{socket: socket} do
+      {:noreply, result} = DialogueNode.handle_open_dialogue_panel(%{}, socket)
+      assert result.assigns.editing_mode == :dialogue_panel
     end
 
     test "does nothing when no dialogue node selected and no id param", %{socket: socket} do
       socket = %{socket | assigns: %{socket.assigns | selected_node: nil}}
-      {:noreply, result} = DialogueNode.handle_open_screenplay(%{}, socket)
+      {:noreply, result} = DialogueNode.handle_open_dialogue_panel(%{}, socket)
       refute Map.has_key?(result.assigns, :editing_mode)
     end
 
     test "does nothing when non-dialogue node selected and no id param", %{socket: socket} do
       non_dialogue = %{socket.assigns.selected_node | type: "condition"}
       socket = %{socket | assigns: %{socket.assigns | selected_node: non_dialogue}}
-      {:noreply, result} = DialogueNode.handle_open_screenplay(%{}, socket)
+      {:noreply, result} = DialogueNode.handle_open_dialogue_panel(%{}, socket)
       refute Map.has_key?(result.assigns, :editing_mode)
     end
 
-    test "opens editor via id param when selected_node is nil", %{socket: socket} do
+    test "opens panel via id param when selected_node is nil", %{socket: socket} do
       node = socket.assigns.selected_node
       socket = %{socket | assigns: %{socket.assigns | selected_node: nil}}
 
       {:noreply, result} =
-        DialogueNode.handle_open_screenplay(%{"id" => to_string(node.id)}, socket)
+        DialogueNode.handle_open_dialogue_panel(%{"id" => to_string(node.id)}, socket)
 
-      assert result.assigns.editing_mode == :editor
+      assert result.assigns.editing_mode == :dialogue_panel
       assert result.assigns.selected_node.id == node.id
     end
   end

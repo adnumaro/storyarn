@@ -6,7 +6,7 @@
  */
 
 import { X } from "lucide-vue-next";
-import { computed } from "vue";
+import { computed, nextTick, useTemplateRef } from "vue";
 import {
   NO_VALUE_OPERATORS,
   OPERATOR_LABELS,
@@ -82,12 +82,21 @@ const valueOptions = computed(() => {
 
 const isFreeTextValue = computed(() => valueOptions.value.length === 0);
 
+// Refs for auto-advance focus chain (mirrors V1 condition_rule_row.js).
+type ComboboxApi = { focus: () => void } | null;
+const variableRef = useTemplateRef<ComboboxApi>("variableRef");
+const operatorRef = useTemplateRef<ComboboxApi>("operatorRef");
+const valueRef = useTemplateRef<ComboboxApi>("valueRef");
+
 function update(field: string, value: string | null) {
   const updated = { ...rule, [field]: value };
+  let nextFocus: ComboboxApi = null;
+
   if (field === "sheet") {
     updated.variable = null;
     updated.operator = "equals";
     updated.value = null;
+    nextFocus = variableRef.value;
   } else if (field === "variable") {
     const v = findVariable(variables, rule.sheet, value);
     if (v) {
@@ -95,13 +104,24 @@ function update(field: string, value: string | null) {
       if (ops.length > 0) updated.operator = ops[0];
     }
     updated.value = null;
+    // Skip operator+value if the auto-picked operator needs no value
+    // (matches V1 condition_rule_row.js:288-292).
+    nextFocus = NO_VALUE_OPERATORS.has(updated.operator as ConditionOperator)
+      ? null
+      : operatorRef.value;
   } else if (field === "operator") {
     const oldOp = rule.operator || "equals";
     if (NO_VALUE_OPERATORS.has(value as ConditionOperator) !== NO_VALUE_OPERATORS.has(oldOp)) {
       updated.value = null;
     }
+    nextFocus = NO_VALUE_OPERATORS.has(value as ConditionOperator) ? null : valueRef.value;
   }
   emit("update:rule", updated);
+  // Advance after the parent re-renders so the next combobox is mounted
+  // (e.g. variable picker enables only once `rule.sheet` propagates).
+  if (nextFocus) {
+    nextTick(() => nextFocus?.focus());
+  }
 }
 </script>
 
@@ -113,17 +133,21 @@ function update(field: string, value: string | null) {
         :options="sheetOptions"
         placeholder="sheet"
         :disabled="disabled"
+        :empty-text="$t('common.condition_builder.empty_sheets')"
         @update:model-value="(v) => update('sheet', v)"
       />
       <span class="sentence-text">&middot;</span>
       <VariableCombobox
+        ref="variableRef"
         :model-value="rule.variable || ''"
         :groups="variableGroups"
         placeholder="variable"
         :disabled="disabled || !rule.sheet"
+        :empty-text="$t('common.condition_builder.empty_variables')"
         @update:model-value="(v) => update('variable', v)"
       />
       <VariableCombobox
+        ref="operatorRef"
         :model-value="rule.operator || ''"
         :options="operatorOptions"
         placeholder="op"
@@ -133,14 +157,17 @@ function update(field: string, value: string | null) {
       <template v-if="needsValue">
         <VariableCombobox
           v-if="!isFreeTextValue"
+          ref="valueRef"
           :model-value="rule.value || ''"
           :options="valueOptions"
           placeholder="value"
           :disabled="disabled || !rule.operator"
+          :empty-text="$t('common.condition_builder.empty_values')"
           @update:model-value="(v) => update('value', v)"
         />
         <VariableCombobox
           v-else
+          ref="valueRef"
           :model-value="rule.value || ''"
           placeholder="value"
           :disabled="disabled || !rule.operator"

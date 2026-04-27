@@ -220,8 +220,8 @@
       "close": "Close",
       "no_node": "No node selected for preview."
     },
-    "screenplay_editor": {
-      "title": "Screenplay Editor",
+    "dialogue_panel": {
+      "title": "Dialogue Editor",
       "tab_text": "Text",
       "tab_responses": "Responses",
       "tab_settings": "Settings",

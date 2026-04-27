@@ -220,8 +220,8 @@
       "close": "Cerrar",
       "no_node": "No hay nodo seleccionado para previsualizar."
     },
-    "screenplay_editor": {
-      "title": "Editor de guión",
+    "dialogue_panel": {
+      "title": "Editor de diálogo",
       "tab_text": "Texto",
       "tab_responses": "Respuestas",
       "tab_settings": "Ajustes",

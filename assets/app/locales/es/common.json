@@ -82,7 +82,10 @@
       "remove_block": "Eliminar bloque",
       "of_the_rules": "de las reglas",
       "add_rule": "Añadir regla",
-      "no_conditions": "Sin condiciones"
+      "no_conditions": "Sin condiciones",
+      "empty_sheets": "No hay sheets con variables. Añade un bloque de variable a un sheet primero.",
+      "empty_variables": "Este sheet aún no tiene variables.",
+      "empty_values": "No hay valores disponibles para esta variable."
     },
     "assignment_row": {
       "change_operator": "Cambiar operador",
@@ -98,7 +101,8 @@
       "no_results": "No se encontraron variables"
     },
     "variable_combobox": {
-      "no_results": "Sin resultados."
+      "no_results": "Sin resultados.",
+      "no_options": "No hay opciones disponibles."
     },
     "docs": {
       "no_docs": "Aún no hay documentación disponible."
