@@ -9,9 +9,7 @@
  * Three tabs: Text, Responses, Settings.
  */
 
-import Placeholder from "@tiptap/extension-placeholder";
-import StarterKit from "@tiptap/starter-kit";
-import { EditorContent, useEditor } from "@tiptap/vue-3";
+import { EditorContent } from "@tiptap/vue-3";
 import {
   BookOpen,
   Check,
@@ -33,6 +31,7 @@ import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Label } from "@components/ui/label/index.ts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
+import { useScreenplayEditor } from "@modules/flows/composables/useScreenplayEditor";
 import type { Variable } from "@modules/shared/variables";
 import { useI18n } from "vue-i18n";
 import { useLive } from "@composables/useLive";
@@ -123,16 +122,14 @@ const wordCount = computed<number>(() => {
   return parts.join(" ").trim().split(/\s+/).filter(Boolean).length;
 });
 
-// TipTap editor for dialogue text
+// Screenplay-format editor (no marks / no block extensions). Single source
+// of truth shared with the canvas inline editor in DialogueNode.vue.
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
-const editor = useEditor({
-  extensions: [
-    StarterKit,
-    Placeholder.configure({ placeholder: t("flows.dialogue_panel.dialogue_placeholder") }),
-  ],
+const editor = useScreenplayEditor({
+  placeholder: t("flows.dialogue_panel.dialogue_placeholder"),
   editable: canEdit,
   content: data?.text || "",
-  onUpdate: ({ editor: ed }) => {
+  onUpdate: (ed) => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       const id = nodeId.value;
@@ -363,11 +360,28 @@ function parseConditionForBuilder(
             />
           </div>
 
-          <!-- Dialogue text (TipTap) -->
+          <!-- Menu text (relocated from Settings — mirrors inline-edit field
+               order: stage_directions → menu_text → dialogue body). -->
+          <div>
+            <Label class="text-xs">{{ $t("flows.dialogue_panel.menu_text") }}</Label>
+            <Input
+              :model-value="data?.menuText || ''"
+              :placeholder="$t('flows.dialogue_panel.menu_text_placeholder')"
+              class="mt-1"
+              :disabled="!canEdit"
+              @blur="updateMenuText"
+            />
+          </div>
+
+          <!-- Dialogue text (TipTap) — screenplay-format body. Wrapper click
+               focuses the editor so the entire textarea-look surface is a
+               focus target (M2.1). Screenplay typography (Courier Prime)
+               applied via scoped :deep(.tiptap). -->
           <div>
             <Label class="text-xs">{{ $t("flows.dialogue_panel.dialogue") }}</Label>
             <div
-              class="mt-1 rounded-md border border-input bg-background p-3 min-h-30 prose prose-sm dark:prose-invert max-w-none"
+              class="dialogue-body mt-1 rounded-md border border-input bg-background dark:bg-card p-3 transition-[color,box-shadow] focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[3px]"
+              @click="editor?.commands.focus()"
             >
               <EditorContent :editor="editor" />
             </div>
@@ -443,17 +457,6 @@ function parseConditionForBuilder(
 
         <!-- Settings Tab -->
         <TabsContent value="settings" class="space-y-3 mt-3">
-          <div>
-            <Label class="text-xs">{{ $t("flows.dialogue_panel.menu_text") }}</Label>
-            <Input
-              :model-value="data?.menuText || ''"
-              :placeholder="$t('flows.dialogue_panel.menu_text_placeholder')"
-              class="mt-1"
-              :disabled="!canEdit"
-              @blur="updateMenuText"
-            />
-          </div>
-
           <!-- Audio asset (V1 had AudioPicker LiveComponent here; D2 routes
                via update_node_field, mirroring sequence config). Reuses the
                shared AudioAsset component. -->
@@ -551,3 +554,38 @@ function parseConditionForBuilder(
     </template>
   </Sidebar>
 </template>
+
+<style scoped>
+/* Screenplay-format typography for the dialogue body editor (M2.1).
+ * Courier Prime is loaded globally by `assets/css/screenplay.css`.
+ * Page-layout indents (margin-left / max-width per §3.1 of
+ * docs/SCREENPLAY_FORMAT_CONVENTIONS.md) come in M2.3 with the
+ * .screenplay-page container restructure. */
+.dialogue-body {
+  cursor: text;
+}
+
+.dialogue-body :deep(.tiptap) {
+  font-family: "Courier Prime", "Courier New", Courier, monospace;
+  font-size: 14px;
+  line-height: 1.4;
+  outline: none;
+  /* 5-line minimum visible area (5 × 1.4em). */
+  min-height: 7em;
+  /* TipTap/ProseMirror injects cursor:pointer at runtime (not via stylesheet);
+   * !important is the only way to override without forking the editor. */
+  cursor: text !important;
+}
+
+.dialogue-body :deep(.tiptap p) {
+  margin: 0;
+}
+
+.dialogue-body :deep(.tiptap p.is-editor-empty:first-child::before) {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--color-muted-foreground);
+  pointer-events: none;
+  height: 0;
+}
+</style>

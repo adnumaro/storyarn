@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "katex/dist/katex.min.css";
 @import "./player.css";
+@import "./screenplay.css";
 
 @plugin "@tailwindcss/typography";
 
