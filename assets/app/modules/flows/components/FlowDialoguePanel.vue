@@ -37,94 +37,88 @@ import type { Variable } from "@modules/shared/variables";
 import { useI18n } from "vue-i18n";
 import { useLive } from "@composables/useLive";
 
-interface AudioAssetItem {
+export interface AudioAssetItem {
   id: number | string;
   filename: string;
   url?: string | null;
 }
 
-interface NodeResponse {
-  id: string | number;
-  text: string;
-  // The backend persists condition as a string (V1 contract: handler stores
-  // `value` verbatim, evaluator does `is_binary` guard). The ConditionBuilder
-  // takes a ConditionData object — we parse on read, stringify on push.
-  condition?: string | ConditionData | null;
-  instruction_assignments?: Assignment[];
-}
-
-interface DialogueNodeData {
-  text?: string;
-  speaker_sheet_id?: number | string | null;
-  stage_directions?: string;
-  menu_text?: string;
-  technical_id?: string;
-  localization_id?: string;
-  audio_asset_id?: number | string | null;
-  responses?: NodeResponse[];
-}
-
-interface DialogueNodeShape {
-  id: number | string;
-  data: DialogueNodeData;
-}
-
-interface SheetOption {
+export interface SheetOption {
   id: number | string;
   name: string;
 }
 
+export interface DialogueResponseShape {
+  id: string | number;
+  text: string;
+  // Backend persists `condition` as a string (V1 contract: handler stores
+  // `value` verbatim, evaluator does is_binary). ConditionBuilder takes a
+  // ConditionData object — we parse on read, stringify on push.
+  condition?: string | ConditionData | null;
+  instructionAssignments?: Assignment[];
+  hasTypeWarnings?: boolean;
+}
+
+/** Camel-cased payload built by `build_dialogue_panel_data/2` server-side
+ * (D5 in REFACTOR.md §10). Single typed prop instead of N loose ones —
+ * mirrors FlowSequenceConfigPanel. Exported so test fixtures can use the
+ * exact same identity (avoids structural-mismatch noise from IDE TS servers). */
+export interface DialoguePanelData {
+  nodeId: number | string;
+  speakerSheetId: number | string | null;
+  text: string;
+  stageDirections: string;
+  menuText: string;
+  technicalId: string;
+  localizationId: string;
+  audioAssetId: number | string | null;
+  avatarId: number | string | null;
+  responses: DialogueResponseShape[];
+  allSheets: SheetOption[];
+  audioAssets: AudioAssetItem[];
+  projectVariables: Variable[];
+}
+
 const {
   open = false,
-  node = null,
+  data = null,
   canEdit = false,
-  allSheets = [],
-  audioAssets = [],
-  projectVariables = [],
 } = defineProps<{
   open?: boolean;
-  node?: DialogueNodeShape | null;
+  data?: DialoguePanelData | null;
   canEdit?: boolean;
-  allSheets?: SheetOption[];
-  audioAssets?: AudioAssetItem[];
-  projectVariables?: Variable[] | string;
 }>();
 
 const { t } = useI18n();
 const live = useLive();
 const activeTab = ref("text");
 
-const parsedVariables = computed<Variable[]>(() => {
-  if (Array.isArray(projectVariables)) return projectVariables;
-  try {
-    return JSON.parse(projectVariables);
-  } catch {
-    return [];
-  }
-});
-const nodeData = computed<DialogueNodeData>(() => node?.data || {});
-const speakerId = computed<number | string | null>(() => nodeData.value.speaker_sheet_id || null);
-const speakerOptions = computed(() => allSheets.map((s) => ({ id: s.id, name: s.name })));
-const responses = computed<NodeResponse[]>(() => nodeData.value.responses || []);
+const nodeId = computed<number | string | null>(() => data?.nodeId ?? null);
+const speakerId = computed<number | string | null>(() => data?.speakerSheetId ?? null);
+const speakerOptions = computed(() =>
+  (data?.allSheets ?? []).map((s) => ({ id: s.id, name: s.name })),
+);
+const responses = computed<DialogueResponseShape[]>(() => data?.responses ?? []);
 const speakerName = computed<string>(() => {
   const id = speakerId.value;
   if (id == null) return "";
-  return allSheets.find((s) => String(s.id) === String(id))?.name ?? "";
+  return (data?.allSheets ?? []).find((s) => String(s.id) === String(id))?.name ?? "";
 });
-const audioAssetId = computed<number | string | null>(() => nodeData.value.audio_asset_id ?? null);
+const audioAssetId = computed<number | string | null>(() => data?.audioAssetId ?? null);
 const hasAudio = computed<boolean>(() => audioAssetId.value != null);
+const projectVariables = computed<Variable[]>(() => data?.projectVariables ?? []);
 
-/** Word count over plain text + stage_directions + menu_text + response texts.
+/** Word count over plain text + stageDirections + menuText + response texts.
  * Strips HTML for the rich-text body. Mirrors V1's `WordCount.for_node_data`. */
 const wordCount = computed<number>(() => {
   const parts: string[] = [];
-  const html = nodeData.value.text || "";
+  const html = data?.text || "";
   if (html) {
     const stripped = html.replace(/<[^>]+>/g, " ");
     parts.push(stripped);
   }
-  if (nodeData.value.stage_directions) parts.push(nodeData.value.stage_directions);
-  if (nodeData.value.menu_text) parts.push(nodeData.value.menu_text);
+  if (data?.stageDirections) parts.push(data.stageDirections);
+  if (data?.menuText) parts.push(data.menuText);
   for (const r of responses.value) if (r.text) parts.push(r.text);
   return parts.join(" ").trim().split(/\s+/).filter(Boolean).length;
 });
@@ -137,21 +131,23 @@ const editor = useEditor({
     Placeholder.configure({ placeholder: t("flows.dialogue_panel.dialogue_placeholder") }),
   ],
   editable: canEdit,
-  content: nodeData.value.text || "",
+  content: data?.text || "",
   onUpdate: ({ editor: ed }) => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
+      const id = nodeId.value;
+      if (id == null) return;
       live.pushEvent("update_node_text", {
-        id: node?.id,
+        id,
         content: ed.getHTML(),
       });
     }, 500);
   },
 });
 
-// Sync editor content when node changes
+// Sync editor content when the panel data changes (server-pushed refresh).
 watch(
-  () => nodeData.value.text,
+  () => data?.text,
   (newText) => {
     if (editor.value && newText !== editor.value.getHTML()) {
       editor.value.commands.setContent(newText || "", { emitUpdate: false });
@@ -207,7 +203,7 @@ function generateTechnicalId(): void {
 const localizationJustCopied = ref(false);
 let copiedResetTimer: ReturnType<typeof setTimeout> | undefined;
 async function copyLocalizationId(): Promise<void> {
-  const value = nodeData.value.localization_id;
+  const value = data?.localizationId;
   if (!value) return;
   try {
     await navigator.clipboard.writeText(value);
@@ -243,23 +239,23 @@ function clearAudio(): void {
 // on string keys with hyphens). Don't switch to underscore.
 
 function addResponse(): void {
-  if (!node) return;
-  live.pushEvent("add_response", { "node-id": node.id });
+  if (nodeId.value == null) return;
+  live.pushEvent("add_response", { "node-id": nodeId.value });
 }
 
 function removeResponse(responseId: string | number): void {
-  if (!node) return;
+  if (nodeId.value == null) return;
   live.pushEvent("remove_response", {
     "response-id": responseId,
-    "node-id": node.id,
+    "node-id": nodeId.value,
   });
 }
 
 function updateResponseText(responseId: string | number, text: string): void {
-  if (!node) return;
+  if (nodeId.value == null) return;
   live.pushEvent("update_response_text", {
     "response-id": responseId,
-    "node-id": node.id,
+    "node-id": nodeId.value,
     value: text,
   });
 }
@@ -268,13 +264,13 @@ function updateResponseCondition(
   responseId: string | number,
   condition: ConditionData | null | undefined,
 ): void {
-  if (!node) return;
+  if (nodeId.value == null) return;
   // Backend stores condition as a string (or "" → nil). Stringify the
   // builder's structured payload before pushing; clear with "".
   const value = condition == null ? "" : JSON.stringify(condition);
   live.pushEvent("update_response_condition", {
     "response-id": responseId,
-    "node-id": node.id,
+    "node-id": nodeId.value,
     value,
   });
 }
@@ -283,10 +279,10 @@ function updateResponseAssignments(
   responseId: string | number,
   updatedAssignments: Assignment[],
 ): void {
-  if (!node) return;
+  if (nodeId.value == null) return;
   live.pushEvent("update_response_instruction_builder", {
     "response-id": responseId,
-    "node-id": node.id,
+    "node-id": nodeId.value,
     assignments: updatedAssignments,
   });
 }
@@ -327,7 +323,7 @@ function parseConditionForBuilder(
       </div>
     </template>
 
-    <div v-if="node" class="space-y-4">
+    <div v-if="data" class="space-y-4">
       <Tabs v-model="activeTab">
         <TabsList class="w-full">
           <TabsTrigger value="text" class="flex-1 gap-1 text-xs">
@@ -359,7 +355,7 @@ function parseConditionForBuilder(
           <div>
             <Label class="text-xs">{{ $t("flows.dialogue_panel.stage_directions") }}</Label>
             <Input
-              :model-value="nodeData.stage_directions || ''"
+              :model-value="data?.stageDirections || ''"
               :placeholder="$t('flows.dialogue_panel.stage_directions_placeholder')"
               class="mt-1 text-sm italic"
               :disabled="!canEdit"
@@ -371,7 +367,7 @@ function parseConditionForBuilder(
           <div>
             <Label class="text-xs">{{ $t("flows.dialogue_panel.dialogue") }}</Label>
             <div
-              class="mt-1 rounded-md border border-input bg-background p-3 min-h-[120px] prose prose-sm dark:prose-invert max-w-none"
+              class="mt-1 rounded-md border border-input bg-background p-3 min-h-30 prose prose-sm dark:prose-invert max-w-none"
             >
               <EditorContent :editor="editor" />
             </div>
@@ -416,7 +412,7 @@ function parseConditionForBuilder(
                 <ExpressionEditor
                   mode="condition"
                   :condition="parseConditionForBuilder(resp.condition)"
-                  :variables="parsedVariables"
+                  :variables="projectVariables"
                   :disabled="!canEdit"
                   @update:condition="(c) => updateResponseCondition(resp.id, c)"
                 />
@@ -431,8 +427,8 @@ function parseConditionForBuilder(
               <div class="mt-2">
                 <ExpressionEditor
                   mode="instruction"
-                  :assignments="resp.instruction_assignments || []"
-                  :variables="parsedVariables"
+                  :assignments="resp.instructionAssignments || []"
+                  :variables="projectVariables"
                   :disabled="!canEdit"
                   @update:assignments="(a) => updateResponseAssignments(resp.id, a)"
                 />
@@ -450,7 +446,7 @@ function parseConditionForBuilder(
           <div>
             <Label class="text-xs">{{ $t("flows.dialogue_panel.menu_text") }}</Label>
             <Input
-              :model-value="nodeData.menu_text || ''"
+              :model-value="data?.menuText || ''"
               :placeholder="$t('flows.dialogue_panel.menu_text_placeholder')"
               class="mt-1"
               :disabled="!canEdit"
@@ -468,7 +464,7 @@ function parseConditionForBuilder(
               :label="$t('flows.dialogue_panel.audio')"
               :icon="Volume2"
               :asset-id="audioAssetId"
-              :audio-assets="audioAssets"
+              :audio-assets="data?.audioAssets ?? []"
               :can-edit="canEdit"
               :pick-placeholder="$t('flows.dialogue_panel.pick_audio')"
               :search-placeholder="$t('flows.dialogue_panel.search_audio')"
@@ -482,7 +478,7 @@ function parseConditionForBuilder(
             <Label class="text-xs">{{ $t("flows.dialogue_panel.technical_id") }}</Label>
             <div class="flex items-center gap-1 mt-1">
               <Input
-                :model-value="nodeData.technical_id || ''"
+                :model-value="data?.technicalId || ''"
                 :placeholder="$t('flows.dialogue_panel.technical_id_placeholder')"
                 class="font-mono text-xs flex-1"
                 :disabled="!canEdit"
@@ -505,14 +501,14 @@ function parseConditionForBuilder(
             <Label class="text-xs">{{ $t("flows.dialogue_panel.localization_id") }}</Label>
             <div class="flex items-center gap-1 mt-1">
               <Input
-                :model-value="nodeData.localization_id || ''"
+                :model-value="data?.localizationId || ''"
                 :placeholder="$t('flows.dialogue_panel.localization_id_placeholder')"
                 class="font-mono text-xs flex-1"
                 :disabled="!canEdit"
                 @blur="updateLocalizationId"
               />
               <Button
-                v-if="nodeData.localization_id"
+                v-if="data?.localizationId"
                 variant="ghost"
                 size="icon"
                 class="size-8 shrink-0"

@@ -217,28 +217,23 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
       end
 
     if node && node.type == "dialogue" do
-      audio_assets = list_audio_assets(socket.assigns.project.id)
+      socket =
+        socket
+        |> assign(:selected_node, node)
+        |> assign(:editing_mode, :dialogue_panel)
+        |> assign(
+          :dialogue_panel_data,
+          StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers.build_dialogue_panel_data(
+            socket,
+            node
+          )
+        )
+        |> push_event("center_on_node", %{id: node.id})
 
-      {:noreply,
-       socket
-       |> assign(:selected_node, node)
-       |> assign(:editing_mode, :dialogue_panel)
-       |> assign(:dialogue_audio_assets, audio_assets)
-       |> push_event("center_on_node", %{id: node.id})}
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
-  end
-
-  # Lazy-loads the project's audio assets when the panel opens. Mirrors the
-  # `build_sequence_panel_data` pattern but inlined here (F2 of the dialogue
-  # port — F3 will move panel-payload assembly into a PropsSerializer).
-  defp list_audio_assets(project_id) do
-    project_id
-    |> Storyarn.Assets.list_assets(content_type: "audio/")
-    |> Enum.map(fn a ->
-      %{id: a.id, filename: a.filename, url: Storyarn.Assets.Storage.adapter().get_url(a.key)}
-    end)
   end
 
   # -- Private helpers --

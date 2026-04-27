@@ -227,17 +227,15 @@ defmodule StoryarnWeb.FlowLive.Show do
         can-edit={@can_edit}
       />
 
-      <%!-- Dialogue node editor sidebar (Vue) --%>
+      <%!-- Dialogue node editor sidebar (Vue) — single typed `data` payload
+           built by build_dialogue_panel_data/2 (camelCase). --%>
       <.vue
         v-component="modules/flows/components/FlowDialoguePanel"
         v-socket={@socket}
         id="flow-dialogue-panel"
         open={@editing_mode == :dialogue_panel && @selected_node != nil}
-        node={@selected_node && %{id: @selected_node.id, data: @selected_node.data}}
+        data={@dialogue_panel_data}
         can-edit={@can_edit}
-        all-sheets={Enum.map(@all_sheets, &%{id: &1.id, name: &1.name})}
-        audio-assets={@dialogue_audio_assets}
-        project-variables={Jason.encode!(@project_variables)}
       />
 
       <%!-- Sequence Config sidebar (Vue) --%>
@@ -338,7 +336,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:versions_panel_open, false)
       |> assign(:history_data, nil)
       |> assign(:all_sheets, [])
-      |> assign(:dialogue_audio_assets, [])
+      |> assign(:dialogue_panel_data, nil)
       |> assign(:gallery_by_sheet, %{})
       |> assign(:flow_hubs, [])
       |> assign(:available_flows, [])

@@ -255,6 +255,58 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     end)
   end
 
+  @doc """
+  Builds the dialogue panel payload (camelCase shape consumed by
+  FlowDialoguePanel.vue). Mirrors `build_sequence_panel_data/2` per D5
+  in REFACTOR.md §10. Public so the open-panel handler and
+  collaboration refreshes can both call it.
+
+  Returns `nil` if the node is not a dialogue.
+  """
+  @spec build_dialogue_panel_data(Socket.t(), map()) :: map() | nil
+  def build_dialogue_panel_data(_socket, %{type: type}) when type != "dialogue", do: nil
+
+  def build_dialogue_panel_data(socket, %{type: "dialogue"} = node) do
+    project_id = socket.assigns.project.id
+    data = node.data || %{}
+
+    %{
+      nodeId: node.id,
+      speakerSheetId: data["speaker_sheet_id"],
+      text: data["text"] || "",
+      stageDirections: data["stage_directions"] || "",
+      menuText: data["menu_text"] || "",
+      technicalId: data["technical_id"] || "",
+      localizationId: data["localization_id"] || "",
+      audioAssetId: data["audio_asset_id"],
+      avatarId: data["avatar_id"],
+      responses: serialize_dialogue_responses(data["responses"] || []),
+      allSheets: list_panel_sheets(project_id),
+      audioAssets: serialize_assets(Assets.list_assets(project_id, content_type: "audio/")),
+      projectVariables: socket.assigns[:project_variables] || []
+    }
+  end
+
+  defp serialize_dialogue_responses(responses) when is_list(responses) do
+    Enum.map(responses, fn r ->
+      %{
+        id: r["id"],
+        text: r["text"] || "",
+        condition: r["condition"],
+        instructionAssignments: r["instruction_assignments"] || [],
+        hasTypeWarnings: r["has_type_warnings"] || false
+      }
+    end)
+  end
+
+  defp serialize_dialogue_responses(_), do: []
+
+  defp list_panel_sheets(project_id) do
+    project_id
+    |> Storyarn.Sheets.list_all_sheets()
+    |> Enum.map(&%{id: &1.id, name: &1.name})
+  end
+
   @spec handle_node_double_clicked(map(), Socket.t()) ::
           {:noreply, Socket.t()}
   def handle_node_double_clicked(%{"id" => node_id}, socket) do

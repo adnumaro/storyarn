@@ -59,6 +59,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
           |> schedule(:flow)
           |> maybe_refresh_referencing_jumps(updated_node)
           |> push_node_or_flow_update(updated_node, renamed_count)
+          |> maybe_refresh_dialogue_panel(updated_node)
 
         # Broadcast node data change to other users
         socket =
@@ -364,6 +365,26 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   end
 
   defp maybe_refresh_referencing_jumps(socket, _node), do: socket
+
+  # Rebuilds `:dialogue_panel_data` after every dialogue write so the panel
+  # reflects field updates (response add/remove/edit, condition / instruction
+  # builder writes, etc.). Only fires when the just-updated node is the one
+  # the panel is currently bound to — otherwise leaves the assign untouched.
+  defp maybe_refresh_dialogue_panel(socket, %{type: "dialogue", id: id} = node) do
+    sel = socket.assigns[:selected_node]
+
+    if sel && sel.id == id do
+      assign(
+        socket,
+        :dialogue_panel_data,
+        StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers.build_dialogue_panel_data(socket, node)
+      )
+    else
+      socket
+    end
+  end
+
+  defp maybe_refresh_dialogue_panel(socket, _node), do: socket
 
   # Normalizes empty strings to nil for ID fields that should be nullable.
   @doc false
