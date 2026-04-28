@@ -1,0 +1,25 @@
+assets/app/modules/flows/components/FlowDialogueFullscreenEditor.vue
+  0f68b357b120d297 81,109-115
+assets/app/modules/flows/components/FlowDialogueEditorBody.vue
+  0f68b357b120d297 21-28,31,84,88-97,150-162,305,320-375,377-395,398-405,407,410-419,421-448,518-519,521-551,554-579,582-598,634-777
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "f454ef589a201ca603e63ecc1eac6b1f02142ba2",
+  "prompts": {
+    "0f68b357b120d297": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f710da4f-30b6-4199-a85d-2a191d5ce0b1",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet",
+      "messages": [],
+      "total_additions": 520,
+      "total_deletions": 250,
+      "accepted_lines": 386,
+      "overriden_lines": 0
+    }
+  }
+}
