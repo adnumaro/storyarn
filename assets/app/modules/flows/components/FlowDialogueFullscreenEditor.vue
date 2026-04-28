@@ -78,7 +78,7 @@ function onDismiss(e: Event) {
 <template>
   <Dialog :open="open">
     <DialogContent
-      class="sm:max-w-3xl gap-0 p-0"
+      class="!fixed !inset-0 !top-0 !left-0 !translate-x-0 !translate-y-0 !max-w-none !w-screen !h-screen !rounded-none !border-0 !p-0 !gap-0 flex flex-col"
       :show-close-button="false"
       @escape-key-down="onDismiss"
       @pointer-down-outside="onDismiss"
@@ -106,9 +106,13 @@ function onDismiss(e: Event) {
         </div>
       </div>
 
-      <!-- Body (same as the sidebar). -->
-      <div class="px-4 py-3 max-h-[70vh] overflow-y-auto">
-        <FlowDialogueEditorBody :data="data" :can-edit="canEdit" />
+      <!-- Body — screenplay-page rendering (sp-character / sp-parenthetical /
+           sp-menu-text / sp-dialogue) instead of the sidebar's labelled
+           fields. Responses + Settings tabs are identical to the sidebar.
+           `flex-1` lets the body fill all viewport space between header and
+           footer; inner overflow keeps long dialogues scrollable. -->
+      <div class="flex-1 overflow-y-auto px-4 py-3">
+        <FlowDialogueEditorBody :data="data" :can-edit="canEdit" display="fullscreen" />
       </div>
 
       <!-- Footer — V1-parity status bar (speaker · word count · audio). -->
