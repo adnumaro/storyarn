@@ -10,9 +10,11 @@ const { side = "bottom", align = "center" } = defineProps<{
 
 <template>
   <TooltipProvider :delay-duration="300">
-    <Tooltip>
+    <Tooltip :disable-closing-trigger="true">
       <TooltipTrigger as-child>
-        <slot />
+        <span class="inline-flex">
+          <slot />
+        </span>
       </TooltipTrigger>
       <TooltipContent :side="side" :align="align">
         {{ label }}

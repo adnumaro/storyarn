@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { Image, X } from "lucide-vue-next";
 import { ref } from "vue";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+  PopoverTrigger,
+} from "@components/ui/popover/index.ts";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 
 interface AvatarOption {
@@ -38,18 +43,17 @@ function clearAvatar() {
 
 <template>
   <Popover v-model:open="open">
-    <PopoverTrigger as-child>
+    <PopoverAnchor as-child>
       <ToolbarTooltip :label="$t('flows.avatar_picker.select_avatar')">
-        <button
-          type="button"
+        <PopoverTrigger
           class="toolbar-btn text-xs"
           :class="{ 'text-primary': hasOverride }"
           :disabled="disabled"
         >
           <Image class="size-3.5" />
-        </button>
+        </PopoverTrigger>
       </ToolbarTooltip>
-    </PopoverTrigger>
+    </PopoverAnchor>
     <PopoverContent class="w-64 p-2" :side-offset="8" side="top">
       <div class="text-xs font-medium text-muted-foreground mb-2">
         {{ $t("flows.avatar_picker.select_avatar") }}
