@@ -1,0 +1,30 @@
+assets/app/modules/flows/services/historyPreset.ts
+  s_1622eb321dba79::t_ea4212e165c5dc 19,24-42
+  s_1622eb321dba79::t_6723c821640896 267-316
+assets/app/modules/flows/services/editorHandlers.ts
+  s_1622eb321dba79::t_f4faa41cf4ddfc 154
+assets/app/modules/flows/composables/useFlowEditor.ts
+  s_1622eb321dba79::t_fb3b7c4e892fa3 23-26
+  s_1622eb321dba79::t_37f889c5a4d4c4 279-281
+  s_1622eb321dba79::t_cbb36236a2de6d 1150-1151
+  s_1622eb321dba79::t_542487baa8499f 1093-1149,1152-1156
+  s_1622eb321dba79::t_5beae181cf1d3f 180
+assets/app/modules/flows/lib/context_menu_items.ts
+  s_1622eb321dba79::t_b15cfd9d7bd465 191-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "2cb68f87e872af343d9560639a4b47f0c2280bf2",
+  "prompts": {},
+  "sessions": {
+    "s_1622eb321dba79": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10a76960-f8be-483e-b60c-7540b686922b",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
