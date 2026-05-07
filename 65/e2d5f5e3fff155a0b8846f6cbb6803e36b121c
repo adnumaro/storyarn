@@ -1,0 +1,39 @@
+assets/app/components/toolbar/ToolbarSizePicker.vue
+  s_4fbc02887ad651::t_5e9c872425aa00 3
+  s_4fbc02887ad651::t_75a0cb5a04b4b4 32,34,39,41
+assets/app/modules/flows/toolbar/ToolbarAvatarPicker.vue
+  s_4fbc02887ad651::t_f34c0cc3a4d3da 4-9
+  s_4fbc02887ad651::t_a502e794994b04 46,48,54,56
+assets/app/components/toolbar/ToolbarTooltip.vue
+  4fbc02887ad6514f 15-17
+  s_4fbc02887ad651::t_50b26387b01b72 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "65e2d5f5e3fff155a0b8846f6cbb6803e36b121c",
+  "prompts": {
+    "4fbc02887ad6514f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57fd8d30-829d-43ad-9585-e1bf444419c6",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>",
+      "total_additions": 3,
+      "total_deletions": 1,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  },
+  "sessions": {
+    "s_4fbc02887ad651": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57fd8d30-829d-43ad-9585-e1bf444419c6",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
