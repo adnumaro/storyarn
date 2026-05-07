@@ -188,7 +188,9 @@ function appendCanvasFallbacks(hook: HookProxy, list: FlowContextMenuItem[], t: 
     key: "auto_layout",
     label: t("flows.context_menu.auto_layout"),
     icon: LayoutGrid,
-    handler: () => hook.pushEvent("auto_layout", {}),
+    handler: () => {
+      void hook.performAutoLayout();
+    },
   });
 }
 

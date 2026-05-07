@@ -151,6 +151,7 @@ export interface HookProxy {
   el: HTMLElement | null;
   enterLoadingFromServer(): void;
   exitLoadingFromServer(): void;
+  performAutoLayout(): Promise<void>;
   _sheetsMap: Record<string, SheetMapEntry>;
   _hubsMap: Record<string, HubMapEntry>;
   _readonly: boolean;

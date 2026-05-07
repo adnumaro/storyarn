@@ -20,6 +20,11 @@ import type { NodeData } from "../lib/node-configs";
 import type { FlowSchemes, FlowAreaExtra, FlowConnection } from "../lib/rete-schemes";
 import { debug } from "../services/debug";
 import {
+  AutoLayoutAction,
+  buildBatchPositions,
+  type Position,
+} from "../services/historyPreset";
+import {
   editorHandlers,
   type EditorHandlers,
   type FlowContext,
@@ -172,6 +177,7 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
   let _lastClickedNodeId: string | number | null = null;
   let _destroyed = false;
   let _canvasClickController: AbortController | null = null;
+  let _autoLayoutInProgress = false;
 
   // Expose as a "hook-like" object for handler modules that expect `hook.pushEvent`, etc.
   const hookProxy: HookProxy = {
@@ -269,6 +275,9 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
     },
     exitLoadingFromServer() {
       _loadingFromServerCount = Math.max(0, _loadingFromServerCount - 1);
+    },
+    performAutoLayout() {
+      return performAutoLayout();
     },
     // Internal refs for handlers
     _sheetsMap: {},
@@ -1078,6 +1087,70 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
   function setToolbarProps(props: Record<string, unknown>): void {
     if (hookProxy._flowContext) {
       hookProxy._flowContext.toolbarProps = props;
+    }
+  }
+
+  // --- Auto-layout (client-side via rete-auto-arrange-plugin + elkjs) ---
+
+  function snapshotPositions(): Map<string, Position> {
+    const map = new Map<string, Position>();
+    if (!_editor || !_area) {
+      return map;
+    }
+    for (const node of _editor.getNodes()) {
+      const view = _area.nodeViews.get(node.id);
+      if (view) {
+        map.set(node.id, { x: view.position.x, y: view.position.y });
+      }
+    }
+    return map;
+  }
+
+  async function performAutoLayout(): Promise<void> {
+    if (_autoLayoutInProgress) return;
+    if (!_arrange || !_area || !_editor) return;
+    _autoLayoutInProgress = true;
+    try {
+      const { ArrangeAppliers } = await import("rete-auto-arrange-plugin");
+      const { AreaExtensions } = await import("rete-area-plugin");
+
+      const prevPositions = snapshotPositions();
+
+      const applier = new ArrangeAppliers.TransitionApplier<FlowSchemes, never>({
+        duration: 400,
+        timingFunction: (t: number) => t * (2 - t),
+      });
+
+      _loadingFromServerCount++;
+      try {
+        await _arrange.layout({
+          applier,
+          options: {
+            "elk.algorithm": "layered",
+            "elk.direction": "RIGHT",
+            "elk.spacing.nodeNode": "60",
+            "elk.layered.spacing.nodeNodeBetweenLayers": "120",
+          },
+        });
+      } finally {
+        _loadingFromServerCount = Math.max(0, _loadingFromServerCount - 1);
+      }
+
+      await AreaExtensions.zoomAt(_area, _editor.getNodes());
+
+      const newPositions = snapshotPositions();
+      pushEvent("batch_update_positions", {
+        positions: buildBatchPositions(newPositions),
+      });
+
+      if (_history) {
+        _history.add(new AutoLayoutAction(hookProxy, _area, prevPositions, newPositions));
+      }
+    } catch (error) {
+      // biome-ignore lint/suspicious/noConsole: error feedback for unlikely ELK layout failure
+      console.error("Auto-layout failed:", error);
+    } finally {
+      _autoLayoutInProgress = false;
     }
   }
 

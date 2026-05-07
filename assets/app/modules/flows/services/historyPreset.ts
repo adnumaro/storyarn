@@ -16,9 +16,30 @@ import type { NodeData } from "../lib/node-configs";
 import type { FlowSchemes, FlowAreaExtra, FlowConnection } from "../lib/rete-schemes";
 import type { HookProxy } from "./editorHandlers";
 
-interface Position {
+export interface Position {
   x: number;
   y: number;
+}
+
+export interface BatchPosition {
+  id: number;
+  position_x: number;
+  position_y: number;
+}
+
+/**
+ * Converts a `reteNodeId → position` map into the wire shape the
+ * `batch_update_positions` server endpoint expects. Skips entries whose
+ * rete id does not parse to a numeric server id.
+ */
+export function buildBatchPositions(positionsMap: Map<string, Position>): BatchPosition[] {
+  const result: BatchPosition[] = [];
+  for (const [reteNodeId, pos] of positionsMap) {
+    const id = Number.parseInt(reteNodeId.replace(/^node-/, ""), 10);
+    if (Number.isNaN(id)) continue;
+    result.push({ id, position_x: pos.x, position_y: pos.y });
+  }
+  return result;
 }
 
 /**
@@ -238,6 +259,57 @@ export class NodeDataAction implements Action {
     this.hookProxy.pushEvent("restore_node_data", {
       id: this.nodeId,
       data: this.newData,
+    });
+  }
+}
+
+/**
+ * Undo/redo action for auto-layout.
+ * Stores full position snapshots (before and after) for all nodes.
+ * Both operations replay positions through `area.translate` while
+ * loading-from-server is set (to suppress per-node server pushes), then
+ * persist the resulting layout in one batch via `batch_update_positions`.
+ */
+export class AutoLayoutAction implements Action {
+  hookProxy: HookProxy;
+  area: AreaPlugin<FlowSchemes, FlowAreaExtra>;
+  prevPositions: Map<string, Position>;
+  newPositions: Map<string, Position>;
+
+  constructor(
+    hookProxy: HookProxy,
+    area: AreaPlugin<FlowSchemes, FlowAreaExtra>,
+    prevPositions: Map<string, Position>,
+    newPositions: Map<string, Position>,
+  ) {
+    this.hookProxy = hookProxy;
+    this.area = area;
+    this.prevPositions = new Map(prevPositions);
+    this.newPositions = new Map(newPositions);
+  }
+
+  async undo(): Promise<void> {
+    await this.applyPositions(this.prevPositions);
+  }
+
+  async redo(): Promise<void> {
+    await this.applyPositions(this.newPositions);
+  }
+
+  private async applyPositions(positions: Map<string, Position>): Promise<void> {
+    this.hookProxy.enterLoadingFromServer();
+    try {
+      for (const [reteNodeId, pos] of positions) {
+        const view = this.area.nodeViews.get(reteNodeId);
+        if (view) {
+          await this.area.translate(reteNodeId, pos);
+        }
+      }
+    } finally {
+      this.hookProxy.exitLoadingFromServer();
+    }
+    this.hookProxy.pushEvent("batch_update_positions", {
+      positions: buildBatchPositions(positions),
     });
   }
 }
