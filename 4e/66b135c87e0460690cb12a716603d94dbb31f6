@@ -1,0 +1,22 @@
+assets/css/app.css
+  s_1622eb321dba79::t_a44c58f5e42b0f 227-281
+assets/app/modules/flows/composables/useFlowEditor.ts
+  s_1622eb321dba79::t_f2e0317b566827 1064-1069,1071-1076
+  s_1622eb321dba79::t_0c9ae4dbde7cb7 46-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "4e66b135c87e0460690cb12a716603d94dbb31f6",
+  "prompts": {},
+  "sessions": {
+    "s_1622eb321dba79": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10a76960-f8be-483e-b60c-7540b686922b",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
