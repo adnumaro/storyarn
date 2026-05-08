@@ -94,10 +94,30 @@ defmodule StoryarnWeb.LocalizationLive.Report do
   def handle_event("main_sidebar_" <> _ = event, params, socket),
     do: ProjectChromeHelpers.forward_main_sidebar(socket, event, params)
 
-  # change_locale is emitted by LocalizationSidebar.vue which now lives inside
-  # LocalizationSidebarLive; the sidebar broadcasts `{:active_locale, locale}`
-  # on the shell topic, which we pick up below.
+  def handle_event("change_locale", %{"locale" => locale}, socket) when is_binary(locale) do
+    target_locale? =
+      Enum.any?(socket.assigns.target_languages, fn language ->
+        language.locale_code == locale
+      end)
+
+    socket =
+      if target_locale? do
+        socket
+        |> assign(:selected_locale, locale)
+        |> load_report_data()
+      else
+        socket
+      end
+
+    {:noreply, socket}
+  end
+
+  # `nil` is broadcast when the dashboard route mounts so the sidebar can clear
+  # its target-language highlight. Report data still defaults to the first target
+  # language, so ignore that sidebar-only signal here.
   @impl true
+  def handle_info({:active_locale, nil}, socket), do: {:noreply, socket}
+
   def handle_info({:active_locale, locale}, socket) do
     socket =
       socket
@@ -109,10 +129,12 @@ defmodule StoryarnWeb.LocalizationLive.Report do
 
   def handle_info({:languages_changed, _payload}, socket) do
     project_id = socket.assigns.project.id
+    target_languages = Localization.get_target_languages(project_id)
 
     {:noreply,
      socket
-     |> assign(:target_languages, Localization.get_target_languages(project_id))
+     |> assign(:target_languages, target_languages)
+     |> assign(:selected_locale, normalize_selected_locale(socket.assigns.selected_locale, target_languages))
      |> load_report_data()}
   end
 
@@ -144,6 +166,17 @@ defmodule StoryarnWeb.LocalizationLive.Report do
     |> assign(:speaker_stats, speaker_stats)
     |> assign(:vo_progress, vo_progress)
     |> assign(:type_counts, type_counts)
+  end
+
+  defp normalize_selected_locale(selected_locale, target_languages) do
+    if Enum.any?(target_languages, &(&1.locale_code == selected_locale)) do
+      selected_locale
+    else
+      case target_languages do
+        [first | _] -> first.locale_code
+        [] -> nil
+      end
+    end
   end
 
   # ===========================================================================

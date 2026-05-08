@@ -768,7 +768,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
                  ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
                )
 
-      assert error_msg =~ "not found"
+      assert error_msg =~ "access"
     end
 
     test "viewer can access the page", %{conn: conn} do

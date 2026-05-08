@@ -53,7 +53,8 @@ defmodule StoryarnWeb.Plugs.Locale do
   end
 
   defp get_locale_from_params(conn) do
-    validate_locale(conn.params["locale"])
+    conn = fetch_query_params(conn)
+    validate_locale(conn.query_params["locale"])
   end
 
   defp get_locale_from_session(conn) do

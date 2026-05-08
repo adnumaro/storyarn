@@ -107,7 +107,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       user = user_fixture()
       logged_in_conn = log_in_user(conn, user)
 
-      assert {:error, {:live_redirect, %{to: "/users/settings", flash: flash}}} =
+      assert {:error, {:redirect, %{to: "/users/settings", flash: flash}}} =
                live(logged_in_conn, ~p"/users/settings/workspaces/nonexistent-slug/general")
 
       assert flash["error"] =~ "Workspace not found."

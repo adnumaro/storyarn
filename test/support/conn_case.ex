@@ -36,7 +36,15 @@ defmodule StoryarnWeb.ConnCase do
 
   setup tags do
     Storyarn.DataCase.setup_sandbox(tags)
-    {:ok, conn: Phoenix.ConnTest.build_conn()}
+    Gettext.put_locale(Storyarn.Gettext, "en")
+
+    conn =
+      Phoenix.ConnTest.build_conn()
+      |> Plug.Conn.put_req_header("accept-language", "en")
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> Plug.Conn.put_session(:locale, "en")
+
+    {:ok, conn: conn}
   end
 
   @doc """
@@ -91,6 +99,7 @@ defmodule StoryarnWeb.ConnCase do
 
     conn
     |> Phoenix.ConnTest.init_test_session(%{})
+    |> Plug.Conn.put_session(:locale, "en")
     |> Plug.Conn.put_session(:user_token, token)
   end
 

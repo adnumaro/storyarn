@@ -9,6 +9,10 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
   alias Storyarn.Repo
   alias Storyarn.Sheets
 
+  defp get_sidebar_live(view, project) do
+    find_live_child(view, "sidebar-sheets-#{project.id}")
+  end
+
   describe "Sheet show" do
     setup :register_and_log_in_user
 
@@ -73,9 +77,10 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
         )
 
       await_async(view)
+      sidebar = get_sidebar_live(view, project)
 
       # Simulate move_sheet event
-      render_hook(view, "move_to_parent", %{
+      render_click(sidebar, "move_to_parent", %{
         "item_id" => sheet2.id,
         "new_parent_id" => sheet1.id,
         "position" => 0
@@ -98,9 +103,10 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
         )
 
       await_async(view)
+      sidebar = get_sidebar_live(view, project)
 
       # Move to root level (empty parent_id)
-      render_hook(view, "move_to_parent", %{
+      render_click(sidebar, "move_to_parent", %{
         "item_id" => child.id,
         "new_parent_id" => "",
         "position" => 0
@@ -123,9 +129,10 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
         )
 
       await_async(view)
+      sidebar = get_sidebar_live(view, project)
 
       # Try to move parent under its child (would create cycle)
-      render_hook(view, "move_to_parent", %{
+      render_click(sidebar, "move_to_parent", %{
         "item_id" => parent.id,
         "new_parent_id" => child.id,
         "position" => 0
@@ -150,9 +157,10 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
         )
 
       await_async(view)
+      sidebar = get_sidebar_live(view, project)
 
       # Try to move sheet
-      render_hook(view, "move_to_parent", %{
+      render_click(sidebar, "move_to_parent", %{
         "item_id" => sheet2.id,
         "new_parent_id" => sheet1.id,
         "position" => 0
@@ -216,9 +224,11 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
       # Get initial sheet count
       initial_tree = Sheets.list_sheets_tree(project.id)
       initial_count = count_sheets(initial_tree)
+      sidebar = get_sidebar_live(view, project)
 
       # Create a new root sheet
-      render_click(view, "create_sheet", %{})
+      render_click(sidebar, "create_sheet", %{})
+      assert_redirect(view)
 
       # Verify a new sheet was created
       updated_tree = Sheets.list_sheets_tree(project.id)
@@ -241,8 +251,9 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
       initial_tree = Sheets.list_sheets_tree(project.id)
       initial_count = count_sheets(initial_tree)
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "create_sheet", %{})
+      render_click(sidebar, "create_sheet", %{})
 
       # Verify no sheet was created
       updated_tree = Sheets.list_sheets_tree(project.id)
@@ -265,12 +276,13 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
         )
 
       await_async(view)
+      sidebar = get_sidebar_live(view, project)
 
       # Set pending delete
-      render_click(view, "set_pending_delete_sheet", %{"id" => other_sheet.id})
+      render_click(sidebar, "set_pending_delete_sheet", %{"id" => other_sheet.id})
 
       # Confirm delete
-      render_click(view, "confirm_delete_sheet", %{})
+      render_click(sidebar, "confirm_delete_sheet", %{})
 
       # Verify the sheet was deleted
       assert Sheets.get_sheet(project.id, other_sheet.id) == nil
@@ -287,9 +299,10 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
         )
 
       await_async(view)
+      sidebar = get_sidebar_live(view, project)
 
       # Confirm delete without setting pending id first — should be a no-op
-      render_click(view, "confirm_delete_sheet", %{})
+      render_click(sidebar, "confirm_delete_sheet", %{})
 
       # The current sheet should still exist
       assert Sheets.get_sheet(project.id, sheet.id)

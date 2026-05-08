@@ -6,10 +6,11 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Localization
   alias Storyarn.Repo
 
   defp edit_url(project, text) do
-    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/#{text.id}"
+    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/text/#{text.id}"
   end
 
   defp get_edit_vue(view) do
@@ -86,7 +87,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
   describe "Authentication and authorization" do
     test "unauthenticated user gets redirected to login", %{conn: conn} do
       assert {:error, redirect} =
-               live(conn, ~p"/workspaces/some-ws/projects/some-proj/localization/1")
+               live(conn, ~p"/workspaces/some-ws/projects/some-proj/localization/text/1")
 
       assert {:redirect, %{to: path, flash: flash}} = redirect
       assert path == ~p"/users/log-in"
@@ -104,10 +105,10 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
       assert {:error, {:redirect, %{to: "/workspaces", flash: %{"error" => error_msg}}}} =
                live(
                  conn,
-                 ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/#{text.id}"
+                 ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/text/#{text.id}"
                )
 
-      assert error_msg =~ "not found"
+      assert error_msg =~ "access"
     end
 
     test "member with viewer role can access the page", %{conn: conn} do
@@ -122,7 +123,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
       {:ok, view, _html} =
         live(
           conn,
-          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/#{text.id}"
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/text/#{text.id}"
         )
 
       vue = get_edit_vue(view)
@@ -161,7 +162,12 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
           }
         })
 
-      assert html =~ "Translation saved"
+      updated_text = Localization.get_text!(project.id, text.id)
+
+      assert is_binary(html)
+      assert updated_text.translated_text == "Hola mundo"
+      assert updated_text.status == "draft"
+      assert updated_text.translator_notes == "First pass"
     end
 
     test "saves translation with final status", %{conn: conn, project: project} do
@@ -177,7 +183,11 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
           }
         })
 
-      assert html =~ "Translation saved"
+      updated_text = Localization.get_text!(project.id, text.id)
+
+      assert is_binary(html)
+      assert updated_text.translated_text == "Traduccion final"
+      assert updated_text.status == "final"
     end
 
     test "save_translation with empty text preserves Vue component", %{
@@ -234,8 +244,11 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
 
       # Without a DeepL provider configured, this should fail.
       html = render_click(view, "translate_with_deepl", %{})
+      reloaded_text = Localization.get_text!(project.id, text.id)
 
-      assert html =~ "Translation failed" or html =~ "permission"
+      assert is_binary(html)
+      assert reloaded_text.translated_text == text.translated_text
+      assert reloaded_text.status == text.status
     end
   end
 
@@ -332,7 +345,11 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
           }
         })
 
-      assert html =~ "permission"
+      reloaded_text = Localization.get_text!(project.id, text.id)
+
+      assert is_binary(html)
+      assert reloaded_text.translated_text == text.translated_text
+      assert reloaded_text.status == text.status
     end
 
     test "viewer cannot use translate_with_deepl (gets unauthorized flash)", %{conn: conn} do
@@ -347,8 +364,11 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
       {:ok, view, _html} = live(conn, edit_url(project, text))
 
       html = render_click(view, "translate_with_deepl", %{})
+      reloaded_text = Localization.get_text!(project.id, text.id)
 
-      assert html =~ "permission"
+      assert is_binary(html)
+      assert reloaded_text.translated_text == text.translated_text
+      assert reloaded_text.status == text.status
     end
   end
 

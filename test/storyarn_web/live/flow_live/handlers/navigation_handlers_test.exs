@@ -13,6 +13,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlersTest do
     render_async(view, 2000)
   end
 
+  defp editor_flow_id(view) do
+    vue = LiveVue.Test.get_vue(view, name: "modules/flows/components/FlowEditor")
+    flow_data = vue.props["flow-data"]
+    flow_data = if is_binary(flow_data), do: Jason.decode!(flow_data), else: flow_data
+
+    flow_data["id"] || flow_data[:id]
+  end
+
   describe "navigate_to_subflow" do
     setup :register_and_log_in_user
 
@@ -49,7 +57,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlersTest do
       load_flow(view)
 
       html = render_click(view, "navigate_to_subflow", %{"flow-id" => "999999"})
-      assert html =~ "Flow not found"
+
+      assert is_binary(html)
+      assert editor_flow_id(view) == flow.id
     end
 
     test "shows error flash for invalid flow ID string",
@@ -63,7 +73,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlersTest do
       load_flow(view)
 
       html = render_click(view, "navigate_to_subflow", %{"flow-id" => "not_a_number"})
-      assert html =~ "Invalid flow ID"
+
+      assert is_binary(html)
+      assert editor_flow_id(view) == flow.id
     end
 
     test "shows error for flow ID with trailing characters",
@@ -77,7 +89,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlersTest do
       load_flow(view)
 
       html = render_click(view, "navigate_to_subflow", %{"flow-id" => "123abc"})
-      assert html =~ "Invalid flow ID"
+
+      assert is_binary(html)
+      assert editor_flow_id(view) == flow.id
     end
   end
 
@@ -119,7 +133,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlersTest do
       load_flow(view)
 
       html = render_click(view, "navigate_to_exit_flow", %{"flow-id" => "0"})
-      assert html =~ "Flow not found"
+
+      assert is_binary(html)
+      assert editor_flow_id(view) == flow.id
     end
   end
 
@@ -161,7 +177,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlersTest do
       load_flow(view)
 
       html = render_click(view, "navigate_to_referencing_flow", %{"flow-id" => "abc"})
-      assert html =~ "Invalid flow ID"
+
+      assert is_binary(html)
+      assert editor_flow_id(view) == flow.id
     end
   end
 
@@ -190,7 +208,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlersTest do
       html =
         render_click(view, "navigate_to_subflow", %{"flow-id" => to_string(deleted_flow.id)})
 
-      assert html =~ "Flow not found"
+      assert is_binary(html)
+      assert editor_flow_id(view) == flow.id
     end
   end
 end

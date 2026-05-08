@@ -1388,7 +1388,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
       vue = LiveVue.Test.get_vue(view, name: "modules/flows/components/FlowDebugPanel")
       assert vue.props["state"]["status"] == "waiting_input"
-      responses = vue.props["state"]["pending_choices"]["responses"]
+      responses = vue.props["state"]["pending_choices"]
       assert is_list(responses)
       assert length(responses) > 0
     end

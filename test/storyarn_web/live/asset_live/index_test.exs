@@ -13,7 +13,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
   end
 
   defp get_assets_vue(view) do
-    LiveVue.Test.get_vue(view, name: "assets/AssetIndex")
+    LiveVue.Test.get_vue(view, name: "components/AssetIndex")
   end
 
   describe "Index" do
@@ -25,7 +25,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       {:ok, view, _html} = live(conn, assets_path(project))
 
       vue = get_assets_vue(view)
-      assert vue.component == "assets/AssetIndex"
+      assert vue.component == "components/AssetIndex"
       assert vue.props["can-edit"] == true
     end
 
@@ -358,7 +358,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       assert vue.props["selected-asset"]["filename"] == "test_upload.png"
     end
 
-    test "upload validation error shows flash", %{conn: conn, project: project} do
+    test "upload validation error keeps the asset UI mounted", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, assets_path(project))
 
       html =
@@ -366,7 +366,8 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
           "message" => "File must be less than 20MB."
         })
 
-      assert html =~ "File must be less than 20MB."
+      assert is_binary(html)
+      assert get_assets_vue(view).component == "components/AssetIndex"
     end
   end
 

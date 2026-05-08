@@ -49,7 +49,7 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
 
       assert path == "/workspaces"
-      assert flash["error"] =~ "not found"
+      assert flash["error"] =~ "access"
     end
 
     test "shows tool switcher enabled", %{conn: conn, user: user} do

@@ -233,7 +233,7 @@ defmodule StoryarnWeb.LayoutsTest do
           })
         )
 
-      assert html =~ "md:pl-[280px]"
+      assert html =~ "md:pl-[320px]"
     end
 
     test "no left padding when tree panel is closed" do
@@ -247,7 +247,7 @@ defmodule StoryarnWeb.LayoutsTest do
           })
         )
 
-      refute html =~ "md:pl-[280px]"
+      refute html =~ "md:pl-[320px]"
     end
 
     test "no left padding in canvas mode even when tree is open" do
@@ -262,7 +262,7 @@ defmodule StoryarnWeb.LayoutsTest do
         )
 
       # Canvas mode uses overflow-hidden, no padding logic
-      refute html =~ "md:pl-[280px]"
+      refute html =~ "md:pl-[320px]"
     end
   end
 

@@ -33,6 +33,14 @@ defmodule StoryarnWeb.SheetLive.Handlers.SelectOptionHandlersTest do
     }
   end
 
+  defp selectable_block_fixture(sheet, attrs) do
+    config =
+      %{"label" => "Status"}
+      |> Map.merge(Map.get(attrs, :config, %{}))
+
+    block_fixture(sheet, Map.put(attrs, :config, config))
+  end
+
   # ===========================================================================
   # Block scope (select / multi_select blocks)
   # ===========================================================================
@@ -54,7 +62,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.SelectOptionHandlersTest do
 
     test "appends without disturbing existing options", ctx do
       block =
-        block_fixture(ctx.sheet, %{
+        selectable_block_fixture(ctx.sheet, %{
           type: "select",
           config: %{
             "options" => [
@@ -78,7 +86,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.SelectOptionHandlersTest do
 
     test "removes an option by index", ctx do
       block =
-        block_fixture(ctx.sheet, %{
+        selectable_block_fixture(ctx.sheet, %{
           type: "select",
           config: %{
             "options" => [
@@ -108,7 +116,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.SelectOptionHandlersTest do
 
     test "updates value without touching key", ctx do
       block =
-        block_fixture(ctx.sheet, %{
+        selectable_block_fixture(ctx.sheet, %{
           type: "multi_select",
           config: %{
             "options" => [%{"key" => "tier_1", "value" => "Bronze"}]
@@ -131,7 +139,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.SelectOptionHandlersTest do
 
     test "updates key independently of value", ctx do
       block =
-        block_fixture(ctx.sheet, %{
+        selectable_block_fixture(ctx.sheet, %{
           type: "select",
           config: %{"options" => [%{"key" => "old_key", "value" => "Label"}]}
         })
@@ -152,7 +160,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.SelectOptionHandlersTest do
 
     test "ignores updates with unknown field", ctx do
       block =
-        block_fixture(ctx.sheet, %{
+        selectable_block_fixture(ctx.sheet, %{
           type: "select",
           config: %{"options" => [%{"key" => "k", "value" => "v"}]}
         })

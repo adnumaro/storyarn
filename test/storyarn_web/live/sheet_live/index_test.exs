@@ -7,6 +7,11 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Repo
+  alias Storyarn.Sheets
+
+  defp get_sidebar_live(view, project) do
+    find_live_child(view, "sidebar-sheets-#{project.id}")
+  end
 
   describe "Sheet index page" do
     setup :register_and_log_in_user
@@ -49,15 +54,16 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
 
     test "creates a root sheet and navigates to it", %{conn: conn, url: url, project: project} do
       {:ok, view, _html} = live(conn, url)
+      sidebar = get_sidebar_live(view, project)
 
-      assert {:error, {:live_redirect, %{to: redirect_path}}} =
-               render_click(view, "create_sheet")
+      render_click(sidebar, "create_sheet")
+      {redirect_path, _flash} = assert_redirect(view)
 
       # Should redirect to the new sheet's show page
       assert redirect_path =~ "/sheets/"
 
       # Verify the sheet was created in the database
-      sheets = Storyarn.Sheets.list_sheets_tree(project.id)
+      sheets = Sheets.list_sheets_tree(project.id)
       assert length(sheets) == 1
       assert hd(sheets).name == "Untitled"
     end
@@ -70,9 +76,11 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
 
       url = ~p"/workspaces/#{ws.slug}/projects/#{project.slug}/sheets"
       {:ok, view, _html} = live(conn, url)
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "create_sheet")
-      assert render(view) =~ "permission"
+      render_click(sidebar, "create_sheet")
+
+      assert Sheets.list_sheets_tree(project.id) == []
     end
   end
 
@@ -91,15 +99,15 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
       url: url,
       project: project
     } do
-      sheet_fixture(project, %{name: "Should Remain"})
+      sheet = sheet_fixture(project, %{name: "Should Remain"})
 
       {:ok, view, _html} = live(conn, url)
       _ = await_async(view)
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "confirm_delete_sheet")
+      render_click(sidebar, "confirm_delete_sheet")
 
-      html = render(view)
-      assert html =~ "Should Remain"
+      assert Sheets.get_sheet(project.id, sheet.id)
     end
 
     test "viewer cannot delete sheet", %{conn: conn, user: user} do
@@ -113,12 +121,12 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
 
       {:ok, view, _html} = live(conn, url)
       _ = await_async(view)
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "delete_sheet", %{"id" => sheet.id})
+      render_click(sidebar, "set_pending_delete_sheet", %{"id" => sheet.id})
+      render_click(sidebar, "confirm_delete_sheet")
 
-      html = render(view)
-      assert html =~ "permission"
-      assert html =~ "Protected Sheet"
+      assert Sheets.get_sheet(project.id, sheet.id)
     end
   end
 
@@ -141,15 +149,16 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
       child = sheet_fixture(project, %{name: "Child"})
 
       {:ok, view, _html} = live(conn, url)
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "move_to_parent", %{
+      render_click(sidebar, "move_to_parent", %{
         "item_id" => child.id,
         "new_parent_id" => parent.id,
         "position" => 0
       })
 
       # Verify the tree updated: child is now under parent
-      tree = Storyarn.Sheets.list_sheets_tree(project.id)
+      tree = Sheets.list_sheets_tree(project.id)
       parent_in_tree = Enum.find(tree, &(&1.id == parent.id))
       assert parent_in_tree
       assert Enum.any?(parent_in_tree.children, &(&1.id == child.id))
@@ -164,15 +173,16 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
       child = child_sheet_fixture(project, parent, %{name: "Child"})
 
       {:ok, view, _html} = live(conn, url)
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "move_to_parent", %{
+      render_click(sidebar, "move_to_parent", %{
         "item_id" => child.id,
         "new_parent_id" => nil,
         "position" => 0
       })
 
       # Verify both sheets are now at root level
-      tree = Storyarn.Sheets.list_sheets_tree(project.id)
+      tree = Sheets.list_sheets_tree(project.id)
       root_ids = Enum.map(tree, & &1.id)
       assert parent.id in root_ids
       assert child.id in root_ids
@@ -187,15 +197,16 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
       child = child_sheet_fixture(project, parent, %{name: "Child"})
 
       {:ok, view, _html} = live(conn, url)
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "move_to_parent", %{
+      render_click(sidebar, "move_to_parent", %{
         "item_id" => parent.id,
         "new_parent_id" => child.id,
         "position" => 0
       })
 
-      html = render(view)
-      assert html =~ "Cannot move a sheet into its own children"
+      updated_parent = Sheets.get_sheet(project.id, parent.id)
+      assert updated_parent.parent_id == nil
     end
 
     test "viewer cannot move sheet", %{conn: conn, user: user} do
@@ -208,15 +219,16 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
       url = ~p"/workspaces/#{ws.slug}/projects/#{project.slug}/sheets"
 
       {:ok, view, _html} = live(conn, url)
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "move_to_parent", %{
+      render_click(sidebar, "move_to_parent", %{
         "item_id" => sheet.id,
         "new_parent_id" => nil,
         "position" => 0
       })
 
-      html = render(view)
-      assert html =~ "permission"
+      updated_sheet = Sheets.get_sheet(project.id, sheet.id)
+      assert updated_sheet.parent_id == nil
     end
   end
 end

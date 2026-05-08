@@ -9,7 +9,7 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
   alias Storyarn.Repo
 
   defp report_url(project) do
-    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/report"
+    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization"
   end
 
   defp get_report_vue(view) do
@@ -49,7 +49,7 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
         live(conn, report_url(project))
 
       assert path == "/workspaces"
-      assert flash["error"] =~ "not found"
+      assert flash["error"] =~ "access"
     end
 
     test "passes empty target-languages when no languages", %{conn: conn, user: user} do
@@ -73,13 +73,15 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
       assert "es" in target_codes
     end
 
-    test "passes back-url to Vue", %{conn: conn, user: user} do
+    test "passes report language options to Vue", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
+      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
       {:ok, view, _html} = live(conn, report_url(project))
 
       vue = get_report_vue(view)
-      assert vue.props["back-url"] =~ "/localization"
+      assert [%{"localeCode" => "es"}] = vue.props["target-languages"]
+      assert vue.props["selected-locale"] == "es"
     end
   end
 
@@ -179,7 +181,7 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
   describe "Authentication" do
     test "unauthenticated user gets redirected to login", %{conn: conn} do
       assert {:error, redirect} =
-               live(conn, ~p"/workspaces/some-ws/projects/some-proj/localization/report")
+               live(conn, ~p"/workspaces/some-ws/projects/some-proj/localization")
 
       assert {:redirect, %{to: path, flash: flash}} = redirect
       assert path == ~p"/users/log-in"

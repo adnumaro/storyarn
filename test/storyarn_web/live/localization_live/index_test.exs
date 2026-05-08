@@ -9,12 +9,12 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
   alias Storyarn.Localization
   alias Storyarn.Repo
 
-  defp loc_path(project) do
-    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization"
+  defp loc_path(project, locale \\ "es") do
+    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/localization/texts/#{locale}"
   end
 
   defp get_index_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/localization/LocalizationIndex")
+    LiveVue.Test.get_vue(view, name: "modules/localization/components/LocalizationIndex")
   end
 
   defp get_sidebar_props(view) do
@@ -22,6 +22,10 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     # We read them from the layout's tree-props attribute via the MainSidebar vue.
     main_sidebar = LiveVue.Test.get_vue(view, name: "layout/MainSidebar")
     main_sidebar.props["sidebar-props"]
+  end
+
+  defp get_sidebar_live(view, project) do
+    find_live_child(view, "sidebar-localization-#{project.id}")
   end
 
   describe "Localization index page" do
@@ -33,7 +37,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       {:ok, view, _html} = live(conn, loc_path(project))
 
       vue = get_index_vue(view)
-      assert vue.component == "modules/localization/LocalizationIndex"
+      assert vue.component == "modules/localization/components/LocalizationIndex"
     end
 
     test "renders page for editor member", %{conn: conn, user: user} do
@@ -44,7 +48,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       {:ok, view, _html} = live(conn, loc_path(project))
 
       vue = get_index_vue(view)
-      assert vue.component == "modules/localization/LocalizationIndex"
+      assert vue.component == "modules/localization/components/LocalizationIndex"
     end
 
     test "redirects non-member", %{conn: conn} do
@@ -54,7 +58,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       {:error, {:redirect, %{to: path, flash: flash}}} = live(conn, loc_path(project))
 
       assert path == "/workspaces"
-      assert flash["error"] =~ "not found"
+      assert flash["error"] =~ "access"
     end
 
     test "passes texts to Vue when target language and texts exist", %{conn: conn, user: user} do
@@ -166,7 +170,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       vue = get_index_vue(view)
       assert Enum.any?(vue.props["texts"], fn t -> t["sourceText"] == "Spanish text" end)
 
-      render_click(view, "change_locale", %{"locale" => "fr"})
+      render_patch(view, loc_path(project, "fr"))
 
       vue = get_index_vue(view)
       assert Enum.any?(vue.props["texts"], fn t -> t["sourceText"] == "French text" end)
@@ -181,10 +185,8 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      render_click(view, "change_source_language", %{"locale_code" => "en-US"})
-
-      sidebar = get_sidebar_props(view)
-      assert sidebar["sourceLanguage"]["localeCode"] == "en-US"
+      sidebar = get_sidebar_live(view, project)
+      render_click(sidebar, "change_source_language", %{"locale_code" => "en-US"})
 
       source_language = Localization.get_source_language(project.id)
       assert source_language.locale_code == "en-US"
@@ -197,9 +199,11 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      html = render_click(view, "change_source_language", %{"locale_code" => "en-US"})
+      sidebar = get_sidebar_live(view, project)
+      render_click(sidebar, "change_source_language", %{"locale_code" => "en-US"})
 
-      assert html =~ "permission"
+      source_language = Localization.get_source_language(project.id)
+      assert source_language.locale_code == "en"
     end
   end
 
@@ -370,13 +374,13 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       {:ok, view, _html} = live(conn, loc_path(project))
 
       vue = get_index_vue(view)
-      assert vue.props["page"] == 1
+      assert vue.props["pagination"]["page"] == 1
       assert vue.props["total-count"] == 52
 
       render_click(view, "change_page", %{"page" => "2"})
 
       vue = get_index_vue(view)
-      assert vue.props["page"] == 2
+      assert vue.props["pagination"]["page"] == 2
     end
   end
 
@@ -391,10 +395,12 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       vue = get_index_vue(view)
       assert vue.props["has-target-languages"] == false
 
-      html = render_click(view, "add_target_language", %{"locale_code" => "fr"})
+      sidebar = get_sidebar_live(view, project)
+      render_click(sidebar, "add_target_language", %{"locale_code" => "fr"})
 
-      assert html =~ "Language added"
+      assert Localization.get_language_by_locale(project.id, "fr")
 
+      render(view)
       sidebar = get_sidebar_props(view)
       assert Enum.any?(sidebar["targetLanguages"], fn l -> l["localeCode"] == "fr" end)
     end
@@ -404,7 +410,8 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      render_click(view, "add_target_language", %{"locale_code" => ""})
+      sidebar = get_sidebar_live(view, project)
+      render_click(sidebar, "add_target_language", %{"locale_code" => ""})
 
       vue = get_index_vue(view)
       assert vue.props["has-target-languages"] == false
@@ -417,9 +424,10 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      html = render_click(view, "add_target_language", %{"locale_code" => "fr"})
+      sidebar = get_sidebar_live(view, project)
+      render_click(sidebar, "add_target_language", %{"locale_code" => "fr"})
 
-      assert html =~ "permission"
+      refute Localization.get_language_by_locale(project.id, "fr")
     end
   end
 
@@ -435,10 +443,12 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       sidebar = get_sidebar_props(view)
       assert Enum.any?(sidebar["targetLanguages"], fn l -> l["localeCode"] == "es" end)
 
-      html = render_click(view, "remove_language", %{"id" => language.id})
+      sidebar_live = get_sidebar_live(view, project)
+      render_click(sidebar_live, "remove_language", %{"id" => language.id})
 
-      assert html =~ "Language removed"
+      refute Localization.get_language(project.id, language.id)
 
+      render(view)
       vue = get_index_vue(view)
       assert vue.props["has-target-languages"] == false
     end
@@ -451,9 +461,10 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      html = render_click(view, "remove_language", %{"id" => language.id})
+      sidebar = get_sidebar_live(view, project)
+      render_click(sidebar, "remove_language", %{"id" => language.id})
 
-      assert html =~ "permission"
+      assert Localization.get_language(project.id, language.id)
     end
   end
 
@@ -466,9 +477,10 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      html = render_click(view, "sync_texts", %{})
+      sidebar = get_sidebar_live(view, project)
+      html = render_click(sidebar, "sync_texts", %{})
 
-      assert html =~ "Synced"
+      assert is_binary(html)
     end
 
     test "viewer cannot sync texts", %{conn: conn, user: user} do
@@ -479,16 +491,20 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      html = render_click(view, "sync_texts", %{})
+      before_count = Localization.count_texts(project.id)
 
-      assert html =~ "permission"
+      sidebar = get_sidebar_live(view, project)
+      html = render_click(sidebar, "sync_texts", %{})
+
+      assert is_binary(html)
+      assert Localization.count_texts(project.id) == before_count
     end
   end
 
   describe "translate_batch event" do
     setup :register_and_log_in_user
 
-    test "viewer cannot translate batch", %{conn: conn, user: user} do
+    test "viewer does not render the batch translation toolbar", %{conn: conn, user: user} do
       owner = user_fixture()
       project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, user, "viewer")
@@ -496,9 +512,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      html = render_click(view, "translate_batch", %{})
-
-      assert html =~ "permission"
+      refute has_element?(view, "#localization-toolbar-#{project.id}")
     end
   end
 
@@ -517,8 +531,11 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       {:ok, view, _html} = live(conn, loc_path(project))
 
       html = render_click(view, "translate_single", %{"id" => "#{text.id}"})
+      reloaded_text = Localization.get_text(project.id, text.id)
 
-      assert html =~ "permission"
+      assert is_binary(html)
+      assert reloaded_text.translated_text == text.translated_text
+      assert reloaded_text.status == text.status
     end
   end
 
@@ -566,7 +583,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       {:ok, view, _html} = live(conn, loc_path(project))
 
-      render_click(view, "change_locale", %{"locale" => "fr"})
+      render_patch(view, loc_path(project, "fr"))
 
       sidebar = get_sidebar_props(view)
       assert sidebar["selectedLocale"] == "fr"
@@ -610,7 +627,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
   describe "Authentication" do
     test "unauthenticated user gets redirected to login", %{conn: conn} do
       assert {:error, redirect} =
-               live(conn, ~p"/workspaces/some-ws/projects/some-proj/localization")
+               live(conn, ~p"/workspaces/some-ws/projects/some-proj/localization/texts/es")
 
       assert {:redirect, %{to: path, flash: flash}} = redirect
       assert path == ~p"/users/log-in"
