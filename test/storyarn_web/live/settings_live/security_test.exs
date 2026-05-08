@@ -5,7 +5,7 @@ defmodule StoryarnWeb.SettingsLive.SecurityTest do
   import Storyarn.AccountsFixtures
 
   defp get_security_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/settings/Security")
+    LiveVue.Test.get_vue(view, name: "modules/workspaces/settings/Security")
   end
 
   describe "Security settings page" do
@@ -16,7 +16,7 @@ defmodule StoryarnWeb.SettingsLive.SecurityTest do
         |> live(~p"/users/settings/security")
 
       vue = get_security_vue(view)
-      assert vue.component == "modules/settings/Security"
+      assert vue.component == "modules/workspaces/settings/Security"
     end
 
     test "passes password-form prop", %{conn: conn} do

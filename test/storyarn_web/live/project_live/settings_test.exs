@@ -14,7 +14,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   end
 
   defp get_general_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/project-settings/General")
+    LiveVue.Test.get_vue(view, name: "modules/projects/settings/General")
   end
 
   describe "General section" do
@@ -26,7 +26,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       {:ok, view, _html} = live(conn, settings_path(project))
 
       vue = get_general_vue(view)
-      assert vue.component == "modules/project-settings/General"
+      assert vue.component == "modules/projects/settings/General"
       assert vue.props["project-name"] == "My Project"
       assert vue.props["source-language"]["localeCode"] == "en"
     end
@@ -100,8 +100,8 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       {:ok, view, _html} = live(conn, settings_path(project, "members"))
 
-      vue = LiveVue.Test.get_vue(view, name: "modules/project-settings/Members")
-      assert vue.component == "modules/project-settings/Members"
+      vue = LiveVue.Test.get_vue(view, name: "modules/projects/settings/Members")
+      assert vue.component == "modules/projects/settings/Members"
       members = vue.props["members"]
       assert Enum.any?(members, fn m -> m["email"] == user.email end)
       assert Enum.any?(members, fn m -> m["email"] == "member@example.com" end)
@@ -127,12 +127,12 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       {:ok, view, _html} = live(conn, settings_path(project, "members"))
 
-      vue = LiveVue.Test.get_vue(view, name: "modules/project-settings/Members")
+      vue = LiveVue.Test.get_vue(view, name: "modules/projects/settings/Members")
       assert Enum.any?(vue.props["members"], fn m -> m["email"] == "removeme@example.com" end)
 
       render_click(view, "remove_member", %{"id" => to_string(membership.id)})
 
-      vue = LiveVue.Test.get_vue(view, name: "modules/project-settings/Members")
+      vue = LiveVue.Test.get_vue(view, name: "modules/projects/settings/Members")
       refute Enum.any?(vue.props["members"], fn m -> m["email"] == "removeme@example.com" end)
     end
   end

@@ -8,7 +8,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
   alias Storyarn.Workspaces
 
   defp get_members_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/settings/WorkspaceMembers")
+    LiveVue.Test.get_vue(view, name: "modules/workspaces/settings/WorkspaceMembers")
   end
 
   describe "mount" do
@@ -22,7 +22,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
         |> live(~p"/users/settings/workspaces/#{workspace.slug}/members")
 
       vue = get_members_vue(view)
-      assert vue.component == "modules/settings/WorkspaceMembers"
+      assert vue.component == "modules/workspaces/settings/WorkspaceMembers"
       assert vue.props["can-manage"] == true
     end
 
@@ -39,7 +39,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
         |> live(~p"/users/settings/workspaces/#{workspace.slug}/members")
 
       vue = get_members_vue(view)
-      assert vue.component == "modules/settings/WorkspaceMembers"
+      assert vue.component == "modules/workspaces/settings/WorkspaceMembers"
       assert vue.props["can-manage"] == false
     end
 
