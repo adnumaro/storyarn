@@ -49,7 +49,7 @@ defmodule StoryarnWeb.SheetLive.Index do
       }
     >
       <.vue
-        v-component="modules/sheets/SheetDashboard"
+        v-component="modules/sheets/dashboard/SheetDashboard"
         v-socket={@socket}
         id="sheet-dashboard"
         stats={@dashboard_stats}

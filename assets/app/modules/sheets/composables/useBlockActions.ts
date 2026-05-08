@@ -1,6 +1,6 @@
 import { computed, inject, ref, watch } from "vue";
 import type { ComputedRef, Ref } from "vue";
-import { useLive } from "../../../shared/composables/useLive";
+import { useLive } from "@shared/composables/useLive.ts";
 import type { Block } from "../types";
 
 interface BlockActionProps {

@@ -8,7 +8,7 @@ import {
   serializeLayout,
   transferBetweenGroups,
   verticalReorder,
-} from "@modules/sheets/components/dnd/layout-reducers";
+} from "../../../../modules/sheets/components/entities/dnd/layout-reducers";
 import type { Block, ColumnGroupLayoutItem, LayoutItem } from "@modules/sheets/types";
 
 function fw(id: number): LayoutItem {

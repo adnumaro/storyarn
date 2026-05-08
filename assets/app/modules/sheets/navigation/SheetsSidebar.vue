@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SidebarFrame from "@shell/SidebarFrame.vue";
-import SheetTree from "../components/tree/SheetTree.vue";
+import SheetTree from "../components/chrome/tree/SheetTree.vue";
 
 const {
   mainSidebarOpen = false,
