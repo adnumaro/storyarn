@@ -14,9 +14,7 @@ import { BookOpen, FileText, MessageSquare, Minimize2, Volume2 } from "lucide-vu
 import { computed } from "vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Dialog, DialogContent } from "@components/ui/dialog/index.ts";
-import FlowDialogueEditorBody, {
-  type DialoguePanelData,
-} from "./FlowDialogueEditorBody.vue";
+import FlowDialogueEditorBody, { type DialoguePanelData } from "./FlowDialogueEditorBody.vue";
 import { useLive } from "@composables/useLive";
 
 const {
@@ -39,21 +37,25 @@ const speakerName = computed<string>(() => {
 
 const hasAudio = computed<boolean>(() => data?.audioAssetId != null);
 
+function countWordsFromData(dialogueData: DialoguePanelData | null): number {
+  const html = dialogueData?.text ?? "";
+  const responseTexts = (dialogueData?.responses ?? []).map((response) => response.text);
+  const text = [
+    html.replace(/<[^>]+>/g, " "),
+    dialogueData?.stageDirections,
+    dialogueData?.menuText,
+    ...responseTexts,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
 /** Mirror of the panel's word-count helper. Strips HTML for the rich-text
  * body. Kept locally (not in the body component) because the footer status
  * bar is a wrapper concern, not a tab-content concern. */
-const wordCount = computed<number>(() => {
-  const parts: string[] = [];
-  const html = data?.text || "";
-  if (html) {
-    const stripped = html.replace(/<[^>]+>/g, " ");
-    parts.push(stripped);
-  }
-  if (data?.stageDirections) parts.push(data.stageDirections);
-  if (data?.menuText) parts.push(data.menuText);
-  for (const r of data?.responses ?? []) if (r.text) parts.push(r.text);
-  return parts.join(" ").trim().split(/\s+/).filter(Boolean).length;
-});
+const wordCount = computed<number>(() => countWordsFromData(data));
 
 function minimize() {
   live.pushEvent("minimize_dialogue_fullscreen", {});
@@ -86,9 +88,7 @@ function onDismiss(e: Event) {
     >
       <!-- Header — matches FlowDialoguePanel header layout but with
            Minimize2 (back to panel) instead of X (close all). -->
-      <div
-        class="flex items-center justify-between px-4 py-2.5 border-b border-border"
-      >
+      <div class="flex items-center justify-between px-4 py-2.5 border-b border-border">
         <div class="flex items-center gap-2 text-sm font-medium">
           <BookOpen class="size-4" />
           {{ $t("flows.dialogue_panel.title") }}
@@ -116,7 +116,9 @@ function onDismiss(e: Event) {
       </div>
 
       <!-- Footer — V1-parity status bar (speaker · word count · audio). -->
-      <div class="px-4 py-2 border-t border-border flex items-center gap-3 text-xs text-muted-foreground">
+      <div
+        class="px-4 py-2 border-t border-border flex items-center gap-3 text-xs text-muted-foreground"
+      >
         <span v-if="speakerName" class="flex items-center gap-1 truncate">
           <MessageSquare class="size-3 shrink-0" />
           <span class="truncate">{{ speakerName }}</span>

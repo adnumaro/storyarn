@@ -328,11 +328,7 @@ function parseConditionForBuilder(
             <!-- Speaker (.sp-character — ALL CAPS, opens Popover picker) -->
             <Popover v-model:open="speakerPickerOpen">
               <PopoverTrigger as-child>
-                <button
-                  type="button"
-                  class="sp-character sp-character-button"
-                  :disabled="!canEdit"
-                >
+                <button type="button" class="sp-character sp-character-button" :disabled="!canEdit">
                   {{ speakerName || $t("flows.dialogue_panel.no_speaker") }}
                 </button>
               </PopoverTrigger>
@@ -386,10 +382,7 @@ function parseConditionForBuilder(
             />
 
             <!-- Dialogue body (.sp-dialogue — TipTap, indented + max-width) -->
-            <div
-              class="sp-dialogue sp-dialogue-wrapper"
-              @click="editor?.commands.focus()"
-            >
+            <div class="sp-dialogue sp-dialogue-wrapper" @click="editor?.commands.focus()">
               <EditorContent :editor="editor" />
             </div>
           </div>
@@ -522,12 +515,7 @@ function parseConditionForBuilder(
              side-by-side in fullscreen (room for two columns). Both keep
              their labels — only the Audio label was redundant (AudioAsset
              renders its own header). -->
-        <div
-          :class="[
-            'grid gap-3',
-            display === 'fullscreen' ? 'grid-cols-2' : 'grid-cols-1',
-          ]"
-        >
+        <div :class="['grid gap-3', display === 'fullscreen' ? 'grid-cols-2' : 'grid-cols-1']">
           <div>
             <Label class="text-xs">{{ $t("flows.dialogue_panel.technical_id") }}</Label>
             <div class="flex items-center gap-1 mt-1">

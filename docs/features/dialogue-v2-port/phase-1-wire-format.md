@@ -14,23 +14,23 @@
 
 Backend handlers in `lib/storyarn_web/live/flow_live/nodes/dialogue/node.ex` pattern-match on these EXACT payloads. Anything else is a `FunctionClauseError`. Quoted strings are wire-level keys.
 
-| Event | Required keys | Notes |
-|---|---|---|
-| `add_response` | `"node-id"` | hyphen, not underscore |
-| `remove_response` | `"response-id"`, `"node-id"` | both required |
-| `update_response_text` | `"response-id"`, `"node-id"`, `"value"` | `"value"` not `"text"` |
-| `update_response_condition` | `"response-id"`, `"node-id"`, `"value"` (string) | string, not object — V2 must `JSON.stringify` before push |
-| `update_response_instruction_builder` | `"response-id"`, `"node-id"`, `"assignments"` (list) | NOT `update_response_assignments` |
+| Event                                 | Required keys                                        | Notes                                                     |
+| ------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------- |
+| `add_response`                        | `"node-id"`                                          | hyphen, not underscore                                    |
+| `remove_response`                     | `"response-id"`, `"node-id"`                         | both required                                             |
+| `update_response_text`                | `"response-id"`, `"node-id"`, `"value"`              | `"value"` not `"text"`                                    |
+| `update_response_condition`           | `"response-id"`, `"node-id"`, `"value"` (string)     | string, not object — V2 must `JSON.stringify` before push |
+| `update_response_instruction_builder` | `"response-id"`, `"node-id"`, `"assignments"` (list) | NOT `update_response_assignments`                         |
 
 Currently broken in V2 (`assets/app/modules/flows/components/FlowScreenplayEditor.vue`):
 
 ```js
 // What V2 sends today (BROKEN):
-live.pushEvent("add_response", {});                                                // missing node-id
-live.pushEvent("remove_response", { response_id });                                 // wrong key + missing node-id
-live.pushEvent("update_response_text", { response_id, text });                     // wrong key + missing node-id + wrong value key
-live.pushEvent("update_response_condition", { response_id, condition });           // wrong key + missing node-id + condition is object
-live.pushEvent("update_response_assignments", { response_id, assignments });       // event name doesn't exist
+live.pushEvent("add_response", {}); // missing node-id
+live.pushEvent("remove_response", { response_id }); // wrong key + missing node-id
+live.pushEvent("update_response_text", { response_id, text }); // wrong key + missing node-id + wrong value key
+live.pushEvent("update_response_condition", { response_id, condition }); // wrong key + missing node-id + condition is object
+live.pushEvent("update_response_assignments", { response_id, assignments }); // event name doesn't exist
 ```
 
 What V2 must send:
@@ -39,13 +39,19 @@ What V2 must send:
 live.pushEvent("add_response", { "node-id": nodeId });
 live.pushEvent("remove_response", { "response-id": id, "node-id": nodeId });
 live.pushEvent("update_response_text", {
-  "response-id": id, "node-id": nodeId, value: text,
+  "response-id": id,
+  "node-id": nodeId,
+  value: text,
 });
 live.pushEvent("update_response_condition", {
-  "response-id": id, "node-id": nodeId, value: JSON.stringify(condition),
+  "response-id": id,
+  "node-id": nodeId,
+  value: JSON.stringify(condition),
 });
 live.pushEvent("update_response_instruction_builder", {
-  "response-id": id, "node-id": nodeId, assignments,
+  "response-id": id,
+  "node-id": nodeId,
+  assignments,
 });
 ```
 
@@ -95,7 +101,8 @@ describe("FlowScreenplayEditor — response wire payloads", () => {
     const { wrapper, live } = mountIt();
     await wrapper.find('[data-test="remove-response-r1"]').trigger("click");
     expect(live.pushEvent).toHaveBeenCalledWith("remove_response", {
-      "response-id": "r1", "node-id": 42,
+      "response-id": "r1",
+      "node-id": 42,
     });
   });
 
@@ -105,7 +112,9 @@ describe("FlowScreenplayEditor — response wire payloads", () => {
     await input.setValue("new text");
     await input.trigger("blur");
     expect(live.pushEvent).toHaveBeenCalledWith("update_response_text", {
-      "response-id": "r1", "node-id": 42, value: "new text",
+      "response-id": "r1",
+      "node-id": 42,
+      value: "new text",
     });
   });
 
@@ -114,7 +123,9 @@ describe("FlowScreenplayEditor — response wire payloads", () => {
     const builder = wrapper.findComponent({ name: "ConditionBuilder" });
     builder.vm.$emit("update:condition", { logic: "all", rules: [] });
     expect(live.pushEvent).toHaveBeenCalledWith("update_response_condition", {
-      "response-id": "r1", "node-id": 42, value: '{"logic":"all","rules":[]}',
+      "response-id": "r1",
+      "node-id": 42,
+      value: '{"logic":"all","rules":[]}',
     });
   });
 
@@ -123,7 +134,8 @@ describe("FlowScreenplayEditor — response wire payloads", () => {
     const builder = wrapper.findComponent({ name: "InstructionBuilder" });
     builder.vm.$emit("update:assignments", [{ variable: "a", op: "set", value: "1" }]);
     expect(live.pushEvent).toHaveBeenCalledWith("update_response_instruction_builder", {
-      "response-id": "r1", "node-id": 42,
+      "response-id": "r1",
+      "node-id": 42,
       assignments: [{ variable: "a", op: "set", value: "1" }],
     });
   });

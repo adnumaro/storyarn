@@ -24,6 +24,7 @@ const {
   uploadTitle,
   previewPosition = "center",
   previewFit = "cover",
+  // eslint-disable-next-line vue/max-props -- Public asset-field API keeps picker labels, uploads and preview controls explicit.
 } = defineProps<{
   label?: string;
   icon?: Component;

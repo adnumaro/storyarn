@@ -61,7 +61,9 @@ function makeAssignment(overrides: Partial<Assignment> = {}): Assignment {
   };
 }
 
-function mountIt(props: Partial<{ assignment: Assignment; variables: Variable[]; disabled: boolean }> = {}) {
+function mountIt(
+  props: Partial<{ assignment: Assignment; variables: Variable[]; disabled: boolean }> = {},
+) {
   stubs.length = 0;
   return mount(AssignmentRow, {
     props: {
@@ -80,7 +82,8 @@ function mountIt(props: Partial<{ assignment: Assignment; variables: Variable[];
  * Placeholders come from operator templates and may be localised; matching
  * substring keeps tests resilient. */
 function pickerFocus(placeholderLike: string) {
-  return stubs.find((s) => s.placeholder.toLowerCase().includes(placeholderLike.toLowerCase()))?.focus;
+  return stubs.find((s) => s.placeholder.toLowerCase().includes(placeholderLike.toLowerCase()))
+    ?.focus;
 }
 
 describe("AssignmentRow — auto-advance focus chain", () => {
@@ -90,7 +93,9 @@ describe("AssignmentRow — auto-advance focus chain", () => {
 
   it("after picking sheet, focuses the variable combobox", async () => {
     const w = mountIt();
-    const sheetCb = w.findAllComponents(VariableComboboxStub).find((c) => /sheet/i.test(String(c.props("placeholder"))));
+    const sheetCb = w
+      .findAllComponents(VariableComboboxStub)
+      .find((c) => /sheet/i.test(String(c.props("placeholder"))));
     sheetCb!.vm.$emit("update:modelValue", "mc");
     await nextTick();
     await nextTick();
@@ -99,7 +104,9 @@ describe("AssignmentRow — auto-advance focus chain", () => {
 
   it("after picking variable in literal mode, focuses the value combobox", async () => {
     const w = mountIt({ assignment: makeAssignment({ sheet: "mc", value_type: "literal" }) });
-    const varCb = w.findAllComponents(VariableComboboxStub).find((c) => /variable/i.test(String(c.props("placeholder"))));
+    const varCb = w
+      .findAllComponents(VariableComboboxStub)
+      .find((c) => /variable/i.test(String(c.props("placeholder"))));
     varCb!.vm.$emit("update:modelValue", "health");
     await nextTick();
     await nextTick();
@@ -108,7 +115,9 @@ describe("AssignmentRow — auto-advance focus chain", () => {
 
   it("after picking variable in variable_ref mode, focuses the value_sheet combobox", async () => {
     const w = mountIt({ assignment: makeAssignment({ sheet: "mc", value_type: "variable_ref" }) });
-    const varCb = w.findAllComponents(VariableComboboxStub).find((c) => /variable/i.test(String(c.props("placeholder"))));
+    const varCb = w
+      .findAllComponents(VariableComboboxStub)
+      .find((c) => /variable/i.test(String(c.props("placeholder"))));
     varCb!.vm.$emit("update:modelValue", "health");
     await nextTick();
     await nextTick();

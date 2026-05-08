@@ -52,9 +52,7 @@ function isReparentModifier(event: KeyboardEvent | MouseEvent | PointerEvent): b
  * embedded in an iframe harness (Cowork preview) that swallows keyboard
  * focus before it reaches the inner page.
  */
-export function syncReparentModifierFromPointerEvent(
-  event: PointerEvent | MouseEvent,
-): void {
+export function syncReparentModifierFromPointerEvent(event: PointerEvent | MouseEvent): void {
   modifierHeld.value = isReparentModifier(event);
 }
 

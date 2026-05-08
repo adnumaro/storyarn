@@ -25,7 +25,9 @@ export interface UseScreenplayEditorOptions {
  * Single source of truth for both the canvas inline editor (DialogueNode) and
  * the side-panel editor (FlowDialoguePanel).
  */
-export function useScreenplayEditor(opts: UseScreenplayEditorOptions = {}): Ref<Editor | undefined> {
+export function useScreenplayEditor(
+  opts: UseScreenplayEditorOptions = {},
+): Ref<Editor | undefined> {
   return useEditor({
     extensions: [
       StarterKit.configure({

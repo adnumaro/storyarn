@@ -64,7 +64,7 @@ const playUrl = `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${fl
 <template>
   <div v-if="canEdit">
     <div
-      class="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 surface-panel px-2 py-2"
+      class="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 surface-panel px-2 py-2 h-10"
     >
       <!-- Tool mode: select / pan. Client-only state via shared ref. -->
       <div class="dock-item group relative">

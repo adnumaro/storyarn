@@ -56,7 +56,11 @@ interface PanelData {
   audio_assets: AssetEntry[];
 }
 
-const { open = false, data = null, canEdit = false } = defineProps<{
+const {
+  open = false,
+  data = null,
+  canEdit = false,
+} = defineProps<{
   open?: boolean;
   data?: PanelData | null;
   canEdit?: boolean;
@@ -171,7 +175,9 @@ function trackIcon(kind: string) {
     <div class="flex flex-col gap-6">
       <!-- Background image section -->
       <section class="flex flex-col gap-3">
-        <header class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <header
+          class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+        >
           <ImageIcon class="size-3.5" />
           {{ $t("flows.sequences.config_panel.background_title") }}
         </header>
@@ -201,7 +207,9 @@ function trackIcon(kind: string) {
 
       <!-- Audio tracks section -->
       <section class="flex flex-col gap-3">
-        <header class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <header
+          class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+        >
           <Music class="size-3.5" />
           {{ $t("flows.sequences.config_panel.audio_title") }}
         </header>

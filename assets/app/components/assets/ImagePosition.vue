@@ -52,7 +52,7 @@ function onFitChange(v: string | string[]) {
 </script>
 
 <template>
-  <div class="flex  gap-3">
+  <div class="flex gap-3">
     <div class="flex flex-col gap-1.5">
       <Label class="text-xs text-muted-foreground">
         {{ positionLabel || $t("common.assets.image.position_label") }}
@@ -89,12 +89,7 @@ function onFitChange(v: string | string[]) {
         class="w-full"
         @update:model-value="onFitChange"
       >
-        <ToggleGroupItem
-          v-for="opt in FITS"
-          :key="opt"
-          :value="opt"
-          class="flex-1 text-xs"
-        >
+        <ToggleGroupItem v-for="opt in FITS" :key="opt" :value="opt" class="flex-1 text-xs">
           {{ $t(`common.assets.image.fit_${opt}`) }}
         </ToggleGroupItem>
       </ToggleGroup>

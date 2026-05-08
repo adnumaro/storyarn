@@ -8,9 +8,8 @@ vi.mock("@composables/useLive", () => ({
   useLive: () => mockLive,
 }));
 
-const { default: DialogueToolbar } = await import(
-  "@modules/flows/components/toolbar-sections/DialogueToolbar.vue"
-);
+const { default: DialogueToolbar } =
+  await import("@modules/flows/components/toolbar-sections/DialogueToolbar.vue");
 
 /** F3-B regression guard: DialogueToolbar receives raw rete `node.data`
  * (snake_case) and adapts it internally to camelCase. These tests pin the

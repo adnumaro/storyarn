@@ -27,9 +27,9 @@ const initials = computed(() => {
 const sizeClass = computed(() => {
   switch (size) {
     case "xs":
-      return "size-5 text-[9px]";
+      return "size-4 text-[8px]";
     case "sm":
-      return "size-7 text-xs";
+      return "size-6 text-[10px]";
     case "md":
       return "size-9 text-sm";
     case "lg":
@@ -41,12 +41,12 @@ const sizeClass = computed(() => {
 
 const ringStyle = computed(() => {
   if (!color) return {};
-  return { boxShadow: `0 0 0 2px ${color}` };
+  return { boxShadow: `0 0 0 1px ${color}` };
 });
 </script>
 
 <template>
-  <Avatar :class="sizeClass" :style="ringStyle" :title="displayName || email">
+  <Avatar :class="sizeClass" :style="ringStyle">
     <AvatarFallback class="font-medium">
       {{ initials }}
     </AvatarFallback>

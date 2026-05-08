@@ -20,12 +20,12 @@ function saveName(name: string): void {
 </script>
 
 <template>
-  <div class="flex items-center gap-1.5 surface-panel px-3 h-full">
+  <div class="flex items-center gap-1.5 surface-panel px-3 h-8">
     <EditableText
       :model-value="sceneName"
       :placeholder="$t('scenes.toolbar.scene_name')"
       tag="span"
-      class="text-sm font-medium max-w-[200px] truncate"
+      class="text-sm font-medium max-w-50 truncate"
       :disabled="!canEdit"
       @save="saveName"
     />

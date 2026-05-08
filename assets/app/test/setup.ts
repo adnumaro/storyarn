@@ -23,10 +23,9 @@ if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) {
 
 // Load all English locale files for component tests
 type LocaleModule = { default?: JsonLocale };
-const localeModules: Record<string, LocaleModule> = import.meta.glob(
-  "../locales/en/*.json",
-  { eager: true },
-);
+const localeModules: Record<string, LocaleModule> = import.meta.glob("../locales/en/*.json", {
+  eager: true,
+});
 
 const enMessages: JsonLocale = {};
 for (const path in localeModules) {

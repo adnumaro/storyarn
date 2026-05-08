@@ -99,7 +99,7 @@ function navigateToNode(nodeId: number | string): void {
 </script>
 
 <template>
-  <div class="flex items-stretch gap-2">
+  <div class="flex items-stretch gap-2 h-8">
     <!-- Nav history -->
     <div
       v-if="navHistory.back || navHistory.forward"
@@ -133,7 +133,7 @@ function navigateToNode(nodeId: number | string): void {
         :model-value="flowName"
         :placeholder="$t('flows.header.untitled')"
         tag="span"
-        class="text-sm font-medium max-w-50 truncate"
+        class="text-xs font-medium max-w-50 truncate"
         :disabled="!canEdit"
         @save="saveName"
       />
@@ -142,11 +142,15 @@ function navigateToNode(nodeId: number | string): void {
         :model-value="flowShortcut"
         :placeholder="$t('flows.header.add_shortcut')"
         tag="span"
-        class="text-xs text-muted-foreground max-w-30 truncate"
+        class="text-[0.70rem] text-muted-foreground max-w-30 truncate"
         :disabled="!canEdit"
         @save="saveShortcut"
       />
-      <Badge v-if="isMain" variant="default" class="text-[10px] px-1.5 py-0 rounded-full shrink-0">
+      <Badge
+        v-if="isMain"
+        variant="default"
+        class="text-[0.70rem] px-1.5 py-0 rounded-full shrink-0"
+      >
         {{ $t("flows.header.main") }}
       </Badge>
     </div>
@@ -271,7 +275,10 @@ function navigateToNode(nodeId: number | string): void {
     </div>
 
     <!-- Save indicator -->
-    <div v-if="canEdit" class="flex items-center surface-panel px-2">
+    <div
+      v-if="canEdit && (saveStatus === 'saving' || saveStatus === 'saved')"
+      class="flex items-center surface-panel px-2"
+    >
       <div
         v-if="saveStatus === 'saving'"
         class="flex items-center gap-1 text-xs text-muted-foreground"

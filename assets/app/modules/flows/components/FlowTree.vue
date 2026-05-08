@@ -269,18 +269,10 @@ function handleDrop(e: unknown): void {
 <template>
   <div class="space-y-2">
     <!-- Search -->
-    <Input
-      v-model="searchQuery"
-      type="search"
-      :placeholder="$t('flows.tree.filter')"
-      class="text-xs"
-    />
+    <Input v-model="searchQuery" type="search" :placeholder="$t('flows.tree.filter')" size="sm" />
 
     <!-- Empty state -->
-    <div
-      v-if="filteredTree.length === 0"
-      class="py-4 text-xs text-muted-foreground text-center"
-    >
+    <div v-if="filteredTree.length === 0" class="py-4 text-xs text-muted-foreground text-center">
       {{ $t("flows.tree.empty") }}
     </div>
 

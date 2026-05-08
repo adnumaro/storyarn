@@ -11,12 +11,7 @@ import { useScreenplayEditor } from "../composables/useScreenplayEditor";
 import { previewText } from "../lib/render-helpers";
 import { FLOW_CONTEXT_KEY } from "../setup";
 import type { NodeConfig } from "../lib/node-configs";
-import type {
-  FlowContextInjection,
-  ReteEmitFn,
-  ReteNodeData,
-  SheetMapEntry,
-} from "../types";
+import type { FlowContextInjection, ReteEmitFn, ReteNodeData, SheetMapEntry } from "../types";
 
 /** Raw rete state shape (snake_case from server canvas serializer). The
  * canvas wire stays snake_case for now — F3 of the relational refactor
@@ -323,12 +318,7 @@ function onSpeakerSelect(id: number | string | null) {
         @keydown="onInputKeydown"
         @pointerdown.stop
       />
-      <EditorContent
-        :editor="inlineEditor"
-        class="inline-editor"
-        @keydown.stop
-        @pointerdown.stop
-      />
+      <EditorContent :editor="inlineEditor" class="inline-editor" @keydown.stop @pointerdown.stop />
     </div>
 
     <!-- VIEW MODE BODY: 3-row stack — value when present, muted placeholder
@@ -345,7 +335,10 @@ function onSpeakerSelect(id: number | string | null) {
       <div v-else class="sp-parenthetical italic text-muted-foreground/30 text-xs mb-1">
         ({{ t("flows.nodes.dialogue.stage_placeholder") }})
       </div>
-      <div v-if="menuText" class="sp-menu-text text-xs text-primary/70 font-medium mb-1 wrap-break-word">
+      <div
+        v-if="menuText"
+        class="sp-menu-text text-xs text-primary/70 font-medium mb-1 wrap-break-word"
+      >
         ≡ {{ menuText }}
       </div>
       <div v-else class="sp-menu-text text-xs text-primary/30 font-medium mb-1">

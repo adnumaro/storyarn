@@ -79,7 +79,7 @@ function toggleMainSidebar() {
 </script>
 
 <template>
-  <nav class="flex items-center gap-1 px-1 py-1 surface-panel">
+  <nav class="flex items-center gap-1 px-1 py-1 surface-panel h-8">
     <!-- Main sidebar toggle -->
     <ToolbarTooltip
       v-if="hasTree"
@@ -96,7 +96,7 @@ function toggleMainSidebar() {
         :class="['toolbar-btn size-8', mainSidebarOpen && 'bg-accent']"
         @click="toggleMainSidebar"
       >
-        <PanelLeft class="size-4" />
+        <PanelLeft class="size-3.5" />
       </button>
     </ToolbarTooltip>
 
@@ -106,7 +106,7 @@ function toggleMainSidebar() {
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
         <button class="toolbar-btn gap-1.5 font-medium max-w-52">
-          <Folder class="size-4 opacity-60 shrink-0" />
+          <Folder class="size-3.5 opacity-60 shrink-0" />
           <span class="hidden xl:inline truncate text-sm">{{ projectName }}</span>
           <ChevronDown class="size-3 opacity-50" />
         </button>
@@ -143,7 +143,7 @@ function toggleMainSidebar() {
     <DropdownMenu v-if="showToolSwitcher">
       <DropdownMenuTrigger as-child>
         <button class="toolbar-btn gap-1.5">
-          <component :is="activeToolDef.icon" class="size-4" />
+          <component :is="activeToolDef.icon" class="size-3.5" />
           <span class="hidden xl:inline text-sm font-medium">{{
             $t(`layout.tools.${activeToolDef.key}`)
           }}</span>

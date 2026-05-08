@@ -169,7 +169,7 @@
   justify-content: center;
   border-radius: 0.5rem;
   padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   line-height: 1.25rem;
   color: hsl(var(--foreground));
   background: transparent;
@@ -312,8 +312,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 10px;
   cursor: pointer;
   transition:

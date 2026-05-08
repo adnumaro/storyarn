@@ -9,11 +9,7 @@ import {
   CommandItem,
   CommandList,
 } from "@components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 
 interface AssetItem {
   id: number | string;
@@ -73,10 +69,7 @@ function pick(asset: AssetItem) {
           "
         />
         <CommandList class="max-h-64">
-          <div
-            v-if="assets.length === 0"
-            class="py-6 text-center text-sm text-muted-foreground"
-          >
+          <div v-if="assets.length === 0" class="py-6 text-center text-sm text-muted-foreground">
             {{
               emptyText ||
               (kind === "image"
@@ -106,10 +99,7 @@ function pick(asset: AssetItem) {
                 />
                 <span class="truncate text-xs">{{ asset.filename }}</span>
               </div>
-              <Check
-                v-if="isSelected(asset)"
-                class="size-3.5 shrink-0 text-primary"
-              />
+              <Check v-if="isSelected(asset)" class="size-3.5 shrink-0 text-primary" />
             </CommandItem>
           </CommandGroup>
         </CommandList>

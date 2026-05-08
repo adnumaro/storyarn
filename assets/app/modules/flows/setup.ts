@@ -28,10 +28,7 @@ import Sequence from "./components/Sequence.vue";
 import { createContextMenuItems } from "./lib/context_menu_items";
 import { flowContextMenuPreset } from "./lib/context_menu_preset";
 import { flowScopesPreset } from "./lib/flow-scopes-preset";
-import {
-  installReparentModifierListeners,
-  reparentGestureActive,
-} from "./lib/flow-reparent-state";
+import { installReparentModifierListeners, reparentGestureActive } from "./lib/flow-reparent-state";
 import type { FlowSchemes, FlowAreaExtra } from "./lib/rete-schemes";
 import type { FlowContext, HookProxy } from "./services/editorHandlers";
 import { historyPreset } from "./services/historyPreset";

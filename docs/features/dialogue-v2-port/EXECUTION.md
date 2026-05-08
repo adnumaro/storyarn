@@ -14,14 +14,14 @@
 
 ## Phase summary
 
-| # | Title | Outcome (user-testable) | Estimate |
-|---|---|---|---|
-| 1 | Wire-format fix | Response editing actually works end-to-end (add / remove / edit text / condition / instruction). | 2-3h |
-| 2 | Editor parity (audio + localization + generate-id + word-count footer) | Screenplay editor reaches V1 field-level parity. | 3-4h |
-| 3 | PropsSerializer + camelCase + inline-edit HTML preservation | DialogueNode + panel use camelCase props end-to-end. Inline-edit no longer destroys formatting. | 3-4h |
-| 4 | Visual port + god-component split + dead-code cleanup | DialogueNode and DialogueToolbar match V1 visually using shadcn primitives. No hand-rolled CSS forks. Dead fallbacks removed. | 4-6h |
-| 5 | i18n key sweep + mobile fullscreen panel + edge polish | All V1 strings ported. Panel goes fullscreen on mobile (xl breakpoint match). | 2-3h |
-| 6 | Collab broadcast for dialogue panel + test sweep | Two tabs editing the same dialogue stay in sync. 30+ Vitest tests pass. Backend regression suite green. | 3-4h |
+| #   | Title                                                                  | Outcome (user-testable)                                                                                                       | Estimate |
+| --- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------- |
+| 1   | Wire-format fix                                                        | Response editing actually works end-to-end (add / remove / edit text / condition / instruction).                              | 2-3h     |
+| 2   | Editor parity (audio + localization + generate-id + word-count footer) | Screenplay editor reaches V1 field-level parity.                                                                              | 3-4h     |
+| 3   | PropsSerializer + camelCase + inline-edit HTML preservation            | DialogueNode + panel use camelCase props end-to-end. Inline-edit no longer destroys formatting.                               | 3-4h     |
+| 4   | Visual port + god-component split + dead-code cleanup                  | DialogueNode and DialogueToolbar match V1 visually using shadcn primitives. No hand-rolled CSS forks. Dead fallbacks removed. | 4-6h     |
+| 5   | i18n key sweep + mobile fullscreen panel + edge polish                 | All V1 strings ported. Panel goes fullscreen on mobile (xl breakpoint match).                                                 | 2-3h     |
+| 6   | Collab broadcast for dialogue panel + test sweep                       | Two tabs editing the same dialogue stay in sync. 30+ Vitest tests pass. Backend regression suite green.                       | 3-4h     |
 
 **Total:** 17-24h. Variable because phases 4 + 6 can balloon if visual polish is taken to production-grade.
 
@@ -46,6 +46,7 @@ Detail: [`phase-1-wire-format.md`](./phase-1-wire-format.md).
 **Outcome:** the user can open a dialogue node, click "Add response" → response appears, type text → saves, set condition → saves, set instruction assignments → saves, delete response → gone, all without LV process crashes.
 
 **Scope:**
+
 - Fix `FlowScreenplayEditor.vue` push-event payloads to match V1 wire contract from REFACTOR.md §4 (key spelling, missing keys, value types).
 - Stringify `condition` before push.
 - Rename `update_response_assignments` → `update_response_instruction_builder`.
@@ -53,6 +54,7 @@ Detail: [`phase-1-wire-format.md`](./phase-1-wire-format.md).
 - Add Vitest tests for every push event payload — one test per event + a "smoke" test that mounts the editor and walks add → edit → delete.
 
 **Verification:**
+
 - Browser: open flow with at least 1 dialogue, open screenplay panel, exercise add/remove/text/condition/instruction. Watch server logs for `FunctionClauseError` (must be zero).
 - Backend tests: `mix test test/storyarn_web/live/flow_live/nodes/dialogue_node_test.exs` (43+ tests, all green).
 - Vitest: 5+ new tests under `assets/app/test/modules/flows/components/FlowScreenplayEditor.test.ts`.
@@ -79,11 +81,13 @@ Detail: [`phase-1-wire-format.md`](./phase-1-wire-format.md).
 6. Backend: confirm `:audio_picker` PubSub is no longer needed by the V2 path. If it still has callers from sheets/scenes, leave it. If not, remove (out of scope but flag for cleanup).
 
 **Vitest:**
+
 - `DialogueAudioPicker.test.ts`: select / clear emits, prop pass-through.
 - `LocalizationField.test.ts`: copy button visibility, copy event.
 - `FlowScreenplayEditor.test.ts`: word-count plural rendering, generate-technical-id push event.
 
 **Verification:**
+
 - Browser: open dialogue, attach audio → reload → still attached. Click generate-technical-id → input updates with `<flow_shortcut>_<speaker>_<count>`. Copy localization-id → clipboard contains correct string.
 
 **Decisions invoked:** D2.
@@ -98,15 +102,17 @@ Detail: [`phase-1-wire-format.md`](./phase-1-wire-format.md).
 
 1. Backend: introduce `StoryarnWeb.FlowLive.Helpers.PropsSerializer` (new file or co-locate in `generic_node_handlers.ex` if there's already a precedent — the audit says sequence builds it inline in `generic_node_handlers.ex` as `defp build_sequence_panel_data`). Make a public `dialogue_panel_data/2` returning the camelCase shape from REFACTOR.md §5.
 2. Frontend: rewrite `FlowScreenplayEditor.vue` props interface in camelCase. Read from a single `data` prop returned by the serializer.
-3. Frontend: rewrite `DialogueNode.vue` props interface in camelCase. The canvas still receives raw `node.data`, but the *prop* interface declared inside `DialogueNode.vue` translates at the boundary (a small adapter at the top of `<script setup>` that maps incoming snake_case `data` → typed camelCase locals).
+3. Frontend: rewrite `DialogueNode.vue` props interface in camelCase. The canvas still receives raw `node.data`, but the _prop_ interface declared inside `DialogueNode.vue` translates at the boundary (a small adapter at the top of `<script setup>` that maps incoming snake_case `data` → typed camelCase locals).
 4. Frontend: rewrite `DialogueToolbar.vue` props in camelCase.
 5. Inline-edit fix (D7 from REFACTOR.md §10): clicking the dialogue text in canvas edit-mode opens the screenplay panel and focuses the TipTap editor. Remove the local `<textarea>` for text. Keep stage_directions and menu_text inline editors (they're plain strings — no HTML round-trip risk).
 
 **Vitest:**
+
 - `DialogueNode.test.ts`: snake_case→camelCase adapter, `previewText`, edit-mode entry triggers panel open.
 - `FlowScreenplayEditor.test.ts`: receives `data` prop, renders correct fields.
 
 **Verification:**
+
 - Browser: open dialogue with rich-text body (bold, italic) → canvas preview shows correct text → click into edit-mode → panel opens with TipTap focused → edit + close → canvas updates. No formatting loss.
 
 **Decisions invoked:** D5, D7.
@@ -133,10 +139,12 @@ Detail: [`phase-1-wire-format.md`](./phase-1-wire-format.md).
 8. Visual diff against V1: open a dialogue in V2, screenshot, open same flow in V1 worktree (start a separate Phoenix server on port 4001 if needed), screenshot, side-by-side compare. Iterate.
 
 **Vitest:**
+
 - One Vitest per new component (Header, Body, Sockets) with prop pass-through + visual structure assertions.
 - `DialogueAudioPreview.test.ts`: renders Volume2 when assetId set, nothing otherwise.
 
 **Verification:**
+
 - Browser: dialogue node renders identically to V1 main reference (avatar strip, badges, sockets layout, header gradient). Inline-edit-mode shows shadcn Input styling.
 - Visual regression: at least one screenshot pair preserved in a session note (not committed; ephemeral verification artefact).
 
@@ -158,11 +166,13 @@ Detail: [`phase-1-wire-format.md`](./phase-1-wire-format.md).
 6. Edge: details `phx-hook="DetailsPreserveOpen"` analogue: ensure the response Advanced collapsibles preserve open state across re-renders. (Vue + LiveVue should handle this naturally if `open` is in component state, not derived from server props.)
 
 **Vitest:**
+
 - i18n completeness test: load every key referenced in dialogue Vue components, assert `flows.json` has them.
 - Plural rendering: 0 / 1 / 5 word renderings.
 - Esc key closes panel.
 
 **Verification:**
+
 - Browser: shrink viewport below 1280px → panel goes fullscreen with mobile header. Press Esc → closes. Open response Advanced → click outside → reopen → still expanded.
 
 ---
@@ -188,17 +198,17 @@ Detail: [`phase-1-wire-format.md`](./phase-1-wire-format.md).
 
 Tracked in REFACTOR.md §10. Course-correctable up to one phase later.
 
-| ID | Decision | Phase invoked |
-|---|---|---|
-| D1 | All screenplay-editor edits route through `persist_node_update` | 1 |
-| D2 | `:audio_picker` PubSub replaced by `update_node_field` | 2 |
-| D3 | `condition` always serialised to string at wire | 1 |
-| D4 | `:editor` editing mode collapsed into `:screenplay` | 4 |
-| D5 | `PropsSerializer.dialogue_panel_data/2` introduced | 3 |
-| D6 | `FlowNode.vue:70` default fallback to DialogueNode removed | 4 |
-| D7 | Inline-edit on canvas opens panel instead of forking TipTap | 3 |
-| D8 | `DialogueToolbar.vue:60` `location_sheet_id` fallback removed | 4 |
-| D9 (tentative) | `Settings` → `BookOpen` icon for screenplay toolbar button | 4 |
+| ID             | Decision                                                        | Phase invoked |
+| -------------- | --------------------------------------------------------------- | ------------- |
+| D1             | All screenplay-editor edits route through `persist_node_update` | 1             |
+| D2             | `:audio_picker` PubSub replaced by `update_node_field`          | 2             |
+| D3             | `condition` always serialised to string at wire                 | 1             |
+| D4             | `:editor` editing mode collapsed into `:screenplay`             | 4             |
+| D5             | `PropsSerializer.dialogue_panel_data/2` introduced              | 3             |
+| D6             | `FlowNode.vue:70` default fallback to DialogueNode removed      | 4             |
+| D7             | Inline-edit on canvas opens panel instead of forking TipTap     | 3             |
+| D8             | `DialogueToolbar.vue:60` `location_sheet_id` fallback removed   | 4             |
+| D9 (tentative) | `Settings` → `BookOpen` icon for screenplay toolbar button      | 4             |
 
 ---
 

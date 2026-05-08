@@ -31,10 +31,7 @@ const currentLabel = () => SIZE_OPTIONS.find((o) => o.value === size)?.label || 
   <Popover v-model:open="open">
     <PopoverAnchor as-child>
       <ToolbarTooltip :label="$t('common.toolbar_size.size')">
-        <PopoverTrigger
-          class="toolbar-btn text-xs font-semibold min-w-7"
-          :disabled="disabled"
-        >
+        <PopoverTrigger class="toolbar-btn text-xs font-semibold min-w-7" :disabled="disabled">
           {{ currentLabel() }}
         </PopoverTrigger>
       </ToolbarTooltip>

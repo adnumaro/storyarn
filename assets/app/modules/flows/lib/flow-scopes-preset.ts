@@ -75,7 +75,7 @@ type ParentRepositionListener = (nodeId: string, x: number, y: number) => void;
  * Compute the bbox of a set of sibling nodes. Mirrors
  * `getNodesBoundingBox` from rete-scopes.
  */
-function getNodesBoundingBox<S extends BaseSchemes>(
+function getNodesBoundingBox(
   nodes: ScopeNode[],
   area: ScopeArea,
 ): { top: number; left: number; width: number; height: number } {
@@ -203,13 +203,19 @@ async function reassignParent<S extends BaseSchemes>(
       const view = props.area.nodeViews.get((node as unknown as ScopeNode).id);
       return view ? { node: node as unknown as ScopeNode, view } : null;
     })
-    .filter((entry): entry is { node: ScopeNode; view: { position: { x: number; y: number }; element: HTMLElement } } =>
-      Boolean(entry) &&
-      !movingIds.includes(entry!.node.id) &&
-      pointer.x > entry!.view.position.x &&
-      pointer.y > entry!.view.position.y &&
-      pointer.x < entry!.view.position.x + entry!.node.width &&
-      pointer.y < entry!.view.position.y + entry!.node.height,
+    .filter(
+      (
+        entry,
+      ): entry is {
+        node: ScopeNode;
+        view: { position: { x: number; y: number }; element: HTMLElement };
+      } =>
+        Boolean(entry) &&
+        !movingIds.includes(entry!.node.id) &&
+        pointer.x > entry!.view.position.x &&
+        pointer.y > entry!.view.position.y &&
+        pointer.x < entry!.view.position.x + entry!.node.width &&
+        pointer.y < entry!.view.position.y + entry!.node.height,
     );
 
   // Stack order: the top-most candidate (last in the area's DOM order) wins.
@@ -305,6 +311,38 @@ export function flowScopesPreset<S extends BaseSchemes>(opts: {
       return [pickedId];
     }
 
+    function syncModifierState(ctx: { type: string; data?: unknown }): void {
+      if (ctx.type !== "pointerdown" && ctx.type !== "pointermove" && ctx.type !== "pointerup") {
+        return;
+      }
+      const evt = (ctx.data as { event?: PointerEvent } | undefined)?.event;
+      if (evt) {
+        syncReparentModifierFromPointerEvent(evt);
+      }
+    }
+
+    async function handleNodeDragged(ctx: { type: string; data?: unknown }): Promise<void> {
+      if (ctx.type !== "nodedragged") {
+        return;
+      }
+
+      const pointer = area.area.pointer;
+      const draggedId = (ctx.data as { id: string } | undefined)?.id ?? "";
+      markDragInactive();
+      if (!isReparentModifierActive() || !draggedId) {
+        return;
+      }
+
+      await reassignParent(
+        currentMovingIds(draggedId),
+        pointer,
+        params,
+        { area, editor },
+        opts.onReparented,
+        opts.onParentMoved,
+      );
+    }
+
     area.addPipe(async (raw: unknown) => {
       if (!raw || typeof raw !== "object" || !("type" in raw)) {
         return raw;
@@ -314,35 +352,11 @@ export function flowScopesPreset<S extends BaseSchemes>(opts: {
       // browser — more reliable than our document-level keyboard listener
       // when the page is in an iframe harness (Cowork) that intercepts
       // keyboard focus.
-      if (
-        ctx.type === "pointerdown" ||
-        ctx.type === "pointermove" ||
-        ctx.type === "pointerup"
-      ) {
-        const evt = (ctx.data as { event?: PointerEvent } | undefined)?.event;
-        if (evt) {
-          syncReparentModifierFromPointerEvent(evt);
-        }
-      }
+      syncModifierState(ctx);
       if (ctx.type === "nodepicked") {
         markDragActive();
       }
-      if (ctx.type === "nodedragged") {
-        const pointer = area.area.pointer;
-        const draggedId = (ctx.data as { id: string } | undefined)?.id ?? "";
-        markDragInactive();
-        if (isReparentModifierActive() && draggedId) {
-          const ids = currentMovingIds(draggedId);
-          await reassignParent(
-            ids,
-            pointer,
-            params,
-            { area, editor },
-            opts.onReparented,
-            opts.onParentMoved,
-          );
-        }
-      }
+      await handleNodeDragged(ctx);
       return raw;
     });
   };

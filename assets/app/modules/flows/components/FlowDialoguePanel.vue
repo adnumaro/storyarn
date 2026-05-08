@@ -47,20 +47,24 @@ const speakerName = computed<string>(() => {
 
 const hasAudio = computed<boolean>(() => data?.audioAssetId != null);
 
+function countWordsFromData(dialogueData: DialoguePanelData | null): number {
+  const html = dialogueData?.text ?? "";
+  const responseTexts = (dialogueData?.responses ?? []).map((response) => response.text);
+  const text = [
+    html.replace(/<[^>]+>/g, " "),
+    dialogueData?.stageDirections,
+    dialogueData?.menuText,
+    ...responseTexts,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
 /** Word count over plain text + stageDirections + menuText + response texts.
  * Strips HTML for the rich-text body. Mirrors V1's `WordCount.for_node_data`. */
-const wordCount = computed<number>(() => {
-  const parts: string[] = [];
-  const html = data?.text || "";
-  if (html) {
-    const stripped = html.replace(/<[^>]+>/g, " ");
-    parts.push(stripped);
-  }
-  if (data?.stageDirections) parts.push(data.stageDirections);
-  if (data?.menuText) parts.push(data.menuText);
-  for (const r of data?.responses ?? []) if (r.text) parts.push(r.text);
-  return parts.join(" ").trim().split(/\s+/).filter(Boolean).length;
-});
+const wordCount = computed<number>(() => countWordsFromData(data));
 
 function close() {
   live.pushEvent("close_editor", {});

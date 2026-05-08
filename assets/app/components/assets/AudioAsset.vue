@@ -194,10 +194,7 @@ onUnmounted(teardownAudio);
           <span class="truncate">
             {{ currentAsset?.filename || pickPlaceholder || $t("common.assets.audio.pick") }}
           </span>
-          <VolumeX
-            v-if="!hasTrack"
-            class="size-3.5 shrink-0 opacity-50"
-          />
+          <VolumeX v-if="!hasTrack" class="size-3.5 shrink-0 opacity-50" />
           <Volume2 v-else class="size-3.5 shrink-0 text-blue-500" />
         </Button>
       </template>

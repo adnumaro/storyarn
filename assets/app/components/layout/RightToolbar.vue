@@ -74,7 +74,7 @@ function handleLogout(): void {
 </script>
 
 <template>
-  <nav class="flex items-center gap-1 px-1 py-1 surface-panel">
+  <nav class="flex items-center gap-1 px-1 py-1 surface-panel h-8">
     <!-- Online users -->
     <div v-if="otherUsers.length > 0" class="flex -space-x-1 mx-1.5">
       <ToolbarTooltip

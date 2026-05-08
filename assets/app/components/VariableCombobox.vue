@@ -104,9 +104,7 @@ const hasGroups = computed(() => groups.length > 0);
  * `CommandEmpty` only fires when filtering yields 0 — when the source list
  * is empty to start with, the popover renders blank. We surface a static
  * "no options" message instead. */
-const hasNoSource = computed(
-  () => !hasGroups.value && options.length === 0 && !freeText,
-);
+const hasNoSource = computed(() => !hasGroups.value && options.length === 0 && !freeText);
 
 function onSelect(value: string) {
   emit("update:modelValue", value);
@@ -163,10 +161,7 @@ function autoSize(el: HTMLInputElement | null) {
     </PopoverTrigger>
     <PopoverContent class="w-[200px] p-0" align="start" :side-offset="4">
       <!-- Static empty-state when there's nothing to filter against. -->
-      <div
-        v-if="hasNoSource"
-        class="py-3 px-3 text-xs text-muted-foreground italic text-center"
-      >
+      <div v-if="hasNoSource" class="py-3 px-3 text-xs text-muted-foreground italic text-center">
         {{ emptyText || $t("common.variable_combobox.no_options") }}
       </div>
 

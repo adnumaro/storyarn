@@ -88,40 +88,54 @@ const variableRef = useTemplateRef<ComboboxApi>("variableRef");
 const operatorRef = useTemplateRef<ComboboxApi>("operatorRef");
 const valueRef = useTemplateRef<ComboboxApi>("valueRef");
 
+function updateForSheet(updated: ConditionRule): ComboboxApi {
+  updated.variable = null;
+  updated.operator = "equals";
+  updated.value = null;
+  return variableRef.value;
+}
+
+function updateForVariable(updated: ConditionRule, value: string | null): ComboboxApi {
+  const v = findVariable(variables, rule.sheet, value);
+  if (v) {
+    const ops = operatorsForType(v.block_type);
+    if (ops.length > 0) updated.operator = ops[0];
+  }
+  updated.value = null;
+  // Skip operator+value if the auto-picked operator needs no value
+  // (matches V1 condition_rule_row.js:288-292).
+  return NO_VALUE_OPERATORS.has(updated.operator as ConditionOperator) ? null : operatorRef.value;
+}
+
+function updateForOperator(updated: ConditionRule, value: string | null): ComboboxApi {
+  const oldOp = rule.operator || "equals";
+  if (NO_VALUE_OPERATORS.has(value as ConditionOperator) !== NO_VALUE_OPERATORS.has(oldOp)) {
+    updated.value = null;
+  }
+  return NO_VALUE_OPERATORS.has(value as ConditionOperator) ? null : valueRef.value;
+}
+
+function focusNext(nextFocus: ComboboxApi): void {
+  if (nextFocus) {
+    nextTick(() => nextFocus?.focus());
+  }
+}
+
 function update(field: string, value: string | null) {
   const updated = { ...rule, [field]: value };
   let nextFocus: ComboboxApi = null;
 
   if (field === "sheet") {
-    updated.variable = null;
-    updated.operator = "equals";
-    updated.value = null;
-    nextFocus = variableRef.value;
+    nextFocus = updateForSheet(updated);
   } else if (field === "variable") {
-    const v = findVariable(variables, rule.sheet, value);
-    if (v) {
-      const ops = operatorsForType(v.block_type);
-      if (ops.length > 0) updated.operator = ops[0];
-    }
-    updated.value = null;
-    // Skip operator+value if the auto-picked operator needs no value
-    // (matches V1 condition_rule_row.js:288-292).
-    nextFocus = NO_VALUE_OPERATORS.has(updated.operator as ConditionOperator)
-      ? null
-      : operatorRef.value;
+    nextFocus = updateForVariable(updated, value);
   } else if (field === "operator") {
-    const oldOp = rule.operator || "equals";
-    if (NO_VALUE_OPERATORS.has(value as ConditionOperator) !== NO_VALUE_OPERATORS.has(oldOp)) {
-      updated.value = null;
-    }
-    nextFocus = NO_VALUE_OPERATORS.has(value as ConditionOperator) ? null : valueRef.value;
+    nextFocus = updateForOperator(updated, value);
   }
   emit("update:rule", updated);
   // Advance after the parent re-renders so the next combobox is mounted
   // (e.g. variable picker enables only once `rule.sheet` propagates).
-  if (nextFocus) {
-    nextTick(() => nextFocus?.focus());
-  }
+  focusNext(nextFocus);
 }
 </script>
 

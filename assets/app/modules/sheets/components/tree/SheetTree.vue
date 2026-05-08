@@ -269,18 +269,10 @@ function handleDrop(e: DndDropEvent): void {
 <template>
   <div class="space-y-2">
     <!-- Search -->
-    <Input
-      v-model="searchQuery"
-      type="search"
-      :placeholder="$t('sheets.tree.filter')"
-      class="text-xs"
-    />
+    <Input v-model="searchQuery" type="search" :placeholder="$t('sheets.tree.filter')" size="sm" />
 
     <!-- Empty state -->
-    <div
-      v-if="filteredTree.length === 0"
-      class="py-4 text-xs text-muted-foreground text-center"
-    >
+    <div v-if="filteredTree.length === 0" class="py-4 text-xs text-muted-foreground text-center">
       {{ $t("sheets.tree.empty") }}
     </div>
 

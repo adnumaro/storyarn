@@ -2,7 +2,7 @@
 
 **Status:** Spec locked 2026-04-26. Implementation pending across 6 phases (see [`EXECUTION.md`](./EXECUTION.md)).
 
-**Why this exists:** the V2 dialogue node is broken. Per the user, *"el dialogue está terriblemente mal montado"*. The Vue surface diverges from the V1 (HEEx + DaisyUI) reference at the wire level, the visual level, and the pattern level. This doc captures (1) the V1 reference behaviour we must reach, (2) the V2 current state, (3) the diff matrix that drives the phasing.
+**Why this exists:** the V2 dialogue node is broken. Per the user, _"el dialogue está terriblemente mal montado"_. The Vue surface diverges from the V1 (HEEx + DaisyUI) reference at the wire level, the visual level, and the pattern level. This doc captures (1) the V1 reference behaviour we must reach, (2) the V2 current state, (3) the diff matrix that drives the phasing.
 
 **Scope contract:** 1:1 port of V1 behaviour onto the V2 stack (Vue 3 + shadcn-vue + Tailwind + LiveVue). No design or product decisions — anything that diverges is a bug to fix. Future-feature surface is captured in §11 and is **explicitly out of scope** for this port.
 
@@ -18,6 +18,7 @@
 ### V1 (`/tmp/storyarn-main`)
 
 Backend:
+
 - `lib/storyarn_web/live/flow_live/nodes/dialogue/node.ex` — type module + dialogue handlers (`handle_add_response`, `handle_remove_response`, `handle_update_response_text`, `handle_update_response_condition`, `handle_update_response_instruction`, `handle_update_response_instruction_builder`, `handle_generate_technical_id`, `handle_open_screenplay`).
 - `lib/storyarn_web/live/flow_live/show.ex` — host LiveView; routes events to `Dialogue.Node`.
 - `lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex` — generic `update_node_field`, `update_node_text`, `update_node_data`.
@@ -35,6 +36,7 @@ Backend:
 - `lib/storyarn/localization/*` — localized text extraction.
 
 Frontend (Lit + JS hooks):
+
 - `assets/js/flow_canvas/nodes/dialogue.js` — Lit canvas renderer (view + renderEdit).
 - `assets/js/flow_canvas/nodes/render_helpers.js` — shell, header, sockets.
 - `assets/js/flow_canvas/components/storyarn_node.js` — Lit host element.
@@ -45,6 +47,7 @@ Frontend (Lit + JS hooks):
 - `assets/js/hooks/details_preserve_open.js` — keeps response Advanced `<details>` open across re-renders.
 
 Tests:
+
 - `test/storyarn_web/live/flow_live/nodes/dialogue_node_test.exs` (442 lines).
 - `test/storyarn_web/live/flow_live/components/screenplay_editor_test.exs` (1423 lines).
 - `test/storyarn/flows/evaluator/dialogue_evaluator_test.exs` (299 lines).
@@ -54,6 +57,7 @@ Tests:
 ### V2 (current branch)
 
 Backend:
+
 - `lib/storyarn_web/live/flow_live/nodes/dialogue/node.ex` — same per-type module structure as V1. Handlers identical.
 - `lib/storyarn_web/live/flow_live/handlers/preview_handlers.ex` — runtime preview state machine + serializer.
 - `lib/storyarn_web/live/flow_live/show.ex` — V2 wires events to Vue components.
@@ -62,6 +66,7 @@ Backend:
 - `lib/storyarn/flows/entity_trash_refs.ex` — soft-delete sweep for `speaker_sheet_id`.
 
 Frontend (Vue):
+
 - `assets/app/modules/flows/nodes/DialogueNode.vue` (389 lines) — canvas node body.
 - `assets/app/modules/flows/nodes/DialogueAudioPreview.vue` — speaker-icon badge.
 - `assets/app/modules/flows/components/toolbar-sections/DialogueToolbar.vue` (107 lines) — floating toolbar.
@@ -74,6 +79,7 @@ Frontend (Vue):
 - `assets/app/modules/flows/components/{FlowFloatingToolbar,FlowNodeToolbar}.vue` — host toolbar dispatch.
 
 Tests:
+
 - Backend: `test/storyarn_web/live/flow_live/nodes/dialogue_node_test.exs` (handler-level coverage). No `screenplay_editor_test.exs` analogue exists for the Vue panel.
 - Frontend: **zero**. No tests for `DialogueNode.vue`, `FlowScreenplayEditor.vue`, `DialogueToolbar.vue`, `DialogueAudioPreview.vue`.
 
@@ -83,17 +89,17 @@ Tests:
 
 `flow_nodes.data` JSONB. Same shape across V1 and V2 (data layer untouched by the port).
 
-| Field | Default | Type | V1 surface | V2 surface |
-|---|---|---|---|---|
-| `speaker_sheet_id` | `nil` | `int \| nil` (id of a sheet) | EntityCombobox in canvas + screenplay editor + sync | Same |
-| `text` | `""` | TipTap HTML `<p>...</p>` | TipTap in panel; `update_node_text` on inline-edit (server wraps plain → `<p>`) | TipTap in panel; **inline-edit destroys HTML (bug)** |
-| `stage_directions` | `""` | plain string | inline + panel `Input` | inline + panel `Input` |
-| `menu_text` | `""` | plain string | inline + panel `Input` (Settings tab) | inline + panel `Input` (Settings tab) |
-| `audio_asset_id` | `nil` | `int \| nil` | Settings tab `AudioPicker` LiveComponent | **No picker — read-only icon only (bug)** |
-| `technical_id` | `""` | string | toolbar input + Settings input + `generate_technical_id` button | toolbar input + Settings input. **No generate button (bug)** |
-| `localization_id` | `"dialogue.<6hex>"` | string | Settings input + copy-to-clipboard | **No UI at all (bug)** |
-| `avatar_id` | `nil` | int referencing `sheet_avatars.id` | toolbar `avatar_picker` popover | toolbar `ToolbarAvatarPicker`. **No editor surface (gap)** |
-| `responses` | `[]` | list of maps (see below) | sockets + Responses tab | sockets + Responses tab (broken at wire) |
+| Field              | Default             | Type                               | V1 surface                                                                      | V2 surface                                                   |
+| ------------------ | ------------------- | ---------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `speaker_sheet_id` | `nil`               | `int \| nil` (id of a sheet)       | EntityCombobox in canvas + screenplay editor + sync                             | Same                                                         |
+| `text`             | `""`                | TipTap HTML `<p>...</p>`           | TipTap in panel; `update_node_text` on inline-edit (server wraps plain → `<p>`) | TipTap in panel; **inline-edit destroys HTML (bug)**         |
+| `stage_directions` | `""`                | plain string                       | inline + panel `Input`                                                          | inline + panel `Input`                                       |
+| `menu_text`        | `""`                | plain string                       | inline + panel `Input` (Settings tab)                                           | inline + panel `Input` (Settings tab)                        |
+| `audio_asset_id`   | `nil`               | `int \| nil`                       | Settings tab `AudioPicker` LiveComponent                                        | **No picker — read-only icon only (bug)**                    |
+| `technical_id`     | `""`                | string                             | toolbar input + Settings input + `generate_technical_id` button                 | toolbar input + Settings input. **No generate button (bug)** |
+| `localization_id`  | `"dialogue.<6hex>"` | string                             | Settings input + copy-to-clipboard                                              | **No UI at all (bug)**                                       |
+| `avatar_id`        | `nil`               | int referencing `sheet_avatars.id` | toolbar `avatar_picker` popover                                                 | toolbar `ToolbarAvatarPicker`. **No editor surface (gap)**   |
+| `responses`        | `[]`                | list of maps (see below)           | sockets + Responses tab                                                         | sockets + Responses tab (broken at wire)                     |
 
 Response shape:
 
@@ -133,7 +139,7 @@ Single canonical write path: `NodeHelpers.persist_node_update/3`.
    - `Localization.extract_flow_node` → syncs localization-key-indexed strings.
 4. Reloads flow, broadcasts `:node_updated`, pushes `node_updated` to canvas, emits `node_data_changed` (undo snapshot), runs `mark_saved` + `schedule(:flow)`.
 
-V1 quirk preserved verbatim: the V1 `ScreenplayEditor` LiveComponent has its own write path that bypasses `persist_node_update` and writes via `Flows.update_node_data` directly + `send/2` to the parent. Result: edits made through the screenplay panel **skip the undo snapshot and the per-edit broadcast**. V2 inherits this asymmetry implicitly via `update_node_field` events that DO go through `persist_node_update`. Decision: V2 should route ALL screenplay-editor edits through `persist_node_update` (canonical path) — this is a port improvement that matches the V1 *intent* even though it diverges from the V1 *implementation*. Recorded as Phase-1 decision §10.
+V1 quirk preserved verbatim: the V1 `ScreenplayEditor` LiveComponent has its own write path that bypasses `persist_node_update` and writes via `Flows.update_node_data` directly + `send/2` to the parent. Result: edits made through the screenplay panel **skip the undo snapshot and the per-edit broadcast**. V2 inherits this asymmetry implicitly via `update_node_field` events that DO go through `persist_node_update`. Decision: V2 should route ALL screenplay-editor edits through `persist_node_update` (canonical path) — this is a port improvement that matches the V1 _intent_ even though it diverges from the V1 _implementation_. Recorded as Phase-1 decision §10.
 
 Connection migration on response add/remove (preserved in both versions, `dialogue/node.ex:78-150`):
 
@@ -153,34 +159,34 @@ All event names + params shapes the V2 port must satisfy. Backend handlers all l
 
 ### Speaker
 
-| Event | Params | Handler | Notes |
-|---|---|---|---|
+| Event               | Params                                                      | Handler                                        | Notes                             |
+| ------------------- | ----------------------------------------------------------- | ---------------------------------------------- | --------------------------------- |
 | `update_node_field` | `%{"field" => "speaker_sheet_id", "value" => "<id>" \| ""}` | `GenericNodeHandlers.handle_update_node_field` | Empty string normalised to `nil`. |
 
 ### Text (dialogue body)
 
-| Event | Params | Handler |
-|---|---|---|
+| Event              | Params                                          | Handler                                       |
+| ------------------ | ----------------------------------------------- | --------------------------------------------- |
 | `update_node_text` | `%{"id" => node_id, "content" => "<p>...</p>"}` | `GenericNodeHandlers.handle_update_node_text` |
 
 V2 must emit HTML (TipTap output) on every update, NOT plain string. Inline canvas edit (if preserved as a feature) must wrap plain text in `<p>` with `<br>` for blank lines, mirroring V1's server-side wrap.
 
 ### Stage directions / menu text / technical_id
 
-| Event | Params | Handler |
-|---|---|---|
+| Event               | Params                                                                                 | Handler |
+| ------------------- | -------------------------------------------------------------------------------------- | ------- |
 | `update_node_field` | `%{"field" => "stage_directions" \| "menu_text" \| "technical_id", "value" => string}` | generic |
 
 ### Generate technical_id
 
-| Event | Params | Handler |
-|---|---|---|
+| Event                   | Params                       | Handler                                        |
+| ----------------------- | ---------------------------- | ---------------------------------------------- |
 | `generate_technical_id` | `%{}` (uses `selected_node`) | `Dialogue.Node.handle_generate_technical_id/1` |
 
 ### Localization id
 
-| Event | Params | Handler |
-|---|---|---|
+| Event               | Params                                               | Handler |
+| ------------------- | ---------------------------------------------------- | ------- |
 | `update_node_field` | `%{"field" => "localization_id", "value" => string}` | generic |
 
 ### Audio
@@ -191,23 +197,23 @@ V2 port decision: **drop the `:audio_picker` PubSub and route through `update_no
 
 ### Avatar
 
-| Event | Params | Handler |
-|---|---|---|
+| Event               | Params                                                | Handler |
+| ------------------- | ----------------------------------------------------- | ------- |
 | `update_node_field` | `%{"field" => "avatar_id", "value" => "<id>" \| nil}` | generic |
 
 ### Responses
 
 V1 wire (preserved verbatim — these are the contracts the backend handler `Dialogue.Node.handle_*_response` matches on):
 
-| Event | Params | Handler |
-|---|---|---|
-| `add_response` | `%{"node-id" => node_id}` | `Dialogue.Node.handle_add_response/2` |
-| `remove_response` | `%{"response-id" => id, "node-id" => node_id}` | `Dialogue.Node.handle_remove_response/2` |
-| `update_response_text` | `%{"response-id" => id, "node-id" => node_id, "value" => text}` | `Dialogue.Node.handle_update_response_text/2` |
-| `update_response_condition` | `%{"response-id" => id, "node-id" => node_id, "value" => string}` | `Dialogue.Node.handle_update_response_condition/2` |
-| `update_response_instruction` | `%{"response-id" => id, "node-id" => node_id, "value" => string}` | legacy; not wired in V2 UI either |
+| Event                                 | Params                                                                 | Handler                                                      |
+| ------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `add_response`                        | `%{"node-id" => node_id}`                                              | `Dialogue.Node.handle_add_response/2`                        |
+| `remove_response`                     | `%{"response-id" => id, "node-id" => node_id}`                         | `Dialogue.Node.handle_remove_response/2`                     |
+| `update_response_text`                | `%{"response-id" => id, "node-id" => node_id, "value" => text}`        | `Dialogue.Node.handle_update_response_text/2`                |
+| `update_response_condition`           | `%{"response-id" => id, "node-id" => node_id, "value" => string}`      | `Dialogue.Node.handle_update_response_condition/2`           |
+| `update_response_instruction`         | `%{"response-id" => id, "node-id" => node_id, "value" => string}`      | legacy; not wired in V2 UI either                            |
 | `update_response_instruction_builder` | `%{"response-id" => id, "node-id" => node_id, "assignments" => [...]}` | `Dialogue.Node.handle_update_response_instruction_builder/2` |
-| `update_response_condition_builder` | builder-specific (routes to `Condition.Node`) | `update_response_condition_builder` |
+| `update_response_condition_builder`   | builder-specific (routes to `Condition.Node`)                          | `update_response_condition_builder`                          |
 
 The V2 `FlowScreenplayEditor.vue` currently uses `response_id` (underscore) and `text` (instead of `value`) and omits `node-id` entirely. **Every response event is wire-broken.** Phase 1 of EXECUTION fixes this.
 
@@ -215,22 +221,22 @@ Condition encoding: v1 stores `condition` as a string (raw expression OR JSON-se
 
 ### Screenplay open / close
 
-| Event | Params | Handler |
-|---|---|---|
-| `open_screenplay` | `%{"id" => node_id}` (optional fallback) | `Dialogue.Node.handle_open_screenplay/2` |
-| `close_editor` | `%{}` | `GenericNodeHandlers.handle_close_editor` |
-| `deselect_node` | `%{}` | generic |
+| Event             | Params                                   | Handler                                   |
+| ----------------- | ---------------------------------------- | ----------------------------------------- |
+| `open_screenplay` | `%{"id" => node_id}` (optional fallback) | `Dialogue.Node.handle_open_screenplay/2`  |
+| `close_editor`    | `%{}`                                    | `GenericNodeHandlers.handle_close_editor` |
+| `deselect_node`   | `%{}`                                    | generic                                   |
 
 V1 has both `:screenplay` and `:editor` editing modes mapping to the same panel (`screenplay_editor.ex`). V2 inherits both in `show.ex:235`. Decision: collapse to a single mode `:screenplay` — `:editor` is a V1 leftover never assigned anywhere in the dialogue path. **Phase 4.**
 
 ### Misc
 
-| Event | Params | Handler |
-|---|---|---|
-| `mention_suggestions` | `%{"query" => string}` | `EditorInfoHandlers` (proxied to Vue panel) |
-| `variable_suggestions` | `%{"query" => string}` | `EditorInfoHandlers` |
-| `resolve_variable_defaults` | `%{"refs" => [...]}` | `EditorInfoHandlers` |
-| `start_preview` | `%{"id" => node_id}` | `PreviewHandlers.handle_start_preview` |
+| Event                       | Params                 | Handler                                     |
+| --------------------------- | ---------------------- | ------------------------------------------- |
+| `mention_suggestions`       | `%{"query" => string}` | `EditorInfoHandlers` (proxied to Vue panel) |
+| `variable_suggestions`      | `%{"query" => string}` | `EditorInfoHandlers`                        |
+| `resolve_variable_defaults` | `%{"refs" => [...]}`   | `EditorInfoHandlers`                        |
+| `start_preview`             | `%{"id" => node_id}`   | `PreviewHandlers.handle_start_preview`      |
 
 ---
 
@@ -262,6 +268,7 @@ The canvas path (`DialogueNode.vue`) keeps reading raw `data` for now — refact
 Two render modes: `render` (view) and `renderEdit` (inline-edit).
 
 View mode:
+
 - Wrapper `nodeShell(color, selected, ..., "dialogue min-w-[280px] max-w-[350px]")`. Border-color = sheet color or `#3b82f6`.
 - Header: `px-3 py-2 rounded-t-[10px] flex items-center gap-2 text-white font-medium text-[13px]` with gradient using sheet color. Speaker icon (Lucide `MessageSquare` or sheet color block), speaker name OR "Dialogue", audio indicator (Lucide `volume-2`).
 - Visual strip: avatar override (big `<img class="block w-[calc(100%-24px)] max-h-[200px] object-contain rounded-lg mx-3 mt-3">`); else sheet default avatar (`size-16 rounded-lg object-cover shadow-md` centered in tinted block); else empty tinted block; else nothing.
@@ -272,11 +279,13 @@ View mode:
 - Sockets footer: `py-1.5 border-t border-base-content/10`. Single response → inline single-row layout. Multi-response → per-response rows with output label + badges + circular socket on the right.
 
 Per-response output badges:
+
 - error pill (red filled circle, alert SVG), title = "Empty response text" if no text, "Type mismatch in assignments" if `has_type_warnings`.
 - yellow `#eab308` dot tooltip "Has condition" if condition truthy.
 - pink `#ec4899` dot tooltip "Has instructions" if `instruction_assignments.length > 0`.
 
 Edit mode replaces:
+
 - Header speaker name with a `inline-speaker-trigger` button (chevron) that fires DOM event `speaker-select-open` → `searchableDropdown` → push `update_node_field`.
 - Body inputs (`@blur`-saved): inline-input for `stage_directions` (italic, border-b), inline-input for `menu_text` (`text-primary/70 font-medium`), inline-textarea for `text` (auto-grow). All `bg-transparent border-0`.
 
@@ -289,6 +298,7 @@ LOD: V1 dialogue does NOT branch on LOD. Same chrome at all zoom levels. **V2 mu
 #### B. Floating toolbar (V1 `flow_toolbar.ex:56-117`)
 
 Wraps in `flex items-center gap-1.5 text-sm`:
+
 - Node-type icon (Lucide `MessageSquare`).
 - Toolbar separator.
 - Edit form (`phx-change="update_node_data"` debounce 500ms): technical_id `<input class="toolbar-input font-mono text-xs">`. Read-only mode shows `text-xs font-mono truncate max-w-[100px]`.
@@ -300,6 +310,7 @@ Wraps in `flex items-center gap-1.5 text-sm`:
 #### C. Screenplay editor sidebar (V1 `screenplay_editor.ex`)
 
 Outer container (`#dialogue-screenplay-editor`, `phx-hook="DialogueScreenplayEditor"`):
+
 - Mobile: `inset-0 z-[1030] bg-base-100`.
 - Desktop xl: `xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[600px]`.
 
@@ -310,17 +321,21 @@ Desktop header (`hidden xl:flex items-center gap-2 px-3 py-2 border-b border-bas
 Tabs (`tabs tabs-bordered shrink-0 px-4 pt-2`): "Text", "Responses" (with `badge badge-xs badge-ghost ml-1` showing count when > 0), "Settings". Each `phx-click="switch_tab"`.
 
 Footer (`border-t border-base-300 px-4 py-2 flex items-center justify-between text-xs text-base-content/50 shrink-0`):
+
 - Left: speaker name (icon `user`), word count (icon `file-text`, `dngettext("flows", "%{count} word", "%{count} words", n)`), "Audio attached" string when `audio_asset_id` set.
 - Right: `<span class="kbd kbd-xs">Esc</span> {dgettext "to close"}`.
 
 ##### Text tab
+
 - Speaker selector (when `can_edit`): button `id="screenplay-speaker-btn" class="dialogue-sp-select-btn"` with `data-speakers` JSON, fed to `createSearchableDropdown` by hook. Pushes `update_speaker`. Hidden `<form phx-change="update_speaker">` for headless tests.
 - Stage directions: `<input type="text" id="screenplay-stage-directions" name="stage_directions" class="dialogue-sp-input" placeholder="(stage directions)">` inside `<.form phx-change="update_stage_directions" phx-debounce="500">`.
 - Dialogue text: TipTap editor (`phx-hook="TiptapEditor"`, `phx-update="ignore"`, `data-mode="dialogue-screenplay"`, `data-variables-enabled="true"`, `min-h-[200px] focus:outline-none`).
 - Read-only branch: speaker as `<span class="sp-character-content">`, stage_directions in literal parens, dialogue editor renders with `data-editable="false"`.
 
 ##### Responses tab (`space-y-3 p-4`)
+
 For each response:
+
 - Card: `border border-base-300 rounded-lg p-3`.
 - Row: `flex items-start gap-2` with arrow icon, `<textarea phx-blur="update_response_text" phx-value-response-id phx-value-node-id rows="2" class="textarea textarea-sm textarea-bordered w-full resize-none">`, delete button `class="btn btn-ghost btn-xs btn-square text-error"` with `trash-2`.
 - Advanced `<details>` (`id="response-advanced-{id}"` `phx-hook="DetailsPreserveOpen"` `class="mt-2"`, `open` if `response_has_advanced?`). Summary with chevron + `bg-warning` dot if advanced set + "Advanced".
@@ -331,6 +346,7 @@ For each response:
 Below: `<button phx-click="add_response" class="btn btn-ghost btn-sm gap-1 w-full">` + plus icon + "Add response".
 
 ##### Settings tab (`space-y-4 p-4`)
+
 - Menu Text: label + form (`update_menu_text` debounced 500ms) with `<input class="input input-sm input-bordered w-full" placeholder="Short text shown in menus...">`.
 - Audio: label + `<.live_component module={AudioPicker} id="screenplay-audio-picker-{node.id}" asset_id can_edit project current_user>`.
 - Technical ID: label + flex row with form input (font-mono) + refresh button `phx-click="generate_technical_id" class="btn btn-ghost btn-sm btn-square"` with `refresh-cw` icon.
@@ -339,6 +355,7 @@ Below: `<button phx-click="add_response" class="btn btn-ghost btn-sm gap-1 w-ful
 #### D. i18n keys (Gettext domain `flows`)
 
 V1 inventory (full):
+
 - "Dialogue", "Character speech and player responses".
 - Inline edit (data-labels): "Search...", "Dialogue" (no_speaker), "Stage directions...", "Menu text...", "Dialogue text...", "Select avatar", "Use default".
 - ScreenplayEditor: "Back to canvas", "Text", "Responses", "Settings", "to close", "%{count} word"/"%{count} words" (plural), "DIALOGUE", "SELECT SPEAKER", "Search...", "(stage directions)", "Enter dialogue text...", "Response %{n}", "Response text… (use $ref for variables)", "(empty response)", "Advanced", "Condition", "Instruction", "Add response", "Menu Text", "Short text shown in menus...", "Audio", "Audio attached", "Technical ID", "Auto-generated or custom", "Generate technical ID", "Localization ID", "Localization key", "Copy to clipboard".
@@ -351,39 +368,39 @@ V2 must port these keys to `assets/app/locales/{en,es}/flows.json` (and `common.
 
 Severity legend: 🔴 broken (functional bug), 🟠 missing (feature absent), 🟡 stylistic / debt, 🟢 OK.
 
-| Item | V1 | V2 | Severity | Phase |
-|---|---|---|---|---|
-| `add_response` event wire | `%{"node-id" => id}` | sends no `node-id` | 🔴 | 1 |
-| `remove_response` event wire | `%{"response-id", "node-id"}` | sends `response_id` underscore, no `node-id` | 🔴 | 1 |
-| `update_response_text` event wire | `%{"response-id", "node-id", "value"}` | sends `response_id`, `text`, no `node-id` | 🔴 | 1 |
-| `update_response_condition` event wire | `%{"response-id", "node-id", "value"}` (string) | sends object, missing `node-id`, wrong key names | 🔴 | 1 |
-| `update_response_assignments` event | does not exist | called by V2 (orphan) | 🔴 | 1 (rename to `update_response_instruction_builder`) |
-| `update_response_instruction_builder` caller | screenplay editor | absent | 🔴 | 1 |
-| Response condition type | string at wire | typed as `ConditionData` object | 🔴 | 1 (stringify before push) |
-| Inline-edit text round-trip | preserves HTML (server wraps plain) | strips HTML → plain string overwrite | 🔴 | 3 |
-| Camera/canvas snake_case props | n/a (HEEx is server-rendered) | `DialogueNode.vue` + `DialogueToolbar.vue` use snake_case props | 🟠 | 3 |
-| Audio picker in editor | Settings tab live_component | absent | 🟠 | 2 |
-| Avatar picker in editor | (toolbar only) | (toolbar only) | 🟢 | — |
-| `localization_id` UI | Settings tab + copy button | absent | 🟠 | 2 |
-| `generate_technical_id` button | Settings tab refresh button | handler exists, no UI caller | 🟠 | 2 |
-| Word count footer | `dngettext` plural | absent | 🟠 | 2 |
-| Mobile fullscreen panel | yes | n/a (panel only desktop) | 🟡 | 5 |
-| Per-panel serializer (`build_dialogue_panel_data`) | n/a | absent (raw `node.data` flows through) | 🟠 | 3 |
-| `condition` polymorphism | string | string OR object (broken) | 🔴 | 1 |
-| Inline-edit raw `<input>`/`<textarea>` | Lit raw inputs | scoped CSS forks design system | 🟡 | 4 |
-| `DialogueNode.vue` size | n/a | 389 lines god component | 🟡 | 4 |
-| `DialogueAudioPreview.vue` | renders Lucide volume-2 | renders 🔊 emoji glyph | 🟡 | 4 |
-| `Settings` icon for screenplay | Lucide `settings` | Lucide `Settings` | 🟢 | — |
-| Editor `:screenplay` vs `:editor` modes | both alive but only `:screenplay` reachable | both alive | 🟡 | 4 |
-| Collab broadcasts on dialogue panel | partial (V1 has the same gap) | partial | 🟡 | 6 |
-| Collab receiver clauses for panel | n/a | n/a | 🟠 | 6 |
-| `FlowNode.vue:70` default fallback to DialogueNode | n/a (Lit uses explicit map) | renders unknown types as dialogues silently | 🟡 | 4 (cleanup) |
-| `location_sheet_id` toolbar fallback | not surfaced | reads dead field | 🟡 | 4 (cleanup) |
-| Screenplay sync wire (`mention_suggestions`, etc.) | works | works (already proxied) | 🟢 | — |
-| Screenplay/auto-detect/import paths | `Storyarn.Screenplays.*` | unchanged | 🟢 | — |
-| Backend dialogue handlers | comprehensive | preserved verbatim | 🟢 | — |
-| Backend tests | 442+1423+299 lines | only 442 (handlers) — no editor analogue | 🟠 | 6 |
-| Frontend tests | none | none | 🔴 (per user req) | every phase + dedicated 6 |
+| Item                                               | V1                                              | V2                                                              | Severity          | Phase                                               |
+| -------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------- | ----------------- | --------------------------------------------------- |
+| `add_response` event wire                          | `%{"node-id" => id}`                            | sends no `node-id`                                              | 🔴                | 1                                                   |
+| `remove_response` event wire                       | `%{"response-id", "node-id"}`                   | sends `response_id` underscore, no `node-id`                    | 🔴                | 1                                                   |
+| `update_response_text` event wire                  | `%{"response-id", "node-id", "value"}`          | sends `response_id`, `text`, no `node-id`                       | 🔴                | 1                                                   |
+| `update_response_condition` event wire             | `%{"response-id", "node-id", "value"}` (string) | sends object, missing `node-id`, wrong key names                | 🔴                | 1                                                   |
+| `update_response_assignments` event                | does not exist                                  | called by V2 (orphan)                                           | 🔴                | 1 (rename to `update_response_instruction_builder`) |
+| `update_response_instruction_builder` caller       | screenplay editor                               | absent                                                          | 🔴                | 1                                                   |
+| Response condition type                            | string at wire                                  | typed as `ConditionData` object                                 | 🔴                | 1 (stringify before push)                           |
+| Inline-edit text round-trip                        | preserves HTML (server wraps plain)             | strips HTML → plain string overwrite                            | 🔴                | 3                                                   |
+| Camera/canvas snake_case props                     | n/a (HEEx is server-rendered)                   | `DialogueNode.vue` + `DialogueToolbar.vue` use snake_case props | 🟠                | 3                                                   |
+| Audio picker in editor                             | Settings tab live_component                     | absent                                                          | 🟠                | 2                                                   |
+| Avatar picker in editor                            | (toolbar only)                                  | (toolbar only)                                                  | 🟢                | —                                                   |
+| `localization_id` UI                               | Settings tab + copy button                      | absent                                                          | 🟠                | 2                                                   |
+| `generate_technical_id` button                     | Settings tab refresh button                     | handler exists, no UI caller                                    | 🟠                | 2                                                   |
+| Word count footer                                  | `dngettext` plural                              | absent                                                          | 🟠                | 2                                                   |
+| Mobile fullscreen panel                            | yes                                             | n/a (panel only desktop)                                        | 🟡                | 5                                                   |
+| Per-panel serializer (`build_dialogue_panel_data`) | n/a                                             | absent (raw `node.data` flows through)                          | 🟠                | 3                                                   |
+| `condition` polymorphism                           | string                                          | string OR object (broken)                                       | 🔴                | 1                                                   |
+| Inline-edit raw `<input>`/`<textarea>`             | Lit raw inputs                                  | scoped CSS forks design system                                  | 🟡                | 4                                                   |
+| `DialogueNode.vue` size                            | n/a                                             | 389 lines god component                                         | 🟡                | 4                                                   |
+| `DialogueAudioPreview.vue`                         | renders Lucide volume-2                         | renders 🔊 emoji glyph                                          | 🟡                | 4                                                   |
+| `Settings` icon for screenplay                     | Lucide `settings`                               | Lucide `Settings`                                               | 🟢                | —                                                   |
+| Editor `:screenplay` vs `:editor` modes            | both alive but only `:screenplay` reachable     | both alive                                                      | 🟡                | 4                                                   |
+| Collab broadcasts on dialogue panel                | partial (V1 has the same gap)                   | partial                                                         | 🟡                | 6                                                   |
+| Collab receiver clauses for panel                  | n/a                                             | n/a                                                             | 🟠                | 6                                                   |
+| `FlowNode.vue:70` default fallback to DialogueNode | n/a (Lit uses explicit map)                     | renders unknown types as dialogues silently                     | 🟡                | 4 (cleanup)                                         |
+| `location_sheet_id` toolbar fallback               | not surfaced                                    | reads dead field                                                | 🟡                | 4 (cleanup)                                         |
+| Screenplay sync wire (`mention_suggestions`, etc.) | works                                           | works (already proxied)                                         | 🟢                | —                                                   |
+| Screenplay/auto-detect/import paths                | `Storyarn.Screenplays.*`                        | unchanged                                                       | 🟢                | —                                                   |
+| Backend dialogue handlers                          | comprehensive                                   | preserved verbatim                                              | 🟢                | —                                                   |
+| Backend tests                                      | 442+1423+299 lines                              | only 442 (handlers) — no editor analogue                        | 🟠                | 6                                                   |
+| Frontend tests                                     | none                                            | none                                                            | 🔴 (per user req) | every phase + dedicated 6                           |
 
 ---
 
@@ -401,7 +418,7 @@ Two-way live sync (concurrent edits between two screenplay editors on the same d
 
 ### Backend coverage to preserve
 
-- `dialogue_node_test.exs` (V2 already has): metadata, default_data, extract_form_data, duplicate_data_cleanup, all `handle_*` clauses. **Pass throughout the port.**
+- `dialogue_node_test.exs` (V2 already has): metadata, default*data, extract_form_data, duplicate_data_cleanup, all `handle*\*` clauses. **Pass throughout the port.**
 - `screenplay_editor_test.exs` (V1 has, V2 missing): renders three tabs, word-count plurals, speaker picker, audio indicator, response cards, advanced indicator, switch_tab default + transitions, settings field updates, read-only mode, edge data shapes. **Phase 6** writes a Vue + LiveVue equivalent: handler-level integration tests + Vitest component tests.
 - `dialogue_evaluator_test.exs`: present in both. **Don't touch.**
 - `node_mapping_test.exs` / `reverse_node_mapping_test.exs` / `flow_sync_test.exs`: present. **Don't touch.**
@@ -438,7 +455,7 @@ Documented so the port doesn't accidentally fix what V1 deliberately keeps:
 
 These are listed verbatim so a future session knows what was decided unilaterally and can flag corrections:
 
-- **D1 — All screenplay-editor edits route through `persist_node_update`.** V1 has two write paths (the screenplay editor bypasses `persist_node_update`). V2 should unify. Rationale: undo + collab broadcasts must fire for every edit. This is a port improvement that aligns V2 with V1's *intent*. No user-visible regression.
+- **D1 — All screenplay-editor edits route through `persist_node_update`.** V1 has two write paths (the screenplay editor bypasses `persist_node_update`). V2 should unify. Rationale: undo + collab broadcasts must fire for every edit. This is a port improvement that aligns V2 with V1's _intent_. No user-visible regression.
 - **D2 — `:audio_picker` PubSub replaced by `update_node_field` for `audio_asset_id`.** Mirrors `FlowSequenceConfigPanel` pattern. Simpler, no LiveComponent dependency. No user-visible diff.
 - **D3 — `condition` is always serialised to string at the wire.** Backend stores string; evaluator expects string; V2 panel must `JSON.stringify(conditionObject)` before push, parse back on receive. Matches V1.
 - **D4 — `:editor` editing mode collapsed into `:screenplay`.** `:editor` is an unreachable V1 leftover for dialogue.

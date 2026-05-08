@@ -174,8 +174,7 @@ function update(field: string, value: string | null) {
     nextFocus = slotRefs.variable;
   } else if (field === "variable") {
     applyVariableChange(updated, value);
-    nextFocus =
-      updated.value_type === "variable_ref" ? slotRefs.value_sheet : slotRefs.value;
+    nextFocus = updated.value_type === "variable_ref" ? slotRefs.value_sheet : slotRefs.value;
   } else if (field === "value_sheet") {
     updated.value = null;
     nextFocus = slotRefs.value;

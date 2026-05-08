@@ -242,6 +242,39 @@ async function removeRelatedConnections(hook: HookProxy, reteNodeId: string): Pr
   }
 }
 
+function recordNodeDeleteHistory(hook: HookProxy, data: NodeRemovedPayload): void {
+  if (data.self && hook._historyTriggeredDelete !== data.id) {
+    hook.history?.add(new DeleteNodeAction(hook, data.id));
+  }
+  if (hook._historyTriggeredDelete === data.id) {
+    hook._historyTriggeredDelete = null;
+  }
+}
+
+function clearSequenceChildParents(hook: HookProxy, node: FlowNode): void {
+  if (node.nodeType !== "sequence") {
+    return;
+  }
+
+  // Sequences: `rete-scopes-plugin`'s `useValidator` blocks
+  // `removeNode(parent)` while any child still carries `.parent`.
+  // The server-side `flow_node_parent_nullify` trigger has already
+  // nilified child `parent_id` rows, so mirroring that locally keeps
+  // the editor consistent if accompanying `node_updated` broadcasts
+  // arrive after us.
+  for (const child of hook.editor.getNodes()) {
+    if (child.parent === node.id) {
+      child.parent = undefined;
+    }
+  }
+}
+
+function clearSelectedNode(hook: HookProxy, nodeId: string | number): void {
+  if (hook.selectedNodeId === nodeId) {
+    hook.selectedNodeId = null;
+  }
+}
+
 interface AffectedConnection {
   source: string | number | undefined;
   sourceOutput: string;
@@ -468,41 +501,19 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
 
       cleanupEditContext(hook, node);
       cleanupThrottleTimer(hook, data.id);
-
-      if (data.self && hook._historyTriggeredDelete !== data.id) {
-        hook.history?.add(new DeleteNodeAction(hook, data.id));
-      }
-      if (hook._historyTriggeredDelete === data.id) {
-        hook._historyTriggeredDelete = null;
-      }
+      recordNodeDeleteHistory(hook, data);
 
       const needsHubRebuild = node.nodeType === "hub" || node.nodeType === "jump";
       hook.enterLoadingFromServer();
       try {
         await removeRelatedConnections(hook, node.id);
-        // Sequences: `rete-scopes-plugin`'s `useValidator` blocks
-        // `removeNode(parent)` while any child still carries `.parent`.
-        // The server-side `flow_node_parent_nullify` trigger has already
-        // nilified child `parent_id` rows (see
-        // `priv/repo/migrations/20260422120000_unify_sequences_into_flow_nodes.exs`),
-        // so mirroring that on the client before removal is both correct
-        // and keeps the editor consistent if the accompanying `node_updated`
-        // broadcasts arrive after us.
-        if (node.nodeType === "sequence") {
-          for (const child of hook.editor.getNodes()) {
-            if (child.parent === node.id) {
-              child.parent = undefined;
-            }
-          }
-        }
+        clearSequenceChildParents(hook, node);
         await hook.editor.removeNode(node.id);
       } finally {
         hook.exitLoadingFromServer();
       }
       hook.nodeMap.delete(data.id);
-      if (hook.selectedNodeId === data.id) {
-        hook.selectedNodeId = null;
-      }
+      clearSelectedNode(hook, data.id);
       if (needsHubRebuild) {
         await hook.rebuildHubsMap();
       }

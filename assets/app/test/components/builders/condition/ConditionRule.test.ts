@@ -60,7 +60,9 @@ function makeRule(overrides: Partial<ConditionRuleData> = {}): ConditionRuleData
   };
 }
 
-function mountIt(props: Partial<{ rule: ConditionRuleData; variables: Variable[]; disabled: boolean }> = {}) {
+function mountIt(
+  props: Partial<{ rule: ConditionRuleData; variables: Variable[]; disabled: boolean }> = {},
+) {
   stubs.length = 0;
   return mount(ConditionRule, {
     props: {
@@ -86,7 +88,9 @@ describe("ConditionRule — auto-advance focus chain", () => {
 
   it("after picking sheet, focuses the variable combobox", async () => {
     const w = mountIt();
-    const sheetCb = w.findAllComponents(VariableComboboxStub).find((c) => c.props("placeholder") === "sheet");
+    const sheetCb = w
+      .findAllComponents(VariableComboboxStub)
+      .find((c) => c.props("placeholder") === "sheet");
     sheetCb!.vm.$emit("update:modelValue", "mc");
     await nextTick();
     await nextTick();
@@ -97,7 +101,9 @@ describe("ConditionRule — auto-advance focus chain", () => {
 
   it("after picking variable, focuses the operator combobox (operator needs a value)", async () => {
     const w = mountIt({ rule: makeRule({ sheet: "mc" }) });
-    const varCb = w.findAllComponents(VariableComboboxStub).find((c) => c.props("placeholder") === "variable");
+    const varCb = w
+      .findAllComponents(VariableComboboxStub)
+      .find((c) => c.props("placeholder") === "variable");
     varCb!.vm.$emit("update:modelValue", "health");
     await nextTick();
     await nextTick();
@@ -107,7 +113,9 @@ describe("ConditionRule — auto-advance focus chain", () => {
 
   it("after picking variable, skips operator/value when auto-operator is NO_VALUE_OPERATORS (boolean → is_true)", async () => {
     const w = mountIt({ rule: makeRule({ sheet: "mc" }) });
-    const varCb = w.findAllComponents(VariableComboboxStub).find((c) => c.props("placeholder") === "variable");
+    const varCb = w
+      .findAllComponents(VariableComboboxStub)
+      .find((c) => c.props("placeholder") === "variable");
     varCb!.vm.$emit("update:modelValue", "alive");
     await nextTick();
     await nextTick();
@@ -118,7 +126,9 @@ describe("ConditionRule — auto-advance focus chain", () => {
 
   it("after picking operator that needs a value, focuses the value combobox", async () => {
     const w = mountIt({ rule: makeRule({ sheet: "mc", variable: "health" }) });
-    const opCb = w.findAllComponents(VariableComboboxStub).find((c) => c.props("placeholder") === "op");
+    const opCb = w
+      .findAllComponents(VariableComboboxStub)
+      .find((c) => c.props("placeholder") === "op");
     opCb!.vm.$emit("update:modelValue", "greater_than");
     await nextTick();
     await nextTick();
@@ -129,7 +139,9 @@ describe("ConditionRule — auto-advance focus chain", () => {
     const w = mountIt({
       rule: makeRule({ sheet: "mc", variable: "health", operator: "equals" }),
     });
-    const opCb = w.findAllComponents(VariableComboboxStub).find((c) => c.props("placeholder") === "op");
+    const opCb = w
+      .findAllComponents(VariableComboboxStub)
+      .find((c) => c.props("placeholder") === "op");
     opCb!.vm.$emit("update:modelValue", "is_empty");
     await nextTick();
     await nextTick();

@@ -8,9 +8,8 @@ vi.mock("@composables/useLive", () => ({
   useLive: () => mockLive,
 }));
 
-const { default: FlowDialoguePanel } = await import(
-  "@modules/flows/components/FlowDialoguePanel.vue"
-);
+const { default: FlowDialoguePanel } =
+  await import("@modules/flows/components/FlowDialoguePanel.vue");
 // Importing the panel's own DialoguePanelData interface gives the fixture
 // the exact same nominal type the prop expects — no structural-mismatch
 // false positives from the IDE's TS server.
@@ -75,9 +74,7 @@ describe("FlowDialoguePanel — response wire-format (V1 contract)", () => {
 
   it("add_response sends only node-id with hyphen", async () => {
     const w = mountIt();
-    const addBtn = w
-      .findAll("button")
-      .find((b) => /add response|añadir respuesta/i.test(b.text()));
+    const addBtn = w.findAll("button").find((b) => /add response|añadir respuesta/i.test(b.text()));
     expect(addBtn).toBeDefined();
     await addBtn!.trigger("click");
 
@@ -86,9 +83,7 @@ describe("FlowDialoguePanel — response wire-format (V1 contract)", () => {
 
   it("remove_response sends response-id + node-id with hyphens", async () => {
     const w = mountIt();
-    const removeBtn = w
-      .findAll("button")
-      .find((b) => /remove|eliminar|quitar/i.test(b.text()));
+    const removeBtn = w.findAll("button").find((b) => /remove|eliminar|quitar/i.test(b.text()));
     expect(removeBtn).toBeDefined();
     await removeBtn!.trigger("click");
 
