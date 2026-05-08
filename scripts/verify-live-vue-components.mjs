@@ -9,9 +9,11 @@ const repoRoot = path.resolve(scriptDir, "..");
 const appRoot = path.join(repoRoot, "assets", "app");
 const libRoot = path.join(repoRoot, "lib");
 const liveViewRoot = path.join(libRoot, "storyarn_web");
+const testRoot = path.join(repoRoot, "test");
 
-const sourceExtensions = new Set([".ex", ".heex", ".leex"]);
+const sourceExtensions = new Set([".ex", ".exs", ".heex", ".leex"]);
 const componentAttributePattern = /v-component\s*=\s*(["'])([^"']+)\1/g;
+const liveVueTestPattern = /LiveVue\.Test\.get_vue\s*\([^)]*\bname:\s*(["'])([^"']+)\1/g;
 
 async function listFiles(root, predicate) {
   const entries = await readdir(root, { withFileTypes: true });
@@ -78,12 +80,28 @@ async function discoverReferences() {
   const sourceFiles = await listFiles(liveViewRoot, (filePath) =>
     sourceExtensions.has(path.extname(filePath)),
   );
+  const testFiles = await listFiles(testRoot, (filePath) =>
+    sourceExtensions.has(path.extname(filePath)),
+  );
   const references = [];
 
   for (const filePath of sourceFiles) {
     const source = await readFile(filePath, "utf8");
     for (const match of source.matchAll(componentAttributePattern)) {
       references.push({
+        kind: "v-component",
+        name: match[2],
+        filePath,
+        line: lineNumberAt(source, match.index ?? 0),
+      });
+    }
+  }
+
+  for (const filePath of testFiles) {
+    const source = await readFile(filePath, "utf8");
+    for (const match of source.matchAll(liveVueTestPattern)) {
+      references.push({
+        kind: "LiveVue.Test.get_vue",
         name: match[2],
         filePath,
         line: lineNumberAt(source, match.index ?? 0),
@@ -95,7 +113,7 @@ async function discoverReferences() {
 }
 
 function formatLocation(reference) {
-  return `${normalizePath(path.relative(repoRoot, reference.filePath))}:${reference.line}`;
+  return `${normalizePath(path.relative(repoRoot, reference.filePath))}:${reference.line} ${reference.kind}`;
 }
 
 const components = await discoverComponents();
@@ -103,6 +121,22 @@ const references = await discoverReferences();
 const failures = [];
 
 for (const reference of references) {
+  const exactMatches = components.filter((component) => component.componentPath === reference.name);
+
+  if (exactMatches.length === 1) {
+    continue;
+  }
+
+  if (exactMatches.length > 1) {
+    failures.push(
+      [
+        `${formatLocation(reference)} ambiguous component "${reference.name}"`,
+        ...exactMatches.map((match) => `  - ${match.componentPath}`),
+      ].join("\n"),
+    );
+    continue;
+  }
+
   const matches = components.filter((component) =>
     suffixMatches(component.componentPath, reference.name),
   );
@@ -115,6 +149,10 @@ for (const reference of references) {
         `${formatLocation(reference)} ambiguous component "${reference.name}"`,
         ...matches.map((match) => `  - ${match.componentPath}`),
       ].join("\n"),
+    );
+  } else {
+    failures.push(
+      `${formatLocation(reference)} non-canonical component "${reference.name}" (use "${matches[0].componentPath}")`,
     );
   }
 }

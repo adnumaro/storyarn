@@ -4,15 +4,11 @@ const productModules = [
   "auth",
   "docs",
   "flows",
-  "landing",
   "localization",
-  "project-settings",
   "projects",
   "public",
   "scenes",
-  "settings",
   "sheets",
-  "versioning",
   "workspaces",
 ];
 
@@ -25,7 +21,7 @@ const crossModuleRules = productModules.map((moduleName) => ({
     path: `^assets/app/modules/${moduleName}/`,
   },
   to: {
-    path: `^assets/app/modules/(?!${moduleName}/|shared/)`,
+    path: `^assets/app/modules/(?!${moduleName}/)`,
     pathNot: [
       "^assets/app/modules/[^/]+/index\\.ts$",
       "^assets/app/modules/[^/]+/navigation(/|\\.ts$)",
@@ -83,10 +79,10 @@ module.exports = {
       comment: "Shared domain code must remain pure and not depend on Vue UI or LiveView wiring.",
       severity: "error",
       from: {
-        path: "^assets/app/(modules/shared|shared)/",
+        path: "^assets/app/shared/domain/",
       },
       to: {
-        path: "^assets/app/(components|composables/useLive|modules/(?!shared/))",
+        path: "^assets/app/(components|shared/composables/useLive|modules/)",
       },
     },
     {
@@ -98,7 +94,7 @@ module.exports = {
         path: "^assets/app/components/(?!layout/)",
       },
       to: {
-        path: "^assets/app/modules/(?!shared/)",
+        path: "^assets/app/modules/",
       },
     },
     {

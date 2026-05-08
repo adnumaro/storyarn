@@ -16,7 +16,7 @@ defmodule StoryarnWeb.CompareLive.Scene do
   def render(assigns) do
     ~H"""
     <.vue
-      v-component="compare/SceneCompare"
+      v-component="components/versioning/compare/SceneCompare"
       v-socket={@socket}
       id="scene-compare-vue"
       back-url={@back_url}

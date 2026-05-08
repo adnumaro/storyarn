@@ -16,7 +16,7 @@ defmodule StoryarnWeb.CompareLive.Flow do
   def render(assigns) do
     ~H"""
     <.vue
-      v-component="compare/FlowCompare"
+      v-component="components/versioning/compare/FlowCompare"
       v-socket={@socket}
       id="flow-compare-vue"
       back-url={@back_url}

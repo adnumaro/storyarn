@@ -53,8 +53,8 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
 
       {:ok, view, _html} = live(conn, ~p"/projects/invitations/#{token}")
 
-      vue = LiveVue.Test.get_vue(view, name: "modules/workspaces/Invitations")
-      assert vue.component == "modules/workspaces/Invitations"
+      vue = LiveVue.Test.get_vue(view, name: "modules/workspaces/settings/Invitations")
+      assert vue.component == "modules/workspaces/settings/Invitations"
     end
 
     test "handles already member", %{conn: conn} do
@@ -79,8 +79,8 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
     test "renders error page for invalid token", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/projects/invitations/invalid-token")
 
-      vue = LiveVue.Test.get_vue(view, name: "modules/workspaces/Invitations")
-      assert vue.component == "modules/workspaces/Invitations"
+      vue = LiveVue.Test.get_vue(view, name: "modules/workspaces/settings/Invitations")
+      assert vue.component == "modules/workspaces/settings/Invitations"
     end
 
     test "renders error page for expired invitation", %{conn: conn} do
@@ -104,8 +104,8 @@ defmodule StoryarnWeb.ProjectLive.InvitationTest do
 
       {:ok, view, _html} = live(conn, ~p"/projects/invitations/#{encoded_token}")
 
-      vue = LiveVue.Test.get_vue(view, name: "modules/workspaces/Invitations")
-      assert vue.component == "modules/workspaces/Invitations"
+      vue = LiveVue.Test.get_vue(view, name: "modules/workspaces/settings/Invitations")
+      assert vue.component == "modules/workspaces/settings/Invitations"
     end
   end
 end

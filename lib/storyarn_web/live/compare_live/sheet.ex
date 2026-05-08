@@ -17,7 +17,7 @@ defmodule StoryarnWeb.CompareLive.Sheet do
   def render(assigns) do
     ~H"""
     <.vue
-      v-component="compare/SheetCompare"
+      v-component="components/versioning/compare/SheetCompare"
       v-socket={@socket}
       id="sheet-compare-vue"
       back-url={@back_url}

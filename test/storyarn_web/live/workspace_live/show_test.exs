@@ -9,7 +9,7 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
   alias Storyarn.Repo
 
   defp get_dashboard_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/workspaces/WorkspaceDashboard")
+    LiveVue.Test.get_vue(view, name: "modules/workspaces/dashboard/WorkspaceDashboard")
   end
 
   describe "Workspace show page" do
@@ -21,7 +21,7 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
       {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
       vue = get_dashboard_vue(view)
-      assert vue.component == "modules/workspaces/WorkspaceDashboard"
+      assert vue.component == "modules/workspaces/dashboard/WorkspaceDashboard"
       assert vue.props["workspace"]["name"] == "My Studio"
     end
 

@@ -8,7 +8,7 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
   alias Storyarn.Repo
 
   defp get_left_toolbar_vue(view) do
-    LiveVue.Test.get_vue(view, name: "layout/LeftToolbar")
+    LiveVue.Test.get_vue(view, name: "shell/LeftToolbar")
   end
 
   describe "Show" do
