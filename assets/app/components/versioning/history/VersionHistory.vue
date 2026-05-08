@@ -13,7 +13,7 @@ import {
 } from "lucide-vue-next";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
-import { useLive } from "../../../shared/composables/useLive";
+import { useLive } from "@shared/composables/useLive";
 import { useVersionHistory, type VersionEntry } from "./useVersionHistory";
 import {
   CreateVersionDialog,
