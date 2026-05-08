@@ -37,7 +37,7 @@ Three pieces:
 
 1. **Items function** — new `assets/app/modules/flows/lib/context_menu_items.ts`, ported from `main:assets/js/flow_canvas/context_menu_items.js`. Adapt for v2: remove `slug_line` (deleted 2026-04-20), add "Create sequence from here" for executable nodes, replace `hook.labels?.[key]` with `vue-i18n`'s `t` from `i18n.global`. Typed properly.
 
-2. **Plugin wire-up** in `assets/app/modules/flows/setup.ts`:
+2. **Plugin wire-up** in `assets/app/modules/flows/reteSetup.ts`:
 
    ```ts
    import { ContextMenuPlugin } from "rete-context-menu-plugin";

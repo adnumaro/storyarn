@@ -35,7 +35,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       load_flow(view)
 
       # Collaboration data is now passed as Vue props, not HTML data attributes
-      vue = LiveVue.Test.get_vue(view, name: "modules/flows/components/FlowEditor")
+      vue = LiveVue.Test.get_vue(view, name: "modules/flows/editor/FlowEditor")
 
       assert vue.props["user-id"] == user.id
       assert is_binary(vue.props["user-color"])

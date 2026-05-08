@@ -136,12 +136,12 @@ N/A. El evaluator runtime no consume sequences hoy.
 - `assets/app/modules/flows/lib/flow-sequence.ts` — **DELETE** (la clase `FlowSequence` desaparece).
 - `assets/app/modules/flows/lib/rete-schemes.ts` — `FlowGraphNode = FlowNode` (quitar union con FlowSequence).
 - `assets/app/modules/flows/lib/flow-node.ts` — permitir `parent` cuando type='sequence'.
-- `assets/app/modules/flows/setup.ts` — línea 106: `if (context.payload instanceof FlowSequence) return Sequence` → `if (context.payload.data.type === 'sequence') return Sequence`. Quitar import de FlowSequence.
+- `assets/app/modules/flows/reteSetup.ts` — línea 106: `if (context.payload instanceof FlowSequence) return Sequence` → `if (context.payload.data.type === 'sequence') return Sequence`. Quitar import de FlowSequence.
 - `assets/app/modules/flows/composables/useFlowEditor.ts` — quitar `addSequenceToEditor`, `reteSequenceId`. `addNodeToEditor` detecta type='sequence' y setea `width/height` del payload.
 - `assets/app/modules/flows/services/flowMarquee.ts` — línea 148: quitar el filtro `instanceof FlowSequence`. **Sequences ahora son seleccionables.**
 - `assets/app/modules/flows/lib/context_menu_items.ts` — línea 153 y adyacentes: quitar filtro `FlowSequence instanceof`. Sequences pueden formar parte del `getSelectedNodeDbIds`.
 - `assets/app/modules/flows/components/Sequence.vue` — prop `data: FlowSequence` → `data: FlowNode` con type='sequence'. Lee `data.sequenceName`, `data.width`, `data.height` del flatten del serializer.
-- `assets/app/modules/flows/components/FlowNode.vue` — sin cambios (dispatch vive en setup.ts).
+- `assets/app/modules/flows/components/FlowNode.vue` — sin cambios (dispatch vive en reteSetup.ts).
 - `assets/app/modules/flows/types.ts` — quitar `sequences` como array separado (si cambiamos el payload) o mantener.
 
 ## Screenplay sync

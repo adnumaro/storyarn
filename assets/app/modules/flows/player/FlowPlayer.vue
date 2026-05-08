@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from "vue";
 import { useLive } from "../../../shared/composables/useLive";
-import PlayerSlide from "./PlayerSlide.vue";
-import PlayerChoices from "./PlayerChoices.vue";
-import PlayerToolbar from "./PlayerToolbar.vue";
-import PlayerOutcome from "./PlayerOutcome.vue";
-import type { SlideData } from "./PlayerSlide.vue";
-import type { ResponseData } from "./PlayerChoices.vue";
-import type { OutcomeData } from "./PlayerOutcome.vue";
+import PlayerSlide from "./components/PlayerSlide.vue";
+import PlayerChoices from "./components/PlayerChoices.vue";
+import PlayerToolbar from "./components/PlayerToolbar.vue";
+import PlayerOutcome from "./components/PlayerOutcome.vue";
+import type { SlideData } from "./components/PlayerSlide.vue";
+import type { ResponseData } from "./components/PlayerChoices.vue";
+import type { OutcomeData } from "./components/PlayerOutcome.vue";
 
 const {
   slide,

@@ -9,7 +9,7 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
   alias Storyarn.Repo
 
   defp get_dashboard_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/flows/FlowDashboard")
+    LiveVue.Test.get_vue(view, name: "modules/flows/dashboard/FlowDashboard")
   end
 
   describe "Flow index page" do
@@ -28,7 +28,7 @@ defmodule StoryarnWeb.FlowLive.IndexTest do
       await_async(view)
 
       vue = get_dashboard_vue(view)
-      assert vue.component == "modules/flows/FlowDashboard"
+      assert vue.component == "modules/flows/dashboard/FlowDashboard"
       table_data = vue.props["table-data"]
       assert Enum.any?(table_data, fn row -> row["name"] == "Chapter One" end)
     end

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { mount } from "@vue/test-utils";
-import PlayerChoices from "@modules/flows/player/PlayerChoices.vue";
-import type { ResponseData } from "@modules/flows/player/PlayerChoices.vue";
+import PlayerChoices from "../../../../modules/flows/player/components/PlayerChoices.vue";
+import type { ResponseData } from "../../../../modules/flows/player/components/PlayerChoices.vue";
 
 function mountChoices(responses: ResponseData[], playerMode: "player" | "analysis" = "player") {
   return mount(PlayerChoices, {

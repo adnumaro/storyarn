@@ -83,7 +83,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       <:top_bar_extras_left>
         <.vue
           :if={@flow}
-          v-component="modules/flows/components/FlowHeader"
+          v-component="modules/flows/editor/components/chrome/header/FlowHeader"
           v-socket={@socket}
           id="flow-header"
           flow-name={@flow.name}
@@ -132,7 +132,7 @@ defmodule StoryarnWeb.FlowLive.Show do
               class="w-full h-full"
             >
               <.vue
-                v-component="modules/flows/components/FlowEditor"
+                v-component="modules/flows/editor/FlowEditor"
                 v-socket={@socket}
                 id={"flow-editor-#{@flow.id}"}
                 class="w-full h-full"
@@ -154,7 +154,7 @@ defmodule StoryarnWeb.FlowLive.Show do
             <%!-- Bottom dock (Vue) --%>
             <.vue
               :if={@flow}
-              v-component="modules/flows/components/FlowDock"
+              v-component="modules/flows/editor/components/chrome/dock/FlowDock"
               v-socket={@socket}
               id="flow-dock"
               can-edit={@can_edit}
@@ -167,7 +167,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
             <%!-- Version History Panel (Vue) --%>
             <.vue
-              v-component="modules/flows/components/FlowVersionHistoryPanel"
+              v-component="modules/flows/editor/components/panels/FlowVersionHistoryPanel"
               v-socket={@socket}
               id="flow-versions-panel"
               open={@versions_panel_open}
@@ -184,7 +184,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
           <%!-- Debug Panel (Vue) --%>
           <.vue
-            v-component="modules/flows/components/FlowDebugPanel"
+            v-component="modules/flows/editor/components/panels/FlowDebugPanel"
             v-socket={@socket}
             id="flow-debug-panel"
             open={@debug_panel_open && @debug_state != nil}
@@ -206,7 +206,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
         <%!-- Collaboration Toast (Vue) --%>
         <.vue
-          v-component="modules/flows/components/CollabToast"
+          v-component="modules/flows/editor/components/collab/CollabToast"
           v-socket={@socket}
           id="flow-collab-toast"
         />
@@ -214,7 +214,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
       <%!-- Builder Sidebar (Vue) --%>
       <.vue
-        v-component="modules/flows/components/FlowBuilderPanel"
+        v-component="modules/flows/editor/components/panels/FlowBuilderPanel"
         v-socket={@socket}
         id="flow-builder-panel"
         open={@editing_mode == :builder && @selected_node != nil}
@@ -230,7 +230,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       <%!-- Dialogue node editor sidebar (Vue) — single typed `data` payload
            built by build_dialogue_panel_data/2 (camelCase). --%>
       <.vue
-        v-component="modules/flows/components/FlowDialoguePanel"
+        v-component="modules/flows/editor/components/panels/FlowDialoguePanel"
         v-socket={@socket}
         id="flow-dialogue-panel"
         open={@editing_mode == :dialogue_panel && @selected_node != nil}
@@ -242,7 +242,7 @@ defmodule StoryarnWeb.FlowLive.Show do
            sidebar inside a shadcn Dialog (max-w-3xl). Toggled via
            open_dialogue_fullscreen / minimize_dialogue_fullscreen. --%>
       <.vue
-        v-component="modules/flows/components/FlowDialogueFullscreenEditor"
+        v-component="modules/flows/editor/components/panels/FlowDialogueFullscreenEditor"
         v-socket={@socket}
         id="flow-dialogue-fullscreen"
         open={@editing_mode == :dialogue_fullscreen && @selected_node != nil}
@@ -252,17 +252,20 @@ defmodule StoryarnWeb.FlowLive.Show do
 
       <%!-- Sequence Config sidebar (Vue) --%>
       <.vue
-        v-component="modules/flows/components/FlowSequenceConfigPanel"
+        v-component="modules/flows/editor/components/panels/FlowSequenceConfigPanel"
         v-socket={@socket}
         id="flow-sequence-config-panel"
-        open={@editing_mode == :sequence_config && @selected_node != nil && @selected_node.type == "sequence"}
+        open={
+          @editing_mode == :sequence_config && @selected_node != nil &&
+            @selected_node.type == "sequence"
+        }
         data={@sequence_panel_data}
         can-edit={@can_edit}
       />
 
       <%!-- Dialogue Preview (Vue) --%>
       <.vue
-        v-component="modules/flows/components/FlowPreview"
+        v-component="modules/flows/editor/components/panels/FlowPreview"
         v-socket={@socket}
         id="flow-preview"
         {PreviewHandlers.serialize_preview_state(@socket)}
@@ -276,7 +279,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     <Layouts.compare flash={@flash}>
       <div class="h-full relative">
         <.vue
-          v-component="modules/flows/components/FlowEditor"
+          v-component="modules/flows/editor/FlowEditor"
           v-socket={@socket}
           id={"flow-editor-compact-#{@flow.id}"}
           class="w-full h-full"

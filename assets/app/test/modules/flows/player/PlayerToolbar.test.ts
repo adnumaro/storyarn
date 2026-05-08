@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { mount } from "@vue/test-utils";
-import PlayerToolbar from "@modules/flows/player/PlayerToolbar.vue";
+import PlayerToolbar from "../../../../modules/flows/player/components/PlayerToolbar.vue";
 
 function mountToolbar(overrides: Record<string, unknown> = {}) {
   return mount(PlayerToolbar, {

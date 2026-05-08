@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { mount } from "@vue/test-utils";
-import PlayerOutcome from "@modules/flows/player/PlayerOutcome.vue";
-import type { OutcomeData } from "@modules/flows/player/PlayerOutcome.vue";
+import PlayerOutcome from "../../../../modules/flows/player/components/PlayerOutcome.vue";
+import type { OutcomeData } from "../../../../modules/flows/player/components/PlayerOutcome.vue";
 
 function buildSlide(overrides: Partial<OutcomeData> = {}): OutcomeData {
   return {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
-import PlayerSlide from "@modules/flows/player/PlayerSlide.vue";
-import type { SlideData } from "@modules/flows/player/PlayerSlide.vue";
+import PlayerSlide from "../../../../modules/flows/player/components/PlayerSlide.vue";
+import type { SlideData } from "../../../../modules/flows/player/components/PlayerSlide.vue";
 
 async function mountSlide(slide: SlideData) {
   const w = mount(PlayerSlide, { props: { slide } });

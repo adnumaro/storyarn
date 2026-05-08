@@ -161,7 +161,7 @@ Detail: [`phase-1-wire-format.md`](./phase-1-wire-format.md).
 1. Compare V1 keys (REFACTOR.md §6.D) against V2 `flows.json`. Add missing.
 2. `FlowScreenplayEditor.vue` mobile layout: outer container becomes `inset-0 z-[1030] bg-background xl:inset-auto xl:right-3 xl:top-[76px] xl:bottom-3 xl:w-[600px]`. Mobile header with arrow-left + title + X. Tabs stay sticky at top.
 3. Word-count plural via `vue-i18n`'s `tc` (or `$t` with count): `flows.screenplay_editor.word_count` with plural form.
-4. Verify `vue-i18n` setup exposes plurals correctly in `setup.ts` test environment.
+4. Verify `vue-i18n` setup exposes plurals correctly in `reteSetup.ts` test environment.
 5. Edge: keyboard Esc closes panel (V1 has it via JS hook; V2 should add a `useKeyboard` Esc binding scoped to the panel).
 6. Edge: details `phx-hook="DetailsPreserveOpen"` analogue: ensure the response Advanced collapsibles preserve open state across re-renders. (Vue + LiveVue should handle this naturally if `open` is in component state, not derived from server props.)
 
