@@ -104,7 +104,7 @@ defmodule StoryarnWeb.Components.AppLayout do
 
   attr :sidebar_props, :map,
     default: %{},
-    doc: "props passed to the tool-specific component inside MainSidebar"
+    doc: "legacy props passed to shell/MainSidebar when a page still uses Layouts.app"
 
   slot :tree_content, doc: "main sidebar content (tree component)"
   slot :top_bar_extra, doc: "extra content rendered next to the left toolbar (same row)"

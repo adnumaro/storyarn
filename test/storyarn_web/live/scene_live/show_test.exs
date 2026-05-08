@@ -42,8 +42,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     LiveVue.Test.get_vue(view, name: "modules/scenes/components/SearchPanel")
   end
 
-  defp get_main_sidebar_props(view) do
-    LiveVue.Test.get_vue(view, name: "layout/MainSidebar").props["sidebar-props"]
+  defp get_layer_list_props(view) do
+    LiveVue.Test.get_vue(view, name: "modules/scenes/components/LayerListPopover").props
   end
 
   defp get_legend_vue(view) do
@@ -1317,7 +1317,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
   describe "layer bar" do
     setup :register_and_log_in_user
 
-    test "tree panel props expose the scene layers", %{conn: conn, user: user} do
+    test "layer popover props expose the scene layers", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project)
 
@@ -1327,10 +1327,9 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      sidebar_props = get_main_sidebar_props(view)
+      layer_props = get_layer_list_props(view)
       # Default layer is auto-created with the scene
-      assert length(sidebar_props["layers"]) >= 1
-      assert sidebar_props["hasScene"] == true
+      assert length(layer_props["layers"]) >= 1
     end
 
     test "renders correct number of layers", %{conn: conn, user: user} do
@@ -1383,8 +1382,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       render_click(view, "set_active_layer", %{"id" => to_string(new_layer.id)})
 
-      sidebar_props = get_main_sidebar_props(view)
-      assert sidebar_props["activeLayerId"] == new_layer.id
+      layer_props = get_layer_list_props(view)
+      assert layer_props["active-layer-id"] == new_layer.id
     end
 
     test "new pin gets active layer_id", %{conn: conn, user: user} do
@@ -1689,8 +1688,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
       render_click(view, "toggle_layer_visibility", %{"id" => to_string(layer.id)})
 
-      sidebar_props = get_main_sidebar_props(view)
-      hidden = Enum.find(sidebar_props["layers"], &(&1["id"] == layer.id))
+      layer_props = get_layer_list_props(view)
+      hidden = Enum.find(layer_props["layers"], &(&1["id"] == layer.id))
       assert hidden["visible"] == false
     end
   end
@@ -2969,8 +2968,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert updated.fog_enabled == true
 
       # And reflected in the tree panel layers prop
-      sidebar_props = get_main_sidebar_props(view)
-      updated_layer = Enum.find(sidebar_props["layers"], &(&1["id"] == layer.id))
+      layer_props = get_layer_list_props(view)
+      updated_layer = Enum.find(layer_props["layers"], &(&1["id"] == layer.id))
       assert updated_layer["fogEnabled"] == true
     end
 

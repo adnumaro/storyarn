@@ -105,7 +105,7 @@ module.exports = {
       name: "shell-not-to-module-internals",
       comment:
         "The app shell should only depend on public module APIs or navigation entrypoints, not module internals.",
-      severity: "warn",
+      severity: "error",
       from: {
         path: "^assets/app/(shell|components/layout)/",
       },

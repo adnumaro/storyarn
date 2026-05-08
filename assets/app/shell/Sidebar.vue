@@ -2,7 +2,7 @@
 /**
  * Shared sidebar panel — floating surface panel with JS-driven animation.
  *
- * Used by MainSidebar (left) and FormulaPanel (right).
+ * Used by SidebarFrame (left) and FormulaPanel (right).
  * Slide + fade, 280ms in / 180ms out.
  *
  * Desktop (≥ md): fixed w-64, positioned left-3 or right-3, JS animation.

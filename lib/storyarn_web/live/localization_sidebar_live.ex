@@ -71,7 +71,7 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
     ~H"""
     <div>
       <.vue
-        v-component="shell/MainSidebar"
+        v-component="modules/localization/navigation/LocalizationSidebarRoot"
         v-socket={@socket}
         id="localization-sidebar"
         main-sidebar-open={@main_sidebar_open}
@@ -86,7 +86,7 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
     """
   end
 
-  # ── Panel state events from MainSidebar.vue ─────────────────────────────────
+  # ── Panel state events from SidebarFrame.vue ────────────────────────────────
   @impl true
   def handle_event("main_sidebar_init", %{"pinned" => pinned}, socket) do
     {:noreply,

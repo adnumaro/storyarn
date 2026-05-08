@@ -63,7 +63,7 @@ defmodule StoryarnWeb.SceneSidebarLive do
     ~H"""
     <div>
       <.vue
-        v-component="shell/MainSidebar"
+        v-component="modules/scenes/navigation/ScenesSidebar"
         v-socket={@socket}
         id="shell-main-sidebar"
         main-sidebar-open={@main_sidebar_open}
@@ -86,7 +86,7 @@ defmodule StoryarnWeb.SceneSidebarLive do
     """
   end
 
-  # ── Panel state events from MainSidebar.vue ─────────────────────────────────
+  # ── Panel state events from SidebarFrame.vue ────────────────────────────────
   @impl true
   def handle_event("main_sidebar_init", _params, %{assigns: %{dashboard_mode: true}} = socket) do
     {:noreply, socket}

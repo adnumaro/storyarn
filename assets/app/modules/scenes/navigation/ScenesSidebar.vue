@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import SidebarFrame from "./SidebarFrame.vue";
-
-defineOptions({ inheritAttrs: false });
+import SidebarFrame from "@shell/SidebarFrame.vue";
+import SceneTreePanel from "../components/SceneTreePanel.vue";
 
 const {
   mainSidebarOpen = false,
   mainSidebarPinned = true,
   showPin = true,
-  activeTool = "sheets",
+  activeTool = "scenes",
   dashboardUrl = null,
   onDashboard = false,
+  sidebarProps = {},
 } = defineProps<{
   mainSidebarOpen?: boolean;
   mainSidebarPinned?: boolean;
@@ -17,6 +17,7 @@ const {
   activeTool?: string;
   dashboardUrl?: string | null;
   onDashboard?: boolean;
+  sidebarProps?: Record<string, unknown>;
 }>();
 </script>
 
@@ -29,6 +30,6 @@ const {
     :dashboard-url="dashboardUrl"
     :on-dashboard="onDashboard"
   >
-    <slot />
+    <SceneTreePanel v-bind="sidebarProps" />
   </SidebarFrame>
 </template>
