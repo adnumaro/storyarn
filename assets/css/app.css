@@ -224,6 +224,61 @@
   }
 }
 
+/*
+ * Flow debug overlays — applied by services/debug.ts to [data-testid="node"]
+ * during a debug session.
+ */
+[data-testid="node"].debug-current {
+  animation: debug-pulse 1.5s ease-in-out infinite;
+  border-radius: 0.5rem;
+}
+[data-testid="node"].debug-visited {
+  box-shadow: 0 0 0 2px color-mix(in srgb, #10b981 45%, transparent); /* emerald-500 */
+  border-radius: 0.5rem;
+}
+[data-testid="node"].debug-waiting {
+  animation: debug-pulse-warning 1.5s ease-in-out infinite;
+  border-radius: 0.5rem;
+}
+[data-testid="node"].debug-error {
+  box-shadow: 0 0 0 3px hsl(var(--destructive) / 0.6);
+  border-radius: 0.5rem;
+}
+[data-testid="node"].debug-breakpoint {
+  outline: 2px solid color-mix(in srgb, #f97316 75%, transparent); /* orange-500 */
+  outline-offset: 3px;
+}
+
+@keyframes debug-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.55);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px hsl(var(--primary) / 0.18),
+      0 0 16px hsl(var(--primary) / 0.12);
+  }
+}
+
+@keyframes debug-pulse-warning {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px color-mix(in srgb, #f59e0b 55%, transparent); /* amber-500 */
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px color-mix(in srgb, #f59e0b 18%, transparent),
+      0 0 16px color-mix(in srgb, #f59e0b 12%, transparent);
+  }
+}
+
+@keyframes debug-flow {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
 /* Compact text input for floating toolbar (label fields) */
 .toolbar-input {
   background: transparent;

@@ -19,11 +19,7 @@ import { FlowNode } from "../lib/flow-node";
 import type { NodeData } from "../lib/node-configs";
 import type { FlowSchemes, FlowAreaExtra, FlowConnection } from "../lib/rete-schemes";
 import { debug } from "../services/debug";
-import {
-  AutoLayoutAction,
-  buildBatchPositions,
-  type Position,
-} from "../services/historyPreset";
+import { AutoLayoutAction, buildBatchPositions, type Position } from "../services/historyPreset";
 import {
   editorHandlers,
   type EditorHandlers,
@@ -47,7 +43,12 @@ import { lod, type LodController } from "../services/lod";
 import { navigation, type NavigationHandler } from "../services/navigation";
 
 import { createPlugins, finalizeSetup } from "../setup";
-import type { DebugHandler } from "../services/debug";
+import type {
+  DebugHandler,
+  DebugHighlightNodeData,
+  DebugHighlightConnectionsData,
+  DebugUpdateBreakpointsData,
+} from "../services/debug";
 import { createFlowMarquee } from "../services/flowMarquee";
 
 interface FlowEditorOpts {
@@ -1059,6 +1060,19 @@ export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowE
       handleEvent("navigate_to_jumps", (data) =>
         _navigationHandler!.navigateToJumps(data.hub_db_id as number),
       );
+    }
+
+    if (_debugHandler) {
+      handleEvent("debug_highlight_node", (data) =>
+        _debugHandler!.handleHighlightNode(data as unknown as DebugHighlightNodeData),
+      );
+      handleEvent("debug_highlight_connections", (data) =>
+        _debugHandler!.handleHighlightConnections(data as unknown as DebugHighlightConnectionsData),
+      );
+      handleEvent("debug_update_breakpoints", (data) =>
+        _debugHandler!.handleUpdateBreakpoints(data as unknown as DebugUpdateBreakpointsData),
+      );
+      handleEvent("debug_clear_highlights", () => _debugHandler!.handleClearHighlights());
     }
   }
 

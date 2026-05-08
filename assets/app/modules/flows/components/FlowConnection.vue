@@ -58,7 +58,13 @@ const labelWidth = computed<number>(() =>
     <path
       :d="path"
       fill="none"
-      class="stroke-foreground/40 stroke-2 pointer-events-none transition-[stroke,stroke-width] duration-150"
+      class="pointer-events-none transition-[stroke,stroke-width] duration-150"
+      :style="{
+        stroke: 'var(--conn-stroke, hsl(var(--foreground) / 0.4))',
+        strokeWidth: 'var(--conn-stroke-width, 2px)',
+        strokeDasharray: 'var(--conn-dash, none)',
+        animation: 'var(--conn-animation, none)',
+      }"
     />
     <!-- Label at midpoint -->
     <g v-if="midpoint && data?.label" :transform="`translate(${midpoint.x}, ${midpoint.y})`">
