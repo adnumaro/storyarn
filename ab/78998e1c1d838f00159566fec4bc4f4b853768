@@ -1,0 +1,24 @@
+assets/app/modules/localization/dashboard/LocalizationReport.vue
+  h_46be6e61f3d9dd 1-246
+assets/app/modules/localization/components/chrome/LocalizationSidebar.vue
+  h_46be6e61f3d9dd 1-284
+assets/app/modules/localization/navigation/LocalizationSidebarRoot.vue
+  h_46be6e61f3d9dd 3
+assets/app/modules/localization/texts/LocalizationEdit.vue
+  h_46be6e61f3d9dd 1-216
+assets/app/modules/localization/components/chrome/LocalizationToolbar.vue
+  h_46be6e61f3d9dd 1-68
+assets/app/modules/localization/texts/LocalizationIndex.vue
+  h_46be6e61f3d9dd 1-316
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "ab78998e1c1d838f00159566fec4bc4f4b853768",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
