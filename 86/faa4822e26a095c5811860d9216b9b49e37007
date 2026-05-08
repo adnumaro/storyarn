@@ -1,0 +1,22 @@
+assets/app/modules/scenes/components/VersionHistoryPanel.vue
+  h_46be6e61f3d9dd 4-5
+assets/app/modules/flows/components/FlowVersionHistoryPanel.vue
+  h_46be6e61f3d9dd 4-5
+assets/app/modules/workspaces/dashboard/WorkspaceDashboard.vue
+  h_46be6e61f3d9dd 8
+assets/app/components/versioning/history/VersionHistory.vue
+  h_46be6e61f3d9dd 16
+assets/app/modules/sheets/components/tabs/HistoryTab.vue
+  h_46be6e61f3d9dd 2-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "86faa4822e26a095c5811860d9216b9b49e37007",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
