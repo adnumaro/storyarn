@@ -31,7 +31,7 @@ import { Label } from "@components/ui/label/index.ts";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
 import { useScreenplayEditor } from "@modules/flows/composables/useScreenplayEditor";
-import type { Variable } from "@modules/shared/variables";
+import type { Variable } from "../../../shared/domain/variables";
 import { useI18n } from "vue-i18n";
 import { useLive } from "../../../shared/composables/useLive";
 

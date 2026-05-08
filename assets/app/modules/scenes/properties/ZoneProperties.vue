@@ -4,7 +4,7 @@ import ConditionBuilder from "@components/builders/ConditionBuilder.vue";
 import type { Assignment, ConditionData } from "@components/builders/types";
 import ExpressionEditor from "../../../components/forms/ExpressionEditor.vue";
 import { EntityCombobox, TextField, ToggleField } from "../../../components/forms/fields";
-import type { Variable } from "@modules/shared/variables";
+import type { Variable } from "../../../shared/domain/variables";
 import { useLive } from "../../../shared/composables/useLive";
 import CollectionItemsEditor from "./zone/CollectionItemsEditor.vue";
 import TargetPicker from "./zone/TargetPicker.vue";

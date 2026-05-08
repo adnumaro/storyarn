@@ -15,8 +15,8 @@ import { useCodeEditor } from "@shared/composables/useCodeEditor";
 import {
   serializeCondition,
   serializeAssignments,
-} from "@modules/shared/operators/expression-serializer";
-import type { Variable } from "@modules/shared/variables";
+} from "../../shared/domain/operators/expression-serializer";
+import type { Variable } from "../../shared/domain/variables";
 import type {
   ConditionData,
   ConditionBlock,

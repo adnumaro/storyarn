@@ -3,7 +3,7 @@ import { LayoutGrid, Plus, X } from "lucide-vue-next";
 import { computed } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import type { Sheet, SheetAvatar } from "../types";
-import { generateId } from "@modules/shared/variables.ts";
+import { generateId } from "../../../shared/domain/variables.ts";
 
 const { sheet, canEdit = false } = defineProps<{
   sheet: Sheet;

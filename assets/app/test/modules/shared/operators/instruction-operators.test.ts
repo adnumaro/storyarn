@@ -8,7 +8,7 @@ import {
   OPERATORS_BY_TYPE,
   OPERATOR_VERBS,
   OPERATOR_DROPDOWN_LABELS,
-} from "@modules/shared/operators/instruction-operators";
+} from "../../../../shared/domain/operators/instruction-operators";
 
 describe("operatorsForType", () => {
   it("returns number operators", () => {

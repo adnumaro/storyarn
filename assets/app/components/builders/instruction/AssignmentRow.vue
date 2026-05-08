@@ -15,10 +15,10 @@ import {
   OPERATOR_VERBS,
   operatorsForType,
   typesForOperator,
-} from "@modules/shared/operators/instruction-operators";
-import type { InstructionOperator } from "@modules/shared/operators/instruction-operators";
-import { findVariable, groupVariablesBySheet } from "@modules/shared/variables";
-import type { Variable } from "@modules/shared/variables";
+} from "../../../shared/domain/operators/instruction-operators";
+import type { InstructionOperator } from "../../../shared/domain/operators/instruction-operators";
+import { findVariable, groupVariablesBySheet } from "../../../shared/domain/variables";
+import type { Variable } from "../../../shared/domain/variables";
 import type { Assignment } from "../types";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover/index.ts";
 import VariableCombobox from "../../forms/VariableCombobox.vue";

@@ -3,7 +3,7 @@ import { X } from "lucide-vue-next";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import Sidebar from "../../../shell/Sidebar.vue";
-import type { Variable } from "@modules/shared/variables";
+import type { Variable } from "../../../shared/domain/variables";
 import { useLive } from "../../../shared/composables/useLive";
 import ConnectionProperties from "../properties/ConnectionProperties.vue";
 import PinProperties from "../properties/PinProperties.vue";

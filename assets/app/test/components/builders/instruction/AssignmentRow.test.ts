@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { defineComponent, nextTick } from "vue";
 import { mount } from "@vue/test-utils";
 import AssignmentRow from "@components/builders/instruction/AssignmentRow.vue";
-import type { Variable } from "@modules/shared/variables";
+import type { Variable } from "../../../../shared/domain/variables";
 import type { Assignment } from "@components/builders/types";
 
 /**

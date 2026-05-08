@@ -3,11 +3,11 @@ import {
   CONDITION_OPERATORS_BY_TYPE,
   OPERATOR_LABELS,
   NO_VALUE_OPERATORS,
-} from "@modules/shared/operators/condition-operators";
+} from "../../../../shared/domain/operators/condition-operators";
 import type {
   ConditionOperator,
   VariableType,
-} from "@modules/shared/operators/condition-operators";
+} from "../../../../shared/domain/operators/condition-operators";
 
 describe("operatorsForType", () => {
   it("returns text operators for type 'text'", () => {

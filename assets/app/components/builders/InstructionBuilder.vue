@@ -9,7 +9,7 @@
 
 import { Plus } from "lucide-vue-next";
 import { ref, watch } from "vue";
-import type { Variable } from "@modules/shared/variables";
+import type { Variable } from "../../shared/domain/variables";
 import type { Assignment } from "./types";
 import AssignmentRow from "@components/builders/instruction/AssignmentRow.vue";
 

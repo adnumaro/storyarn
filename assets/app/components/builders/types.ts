@@ -2,8 +2,8 @@
  * Shared types for condition and instruction builders.
  */
 
-import type { ConditionOperator } from "@modules/shared/operators/condition-operators";
-import type { InstructionOperator } from "@modules/shared/operators/instruction-operators";
+import type { ConditionOperator } from "../../shared/domain/operators/condition-operators";
+import type { InstructionOperator } from "../../shared/domain/operators/instruction-operators";
 
 export interface ConditionRule {
   id: string;

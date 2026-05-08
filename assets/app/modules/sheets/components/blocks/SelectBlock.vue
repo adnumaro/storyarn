@@ -9,7 +9,7 @@ import BlockToolbar from "../BlockToolbar.vue";
 import OptionEditor from "../OptionEditor.vue";
 import { useId } from "reka-ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
-import { generateId } from "@modules/shared/variables.ts";
+import { generateId } from "../../../../shared/domain/variables.ts";
 
 const {
   block,

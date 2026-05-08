@@ -18,7 +18,7 @@ import { expressionLinter } from "@plugins/expression-editor/linter";
 import { formatExpression } from "@plugins/expression-editor/formatter";
 import { parseCondition, parseAssignments } from "@plugins/expression-editor/tree-parser";
 import type { ParsedCondition, ParsedAssignment } from "@plugins/expression-editor/tree-parser";
-import type { Variable } from "@modules/shared/variables";
+import type { Variable } from "../domain/variables";
 
 export interface CodeEditorOptions {
   mode: Ref<"condition" | "instruction"> | "condition" | "instruction";

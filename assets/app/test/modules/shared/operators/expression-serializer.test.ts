@@ -1,7 +1,7 @@
 import {
   serializeCondition,
   serializeAssignments,
-} from "@modules/shared/operators/expression-serializer";
+} from "../../../../shared/domain/operators/expression-serializer";
 
 describe("serializeCondition", () => {
   describe("null/empty handling", () => {

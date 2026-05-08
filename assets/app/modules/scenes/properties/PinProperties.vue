@@ -8,7 +8,7 @@ import {
   TextField,
   ToggleField,
 } from "../../../components/forms/fields";
-import type { Variable } from "@modules/shared/variables";
+import type { Variable } from "../../../shared/domain/variables";
 import { useLive } from "../../../shared/composables/useLive";
 import PinPatrolSection from "./pin/PinPatrolSection.vue";
 import PinPlayableSection from "./pin/PinPlayableSection.vue";

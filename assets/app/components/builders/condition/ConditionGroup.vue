@@ -4,8 +4,8 @@
  */
 
 import { Plus, Ungroup } from "lucide-vue-next";
-import { generateId } from "@modules/shared/variables";
-import type { Variable } from "@modules/shared/variables";
+import { generateId } from "../../../shared/domain/variables";
+import type { Variable } from "../../../shared/domain/variables";
 import type {
   ConditionBlock as ConditionBlockType,
   ConditionGroup as ConditionGroupType,

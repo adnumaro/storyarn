@@ -14,9 +14,9 @@ import { i18n } from "@app/i18n";
 import {
   operatorsForType as instructionOpsForType,
   OPERATOR_VERBS,
-} from "@modules/shared/operators/instruction-operators";
+} from "../../shared/domain/operators/instruction-operators";
 import { parseAssignments, parseCondition } from "./tree-parser";
-import type { Variable } from "@modules/shared/variables";
+import type { Variable } from "../../shared/domain/variables";
 
 export function expressionLinter(
   mode: "condition" | "instruction",

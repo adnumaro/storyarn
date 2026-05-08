@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
 import ToolbarBase from "@components/toolbar/ToolbarBase.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Button } from "@components/ui/button";
-import { generateId } from "@modules/shared/variables.ts";
+import { generateId } from "../../../shared/domain/variables.ts";
 
 const configOpen = ref(false);
 

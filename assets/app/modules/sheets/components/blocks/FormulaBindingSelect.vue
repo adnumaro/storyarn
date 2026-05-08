@@ -22,7 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/
 import { useLive } from "../../../../shared/composables/useLive";
 import { useServerSearch } from "../../../../shared/composables/useServerSearch";
 import type { FormulaBindingOption, FormulaSearchGroup } from "../../types";
-import { generateId } from "@modules/shared/variables.ts";
+import { generateId } from "../../../../shared/domain/variables.ts";
 
 const {
   modelValue = "",

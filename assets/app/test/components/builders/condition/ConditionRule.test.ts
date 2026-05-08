@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { defineComponent, nextTick } from "vue";
 import { mount } from "@vue/test-utils";
 import ConditionRule from "@components/builders/condition/ConditionRule.vue";
-import type { Variable } from "@modules/shared/variables";
+import type { Variable } from "../../../../shared/domain/variables";
 import type { ConditionRule as ConditionRuleData } from "@components/builders/types";
 
 /**

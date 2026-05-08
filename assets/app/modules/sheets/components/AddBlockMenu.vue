@@ -25,7 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu/index.ts";
 import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
-import { generateId } from "@modules/shared/variables.ts";
+import { generateId } from "../../../shared/domain/variables.ts";
 
 interface BlockSelection {
   type: string;

@@ -6,8 +6,8 @@
 
 import { Group, Plus } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
-import { generateId } from "@modules/shared/variables";
-import type { Variable } from "@modules/shared/variables";
+import { generateId } from "../../shared/domain/variables";
+import type { Variable } from "../../shared/domain/variables";
 import type {
   ConditionBlock as ConditionBlockType,
   ConditionData,

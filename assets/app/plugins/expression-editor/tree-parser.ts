@@ -12,7 +12,7 @@
 import type { SyntaxNode, Tree } from "@lezer/common";
 import { i18n } from "@app/i18n";
 import { parser as generatedParser } from "./parser-generated.js";
-import type { Variable } from "@modules/shared/variables";
+import type { Variable } from "../../shared/domain/variables";
 
 // -- Types --
 

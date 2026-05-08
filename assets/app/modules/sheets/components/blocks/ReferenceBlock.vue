@@ -16,7 +16,7 @@ import { useBlockActions } from "../../composables/useBlockActions";
 import type { Block, ReferenceSearchResult } from "../../types";
 import BlockLabel from "../BlockLabel.vue";
 import BlockToolbar from "../BlockToolbar.vue";
-import { generateId } from "@modules/shared/variables.ts";
+import { generateId } from "../../../../shared/domain/variables.ts";
 
 const {
   block,

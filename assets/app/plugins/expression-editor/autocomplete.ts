@@ -12,7 +12,7 @@ import {
   type CompletionResult,
 } from "@codemirror/autocomplete";
 import type { Extension } from "@codemirror/state";
-import type { Variable } from "@modules/shared/variables";
+import type { Variable } from "../../shared/domain/variables";
 
 export function variableAutocomplete(variables: Variable[]): Extension {
   const source = createVariableCompletionSource(variables);

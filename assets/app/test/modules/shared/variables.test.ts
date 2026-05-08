@@ -1,5 +1,5 @@
-import { groupVariablesBySheet, findVariable, generateId } from "@modules/shared/variables";
-import type { Variable } from "@modules/shared/variables";
+import { groupVariablesBySheet, findVariable, generateId } from "../../../shared/domain/variables";
+import type { Variable } from "../../../shared/domain/variables";
 
 const makeVariable = (overrides: Partial<Variable> = {}): Variable => ({
   sheet_shortcut: "char",

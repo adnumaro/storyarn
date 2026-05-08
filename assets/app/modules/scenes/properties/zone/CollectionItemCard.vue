@@ -3,7 +3,7 @@ import { Trash2 } from "lucide-vue-next";
 import ConditionBuilder from "@components/builders/ConditionBuilder.vue";
 import type { ConditionData } from "@components/builders/types";
 import { EntityCombobox, TextField } from "@components/forms/fields";
-import type { Variable } from "@modules/shared/variables";
+import type { Variable } from "../../../../shared/domain/variables";
 import { useLive } from "@shared/composables/useLive";
 
 interface CollectionItem {

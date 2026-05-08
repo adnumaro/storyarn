@@ -11,10 +11,10 @@ import {
   NO_VALUE_OPERATORS,
   OPERATOR_LABELS,
   operatorsForType,
-} from "@modules/shared/operators/condition-operators";
-import type { ConditionOperator } from "@modules/shared/operators/condition-operators";
-import { findVariable, groupVariablesBySheet } from "@modules/shared/variables";
-import type { Variable } from "@modules/shared/variables";
+} from "../../../shared/domain/operators/condition-operators";
+import type { ConditionOperator } from "../../../shared/domain/operators/condition-operators";
+import { findVariable, groupVariablesBySheet } from "../../../shared/domain/variables";
+import type { Variable } from "../../../shared/domain/variables";
 import type { ConditionRule } from "../types";
 import VariableCombobox from "../../forms/VariableCombobox.vue";
 
