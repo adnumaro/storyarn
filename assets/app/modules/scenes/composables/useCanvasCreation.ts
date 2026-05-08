@@ -1,5 +1,5 @@
 import { onMounted, ref, type Ref } from "vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 import type { KonvaEventObject } from "konva/lib/Node";
 
 interface PixelPoint {

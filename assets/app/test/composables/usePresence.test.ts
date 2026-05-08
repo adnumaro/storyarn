@@ -1,5 +1,5 @@
 import { reactive } from "vue";
-import { usePresence, type OnlineUser } from "@composables/usePresence";
+import { usePresence, type OnlineUser } from "../../shared/composables/usePresence";
 
 function makeProps(users: OnlineUser[] = []) {
   return reactive({ onlineUsers: users });

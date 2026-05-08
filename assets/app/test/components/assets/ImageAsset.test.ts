@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { mount } from "@vue/test-utils";
-import ImageAsset from "@components/assets/ImageAsset.vue";
+import ImageAsset from "../../../components/forms/assets/ImageAsset.vue";
 
 const ASSETS = [
   { id: 1, filename: "alpha.png", url: "/a.png" },

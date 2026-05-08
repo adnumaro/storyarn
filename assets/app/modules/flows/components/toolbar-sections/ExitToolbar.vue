@@ -2,7 +2,7 @@
 import { ArrowRightToLine, ExternalLink } from "lucide-vue-next";
 import { ToolbarColorPicker, ToolbarSeparator } from "@components/toolbar/index.ts";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../../shared/composables/useLive";
 import { ToolbarExitModePicker } from "../../toolbar";
 import type { NodeData } from "../../lib/node-configs";
 

@@ -1,4 +1,4 @@
-import { cn } from "@utils/utils";
+import { cn } from "../../shared/utils/utils";
 
 describe("cn", () => {
   it("merges simple class strings", () => {

@@ -21,7 +21,7 @@ import {
 } from "@components/ui/collapsible/index.ts";
 import { Command, CommandInput, CommandItem, CommandList } from "@components/ui/command/index.ts";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../../shared/composables/useLive";
 import type { AudioAsset, VoiceLineGroup } from "../../types";
 
 const {

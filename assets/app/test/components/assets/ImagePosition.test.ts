@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { mount } from "@vue/test-utils";
-import ImagePosition from "@components/assets/ImagePosition.vue";
+import ImagePosition from "../../../components/forms/assets/ImagePosition.vue";
 
 const POSITIONS = [
   "top-left",

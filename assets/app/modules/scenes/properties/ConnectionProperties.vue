@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Undo2 } from "lucide-vue-next";
 import { computed } from "vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 
 interface ConnectionElement {
   id: number | string;

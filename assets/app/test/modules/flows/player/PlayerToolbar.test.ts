@@ -30,19 +30,19 @@ describe("PlayerToolbar", () => {
   describe("go back button", () => {
     it("is disabled when canGoBack is false", () => {
       const w = mountToolbar({ canGoBack: false });
-      const btn = w.findAll("button").find((b) => b.attributes("title") === "Back")!;
+      const btn = w.find(".player-toolbar-left").findAll("button")[0]!;
       expect(btn.attributes("disabled")).toBeDefined();
     });
 
     it("is enabled when canGoBack is true", () => {
       const w = mountToolbar({ canGoBack: true });
-      const btn = w.findAll("button").find((b) => b.attributes("title") === "Back")!;
+      const btn = w.find(".player-toolbar-left").findAll("button")[0]!;
       expect(btn.attributes("disabled")).toBeUndefined();
     });
 
     it("emits go-back on click", async () => {
       const w = mountToolbar({ canGoBack: true });
-      const btn = w.findAll("button").find((b) => b.attributes("title") === "Back")!;
+      const btn = w.find(".player-toolbar-left").findAll("button")[0]!;
       await btn.trigger("click");
       expect(w.emitted("go-back")).toHaveLength(1);
     });
@@ -51,25 +51,22 @@ describe("PlayerToolbar", () => {
   describe("continue button", () => {
     it("shows when showContinue is true and not finished", () => {
       const w = mountToolbar({ showContinue: true, isFinished: false });
-      const btn = w.findAll("button").find((b) => b.attributes("title") === "Continue");
-      expect(btn).toBeDefined();
+      expect(w.find(".player-toolbar-left").findAll("button")).toHaveLength(2);
     });
 
     it("hides when showContinue is false", () => {
       const w = mountToolbar({ showContinue: false });
-      const btn = w.findAll("button").find((b) => b.attributes("title") === "Continue");
-      expect(btn).toBeUndefined();
+      expect(w.find(".player-toolbar-left").findAll("button")).toHaveLength(1);
     });
 
     it("hides when isFinished is true", () => {
       const w = mountToolbar({ showContinue: true, isFinished: true });
-      const btn = w.findAll("button").find((b) => b.attributes("title") === "Continue");
-      expect(btn).toBeUndefined();
+      expect(w.find(".player-toolbar-left").findAll("button")).toHaveLength(1);
     });
 
     it("emits continue on click", async () => {
       const w = mountToolbar({ showContinue: true, isFinished: false });
-      const btn = w.findAll("button").find((b) => b.attributes("title") === "Continue")!;
+      const btn = w.find(".player-toolbar-left").findAll("button")[1]!;
       await btn.trigger("click");
       expect(w.emitted("continue")).toHaveLength(1);
     });
@@ -97,7 +94,7 @@ describe("PlayerToolbar", () => {
   describe("restart button", () => {
     it("renders and emits restart", async () => {
       const w = mountToolbar();
-      const btn = w.findAll("button").find((b) => b.attributes("title") === "Restart")!;
+      const btn = w.find(".player-toolbar-right").findAll("button")[0]!;
       expect(btn).toBeDefined();
       await btn.trigger("click");
       expect(w.emitted("restart")).toHaveLength(1);
@@ -107,7 +104,7 @@ describe("PlayerToolbar", () => {
   describe("back to editor link", () => {
     it("renders link with correct URL", () => {
       const w = mountToolbar({ editorUrl: "/workspaces/my-ws/projects/my-proj/flows/flow-xyz" });
-      const link = w.find("a[title='Back to editor']");
+      const link = w.find(".player-toolbar-right a");
       expect(link.attributes("href")).toBe("/workspaces/my-ws/projects/my-proj/flows/flow-xyz");
     });
   });

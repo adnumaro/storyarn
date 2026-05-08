@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Layers } from "lucide-vue-next";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 import SceneLayerList from "./SceneLayerList.vue";
 
 interface LayerItem {

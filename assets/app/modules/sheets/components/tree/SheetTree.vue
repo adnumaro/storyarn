@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@components/ui/dialog/index.ts";
 import { Input } from "@components/ui/input/index.ts";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../../shared/composables/useLive";
 import type { SheetTreeNodeData } from "../../types";
 import SheetTreeNode from "./SheetTreeNode.vue";
 import SheetTreeRoot from "./SheetTreeRoot.vue";

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { type CellValue, SelectOption, TableColumn, TableRow } from "@modules/sheets/types.ts";
-import { useLive } from "@composables/useLive.ts";
+import { useLive } from "../../../../../../shared/composables/useLive.ts";
 import { computed } from "vue";
 import { Checkbox } from "@components/ui/checkbox";
 import { Badge } from "@components/ui/badge";

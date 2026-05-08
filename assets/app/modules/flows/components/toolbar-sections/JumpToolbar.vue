@@ -3,7 +3,7 @@ import { Crosshair, LogOut } from "lucide-vue-next";
 import { computed } from "vue";
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../../shared/composables/useLive";
 import { ToolbarSearchableSelect } from "../../toolbar";
 import type { HubMapEntry } from "../../types";
 import type { NodeData } from "../../lib/node-configs";

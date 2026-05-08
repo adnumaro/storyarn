@@ -2,7 +2,7 @@
 import { Checkbox } from "@components/ui/checkbox";
 import { Badge } from "@components/ui/badge";
 import { TableColumn, TableRow } from "@modules/sheets/types.ts";
-import { useLive } from "@composables/useLive.ts";
+import { useLive } from "../../../../../../shared/composables/useLive.ts";
 import { getCellValue } from "@modules/sheets/components/blocks/table/tbodyCells/get-cell-value-helpers.ts";
 
 const {

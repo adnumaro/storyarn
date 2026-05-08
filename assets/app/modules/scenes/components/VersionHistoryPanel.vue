@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { History, X } from "lucide-vue-next";
 import Sidebar from "../../../shell/Sidebar.vue";
-import VersionHistory from "@components/version-history/VersionHistory.vue";
-import type { VersionEntry } from "@components/version-history/useVersionHistory";
-import { useLive } from "@composables/useLive";
+import VersionHistory from "../../versioning/history/VersionHistory.vue";
+import type { VersionEntry } from "../../versioning/history/useVersionHistory";
+import { useLive } from "../../../shared/composables/useLive";
 
 const {
   versions = [],

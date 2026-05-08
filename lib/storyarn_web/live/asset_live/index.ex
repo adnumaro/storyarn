@@ -25,7 +25,7 @@ defmodule StoryarnWeb.AssetLive.Index do
     >
       <:top_bar_extras_right :if={@can_edit}>
         <.vue
-          v-component="components/AssetUploadButton"
+          v-component="components/forms/assets/AssetUploadButton"
           v-socket={@socket}
           id="asset-upload-button"
           uploading={@uploading}

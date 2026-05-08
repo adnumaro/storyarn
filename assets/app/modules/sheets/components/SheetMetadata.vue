@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 import type { Sheet } from "../types";
 
 const { sheet, canEdit = false } = defineProps<{

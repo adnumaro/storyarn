@@ -7,8 +7,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "../components/ui/dropdown-menu";
-import UserAvatar from "../components/layout/UserAvatar.vue";
+} from "@components/ui/dropdown-menu";
+import UserAvatar from "@components/UserAvatar.vue";
 import { useI18n } from "vue-i18n";
 
 const { t } = useI18n();

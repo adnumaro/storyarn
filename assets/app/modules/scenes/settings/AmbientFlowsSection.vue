@@ -10,7 +10,7 @@ import {
   CommandList,
 } from "@components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 import AmbientFlowRow from "./AmbientFlowRow.vue";
 
 interface AmbientFlow {

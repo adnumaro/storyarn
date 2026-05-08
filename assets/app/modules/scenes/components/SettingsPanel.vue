@@ -2,7 +2,7 @@
 import { Settings, X } from "lucide-vue-next";
 import { computed } from "vue";
 import Sidebar from "../../../shell/Sidebar.vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 import AmbientFlowsSection from "../settings/AmbientFlowsSection.vue";
 import BackgroundSection from "../settings/BackgroundSection.vue";
 import DimensionsSection from "../settings/DimensionsSection.vue";

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Plus } from "lucide-vue-next";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../../../shared/composables/useLive";
 import type { TableColumn, TableRow } from "../../../types";
 import THead from "@modules/sheets/components/blocks/table/THead.vue";
 import TBody from "@modules/sheets/components/blocks/table/TBody.vue";

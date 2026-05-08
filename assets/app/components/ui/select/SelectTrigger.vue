@@ -3,7 +3,7 @@ import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { ChevronDown } from "lucide-vue-next";
 import { SelectIcon, SelectTrigger, useForwardProps, type AsTag } from "reka-ui";
-import { cn } from "@utils/utils";
+import { cn } from "../../../shared/utils/utils";
 
 const props = defineProps<{
   disabled?: boolean;

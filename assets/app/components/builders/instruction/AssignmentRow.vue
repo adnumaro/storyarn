@@ -21,7 +21,7 @@ import { findVariable, groupVariablesBySheet } from "@modules/shared/variables";
 import type { Variable } from "@modules/shared/variables";
 import type { Assignment } from "../types";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover/index.ts";
-import VariableCombobox from "../../VariableCombobox.vue";
+import VariableCombobox from "../../forms/VariableCombobox.vue";
 
 const {
   assignment,

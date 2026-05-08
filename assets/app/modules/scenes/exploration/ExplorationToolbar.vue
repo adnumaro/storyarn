@@ -2,7 +2,7 @@
 import { ArrowLeft, Save, Scan } from "lucide-vue-next";
 import { Button } from "@components/ui/button";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 
 const {
   sceneName = "",

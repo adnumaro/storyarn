@@ -15,7 +15,7 @@ import { computed } from "vue";
 import { Button } from "@components/ui/button/index.ts";
 import { Dialog, DialogContent } from "@components/ui/dialog/index.ts";
 import FlowDialogueEditorBody, { type DialoguePanelData } from "./FlowDialogueEditorBody.vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 
 const {
   open = false,

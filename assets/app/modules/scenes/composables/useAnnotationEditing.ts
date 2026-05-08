@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 
 interface AnnotationConfig {
   id: number | string;

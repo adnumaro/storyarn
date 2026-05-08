@@ -3,8 +3,8 @@ import { makeDroppable } from "@vue-dnd-kit/core";
 import type { IDragEvent } from "@vue-dnd-kit/core";
 import { Link2 } from "lucide-vue-next";
 import { inject, ref, useTemplateRef, watch } from "vue";
-import UserAvatar from "@components/layout/UserAvatar.vue";
-import { useLive } from "@composables/useLive";
+import UserAvatar from "@components/UserAvatar.vue";
+import { useLive } from "../../../../shared/composables/useLive";
 import type {
   BlockLock,
   ColumnGroupLayoutItem,

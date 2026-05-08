@@ -2,7 +2,7 @@
 import type { Component } from "vue";
 import { LayoutDashboard, Pin, X } from "lucide-vue-next";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { useLive } from "../composables/useLive";
+import { useLive } from "../shared/composables/useLive";
 import Sidebar from "./Sidebar.vue";
 import SheetTree from "../modules/sheets/components/tree/SheetTree.vue";
 import FlowTree from "../modules/flows/components/FlowTree.vue";

@@ -4,7 +4,7 @@ import { MessageSquare, Volume2 } from "lucide-vue-next";
 import { Ref } from "rete-vue-plugin";
 import { computed, inject, nextTick, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import EntityCombobox from "@components/form-fields/EntityCombobox.vue";
+import EntityCombobox from "@components/forms/fields/EntityCombobox.vue";
 import NodeHeader from "../components/NodeHeader.vue";
 import NodeShell from "../components/NodeShell.vue";
 import { useScreenplayEditor } from "../composables/useScreenplayEditor";

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component, HTMLAttributes } from "vue";
 import { Primitive, type AsTag } from "reka-ui";
-import { cn } from "@utils/utils";
+import { cn } from "../../../shared/utils/utils";
 import { buttonVariants } from ".";
 
 const props = withDefaults(

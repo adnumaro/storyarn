@@ -4,10 +4,10 @@ import type { Component } from "vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import type { Assignment, ConditionData } from "@components/builders/types";
-import ExpressionEditor from "@components/ExpressionEditor.vue";
+import ExpressionEditor from "../../../components/forms/ExpressionEditor.vue";
 import Sidebar from "../../../shell/Sidebar.vue";
 import type { Variable } from "@modules/shared/variables";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 
 const {
   open = false,

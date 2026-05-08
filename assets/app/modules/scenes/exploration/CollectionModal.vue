@@ -2,7 +2,7 @@
 import { PackageCheck, PackageOpen, X } from "lucide-vue-next";
 import { Button } from "@components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 
 interface CollectionZone {
   emptyMessage?: string;

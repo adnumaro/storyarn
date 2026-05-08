@@ -3,7 +3,7 @@ import { Headphones, History, LayoutList, Link } from "lucide-vue-next";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../../shared/composables/useLive";
 import type { TabDefinition } from "../../types";
 
 const {

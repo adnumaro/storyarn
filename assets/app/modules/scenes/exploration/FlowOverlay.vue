@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ChevronRight, CornerDownLeft, MapIcon } from "lucide-vue-next";
 import { computed } from "vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 import type { FlowSlide } from "./composables/useExplorationKeyboard";
 
 const {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { CellValue, TableColumn, TableRow } from "@modules/sheets/types.ts";
-import { useLive } from "@composables/useLive.ts";
+import { useLive } from "../../../../../../shared/composables/useLive.ts";
 import { nextTick, ref } from "vue";
 import { getCellValue } from "@modules/sheets/components/blocks/table/tbodyCells/get-cell-value-helpers.ts";
 

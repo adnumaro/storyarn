@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, toRef } from "vue";
 import type Konva from "konva";
-import { useLive } from "@composables/useLive";
+import { useLive } from "@shared/composables/useLive";
 import type { LayerData } from "../composables/useLayerVisibility";
 import { useConnections } from "../composables/useConnections";
 import { useKonvaStage } from "../composables/useKonvaStage";

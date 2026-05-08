@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { MousePointer2 } from "lucide-vue-next";
 import { onMounted, onUnmounted, reactive, ref } from "vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 
 interface AreaTransform {
   x: number;

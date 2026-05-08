@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Settings } from "lucide-vue-next";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../../shared/composables/useLive";
 import {
   ToolbarActionTypePicker,
   ToolbarColorPicker,

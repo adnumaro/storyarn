@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { mount } from "@vue/test-utils";
-import AssetPicker from "@components/assets/AssetPicker.vue";
+import AssetPicker from "../../../components/forms/assets/AssetPicker.vue";
 
 interface AssetItem {
   id: number | string;

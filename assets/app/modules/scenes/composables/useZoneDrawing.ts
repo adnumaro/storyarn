@@ -1,5 +1,5 @@
 import { computed, onMounted, onUnmounted, ref, type Ref } from "vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 import { getShapePreset } from "../lib/shape-presets";
 import type { KonvaEventObject } from "konva/lib/Node";
 

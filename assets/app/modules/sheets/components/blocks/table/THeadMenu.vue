@@ -3,7 +3,7 @@ import { ArrowLeft, Check, ChevronDown, Layers, X } from "lucide-vue-next";
 import { ref } from "vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
 import { Separator } from "@components/ui/separator/index.ts";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../../../shared/composables/useLive";
 import type { TableColumn, THeadMenuType } from "../../../types";
 import { typeIcon } from "./table-config";
 import THeadMainMenu from "@modules/sheets/components/blocks/table/theadMenus/THeadMainMenu.vue";

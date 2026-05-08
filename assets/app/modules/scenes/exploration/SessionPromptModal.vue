@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@components/ui/dialog";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 
 interface PendingSession {
   sceneName?: string;

@@ -16,7 +16,7 @@ import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../shared/composables/useLive";
 
 interface Asset {
   id: number;

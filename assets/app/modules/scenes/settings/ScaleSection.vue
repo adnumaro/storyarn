@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Ruler } from "lucide-vue-next";
 import { computed } from "vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 
 const { scaleValue = null, scaleUnit = null } = defineProps<{
   scaleValue?: number | string | null;

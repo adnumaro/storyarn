@@ -4,7 +4,7 @@ import { createMockLive } from "../../../../setup";
 
 const mockLive = createMockLive();
 
-vi.mock("@composables/useLive", () => ({
+vi.mock("@shared/composables/useLive", () => ({
   useLive: () => mockLive,
 }));
 

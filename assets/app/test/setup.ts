@@ -3,7 +3,7 @@ import { vi } from "vitest";
 import { createApp, defineComponent, type App } from "vue";
 import { config } from "@vue/test-utils";
 import { createI18n } from "vue-i18n";
-import type { LiveInterface } from "@composables/useLive";
+import type { LiveInterface } from "../shared/composables/useLive";
 
 // Nested JSON locale shape — string leaves, object branches. Matches what
 // our `assets/app/locales/en/*.json` files actually contain. We don't use

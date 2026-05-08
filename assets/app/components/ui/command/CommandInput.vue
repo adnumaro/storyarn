@@ -3,7 +3,7 @@ import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { Search } from "lucide-vue-next";
 import { ListboxFilter, useForwardProps, type AsTag } from "reka-ui";
-import { cn } from "@utils/utils";
+import { cn } from "../../../shared/utils/utils";
 import { useCommand } from ".";
 
 defineOptions({

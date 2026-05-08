@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ArrowLeftRight, Settings, Tag } from "lucide-vue-next";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../../shared/composables/useLive";
 import { ToolbarSeparator, ToolbarStrokePicker } from "../../toolbar";
 
 interface ConnectionElement {

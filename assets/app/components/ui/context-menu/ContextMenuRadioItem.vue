@@ -8,7 +8,7 @@ import {
   useForwardPropsEmits,
   type AsTag,
 } from "reka-ui";
-import { cn } from "@utils/utils";
+import { cn } from "../../../shared/utils/utils";
 
 const props = defineProps<{
   value: string;

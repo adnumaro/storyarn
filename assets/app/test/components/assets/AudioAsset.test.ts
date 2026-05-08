@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, vi } from "vitest";
 import { mount } from "@vue/test-utils";
-import AudioAsset from "@components/assets/AudioAsset.vue";
+import AudioAsset from "../../../components/forms/assets/AudioAsset.vue";
 
 beforeAll(() => {
   // jsdom doesn't provide a working Audio constructor — stub it so AudioAsset

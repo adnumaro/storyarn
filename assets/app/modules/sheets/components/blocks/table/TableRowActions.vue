@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { GripVertical, Trash2 } from "lucide-vue-next";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../../../shared/composables/useLive";
 import type { TableRow } from "../../../types";
 
 const {

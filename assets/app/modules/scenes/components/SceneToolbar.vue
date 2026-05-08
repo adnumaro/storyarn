@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import EditableText from "@components/EditableText.vue";
-import { useLive } from "@composables/useLive";
+import EditableText from "../../../components/forms/EditableText.vue";
+import { useLive } from "../../../shared/composables/useLive";
 
 const {
   canEdit = false,

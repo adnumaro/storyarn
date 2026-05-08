@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../../shared/composables/useLive";
 import {
   ToolbarColorPicker,
   ToolbarLayerPicker,

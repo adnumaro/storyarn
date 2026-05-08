@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, Info, X } from "lucide-vue-next";
 import { watch } from "vue";
 import { Button } from "@components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 
 interface CurrentNode {
   id: number;

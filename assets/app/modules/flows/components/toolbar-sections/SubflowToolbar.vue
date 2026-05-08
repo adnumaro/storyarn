@@ -4,7 +4,7 @@ import { computed } from "vue";
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Badge } from "@components/ui/badge/index.ts";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../../shared/composables/useLive";
 import { ToolbarSearchableSelect } from "../../toolbar";
 import type { ProjectFlow, SubflowExit } from "../../types";
 import type { NodeData } from "../../lib/node-configs";

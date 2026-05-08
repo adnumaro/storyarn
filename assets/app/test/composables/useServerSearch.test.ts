@@ -1,14 +1,14 @@
 import { createMockLive, withSetup } from "../setup";
-import type { UseServerSearchReturn } from "@composables/useServerSearch";
+import type { UseServerSearchReturn } from "../../shared/composables/useServerSearch";
 
 const mockLive = createMockLive();
 
-vi.mock("@composables/useLive", () => ({
+vi.mock("@shared/composables/useLive", () => ({
   useLive: () => mockLive,
 }));
 
 // Import after mock is set up
-const { useServerSearch } = await import("@composables/useServerSearch");
+const { useServerSearch } = await import("../../shared/composables/useServerSearch");
 
 describe("useServerSearch", () => {
   let ss: UseServerSearchReturn;

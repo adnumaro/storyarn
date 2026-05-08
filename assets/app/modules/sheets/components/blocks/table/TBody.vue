@@ -4,7 +4,7 @@ import TableDraggableRow from "@modules/sheets/components/blocks/table/TableDrag
 import { TableColumn, TableRow } from "../../../types";
 import { ref, useTemplateRef, watch } from "vue";
 import { IDragEvent, makeDroppable } from "@vue-dnd-kit/core";
-import { useLive } from "@composables/useLive.ts";
+import { useLive } from "../../../../../shared/composables/useLive.ts";
 import TTextNumberCell from "@modules/sheets/components/blocks/table/tbodyCells/TTextNumberCell.vue";
 import TDateCell from "@modules/sheets/components/blocks/table/tbodyCells/TDateCell.vue";
 import TMultiSelectCell from "@modules/sheets/components/blocks/table/tbodyCells/TMultiSelectCell.vue";

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { toRef } from "vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 import CollectionModal from "./CollectionModal.vue";
 import { useExplorationKeyboard, type FlowSlide } from "./composables/useExplorationKeyboard";
 import ExplorationCanvas from "./ExplorationCanvas.vue";

@@ -16,7 +16,7 @@ import type { ConditionOperator } from "@modules/shared/operators/condition-oper
 import { findVariable, groupVariablesBySheet } from "@modules/shared/variables";
 import type { Variable } from "@modules/shared/variables";
 import type { ConditionRule } from "../types";
-import VariableCombobox from "../../VariableCombobox.vue";
+import VariableCombobox from "../../forms/VariableCombobox.vue";
 
 const {
   rule,

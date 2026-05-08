@@ -19,8 +19,8 @@ import {
   CommandList,
 } from "@components/ui/command/index.ts";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
-import { useLive } from "@composables/useLive";
-import { useServerSearch } from "@composables/useServerSearch";
+import { useLive } from "../../../../shared/composables/useLive";
+import { useServerSearch } from "../../../../shared/composables/useServerSearch";
 import type { FormulaBindingOption, FormulaSearchGroup } from "../../types";
 import { generateId } from "@modules/shared/variables.ts";
 

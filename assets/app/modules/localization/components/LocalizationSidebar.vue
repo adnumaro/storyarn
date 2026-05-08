@@ -11,7 +11,7 @@ import {
   CommandList,
 } from "@components/ui/command";
 import ConfirmDialog from "@components/ConfirmDialog.vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 
 interface Language {
   id: number;

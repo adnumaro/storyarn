@@ -1,5 +1,5 @@
 import { withSetup } from "../setup";
-import { useKeyboard, type KeyboardBindings } from "@composables/useKeyboard";
+import { useKeyboard, type KeyboardBindings } from "../../shared/composables/useKeyboard";
 
 function fireKey(
   target: EventTarget,

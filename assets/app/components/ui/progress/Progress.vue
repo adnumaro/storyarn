@@ -2,7 +2,7 @@
 import type { HTMLAttributes } from "vue";
 import { ProgressIndicator, ProgressRoot } from "reka-ui";
 import { computed } from "vue";
-import { cn } from "@utils/utils";
+import { cn } from "../../../shared/utils/utils";
 
 const props = defineProps<{
   modelValue?: number;

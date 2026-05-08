@@ -3,7 +3,7 @@ import katex from "katex";
 import { AlertCircle, ChevronRight, Sigma, X } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
 import Sidebar from "../../../../shell/Sidebar.vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../../shared/composables/useLive";
 import type { FormulaEditing } from "../../types";
 import FormulaBindingSelect from "./FormulaBindingSelect.vue";
 

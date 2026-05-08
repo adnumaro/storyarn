@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@components/ui/dialog";
 import { Input } from "@components/ui/input";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 import SceneTreeNode from "./SceneTreeNode.vue";
 import SceneTreeRoot from "./SceneTreeRoot.vue";
 

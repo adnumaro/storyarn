@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Hand, MousePointer2 } from "lucide-vue-next";
 import { ref } from "vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 import { activeFlowTool, type FlowTool } from "../lib/flow-tool-state";
 import DockActionsPanel from "./dock-panels/DockActionsPanel.vue";
 import DockAnnotationButton from "./dock-panels/DockAnnotationButton.vue";

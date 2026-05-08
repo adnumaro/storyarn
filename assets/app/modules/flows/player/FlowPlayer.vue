@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from "vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 import PlayerSlide from "./PlayerSlide.vue";
 import PlayerChoices from "./PlayerChoices.vue";
 import PlayerToolbar from "./PlayerToolbar.vue";

@@ -13,9 +13,9 @@
 import { EditorContent } from "@tiptap/vue-3";
 import { Check, Copy, MessageSquare, RefreshCw, Settings, Volume2 } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
-import AudioAsset from "@components/assets/AudioAsset.vue";
-import EntityCombobox from "@components/form-fields/EntityCombobox.vue";
-import ExpressionEditor from "@components/ExpressionEditor.vue";
+import AudioAsset from "../../../components/forms/assets/AudioAsset.vue";
+import EntityCombobox from "../../../components/forms/fields/EntityCombobox.vue";
+import ExpressionEditor from "../../../components/forms/ExpressionEditor.vue";
 import type { Assignment, ConditionData } from "@components/builders/types";
 import { Button } from "@components/ui/button/index.ts";
 import {
@@ -33,7 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs/in
 import { useScreenplayEditor } from "@modules/flows/composables/useScreenplayEditor";
 import type { Variable } from "@modules/shared/variables";
 import { useI18n } from "vue-i18n";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 
 export interface AudioAssetItem {
   id: number | string;

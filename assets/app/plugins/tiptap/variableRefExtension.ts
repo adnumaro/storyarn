@@ -10,7 +10,7 @@ import type { Node } from "@tiptap/core";
 import type { MentionOptions } from "@tiptap/extension-mention";
 import VariableList from "./VariableList.vue";
 
-import type { LiveInterface } from "@composables/useLive";
+import type { LiveInterface } from "../../shared/composables/useLive";
 
 interface VariableItem {
   id?: string | number;

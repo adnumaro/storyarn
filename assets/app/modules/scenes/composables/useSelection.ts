@@ -1,5 +1,5 @@
 import { computed, onMounted, onUnmounted, ref, type Ref } from "vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 import type { KonvaEventObject } from "konva/lib/Node";
 
 const SELECTION_COLOR = "#6366f1";

@@ -2,7 +2,7 @@
 import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { ContextMenuContent, ContextMenuPortal, useForwardPropsEmits, type AsTag } from "reka-ui";
-import { cn } from "@utils/utils";
+import { cn } from "../../../shared/utils/utils";
 
 defineOptions({
   inheritAttrs: false,

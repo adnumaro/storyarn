@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Crown, User } from "lucide-vue-next";
-import { ToggleField } from "@components/form-fields";
+import { ToggleField } from "@components/forms/fields";
 
 const {
   isPlayable = false,

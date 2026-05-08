@@ -2,9 +2,14 @@
 import { EyeOff, Image } from "lucide-vue-next";
 import ConditionBuilder from "@components/builders/ConditionBuilder.vue";
 import type { ConditionData } from "@components/builders/types";
-import { ButtonGroupField, EntityCombobox, TextField, ToggleField } from "@components/form-fields";
+import {
+  ButtonGroupField,
+  EntityCombobox,
+  TextField,
+  ToggleField,
+} from "../../../components/forms/fields";
 import type { Variable } from "@modules/shared/variables";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 import PinPatrolSection from "./pin/PinPatrolSection.vue";
 import PinPlayableSection from "./pin/PinPlayableSection.vue";
 

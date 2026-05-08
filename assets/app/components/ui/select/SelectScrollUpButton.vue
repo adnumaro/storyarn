@@ -3,7 +3,7 @@ import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { ChevronUp } from "lucide-vue-next";
 import { SelectScrollUpButton, useForwardProps, type AsTag } from "reka-ui";
-import { cn } from "@utils/utils";
+import { cn } from "../../../shared/utils/utils";
 
 const props = defineProps<{
   asChild?: boolean;

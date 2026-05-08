@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { Image, Trash2 } from "lucide-vue-next";
 import { ref, watch } from "vue";
-import ColorPickerPopover from "@components/ColorPickerPopover.vue";
+import ColorPickerPopover from "../../../components/forms/ColorPickerPopover.vue";
 import { Button } from "@components/ui/button/index.ts";
-import { useLive } from "@composables/useLive";
-import { useUpload } from "@composables/useUpload";
+import { useLive } from "../../../shared/composables/useLive";
+import { useUpload } from "../../../shared/composables/useUpload";
 import type { Sheet } from "../types";
 import AvatarGallery from "./AvatarGallery.vue";
 import SheetAvatarSection from "./SheetAvatarSection.vue";

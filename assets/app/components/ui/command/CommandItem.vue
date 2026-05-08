@@ -3,7 +3,7 @@ import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit, useCurrentElement } from "@vueuse/core";
 import { ListboxItem, useForwardPropsEmits, useId, type AsTag } from "reka-ui";
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { cn } from "@utils/utils";
+import { cn } from "../../../shared/utils/utils";
 import { useCommand, useCommandGroup } from ".";
 
 const props = defineProps<{

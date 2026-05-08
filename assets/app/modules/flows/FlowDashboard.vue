@@ -34,8 +34,8 @@ import {
   TableHeader,
   TableRow,
 } from "@components/ui/table/index.ts";
-import { useLive } from "@composables/useLive";
-import { formatRelativeTime } from "@utils/date-utils";
+import { useLive } from "../../shared/composables/useLive";
+import { formatRelativeTime } from "../../shared/utils/date-utils";
 import DashboardContent from "../../shell/DashboardContent.vue";
 
 interface FlowStats {

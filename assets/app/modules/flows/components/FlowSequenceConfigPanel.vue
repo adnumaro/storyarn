@@ -22,11 +22,11 @@
 import { Image as ImageIcon, Layers, Music, Volume2, X } from "lucide-vue-next";
 import { computed } from "vue";
 
-import AudioAsset from "@components/assets/AudioAsset.vue";
-import ImageAsset from "@components/assets/ImageAsset.vue";
-import ImagePosition from "@components/assets/ImagePosition.vue";
+import AudioAsset from "../../../components/forms/assets/AudioAsset.vue";
+import ImageAsset from "../../../components/forms/assets/ImageAsset.vue";
+import ImagePosition from "../../../components/forms/assets/ImagePosition.vue";
 import Sidebar from "../../../shell/Sidebar.vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 
 interface AssetEntry {
   id: number | string;

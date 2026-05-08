@@ -5,8 +5,8 @@ import { Button } from "@components/ui/button/index.ts";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui/dialog/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import { Textarea } from "@components/ui/textarea/index.ts";
-import { useLive } from "@composables/useLive";
-import { useUpload } from "@composables/useUpload";
+import { useLive } from "../../../../../shared/composables/useLive";
+import { useUpload } from "../../../../../shared/composables/useUpload";
 import type { GalleryImage } from "../../../types";
 
 const {

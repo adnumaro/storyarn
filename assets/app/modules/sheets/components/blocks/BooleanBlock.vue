@@ -2,7 +2,7 @@
 import { ToggleLeft } from "lucide-vue-next";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import BooleanToggle from "@components/BooleanToggle.vue";
+import BooleanToggle from "@components/forms/BooleanToggle.vue";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Checkbox } from "@components/ui/checkbox/index.ts";
 import { useBlockActions } from "../../composables/useBlockActions";

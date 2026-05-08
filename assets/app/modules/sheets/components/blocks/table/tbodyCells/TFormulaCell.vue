@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Sigma } from "lucide-vue-next";
 import { CellValue, FormulaCellValue, TableColumn, TableRow } from "@modules/sheets/types.ts";
-import { useLive } from "@composables/useLive.ts";
+import { useLive } from "../../../../../../shared/composables/useLive.ts";
 
 const {
   blockId,

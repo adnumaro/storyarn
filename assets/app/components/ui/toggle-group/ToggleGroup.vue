@@ -3,7 +3,7 @@ import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { ToggleGroupRoot, useForwardPropsEmits, type AsTag } from "reka-ui";
 import { provide } from "vue";
-import { cn } from "@utils/utils";
+import { cn } from "../../../shared/utils/utils";
 
 const props = defineProps<{
   rovingFocus?: boolean;

@@ -3,7 +3,7 @@ import { MessageSquare, Play as PlayIcon, Settings, Volume2 } from "lucide-vue-n
 import { computed } from "vue";
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../../shared/composables/useLive";
 import { ToolbarAvatarPicker } from "../../toolbar";
 import type { SheetAvatarEntry } from "../../types";
 import type { NodeData } from "../../lib/node-configs";

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ImagePlus, RefreshCw, Trash2 } from "lucide-vue-next";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 
 const { backgroundUrl = null, canEdit = false } = defineProps<{
   backgroundUrl?: string | null;

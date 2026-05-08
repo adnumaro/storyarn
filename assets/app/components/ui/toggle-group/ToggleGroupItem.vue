@@ -4,7 +4,7 @@ import { reactiveOmit } from "@vueuse/core";
 import { ToggleGroupItem, useForwardProps, type AsTag } from "reka-ui";
 import { inject } from "vue";
 import { toggleVariants } from "@components/ui/toggle";
-import { cn } from "@utils/utils";
+import { cn } from "../../../shared/utils/utils";
 
 interface ToggleGroupContext {
   variant?: "default" | "outline";

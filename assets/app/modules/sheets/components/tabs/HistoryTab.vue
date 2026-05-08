@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import VersionHistory from "@components/version-history/VersionHistory.vue";
-import type { VersionEntry } from "@components/version-history/useVersionHistory";
+import VersionHistory from "../../../versioning/history/VersionHistory.vue";
+import type { VersionEntry } from "../../../versioning/history/useVersionHistory";
 
 const {
   versions = [],

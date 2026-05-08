@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from "vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../shared/composables/useLive";
 
 const { actionLabels = {} } = defineProps<{
   actionLabels?: Record<string, string>;

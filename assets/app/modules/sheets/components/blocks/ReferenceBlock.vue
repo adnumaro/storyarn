@@ -11,7 +11,7 @@ import {
   CommandList,
 } from "@components/ui/command/index.ts";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/index.ts";
-import { useServerSearch } from "@composables/useServerSearch";
+import { useServerSearch } from "../../../../shared/composables/useServerSearch";
 import { useBlockActions } from "../../composables/useBlockActions";
 import type { Block, ReferenceSearchResult } from "../../types";
 import BlockLabel from "../BlockLabel.vue";

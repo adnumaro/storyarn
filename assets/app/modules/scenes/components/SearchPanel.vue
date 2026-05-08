@@ -3,7 +3,7 @@ import type { Component } from "vue";
 import { Cable, MapPin, Pentagon, Search, StickyNote, X } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 
 const { t } = useI18n();
 

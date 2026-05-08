@@ -2,7 +2,7 @@
 import { Crosshair, LogIn } from "lucide-vue-next";
 import { ToolbarSeparator } from "@components/toolbar/index.ts";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../../shared/composables/useLive";
 import type { NodeData } from "../../lib/node-configs";
 import type { ReferencingJump } from "../../types";
 

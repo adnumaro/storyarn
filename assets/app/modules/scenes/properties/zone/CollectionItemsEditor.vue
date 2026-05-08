@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Plus } from "lucide-vue-next";
 import { computed } from "vue";
-import { TextField, ToggleField } from "@components/form-fields";
+import { TextField, ToggleField } from "@components/forms/fields";
 import type { Variable } from "@modules/shared/variables";
-import { useLive } from "@composables/useLive";
+import { useLive } from "@shared/composables/useLive";
 import type { ConditionData } from "@components/builders/types";
 import CollectionItemCard from "./CollectionItemCard.vue";
 

@@ -2,7 +2,7 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { Check } from "lucide-vue-next";
 import { CellValue, SelectOption, TableColumn, TableRow } from "@modules/sheets/types.ts";
-import { useLive } from "@composables/useLive.ts";
+import { useLive } from "../../../../../../shared/composables/useLive.ts";
 import { computed } from "vue";
 import { getCellValue } from "@modules/sheets/components/blocks/table/tbodyCells/get-cell-value-helpers.ts";
 

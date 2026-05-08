@@ -2,7 +2,7 @@
 import { Route } from "lucide-vue-next";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { NumberField, SelectField, SliderField } from "@components/form-fields";
+import { NumberField, SelectField, SliderField } from "@components/forms/fields";
 
 const { t } = useI18n();
 

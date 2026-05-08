@@ -51,10 +51,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover/
 import { Slider } from "@components/ui/slider/index.ts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
 import { useDebounceFn } from "@vueuse/core";
-import BooleanToggle from "@components/BooleanToggle.vue";
-import { useColumnResize } from "@composables/useColumnResize";
-import { useLive } from "@composables/useLive";
-import { useVerticalResize } from "@composables/useVerticalResize";
+import BooleanToggle from "../../../components/forms/BooleanToggle.vue";
+import { useColumnResize } from "../../../shared/composables/useColumnResize";
+import { useLive } from "../../../shared/composables/useLive";
+import { useVerticalResize } from "../../../shared/composables/useVerticalResize";
 import { formatDebugTs, formatDebugValue, stripHtml } from "../lib/debug-format";
 
 type DebugStatus = "paused" | "waiting_input" | "finished" | string;

@@ -20,10 +20,10 @@
       "@/*": ["./*"],
       "@app/*": ["./app/*"],
       "@components/*": ["./app/components/*"],
-      "@utils/*": ["./app/utils/*"],
+      "@shared/*": ["./app/shared/*"],
       "@modules/*": ["./app/modules/*"],
-      "@plugins/*": ["./app/plugins/*"],
-      "@composables/*": ["./app/composables/*"]
+      "@shell/*": ["./app/shell/*"],
+      "@plugins/*": ["./app/plugins/*"]
     },
     "types": ["vite/client", "vitest/globals"]
   },

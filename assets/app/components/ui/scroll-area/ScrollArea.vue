@@ -2,7 +2,7 @@
 import type { Component, HTMLAttributes } from "vue";
 import { reactiveOmit } from "@vueuse/core";
 import { ScrollAreaCorner, ScrollAreaRoot, ScrollAreaViewport, type AsTag } from "reka-ui";
-import { cn } from "@utils/utils";
+import { cn } from "../../../shared/utils/utils";
 import ScrollBar from "./ScrollBar.vue";
 
 const props = defineProps<{

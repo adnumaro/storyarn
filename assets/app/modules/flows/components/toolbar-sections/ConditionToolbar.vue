@@ -4,7 +4,7 @@ import { ToolbarSeparator } from "@components/toolbar/index.ts";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs/index.ts";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../../shared/composables/useLive";
 import type { Condition } from "../../types";
 import type { NodeData } from "../../lib/node-configs";
 

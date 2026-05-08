@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Maximize, Monitor, Scan } from "lucide-vue-next";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 
 const {
   displayMode = "fit",

@@ -1,14 +1,14 @@
 import { createMockLive, withSetup } from "../setup";
-import type { UseUndoRedoReturn } from "@composables/useUndoRedo";
+import type { UseUndoRedoReturn } from "../../shared/composables/useUndoRedo";
 
 const mockLive = createMockLive();
 
-vi.mock("@composables/useLive", () => ({
+vi.mock("@shared/composables/useLive", () => ({
   useLive: () => mockLive,
 }));
 
 // Import after mock is set up
-const { useUndoRedo } = await import("@composables/useUndoRedo");
+const { useUndoRedo } = await import("../../shared/composables/useUndoRedo");
 
 describe("useUndoRedo", () => {
   let ur: UseUndoRedoReturn;

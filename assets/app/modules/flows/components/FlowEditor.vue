@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "@shared/composables/useLive";
 import { useFlowEditor } from "../composables/useFlowEditor";
 import FlowCursors from "./FlowCursors.vue";
 import FlowMinimapToggle from "./FlowMinimapToggle.vue";

@@ -32,8 +32,8 @@ import {
   TableRow,
 } from "@components/ui/table";
 import { useI18n } from "vue-i18n";
-import { useLive } from "@composables/useLive";
-import { formatRelativeTime } from "@utils/date-utils";
+import { useLive } from "../../shared/composables/useLive";
+import { formatRelativeTime } from "../../shared/utils/date-utils";
 import DashboardContent from "../../shell/DashboardContent.vue";
 
 const { t } = useI18n();

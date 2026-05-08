@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AsTag } from "reka-ui";
 import type { Component, HTMLAttributes } from "vue";
-import { cn } from "@utils/utils.ts";
+import { cn } from "../../../../../../shared/utils/utils.ts";
 
 const { as = "button", class: className } = defineProps<{
   as?: AsTag | Component;

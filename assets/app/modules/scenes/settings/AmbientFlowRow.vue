@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@components/ui/select";
 import { useI18n } from "vue-i18n";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 
 const { t } = useI18n();
 

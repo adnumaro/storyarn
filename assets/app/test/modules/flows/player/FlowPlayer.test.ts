@@ -3,7 +3,7 @@ import { mount } from "@vue/test-utils";
 
 const mockLive = createMockLive();
 
-vi.mock("@composables/useLive", () => ({
+vi.mock("@shared/composables/useLive", () => ({
   useLive: () => mockLive,
 }));
 
@@ -95,14 +95,14 @@ describe("FlowPlayer", () => {
   describe("events via pushEvent", () => {
     it("pushes continue event", async () => {
       const w = mountPlayer({ showContinue: true, isFinished: false });
-      const btn = w.findAll("button").find((b) => b.attributes("title") === "Continue")!;
+      const btn = w.find(".player-toolbar-left").findAll("button")[1]!;
       await btn.trigger("click");
       expect(mockLive.pushEvent).toHaveBeenCalledWith("continue", {});
     });
 
     it("pushes go_back event", async () => {
       const w = mountPlayer({ canGoBack: true });
-      const btn = w.findAll("button").find((b) => b.attributes("title") === "Back")!;
+      const btn = w.find(".player-toolbar-left").findAll("button")[0]!;
       await btn.trigger("click");
       expect(mockLive.pushEvent).toHaveBeenCalledWith("go_back", {});
     });
@@ -116,7 +116,7 @@ describe("FlowPlayer", () => {
 
     it("pushes restart event", async () => {
       const w = mountPlayer();
-      const btn = w.findAll("button").find((b) => b.attributes("title") === "Restart")!;
+      const btn = w.find(".player-toolbar-right").findAll("button")[0]!;
       await btn.trigger("click");
       expect(mockLive.pushEvent).toHaveBeenCalledWith("restart", {});
     });

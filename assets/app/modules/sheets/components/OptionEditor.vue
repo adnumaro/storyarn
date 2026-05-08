@@ -2,7 +2,7 @@
 import { Plus, X } from "lucide-vue-next";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 import type { SelectOption } from "../types";
 
 const {
