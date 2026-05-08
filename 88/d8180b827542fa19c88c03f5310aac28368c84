@@ -1,0 +1,14 @@
+assets/app/modules/public/landing/LandingPage.vue
+  h_46be6e61f3d9dd 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "88d8180b827542fa19c88c03f5310aac28368c84",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
