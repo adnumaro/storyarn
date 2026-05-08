@@ -1,22 +1,11 @@
 <script setup lang="ts">
-import {
-  File,
-  GitBranch,
-  Image,
-  Link,
-  Music,
-  Search,
-  Trash2,
-  Upload,
-  User,
-  X,
-} from "lucide-vue-next";
+import { File, GitBranch, Image, Link, Music, Search, Trash2, User, X } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge/index.ts";
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
-import { useLive } from "../shared/composables/useLive";
+import { useLive } from "@shared/composables/useLive.ts";
 
 interface Asset {
   id: number;

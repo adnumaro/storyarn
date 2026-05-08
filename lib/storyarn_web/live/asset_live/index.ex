@@ -32,7 +32,7 @@ defmodule StoryarnWeb.AssetLive.Index do
         />
       </:top_bar_extras_right>
       <.vue
-        v-component="components/AssetIndex"
+        v-component="modules/assets/AssetIndex"
         v-socket={@socket}
         id="asset-index"
         assets={serialize_assets(@assets)}

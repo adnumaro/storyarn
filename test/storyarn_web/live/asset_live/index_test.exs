@@ -13,7 +13,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
   end
 
   defp get_assets_vue(view) do
-    LiveVue.Test.get_vue(view, name: "components/AssetIndex")
+    LiveVue.Test.get_vue(view, name: "modules/assets/AssetIndex")
   end
 
   describe "Index" do
@@ -25,7 +25,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       {:ok, view, _html} = live(conn, assets_path(project))
 
       vue = get_assets_vue(view)
-      assert vue.component == "components/AssetIndex"
+      assert vue.component == "modules/assets/AssetIndex"
       assert vue.props["can-edit"] == true
     end
 
@@ -367,7 +367,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
         })
 
       assert is_binary(html)
-      assert get_assets_vue(view).component == "components/AssetIndex"
+      assert get_assets_vue(view).component == "modules/assets/AssetIndex"
     end
   end
 
