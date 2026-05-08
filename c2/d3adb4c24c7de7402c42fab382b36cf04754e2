@@ -1,0 +1,14 @@
+assets/app/modules/assets/AssetIndex.vue
+  h_46be6e61f3d9dd 1-407
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "c2d3adb4c24c7de7402c42fab382b36cf04754e2",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
