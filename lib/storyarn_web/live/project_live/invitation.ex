@@ -15,7 +15,7 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
     ~H"""
     <Layouts.public flash={@flash}>
       <.vue
-        v-component="modules/workspaces/settings/Invitations"
+        v-component="components/invitations/InvitationResponse"
         v-socket={@socket}
         id="project-invitation"
         homepage-url={~p"/"}

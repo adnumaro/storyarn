@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useLiveForm, type Form } from "live_vue";
-import { Button } from "@components/ui/button/index.ts";
-import { Input } from "@components/ui/input/index.ts";
-import { Label } from "@components/ui/label/index.ts";
-import { Textarea } from "@components/ui/textarea/index.ts";
+import { Button } from "@components/ui/button";
+import { Input } from "@components/ui/input";
+import { Label } from "@components/ui/label";
+import { Textarea } from "@components/ui/textarea";
 
 interface WorkspaceFormValues {
   name: string;

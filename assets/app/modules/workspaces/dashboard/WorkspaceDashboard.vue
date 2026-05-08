@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@components/ui
 import { Button } from "@components/ui/button/index.ts";
 import { Input } from "@components/ui/input/index.ts";
 import type { Form } from "live_vue";
-import NewProjectForm from "../NewProjectForm.vue";
+import NewProjectForm from "../forms/NewProjectForm.vue";
 import { useLive } from "@shared/composables/useLive";
 import { formatRelativeTime } from "@shared/utils/date-utils";
 

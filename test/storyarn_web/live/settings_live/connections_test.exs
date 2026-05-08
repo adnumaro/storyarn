@@ -4,7 +4,7 @@ defmodule StoryarnWeb.SettingsLive.ConnectionsTest do
   import Phoenix.LiveViewTest
 
   defp get_connections_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/workspaces/settings/Connections")
+    LiveVue.Test.get_vue(view, name: "modules/account/settings/Connections")
   end
 
   describe "Connections LiveView" do
@@ -13,7 +13,7 @@ defmodule StoryarnWeb.SettingsLive.ConnectionsTest do
     test "renders Connections Vue component", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/users/settings/connections")
       vue = get_connections_vue(view)
-      assert vue.component == "modules/workspaces/settings/Connections"
+      assert vue.component == "modules/account/settings/Connections"
     end
 
     test "passes identities prop as a list", %{conn: conn} do

@@ -35,7 +35,7 @@ defmodule StoryarnWeb.SettingsLive.Security do
       current_path={@current_path}
     >
       <.vue
-        v-component="modules/workspaces/settings/Security"
+        v-component="modules/account/settings/Security"
         v-socket={@socket}
         id="settings-security-vue"
         password-form={@password_form}

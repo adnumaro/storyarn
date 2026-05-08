@@ -30,7 +30,7 @@ defmodule StoryarnWeb.WorkspaceLive.New do
       active_tool={:dashboard}
     >
       <.vue
-        v-component="modules/workspaces/NewWorkspaceForm"
+        v-component="modules/workspaces/forms/NewWorkspaceForm"
         v-socket={@socket}
         id="workspace-new"
         form={@form}
