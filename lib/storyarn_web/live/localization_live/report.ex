@@ -36,7 +36,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
       }
     >
       <.vue
-        v-component="modules/localization/components/LocalizationReport"
+        v-component="modules/localization/dashboard/LocalizationReport"
         v-socket={@socket}
         id="localization-report"
         language-progress={serialize_language_progress(@language_progress)}

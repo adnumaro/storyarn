@@ -11,7 +11,7 @@ import {
   CommandList,
 } from "@components/ui/command";
 import ConfirmDialog from "@components/ConfirmDialog.vue";
-import { useLive } from "../../../shared/composables/useLive";
+import { useLive } from '@shared/composables/useLive.ts';
 
 interface Language {
   id: number;
@@ -104,7 +104,7 @@ function syncTexts(): void {
         />
         <span
           v-else
-          class="inline-flex min-w-[1.75rem] shrink-0 items-center justify-center text-[0.72rem] font-semibold uppercase leading-none tracking-[0.08em]"
+          class="inline-flex min-w-7 shrink-0 items-center justify-center text-[0.72rem] font-semibold uppercase leading-none tracking-[0.08em]"
         >
           {{ sourceLanguage.shortLabel }}
         </span>
@@ -191,7 +191,7 @@ function syncTexts(): void {
             />
             <span
               v-else
-              class="inline-flex min-w-[1.75rem] shrink-0 items-center justify-center text-[0.72rem] font-semibold uppercase leading-none tracking-[0.08em]"
+              class="inline-flex min-w-7 shrink-0 items-center justify-center text-[0.72rem] font-semibold uppercase leading-none tracking-[0.08em]"
             >
               {{ lang.shortLabel }}
             </span>

@@ -59,7 +59,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       </:top_bar_extras_right>
 
       <.vue
-        v-component="modules/localization/components/LocalizationIndex"
+        v-component="modules/localization/texts/LocalizationIndex"
         v-socket={@socket}
         id="localization-index"
         texts={serialize_texts(assigns)}

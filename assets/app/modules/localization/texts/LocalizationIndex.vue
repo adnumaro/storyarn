@@ -11,8 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@components/ui/select";
-import { useLive } from "../../../shared/composables/useLive";
-import DashboardContent from "../../../shell/DashboardContent.vue";
+import { useLive } from '@shared/composables/useLive.ts';
+import DashboardContent from "@shell/DashboardContent.vue";
 
 interface TextEntry {
   id: number;

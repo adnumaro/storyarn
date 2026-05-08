@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@components/ui/table";
-import { useLive } from "../../../shared/composables/useLive";
+import { useLive } from '@shared/composables/useLive.ts';
 
 const { t } = useI18n();
 

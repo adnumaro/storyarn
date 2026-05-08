@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu";
-import { useLive } from "../../../shared/composables/useLive";
+import { useLive } from '@shared/composables/useLive.ts';
 
 const {
   exportCsvUrl = null,

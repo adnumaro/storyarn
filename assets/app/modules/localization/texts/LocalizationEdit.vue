@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@components/ui/select";
 import { Textarea } from "@components/ui/textarea";
-import { useLive } from "../../../shared/composables/useLive";
+import { useLive } from '@shared/composables/useLive.ts';
 
 const { t } = useI18n();
 

@@ -14,7 +14,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
   end
 
   defp get_index_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/localization/components/LocalizationIndex")
+    LiveVue.Test.get_vue(view, name: "modules/localization/texts/LocalizationIndex")
   end
 
   defp get_sidebar_props(view) do
@@ -35,7 +35,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       {:ok, view, _html} = live(conn, loc_path(project))
 
       vue = get_index_vue(view)
-      assert vue.component == "modules/localization/components/LocalizationIndex"
+      assert vue.component == "modules/localization/texts/LocalizationIndex"
     end
 
     test "renders page for editor member", %{conn: conn, user: user} do
@@ -46,7 +46,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       {:ok, view, _html} = live(conn, loc_path(project))
 
       vue = get_index_vue(view)
-      assert vue.component == "modules/localization/components/LocalizationIndex"
+      assert vue.component == "modules/localization/texts/LocalizationIndex"
     end
 
     test "redirects non-member", %{conn: conn} do
