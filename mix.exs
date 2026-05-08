@@ -138,12 +138,13 @@ defmodule Storyarn.MixProject do
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      test: ["ecto.create --quiet", "ecto.migrate --quiet", "assets.build", "test"],
       "test.e2e": ["assets.build", "test test/e2e --include e2e"],
       "assets.setup": ["tailwind.install --if-missing"],
-      "assets.build": ["compile", "tailwind storyarn"],
+      "assets.build": ["compile", "tailwind storyarn", "phoenix_vite.npm vite build"],
       "assets.deploy": [
         "tailwind storyarn --minify",
+        "phoenix_vite.npm vite build",
         "phx.digest"
       ],
       precommit: [
