@@ -1,0 +1,46 @@
+assets/app/modules/flows/components/FlowDialoguePanel.vue
+  h_46be6e61f3d9dd 17
+assets/app/modules/sheets/components/blocks/FormulaPanel.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/scenes/components/SettingsPanel.vue
+  h_46be6e61f3d9dd 4
+assets/app/modules/scenes/components/ElementPropertiesPanel.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/flows/components/FlowSequenceConfigPanel.vue
+  h_46be6e61f3d9dd 28
+assets/app/shell/MainSidebar.vue
+  h_46be6e61f3d9dd 1-159
+assets/app/shell/WorkspaceSidebar.vue
+  h_46be6e61f3d9dd 1-150
+assets/app/shell/LeftToolbar.vue
+  h_46be6e61f3d9dd 1-168
+assets/app/modules/scenes/SceneDashboard.vue
+  h_46be6e61f3d9dd 37
+assets/app/modules/flows/FlowDashboard.vue
+  h_46be6e61f3d9dd 39
+assets/app/modules/flows/components/FlowBuilderPanel.vue
+  h_46be6e61f3d9dd 8
+assets/app/modules/flows/components/FlowVersionHistoryPanel.vue
+  h_46be6e61f3d9dd 3
+assets/app/modules/workspaces/projects/ProjectDashboard.vue
+  h_46be6e61f3d9dd 19
+assets/app/modules/localization/components/LocalizationIndex.vue
+  h_46be6e61f3d9dd 15
+assets/app/modules/scenes/components/VersionHistoryPanel.vue
+  h_46be6e61f3d9dd 3
+assets/app/shell/RightToolbar.vue
+  h_46be6e61f3d9dd 1-132
+assets/app/modules/sheets/SheetDashboard.vue
+  h_46be6e61f3d9dd 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "465c650d4bd3b7692b93f316d57a37bc4b5326c2",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
