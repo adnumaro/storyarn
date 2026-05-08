@@ -1,0 +1,78 @@
+assets/app/components/builders/condition/ConditionRule.vue
+  h_46be6e61f3d9dd 14-17
+assets/app/modules/flows/components/FlowBuilderPanel.vue
+  h_46be6e61f3d9dd 9
+assets/app/test/components/builders/instruction/AssignmentRow.test.ts
+  h_46be6e61f3d9dd 5
+assets/app/test/components/builders/condition/ConditionRule.test.ts
+  h_46be6e61f3d9dd 5
+assets/app/components/builders/types.ts
+  h_46be6e61f3d9dd 5-6
+assets/app/plugins/expression-editor/autocomplete.ts
+  h_46be6e61f3d9dd 15
+assets/app/modules/sheets/components/SheetAvatarSection.vue
+  h_46be6e61f3d9dd 6
+assets/app/test/modules/shared/variables.test.ts
+  h_46be6e61f3d9dd 1-2
+assets/app/modules/sheets/components/BlockToolbar.vue
+  h_46be6e61f3d9dd 14
+assets/app/modules/scenes/properties/PinProperties.vue
+  h_46be6e61f3d9dd 11
+assets/app/shared/composables/useCodeEditor.ts
+  h_46be6e61f3d9dd 21
+assets/app/components/builders/condition/ConditionGroup.vue
+  h_46be6e61f3d9dd 7-8
+assets/app/modules/sheets/components/blocks/ReferenceBlock.vue
+  h_46be6e61f3d9dd 19
+assets/app/components/builders/InstructionBuilder.vue
+  h_46be6e61f3d9dd 12
+assets/app/modules/sheets/components/blocks/NumberBlock.vue
+  h_46be6e61f3d9dd 10
+assets/app/modules/scenes/properties/ZoneProperties.vue
+  h_46be6e61f3d9dd 7
+assets/app/test/modules/shared/operators/condition-operators.test.ts
+  h_46be6e61f3d9dd 6,10
+assets/app/components/builders/condition/ConditionBlock.vue
+  h_46be6e61f3d9dd 7-8
+assets/app/modules/scenes/components/ElementPropertiesPanel.vue
+  h_46be6e61f3d9dd 6
+assets/app/plugins/expression-editor/tree-parser.ts
+  h_46be6e61f3d9dd 15
+assets/app/modules/sheets/components/blocks/MultiSelectBlock.vue
+  h_46be6e61f3d9dd 14
+assets/app/modules/sheets/components/AddBlockMenu.vue
+  h_46be6e61f3d9dd 28
+assets/app/components/builders/instruction/AssignmentRow.vue
+  h_46be6e61f3d9dd 18-21
+assets/app/components/builders/ConditionBuilder.vue
+  h_46be6e61f3d9dd 9-10
+assets/app/components/forms/ExpressionEditor.vue
+  h_46be6e61f3d9dd 18-19
+assets/app/modules/sheets/components/blocks/SelectBlock.vue
+  h_46be6e61f3d9dd 12
+assets/app/plugins/expression-editor/linter.ts
+  h_46be6e61f3d9dd 17,19
+assets/app/modules/scenes/properties/zone/CollectionItemCard.vue
+  h_46be6e61f3d9dd 6
+assets/app/modules/flows/components/FlowDialogueEditorBody.vue
+  h_46be6e61f3d9dd 34
+assets/app/modules/scenes/properties/zone/CollectionItemsEditor.vue
+  h_46be6e61f3d9dd 5
+assets/app/test/modules/shared/operators/instruction-operators.test.ts
+  h_46be6e61f3d9dd 11
+assets/app/test/modules/shared/operators/expression-serializer.test.ts
+  h_46be6e61f3d9dd 4
+assets/app/modules/sheets/components/blocks/FormulaBindingSelect.vue
+  h_46be6e61f3d9dd 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "13ff119162018bebd07f883dce7d12249bbac09e",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
