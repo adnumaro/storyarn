@@ -1,0 +1,510 @@
+assets/app/modules/scenes/components/Legend.vue
+  h_46be6e61f3d9dd 4
+assets/app/components/forms/ColorPickerPopover.vue
+  h_46be6e61f3d9dd 20,22,38,46,57,103-104,122,144
+assets/app/components/ui/textarea/Textarea.vue
+  h_46be6e61f3d9dd 4
+assets/app/components/builders/instruction/AssignmentRow.vue
+  h_46be6e61f3d9dd 24
+assets/app/modules/versioning/history/PromoteVersionDialog.vue
+  h_46be6e61f3d9dd 1-90
+assets/app/components/ui/context-menu/ContextMenuRadioItem.vue
+  h_46be6e61f3d9dd 11
+assets/app/components/ui/scroll-area/ScrollArea.vue
+  h_46be6e61f3d9dd 5
+assets/app/components/ui/avatar/AvatarFallback.vue
+  h_46be6e61f3d9dd 5
+assets/app/components/ui/avatar/Avatar.vue
+  h_46be6e61f3d9dd 4
+assets/app/modules/scenes/composables/useDrag.ts
+  h_46be6e61f3d9dd 2
+assets/app/components/ui/tabs/Tabs.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/scenes/properties/pin/PinPlayableSection.vue
+  h_46be6e61f3d9dd 3
+assets/app/components/ui/dropdown-menu/DropdownMenuItem.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/versioning/history/CreateVersionDialog.vue
+  h_46be6e61f3d9dd 1-81
+assets/app/modules/versioning/history/RestorePreviewDialog.vue
+  h_46be6e61f3d9dd 1-161
+assets/app/modules/sheets/components/SheetHeader.vue
+  h_46be6e61f3d9dd 4,6-7
+assets/app/components/ui/context-menu/ContextMenuLabel.vue
+  h_46be6e61f3d9dd 5
+assets/app/components/ui/context-menu/ContextMenuShortcut.vue
+  h_46be6e61f3d9dd 3
+assets/app/modules/sheets/components/blocks/FormulaPanel.vue
+  h_46be6e61f3d9dd 6
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TMultiSelectCell.vue
+  h_46be6e61f3d9dd 4
+assets/app/components/ui/command/CommandGroup.vue
+  h_46be6e61f3d9dd 6
+assets/app/modules/public/landing/sections/ExplorationSpotlight.vue
+  h_46be6e61f3d9dd 1-55
+assets/app/modules/scenes/composables/useConnectionDrawing.ts
+  h_46be6e61f3d9dd 2
+assets/app/modules/versioning/history/VersionHistory.vue
+  h_46be6e61f3d9dd 16
+assets/app/modules/sheets/components/blocks/FormulaBindingSelect.vue
+  h_46be6e61f3d9dd 22-23
+assets/app/modules/scenes/components/toolbar-sections/AnnotationToolbar.vue
+  h_46be6e61f3d9dd 2
+assets/app/modules/workspaces/settings/Connections.vue
+  h_46be6e61f3d9dd 1-220
+assets/app/components/ui/sheet/SheetFooter.vue
+  h_46be6e61f3d9dd 3
+assets/app/modules/scenes/components/SceneTree.vue
+  h_46be6e61f3d9dd 15
+assets/app/modules/flows/components/FlowDock.vue
+  h_46be6e61f3d9dd 4
+assets/app/test/composables/usePresence.test.ts
+  h_46be6e61f3d9dd 2
+assets/app/modules/sheets/components/tree/SheetTree.vue
+  h_46be6e61f3d9dd 15
+assets/app/modules/flows/components/toolbar-sections/AnnotationToolbar.vue
+  h_46be6e61f3d9dd 9
+assets/app/modules/projects/settings/Members.vue
+  h_46be6e61f3d9dd 1-144
+assets/app/components/AssetIndex.vue
+  h_46be6e61f3d9dd 19
+assets/app/modules/projects/settings/ImportPanel.vue
+  h_46be6e61f3d9dd 1-289
+assets/app/components/ui/badge/Badge.vue
+  h_46be6e61f3d9dd 5
+assets/app/components/ui/context-menu/ContextMenuContent.vue
+  h_46be6e61f3d9dd 5
+assets/app/components/ui/dialog/DialogOverlay.vue
+  h_46be6e61f3d9dd 5
+assets/app/test/utils/date-utils.test.ts
+  h_46be6e61f3d9dd 2
+assets/app/components/ui/tabs/TabsList.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/localization/components/LocalizationIndex.vue
+  h_46be6e61f3d9dd 14
+assets/app/components/ui/dropdown-menu/DropdownMenuSubContent.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/scenes/properties/ConnectionProperties.vue
+  h_46be6e61f3d9dd 4
+assets/app/modules/scenes/exploration/composables/useExplorationInteraction.ts
+  h_46be6e61f3d9dd 2
+assets/app/components/forms/BooleanToggle.vue
+  h_46be6e61f3d9dd 1-88
+assets/app/modules/scenes/composables/useVertexEditor.ts
+  h_46be6e61f3d9dd 2
+assets/app/modules/versioning/compare/CompareView.vue
+  h_46be6e61f3d9dd 1-98
+assets/app/modules/flows/components/FlowPreview.vue
+  h_46be6e61f3d9dd 6
+assets/app/modules/scenes/components/ElementPropertiesPanel.vue
+  h_46be6e61f3d9dd 7
+assets/app/components/ui/select/SelectLabel.vue
+  h_46be6e61f3d9dd 4
+assets/app/modules/public/landing/sections/cta/CtaWaitlist.vue
+  h_46be6e61f3d9dd 1-93
+assets/app/modules/workspaces/settings/WorkspaceDeletedProjects.vue
+  h_46be6e61f3d9dd 1-199
+assets/app/components/forms/fields/EntityCombobox.vue
+  h_46be6e61f3d9dd 1-107
+assets/app/components/forms/assets/AssetPicker.vue
+  h_46be6e61f3d9dd 1-109
+assets/app/components/ui/toggle/Toggle.vue
+  h_46be6e61f3d9dd 5
+assets/app/components/ui/radio-group/RadioGroupItem.vue
+  h_46be6e61f3d9dd 6
+assets/app/modules/flows/components/FlowCursors.vue
+  h_46be6e61f3d9dd 4
+assets/app/components/ui/dialog/DialogHeader.vue
+  h_46be6e61f3d9dd 3
+assets/app/components/ui/table/TableCaption.vue
+  h_46be6e61f3d9dd 3
+assets/app/components/ui/dropdown-menu/DropdownMenuCheckboxItem.vue
+  h_46be6e61f3d9dd 11
+assets/app/components/ui/switch/Switch.vue
+  h_46be6e61f3d9dd 5
+assets/app/components/ui/dialog/DialogContent.vue
+  h_46be6e61f3d9dd 12
+assets/app/modules/projects/settings/General.vue
+  h_46be6e61f3d9dd 1-368
+assets/app/components/ui/scroll-area/ScrollBar.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/scenes/composables/useWaypointEditor.ts
+  h_46be6e61f3d9dd 2
+assets/app/modules/scenes/settings/AmbientFlowsSection.vue
+  h_46be6e61f3d9dd 13
+assets/app/modules/scenes/components/toolbar-sections/ZoneToolbar.vue
+  h_46be6e61f3d9dd 4
+assets/app/modules/flows/components/toolbar-sections/SubflowToolbar.vue
+  h_46be6e61f3d9dd 7
+assets/app/shell/RightToolbar.vue
+  h_46be6e61f3d9dd 10-12
+assets/app/modules/flows/components/toolbar-sections/ExitToolbar.vue
+  h_46be6e61f3d9dd 5
+assets/app/components/ui/sheet/SheetTitle.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/flows/components/FlowDebugPanel.vue
+  h_46be6e61f3d9dd 54-57
+assets/app/components/forms/fields/ToggleField.vue
+  h_46be6e61f3d9dd 1-30
+assets/app/modules/flows/components/toolbar-sections/DialogueToolbar.vue
+  h_46be6e61f3d9dd 6
+assets/app/components/ui/command/Command.vue
+  h_46be6e61f3d9dd 6
+assets/app/components/ui/command/CommandShortcut.vue
+  h_46be6e61f3d9dd 3
+assets/app/shared/composables/useCodeEditor.ts
+  h_46be6e61f3d9dd 1-169
+assets/app/components/ui/table/TableBody.vue
+  h_46be6e61f3d9dd 3
+assets/app/components/ui/command/CommandEmpty.vue
+  h_46be6e61f3d9dd 6
+assets/app/modules/scenes/exploration/ExplorationCanvas.vue
+  h_46be6e61f3d9dd 4
+assets/app/modules/scenes/settings/BackgroundSection.vue
+  h_46be6e61f3d9dd 3
+assets/app/components/collab/CollabToast.vue
+  h_46be6e61f3d9dd 3
+assets/app/modules/scenes/components/toolbar-sections/ConnectionToolbar.vue
+  h_46be6e61f3d9dd 4
+assets/app/components/builders/condition/ConditionRule.vue
+  h_46be6e61f3d9dd 19
+assets/app/modules/projects/dashboard/ProjectDashboard.vue
+  h_46be6e61f3d9dd 1-304
+assets/app/modules/scenes/components/LayerListPopover.vue
+  h_46be6e61f3d9dd 3
+tsconfig.json
+  h_46be6e61f3d9dd 23,25
+assets/app/test/composables/useKeyboard.test.ts
+  h_46be6e61f3d9dd 2
+assets/app/modules/flows/components/toolbar-sections/ConditionToolbar.vue
+  h_46be6e61f3d9dd 7
+assets/app/modules/scenes/composables/useZoneDrag.ts
+  h_46be6e61f3d9dd 2
+assets/app/components/ui/select/SelectScrollUpButton.vue
+  h_46be6e61f3d9dd 6
+assets/app/modules/versioning/history/useVersionHistory.ts
+  h_46be6e61f3d9dd 2
+assets/app/modules/flows/components/FlowSequenceConfigPanel.vue
+  h_46be6e61f3d9dd 25-27,29
+assets/app/modules/scenes/settings/AmbientFlowRow.vue
+  h_46be6e61f3d9dd 11
+assets/app/components/ui/table/TableEmpty.vue
+  h_46be6e61f3d9dd 4
+assets/app/modules/workspaces/settings/WorkspaceGeneral.vue
+  h_46be6e61f3d9dd 1-343
+assets/app/modules/sheets/components/blocks/galleryBlock/GalleryBlockContent.vue
+  h_46be6e61f3d9dd 8-9
+assets/app/modules/flows/components/toolbar-sections/JumpToolbar.vue
+  h_46be6e61f3d9dd 6
+assets/app/modules/sheets/components/SheetMetadata.vue
+  h_46be6e61f3d9dd 3
+assets/app/modules/scenes/properties/zone/CollectionItemCard.vue
+  h_46be6e61f3d9dd 5,7
+assets/app/modules/projects/settings/ExportPanel.vue
+  h_46be6e61f3d9dd 1-268
+assets/app/components/forms/ExpressionEditor.vue
+  h_46be6e61f3d9dd 12-14,20-25
+assets/app/modules/sheets/components/blocks/BooleanBlock.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/sheets/components/tabs/AudioTab.vue
+  h_46be6e61f3d9dd 24
+assets/app/modules/scenes/components/toolbar-sections/PinToolbar.vue
+  h_46be6e61f3d9dd 4
+assets/app/modules/flows/components/FlowDialoguePanel.vue
+  h_46be6e61f3d9dd 24
+assets/app/components/ui/context-menu/ContextMenuSubContent.vue
+  h_46be6e61f3d9dd 5
+assets/app/components/ui/slider/Slider.vue
+  h_46be6e61f3d9dd 12
+assets/app/components/ui/dialog/DialogFooter.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/sheets/composables/useBlockActions.ts
+  h_46be6e61f3d9dd 3
+assets/app/components/ui/separator/Separator.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/sheets/components/blocks/table/TBody.vue
+  h_46be6e61f3d9dd 7
+assets/app/modules/flows/components/FlowBuilderPanel.vue
+  h_46be6e61f3d9dd 7,10
+assets/app/components/ui/context-menu/ContextMenuCheckboxItem.vue
+  h_46be6e61f3d9dd 11
+assets/app/components/ui/dropdown-menu/DropdownMenuRadioItem.vue
+  h_46be6e61f3d9dd 11
+assets/app/components/forms/assets/AudioAsset.vue
+  h_46be6e61f3d9dd 6-9
+assets/app/components/ui/sheet/SheetOverlay.vue
+  h_46be6e61f3d9dd 5
+assets/app/components/ui/select/SelectItem.vue
+  h_46be6e61f3d9dd 12
+assets/app/modules/flows/components/toolbar-sections/HubToolbar.vue
+  h_46be6e61f3d9dd 5
+assets/app/components/ui/select/SelectContent.vue
+  h_46be6e61f3d9dd 11
+assets/app/shell/WorkspaceSidebar.vue
+  h_46be6e61f3d9dd 10-11
+assets/app/modules/flows/components/FlowTree.vue
+  h_46be6e61f3d9dd 15
+assets/app/test/components/assets/ImagePosition.test.ts
+  h_46be6e61f3d9dd 3
+assets/app/components/ui/label/Label.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/localization/components/LocalizationToolbar.vue
+  h_46be6e61f3d9dd 11
+assets/app/shell/MainSidebar.vue
+  h_46be6e61f3d9dd 5
+assets/app/test/utils/utils.test.ts
+  h_46be6e61f3d9dd 1
+assets/app/modules/sheets/components/blocks/table/TableGrid.vue
+  h_46be6e61f3d9dd 3
+assets/app/components/forms/fields/SelectField.vue
+  h_46be6e61f3d9dd 10
+assets/app/modules/workspaces/dashboard/WorkspaceDashboard.vue
+  h_46be6e61f3d9dd 1-252
+assets/app/plugins/tiptap/mentionExtension.ts
+  h_46be6e61f3d9dd 13
+assets/app/modules/flows/components/FlowDialogueEditorBody.vue
+  h_46be6e61f3d9dd 16-18,36
+assets/app/modules/projects/New.vue
+  h_46be6e61f3d9dd 1-105
+assets/app/modules/sheets/components/dnd/BlockDndRoot.vue
+  h_46be6e61f3d9dd 6-7
+assets/app/components/ui/checkbox/Checkbox.vue
+  h_46be6e61f3d9dd 6
+assets/app/test/components/assets/AssetPicker.test.ts
+  h_46be6e61f3d9dd 3
+assets/app/modules/flows/player/FlowPlayer.vue
+  h_46be6e61f3d9dd 3
+assets/app/components/ui/tooltip/TooltipContent.vue
+  h_46be6e61f3d9dd 11
+assets/app/modules/sheets/SheetDashboard.vue
+  h_46be6e61f3d9dd 35-36
+assets/app/modules/scenes/components/SceneLayerList.vue
+  h_46be6e61f3d9dd 19
+assets/app/modules/localization/components/LocalizationReport.vue
+  h_46be6e61f3d9dd 23
+assets/app/modules/flows/components/FlowEditor.vue
+  h_46be6e61f3d9dd 3
+assets/app/components/ui/table/TableFooter.vue
+  h_46be6e61f3d9dd 3
+assets/app/components/ui/command/CommandItem.vue
+  h_46be6e61f3d9dd 6
+assets/app/components/forms/assets/ImagePosition.vue
+  h_46be6e61f3d9dd 1-98
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TTextNumberCell.vue
+  h_46be6e61f3d9dd 3
+assets/app/modules/scenes/exploration/FlowOverlay.vue
+  h_46be6e61f3d9dd 4
+assets/app/components/ui/dropdown-menu/DropdownMenuLabel.vue
+  h_46be6e61f3d9dd 5
+assets/app/components/ui/dropdown-menu/DropdownMenuSeparator.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/sheets/components/blocks/table/theadMenus/THeadMenuItem.vue
+  h_46be6e61f3d9dd 4
+assets/app/components/ui/command/CommandInput.vue
+  h_46be6e61f3d9dd 6
+assets/app/modules/account/settings/Profile.vue
+  h_46be6e61f3d9dd 1-137
+assets/app/modules/flows/components/FlowHeader.vue
+  h_46be6e61f3d9dd 16,19
+assets/app/components/ui/select/SelectSeparator.vue
+  h_46be6e61f3d9dd 5
+assets/app/components/ui/command/CommandList.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/flows/FlowDashboard.vue
+  h_46be6e61f3d9dd 37-38
+assets/app/test/components/assets/AudioAsset.test.ts
+  h_46be6e61f3d9dd 3
+assets/app/components/ui/table/TableRow.vue
+  h_46be6e61f3d9dd 3
+assets/app/components/forms/assets/AssetUploadButton.vue
+  h_46be6e61f3d9dd 4
+assets/app/components/forms/assets/ImageAsset.vue
+  h_46be6e61f3d9dd 5,7
+assets/app/modules/flows/nodes/DialogueNode.vue
+  h_46be6e61f3d9dd 7
+vite.config.mjs
+  h_46be6e61f3d9dd 35,37
+assets/app/modules/projects/settings/VersionControl.vue
+  h_46be6e61f3d9dd 1-176
+assets/app/modules/scenes/settings/ScaleSection.vue
+  h_46be6e61f3d9dd 4
+assets/app/components/ui/dialog/DialogDescription.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/scenes/exploration/SessionPromptModal.vue
+  h_46be6e61f3d9dd 12
+assets/app/components/ui/tabs/TabsContent.vue
+  h_46be6e61f3d9dd 5
+assets/app/components/forms/ColorPicker.vue
+  h_46be6e61f3d9dd 1-79
+assets/app/modules/scenes/settings/DisplayModeSection.vue
+  h_46be6e61f3d9dd 3
+assets/app/components/ui/sheet/SheetHeader.vue
+  h_46be6e61f3d9dd 3
+assets/app/components/ui/table/Table.vue
+  h_46be6e61f3d9dd 3
+assets/app/components/ui/toggle-group/ToggleGroupItem.vue
+  h_46be6e61f3d9dd 7
+assets/app/modules/sheets/components/tabs/HistoryTab.vue
+  h_46be6e61f3d9dd 2-3
+assets/app/modules/public/landing/sections/VersionSpotlight.vue
+  h_46be6e61f3d9dd 1-55
+assets/app/modules/scenes/components/SceneActions.vue
+  h_46be6e61f3d9dd 10
+assets/app/modules/versioning/history/DeleteVersionDialog.vue
+  h_46be6e61f3d9dd 1-51
+assets/app/components/ui/dropdown-menu/DropdownMenuContent.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/scenes/components/SettingsPanel.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/scenes/exploration/ExplorationPlayer.vue
+  h_46be6e61f3d9dd 3
+assets/app/modules/flows/components/FlowVersionHistoryPanel.vue
+  h_46be6e61f3d9dd 4-6
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TFormulaCell.vue
+  h_46be6e61f3d9dd 4
+assets/app/components/ui/context-menu/ContextMenuItem.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/workspaces/settings/WorkspaceMembers.vue
+  h_46be6e61f3d9dd 1-242
+assets/app/components/ui/popover/PopoverContent.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/scenes/exploration/CollectionModal.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/projects/settings/Trash.vue
+  h_46be6e61f3d9dd 1-194
+assets/app/test/composables/useUndoRedo.test.ts
+  h_46be6e61f3d9dd 2,11
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TBooleanCell.vue
+  h_46be6e61f3d9dd 5
+assets/app/test/setup.ts
+  h_46be6e61f3d9dd 6
+assets/app/components/ui/dropdown-menu/DropdownMenuSubTrigger.vue
+  h_46be6e61f3d9dd 6
+assets/app/components/ui/radio-group/RadioGroup.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/localization/components/LocalizationSidebar.vue
+  h_46be6e61f3d9dd 14
+assets/app/components/ui/button/Button.vue
+  h_46be6e61f3d9dd 4
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TSelectCell.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/scenes/properties/PinProperties.vue
+  h_46be6e61f3d9dd 5,7
+assets/app/components/ui/table/TableHeader.vue
+  h_46be6e61f3d9dd 3
+assets/app/components/ui/dropdown-menu/DropdownMenuShortcut.vue
+  h_46be6e61f3d9dd 3
+assets/app/components/ui/sheet/SheetContent.vue
+  h_46be6e61f3d9dd 12
+assets/app/modules/projects/settings/Localization.vue
+  h_46be6e61f3d9dd 1-111
+assets/app/modules/sheets/components/blocks/table/THeadMenu.vue
+  h_46be6e61f3d9dd 6
+assets/app/components/ui/dialog/DialogTitle.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/sheets/components/blocks/ReferenceBlock.vue
+  h_46be6e61f3d9dd 14
+assets/app/modules/flows/components/toolbar-sections/SequenceToolbar.vue
+  h_46be6e61f3d9dd 6
+assets/app/shell/LeftToolbar.vue
+  h_46be6e61f3d9dd 23-25
+assets/app/modules/scenes/components/VersionHistoryPanel.vue
+  h_46be6e61f3d9dd 4-6
+assets/app/components/ui/select/SelectScrollDownButton.vue
+  h_46be6e61f3d9dd 6
+assets/app/modules/scenes/composables/useCanvasCreation.ts
+  h_46be6e61f3d9dd 2
+assets/app/modules/flows/components/FlowDialogueFullscreenEditor.vue
+  h_46be6e61f3d9dd 18
+assets/app/modules/scenes/properties/zone/CollectionItemsEditor.vue
+  h_46be6e61f3d9dd 4,6
+assets/app/modules/workspaces/settings/Invitations.vue
+  h_46be6e61f3d9dd 1-25
+assets/app/components/ui/table/TableCell.vue
+  h_46be6e61f3d9dd 3
+assets/app/modules/workspaces/settings/Security.vue
+  h_46be6e61f3d9dd 1-155
+assets/app/modules/sheets/components/tabs/SheetTabs.vue
+  h_46be6e61f3d9dd 6
+assets/app/modules/scenes/components/SearchPanel.vue
+  h_46be6e61f3d9dd 6
+assets/app/modules/sheets/components/BlockList.vue
+  h_46be6e61f3d9dd 5-6
+assets/app/modules/scenes/components/SceneToolbar.vue
+  h_46be6e61f3d9dd 2-3
+assets/app/test/composables/useServerSearch.test.ts
+  h_46be6e61f3d9dd 2,11
+assets/app/modules/flows/components/toolbar-sections/InstructionToolbar.vue
+  h_46be6e61f3d9dd 6
+assets/app/components/ui/context-menu/ContextMenuSubTrigger.vue
+  h_46be6e61f3d9dd 6
+assets/app/components/ui/context-menu/ContextMenuSeparator.vue
+  h_46be6e61f3d9dd 5
+assets/app/components/forms/VariableCombobox.vue
+  h_46be6e61f3d9dd 1-213
+assets/app/components/ui/sheet/SheetDescription.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/versioning/history/UnsavedChangesDialog.vue
+  h_46be6e61f3d9dd 1-75
+assets/app/modules/scenes/properties/pin/PinPatrolSection.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/scenes/composables/useZoneDrawing.ts
+  h_46be6e61f3d9dd 2
+assets/app/modules/scenes/components/SceneDock.vue
+  h_46be6e61f3d9dd 3
+assets/app/test/components/assets/ImageAsset.test.ts
+  h_46be6e61f3d9dd 3
+assets/app/components/ui/toggle-group/ToggleGroup.vue
+  h_46be6e61f3d9dd 6
+assets/app/modules/sheets/components/blocks/table/tbodyCells/TDateCell.vue
+  h_46be6e61f3d9dd 3
+assets/app/modules/localization/components/LocalizationEdit.vue
+  h_46be6e61f3d9dd 16
+assets/app/components/ui/dialog/DialogScrollContent.vue
+  h_46be6e61f3d9dd 13
+assets/app/modules/scenes/composables/useSelection.ts
+  h_46be6e61f3d9dd 2
+assets/app/components/ui/select/SelectTrigger.vue
+  h_46be6e61f3d9dd 6
+assets/app/modules/scenes/composables/useAnnotationEditing.ts
+  h_46be6e61f3d9dd 2
+assets/app/modules/sheets/components/blocks/table/TableRowActions.vue
+  h_46be6e61f3d9dd 4
+assets/app/components/UserAvatar.vue
+  h_46be6e61f3d9dd 1-54
+assets/app/modules/scenes/SceneDashboard.vue
+  h_46be6e61f3d9dd 35-36
+assets/app/plugins/tiptap/variableRefExtension.ts
+  h_46be6e61f3d9dd 13
+assets/app/components/ui/tabs/TabsTrigger.vue
+  h_46be6e61f3d9dd 5
+assets/app/components/ui/input/Input.vue
+  h_46be6e61f3d9dd 4
+assets/app/modules/scenes/exploration/ExplorationToolbar.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/projects/settings/ExportImport.vue
+  h_46be6e61f3d9dd 1-99
+assets/app/modules/projects/settings/Snapshots.vue
+  h_46be6e61f3d9dd 1-307
+assets/app/components/ui/command/CommandSeparator.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/scenes/properties/ZoneProperties.vue
+  h_46be6e61f3d9dd 5-6,8
+assets/app/components/ui/progress/Progress.vue
+  h_46be6e61f3d9dd 5
+assets/app/modules/sheets/components/OptionEditor.vue
+  h_46be6e61f3d9dd 5
+assets/app/components/ui/table/TableHead.vue
+  h_46be6e61f3d9dd 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "1622f4bd835de3acc7c7fe6d550082b57dbe248c",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
