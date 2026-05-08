@@ -1,0 +1,14 @@
+.dependency-cruiser.cjs
+  h_46be6e61f3d9dd 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "235d0ffee49b907de4bbdf8e740f2db579c38d85",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
