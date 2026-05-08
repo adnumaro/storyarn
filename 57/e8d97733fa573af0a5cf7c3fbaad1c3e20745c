@@ -1,0 +1,116 @@
+assets/app/modules/sheets/components/entities/blocks/fields/TextBlock.vue
+  h_46be6e61f3d9dd 1-126
+assets/app/modules/sheets/components/entities/blocks/fields/NumberBlock.vue
+  h_46be6e61f3d9dd 1-207
+assets/app/modules/sheets/components/chrome/tree/SheetTreeNode.vue
+  h_46be6e61f3d9dd 1-266
+assets/app/modules/sheets/components/entities/blocks/fields/table/tbodyCells/TFormulaCell.vue
+  h_46be6e61f3d9dd 1-89
+assets/app/modules/sheets/components/entities/blocks/fields/galleryBlock/GalleryBlockContent.vue
+  h_46be6e61f3d9dd 1-229
+assets/app/modules/sheets/components/entities/blocks/fields/ReferenceBlock.vue
+  h_46be6e61f3d9dd 1-300
+assets/app/modules/sheets/components/entities/blocks/fields/table/tbodyCells/TBooleanCell.vue
+  h_46be6e61f3d9dd 1-52
+assets/app/modules/sheets/components/chrome/tree/SheetTreeRoot.vue
+  h_46be6e61f3d9dd 1-23
+assets/app/modules/sheets/components/entities/blocks/fields/richText/RichTextBlock.vue
+  h_46be6e61f3d9dd 1-111
+assets/app/modules/sheets/dashboard/SheetDashboard.vue
+  h_46be6e61f3d9dd 1-295
+assets/app/modules/sheets/components/entities/blocks/fields/table/THead.vue
+  h_46be6e61f3d9dd 1-32
+assets/app/test/modules/sheets/dnd/layout-reducers.test.ts
+  h_46be6e61f3d9dd 11
+assets/app/modules/sheets/components/entities/blocks/BlockList.vue
+  h_46be6e61f3d9dd 1-287
+assets/app/modules/sheets/components/entities/blocks/fields/table/theadMenus/THeadCellTypeMenu.vue
+  h_46be6e61f3d9dd 1-51
+assets/app/modules/sheets/components/panels/FormulaBindingSelect.vue
+  h_46be6e61f3d9dd 1-208
+assets/app/modules/sheets/components/entities/blocks/fields/table/tbodyCells/TSelectCell.vue
+  h_46be6e61f3d9dd 1-89
+assets/app/modules/sheets/components/collab/CollabToast.vue
+  h_46be6e61f3d9dd 1-21
+assets/app/modules/sheets/components/entities/blocks/fields/table/theadMenus/THeadSelectOptionsMenu.vue
+  h_46be6e61f3d9dd 1-30
+assets/app/modules/sheets/components/entities/dnd/BlockDndRoot.vue
+  h_46be6e61f3d9dd 1-359
+assets/app/modules/sheets/components/entities/blocks/fields/table/TableRowActions.vue
+  h_46be6e61f3d9dd 1-76
+assets/app/modules/sheets/components/entities/blocks/OptionEditor.vue
+  h_46be6e61f3d9dd 5-6
+assets/app/modules/sheets/components/entities/blocks/fields/table/tbodyCells/get-cell-value-helpers.ts
+  h_46be6e61f3d9dd 1-5
+assets/app/modules/sheets/components/entities/blocks/fields/table/theadMenus/THeadMainMenu.vue
+  h_46be6e61f3d9dd 1-108
+assets/app/modules/sheets/navigation/SheetsSidebar.vue
+  h_46be6e61f3d9dd 3
+assets/app/modules/sheets/components/entities/blocks/fields/MultiSelectBlock.vue
+  h_46be6e61f3d9dd 1-172
+assets/app/modules/sheets/components/entities/blocks/fields/table/tbodyCells/TTextNumberCell.vue
+  h_46be6e61f3d9dd 1-108
+assets/app/modules/sheets/components/entities/blocks/fields/table/tbodyCells/TMultiSelectCell.vue
+  h_46be6e61f3d9dd 1-94
+assets/app/modules/sheets/components/entities/blocks/fields/table/tbodyCells/TDateCell.vue
+  h_46be6e61f3d9dd 1-59
+assets/app/modules/sheets/components/entities/blocks/fields/table/TBody.vue
+  h_46be6e61f3d9dd 1-134
+assets/app/modules/sheets/components/panels/tabs/HistoryTab.vue
+  h_46be6e61f3d9dd 1-37
+assets/app/modules/sheets/components/entities/blocks/fields/table/TableDraggableRow.vue
+  h_46be6e61f3d9dd 1-36
+assets/app/modules/sheets/components/entities/blocks/AddBlockMenu.vue
+  h_46be6e61f3d9dd 1-133
+assets/app/modules/sheets/components/panels/tabs/ReferencesTab.vue
+  h_46be6e61f3d9dd 1-449
+assets/app/modules/sheets/components/chrome/header/SheetMetadata.vue
+  h_46be6e61f3d9dd 3-4
+assets/app/modules/sheets/components/chrome/header/SheetHeader.vue
+  h_46be6e61f3d9dd 1-172
+assets/app/modules/sheets/components/entities/blocks/fields/SelectBlock.vue
+  h_46be6e61f3d9dd 1-165
+assets/app/modules/sheets/components/panels/tabs/AudioTab.vue
+  h_46be6e61f3d9dd 1-277
+assets/app/modules/sheets/components/entities/blocks/fields/table/THeadMenu.vue
+  h_46be6e61f3d9dd 1-242
+assets/app/modules/sheets/components/entities/blocks/fields/galleryBlock/GalleryBlock.vue
+  h_46be6e61f3d9dd 1-75
+assets/app/modules/sheets/components/entities/blocks/fields/BooleanBlock.vue
+  h_46be6e61f3d9dd 1-187
+assets/app/modules/sheets/composables/useBlockActions.ts
+  h_46be6e61f3d9dd 3
+assets/app/modules/sheets/components/entities/blocks/fields/table/theadMenus/THeadMenuItem.vue
+  h_46be6e61f3d9dd 1-26
+assets/app/modules/sheets/components/chrome/header/SheetAvatarSection.vue
+  h_46be6e61f3d9dd 4-6
+assets/app/modules/sheets/components/entities/blocks/fields/table/TableBlock.vue
+  h_46be6e61f3d9dd 1-116
+assets/app/modules/sheets/components/entities/blocks/fields/DateBlock.vue
+  h_46be6e61f3d9dd 1-96
+assets/app/modules/sheets/components/chrome/tree/SheetTree.vue
+  h_46be6e61f3d9dd 1-333
+assets/app/modules/sheets/components/entities/blocks/fields/table/TableGrid.vue
+  h_46be6e61f3d9dd 1-88
+assets/app/modules/sheets/components/entities/dnd/layout-reducers.ts
+  h_46be6e61f3d9dd 1-290
+assets/app/modules/sheets/components/chrome/header/AvatarGallery.vue
+  h_46be6e61f3d9dd 1-292
+assets/app/modules/sheets/components/panels/tabs/SheetTabs.vue
+  h_46be6e61f3d9dd 1-55
+assets/app/modules/sheets/components/panels/FormulaPanel.vue
+  h_46be6e61f3d9dd 1-192
+assets/app/modules/sheets/components/entities/blocks/BlockToolbar.vue
+  h_46be6e61f3d9dd 1-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "57e8d97733fa573af0a5cf7c3fbaad1c3e20745c",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
