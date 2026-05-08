@@ -1,0 +1,134 @@
+assets/app/modules/flows/editor/components/chrome/dock/DockNarrativePanel.vue
+  h_46be6e61f3d9dd 1-79
+assets/app/modules/flows/editor/components/chrome/tree/FlowTree.vue
+  h_46be6e61f3d9dd 1-334
+assets/app/modules/flows/player/components/PlayerSlide.vue
+  h_46be6e61f3d9dd 1-51
+assets/app/modules/flows/editor/components/entities/nodes/JumpNode.vue
+  h_46be6e61f3d9dd 4-8
+assets/app/modules/flows/editor/lib/context_menu_preset.ts
+  h_46be6e61f3d9dd 15
+assets/app/modules/flows/navigation/FlowsSidebar.vue
+  h_46be6e61f3d9dd 3
+assets/app/modules/flows/editor/components/entities/nodes/InstructionNode.vue
+  h_46be6e61f3d9dd 5-9
+assets/app/modules/flows/editor/services/flowMarquee.ts
+  h_46be6e61f3d9dd 1-211
+assets/app/modules/flows/editor/FlowEditor.vue
+  h_46be6e61f3d9dd 1-98
+assets/app/modules/flows/editor/components/chrome/dock/DockNavigationPanel.vue
+  h_46be6e61f3d9dd 1-97
+assets/app/test/modules/flows/player/PlayerToolbar.test.ts
+  h_46be6e61f3d9dd 3
+assets/app/modules/flows/editor/components/entities/toolbar/sections/SequenceToolbar.vue
+  h_46be6e61f3d9dd 1-61
+docs/features/dialogue-v2-port/EXECUTION.md
+  h_46be6e61f3d9dd 164
+assets/app/modules/flows/editor/components/entities/nodes/HubNode.vue
+  h_46be6e61f3d9dd 4-8
+assets/app/modules/flows/editor/components/entities/toolbar/controls/ToolbarAvatarPicker.vue
+  h_46be6e61f3d9dd 1-78
+assets/app/modules/flows/types.ts
+  h_46be6e61f3d9dd 5
+assets/app/modules/flows/editor/components/entities/toolbar/sections/SubflowToolbar.vue
+  h_46be6e61f3d9dd 1-74
+assets/app/modules/flows/editor/composables/useFlowEditor.ts
+  h_46be6e61f3d9dd 1-1184
+assets/app/modules/flows/editor/components/entities/toolbar/controls/ToolbarSearchableSelect.vue
+  h_46be6e61f3d9dd 1-83
+assets/app/test/modules/flows/components/toolbar-sections/DialogueToolbar.test.ts
+  h_46be6e61f3d9dd 12
+assets/app/modules/flows/editor/components/chrome/dock/DockLogicPanel.vue
+  h_46be6e61f3d9dd 1-85
+assets/app/modules/flows/player/FlowPlayer.vue
+  h_46be6e61f3d9dd 4-10
+assets/app/modules/flows/player/components/PlayerToolbar.vue
+  h_46be6e61f3d9dd 1-78
+assets/app/modules/flows/editor/components/entities/nodes/SubflowNode.vue
+  h_46be6e61f3d9dd 6-9
+assets/app/test/modules/flows/player/PlayerSlide.test.ts
+  h_46be6e61f3d9dd 3-4
+assets/app/modules/flows/editor/lib/context_menu_items.ts
+  h_46be6e61f3d9dd 1-241
+assets/app/modules/flows/editor/components/entities/toolbar/FlowNodeToolbar.vue
+  h_46be6e61f3d9dd 1-88
+docs/audit/flow-context-menu-broken-after-vue-migration.md
+  h_46be6e61f3d9dd 40
+assets/app/modules/flows/editor/components/chrome/header/FlowHeader.vue
+  h_46be6e61f3d9dd 1-300
+assets/app/modules/flows/editor/components/entities/nodes/ExitNode.vue
+  h_46be6e61f3d9dd 5-9
+assets/app/modules/flows/editor/components/entities/toolbar/sections/HubToolbar.vue
+  h_46be6e61f3d9dd 1-65
+assets/app/modules/flows/editor/components/entities/toolbar/sections/ConditionToolbar.vue
+  h_46be6e61f3d9dd 1-65
+assets/app/modules/flows/editor/components/collab/CollabToast.vue
+  h_46be6e61f3d9dd 1-25
+assets/app/modules/flows/editor/components/entities/rete/FlowRendererContextMenu.vue
+  h_46be6e61f3d9dd 1-103
+assets/app/modules/flows/editor/components/chrome/tree/FlowTreeNode.vue
+  h_46be6e61f3d9dd 1-260
+assets/app/modules/flows/player/components/PlayerOutcome.vue
+  h_46be6e61f3d9dd 1-76
+assets/app/modules/flows/editor/services/reteSetup.ts
+  h_46be6e61f3d9dd 22-26,28-38
+assets/app/test/modules/flows/player/PlayerOutcome.test.ts
+  h_46be6e61f3d9dd 3-4
+assets/app/modules/flows/editor/components/chrome/FlowFloatingToolbar.vue
+  h_46be6e61f3d9dd 1-144
+assets/app/modules/flows/editor/components/chrome/FlowCursors.vue
+  h_46be6e61f3d9dd 1-146
+assets/app/modules/flows/editor/components/entities/node-shell/NodeHeader.vue
+  h_46be6e61f3d9dd 1-36
+assets/app/modules/flows/editor/components/entities/toolbar/sections/InstructionToolbar.vue
+  h_46be6e61f3d9dd 1-43
+assets/app/modules/flows/editor/components/entities/toolbar/controls/ToolbarExitModePicker.vue
+  h_46be6e61f3d9dd 1-84
+assets/app/modules/flows/editor/lib/render-helpers.ts
+  h_46be6e61f3d9dd 1-85
+assets/app/modules/flows/editor/components/entities/nodes/SequenceNode.vue
+  h_46be6e61f3d9dd 1-157
+assets/app/modules/flows/editor/components/entities/nodes/DialogueNode.vue
+  h_46be6e61f3d9dd 1-495
+assets/app/test/modules/flows/player/PlayerChoices.test.ts
+  h_46be6e61f3d9dd 3-4
+docs/features/flow-relational-refactor/phase-1-sequence-unification.md
+  h_46be6e61f3d9dd 139,144
+assets/app/modules/flows/editor/components/entities/toolbar/sections/DialogueToolbar.vue
+  h_46be6e61f3d9dd 1-121
+assets/app/modules/flows/editor/components/entities/toolbar/sections/EntryToolbar.vue
+  h_46be6e61f3d9dd 1-25
+assets/app/modules/flows/editor/components/entities/rete/FlowNode.vue
+  h_46be6e61f3d9dd 4-7,17-18
+assets/app/modules/flows/editor/services/editorHandlers.ts
+  h_46be6e61f3d9dd 1-712
+assets/app/modules/flows/editor/components/chrome/dock/FlowDock.vue
+  h_46be6e61f3d9dd 1-133
+assets/app/modules/flows/editor/components/chrome/FlowMinimapToggle.vue
+  h_46be6e61f3d9dd 1-91
+assets/app/modules/flows/editor/components/entities/toolbar/sections/JumpToolbar.vue
+  h_46be6e61f3d9dd 1-62
+assets/app/modules/flows/editor/components/entities/toolbar/sections/AnnotationToolbar.vue
+  h_46be6e61f3d9dd 1-44
+assets/app/modules/flows/editor/components/entities/nodes/AnnotationNode.vue
+  h_46be6e61f3d9dd 1-167
+assets/app/modules/flows/editor/components/entities/toolbar/sections/ExitToolbar.vue
+  h_46be6e61f3d9dd 1-68
+assets/app/test/modules/flows/components/FlowDialoguePanel.test.ts
+  h_46be6e61f3d9dd 12,16
+assets/app/modules/flows/editor/components/entities/nodes/ConditionNode.vue
+  h_46be6e61f3d9dd 6-15
+assets/app/modules/flows/editor/components/entities/nodes/EntryNode.vue
+  h_46be6e61f3d9dd 4-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "265c071385c4709bbf3b7d8161b12f91f6f4f2c5",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
