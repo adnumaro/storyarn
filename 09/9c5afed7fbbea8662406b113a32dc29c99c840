@@ -1,0 +1,16 @@
+assets/app/modules/workspaces/dashboard/WorkspaceDashboard.vue
+  h_46be6e61f3d9dd 8
+assets/app/modules/workspaces/forms/NewWorkspaceForm.vue
+  h_46be6e61f3d9dd 2,4-6,8-15,17-24,28,30-32,35-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "099c5afed7fbbea8662406b113a32dc29c99c840",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
