@@ -74,7 +74,7 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
         "-translate-x-[calc(100%+1rem)] peer-checked:translate-x-0 lg:translate-x-0"
       ]}>
         <.vue
-          v-component="layout/WorkspaceSidebar"
+          v-component="shell/WorkspaceSidebar"
           v-socket={@socket}
           id="workspace-sidebar"
           current-user={@current_user}

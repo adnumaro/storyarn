@@ -179,7 +179,7 @@ defmodule StoryarnWeb.Components.AppLayout do
       <%!-- Left floating toolbar row (top-left) --%>
       <div class="fixed top-3 left-3 z-41 flex items-stretch gap-2">
         <.vue
-          v-component="layout/LeftToolbar"
+          v-component="shell/LeftToolbar"
           v-socket={@socket}
           id="left-toolbar"
           active-tool={to_string(@active_tool)}
@@ -198,7 +198,7 @@ defmodule StoryarnWeb.Components.AppLayout do
       <div :if={@current_user_id} class="fixed top-3 right-3 z-41 flex items-stretch gap-2">
         {render_slot(@top_bar_extra_right)}
         <.vue
-          v-component="layout/RightToolbar"
+          v-component="shell/RightToolbar"
           v-socket={@socket}
           id="right-toolbar"
           current-user={@current_user}
@@ -217,7 +217,7 @@ defmodule StoryarnWeb.Components.AppLayout do
       <%!-- Main sidebar --%>
       <.vue
         :if={@has_tree}
-        v-component="layout/MainSidebar"
+        v-component="shell/MainSidebar"
         v-socket={@socket}
         id="main-sidebar"
         main-sidebar-open={@main_sidebar_open}

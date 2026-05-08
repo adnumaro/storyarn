@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { History, X } from "lucide-vue-next";
-import Sidebar from "@components/layout/Sidebar.vue";
+import Sidebar from "../../../shell/Sidebar.vue";
 import VersionHistory from "@components/version-history/VersionHistory.vue";
 import type { VersionEntry } from "@components/version-history/useVersionHistory";
 import { useLive } from "@composables/useLive";

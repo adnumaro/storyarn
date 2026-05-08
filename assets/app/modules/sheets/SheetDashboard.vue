@@ -43,7 +43,7 @@ import type {
   DashboardStats,
   StatCard,
 } from "./types";
-import DashboardContent from "@components/layout/DashboardContent.vue";
+import DashboardContent from "../../shell/DashboardContent.vue";
 
 const {
   stats = null,

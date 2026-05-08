@@ -14,7 +14,7 @@
 import { BookOpen, FileText, Maximize2, MessageSquare, Volume2, X } from "lucide-vue-next";
 import { computed } from "vue";
 import { Button } from "@components/ui/button/index.ts";
-import Sidebar from "@components/layout/Sidebar.vue";
+import Sidebar from "../../../shell/Sidebar.vue";
 import FlowDialogueEditorBody, {
   type AudioAssetItem,
   type DialoguePanelData,

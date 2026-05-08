@@ -7,9 +7,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@components/ui/dropdown-menu";
-import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
-import UserAvatar from "./UserAvatar.vue";
+} from "../components/ui/dropdown-menu";
+import ToolbarTooltip from "../components/toolbar/ToolbarTooltip.vue";
+import UserAvatar from "../components/layout/UserAvatar.vue";
 
 interface CurrentUser {
   id: number;

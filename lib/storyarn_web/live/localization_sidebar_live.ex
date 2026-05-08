@@ -71,7 +71,7 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
     ~H"""
     <div>
       <.vue
-        v-component="layout/MainSidebar"
+        v-component="shell/MainSidebar"
         v-socket={@socket}
         id="localization-sidebar"
         main-sidebar-open={@main_sidebar_open}

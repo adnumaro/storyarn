@@ -66,7 +66,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
     ~H"""
     <div>
       <.vue
-        v-component="layout/MainSidebar"
+        v-component="shell/MainSidebar"
         v-socket={@socket}
         id="shell-main-sidebar"
         main-sidebar-open={@main_sidebar_open}

@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@components/ui/select";
 import { useLive } from "@composables/useLive";
-import DashboardContent from "@components/layout/DashboardContent.vue";
+import DashboardContent from "../../../shell/DashboardContent.vue";
 
 interface TextEntry {
   id: number;

@@ -127,7 +127,7 @@ defmodule StoryarnWeb.Components.ProjectShell do
       <div class="fixed top-3 left-3 z-41 flex items-stretch gap-2">
         <div id="shell-left-toolbar-wrapper" phx-update="ignore">
           <.vue
-            v-component="layout/LeftToolbar"
+            v-component="shell/LeftToolbar"
             v-socket={@socket}
             id="shell-left-toolbar"
             active-tool={to_string(@active_tool)}
@@ -159,7 +159,7 @@ defmodule StoryarnWeb.Components.ProjectShell do
           phx-update="ignore"
         >
           <.vue
-            v-component="layout/RightToolbar"
+            v-component="shell/RightToolbar"
             v-socket={@socket}
             id="shell-right-toolbar"
             current-user={@current_user}

@@ -25,7 +25,7 @@ import { computed } from "vue";
 import AudioAsset from "@components/assets/AudioAsset.vue";
 import ImageAsset from "@components/assets/ImageAsset.vue";
 import ImagePosition from "@components/assets/ImagePosition.vue";
-import Sidebar from "@components/layout/Sidebar.vue";
+import Sidebar from "../../../shell/Sidebar.vue";
 import { useLive } from "@composables/useLive";
 
 interface AssetEntry {

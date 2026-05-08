@@ -20,9 +20,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@components/ui/dropdown-menu";
-import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
-import { useLive } from "@composables/useLive";
+} from "../components/ui/dropdown-menu";
+import ToolbarTooltip from "../components/toolbar/ToolbarTooltip.vue";
+import { useLive } from "../composables/useLive";
 
 interface LeftToolbarUrls {
   workspace?: string;

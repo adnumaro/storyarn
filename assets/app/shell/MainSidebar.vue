@@ -2,12 +2,12 @@
 import type { Component } from "vue";
 import { LayoutDashboard, Pin, X } from "lucide-vue-next";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { useLive } from "@composables/useLive";
+import { useLive } from "../composables/useLive";
 import Sidebar from "./Sidebar.vue";
-import SheetTree from "@modules/sheets/components/tree/SheetTree.vue";
-import FlowTree from "@modules/flows/components/FlowTree.vue";
-import SceneTreePanel from "@modules/scenes/components/SceneTreePanel.vue";
-import LocalizationSidebar from "@modules/localization/components/LocalizationSidebar.vue";
+import SheetTree from "../modules/sheets/components/tree/SheetTree.vue";
+import FlowTree from "../modules/flows/components/FlowTree.vue";
+import SceneTreePanel from "../modules/scenes/components/SceneTreePanel.vue";
+import LocalizationSidebar from "../modules/localization/components/LocalizationSidebar.vue";
 
 const sidebarComponents: Record<string, Component> = {
   sheets: SheetTree,

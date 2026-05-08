@@ -16,7 +16,7 @@ import type { Component } from "vue";
 import { computed } from "vue";
 import { useLive } from "@composables/useLive";
 import { formatRelativeTime } from "@utils/date-utils";
-import DashboardContent from "@components/layout/DashboardContent.vue";
+import DashboardContent from "../../../shell/DashboardContent.vue";
 
 interface ProjectStats {
   sheet_count: number;

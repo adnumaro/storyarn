@@ -34,7 +34,7 @@ import {
 import { useI18n } from "vue-i18n";
 import { useLive } from "@composables/useLive";
 import { formatRelativeTime } from "@utils/date-utils";
-import DashboardContent from "@components/layout/DashboardContent.vue";
+import DashboardContent from "../../shell/DashboardContent.vue";
 
 const { t } = useI18n();
 
