@@ -1,0 +1,142 @@
+assets/app/modules/scenes/exploration/ExplorationPlayer.vue
+  h_46be6e61f3d9dd 3-4,6-9
+assets/app/modules/scenes/editor/components/collab/CollabToast.vue
+  h_46be6e61f3d9dd 1-31
+assets/app/modules/scenes/editor/components/chrome/header/SceneToolbar.vue
+  h_46be6e61f3d9dd 1-34
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarTypePicker.vue
+  h_46be6e61f3d9dd 1-68
+assets/app/modules/scenes/editor/components/chrome/dock/SceneDock.vue
+  h_46be6e61f3d9dd 1-141
+assets/app/modules/scenes/editor/composables/useZoneDrag.ts
+  h_46be6e61f3d9dd 1-206
+assets/app/modules/scenes/editor/components/toolbar/sections/PinToolbar.vue
+  h_46be6e61f3d9dd 1-140
+assets/app/modules/scenes/editor/composables/useConnectionDrawing.ts
+  h_46be6e61f3d9dd 1-204
+assets/app/modules/scenes/exploration/components/SessionPromptModal.vue
+  h_46be6e61f3d9dd 1-68
+assets/app/modules/scenes/editor/components/panels/SettingsPanel.vue
+  h_46be6e61f3d9dd 1-93
+assets/app/modules/scenes/exploration/components/SpeechBubble.vue
+  h_46be6e61f3d9dd 1-74
+assets/app/modules/scenes/editor/composables/useAnnotationEditing.ts
+  h_46be6e61f3d9dd 1-160
+assets/app/modules/scenes/editor/components/panels/properties/zone/CollectionItemCard.vue
+  h_46be6e61f3d9dd 1-107
+assets/app/modules/scenes/exploration/components/SubtitleBar.vue
+  h_46be6e61f3d9dd 1-25
+assets/app/modules/scenes/editor/components/panels/properties/pin/PinPlayableSection.vue
+  h_46be6e61f3d9dd 1-39
+assets/app/modules/scenes/editor/components/canvas/layers/ZoneConnectionLayer.vue
+  h_46be6e61f3d9dd 1-124
+lib/storyarn_web/live/scene_live/index.ex
+  h_46be6e61f3d9dd 52
+assets/app/modules/scenes/editor/components/panels/settings/AmbientFlowRow.vue
+  h_46be6e61f3d9dd 1-188
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarStrokePicker.vue
+  h_46be6e61f3d9dd 1-159
+assets/app/modules/scenes/editor/components/chrome/header/SearchPanel.vue
+  h_46be6e61f3d9dd 1-155
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarLayerPicker.vue
+  h_46be6e61f3d9dd 1-65
+assets/app/modules/scenes/editor/components/panels/properties/zone/TargetPicker.vue
+  h_46be6e61f3d9dd 1-163
+assets/app/modules/scenes/editor/components/panels/properties/zone/CollectionItemsEditor.vue
+  h_46be6e61f3d9dd 1-102
+assets/app/modules/scenes/editor/composables/useCanvasCreation.ts
+  h_46be6e61f3d9dd 1-109
+assets/app/modules/scenes/editor/components/toolbar/sections/ZoneToolbar.vue
+  h_46be6e61f3d9dd 1-153
+assets/app/modules/scenes/editor/components/panels/VersionHistoryPanel.vue
+  h_46be6e61f3d9dd 1-65
+assets/app/modules/scenes/editor/components/toolbar/controls/index.ts
+  h_46be6e61f3d9dd 1-9
+assets/app/modules/scenes/editor/components/chrome/layers/SceneLayerList.vue
+  h_46be6e61f3d9dd 1-229
+assets/app/modules/scenes/editor/components/canvas/layers/AnnotationLayer.vue
+  h_46be6e61f3d9dd 1-92
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarLockToggle.vue
+  h_46be6e61f3d9dd 1-28
+assets/app/modules/scenes/editor/composables/useWaypointEditor.ts
+  h_46be6e61f3d9dd 1-295
+assets/app/modules/scenes/editor/components/panels/settings/BackgroundSection.vue
+  h_46be6e61f3d9dd 1-60
+assets/app/modules/scenes/editor/components/panels/settings/AmbientFlowsSection.vue
+  h_46be6e61f3d9dd 1-102
+assets/app/modules/scenes/exploration/components/FlowOverlay.vue
+  h_46be6e61f3d9dd 1-127
+assets/app/modules/scenes/editor/components/panels/properties/PinProperties.vue
+  h_46be6e61f3d9dd 1-224
+assets/app/modules/scenes/exploration/composables/useExplorationInteraction.ts
+  h_46be6e61f3d9dd 2
+assets/app/modules/scenes/editor/components/toolbar/sections/AnnotationToolbar.vue
+  h_46be6e61f3d9dd 1-69
+assets/app/modules/scenes/editor/components/chrome/tree/SceneTree.vue
+  h_46be6e61f3d9dd 1-319
+assets/app/modules/scenes/editor/composables/useDrag.ts
+  h_46be6e61f3d9dd 1-81
+assets/app/modules/scenes/editor/components/chrome/header/SceneActions.vue
+  h_46be6e61f3d9dd 1-77
+assets/app/modules/scenes/editor/components/chrome/tree/SceneTreeNode.vue
+  h_46be6e61f3d9dd 1-258
+assets/app/modules/scenes/editor/composables/useZoneDrawing.ts
+  h_46be6e61f3d9dd 1-262
+assets/app/modules/scenes/editor/composables/useSelection.ts
+  h_46be6e61f3d9dd 1-113
+assets/app/modules/scenes/navigation/ScenesSidebar.vue
+  h_46be6e61f3d9dd 3
+assets/app/modules/scenes/editor/components/panels/properties/ConnectionProperties.vue
+  h_46be6e61f3d9dd 1-42
+assets/app/modules/scenes/editor/components/canvas/layers/PinLayer.vue
+  h_46be6e61f3d9dd 1-149
+assets/app/modules/scenes/editor/components/chrome/dock/ZonesDropdown.vue
+  h_46be6e61f3d9dd 1-83
+assets/app/modules/scenes/exploration/components/CollectionModal.vue
+  h_46be6e61f3d9dd 1-89
+assets/app/modules/scenes/editor/composables/useAnnotations.ts
+  h_46be6e61f3d9dd 2-3
+assets/app/modules/scenes/editor/components/panels/settings/ScaleSection.vue
+  h_46be6e61f3d9dd 1-61
+assets/app/modules/scenes/editor/composables/useVertexEditor.ts
+  h_46be6e61f3d9dd 1-263
+assets/app/modules/scenes/editor/components/toolbar/sections/ConnectionToolbar.vue
+  h_46be6e61f3d9dd 1-107
+assets/app/modules/scenes/editor/components/chrome/dock/PinsDropdown.vue
+  h_46be6e61f3d9dd 1-129
+assets/app/modules/scenes/editor/components/panels/properties/ZoneProperties.vue
+  h_46be6e61f3d9dd 1-259
+assets/app/modules/scenes/editor/components/chrome/layers/LayerListPopover.vue
+  h_46be6e61f3d9dd 1-60
+assets/app/modules/scenes/editor/components/panels/settings/DisplayModeSection.vue
+  h_46be6e61f3d9dd 1-86
+assets/app/modules/scenes/editor/components/toolbar/SceneFloatingToolbar.vue
+  h_46be6e61f3d9dd 1-131
+assets/app/modules/scenes/editor/components/panels/properties/pin/PinPatrolSection.vue
+  h_46be6e61f3d9dd 1-73
+assets/app/modules/scenes/editor/components/toolbar/controls/ToolbarActionTypePicker.vue
+  h_46be6e61f3d9dd 1-96
+assets/app/modules/scenes/editor/components/chrome/layers/Legend.vue
+  h_46be6e61f3d9dd 1-156
+assets/app/modules/scenes/exploration/components/ExplorationToolbar.vue
+  h_46be6e61f3d9dd 1-68
+assets/app/modules/scenes/exploration/components/ExplorationCanvas.vue
+  h_46be6e61f3d9dd 5-13
+assets/app/modules/scenes/editor/components/panels/ElementPropertiesPanel.vue
+  h_46be6e61f3d9dd 1-106
+assets/app/modules/scenes/dashboard/SceneDashboard.vue
+  h_46be6e61f3d9dd 1-331
+assets/app/modules/scenes/editor/components/canvas/SceneCanvas.vue
+  h_46be6e61f3d9dd 4-17,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "05a081ed976b53314ae2953bd597c5da0850ee27",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
