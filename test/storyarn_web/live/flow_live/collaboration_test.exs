@@ -9,9 +9,6 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
   alias Storyarn.Collaboration
   alias Storyarn.Repo
 
-  # Extracts the name part of an email (before @), matching the collab_toast rendering
-  defp email_name(email), do: email |> String.split("@") |> List.first()
-
   # Simulates the FlowLoader JS hook: triggers the event + waits for start_async
   defp load_flow(view) do
     render_click(view, "load_flow_data", %{})
@@ -35,11 +32,12 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       load_flow(view)
 
       # Collaboration data is now passed as Vue props, not HTML data attributes
-      vue = LiveVue.Test.get_vue(view, name: "modules/flows/editor/FlowEditor")
+      vue = LiveVue.Test.get_vue(view, name: "modules/flows/editor/FlowSurface")
+      canvas = vue.props["surface"]["canvas"]
 
-      assert vue.props["user-id"] == user.id
-      assert is_binary(vue.props["user-color"])
-      assert vue.props["canvas-id"] == "flow-canvas-#{flow.id}"
+      assert canvas["userId"] == user.id
+      assert is_binary(canvas["userColor"])
+      assert canvas["canvasId"] == "flow-canvas-#{flow.id}"
     end
 
     test "acquires lock on node selection", %{conn: conn, user: user} do

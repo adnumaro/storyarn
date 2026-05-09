@@ -61,6 +61,12 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
     render_async(view, 2000)
   end
 
+  defp debug_panel(view) do
+    view
+    |> LiveVue.Test.get_vue(name: "modules/flows/editor/FlowPanels")
+    |> then(& &1.props["panels"]["debug"])
+  end
+
   # ===========================================================================
   # handle_debug_step/1 — normal stepping
   # ===========================================================================
@@ -1187,9 +1193,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       # Step once
       render_click(view, "debug_step", %{})
 
-      # Verify debug panel is visible
-      html = render(view)
-      assert html =~ "debug-panel"
+      assert debug_panel(view)["open"] == true
     end
 
     test "debug_start + debug_step + debug_step_back steps back", %{
@@ -1209,9 +1213,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       render_click(view, "debug_step", %{})
       render_click(view, "debug_step_back", %{})
 
-      html = render(view)
-      assert html =~ "debug-panel"
-      assert html =~ "Step"
+      debug = debug_panel(view)
+      assert debug["open"] == true
+      assert debug["state"]
     end
 
     test "debug_play enables auto-play and debug_pause stops it", %{
@@ -1230,13 +1234,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       render_click(view, "debug_start", %{})
       render_click(view, "debug_play", %{})
 
-      vue = LiveVue.Test.get_vue(view, name: "modules/flows/editor/components/panels/FlowDebugPanel")
-      assert vue.props["controls"]["autoPlaying"] == true
+      vue = LiveVue.Test.get_vue(view, name: "modules/flows/editor/FlowPanels")
+      assert vue.props["panels"]["debug"]["controls"]["autoPlaying"] == true
 
       render_click(view, "debug_pause", %{})
 
-      vue = LiveVue.Test.get_vue(view, name: "modules/flows/editor/components/panels/FlowDebugPanel")
-      assert vue.props["controls"]["autoPlaying"] == false
+      vue = LiveVue.Test.get_vue(view, name: "modules/flows/editor/FlowPanels")
+      assert vue.props["panels"]["debug"]["controls"]["autoPlaying"] == false
     end
 
     test "debug_set_speed changes the speed display", %{
@@ -1255,8 +1259,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       render_click(view, "debug_start", %{})
       render_click(view, "debug_set_speed", %{"speed" => "1500"})
 
-      vue = LiveVue.Test.get_vue(view, name: "modules/flows/editor/components/panels/FlowDebugPanel")
-      assert vue.props["controls"]["speed"] == 1500
+      vue = LiveVue.Test.get_vue(view, name: "modules/flows/editor/FlowPanels")
+      assert vue.props["panels"]["debug"]["controls"]["speed"] == 1500
     end
 
     test "debug_stop closes the debug panel", %{
@@ -1274,13 +1278,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
       render_click(view, "debug_start", %{})
 
-      html = render(view)
-      assert html =~ "debug-panel"
+      assert debug_panel(view)["open"] == true
 
       render_click(view, "debug_stop", %{})
 
-      html = render(view)
-      refute html =~ "data-debug-active"
+      assert debug_panel(view)["open"] == false
     end
 
     test "auto_step timer fires and advances the debug state", %{
@@ -1303,10 +1305,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       # Wait for auto-step timer to fire
       Process.sleep(300)
       # Flush the timer message through the LiveView
-      html = render(view)
+      render(view)
 
       # The auto-step should have advanced, or finished
-      assert html =~ "debug-panel"
+      assert debug_panel(view)["state"]
     end
   end
 
@@ -1386,11 +1388,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       # Step to dialogue — should enter waiting_input with choices
       render_click(view, "debug_step", %{})
 
-      vue = LiveVue.Test.get_vue(view, name: "modules/flows/editor/components/panels/FlowDebugPanel")
-      assert vue.props["state"]["status"] == "waiting_input"
-      responses = vue.props["state"]["pending_choices"]
+      vue = LiveVue.Test.get_vue(view, name: "modules/flows/editor/FlowPanels")
+      assert vue.props["panels"]["debug"]["state"]["status"] == "waiting_input"
+      responses = vue.props["panels"]["debug"]["state"]["pending_choices"]
       assert is_list(responses)
-      assert length(responses) > 0
+      assert responses != []
     end
 
     test "choosing a response advances past dialogue", %{
@@ -1467,8 +1469,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
         render_click(view, "debug_step", %{})
       end
 
-      html = render(view)
-      assert html =~ "debug-panel"
+      render(view)
+      assert debug_panel(view)["open"] == true
     end
   end
 

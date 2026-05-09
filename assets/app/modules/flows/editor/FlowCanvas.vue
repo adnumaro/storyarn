@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
 import { useLive } from "@shared/composables/useLive";
-import { useFlowEditor } from "./composables/useFlowEditor";
+import { useFlowCanvas } from "./composables/useFlowCanvas";
 import FlowCursors from "./components/chrome/FlowCursors.vue";
 import FlowMinimapToggle from "./components/chrome/FlowMinimapToggle.vue";
 
@@ -29,7 +29,7 @@ const containerRef = ref<HTMLElement | null>(null);
 const live = useLive();
 let initialized = false;
 
-const { init, toolbarState, editor, area, setToolbarProps } = useFlowEditor({
+const { init, toolbarState, editor, area, setToolbarProps } = useFlowCanvas({
   pushEvent: live.pushEvent,
   handleEvent: live.handleEvent,
 });

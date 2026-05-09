@@ -1,5 +1,5 @@
 /**
- * Composable managing the Rete.js flow editor lifecycle.
+ * Composable managing the Rete.js flow canvas lifecycle.
  * Replaces the V1 FlowCanvas Phoenix hook -- Vue owns the editor.
  *
  * Handles: plugin setup, 3-phase node/connection loading, socket deferral,
@@ -51,7 +51,7 @@ import type {
 } from "../services/debug";
 import { createFlowMarquee } from "../services/flowMarquee";
 
-interface FlowEditorOpts {
+interface FlowCanvasOpts {
   pushEvent: (event: string, payload: Record<string, unknown>) => void;
   handleEvent: (event: string, callback: (data: Record<string, unknown>) => void) => void;
 }
@@ -112,7 +112,7 @@ interface NodeServerData {
   parent_id?: number | null;
 }
 
-export interface FlowEditorReturn {
+export interface FlowCanvasReturn {
   editor: ShallowRef<NodeEditor<FlowSchemes> | null>;
   area: ShallowRef<AreaPlugin<FlowSchemes, FlowAreaExtra> | null>;
   loading: Ref<boolean>;
@@ -126,7 +126,7 @@ export interface FlowEditorReturn {
   setToolbarProps(props: Record<string, unknown>): void;
 }
 
-export function useFlowEditor({ pushEvent, handleEvent }: FlowEditorOpts): FlowEditorReturn {
+export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowCanvasReturn {
   const editor = shallowRef<NodeEditor<FlowSchemes> | null>(null);
   const area = shallowRef<AreaPlugin<FlowSchemes, FlowAreaExtra> | null>(null);
   const loading = ref(true);

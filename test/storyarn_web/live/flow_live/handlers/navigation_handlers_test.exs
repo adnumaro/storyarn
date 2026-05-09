@@ -14,8 +14,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.NavigationHandlersTest do
   end
 
   defp editor_flow_id(view) do
-    vue = LiveVue.Test.get_vue(view, name: "modules/flows/editor/FlowEditor")
-    flow_data = vue.props["flow-data"]
+    vue = LiveVue.Test.get_vue(view, name: "modules/flows/editor/FlowSurface")
+    flow_data = vue.props["surface"]["canvas"]["flowData"]
     flow_data = if is_binary(flow_data), do: Jason.decode!(flow_data), else: flow_data
 
     flow_data["id"] || flow_data[:id]

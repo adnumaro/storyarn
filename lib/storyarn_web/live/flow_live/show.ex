@@ -111,165 +111,31 @@ defmodule StoryarnWeb.FlowLive.Show do
       <div class="h-full relative">
         <div class="absolute inset-0 flex flex-col">
           <div class="flex-1 relative">
-            <%!--
-              Wrapper with dynamic id forces a full remount when the flow
-              changes. LiveVue's `updated()` hook reuses the same Vue app
-              and just syncs props, which leaves stateful rete.js state
-              (nodes, connections, viewport, selection) carrying over
-              between flows. Changing the wrapper id makes morphdom
-              destroy and recreate the subtree → LiveVue tears down the
-              old Vue app and mounts a fresh one.
-
-              Guarded on @flow so the canvas only mounts once the flow
-              is loaded — mounting with a "new" placeholder id and then
-              remounting on flow arrival leaks LiveVue handleEvent
-              listeners (e.g. navigate_to_node) that would fire against
-              the destroyed rete area.
-            --%>
-            <div
+            <.vue
               :if={@flow}
-              id={"flow-editor-mount-#{@flow.id}"}
+              v-component="modules/flows/editor/FlowSurface"
+              v-socket={@socket}
+              id={"flow-surface-#{@flow.id}"}
               class="w-full h-full"
-            >
-              <.vue
-                v-component="modules/flows/editor/FlowEditor"
-                v-socket={@socket}
-                id={"flow-editor-#{@flow.id}"}
-                class="w-full h-full"
-                flow-data={if @loading, do: nil, else: Jason.encode!(@flow_data)}
-                variable-map={
-                  if @loading,
-                    do: nil,
-                    else: Jason.encode!(FormHelpers.sheets_map(@all_sheets, @gallery_by_sheet))
-                }
-                loading={@loading}
-                readonly={!@can_edit}
-                user-id={@current_scope.user.id}
-                user-color={Collaboration.user_color(@current_scope.user.id)}
-                canvas-id={"flow-canvas-#{@flow.id}"}
-                toolbar-data={Jason.encode!(toolbar_data(assigns))}
-              />
-            </div>
-
-            <%!-- Bottom dock (Vue) --%>
-            <.vue
-              :if={@flow}
-              v-component="modules/flows/editor/components/chrome/dock/FlowDock"
-              v-socket={@socket}
-              id="flow-dock"
-              can-edit={@can_edit}
-              compact={false}
-              debug-panel-open={@debug_panel_open}
-              workspace-slug={@workspace.slug}
-              project-slug={@project.slug}
-              flow-id={@flow.id}
-            />
-
-            <%!-- Version History Panel (Vue) --%>
-            <.vue
-              v-component="modules/flows/editor/components/panels/FlowVersionHistoryPanel"
-              v-socket={@socket}
-              id="flow-versions-panel"
-              open={@versions_panel_open}
-              versions={(@history_data && @history_data[:versions]) || []}
-              named-versions={(@history_data && @history_data[:named_versions]) || []}
-              auto-versions={(@history_data && @history_data[:auto_versions]) || []}
-              has-more={(@history_data && @history_data[:has_more]) || false}
-              can-name-version={(@history_data && @history_data[:can_name_version]) || false}
-              current-version-id={@history_data && @history_data[:current_version_id]}
-              can-edit={@can_edit}
-              loading={@versions_panel_open && is_nil(@history_data)}
+              surface={flow_surface_props(assigns)}
             />
           </div>
 
-          <%!-- Debug Panel (Vue) --%>
           <.vue
-            v-component="modules/flows/editor/components/panels/FlowDebugPanel"
+            :if={@flow}
+            v-component="modules/flows/editor/FlowPanels"
             v-socket={@socket}
-            id="flow-debug-panel"
-            open={@debug_panel_open && @debug_state != nil}
-            state={DebugSerializer.serialize(@debug_state)}
-            nodes={@debug_nodes}
-            controls={
-              %{
-                activeTab: @debug_active_tab,
-                autoPlaying: @debug_auto_playing,
-                speed: @debug_speed,
-                varFilter: @debug_var_filter,
-                varChangedOnly: @debug_var_changed_only,
-                flowName: @flow && @flow.name,
-                stepLimitReached: @debug_step_limit_reached
-              }
-            }
+            id="flow-panels"
+            panels={flow_panels_props(assigns)}
           />
         </div>
 
-        <%!-- Collaboration Toast (Vue) --%>
         <.vue
           v-component="modules/flows/editor/components/collab/CollabToast"
           v-socket={@socket}
           id="flow-collab-toast"
         />
       </div>
-
-      <%!-- Builder Sidebar (Vue) --%>
-      <.vue
-        v-component="modules/flows/editor/components/panels/FlowBuilderPanel"
-        v-socket={@socket}
-        id="flow-builder-panel"
-        open={@editing_mode == :builder && @selected_node != nil}
-        node-type={@selected_node && @selected_node.type}
-        node-id={@selected_node && @selected_node.id}
-        condition={@selected_node && @selected_node.data["condition"]}
-        assignments={@selected_node && (@selected_node.data["assignments"] || [])}
-        switch-mode={@selected_node && @selected_node.data["switch_mode"] == true}
-        project-variables={Jason.encode!(@project_variables)}
-        can-edit={@can_edit}
-      />
-
-      <%!-- Dialogue node editor sidebar (Vue) — single typed `data` payload
-           built by build_dialogue_panel_data/2 (camelCase). --%>
-      <.vue
-        v-component="modules/flows/editor/components/panels/FlowDialoguePanel"
-        v-socket={@socket}
-        id="flow-dialogue-panel"
-        open={@editing_mode == :dialogue_panel && @selected_node != nil}
-        data={@dialogue_panel_data}
-        can-edit={@can_edit}
-      />
-
-      <%!-- Dialogue fullscreen modal (Vue) — wraps the same body as the
-           sidebar inside a shadcn Dialog (max-w-3xl). Toggled via
-           open_dialogue_fullscreen / minimize_dialogue_fullscreen. --%>
-      <.vue
-        v-component="modules/flows/editor/components/panels/FlowDialogueFullscreenEditor"
-        v-socket={@socket}
-        id="flow-dialogue-fullscreen"
-        open={@editing_mode == :dialogue_fullscreen && @selected_node != nil}
-        data={@dialogue_panel_data}
-        can-edit={@can_edit}
-      />
-
-      <%!-- Sequence Config sidebar (Vue) --%>
-      <.vue
-        v-component="modules/flows/editor/components/panels/FlowSequenceConfigPanel"
-        v-socket={@socket}
-        id="flow-sequence-config-panel"
-        open={
-          @editing_mode == :sequence_config && @selected_node != nil &&
-            @selected_node.type == "sequence"
-        }
-        data={@sequence_panel_data}
-        can-edit={@can_edit}
-      />
-
-      <%!-- Dialogue Preview (Vue) --%>
-      <.vue
-        v-component="modules/flows/editor/components/panels/FlowPreview"
-        v-socket={@socket}
-        id="flow-preview"
-        {PreviewHandlers.serialize_preview_state(@socket)}
-      />
     </StoryarnWeb.Components.ProjectShell.project_shell>
     """
   end
@@ -279,7 +145,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     <Layouts.compare flash={@flash}>
       <div class="h-full relative">
         <.vue
-          v-component="modules/flows/editor/FlowEditor"
+          v-component="modules/flows/editor/FlowCanvas"
           v-socket={@socket}
           id={"flow-editor-compact-#{@flow.id}"}
           class="w-full h-full"
@@ -1696,6 +1562,138 @@ defmodule StoryarnWeb.FlowLive.Show do
       referencingFlows: assigns.referencing_flows
     }
   end
+
+  defp flow_surface_props(assigns) do
+    %{
+      canvas: flow_surface_canvas(assigns),
+      dock: flow_surface_dock(assigns)
+    }
+  end
+
+  defp flow_panels_props(assigns) do
+    %{
+      versions: flow_panels_versions(assigns),
+      debug: flow_panels_debug(assigns),
+      builder: flow_panels_builder(assigns),
+      dialogue: flow_panels_dialogue(assigns),
+      dialogueFullscreen: flow_panels_dialogue_fullscreen(assigns),
+      sequence: flow_panels_sequence(assigns),
+      preview: PreviewHandlers.serialize_preview_state(assigns.socket)
+    }
+  end
+
+  defp flow_surface_canvas(assigns) do
+    %{
+      key: "flow-editor-#{assigns.flow.id}",
+      flowData: if(assigns.loading, do: nil, else: Jason.encode!(assigns.flow_data)),
+      variableMap: flow_surface_variable_map(assigns),
+      loading: assigns.loading,
+      readonly: !assigns.can_edit,
+      userId: assigns.current_scope.user.id,
+      userColor: Collaboration.user_color(assigns.current_scope.user.id),
+      canvasId: "flow-canvas-#{assigns.flow.id}",
+      toolbarData: Jason.encode!(toolbar_data(assigns))
+    }
+  end
+
+  defp flow_surface_variable_map(%{loading: true}), do: nil
+
+  defp flow_surface_variable_map(assigns) do
+    assigns.all_sheets
+    |> FormHelpers.sheets_map(assigns.gallery_by_sheet)
+    |> Jason.encode!()
+  end
+
+  defp flow_surface_dock(assigns) do
+    %{
+      canEdit: assigns.can_edit,
+      compact: false,
+      debugPanelOpen: assigns.debug_panel_open,
+      workspaceSlug: assigns.workspace.slug,
+      projectSlug: assigns.project.slug,
+      flowId: assigns.flow.id
+    }
+  end
+
+  defp flow_panels_versions(assigns) do
+    history_data = assigns.history_data
+
+    %{
+      open: assigns.versions_panel_open,
+      versions: history_value(history_data, :versions, []),
+      namedVersions: history_value(history_data, :named_versions, []),
+      autoVersions: history_value(history_data, :auto_versions, []),
+      hasMore: history_value(history_data, :has_more, false),
+      canNameVersion: history_value(history_data, :can_name_version, false),
+      currentVersionId: history_value(history_data, :current_version_id, nil),
+      canEdit: assigns.can_edit,
+      loading: assigns.versions_panel_open && is_nil(history_data)
+    }
+  end
+
+  defp history_value(nil, _key, default), do: default
+  defp history_value(history_data, key, default), do: history_data[key] || default
+
+  defp flow_panels_debug(assigns) do
+    %{
+      open: assigns.debug_panel_open && assigns.debug_state != nil,
+      state: DebugSerializer.serialize(assigns.debug_state),
+      nodes: assigns.debug_nodes,
+      controls: %{
+        activeTab: assigns.debug_active_tab,
+        autoPlaying: assigns.debug_auto_playing,
+        speed: assigns.debug_speed,
+        varFilter: assigns.debug_var_filter,
+        varChangedOnly: assigns.debug_var_changed_only,
+        flowName: assigns.flow && assigns.flow.name,
+        stepLimitReached: assigns.debug_step_limit_reached
+      }
+    }
+  end
+
+  defp flow_panels_builder(assigns) do
+    selected_node = assigns.selected_node
+
+    %{
+      open: assigns.editing_mode == :builder && selected_node != nil,
+      nodeType: selected_node && selected_node.type,
+      nodeId: selected_node && selected_node.id,
+      condition: selected_node && selected_node.data["condition"],
+      assignments: selected_node && (selected_node.data["assignments"] || []),
+      switchMode: selected_node && selected_node.data["switch_mode"] == true,
+      projectVariables: Jason.encode!(assigns.project_variables),
+      canEdit: assigns.can_edit
+    }
+  end
+
+  defp flow_panels_dialogue(assigns) do
+    %{
+      open: assigns.editing_mode == :dialogue_panel && assigns.selected_node != nil,
+      data: assigns.dialogue_panel_data,
+      canEdit: assigns.can_edit
+    }
+  end
+
+  defp flow_panels_dialogue_fullscreen(assigns) do
+    %{
+      open: assigns.editing_mode == :dialogue_fullscreen && assigns.selected_node != nil,
+      data: assigns.dialogue_panel_data,
+      canEdit: assigns.can_edit
+    }
+  end
+
+  defp flow_panels_sequence(assigns) do
+    selected_node = assigns.selected_node
+
+    %{
+      open: sequence_config_open?(assigns.editing_mode, selected_node),
+      data: assigns.sequence_panel_data,
+      canEdit: assigns.can_edit
+    }
+  end
+
+  defp sequence_config_open?(:sequence_config, %{type: "sequence"}), do: true
+  defp sequence_config_open?(_, _), do: false
 
   defp maybe_restore_nav_history(socket) do
     user_id = socket.assigns.current_scope.user.id
