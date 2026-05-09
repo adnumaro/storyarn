@@ -89,7 +89,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       <:top_bar_extras_left>
         <.vue
           :if={@scene}
-          v-component="modules/scenes/components/SceneToolbar"
+          v-component="modules/scenes/editor/components/chrome/header/SceneToolbar"
           v-socket={@socket}
           id="scene-toolbar"
           can-edit={@can_edit}
@@ -98,7 +98,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         />
         <.vue
           :if={@scene}
-          v-component="modules/scenes/components/SearchPanel"
+          v-component="modules/scenes/editor/components/chrome/header/SearchPanel"
           v-socket={@socket}
           id="scene-search-panel"
           search-query={@search_query}
@@ -109,7 +109,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       <:top_bar_extras_right>
         <.vue
           :if={@scene}
-          v-component="modules/scenes/components/SceneActions"
+          v-component="modules/scenes/editor/components/chrome/header/SceneActions"
           v-socket={@socket}
           id="scene-actions"
           edit-mode={@edit_mode}
@@ -137,7 +137,7 @@ defmodule StoryarnWeb.SceneLive.Show do
             --%>
             <div id={"scene-canvas-mount-#{@scene.id}"} class="w-full h-full">
               <.vue
-                v-component="modules/scenes/components/SceneCanvas"
+                v-component="modules/scenes/editor/components/canvas/SceneCanvas"
                 v-socket={@socket}
                 id={"scene-canvas-#{@scene.id}"}
                 class="w-full h-full"
@@ -238,7 +238,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
           <%!-- Version History Sidebar (Vue) --%>
           <.vue
-            v-component="modules/scenes/components/VersionHistoryPanel"
+            v-component="modules/scenes/editor/components/panels/VersionHistoryPanel"
             v-socket={@socket}
             id="scene-versions-panel"
             open={@right_panel == :versions}
@@ -255,7 +255,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           <%!-- Bottom dock (edit mode only) --%>
           <.vue
             :if={@edit_mode}
-            v-component="modules/scenes/components/SceneDock"
+            v-component="modules/scenes/editor/components/chrome/dock/SceneDock"
             v-socket={@socket}
             id="scene-dock"
             active-tool={to_string(@active_tool)}
@@ -271,7 +271,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           <%!-- Bottom-right: layers + legend --%>
           <div class="absolute bottom-3 right-3 z-20 flex items-end gap-2">
             <.vue
-              v-component="modules/scenes/components/LayerListPopover"
+              v-component="modules/scenes/editor/components/chrome/layers/LayerListPopover"
               v-socket={@socket}
               id="scene-layers-popover"
               layers={prepare_layers_for_vue(@layers)}
@@ -281,7 +281,7 @@ defmodule StoryarnWeb.SceneLive.Show do
               popover-open={@layers_popover_open}
             />
             <.vue
-              v-component="modules/scenes/components/Legend"
+              v-component="modules/scenes/editor/components/chrome/layers/Legend"
               v-socket={@socket}
               id="scene-legend"
               legend-data={prepare_legend_groups(@pins, @zones, @connections)}
@@ -291,7 +291,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
           <%!-- Element Properties Sidebar (Vue) --%>
           <.vue
-            v-component="modules/scenes/components/ElementPropertiesPanel"
+            v-component="modules/scenes/editor/components/panels/ElementPropertiesPanel"
             v-socket={@socket}
             id="scene-element-panel-vue"
             selected-type={@selected_type}
@@ -306,7 +306,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
           <%!-- Scene Settings Sidebar (Vue Sidebar component) --%>
           <.vue
-            v-component="modules/scenes/components/SettingsPanel"
+            v-component="modules/scenes/editor/components/panels/SettingsPanel"
             v-socket={@socket}
             id="scene-settings-vue"
             scene={prepare_scene_for_vue(@scene)}
@@ -328,7 +328,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     <Layouts.compare flash={@flash}>
       <div class="h-full relative">
         <.vue
-          v-component="modules/scenes/components/SceneCanvas"
+          v-component="modules/scenes/editor/components/canvas/SceneCanvas"
           v-socket={@socket}
           id={"scene-canvas-compact-#{@scene.id}"}
           class="w-full h-full"
@@ -348,7 +348,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
         <.vue
           :if={@edit_mode}
-          v-component="modules/scenes/components/SceneDock"
+          v-component="modules/scenes/editor/components/chrome/dock/SceneDock"
           v-socket={@socket}
           id="scene-dock-compact"
           active-tool={to_string(@active_tool)}

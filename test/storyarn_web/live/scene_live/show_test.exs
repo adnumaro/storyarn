@@ -16,7 +16,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
   # whose keys match the V1 data-scene JSON shape (snake_case). This keeps all
   # existing test assertions valid while sourcing the data from V2 Vue props.
   defp extract_scene_data(view) do
-    vue = LiveVue.Test.get_vue(view, name: "modules/scenes/components/SceneCanvas")
+    vue = LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/canvas/SceneCanvas")
     scene = vue.props["scene-data"] || %{}
 
     scene
@@ -31,23 +31,23 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
   end
 
   defp get_scene_canvas_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/scenes/components/SceneCanvas")
+    LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/canvas/SceneCanvas")
   end
 
   defp get_element_panel_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/scenes/components/ElementPropertiesPanel")
+    LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/panels/ElementPropertiesPanel")
   end
 
   defp get_search_panel_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/scenes/components/SearchPanel")
+    LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/chrome/header/SearchPanel")
   end
 
   defp get_layer_list_props(view) do
-    LiveVue.Test.get_vue(view, name: "modules/scenes/components/LayerListPopover").props
+    LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/chrome/layers/LayerListPopover").props
   end
 
   defp get_legend_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/scenes/components/Legend")
+    LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/chrome/layers/Legend")
   end
 
   defp search_result_ids(view, type) do
@@ -88,7 +88,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         )
 
       vue = get_scene_canvas_vue(view)
-      assert vue.component == "modules/scenes/components/SceneCanvas"
+      assert vue.component == "modules/scenes/editor/components/canvas/SceneCanvas"
       assert vue.id == "scene-canvas-#{scene.id}"
     end
 
@@ -153,7 +153,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      toolbar = LiveVue.Test.get_vue(view, name: "modules/scenes/components/SceneToolbar")
+      toolbar = LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/chrome/header/SceneToolbar")
       assert toolbar.props["scene-name"] == "My Scene"
     end
 
@@ -167,7 +167,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      toolbar = LiveVue.Test.get_vue(view, name: "modules/scenes/components/SceneToolbar")
+      toolbar = LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/chrome/header/SceneToolbar")
       assert toolbar.props["scene-shortcut"] == scene.shortcut
     end
   end
@@ -241,7 +241,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         )
 
       vue = get_scene_canvas_vue(view)
-      assert vue.component == "modules/scenes/components/SceneCanvas"
+      assert vue.component == "modules/scenes/editor/components/canvas/SceneCanvas"
       assert vue.props["scene-data"]["name"] == "Viewable Scene"
       assert vue.props["can-edit"] == false
     end
@@ -260,7 +260,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      dock = LiveVue.Test.get_vue(view, name: "modules/scenes/components/SceneDock")
+      dock = LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/chrome/dock/SceneDock")
       assert dock.props["edit-mode"] == true
       assert dock.props["active-tool"] == "select"
     end
@@ -307,7 +307,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      actions = LiveVue.Test.get_vue(view, name: "modules/scenes/components/SceneActions")
+      actions = LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/chrome/header/SceneActions")
       assert actions.props["can-edit"] == true
       assert actions.props["edit-mode"] == true
     end
@@ -2939,7 +2939,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       render_click(view, "toggle_pin_icon_upload", %{})
       render_click(view, "toggle_pin_icon_upload", %{})
 
-      assert get_scene_canvas_vue(view).component == "modules/scenes/components/SceneCanvas"
+      assert get_scene_canvas_vue(view).component == "modules/scenes/editor/components/canvas/SceneCanvas"
     end
   end
 
@@ -3292,8 +3292,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       # The export buttons live in the SceneActions Vue component (client-side).
       # Verify both: the SceneActions component is mounted, and the server
       # handler accepts the export_scene event without crashing.
-      actions = LiveVue.Test.get_vue(view, name: "modules/scenes/components/SceneActions")
-      assert actions.component == "modules/scenes/components/SceneActions"
+      actions = LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/chrome/header/SceneActions")
+      assert actions.component == "modules/scenes/editor/components/chrome/header/SceneActions"
 
       render_click(view, "export_scene", %{"format" => "png"})
       render_click(view, "export_scene", %{"format" => "svg"})
@@ -3312,7 +3312,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         )
 
       # Export is available to viewers (read-only export path).
-      actions = LiveVue.Test.get_vue(view, name: "modules/scenes/components/SceneActions")
+      actions = LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/chrome/header/SceneActions")
       assert actions.props["can-edit"] == false
 
       render_click(view, "export_scene", %{"format" => "png"})

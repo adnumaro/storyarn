@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SidebarFrame from "@shell/SidebarFrame.vue";
-import SceneTreePanel from "../components/SceneTreePanel.vue";
+import SceneTreePanel from "../editor/components/chrome/tree/SceneTreePanel.vue";
 
 const {
   mainSidebarOpen = false,

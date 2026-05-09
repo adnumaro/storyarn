@@ -1,5 +1,5 @@
 import { computed, type ComputedRef, type Ref } from "vue";
-import type { LiveInterface } from "../../../../shared/composables/useLive";
+import type { LiveInterface } from "@shared/composables/useLive.ts";
 
 interface ExplorationActionData {
   [key: string]: string | number | boolean | null;
