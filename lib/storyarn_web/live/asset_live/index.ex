@@ -25,14 +25,14 @@ defmodule StoryarnWeb.AssetLive.Index do
     >
       <:top_bar_extras_right :if={@can_edit}>
         <.vue
-          v-component="components/forms/assets/AssetUploadButton"
+          v-component="live/assets/dashboard/HeaderActions"
           v-socket={@socket}
           id="asset-upload-button"
           uploading={@uploading}
         />
       </:top_bar_extras_right>
       <.vue
-        v-component="modules/assets/AssetIndex"
+        v-component="live/assets/dashboard/Dashboard"
         v-socket={@socket}
         id="asset-index"
         assets={serialize_assets(@assets)}
