@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import CollabToast from "../components/collab/CollabToast.vue";
-import BlockList from "../components/entities/blocks/BlockList.vue";
-import SheetTabs from "../components/panels/tabs/SheetTabs.vue";
+import CollabToast from "@modules/sheets/components/collab/CollabToast.vue";
+import BlockList from "@modules/sheets/components/entities/blocks/BlockList.vue";
+import SheetTabs from "@modules/sheets/components/panels/tabs/SheetTabs.vue";
 
 interface SheetSurfaceTabs {
   currentTab: string;

@@ -89,7 +89,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       <:top_bar_extras_left>
         <.vue
           :if={@scene}
-          v-component="modules/scenes/editor/SceneHeader"
+          v-component="live/scene/show/Header"
           v-socket={@socket}
           id="scene-header"
           header={scene_header_props(assigns)}
@@ -98,7 +98,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       <:top_bar_extras_right>
         <.vue
           :if={@scene}
-          v-component="modules/scenes/editor/SceneHeaderActions"
+          v-component="live/scene/show/HeaderActions"
           v-socket={@socket}
           id="scene-actions"
           edit-mode={@edit_mode}
@@ -115,7 +115,7 @@ defmodule StoryarnWeb.SceneLive.Show do
             }
           >
             <.vue
-              v-component="modules/scenes/editor/SceneSurface"
+              v-component="live/scene/show/Surface"
               v-socket={@socket}
               id={"scene-surface-#{@scene.id}"}
               class="w-full h-full"
@@ -201,7 +201,7 @@ defmodule StoryarnWeb.SceneLive.Show do
           </div>
 
           <.vue
-            v-component="modules/scenes/editor/ScenePanels"
+            v-component="live/scene/show/Panels"
             v-socket={@socket}
             id="scene-panels"
             panels={scene_panels_props(assigns)}

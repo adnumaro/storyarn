@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import SceneCanvas from "./components/canvas/SceneCanvas.vue";
-import SceneDock from "./components/chrome/dock/SceneDock.vue";
-import LayerListPopover from "./components/chrome/layers/LayerListPopover.vue";
-import Legend from "./components/chrome/layers/Legend.vue";
+import SceneCanvas from "@modules/scenes/editor/components/canvas/SceneCanvas.vue";
+import SceneDock from "@modules/scenes/editor/components/chrome/dock/SceneDock.vue";
+import LayerListPopover from "@modules/scenes/editor/components/chrome/layers/LayerListPopover.vue";
+import Legend from "@modules/scenes/editor/components/chrome/layers/Legend.vue";
 
 interface SceneSurfaceCanvas {
   key: string;
@@ -105,10 +105,7 @@ const { surface } = defineProps<{
       </div>
 
       <div id="scene-legend" class="contents">
-        <Legend
-          :legend-data="surface.legend.legendData"
-          :legend-open="surface.legend.legendOpen"
-        />
+        <Legend :legend-data="surface.legend.legendData" :legend-open="surface.legend.legendOpen" />
       </div>
     </div>
   </div>

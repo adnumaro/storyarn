@@ -64,7 +64,7 @@ defmodule StoryarnWeb.SheetsSidebarLive do
     ~H"""
     <div>
       <.vue
-        v-component="modules/sheets/navigation/SheetsSidebar"
+        v-component="live/sheet/sidebar/Sidebar"
         v-socket={@socket}
         id="shell-main-sidebar"
         main-sidebar-open={@main_sidebar_open}

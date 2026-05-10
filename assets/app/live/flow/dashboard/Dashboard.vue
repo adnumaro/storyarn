@@ -4,26 +4,28 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Box,
   ChevronLeft,
   ChevronRight,
-  FileText,
+  GitBranch,
   Info,
-  Layers,
-  Link,
+  MessageSquare,
   MoreHorizontal,
+  Star,
   TextCursorInput,
   Trash2,
-  Variable,
 } from "lucide-vue-next";
-import type { FunctionalComponent } from "vue";
+import type { Component } from "vue";
 import { computed } from "vue";
-import { Button } from "@components/ui/button/index.ts";
+import { useI18n } from "vue-i18n";
+import { Badge } from "@components/ui/badge";
+import { Button } from "@components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@components/ui/dropdown-menu/index.ts";
+} from "@components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -31,19 +33,56 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@components/ui/table/index.ts";
-import { useLive } from "@shared/composables/useLive.ts";
-import { formatRelativeTime } from "@shared/utils/date-utils.ts";
-import { useI18n } from "vue-i18n";
-import type {
-  DashboardColumn,
-  DashboardIssue,
-  DashboardPagination,
-  DashboardRow,
-  DashboardStats,
-  StatCard,
-} from "../types";
-import DashboardContent from "../../../shell/DashboardContent.vue";
+} from "@components/ui/table";
+import { useLive } from "@shared/composables/useLive";
+import { formatRelativeTime } from "@shared/utils/date-utils";
+import DashboardContent from "@shell/DashboardContent.vue";
+
+interface FlowStats {
+  flow_count: number;
+  node_count: number;
+  dialogue_count: number;
+  word_count: number;
+}
+
+interface FlowTableRow {
+  id: number | string;
+  name: string;
+  is_main: boolean;
+  node_count: number;
+  dialogue_count: number;
+  condition_count: number;
+  word_count: number;
+  updated_at: string;
+}
+
+interface FlowPagination {
+  sortBy: string;
+  sortDir: "asc" | "desc";
+  page: number;
+  totalPages: number;
+  total: number;
+}
+
+interface FlowIssue {
+  href: string;
+  message: string;
+  severity: "warning" | "info";
+}
+
+interface StatCard {
+  icon: Component;
+  label: string;
+  value: number;
+  color: string;
+}
+
+interface TableColumn {
+  key: string;
+  label: string;
+  align: "left" | "right";
+  hiddenClass?: string;
+}
 
 const {
   stats = null,
@@ -54,36 +93,40 @@ const {
   workspaceSlug,
   projectSlug,
 } = defineProps<{
-  stats?: DashboardStats | null;
-  tableData?: DashboardRow[];
-  pagination?: DashboardPagination;
-  issues?: DashboardIssue[];
-  canEdit?: boolean;
+  stats: FlowStats | null;
+  tableData: FlowTableRow[];
+  pagination: FlowPagination;
+  issues: FlowIssue[];
+  canEdit: boolean;
   workspaceSlug: string;
   projectSlug: string;
 }>();
 
-const live = useLive();
 const { t } = useI18n();
+const live = useLive();
 
-function sheetHref(row: DashboardRow): string {
-  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets/${row.id}`;
+function flowHref(row: FlowTableRow): string {
+  return `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${row.id}`;
 }
 
-function sortBy(column: string): void {
-  live.pushEvent("sort_sheets", { column });
+function handleSort(column: string): void {
+  live.pushEvent("sort_flows", { column });
 }
 
 function goToPage(page: number): void {
-  live.pushEvent("page_sheets", { page });
+  live.pushEvent("page_flows", { page });
+}
+
+function setMain(id: number | string): void {
+  live.pushEvent("set_main", { id });
 }
 
 function requestDelete(id: number | string): void {
-  live.pushEvent("set_pending_delete_sheet", { id });
-  live.pushEvent("confirm_delete_sheet", {});
+  live.pushEvent("set_pending_delete", { id });
+  live.pushEvent("confirm_delete", {});
 }
 
-function sortIcon(column: string): FunctionalComponent {
+function sortIcon(column: string): Component {
   if (pagination.sortBy !== column) {
     return ArrowUpDown;
   }
@@ -96,48 +139,63 @@ const statCards = computed<StatCard[]>(() => {
   }
   return [
     {
-      icon: FileText,
-      label: t("sheets.dashboard.stats.sheets"),
-      value: stats.sheet_count,
+      icon: GitBranch,
+      label: t("flows.dashboard.title"),
+      value: stats.flow_count,
       color: "text-primary",
     },
     {
-      icon: Layers,
-      label: t("sheets.dashboard.stats.blocks"),
-      value: stats.block_count,
+      icon: Box,
+      label: t("flows.dashboard.columns.nodes"),
+      value: stats.node_count,
       color: "text-blue-400",
     },
     {
-      icon: Variable,
-      label: t("sheets.dashboard.stats.variables"),
-      value: stats.variable_count,
+      icon: MessageSquare,
+      label: t("flows.dashboard.columns.dialogue"),
+      value: stats.dialogue_count,
       color: "text-violet-400",
     },
     {
-      icon: Link,
-      label: t("sheets.dashboard.stats.vars_in_use"),
-      value: stats.variables_in_use,
-      color: "text-amber-400",
-    },
-    {
       icon: TextCursorInput,
-      label: t("sheets.dashboard.stats.words"),
+      label: t("flows.dashboard.columns.words"),
       value: stats.word_count,
       color: "text-emerald-400",
     },
   ];
 });
 
-const columns = computed<DashboardColumn[]>(() => [
-  { key: "name", label: t("sheets.dashboard.columns.name"), align: "left" },
-  { key: "block_count", label: t("sheets.dashboard.columns.blocks"), align: "right" },
-  { key: "variable_count", label: t("sheets.dashboard.columns.variables"), align: "right" },
-  { key: "word_count", label: t("sheets.dashboard.columns.words"), align: "right" },
-  { key: "updated_at", label: t("sheets.dashboard.columns.modified"), align: "right" },
+const columns = computed<TableColumn[]>(() => [
+  { key: "name", label: t("flows.dashboard.columns.name"), align: "left" },
+  { key: "node_count", label: t("flows.dashboard.columns.nodes"), align: "right" },
+  {
+    key: "dialogue_count",
+    label: t("flows.dashboard.columns.dialogue"),
+    align: "right",
+    hiddenClass: "hidden sm:table-cell",
+  },
+  {
+    key: "condition_count",
+    label: t("flows.dashboard.columns.conditions"),
+    align: "right",
+    hiddenClass: "hidden sm:table-cell",
+  },
+  {
+    key: "word_count",
+    label: t("flows.dashboard.columns.words"),
+    align: "right",
+    hiddenClass: "hidden md:table-cell",
+  },
+  {
+    key: "updated_at",
+    label: t("flows.dashboard.columns.modified"),
+    align: "right",
+    hiddenClass: "hidden md:table-cell",
+  },
 ]);
 
-const pages = computed<number[]>(() => {
-  const result: number[] = [];
+const pages = computed(() => {
+  const result = [];
   for (let i = 1; i <= pagination.totalPages; i++) {
     result.push(i);
   }
@@ -147,15 +205,15 @@ const pages = computed<number[]>(() => {
 
 <template>
   <DashboardContent
-    :title="$t('sheets.dashboard.title')"
-    :subtitle="$t('sheets.dashboard.subtitle')"
+    :title="$t('flows.dashboard.title')"
+    :subtitle="$t('flows.dashboard.subtitle')"
     :loading="!stats"
     :is-empty="pagination.total === 0 && !stats"
-    :empty-icon="FileText"
-    :empty-message="$t('sheets.dashboard.empty')"
+    :empty-message="$t('flows.dashboard.empty')"
+    :empty-icon="GitBranch"
   >
     <!-- Stats row -->
-    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
       <div
         v-for="stat in statCards"
         :key="stat.label"
@@ -171,7 +229,7 @@ const pages = computed<number[]>(() => {
 
     <!-- Table section -->
     <div class="space-y-2">
-      <h2 class="text-sm font-medium">{{ $t("sheets.dashboard.all_sheets") }}</h2>
+      <h2 class="text-sm font-medium">{{ $t("flows.dashboard.all_flows") }}</h2>
       <div class="rounded-lg border border-border bg-surface overflow-auto max-h-[60vh]">
         <Table>
           <TableHeader>
@@ -182,13 +240,14 @@ const pages = computed<number[]>(() => {
                 :class="[
                   'font-medium text-xs text-muted-foreground uppercase',
                   col.align === 'right' ? 'text-right' : 'text-left',
+                  col.hiddenClass,
                 ]"
               >
                 <button
                   type="button"
                   class="inline-flex items-center gap-1 hover:text-foreground transition-colors"
                   :class="col.align === 'right' && 'ml-auto'"
-                  @click="sortBy(col.key)"
+                  @click="handleSort(col.key)"
                 >
                   {{ col.label }}
                   <component :is="sortIcon(col.key)" class="size-3" />
@@ -200,14 +259,29 @@ const pages = computed<number[]>(() => {
           <TableBody>
             <TableRow v-for="row in tableData" :key="row.id">
               <TableCell>
-                <a :href="sheetHref(row)" class="font-medium hover:underline">
+                <a
+                  :href="flowHref(row)"
+                  data-phx-link="patch"
+                  data-phx-link-state="push"
+                  class="inline-flex items-center gap-2 font-medium hover:underline"
+                >
                   {{ row.name }}
+                  <Badge v-if="row.is_main" variant="default" class="text-[10px] px-1.5 py-0">
+                    {{ $t("flows.dashboard.main") }}
+                  </Badge>
                 </a>
               </TableCell>
-              <TableCell class="text-right tabular-nums">{{ row.block_count }}</TableCell>
-              <TableCell class="text-right tabular-nums">{{ row.variable_count }}</TableCell>
-              <TableCell class="text-right tabular-nums">{{ row.word_count }}</TableCell>
-              <TableCell class="text-right text-muted-foreground text-xs">
+              <TableCell class="text-right tabular-nums">{{ row.node_count }}</TableCell>
+              <TableCell class="text-right tabular-nums hidden sm:table-cell"
+                >{{ row.dialogue_count }}
+              </TableCell>
+              <TableCell class="text-right tabular-nums hidden sm:table-cell"
+                >{{ row.condition_count }}
+              </TableCell>
+              <TableCell class="text-right tabular-nums hidden md:table-cell"
+                >{{ row.word_count }}
+              </TableCell>
+              <TableCell class="text-right text-muted-foreground text-xs hidden md:table-cell">
                 {{ formatRelativeTime(row.updated_at) }}
               </TableCell>
               <TableCell v-if="canEdit" class="text-right w-10">
@@ -217,13 +291,21 @@ const pages = computed<number[]>(() => {
                       <MoreHorizontal class="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" class="">
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      v-if="!row.is_main"
+                      class="gap-2 text-xs"
+                      @select="setMain(row.id)"
+                    >
+                      <Star class="size-3.5" />
+                      {{ $t("flows.dashboard.set_main") }}
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       class="text-destructive gap-2 text-xs"
                       @select="requestDelete(row.id)"
                     >
                       <Trash2 class="size-3.5" />
-                      {{ $t("sheets.dashboard.delete") }}
+                      {{ $t("flows.dashboard.delete") }}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -238,7 +320,7 @@ const pages = computed<number[]>(() => {
         v-if="pagination.totalPages > 1"
         class="flex items-center justify-between text-xs text-muted-foreground pt-1"
       >
-        <span>{{ $t("sheets.dashboard.total_sheets", pagination.total) }}</span>
+        <span>{{ pagination.total }} flows</span>
         <div class="flex items-center gap-1">
           <Button
             variant="ghost"
@@ -274,7 +356,7 @@ const pages = computed<number[]>(() => {
 
     <!-- Issues -->
     <div v-if="issues.length > 0" class="space-y-2">
-      <h2 class="text-sm font-medium">{{ $t("sheets.dashboard.issues") }}</h2>
+      <h2 class="text-sm font-medium">{{ $t("flows.dashboard.issues") }}</h2>
       <div class="rounded-lg border border-border divide-y divide-border">
         <a
           v-for="(issue, i) in issues"

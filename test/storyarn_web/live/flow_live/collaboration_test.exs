@@ -32,7 +32,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       load_flow(view)
 
       # Collaboration data is now passed as Vue props, not HTML data attributes
-      vue = LiveVue.Test.get_vue(view, name: "modules/flows/editor/FlowSurface")
+      vue = LiveVue.Test.get_vue(view, name: "live/flow/show/Surface")
       canvas = vue.props["surface"]["canvas"]
 
       assert canvas["userId"] == user.id

@@ -154,7 +154,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       class="max-w-4xl mx-auto bg-surface border border-border rounded-2xl p-6 shadow-sm"
     >
       <.vue
-        v-component="modules/sheets/editor/SheetHeader"
+        v-component="live/sheet/show/Header"
         v-socket={@socket}
         id="sheet-header"
         sheet={prepare_sheet_for_vue(@sheet)}
@@ -163,13 +163,13 @@ defmodule StoryarnWeb.SheetLive.Show do
       />
       <div class="pb-6">
         <.vue
-          v-component="modules/sheets/editor/SheetSurface"
+          v-component="live/sheet/show/Surface"
           v-socket={@socket}
           id="sheet-surface"
           surface={sheet_surface_props(assigns)}
         />
         <.vue
-          v-component="modules/sheets/editor/SheetPanels"
+          v-component="live/sheet/show/Panels"
           v-socket={@socket}
           id="sheet-panels"
           panels={sheet_panels_props(assigns)}

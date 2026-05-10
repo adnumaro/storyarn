@@ -48,7 +48,7 @@ defmodule StoryarnWeb.FlowLive.Index do
       }
     >
       <.vue
-        v-component="modules/flows/dashboard/FlowDashboard"
+        v-component="live/flow/dashboard/Dashboard"
         v-socket={@socket}
         id="flow-dashboard"
         stats={@dashboard_stats}

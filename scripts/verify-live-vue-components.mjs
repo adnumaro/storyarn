@@ -14,6 +14,7 @@ const testRoot = path.join(repoRoot, "test");
 const sourceExtensions = new Set([".ex", ".exs", ".heex", ".leex"]);
 const componentAttributePattern = /v-component\s*=\s*(["'])([^"']+)\1/g;
 const liveVueTestPattern = /LiveVue\.Test\.get_vue\s*\([^)]*\bname:\s*(["'])([^"']+)\1/g;
+const rootLiveBoundaryModules = new Set(["flows", "scenes", "sheets"]);
 const privateModuleSegments = new Set([
   "canvas",
   "chrome",
@@ -58,16 +59,30 @@ function lineNumberAt(source, index) {
   return source.slice(0, index).split("\n").length;
 }
 
-function componentParts(componentPath) {
+function rawComponentParts(componentPath) {
   return componentPath
     .replace(/\.vue$/, "")
     .split("/")
-    .filter((part) => part !== "index" && part.length > 0);
+    .filter((part) => part.length > 0);
+}
+
+function requestedComponentParts(componentPath) {
+  return rawComponentParts(componentPath).filter((part) => part !== "index");
+}
+
+function availableComponentParts(componentPath) {
+  const parts = rawComponentParts(componentPath);
+
+  if (parts.at(-1) === "index") {
+    return parts.slice(0, -1);
+  }
+
+  return parts;
 }
 
 function suffixMatches(componentPath, requestedName) {
-  const availableParts = componentParts(componentPath);
-  const requestedParts = componentParts(requestedName);
+  const availableParts = availableComponentParts(componentPath);
+  const requestedParts = requestedComponentParts(requestedName);
 
   if (requestedParts.length > availableParts.length) {
     return false;
@@ -80,14 +95,24 @@ function suffixMatches(componentPath, requestedName) {
 }
 
 function publicBoundaryWarning(componentPath) {
-  const parts = componentParts(componentPath);
+  const parts = availableComponentParts(componentPath);
   const [root] = parts;
 
   if (root === "shell") {
     return null;
   }
 
+  if (root === "live") {
+    return null;
+  }
+
   if (root === "modules") {
+    const [, moduleName] = parts;
+
+    if (rootLiveBoundaryModules.has(moduleName)) {
+      return `module "${moduleName}" public boundaries must live under "assets/app/live/"`;
+    }
+
     const privateSegment = parts.find(
       (part, index) => index > 1 && privateModuleSegments.has(part),
     );
@@ -169,11 +194,13 @@ const failures = [];
 const warnings = [];
 
 for (const reference of references) {
-  const exactMatches = components.filter((component) => component.componentPath === reference.name);
+  const matches = components.filter((component) =>
+    suffixMatches(component.componentPath, reference.name),
+  );
 
-  if (exactMatches.length === 1) {
+  if (matches.length === 1) {
     if (reference.kind === "v-component") {
-      const warning = publicBoundaryWarning(exactMatches[0].componentPath);
+      const warning = publicBoundaryWarning(matches[0].componentPath);
 
       if (warning) {
         warnings.push(
@@ -181,22 +208,13 @@ for (const reference of references) {
         );
       }
     }
+    if (matches[0].componentPath !== reference.name) {
+      failures.push(
+        `${formatLocation(reference)} non-canonical component "${reference.name}" (use "${matches[0].componentPath}")`,
+      );
+    }
     continue;
   }
-
-  if (exactMatches.length > 1) {
-    failures.push(
-      [
-        `${formatLocation(reference)} ambiguous component "${reference.name}"`,
-        ...exactMatches.map((match) => `  - ${match.componentPath}`),
-      ].join("\n"),
-    );
-    continue;
-  }
-
-  const matches = components.filter((component) =>
-    suffixMatches(component.componentPath, reference.name),
-  );
 
   if (matches.length === 0) {
     failures.push(`${formatLocation(reference)} missing component "${reference.name}"`);
@@ -207,10 +225,6 @@ for (const reference of references) {
         ...matches.map((match) => `  - ${match.componentPath}`),
       ].join("\n"),
     );
-  } else {
-    failures.push(
-      `${formatLocation(reference)} non-canonical component "${reference.name}" (use "${matches[0].componentPath}")`,
-    );
   }
 }
 
@@ -218,7 +232,7 @@ if (warnings.length > 0) {
   console.warn(`LiveVue public boundary warning(s) (${warnings.length}):\n`);
   console.warn(warnings.join("\n"));
   console.warn(
-    "\nElixir should render shell/*, modules/<domain>/<area>/<Boundary>, or an explicit global public boundary. Private Vue internals should be composed inside those boundaries.\n",
+    "\nElixir should render shell/*, live/<domain>/<live-view>/<Boundary>, or an explicit global public boundary. Private Vue internals should be composed inside those boundaries.\n",
   );
 }
 

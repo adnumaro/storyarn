@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
 import { useLive } from "@shared/composables/useLive";
-import { useFlowCanvas } from "./composables/useFlowCanvas";
-import FlowCursors from "./components/chrome/FlowCursors.vue";
-import FlowMinimapToggle from "./components/chrome/FlowMinimapToggle.vue";
+import { useFlowCanvas } from "@modules/flows/editor/composables/useFlowCanvas";
+import FlowCursors from "@modules/flows/editor/components/chrome/FlowCursors.vue";
+import FlowMinimapToggle from "@modules/flows/editor/components/chrome/FlowMinimapToggle.vue";
 
 const {
   flowData = null,

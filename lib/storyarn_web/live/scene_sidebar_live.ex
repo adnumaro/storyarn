@@ -63,7 +63,7 @@ defmodule StoryarnWeb.SceneSidebarLive do
     ~H"""
     <div>
       <.vue
-        v-component="modules/scenes/navigation/ScenesSidebar"
+        v-component="live/scene/sidebar/Sidebar"
         v-socket={@socket}
         id="shell-main-sidebar"
         main-sidebar-open={@main_sidebar_open}

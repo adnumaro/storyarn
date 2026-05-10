@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import ElementPropertiesPanel from "./components/panels/ElementPropertiesPanel.vue";
-import SettingsPanel from "./components/panels/SettingsPanel.vue";
-import VersionHistoryPanel from "./components/panels/VersionHistoryPanel.vue";
+import ElementPropertiesPanel from "@modules/scenes/editor/components/panels/ElementPropertiesPanel.vue";
+import SettingsPanel from "@modules/scenes/editor/components/panels/SettingsPanel.vue";
+import VersionHistoryPanel from "@modules/scenes/editor/components/panels/VersionHistoryPanel.vue";
 
 interface SceneVersionsPanel {
   open: boolean;

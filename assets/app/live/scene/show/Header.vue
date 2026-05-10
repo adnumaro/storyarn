@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import SceneToolbar from "./components/chrome/header/SceneToolbar.vue";
-import SearchPanel from "./components/chrome/header/SearchPanel.vue";
+import SceneToolbar from "@modules/scenes/editor/components/chrome/header/SceneToolbar.vue";
+import SearchPanel from "@modules/scenes/editor/components/chrome/header/SearchPanel.vue";
 
 interface SearchResult {
   id: number | string;

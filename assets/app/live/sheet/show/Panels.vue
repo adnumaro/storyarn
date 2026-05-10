@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import AudioTab from "../components/panels/tabs/AudioTab.vue";
-import HistoryTab from "../components/panels/tabs/HistoryTab.vue";
-import ReferencesTab from "../components/panels/tabs/ReferencesTab.vue";
+import AudioTab from "@modules/sheets/components/panels/tabs/AudioTab.vue";
+import HistoryTab from "@modules/sheets/components/panels/tabs/HistoryTab.vue";
+import ReferencesTab from "@modules/sheets/components/panels/tabs/ReferencesTab.vue";
 
 interface SheetReferencesPanel {
   variableUsage: unknown[];

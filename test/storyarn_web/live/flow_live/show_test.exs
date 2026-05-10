@@ -23,9 +23,9 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
 
       render_async(view, 2000)
 
-      surface = LiveVue.Test.get_vue(view, name: "modules/flows/editor/FlowSurface")
-      panels = LiveVue.Test.get_vue(view, name: "modules/flows/editor/FlowPanels")
-      header = LiveVue.Test.get_vue(view, name: "modules/flows/editor/FlowHeader")
+      surface = LiveVue.Test.get_vue(view, name: "live/flow/show/Surface")
+      panels = LiveVue.Test.get_vue(view, name: "live/flow/show/Panels")
+      header = LiveVue.Test.get_vue(view, name: "live/flow/show/Header")
 
       assert header.props["flow-name"] == "Canonical Flow"
       assert surface.props["surface"]["canvas"]["canvasId"] == "flow-canvas-#{flow.id}"

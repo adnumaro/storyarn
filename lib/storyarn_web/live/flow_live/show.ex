@@ -83,7 +83,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       <:top_bar_extras_left>
         <.vue
           :if={@flow}
-          v-component="modules/flows/editor/FlowHeader"
+          v-component="live/flow/show/Header"
           v-socket={@socket}
           id="flow-header"
           flow-name={@flow.name}
@@ -113,7 +113,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           <div class="flex-1 relative">
             <.vue
               :if={@flow}
-              v-component="modules/flows/editor/FlowSurface"
+              v-component="live/flow/show/Surface"
               v-socket={@socket}
               id={"flow-surface-#{@flow.id}"}
               class="w-full h-full"
@@ -123,7 +123,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
           <.vue
             :if={@flow}
-            v-component="modules/flows/editor/FlowPanels"
+            v-component="live/flow/show/Panels"
             v-socket={@socket}
             id="flow-panels"
             panels={flow_panels_props(assigns)}
@@ -139,7 +139,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     <Layouts.compare flash={@flash}>
       <div class="h-full relative">
         <.vue
-          v-component="modules/flows/editor/FlowCanvas"
+          v-component="live/flow/show/Canvas"
           v-socket={@socket}
           id={"flow-editor-compact-#{@flow.id}"}
           class="w-full h-full"

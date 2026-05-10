@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { toRef } from "vue";
 import { useLive } from "@shared/composables/useLive.ts";
-import CollectionModal from "./components/CollectionModal.vue";
-import { useExplorationKeyboard, type FlowSlide } from "./composables/useExplorationKeyboard";
-import ExplorationCanvas from "./components/ExplorationCanvas.vue";
-import ExplorationToolbar from "./components/ExplorationToolbar.vue";
-import FlowOverlay from "./components/FlowOverlay.vue";
-import SessionPromptModal from "./components/SessionPromptModal.vue";
+import CollectionModal from "@modules/scenes/exploration/components/CollectionModal.vue";
+import {
+  useExplorationKeyboard,
+  type FlowSlide,
+} from "@modules/scenes/exploration/composables/useExplorationKeyboard";
+import ExplorationCanvas from "@modules/scenes/exploration/components/ExplorationCanvas.vue";
+import ExplorationToolbar from "@modules/scenes/exploration/components/ExplorationToolbar.vue";
+import FlowOverlay from "@modules/scenes/exploration/components/FlowOverlay.vue";
+import SessionPromptModal from "@modules/scenes/exploration/components/SessionPromptModal.vue";
 
 interface FlowState {
   active: boolean;

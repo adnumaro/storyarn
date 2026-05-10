@@ -15,13 +15,13 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
 
   defp get_sheet_surface_props(view) do
     view
-    |> LiveVue.Test.get_vue(name: "modules/sheets/editor/SheetSurface")
+    |> LiveVue.Test.get_vue(name: "live/sheet/show/Surface")
     |> then(& &1.props["surface"])
   end
 
   defp get_sheet_panels_props(view) do
     view
-    |> LiveVue.Test.get_vue(name: "modules/sheets/editor/SheetPanels")
+    |> LiveVue.Test.get_vue(name: "live/sheet/show/Panels")
     |> then(& &1.props["panels"])
   end
 

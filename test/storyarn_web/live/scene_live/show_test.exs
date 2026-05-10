@@ -32,19 +32,19 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
   defp get_scene_header_props(view) do
     view
-    |> LiveVue.Test.get_vue(name: "modules/scenes/editor/SceneHeader")
+    |> LiveVue.Test.get_vue(name: "live/scene/show/Header")
     |> then(& &1.props["header"])
   end
 
   defp get_scene_surface_props(view) do
     view
-    |> LiveVue.Test.get_vue(name: "modules/scenes/editor/SceneSurface")
+    |> LiveVue.Test.get_vue(name: "live/scene/show/Surface")
     |> then(& &1.props["surface"])
   end
 
   defp get_scene_panels_props(view) do
     view
-    |> LiveVue.Test.get_vue(name: "modules/scenes/editor/ScenePanels")
+    |> LiveVue.Test.get_vue(name: "live/scene/show/Panels")
     |> then(& &1.props["panels"])
   end
 
@@ -399,7 +399,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      actions = LiveVue.Test.get_vue(view, name: "modules/scenes/editor/SceneHeaderActions")
+      actions = LiveVue.Test.get_vue(view, name: "live/scene/show/HeaderActions")
       assert actions.props["can-edit"] == true
       assert actions.props["edit-mode"] == true
     end
@@ -3384,8 +3384,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       # The export buttons live in the SceneHeaderActions Vue component (client-side).
       # Verify both: the SceneHeaderActions component is mounted, and the server
       # handler accepts the export_scene event without crashing.
-      actions = LiveVue.Test.get_vue(view, name: "modules/scenes/editor/SceneHeaderActions")
-      assert actions.component == "modules/scenes/editor/SceneHeaderActions"
+      actions = LiveVue.Test.get_vue(view, name: "live/scene/show/HeaderActions")
+      assert actions.component == "live/scene/show/HeaderActions"
 
       render_click(view, "export_scene", %{"format" => "png"})
       render_click(view, "export_scene", %{"format" => "svg"})
@@ -3404,7 +3404,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         )
 
       # Export is available to viewers (read-only export path).
-      actions = LiveVue.Test.get_vue(view, name: "modules/scenes/editor/SceneHeaderActions")
+      actions = LiveVue.Test.get_vue(view, name: "live/scene/show/HeaderActions")
       assert actions.props["can-edit"] == false
 
       render_click(view, "export_scene", %{"format" => "png"})

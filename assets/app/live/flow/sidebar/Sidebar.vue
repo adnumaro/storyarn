@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SidebarFrame from "@shell/SidebarFrame.vue";
-import FlowTree from "../editor/components/chrome/tree/FlowTree.vue";
+import FlowTree from "@modules/flows/editor/components/chrome/tree/FlowTree.vue";
 
 const {
   mainSidebarOpen = false,

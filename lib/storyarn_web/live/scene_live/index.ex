@@ -49,7 +49,7 @@ defmodule StoryarnWeb.SceneLive.Index do
       }
     >
       <.vue
-        v-component="modules/scenes/dashboard/SceneDashboard"
+        v-component="live/scene/dashboard/Dashboard"
         v-socket={@socket}
         id="scene-dashboard"
         stats={@dashboard_stats}

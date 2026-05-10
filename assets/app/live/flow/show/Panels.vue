@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import FlowBuilderPanel from "./components/panels/FlowBuilderPanel.vue";
-import FlowDebugPanel from "./components/panels/FlowDebugPanel.vue";
-import FlowDialogueFullscreenEditor from "./components/panels/FlowDialogueFullscreenEditor.vue";
-import FlowDialoguePanel from "./components/panels/FlowDialoguePanel.vue";
-import FlowPreview from "./components/panels/FlowPreview.vue";
-import FlowSequenceConfigPanel from "./components/panels/FlowSequenceConfigPanel.vue";
-import FlowVersionHistoryPanel from "./components/panels/FlowVersionHistoryPanel.vue";
+import FlowBuilderPanel from "@modules/flows/editor/components/panels/FlowBuilderPanel.vue";
+import FlowDebugPanel from "@modules/flows/editor/components/panels/FlowDebugPanel.vue";
+import FlowDialogueFullscreenEditor from "@modules/flows/editor/components/panels/FlowDialogueFullscreenEditor.vue";
+import FlowDialoguePanel from "@modules/flows/editor/components/panels/FlowDialoguePanel.vue";
+import FlowPreview from "@modules/flows/editor/components/panels/FlowPreview.vue";
+import FlowSequenceConfigPanel from "@modules/flows/editor/components/panels/FlowSequenceConfigPanel.vue";
+import FlowVersionHistoryPanel from "@modules/flows/editor/components/panels/FlowVersionHistoryPanel.vue";
 
 interface FlowVersionsPanel {
   open: boolean;
