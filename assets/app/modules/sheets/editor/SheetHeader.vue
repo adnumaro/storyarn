@@ -5,10 +5,10 @@ import ColorPickerPopover from "@components/forms/ColorPickerPopover.vue";
 import { Button } from "@components/ui/button";
 import { useLive } from "@shared/composables/useLive.ts";
 import { useUpload } from "@shared/composables/useUpload.ts";
-import type { Sheet } from "../../../types";
-import AvatarGallery from "./AvatarGallery.vue";
-import SheetAvatarSection from "./SheetAvatarSection.vue";
-import SheetMetadata from "./SheetMetadata.vue";
+import type { Sheet } from "../types";
+import AvatarGallery from "../components/chrome/header/AvatarGallery.vue";
+import SheetAvatarSection from "../components/chrome/header/SheetAvatarSection.vue";
+import SheetMetadata from "../components/chrome/header/SheetMetadata.vue";
 
 const {
   sheet,

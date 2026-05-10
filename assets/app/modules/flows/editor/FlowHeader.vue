@@ -13,10 +13,10 @@ import {
   X,
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
-import EditableText from "../../../../../../components/forms/EditableText.vue";
+import EditableText from "../../../components/forms/EditableText.vue";
 import { Badge } from "@components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
-import { useLive } from "../../../../../../shared/composables/useLive";
+import { useLive } from "../../../shared/composables/useLive";
 
 interface NavEntry {
   flow_name: string;

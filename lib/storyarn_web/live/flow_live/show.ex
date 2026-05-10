@@ -83,7 +83,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       <:top_bar_extras_left>
         <.vue
           :if={@flow}
-          v-component="modules/flows/editor/components/chrome/header/FlowHeader"
+          v-component="modules/flows/editor/FlowHeader"
           v-socket={@socket}
           id="flow-header"
           flow-name={@flow.name}
@@ -129,12 +129,6 @@ defmodule StoryarnWeb.FlowLive.Show do
             panels={flow_panels_props(assigns)}
           />
         </div>
-
-        <.vue
-          v-component="modules/flows/editor/components/collab/CollabToast"
-          v-socket={@socket}
-          id="flow-collab-toast"
-        />
       </div>
     </StoryarnWeb.Components.ProjectShell.project_shell>
     """

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import FlowDock from "./components/chrome/dock/FlowDock.vue";
+import FlowCollabToast from "./components/collab/CollabToast.vue";
 import FlowCanvas from "./FlowCanvas.vue";
 
 interface FlowSurfaceCanvasData {
@@ -58,6 +59,10 @@ const { surface } = defineProps<{
         :project-slug="surface.dock.projectSlug"
         :flow-id="surface.dock.flowId"
       />
+    </div>
+
+    <div id="flow-collab-toast" class="contents">
+      <FlowCollabToast />
     </div>
   </div>
 </template>

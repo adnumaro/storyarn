@@ -98,7 +98,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       <:top_bar_extras_right>
         <.vue
           :if={@scene}
-          v-component="modules/scenes/editor/components/chrome/header/SceneActions"
+          v-component="modules/scenes/editor/SceneHeaderActions"
           v-socket={@socket}
           id="scene-actions"
           edit-mode={@edit_mode}

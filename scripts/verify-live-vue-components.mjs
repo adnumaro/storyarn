@@ -14,6 +14,22 @@ const testRoot = path.join(repoRoot, "test");
 const sourceExtensions = new Set([".ex", ".exs", ".heex", ".leex"]);
 const componentAttributePattern = /v-component\s*=\s*(["'])([^"']+)\1/g;
 const liveVueTestPattern = /LiveVue\.Test\.get_vue\s*\([^)]*\bname:\s*(["'])([^"']+)\1/g;
+const privateModuleSegments = new Set([
+  "canvas",
+  "chrome",
+  "collab",
+  "components",
+  "composables",
+  "entities",
+  "lib",
+  "panels",
+  "services",
+  "toolbar",
+]);
+const publicGlobalComponentPatterns = [
+  /^components\/LucideIcon$/,
+  /^components\/versioning\/compare\/[^/]+$/,
+];
 
 async function listFiles(root, predicate) {
   const entries = await readdir(root, { withFileTypes: true });
@@ -61,6 +77,37 @@ function suffixMatches(componentPath, requestedName) {
     const availableIndex = availableParts.length - requestedParts.length + index;
     return part === availableParts[availableIndex];
   });
+}
+
+function publicBoundaryWarning(componentPath) {
+  const parts = componentParts(componentPath);
+  const [root] = parts;
+
+  if (root === "shell") {
+    return null;
+  }
+
+  if (root === "modules") {
+    const privateSegment = parts.find(
+      (part, index) => index > 1 && privateModuleSegments.has(part),
+    );
+
+    if (!privateSegment) {
+      return null;
+    }
+
+    return `module private segment "${privateSegment}"`;
+  }
+
+  if (root === "components") {
+    if (publicGlobalComponentPatterns.some((pattern) => pattern.test(componentPath))) {
+      return null;
+    }
+
+    return "shared component rendered directly";
+  }
+
+  return `unsupported LiveVue root "${root ?? componentPath}"`;
 }
 
 async function discoverComponents() {
@@ -119,11 +166,21 @@ function formatLocation(reference) {
 const components = await discoverComponents();
 const references = await discoverReferences();
 const failures = [];
+const warnings = [];
 
 for (const reference of references) {
   const exactMatches = components.filter((component) => component.componentPath === reference.name);
 
   if (exactMatches.length === 1) {
+    if (reference.kind === "v-component") {
+      const warning = publicBoundaryWarning(exactMatches[0].componentPath);
+
+      if (warning) {
+        warnings.push(
+          `${formatLocation(reference)} "${reference.name}" is not a public LiveVue boundary (${warning})`,
+        );
+      }
+    }
     continue;
   }
 
@@ -155,6 +212,14 @@ for (const reference of references) {
       `${formatLocation(reference)} non-canonical component "${reference.name}" (use "${matches[0].componentPath}")`,
     );
   }
+}
+
+if (warnings.length > 0) {
+  console.warn(`LiveVue public boundary warning(s) (${warnings.length}):\n`);
+  console.warn(warnings.join("\n"));
+  console.warn(
+    "\nElixir should render shell/*, modules/<domain>/<area>/<Boundary>, or an explicit global public boundary. Private Vue internals should be composed inside those boundaries.\n",
+  );
 }
 
 if (failures.length > 0) {

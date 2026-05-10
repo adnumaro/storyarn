@@ -13,6 +13,18 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     find_live_child(view, "sidebar-sheets-#{project.id}")
   end
 
+  defp get_sheet_surface_props(view) do
+    view
+    |> LiveVue.Test.get_vue(name: "modules/sheets/editor/SheetSurface")
+    |> then(& &1.props["surface"])
+  end
+
+  defp get_sheet_panels_props(view) do
+    view
+    |> LiveVue.Test.get_vue(name: "modules/sheets/editor/SheetPanels")
+    |> then(& &1.props["panels"])
+  end
+
   describe "Sheet show" do
     setup :register_and_log_in_user
 
@@ -191,18 +203,24 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     end
 
     test "switches to references tab", %{view: view} do
-      html = render_click(view, "switch_tab", %{"tab" => "references"})
-      assert html =~ "References"
+      render_click(view, "switch_tab", %{"tab" => "references"})
+
+      assert get_sheet_surface_props(view)["tabs"]["currentTab"] == "references"
+      assert get_sheet_panels_props(view)["references"]
     end
 
     test "switches to audio tab", %{view: view} do
-      html = render_click(view, "switch_tab", %{"tab" => "audio"})
-      assert html =~ "Audio"
+      render_click(view, "switch_tab", %{"tab" => "audio"})
+
+      assert get_sheet_surface_props(view)["tabs"]["currentTab"] == "audio"
+      assert get_sheet_panels_props(view)["audio"]
     end
 
     test "switches to history tab", %{view: view} do
-      html = render_click(view, "switch_tab", %{"tab" => "history"})
-      assert html =~ "History"
+      render_click(view, "switch_tab", %{"tab" => "history"})
+
+      assert get_sheet_surface_props(view)["tabs"]["currentTab"] == "history"
+      assert get_sheet_panels_props(view)["history"]
     end
   end
 

@@ -154,7 +154,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       class="max-w-4xl mx-auto bg-surface border border-border rounded-2xl p-6 shadow-sm"
     >
       <.vue
-        v-component="modules/sheets/components/chrome/header/SheetHeader"
+        v-component="modules/sheets/editor/SheetHeader"
         v-socket={@socket}
         id="sheet-header"
         sheet={prepare_sheet_for_vue(@sheet)}
@@ -163,90 +163,16 @@ defmodule StoryarnWeb.SheetLive.Show do
       />
       <div class="pb-6">
         <.vue
-          v-component="modules/sheets/components/panels/tabs/SheetTabs"
+          v-component="modules/sheets/editor/SheetSurface"
           v-socket={@socket}
-          id="sheet-tabs"
-          current-tab={@current_tab}
-          can-edit={@can_edit}
-          compact={@compact}
+          id="sheet-surface"
+          surface={sheet_surface_props(assigns)}
         />
         <.vue
-          :if={@current_tab == "content"}
-          v-component="modules/sheets/components/entities/blocks/BlockList"
+          v-component="modules/sheets/editor/SheetPanels"
           v-socket={@socket}
-          id="block-list"
-          blocks={
-            prepare_blocks_for_vue(
-              @blocks,
-              @gallery_data,
-              @table_data,
-              @project.id,
-              @inherited_groups
-            )
-          }
-          inherited-groups={
-            prepare_inherited_groups_for_vue(
-              @inherited_groups,
-              @gallery_data,
-              @table_data,
-              @project.id
-            )
-          }
-          workspace-slug={@workspace.slug}
-          project-slug={@project.slug}
-          can-edit={@can_edit}
-          formula-editing={
-            build_formula_editing_for_vue(
-              @formula_editing,
-              @formula_search_results,
-              @formula_search_has_more
-            )
-          }
-          block-locks={serialize_block_locks(@block_locks)}
-          current-user-id={@current_user_id}
-        />
-        <.vue
-          :if={@current_tab == "references"}
-          v-component="modules/sheets/components/panels/tabs/ReferencesTab"
-          v-socket={@socket}
-          id="references-tab"
-          variable-usage={@references_data[:variable_usage] || []}
-          backlinks={@references_data[:backlinks] || []}
-          scene-appearances={@references_data[:scene_appearances] || []}
-          workspace-slug={@workspace.slug}
-          project-slug={@project.slug}
-          loading={is_nil(@references_data)}
-        />
-        <.vue
-          :if={@current_tab == "audio"}
-          v-component="modules/sheets/components/panels/tabs/AudioTab"
-          v-socket={@socket}
-          id="audio-tab"
-          grouped-lines={@audio_data[:grouped_lines] || []}
-          audio-assets={@audio_data[:audio_assets] || []}
-          workspace-slug={@workspace.slug}
-          project-slug={@project.slug}
-          can-edit={@can_edit}
-          loading={is_nil(@audio_data)}
-        />
-        <.vue
-          v-component="modules/sheets/components/collab/CollabToast"
-          v-socket={@socket}
-          id="collab-toast"
-        />
-        <.vue
-          :if={@current_tab == "history" && !@compact}
-          v-component="modules/sheets/components/panels/tabs/HistoryTab"
-          v-socket={@socket}
-          id="history-tab"
-          versions={@history_data[:versions] || []}
-          named-versions={@history_data[:named_versions] || []}
-          auto-versions={@history_data[:auto_versions] || []}
-          has-more={@history_data[:has_more] || false}
-          can-name-version={@history_data[:can_name_version] || false}
-          current-version-id={@history_data[:current_version_id]}
-          can-edit={@can_edit}
-          loading={is_nil(@history_data)}
+          id="sheet-panels"
+          panels={sheet_panels_props(assigns)}
         />
       </div>
     </div>
@@ -256,6 +182,107 @@ defmodule StoryarnWeb.SheetLive.Show do
     </div>
     """
   end
+
+  defp sheet_surface_props(assigns) do
+    %{
+      tabs: %{
+        currentTab: assigns.current_tab,
+        canEdit: assigns.can_edit,
+        compact: assigns.compact
+      },
+      content: sheet_surface_content_props(assigns)
+    }
+  end
+
+  defp sheet_surface_content_props(%{current_tab: "content"} = assigns) do
+    %{
+      blocks:
+        prepare_blocks_for_vue(
+          assigns.blocks,
+          assigns.gallery_data,
+          assigns.table_data,
+          assigns.project.id,
+          assigns.inherited_groups
+        ),
+      inheritedGroups:
+        prepare_inherited_groups_for_vue(
+          assigns.inherited_groups,
+          assigns.gallery_data,
+          assigns.table_data,
+          assigns.project.id
+        ),
+      workspaceSlug: assigns.workspace.slug,
+      projectSlug: assigns.project.slug,
+      canEdit: assigns.can_edit,
+      formulaEditing:
+        build_formula_editing_for_vue(
+          assigns.formula_editing,
+          assigns.formula_search_results,
+          assigns.formula_search_has_more
+        ),
+      blockLocks: serialize_block_locks(assigns.block_locks),
+      currentUserId: assigns.current_user_id
+    }
+  end
+
+  defp sheet_surface_content_props(_assigns), do: nil
+
+  defp sheet_panels_props(assigns) do
+    %{
+      currentTab: assigns.current_tab,
+      compact: assigns.compact,
+      references: sheet_references_panel_props(assigns),
+      audio: sheet_audio_panel_props(assigns),
+      history: sheet_history_panel_props(assigns)
+    }
+  end
+
+  defp sheet_references_panel_props(%{current_tab: "references"} = assigns) do
+    references_data = assigns.references_data || %{}
+
+    %{
+      variableUsage: references_data[:variable_usage] || [],
+      backlinks: references_data[:backlinks] || [],
+      sceneAppearances: references_data[:scene_appearances] || [],
+      workspaceSlug: assigns.workspace.slug,
+      projectSlug: assigns.project.slug,
+      loading: is_nil(assigns.references_data)
+    }
+  end
+
+  defp sheet_references_panel_props(_assigns), do: nil
+
+  defp sheet_audio_panel_props(%{current_tab: "audio"} = assigns) do
+    audio_data = assigns.audio_data || %{}
+
+    %{
+      groupedLines: audio_data[:grouped_lines] || [],
+      audioAssets: audio_data[:audio_assets] || [],
+      workspaceSlug: assigns.workspace.slug,
+      projectSlug: assigns.project.slug,
+      canEdit: assigns.can_edit,
+      loading: is_nil(assigns.audio_data)
+    }
+  end
+
+  defp sheet_audio_panel_props(_assigns), do: nil
+
+  defp sheet_history_panel_props(%{current_tab: "history", compact: false} = assigns) do
+    history_data = assigns.history_data || %{}
+
+    %{
+      versions: history_data[:versions] || [],
+      namedVersions: history_data[:named_versions] || [],
+      autoVersions: history_data[:auto_versions] || [],
+      hasMore: history_data[:has_more] || false,
+      canNameVersion: history_data[:can_name_version] || false,
+      currentVersionId: history_data[:current_version_id],
+      canEdit: assigns.can_edit,
+      loading: is_nil(assigns.history_data)
+    }
+  end
+
+  defp sheet_history_panel_props(_assigns), do: nil
 
   # ===========================================================================
   # Mount & Lifecycle

@@ -9,10 +9,12 @@ import {
 } from "@components/ui/dropdown-menu";
 import { useLive } from "@shared/composables/useLive.ts";
 
-const { editMode = true, canEdit = false } = defineProps<{
+interface SceneHeaderActionsProps {
   editMode: boolean;
   canEdit: boolean;
-}>();
+}
+
+const { editMode = true, canEdit = false } = defineProps<SceneHeaderActionsProps>();
 
 const live = useLive();
 
