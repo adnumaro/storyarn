@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SidebarFrame from "@shell/SidebarFrame.vue";
-import LocalizationSidebar from "../components/chrome/LocalizationSidebar.vue";
+import LocalizationSidebar from "@modules/localization/components/chrome/LocalizationSidebar.vue";
 
 const {
   mainSidebarOpen = false,

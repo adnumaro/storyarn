@@ -52,7 +52,7 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
       phx-update="ignore"
     >
       <.vue
-        v-component="modules/localization/components/chrome/LocalizationToolbar"
+        v-component="live/localization/toolbar/Toolbar"
         v-socket={@socket}
         id="localization-toolbar"
         export-csv-url={export_url(assigns, :csv)}

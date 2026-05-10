@@ -14,7 +14,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
   end
 
   defp get_edit_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/localization/texts/LocalizationEdit")
+    LiveVue.Test.get_vue(view, name: "live/localization/texts/Edit")
   end
 
   describe "Edit translation page" do
@@ -31,7 +31,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
       {:ok, view, _html} = live(conn, edit_url(project, text))
 
       vue = get_edit_vue(view)
-      assert vue.component == "modules/localization/texts/LocalizationEdit"
+      assert vue.component == "live/localization/texts/Edit"
       assert vue.props["text"]["source_text"] =~ "Hello world"
       assert vue.props["text"]["locale_code"] == "es"
     end
@@ -127,7 +127,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
         )
 
       vue = get_edit_vue(view)
-      assert vue.component == "modules/localization/texts/LocalizationEdit"
+      assert vue.component == "live/localization/texts/Edit"
       assert vue.props["can-edit"] == false
     end
   end
@@ -207,7 +207,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
 
       # Vue component should still render after save
       vue = get_edit_vue(view)
-      assert vue.component == "modules/localization/texts/LocalizationEdit"
+      assert vue.component == "live/localization/texts/Edit"
     end
 
     test "updates text prop after successful save", %{conn: conn, project: project} do
@@ -302,7 +302,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
         })
 
       {:ok, updated_text} =
-        Storyarn.Localization.update_text(text, %{
+        Localization.update_text(text, %{
           "last_translated_at" => ~U[2025-06-15 14:30:00Z]
         })
 
@@ -448,7 +448,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
       {:ok, view, _html} = live(conn, edit_url(project, text))
 
       vue = get_edit_vue(view)
-      assert vue.component == "modules/localization/texts/LocalizationEdit"
+      assert vue.component == "live/localization/texts/Edit"
     end
   end
 end
