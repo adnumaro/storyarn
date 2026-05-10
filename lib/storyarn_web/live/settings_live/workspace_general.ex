@@ -42,7 +42,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
       current_path={@current_path}
     >
       <.vue
-        v-component="modules/workspaces/settings/WorkspaceGeneral"
+        v-component="live/workspace/settings/General"
         v-socket={@socket}
         id="workspace-settings-general"
         workspace-name={@workspace.name || ""}
