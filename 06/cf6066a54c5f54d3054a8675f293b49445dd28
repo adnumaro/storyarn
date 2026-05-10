@@ -1,0 +1,60 @@
+lib/storyarn_web/live/docs_live/show.ex
+  s_116fc484719db6::t_144a184e2d6346 115
+assets/app/live/auth/registration/Form.vue
+  s_116fc484719db6::t_144a184e2d6346 1-9
+test/storyarn_web/live/scene_live/show_test.exs
+  s_116fc484719db6::t_1905686072493a 200-204
+  s_116fc484719db6::t_1159789d56fe4f 187-199,205-206
+lib/storyarn_web/live/user_live/login.ex
+  s_116fc484719db6::t_144a184e2d6346 11
+lib/storyarn_web/live/scene_live/show.ex
+  s_116fc484719db6::t_7a0e4d3ebaa67f 220-224,226
+  s_116fc484719db6::t_5343fea1eef8f8 225,255-267
+assets/app/live/scene/show/CompactSurface.vue
+  s_116fc484719db6::t_7a0e4d3ebaa67f 1-13,16-25,34-36,46-51,53,64-66,68,77-79
+  s_116fc484719db6::t_5343fea1eef8f8 14-15,26-33,37-45,52,54-63,67,69-76
+assets/app/live/auth/login/Form.vue
+  s_116fc484719db6::t_144a184e2d6346 1-9
+assets/app/live/public/contact/Footer.vue
+  s_116fc484719db6::t_a3e9de26577ccc 1-7
+scripts/verify-live-vue-components.mjs
+  s_116fc484719db6::t_144a184e2d6346 17-26
+lib/storyarn_web/live/user_live/registration.ex
+  s_116fc484719db6::t_144a184e2d6346 14
+  s_116fc484719db6::t_ddfb745a612e0c 95
+lib/storyarn_web/live/landing_live/index.ex
+  s_116fc484719db6::t_144a184e2d6346 29
+assets/app/live/auth/confirm-access/Form.vue
+  s_116fc484719db6::t_144a184e2d6346 1-9
+assets/app/live/docs/show/Content.vue
+  s_116fc484719db6::t_144a184e2d6346 1-9
+assets/app/live/public/landing/Page.vue
+  s_116fc484719db6::t_144a184e2d6346 1-9
+lib/storyarn_web/controllers/page_html/contact.html.heex
+  s_116fc484719db6::t_a3e9de26577ccc 52
+test/storyarn_web/live/user_live/login_test.exs
+  s_116fc484719db6::t_144a184e2d6346 11-12,32,48
+lib/storyarn_web/live/user_live/confirm_access.ex
+  s_116fc484719db6::t_144a184e2d6346 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "06cf6066a54c5f54d3054a8675f293b49445dd28",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
