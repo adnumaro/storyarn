@@ -4,7 +4,7 @@ defmodule StoryarnWeb.WorkspaceLive.NewTest do
   import Phoenix.LiveViewTest
 
   defp get_new_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/workspaces/forms/NewWorkspaceForm")
+    LiveVue.Test.get_vue(view, name: "live/workspace/form/NewWorkspaceForm")
   end
 
   describe "New workspace page" do
@@ -14,7 +14,7 @@ defmodule StoryarnWeb.WorkspaceLive.NewTest do
       {:ok, view, _html} = live(conn, ~p"/workspaces/new")
 
       vue = get_new_vue(view)
-      assert vue.component == "modules/workspaces/forms/NewWorkspaceForm"
+      assert vue.component == "live/workspace/form/NewWorkspaceForm"
     end
 
     test "passes form and cancel-url props", %{conn: conn} do

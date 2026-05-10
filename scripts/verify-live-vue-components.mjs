@@ -24,6 +24,7 @@ const rootLiveBoundaryModules = new Set([
   "public",
   "scenes",
   "sheets",
+  "workspaces",
 ]);
 const privateModuleSegments = new Set([
   "canvas",

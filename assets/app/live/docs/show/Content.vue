@@ -1,9 +1,20 @@
 <script setup lang="ts">
-import DocsShow from "@modules/docs/DocsShow.vue";
+import { BookOpen } from "lucide-vue-next";
 
-defineOptions({ inheritAttrs: false });
+const { guideBody = null } = defineProps<{
+  guideBody?: string | null;
+}>();
 </script>
 
 <template>
-  <DocsShow v-bind="$attrs" />
+  <div
+    v-if="guideBody"
+    class="docs-content prose prose-sm dark:prose-invert max-w-none"
+    v-html="guideBody"
+  />
+
+  <div v-else class="text-center py-20">
+    <BookOpen class="size-12 text-muted-foreground/30 mx-auto mb-4" />
+    <p class="text-muted-foreground/50">{{ $t("common.docs.no_docs") }}</p>
+  </div>
 </template>

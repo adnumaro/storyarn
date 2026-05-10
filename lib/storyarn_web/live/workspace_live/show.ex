@@ -57,7 +57,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
       workspaces={@workspaces}
     >
       <.vue
-        v-component="modules/workspaces/dashboard/WorkspaceDashboard"
+        v-component="live/workspace/dashboard/Dashboard"
         v-socket={@socket}
         id="workspace-show"
         workspace={
