@@ -15,6 +15,7 @@ const sourceExtensions = new Set([".ex", ".exs", ".heex", ".leex"]);
 const componentAttributePattern = /v-component\s*=\s*(["'])([^"']+)\1/g;
 const liveVueTestPattern = /LiveVue\.Test\.get_vue\s*\([^)]*\bname:\s*(["'])([^"']+)\1/g;
 const rootLiveBoundaryModules = new Set([
+  "account",
   "assets",
   "auth",
   "docs",

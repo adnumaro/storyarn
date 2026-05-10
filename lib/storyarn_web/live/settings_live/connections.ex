@@ -34,7 +34,7 @@ defmodule StoryarnWeb.SettingsLive.Connections do
       current_path={@current_path}
     >
       <.vue
-        v-component="modules/account/settings/Connections"
+        v-component="live/account/settings/Connections"
         v-socket={@socket}
         id="settings-connections-vue"
         identities={serialize_identities(@identities)}
