@@ -30,7 +30,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
       </:subtitle>
 
       <.vue
-        v-component="modules/projects/settings/VersionControl"
+        v-component="live/project/settings/VersionControl"
         v-socket={@socket}
         id="project-settings-version-control"
         auto-snapshots-enabled={version_control_value(@version_control_form, :auto_snapshots_enabled)}

@@ -8,7 +8,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   alias Storyarn.Repo
 
   defp get_ei_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/projects/settings/export-import/ExportImport")
+    LiveVue.Test.get_vue(view, name: "live/project/settings/export-import/ExportImport")
   end
 
   defp export_config(view), do: get_ei_vue(view).props["export-config"]

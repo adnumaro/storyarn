@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Separator } from "@components/ui/separator";
 import type { UploadConfig } from "live_vue";
-import ExportPanel from "./components/ExportPanel.vue";
-import ImportPanel from "./components/ImportPanel.vue";
+import ExportPanel from "@modules/projects/settings/export-import/components/ExportPanel.vue";
+import ImportPanel from "@modules/projects/settings/export-import/components/ImportPanel.vue";
 
 interface FormatOption {
   format: string;

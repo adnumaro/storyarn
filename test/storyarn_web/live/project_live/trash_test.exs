@@ -10,7 +10,7 @@ defmodule StoryarnWeb.ProjectLive.TrashTest do
   alias Storyarn.Sheets
 
   defp get_trash_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/projects/settings/Trash")
+    LiveVue.Test.get_vue(view, name: "live/project/settings/Trash")
   end
 
   describe "Trash page" do
@@ -26,7 +26,7 @@ defmodule StoryarnWeb.ProjectLive.TrashTest do
         )
 
       vue = get_trash_vue(view)
-      assert vue.component == "modules/projects/settings/Trash"
+      assert vue.component == "live/project/settings/Trash"
       assert vue.props["can-manage"] == true
     end
 
@@ -42,7 +42,7 @@ defmodule StoryarnWeb.ProjectLive.TrashTest do
         )
 
       vue = get_trash_vue(view)
-      assert vue.component == "modules/projects/settings/Trash"
+      assert vue.component == "live/project/settings/Trash"
     end
 
     test "redirects non-member", %{conn: conn} do

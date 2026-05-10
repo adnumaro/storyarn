@@ -32,7 +32,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       </:subtitle>
 
       <.vue
-        v-component="modules/projects/settings/Snapshots"
+        v-component="live/project/settings/Snapshots"
         v-socket={@socket}
         id="project-settings-snapshots"
         snapshots={serialize_snapshots(@snapshots)}

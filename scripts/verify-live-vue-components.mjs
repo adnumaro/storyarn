@@ -21,6 +21,7 @@ const rootLiveBoundaryModules = new Set([
   "docs",
   "flows",
   "localization",
+  "projects",
   "public",
   "scenes",
   "sheets",
