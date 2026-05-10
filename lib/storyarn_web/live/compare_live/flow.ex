@@ -16,7 +16,7 @@ defmodule StoryarnWeb.CompareLive.Flow do
   def render(assigns) do
     ~H"""
     <.vue
-      v-component="components/versioning/compare/FlowCompare"
+      v-component="live/versioning/compare/Compare"
       v-socket={@socket}
       id="flow-compare-vue"
       back-url={@back_url}
@@ -83,7 +83,7 @@ defmodule StoryarnWeb.CompareLive.Flow do
         ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{flow.id}?layout=compact"
 
       version_url =
-        "#version-viewer-pending"
+        ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows/#{flow.id}/versions/#{version.version_number}/viewer"
 
       {:noreply,
        socket

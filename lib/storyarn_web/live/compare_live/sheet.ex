@@ -17,7 +17,7 @@ defmodule StoryarnWeb.CompareLive.Sheet do
   def render(assigns) do
     ~H"""
     <.vue
-      v-component="components/versioning/compare/SheetCompare"
+      v-component="live/versioning/compare/Compare"
       v-socket={@socket}
       id="sheet-compare-vue"
       back-url={@back_url}
@@ -84,7 +84,7 @@ defmodule StoryarnWeb.CompareLive.Sheet do
         ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}?layout=compact"
 
       version_url =
-        "#version-viewer-pending"
+        ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}/versions/#{version.version_number}/viewer"
 
       {:noreply,
        socket

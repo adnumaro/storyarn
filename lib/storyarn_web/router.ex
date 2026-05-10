@@ -152,6 +152,10 @@ defmodule StoryarnWeb.Router do
            CompareLive.Sheet,
            :compare
 
+      live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/versions/:version_number/viewer",
+           VersionViewerLive,
+           :sheet
+
       # Trash
       live "/workspaces/:workspace_slug/projects/:project_slug/trash",
            ProjectLive.Trash,
@@ -167,6 +171,10 @@ defmodule StoryarnWeb.Router do
            CompareLive.Flow,
            :compare
 
+      live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/versions/:version_number/viewer",
+           VersionViewerLive,
+           :flow
+
       # Scenes — immersive exploration stays outside :project_scope (no chrome).
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/explore",
            SceneLive.ExplorationLive,
@@ -175,6 +183,10 @@ defmodule StoryarnWeb.Router do
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/compare/:version_number",
            CompareLive.Scene,
            :compare
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/versions/:version_number/viewer",
+           VersionViewerLive,
+           :scene
     end
 
     # Project-scoped live_session — loads project/workspace/membership once via

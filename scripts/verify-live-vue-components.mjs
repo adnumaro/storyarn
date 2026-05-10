@@ -39,10 +39,7 @@ const privateModuleSegments = new Set([
   "services",
   "toolbar",
 ]);
-const publicGlobalComponentPatterns = [
-  /^components\/LucideIcon$/,
-  /^components\/versioning\/compare\/[^/]+$/,
-];
+const publicGlobalComponentPatterns = [/^components\/LucideIcon$/];
 
 async function listFiles(root, predicate) {
   const entries = await readdir(root, { withFileTypes: true });

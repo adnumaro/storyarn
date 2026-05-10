@@ -16,7 +16,7 @@ defmodule StoryarnWeb.CompareLive.Scene do
   def render(assigns) do
     ~H"""
     <.vue
-      v-component="components/versioning/compare/SceneCompare"
+      v-component="live/versioning/compare/Compare"
       v-socket={@socket}
       id="scene-compare-vue"
       back-url={@back_url}
@@ -83,7 +83,7 @@ defmodule StoryarnWeb.CompareLive.Scene do
         ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}?layout=compact"
 
       version_url =
-        "#version-viewer-pending"
+        ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}/versions/#{version.version_number}/viewer"
 
       {:noreply,
        socket
