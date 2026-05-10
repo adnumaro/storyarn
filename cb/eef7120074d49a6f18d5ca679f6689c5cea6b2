@@ -1,0 +1,100 @@
+assets/app/test/modules/flows/player/FlowPlayer.test.ts
+  s_116fc484719db6::t_b34b6ae58ab8ba 10
+assets/app/live/scene/show/Panels.vue
+  s_116fc484719db6::t_b34b6ae58ab8ba 1-87
+lib/storyarn_web/live/sheet_live/show.ex
+  s_116fc484719db6::t_c7707980fa0f60 157,166,172
+lib/storyarn_web/live/scene_live/index.ex
+  s_116fc484719db6::t_a570c93e70c475 52
+test/storyarn_web/live/flow_live/collaboration_test.exs
+  s_116fc484719db6::t_c7707980fa0f60 35
+assets/app/live/sheet/sidebar/Sidebar.vue
+  s_116fc484719db6::t_b34b6ae58ab8ba 1-35
+assets/app/live/flow/show/Canvas.vue
+  s_116fc484719db6::t_b34b6ae58ab8ba 2-6,9-16,18-25,28,30,32-35,37-39,41-42,44-49,51,54-59,61-63,65-74,76,80-82,84-87,89-94,96-97
+assets/app/live/flow/show/Surface.vue
+  s_116fc484719db6::t_b34b6ae58ab8ba 1-68
+lib/storyarn_web/live/flow_live/show.ex
+  s_116fc484719db6::t_c7707980fa0f60 86,116,126,142
+test/storyarn_web/live/flow_live/show_test.exs
+  s_116fc484719db6::t_c7707980fa0f60 26-28
+assets/app/live/scene/show/Surface.vue
+  s_116fc484719db6::t_b34b6ae58ab8ba 2-5,7,9-23,26-31,34,37-42,45-47,50-54,57-59,63-79,83-94,96-104,107-108,111
+assets/app/live/flow/sidebar/Sidebar.vue
+  s_116fc484719db6::t_b34b6ae58ab8ba 1-35
+assets/app/live/sheet/show/Panels.vue
+  s_116fc484719db6::t_b34b6ae58ab8ba 1-93
+test/storyarn_web/live/scene_live/show_test.exs
+  s_116fc484719db6::t_c7707980fa0f60 35,41,47,402,3387-3388,3407
+test/storyarn_web/live/flow_live/handlers/debug_execution_handlers_test.exs
+  s_116fc484719db6::t_c7707980fa0f60 66,1237,1242,1262,1391
+lib/storyarn_web/live/flow_live/player_live.ex
+  s_116fc484719db6::t_c7707980fa0f60 33
+test/storyarn_web/live/sheet_live/show_test.exs
+  s_116fc484719db6::t_c7707980fa0f60 18,24
+assets/app/live/sheet/show/Surface.vue
+  s_116fc484719db6::t_b34b6ae58ab8ba 1-60
+test/storyarn_web/live/flow_live/index_test.exs
+  s_116fc484719db6::t_a570c93e70c475 12,31
+lib/storyarn_web/live/scene_live/show.ex
+  s_116fc484719db6::t_c7707980fa0f60 92,101,118,204
+lib/storyarn_web/live/flow_live/index.ex
+  s_116fc484719db6::t_a570c93e70c475 51
+assets/app/live/scene/show/Header.vue
+  s_116fc484719db6::t_b34b6ae58ab8ba 2-3
+assets/app/live/scene/sidebar/Sidebar.vue
+  s_116fc484719db6::t_b34b6ae58ab8ba 1-35
+lib/storyarn_web/live/sheet_live/index.ex
+  s_116fc484719db6::t_a570c93e70c475 52
+lib/storyarn_web/live/sheets_sidebar_live.ex
+  s_116fc484719db6::t_c7707980fa0f60 67
+lib/storyarn_web/live/scene_live/exploration_live.ex
+  s_116fc484719db6::t_c7707980fa0f60 45
+lib/storyarn_web/live/flow_sidebar_live.ex
+  s_116fc484719db6::t_c7707980fa0f60 69
+test/storyarn_web/live/flow_live/handlers/navigation_handlers_test.exs
+  s_116fc484719db6::t_c7707980fa0f60 17
+assets/app/live/sheet/show/Header.vue
+  s_116fc484719db6::t_b34b6ae58ab8ba 8-11
+test/storyarn_web/live/scene_live/exploration_live_test.exs
+  s_116fc484719db6::t_c7707980fa0f60 36,200,213
+assets/app/live/flow/show/Panels.vue
+  s_116fc484719db6::t_b34b6ae58ab8ba 1-141
+test/storyarn_web/live/flow_live/player/player_live_test.exs
+  s_116fc484719db6::t_c7707980fa0f60 31,148,653,672,681,736
+test/storyarn_web/live/scene_live/index_test.exs
+  s_116fc484719db6::t_a570c93e70c475 16,36,53
+assets/app/live/flow/player/Player.vue
+  s_116fc484719db6::t_b34b6ae58ab8ba 2-10,12-30,32,34-35,38-39,42-43,46-47,50-51,54-85,88-89,91-97,99-106,110-113,116-122,124-129,131,134-145
+scripts/verify-live-vue-components.mjs
+  s_116fc484719db6::t_9656d70b13459e 62,66-80,84-85,98,197-199,201,203,211-215
+  s_116fc484719db6::t_57534053f1af6c 17,105-108,110,112-113,235
+  s_116fc484719db6::t_5b20ce7fbaef79 111,114-115
+lib/storyarn_web/live/flow_live/form.ex
+  s_116fc484719db6::t_c7707980fa0f60 14
+assets/app/live/scene/exploration/Player.vue
+  s_116fc484719db6::t_b34b6ae58ab8ba 2,4-12,14-18,21-24,27-29,32-56,60-86,88-89,91-92
+lib/storyarn_web/live/scene_sidebar_live.ex
+  s_116fc484719db6::t_c7707980fa0f60 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "cbeef7120074d49a6f18d5ca679f6689c5cea6b2",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
