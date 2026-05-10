@@ -89,21 +89,10 @@ defmodule StoryarnWeb.SceneLive.Show do
       <:top_bar_extras_left>
         <.vue
           :if={@scene}
-          v-component="modules/scenes/editor/components/chrome/header/SceneToolbar"
+          v-component="modules/scenes/editor/SceneHeader"
           v-socket={@socket}
-          id="scene-toolbar"
-          can-edit={@can_edit}
-          scene-name={@scene.name}
-          scene-shortcut={@scene.shortcut}
-        />
-        <.vue
-          :if={@scene}
-          v-component="modules/scenes/editor/components/chrome/header/SearchPanel"
-          v-socket={@socket}
-          id="scene-search-panel"
-          search-query={@search_query}
-          search-filter={@search_filter}
-          search-results={@search_results}
+          id="scene-header"
+          header={scene_header_props(assigns)}
         />
       </:top_bar_extras_left>
       <:top_bar_extras_right>
@@ -118,43 +107,20 @@ defmodule StoryarnWeb.SceneLive.Show do
       </:top_bar_extras_right>
       <%= if @scene do %>
         <div class="h-full relative">
-          <%!-- Canvas fills the entire area --%>
           <div
             id="scene-canvas-wrapper"
-            class="absolute inset-0 overflow-hidden"
+            class="absolute inset-0"
             phx-drop-target={
               @can_edit && @edit_mode && @uploads[:background] && @uploads.background.ref
             }
           >
-            <%!--
-              Wrapper with dynamic id forces a full remount when the scene
-              changes. LiveVue's `updated()` hook reuses the same Vue app and
-              just syncs props, which leaves stateful composables
-              (background image cache, canvas camera, Konva Stage internals,
-              etc.) carrying over between scenes. Changing the wrapper's id
-              makes morphdom destroy and recreate the subtree → LiveVue
-              tears down the old Vue app and mounts a fresh one.
-            --%>
-            <div id={"scene-canvas-mount-#{@scene.id}"} class="w-full h-full">
-              <.vue
-                v-component="modules/scenes/editor/components/canvas/SceneCanvas"
-                v-socket={@socket}
-                id={"scene-canvas-#{@scene.id}"}
-                class="w-full h-full"
-                scene-data={prepare_scene_for_vue(@scene)}
-                pins={prepare_pins_for_vue(@pins)}
-                zones={prepare_zones_for_vue(@zones)}
-                connections={prepare_connections_for_vue(@connections)}
-                annotations={prepare_annotations_for_vue(@annotations)}
-                layers={prepare_layers_for_vue(@layers)}
-                active-tool={to_string(@active_tool)}
-                edit-mode={@edit_mode}
-                can-edit={@can_edit}
-                collaboration={
-                  %{userId: @current_scope.user.id, locks: serialize_entity_locks(@entity_locks)}
-                }
-              />
-            </div>
+            <.vue
+              v-component="modules/scenes/editor/SceneSurface"
+              v-socket={@socket}
+              id={"scene-surface-#{@scene.id}"}
+              class="w-full h-full"
+              surface={scene_surface_props(assigns)}
+            />
 
             <%!-- Hidden file input for background upload --%>
             <form
@@ -206,8 +172,6 @@ defmodule StoryarnWeb.SceneLive.Show do
             </div>
           </div>
 
-          <%!-- UI overlays — outside overflow-hidden wrapper so backdrop-blur works --%>
-
           <%!-- Upload progress indicator --%>
           <div
             :for={
@@ -236,84 +200,11 @@ defmodule StoryarnWeb.SceneLive.Show do
             </div>
           </div>
 
-          <%!-- Version History Sidebar (Vue) --%>
           <.vue
-            v-component="modules/scenes/editor/components/panels/VersionHistoryPanel"
+            v-component="modules/scenes/editor/ScenePanels"
             v-socket={@socket}
-            id="scene-versions-panel"
-            open={@right_panel == :versions}
-            versions={(@history_data && @history_data[:versions]) || []}
-            named-versions={(@history_data && @history_data[:named_versions]) || []}
-            auto-versions={(@history_data && @history_data[:auto_versions]) || []}
-            has-more={(@history_data && @history_data[:has_more]) || false}
-            can-name-version={(@history_data && @history_data[:can_name_version]) || false}
-            current-version-id={@history_data && @history_data[:current_version_id]}
-            can-edit={@can_edit}
-            loading={@right_panel == :versions && is_nil(@history_data)}
-          />
-
-          <%!-- Bottom dock (edit mode only) --%>
-          <.vue
-            :if={@edit_mode}
-            v-component="modules/scenes/editor/components/chrome/dock/SceneDock"
-            v-socket={@socket}
-            id="scene-dock"
-            active-tool={to_string(@active_tool)}
-            edit-mode={@edit_mode}
-            compact={false}
-            pending-sheet={@pending_sheet_for_pin && %{name: @pending_sheet_for_pin.name}}
-            project-sheets={prepare_project_sheets_for_vue(@project_sheets)}
-            workspace-slug={@workspace.slug}
-            project-slug={@project.slug}
-            scene-id={@scene.id}
-          />
-
-          <%!-- Bottom-right: layers + legend --%>
-          <div class="absolute bottom-3 right-3 z-20 flex items-end gap-2">
-            <.vue
-              v-component="modules/scenes/editor/components/chrome/layers/LayerListPopover"
-              v-socket={@socket}
-              id="scene-layers-popover"
-              layers={prepare_layers_for_vue(@layers)}
-              active-layer-id={@active_layer_id}
-              can-edit={@can_edit}
-              edit-mode={@edit_mode}
-              popover-open={@layers_popover_open}
-            />
-            <.vue
-              v-component="modules/scenes/editor/components/chrome/layers/Legend"
-              v-socket={@socket}
-              id="scene-legend"
-              legend-data={prepare_legend_groups(@pins, @zones, @connections)}
-              legend-open={@legend_open}
-            />
-          </div>
-
-          <%!-- Element Properties Sidebar (Vue) --%>
-          <.vue
-            v-component="modules/scenes/editor/components/panels/ElementPropertiesPanel"
-            v-socket={@socket}
-            id="scene-element-panel-vue"
-            selected-type={@selected_type}
-            selected-element={serialize_selected_element(@selected_type, @selected_element)}
-            can-edit={not Map.get(@selected_element || %{}, :locked, false)}
-            element-panel-open={@right_panel == :element}
-            project-sheets={prepare_project_sheets_for_vue(@project_sheets)}
-            project-flows={prepare_project_flows_for_vue(@project_flows)}
-            project-scenes={prepare_project_scenes_for_vue(@project_scenes)}
-            project-variables={@project_variables}
-          />
-
-          <%!-- Scene Settings Sidebar (Vue Sidebar component) --%>
-          <.vue
-            v-component="modules/scenes/editor/components/panels/SettingsPanel"
-            v-socket={@socket}
-            id="scene-settings-vue"
-            scene={prepare_scene_for_vue(@scene)}
-            can-edit={@can_edit}
-            ambient-flows={prepare_ambient_flows_for_vue(@ambient_flows)}
-            project-flows={prepare_project_flows_for_vue(@project_flows)}
-            scene-settings-open={@right_panel == :settings && @can_edit && @edit_mode}
+            id="scene-panels"
+            panels={scene_panels_props(assigns)}
           />
         </div>
       <% else %>
@@ -363,6 +254,133 @@ defmodule StoryarnWeb.SceneLive.Show do
     </Layouts.compare>
     """
   end
+
+  defp scene_header_props(assigns) do
+    %{
+      toolbar: %{
+        canEdit: assigns.can_edit,
+        sceneName: assigns.scene.name,
+        sceneShortcut: assigns.scene.shortcut
+      },
+      search: %{
+        searchQuery: assigns.search_query,
+        searchFilter: assigns.search_filter,
+        searchResults: assigns.search_results
+      }
+    }
+  end
+
+  defp scene_surface_props(assigns) do
+    %{
+      canvas: scene_surface_canvas(assigns),
+      dock: scene_surface_dock(assigns),
+      layers: scene_surface_layers(assigns),
+      legend: scene_surface_legend(assigns)
+    }
+  end
+
+  defp scene_panels_props(assigns) do
+    %{
+      versions: scene_panels_versions(assigns),
+      element: scene_panels_element(assigns),
+      settings: scene_panels_settings(assigns)
+    }
+  end
+
+  defp scene_surface_canvas(assigns) do
+    scene_id = assigns.scene.id
+
+    %{
+      key: "scene-canvas-mount-#{scene_id}",
+      id: "scene-canvas-#{scene_id}",
+      mountId: "scene-canvas-mount-#{scene_id}",
+      sceneData: prepare_scene_for_vue(assigns.scene),
+      pins: prepare_pins_for_vue(assigns.pins),
+      zones: prepare_zones_for_vue(assigns.zones),
+      connections: prepare_connections_for_vue(assigns.connections),
+      annotations: prepare_annotations_for_vue(assigns.annotations),
+      layers: prepare_layers_for_vue(assigns.layers),
+      activeTool: to_string(assigns.active_tool),
+      editMode: assigns.edit_mode,
+      canEdit: assigns.can_edit,
+      collaboration: %{
+        userId: assigns.current_scope.user.id,
+        locks: serialize_entity_locks(assigns.entity_locks)
+      }
+    }
+  end
+
+  defp scene_surface_dock(assigns) do
+    %{
+      activeTool: to_string(assigns.active_tool),
+      editMode: assigns.edit_mode,
+      compact: false,
+      pendingSheet: assigns.pending_sheet_for_pin && %{name: assigns.pending_sheet_for_pin.name},
+      projectSheets: prepare_project_sheets_for_vue(assigns.project_sheets),
+      workspaceSlug: assigns.workspace.slug,
+      projectSlug: assigns.project.slug,
+      sceneId: assigns.scene.id
+    }
+  end
+
+  defp scene_surface_layers(assigns) do
+    %{
+      layers: prepare_layers_for_vue(assigns.layers),
+      activeLayerId: assigns.active_layer_id,
+      canEdit: assigns.can_edit,
+      editMode: assigns.edit_mode,
+      popoverOpen: assigns.layers_popover_open
+    }
+  end
+
+  defp scene_surface_legend(assigns) do
+    %{
+      legendData: prepare_legend_groups(assigns.pins, assigns.zones, assigns.connections),
+      legendOpen: assigns.legend_open
+    }
+  end
+
+  defp scene_panels_versions(assigns) do
+    history_data = assigns.history_data
+
+    %{
+      open: assigns.right_panel == :versions,
+      versions: history_value(history_data, :versions, []),
+      namedVersions: history_value(history_data, :named_versions, []),
+      autoVersions: history_value(history_data, :auto_versions, []),
+      hasMore: history_value(history_data, :has_more, false),
+      canNameVersion: history_value(history_data, :can_name_version, false),
+      currentVersionId: history_value(history_data, :current_version_id, nil),
+      canEdit: assigns.can_edit,
+      loading: assigns.right_panel == :versions && is_nil(history_data)
+    }
+  end
+
+  defp scene_panels_element(assigns) do
+    %{
+      selectedType: assigns.selected_type,
+      selectedElement: serialize_selected_element(assigns.selected_type, assigns.selected_element),
+      canEdit: not Map.get(assigns.selected_element || %{}, :locked, false),
+      elementPanelOpen: assigns.right_panel == :element,
+      projectSheets: prepare_project_sheets_for_vue(assigns.project_sheets),
+      projectFlows: prepare_project_flows_for_vue(assigns.project_flows),
+      projectScenes: prepare_project_scenes_for_vue(assigns.project_scenes),
+      projectVariables: assigns.project_variables
+    }
+  end
+
+  defp scene_panels_settings(assigns) do
+    %{
+      scene: prepare_scene_for_vue(assigns.scene),
+      canEdit: assigns.can_edit,
+      ambientFlows: prepare_ambient_flows_for_vue(assigns.ambient_flows),
+      projectFlows: prepare_project_flows_for_vue(assigns.project_flows),
+      sceneSettingsOpen: assigns.right_panel == :settings && assigns.can_edit && assigns.edit_mode
+    }
+  end
+
+  defp history_value(nil, _key, default), do: default
+  defp history_value(history_data, key, default), do: history_data[key] || default
 
   @impl true
   def mount(_params, _session, socket) do

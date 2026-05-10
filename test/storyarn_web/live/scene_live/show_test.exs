@@ -16,7 +16,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
   # whose keys match the V1 data-scene JSON shape (snake_case). This keeps all
   # existing test assertions valid while sourcing the data from V2 Vue props.
   defp extract_scene_data(view) do
-    vue = LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/canvas/SceneCanvas")
+    vue = get_scene_canvas_vue(view)
     scene = vue.props["scene-data"] || %{}
 
     scene
@@ -30,24 +30,116 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
     })
   end
 
+  defp get_scene_header_props(view) do
+    view
+    |> LiveVue.Test.get_vue(name: "modules/scenes/editor/SceneHeader")
+    |> then(& &1.props["header"])
+  end
+
+  defp get_scene_surface_props(view) do
+    view
+    |> LiveVue.Test.get_vue(name: "modules/scenes/editor/SceneSurface")
+    |> then(& &1.props["surface"])
+  end
+
+  defp get_scene_panels_props(view) do
+    view
+    |> LiveVue.Test.get_vue(name: "modules/scenes/editor/ScenePanels")
+    |> then(& &1.props["panels"])
+  end
+
   defp get_scene_canvas_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/canvas/SceneCanvas")
+    canvas = get_scene_surface_props(view)["canvas"]
+
+    %{
+      component: "modules/scenes/editor/components/canvas/SceneCanvas",
+      id: canvas["id"],
+      props: %{
+        "scene-data" => canvas["sceneData"],
+        "pins" => canvas["pins"],
+        "zones" => canvas["zones"],
+        "connections" => canvas["connections"],
+        "annotations" => canvas["annotations"],
+        "layers" => canvas["layers"],
+        "active-tool" => canvas["activeTool"],
+        "edit-mode" => canvas["editMode"],
+        "can-edit" => canvas["canEdit"],
+        "collaboration" => canvas["collaboration"]
+      }
+    }
+  end
+
+  defp get_scene_dock_vue(view) do
+    dock = get_scene_surface_props(view)["dock"]
+
+    %{
+      component: "modules/scenes/editor/components/chrome/dock/SceneDock",
+      props: %{
+        "active-tool" => dock["activeTool"],
+        "edit-mode" => dock["editMode"],
+        "compact" => dock["compact"],
+        "pending-sheet" => dock["pendingSheet"],
+        "project-sheets" => dock["projectSheets"],
+        "workspace-slug" => dock["workspaceSlug"],
+        "project-slug" => dock["projectSlug"],
+        "scene-id" => dock["sceneId"]
+      }
+    }
   end
 
   defp get_element_panel_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/panels/ElementPropertiesPanel")
+    panel = get_scene_panels_props(view)["element"]
+
+    %{
+      component: "modules/scenes/editor/components/panels/ElementPropertiesPanel",
+      props: %{
+        "selected-type" => panel["selectedType"],
+        "selected-element" => panel["selectedElement"],
+        "can-edit" => panel["canEdit"],
+        "element-panel-open" => panel["elementPanelOpen"],
+        "project-sheets" => panel["projectSheets"],
+        "project-flows" => panel["projectFlows"],
+        "project-scenes" => panel["projectScenes"],
+        "project-variables" => panel["projectVariables"]
+      }
+    }
   end
 
   defp get_search_panel_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/chrome/header/SearchPanel")
+    search = get_scene_header_props(view)["search"]
+
+    %{
+      component: "modules/scenes/editor/components/chrome/header/SearchPanel",
+      props: %{
+        "search-query" => search["searchQuery"],
+        "search-filter" => search["searchFilter"],
+        "search-results" => search["searchResults"]
+      }
+    }
   end
 
   defp get_layer_list_props(view) do
-    LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/chrome/layers/LayerListPopover").props
+    layers = get_scene_surface_props(view)["layers"]
+
+    %{
+      "layers" => layers["layers"],
+      "active-layer-id" => layers["activeLayerId"],
+      "can-edit" => layers["canEdit"],
+      "edit-mode" => layers["editMode"],
+      "popover-open" => layers["popoverOpen"]
+    }
   end
 
   defp get_legend_vue(view) do
-    LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/chrome/layers/Legend")
+    legend = get_scene_surface_props(view)["legend"]
+
+    %{
+      component: "modules/scenes/editor/components/chrome/layers/Legend",
+      props: %{
+        "legend-data" => legend["legendData"],
+        "legend-open" => legend["legendOpen"]
+      }
+    }
   end
 
   defp search_result_ids(view, type) do
@@ -153,8 +245,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      toolbar = LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/chrome/header/SceneToolbar")
-      assert toolbar.props["scene-name"] == "My Scene"
+      toolbar = get_scene_header_props(view)["toolbar"]
+      assert toolbar["sceneName"] == "My Scene"
     end
 
     test "SceneToolbar exposes the scene shortcut", %{conn: conn, user: user} do
@@ -167,8 +259,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      toolbar = LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/chrome/header/SceneToolbar")
-      assert toolbar.props["scene-shortcut"] == scene.shortcut
+      toolbar = get_scene_header_props(view)["toolbar"]
+      assert toolbar["sceneShortcut"] == scene.shortcut
     end
   end
 
@@ -260,7 +352,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      dock = LiveVue.Test.get_vue(view, name: "modules/scenes/editor/components/chrome/dock/SceneDock")
+      dock = get_scene_dock_vue(view)
       assert dock.props["edit-mode"] == true
       assert dock.props["active-tool"] == "select"
     end
@@ -322,16 +414,16 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      # Default is edit mode for editors — dock should be visible
-      assert render(view) =~ "scene-dock"
+      # Default is edit mode for editors — dock should be visible in surface props
+      assert get_scene_dock_vue(view).props["edit-mode"] == true
 
       # Toggle to view mode — dock should disappear
-      html = render_click(view, "toggle_edit_mode", %{})
-      refute html =~ "scene-dock"
+      render_click(view, "toggle_edit_mode", %{})
+      assert get_scene_dock_vue(view).props["edit-mode"] == false
 
       # Toggle back to edit mode — dock returns
-      html = render_click(view, "toggle_edit_mode", %{})
-      assert html =~ "scene-dock"
+      render_click(view, "toggle_edit_mode", %{})
+      assert get_scene_dock_vue(view).props["edit-mode"] == true
     end
 
     test "viewer cannot toggle to edit mode", %{conn: conn, user: user} do
@@ -2746,14 +2838,14 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       scene = scene_fixture(project)
       _pin = pin_fixture(scene, %{"label" => "Castle"})
 
-      {:ok, _view, html} =
+      {:ok, view, _html} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      assert html =~ "scene-legend"
-      assert html =~ "Legend"
+      legend = get_legend_vue(view)
+      assert legend.props["legend-data"]["hasEntries"] == true
     end
 
     test "legend data is empty when scene has no elements", %{conn: conn, user: user} do
