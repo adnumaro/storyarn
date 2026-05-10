@@ -1,0 +1,48 @@
+lib/storyarn_web/live/project_live/trash.ex
+  s_116fc484719db6::t_7f5a43c7c7d222 23
+lib/storyarn_web/live/project_settings_live/general.ex
+  s_116fc484719db6::t_7f5a43c7c7d222 31
+test/storyarn_web/live/export_import_live/index_test.exs
+  s_116fc484719db6::t_7f5a43c7c7d222 11
+scripts/verify-live-vue-components.mjs
+  s_116fc484719db6::t_7f5a43c7c7d222 24
+assets/app/live/project/settings/export-import/ExportImport.vue
+  s_116fc484719db6::t_7f5a43c7c7d222 4-5
+lib/storyarn_web/live/project_settings_live/version_control.ex
+  s_116fc484719db6::t_7f5a43c7c7d222 33
+lib/storyarn_web/live/export_import_live/index.ex
+  s_116fc484719db6::t_7f5a43c7c7d222 28
+test/storyarn_web/live/project_live/trash_test.exs
+  s_116fc484719db6::t_7f5a43c7c7d222 13,29,45
+lib/storyarn_web/live/project_settings_live/members.ex
+  s_116fc484719db6::t_7f5a43c7c7d222 30
+lib/storyarn_web/live/project_live/show.ex
+  s_116fc484719db6::t_7f5a43c7c7d222 32
+lib/storyarn_web/live/project_settings_live/localization.ex
+  s_116fc484719db6::t_7f5a43c7c7d222 30
+lib/storyarn_web/live/project_settings_live/snapshots.ex
+  s_116fc484719db6::t_7f5a43c7c7d222 35
+test/storyarn_web/live/project_live/settings_test.exs
+  s_116fc484719db6::t_7f5a43c7c7d222 17,29,103-104,130,135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "7c7c3054be4aa2bb5f5e267a5c7181231ea1e05c",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
