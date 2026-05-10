@@ -184,6 +184,26 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       assert vue.id == "scene-canvas-#{scene.id}"
     end
 
+    test "compact layout mounts the public compact surface boundary", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      scene = scene_fixture(project, %{name: "Compact Scene"})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}?layout=compact"
+        )
+
+      vue = LiveVue.Test.get_vue(view, name: "live/scene/show/CompactSurface")
+      assert vue.component == "live/scene/show/CompactSurface"
+      assert vue.id == "scene-compact-surface-#{scene.id}"
+      assert vue.props["surface"]["canvas"]["sceneData"]["name"] == "Compact Scene"
+      assert vue.props["surface"]["canvas"]["id"] == "scene-canvas-compact-#{scene.id}"
+      assert vue.props["surface"]["dock"]["sceneId"] == scene.id
+      assert vue.props["surface"]["dock"]["compact"] == true
+      assert vue.props["surface"]["dock"]["editMode"] == true
+    end
+
     test "data-scene contains valid JSON with scene fields", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       scene = scene_fixture(project, %{name: "Test Scene"})

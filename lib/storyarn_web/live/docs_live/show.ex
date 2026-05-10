@@ -112,7 +112,7 @@ defmodule StoryarnWeb.DocsLive.Show do
       sidebar_open={@sidebar_open}
     >
       <.vue
-        v-component="modules/docs/DocsShow"
+        v-component="live/docs/show/Content"
         v-socket={@socket}
         id="docs-show-vue"
         guide-body={if @guide, do: HtmlSanitizer.sanitize_html(@guide.body)}

@@ -11,7 +11,7 @@ defmodule StoryarnWeb.UserLive.Registration do
     ~H"""
     <Layouts.auth flash={@flash} current_scope={@current_scope}>
       <.vue
-        v-component="modules/auth/SignUp"
+        v-component="live/auth/registration/Form"
         v-socket={@socket}
         id="registration-vue"
         form={@form}
@@ -92,7 +92,7 @@ defmodule StoryarnWeb.UserLive.Registration do
         {:noreply,
          socket
          |> put_flash(:info, dgettext("identity", "Account created successfully! Welcome."))
-         # We cannot call typical redirect, log_in_user from socket. It's best to redirect to a POST endpoint 
+         # We cannot call typical redirect, log_in_user from socket. It's best to redirect to a POST endpoint
          # or use the standard log_in_user hook if we can. Wait, UserAuth has `log_in_user` for controllers.
          # For LiveViews, `push_navigate` but the cookies must be set.
          # Standard phx.gen.auth redirects to login page with flash or handles it in `UserSessionController.create/2`.

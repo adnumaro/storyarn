@@ -14,7 +14,16 @@ const testRoot = path.join(repoRoot, "test");
 const sourceExtensions = new Set([".ex", ".exs", ".heex", ".leex"]);
 const componentAttributePattern = /v-component\s*=\s*(["'])([^"']+)\1/g;
 const liveVueTestPattern = /LiveVue\.Test\.get_vue\s*\([^)]*\bname:\s*(["'])([^"']+)\1/g;
-const rootLiveBoundaryModules = new Set(["assets", "flows", "localization", "scenes", "sheets"]);
+const rootLiveBoundaryModules = new Set([
+  "assets",
+  "auth",
+  "docs",
+  "flows",
+  "localization",
+  "public",
+  "scenes",
+  "sheets",
+]);
 const privateModuleSegments = new Set([
   "canvas",
   "chrome",

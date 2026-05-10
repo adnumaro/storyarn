@@ -217,40 +217,13 @@ defmodule StoryarnWeb.SceneLive.Show do
   defp render_compact(assigns) do
     ~H"""
     <Layouts.compare flash={@flash}>
-      <div class="h-full relative">
-        <.vue
-          v-component="modules/scenes/editor/components/canvas/SceneCanvas"
-          v-socket={@socket}
-          id={"scene-canvas-compact-#{@scene.id}"}
-          class="w-full h-full"
-          scene-data={prepare_scene_for_vue(@scene)}
-          pins={prepare_pins_for_vue(@pins)}
-          zones={prepare_zones_for_vue(@zones)}
-          connections={prepare_connections_for_vue(@connections)}
-          annotations={prepare_annotations_for_vue(@annotations)}
-          layers={prepare_layers_for_vue(@layers)}
-          active-tool={to_string(@active_tool)}
-          edit-mode={@edit_mode}
-          can-edit={@can_edit}
-          collaboration={
-            %{userId: @current_scope.user.id, locks: serialize_entity_locks(@entity_locks)}
-          }
-        />
-
-        <.vue
-          :if={@edit_mode}
-          v-component="modules/scenes/editor/components/chrome/dock/SceneDock"
-          v-socket={@socket}
-          id="scene-dock-compact"
-          active-tool={to_string(@active_tool)}
-          edit-mode={@edit_mode}
-          compact={true}
-          pending-sheet={@pending_sheet_for_pin && %{name: @pending_sheet_for_pin.name}}
-          workspace-slug={@workspace.slug}
-          project-slug={@project.slug}
-          scene-id={@scene.id}
-        />
-      </div>
+      <.vue
+        v-component="live/scene/show/CompactSurface"
+        v-socket={@socket}
+        id={"scene-compact-surface-#{@scene.id}"}
+        class="h-full relative"
+        surface={scene_compact_surface_props(assigns)}
+      />
     </Layouts.compare>
     """
   end
@@ -276,6 +249,22 @@ defmodule StoryarnWeb.SceneLive.Show do
       dock: scene_surface_dock(assigns),
       layers: scene_surface_layers(assigns),
       legend: scene_surface_legend(assigns)
+    }
+  end
+
+  defp scene_compact_surface_props(assigns) do
+    %{
+      canvas:
+        assigns
+        |> scene_surface_canvas()
+        |> Map.merge(%{
+          id: "scene-canvas-compact-#{assigns.scene.id}",
+          mountId: "scene-canvas-compact-mount-#{assigns.scene.id}"
+        }),
+      dock:
+        assigns
+        |> scene_surface_dock()
+        |> Map.merge(%{compact: true, projectSheets: []})
     }
   end
 

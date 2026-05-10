@@ -16,7 +16,7 @@ defmodule StoryarnWeb.UserLive.ConfirmAccess do
     ~H"""
     <Layouts.auth flash={@flash} current_scope={@current_scope}>
       <.vue
-        v-component="modules/auth/ConfirmAccess"
+        v-component="live/auth/confirm-access/Form"
         v-socket={@socket}
         id="confirm-access-vue"
         email={@email}
