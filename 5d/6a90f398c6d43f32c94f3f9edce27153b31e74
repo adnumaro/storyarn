@@ -1,0 +1,42 @@
+assets/app/modules/flows/editor/components/chrome/tree/FlowTreeRoot.vue
+  s_116fc484719db6::t_9bf63fa19c63b4 4
+assets/app/modules/flows/editor/components/chrome/tree/FlowTree.vue
+  s_116fc484719db6::t_9bf63fa19c63b4 18
+assets/app/modules/flows/editor/components/entities/nodes/DialogueNode.vue
+  s_116fc484719db6::t_9bf63fa19c63b4 11
+assets/app/modules/flows/editor/components/entities/nodes/SequenceNode.vue
+  s_116fc484719db6::t_9bf63fa19c63b4 34
+assets/app/modules/flows/editor/lib/flow-context.ts
+  s_116fc484719db6::t_9bf63fa19c63b4 1
+assets/app/modules/flows/editor/components/entities/rete/FlowNode.vue
+  s_116fc484719db6::t_9bf63fa19c63b4 17
+assets/app/modules/flows/editor/components/entities/nodes/AnnotationNode.vue
+  s_116fc484719db6::t_9bf63fa19c63b4 3
+assets/app/modules/flows/editor/services/reteSetup.ts
+  s_116fc484719db6::t_9bf63fa19c63b4 29
+assets/app/modules/flows/editor/components/chrome/tree/FlowTreeNode.vue
+  s_116fc484719db6::t_9bf63fa19c63b4 11
+assets/app/modules/flows/editor/components/chrome/tree/FlowTree.types.ts
+  s_116fc484719db6::t_9bf63fa19c63b4 1-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "5d6a90f398c6d43f32c94f3f9edce27153b31e74",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
