@@ -1,0 +1,149 @@
+lib/storyarn_web/live/sheet_live/index.ex
+  s_116fc484719db6::t_e0531d5c4e6d3e 26,54,56,73,233-234
+lib/storyarn_web/router.ex
+  s_116fc484719db6::t_d00d57eeb36c41 194,241
+lib/storyarn_web/live/localization_sidebar_live.ex
+  s_116fc484719db6::t_d00d57eeb36c41 5,9-10
+  s_116fc484719db6::t_e1203e3984d732 253
+lib/storyarn_web/live/sheets_sidebar_live.ex
+  s_116fc484719db6::t_d00d57eeb36c41 5,7-8
+  s_116fc484719db6::t_e1203e3984d732 224
+lib/storyarn_web/live/scene_live/index.ex
+  s_116fc484719db6::t_68e0c64689d4f6 26,54,56,73
+test/storyarn_web/live/scene_live/exploration_live_test.exs
+  s_116fc484719db6::t_f7aaa616e003b1 224-225
+lib/storyarn_web/live/sheet_live/show.ex
+  s_116fc484719db6::t_cf52756cde68b9 48,75,97,150,154-165,411-412
+assets/app/shell/Sidebar.vue
+  h_46be6e61f3d9dd 155
+  s_116fc484719db6::t_8b89370910dd1f 157
+assets/app/live/layouts/project/Layout.vue
+  s_116fc484719db6::t_11a083da4a568e 68
+  s_116fc484719db6::t_bdfbe35abdcf35 38,40-42
+  s_116fc484719db6::t_f7aaa616e003b1 81,83,103,105
+  s_116fc484719db6::t_d840d6edcfdca7 7-14,23,30
+  s_116fc484719db6::t_171d5b1f8b1852 142-149
+  h_46be6e61f3d9dd 45,77,79,119
+  s_116fc484719db6::t_04ec17ad2833b1 118,120
+  s_116fc484719db6::t_d7e9aed7e1a738 2,39,44,46-50,76,78,80,84-93,95-98,100-102,106-111,113,117,121
+  s_116fc484719db6::t_60c95d74662502 17-19,22,24-29,31-36,54,56-57,59-67,69-73,99,112,114-116,123-139
+  s_116fc484719db6::t_e1203e3984d732 3-4,82,104
+  s_116fc484719db6::t_5e0dabe0f1a7a5 5
+lib/storyarn_web/components/project_shell.ex
+  s_116fc484719db6::t_e1203e3984d732 8,19,21,71,88,127,131,149,151,163
+  s_116fc484719db6::t_f7aaa616e003b1 129,133,159,165
+  s_116fc484719db6::t_2da3133c8180f9 91-92
+  s_116fc484719db6::t_86552e82117d3c 17,99
+lib/storyarn_web/components/project_layout.ex
+  s_116fc484719db6::t_ad1aa4b61153b0 3,5-7,12,18,20-21,24-25,48-69
+  s_116fc484719db6::t_9f233c5afe34c8 1-2,4,8-11,13-17,19,22-23,26-47,70-75
+assets/app/locales/en/layout.json
+  s_116fc484719db6::t_0f0c5292d16310 30-32
+  s_116fc484719db6::t_f7aaa616e003b1 20,26
+mix.exs
+  s_116fc484719db6::t_4cbbb7f4b6e972 71
+lib/storyarn_web/live/localization_live/report.ex
+  s_116fc484719db6::t_07ae75489e6836 12,41,43,51
+lib/storyarn_web/live/scene_live/helpers/scene_serializer.ex
+  s_116fc484719db6::t_d00d57eeb36c41 54
+assets/app/shell/ProjectNavbarContext.vue
+  s_116fc484719db6::t_5e0dabe0f1a7a5 26
+  s_116fc484719db6::t_f7aaa616e003b1 82-83,123,130
+  s_116fc484719db6::t_e1203e3984d732 2-25,29-36,38-45,50-71,76-81,84-86,88-91,93-114,116-117,119-122,124-129,131-161
+assets/app/live/sheet/show/Surface.vue
+  s_116fc484719db6::t_b34b6ae58ab8ba 112
+  s_116fc484719db6::t_7f8ae1053d87d8 2-3,5,9,33-40,54-57,60,62-63,65-66,68,72-75,78,107-111
+  s_116fc484719db6::t_699bd7e6d46213 41-50,52,58-59,64,67
+  s_116fc484719db6::t_0242b920c32a67 7,79-98,100-104
+  s_116fc484719db6::t_637d6bb64e9cc8 61
+  s_116fc484719db6::t_6292e1d7531c24 76
+lib/storyarn_web/live/flow_live/index.ex
+  s_116fc484719db6::t_aa8d5948b9eee8 25,53,55,72
+lib/storyarn_web/live/localization_live/edit.ex
+  s_116fc484719db6::t_800bfdf061dc9d 15,44,46,55
+docs/plans/live-vue-layout-architecture.md
+  s_116fc484719db6::t_3510980037c02c 29,42,44,198-199,201,222,241,400
+  s_116fc484719db6::t_4802ab1d4acc31 1-28,30-41,43,45-197,200,202-216,218-221,223-240,242-399,401-479,481-498,500-574
+  s_116fc484719db6::t_2edb94e71ac1f9 217,480,499
+test/storyarn_web/live/project_live/show_test.exs
+  s_116fc484719db6::t_9eb48257fb4ee9 10-11,26-28,39-40,60-61
+lib/storyarn_web/live/flow_sidebar_live.ex
+  s_116fc484719db6::t_d00d57eeb36c41 5
+  s_116fc484719db6::t_e1203e3984d732 264
+assets/app/shell/ProjectNavbarAccount.vue
+  s_116fc484719db6::t_e1203e3984d732 1-12,14-96,98-102,104-108,110-114
+  s_116fc484719db6::t_5e0dabe0f1a7a5 13
+  s_116fc484719db6::t_f7aaa616e003b1 97,103,109
+assets/app/locales/es/layout.json
+  s_116fc484719db6::t_f7aaa616e003b1 20,26
+  s_116fc484719db6::t_0f0c5292d16310 30-32
+vite.config.mjs
+  s_116fc484719db6::t_c6a3773a64224b 18-19
+lib/storyarn_web/live/presence_live.ex
+  s_116fc484719db6::t_e1203e3984d732 8
+  s_116fc484719db6::t_d00d57eeb36c41 6,9
+lib/storyarn_web/live/localization_live/index.ex
+  s_116fc484719db6::t_a6c5e12c47ce0b 18,44,56-57,60,65,67,79,148
+  s_116fc484719db6::t_e1203e3984d732 147
+test/storyarn_web/live/scene_live/index_test.exs
+  s_116fc484719db6::t_1d816434810d3b 175
+  s_116fc484719db6::t_cec2a9cc19b348 10,20-23,94,96-97,99-101,112,114,116,128-131,133,136,154,156-157,159,169,172,189-191,193,200,202-203,205,215,217-218,221,234,236,243,253,255,261,269,271-275,277
+test/storyarn_web/layouts_test.exs
+  s_116fc484719db6::t_e1203e3984d732 192
+  s_116fc484719db6::t_43b6df7dce4ad9 199-200
+lib/storyarn_web/live/localization_toolbar_live.ex
+  s_116fc484719db6::t_6b63abe603a9ea 5-7,39,58
+lib/storyarn_web/live/project_live/show.ex
+  s_116fc484719db6::t_7fe97d60c38a74 19,34,36,48
+lib/storyarn_web/live/shared/project_chrome_helpers.ex
+  s_116fc484719db6::t_d00d57eeb36c41 3,6-7
+lib/storyarn_web/live/scene_live/show.ex
+  s_116fc484719db6::t_e1203e3984d732 686
+lib/storyarn_web/live/asset_live/index.ex
+  s_116fc484719db6::t_83138c910ad4b7 15,26-34,38,40,52
+assets/app/live/flow/show/Surface.vue
+  s_116fc484719db6::t_efce486ea3ec1c 40-42
+  s_116fc484719db6::t_93c6182d92f99e 39
+  s_116fc484719db6::t_cf0c250001f5b3 34
+  s_116fc484719db6::t_bd1a8264ebdde2 2-3,37-38
+lib/storyarn_web/live/flow_live/show.ex
+  s_116fc484719db6::t_60c95d74662502 83-97,99-104,106-115,117-119,121-128
+  s_116fc484719db6::t_b485edfb57e005 116
+  s_116fc484719db6::t_9f233c5afe34c8 56,129
+assets/app/shell/projectNavbarTypes.ts
+  s_116fc484719db6::t_77cb536837c902 14
+  s_116fc484719db6::t_5e0dabe0f1a7a5 1-13,15-28
+lib/storyarn_web/live/scene_sidebar_live.ex
+  s_116fc484719db6::t_e1203e3984d732 222
+lib/storyarn_web/components/app_layout.ex
+  s_116fc484719db6::t_e1203e3984d732 110-111,182,201
+  s_116fc484719db6::t_d0f4460b9f3e85 6,62
+  s_116fc484719db6::t_fe4eacbbaf3113 179,197
+  s_116fc484719db6::t_f7aaa616e003b1 184,203
+test/storyarn_web/live/sheet_live/show_test.exs
+  s_116fc484719db6::t_bd313fdbe8db6a 16,18-19,22,28
+  s_116fc484719db6::t_725abad5800cf2 17
+lib/storyarn_web/live/version_viewer_live.ex
+  s_116fc484719db6::t_78954a7673c065 53-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "8e1a1d09ccab7ee9f5702c6bb10a4993aea11f20",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
