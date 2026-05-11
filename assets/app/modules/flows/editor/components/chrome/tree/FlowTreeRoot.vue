@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { makeDroppable } from "@vue-dnd-kit/core";
 import { useTemplateRef } from "vue";
-import type { FlowTreeItem } from "./FlowTree.vue";
+import type { FlowTreeItem } from "./FlowTree.types";
 
 const { items } = defineProps<{
   items: FlowTreeItem[];

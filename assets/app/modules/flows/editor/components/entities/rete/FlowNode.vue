@@ -14,7 +14,7 @@ import HubNode from "../nodes/HubNode.vue";
 import InstructionNode from "../nodes/InstructionNode.vue";
 import JumpNode from "../nodes/JumpNode.vue";
 import SubflowNode from "../nodes/SubflowNode.vue";
-import { FLOW_CONTEXT_KEY } from "../../../services/reteSetup";
+import { FLOW_CONTEXT_KEY } from "../../../lib/flow-context";
 import FlowNodeToolbar from "@modules/flows/editor/components/entities/toolbar/FlowNodeToolbar.vue";
 
 interface FlowNodeData {

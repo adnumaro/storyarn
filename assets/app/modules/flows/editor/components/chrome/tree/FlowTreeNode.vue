@@ -8,7 +8,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@components/ui/context-menu";
-import type { FlowTreeItem } from "./FlowTree.vue";
+import type { FlowTreeItem } from "./FlowTree.types";
 
 const {
   node,

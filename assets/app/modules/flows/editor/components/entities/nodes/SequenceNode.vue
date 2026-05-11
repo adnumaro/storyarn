@@ -31,7 +31,7 @@ import { computed, inject } from "vue";
 
 import FlowNodeToolbar from "@modules/flows/editor/components/entities/toolbar/FlowNodeToolbar.vue";
 import type { FlowNode } from "../../../lib/flow-node";
-import { FLOW_CONTEXT_KEY } from "../../../services/reteSetup";
+import { FLOW_CONTEXT_KEY } from "../../../lib/flow-context";
 import { reparentGestureActive } from "../../../lib/flow-reparent-state";
 
 interface FlowContextValue {

@@ -26,6 +26,7 @@ import FlowSocket from "../components/entities/rete/FlowSocket.vue";
 import Sequence from "../components/entities/nodes/SequenceNode.vue";
 
 import { createContextMenuItems } from "../lib/context_menu_items";
+import { FLOW_CONTEXT_KEY } from "../lib/flow-context";
 import { flowContextMenuPreset } from "../lib/context_menu_preset";
 import { flowScopesPreset } from "../lib/flow-scopes-preset";
 import {
@@ -36,10 +37,6 @@ import type { FlowSchemes, FlowAreaExtra } from "../lib/rete-schemes";
 import type { FlowContext, HookProxy } from "./editorHandlers";
 import { historyPreset } from "./historyPreset";
 import { magneticConnection } from "./magneticConnection";
-
-// Shared reactive state injected into every node/socket/connection Vue app instance.
-// Keys match the provide/inject keys used by FlowNode.vue.
-export const FLOW_CONTEXT_KEY = Symbol("flowContext");
 
 interface PluginSet {
   editor: NodeEditor<FlowSchemes>;

@@ -8,8 +8,8 @@ import EntityCombobox from "@components/forms/fields/EntityCombobox.vue";
 import NodeHeader from "../node-shell/NodeHeader.vue";
 import NodeShell from "../node-shell/NodeShell.vue";
 import { useScreenplayEditor } from "../../../composables/useScreenplayEditor";
+import { FLOW_CONTEXT_KEY } from "../../../lib/flow-context";
 import { previewText } from "../../../lib/render-helpers";
-import { FLOW_CONTEXT_KEY } from "../../../services/reteSetup";
 import type { NodeConfig } from "../../../lib/node-configs";
 import type {
   FlowContextInjection,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, ref, watch } from "vue";
-import { FLOW_CONTEXT_KEY } from "../../../services/reteSetup";
+import { FLOW_CONTEXT_KEY } from "../../../lib/flow-context";
 import type { FlowContextInjection, ReteEmitFn, ReteNodeData } from "../../../../types";
 import type { NodeConfig } from "../../../lib/node-configs";
 
