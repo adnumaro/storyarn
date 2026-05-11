@@ -16,7 +16,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
   @impl true
   def render(assigns) do
     ~H"""
-    <StoryarnWeb.Components.ProjectShell.project_shell
+    <StoryarnWeb.Components.ProjectLayout.project_layout
       socket={@socket}
       project={@project}
       workspace={@workspace}
@@ -31,7 +31,9 @@ defmodule StoryarnWeb.ProjectLive.Show do
       <.vue
         v-component="live/project/dashboard/Dashboard"
         v-socket={@socket}
+        v-inject="project-layout"
         id="project-dashboard"
+        class="contents"
         stats={@stats}
         node-dist={@node_dist || []}
         speakers={@speakers || []}
@@ -43,7 +45,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
         project-slug={@project.slug}
         loading={is_nil(@stats)}
       />
-    </StoryarnWeb.Components.ProjectShell.project_shell>
+    </StoryarnWeb.Components.ProjectLayout.project_layout>
     """
   end
 

@@ -53,7 +53,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def render(assigns) do
     ~H"""
-    <StoryarnWeb.Components.ProjectShell.project_shell
+    <StoryarnWeb.Components.ProjectLayout.project_layout
       socket={@socket}
       project={@project}
       workspace={@workspace}
@@ -80,57 +80,53 @@ defmodule StoryarnWeb.FlowLive.Show do
         }
       }
     >
-      <:top_bar_extras_left>
-        <.vue
-          :if={@flow}
-          v-component="live/flow/show/Header"
-          v-socket={@socket}
-          id="flow-header"
-          flow-name={@flow.name}
-          flow-shortcut={@flow.shortcut}
-          is-main={@flow.is_main}
-          can-edit={@can_edit}
-          save-status={to_string(@save_status)}
-          nav-history={
-            %{
-              back: @nav_history && NavigationHistory.peek_back(@nav_history),
-              forward: @nav_history && NavigationHistory.peek_forward(@nav_history)
-            }
+      <.vue
+        :if={@flow}
+        v-component="live/flow/show/Header"
+        v-socket={@socket}
+        v-inject:top-left="project-layout"
+        id="flow-header"
+        flow-name={@flow.name}
+        flow-shortcut={@flow.shortcut}
+        is-main={@flow.is_main}
+        can-edit={@can_edit}
+        save-status={to_string(@save_status)}
+        nav-history={
+          %{
+            back: @nav_history && NavigationHistory.peek_back(@nav_history),
+            forward: @nav_history && NavigationHistory.peek_forward(@nav_history)
           }
-          flow-health={
-            %{
-              wordCount: @flow_word_count,
-              errorNodes: @flow_error_nodes,
-              infoNodes: @flow_info_nodes
-            }
+        }
+        flow-health={
+          %{
+            wordCount: @flow_word_count,
+            errorNodes: @flow_error_nodes,
+            infoNodes: @flow_info_nodes
           }
-          scene-selected={%{name: @scene_name, inherited: @scene_inherited}}
-          project-scenes={Enum.map(@available_scenes, &Map.take(&1, [:id, :name]))}
-        />
-      </:top_bar_extras_left>
-      <div class="h-full relative">
-        <div class="absolute inset-0 flex flex-col">
-          <div class="flex-1 relative">
-            <.vue
-              :if={@flow}
-              v-component="live/flow/show/Surface"
-              v-socket={@socket}
-              id={"flow-surface-#{@flow.id}"}
-              class="w-full h-full"
-              surface={flow_surface_props(assigns)}
-            />
-          </div>
+        }
+        scene-selected={%{name: @scene_name, inherited: @scene_inherited}}
+        project-scenes={Enum.map(@available_scenes, &Map.take(&1, [:id, :name]))}
+      />
 
-          <.vue
-            :if={@flow}
-            v-component="live/flow/show/Panels"
-            v-socket={@socket}
-            id="flow-panels"
-            panels={flow_panels_props(assigns)}
-          />
-        </div>
-      </div>
-    </StoryarnWeb.Components.ProjectShell.project_shell>
+      <.vue
+        :if={@flow}
+        v-component="live/flow/show/Surface"
+        v-socket={@socket}
+        v-inject="project-layout"
+        id="flow-surface"
+        class="w-full h-full"
+        surface={flow_surface_props(assigns)}
+      />
+
+      <.vue
+        :if={@flow}
+        v-component="live/flow/show/Panels"
+        v-socket={@socket}
+        v-inject:panels="project-layout"
+        id="flow-panels"
+        panels={flow_panels_props(assigns)}
+      />
+    </StoryarnWeb.Components.ProjectLayout.project_layout>
     """
   end
 

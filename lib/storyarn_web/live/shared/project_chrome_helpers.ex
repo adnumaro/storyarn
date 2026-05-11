@@ -1,10 +1,10 @@
 defmodule StoryarnWeb.Live.Shared.ProjectChromeHelpers do
   @moduledoc """
-  Helpers shared by every page LV that renders the `ProjectShell` chrome.
+  Helpers shared by every page LV that renders project chrome.
 
   - `forward_main_sidebar/3` — forwards `main_sidebar_*` events from
-    `LeftToolbar.vue` (rendered inline by `ProjectShell`, so events land
-    in the page LV) to the per-tool sidebar LV via the shell PubSub topic.
+    `ProjectNavbarContext.vue` to the per-tool sidebar LV via the shell PubSub
+    topic.
   - `initial_online_users/1` — snapshot of current presence for the
     initial render; `PresenceLive` broadcasts updates on every join/leave.
   """

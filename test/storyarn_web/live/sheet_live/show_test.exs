@@ -13,15 +13,19 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
     find_live_child(view, "sidebar-sheets-#{project.id}")
   end
 
+  defp get_sheet_surface_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/sheet/show/Surface")
+  end
+
   defp get_sheet_surface_props(view) do
     view
-    |> LiveVue.Test.get_vue(name: "live/sheet/show/Surface")
+    |> get_sheet_surface_vue()
     |> then(& &1.props["surface"])
   end
 
   defp get_sheet_panels_props(view) do
     view
-    |> LiveVue.Test.get_vue(name: "live/sheet/show/Panels")
+    |> get_sheet_surface_vue()
     |> then(& &1.props["panels"])
   end
 

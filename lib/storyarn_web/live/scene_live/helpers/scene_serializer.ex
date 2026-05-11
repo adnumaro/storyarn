@@ -51,7 +51,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneSerializer do
   @doc """
   Notifies the sticky `SceneSidebarLive` that the scenes tree changed so it
   reloads. Show no longer holds `:scenes_tree` — the sidebar is the sole
-  source of truth for tree state after the ProjectShell migration.
+  source of truth for tree state after the project layout migration.
   """
   def reload_scenes_tree(socket) do
     Phoenix.PubSub.broadcast(

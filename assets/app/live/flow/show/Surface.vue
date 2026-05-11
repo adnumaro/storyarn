@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useLiveVue } from "live_vue";
+import { computed } from "vue";
 import FlowDock from "@modules/flows/editor/components/chrome/dock/FlowDock.vue";
 import FlowCollabToast from "@modules/flows/editor/components/collab/CollabToast.vue";
 import FlowCanvas from "./Canvas.vue";
@@ -29,9 +31,15 @@ interface FlowSurface {
   dock: FlowDockSurface;
 }
 
-const { surface } = defineProps<{
+const { surface: initialSurface } = defineProps<{
   surface: FlowSurface;
 }>();
+
+const live = useLiveVue();
+// `v-inject` keeps this boundary alive while route diffs replace the surface payload.
+const surface = computed(
+  () => (live.vue.props.surface as FlowSurface | undefined) ?? initialSurface,
+);
 </script>
 
 <template>

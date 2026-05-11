@@ -9,7 +9,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
   @impl true
   def render(assigns) do
     ~H"""
-    <StoryarnWeb.Components.ProjectShell.project_shell
+    <StoryarnWeb.Components.ProjectLayout.project_layout
       socket={@socket}
       project={@project}
       workspace={@workspace}
@@ -38,7 +38,9 @@ defmodule StoryarnWeb.LocalizationLive.Report do
       <.vue
         v-component="live/localization/report/Report"
         v-socket={@socket}
+        v-inject="project-layout"
         id="localization-report"
+        class="contents"
         language-progress={serialize_language_progress(@language_progress)}
         target-languages={serialize_languages(@target_languages)}
         selected-locale={@selected_locale}
@@ -46,7 +48,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
         vo-progress={@vo_progress}
         type-counts={@type_counts}
       />
-    </StoryarnWeb.Components.ProjectShell.project_shell>
+    </StoryarnWeb.Components.ProjectLayout.project_layout>
     """
   end
 

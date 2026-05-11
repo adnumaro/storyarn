@@ -10,25 +10,7 @@ import {
 } from "@components/ui/dropdown-menu";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import UserAvatar from "@components/UserAvatar.vue";
-
-interface CurrentUser {
-  id: number;
-  email: string;
-  displayName?: string;
-}
-
-interface OnlineUser {
-  userId: number;
-  email: string;
-  displayName?: string;
-  color?: string;
-}
-
-interface RightToolbarUrls {
-  accountSettings: string;
-  workspaces: string;
-  logout: string;
-}
+import type { CurrentUser, OnlineUser, ProjectNavbarAccountUrls } from "./projectNavbarTypes";
 
 const {
   currentUser,
@@ -37,7 +19,7 @@ const {
 } = defineProps<{
   currentUser: CurrentUser;
   onlineUsers?: OnlineUser[];
-  urls: RightToolbarUrls;
+  urls: ProjectNavbarAccountUrls;
 }>();
 
 const otherUsers = computed(() =>
@@ -112,19 +94,19 @@ function handleLogout(): void {
         <DropdownMenuItem as-child>
           <a :href="urls.accountSettings" class="flex items-center gap-2">
             <User class="size-4" />
-            {{ $t("layout.right_toolbar.account_settings") }}
+            {{ $t("layout.project_navbar_account.account_settings") }}
           </a>
         </DropdownMenuItem>
         <DropdownMenuItem as-child>
           <a :href="urls.workspaces" class="flex items-center gap-2">
             <LayoutDashboard class="size-4" />
-            {{ $t("layout.right_toolbar.all_workspaces") }}
+            {{ $t("layout.project_navbar_account.all_workspaces") }}
           </a>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem class="flex items-center gap-2" @select="handleLogout">
           <LogOut class="size-4" />
-          {{ $t("layout.right_toolbar.log_out") }}
+          {{ $t("layout.project_navbar_account.log_out") }}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

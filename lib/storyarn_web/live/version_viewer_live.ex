@@ -50,24 +50,16 @@ defmodule StoryarnWeb.VersionViewerLive do
     ~H"""
     <Layouts.compare flash={@flash}>
       <div class="h-screen overflow-y-auto bg-background p-4">
-        <div class="max-w-4xl mx-auto bg-surface border border-border rounded-2xl p-6 shadow-sm">
-          <.vue
-            v-component="live/sheet/show/Header"
-            v-socket={@socket}
-            id={"sheet-version-header-#{@entity_id}-#{@version_number}"}
-            sheet={@sheet}
-            can-edit={false}
-            source-shortcut={nil}
-          />
-          <div class="pb-6">
-            <.vue
-              v-component="live/sheet/show/Surface"
-              v-socket={@socket}
-              id={"sheet-version-surface-#{@entity_id}-#{@version_number}"}
-              surface={@surface}
-            />
-          </div>
-        </div>
+        <.vue
+          v-component="live/sheet/show/Surface"
+          v-socket={@socket}
+          id={"sheet-version-surface-#{@entity_id}-#{@version_number}"}
+          class="contents"
+          sheet={@sheet}
+          can-edit={false}
+          source-shortcut={nil}
+          surface={@surface}
+        />
       </div>
     </Layouts.compare>
     """

@@ -15,7 +15,8 @@ export default defineConfig({
     fs: { allow: [".."] },
   },
   optimizeDeps: {
-    include: ["live_vue", "phoenix", "phoenix_html", "phoenix_live_view"],
+    include: ["phoenix", "phoenix_html", "phoenix_live_view"],
+    exclude: ["live_vue"],
   },
   ssr: { noExternal: process.env.NODE_ENV === "production" ? true : undefined },
   build: {

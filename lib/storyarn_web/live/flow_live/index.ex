@@ -22,7 +22,7 @@ defmodule StoryarnWeb.FlowLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <StoryarnWeb.Components.ProjectShell.project_shell
+    <StoryarnWeb.Components.ProjectLayout.project_layout
       socket={@socket}
       project={@project}
       workspace={@workspace}
@@ -50,7 +50,9 @@ defmodule StoryarnWeb.FlowLive.Index do
       <.vue
         v-component="live/flow/dashboard/Dashboard"
         v-socket={@socket}
+        v-inject="project-layout"
         id="flow-dashboard"
+        class="contents"
         stats={@dashboard_stats}
         table-data={@flow_table_data}
         pagination={
@@ -67,7 +69,7 @@ defmodule StoryarnWeb.FlowLive.Index do
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
       />
-    </StoryarnWeb.Components.ProjectShell.project_shell>
+    </StoryarnWeb.Components.ProjectLayout.project_layout>
     """
   end
 

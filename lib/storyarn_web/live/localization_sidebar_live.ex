@@ -2,13 +2,12 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
   @moduledoc """
   Localization-specific left sidebar LiveView.
 
-  Rendered as a sticky nested child of `ProjectShell` on localization
+  Rendered as a sticky nested child of the project layout on localization
   routes. Owns the languages panel (source + target locales) and the
   mutation handlers for adding/removing/selecting languages.
 
-  Pairs with `LocalizationToolbarLive` (rendered via the
-  `:top_bar_extras_right` slot of `ProjectShell`) for the `translate_batch`
-  button on the Index page.
+  Pairs with `LocalizationToolbarLive`, which injects into the project
+  layout's top-right slot for the `translate_batch` button on the Index page.
 
   Step 3 scaffold: loads languages + handles `main_sidebar_*`. Actual
   localization mutations land in step 6.
@@ -251,7 +250,7 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
 
   def handle_info({:remote_change, _action, _payload}, socket), do: {:noreply, socket}
 
-  # Forwarded from ToolbarsLive (LeftToolbar.vue's pushEvent lands there).
+  # Forwarded from ToolbarsLive (ProjectNavbarContext.vue's pushEvent lands there).
   def handle_info({:toolbar_event, "main_sidebar_toggle", _params}, socket) do
     {:noreply, assign(socket, :main_sidebar_open, !socket.assigns.main_sidebar_open)}
   end

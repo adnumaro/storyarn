@@ -17,16 +17,19 @@
       "pin": "Fijar",
       "close": "Cerrar panel"
     },
-    "left_toolbar": {
+    "project_navbar_context": {
       "hide_panel": "Ocultar panel",
       "show_panel": "Mostrar panel",
       "project_settings": "Ajustes del proyecto",
       "trash": "Papelera"
     },
-    "right_toolbar": {
+    "project_navbar_account": {
       "account_settings": "Ajustes de cuenta",
       "all_workspaces": "Todos los espacios",
       "log_out": "Cerrar sesión"
+    },
+    "project_restoration": {
+      "in_progress": "El proyecto está siendo restaurado por {user}. La edición está temporalmente deshabilitada."
     }
   }
 }

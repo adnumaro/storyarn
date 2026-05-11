@@ -191,7 +191,7 @@ defmodule StoryarnWeb.Router do
 
     # Project-scoped live_session — loads project/workspace/membership once via
     # ProjectScope on_mount. Routes inside share a live_session so sticky
-    # live_renders (toolbars + sidebar in ProjectShell) persist across navigation.
+    # live_renders (project chrome + sidebars) persist across navigation.
     live_session :project_scope,
       on_mount:
         if(Application.compile_env(:storyarn, :sql_sandbox),
@@ -238,7 +238,7 @@ defmodule StoryarnWeb.Router do
            AssetLive.Index,
            :index
 
-      # Project Settings (uses Layouts.settings, not ProjectShell — keeps the
+      # Project Settings (uses Layouts.settings, not project chrome — keeps the
       # full-page settings sidebar nav. Inside :project_scope only to share the
       # ProjectScope on_mount hook for project/workspace/membership loading.)
       live "/workspaces/:workspace_slug/projects/:project_slug/settings",

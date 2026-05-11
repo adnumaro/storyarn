@@ -3,7 +3,7 @@ defmodule StoryarnWeb.Components.AppLayout do
   App layout — LiveVue + shadcn-vue.
 
   The primary application layout used by all authenticated project pages.
-  The HEEx acts as orchestrator — each toolbar/panel is a Vue component
+  The HEEx acts as orchestrator — each navbar section/panel is a Vue component
   receiving only the props it needs.
   """
 
@@ -59,7 +59,7 @@ defmodule StoryarnWeb.Components.AppLayout do
   # ============================================================================
 
   @doc """
-  Renders the app layout — full-screen content with Vue floating toolbars
+  Renders the app layout — full-screen content with Vue navigation chrome
   and pinnable tree panel.
 
   Used as `Layouts.app` for all authenticated project pages.
@@ -107,8 +107,8 @@ defmodule StoryarnWeb.Components.AppLayout do
     doc: "legacy props passed to shell/MainSidebar when a page still uses Layouts.app"
 
   slot :tree_content, doc: "main sidebar content (tree component)"
-  slot :top_bar_extra, doc: "extra content rendered next to the left toolbar (same row)"
-  slot :top_bar_extra_right, doc: "extra content rendered next to the right toolbar (same row)"
+  slot :top_bar_extra, doc: "extra content rendered next to the project navbar context (same row)"
+  slot :top_bar_extra_right, doc: "extra content rendered next to the project navbar account (same row)"
   slot :content_header, doc: "optional header above main content"
   slot :inner_block, required: true
 
@@ -176,12 +176,12 @@ defmodule StoryarnWeb.Components.AppLayout do
         </div>
       </div>
 
-      <%!-- Left floating toolbar row (top-left) --%>
+      <%!-- Project navigation context row (top-left) --%>
       <div class="fixed top-3 left-3 z-41 flex items-stretch gap-2">
         <.vue
-          v-component="shell/LeftToolbar"
+          v-component="shell/ProjectNavbarContext"
           v-socket={@socket}
-          id="left-toolbar"
+          id="project-navbar-context"
           active-tool={to_string(@active_tool)}
           has-tree={@has_tree}
           main-sidebar-open={@main_sidebar_open}
@@ -194,13 +194,13 @@ defmodule StoryarnWeb.Components.AppLayout do
         {render_slot(@top_bar_extra)}
       </div>
 
-      <%!-- Right floating toolbar row (top-right) --%>
+      <%!-- Project account navigation row (top-right) --%>
       <div :if={@current_user_id} class="fixed top-3 right-3 z-41 flex items-stretch gap-2">
         {render_slot(@top_bar_extra_right)}
         <.vue
-          v-component="shell/RightToolbar"
+          v-component="shell/ProjectNavbarAccount"
           v-socket={@socket}
-          id="right-toolbar"
+          id="project-navbar-account"
           current-user={@current_user}
           online-users={@online_users}
           urls={@urls}

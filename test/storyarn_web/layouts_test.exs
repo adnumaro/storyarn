@@ -189,15 +189,15 @@ defmodule StoryarnWeb.LayoutsTest do
       assert html =~ "No user"
     end
 
-    test "hides right toolbar when no user" do
+    test "hides project navbar account when no user" do
       html =
         render_component(
           &Layouts.app/1,
           base_app_assigns(%{current_scope: nil})
         )
 
-      # Right toolbar Vue component is conditional on current_user_id
-      refute html =~ ~s(data-name="layout/RightToolbar")
+      # Account navbar Vue component is conditional on current_user_id
+      refute html =~ ~s(data-name="shell/ProjectNavbarAccount")
     end
 
     test "renders canvas mode without padding" do

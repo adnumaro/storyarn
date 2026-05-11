@@ -2,9 +2,9 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
   @moduledoc """
   Localization-specific top-right toolbar LiveView.
 
-  Rendered via the `:top_bar_extras_right` slot of `ProjectShell` from
-  `LocalizationLive.Index` (the dashboard is the only page with this
-  toolbar today; Edit and Report don't fill the slot).
+  Rendered by `LocalizationLive.Index`; its Vue boundary can inject into the
+  project layout's `top-right` slot while this LiveView keeps owning the
+  `translate_batch` event.
 
   Owns the `LocalizationToolbar.vue` widget (report link, export CSV/XLSX
   dropdown, "translate all pending" button) and the `translate_batch`
@@ -36,6 +36,7 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
       |> assign(:selected_locale, session["selected_locale"])
       |> assign(:has_provider, session["has_provider"] || false)
       |> assign(:can_edit, session["can_edit"] || false)
+      |> assign(:inject_target, session["inject_target"])
 
     if connected?(socket) do
       Phoenix.PubSub.subscribe(Storyarn.PubSub, shell_topic(session["project_id"]))
@@ -54,6 +55,7 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
       <.vue
         v-component="live/localization/toolbar/Toolbar"
         v-socket={@socket}
+        v-inject:top-right={@inject_target}
         id="localization-toolbar"
         export-csv-url={export_url(assigns, :csv)}
         export-xlsx-url={export_url(assigns, :xlsx)}

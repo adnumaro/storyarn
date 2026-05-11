@@ -12,7 +12,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
   @impl true
   def render(assigns) do
     ~H"""
-    <StoryarnWeb.Components.ProjectShell.project_shell
+    <StoryarnWeb.Components.ProjectLayout.project_layout
       socket={@socket}
       project={@project}
       workspace={@workspace}
@@ -41,7 +41,9 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
       <.vue
         v-component="live/localization/texts/Edit"
         v-socket={@socket}
+        v-inject="project-layout"
         id="localization-edit-vue"
+        class="contents"
         text={serialize_text(@text)}
         form={@form}
         has-provider={@has_provider}
@@ -50,7 +52,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
           ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization/texts/#{@text.locale_code}"
         }
       />
-    </StoryarnWeb.Components.ProjectShell.project_shell>
+    </StoryarnWeb.Components.ProjectLayout.project_layout>
     """
   end
 

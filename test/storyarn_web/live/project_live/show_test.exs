@@ -7,8 +7,8 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
 
   alias Storyarn.Repo
 
-  defp get_left_toolbar_vue(view) do
-    LiveVue.Test.get_vue(view, name: "shell/LeftToolbar")
+  defp get_project_layout_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/layouts/project/Layout")
   end
 
   describe "Show" do
@@ -23,10 +23,9 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
 
-      # Project name shows in the left toolbar
-      toolbar = get_left_toolbar_vue(view)
-      assert toolbar.props["project-name"] == "My Project"
-      assert toolbar.props["active-tool"] == "dashboard"
+      chrome = get_project_layout_vue(view).props["chrome"]
+      assert chrome["projectName"] == "My Project"
+      assert chrome["activeTool"] == "dashboard"
     end
 
     test "renders project dashboard for member", %{conn: conn, user: user} do
@@ -37,8 +36,8 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
 
-      toolbar = get_left_toolbar_vue(view)
-      assert toolbar.props["project-name"] == "Shared Project"
+      chrome = get_project_layout_vue(view).props["chrome"]
+      assert chrome["projectName"] == "Shared Project"
     end
 
     test "redirects for non-member", %{conn: conn} do
@@ -58,8 +57,8 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
       {:ok, view, _html} =
         live(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
 
-      toolbar = get_left_toolbar_vue(view)
-      assert toolbar.props["show-tool-switcher"] == true
+      chrome = get_project_layout_vue(view).props["chrome"]
+      assert chrome["showToolSwitcher"] == true
     end
   end
 end

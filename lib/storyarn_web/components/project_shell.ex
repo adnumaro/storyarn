@@ -5,7 +5,7 @@ defmodule StoryarnWeb.Components.ProjectShell do
 
   Renders the persistent chrome:
 
-  - Both `LeftToolbar` and `RightToolbar` Vue components inline as
+  - Both `ProjectNavbarContext` and `ProjectNavbarAccount` Vue components inline as
     fixed top pills.
   - A per-tool **sidebar LV** (via `sidebar_module` + `sidebar_session`
     attrs) — e.g. `SheetsSidebarLive`, `LocalizationSidebarLive`.
@@ -14,11 +14,11 @@ defmodule StoryarnWeb.Components.ProjectShell do
     Page LVs subscribe and pass the list back in via `online_users`.
 
   Additionally exposes two slots, each rendered next to the respective
-  toolbar in the same flex container (natural gap-2 spacing):
+  navbar section in the same flex container (natural gap-2 spacing):
 
-  - `:top_bar_extras_left` — between `LeftToolbar` and the tool
+  - `:top_bar_extras_left` — between `ProjectNavbarContext` and the tool
     switcher, if the tool needs extra chrome there.
-  - `:top_bar_extras_right` — between `RightToolbar` and the screen
+  - `:top_bar_extras_right` — between `ProjectNavbarAccount` and the screen
     edge (the slot is rendered FIRST so the user pill stays at the
     far right). Typical fill: a `live_render` of a tool-specific
     sticky LV (`LocalizationToolbarLive` etc.).
@@ -68,7 +68,7 @@ defmodule StoryarnWeb.Components.ProjectShell do
   attr :sidebar_module, :atom,
     default: nil,
     doc:
-      "per-tool sidebar LiveView module (e.g. `SheetsSidebarLive`). When nil, no sidebar is rendered and the LeftToolbar tree toggle is hidden."
+      "per-tool sidebar LiveView module (e.g. `SheetsSidebarLive`). When nil, no sidebar is rendered and the ProjectNavbarContext tree toggle is hidden."
 
   attr :sidebar_session, :map,
     default: %{},
@@ -85,17 +85,18 @@ defmodule StoryarnWeb.Components.ProjectShell do
       "when true, `<main>` has no top padding and no scroll (full-bleed canvas tools like scenes/flows). When false, default padded scrollable content."
 
   slot :top_bar_extras_left,
-    doc: "page-provided content rendered next to LeftToolbar"
+    doc: "page-provided content rendered next to ProjectNavbarContext"
 
   slot :top_bar_extras_right,
-    doc: "page-provided content rendered next to RightToolbar (typically a `live_render` of a tool-specific sticky LV)"
+    doc:
+      "page-provided content rendered next to ProjectNavbarAccount (typically a `live_render` of a tool-specific sticky LV)"
 
   slot :inner_block, required: true
 
   def project_shell(assigns) do
     ~H"""
     <div class="h-screen w-screen overflow-hidden relative bg-background">
-      <%!-- Restoration banner (rendered above toolbars when a project-wide
+      <%!-- Restoration banner (rendered above navigation chrome when a project-wide
            restoration is in progress). --%>
       <div
         :if={@restoration_banner}
@@ -123,13 +124,13 @@ defmodule StoryarnWeb.Components.ProjectShell do
         }
       )}
 
-      <%!-- Top-left chrome: LeftToolbar + optional tool-specific extras --%>
+      <%!-- Top-left chrome: ProjectNavbarContext + optional tool-specific extras --%>
       <div class="fixed top-3 left-3 z-41 flex items-stretch gap-2">
-        <div id="shell-left-toolbar-wrapper" phx-update="ignore">
+        <div id="project-navbar-context-wrapper" phx-update="ignore">
           <.vue
-            v-component="shell/LeftToolbar"
+            v-component="shell/ProjectNavbarContext"
             v-socket={@socket}
-            id="shell-left-toolbar"
+            id="project-navbar-context"
             active-tool={to_string(@active_tool)}
             has-tree={@sidebar_module != nil}
             main-sidebar-open={true}
@@ -145,9 +146,9 @@ defmodule StoryarnWeb.Components.ProjectShell do
       </div>
 
       <%!--
-        Top-right chrome: optional tool-specific extras + RightToolbar.
+        Top-right chrome: optional tool-specific extras + ProjectNavbarAccount.
         Slot rendered FIRST so the user pill stays at the screen edge.
-        RightToolbar's wrapper uses `phx-update="ignore"` + a dynamic id
+        ProjectNavbarAccount's wrapper uses `phx-update="ignore"` + a dynamic id
         keyed on `online_users_key` so Vue remounts when presence changes
         (avoids the LiveVue mid-mount race on diff updates).
       --%>
@@ -155,13 +156,13 @@ defmodule StoryarnWeb.Components.ProjectShell do
         {render_slot(@top_bar_extras_right)}
 
         <div
-          id={"shell-right-toolbar-wrapper-#{online_users_key(@online_users)}"}
+          id={"project-navbar-account-wrapper-#{online_users_key(@online_users)}"}
           phx-update="ignore"
         >
           <.vue
-            v-component="shell/RightToolbar"
+            v-component="shell/ProjectNavbarAccount"
             v-socket={@socket}
-            id="shell-right-toolbar"
+            id="project-navbar-account"
             current-user={@current_user}
             online-users={@online_users}
             urls={@urls}

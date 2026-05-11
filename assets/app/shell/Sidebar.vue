@@ -152,8 +152,9 @@ watch(
   <div
     ref="panelRef"
     :inert="!open"
+    :style="{ top: 'var(--storyarn-project-sidebar-top, 3.5rem)' }"
     :class="[
-      'fixed top-19 bottom-3 left-3 right-3 flex flex-col surface-panel overflow-hidden',
+      'fixed bottom-3 left-3 right-3 flex flex-col surface-panel overflow-hidden',
       'z-40',
       side === 'right' ? 'right-sidebar' : 'left-sidebar',
     ]"

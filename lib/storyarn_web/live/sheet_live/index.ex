@@ -23,7 +23,7 @@ defmodule StoryarnWeb.SheetLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <StoryarnWeb.Components.ProjectShell.project_shell
+    <StoryarnWeb.Components.ProjectLayout.project_layout
       socket={@socket}
       project={@project}
       workspace={@workspace}
@@ -51,7 +51,9 @@ defmodule StoryarnWeb.SheetLive.Index do
       <.vue
         v-component="live/sheet/dashboard/Dashboard"
         v-socket={@socket}
+        v-inject="project-layout"
         id="sheet-dashboard"
+        class="contents"
         stats={@dashboard_stats}
         table-data={@sheet_table_data}
         pagination={
@@ -68,7 +70,7 @@ defmodule StoryarnWeb.SheetLive.Index do
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
       />
-    </StoryarnWeb.Components.ProjectShell.project_shell>
+    </StoryarnWeb.Components.ProjectLayout.project_layout>
     """
   end
 
@@ -228,9 +230,8 @@ defmodule StoryarnWeb.SheetLive.Index do
   # Events
   # ===========================================================================
 
-  # main_sidebar_* events fire from LeftToolbar.vue (rendered by ProjectShell
-  # in this LV's DOM). Forward them on the shell topic so the sidebar LV
-  # picks them up.
+  # main_sidebar_* events fire from ProjectNavbarContext.vue in this LV's DOM.
+  # Forward them on the shell topic so the sidebar LV picks them up.
   @impl true
   def handle_event("main_sidebar_" <> _ = event, params, socket),
     do: ProjectChromeHelpers.forward_main_sidebar(socket, event, params)

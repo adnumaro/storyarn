@@ -2,11 +2,10 @@ defmodule StoryarnWeb.SheetsSidebarLive do
   @moduledoc """
   Sheets-specific left sidebar LiveView.
 
-  Rendered as a sticky nested child of `ProjectShell` on sheet routes.
+  Rendered as a sticky nested child of the project layout on sheet routes.
   Owns the sheets tree + tree mutations. Other tools get their own
-  sidebar LV (e.g. `LocalizationSidebarLive`). Tool-specific toolbar
-  extras render via the `:top_bar_extras_right` slot of `ProjectShell`
-  from each page LV.
+  sidebar LV (e.g. `LocalizationSidebarLive`). Tool-specific actions inject
+  into the project layout from each page LV.
   """
 
   use StoryarnWeb, :live_view
@@ -222,7 +221,7 @@ defmodule StoryarnWeb.SheetsSidebarLive do
 
   def handle_info({:remote_change, _action, _payload}, socket), do: {:noreply, socket}
 
-  # Forwarded from ToolbarsLive (LeftToolbar.vue's pushEvent lands there).
+  # Forwarded from ToolbarsLive (ProjectNavbarContext.vue's pushEvent lands there).
   def handle_info({:toolbar_event, "main_sidebar_toggle", _params}, socket) do
     {:noreply, assign(socket, :main_sidebar_open, !socket.assigns.main_sidebar_open)}
   end

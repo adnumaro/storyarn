@@ -45,7 +45,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   defp render_full(assigns) do
     ~H"""
-    <StoryarnWeb.Components.ProjectShell.project_shell
+    <StoryarnWeb.Components.ProjectLayout.project_layout
       socket={@socket}
       project={@project}
       workspace={@workspace}
@@ -72,6 +72,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       }
     >
       <.sheet_content
+        inject="project-layout"
         sheet={@sheet}
         socket={@socket}
         current_tab={@current_tab}
@@ -93,7 +94,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         current_user_id={@current_scope.user.id}
         compact={false}
       />
-    </StoryarnWeb.Components.ProjectShell.project_shell>
+    </StoryarnWeb.Components.ProjectLayout.project_layout>
     """
   end
 
@@ -146,40 +147,22 @@ defmodule StoryarnWeb.SheetLive.Show do
   attr :block_locks, :map, default: %{}
   attr :current_user_id, :integer, default: nil
   attr :compact, :boolean, default: false
+  attr :inject, :string, default: nil
 
   defp sheet_content(assigns) do
     ~H"""
-    <div
-      :if={@sheet}
-      class="max-w-4xl mx-auto bg-surface border border-border rounded-2xl p-6 shadow-sm"
-    >
-      <.vue
-        v-component="live/sheet/show/Header"
-        v-socket={@socket}
-        id="sheet-header"
-        sheet={prepare_sheet_for_vue(@sheet)}
-        can-edit={@can_edit}
-        source-shortcut={@source_shortcut}
-      />
-      <div class="pb-6">
-        <.vue
-          v-component="live/sheet/show/Surface"
-          v-socket={@socket}
-          id="sheet-surface"
-          surface={sheet_surface_props(assigns)}
-        />
-        <.vue
-          v-component="live/sheet/show/Panels"
-          v-socket={@socket}
-          id="sheet-panels"
-          panels={sheet_panels_props(assigns)}
-        />
-      </div>
-    </div>
-
-    <div :if={!@sheet} class="flex justify-center py-20">
-      <div class="size-6 border-2 border-muted-foreground/20 border-t-muted-foreground/60 rounded-full animate-spin" />
-    </div>
+    <.vue
+      v-component="live/sheet/show/Surface"
+      v-socket={@socket}
+      v-inject={@inject}
+      id="sheet-surface"
+      class="contents"
+      sheet={prepare_sheet_for_vue(@sheet)}
+      can-edit={@can_edit}
+      source-shortcut={@source_shortcut}
+      surface={sheet_surface_props(assigns)}
+      panels={sheet_panels_props(assigns)}
+    />
     """
   end
 
@@ -425,9 +408,8 @@ defmodule StoryarnWeb.SheetLive.Show do
   # Event Handlers: Header
   # ===========================================================================
 
-  # main_sidebar_* events fire from LeftToolbar.vue (rendered by ProjectShell
-  # in this LV's DOM). Forward them on the shell topic so the active
-  # sidebar LV picks them up.
+  # main_sidebar_* events fire from ProjectNavbarContext.vue in this LV's DOM.
+  # Forward them on the shell topic so the active sidebar LV picks them up.
   @impl true
   def handle_event("main_sidebar_" <> _ = event, params, socket),
     do: ProjectChromeHelpers.forward_main_sidebar(socket, event, params)

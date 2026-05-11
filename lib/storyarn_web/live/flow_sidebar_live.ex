@@ -2,7 +2,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
   @moduledoc """
   Flows-specific left sidebar LiveView.
 
-  Rendered as a sticky nested child of `ProjectShell` on flow routes.
+  Rendered as a sticky nested child of the project layout on flow routes.
   Owns the flows tree + tree mutations. The FlowHeader, canvas, debug
   panel and version history stay in `FlowLive.Show` — the sidebar is
   focused on navigation only.
@@ -261,7 +261,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
 
   def handle_info({:remote_change, _action, _payload}, socket), do: {:noreply, socket}
 
-  # Forwarded from the page LV (LeftToolbar.vue's pushEvent lands there).
+  # Forwarded from the page LV (ProjectNavbarContext.vue's pushEvent lands there).
   # Dashboard mode ignores toolbar toggles too — tree stays open.
   def handle_info({:toolbar_event, _name, _params}, %{assigns: %{dashboard_mode: true}} = socket) do
     {:noreply, socket}

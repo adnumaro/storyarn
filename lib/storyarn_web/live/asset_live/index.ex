@@ -12,7 +12,7 @@ defmodule StoryarnWeb.AssetLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <StoryarnWeb.Components.ProjectShell.project_shell
+    <StoryarnWeb.Components.ProjectLayout.project_layout
       socket={@socket}
       project={@project}
       workspace={@workspace}
@@ -23,18 +23,21 @@ defmodule StoryarnWeb.AssetLive.Index do
       is_super_admin={@is_super_admin}
       online_users={@online_users}
     >
-      <:top_bar_extras_right :if={@can_edit}>
-        <.vue
-          v-component="live/assets/dashboard/HeaderActions"
-          v-socket={@socket}
-          id="asset-upload-button"
-          uploading={@uploading}
-        />
-      </:top_bar_extras_right>
+      <.vue
+        :if={@can_edit}
+        v-component="live/assets/dashboard/HeaderActions"
+        v-socket={@socket}
+        v-inject:top-right="project-layout"
+        id="asset-upload-button"
+        uploading={@uploading}
+      />
+
       <.vue
         v-component="live/assets/dashboard/Dashboard"
         v-socket={@socket}
+        v-inject="project-layout"
         id="asset-index"
+        class="contents"
         assets={serialize_assets(@assets)}
         filter={@filter}
         search={@search}
@@ -46,7 +49,7 @@ defmodule StoryarnWeb.AssetLive.Index do
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
       />
-    </StoryarnWeb.Components.ProjectShell.project_shell>
+    </StoryarnWeb.Components.ProjectLayout.project_layout>
     """
   end
 

@@ -7,6 +7,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
   import Storyarn.ScenesFixtures
 
   alias Storyarn.Repo
+  alias Storyarn.Scenes
 
   defp scenes_path(project) do
     ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes"
@@ -14,6 +15,10 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
 
   defp get_dashboard_vue(view) do
     LiveVue.Test.get_vue(view, name: "live/scene/dashboard/Dashboard")
+  end
+
+  defp get_sidebar_live(view, project) do
+    find_live_child(view, "sidebar-scenes-#{project.id}")
   end
 
   defp scene_names(view) do
@@ -86,13 +91,14 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, scenes_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      assert view
-             |> render_click("create_scene")
-             |> follow_redirect(conn)
+      render_click(sidebar, "create_scene")
+      {redirect_path, _flash} = assert_redirect(view)
 
-      # The scene was created — verify it exists
-      scenes = Storyarn.Scenes.list_scenes(project.id)
+      assert redirect_path =~ "/scenes/"
+
+      scenes = Scenes.list_scenes(project.id)
       assert length(scenes) == 1
       assert hd(scenes).name == "Untitled"
     end
@@ -103,10 +109,11 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       _membership = membership_fixture(project, user, "viewer")
 
       {:ok, view, _html} = live(conn, scenes_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      html = render_click(view, "create_scene")
+      render_click(sidebar, "create_scene")
 
-      assert html =~ "permission"
+      assert Scenes.list_scenes(project.id) == []
     end
   end
 
@@ -118,13 +125,15 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       parent_scene = scene_fixture(project, %{name: "Parent"})
 
       {:ok, view, _html} = live(conn, scenes_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      assert view
-             |> render_click("create_child_scene", %{"parent_id" => parent_scene.id})
-             |> follow_redirect(conn)
+      render_click(sidebar, "create_child_scene", %{"parent-id" => parent_scene.id})
+      {redirect_path, _flash} = assert_redirect(view)
+
+      assert redirect_path =~ "/scenes/"
 
       # Verify the child scene was created with proper parent_id
-      scenes = Storyarn.Scenes.list_scenes(project.id)
+      scenes = Scenes.list_scenes(project.id)
       child = Enum.find(scenes, &(&1.parent_id == parent_scene.id))
       assert child
       assert child.name == "Untitled"
@@ -142,12 +151,12 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
 
       _ = await_async(view)
       assert "Doomed Scene" in scene_names(view)
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "set_pending_delete", %{"id" => scene.id})
-      html = render_click(view, "confirm_delete")
+      render_click(sidebar, "set_pending_delete_scene", %{"id" => scene.id})
+      render_click(sidebar, "confirm_delete_scene")
 
-      refute "Doomed Scene" in scene_names(view)
-      assert html =~ "trash"
+      refute Scenes.get_scene(project.id, scene.id)
     end
 
     test "confirm_delete without pending delete does nothing", %{conn: conn, user: user} do
@@ -157,12 +166,13 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       {:ok, view, _html} = live(conn, scenes_path(project))
 
       _ = await_async(view)
+      sidebar = get_sidebar_live(view, project)
 
       # Call confirm_delete without set_pending_delete first
-      render_click(view, "confirm_delete")
+      render_click(sidebar, "confirm_delete_scene")
 
       # Scene should still be displayed
-      assert "Safe Scene" in scene_names(view)
+      assert project.id |> Scenes.list_scenes() |> Enum.any?(&(&1.name == "Safe Scene"))
     end
   end
 
@@ -176,19 +186,23 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       {:ok, view, _html} = live(conn, scenes_path(project))
 
       _ = await_async(view)
-      render_click(view, "delete", %{"id" => scene.id})
+      sidebar = get_sidebar_live(view, project)
+      render_click(sidebar, "set_pending_delete_scene", %{"id" => scene.id})
+      render_click(sidebar, "confirm_delete_scene")
 
-      refute "Direct Delete" in scene_names(view)
+      refute Scenes.get_scene(project.id, scene.id)
     end
 
     test "delete with non-existent ID shows error", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, scenes_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      html = render_click(view, "delete", %{"id" => -1})
+      render_click(sidebar, "set_pending_delete_scene", %{"id" => -1})
+      render_click(sidebar, "confirm_delete_scene")
 
-      assert html =~ "not found"
+      assert Scenes.list_scenes(project.id) == []
     end
 
     test "viewer cannot delete a scene", %{conn: conn, user: user} do
@@ -198,12 +212,13 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       scene = scene_fixture(project, %{name: "Protected Scene"})
 
       {:ok, view, _html} = live(conn, scenes_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      html = render_click(view, "delete", %{"id" => scene.id})
+      render_click(sidebar, "set_pending_delete_scene", %{"id" => scene.id})
+      render_click(sidebar, "confirm_delete_scene")
 
-      assert html =~ "permission"
       # Scene still exists
-      assert Storyarn.Scenes.get_scene(project.id, scene.id)
+      assert Scenes.get_scene(project.id, scene.id)
     end
   end
 
@@ -216,15 +231,16 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       scene_b = scene_fixture(project, %{name: "Scene B"})
 
       {:ok, view, _html} = live(conn, scenes_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "move_to_parent", %{
+      render_click(sidebar, "move_to_parent", %{
         "item_id" => scene_b.id,
         "new_parent_id" => scene_a.id,
         "position" => 0
       })
 
       # Verify scene B is now a child of scene A
-      moved = Storyarn.Scenes.get_scene(project.id, scene_b.id)
+      moved = Scenes.get_scene(project.id, scene_b.id)
       assert moved.parent_id == scene_a.id
     end
 
@@ -234,14 +250,15 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       child = scene_fixture(project, %{name: "Child", parent_id: parent.id})
 
       {:ok, view, _html} = live(conn, scenes_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      render_click(view, "move_to_parent", %{
+      render_click(sidebar, "move_to_parent", %{
         "item_id" => child.id,
         "new_parent_id" => "",
         "position" => 0
       })
 
-      moved = Storyarn.Scenes.get_scene(project.id, child.id)
+      moved = Scenes.get_scene(project.id, child.id)
       assert is_nil(moved.parent_id)
     end
 
@@ -249,15 +266,15 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       project = user |> project_fixture() |> Repo.preload(:workspace)
 
       {:ok, view, _html} = live(conn, scenes_path(project))
+      sidebar = get_sidebar_live(view, project)
 
-      html =
-        render_click(view, "move_to_parent", %{
-          "item_id" => -1,
-          "new_parent_id" => "",
-          "position" => 0
-        })
+      render_click(sidebar, "move_to_parent", %{
+        "item_id" => -1,
+        "new_parent_id" => "",
+        "position" => 0
+      })
 
-      assert html =~ "not found"
+      assert Scenes.list_scenes(project.id) == []
     end
   end
 

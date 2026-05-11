@@ -23,13 +23,7 @@ import {
 } from "@components/ui/dropdown-menu";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { useLive } from "../shared/composables/useLive";
-
-interface LeftToolbarUrls {
-  workspace?: string;
-  projectSettings: string;
-  trash: string;
-  tools: Record<string, string>;
-}
+import type { ProjectNavbarContextUrls } from "./projectNavbarTypes";
 
 const {
   activeTool,
@@ -48,7 +42,7 @@ const {
   workspaceName: string;
   showToolSwitcher?: boolean;
   isSuperAdmin?: boolean;
-  urls: LeftToolbarUrls;
+  urls: ProjectNavbarContextUrls;
 }>();
 
 const live = useLive();
@@ -85,8 +79,8 @@ function toggleMainSidebar() {
       v-if="hasTree"
       :label="
         mainSidebarOpen
-          ? $t('layout.left_toolbar.hide_panel')
-          : $t('layout.left_toolbar.show_panel')
+          ? $t('layout.project_navbar_context.hide_panel')
+          : $t('layout.project_navbar_context.show_panel')
       "
       side="bottom"
       align="start"
@@ -126,14 +120,14 @@ function toggleMainSidebar() {
         <DropdownMenuItem as-child>
           <a :href="urls.projectSettings" class="flex items-center gap-2">
             <Settings class="size-4" />
-            {{ $t("layout.left_toolbar.project_settings") }}
+            {{ $t("layout.project_navbar_context.project_settings") }}
           </a>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem as-child>
           <a :href="urls.trash" class="flex items-center gap-2">
             <Trash2 class="size-4" />
-            {{ $t("layout.left_toolbar.trash") }}
+            {{ $t("layout.project_navbar_context.trash") }}
           </a>
         </DropdownMenuItem>
       </DropdownMenuContent>

@@ -23,7 +23,7 @@ defmodule StoryarnWeb.SceneLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <StoryarnWeb.Components.ProjectShell.project_shell
+    <StoryarnWeb.Components.ProjectLayout.project_layout
       socket={@socket}
       project={@project}
       workspace={@workspace}
@@ -51,7 +51,9 @@ defmodule StoryarnWeb.SceneLive.Index do
       <.vue
         v-component="live/scene/dashboard/Dashboard"
         v-socket={@socket}
+        v-inject="project-layout"
         id="scene-dashboard"
+        class="contents"
         stats={@dashboard_stats}
         table-data={@scene_table_data}
         pagination={
@@ -68,7 +70,7 @@ defmodule StoryarnWeb.SceneLive.Index do
         workspace-slug={@workspace.slug}
         project-slug={@project.slug}
       />
-    </StoryarnWeb.Components.ProjectShell.project_shell>
+    </StoryarnWeb.Components.ProjectLayout.project_layout>
     """
   end
 

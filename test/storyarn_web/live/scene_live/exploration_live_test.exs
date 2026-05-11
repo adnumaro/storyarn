@@ -221,8 +221,8 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       {:ok, _view, html} = live(conn, explore_path(project, scene))
 
       # layout: false means no app sidebar / top-toolbar wrappers.
-      refute html =~ ~s(id="left-toolbar")
-      refute html =~ ~s(id="right-toolbar")
+      refute html =~ ~s(id="project-navbar-context")
+      refute html =~ ~s(id="project-navbar-account")
       refute html =~ ~s(id="main-sidebar")
     end
 

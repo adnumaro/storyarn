@@ -15,7 +15,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <StoryarnWeb.Components.ProjectShell.project_shell
+    <StoryarnWeb.Components.ProjectLayout.project_layout
       socket={@socket}
       project={@project}
       workspace={@workspace}
@@ -41,7 +41,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
         }
       }
     >
-      <:top_bar_extras_right :if={@can_edit && @target_languages != []}>
+      <%= if @can_edit && @target_languages != [] do %>
         {live_render(@socket, StoryarnWeb.LocalizationToolbarLive,
           id: "localization-toolbar-#{@project.id}",
           sticky: true,
@@ -53,15 +53,18 @@ defmodule StoryarnWeb.LocalizationLive.Index do
             "has_provider" => @has_provider,
             "can_edit" => @can_edit,
             "current_scope" => @current_scope,
-            "locale" => @locale
+            "locale" => @locale,
+            "inject_target" => "project-layout"
           }
         )}
-      </:top_bar_extras_right>
+      <% end %>
 
       <.vue
         v-component="live/localization/texts/Index"
         v-socket={@socket}
+        v-inject="project-layout"
         id="localization-index"
+        class="contents"
         texts={serialize_texts(assigns)}
         progress={@progress}
         total-count={@total_count}
@@ -73,7 +76,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
         has-provider={@has_provider}
         has-target-languages={@target_languages != []}
       />
-    </StoryarnWeb.Components.ProjectShell.project_shell>
+    </StoryarnWeb.Components.ProjectLayout.project_layout>
     """
   end
 
@@ -141,9 +144,8 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
   # Tree panel + localization mutations (change_locale, add/remove language,
   # sync_texts) live in LocalizationSidebarLive. translate_batch lives in
-  # LocalizationToolbarLive. LeftToolbar.vue's main_sidebar_* events fire
-  # here (rendered inside ProjectShell which runs in this LV's context) —
-  # forward them to the sidebar via shell topic.
+  # LocalizationToolbarLive. ProjectNavbarContext.vue's main_sidebar_* events fire
+  # here; forward them to the sidebar via shell topic.
 
   @impl true
   def handle_event("main_sidebar_" <> _ = event, params, socket),

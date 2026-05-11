@@ -3,10 +3,10 @@ defmodule StoryarnWeb.PresenceLive do
   Invisible sticky LV that tracks project-level presence and broadcasts
   online user changes on the shell topic.
 
-  Rendered as a sticky nested child of `ProjectShell` purely to keep the
+  Rendered as a sticky nested child of the project layout purely to keep the
   presence process alive across page navigations. Does NOT render any
-  visible chrome — the toolbar Vue components (`LeftToolbar` /
-  `RightToolbar`) are rendered directly by `ProjectShell`, which receives
+  visible chrome — the toolbar Vue components (`ProjectNavbarContext` /
+  `ProjectNavbarAccount`) are rendered by the layout, which receives
   `online_users` as an attr from each page LV. Page LVs subscribe to the
   shell topic where this LV broadcasts presence changes.
 

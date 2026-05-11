@@ -219,7 +219,7 @@ defmodule StoryarnWeb.SceneSidebarLive do
 
   def handle_info({:remote_change, _action, _payload}, socket), do: {:noreply, socket}
 
-  # Forwarded from the page LV (LeftToolbar.vue's pushEvent lands there).
+  # Forwarded from the page LV (ProjectNavbarContext.vue's pushEvent lands there).
   def handle_info({:toolbar_event, "main_sidebar_toggle", _params}, socket) do
     {:noreply, assign(socket, :main_sidebar_open, !socket.assigns.main_sidebar_open)}
   end
