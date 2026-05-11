@@ -62,7 +62,7 @@ watch(
   },
 );
 
-// ProjectShell's <main> reads `body[data-main-sidebar-open="1"]` in CSS to
+// ProjectLayout's <main> reads `body[data-main-sidebar-open="1"]` in CSS to
 // apply the left padding when the panel is open (and remove it when closed).
 watch(
   internalOpen,

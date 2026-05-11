@@ -24,6 +24,7 @@ defmodule StoryarnWeb.FlowLive.Index do
     ~H"""
     <StoryarnWeb.Components.ProjectLayout.project_layout
       socket={@socket}
+      flash={@flash}
       project={@project}
       workspace={@workspace}
       current_scope={@current_scope}

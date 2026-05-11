@@ -247,6 +247,8 @@
       "bg_change": "Change",
       "bg_remove": "Remove",
       "bg_upload": "Upload Background",
+      "bg_drag_drop": "or drag & drop",
+      "bg_drop_to_set": "Drop image to set background",
       "dimensions": "Dimensions",
       "exploration_display": "Exploration Display",
       "fit": "Fit",

@@ -1455,8 +1455,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      html = render_click(view, "switch_tree_tab", %{"tab" => "layers"})
-      assert html =~ "Second Layer"
+      layer_props = get_layer_list_props(view)
+      assert Enum.any?(layer_props["layers"], &(&1["name"] == "Second Layer"))
     end
 
     test "add layer button creates new layer", %{conn: conn, user: user} do
@@ -1469,10 +1469,10 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      render_click(view, "switch_tree_tab", %{"tab" => "layers"})
-      html = render_click(view, "create_layer", %{})
+      render_click(view, "create_layer", %{})
 
-      assert html =~ "New Layer"
+      layer_props = get_layer_list_props(view)
+      assert Enum.any?(layer_props["layers"], &(&1["name"] == "New Layer"))
       layers = Scenes.list_layers(scene.id)
       assert length(layers) == 2
     end

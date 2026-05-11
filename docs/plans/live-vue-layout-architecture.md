@@ -1,9 +1,44 @@
 # LiveVue layout architecture
 
-**Status:** planning
+**Status:** active rollout
 **Date drafted:** 2026-05-11
 **Branch:** `feat/live-vue-sheets`
 **Scope:** layout architecture across public, auth, docs, workspace/settings, project tools, and immersive/compare routes.
+
+## Current Snapshot
+
+The authenticated app navigation now shares one `live_session :authenticated_app`.
+Workspace dashboards, workspace settings, project settings, project dashboard, and
+project tools can navigate without a full document reload.
+
+Implemented LiveVue layout boundaries:
+
+- `assets/app/live/layouts/auth/Layout.vue`
+- `assets/app/live/layouts/settings/Layout.vue`
+- `assets/app/live/layouts/workspace/Layout.vue`
+- `assets/app/live/layouts/project/Layout.vue`
+
+Implemented architecture checks:
+
+- `npm run arch:live-vue` validates canonical public LiveVue component names.
+- `npm run arch:links` validates internal Vue links use LiveView navigation semantics.
+- `npm run arch:sessions` validates the unified authenticated LiveView session boundary.
+
+Known remaining work:
+
+- `SceneLive.Show` still uses `StoryarnWeb.Components.ProjectShell.project_shell`.
+- `ProjectShell` should be removed or blocked once scenes move to `ProjectLayout`.
+- `Layouts.app` still has two LiveView consumers:
+  - `WorkspaceLive.New`
+  - `ProjectLive.Trash`
+- `Layouts.public`, `Layouts.docs`, `Layouts.compare`, flow player, and scene exploration still contain visual HEEx composition.
+- `ProjectLayout` should normalize the project navbar height to one canonical value.
+- Generic flash visibility for `ProjectLayout` needs an explicit decision because project tools still call `put_flash/3`.
+
+Current verification state:
+
+- `npm run arch` passes.
+- Remaining dependency-cruiser warnings are the known `assets/app/components/ui/**` circular barrel warnings.
 
 ## Objective
 
@@ -44,6 +79,54 @@ Use `v-inject` when a page should render into a public layout boundary owned by 
 Use sticky LiveViews for persistent server-backed children such as presence, sidebars, and tool-specific state holders.
 
 Do not use a single global Vue root layout for everything. Storyarn has multiple product modes with different chrome requirements, and forcing them into one shell would make the project-tool layout dominate unrelated pages.
+
+The current agreed convention is:
+
+- Elixir renders route-family layouts and public page boundaries only.
+- Elixir does not render small internal chrome such as docks, toolbars, block lists, canvas layers, or domain panel internals.
+- Route pages inject coarse public boundaries into layout slots:
+  - `Header`
+  - `HeaderActions` when needed
+  - `Surface`
+  - `Panels`
+  - `Dashboard`
+  - `Sidebar`
+- Domain internals remain under `assets/app/modules/**`.
+- Public boundaries rendered by Elixir live under `assets/app/live/**`.
+
+For project tools the canonical render shape is:
+
+```elixir
+<ProjectLayout.project_layout ...>
+  <.vue
+    v-component="live/<tool>/show/Header"
+    v-inject:top-left="project-layout"
+    ...
+  />
+
+  <.vue
+    v-component="live/<tool>/show/HeaderActions"
+    v-inject:top-right="project-layout"
+    ...
+  />
+
+  <.vue
+    v-component="live/<tool>/show/Surface"
+    v-inject="project-layout"
+    ...
+  />
+
+  <.vue
+    v-component="live/<tool>/show/Panels"
+    v-inject:panels="project-layout"
+    ...
+  />
+</ProjectLayout.project_layout>
+```
+
+If a route needs multiple controls in the same slot, it should expose one public
+boundary that composes those controls in Vue. It should not make Elixir render
+multiple small internal controls directly.
 
 ## Target Directory Shape
 
@@ -360,6 +443,8 @@ Vue should not:
 
 ### Phase 0: Deep Inventory And Contract Lock
 
+Status: done.
+
 Goal:
 
 Freeze the target API before moving code.
@@ -379,6 +464,8 @@ Output:
 - no functional changes
 
 ### Phase 1: Project Tools Spike
+
+Status: done.
 
 Goal:
 
@@ -413,23 +500,51 @@ Exit criteria:
 
 ### Phase 2: Project Tools Rollout
 
+Status: partially done.
+
 Goal:
 
 Move the rest of project tool pages to the same layout slot contract.
 
-Order:
+Completed:
 
-1. sheets show/dashboard
-2. scenes show/dashboard
-3. assets
-4. localization
-5. project dashboard
+- flows dashboard/show
+- sheets dashboard/show
+- scenes dashboard
+- assets dashboard
+- localization report/texts/edit
+- project dashboard
+
+Remaining:
+
+1. `SceneLive.Show`
+2. remove `ProjectShell`
+3. normalize project layout navbar height
+4. decide and implement generic project-layout flash/toast behavior
 
 Reason:
 
 Sheets and scenes are closest to flows and validate document/canvas variants. Assets/localization/project dashboard validate non-canvas project pages.
 
+`SceneLive.Show` should be the next implementation target. It is the only normal
+project editor route still using `ProjectShell`. The migration should:
+
+- replace `ProjectShell.project_shell` with `ProjectLayout.project_layout`
+- inject `live/scene/show/Header` into `top-left`
+- inject `live/scene/show/HeaderActions` into `top-right`
+- inject `live/scene/show/Surface` into the default project slot
+- inject `live/scene/show/Panels` into `panels`
+- move visual upload prompt, drop overlay, and progress UI into `Surface.vue`
+- keep the hidden `<.live_file_input>` in HEEx if LiveView upload requires it
+- pass the upload ref to Vue so `Surface.vue` can own `phx-drop-target`
+- mount the scenes collab toast inside `Surface.vue`, matching flows and sheets
+
+The risky point is LiveView upload integration through a Vue-rendered drop
+target. It must be browser-tested with background upload and drag/drop.
+
 ### Phase 3: Compare And Immersive Layouts
+
+Status: pending.
 
 Goal:
 
@@ -444,26 +559,39 @@ Tasks:
 
 ### Phase 4: App / Workspace / Settings Layout
 
+Status: partially done.
+
 Goal:
 
 Unify authenticated non-tool pages.
 
-Tasks:
+Completed:
 
-- create `AppShellLive` if persistence is desired
-- create `live/layouts/app/Layout.vue`
-- consolidate workspace sidebar and settings sidebar conventions
-- migrate account settings, workspace settings, workspace dashboard, project settings
+- `live/layouts/workspace/Layout.vue`
+- `live/layouts/settings/Layout.vue`
+- unified authenticated app `live_session`
+- workspace dashboard now uses `WorkspaceScope` assigns instead of duplicating workspace lookup
+
+Remaining:
+
+- replace `WorkspaceLive.New` usage of `Layouts.app`
+- replace `ProjectLive.Trash` usage of `Layouts.app`; trash should live under the settings convention
+- decide whether a larger `app` layout family is still needed or whether `workspace` and `settings` are sufficient
 
 ### Phase 5: Public / Auth / Docs
+
+Status: partially done.
 
 Goal:
 
 Finish consistency for lower-risk families.
 
-Tasks:
+Completed:
 
 - migrate auth layout
+
+Remaining:
+
 - migrate public layout
 - migrate docs layout
 - decide whether docs uses sticky `v-inject` based on sidebar/search state requirements
@@ -547,17 +675,32 @@ For project tools specifically:
 
 ## First Implementation Recommendation
 
-Do not start by migrating all layouts.
+The project-tools spike has already validated the pattern.
 
-Start with a controlled project-tools spike:
+Next implementation sequence:
 
-1. implement `ProjectLayoutLive`
-2. implement `live/layouts/project/Layout.vue`
-3. migrate `FlowLive.Show` only
-4. keep old behavior intact
-5. compare performance, remount behavior, sidebar persistence, and LiveVue warnings
+1. Migrate `SceneLive.Show` from `ProjectShell` to `ProjectLayout`.
+2. Browser-test scene editor:
+   - normal render
+   - canvas render
+   - header and header actions
+   - sidebars
+   - panels
+   - background upload
+   - background drag/drop
+   - route changes between scene ids
+3. Remove or block `ProjectShell`.
+4. Move `ProjectLive.Trash` to the settings layout convention.
+5. Move `WorkspaceLive.New` out of `Layouts.app`.
+6. Add an architecture check for layout usage:
+   - no `ProjectShell.project_shell`
+   - no `Layouts.app` in app LiveViews
+   - project tool routes use `ProjectLayout`
+7. Then migrate `compare`, `immersive`, `public`, and `docs` as separate route-family phases.
 
-If that spike validates the pattern, roll out to sheets and scenes using the same slot contract.
+Do not start the next work item by migrating public/docs. The most valuable
+consistency gap is still inside authenticated app routes, especially
+`SceneLive.Show` and the remaining `Layouts.app` consumers.
 
 ## Implementation Readiness
 

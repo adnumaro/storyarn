@@ -247,6 +247,8 @@
       "bg_change": "Cambiar",
       "bg_remove": "Eliminar",
       "bg_upload": "Subir fondo",
+      "bg_drag_drop": "o arrastra y suelta",
+      "bg_drop_to_set": "Suelta la imagen para establecer el fondo",
       "dimensions": "Dimensiones",
       "exploration_display": "Visualización de exploración",
       "fit": "Ajustar",

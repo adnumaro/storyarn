@@ -58,9 +58,12 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def render(assigns) do
+    assigns = assign(assigns, :background_upload, scene_background_upload(assigns))
+
     ~H"""
-    <StoryarnWeb.Components.ProjectShell.project_shell
+    <StoryarnWeb.Components.ProjectLayout.project_layout
       socket={@socket}
+      flash={@flash}
       project={@project}
       workspace={@workspace}
       current_scope={@current_scope}
@@ -86,131 +89,54 @@ defmodule StoryarnWeb.SceneLive.Show do
         }
       }
     >
-      <:top_bar_extras_left>
-        <.vue
-          :if={@scene}
-          v-component="live/scene/show/Header"
-          v-socket={@socket}
-          id="scene-header"
-          header={scene_header_props(assigns)}
-        />
-      </:top_bar_extras_left>
-      <:top_bar_extras_right>
-        <.vue
-          :if={@scene}
-          v-component="live/scene/show/HeaderActions"
-          v-socket={@socket}
-          id="scene-actions"
-          edit-mode={@edit_mode}
-          can-edit={@can_edit}
-        />
-      </:top_bar_extras_right>
-      <%= if @scene do %>
-        <div class="h-full relative">
-          <div
-            id="scene-canvas-wrapper"
-            class="absolute inset-0"
-            phx-drop-target={
-              @can_edit && @edit_mode && @uploads[:background] && @uploads.background.ref
-            }
-          >
-            <.vue
-              v-component="live/scene/show/Surface"
-              v-socket={@socket}
-              id={"scene-surface-#{@scene.id}"}
-              class="w-full h-full"
-              surface={scene_surface_props(assigns)}
-            />
+      <.vue
+        :if={@scene}
+        v-component="live/scene/show/Header"
+        v-socket={@socket}
+        v-inject:top-left="project-layout"
+        id="scene-header"
+        header={scene_header_props(assigns)}
+      />
 
-            <%!-- Hidden file input for background upload --%>
-            <form
-              :if={@can_edit && @uploads[:background]}
-              id="bg-upload-form"
-              phx-change="validate_bg_upload"
-              class="hidden"
-            >
-              <.live_file_input upload={@uploads.background} />
-            </form>
+      <.vue
+        :if={@scene}
+        v-component="live/scene/show/HeaderActions"
+        v-socket={@socket}
+        v-inject:top-right="project-layout"
+        id="scene-actions"
+        edit-mode={@edit_mode}
+        can-edit={@can_edit}
+      />
 
-            <%!-- Empty canvas — upload prompt --%>
-            <div
-              :if={!background_set?(@scene) && @can_edit && @edit_mode && @uploads[:background]}
-              class="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
-            >
-              <label
-                for={@uploads.background.ref}
-                class="pointer-events-auto cursor-pointer group flex flex-col items-center gap-3
-                     p-8 rounded-xl border-2 border-dashed border-foreground/15
-                     hover:border-primary/40 hover:bg-background/50 transition-colors"
-              >
-                <.icon
-                  name="image-plus"
-                  class="size-10 opacity-20 group-hover:opacity-50 transition-opacity"
-                />
-                <span class="text-sm text-foreground/40 group-hover:text-foreground/60 transition-colors">
-                  {dgettext("scenes", "Upload background image")}
-                </span>
-                <span class="text-xs text-foreground/25">
-                  {dgettext("scenes", "or drag & drop")}
-                </span>
-              </label>
-            </div>
+      <.vue
+        :if={@scene}
+        v-component="live/scene/show/Surface"
+        v-socket={@socket}
+        v-inject="project-layout"
+        id="scene-surface"
+        class="w-full h-full"
+        surface={scene_surface_props(assigns)}
+      />
 
-            <%!-- Drag & drop overlay (shown by CanvasDropZone hook) --%>
-            <div
-              :if={@can_edit && @edit_mode}
-              id="canvas-drop-indicator"
-              class="hidden absolute inset-0 z-10 bg-primary/5 border-2 border-dashed border-primary/30
-                   flex items-center justify-center pointer-events-none"
-            >
-              <div class="text-center">
-                <.icon name="image-plus" class="size-12 text-primary/50 mx-auto mb-2" />
-                <p class="text-sm font-medium text-primary/60">
-                  {dgettext("scenes", "Drop image to set background")}
-                </p>
-              </div>
-            </div>
-          </div>
+      <%!-- LiveView owns the upload input; Vue owns the visible upload surface. --%>
+      <form
+        :if={@can_edit && @background_upload}
+        id="bg-upload-form"
+        phx-change="validate_bg_upload"
+        class="hidden"
+      >
+        <.live_file_input upload={@background_upload} />
+      </form>
 
-          <%!-- Upload progress indicator --%>
-          <div
-            :for={
-              entry <-
-                if(@can_edit && @uploads[:background],
-                  do: @uploads.background.entries,
-                  else: []
-                )
-            }
-            class="absolute bottom-20 left-1/2 -translate-x-1/2 z-20
-                 bg-background rounded-lg border border-border shadow-lg px-4 py-2 flex items-center gap-3"
-          >
-            <.icon name="upload" class="size-4 animate-pulse text-primary" />
-            <div class="w-40">
-              <div class="text-xs text-muted-foreground mb-1 flex min-w-0">
-                <span class="truncate">{Path.rootname(entry.client_name)}</span>
-                <span class="flex-shrink-0">{Path.extname(entry.client_name)}</span>
-              </div>
-              <div class="w-full bg-muted rounded-full h-1.5">
-                <div
-                  class="bg-primary h-1.5 rounded-full transition-all"
-                  style={"width: #{entry.progress}%"}
-                >
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <.vue
-            v-component="live/scene/show/Panels"
-            v-socket={@socket}
-            id="scene-panels"
-            panels={scene_panels_props(assigns)}
-          />
-        </div>
-      <% else %>
-        <div class="h-full"></div>
-      <% end %>
-    </StoryarnWeb.Components.ProjectShell.project_shell>
+      <.vue
+        :if={@scene}
+        v-component="live/scene/show/Panels"
+        v-socket={@socket}
+        v-inject:panels="project-layout"
+        id="scene-panels"
+        panels={scene_panels_props(assigns)}
+      />
+    </StoryarnWeb.Components.ProjectLayout.project_layout>
     """
   end
 
@@ -248,7 +174,8 @@ defmodule StoryarnWeb.SceneLive.Show do
       canvas: scene_surface_canvas(assigns),
       dock: scene_surface_dock(assigns),
       layers: scene_surface_layers(assigns),
-      legend: scene_surface_legend(assigns)
+      legend: scene_surface_legend(assigns),
+      upload: scene_surface_upload(assigns)
     }
   end
 
@@ -326,6 +253,40 @@ defmodule StoryarnWeb.SceneLive.Show do
     %{
       legendData: prepare_legend_groups(assigns.pins, assigns.zones, assigns.connections),
       legendOpen: assigns.legend_open
+    }
+  end
+
+  defp scene_surface_upload(assigns) do
+    background_upload = scene_background_upload(assigns)
+    can_upload = !!(assigns.can_edit && assigns.edit_mode && background_upload)
+
+    %{
+      canUpload: can_upload,
+      backgroundSet: background_set?(assigns.scene),
+      inputRef: if(can_upload, do: background_upload.ref),
+      dropTarget: if(can_upload, do: background_upload.ref),
+      entries:
+        if can_upload do
+          Enum.map(background_upload.entries, &scene_upload_entry/1)
+        else
+          []
+        end
+    }
+  end
+
+  defp scene_background_upload(assigns) do
+    assigns
+    |> Map.get(:uploads, %{})
+    |> Map.get(:background)
+  end
+
+  defp scene_upload_entry(entry) do
+    %{
+      ref: entry.ref,
+      name: entry.client_name,
+      baseName: Path.rootname(entry.client_name),
+      extension: Path.extname(entry.client_name),
+      progress: entry.progress
     }
   end
 
@@ -1815,7 +1776,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   # ---------------------------------------------------------------------------
-  # Shell topic messages (ProjectShell + SceneSidebarLive)
+  # Shell topic messages (ProjectLayout + SceneSidebarLive)
   # ---------------------------------------------------------------------------
 
   # Broadcast from handle_params of this LV; the sidebar listens too. Noop for

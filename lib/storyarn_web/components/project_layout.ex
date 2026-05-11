@@ -8,8 +8,10 @@ defmodule StoryarnWeb.Components.ProjectLayout do
   """
 
   use StoryarnWeb, :html
+  use Gettext, backend: Storyarn.Gettext
 
   attr :id, :string, default: "project-layout"
+  attr :flash, :map, default: %{}
   attr :socket, :any, required: true
   attr :project, :map, required: true
   attr :workspace, :map, required: true
@@ -69,6 +71,39 @@ defmodule StoryarnWeb.Components.ProjectLayout do
       />
 
       {render_slot(@inner_block)}
+
+      <div id="flash-group" aria-live="polite">
+        <.flash kind={:info} flash={@flash} />
+        <.flash kind={:error} flash={@flash} />
+
+        <.flash
+          id="client-error"
+          kind={:error}
+          title={gettext("We can't find the internet")}
+          phx-disconnected={
+            show(".phx-client-error #client-error") |> Phoenix.LiveView.JS.remove_attribute("hidden")
+          }
+          phx-connected={hide("#client-error") |> Phoenix.LiveView.JS.set_attribute({"hidden", ""})}
+          hidden
+        >
+          {gettext("Attempting to reconnect")}
+          <.icon name="refresh-cw" class="ml-1 size-3 motion-safe:animate-spin" />
+        </.flash>
+
+        <.flash
+          id="server-error"
+          kind={:error}
+          title={gettext("Something went wrong!")}
+          phx-disconnected={
+            show(".phx-server-error #server-error") |> Phoenix.LiveView.JS.remove_attribute("hidden")
+          }
+          phx-connected={hide("#server-error") |> Phoenix.LiveView.JS.set_attribute({"hidden", ""})}
+          hidden
+        >
+          {gettext("Attempting to reconnect")}
+          <.icon name="refresh-cw" class="ml-1 size-3 motion-safe:animate-spin" />
+        </.flash>
+      </div>
     </div>
     """
   end

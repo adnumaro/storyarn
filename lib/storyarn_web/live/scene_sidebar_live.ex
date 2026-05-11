@@ -2,7 +2,7 @@ defmodule StoryarnWeb.SceneSidebarLive do
   @moduledoc """
   Scenes-specific left sidebar LiveView.
 
-  Rendered as a sticky nested child of `ProjectShell` on scene routes.
+  Rendered as a sticky nested child of `ProjectLayout` on scene routes.
   Owns the scenes tree + tree mutations. Layers UI lives in a
   bottom-right floating popover rendered directly by `SceneLive.Show`
   — the sidebar stays focused on navigation.
