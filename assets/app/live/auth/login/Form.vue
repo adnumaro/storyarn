@@ -50,7 +50,11 @@ onMounted(() => {
         <p>
           <i18n-t keypath="auth.sign_in.local_mail_link" tag="span">
             <template #link>
-              <a href="/dev/mailbox" class="underline hover:text-foreground">
+              <a
+                href="/dev/mailbox"
+                data-live-link-exempt="dev-controller"
+                class="underline hover:text-foreground"
+              >
                 {{ $t("auth.sign_in.mailbox_link") }}
               </a>
             </template>

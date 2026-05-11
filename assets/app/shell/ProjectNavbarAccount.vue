@@ -92,13 +92,23 @@ function handleLogout(): void {
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem as-child>
-          <a :href="urls.accountSettings" class="flex items-center gap-2">
+          <a
+            :href="urls.accountSettings"
+            data-phx-link="redirect"
+            data-phx-link-state="push"
+            class="flex items-center gap-2"
+          >
             <User class="size-4" />
             {{ $t("layout.project_navbar_account.account_settings") }}
           </a>
         </DropdownMenuItem>
         <DropdownMenuItem as-child>
-          <a :href="urls.workspaces" class="flex items-center gap-2">
+          <a
+            :href="urls.workspaces"
+            data-phx-link="redirect"
+            data-phx-link-state="push"
+            class="flex items-center gap-2"
+          >
             <LayoutDashboard class="size-4" />
             {{ $t("layout.project_navbar_account.all_workspaces") }}
           </a>

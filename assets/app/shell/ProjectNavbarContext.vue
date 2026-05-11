@@ -111,6 +111,8 @@ function toggleMainSidebar() {
           <a
             v-if="urls.workspace"
             :href="urls.workspace"
+            data-phx-link="redirect"
+            data-phx-link-state="push"
             class="text-xs text-muted-foreground truncate hover:text-foreground"
           >
             {{ workspaceName }}
@@ -118,14 +120,24 @@ function toggleMainSidebar() {
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem as-child>
-          <a :href="urls.projectSettings" class="flex items-center gap-2">
+          <a
+            :href="urls.projectSettings"
+            data-phx-link="redirect"
+            data-phx-link-state="push"
+            class="flex items-center gap-2"
+          >
             <Settings class="size-4" />
             {{ $t("layout.project_navbar_context.project_settings") }}
           </a>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem as-child>
-          <a :href="urls.trash" class="flex items-center gap-2">
+          <a
+            :href="urls.trash"
+            data-phx-link="redirect"
+            data-phx-link-state="push"
+            class="flex items-center gap-2"
+          >
             <Trash2 class="size-4" />
             {{ $t("layout.project_navbar_context.trash") }}
           </a>

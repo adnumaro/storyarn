@@ -7,9 +7,9 @@ defmodule StoryarnWeb.Live.Hooks.ProjectScope do
   (with authorization), and assigns `:project`, `:workspace`, `:membership`,
   and `:can_edit` to the socket. Halts with a redirect on auth failure.
 
-  Used by `live_session :project_scope` so every page LV (SheetLive.Show,
-  SheetLive.Index, future FlowLive.*, etc.) gets the project context without
-  duplicating the load.
+  Used by the authenticated app live_session. It is intentionally conditional:
+  routes with project slugs get project context; all other authenticated routes
+  pass through unchanged.
   """
 
   use Gettext, backend: Storyarn.Gettext
@@ -56,8 +56,7 @@ defmodule StoryarnWeb.Live.Hooks.ProjectScope do
     end
   end
 
-  # Fallback: route doesn't have project slugs (shouldn't happen inside :project_scope,
-  # but keep the hook safe). Just pass through without loading.
+  # Fallback: route doesn't have project slugs. Pass through without loading.
   def on_mount(:load_project, _params, _session, socket) do
     {:cont, socket}
   end

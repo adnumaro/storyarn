@@ -17,11 +17,11 @@ defmodule StoryarnWeb.ProjectSettingsLive.Members do
     ~H"""
     <Layouts.settings
       flash={@flash}
+      socket={@socket}
       current_scope={@current_scope}
       current_path={@current_path}
-      back_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
-      back_label={dgettext("projects", "Back to project")}
-      sidebar_sections={project_settings_sections(@workspace, @project)}
+      workspace={@workspace}
+      project={@project}
     >
       <:title>{dgettext("projects", "Members")}</:title>
       <:subtitle>{dgettext("projects", "Manage project members and invitations")}</:subtitle>
@@ -29,6 +29,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Members do
       <.vue
         v-component="live/project/settings/Members"
         v-socket={@socket}
+        v-inject="settings-layout"
         id="project-settings-members"
         members={serialize_members(@members)}
         current-user-id={@current_scope.user.id}

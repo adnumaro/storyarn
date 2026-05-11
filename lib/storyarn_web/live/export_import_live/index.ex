@@ -15,11 +15,11 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     ~H"""
     <Layouts.settings
       flash={@flash}
+      socket={@socket}
       current_scope={@current_scope}
       current_path={@current_path}
-      back_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
-      back_label={dgettext("projects", "Back to project")}
-      sidebar_sections={project_settings_sections(@workspace, @project)}
+      workspace={@workspace}
+      project={@project}
     >
       <:title>{dgettext("projects", "Export & Import")}</:title>
       <:subtitle>{dgettext("projects", "Export your project data or import from a file.")}</:subtitle>
@@ -27,6 +27,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       <.vue
         v-component="live/project/settings/export-import/ExportImport"
         v-socket={@socket}
+        v-inject="settings-layout"
         id="export-import-vue"
         export-config={
           %{
@@ -462,11 +463,4 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   defp maybe_allow_import_upload(socket, false), do: socket
-
-  defp project_settings_sections(workspace, project) do
-    StoryarnWeb.ProjectLive.Components.SettingsComponents.project_settings_sections(
-      workspace,
-      project
-    )
-  end
 end

@@ -48,6 +48,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
     ~H"""
     <Layouts.settings
       flash={@flash}
+      socket={@socket}
       current_scope={@current_scope}
       workspaces={@workspaces}
       managed_workspace_slugs={@managed_workspace_slugs}
@@ -56,6 +57,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
       <.vue
         v-component="live/workspace/settings/DeletedProjects"
         v-socket={@socket}
+        v-inject="settings-layout"
         id="settings-deleted-projects-vue"
         deleted-projects={serialize_deleted_projects(@deleted_projects)}
         expanded-project-id={@expanded_project_id}

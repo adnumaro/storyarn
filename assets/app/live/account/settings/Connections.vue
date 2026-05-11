@@ -177,7 +177,7 @@ function confirmUnlink() {
             </template>
           </template>
           <template v-else>
-            <a :href="`/auth/${provider.key}/link`">
+            <a :href="`/auth/${provider.key}/link`" data-live-link-exempt="controller">
               <Button variant="outline" size="sm">
                 {{ $t("settings.connections.connect") }}
               </Button>

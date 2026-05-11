@@ -126,7 +126,10 @@ defmodule StoryarnWeb.Router do
         SnapshotDownloadController,
         :download
 
-    live_session :require_authenticated_user,
+    # Authenticated app shell. Workspace dashboards, project tools, and
+    # settings intentionally share one LiveView session so navigation between
+    # those areas does not fall back to a full document reload.
+    live_session :authenticated_app,
       on_mount:
         if(Application.compile_env(:storyarn, :sql_sandbox),
           do: [Module.concat(["StoryarnWeb", "LiveSandbox"])],
@@ -135,7 +138,9 @@ defmodule StoryarnWeb.Router do
           [
             Sentry.LiveViewHook,
             {@user_auth_hook, :require_authenticated},
-            {@user_auth_hook, :load_workspaces}
+            {@user_auth_hook, :load_workspaces},
+            {StoryarnWeb.Live.Hooks.ProjectScope, :load_project},
+            {StoryarnWeb.Live.Hooks.WorkspaceScope, :load_workspace}
           ] do
       # User Settings (Linear-style)
       live "/users/settings", SettingsLive.Profile, :edit
@@ -161,8 +166,8 @@ defmodule StoryarnWeb.Router do
            ProjectLive.Trash,
            :index
 
-      # Flows — immersive player and compare views stay outside :project_scope
-      # (no chrome). Index + Show live below inside :project_scope.
+      # Flows — immersive player and compare views keep their own chromeless
+      # layouts, while sharing the authenticated app live_session for fast nav.
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/play",
            FlowLive.PlayerLive,
            :play
@@ -175,7 +180,8 @@ defmodule StoryarnWeb.Router do
            VersionViewerLive,
            :flow
 
-      # Scenes — immersive exploration stays outside :project_scope (no chrome).
+      # Scenes — immersive exploration keeps its chromeless layout while
+      # sharing the authenticated app live_session for fast nav.
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/explore",
            SceneLive.ExplorationLive,
            :explore
@@ -187,23 +193,7 @@ defmodule StoryarnWeb.Router do
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/versions/:version_number/viewer",
            VersionViewerLive,
            :scene
-    end
 
-    # Project-scoped live_session — loads project/workspace/membership once via
-    # ProjectScope on_mount. Routes inside share a live_session so sticky
-    # live_renders (project chrome + sidebars) persist across navigation.
-    live_session :project_scope,
-      on_mount:
-        if(Application.compile_env(:storyarn, :sql_sandbox),
-          do: [Module.concat(["StoryarnWeb", "LiveSandbox"])],
-          else: []
-        ) ++
-          [
-            Sentry.LiveViewHook,
-            {@user_auth_hook, :require_authenticated},
-            {@user_auth_hook, :load_workspaces},
-            {StoryarnWeb.Live.Hooks.ProjectScope, :load_project}
-          ] do
       live "/workspaces/:workspace_slug/projects/:project_slug/sheets",
            SheetLive.Index,
            :index
@@ -239,8 +229,7 @@ defmodule StoryarnWeb.Router do
            :index
 
       # Project Settings (uses Layouts.settings, not project chrome — keeps the
-      # full-page settings sidebar nav. Inside :project_scope only to share the
-      # ProjectScope on_mount hook for project/workspace/membership loading.)
+      # full-page settings sidebar nav while sharing project scope assigns.)
       live "/workspaces/:workspace_slug/projects/:project_slug/settings",
            ProjectSettingsLive.General,
            :edit
@@ -272,23 +261,7 @@ defmodule StoryarnWeb.Router do
       # Flows
       live "/workspaces/:workspace_slug/projects/:project_slug/flows", FlowLive.Index, :index
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id", FlowLive.Show, :show
-    end
 
-    # Workspace-scoped live_session — loads workspace/membership once via
-    # WorkspaceScope on_mount. Used by the 3 workspace settings LVs that
-    # otherwise duplicated `Workspaces.get_workspace_by_slug` in mount.
-    live_session :workspace_scope,
-      on_mount:
-        if(Application.compile_env(:storyarn, :sql_sandbox),
-          do: [Module.concat(["StoryarnWeb", "LiveSandbox"])],
-          else: []
-        ) ++
-          [
-            Sentry.LiveViewHook,
-            {@user_auth_hook, :require_authenticated},
-            {@user_auth_hook, :load_workspaces},
-            {StoryarnWeb.Live.Hooks.WorkspaceScope, :load_workspace}
-          ] do
       live "/users/settings/workspaces/:slug/general", SettingsLive.WorkspaceGeneral, :edit
       live "/users/settings/workspaces/:slug/members", SettingsLive.WorkspaceMembers, :edit
 

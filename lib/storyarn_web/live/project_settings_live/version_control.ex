@@ -3,8 +3,6 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
 
   use StoryarnWeb, :live_view
 
-  import StoryarnWeb.ProjectLive.Components.SettingsComponents
-
   alias Storyarn.Billing
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
@@ -18,11 +16,11 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
     ~H"""
     <Layouts.settings
       flash={@flash}
+      socket={@socket}
       current_scope={@current_scope}
       current_path={@current_path}
-      back_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
-      back_label={dgettext("projects", "Back to project")}
-      sidebar_sections={project_settings_sections(@workspace, @project)}
+      workspace={@workspace}
+      project={@project}
     >
       <:title>{dgettext("projects", "Version Control")}</:title>
       <:subtitle>
@@ -32,6 +30,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
       <.vue
         v-component="live/project/settings/VersionControl"
         v-socket={@socket}
+        v-inject="settings-layout"
         id="project-settings-version-control"
         auto-snapshots-enabled={version_control_value(@version_control_form, :auto_snapshots_enabled)}
         auto-version-flows={version_control_value(@version_control_form, :auto_version_flows)}

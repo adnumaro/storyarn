@@ -28,6 +28,7 @@ defmodule StoryarnWeb.SettingsLive.Connections do
     ~H"""
     <Layouts.settings
       flash={@flash}
+      socket={@socket}
       current_scope={@current_scope}
       workspaces={@workspaces}
       managed_workspace_slugs={@managed_workspace_slugs}
@@ -36,6 +37,7 @@ defmodule StoryarnWeb.SettingsLive.Connections do
       <.vue
         v-component="live/account/settings/Connections"
         v-socket={@socket}
+        v-inject="settings-layout"
         id="settings-connections-vue"
         identities={serialize_identities(@identities)}
         has-password={@has_password}

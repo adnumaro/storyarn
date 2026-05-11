@@ -126,12 +126,13 @@ defmodule StoryarnWeb.Layouts do
 
   ## Examples
 
-      <Layouts.auth flash={@flash}>
+      <Layouts.auth flash={@flash} socket={@socket}>
         <h1>Login</h1>
       </Layouts.auth>
 
   """
   attr :flash, :map, required: true, doc: "the map of flash messages"
+  attr :socket, :any, required: true, doc: "the LiveView socket (needed for LiveVue)"
 
   attr :current_scope, :map,
     default: nil,
@@ -141,21 +142,10 @@ defmodule StoryarnWeb.Layouts do
 
   def auth(assigns) do
     ~H"""
-    <div class="min-h-screen flex flex-col">
-      <header class="navbar px-4 sm:px-6 lg:px-8">
-        <div class="flex-1">
-          <.link navigate="/" class="flex items-center gap-2">
-            <.app_logo class="w-8 h-8" />
-            <span class="text-xl brand-logotype">Storyarn</span>
-          </.link>
-        </div>
-      </header>
+    <div id="auth-layout-wrapper">
+      <.vue v-component="live/layouts/auth/Layout" v-socket={@socket} id="auth-layout" />
 
-      <main class="flex-1 flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
-        <div class="w-full max-w-md space-y-6">
-          {render_slot(@inner_block)}
-        </div>
-      </main>
+      {render_slot(@inner_block)}
 
       <.flash_group flash={@flash} />
     </div>
@@ -405,8 +395,8 @@ defmodule StoryarnWeb.Layouts do
   Visually consistent with `Layouts.app` — floating surface-panel toolbars
   and sidebar, fullscreen background.
 
-  Accepts optional `back_path`, `back_label`, and `sidebar_sections` to customize
-  the sidebar. When not provided, defaults to account/workspace navigation.
+  The HEEx boundary only passes raw route context to LiveVue. Visual shell and
+  navigation composition live in `live/layouts/settings/Layout`.
 
   ## Examples
 
@@ -423,24 +413,17 @@ defmodule StoryarnWeb.Layouts do
 
   """
   attr :flash, :map, required: true, doc: "the map of flash messages"
+  attr :socket, :any, required: true, doc: "the LiveView socket (needed for LiveVue)"
   attr :current_scope, :map, required: true, doc: "the current scope"
-  attr :workspaces, :list, default: [], doc: "list of workspaces for settings nav"
+  attr :workspaces, :list, default: [], doc: "list of workspaces for settings nav data"
+  attr :workspace, :map, default: nil, doc: "current workspace for project settings"
+  attr :project, :map, default: nil, doc: "current project for project settings"
 
   attr :managed_workspace_slugs, :any,
     default: MapSet.new(),
     doc: "MapSet of workspace slugs where user has WorkspaceMembership"
 
   attr :current_path, :string, required: true, doc: "current settings path for nav highlighting"
-
-  attr :back_path, :string, default: nil, doc: "custom back link path (defaults to /workspaces)"
-
-  attr :back_label, :string,
-    default: nil,
-    doc: "custom back link label (defaults to 'Back to app')"
-
-  attr :sidebar_sections, :list,
-    default: nil,
-    doc: "custom sidebar sections list; when nil, uses default account/workspace nav"
 
   slot :title
   slot :subtitle
@@ -449,153 +432,82 @@ defmodule StoryarnWeb.Layouts do
   def settings(assigns) do
     assigns =
       assigns
-      |> assign_new(:resolved_back_path, fn -> assigns.back_path || ~p"/workspaces" end)
-      |> assign_new(:resolved_back_label, fn ->
-        assigns.back_label || gettext("Back to app")
-      end)
-      |> assign_new(:resolved_sections, fn ->
-        assigns.sidebar_sections ||
-          settings_sections(assigns.workspaces, assigns.managed_workspace_slugs)
-      end)
+      |> assign(:settings_workspaces, settings_workspaces(assigns.workspaces))
+      |> assign(:settings_managed_workspace_slugs, settings_managed_workspace_slugs(assigns.managed_workspace_slugs))
+      |> assign(:settings_workspace, settings_workspace(assigns.workspace))
+      |> assign(:settings_project, settings_project(assigns.project))
+      |> assign(:title_text, slot_to_text(assigns.title))
+      |> assign(:subtitle_text, slot_to_text(assigns.subtitle))
 
     ~H"""
-    <div
-      id="settings-layout"
-      class="flex h-screen w-screen overflow-hidden bg-linear-to-br from-background via-background to-muted/40 dark:to-muted/10"
-    >
-      <%!-- Hidden checkbox for mobile sidebar toggle (must be first child for peer-*) --%>
-      <input id="settings-sidebar-check" type="checkbox" class="peer hidden" />
-
-      <%!-- Mobile overlay (closes sidebar on tap) --%>
-      <label
-        for="settings-sidebar-check"
-        class="fixed inset-0 bg-background/80 backdrop-blur-sm z-30 hidden peer-checked:block lg:hidden cursor-pointer"
+    <div id="settings-layout-wrapper">
+      <.vue
+        v-component="live/layouts/settings/Layout"
+        v-socket={@socket}
+        id="settings-layout"
+        current-path={@current_path}
+        workspaces={@settings_workspaces}
+        managed-workspace-slugs={@settings_managed_workspace_slugs}
+        workspace={@settings_workspace}
+        project={@settings_project}
+        title={@title_text}
+        subtitle={@subtitle_text}
       />
 
-      <%!-- Mobile header to toggle sidebar --%>
-      <div class="absolute top-3 left-3 z-20 lg:hidden">
-        <label
-          for="settings-sidebar-check"
-          class="inline-flex items-center justify-center size-9 rounded-md bg-background border border-border shadow-sm hover:bg-accent transition-colors cursor-pointer text-muted-foreground"
-        >
-          <.icon name="menu" class="size-5" />
-        </label>
-      </div>
-
-      <%!-- Settings sidebar (static on desktop, floating on mobile) --%>
-      <aside class={[
-        "flex-none w-[252px] surface-panel flex flex-col z-40 shrink-0 overflow-hidden rounded-lg",
-        "fixed lg:relative top-3 bottom-3 left-3 lg:top-0 lg:bottom-0 lg:left-0 h-[calc(100vh-1.5rem)] lg:h-auto",
-        "lg:ml-3 lg:my-3",
-        "transition-transform duration-200",
-        "-translate-x-[calc(100%+1rem)] peer-checked:translate-x-0 lg:translate-x-0"
-      ]}>
-        <div class="px-2 pt-3 pb-3 border-b border-border/10">
-          <.link
-            navigate={@resolved_back_path}
-            class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm font-medium text-foreground/70 hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5 transition-colors"
-          >
-            <.icon name="chevron-left" class="size-4" />
-            {@resolved_back_label}
-          </.link>
-        </div>
-
-        <nav class="flex-1 overflow-y-auto p-3 space-y-5">
-          <div :for={section <- @resolved_sections}>
-            <h3 class="text-xs font-semibold uppercase text-foreground/50 px-2 mb-2 tracking-wider">
-              {section.label}
-            </h3>
-            <ul class="space-y-0.5">
-              <li :for={item <- section.items}>
-                <.link
-                  navigate={item.path}
-                  class={[
-                    "flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors",
-                    @current_path == item.path &&
-                      "bg-black/5 dark:bg-white/10 font-medium text-foreground",
-                    @current_path != item.path &&
-                      "text-foreground/80 hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
-                  ]}
-                >
-                  <.icon name={item.icon} class="size-4 opacity-70" />
-                  {item.label}
-                </.link>
-              </li>
-            </ul>
-          </div>
-        </nav>
-      </aside>
-
-      <%!-- Main content area --%>
-      <main class="flex-1 min-w-0 overflow-y-auto bg-background p-4 pt-16 lg:px-8 lg:py-3 min-vh-100">
-        <div class="max-w-3xl mx-auto lg:mt-5">
-          <header :if={@title != []} class="pb-4">
-            <h1 class="text-lg font-semibold leading-8">
-              {render_slot(@title)}
-            </h1>
-            <p :if={@subtitle != []} class="text-sm text-muted-foreground">
-              {render_slot(@subtitle)}
-            </p>
-          </header>
-
-          <div class="mt-8">
-            {render_slot(@inner_block)}
-          </div>
-        </div>
-      </main>
+      {render_slot(@inner_block)}
 
       <.flash_group flash={@flash} />
     </div>
     """
   end
 
-  defp settings_sections(workspaces, managed_workspace_slugs) do
-    account_section = %{
-      label: gettext("Account"),
-      items: [
-        %{label: gettext("Profile"), path: ~p"/users/settings", icon: "user"},
-        %{
-          label: gettext("Security"),
-          path: ~p"/users/settings/security",
-          icon: "shield-check"
-        },
-        %{
-          label: gettext("Connected accounts"),
-          path: ~p"/users/settings/connections",
-          icon: "link"
-        }
-      ]
+  defp slot_to_text([]), do: nil
+
+  defp slot_to_text(slot) do
+    slot_html =
+      %{}
+      |> Phoenix.Component.__render_slot__(slot, nil)
+      |> Phoenix.HTML.Safe.to_iodata()
+      |> IO.iodata_to_binary()
+
+    case Floki.parse_fragment(slot_html) do
+      {:ok, html_tree} -> Floki.text(html_tree)
+      {:error, _reason} -> slot_html
+    end
+  end
+
+  defp settings_workspaces(workspaces) do
+    Enum.map(workspaces, fn workspace ->
+      %{
+        id: Map.get(workspace, :id),
+        name: Map.get(workspace, :name),
+        slug: Map.get(workspace, :slug)
+      }
+    end)
+  end
+
+  defp settings_managed_workspace_slugs(%MapSet{} = slugs), do: MapSet.to_list(slugs)
+  defp settings_managed_workspace_slugs(slugs) when is_list(slugs), do: slugs
+  defp settings_managed_workspace_slugs(_slugs), do: []
+
+  defp settings_workspace(nil), do: nil
+
+  defp settings_workspace(workspace) do
+    %{
+      id: Map.get(workspace, :id),
+      name: Map.get(workspace, :name),
+      slug: Map.get(workspace, :slug)
     }
+  end
 
-    # Only show workspaces where user has actual WorkspaceMembership
-    managed_workspaces =
-      Enum.filter(workspaces, &MapSet.member?(managed_workspace_slugs, &1.slug))
+  defp settings_project(nil), do: nil
 
-    workspace_sections =
-      Enum.map(managed_workspaces, fn workspace ->
-        %{
-          label: workspace.name,
-          items: [
-            %{
-              label: gettext("General"),
-              path: ~p"/users/settings/workspaces/#{workspace.slug}/general",
-              icon: "settings"
-            },
-            %{
-              label: gettext("Members"),
-              path: ~p"/users/settings/workspaces/#{workspace.slug}/members",
-              icon: "users"
-            },
-            %{
-              label: gettext("Deleted Projects"),
-              path: ~p"/users/settings/workspaces/#{workspace.slug}/deleted-projects",
-              icon: "trash-2"
-            }
-          ]
-        }
-      end)
-
-    [account_section | workspace_sections]
+  defp settings_project(project) do
+    %{
+      id: Map.get(project, :id),
+      name: Map.get(project, :name),
+      slug: Map.get(project, :slug)
+    }
   end
 
   @doc """

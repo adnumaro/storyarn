@@ -1,5 +1,21 @@
 {
   "project_settings": {
+    "nav": {
+      "back_to_project": "Back to project",
+      "sections": {
+        "general": "General",
+        "integrations": "Integrations",
+        "administration": "Administration"
+      },
+      "items": {
+        "general": "General",
+        "version_control": "Version Control",
+        "localization": "Localization",
+        "members": "Members",
+        "snapshots": "Snapshots",
+        "import_export": "Import & Export"
+      }
+    },
     "general": {
       "project_name": "Project Name",
       "description": "Description",

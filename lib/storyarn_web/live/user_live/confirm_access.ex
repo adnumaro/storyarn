@@ -14,10 +14,11 @@ defmodule StoryarnWeb.UserLive.ConfirmAccess do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.auth flash={@flash} current_scope={@current_scope}>
+    <Layouts.auth flash={@flash} current_scope={@current_scope} socket={@socket}>
       <.vue
         v-component="live/auth/confirm-access/Form"
         v-socket={@socket}
+        v-inject="auth-layout"
         id="confirm-access-vue"
         email={@email}
         login-action={~p"/users/log-in"}

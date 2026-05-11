@@ -362,6 +362,8 @@ const pages = computed(() => {
           v-for="(issue, i) in issues"
           :key="i"
           :href="issue.href"
+          data-phx-link="redirect"
+          data-phx-link-state="push"
           class="flex items-start gap-2 px-3 py-2 text-sm hover:bg-muted/30 transition-colors"
         >
           <AlertTriangle

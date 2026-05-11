@@ -1,7 +1,10 @@
 defmodule StoryarnWeb.Components.WorkspaceLayout do
   @moduledoc """
-  Workspace layout — Used exclusively for the workspace dashboard page.
-  Provides a clean, static left sidebar and main fluid content area.
+  Workspace layout boundary.
+
+  The HEEx component owns backend data serialization and flash rendering.
+  The visual layout and workspace navigation live in the public LiveVue
+  boundary `live/layouts/workspace/Layout`.
   """
 
   use StoryarnWeb, :html
@@ -29,69 +32,32 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
           %{id: nil, email: "", displayName: ""}
       end
 
-    formatted_workspaces =
+    workspace_items =
       Enum.map(assigns.workspaces, fn w ->
         %{
           id: w.id,
           name: w.name,
-          slug: w.slug,
-          href: ~p"/workspaces/#{w.slug}"
+          slug: w.slug
         }
       end)
-
-    urls = %{
-      accountSettings: ~p"/users/settings",
-      workspaces: ~p"/workspaces",
-      logout: ~p"/users/log-out"
-    }
 
     assigns =
       assigns
       |> assign(:current_user, current_user)
-      |> assign(:formatted_workspaces, formatted_workspaces)
-      |> assign(:urls, urls)
+      |> assign(:workspace_items, workspace_items)
 
     ~H"""
-    <div
-      id="layout-wrapper"
-      class="flex h-screen w-screen overflow-hidden"
-    >
-      <%!-- Hidden checkbox for mobile sidebar toggle (must be first child for peer-*) --%>
-      <input id="workspace-sidebar-check" type="checkbox" class="peer hidden" />
-
-      <%!-- Mobile overlay (closes sidebar on tap) --%>
-      <label
-        for="workspace-sidebar-check"
-        class="fixed inset-0 bg-background/80 backdrop-blur-sm z-30 hidden peer-checked:block lg:hidden cursor-pointer"
+    <div id="layout-wrapper">
+      <.vue
+        v-component="live/layouts/workspace/Layout"
+        v-socket={@socket}
+        id="workspace-layout"
+        current-user={@current_user}
+        workspaces={@workspace_items}
+        current-workspace-slug={@current_workspace.slug}
       />
-      
-    <!-- Fixed Left Sidebar (Desktop) -->
-      <aside class={[
-        "flex-none w-[252px] surface-panel flex flex-col z-40 shrink-0 overflow-hidden rounded-lg",
-        "fixed lg:relative top-3 bottom-3 left-3 lg:top-0 lg:bottom-0 lg:left-0 h-[calc(100vh-1.5rem)] lg:h-auto",
-        "lg:ml-3 lg:my-3",
-        "transition-transform duration-200",
-        "-translate-x-[calc(100%+1rem)] peer-checked:translate-x-0 lg:translate-x-0"
-      ]}>
-        <.vue
-          v-component="shell/WorkspaceSidebar"
-          v-socket={@socket}
-          id="workspace-sidebar"
-          current-user={@current_user}
-          urls={@urls}
-          class="h-full"
-          workspaces={@formatted_workspaces}
-          current-workspace-slug={@current_workspace.slug}
-        />
-      </aside>
-      
-    <!-- Main fluid content -->
-      <main
-        id="main-content"
-        class="overflow-y-auto p-4 lg:px-8 lg:py-3 min-dvh-100 w-full"
-      >
-        {render_slot(@inner_block)}
-      </main>
+
+      {render_slot(@inner_block)}
 
       <div id="flash-group" aria-live="polite">
         <.flash kind={:info} flash={@flash} />

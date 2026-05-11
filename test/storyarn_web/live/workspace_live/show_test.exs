@@ -64,8 +64,7 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
       owner = user_fixture()
       workspace = workspace_fixture(owner)
 
-      {:error, {:live_redirect, %{to: path}}} =
-        live(conn, ~p"/workspaces/#{workspace.slug}")
+      {:error, {:redirect, %{to: path}}} = live(conn, ~p"/workspaces/#{workspace.slug}")
 
       assert path == "/workspaces"
     end

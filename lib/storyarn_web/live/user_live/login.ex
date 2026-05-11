@@ -6,10 +6,11 @@ defmodule StoryarnWeb.UserLive.Login do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.auth flash={@flash} current_scope={@current_scope}>
+    <Layouts.auth flash={@flash} current_scope={@current_scope} socket={@socket}>
       <.vue
         v-component="live/auth/login/Form"
         v-socket={@socket}
+        v-inject="auth-layout"
         id="login-vue"
         email={@form.params["email"] || ""}
         readonly={!!@current_scope}

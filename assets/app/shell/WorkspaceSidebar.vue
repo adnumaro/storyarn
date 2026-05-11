@@ -10,35 +10,16 @@ import {
 } from "@components/ui/dropdown-menu";
 import UserAvatar from "@components/UserAvatar.vue";
 import { useI18n } from "vue-i18n";
+import type { WorkspaceItem, WorkspaceUser } from "./workspaceLayoutTypes";
 
 const { t } = useI18n();
 
-interface WorkspaceSidebarUser {
-  email: string;
-  displayName?: string;
-}
-
-interface WorkspaceSidebarUrls {
-  accountSettings: string;
-  workspaces: string;
-  logout: string;
-}
-
-interface WorkspaceItem {
-  id: number;
-  slug: string;
-  name: string;
-  href: string;
-}
-
 const {
   currentUser,
-  urls,
   workspaces = [],
   currentWorkspaceSlug,
 } = defineProps<{
-  currentUser: WorkspaceSidebarUser;
-  urls: WorkspaceSidebarUrls;
+  currentUser: WorkspaceUser;
   workspaces?: WorkspaceItem[];
   currentWorkspaceSlug: string;
 }>();
@@ -51,7 +32,7 @@ const handleLogout = () => {
   const token = document.querySelector("meta[name='csrf-token']")?.getAttribute("content");
   const form = document.createElement("form");
   form.method = "POST";
-  form.action = urls.logout;
+  form.action = "/users/log-out";
 
   const methodInput = document.createElement("input");
   methodInput.type = "hidden";
@@ -88,7 +69,9 @@ const handleLogout = () => {
       <a
         v-for="ws in workspaces"
         :key="ws.id"
-        :href="ws.href"
+        :href="`/workspaces/${ws.slug}`"
+        data-phx-link="redirect"
+        data-phx-link-state="push"
         :class="[
           'flex items-center gap-2 px-2 py-2 rounded-md text-sm transition-colors',
           ws.slug === currentWorkspaceSlug
@@ -124,13 +107,23 @@ const handleLogout = () => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" :side-offset="4" class="w-full min-w-56">
           <DropdownMenuItem as-child>
-            <a :href="urls.accountSettings" class="flex items-center gap-2">
+            <a
+              href="/users/settings"
+              data-phx-link="redirect"
+              data-phx-link-state="push"
+              class="flex items-center gap-2"
+            >
               <User class="size-4" />
               {{ t("workspace.sidebar.account_settings") }}
             </a>
           </DropdownMenuItem>
           <DropdownMenuItem as-child>
-            <a :href="urls.workspaces" class="flex items-center gap-2">
+            <a
+              href="/workspaces"
+              data-phx-link="redirect"
+              data-phx-link-state="push"
+              class="flex items-center gap-2"
+            >
               <LayoutDashboard class="size-4" />
               {{ t("workspace.sidebar.all_workspaces") }}
             </a>

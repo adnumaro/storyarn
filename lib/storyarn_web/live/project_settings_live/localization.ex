@@ -17,11 +17,11 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
     ~H"""
     <Layouts.settings
       flash={@flash}
+      socket={@socket}
       current_scope={@current_scope}
       current_path={@current_path}
-      back_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
-      back_label={dgettext("projects", "Back to project")}
-      sidebar_sections={project_settings_sections(@workspace, @project)}
+      workspace={@workspace}
+      project={@project}
     >
       <:title>{dgettext("projects", "Localization")}</:title>
       <:subtitle>{dgettext("projects", "Translation provider configuration")}</:subtitle>
@@ -29,6 +29,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
       <.vue
         v-component="live/project/settings/Localization"
         v-socket={@socket}
+        v-inject="settings-layout"
         id="project-settings-localization"
         provider-api-endpoint={provider_endpoint(@provider_form)}
         has-api-key={@has_api_key}

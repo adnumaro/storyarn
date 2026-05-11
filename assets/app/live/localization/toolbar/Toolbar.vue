@@ -42,10 +42,14 @@ function translateBatch(): void {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem v-if="exportXlsxUrl" as-child>
-          <a :href="exportXlsxUrl">{{ $t("localization.toolbar.excel") }}</a>
+          <a :href="exportXlsxUrl" data-live-link-exempt="download">{{
+            $t("localization.toolbar.excel")
+          }}</a>
         </DropdownMenuItem>
         <DropdownMenuItem v-if="exportCsvUrl" as-child>
-          <a :href="exportCsvUrl">{{ $t("localization.toolbar.csv") }}</a>
+          <a :href="exportCsvUrl" data-live-link-exempt="download">{{
+            $t("localization.toolbar.csv")
+          }}</a>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

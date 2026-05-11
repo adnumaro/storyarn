@@ -47,6 +47,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
     ~H"""
     <Layouts.settings
       flash={@flash}
+      socket={@socket}
       current_scope={@current_scope}
       workspaces={@workspaces}
       managed_workspace_slugs={@managed_workspace_slugs}
@@ -55,6 +56,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
       <.vue
         v-component="live/workspace/settings/Members"
         v-socket={@socket}
+        v-inject="settings-layout"
         id="workspace-settings-members"
         members={serialize_members(@members)}
         current-user-id={@current_scope.user.id}

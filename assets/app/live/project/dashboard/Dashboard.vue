@@ -151,6 +151,8 @@ const activityTypeKeys: Record<string, string> = {
           v-for="stat in statCards"
           :key="stat.label"
           :href="stat.href"
+          data-phx-link="redirect"
+          data-phx-link-state="push"
           class="rounded-lg border border-border bg-surface p-4 space-y-2 transition-colors"
           :class="stat.href ? 'hover:bg-muted/30 cursor-pointer' : 'cursor-default'"
         >
@@ -210,6 +212,8 @@ const activityTypeKeys: Record<string, string> = {
               <a
                 v-if="item.href"
                 :href="item.href"
+                data-phx-link="redirect"
+                data-phx-link-state="push"
                 class="text-muted-foreground hover:text-foreground hover:underline transition-colors"
               >
                 {{ item.name }}
@@ -229,6 +233,8 @@ const activityTypeKeys: Record<string, string> = {
             v-for="(issue, i) in issues"
             :key="i"
             :href="issue.href"
+            data-phx-link="redirect"
+            data-phx-link-state="push"
             class="flex items-start gap-2 px-3 py-2 text-sm hover:bg-muted/30 transition-colors"
           >
             <AlertTriangle
@@ -254,6 +260,8 @@ const activityTypeKeys: Record<string, string> = {
             v-for="lang in localization"
             :key="lang.name"
             :href="`/workspaces/${workspaceSlug}/projects/${projectSlug}/localization`"
+            data-phx-link="redirect"
+            data-phx-link-state="push"
             class="flex items-center gap-3 group hover:bg-muted/30 -mx-2 px-2 py-1 rounded transition-colors"
           >
             <span

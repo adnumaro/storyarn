@@ -37,12 +37,19 @@ const year = new Date().getFullYear();
           <a href="#workflow" class="transition-colors hover:text-foreground">{{
             $t("landing.common.links.workflow")
           }}</a>
-          <a href="/docs" class="transition-colors hover:text-foreground">{{
-            $t("landing.common.links.docs")
-          }}</a>
-          <a href="/contact" class="transition-colors hover:text-foreground">{{
-            $t("landing.common.links.contact")
-          }}</a>
+          <a
+            href="/docs"
+            data-phx-link="redirect"
+            data-phx-link-state="push"
+            class="transition-colors hover:text-foreground"
+            >{{ $t("landing.common.links.docs") }}</a
+          >
+          <a
+            href="/contact"
+            data-live-link-exempt="controller"
+            class="transition-colors hover:text-foreground"
+            >{{ $t("landing.common.links.contact") }}</a
+          >
         </nav>
       </div>
 

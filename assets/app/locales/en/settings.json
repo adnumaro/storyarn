@@ -1,5 +1,19 @@
 {
   "settings": {
+    "nav": {
+      "back_to_app": "Back to app",
+      "sections": {
+        "account": "Account"
+      },
+      "items": {
+        "profile": "Profile",
+        "security": "Security",
+        "connected_accounts": "Connected accounts",
+        "workspace_general": "General",
+        "workspace_members": "Members",
+        "deleted_projects": "Deleted Projects"
+      }
+    },
     "profile": {
       "title": "Profile",
       "subtitle": "Manage your personal information and email address",

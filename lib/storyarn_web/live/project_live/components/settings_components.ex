@@ -7,7 +7,6 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   """
 
   use Gettext, backend: Storyarn.Gettext
-  use StoryarnWeb, :verified_routes
 
   import Phoenix.Component, only: [assign: 3, to_form: 2]
   import Phoenix.LiveView, only: [put_flash: 3]
@@ -311,50 +310,6 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   Navigation sections for the project settings sidebar.
   Shared between ProjectSettingsLive.* and ExportImportLive.Index.
   """
-  def project_settings_sections(workspace, project) do
-    base = ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/settings"
-
-    [
-      %{
-        label: dgettext("projects", "General"),
-        items: [
-          %{label: dgettext("projects", "General"), path: base, icon: "settings"},
-          %{
-            label: dgettext("projects", "Version Control"),
-            path: "#{base}/version-control",
-            icon: "git-branch"
-          }
-        ]
-      },
-      %{
-        label: dgettext("projects", "Integrations"),
-        items: [
-          %{
-            label: dgettext("projects", "Localization"),
-            path: "#{base}/localization",
-            icon: "languages"
-          }
-        ]
-      },
-      %{
-        label: dgettext("projects", "Administration"),
-        items: [
-          %{label: dgettext("projects", "Members"), path: "#{base}/members", icon: "users"},
-          %{
-            label: dgettext("projects", "Snapshots"),
-            path: "#{base}/snapshots",
-            icon: "archive"
-          },
-          %{
-            label: dgettext("projects", "Import & Export"),
-            path: "#{base}/export-import",
-            icon: "package"
-          }
-        ]
-      }
-    ]
-  end
-
   def do_remove_member(socket, id) do
     member = Enum.find(socket.assigns.members, &(to_string(&1.id) == id))
 

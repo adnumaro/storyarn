@@ -8,37 +8,23 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   alias Storyarn.Billing
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
-  alias Storyarn.Workspaces
 
   @impl true
-  def mount(%{"workspace_slug" => workspace_slug}, _session, socket) do
+  def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
+    workspace = socket.assigns.workspace
 
-    case Workspaces.get_workspace_by_slug(scope, workspace_slug) do
-      {:ok, workspace, membership} ->
-        projects = Projects.list_projects_for_workspace(workspace.id, scope)
-        workspaces = Workspaces.list_workspaces_for_user(scope.user)
-        can_create_project = Billing.can_create_project?(workspace) == :ok
+    projects = Projects.list_projects_for_workspace(workspace.id, scope)
+    can_create_project = Billing.can_create_project?(workspace) == :ok
 
-        {:ok,
-         socket
-         |> assign(:page_title, workspace.name)
-         |> assign(:workspace, workspace)
-         |> assign(:workspaces, workspaces)
-         |> assign(:current_workspace, workspace)
-         |> assign(:membership, membership)
-         |> assign(:all_projects, projects)
-         |> assign(:projects, format_projects(projects, workspace))
-         |> assign(:search_query, "")
-         |> assign(:can_create_project, can_create_project)
-         |> assign(:project_form, to_form(Projects.change_project(%Project{})))}
-
-      {:error, :not_found} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("workspaces", "Workspace not found."))
-         |> push_navigate(to: ~p"/workspaces")}
-    end
+    {:ok,
+     socket
+     |> assign(:page_title, workspace.name)
+     |> assign(:all_projects, projects)
+     |> assign(:projects, format_projects(projects, workspace))
+     |> assign(:search_query, "")
+     |> assign(:can_create_project, can_create_project)
+     |> assign(:project_form, to_form(Projects.change_project(%Project{})))}
   end
 
   @impl true
@@ -59,6 +45,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
       <.vue
         v-component="live/workspace/dashboard/Dashboard"
         v-socket={@socket}
+        v-inject="workspace-layout"
         id="workspace-show"
         workspace={
           %{

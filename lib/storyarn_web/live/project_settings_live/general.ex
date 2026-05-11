@@ -18,11 +18,11 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
     ~H"""
     <Layouts.settings
       flash={@flash}
+      socket={@socket}
       current_scope={@current_scope}
       current_path={@current_path}
-      back_path={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}"}
-      back_label={dgettext("projects", "Back to project")}
-      sidebar_sections={project_settings_sections(@workspace, @project)}
+      workspace={@workspace}
+      project={@project}
     >
       <:title>{dgettext("projects", "General")}</:title>
       <:subtitle>{dgettext("projects", "Project details, theme, and maintenance")}</:subtitle>
@@ -30,6 +30,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
       <.vue
         v-component="live/project/settings/General"
         v-socket={@socket}
+        v-inject="settings-layout"
         id="project-settings-general"
         project-name={@project.name}
         project-description={@project.description || ""}

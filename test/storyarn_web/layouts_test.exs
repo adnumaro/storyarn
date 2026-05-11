@@ -125,37 +125,38 @@ defmodule StoryarnWeb.LayoutsTest do
       html =
         render_component(&Layouts.auth/1,
           flash: %{},
+          socket: mock_socket(),
           current_scope: nil,
           inner_block: inner_block("<form>Login form</form>")
         )
 
       assert html =~ "Login form"
-      assert html =~ "Storyarn"
+      assert html =~ "live/layouts/auth/Layout"
     end
 
-    test "centers content with max-width container" do
+    test "renders auth LiveVue boundary" do
       html =
         render_component(&Layouts.auth/1,
           flash: %{},
+          socket: mock_socket(),
           current_scope: nil,
           inner_block: inner_block("<p>Centered</p>")
         )
 
-      assert html =~ "max-w-md"
-      assert html =~ "items-center"
-      assert html =~ "justify-center"
+      assert html =~ ~s(id="auth-layout")
+      assert html =~ ~s(data-name="live/layouts/auth/Layout")
     end
 
-    test "renders logo link to root" do
+    test "renders flash group outside auth boundary" do
       html =
         render_component(&Layouts.auth/1,
           flash: %{},
+          socket: mock_socket(),
           current_scope: nil,
           inner_block: inner_block("<p>Auth</p>")
         )
 
-      assert html =~ ~s(logo-white-48.png)
-      assert html =~ ~s(logo-black-48.png)
+      assert html =~ ~s(id="flash-group")
     end
   end
 
@@ -273,6 +274,7 @@ defmodule StoryarnWeb.LayoutsTest do
       html =
         render_component(&Layouts.settings/1,
           flash: %{},
+          socket: mock_socket(),
           current_scope: %{user: user_map()},
           workspaces: [],
           current_path: ~p"/users/settings",
@@ -288,6 +290,7 @@ defmodule StoryarnWeb.LayoutsTest do
       html =
         render_component(&Layouts.settings/1,
           flash: %{},
+          socket: mock_socket(),
           current_scope: %{user: user_map()},
           workspaces: [],
           current_path: ~p"/users/settings",
@@ -299,10 +302,11 @@ defmodule StoryarnWeb.LayoutsTest do
       assert html =~ "Manage your profile"
     end
 
-    test "renders account navigation section" do
+    test "passes account settings context to LiveVue boundary" do
       html =
         render_component(&Layouts.settings/1,
           flash: %{},
+          socket: mock_socket(),
           current_scope: %{user: user_map()},
           workspaces: [],
           current_path: ~p"/users/settings",
@@ -310,18 +314,19 @@ defmodule StoryarnWeb.LayoutsTest do
           inner_block: inner_block("<p>Content</p>")
         )
 
-      assert html =~ "Account"
-      assert html =~ "Profile"
-      assert html =~ "Security"
-      assert html =~ "Connected accounts"
+      assert html =~ ~s(data-name="live/layouts/settings/Layout")
+      assert html =~ "/users/settings"
+      assert html =~ "managed-workspace-slugs"
+      assert html =~ "workspaces"
     end
 
-    test "renders workspace sections in navigation" do
-      workspaces = [%{slug: "team-ws", name: "Team Workspace"}]
+    test "passes workspace settings context to LiveVue boundary" do
+      workspaces = [%{id: 1, slug: "team-ws", name: "Team Workspace"}]
 
       html =
         render_component(&Layouts.settings/1,
           flash: %{},
+          socket: mock_socket(),
           current_scope: %{user: user_map()},
           workspaces: workspaces,
           managed_workspace_slugs: MapSet.new(["team-ws"]),
@@ -331,16 +336,15 @@ defmodule StoryarnWeb.LayoutsTest do
         )
 
       assert html =~ "Team Workspace"
-      assert html =~ "General"
-      assert html =~ "Members"
-      assert html =~ "/users/settings/workspaces/team-ws/general"
-      assert html =~ "/users/settings/workspaces/team-ws/members"
+      assert html =~ "team-ws"
+      assert html =~ "managed-workspace-slugs"
     end
 
-    test "renders back to app link" do
+    test "renders settings LiveVue boundary and content" do
       html =
         render_component(&Layouts.settings/1,
           flash: %{},
+          socket: mock_socket(),
           current_scope: %{user: user_map()},
           workspaces: [],
           current_path: ~p"/users/settings",
@@ -348,8 +352,8 @@ defmodule StoryarnWeb.LayoutsTest do
           inner_block: inner_block("<p>Content</p>")
         )
 
-      assert html =~ "Back to app"
-      assert html =~ "/workspaces"
+      assert html =~ ~s(id="settings-layout")
+      assert html =~ "Content"
     end
   end
 

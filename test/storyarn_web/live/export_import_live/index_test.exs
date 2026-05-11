@@ -7,6 +7,10 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
   alias Storyarn.Repo
 
+  defp get_settings_layout(view) do
+    LiveVue.Test.get_vue(view, name: "live/layouts/settings/Layout")
+  end
+
   defp get_ei_vue(view) do
     LiveVue.Test.get_vue(view, name: "live/project/settings/export-import/ExportImport")
   end
@@ -32,10 +36,11 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     end
 
     test "renders export/import page", %{conn: conn, project: project} do
-      {:ok, _view, html} = live(conn, export_import_url(project))
+      {:ok, view, _html} = live(conn, export_import_url(project))
 
-      assert html =~ "Export &amp; Import"
-      assert html =~ "Export your project data or import from a file."
+      settings_layout = get_settings_layout(view)
+      assert settings_layout.props["title"] == "Export & Import"
+      assert settings_layout.props["subtitle"] == "Export your project data or import from a file."
     end
 
     test "shows export section heading", %{conn: conn, project: project} do

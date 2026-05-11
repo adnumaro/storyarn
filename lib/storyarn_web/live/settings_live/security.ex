@@ -29,6 +29,7 @@ defmodule StoryarnWeb.SettingsLive.Security do
     ~H"""
     <Layouts.settings
       flash={@flash}
+      socket={@socket}
       current_scope={@current_scope}
       workspaces={@workspaces}
       managed_workspace_slugs={@managed_workspace_slugs}
@@ -37,6 +38,7 @@ defmodule StoryarnWeb.SettingsLive.Security do
       <.vue
         v-component="live/account/settings/Security"
         v-socket={@socket}
+        v-inject="settings-layout"
         id="settings-security-vue"
         password-form={@password_form}
         current-email={@current_email}

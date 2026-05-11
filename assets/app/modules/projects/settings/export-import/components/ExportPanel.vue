@@ -211,7 +211,7 @@ function validationBadgeVariant(status: string) {
       </Button>
 
       <Button size="sm" as-child>
-        <a :href="exportDownloadUrl">
+        <a :href="exportDownloadUrl" data-live-link-exempt="download">
           <Download class="size-4" />
           {{ $t("project_settings.export.download", { ext: formatConfig.extension }) }}
         </a>

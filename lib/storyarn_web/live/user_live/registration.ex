@@ -9,10 +9,11 @@ defmodule StoryarnWeb.UserLive.Registration do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.auth flash={@flash} current_scope={@current_scope}>
+    <Layouts.auth flash={@flash} current_scope={@current_scope} socket={@socket}>
       <.vue
         v-component="live/auth/registration/Form"
         v-socket={@socket}
+        v-inject="auth-layout"
         id="registration-vue"
         form={@form}
         user-email={@invited_user.email}

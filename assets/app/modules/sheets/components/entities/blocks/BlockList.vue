@@ -216,6 +216,8 @@ function resolveComponent(type: string): typeof TextBlock | null {
           <span>{{ $t("sheets.block_list.inherited_from") }}</span>
           <a
             :href="`/workspaces/${workspaceSlug}/projects/${projectSlug}/sheets/${group.sourceSheet.id}`"
+            data-phx-link="patch"
+            data-phx-link-state="push"
             class="text-primary hover:underline font-medium normal-case"
           >
             {{ group.sourceSheet.name }}
