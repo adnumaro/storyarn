@@ -1,0 +1,153 @@
+assets/app/live/account/settings/Connections.vue
+  s_116fc484719db6::t_2a5cf4b09ba3bd 180
+assets/app/locales/en/project-settings.json
+  s_116fc484719db6::t_e8e584339cbd67 3-18
+lib/storyarn_web/live/project_settings_live/version_control.ex
+  s_116fc484719db6::t_7f890100ab25c8 22-23
+  s_116fc484719db6::t_b62573d309537b 19,33
+scripts/verify-live-sessions.mjs
+  s_116fc484719db6::t_8b7d2af83ee8ec 1-57
+assets/app/live/public/Footer.vue
+  s_116fc484719db6::t_eb0c7e6ddd4ffa 40-44,47-50
+  s_116fc484719db6::t_441cb2f19de384 45-46,51-52
+package.json
+  s_116fc484719db6::t_8b7d2af83ee8ec 11,15
+  s_116fc484719db6::t_8e8410bef3f8b2 14
+lib/storyarn_web/live/settings_live/workspace_general.ex
+  s_116fc484719db6::t_9c18f09eb98672 39,48
+assets/app/live/auth/login/Form.vue
+  s_116fc484719db6::t_dc6a4342760f0e 53-57
+assets/app/shell/WorkspaceSidebar.vue
+  s_116fc484719db6::t_97985f19fbe05c 73-74,110-115,121-126
+  s_116fc484719db6::t_c06ed46fd7a361 13,35,72
+  s_116fc484719db6::t_8694a1cbe30f33 22
+lib/storyarn_web/live/settings_live/security.ex
+  s_116fc484719db6::t_9c18f09eb98672 32,41
+lib/storyarn_web/components/workspace_layout.ex
+  s_116fc484719db6::t_8694a1cbe30f33 3-4,50-55,57,59-60
+  s_116fc484719db6::t_467e864f24eb33 5-7,35,40,47,56
+assets/app/live/localization/toolbar/Toolbar.vue
+  s_116fc484719db6::t_fafefcdff6b23e 45-47,50-52
+lib/storyarn_web/live/hooks/project_scope.ex
+  s_116fc484719db6::t_8b7d2af83ee8ec 10-12,59
+assets/app/live/sheet/dashboard/Dashboard.vue
+  s_116fc484719db6::t_51c186a57b3b96 203-208,288-289
+assets/app/live/layouts/settings/Layout.vue
+  s_116fc484719db6::t_b3dd5c6c99eb67 211-212
+  s_116fc484719db6::t_40c620bd48ded0 96-100,116-118
+  s_116fc484719db6::t_6e4c7076dc2dd2 2-3,18-30,33-36,41-44,48-95,101-115,119-158
+  s_116fc484719db6::t_c60afd2f323348 5,191-192,197,207-208,219
+  s_116fc484719db6::t_982da74816f337 1,4,6-17,31-32,37-40,45-47,159-190,193-196,198-206,209-210,213-218,220-239
+lib/storyarn_web/live/settings_live/connections.ex
+  s_116fc484719db6::t_9c18f09eb98672 31,40
+assets/app/modules/sheets/components/entities/blocks/BlockList.vue
+  s_116fc484719db6::t_982da383fd1771 219-220
+assets/app/components/navigation/LiveLink.vue
+  s_116fc484719db6::t_f962141b90725c 1-13,21-24,26-28
+  s_116fc484719db6::t_441cb2f19de384 25
+  s_116fc484719db6::t_c4b2f79d30c8cc 14-20
+assets/app/shell/ProjectNavbarAccount.vue
+  s_116fc484719db6::t_e1d980dc27a679 95-100,106-111
+lib/storyarn_web/live/settings_live/workspace_members.ex
+  s_116fc484719db6::t_9c18f09eb98672 50,59
+assets/app/live/project/dashboard/Dashboard.vue
+  s_116fc484719db6::t_efdfa5087bf719 154-155,215-216,236-237,263-264
+assets/app/shell/ProjectNavbarContext.vue
+  s_116fc484719db6::t_a24c2391f6c1e3 114-115,123-128,135-140
+assets/app/live/layouts/workspace/Layout.vue
+  s_116fc484719db6::t_c06ed46fd7a361 3
+  s_116fc484719db6::t_8694a1cbe30f33 1-2,4-47
+lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex
+  s_116fc484719db6::t_9c18f09eb98672 51,60
+lib/storyarn_web/live/project_settings_live/snapshots.ex
+  s_116fc484719db6::t_b62573d309537b 23,37
+  s_116fc484719db6::t_7f890100ab25c8 26-27
+lib/storyarn_web/router.ex
+  s_116fc484719db6::t_8b7d2af83ee8ec 169-170,183-184,232
+  s_116fc484719db6::t_078b740064f157 129-132,141-143
+test/storyarn_web/live/workspace_live/show_test.exs
+  s_116fc484719db6::t_0e9271b839d88b 67
+assets/app/locales/en/settings.json
+  s_116fc484719db6::t_e8e584339cbd67 3-16
+lib/storyarn_web/live/export_import_live/index.ex
+  s_116fc484719db6::t_7f890100ab25c8 21-22
+  s_116fc484719db6::t_b62573d309537b 18,30
+lib/storyarn_web/live/user_live/registration.ex
+  s_116fc484719db6::t_bdc900be724680 12,16
+lib/storyarn_web/components/layouts.ex
+  s_116fc484719db6::t_481d96711bb2d9 467-476
+  s_116fc484719db6::t_78440e422c08cf 416,439-440,443-448,453-454,457,464-466
+  s_116fc484719db6::t_b79ef36e4aa7db 482-484,497-499,507-509
+  s_116fc484719db6::t_d1cdb277016850 398-399,418-420,435-438,449-452,477-481,485-496,501,503,505-506,510
+  s_116fc484719db6::t_596287dbb08af9 129
+  s_116fc484719db6::t_563517c2090479 135,145-146,148
+assets/app/shell/workspaceLayoutTypes.ts
+  s_116fc484719db6::t_8694a1cbe30f33 1-11
+lib/storyarn_web/live/project_settings_live/members.ex
+  s_116fc484719db6::t_b62573d309537b 20,32
+  s_116fc484719db6::t_7f890100ab25c8 23-24
+test/storyarn_web/layouts_test.exs
+  s_116fc484719db6::t_49c752d99868f1 277,293,309,329,347
+  s_116fc484719db6::t_eb396375212d99 305,317-320,323-324,339-340,343,355-356
+  s_116fc484719db6::t_d037cc462f9072 128,134,137,141,146-147,150,154,159
+lib/storyarn_web/live/user_live/login.ex
+  s_116fc484719db6::t_bdc900be724680 9,13
+assets/app/live/flow/dashboard/Dashboard.vue
+  s_116fc484719db6::t_3bdaf9c2932ccc 365-366
+assets/app/modules/projects/settings/export-import/components/ExportPanel.vue
+  s_116fc484719db6::t_038e7d1d838830 214
+lib/storyarn_web/live/project_settings_live/general.ex
+  s_116fc484719db6::t_b62573d309537b 21,33
+  s_116fc484719db6::t_7f890100ab25c8 24-25
+test/storyarn_web/live/export_import_live/index_test.exs
+  s_116fc484719db6::t_d08e23642a4c60 10-13,39,41-43
+lib/storyarn_web/live/project_settings_live/localization.ex
+  s_116fc484719db6::t_b62573d309537b 20,32
+  s_116fc484719db6::t_7f890100ab25c8 23-24
+assets/app/locales/es/settings.json
+  s_116fc484719db6::t_e8e584339cbd67 3-16
+scripts/verify-live-links.mjs
+  s_116fc484719db6::t_441cb2f19de384 18
+  s_116fc484719db6::t_c60afd2f323348 79-83
+  s_116fc484719db6::t_4ee363ffd25ff7 87-88
+  s_116fc484719db6::t_a72cbceef7f189 1-17,19-78,84-86,89-162
+assets/app/live/layouts/auth/Layout.vue
+  s_116fc484719db6::t_6065c1b265e0d7 5-8,20,22-31
+  s_116fc484719db6::t_02fc894ed41489 15,17-19
+  s_116fc484719db6::t_e085e700e54af8 16
+  s_116fc484719db6::t_c60afd2f323348 1-4,9,21
+  s_116fc484719db6::t_4370c7faecbc23 10-14
+lib/storyarn_web/live/hooks/workspace_scope.ex
+  s_116fc484719db6::t_4a23c7b61b605b 3-9,12-13,28-44,50,59
+  s_116fc484719db6::t_8b7d2af83ee8ec 11,14-16
+lib/storyarn_web/live/settings_live/profile.ex
+  s_116fc484719db6::t_9c18f09eb98672 51,60
+lib/storyarn_web/live/workspace_live/show.ex
+  s_116fc484719db6::t_8694a1cbe30f33 48
+  s_116fc484719db6::t_4a23c7b61b605b 13,15,17-18,20-27
+lib/storyarn_web/live/user_live/confirm_access.ex
+  s_116fc484719db6::t_bdc900be724680 17,21
+assets/app/locales/es/project-settings.json
+  s_116fc484719db6::t_e8e584339cbd67 3-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "7cd93dfa7ec1b50cb3e6b168fe1ec7cc91b7bfbe",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_116fc484719db6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e06be-4656-7311-843b-ff48fc0521fc",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
