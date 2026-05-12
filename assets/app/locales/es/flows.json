@@ -40,6 +40,7 @@
       "inherited": "(heredada)",
       "no_scene_inherit": "Sin escena (heredar)",
       "word_count": "{count} palabra en este flujo | {count} palabras en este flujo",
+      "flow_health": "Revisar estado del flujo",
       "errors": "Errores",
       "info": "Info",
       "looks_great": "Este flujo se ve bien",

@@ -14,8 +14,9 @@ import {
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import EditableText from "@components/forms/EditableText.vue";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Badge } from "@components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { useLive } from "@shared/composables/useLive";
 
 interface NavEntry {
@@ -105,26 +106,30 @@ function navigateToNode(nodeId: number | string): void {
       v-if="navHistory.back || navHistory.forward"
       class="flex items-center gap-0.5 surface-panel px-1"
     >
-      <button
-        v-if="navHistory.back"
-        type="button"
-        class="toolbar-btn gap-1 text-muted-foreground max-w-35"
-        :title="$t('flows.header.nav_back')"
-        @click="live.pushEvent('nav_back', {})"
-      >
-        <ArrowLeft class="size-3.5 shrink-0" />
-        <span class="truncate text-xs">{{ navHistory.back.flow_name }}</span>
-      </button>
-      <button
+      <ToolbarTooltip v-if="navHistory.back" :label="$t('flows.header.nav_back')" side="bottom">
+        <button
+          type="button"
+          class="toolbar-btn gap-1 text-muted-foreground max-w-35"
+          @click="live.pushEvent('nav_back', {})"
+        >
+          <ArrowLeft class="size-3.5 shrink-0" />
+          <span class="truncate text-xs">{{ navHistory.back.flow_name }}</span>
+        </button>
+      </ToolbarTooltip>
+      <ToolbarTooltip
         v-if="navHistory.forward"
-        type="button"
-        class="toolbar-btn gap-1 text-muted-foreground max-w-35"
-        :title="$t('flows.header.nav_forward')"
-        @click="live.pushEvent('nav_forward', {})"
+        :label="$t('flows.header.nav_forward')"
+        side="bottom"
       >
-        <span class="truncate text-xs">{{ navHistory.forward.flow_name }}</span>
-        <ArrowRight class="size-3.5 shrink-0" />
-      </button>
+        <button
+          type="button"
+          class="toolbar-btn gap-1 text-muted-foreground max-w-35"
+          @click="live.pushEvent('nav_forward', {})"
+        >
+          <span class="truncate text-xs">{{ navHistory.forward.flow_name }}</span>
+          <ArrowRight class="size-3.5 shrink-0" />
+        </button>
+      </ToolbarTooltip>
     </div>
 
     <!-- Flow title pill -->
@@ -160,24 +165,24 @@ function navigateToNode(nodeId: number | string): void {
       <!-- Scene selector -->
       <template v-if="showScene">
         <Popover v-model:open="sceneOpen">
-          <PopoverTrigger as-child>
-            <button
-              type="button"
-              class="toolbar-btn gap-1.5"
-              :class="sceneSelected.name ? 'text-foreground' : 'text-muted-foreground'"
-              :title="$t('flows.header.scene_backdrop')"
-            >
-              <MapIcon class="size-3.5" />
-              <span v-if="sceneSelected.name" class="truncate max-w-30">{{
-                sceneSelected.name
-              }}</span>
-              <span v-else>{{ $t("flows.header.no_scene") }}</span>
-              <span v-if="sceneSelected.inherited" class="text-muted-foreground text-[10px]">{{
-                $t("flows.header.inherited")
-              }}</span>
-              <ChevronDown v-if="canEdit" class="size-3 opacity-50" />
-            </button>
-          </PopoverTrigger>
+          <PopoverAnchor as-child>
+            <ToolbarTooltip :label="$t('flows.header.scene_backdrop')" side="bottom">
+              <PopoverTrigger
+                class="toolbar-btn gap-1.5"
+                :class="sceneSelected.name ? 'text-foreground' : 'text-muted-foreground'"
+              >
+                <MapIcon class="size-3.5" />
+                <span v-if="sceneSelected.name" class="truncate max-w-30">{{
+                  sceneSelected.name
+                }}</span>
+                <span v-else>{{ $t("flows.header.no_scene") }}</span>
+                <span v-if="sceneSelected.inherited" class="text-muted-foreground text-[10px]">{{
+                  $t("flows.header.inherited")
+                }}</span>
+                <ChevronDown v-if="canEdit" class="size-3 opacity-50" />
+              </PopoverTrigger>
+            </ToolbarTooltip>
+          </PopoverAnchor>
           <PopoverContent v-if="canEdit" side="bottom" :side-offset="4" class="w-56 p-1">
             <button
               type="button"
@@ -204,32 +209,36 @@ function navigateToNode(nodeId: number | string): void {
       </template>
 
       <!-- Word count -->
-      <div
-        class="toolbar-btn gap-1.5 text-muted-foreground"
-        :title="
+      <ToolbarTooltip
+        :label="
           $t('flows.header.word_count', { count: flowHealth.wordCount }, flowHealth.wordCount)
         "
+        side="bottom"
       >
-        <Text class="size-3.5" />
-        <span>{{ flowHealth.wordCount }}</span>
-      </div>
+        <div class="toolbar-btn gap-1.5 text-muted-foreground">
+          <Text class="size-3.5" />
+          <span>{{ flowHealth.wordCount }}</span>
+        </div>
+      </ToolbarTooltip>
 
       <!-- Flow health indicator -->
       <template v-if="errorCount > 0 || infoCount > 0">
         <Popover v-model:open="healthOpen">
-          <PopoverTrigger as-child>
-            <button type="button" class="toolbar-btn gap-0">
-              <span v-if="errorCount > 0" class="flex items-center gap-1.5 text-destructive">
-                <TriangleAlert class="size-3.5" />
-                <span>{{ errorCount }}</span>
-              </span>
-              <span v-if="infoCount > 0" class="flex items-center gap-1.5 ml-2 text-blue-500">
-                <Info class="size-3.5" />
-                <span>{{ infoCount }}</span>
-              </span>
-              <ChevronDown class="size-3 opacity-50 ml-1" />
-            </button>
-          </PopoverTrigger>
+          <PopoverAnchor as-child>
+            <ToolbarTooltip :label="$t('flows.header.flow_health')" side="bottom">
+              <PopoverTrigger class="toolbar-btn gap-0">
+                <span v-if="errorCount > 0" class="flex items-center gap-1.5 text-destructive">
+                  <TriangleAlert class="size-3.5" />
+                  <span>{{ errorCount }}</span>
+                </span>
+                <span v-if="infoCount > 0" class="flex items-center gap-1.5 ml-2 text-blue-500">
+                  <Info class="size-3.5" />
+                  <span>{{ infoCount }}</span>
+                </span>
+                <ChevronDown class="size-3 opacity-50 ml-1" />
+              </PopoverTrigger>
+            </ToolbarTooltip>
+          </PopoverAnchor>
           <PopoverContent side="bottom" :side-offset="4" class="w-max max-h-60 overflow-y-auto p-1">
             <div v-if="flowHealth.errorNodes.length > 0">
               <div
@@ -271,9 +280,11 @@ function navigateToNode(nodeId: number | string): void {
           </PopoverContent>
         </Popover>
       </template>
-      <div v-else class="toolbar-btn text-green-500/60" :title="$t('flows.header.looks_great')">
-        <CircleCheck class="size-3.5" />
-      </div>
+      <ToolbarTooltip v-else :label="$t('flows.header.looks_great')" side="bottom">
+        <div class="toolbar-btn text-green-500/60">
+          <CircleCheck class="size-3.5" />
+        </div>
+      </ToolbarTooltip>
     </div>
 
     <!-- Save indicator -->

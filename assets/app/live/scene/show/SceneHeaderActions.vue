@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Download, Eye, Pencil, Settings } from "lucide-vue-next";
+import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
 import { Button } from "@components/ui/button";
 import {
   DropdownMenu,
@@ -36,24 +37,23 @@ function openSettings(): void {
 <template>
   <div class="flex items-center gap-1 surface-panel px-1.5 h-full">
     <!-- Settings -->
-    <Button
+    <ToolbarTooltip
       v-if="canEdit && editMode"
-      variant="ghost"
-      size="icon-sm"
-      class="size-7"
-      :title="$t('scenes.actions.scene_settings')"
-      @click="openSettings"
+      :label="$t('scenes.actions.scene_settings')"
+      side="bottom"
     >
-      <Settings class="size-3.5" />
-    </Button>
+      <Button variant="ghost" size="icon-sm" class="size-7" @click="openSettings">
+        <Settings class="size-3.5" />
+      </Button>
+    </ToolbarTooltip>
 
     <!-- Export -->
     <DropdownMenu>
-      <DropdownMenuTrigger as-child>
-        <Button variant="ghost" size="icon-sm" class="size-7" :title="$t('scenes.actions.export')">
+      <ToolbarTooltip :label="$t('scenes.actions.export')" side="bottom">
+        <DropdownMenuTrigger class="toolbar-btn size-7">
           <Download class="size-3.5" />
-        </Button>
-      </DropdownMenuTrigger>
+        </DropdownMenuTrigger>
+      </ToolbarTooltip>
       <DropdownMenuContent align="end">
         <DropdownMenuItem class="text-xs gap-2" @select="exportScene('png')">
           {{ $t("scenes.actions.export_png") }}
@@ -65,15 +65,14 @@ function openSettings(): void {
     </DropdownMenu>
 
     <!-- Edit/View toggle -->
-    <Button
+    <ToolbarTooltip
       v-if="canEdit"
-      variant="ghost"
-      size="icon-sm"
-      class="size-7"
-      :title="editMode ? $t('scenes.actions.switch_view') : $t('scenes.actions.switch_edit')"
-      @click="toggleEditMode"
+      :label="editMode ? $t('scenes.actions.switch_view') : $t('scenes.actions.switch_edit')"
+      side="bottom"
     >
-      <component :is="editMode ? Eye : Pencil" class="size-3.5" />
-    </Button>
+      <Button variant="ghost" size="icon-sm" class="size-7" @click="toggleEditMode">
+        <component :is="editMode ? Eye : Pencil" class="size-3.5" />
+      </Button>
+    </ToolbarTooltip>
   </div>
 </template>
