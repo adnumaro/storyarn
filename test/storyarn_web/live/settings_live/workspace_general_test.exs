@@ -8,7 +8,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
   alias Storyarn.Workspaces
 
   defp get_general_vue(view) do
-    LiveVue.Test.get_vue(view, name: "live/workspace/settings/General")
+    LiveVue.Test.get_vue(view, name: "live/workspace/settings/WorkspaceSettingsGeneral")
   end
 
   describe "mount" do
@@ -22,7 +22,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
         |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
 
       vue = get_general_vue(view)
-      assert vue.component == "live/workspace/settings/General"
+      assert vue.component == "live/workspace/settings/WorkspaceSettingsGeneral"
       assert vue.props["workspace-name"] == "Test Workspace"
       assert vue.props["is-owner"] == true
     end

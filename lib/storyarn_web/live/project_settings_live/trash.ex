@@ -29,7 +29,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
       </:subtitle>
 
       <.vue
-        v-component="live/project/settings/Trash"
+        v-component="live/project/settings/ProjectSettingsTrash"
         v-socket={@socket}
         v-inject="settings-layout"
         id="project-trash-vue"

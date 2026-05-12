@@ -30,7 +30,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
       restoration_banner={@restoration_banner}
     >
       <.vue
-        v-component="live/project/dashboard/Dashboard"
+        v-component="live/project/dashboard/ProjectDashboard"
         v-socket={@socket}
         v-inject="project-layout"
         id="project-dashboard"

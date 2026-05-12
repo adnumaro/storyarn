@@ -54,7 +54,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
       current_path={@current_path}
     >
       <.vue
-        v-component="live/workspace/settings/Members"
+        v-component="live/workspace/settings/WorkspaceSettingsMembers"
         v-socket={@socket}
         v-inject="settings-layout"
         id="workspace-settings-members"

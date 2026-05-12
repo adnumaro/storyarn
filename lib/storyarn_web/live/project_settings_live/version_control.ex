@@ -28,7 +28,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
       </:subtitle>
 
       <.vue
-        v-component="live/project/settings/VersionControl"
+        v-component="live/project/settings/ProjectSettingsVersionControl"
         v-socket={@socket}
         v-inject="settings-layout"
         id="project-settings-version-control"

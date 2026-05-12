@@ -6,7 +6,7 @@ defmodule StoryarnWeb.LandingLive.ContactTest do
   test "renders configured contact page through the public layout", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/contact")
 
-    contact_page = LiveVue.Test.get_vue(view, name: "live/public/contact/Page")
+    contact_page = LiveVue.Test.get_vue(view, name: "live/public/contact/PublicContact")
     public_layout = LiveVue.Test.get_vue(view, name: "live/layouts/public/Layout")
 
     assert contact_page.props["contact-email"] == Application.fetch_env!(:storyarn, :contact_email)

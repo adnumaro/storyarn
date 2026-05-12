@@ -32,19 +32,19 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
 
   defp get_scene_header_props(view) do
     view
-    |> LiveVue.Test.get_vue(name: "live/scene/show/Header")
+    |> LiveVue.Test.get_vue(name: "live/scene/show/SceneHeader")
     |> then(& &1.props["header"])
   end
 
   defp get_scene_surface_props(view) do
     view
-    |> LiveVue.Test.get_vue(name: "live/scene/show/Surface")
+    |> LiveVue.Test.get_vue(name: "live/scene/show/SceneSurface")
     |> then(& &1.props["surface"])
   end
 
   defp get_scene_panels_props(view) do
     view
-    |> LiveVue.Test.get_vue(name: "live/scene/show/Panels")
+    |> LiveVue.Test.get_vue(name: "live/scene/show/ScenePanels")
     |> then(& &1.props["panels"])
   end
 
@@ -194,8 +194,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}?layout=compact"
         )
 
-      vue = LiveVue.Test.get_vue(view, name: "live/scene/show/CompactSurface")
-      assert vue.component == "live/scene/show/CompactSurface"
+      vue = LiveVue.Test.get_vue(view, name: "live/scene/show/SceneCompactSurface")
+      assert vue.component == "live/scene/show/SceneCompactSurface"
       assert vue.id == "scene-compact-surface-#{scene.id}"
       assert vue.props["surface"]["canvas"]["sceneData"]["name"] == "Compact Scene"
       assert vue.props["surface"]["canvas"]["id"] == "scene-canvas-compact-#{scene.id}"
@@ -419,7 +419,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
         )
 
-      actions = LiveVue.Test.get_vue(view, name: "live/scene/show/HeaderActions")
+      actions = LiveVue.Test.get_vue(view, name: "live/scene/show/SceneHeaderActions")
       assert actions.props["can-edit"] == true
       assert actions.props["edit-mode"] == true
     end
@@ -3404,8 +3404,8 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       # The export buttons live in the SceneHeaderActions Vue component (client-side).
       # Verify both: the SceneHeaderActions component is mounted, and the server
       # handler accepts the export_scene event without crashing.
-      actions = LiveVue.Test.get_vue(view, name: "live/scene/show/HeaderActions")
-      assert actions.component == "live/scene/show/HeaderActions"
+      actions = LiveVue.Test.get_vue(view, name: "live/scene/show/SceneHeaderActions")
+      assert actions.component == "live/scene/show/SceneHeaderActions"
 
       render_click(view, "export_scene", %{"format" => "png"})
       render_click(view, "export_scene", %{"format" => "svg"})
@@ -3424,7 +3424,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         )
 
       # Export is available to viewers (read-only export path).
-      actions = LiveVue.Test.get_vue(view, name: "live/scene/show/HeaderActions")
+      actions = LiveVue.Test.get_vue(view, name: "live/scene/show/SceneHeaderActions")
       assert actions.props["can-edit"] == false
 
       render_click(view, "export_scene", %{"format" => "png"})

@@ -49,7 +49,7 @@ defmodule StoryarnWeb.FlowLive.Index do
       }
     >
       <.vue
-        v-component="live/flow/dashboard/Dashboard"
+        v-component="live/flow/dashboard/FlowDashboard"
         v-socket={@socket}
         v-inject="project-layout"
         id="flow-dashboard"

@@ -14,7 +14,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
   end
 
   defp get_dashboard_vue(view) do
-    LiveVue.Test.get_vue(view, name: "live/scene/dashboard/Dashboard")
+    LiveVue.Test.get_vue(view, name: "live/scene/dashboard/SceneDashboard")
   end
 
   defp get_sidebar_live(view, project) do
@@ -38,7 +38,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       {:ok, view, _html} = live(conn, scenes_path(project))
 
       vue = get_dashboard_vue(view)
-      assert vue.component == "live/scene/dashboard/Dashboard"
+      assert vue.component == "live/scene/dashboard/SceneDashboard"
       assert vue.props["can-edit"] == true
 
       # Scene name appears after async dashboard load
@@ -55,7 +55,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
       {:ok, view, _html} = live(conn, scenes_path(project))
 
       vue = get_dashboard_vue(view)
-      assert vue.component == "live/scene/dashboard/Dashboard"
+      assert vue.component == "live/scene/dashboard/SceneDashboard"
       assert vue.props["can-edit"] == true
 
       _ = await_async(view)

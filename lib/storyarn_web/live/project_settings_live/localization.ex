@@ -27,7 +27,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
       <:subtitle>{dgettext("projects", "Translation provider configuration")}</:subtitle>
 
       <.vue
-        v-component="live/project/settings/Localization"
+        v-component="live/project/settings/ProjectSettingsLocalization"
         v-socket={@socket}
         v-inject="settings-layout"
         id="project-settings-localization"

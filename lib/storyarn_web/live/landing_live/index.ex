@@ -26,7 +26,7 @@ defmodule StoryarnWeb.LandingLive.Index do
     ~H"""
     <Layouts.public flash={@flash} socket={@socket} current_scope={@current_scope} theme="dark">
       <.vue
-        v-component="live/public/landing/Page"
+        v-component="live/public/landing/PublicLanding"
         v-socket={@socket}
         v-inject="public-layout"
         id="landing-page"

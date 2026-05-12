@@ -14,7 +14,7 @@ defmodule StoryarnWeb.SheetLive.ShowTest do
   end
 
   defp get_sheet_surface_vue(view) do
-    LiveVue.Test.get_vue(view, name: "live/sheet/show/Surface")
+    LiveVue.Test.get_vue(view, name: "live/sheet/show/SheetSurface")
   end
 
   defp get_sheet_surface_props(view) do

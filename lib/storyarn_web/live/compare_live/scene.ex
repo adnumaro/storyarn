@@ -17,7 +17,7 @@ defmodule StoryarnWeb.CompareLive.Scene do
     ~H"""
     <Layouts.compare socket={@socket} flash={@flash}>
       <.vue
-        v-component="live/versioning/compare/Page"
+        v-component="live/versioning/compare/VersioningCompare"
         v-socket={@socket}
         v-inject="compare-layout"
         id="scene-compare-vue"

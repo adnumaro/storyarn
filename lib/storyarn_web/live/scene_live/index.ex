@@ -50,7 +50,7 @@ defmodule StoryarnWeb.SceneLive.Index do
       }
     >
       <.vue
-        v-component="live/scene/dashboard/Dashboard"
+        v-component="live/scene/dashboard/SceneDashboard"
         v-socket={@socket}
         v-inject="project-layout"
         id="scene-dashboard"

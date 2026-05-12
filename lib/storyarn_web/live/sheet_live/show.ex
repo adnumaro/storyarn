@@ -158,7 +158,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   defp sheet_content(assigns) do
     ~H"""
     <.vue
-      v-component="live/sheet/show/Surface"
+      v-component="live/sheet/show/SheetSurface"
       v-socket={@socket}
       v-inject={@inject}
       id="sheet-surface"

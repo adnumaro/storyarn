@@ -51,8 +51,8 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
 
       {:ok, view, _html} = live(conn, ~p"/workspaces/invitations/#{encoded_token}")
 
-      vue = LiveVue.Test.get_vue(view, name: "live/workspace/invitation/Response")
-      assert vue.component == "live/workspace/invitation/Response"
+      vue = LiveVue.Test.get_vue(view, name: "live/workspace/invitation/WorkspaceInvitationResponse")
+      assert vue.component == "live/workspace/invitation/WorkspaceInvitationResponse"
     end
 
     test "handles already member", %{conn: conn} do
@@ -76,8 +76,8 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
     test "renders error page for invalid token", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/workspaces/invitations/invalidtoken123")
 
-      vue = LiveVue.Test.get_vue(view, name: "live/workspace/invitation/Response")
-      assert vue.component == "live/workspace/invitation/Response"
+      vue = LiveVue.Test.get_vue(view, name: "live/workspace/invitation/WorkspaceInvitationResponse")
+      assert vue.component == "live/workspace/invitation/WorkspaceInvitationResponse"
     end
 
     test "renders error page for expired invitation", %{conn: conn} do
@@ -101,8 +101,8 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
 
       {:ok, view, _html} = live(conn, ~p"/workspaces/invitations/#{encoded_token}")
 
-      vue = LiveVue.Test.get_vue(view, name: "live/workspace/invitation/Response")
-      assert vue.component == "live/workspace/invitation/Response"
+      vue = LiveVue.Test.get_vue(view, name: "live/workspace/invitation/WorkspaceInvitationResponse")
+      assert vue.component == "live/workspace/invitation/WorkspaceInvitationResponse"
     end
   end
 

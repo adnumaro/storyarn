@@ -7,7 +7,7 @@ vi.mock("@shared/composables/useLive", () => ({
   useLive: () => mockLive,
 }));
 
-const { default: FlowPlayer } = await import("@app/live/flow/player/Player.vue");
+const { default: FlowPlayer } = await import("@app/live/flow/player/FlowPlayer.vue");
 
 function defaultProps() {
   return {

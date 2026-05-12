@@ -30,7 +30,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     ~H"""
     <div id="story-player" class="player-layout">
       <.vue
-        v-component="live/flow/player/Player"
+        v-component="live/flow/player/FlowPlayer"
         v-socket={@socket}
         id="flow-player"
         slide={serialize_slide(@slide)}

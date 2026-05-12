@@ -91,7 +91,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     >
       <.vue
         :if={@scene}
-        v-component="live/scene/show/Header"
+        v-component="live/scene/show/SceneHeader"
         v-socket={@socket}
         v-inject:top-left="project-layout"
         id="scene-header"
@@ -100,7 +100,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
       <.vue
         :if={@scene}
-        v-component="live/scene/show/HeaderActions"
+        v-component="live/scene/show/SceneHeaderActions"
         v-socket={@socket}
         v-inject:top-right="project-layout"
         id="scene-actions"
@@ -110,7 +110,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
       <.vue
         :if={@scene}
-        v-component="live/scene/show/Surface"
+        v-component="live/scene/show/SceneSurface"
         v-socket={@socket}
         v-inject="project-layout"
         id="scene-surface"
@@ -130,7 +130,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
       <.vue
         :if={@scene}
-        v-component="live/scene/show/Panels"
+        v-component="live/scene/show/ScenePanels"
         v-socket={@socket}
         v-inject:panels="project-layout"
         id="scene-panels"
@@ -144,7 +144,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     ~H"""
     <Layouts.compare socket={@socket} flash={@flash}>
       <.vue
-        v-component="live/scene/show/CompactSurface"
+        v-component="live/scene/show/SceneCompactSurface"
         v-socket={@socket}
         v-inject="compare-layout"
         id={"scene-compact-surface-#{@scene.id}"}

@@ -26,7 +26,7 @@ defmodule StoryarnWeb.AssetLive.Index do
     >
       <.vue
         :if={@can_edit}
-        v-component="live/assets/dashboard/HeaderActions"
+        v-component="live/assets/dashboard/AssetsHeaderActions"
         v-socket={@socket}
         v-inject:top-right="project-layout"
         id="asset-upload-button"
@@ -34,7 +34,7 @@ defmodule StoryarnWeb.AssetLive.Index do
       />
 
       <.vue
-        v-component="live/assets/dashboard/Dashboard"
+        v-component="live/assets/dashboard/AssetsDashboard"
         v-socket={@socket}
         v-inject="project-layout"
         id="asset-index"

@@ -28,7 +28,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
       <:subtitle>{dgettext("projects", "Project details, theme, and maintenance")}</:subtitle>
 
       <.vue
-        v-component="live/project/settings/General"
+        v-component="live/project/settings/ProjectSettingsGeneral"
         v-socket={@socket}
         v-inject="settings-layout"
         id="project-settings-general"

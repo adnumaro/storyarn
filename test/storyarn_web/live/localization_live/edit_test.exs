@@ -14,7 +14,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
   end
 
   defp get_edit_vue(view) do
-    LiveVue.Test.get_vue(view, name: "live/localization/texts/Edit")
+    LiveVue.Test.get_vue(view, name: "live/localization/texts/LocalizationTextEdit")
   end
 
   describe "Edit translation page" do
@@ -31,7 +31,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
       {:ok, view, _html} = live(conn, edit_url(project, text))
 
       vue = get_edit_vue(view)
-      assert vue.component == "live/localization/texts/Edit"
+      assert vue.component == "live/localization/texts/LocalizationTextEdit"
       assert vue.props["text"]["source_text"] =~ "Hello world"
       assert vue.props["text"]["locale_code"] == "es"
     end
@@ -127,7 +127,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
         )
 
       vue = get_edit_vue(view)
-      assert vue.component == "live/localization/texts/Edit"
+      assert vue.component == "live/localization/texts/LocalizationTextEdit"
       assert vue.props["can-edit"] == false
     end
   end
@@ -207,7 +207,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
 
       # Vue component should still render after save
       vue = get_edit_vue(view)
-      assert vue.component == "live/localization/texts/Edit"
+      assert vue.component == "live/localization/texts/LocalizationTextEdit"
     end
 
     test "updates text prop after successful save", %{conn: conn, project: project} do
@@ -448,7 +448,7 @@ defmodule StoryarnWeb.LocalizationLive.EditTest do
       {:ok, view, _html} = live(conn, edit_url(project, text))
 
       vue = get_edit_vue(view)
-      assert vue.component == "live/localization/texts/Edit"
+      assert vue.component == "live/localization/texts/LocalizationTextEdit"
     end
   end
 end

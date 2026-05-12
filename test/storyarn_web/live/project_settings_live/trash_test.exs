@@ -16,7 +16,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
   alias Storyarn.Sheets
 
   defp get_trash_vue(view) do
-    LiveVue.Test.get_vue(view, name: "live/project/settings/Trash")
+    LiveVue.Test.get_vue(view, name: "live/project/settings/ProjectSettingsTrash")
   end
 
   defp get_settings_layout_vue(view) do
@@ -43,7 +43,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
       assert settings.props["project"]["slug"] == project.slug
 
       vue = get_trash_vue(view)
-      assert vue.component == "live/project/settings/Trash"
+      assert vue.component == "live/project/settings/ProjectSettingsTrash"
       assert vue.props["can-manage"] == true
       assert vue.props["pagination"]["page"] == 1
     end
@@ -60,7 +60,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
         )
 
       vue = get_trash_vue(view)
-      assert vue.component == "live/project/settings/Trash"
+      assert vue.component == "live/project/settings/ProjectSettingsTrash"
     end
 
     test "redirects non-member", %{conn: conn} do

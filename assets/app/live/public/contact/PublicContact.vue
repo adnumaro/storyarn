@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { ArrowUpRight, Mail, MessageCircle } from "lucide-vue-next";
-import LandingFooter from "../Footer.vue";
+import LandingFooter from "../PublicFooter.vue";
 
 const { contactEmail } = defineProps<{
   contactEmail: string;

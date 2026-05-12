@@ -28,7 +28,7 @@ defmodule StoryarnWeb.WorkspaceLive.New do
       workspaces={@workspaces}
     >
       <.vue
-        v-component="live/workspace/form/NewWorkspaceForm"
+        v-component="live/workspace/form/WorkspaceNewWorkspaceForm"
         v-socket={@socket}
         v-inject="workspace-layout"
         id="workspace-new"

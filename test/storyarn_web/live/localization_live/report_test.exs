@@ -13,7 +13,7 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
   end
 
   defp get_report_vue(view) do
-    LiveVue.Test.get_vue(view, name: "live/localization/report/Report")
+    LiveVue.Test.get_vue(view, name: "live/localization/report/LocalizationReport")
   end
 
   describe "Localization report page" do
@@ -25,7 +25,7 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
       {:ok, view, _html} = live(conn, report_url(project))
 
       vue = get_report_vue(view)
-      assert vue.component == "live/localization/report/Report"
+      assert vue.component == "live/localization/report/LocalizationReport"
       assert is_list(vue.props["language-progress"])
       assert is_list(vue.props["target-languages"])
     end
@@ -38,7 +38,7 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
       {:ok, view, _html} = live(conn, report_url(project))
 
       vue = get_report_vue(view)
-      assert vue.component == "live/localization/report/Report"
+      assert vue.component == "live/localization/report/LocalizationReport"
     end
 
     test "redirects non-member", %{conn: conn} do
@@ -144,7 +144,7 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
       {:ok, view, _html} = live(conn, report_url(project))
 
       vue = get_report_vue(view)
-      assert vue.component == "live/localization/report/Report"
+      assert vue.component == "live/localization/report/LocalizationReport"
     end
   end
 
@@ -159,7 +159,7 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
       {:ok, view, _html} = live(conn, report_url(project))
 
       vue = get_report_vue(view)
-      assert vue.component == "live/localization/report/Report"
+      assert vue.component == "live/localization/report/LocalizationReport"
     end
 
     test "viewer can change locale", %{conn: conn, user: user} do

@@ -14,7 +14,7 @@ defmodule StoryarnWeb.DocsLive.ShowTest do
       assert docs["guide"]["url"] == "/docs/welcome/what-is-storyarn"
       assert [%{"label" => "Welcome"} | _] = docs["categories"]
 
-      content = LiveVue.Test.get_vue(view, name: "live/docs/show/Content")
+      content = LiveVue.Test.get_vue(view, name: "live/docs/show/DocsContent")
       assert content.props["guide-body"] =~ "narrative design platform"
     end
 

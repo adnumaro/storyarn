@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from "vue";
-import LandingFooter from "../Footer.vue";
+import LandingFooter from "../PublicFooter.vue";
 import CtaWaitlist from "@modules/public/landing/sections/cta/CtaWaitlist.vue";
 import DiscoverSection from "@modules/public/landing/sections/discovery/DiscoverSection.vue";
 import FeatureGrid from "@modules/public/landing/sections/FeatureGrid.vue";

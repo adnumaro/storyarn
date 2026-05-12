@@ -113,7 +113,7 @@ defmodule StoryarnWeb.DocsLive.Show do
       sidebar_open={@sidebar_open}
     >
       <.vue
-        v-component="live/docs/show/Content"
+        v-component="live/docs/show/DocsContent"
         v-socket={@socket}
         v-inject="docs-layout"
         id="docs-show-vue"

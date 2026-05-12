@@ -28,7 +28,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
   end
 
   defp get_player_vue(view) do
-    LiveVue.Test.get_vue(view, name: "live/flow/player/Player")
+    LiveVue.Test.get_vue(view, name: "live/flow/player/FlowPlayer")
   end
 
   # Gets the auto-created entry and exit nodes from a flow
@@ -145,7 +145,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
       # Vue component should be mounted with slide data
       vue = get_player_vue(view)
-      assert vue.component == "live/flow/player/Player"
+      assert vue.component == "live/flow/player/FlowPlayer"
       assert vue.props["slide"]["type"] in ["dialogue", "outcome"]
     end
 
@@ -650,7 +650,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       # Follow redirect — session restore shows sub-flow dialogue
       {:ok, new_view, _html} = live(conn, path)
 
-      vue = LiveVue.Test.get_vue(new_view, name: "live/flow/player/Player")
+      vue = LiveVue.Test.get_vue(new_view, name: "live/flow/player/FlowPlayer")
       assert vue.props["slide"]["text"] =~ "Sub flow dialogue"
     end
 
@@ -669,7 +669,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       # Step 2: In sub-flow, choose response → exit(caller_return) → flow_return
       {:ok, sub_view, _html} = live(conn, sub_path)
 
-      vue = LiveVue.Test.get_vue(sub_view, name: "live/flow/player/Player")
+      vue = LiveVue.Test.get_vue(sub_view, name: "live/flow/player/FlowPlayer")
       assert vue.props["slide"]["text"] =~ "Sub flow dialogue"
 
       render_click(sub_view, "choose_response", %{"id" => sub_resp_id})
@@ -678,7 +678,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       # Step 3: Should be back in main flow showing after_dialogue
       {:ok, parent_view, _html} = live(conn, parent_path)
 
-      vue = LiveVue.Test.get_vue(parent_view, name: "live/flow/player/Player")
+      vue = LiveVue.Test.get_vue(parent_view, name: "live/flow/player/FlowPlayer")
       assert vue.props["slide"]["text"] =~ "Back in main"
     end
 
@@ -733,7 +733,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       render_click(view, "choose_response", %{"id" => resp_id})
 
       vue = get_player_vue(view)
-      assert vue.component == "live/flow/player/Player"
+      assert vue.component == "live/flow/player/FlowPlayer"
     end
   end
 

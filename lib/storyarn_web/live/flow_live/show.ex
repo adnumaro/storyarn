@@ -75,7 +75,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     >
       <.vue
         :if={@flow}
-        v-component="live/flow/show/Header"
+        v-component="live/flow/show/FlowHeader"
         v-socket={@socket}
         v-inject:top-left="project-layout"
         id="flow-header"
@@ -103,7 +103,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
       <.vue
         :if={@flow}
-        v-component="live/flow/show/Surface"
+        v-component="live/flow/show/FlowSurface"
         v-socket={@socket}
         v-inject="project-layout"
         id="flow-surface"
@@ -113,7 +113,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
       <.vue
         :if={@flow}
-        v-component="live/flow/show/Panels"
+        v-component="live/flow/show/FlowPanels"
         v-socket={@socket}
         v-inject:panels="project-layout"
         id="flow-panels"
@@ -146,7 +146,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     <Layouts.compare socket={@socket} flash={@flash}>
       <.vue
         :if={@flow}
-        v-component="live/flow/show/Canvas"
+        v-component="live/flow/show/FlowCanvas"
         v-socket={@socket}
         v-inject="compare-layout"
         id={"flow-editor-compact-#{@flow.id}"}

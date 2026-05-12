@@ -5,7 +5,7 @@ defmodule StoryarnWeb.SettingsLive.ProfileTest do
   import Storyarn.AccountsFixtures
 
   defp get_profile_vue(view) do
-    LiveVue.Test.get_vue(view, name: "live/account/settings/Profile")
+    LiveVue.Test.get_vue(view, name: "live/account/settings/AccountSettingsProfile")
   end
 
   describe "Profile settings page" do
@@ -16,7 +16,7 @@ defmodule StoryarnWeb.SettingsLive.ProfileTest do
         |> live(~p"/users/settings")
 
       vue = get_profile_vue(view)
-      assert vue.component == "live/account/settings/Profile"
+      assert vue.component == "live/account/settings/AccountSettingsProfile"
     end
 
     test "passes current user email to Vue", %{conn: conn} do
@@ -73,7 +73,7 @@ defmodule StoryarnWeb.SettingsLive.ProfileTest do
 
       # Should not crash and Vue component still renders
       vue = get_profile_vue(view)
-      assert vue.component == "live/account/settings/Profile"
+      assert vue.component == "live/account/settings/AccountSettingsProfile"
     end
   end
 

@@ -8,8 +8,8 @@ defmodule StoryarnWeb.UserLive.LoginTest do
     test "renders login page", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/users/log-in")
 
-      vue = LiveVue.Test.get_vue(view, name: "live/auth/login/Form")
-      assert vue.component == "live/auth/login/Form"
+      vue = LiveVue.Test.get_vue(view, name: "live/auth/login/AuthLoginForm")
+      assert vue.component == "live/auth/login/AuthLoginForm"
       assert vue.props["login-action"] == "/users/log-in"
     end
   end
@@ -29,7 +29,7 @@ defmodule StoryarnWeb.UserLive.LoginTest do
 
       {:ok, view, _html} = live(conn, ~p"/users/log-in")
 
-      vue = LiveVue.Test.get_vue(view, name: "live/auth/login/Form")
+      vue = LiveVue.Test.get_vue(view, name: "live/auth/login/AuthLoginForm")
       assert vue.props["local-mail-adapter"] == true
     after
       Application.put_env(:storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Test)
@@ -45,7 +45,7 @@ defmodule StoryarnWeb.UserLive.LoginTest do
     test "passes email to Vue when logged in", %{conn: conn, user: user} do
       {:ok, view, _html} = live(conn, ~p"/users/log-in")
 
-      vue = LiveVue.Test.get_vue(view, name: "live/auth/login/Form")
+      vue = LiveVue.Test.get_vue(view, name: "live/auth/login/AuthLoginForm")
       assert vue.props["email"] == user.email
       assert vue.props["readonly"] == true
     end

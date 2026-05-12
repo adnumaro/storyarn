@@ -53,7 +53,7 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
       phx-update="ignore"
     >
       <.vue
-        v-component="live/localization/toolbar/Toolbar"
+        v-component="live/localization/toolbar/LocalizationToolbar"
         v-socket={@socket}
         v-inject:top-right={@inject_target}
         id="localization-toolbar"

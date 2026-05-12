@@ -8,7 +8,7 @@ defmodule StoryarnWeb.UserLive.Login do
     ~H"""
     <Layouts.auth flash={@flash} current_scope={@current_scope} socket={@socket}>
       <.vue
-        v-component="live/auth/login/Form"
+        v-component="live/auth/login/AuthLoginForm"
         v-socket={@socket}
         v-inject="auth-layout"
         id="login-vue"

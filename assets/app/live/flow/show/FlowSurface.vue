@@ -3,7 +3,7 @@ import { useLiveVue } from "live_vue";
 import { computed } from "vue";
 import FlowDock from "@modules/flows/editor/components/chrome/dock/FlowDock.vue";
 import FlowCollabToast from "@modules/flows/editor/components/collab/CollabToast.vue";
-import FlowCanvas from "./Canvas.vue";
+import FlowCanvas from "./FlowCanvas.vue";
 
 interface FlowSurfaceCanvasData {
   key: string;

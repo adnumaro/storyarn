@@ -37,7 +37,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
       }
     >
       <.vue
-        v-component="live/localization/report/Report"
+        v-component="live/localization/report/LocalizationReport"
         v-socket={@socket}
         v-inject="project-layout"
         id="localization-report"

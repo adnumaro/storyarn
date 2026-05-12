@@ -11,7 +11,7 @@ defmodule StoryarnWeb.UserLive.Registration do
     ~H"""
     <Layouts.auth flash={@flash} current_scope={@current_scope} socket={@socket}>
       <.vue
-        v-component="live/auth/registration/Form"
+        v-component="live/auth/registration/AuthRegistrationForm"
         v-socket={@socket}
         v-inject="auth-layout"
         id="registration-vue"

@@ -35,7 +35,7 @@ defmodule StoryarnWeb.SettingsLive.Connections do
       current_path={@current_path}
     >
       <.vue
-        v-component="live/account/settings/Connections"
+        v-component="live/account/settings/AccountSettingsConnections"
         v-socket={@socket}
         v-inject="settings-layout"
         id="settings-connections-vue"

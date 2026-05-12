@@ -61,7 +61,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       <% end %>
 
       <.vue
-        v-component="live/localization/texts/Index"
+        v-component="live/localization/texts/LocalizationTextsIndex"
         v-socket={@socket}
         v-inject="project-layout"
         id="localization-index"

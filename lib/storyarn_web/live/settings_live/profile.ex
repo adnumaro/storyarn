@@ -55,7 +55,7 @@ defmodule StoryarnWeb.SettingsLive.Profile do
       current_path={@current_path}
     >
       <.vue
-        v-component="live/account/settings/Profile"
+        v-component="live/account/settings/AccountSettingsProfile"
         v-socket={@socket}
         v-inject="settings-layout"
         id="settings-profile-vue"

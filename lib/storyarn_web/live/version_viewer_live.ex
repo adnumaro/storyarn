@@ -15,7 +15,7 @@ defmodule StoryarnWeb.VersionViewerLive do
     ~H"""
     <Layouts.compare socket={@socket} flash={@flash}>
       <.vue
-        v-component="live/flow/show/Canvas"
+        v-component="live/flow/show/FlowCanvas"
         v-socket={@socket}
         v-inject="compare-layout"
         id={"flow-version-viewer-#{@entity_id}-#{@version_number}"}
@@ -37,7 +37,7 @@ defmodule StoryarnWeb.VersionViewerLive do
     ~H"""
     <Layouts.compare socket={@socket} flash={@flash}>
       <.vue
-        v-component="live/scene/show/CompactSurface"
+        v-component="live/scene/show/SceneCompactSurface"
         v-socket={@socket}
         v-inject="compare-layout"
         id={"scene-version-viewer-#{@entity_id}-#{@version_number}"}
@@ -56,7 +56,7 @@ defmodule StoryarnWeb.VersionViewerLive do
       content_class="h-full overflow-y-auto bg-background p-4"
     >
       <.vue
-        v-component="live/sheet/show/Surface"
+        v-component="live/sheet/show/SheetSurface"
         v-socket={@socket}
         v-inject="compare-layout"
         id={"sheet-version-surface-#{@entity_id}-#{@version_number}"}

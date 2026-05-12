@@ -33,7 +33,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
   end
 
   defp get_exploration_vue(view) do
-    LiveVue.Test.get_vue(view, name: "live/scene/exploration/Player")
+    LiveVue.Test.get_vue(view, name: "live/scene/exploration/ScenePlayer")
   end
 
   defp setup_project_with_scene(%{user: user}) do
@@ -197,7 +197,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
       {:ok, view, _html} = live(conn, explore_path(project, scene))
 
       vue = get_exploration_vue(view)
-      assert vue.component == "live/scene/exploration/Player"
+      assert vue.component == "live/scene/exploration/ScenePlayer"
       assert vue.props["scene-name"] == "Test World"
     end
 
@@ -210,7 +210,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLiveTest do
 
       vue = get_exploration_vue(view)
       assert vue.id == "exploration-player"
-      assert vue.component == "live/scene/exploration/Player"
+      assert vue.component == "live/scene/exploration/ScenePlayer"
     end
 
     test "uses layout: false (no standard layout wrapper)", %{

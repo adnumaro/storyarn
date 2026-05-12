@@ -55,7 +55,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
       current_path={@current_path}
     >
       <.vue
-        v-component="live/workspace/settings/DeletedProjects"
+        v-component="live/workspace/settings/WorkspaceSettingsDeletedProjects"
         v-socket={@socket}
         v-inject="settings-layout"
         id="settings-deleted-projects-vue"

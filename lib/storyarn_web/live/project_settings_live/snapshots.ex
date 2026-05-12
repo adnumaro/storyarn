@@ -32,7 +32,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       </:subtitle>
 
       <.vue
-        v-component="live/project/settings/Snapshots"
+        v-component="live/project/settings/ProjectSettingsSnapshots"
         v-socket={@socket}
         v-inject="settings-layout"
         id="project-settings-snapshots"

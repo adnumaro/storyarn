@@ -23,9 +23,9 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
 
       render_async(view, 2000)
 
-      surface = LiveVue.Test.get_vue(view, name: "live/flow/show/Surface")
-      panels = LiveVue.Test.get_vue(view, name: "live/flow/show/Panels")
-      header = LiveVue.Test.get_vue(view, name: "live/flow/show/Header")
+      surface = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowSurface")
+      panels = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
+      header = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowHeader")
 
       assert header.props["flow-name"] == "Canonical Flow"
       assert surface.props["surface"]["canvas"]["canvasId"] == "flow-canvas-#{flow.id}"
@@ -45,7 +45,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
         )
 
       layout = LiveVue.Test.get_vue(html, name: "live/layouts/compare/Layout")
-      initial_canvas = LiveVue.Test.get_vue(html, name: "live/flow/show/Canvas")
+      initial_canvas = LiveVue.Test.get_vue(html, name: "live/flow/show/FlowCanvas")
 
       assert layout.id == "compare-layout"
       assert initial_canvas.id == "flow-editor-compact-#{flow.id}"
@@ -54,7 +54,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
 
       render_async(view, 2000)
 
-      loaded_canvas = LiveVue.Test.get_vue(view, name: "live/flow/show/Canvas")
+      loaded_canvas = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowCanvas")
 
       assert loaded_canvas.props["loading"] == false
       assert loaded_canvas.props["flow-data"] =~ "Compact Flow"
