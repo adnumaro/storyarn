@@ -16,7 +16,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
 
   alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
-  alias StoryarnWeb.FlowLive.Components.NodeTypeHelpers
+  alias StoryarnWeb.FlowLive.Helpers.NodeDataHelpers
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
   @doc """
@@ -50,8 +50,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
       |> Enum.filter(&(&1.type == "dialogue"))
       |> Enum.reduce(0, fn node, acc ->
         acc +
-          NodeTypeHelpers.word_count(node.data["text"]) +
-          NodeTypeHelpers.word_count(node.data["stage_directions"]) +
+          NodeDataHelpers.word_count(node.data["text"]) +
+          NodeDataHelpers.word_count(node.data["stage_directions"]) +
           response_word_count(node.data["responses"])
       end)
 
@@ -79,7 +79,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
 
   defp response_word_count(responses) when is_list(responses) do
     Enum.reduce(responses, 0, fn r, acc ->
-      acc + NodeTypeHelpers.word_count(r["text"])
+      acc + NodeDataHelpers.word_count(r["text"])
     end)
   end
 

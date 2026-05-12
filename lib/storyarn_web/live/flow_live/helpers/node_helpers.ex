@@ -7,7 +7,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
-  import StoryarnWeb.FlowLive.Components.NodeTypeHelpers, only: [default_node_data: 1]
+  import StoryarnWeb.FlowLive.Helpers.NodeDataHelpers, only: [default_node_data: 1]
   import StoryarnWeb.FlowLive.Helpers.SocketHelpers
   import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
   import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]

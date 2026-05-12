@@ -10,7 +10,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
 
   alias Storyarn.Flows
   alias Storyarn.Scenes
-  alias StoryarnWeb.FlowLive.Components.NodeTypeHelpers
+  alias StoryarnWeb.FlowLive.Helpers.NodeDataHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
   @valid_exit_modes ~w(terminal flow_reference caller_return)
@@ -38,7 +38,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
       "label" => data["label"] || "",
       "technical_id" => data["technical_id"] || "",
       "outcome_tags" => parse_outcome_tags(data["outcome_tags"]),
-      "outcome_color" => NodeTypeHelpers.validate_hex_color(data["outcome_color"], "#22c55e"),
+      "outcome_color" => NodeDataHelpers.validate_hex_color(data["outcome_color"], "#22c55e"),
       "exit_mode" => validate_exit_mode(data["exit_mode"]),
       "referenced_flow_id" => parse_referenced_flow_id(data["referenced_flow_id"]),
       "target_type" => validate_target_type(data["target_type"]),
@@ -262,7 +262,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
   @doc "Updates outcome color."
   def handle_update_outcome_color(color, socket) do
     node = socket.assigns.selected_node
-    validated_color = NodeTypeHelpers.validate_hex_color(color, "#22c55e")
+    validated_color = NodeDataHelpers.validate_hex_color(color, "#22c55e")
 
     NodeHelpers.persist_node_update(socket, node.id, fn data ->
       Map.put(data, "outcome_color", validated_color)
@@ -318,8 +318,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
   end
 
   defp generate_exit_technical_id(flow_slug, label, exit_count) do
-    flow_part = NodeTypeHelpers.normalize_for_id(flow_slug || "")
-    label_part = NodeTypeHelpers.normalize_for_id(label || "")
+    flow_part = NodeDataHelpers.normalize_for_id(flow_slug || "")
+    label_part = NodeDataHelpers.normalize_for_id(label || "")
     flow_part = if flow_part == "", do: "flow", else: flow_part
     label_part = if label_part == "", do: "exit", else: label_part
     "#{flow_part}_#{label_part}_#{exit_count}"

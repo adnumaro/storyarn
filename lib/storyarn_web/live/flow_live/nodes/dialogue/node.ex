@@ -17,7 +17,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   import Phoenix.LiveView, only: [push_event: 3]
 
   alias Storyarn.Flows
-  alias StoryarnWeb.FlowLive.Components.NodeTypeHelpers
+  alias StoryarnWeb.FlowLive.Helpers.NodeDataHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
   # -- Type metadata --
@@ -295,8 +295,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   end
 
   defp generate_technical_id(flow_slug, speaker_name, speaker_count) do
-    flow_part = NodeTypeHelpers.normalize_for_id(flow_slug || "")
-    speaker_part = NodeTypeHelpers.normalize_for_id(speaker_name || "")
+    flow_part = NodeDataHelpers.normalize_for_id(flow_slug || "")
+    speaker_part = NodeDataHelpers.normalize_for_id(speaker_name || "")
     flow_part = if flow_part == "", do: "dlg", else: flow_part
     speaker_part = if speaker_part == "", do: "narrator", else: speaker_part
     "#{flow_part}_#{speaker_part}_#{speaker_count}"

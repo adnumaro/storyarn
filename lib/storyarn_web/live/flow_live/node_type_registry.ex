@@ -6,7 +6,7 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
   Each node type is defined in its own module under `Nodes.{Type}.Node`.
 
   Consumers:
-  - `NodeTypeHelpers` delegates icon_name, label, default_data
+  - `NodeDataHelpers` delegates default_data
   - `FormHelpers` delegates extract_form_data
   - `NodeHelpers` delegates duplicate_data_cleanup
   - `NodeEventHandlers` delegates on_select, on_double_click
