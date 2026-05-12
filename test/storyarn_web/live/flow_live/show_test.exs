@@ -5,7 +5,9 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Phoenix.LiveView.Socket
   alias Storyarn.Repo
+  alias StoryarnWeb.FlowLive.Show
 
   describe "flow editor layout" do
     setup :register_and_log_in_user
@@ -59,6 +61,32 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       assert loaded_canvas.props["loading"] == false
       assert loaded_canvas.props["flow-data"] =~ "Compact Flow"
       assert loaded_canvas.props["canvas-id"] == "flow-canvas-#{flow.id}"
+    end
+  end
+
+  describe "async flow loading" do
+    setup :register_and_log_in_user
+
+    test "ignores stale load results after navigating to another flow", %{user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      current_flow = flow_fixture(project, %{name: "Current Flow"})
+      stale_flow = flow_fixture(project, %{name: "Stale Flow"})
+
+      socket = %Socket{
+        assigns: %{
+          __changed__: %{},
+          flow: current_flow,
+          loading: true,
+          selected_node: :keep
+        }
+      }
+
+      {:noreply, result} =
+        Show.handle_async(:load_flow_data, {:ok, %{flow: stale_flow}}, socket)
+
+      assert result.assigns.flow.id == current_flow.id
+      assert result.assigns.loading == true
+      assert result.assigns.selected_node == :keep
     end
   end
 end

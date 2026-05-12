@@ -1284,6 +1284,23 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   @impl true
   def handle_async(:load_flow_data, {:ok, data}, socket) do
+    if stale_flow_load?(socket, data.flow) do
+      {:noreply, socket}
+    else
+      {:noreply, apply_loaded_flow_data(socket, data)}
+    end
+  end
+
+  def handle_async(:load_flow_data, {:exit, _reason}, socket) do
+    %{workspace: workspace, project: project} = socket.assigns
+
+    {:noreply,
+     socket
+     |> put_flash(:error, dgettext("flows", "Could not load flow data."))
+     |> redirect(to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows")}
+  end
+
+  defp apply_loaded_flow_data(socket, data) do
     # Replace the brief flow with the fully-preloaded one
     flow = data.flow
     user = socket.assigns.current_scope.user
@@ -1360,16 +1377,14 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> maybe_restore_nav_history()
       |> maybe_restore_debug_session()
 
-    {:noreply, socket}
+    socket
   end
 
-  def handle_async(:load_flow_data, {:exit, _reason}, socket) do
-    %{workspace: workspace, project: project} = socket.assigns
-
-    {:noreply,
-     socket
-     |> put_flash(:error, dgettext("flows", "Could not load flow data."))
-     |> redirect(to: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/flows")}
+  defp stale_flow_load?(socket, loaded_flow) do
+    case socket.assigns[:flow] do
+      %{id: current_id} -> to_string(current_id) != to_string(loaded_flow.id)
+      _ -> true
+    end
   end
 
   # Linked helper processes can terminate normally during flow transitions.
