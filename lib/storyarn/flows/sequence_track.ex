@@ -115,7 +115,9 @@ defmodule Storyarn.Flows.SequenceTrack do
   defp validate_volume(changeset) do
     validate_change(changeset, :volume, fn :volume, value ->
       case value do
-        nil -> []
+        nil ->
+          []
+
         %Decimal{} = v ->
           cond do
             Decimal.lt?(v, 0) -> [volume: "must be >= 0"]

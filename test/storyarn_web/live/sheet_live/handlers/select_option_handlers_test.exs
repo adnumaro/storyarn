@@ -34,9 +34,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.SelectOptionHandlersTest do
   end
 
   defp selectable_block_fixture(sheet, attrs) do
-    config =
-      %{"label" => "Status"}
-      |> Map.merge(Map.get(attrs, :config, %{}))
+    config = Map.merge(%{"label" => "Status"}, Map.get(attrs, :config, %{}))
 
     block_fixture(sheet, Map.put(attrs, :config, config))
   end

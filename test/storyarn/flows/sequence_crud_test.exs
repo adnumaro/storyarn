@@ -255,7 +255,7 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       asset = Storyarn.AssetsFixtures.audio_asset_fixture(project, user)
 
       {:ok, _} = Flows.upsert_sequence_track(seq.id, "ambient", %{"asset_id" => asset.id})
-      assert Flows.get_sequence_track(seq.id, "ambient") != nil
+      assert Flows.get_sequence_track(seq.id, "ambient")
 
       assert {:ok, :cleared} = Flows.clear_sequence_track(seq.id, "ambient")
       assert Flows.get_sequence_track(seq.id, "ambient") == nil
@@ -296,7 +296,8 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       {:ok, _} = Flows.upsert_sequence_track(seq.id, "ambient", %{})
 
       tracks = Flows.list_sequence_tracks(seq.id)
-      assert Enum.map(tracks, & &1.kind) |> Enum.sort() ==
+
+      assert tracks |> Enum.map(& &1.kind) |> Enum.sort() ==
                ["ambient", "background", "music"]
     end
 

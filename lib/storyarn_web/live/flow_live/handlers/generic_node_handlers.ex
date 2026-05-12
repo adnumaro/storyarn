@@ -20,6 +20,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   alias Phoenix.LiveView.Socket
   alias Storyarn.Assets
   alias Storyarn.Flows
+  alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
@@ -210,7 +211,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   def build_sequence_panel_data(socket, %{type: "sequence", id: seq_id}) do
     project_id = socket.assigns.project.id
-    config = Repo.get_by(Storyarn.Flows.SequenceConfig, flow_node_id: seq_id)
+    config = Repo.get_by(SequenceConfig, flow_node_id: seq_id)
     tracks = Flows.list_sequence_tracks(seq_id)
 
     %{
@@ -224,7 +225,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   defp serialize_sequence_config(nil), do: nil
 
-  defp serialize_sequence_config(%Storyarn.Flows.SequenceConfig{} = cfg) do
+  defp serialize_sequence_config(%SequenceConfig{} = cfg) do
     %{
       name: cfg.name,
       background_asset_id: cfg.background_asset_id,
@@ -303,7 +304,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   defp list_panel_sheets(project_id) do
     project_id
-    |> Storyarn.Sheets.list_all_sheets()
+    |> Sheets.list_all_sheets()
     |> Enum.map(&%{id: &1.id, name: &1.name})
   end
 
@@ -584,8 +585,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   @spec handle_update_sequence_name(map(), Socket.t()) ::
           {:noreply, Socket.t()}
-  def handle_update_sequence_name(%{"id" => node_id, "name" => name}, socket)
-      when is_binary(name) do
+  def handle_update_sequence_name(%{"id" => node_id, "name" => name}, socket) when is_binary(name) do
     trimmed = String.trim(name)
 
     with true <- trimmed != "",
@@ -628,7 +628,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     with {:ok, parsed_id} <- parse_optional_int(node_id),
          true <- is_integer(parsed_id),
          %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
-         attrs <- extract_sequence_config_attrs(params),
+         attrs = extract_sequence_config_attrs(params),
          {:ok, updated} <- Flows.update_sequence(seq, attrs) do
       {:noreply,
        socket
@@ -645,8 +645,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   defp extract_sequence_config_attrs(params) do
     base = %{"name" => params["name"] || (params["config"] && params["config"]["name"])}
 
-    Enum.reduce(
-      ["background_asset_id", "background_position", "background_fit"],
+    ["background_asset_id", "background_position", "background_fit"]
+    |> Enum.reduce(
       base,
       fn field, acc ->
         if Map.has_key?(params, field) do
@@ -657,7 +657,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       end
     )
     |> Enum.reject(fn {_k, v} -> is_nil(v) end)
-    |> Enum.into(%{})
+    |> Map.new()
     |> ensure_name_fallback(params["id"])
   end
 
@@ -680,7 +680,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     with {:ok, parsed_id} <- parse_optional_int(node_id),
          true <- is_integer(parsed_id),
          %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
-         attrs <- track_attrs_from_params(params),
+         attrs = track_attrs_from_params(params),
          {:ok, _track} <- Flows.upsert_sequence_track(parsed_id, kind, attrs) do
       {:noreply,
        socket

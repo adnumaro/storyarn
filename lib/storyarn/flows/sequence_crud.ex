@@ -317,8 +317,7 @@ defmodule Storyarn.Flows.SequenceCrud do
   """
   @spec upsert_sequence_track(integer(), String.t(), map()) ::
           {:ok, SequenceTrack.t()} | {:error, atom() | Ecto.Changeset.t()}
-  def upsert_sequence_track(sequence_id, kind, attrs)
-      when is_integer(sequence_id) and is_binary(kind) do
+  def upsert_sequence_track(sequence_id, kind, attrs) when is_integer(sequence_id) and is_binary(kind) do
     if kind in SequenceTrack.kinds() do
       case get_sequence_track(sequence_id, kind) do
         nil ->
@@ -348,8 +347,7 @@ defmodule Storyarn.Flows.SequenceCrud do
   """
   @spec clear_sequence_track(integer(), String.t()) ::
           {:ok, :cleared} | {:error, atom()}
-  def clear_sequence_track(sequence_id, kind)
-      when is_integer(sequence_id) and is_binary(kind) do
+  def clear_sequence_track(sequence_id, kind) when is_integer(sequence_id) and is_binary(kind) do
     if kind in SequenceTrack.kinds() do
       Repo.delete_all(
         from(t in SequenceTrack,

@@ -152,14 +152,21 @@ defmodule Storyarn.Repo.Migrations.AddSequenceMediaConfig do
   end
 
   def down do
-    execute("DROP TRIGGER IF EXISTS trg_flow_node_sequence_tracks_validate_owner ON flow_node_sequence_tracks")
+    execute(
+      "DROP TRIGGER IF EXISTS trg_flow_node_sequence_tracks_validate_owner ON flow_node_sequence_tracks"
+    )
+
     execute("DROP FUNCTION IF EXISTS fn_validate_sequence_track_owner()")
 
     drop table(:flow_node_sequence_tracks)
 
-    execute("ALTER TABLE flow_node_sequence_configs DROP CONSTRAINT IF EXISTS flow_node_sequence_configs_background_fit_check")
+    execute(
+      "ALTER TABLE flow_node_sequence_configs DROP CONSTRAINT IF EXISTS flow_node_sequence_configs_background_fit_check"
+    )
 
-    execute("ALTER TABLE flow_node_sequence_configs DROP CONSTRAINT IF EXISTS flow_node_sequence_configs_background_position_check")
+    execute(
+      "ALTER TABLE flow_node_sequence_configs DROP CONSTRAINT IF EXISTS flow_node_sequence_configs_background_position_check"
+    )
 
     drop index(:flow_node_sequence_configs, [:background_asset_id])
 
