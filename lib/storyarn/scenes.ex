@@ -116,6 +116,12 @@ defmodule Storyarn.Scenes do
   defdelegate get_scene_project_id(scene_id), to: SceneCrud
 
   @doc """
+  Gets a scene by project_id and scene_id, including soft-deleted records.
+  """
+  @spec get_scene_including_deleted(integer(), integer()) :: scene_record() | nil
+  defdelegate get_scene_including_deleted(project_id, scene_id), to: SceneCrud
+
+  @doc """
   Creates a new scene in a project.
   Auto-creates a default layer and generates a shortcut from the name.
   """

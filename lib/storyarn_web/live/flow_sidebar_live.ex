@@ -32,7 +32,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
 
     # Dashboard mode (no flow_id at mount time): force the tree open,
     # force-pinned, ignore client-side main_sidebar_init pinned state, and
-    # hide the pin toggle. Matches pre-migration `Layouts.app` behavior
+    # hide the pin toggle. Matches the previous dashboard tree behavior
     # from FlowLive.Index.
     dashboard_mode = is_nil(session["flow_id"])
 

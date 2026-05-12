@@ -14,9 +14,6 @@ defmodule StoryarnWeb.Layouts do
   # and other static content.
   embed_templates "layouts/*"
 
-  # App layout — delegates to AppLayout module (Vue + shadcn-vue)
-  defdelegate app(assigns), to: StoryarnWeb.Components.AppLayout
-
   # Workspace layout — static sidebar layout for workspaces dashboard
   defdelegate workspace(assigns), to: StoryarnWeb.Components.WorkspaceLayout
 

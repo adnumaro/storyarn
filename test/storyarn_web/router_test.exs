@@ -69,7 +69,7 @@ defmodule StoryarnWeb.RouterTest do
     end
 
     test "redirects to login for unauthenticated trash access", %{conn: conn} do
-      conn = get(conn, ~p"/workspaces/test-ws/projects/test-proj/trash")
+      conn = get(conn, ~p"/workspaces/test-ws/projects/test-proj/settings/trash")
       assert redirected_to(conn) =~ "/users/log-in"
     end
 

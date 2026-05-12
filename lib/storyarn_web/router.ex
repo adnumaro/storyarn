@@ -160,11 +160,6 @@ defmodule StoryarnWeb.Router do
            VersionViewerLive,
            :sheet
 
-      # Trash
-      live "/workspaces/:workspace_slug/projects/:project_slug/trash",
-           ProjectLive.Trash,
-           :index
-
       # Flows — immersive player and compare views keep their own chromeless
       # layouts, while sharing the authenticated app live_session for fast nav.
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/play",
@@ -251,6 +246,10 @@ defmodule StoryarnWeb.Router do
 
       live "/workspaces/:workspace_slug/projects/:project_slug/settings/export-import",
            ExportImportLive.Index,
+           :index
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/trash",
+           ProjectSettingsLive.Trash,
            :index
 
       # Scenes

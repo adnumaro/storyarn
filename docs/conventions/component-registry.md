@@ -147,25 +147,25 @@ import StoryarnWeb.Components.Sidebar.SceneTree
 
 ### Other Shared Components
 
-| Module                | Import                                              | Components                                          |
-| --------------------- | --------------------------------------------------- | --------------------------------------------------- |
-| `ExpressionEditor`    | `import StoryarnWeb.Components.ExpressionEditor`    | `<.expression_editor>` — tabbed Builder/Code editor |
-| `SheetComponents`     | `import StoryarnWeb.Components.SheetComponents`     | `<.sheet_avatar>`                                   |
-| `Sidebar`             | `import StoryarnWeb.Components.Sidebar`             | `<.sidebar>` — workspace navigation                 |
-| `CanvasToolbar`       | `import StoryarnWeb.Components.CanvasToolbar`       | Canvas-aware toolbar component                      |
-| `CanvasDock`          | `import StoryarnWeb.Components.CanvasDock`          | Dockable panels for canvas views                    |
-| `ToolbarColorPicker`  | `import StoryarnWeb.Components.ToolbarColorPicker`  | Toolbar-specific color picker                       |
-| `VersionsSection`     | `import StoryarnWeb.Components.VersionsSection`     | Version history display                             |
-| `FocusLayout`         | `import StoryarnWeb.Components.FocusLayout`         | Focus layout helper components                      |
-| `AuthLayout`          | `alias StoryarnWeb.Components.AuthLayout`           | Authentication LiveVue layout boundary             |
-| `PublicLayout`        | `alias StoryarnWeb.Components.PublicLayout`         | Public marketing/invitation LiveVue layout boundary |
-| `DocsLayout`          | `alias StoryarnWeb.Components.DocsLayout`           | Documentation LiveVue layout boundary              |
-| `SettingsLayout`      | `alias StoryarnWeb.Components.SettingsLayout`       | Settings LiveVue layout boundary                   |
+| Module               | Import                                             | Components                                          |
+| -------------------- | -------------------------------------------------- | --------------------------------------------------- |
+| `ExpressionEditor`   | `import StoryarnWeb.Components.ExpressionEditor`   | `<.expression_editor>` — tabbed Builder/Code editor |
+| `SheetComponents`    | `import StoryarnWeb.Components.SheetComponents`    | `<.sheet_avatar>`                                   |
+| `Sidebar`            | `import StoryarnWeb.Components.Sidebar`            | `<.sidebar>` — workspace navigation                 |
+| `CanvasToolbar`      | `import StoryarnWeb.Components.CanvasToolbar`      | Canvas-aware toolbar component                      |
+| `CanvasDock`         | `import StoryarnWeb.Components.CanvasDock`         | Dockable panels for canvas views                    |
+| `ToolbarColorPicker` | `import StoryarnWeb.Components.ToolbarColorPicker` | Toolbar-specific color picker                       |
+| `VersionsSection`    | `import StoryarnWeb.Components.VersionsSection`    | Version history display                             |
+| `FocusLayout`        | `import StoryarnWeb.Components.FocusLayout`        | Focus layout helper components                      |
+| `AuthLayout`         | `alias StoryarnWeb.Components.AuthLayout`          | Authentication LiveVue layout boundary              |
+| `PublicLayout`       | `alias StoryarnWeb.Components.PublicLayout`        | Public marketing/invitation LiveVue layout boundary |
+| `DocsLayout`         | `alias StoryarnWeb.Components.DocsLayout`          | Documentation LiveVue layout boundary               |
+| `SettingsLayout`     | `alias StoryarnWeb.Components.SettingsLayout`      | Settings LiveVue layout boundary                    |
 
 ### Shared Live Helpers
 
-| Module             | Import                                             | Purpose                                                 |
-| ------------------ | -------------------------------------------------- | ------------------------------------------------------- |
+| Module             | Import                                            | Purpose                                                 |
+| ------------------ | ------------------------------------------------- | ------------------------------------------------------- |
 | `DashboardHelpers` | `import StoryarnWeb.Live.Shared.DashboardHelpers` | Sort, pagination, and reload helpers for Vue dashboards |
 
 ---
@@ -173,14 +173,16 @@ import StoryarnWeb.Components.Sidebar.SceneTree
 ## Layouts (6 independent, NOT nested)
 
 ```elixir
-<Layouts.app flash={@flash} current_scope={@current_scope} workspaces={@workspaces}>
-  # Main app shell with workspace sidebar (floating surface-panel toolbars)
-</Layouts.app>
+<Layouts.workspace flash={@flash} current_scope={@current_scope} current_workspace={@workspace}
+  workspaces={@workspaces}>
+  # Workspace dashboard/new-workspace shell with workspace sidebar
+</Layouts.workspace>
 
-<Layouts.focus flash={@flash} current_scope={@current_scope} project={@project}
-  workspace={@workspace} sheets_tree={@sheets_tree} active_tool={:sheets}>
-  # Project editor with floating toolbars, pinnable tree panel, canvas support
-</Layouts.focus>
+<StoryarnWeb.Components.ProjectLayout.project_layout socket={@socket} flash={@flash}
+  project={@project} workspace={@workspace} current_scope={@current_scope}
+  current_user={@current_user} urls={@urls}>
+  # Project tools shell with navbar and optional sticky sidebar
+</StoryarnWeb.Components.ProjectLayout.project_layout>
 
 <AuthLayout.auth flash={@flash}>
   # Centered auth pages (login/register)
@@ -191,16 +193,14 @@ import StoryarnWeb.Components.Sidebar.SceneTree
 </PublicLayout.public>
 
 <SettingsLayout.settings flash={@flash} current_scope={@current_scope} current_path={@current_path}
-  workspaces={@workspaces}>
-  # Settings shell with floating toolbars, sidebar nav, max-width content. Slots: :title (required), :subtitle
+  workspaces={@workspaces} workspace={@workspace} project={@project}>
+  # Account, workspace, and project settings shell with sidebar nav. Slots: :title, :subtitle
 </SettingsLayout.settings>
 
 <DocsLayout.docs flash={@flash}>
   # Documentation layout with sidebar nav and TOC right rail
 </DocsLayout.docs>
 ```
-
-**Layouts.focus** additional attrs: `flows_tree`, `screenplays_tree`, `scenes_tree`, `current_path`, `selected_sheet_id`, `selected_flow_id`, `selected_screenplay_id`, `selected_scene_id`, `can_edit`
 
 ---
 

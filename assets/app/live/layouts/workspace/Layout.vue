@@ -5,11 +5,11 @@ import type { WorkspaceItem, WorkspaceUser } from "@shell/workspaceLayoutTypes";
 const {
   currentUser,
   workspaces = [],
-  currentWorkspaceSlug,
+  currentWorkspaceSlug = null,
 } = defineProps<{
   currentUser: WorkspaceUser;
   workspaces?: WorkspaceItem[];
-  currentWorkspaceSlug: string;
+  currentWorkspaceSlug?: string | null;
 }>();
 </script>
 

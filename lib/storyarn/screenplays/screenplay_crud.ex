@@ -71,6 +71,18 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
   end
 
   @doc """
+  Gets a screenplay including soft-deleted ones (for trash/restore).
+  """
+  def get_screenplay_including_deleted(project_id, screenplay_id) do
+    Repo.one(
+      from(s in Screenplay,
+        where: s.project_id == ^project_id and s.id == ^screenplay_id,
+        preload: [elements: ^from(e in Storyarn.Screenplays.ScreenplayElement, order_by: e.position)]
+      )
+    )
+  end
+
+  @doc """
   Creates a screenplay for a project.
   Auto-generates shortcut from name if not provided.
   Auto-assigns position to end of siblings.
@@ -125,6 +137,12 @@ defmodule Storyarn.Screenplays.ScreenplayCrud do
     |> Screenplay.restore_changeset()
     |> Repo.update()
   end
+
+  @doc """
+  Permanently deletes a screenplay from the database.
+  Use with caution - this cannot be undone.
+  """
+  def hard_delete_screenplay(%Screenplay{} = screenplay), do: Repo.delete(screenplay)
 
   @doc """
   Returns a changeset for tracking screenplay changes.

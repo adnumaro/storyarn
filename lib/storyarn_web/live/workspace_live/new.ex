@@ -21,22 +21,21 @@ defmodule StoryarnWeb.WorkspaceLive.New do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app
+    <Layouts.workspace
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
-      has_tree={false}
-      show_tool_switcher={false}
-      active_tool={:dashboard}
+      workspaces={@workspaces}
     >
       <.vue
         v-component="live/workspace/form/NewWorkspaceForm"
         v-socket={@socket}
+        v-inject="workspace-layout"
         id="workspace-new"
         form={@form}
         cancel-url={~p"/workspaces"}
       />
-    </Layouts.app>
+    </Layouts.workspace>
     """
   end
 

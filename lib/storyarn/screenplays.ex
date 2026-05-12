@@ -46,6 +46,9 @@ defmodule Storyarn.Screenplays do
   @doc "Gets a screenplay by project_id and screenplay_id. Raises if not found."
   defdelegate get_screenplay!(project_id, screenplay_id), to: ScreenplayCrud
 
+  @doc "Gets a screenplay by project_id and screenplay_id, including soft-deleted records."
+  defdelegate get_screenplay_including_deleted(project_id, screenplay_id), to: ScreenplayCrud
+
   @doc "Creates a screenplay for a project. Auto-generates shortcut and position."
   defdelegate create_screenplay(project, attrs), to: ScreenplayCrud
 
@@ -57,6 +60,9 @@ defmodule Storyarn.Screenplays do
 
   @doc "Restores a soft-deleted screenplay."
   defdelegate restore_screenplay(screenplay), to: ScreenplayCrud
+
+  @doc "Permanently deletes a screenplay."
+  defdelegate hard_delete_screenplay(screenplay), to: ScreenplayCrud
 
   @doc "Returns a changeset for tracking screenplay changes."
   defdelegate change_screenplay(screenplay, attrs \\ %{}), to: ScreenplayCrud

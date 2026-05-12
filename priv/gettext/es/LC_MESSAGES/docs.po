@@ -11,19 +11,12 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/docs_live/components/docs_sidebar.ex:44
-#, elixir-autogen, elixir-format
-msgid "%{count} result"
-msgid_plural "%{count} results"
-msgstr[0] "%{count} resultado"
-msgstr[1] "%{count} resultados"
-
-#: lib/storyarn_web/live/docs_live/show.ex:38
+#: lib/storyarn_web/live/docs_live/show.ex:39
 #, elixir-autogen, elixir-format
 msgid "Documentation"
 msgstr "Documentación"
 
-#: lib/storyarn_web/live/docs_live/show.ex:51
+#: lib/storyarn_web/live/docs_live/show.ex:52
 #, elixir-autogen, elixir-format
 msgid "Guide not found"
 msgstr "Guía no encontrada"

@@ -9,10 +9,6 @@ const repoRoot = path.resolve(scriptDir, "..");
 const libRoot = path.join(repoRoot, "lib", "storyarn_web");
 
 const sourceExtensions = new Set([".ex", ".exs", ".heex"]);
-const allowedLayoutsAppFiles = new Set([
-  "lib/storyarn_web/live/project_live/trash.ex",
-  "lib/storyarn_web/live/workspace_live/new.ex",
-]);
 
 async function listFiles(root) {
   const entries = await readdir(root, { withFileTypes: true });
@@ -45,7 +41,6 @@ function lineNumberAt(source, index) {
 
 const files = await listFiles(libRoot);
 const failures = [];
-const allowedLegacyLayoutsApp = [];
 const movedLayoutTargets = {
   auth: "AuthLayout",
   docs: "DocsLayout",
@@ -66,12 +61,12 @@ for (const filePath of files) {
 
   for (const match of source.matchAll(/<Layouts\.app\b/g)) {
     const location = `${rel}:${lineNumberAt(source, match.index ?? 0)}`;
+    failures.push(`${location} Layouts.app has been removed; use a concrete layout boundary`);
+  }
 
-    if (allowedLayoutsAppFiles.has(rel)) {
-      allowedLegacyLayoutsApp.push(location);
-    } else {
-      failures.push(`${location} Layouts.app is deprecated for LiveView pages`);
-    }
+  for (const match of source.matchAll(/\bAppLayout\b/g)) {
+    const location = `${rel}:${lineNumberAt(source, match.index ?? 0)}`;
+    failures.push(`${location} AppLayout has been removed; use a concrete layout boundary`);
   }
 
   for (const match of source.matchAll(/\bLayouts\.(auth|docs|settings|public|compare)\b/g)) {
@@ -88,10 +83,5 @@ if (failures.length > 0) {
   console.error(failures.join("\n"));
   process.exitCode = 1;
 } else {
-  const suffix =
-    allowedLegacyLayoutsApp.length > 0
-      ? ` Legacy Layouts.app allowlist: ${allowedLegacyLayoutsApp.length}.`
-      : "";
-
-  console.log(`Verified LiveView layout boundaries.${suffix}`);
+  console.log("Verified LiveView layout boundaries.");
 }

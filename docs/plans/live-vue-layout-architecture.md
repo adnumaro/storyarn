@@ -29,9 +29,6 @@ Known remaining work:
 
 - `SceneLive.Show` still uses `StoryarnWeb.Components.ProjectShell.project_shell`.
 - `ProjectShell` should be removed or blocked once scenes move to `ProjectLayout`.
-- `Layouts.app` still has two LiveView consumers:
-  - `WorkspaceLive.New`
-  - `ProjectLive.Trash`
 - Flow player and scene exploration still contain visual HEEx composition.
 - `ProjectLayout` should normalize the project navbar height to one canonical value.
 - Generic flash visibility for `ProjectLayout` needs an explicit decision because project tools still call `put_flash/3`.
@@ -573,11 +570,12 @@ Completed:
 - `live/layouts/settings/Layout.vue`
 - unified authenticated app `live_session`
 - workspace dashboard now uses `WorkspaceScope` assigns instead of duplicating workspace lookup
+- `WorkspaceLive.New` uses `Layouts.workspace`
+- `ProjectSettingsLive.Trash` uses `SettingsLayout.settings` at `/settings/trash`
+- `Layouts.app` / `AppLayout` removed
 
 Remaining:
 
-- replace `WorkspaceLive.New` usage of `Layouts.app`
-- replace `ProjectLive.Trash` usage of `Layouts.app`; trash should live under the settings convention
 - decide whether a larger `app` layout family is still needed or whether `workspace` and `settings` are sufficient
 
 ### Phase 5: Public / Auth / Docs
@@ -692,17 +690,15 @@ Next implementation sequence:
    - background drag/drop
    - route changes between scene ids
 3. Remove or block `ProjectShell`.
-4. Move `ProjectLive.Trash` to the settings layout convention.
-5. Move `WorkspaceLive.New` out of `Layouts.app`.
-6. Add an architecture check for layout usage:
+4. Add an architecture check for layout usage:
    - no `ProjectShell.project_shell`
-   - no `Layouts.app` in app LiveViews
+   - no `Layouts.app`
    - project tool routes use `ProjectLayout`
-7. Then migrate `compare`, `immersive`, `public`, and `docs` as separate route-family phases.
+5. Then migrate `immersive` routes as separate route-family phases.
 
 Do not start the next work item by migrating public/docs. The most valuable
 consistency gap is still inside authenticated app routes, especially
-`SceneLive.Show` and the remaining `Layouts.app` consumers.
+`SceneLive.Show`.
 
 ## Implementation Readiness
 

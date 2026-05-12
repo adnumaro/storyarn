@@ -12,7 +12,7 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
 
   attr :flash, :map, required: true
   attr :current_scope, :map, default: nil
-  attr :current_workspace, :map, required: true
+  attr :current_workspace, :map, default: nil
   attr :workspaces, :list, default: []
   attr :socket, :any, required: true
 
@@ -41,10 +41,17 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
         }
       end)
 
+    current_workspace_slug =
+      case assigns.current_workspace do
+        %{slug: slug} -> slug
+        _ -> nil
+      end
+
     assigns =
       assigns
       |> assign(:current_user, current_user)
       |> assign(:workspace_items, workspace_items)
+      |> assign(:current_workspace_slug, current_workspace_slug)
 
     ~H"""
     <div id="layout-wrapper">
@@ -54,7 +61,7 @@ defmodule StoryarnWeb.Components.WorkspaceLayout do
         id="workspace-layout"
         current-user={@current_user}
         workspaces={@workspace_items}
-        current-workspace-slug={@current_workspace.slug}
+        current-workspace-slug={@current_workspace_slug}
       />
 
       {render_slot(@inner_block)}

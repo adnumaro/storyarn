@@ -4,13 +4,13 @@ Generated: 2026-04-10
 
 ## Legend
 
-| Status    | Description                                                                                                                                           |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| V2        | Fully migrated. LiveView renders Vue component(s) via `<.vue v-component>`. No HEEx UI.                                                               |
-| V2-layout | LiveView content is Vue, but wrapped in an Elixir layout boundary (`Layouts.app`, `SettingsLayout.settings`, etc.) that mounts shared LiveVue chrome. |
-| Partial   | Mix of Vue components and HEEx UI elements in the LiveView's own render.                                                                              |
-| V1        | Fully HEEx/DaisyUI. No Vue components.                                                                                                                |
-| N/A       | Backend-only (redirects on mount, no meaningful render).                                                                                              |
+| Status    | Description                                                                                                                                                                  |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| V2        | Fully migrated. LiveView renders Vue component(s) via `<.vue v-component>`. No HEEx UI.                                                                                      |
+| V2-layout | LiveView content is Vue, but wrapped in an Elixir layout boundary (`ProjectLayout`, `Layouts.workspace`, `SettingsLayout.settings`, etc.) that mounts shared LiveVue chrome. |
+| Partial   | Mix of Vue components and HEEx UI elements in the LiveView's own render.                                                                                                     |
+| V1        | Fully HEEx/DaisyUI. No Vue components.                                                                                                                                       |
+| N/A       | Backend-only (redirects on mount, no meaningful render).                                                                                                                     |
 
 ---
 
@@ -32,34 +32,34 @@ Generated: 2026-04-10
 
 ### Workspaces (`workspace_live/`)
 
-| LiveView                   | Status    | Notes                                  |
-| -------------------------- | --------- | -------------------------------------- |
-| `WorkspaceLive.Index`      | V2        | Redirect + loading Vue component       |
-| `WorkspaceLive.Show`       | V2-layout | Vue dashboard inside `Layouts.app`     |
-| `WorkspaceLive.New`        | V2        | Single Vue component                   |
-| `WorkspaceLive.Invitation` | V2        | Single Vue component in `PublicLayout` |
+| LiveView                   | Status    | Notes                                    |
+| -------------------------- | --------- | ---------------------------------------- |
+| `WorkspaceLive.Index`      | V2        | Redirect + loading Vue component         |
+| `WorkspaceLive.Show`       | V2-layout | Vue dashboard inside `Layouts.workspace` |
+| `WorkspaceLive.New`        | V2-layout | Vue form inside `Layouts.workspace`      |
+| `WorkspaceLive.Invitation` | V2        | Single Vue component in `PublicLayout`   |
 
 ### Projects (`project_live/`)
 
-| LiveView                 | Status    | Notes                                                               |
-| ------------------------ | --------- | ------------------------------------------------------------------- |
-| `ProjectLive.Show`       | V2-layout | Vue dashboard inside `Layouts.app`                                  |
-| `ProjectLive.Form`       | V2        | Single Vue component (uses `:live_component` macro but renders Vue) |
-| `ProjectLive.Invitation` | V2        | Vue in `PublicLayout`, redirects on accept                          |
-| `ProjectLive.Trash`      | V2        | Single Vue component                                                |
+| LiveView                    | Status    | Notes                                                               |
+| --------------------------- | --------- | ------------------------------------------------------------------- |
+| `ProjectLive.Show`          | V2-layout | Vue dashboard inside `ProjectLayout`                                |
+| `ProjectLive.Form`          | V2        | Single Vue component (uses `:live_component` macro but renders Vue) |
+| `ProjectLive.Invitation`    | V2        | Vue in `PublicLayout`, redirects on accept                          |
+| `ProjectSettingsLive.Trash` | V2-layout | Vue component inside `SettingsLayout.settings`                      |
 
 ### Sheets (`sheet_live/`)
 
-| LiveView          | Status    | Notes                                                                                                                                  |
-| ----------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `SheetLive.Index` | V2-layout | Vue dashboard inside `Layouts.app`                                                                                                     |
-| `SheetLive.Show`  | V2-layout | Multiple Vue components (header, tabs, blocks, etc.) inside `Layouts.app`. Minimal HEEx scaffolding (container divs, loading spinner). |
+| LiveView          | Status    | Notes                                      |
+| ----------------- | --------- | ------------------------------------------ |
+| `SheetLive.Index` | V2-layout | Vue dashboard inside `ProjectLayout`       |
+| `SheetLive.Show`  | V2-layout | Vue editor surfaces inside `ProjectLayout` |
 
 ### Flows (`flow_live/`)
 
 | LiveView              | Status      | Notes                                                                                                                                                                                    |
 | --------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FlowLive.Index`      | V2-layout   | Vue dashboard inside `Layouts.app`                                                                                                                                                       |
+| `FlowLive.Index`      | V2-layout   | Vue dashboard inside `ProjectLayout`                                                                                                                                                     |
 | `FlowLive.Show`       | **Partial** | Multiple Vue components but uses HEEx `<.collab_toast>` from `CollaborationComponents`. See [migration task](migration-flow-live-show.md).                                               |
 | `FlowLive.Form`       | V2          | Single Vue component (LiveComponent wrapper)                                                                                                                                             |
 | `FlowLive.PlayerLive` | **V1**      | Full HEEx render with HEEx function components (`player_slide`, `player_toolbar`, `player_choices`, `player_outcome`). No Vue. See [migration task](migration-flow-live-player-live.md). |
@@ -68,17 +68,17 @@ Generated: 2026-04-10
 
 | LiveView                    | Status      | Notes                                                                                                                                                                                                              |
 | --------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `SceneLive.Index`           | V2-layout   | Vue dashboard inside `Layouts.app`                                                                                                                                                                                 |
+| `SceneLive.Index`           | V2-layout   | Vue dashboard inside `ProjectLayout`                                                                                                                                                                               |
 | `SceneLive.Show`            | **Partial** | Multiple Vue components but has HEEx for: file upload form, empty canvas upload prompt, drag overlay, upload progress indicator, `<.icon>` components in HEEx. See [migration task](migration-scene-live-show.md). |
 | `SceneLive.ExplorationLive` | V2          | Single Vue component                                                                                                                                                                                               |
 
 ### Localization (`localization_live/`)
 
-| LiveView                  | Status    | Notes                               |
-| ------------------------- | --------- | ----------------------------------- |
-| `LocalizationLive.Index`  | V2-layout | Vue components inside `Layouts.app` |
-| `LocalizationLive.Edit`   | V2-layout | Vue component inside `Layouts.app`  |
-| `LocalizationLive.Report` | V2-layout | Vue component inside `Layouts.app`  |
+| LiveView                  | Status    | Notes                                |
+| ------------------------- | --------- | ------------------------------------ |
+| `LocalizationLive.Index`  | V2-layout | Vue component inside `ProjectLayout` |
+| `LocalizationLive.Edit`   | V2-layout | Vue component inside `ProjectLayout` |
+| `LocalizationLive.Report` | V2-layout | Vue component inside `ProjectLayout` |
 
 ### Assets (`asset_live/`)
 
@@ -145,11 +145,11 @@ These HEEx components are used by LiveViews/layouts and represent V1 patterns:
 
 ## Stale V1 Code (Can Be Deleted)
 
-| File                                               | Reason                                                                                                                    |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `lib/storyarn_web/live/components/asset_upload.ex` | Dead code. `AssetUpload` LiveComponent is not referenced by any other file. See [task](migration-stale-asset-upload.md).  |
-| `CollaborationComponents.online_users/1`           | Only used in its own moduledoc example. Layouts.app passes `online_users` as a Vue prop to `layout/RightToolbar` instead. |
-| `CollaborationComponents.node_lock_indicator/1`    | Only used in its own moduledoc example. Lock indicators are handled in Vue.                                               |
+| File                                               | Reason                                                                                                                   |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `lib/storyarn_web/live/components/asset_upload.ex` | Dead code. `AssetUpload` LiveComponent is not referenced by any other file. See [task](migration-stale-asset-upload.md). |
+| `CollaborationComponents.online_users/1`           | Only used in its own moduledoc example. Project layout passes `online_users` as a Vue prop to project chrome instead.    |
+| `CollaborationComponents.node_lock_indicator/1`    | Only used in its own moduledoc example. Lock indicators are handled in Vue.                                              |
 
 ---
 

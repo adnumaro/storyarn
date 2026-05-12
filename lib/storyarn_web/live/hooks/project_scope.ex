@@ -19,7 +19,7 @@ defmodule StoryarnWeb.Live.Hooks.ProjectScope do
   import Phoenix.LiveView, only: [put_flash: 3, redirect: 2]
 
   alias Storyarn.Projects
-  alias StoryarnWeb.Components.AppLayout
+  alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   def on_mount(:load_project, %{"workspace_slug" => ws_slug, "project_slug" => p_slug}, _session, socket) do
     case Projects.get_project_by_slugs(socket.assigns.current_scope, ws_slug, p_slug) do
@@ -42,7 +42,7 @@ defmodule StoryarnWeb.Live.Hooks.ProjectScope do
           |> assign(:can_edit, can_edit)
           |> assign(:current_user, current_user)
           |> assign(:is_super_admin, user.is_super_admin)
-          |> assign(:urls, AppLayout.build_urls(project.workspace, project))
+          |> assign(:urls, ProjectChromeHelpers.build_urls(project.workspace, project))
 
         {:cont, socket}
 

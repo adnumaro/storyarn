@@ -107,6 +107,11 @@ const sections = computed<SettingsSection[]>(() => {
             path: `${basePath}/export-import`,
             icon: "package",
           },
+          {
+            label: t("project_settings.nav.items.trash"),
+            path: `${basePath}/trash`,
+            icon: "trash-2",
+          },
         ],
       },
     ];

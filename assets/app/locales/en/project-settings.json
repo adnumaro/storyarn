@@ -13,7 +13,8 @@
         "localization": "Localization",
         "members": "Members",
         "snapshots": "Snapshots",
-        "import_export": "Import & Export"
+        "import_export": "Import & Export",
+        "trash": "Trash"
       }
     },
     "general": {
@@ -90,18 +91,36 @@
     },
     "trash": {
       "title": "Trash",
-      "description": "Deleted sheets are kept for 30 days before being permanently removed.",
-      "empty_trash": "Empty Trash",
+      "description": "Deleted project items remain recoverable until their retention period expires.",
+      "count_summary": "Items in trash: {count}",
+      "search_placeholder": "Search deleted items...",
+      "empty_trash": "Empty trash",
       "empty_title": "Trash is empty",
-      "empty_description": "Deleted sheets will appear here.",
-      "deleted_prefix": "Deleted ",
+      "empty_description": "Deleted sheets, flows, scenes, and screenplays will appear here.",
+      "no_results_title": "No deleted items found",
+      "no_results_description": "Adjust the search or type filter to find another item.",
+      "deleted_label": "Deleted {time}",
+      "just_now": "just now",
+      "untitled": "Untitled",
+      "filters": {
+        "all": "All"
+      },
+      "types": {
+        "sheet": "Sheet",
+        "flow": "Flow",
+        "scene": "Scene",
+        "screenplay": "Screenplay"
+      },
       "restore": "Restore",
+      "page_of": "Page {page} of {total}",
+      "previous": "Previous",
+      "next": "Next",
       "delete_confirm_title": "Delete permanently?",
-      "delete_confirm_description": "This sheet will be permanently deleted. This action cannot be undone.",
+      "delete_confirm_description": "The {type} “{name}” will be permanently deleted. This action cannot be undone.",
       "delete": "Delete",
       "cancel": "Cancel",
       "empty_confirm_title": "Empty trash?",
-      "empty_confirm_description": "All items in trash will be permanently deleted. This action cannot be undone."
+      "empty_confirm_description": "All deleted project items will be permanently deleted. This action cannot be undone."
     },
     "version_control": {
       "auto_snapshots": "Automatic Snapshots",

@@ -91,7 +91,7 @@ msgstr "Cuenta de %{provider} desvinculada exitosamente."
 msgid "Too many login attempts. Please try again later."
 msgstr "Demasiados intentos de inicio de sesión. Intenta de nuevo más tarde."
 
-#: lib/storyarn_web/live/user_live/registration.ex:72
+#: lib/storyarn_web/live/user_live/registration.ex:74
 #, elixir-autogen, elixir-format
 msgid "Too many registration attempts. Please try again later."
 msgstr "Demasiados intentos de registro. Intenta de nuevo más tarde."
@@ -106,7 +106,7 @@ msgstr "Usuario confirmado exitosamente."
 msgid "Welcome back!"
 msgstr "¡Bienvenido de nuevo!"
 
-#: lib/storyarn_web/live/user_live/confirm_access.ex:38
+#: lib/storyarn_web/live/user_live/confirm_access.ex:41
 #: lib/storyarn_web/user_auth.ex:234
 #: lib/storyarn_web/user_auth.ex:344
 #, elixir-autogen, elixir-format
@@ -119,12 +119,12 @@ msgstr "Debes iniciar sesión para acceder a esta página."
 msgid "Unknown authentication provider."
 msgstr "Proveedor de autenticación desconocido."
 
-#: lib/storyarn_web/live/user_live/registration.ex:94
+#: lib/storyarn_web/live/user_live/registration.ex:96
 #, elixir-autogen, elixir-format
 msgid "Account created successfully! Welcome."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:52
+#: lib/storyarn_web/live/user_live/registration.ex:54
 #, elixir-autogen, elixir-format
 msgid "Invalid or expired registration link."
 msgstr ""

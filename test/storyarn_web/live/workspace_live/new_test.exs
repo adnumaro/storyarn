@@ -7,11 +7,18 @@ defmodule StoryarnWeb.WorkspaceLive.NewTest do
     LiveVue.Test.get_vue(view, name: "live/workspace/form/NewWorkspaceForm")
   end
 
+  defp get_workspace_layout_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/layouts/workspace/Layout")
+  end
+
   describe "New workspace page" do
     setup :register_and_log_in_user
 
     test "renders the new workspace Vue component", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/workspaces/new")
+
+      layout = get_workspace_layout_vue(view)
+      assert layout.id == "workspace-layout"
 
       vue = get_new_vue(view)
       assert vue.component == "live/workspace/form/NewWorkspaceForm"

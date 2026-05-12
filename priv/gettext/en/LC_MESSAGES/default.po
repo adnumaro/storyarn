@@ -16,26 +16,26 @@ msgstr ""
 msgid "Actions"
 msgstr ""
 
-#: lib/storyarn_web/components/app_layout.ex:266
-#: lib/storyarn_web/components/app_layout.ex:280
-#: lib/storyarn_web/components/layouts.ex:820
-#: lib/storyarn_web/components/layouts.ex:834
-#: lib/storyarn_web/components/workspace_layout.ex:110
-#: lib/storyarn_web/components/workspace_layout.ex:124
+#: lib/storyarn_web/components/layouts.ex:50
+#: lib/storyarn_web/components/layouts.ex:64
+#: lib/storyarn_web/components/project_layout.ex:89
+#: lib/storyarn_web/components/project_layout.ex:103
+#: lib/storyarn_web/components/workspace_layout.ex:83
+#: lib/storyarn_web/components/workspace_layout.ex:97
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr ""
 
-#: lib/storyarn_web/components/app_layout.ex:273
-#: lib/storyarn_web/components/layouts.ex:828
-#: lib/storyarn_web/components/workspace_layout.ex:117
+#: lib/storyarn_web/components/layouts.ex:58
+#: lib/storyarn_web/components/project_layout.ex:96
+#: lib/storyarn_web/components/workspace_layout.ex:90
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr ""
 
-#: lib/storyarn_web/components/app_layout.ex:259
-#: lib/storyarn_web/components/layouts.ex:814
-#: lib/storyarn_web/components/workspace_layout.ex:103
+#: lib/storyarn_web/components/layouts.ex:44
+#: lib/storyarn_web/components/project_layout.ex:82
+#: lib/storyarn_web/components/workspace_layout.ex:76
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr ""
@@ -58,55 +58,6 @@ msgstr ""
 #: lib/storyarn_web/components/ui_components.ex:89
 #, elixir-autogen, elixir-format
 msgid "Continue with Google"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:270
-#: lib/storyarn_web/components/layouts.ex:384
-#: lib/storyarn_web/components/layouts.ex:670
-#, elixir-autogen, elixir-format
-msgid "Log in"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:556
-#, elixir-autogen, elixir-format
-msgid "Profile"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:554
-#, elixir-autogen, elixir-format, fuzzy
-msgid "Account"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:454
-#, elixir-autogen, elixir-format, fuzzy
-msgid "Back to app"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:563
-#, elixir-autogen, elixir-format, fuzzy
-msgid "Connected accounts"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:255
-#: lib/storyarn_web/components/layouts.ex:368
-#: lib/storyarn_web/components/layouts.ex:663
-#, elixir-autogen, elixir-format
-msgid "Dashboard"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:580
-#, elixir-autogen, elixir-format
-msgid "General"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:585
-#, elixir-autogen, elixir-format
-msgid "Members"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:558
-#, elixir-autogen, elixir-format
-msgid "Security"
 msgstr ""
 
 #: lib/storyarn_web/components/collaboration_components.ex:71
@@ -149,16 +100,6 @@ msgstr ""
 msgid "moved a node"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:102
-#, elixir-autogen, elixir-format
-msgid "Close panel"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:70
-#, elixir-autogen, elixir-format
-msgid "Show panel"
-msgstr ""
-
 #: lib/storyarn_web/controllers/export_controller.ex:36
 #, elixir-autogen, elixir-format
 msgid "Export failed"
@@ -179,147 +120,33 @@ msgstr ""
 msgid "Unknown format"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:246
-#: lib/storyarn_web/components/layouts.ex:358
-#: lib/storyarn_web/controllers/page_html/contact.html.heex:5
+#: lib/storyarn_web/live/landing_live/contact.ex:10
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Contact"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_html/contact.html.heex:35
-#, elixir-autogen, elixir-format
-msgid "Discord"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:240
-#: lib/storyarn_web/components/layouts.ex:351
-#, elixir-autogen, elixir-format
-msgid "Docs"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/contact.html.heex:19
-#, elixir-autogen, elixir-format
-msgid "Email"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/contact.html.heex:21
-#, elixir-autogen, elixir-format
-msgid "For general inquiries, feedback, or support."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/contact.html.heex:8
-#, elixir-autogen, elixir-format
-msgid "Have questions about Storyarn, want to report a bug, or just want to say hi? Reach out to us."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/contact.html.heex:45
-#, elixir-autogen, elixir-format
-msgid "Join our Discord"
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_html/contact.html.heex:37
-#, elixir-autogen, elixir-format
-msgid "Join the community to chat with other narrative designers."
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:748
-#, elixir-autogen, elixir-format
-msgid "Next"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:736
-#, elixir-autogen, elixir-format
-msgid "Previous"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:264
-#: lib/storyarn_web/components/layouts.ex:378
-#, elixir-autogen, elixir-format
-msgid "Request access"
-msgstr ""
-
-#: lib/storyarn_web/live/docs_live/components/docs_sidebar.ex:26
-#, elixir-autogen, elixir-format
-msgid "Search docs..."
-msgstr ""
-
-#: lib/storyarn_web/controllers/page_controller.ex:38
-#: lib/storyarn_web/controllers/page_controller.ex:46
-#: lib/storyarn_web/live/landing_live/index.ex:67
-#: lib/storyarn_web/live/landing_live/index.ex:75
+#: lib/storyarn_web/controllers/page_controller.ex:34
+#: lib/storyarn_web/controllers/page_controller.ex:42
+#: lib/storyarn_web/live/landing_live/index.ex:69
+#: lib/storyarn_web/live/landing_live/index.ex:77
 #, elixir-autogen, elixir-format
 msgid "You're on the list! We'll reach out when your spot is ready."
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:765
-#, elixir-autogen, elixir-format
-msgid "On this page"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:653
-#, elixir-autogen, elixir-format, fuzzy
-msgid "docs"
-msgstr ""
-
-#: lib/storyarn_web/components/dashboard_components.ex:470
-#, elixir-autogen, elixir-format
-msgid "%{count}d ago"
-msgstr ""
-
-#: lib/storyarn_web/components/dashboard_components.ex:469
-#, elixir-autogen, elixir-format
-msgid "%{count}h ago"
-msgstr ""
-
-#: lib/storyarn_web/components/dashboard_components.ex:468
-#, elixir-autogen, elixir-format
-msgid "%{count}m ago"
-msgstr ""
-
-#: lib/storyarn_web/components/dashboard_components.ex:329
-#, elixir-autogen, elixir-format
-msgid "%{total} items"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:317
-#, elixir-autogen, elixir-format, fuzzy
-msgid "Close"
-msgstr ""
-
-#: lib/storyarn_web/components/dashboard_components.ex:176
-#, elixir-autogen, elixir-format, fuzzy
-msgid "Error"
-msgstr ""
-
-#: lib/storyarn_web/components/dashboard_components.ex:178
-#, elixir-autogen, elixir-format
-msgid "Info"
-msgstr ""
-
-#: lib/storyarn_web/live/flow_live/index.ex:345
+#: lib/storyarn_web/live/flow_live/index.ex:351
 #, elixir-autogen, elixir-format
 msgid "Issue detected"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/form.ex:57
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:300
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:152
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:226
-#: lib/storyarn_web/live/flow_live/show.ex:1613
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:128
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:145
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:433
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:153
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:227
+#: lib/storyarn_web/live/flow_live/show.ex:1736
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:127
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:144
 #, elixir-autogen, elixir-format
 msgid "Item limit reached for your plan"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:280
-#, elixir-autogen, elixir-format
-msgid "Menu"
-msgstr ""
-
-#: lib/storyarn_web/components/dashboard_components.ex:177
-#, elixir-autogen, elixir-format, fuzzy
-msgid "Warning"
 msgstr ""
 
 #: lib/storyarn_web/components/collaboration_components.ex:69
@@ -330,11 +157,6 @@ msgstr ""
 #: lib/storyarn_web/components/collaboration_components.ex:68
 #, elixir-autogen, elixir-format
 msgid "is editing a node"
-msgstr ""
-
-#: lib/storyarn_web/components/dashboard_components.ex:467
-#, elixir-autogen, elixir-format
-msgid "just now"
 msgstr ""
 
 #: lib/storyarn_web/components/collaboration_components.ex:67
@@ -352,9 +174,10 @@ msgstr ""
 msgid "updated the flow"
 msgstr ""
 
-#: lib/storyarn_web/live/compare_live/flow.ex:76
-#: lib/storyarn_web/live/compare_live/scene.ex:76
-#: lib/storyarn_web/live/compare_live/sheet.ex:77
+#: lib/storyarn_web/live/compare_live/flow.ex:80
+#: lib/storyarn_web/live/compare_live/scene.ex:80
+#: lib/storyarn_web/live/compare_live/sheet.ex:81
+#: lib/storyarn_web/live/version_viewer_live.ex:156
 #, elixir-autogen, elixir-format
 msgid "Auto-snapshot"
 msgstr ""
@@ -362,11 +185,6 @@ msgstr ""
 #: lib/storyarn/versioning/version_crud.ex:477
 #, elixir-autogen, elixir-format
 msgid "Changes from previous version"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:590
-#, elixir-autogen, elixir-format
-msgid "Deleted Projects"
 msgstr ""
 
 #: lib/storyarn/versioning/version_crud.ex:464
@@ -389,7 +207,7 @@ msgstr ""
 msgid "Project not found"
 msgstr ""
 
-#: lib/storyarn_web/live/compare_live/sheet.ex:61
+#: lib/storyarn_web/live/compare_live/sheet.ex:65
 #, elixir-autogen, elixir-format
 msgid "Sheet not found"
 msgstr ""
@@ -404,32 +222,20 @@ msgstr ""
 msgid "Snapshot not found"
 msgstr ""
 
-#: lib/storyarn_web/controllers/page_controller.ex:18
-#: lib/storyarn_web/live/landing_live/index.ex:47
+#: lib/storyarn_web/controllers/page_controller.ex:14
+#: lib/storyarn_web/live/landing_live/index.ex:49
 #, elixir-autogen, elixir-format
 msgid "Too many requests. Please try again later."
 msgstr ""
 
-#: lib/storyarn_web/live/compare_live/flow.ex:100
-#: lib/storyarn_web/live/compare_live/scene.ex:100
-#: lib/storyarn_web/live/compare_live/sheet.ex:101
+#: lib/storyarn_web/live/compare_live/flow.ex:104
+#: lib/storyarn_web/live/compare_live/scene.ex:104
+#: lib/storyarn_web/live/compare_live/sheet.ex:105
 #, elixir-autogen, elixir-format
 msgid "Version not found"
 msgstr ""
 
-#: lib/storyarn_web/components/layouts.ex:234
-#: lib/storyarn_web/components/layouts.ex:344
-#, elixir-autogen, elixir-format, fuzzy
-msgid "Discover"
-msgstr ""
-
-#: lib/storyarn_web/components/layouts.ex:227
-#: lib/storyarn_web/components/layouts.ex:333
-#, elixir-autogen, elixir-format
-msgid "Features"
-msgstr ""
-
-#: lib/storyarn_web/live/landing_live/index.ex:20
+#: lib/storyarn_web/live/landing_live/index.ex:21
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Storyarn — Narrative Design Platform"
 msgstr ""
@@ -439,7 +245,7 @@ msgstr ""
 msgid "Someone"
 msgstr ""
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:255
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:254
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to edit."
 msgstr ""

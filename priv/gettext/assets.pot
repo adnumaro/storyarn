@@ -11,48 +11,48 @@
 msgid ""
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:294
+#: lib/storyarn_web/live/asset_live/index.ex:304
 #, elixir-autogen, elixir-format
 msgid "Asset deleted."
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:257
+#: lib/storyarn_web/live/asset_live/index.ex:267
 #, elixir-autogen, elixir-format
 msgid "Asset uploaded successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:297
+#: lib/storyarn_web/live/asset_live/index.ex:307
 #, elixir-autogen, elixir-format
 msgid "Could not delete asset."
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:267
+#: lib/storyarn_web/live/asset_live/index.ex:277
 #, elixir-autogen, elixir-format
 msgid "Could not save asset."
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:198
-#: lib/storyarn_web/live/asset_live/index.ex:211
+#: lib/storyarn_web/live/asset_live/index.ex:208
+#: lib/storyarn_web/live/asset_live/index.ex:221
 #, elixir-autogen, elixir-format
 msgid "Invalid file data."
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:234
+#: lib/storyarn_web/live/asset_live/index.ex:244
 #, elixir-autogen, elixir-format
 msgid "Unsupported file type."
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:268
+#: lib/storyarn_web/live/asset_live/index.ex:278
 #, elixir-autogen, elixir-format
 msgid "Upload failed. Please try again."
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:189
+#: lib/storyarn_web/live/asset_live/index.ex:199
 #, elixir-autogen, elixir-format
 msgid "File too large (max 20MB)."
 msgstr ""
 
-#: lib/storyarn_web/live/asset_live/index.ex:228
+#: lib/storyarn_web/live/asset_live/index.ex:238
 #, elixir-autogen, elixir-format
 msgid "Storage limit reached. Upgrade your plan."
 msgstr ""

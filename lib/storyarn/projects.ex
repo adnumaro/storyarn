@@ -20,6 +20,7 @@ defmodule Storyarn.Projects do
   alias Storyarn.Projects.ProjectCrud
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
+  alias Storyarn.Projects.ProjectTrash
 
   # =============================================================================
   # Type Definitions
@@ -132,6 +133,28 @@ defmodule Storyarn.Projects do
   @spec list_projects_with_auto_snapshots() :: [project()]
   defdelegate list_projects_with_auto_snapshots(), to: ProjectCrud
   defdelegate auto_versioning_enabled?(project_id, entity_type), to: ProjectCrud
+
+  # =============================================================================
+  # Project Trash
+  # =============================================================================
+
+  @doc """
+  Returns a DB-paginated trash page for all project-level entities.
+  """
+  @spec paginate_deleted_items(integer(), keyword()) :: ProjectTrash.page()
+  defdelegate paginate_deleted_items(project_id, opts \\ []), to: ProjectTrash
+
+  @doc """
+  Lists deleted project-level entities across all trash domains.
+  """
+  @spec list_deleted_items(integer(), keyword()) :: [ProjectTrash.deleted_item()]
+  defdelegate list_deleted_items(project_id, opts \\ []), to: ProjectTrash
+
+  @doc """
+  Lists deleted project-level entities with retention metadata for cleanup jobs.
+  """
+  @spec list_deleted_items_for_retention() :: [map()]
+  defdelegate list_deleted_items_for_retention(), to: ProjectTrash
 
   # =============================================================================
   # Restoration Lock

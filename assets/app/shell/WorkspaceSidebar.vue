@@ -17,11 +17,11 @@ const { t } = useI18n();
 const {
   currentUser,
   workspaces = [],
-  currentWorkspaceSlug,
+  currentWorkspaceSlug = null,
 } = defineProps<{
   currentUser: WorkspaceUser;
   workspaces?: WorkspaceItem[];
-  currentWorkspaceSlug: string;
+  currentWorkspaceSlug?: string | null;
 }>();
 
 const displayName = computed(

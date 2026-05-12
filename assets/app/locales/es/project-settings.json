@@ -13,7 +13,8 @@
         "localization": "Localización",
         "members": "Miembros",
         "snapshots": "Snapshots",
-        "import_export": "Importar y exportar"
+        "import_export": "Importar y exportar",
+        "trash": "Papelera"
       }
     },
     "general": {
@@ -90,18 +91,36 @@
     },
     "trash": {
       "title": "Papelera",
-      "description": "Las fichas eliminadas se conservan 30 días antes de eliminarse permanentemente.",
+      "description": "Los elementos eliminados del proyecto se pueden recuperar hasta que termine su periodo de retención.",
+      "count_summary": "Elementos en papelera: {count}",
+      "search_placeholder": "Buscar elementos eliminados...",
       "empty_trash": "Vaciar papelera",
       "empty_title": "La papelera está vacía",
-      "empty_description": "Las fichas eliminadas aparecerán aquí.",
-      "deleted_prefix": "Eliminado ",
+      "empty_description": "Las fichas, flujos, escenas y guiones eliminados aparecerán aquí.",
+      "no_results_title": "No se encontraron elementos eliminados",
+      "no_results_description": "Ajusta la búsqueda o el filtro de tipo para encontrar otro elemento.",
+      "deleted_label": "Eliminado {time}",
+      "just_now": "ahora mismo",
+      "untitled": "Sin título",
+      "filters": {
+        "all": "Todos"
+      },
+      "types": {
+        "sheet": "Ficha",
+        "flow": "Flujo",
+        "scene": "Escena",
+        "screenplay": "Guion"
+      },
       "restore": "Restaurar",
+      "page_of": "Página {page} de {total}",
+      "previous": "Anterior",
+      "next": "Siguiente",
       "delete_confirm_title": "¿Eliminar permanentemente?",
-      "delete_confirm_description": "Esta ficha se eliminará permanentemente. Esta acción no se puede deshacer.",
+      "delete_confirm_description": "El elemento de tipo {type} “{name}” se eliminará permanentemente. Esta acción no se puede deshacer.",
       "delete": "Eliminar",
       "cancel": "Cancelar",
       "empty_confirm_title": "¿Vaciar papelera?",
-      "empty_confirm_description": "Todos los elementos de la papelera se eliminarán permanentemente. Esta acción no se puede deshacer."
+      "empty_confirm_description": "Todos los elementos eliminados del proyecto se eliminarán permanentemente. Esta acción no se puede deshacer."
     },
     "version_control": {
       "auto_snapshots": "Snapshots automáticas",

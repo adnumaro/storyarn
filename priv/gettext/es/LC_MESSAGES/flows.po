@@ -11,7 +11,7 @@ msgstr ""
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/flow_live/nodes/subflow/node.ex:91
+#: lib/storyarn_web/live/flow_live/nodes/subflow/node.ex:93
 #, elixir-autogen, elixir-format
 msgid "A flow cannot reference itself."
 msgstr "Un flujo no puede referenciarse a sí mismo."
@@ -21,13 +21,13 @@ msgstr "Un flujo no puede referenciarse a sí mismo."
 msgid "Cannot reference the current flow."
 msgstr "No se puede referenciar el flujo actual."
 
-#: lib/storyarn_web/live/flow_live/nodes/subflow/node.ex:95
+#: lib/storyarn_web/live/flow_live/nodes/subflow/node.ex:97
 #, elixir-autogen, elixir-format
 msgid "Circular reference detected. This flow is already referenced by the target."
 msgstr "Referencia circular detectada. Este flujo ya está referenciado por el destino."
 
 #: lib/storyarn_web/live/flow_live/nodes/condition/node.ex:16
-#: lib/storyarn_web/live/project_live/show.ex:177
+#: lib/storyarn_web/live/project_live/show.ex:187
 #, elixir-autogen, elixir-format
 msgid "Condition"
 msgstr "Condición"
@@ -38,18 +38,18 @@ msgstr "Condición"
 msgid "Could not create flow."
 msgstr "No se pudo crear el flujo."
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:303
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:436
 #, elixir-autogen, elixir-format
 msgid "Could not create sheet."
 msgstr "No se pudo crear la ficha."
 
-#: lib/storyarn_web/live/flow_live/index.ex:269
+#: lib/storyarn_web/live/flow_live/index.ex:275
 #: lib/storyarn_web/live/flow_sidebar_live.ex:194
 #, elixir-autogen, elixir-format
 msgid "Could not delete flow."
 msgstr "No se pudo eliminar el flujo."
 
-#: lib/storyarn_web/live/flow_live/show.ex:1408
+#: lib/storyarn_web/live/flow_live/show.ex:1396
 #, elixir-autogen, elixir-format
 msgid "Could not load flow data."
 msgstr "No se pudieron cargar los datos del flujo."
@@ -59,17 +59,17 @@ msgstr "No se pudieron cargar los datos del flujo."
 msgid "Could not move flow."
 msgstr "No se pudo mover el flujo."
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:70
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:73
 #, elixir-autogen, elixir-format
 msgid "Could not save flow name."
 msgstr "No se pudo guardar el nombre del flujo."
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:496
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:814
 #, elixir-autogen, elixir-format
 msgid "Could not save shortcut."
 msgstr "No se pudo guardar el atajo."
 
-#: lib/storyarn_web/live/flow_live/index.ex:289
+#: lib/storyarn_web/live/flow_live/index.ex:295
 #: lib/storyarn_web/live/flow_sidebar_live.ex:167
 #, elixir-autogen, elixir-format
 msgid "Could not set main flow."
@@ -81,52 +81,52 @@ msgid "Create Flow"
 msgstr "Crear flujo"
 
 #: lib/storyarn_web/live/flow_live/nodes/dialogue/node.ex:27
-#: lib/storyarn_web/live/project_live/show.ex:176
+#: lib/storyarn_web/live/project_live/show.ex:186
 #, elixir-autogen, elixir-format
 msgid "Dialogue"
 msgstr "Diálogo"
 
 #: lib/storyarn_web/live/flow_live/nodes/entry/node.ex:15
-#: lib/storyarn_web/live/project_live/show.ex:183
+#: lib/storyarn_web/live/project_live/show.ex:192
 #, elixir-autogen, elixir-format
 msgid "Entry"
 msgstr "Entrada"
 
 #: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:20
-#: lib/storyarn_web/live/project_live/show.ex:184
+#: lib/storyarn_web/live/project_live/show.ex:193
 #, elixir-autogen, elixir-format
 msgid "Exit"
 msgstr "Salida"
 
-#: lib/storyarn_web/live/flow_live/index.ex:262
+#: lib/storyarn_web/live/flow_live/index.ex:268
 #: lib/storyarn_web/live/flow_sidebar_live.ex:190
 #, elixir-autogen, elixir-format
 msgid "Flow moved to trash."
 msgstr "Flujo movido a la papelera."
 
 #: lib/storyarn_web/live/flow_live/handlers/navigation_handlers.ex:24
-#: lib/storyarn_web/live/flow_live/index.ex:266
-#: lib/storyarn_web/live/flow_live/index.ex:286
+#: lib/storyarn_web/live/flow_live/index.ex:272
+#: lib/storyarn_web/live/flow_live/index.ex:292
 #: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:225
 #: lib/storyarn_web/live/flow_live/player_live.ex:74
-#: lib/storyarn_web/live/flow_live/show.ex:441
+#: lib/storyarn_web/live/flow_live/show.ex:335
 #, elixir-autogen, elixir-format
 msgid "Flow not found."
 msgstr "Flujo no encontrado."
 
-#: lib/storyarn_web/live/flow_live/index.ex:282
+#: lib/storyarn_web/live/flow_live/index.ex:288
 #, elixir-autogen, elixir-format
 msgid "Flow set as main."
 msgstr "Flujo establecido como principal."
 
 #: lib/storyarn_web/live/flow_live/nodes/hub/node.ex:17
-#: lib/storyarn_web/live/project_live/show.ex:179
+#: lib/storyarn_web/live/project_live/show.ex:189
 #, elixir-autogen, elixir-format
 msgid "Hub"
 msgstr "Hub"
 
 #: lib/storyarn_web/live/flow_live/nodes/instruction/node.ex:15
-#: lib/storyarn_web/live/project_live/show.ex:178
+#: lib/storyarn_web/live/project_live/show.ex:188
 #, elixir-autogen, elixir-format
 msgid "Instruction"
 msgstr "Instrucción"
@@ -136,13 +136,13 @@ msgstr "Instrucción"
 msgid "Invalid flow ID."
 msgstr "ID de referencia inválido."
 
-#: lib/storyarn_web/live/flow_live/nodes/subflow/node.ex:88
+#: lib/storyarn_web/live/flow_live/nodes/subflow/node.ex:90
 #, elixir-autogen, elixir-format
 msgid "Invalid flow reference."
 msgstr "ID de referencia inválido."
 
 #: lib/storyarn_web/live/flow_live/nodes/jump/node.ex:12
-#: lib/storyarn_web/live/project_live/show.ex:180
+#: lib/storyarn_web/live/project_live/show.ex:190
 #, elixir-autogen, elixir-format
 msgid "Jump"
 msgstr "Salto"
@@ -153,18 +153,18 @@ msgstr "Salto"
 msgid "No entry node found in this flow."
 msgstr "No se encontró nodo de entrada en este flujo."
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:495
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:813
 #, elixir-autogen, elixir-format
 msgid "Shortcut %{error}"
 msgstr "Atajo %{error}"
 
 #: lib/storyarn_web/live/flow_live/nodes/subflow/node.ex:20
-#: lib/storyarn_web/live/project_live/show.ex:182
+#: lib/storyarn_web/live/project_live/show.ex:191
 #, elixir-autogen, elixir-format
 msgid "Subflow"
 msgstr "Subflujo"
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:526
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:844
 #, elixir-autogen, elixir-format
 msgid "This node is being edited by %{user}"
 msgstr "Este nodo está siendo editado por %{user}"
@@ -205,37 +205,37 @@ msgstr "Error al avanzar en el flujo."
 msgid "Target flow has no entry node."
 msgstr "El flujo destino no tiene nodo de entrada."
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:119
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:122
 #, elixir-autogen, elixir-format
 msgid "Could not restore flow name."
 msgstr "No se pudo restaurar el nombre del flujo."
 
-#: lib/storyarn_web/live/flow_live/show.ex:1616
+#: lib/storyarn_web/live/flow_live/show.ex:1739
 #, elixir-autogen, elixir-format
 msgid "Could not create linked flow."
 msgstr "No se pudo crear el flujo enlazado."
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:333
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:466
 #, elixir-autogen, elixir-format
 msgid "Could not update node positions."
 msgstr "No se pudieron actualizar las posiciones de los nodos."
 
-#: lib/storyarn_web/live/flow_live/show.ex:1144
+#: lib/storyarn_web/live/flow_live/show.ex:1131
 #, elixir-autogen, elixir-format
 msgid "Could not update scene map."
 msgstr "No se pudo actualizar la escena."
 
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:112
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:111
 #, elixir-autogen, elixir-format
 msgid "%{type} #%{id}"
 msgstr "%{type} #%{id}"
 
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:101
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:100
 #, elixir-autogen, elixir-format
 msgid "No outgoing connection"
 msgstr "Sin conexión de salida"
 
-#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:100
+#: lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex:99
 #, elixir-autogen, elixir-format
 msgid "Not reachable from any entry node"
 msgstr "No alcanzable desde ningún nodo de entrada"
@@ -255,12 +255,12 @@ msgstr "Ramificar según condiciones de variables"
 msgid "Character speech and player responses"
 msgstr "Diálogos de personajes y respuestas del jugador"
 
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:160
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:161
 #, elixir-autogen, elixir-format
 msgid "Could not create node."
 msgstr "No se pudo crear el nodo."
 
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:234
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:235
 #, elixir-autogen, elixir-format
 msgid "Could not duplicate node."
 msgstr "No se pudo duplicar el nodo."
@@ -276,13 +276,13 @@ msgid "End point of a flow"
 msgstr "Punto de salida de un flujo"
 
 #: lib/storyarn/projects/dashboard.ex:328
-#: lib/storyarn_web/live/flow_live/index.ex:339
+#: lib/storyarn_web/live/flow_live/index.ex:345
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has %{count} disconnected node(s)"
 msgstr "El flujo \"%{name}\" tiene %{count} nodo(s) desconectado(s)"
 
 #: lib/storyarn/projects/dashboard.ex:314
-#: lib/storyarn_web/live/flow_live/index.ex:335
+#: lib/storyarn_web/live/flow_live/index.ex:341
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has no entry node"
 msgstr "El flujo \"%{name}\" no tiene nodo de entrada"
@@ -337,7 +337,7 @@ msgstr "Atajo cambiado"
 msgid "Flow backdrop scene"
 msgstr "Escena de fondo del flujo"
 
-#: lib/storyarn_web/live/compare_live/flow.ex:60
+#: lib/storyarn_web/live/compare_live/flow.ex:64
 #, elixir-autogen, elixir-format
 msgid "Flow not found"
 msgstr "Flujo no encontrado"
@@ -382,7 +382,7 @@ msgstr "Conexión eliminada"
 msgid "Renamed flow"
 msgstr "Flujo renombrado"
 
-#: lib/storyarn_web/live/flow_live/show.ex:1083
+#: lib/storyarn_web/live/flow_live/show.ex:1070
 #, elixir-autogen, elixir-format
 msgid "Node not found."
 msgstr "Nodo no encontrado."
@@ -399,7 +399,7 @@ msgid "Someone"
 msgstr "Alguien"
 
 #: lib/storyarn_web/live/flow_live/player/slide.ex:83
-#: lib/storyarn_web/live/flow_live/player_live.ex:496
+#: lib/storyarn_web/live/flow_live/player_live.ex:486
 #, elixir-autogen, elixir-format
 msgid "The End"
 msgstr "Fin"
@@ -418,3 +418,23 @@ msgstr "No tienes permiso para editar."
 #, elixir-autogen, elixir-format
 msgid "Debug session started"
 msgstr "Sesión de depuración iniciada"
+
+#: lib/storyarn_web/live/flow_live/show.ex:676
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Could not create sequence"
+msgstr "No se pudo crear la ficha."
+
+#: lib/storyarn_web/live/flow_live/show.ex:672
+#, elixir-autogen, elixir-format
+msgid "Nodes must belong to the same container"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/show.ex:665
+#, elixir-autogen, elixir-format
+msgid "Select at least one node first"
+msgstr ""
+
+#: lib/storyarn_web/live/flow_live/show.ex:662
+#, elixir-autogen, elixir-format
+msgid "Sequence created"
+msgstr ""
